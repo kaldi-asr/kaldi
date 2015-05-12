@@ -54,46 +54,73 @@ int main(int argc, char *argv[]) {
         "Select a subset of chunks of frames of the input files, based on the log-energy\n"
         "of the frames\n"
         "Usage: select-top-chunks [options] <feats-rspecifier> "
-        "<feats-wspecifier>\n"
+        "<feats-wspecifier> [<mask-wspecifier>]\n"
         "e.g. : select-top-chunks --frames-proportion=0.1 --window-size=100"
         "scp:feats.scp ark:-\n";
 
-    BaseFloat frames_proportion = 1.0, select_frames = 0;
-    bool select_bottom_frames = false;
+    BaseFloat frames_proportion = 1.0;
     int32 window_size = 100;    // 100 frames = 1 second assuming a shift of 10ms
-    std::string energies_rspecifier = "";
+    std::string mask_rspecifier, weights_rspecifier, weights_next_rspecifier;
+    int32 select_frames = -1, select_frames_next = -1;
+    int32 select_class = 1;
+    int32 dim_as_weight = -1;
+    bool select_bottom_frames = false, select_bottom_frames_next = false;
     
     ParseOptions po(usage);
     po.Register("frames-proportion", &frames_proportion,
                 "Select only the top / bottom proportion frames by the feature value");
-    po.Register("select-bottom-frames", &select_bottom_frames,
-                "If true, select only the bottom frames.");
-    po.Register("select-frames", &select_frames,
+    po.Register("select-class", &select_class,
+                "Select frames of this class in the mask");
+    po.Register("num-select-frames", &select_frames,
                 "Select these many frames, instead of looking at a proportion. "
-                "Overrides frame-proportion if provided");
+                "Overrides frame-proportion if provided and >= 0");
+    po.Register("num-select-frames-next", &select_frames_next,
+                "Second level of selection of frames among frames selected "
+                "using num-frames");
     po.Register("window-size", &window_size, 
                 "Size of window to consider at once");
-    po.Register("energies", &energies_rspecifier,
-                "Read log-energies from a separate archive instead of treating "
-                "the first dimension as log-energy");
+    po.Register("weights", &weights_rspecifier,
+                "Read weights from an archive to do selection");
+    po.Register("weights_next", &weights_next_rspecifier,
+                "Read weights from an archive to do a second level of selection");
+    po.Register("selection-mask", &mask_rspecifier,
+                "Selection mask on the frames. These are chosen for the chunk "
+                "based on majority");
+    po.Register("select-bottom-frames", &select_bottom_frames, 
+                "Select the bottom frames instead of top frames");
+    po.Register("select-bottom-frames-next", &select_bottom_frames_next,
+                "Select bottom frames for second level of selection");
+    po.Register("use-dim-as-weight", &dim_as_weight,
+                "Use a particular dimension of feature (e.g. C0) as the weight "
+                "when --weights is not specified");
 
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 2 && po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string feat_rspecifier = po.GetArg(1),
-                feat_wspecifier = po.GetArg(2);
+                feat_wspecifier = po.GetArg(2),
+                mask_wspecifier;
+
+    if (po.NumArgs() == 3)
+      mask_wspecifier = po.GetArg(3);
 
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
-    RandomAccessBaseFloatMatrixReader energies_reader(energies_rspecifier);
+    
+    RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
+    RandomAccessBaseFloatVectorReader weights_next_reader(weights_next_rspecifier);
+    RandomAccessBaseFloatVectorReader mask_reader(mask_rspecifier);
+
+    BaseFloatVectorWriter mask_writer(mask_wspecifier);
 
     int32 num_done = 0, num_err = 0; 
-    long long num_select = 0, num_frames = 0;
+    long long num_select = 0, num_frames = 0, num_filtered = 0, 
+              num_select_second_level = 0, num_filtered_second_level = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
@@ -106,70 +133,179 @@ int main(int argc, char *argv[]) {
       num_frames += feats.NumRows();
 
       int32 num_chunks = ( feats.NumRows() + 0.5 * window_size ) / window_size;
-      int32 chunk_size = feats.NumRows() / num_chunks;
-
-      int32 this_select = 0;
-      if (select_frames == 0) {
-        this_select = frames_proportion * num_chunks + 0.5;
-      } else {
-        this_select = (static_cast<BaseFloat>(select_frames) + 0.5) / chunk_size ;
-      }
-      if (this_select == 0) this_select = 1;
-      
-      if (this_select >= num_chunks) {
-        feat_writer.Write(feat_reader.Key(), feats);
-        num_done++;
-        num_select += feats.NumRows();
+      if (num_chunks == 0) {
+        KALDI_WARN << "No chunks found for utterance " << utt;
+        num_err++;
         continue;
       }
 
-      Vector<BaseFloat> log_energy(feats.NumRows());
+      // Find chunk size to use
+      int32 chunk_size = feats.NumRows() / num_chunks;
 
-      if (energies_rspecifier != "") {
-        if (!energies_reader.HasKey(utt)) {
-          KALDI_WARN << "log-energy not found for utterance " << utt;
+      Vector<BaseFloat> weights;
+      Vector<BaseFloat> mask;
+      Vector<BaseFloat> weights_next;
+
+      // Read weights if specified
+      if (weights_rspecifier != "") {
+        if (!weights_reader.HasKey(utt)) {
+          KALDI_WARN << "weights not found for utterance " << utt;
           num_err++;
           continue;
         }
-        log_energy.CopyColFromMat(energies_reader.Value(utt), 0);
-      } else
-        log_energy.CopyColFromMat(feats, 0);
+        weights = (weights_reader.Value(utt));
+      }
 
-      std::vector<BaseFloat> chunk_energies(num_chunks, 0.0);
+      if (dim_as_weight > 0) {
+        KALDI_ASSERT(dim_as_weight < feats.NumCols());
+        weights.CopyColFromMat(feats, dim_as_weight);
+      }
+
+      // Read mask if specified
+      if (mask_rspecifier != "") {
+        if (!mask_reader.HasKey(utt)) {
+          KALDI_WARN << "mask not found for utterance " << utt;
+          num_err++;
+          continue;
+        }
+        mask = (mask_reader.Value(utt));
+      }
+
+      // Read second level weights if specified
+      if (weights_next_rspecifier != "") {
+        if (!weights_next_reader.HasKey(utt)) {
+          KALDI_WARN << "second-level weights not found for utterance " << utt;
+          num_err++;
+          continue;
+        }
+        weights_next = (weights_next_reader.Value(utt));
+      }
+
+      std::vector<BaseFloat> chunk_weights;
+      std::vector<BaseFloat> chunk_weights_next;
+      std::vector<int32> chunk_mask(num_chunks, 1);
+
+      if (weights_rspecifier != "")
+        chunk_weights.resize(num_chunks, 0.0);
+
+      if (weights_next_rspecifier != "") 
+        chunk_weights_next.resize(num_chunks, 0.0);
+
+      if (mask_rspecifier != "") 
+        chunk_mask.resize(num_chunks, 0);
+
+      // Find average weight for each chunk
       for (int32 i = 0; i < num_chunks; i++) {
-        SubVector<BaseFloat> chunk_energy(log_energy, i*chunk_size, chunk_size);
-        chunk_energies[i] = chunk_energy.Sum() / chunk_energy.Dim();
+        if (weights_rspecifier != "") {
+          SubVector<BaseFloat> this_chunk_weights(weights, i*chunk_size, chunk_size);
+          chunk_weights[i] = this_chunk_weights.Sum() / chunk_size;
+        }
+        if (weights_next_rspecifier != "") {
+          SubVector<BaseFloat> this_chunk_weights_next(weights_next, i*chunk_size, chunk_size);
+          chunk_weights_next[i] = this_chunk_weights_next.Sum() / chunk_size;
+        }
+        if (mask_rspecifier != "") { 
+          SubVector<BaseFloat> this_chunk_mask(mask, i*chunk_size, chunk_size);
+          for (int32 j = 0; j < this_chunk_mask.Dim(); j++)
+            chunk_mask[i] += (this_chunk_mask(j) == select_class ? 1 : 0);
+          chunk_mask[i] /= chunk_size;
+        }
       }
   
-      std::vector<int32> idx(num_chunks);
+      std::vector<int32> idx;
       for (int32 i = 0; i < num_chunks; i++) {
-        idx[i] = i;
+        if ( chunk_mask[i] == 1 )
+          idx.push_back(i);
       }
 
-      OtherVectorComparator<BaseFloat> comparator(chunk_energies);
-      if (select_bottom_frames) comparator.SetAscending();
+      int32 this_select = 0;
 
-      sort(idx.begin(), idx.end(), comparator);
-      idx.resize(this_select);
+      if (select_frames < 0) {
+        if (frames_proportion == 1.0) 
+          this_select = idx.size();
+        else
+          this_select = frames_proportion * idx.size() + 0.5;
+      } else 
+        this_select = (static_cast<BaseFloat>(select_frames) + 0.5) / chunk_size ;
 
-      Matrix<BaseFloat> selected_feats(this_select * chunk_size,
-                                          feats.NumCols());
+      // No chunk selected. Just select one instead.
+      if (this_select == 0) this_select = 1;    
+      
+      num_filtered += idx.size() * chunk_size;
+
+      if (this_select < idx.size()) {
+        // Need to select frames because this_select is less than the 
+        // number of chunks found
+        
+        if (chunk_weights.size() > 0) {
+          // Select only top frames according to chunk_weights
+          OtherVectorComparator<BaseFloat> comparator(chunk_weights);
+          if (select_bottom_frames) comparator.SetAscending();
+
+          sort(idx.begin(), idx.end(), comparator);
+        }
+        idx.resize(this_select);
+      } else {
+        this_select = idx.size();
+      }
+
+      num_select += this_select * chunk_size;
+      num_filtered_second_level += idx.size() * chunk_size;
+
+      int32 this_select_next = idx.size();
+      if (select_frames_next > 0)
+        this_select_next = (static_cast<BaseFloat>(select_frames_next) + 0.5) / chunk_size;
+      if (this_select_next == 0) this_select_next = 1;
+
+      if (this_select_next < idx.size()) {
+        // Need to select frames at second level because this_select is 
+        // less than the number of chunks retained after first level
+        // selection
+        
+        if (chunk_weights_next.size() > 0) {
+          // Select only top frames according to chunk_weights
+          OtherVectorComparator<BaseFloat> comparator(chunk_weights_next);
+          if (select_bottom_frames_next) comparator.SetAscending();
+
+          sort(idx.begin(), idx.end(), comparator);
+        }
+        idx.resize(this_select_next);
+      } else {
+        this_select_next = idx.size();
+      }
+
+      num_select_second_level += this_select_next * chunk_size;
+
+      Matrix<BaseFloat> selected_feats(this_select_next * chunk_size, feats.NumCols());
+      Vector<BaseFloat> output_mask(feats.NumRows());
 
       int32 n = 0;
       for (std::vector<int32>::const_iterator it = idx.begin();
-            it != idx.end(); ++it, n++) {
+          it != idx.end(); ++it, n++) {
+        KALDI_VLOG(2) << utt << " " << *it * chunk_size << " " << *it * chunk_size + chunk_size;
         SubMatrix<BaseFloat> src_feats(feats, *it * chunk_size, chunk_size, 0, feats.NumCols());
         SubMatrix<BaseFloat> dst_feats(selected_feats, n*chunk_size, chunk_size, 0, feats.NumCols());
         dst_feats.CopyFromMat(src_feats);
+
+        if (mask_wspecifier != "") {
+          SubVector<BaseFloat> this_mask(output_mask, *it * chunk_size, chunk_size);
+          this_mask.Set(1.0);
+        }
       }
 
       feat_writer.Write(feat_reader.Key(), selected_feats);
+      if (mask_wspecifier != "")
+        mask_writer.Write(feat_reader.Key(), output_mask);
+
       num_done++;
-      num_select += this_select;
     }
    
-    KALDI_LOG << "Done selecting " << num_select 
-              << " top frames out out " 
+    KALDI_LOG << "Done selecting " << num_select_second_level 
+              << " top frames out of " 
+              << num_filtered_second_level << " frames at second level; "
+              << num_select << " top frames were selected at first level "
+              << "out of " << num_filtered 
+              << " frames filtered through the mask out of "
               << num_frames << " frames ; processed "
               << num_done << " utterances, "
               << num_err << " had errors.";
