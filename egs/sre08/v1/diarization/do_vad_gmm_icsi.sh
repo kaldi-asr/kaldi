@@ -121,9 +121,6 @@ if $select_only_voiced_frames; then
 fi
 
 extract-column scp:$data/feats.scp ark,scp:mfcc/log_energies.ark,$data/log_energies.scp || { echo "extract-column failed"; exit 1; }
-  
-mkdir -p $dir/silence_gmm
-tmpdir=$dir/silence_gmm
 
 for n in `seq $nj`; do
   cat <<EOF > $dir/q/do_vad.$n.sh
@@ -150,13 +147,13 @@ while IFS=$'\n' read line; do
   if [ -z "$init_speech_model" ]; then
     gmm-global-init-from-feats --num-gauss=\$speech_num_gauss --num-iters=4 \
       "\$feats $apply_cmvn_opts $select_frames_opts select-top-chunks --window-size=$window_size --frames-proportion=$top_frames_threshold --weights=\"\$speech_energies\" ark:- ark:- |$ignore_energy_opts" \
-      $tmpdir/\$utt_id.speech.0.mdl || exit 1
+      $dir/\$utt_id.speech.0.mdl || exit 1
     #gmm-global-init-from-feats --num-gauss=\$sil_num_gauss --num-iters=4 \
     #  "\$feats $apply_cmvn_opts $select_sil_frames_opts select-top-chunks --window-size=$window_size --frames-proportion=$bottom_frames_threshold --select-frames=\$[sil_num_gauss * 20] --select-bottom-frames=true --weights=\"\$sil_energies\" ark:- ark:- |$ignore_energy_opts" \
-    #  $tmpdir/\$utt_id.silence.0.mdl || exit 1
+    #  $dir/\$utt_id.silence.0.mdl || exit 1
     gmm-global-init-from-feats --num-gauss=\$sil_num_gauss --num-iters=4 \
       "\$feats $apply_cmvn_opts $select_sil_frames_opts select-top-chunks --window-size=$window_size --frames-proportion=$bottom_frames_threshold --select-bottom-frames=true --weights=\"\$sil_energies\" ark:- ark:- |$ignore_energy_opts" \
-      $tmpdir/\$utt_id.silence.0.mdl || exit 1
+      $dir/\$utt_id.silence.0.mdl || exit 1
   else 
     gmm-global-get-frame-likes $init_speech_model \
       "\${feats}${apply_cmvn_opts}$ignore_energy_opts" ark:$dir/\$utt_id.speech_likes.init.ark || exit 1
@@ -187,43 +184,9 @@ while IFS=$'\n' read line; do
       "\$feats $apply_cmvn_opts select-top-chunks --select-bottom-frames=true --invert-mask=true \
       --window-size=1 --select-frames=\$[sil_num_gauss * 100] \
       --weights=\"\$sil_energies\" --selection-mask=ark:$dir/\$utt_id.vad.init.ark ark:- ark:- |$ignore_energy_opts" \
-      $tmpdir/\$utt_id.silence.0.mdl || exit 1
+      $dir/\$utt_id.silence.0.mdl || exit 1
   
   fi
-  
-  gmm-global-get-frame-likes $init_speech_model \
-    "\${feats}${apply_cmvn_opts}$ignore_energy_opts" ark:$tmpdir/\$utt_id.speech_likes.0.ark || exit 1
-
-  x=0
-  while [ \$x -lt $num_iters ]; do
-    if [ $stage -le \$x ]; then
-
-      if [ \$sil_num_gauss -le $sil_max_gauss ]; then
-        sil_num_gauss=\$[sil_num_gauss + $sil_gauss_incr]
-      fi
-
-      gmm-global-get-frame-likes $tmpdir/\$utt_id.silence.\$x.mdl \
-        "\${feats}${apply_cmvn_opts}$ignore_energy_opts" ark:$tmpdir/\$utt_id.silence_likes.\$x.ark || exit 1
-
-      loglikes-to-class --weights=ark:$tmpdir/\$utt_id.weights.\$x.ark \
-        ark:$tmpdir/\$utt_id.silence_likes.\$x.ark ark:$tmpdir/\$utt_id.speech_likes.0.ark \
-        ark:$tmpdir/\$utt_id.vad.\$x.ark || exit 1
-
-      sil_energies="ark:utils/filter_scp.pl $tmpdir/\$utt_id.list $data/log_energies.scp | select-voiced-frames --select-unvoiced-frames=true scp:- ark:$tmpdir/\$utt_id.vad.\$x.ark ark:- |"
-
-      gmm-global-acc-stats $tmpdir/\$utt_id.silence.\$x.mdl \
-        "\$feats $apply_cmvn_opts select-top-chunks --select-bottom-frames=true --invert-mask=true \
-        --window-size=$window_size --select-frames=\$[(sil_num_gauss-1) * 2000] \
-        --weights=ark:$tmpdir/\$utt_id.weights.\$x.ark --selection-mask=ark:$tmpdir/\$utt_id.vad.\$x.ark ark:- ark:- |$ignore_energy_opts" - | \
-        gmm-global-est --mix-up=\$sil_num_gauss $tmpdir/\$utt_id.silence.\$x.mdl \
-        - $tmpdir/\$utt_id.silence.\$[x+1].mdl || exit 1
-
-    fi
-    x=\$[x+1]
-  done
-
-  cp $tmpdir/\$utt_id.silence.\$x.mdl $dir/\$utt_id.silence.0.mdl
-  cp $init_speech_model $dir/\$utt_id.speech.0.mdl 
 
   x=0
   while [ \$x -lt $num_iters ]; do
@@ -237,10 +200,10 @@ while IFS=$'\n' read line; do
         sil_num_gauss=\$[sil_num_gauss + $sil_gauss_incr]
       fi
 
-      this_top_frames_threshold=1.0
+      this_top_frames_threshold=0.9
       #this_bottom_frames_threshold=1.0
       #this_top_frames_threshold=\$(perl -e "if (\$this_top_frames_threshold < 0.5) { print \$this_top_frames_threshold * 2 } else { print 0.5 }")
-      #this_bottom_frames_threshold=\$(perl -e "if (\$this_bottom_frames_threshold < 0.8) { print \$this_bottom_frames_threshold * 2 } else { print \$this_bottom_frames_threshold }")
+      this_bottom_frames_threshold=\$(perl -e "if (\$this_bottom_frames_threshold < 0.8) { print \$this_bottom_frames_threshold * 2 } else { print \$this_bottom_frames_threshold }")
 
 
       gmm-global-get-frame-likes $dir/\$utt_id.speech.\$x.mdl \
@@ -285,7 +248,7 @@ while IFS=$'\n' read line; do
       
       gmm-global-acc-stats $dir/\$utt_id.silence.\$x.mdl \
         "\$feats $apply_cmvn_opts select-top-chunks --select-bottom-frames=true --invert-mask=true \
-        --window-size=$window_size \
+        --window-size=$window_size --select-frames=\$[sil_num_gauss * 100] \
         --weights=ark:$dir/\$utt_id.weights.\$x.ark --selection-mask=ark:$dir/\$utt_id.vad.\$x.ark ark:- ark:- |$ignore_energy_opts" - | \
         gmm-global-est --mix-up=\$sil_num_gauss $dir/\$utt_id.silence.\$x.mdl \
         - $dir/\$utt_id.silence.\$[x+1].mdl || exit 1
@@ -332,3 +295,4 @@ fi
 
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
+

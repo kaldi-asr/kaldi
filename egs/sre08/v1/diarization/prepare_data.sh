@@ -30,8 +30,8 @@ tmpdir=$2
 featdir=$3
 
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj $nj --cmd $cmd \
-    $data $featdir $tmpdir/make_mfcc || exit 1
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
+    $data $tmpdir/make_mfcc_vad $featdir || exit 1
 fi
 
 if [ $stage -le 2 ]; then
