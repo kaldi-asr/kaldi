@@ -187,4 +187,24 @@ if [ $stage -le 16 ]; then
   done
 fi
 wait;
+
+if [ $stage -le 17 ]; then
+  # prepare the build for distribution
+  cat <<EOF >${dir}_online/sample_decode.sh
+. cmd.sh
+data_dir=\$1  # e.g. data/dev_hires (to be prepared by the user, see egs/tedlium/run.sh for examples)
+model_dir=\$2 # e.g. exp/nnet2_online/nnet_ms_sp_online (provided in the distribution) 
+
+decode_dir=\$model_dir/\`basename \$data_dir\`
+num_jobs=\`cat \$data_dir/spk2utt | wc -l\`
+# note that the graph directory (exp/tri3/graph) is not provided in the distribution
+steps/online/nnet2/decode.sh --cmd "\$decode_cmd" --nj \$num_jobs \
+  exp/tri3/graph \$data_dir \$decode_dir ;
+EOF
+  chmod +x ${dir}_online/sample_decode.sh
+  dist_file=tedlium_`basename $dir`.tgz
+  local/online/prepare_dist_build.sh --other-files ${dir}_online/sample_decode.sh data/lang ${dir}_online $dist_file
+  echo "NOTE: If you would like to upload this build ($dist_file) to kaldi-asr.org please check the process at http://kaldi-asr.org/uploads.html"
+fi
+
 exit 0;
