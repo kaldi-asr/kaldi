@@ -93,10 +93,12 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
 }
 
 
-
+// make our own namespace for helper functions of ComputeComputationGraph.
 namespace computation_graph {
 
-// make our own namespace for helper functions of ComputeComputationGraph.
+
+// This function adds cindex_ids corresponding to each output
+// index, to the graph.
 void AddOutputToGraph(const ComputationRequest &request,
                       const Nnet &nnet,                      
                       ComputationGraph *graph) {
@@ -116,7 +118,31 @@ void AddOutputToGraph(const ComputationRequest &request,
   }
   KALDI_ASSERT(num_added > 0 && "AddOutputToGraph: nothing to add.");
 }  
-    
+
+
+// This function adds cindex_ids corresponding to each input
+// index, to the graph.
+void AddInputToGraph(const ComputationRequest &request,
+                     const Nnet &nnet,                      
+                     ComputationGraph *graph) {
+  int32 num_added = 0;
+  for (int32 i = 0; i < request.inputs.size(); i++) {
+    int32 n = nnet.IndexOfNode(request.inputs[i].name);
+    if (n == -1)
+      KALDI_ERR << "Network has no output with name "
+                << request.inputs[i].name;
+    for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
+      Cindex cindex(n, request.inputs[i].indexes[j]);
+      bool is_new;
+      graph->GetCindexId(cindex, &is_new);  // ignore the return value.
+      KALDI_ASSERT(is_new && "Input index seems to be listed more than once");
+      num_added++;
+    }
+  }
+  KALDI_ASSERT(num_added > 0 && "AddOutputToGraph: nothing to add.");
+}  
+
+
 // compute, for each cindex_id, a list of other cindex_ids that
 // directly depend on it in order to be computed.
 // used in ComputeComputationOrder.
@@ -253,9 +279,10 @@ void ComputeComputationGraph(const ComputationRequest &request,
                              const Nnet &nnet,
                              ComputationGraph *graph) {
   using namespace computation_graph;
-  // make sure graph is empty at start.
+  // make sure graph is empty at the start.
   KALDI_ASSERT(graph->cindexes.empty());
 
+  AddInputToGraph(request, nnet, graph);
   AddOutputToGraph(request, nnet, graph);
 
   // queue of cindex_ids to process.
@@ -505,6 +532,153 @@ void PruneComputationGraph(const Nnet &nnet,
   graph->optional.clear();  
   // Renumber to keep only computable cindex-ids;
   graph->Renumber(computable);
+}
+
+namespace compute_computation_steps {
+// namespace for some helper functions for ComputeComputationSteps.
+
+/// Adds a "step" for each of the inputs in the ComputationRequest.
+/// Does this in the same order in which they were declared in
+/// the request (this won't matter at all).
+void AddInputSteps(const Nnet &nnet,
+                   const ComputationRequest &request,
+                   const ComputationGraph &graph,                   
+                   std::vector<std::vector<int32> > *by_step) {
+  KALDI_ASSERT(by_step->empty());
+  by_step->reserve(50);  // will minimize unnecessary copies of vectors.
+  std::set<int32> all_nodes;  // to make sure nothing listed twice.
+  for (int32 i = 0; i < request.inputs.size(); i++) {
+    int32 n = nnet.IndexOfNode(request.inputs[i].name);
+    if (n == -1)
+      KALDI_ERR << "Network has no output with name "
+                << request.inputs[i].name;
+    // ensure no input node is listed twice.
+    KALDI_ASSERT(all_nodes.count(n) == 0 && "Invalid computation request: "
+                 "double listing of node.");
+    all_nodes.insert(n);
+    KALDI_ASSERT(!request.inputs[i].indexes.empty() &&
+                 "Computation request had no indexes for input ");
+    by_step->push_back(std::vector<int32>());
+    std::vector<int32> &this_step = by_step->back();
+    this_step.resize(request.inputs[i].indexes.size());
+    for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
+      Cindex cindex(n, request.inputs[i].indexes[j]);
+      int32 cindex_id = graph.GetCindexId(cindex);
+      KALDI_ASSERT(cindex_id != -1);  // would be code error.
+      this_step[j] = cindex_id;
+    }
+  }
+}
+
+
+/// Adds a "step" for each of the outputs in the ComputationRequest.  This will
+/// be done after adding steps for all the inputs and then all the
+/// non(input/output)s.  Does this in the same order in which they were declared
+/// in the request (this won't matter at all).
+void AddOutputSteps(const Nnet &nnet,
+                    const ComputationRequest &request,
+                    const ComputationGraph &graph,                   
+                    std::vector<std::vector<int32> > *by_step) {
+  std::set<int32> all_nodes;  // to make sure nothing listed twice.
+  for (int32 i = 0; i < request.outputs.size(); i++) {
+    int32 n = nnet.IndexOfNode(request.outputs[i].name);
+    if (n == -1)
+      KALDI_ERR << "Network has no output with name "
+                << request.outputs[i].name;
+    // ensure no output node is listed twice.
+    KALDI_ASSERT(all_nodes.count(n) == 0 && "Invalid computation request: "
+                 "double listing of node.");
+    all_nodes.insert(n);
+    KALDI_ASSERT(!request.outputs[i].indexes.empty() &&
+                 "Computation request had no indexes for output ");
+    by_step->push_back(std::vector<int32>());
+    std::vector<int32> &this_step = by_step->back();
+    this_step.resize(request.outputs[i].indexes.size());
+    for (int32 j = 0; j < request.outputs[i].indexes.size(); j++) {
+      Cindex cindex(n, request.outputs[i].indexes[j]);
+      int32 cindex_id = graph.GetCindexId(cindex);
+      KALDI_ASSERT(cindex_id != -1);  // would be code error.
+      this_step[j] = cindex_id;
+    }
+  }
+}
+
+/// Adds steps corresponding to everything that is not an input or output in the
+/// ComputataionRequest.  The way this works is: for each order-index, it takes
+/// all Cindexes that don't correspond to either inputs or outputs of the network,
+/// and it separates them into groups based on node-index so that things with the
+/// same order but different node-index will be in separate steps.
+void AddIntermediateSteps(
+    const Nnet &nnet,
+    const ComputationRequest &request,
+    const ComputationGraph &graph,
+    const std::vector<std::vector<int32> > &by_order,
+    std::vector<std::vector<int32> > *by_step) {
+  int32 num_order_indexes = by_order.size();
+
+  std::vector<char> is_input_or_output(nnet.NumNodes(), '\0');
+  for (int32 node_index = 0; node_index < nnet.NumNodes(); node_index++) {
+    NetworkNode::NodeType t = nnet.GetNode(node_index).node_type;
+    if (t == NetworkNode::kInput || t == NetworkNode::kOutput)
+      is_input_or_output[node_index] = static_cast<char>(1);
+  }
+
+
+  std::vector<Cindex> cindexes;  
+  for (int32 order_index = 0; order_index < num_order_indexes; order_index++) {
+    const std::vector<int32> &this_cindex_ids = by_order[order_index];
+    
+    cindexes.clear();
+    cindexes.reserve(this_cindex_ids.size());
+    int32 num_cindex_ids = this_cindex_ids.size();
+    for (int32 i = 0; i < num_cindex_ids; i++) {
+      int32 cindex_id = this_cindex_ids[i],
+          node_index = graph.cindexes[cindex_id].first;
+      if (!is_input_or_output[node_index])
+        cindexes.push_back(graph.cindexes[cindex_id]);
+    }
+    // now "cindexes" contains all Cindexes that are not from input or output nodes.
+    // Sorting this array gives us the ordering we want, where Cindexes from different
+    // node-ids are separated into contiguous ranges, and within each range, they
+    // are sorted by Index.
+    std::sort(cindexes.begin(), cindexes.end());
+
+    std::vector<Cindex>::iterator iter = cindexes.begin(), end = cindexes.end();
+    while (iter != end) {
+      // each pass through this while loop processes one batch of cindex_ids;
+      // each batch has a particular node-index.
+      std::vector<Cindex>::iterator cur_end = iter;
+      int32 this_node_id = iter->first;
+      while (cur_end != end && cur_end->first == this_node_id)
+        cur_end++;
+      // the range [iter, cur_end) is nonempty and contains all the same node-id.
+      int32 size = cur_end - iter;
+      by_step->push_back(std::vector<int32>());
+      std::vector<int32> &this_step = by_step->back();
+      this_step.resize(size);
+      for (int32 i = 0; i < size; i++, iter++)
+        this_step[i] = graph.GetCindexId(*iter);
+      // at this point iter will be equal to cur_end; it will point to either
+      // the end of the "cindexes" vector, or the beginning of the next set
+      // of Cindexes to process.
+    }
+  }
+}
+
+} // namespace compute_computation_steps.
+
+
+void ComputeComputationSteps(
+    const Nnet &nnet,
+    const ComputationRequest &request,
+    const ComputationGraph &graph,
+    const std::vector<std::vector<int32> > &by_order,
+    std::vector<std::vector<int32> > *by_step) {
+  using namespace compute_computation_steps;
+  by_step->clear();
+  AddInputSteps(nnet, request, graph, by_step);
+  AddIntermediateSteps(nnet, request, graph, by_order, by_step);
+  AddOutputSteps(nnet, request, graph, by_step);
 }
 
 

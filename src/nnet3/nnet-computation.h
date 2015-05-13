@@ -74,6 +74,8 @@ struct IoSpecification {
 // important things it specifies are the available indexes available at
 // the input, the indexes requested at various output nodes, and whether or
 // not we want to do backprop.
+// The same input or output node cannot be listed twice in "inputs" or
+// "outputs".
 struct ComputationRequest {
   std::vector<IoSpecification> inputs;
   std::vector<IoSpecification> outputs;
@@ -95,6 +97,7 @@ struct ComputationRequest {
   MiscComputationInfo misc_info;
 
   ComputationRequest(): model_to_update(NULL), simple_deriv(false) { }
+
 };
 
 
@@ -125,8 +128,8 @@ struct NnetComputation {
     int32 input_deriv_submatrix;
     int32 output_deriv_submatrix;
   };
-  struct ComputationStep {
-    enum ComputationType {
+  struct Command {
+    enum CommandType {
       kResizeMatrixZeroed, kResizeMatrixUndefined,
       kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
       kCopyRows, kCopyToRows, kAddRows, kAddToRows,
@@ -159,9 +162,9 @@ struct NnetComputation {
     int32 arg4;
     int32 arg5;
     int32 arg6;
-    ComputationStep(ComputationType computation_type,
-                    int32 arg1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
-                    int32 arg5 = -1, int arg6 = -1):
+    Command(CommandType computation_type,
+            int32 arg1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
+            int32 arg5 = -1, int arg6 = -1):
         computation_type(computation_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
   };
@@ -195,14 +198,13 @@ struct NnetComputation {
   
   // Information about where the inputs and outputs of the neural net live,
   // indexed the same index as used for the nodes_ array in the Nnet.  This is only
-  // included for the input and output nodes.  (The other nodes may, in recurrent
+  // included for the input and output nodes.  The other nodes may, in recurrent
   // setups, have multiple locations corresponding to different indexes, so we
-  // don't include the info for those).
+  // don't include the info for those.
   unordered_map<int32, NodeInfo> node_info;
-
-  // The steps of the forward computation, and of the backward computation if
-  // we're doing it.
-  std::vector<ComputationStep> computation;
+  
+  // The sequence of commands.
+  std::vector<Command> commands;
 
   // the number of steps in the forward computation, so steps with index >= forward_computation_end
   // are part of the backward computation.

@@ -68,9 +68,9 @@ struct NetworkNode {
 
 class Nnet {
  public:
-  int32 NumComponents() { return components_.size(); }
+  int32 NumComponents() const { return components_.size(); }
 
-  int32 NumNodes() { return nodes_.size(); }
+  int32 NumNodes() const { return nodes_.size(); }
 
   /// return component indexed c.  not a copy; not owned by caller.
   Component *GetComponent(int32 c);
@@ -91,6 +91,11 @@ class Nnet {
   void Read(std::istream &istream, bool binary);
 
   void Write(std::ostream &ostream, bool binary) const;
+
+  /// one thing of many that we need to check is that no output nodes are
+  /// referred to in Descriptors.  This might mess up the combination of each
+  /// output node into a single step, as dependencies would be messed up.
+  void Check();
  private:
   // the names of the components of the network.  Note, these may be distinct
   // from the network node names below (and live in a different namespace); the

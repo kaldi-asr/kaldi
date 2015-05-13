@@ -93,19 +93,22 @@ void ComputeComputationGraph(const Nnet &nnet,
 /// Cindexes if we have Components optional dependencies (i.e. we are using some
 /// non-simple Components that list some dependencies as optional).  It is an
 /// error if the output cannot be computed from the input.
-void PruneComputationGraph(const Nnet &nnet,
-                           const ComputationRequest &computation_request,
-                           ComputationGraph *computation_graph);
+void PruneComputationGraph(
+    const Nnet &nnet,
+    const ComputationRequest &computation_request,
+    ComputationGraph *computation_graph);
 
 
 /// Compute the order in which we can compute each cindex in the computation.
-/// This is 0 for input cindexes, and in general order n for any cindex that can
-/// be computed immediately from cindexes less than n.  It is an error if some
-/// cindexes cannot be computed (we assume that you have called
+/// each cindex will map to an order-index.  The order-index is 0 for input
+/// cindexes, and in general is n for any cindex that can be computed
+/// immediately from cindexes with order-index less than n.  It is an error if
+/// some cindexes cannot be computed (we assume that you have called
 /// PruneComputationGraph before this function).  If the "order" parameter is
-/// non-NULL, it will output a vector giving the order for each cindex_id.  If
-/// the "by_order" parameter is non-NULL, it will output for each order 0, 1 and
-/// so on, a vector of sorted cindex_ids that have that order.
+/// non-NULL, it will output to "order" a vector mapping cindex_id to
+/// order-index.  If the "by_order" parameter is non-NULL, it will output for
+/// each order-index 0, 1 and so on, a sorted vector of cindex_ids that have
+/// that order-index.
 void ComputeComputationOrder(
     const Nnet &nnet,
     const ComputationRequest &request,
@@ -115,6 +118,25 @@ void ComputeComputationOrder(
     std::vector<std::vector<int32> > *by_order);
 
 
+/// Once the computation order has been computed by ComputeComputataionOrder,
+/// this function computes the "steps" of the computation.  These differ because
+/// if there are cindexes with a particular order-index and different node-ids
+/// (i.e. they belong to different nodes of the nnet), they need to be separated
+/// into different steps.  Also, if the cindexes for a particular output node are
+/// computed in multiple steps, they are all combined into a single step whose
+/// numbering is the same as the last of the steps.  [we'll later delete the other
+/// unnecessary steps].
+///
+/// Also this function makes sure that the order of cindex_ids in each step is
+/// correct.  For steps corresponding to input and output nodes, this means that
+/// the order is the same as specified in the ComputationRequest; for other
+/// steps, it means that they are sorted using the order of struct Index.
+void ComputeComputationSteps(
+    const Nnet &nnet,
+    const ComputationRequest &request,
+    const ComputationGraph &computation_graph,
+    const std::vector<std::vector<int32> > &by_order,
+    std::vector<std::vector<int32> > *by_step);
 
 
 } // namespace nnet3

@@ -45,50 +45,45 @@ class ComputationCreator {
  private:
   const ComputationRequest &request_;
   const ComputationGraph &computation_graph_;
-  /// shortest_distance_ is shortest distance from inputs (distance 0) to each
-  /// cindex_id in the computation graph.
-  std::vector<int32> shortest_distance_;
-  /// steps_[i] lists the cindex_ids at the output of the i'th component computation.
-  std::vector<std::vector<int32> > steps_;
-
-  // This maps each cindex_id to the location
-  std::vector<std::pair<int32, int32> > cindex_id_to_location_;
 
   // Some generic information about each step of the computation... a step
   // is an instance of a NetworkNode, but a NetworkNode may in unrolled computations
-  // have multiple steps.
+  // have multiple steps.  A single step may turn into multiple commands.
   struct StepInfo {
     int32 node_id;  // network-node id.
-    NetworkNode::NodeType node_type;  // enum {kComponent,kInput,kOutput}.
-    int32 input_matrix;  // matrix index of input matrix.
-    int32 output;  // matrix index of output matrix.
-    int32 output_deriv;  // matrix index of output derivative
-    int32 input_deriv;  // matrix index of input derivative.
-    std::vector<Index> input_indexes;
+    NetworkNode::NodeType node_type;  // enum {kComponent,kComponentInput,kInput,kOutput}.
+    int32 value;  // matrix index of value that this step outputs.
+    int32 deriv;  // matrix index of derivative at the output of this step.
+
+
+    std::vector<Index> output_indexes;      // Indexes that this step outputs.
+    std::vector<int32> cindex_ids;   // cindex_ids for each of the output
+                                     // indexes.
+    
+  
     // default constructor some elements to -1, but leaves others
     // undefined.
-    StepInfo():
+    StepInfo(): value
         input_matrix(-1), output(-1), output_deriv(-1), input_deriv(-1) { }
   };
 
-  // This
-  std::vector<StepInfo> step_info_;
 
-  /// Indexed by the same index as steps_, gives us the input matrix index for
-  /// this step.
-  std::vector<int32> input_matrices_;
-  /// Indexed by the same index as steps_, gives us the list of indexes at the
-  /// input location for each step.
-  std::vector<std::vector<Index> > input_indexes_;
+  // Steps of the computation.  Index by step-index.
+  std::vector<StepInfo> steps_;
 
+  /// This maps each cindex_id to its location.  A location
+  /// is a pair (step-index, matrix-row-index).
+  std::vector<std::pair<int32, int32> > cindex_id_to_location_;
 
-  // This function computes a vector that maps each cindex_id to the
-  // corresponding two indices into "steps"; this also gives us
-  // the location as (matrix-index, row-index) of each Cindex.
+  
+  /// This function computes a vector that maps each cindex_id to the
+  /// corresponding two indices into "steps"; this also gives us the location as
+  /// a pair (matrix-index, row-index) of each Cindex.
+  /// The input "steps" is a list, indexed by step, of the cindex_ids
+  /// computed by that step.
   static void ComputeLocationInfo(
       const std::vector<std::vector<int32> > &steps,
       std::vector<std::pair<int32, int32> > *cindex_id_to_location);
-
 
   // Assign some basic information about the steps of the computation, chiefly
   // the locations of the input and output matrices and the corresponding
