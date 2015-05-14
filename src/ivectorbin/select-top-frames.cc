@@ -120,7 +120,8 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_err = 0; 
     long long num_select = 0, num_frames = 0, num_filtered = 0, 
-              num_select_second_level = 0, num_filtered_second_level = 0;
+              num_select_second_level = 0, num_filtered_second_level = 0,
+              num_masked = 0;
 
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
@@ -183,7 +184,7 @@ int main(int argc, char *argv[]) {
 
       std::vector<BaseFloat> chunk_weights;
       std::vector<BaseFloat> chunk_weights_next;
-      std::vector<int32> chunk_mask(num_chunks, 1);
+      std::vector<int32> chunk_mask;
 
       if (weights_rspecifier != "")
         chunk_weights.resize(num_chunks, 0.0);
@@ -193,6 +194,8 @@ int main(int argc, char *argv[]) {
 
       if (mask_rspecifier != "") 
         chunk_mask.resize(num_chunks, 0);
+      else
+        chunk_mask.resize(num_chunks, 1);
 
       // Find average weight for each chunk
       for (int32 i = 0; i < num_chunks; i++) {
@@ -206,8 +209,12 @@ int main(int argc, char *argv[]) {
         }
         if (mask_rspecifier != "") { 
           SubVector<BaseFloat> this_chunk_mask(mask, i*chunk_size, chunk_size);
-          for (int32 j = 0; j < this_chunk_mask.Dim(); j++)
-            chunk_mask[i] += (this_chunk_mask(j) == select_class ? 1 : 0);
+          for (int32 j = 0; j < this_chunk_mask.Dim(); j++) {
+            if (this_chunk_mask(j) == select_class) {
+              chunk_mask[i]++;
+              num_masked++;
+            }
+          }
           chunk_mask[i] /= chunk_size;
         }
       }
@@ -306,7 +313,8 @@ int main(int argc, char *argv[]) {
               << num_select << " top frames were selected at first level "
               << "out of " << num_filtered 
               << " frames filtered through the mask out of "
-              << num_frames << " frames ; processed "
+              << num_frames << " frames ; "
+              << " unmasked " << num_masked << " frames; processed "
               << num_done << " utterances, "
               << num_err << " had errors.";
     return (num_done != 0 ? 0 : 1);

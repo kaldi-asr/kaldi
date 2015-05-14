@@ -9,6 +9,7 @@ set -o pipefail
 cmd=run.pl
 nj=32 
 stage=-10
+add_pitch=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -30,8 +31,13 @@ tmpdir=$2
 featdir=$3
 
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
-    $data $tmpdir/make_mfcc_vad $featdir || exit 1
+  if $add_pitch; then
+    steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
+      $data $tmpdir/make_mfcc_vad $featdir || exit 1
+  else
+    steps/make_mfcc.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
+      $data $tmpdir/make_mfcc_vad $featdir || exit 1
+  fi
 fi
 
 if [ $stage -le 2 ]; then

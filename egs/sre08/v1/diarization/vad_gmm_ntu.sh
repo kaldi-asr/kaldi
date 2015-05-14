@@ -11,6 +11,7 @@ stage=-1
 ## Features paramters
 window_size=100                   # 1s
 filter_using_zero_crossings=true
+ignore_energy_opts="-1"
 
 ## Phase 1 parameters
 num_frames_silence_init=2000      # 20s - Lowest energy frames selected to initialize Silence GMM
@@ -55,7 +56,9 @@ mkdir -p $phase2_dir
 mkdir -p $phase3_dir
 
 init_model_dir=`dirname $init_speech_model`
-ignore_energy_opts=`cat $init_model_dir/ignore_energy_opts` || exit 1
+if [ "$ignore_energy_opts" == "-1" ]; then
+  ignore_energy_opts=`cat $init_model_dir/ignore_energy_opts` || exit 1
+fi
 add_zero_crossing_feats=`cat $init_model_dir/add_zero_crossing_feats` || exit 1
 
 zc_opts=
@@ -96,7 +99,7 @@ while IFS=$'\n' read line; do
     "${feats}" ark:$dir/$utt_id.silence_likes.bootstrap.ark || exit 1
   
   ### Get bootstrapping VAD
-  loglikes-to-class --verbose=2 --weights=ark:$dir/$utt_id.post.bootstrap.ark \
+  loglikes-to-class --weights=ark:$dir/$utt_id.post.bootstrap.ark \
     ark:$dir/$utt_id.silence_likes.bootstrap.ark \
     ark:$dir/$utt_id.speech_likes.bootstrap.ark \
     ark:$tmpdir/$utt_id.vad.bootstrap.ark || exit 1
@@ -116,7 +119,7 @@ while IFS=$'\n' read line; do
     select-top-chunks \
       --window-size=$window_size \
       --selection-mask=ark:$tmpdir/$utt_id.vad.bootstrap.ark --select-class=0 \
-      --weights=ark:$dir/$utt_id.zero_crossings.ark --num-select-frames=$num_frames_silence \
+      --weights="ark:extract-column ark:$dir/$utt_id.zero_crossings.ark ark:- |" --num-select-frames=$num_frames_silence \
       "${feats}" ark:- ark:$tmpdir/$utt_id.mask.0.ark | gmm-global-init-from-feats \
       --min-variance=$min_sil_variance --num-gauss=$sil_num_gauss --num-iters=$[sil_num_gauss] ark:- \
       $tmpdir/$utt_id.silence.0.mdl || exit 1
@@ -126,7 +129,7 @@ while IFS=$'\n' read line; do
     "${feats}" ark:$tmpdir/$utt_id.silence_likes.0.ark || exit 1
   
   ### Get initial VAD
-  loglikes-to-class --verbose=2 --weights=ark:$tmpdir/$utt_id.post.init.ark \
+  loglikes-to-class --weights=ark:$tmpdir/$utt_id.post.init.ark \
     ark:$tmpdir/$utt_id.silence_likes.0.ark \
     ark:$dir/$utt_id.speech_likes.bootstrap.ark \
     ark:$tmpdir/$utt_id.vad.init.ark || exit 1
@@ -147,14 +150,19 @@ while IFS=$'\n' read line; do
   
   ## Select energies and zero crossings corresponding to the same selection
 
+  extract-column ark:$dir/$utt_id.zero_crossings.ark ark:- | \
+    vector-extract-dims ark:- \
+    ark:$tmpdir/$utt_id.mask.init.ark \
+    ark:$tmpdir/$utt_id.zero_crossings.init.ark || exit 1
+  
   vector-extract-dims ark:$dir/$utt_id.log_energies.ark \
     ark:$tmpdir/$utt_id.mask.init.ark \
     ark:$tmpdir/$utt_id.energies.init.ark || exit 1
-  
+
   vector-extract-dims ark:$tmpdir/$utt_id.vad.init.ark \
     ark:$tmpdir/$utt_id.mask.init.ark \
     ark:$tmpdir/$utt_id.vad.0.ark || exit 1
-  
+
   vector-extract-dims \
     ark:$dir/$utt_id.speech_likes.bootstrap.ark \
     ark:$tmpdir/$utt_id.mask.init.ark \
@@ -195,14 +203,14 @@ while IFS=$'\n' read line; do
 
     ### Get new VAD predictions on the subset selected for training
     ### Silence and Sound GMMs
-    loglikes-to-class --verbose=2 --weights=ark:$tmpdir/$utt_id.post.$[x+1].ark \
+    loglikes-to-class --weights=ark:$tmpdir/$utt_id.post.$[x+1].ark \
       ark:$tmpdir/$utt_id.silence_likes.$[x+1].ark \
       ark:$tmpdir/$utt_id.speech_likes.init.ark \
       ark:$tmpdir/$utt_id.vad.$[x+1].ark || exit 1
     
     gmm-global-get-frame-likes $tmpdir/$utt_id.silence.$[x+1].mdl \
       "$feats" ark:- | \
-      loglikes-to-class --verbose=2 --weights=ark:$tmpdir/$utt_id.pred_post.$[x+1].ark ark:- \
+      loglikes-to-class --weights=ark:$tmpdir/$utt_id.pred_post.$[x+1].ark ark:- \
       ark:$dir/$utt_id.speech_likes.bootstrap.ark \
       ark:$tmpdir/$utt_id.pred.$[x+1].ark || exit 1 
 
@@ -218,7 +226,7 @@ while IFS=$'\n' read line; do
     "$feats" ark:$phase2_dir/$utt_id.silence_likes.init.ark || exit 1
   
   ### Compute initial segmentation for phase 2 training
-  loglikes-to-class --verbose=2 --weights=ark:$phase2_dir/$utt_id.post.init.ark \
+  loglikes-to-class --weights=ark:$phase2_dir/$utt_id.post.init.ark \
     ark:$phase2_dir/$utt_id.silence_likes.init.ark \
     ark:$dir/$utt_id.speech_likes.bootstrap.ark \
     ark:$phase2_dir/$utt_id.seg.init.ark || exit 1
@@ -233,7 +241,7 @@ while IFS=$'\n' read line; do
   gmm-global-get-frame-likes $phase2_dir/$utt_id.speech.0.mdl \
     "$feats" ark:$phase2_dir/$utt_id.speech_likes.init.ark || exit 1
   
-  loglikes-to-class --verbose=2 --weights=ark:$phase2_dir/$utt_id.pred.post.init.ark \
+  loglikes-to-class --weights=ark:$phase2_dir/$utt_id.pred.post.init.ark \
     ark:$phase2_dir/$utt_id.silence_likes.init.ark \
     ark:$phase2_dir/$utt_id.speech_likes.init.ark \
     ark:$phase2_dir/$utt_id.pred.init.ark || exit 1
@@ -250,7 +258,7 @@ while IFS=$'\n' read line; do
       "$feats" ark:$phase2_dir/$utt_id.speech_likes.$x.ark || exit 1
 
     ### Get segmentation
-    loglikes-to-class --verbose=2 --weights=ark:$phase2_dir/$utt_id.pred.$x.ark \
+    loglikes-to-class --weights=ark:$phase2_dir/$utt_id.pred.$x.ark \
       ark:$phase2_dir/$utt_id.silence_likes.$x.ark \
       ark:$phase2_dir/$utt_id.speech_likes.$x.ark \
       ark:$phase2_dir/$utt_id.seg.$x.ark || exit 1
