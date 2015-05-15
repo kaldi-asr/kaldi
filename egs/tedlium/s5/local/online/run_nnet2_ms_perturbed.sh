@@ -203,7 +203,7 @@ steps/online/nnet2/decode.sh --cmd "\$decode_cmd" --nj \$num_jobs \
 EOF
   chmod +x ${dir}_online/sample_decode.sh
   dist_file=tedlium_`basename $dir`.tgz
-  local/online/prepare_dist_build.sh --other-files ${dir}_online/sample_decode.sh data/lang ${dir}_online $dist_file
+  utils/prepare_online_nnet_dist_build.sh --other-files ${dir}_online/sample_decode.sh data/lang ${dir}_online $dist_file
   echo "NOTE: If you would like to upload this build ($dist_file) to kaldi-asr.org please check the process at http://kaldi-asr.org/uploads.html"
 fi
 
