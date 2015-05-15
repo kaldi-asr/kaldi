@@ -1,0 +1,14 @@
+Contents about generated directory and file
+
+## About each directory
+dvd*	       	dvd Number
+eval/		Official evaluation data set ( *** Extract from dvd *** )
+excluded/	Same speaker data including evaluation data (e.g. A01M0056) ( *** Extract from dvd *** )
+
+
+## About each file
+VOL3/A01F0055
+	A01F0055-trans.text	Transcriptions (utterances with R-tags are removed)
+	A01F0055.trn		Transctiptions with R-tag
+	A01F0055.t		Information of time segmentation of each utterance with R-tag
+	A01F0055-wav.list	Path about existing wav file
