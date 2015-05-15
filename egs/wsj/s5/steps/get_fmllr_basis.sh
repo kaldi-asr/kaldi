@@ -44,7 +44,7 @@ cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 
-for f in $data/feats.scp $dir/final.alimdl $dir/final.mdl $dir/ali.1.gz; do
+for f in $data/feats.scp $dir/final.mdl $dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
