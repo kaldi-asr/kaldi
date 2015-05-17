@@ -172,13 +172,16 @@ class Component {
   ///       what time-indexes (and other indexes) each row of the
   ///       out/out_value/out_deriv matrices given to Propagate and Backprop will
   ///       mean.
+  /// \param [in] need_backprop  True if we might need to do backprop
+  ///       with this component, so that if any different indexes are needed
+  ///       for backprop then those should be computed too.
   /// \return  Returns a child-class of class ComponentPrecomputedIndexes, or
   ///       NULL if this component for does not need to precompute any indexes
   ///       (e.g. if it is a simple component and does not care about indexes).
   virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
       const MiscComputationInfo &misc_info,
       const std::vector<Index> &input_indexes,
-      std::vector<Index> &output_indexes,
+      const std::vector<Index> &output_indexes,
       bool need_backprop) const { return NULL;  }
 
   /// \brief Returns a string such as "SigmoidComponent", describing

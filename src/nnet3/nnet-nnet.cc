@@ -1,3 +1,5 @@
+// nnet3/nnet-nnet.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -17,23 +19,36 @@
 
 #include <iterator>
 #include <sstream>
-#include "nnet3/nnet-computation.h"
+#include "nnet3/nnet-nnet.h"
+
+// \file This file contains some more-generic component code: things in base classes.
+//       See nnet-component.cc for the code of the actual Components.
 
 namespace kaldi {
 namespace nnet3 {
 
-bool ComputationRequest::NeedDerivatives() const {
-  if (model_to_update != NULL) return true;
-  for (size_t i = 0; i < inputs.size(); i++)
-    if (inputs[i].has_deriv)  // derivative requested for this input
-      return true;
-  return false;
+// returns dimension that this node outputs.
+int32 NetworkNode::Dim(const Nnet &nnet) const {
+  int32 ans;
+  switch (node_type) {
+    case kInput:
+      ans = u.dim;
+      break;
+    case kOutput: case kComponentInput:
+      ans = descriptor.Dim(nnet);
+      break;
+    case kComponentOutput:
+      ans = nnet.GetComponent(u.component_index)->OutputDim();
+      break;
+    default:
+      KALDI_ERR << "Invalid node type.";
+  }
+  KALDI_ASSERT(ans > 0);
+  return ans;
 }
 
-NnetComputation::~NnetComputation() {
-  for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
-    delete component_precomputed_indexes[i];
-}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

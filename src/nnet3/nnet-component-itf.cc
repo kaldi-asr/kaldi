@@ -1,3 +1,5 @@
+// nnet3/nnet-component-itf.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -96,9 +98,11 @@ std::string Component::Info() const {
 
 void Component::GetInputIndexes(const MiscComputationInfo &misc_info,
                                 const Index &output_index,
-                                std::vector<Index> *input_indexes) const {
+                                std::vector<Index> *input_indexes,
+                                std::vector<bool> *is_optional) const {
   input_indexes->resize(1);
   (*input_indexes)[0] = output_index;
+  is_optional->resize(1, false);  // by default no inputs are optional.
 }
 
 void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {

@@ -513,14 +513,14 @@ class CuMatrixBase {
   // this class.
   
   /// Default constructor
-  CuMatrixBase<Real>(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
+  CuMatrixBase(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
   
   /// This constructor takes the #rows, #cols and stride; it's called from
   /// the constructor of CuSubMatrix.
-  CuMatrixBase<Real>(Real *data,
-                     MatrixIndexT num_rows,
-                     MatrixIndexT num_cols,
-                     MatrixIndexT stride):
+  CuMatrixBase(Real *data,
+               MatrixIndexT num_rows,
+               MatrixIndexT num_cols,
+               MatrixIndexT stride):
   data_(data), num_cols_(num_cols), num_rows_(num_rows), stride_(stride) { }
 
   Real *data_;       ///< GPU data pointer (or regular matrix data pointer,

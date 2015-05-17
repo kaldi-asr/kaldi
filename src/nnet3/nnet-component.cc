@@ -1,3 +1,5 @@
+// nnet3/nnet-component.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors

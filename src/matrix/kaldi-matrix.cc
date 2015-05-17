@@ -1423,6 +1423,15 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
                            const MatrixIndexT r,
                            const MatrixIndexT co,
                            const MatrixIndexT c) {
+  if (r == 0 || c == 0) {
+    // we support the empty sub-matrix as a special case.
+    KALDI_ASSERT(c == 0 && r == 0);
+    this->data_ = NULL;
+    this->num_cols_ = 0;    
+    this->num_rows_ = 0;
+    this->stride_ = 0;
+    return;
+  }
   KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(ro) <
                static_cast<UnsignedMatrixIndexT>(M.num_rows_) &&
                static_cast<UnsignedMatrixIndexT>(co) <

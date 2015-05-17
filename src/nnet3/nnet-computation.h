@@ -81,11 +81,11 @@ struct ComputationRequest {
   std::vector<IoSpecification> outputs;
 
   // if model_to_update is non-NULL, then we'll be doing either model training
-  // or derivative computation.  model_to_update must have the same structure as
-  // the model we're doing the forward computation with, but does not have to be
-  // the same actual model (e.g. for derivative computation we use a separate
-  // copy of the model to accumulate the derivatives in).
-  // This variable is not owned here.
+  // or model-derivative computation.  model_to_update must have the same
+  // structure as the model we're doing the forward computation with, but does
+  // not have to be the same actual model (e.g. for derivative computation (as
+  // opposed to SGD training) we use a separate copy of the model to accumulate
+  // the derivatives in).  This variable is not owned here.
   Nnet *model_to_update;
   
   // if simple_deriv is true, we will use learning rates of 1.0 and will turn off
@@ -98,6 +98,9 @@ struct ComputationRequest {
 
   ComputationRequest(): model_to_update(NULL), simple_deriv(false) { }
 
+  // returns true if any of inputs[*].has_deriv is true, or model_to_update !=
+  // NULL.
+  bool NeedDerivatives() const;
 };
 
 
@@ -112,37 +115,31 @@ struct NnetComputation {
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
-                         // (or -1 if this is the empty sub-matrix).
     int32 row_offset;    
     int32 num_rows;
     int32 col_offset;    
     int32 num_cols;
+    SubMatrixInfo() { }
+    SubMatrixInfo(int32 matrix_index, int32 row_offset, int32 num_rows, 
+                  int32 col_offset, int32 num_cols):
+        matrix_index(matrix_index), row_offset(row_offset), num_rows(num_rows),
+        col_offset(col_offset), num_cols(num_cols) {}
   };
-  struct NodeInfo {
-    // input and output matrices for components, and the corresponding
-    // derivatives.  For kOutput and kInput, the inputs and outputs are the
-    // same.  -1 means this quantity is never computed (e.g. derivatives that
-    // are not needed).
-    int32 input_submatrix;
-    int32 output_submatrix;
-    int32 input_deriv_submatrix;
-    int32 output_deriv_submatrix;
-  };
+  enum CommandType {
+    kResizeMatrixZeroed, kResizeMatrixUndefined,
+    kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
+    kCopyRows, kCopyToRows, kAddRows, kAddToRows,
+    kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti,
+    kAddToRowsMulti, kNoOperation, kNoOperationMarker };
   struct Command {
-    enum CommandType {
-      kResizeMatrixZeroed, kResizeMatrixUndefined,
-      kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
-      kCopyRows, kCopyToRows, kAddRows, kAddToRows,
-      kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti,
-      kAddToRowsMulti, kNoOperation, kNoOperationMarker } computation_type;
+    CommandType command_type;
     // kResizeMatrixZeroed, kResizeMatrixUndefined: arg1 = index of matrix; arg2,arg3 are rows,cols.
     // kResizeMatrixEmpty: arg1 = index of matrix.
     // kPropagate: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
-    //   (0 if NULL); arg3,arg4 are sub-matrix indexes of matrix args.
-    // kPropagate: as kSimplePropagate, plus arg4 is index of ComponentPrecomputedIndexes.
-    // kSimpleBackprop: arg1 = index of component in nnet, arg2 is index of ComponentPrecomputedIndexes
-    //   (0 if NULL); arg3 through arg6 are sub-matrix indexes of matrix args (0 if empty).
-    // kBackprop: as kSimpleBackprop, plus arg6 is index of ComponentPrecomputedIndexes.
+    //   (0 if NULL); arg3, arg4 are sub-matrix indexes of matrix args (input and output)
+    // kBackprop: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
+    //   (0 if NULL); (arg3, arg4, arg5 and arg6) are respectively sub-matrix indexes of
+    //   (in-value, output-value, input-deriv, output-deriv).
     // kMatrixCopy,kMatrixAdd: arg1 is source sub-matrix, arg2 is dest sub-matrix.
     // kAddRows, kAddToRows, kCopyRows, kCopyToRows: arg1 (sub-matrix index) is
     //    the *this in operation, arg2 (sub-matrix index) is matrix argument of
@@ -162,17 +159,17 @@ struct NnetComputation {
     int32 arg4;
     int32 arg5;
     int32 arg6;
-    Command(CommandType computation_type,
+    Command(CommandType command_type,
             int32 arg1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
             int32 arg5 = -1, int arg6 = -1):
-        computation_type(computation_type), arg1(arg1), arg2(arg2), arg3(arg3),
+        command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
   };
 
   // "matrices" describes the sizes of the matrices that we use as variables in
-  // the computation.  But most commands refer to sub_matrices below (note:
-  // each matrix will have its own sub-matrix that just refers to the entire
-  // matrix).
+  // the computation [note: index zero is reserved for an empty matrix].  Most
+  // commands refer to sub_matrices below (note: each matrix will have its own
+  // sub-matrix that just refers to the entire matrix).
   std::vector<MatrixInfo> matrices;
 
   // Because some parts of the computation may involve parts of matrix, we
@@ -187,6 +184,7 @@ struct NnetComputation {
   // kPropagate and kBackprop operations.  Index 0 in the vector is reserved for
   // the NULL pointer, which is used for "simple" components and others that do
   // not require precomputed indexes.
+  // These are owned here.
   std::vector<ComponentPrecomputedIndexes*> component_precomputed_indexes;
 
   // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
@@ -196,12 +194,11 @@ struct NnetComputation {
   // contains pairs (sub-matrix index, row index).
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
   
-  // Information about where the inputs and outputs of the neural net live,
-  // indexed the same index as used for the nodes_ array in the Nnet.  This is only
-  // included for the input and output nodes.  The other nodes may, in recurrent
-  // setups, have multiple locations corresponding to different indexes, so we
-  // don't include the info for those.
-  unordered_map<int32, NodeInfo> node_info;
+  // Information about where the values and derivatives of the neural net live,
+  // indexed the same index as used for the nodes_ array in the Nnet.
+  // each pair is (value_submatrix_index, deriv_submatrix_index), with -1 for
+  // derivatives that are not present.
+  unordered_map<int32, std::pair<int32, int32> > input_output_info;
   
   // The sequence of commands.
   std::vector<Command> commands;
@@ -210,6 +207,7 @@ struct NnetComputation {
   // are part of the backward computation.
   int32 forward_computation_end;
 
+  ~NnetComputation();
 };
 
 

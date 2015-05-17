@@ -45,6 +45,11 @@ Cindex ForwardingDescriptor::MapToInput(const Index &output) {
   return impl_->MapToInput(output);
 }
 
+void SimpleForwardingDescriptor::ComputeDependencies(
+    std::vector<int32> *node_indexes) {
+  node_indexes->push_back(src_node_);  
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

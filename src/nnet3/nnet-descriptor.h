@@ -81,6 +81,10 @@ class ForwardingDescriptor {
   ForwardingDescriptor (const ForwardingDescriptor &other);
   ForwardingDescriptor(): impl_(NULL) { }
 
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  void ComputeDependencies(std::vector<int32> *node_indexes) const;
+
   // The Parse method is used for reading a config-file-style represenation.
   // the is will correspond to one line of the config file (one NetworkNode), as
   // we need to figure out all node names before we read any of them.
@@ -115,6 +119,11 @@ class ForwardingDescriptorImpl {
   // opposite of Parse.
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
+
+  /// This function appends to "node_indexes" all the node indexes
+  // that this descriptor may access.
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  
   virtual ~ForwardingDescriptorImpl();
   ForwardingDescriptorImpl() { }
  private:
@@ -127,7 +136,9 @@ class SimpleForwardingDescriptorImpl: public ForwardingDescriptorImpl {
   virtual Cindex MapToInput(const Index &ind) { return Cindex(src_node_, ind); }
   virtual int32 Dim(const Nnet &nnet) const;
   virtual ForwardingDescriptorImpl *Copy() const;
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
 
+  
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
   static void WriteConfig(std::ostream &is,
@@ -154,6 +165,8 @@ class OffsetForwardingDescriptorImpl: public ForwardingDescriptorImpl {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  
   // takes ownership of src.
   OffsetForwardingDescriptorImpl(ForwardingDescriptorImpl *src,
                                  Index offset): src_(src), offset_(offset) { }
@@ -180,6 +193,10 @@ class ModuloForwardingDescriptorImpl: public ForwardingDescriptorImpl {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
+  /// This function appends to "node_indexes" all the node indexes
+  // that this descriptor may access.
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+
   // takes ownership of items in src.
   ModuloForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
       src_(src) { }
@@ -203,6 +220,10 @@ struct SumDescriptor {
   // Write in config-file format.
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
+
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  void ComputeDependencies(std::vector<int32> *node_indexes) const;
   
   std::vector<ForwardingDescriptor> terms;
 };
@@ -223,7 +244,10 @@ struct Descriptor {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
-
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  
   // This function gets all Cindexes that are required to compute this index.
   // Used for computing dependencies when constructing ComputationGraph.
   // This list is *not guaranteed unique*, i.e. it may contain repeats.

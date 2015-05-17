@@ -61,7 +61,7 @@ struct NetworkNode {
     int32 dim;
   } u;
   
-  int32 Dim(const Nnet &nnet);  // Dimension that this node outputs.
+  int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
 };
 
 

@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet3/nnet-precondition-online.h"
+#include "nnet3/natural-gradient-online.h"
 #include "util/common-utils.h"
 
 namespace kaldi {

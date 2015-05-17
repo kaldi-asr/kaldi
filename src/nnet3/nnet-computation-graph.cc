@@ -148,18 +148,18 @@ void AddInputToGraph(const ComputationRequest &request,
 // used in ComputeComputationOrder.
 static void ComputeDependsOn(
     const ComputationGraph &graph,
-    std::vector<std::vector<int32> > *depends_on) {
+    std::vector<std::vector<int32> > *depend_on_this) {
   int32 num_cindex_ids = graph.cindexes.size();  
-  depends_on->clear();
-  depends_on->resize(num_cindex_ids);
-  // next block computes "depends_on".
+  depend_on_this->clear();
+  depend_on_this->resize(num_cindex_ids);
+  // next block computes "depend_on_this".
   for (int32 c = 0; c < num_cindex_ids; c++) {
     std::vector<int32>::const_iterator
         iter = graph.dependencies[c].begin(),
         end = graph.dependencies[c].end();
     for (; iter != end; ++iter) {
       int32 d = *iter;
-      (*depends_on)[d].push_back(c);
+      (*depend_on_this)[d].push_back(c);
     }
   }
 }
@@ -361,13 +361,12 @@ void ComputeComputationOrder(
     const Nnet &nnet,    
     const ComputationRequest &request,
     const ComputationGraph &graph,
-    const std::vector<int32> &shortest_distance,
     std::vector<int32> *order,
     std::vector<std::vector<int32> > *by_order) {
   using namespace computation_graph;
   if (order == NULL) {  // ensure order != NULL by recursing if it's NULL.
     std::vector<int32> order_tmp;
-    ComputeComputationOrder(nnet, request, graph, shortest_distance,
+    ComputeComputationOrder(nnet, request, graph,
                             &order_tmp, by_order);
     return;
   }
@@ -377,12 +376,12 @@ void ComputeComputationOrder(
   int32 num_cindex_ids = graph.cindexes.size();
   order->clear();
   order->resize(num_cindex_ids, -1);
-  // "depends_on" is, for each cindex_id, a list of cindex_ids that depend on
+  // "depend_on_this" is, for each cindex_id, a list of cindex_ids that depend on
   // it.  this is used to help us evaluate only for those cindex_ids that might
   // only now have become computable (i.e. to stop the algorithm taking
   // potentially quadratic time for things like RNNs).
-  std::vector<std::vector<int32> > depends_on(num_cindex_ids);
-  ComputeDependsOn(graph, &depends_on);
+  std::vector<std::vector<int32> > depend_on_this(num_cindex_ids);
+  ComputeDependsOn(graph, &depend_on_this);
 
   int32 num_computed = 0;
   int32 cur_order = 0;
@@ -408,8 +407,8 @@ void ComputeComputationOrder(
     next_order_candidates.clear();  
     for (int32 i = 0; i < this_order.size(); i++) {
       int32 c = this_order[i];  // c is a cindex_id with order cur_order.
-      std::vector<int32>::const_iterator iter = depends_on[c].begin(),
-          end = depends_on[c].end();
+      std::vector<int32>::const_iterator iter = depend_on_this[c].begin(),
+          end = depend_on_this[c].end();
       for (; iter != end; ++iter) {
         int32 d = *iter;  // cindex_id that depends on c.
         next_order_candidates.push_back(d);
@@ -480,12 +479,12 @@ void PruneComputationGraph(const Nnet &nnet,
                            ComputationGraph *graph) {
   using namespace computation_graph;  
   int32 num_cindex_ids = graph->cindexes.size();
-  // "depends_on" is, for each cindex_id, a list of cindex_ids that depend on it
+  // "depend_on_this" is, for each cindex_id, a list of cindex_ids that depend on it
   // (optionally or not).  this is used to help us evaluate only for those
   // cindex_ids that might only now have become computable (i.e. to stop the
   // algorithm taking potentially quadratic time for things like RNNs).
-  std::vector<std::vector<int32> > depends_on(num_cindex_ids);
-  ComputeDependsOn(*graph, &depends_on);
+  std::vector<std::vector<int32> > depend_on_this(num_cindex_ids);
+  ComputeDependsOn(*graph, &depend_on_this);
   
   std::vector<bool> computable(num_cindex_ids, false);
 
@@ -499,8 +498,8 @@ void PruneComputationGraph(const Nnet &nnet,
   for (size_t i = 0; i < input_cindex_ids.size(); i++) {
     int32 c = input_cindex_ids[i];
     computable[c] = true;
-    for (size_t j = 0; j < depends_on[c].size(); j++) {
-      int32 d = depends_on[c][j];
+    for (size_t j = 0; j < depend_on_this[c].size(); j++) {
+      int32 d = depend_on_this[c][j];
       // note: d cannot be an input since it has a dependency.      
       KALDI_ASSERT(!computable[d]);      
       if (is_queued.insert(d).second)  // if not already there..
@@ -515,8 +514,8 @@ void PruneComputationGraph(const Nnet &nnet,
     if (IsComputable(nnet, request, *graph,
                      computable, c)) {
       computable[c] = true;
-      for (size_t j = 0; j < depends_on[c].size(); j++) {
-        int32 d = depends_on[c][j];
+      for (size_t j = 0; j < depend_on_this[c].size(); j++) {
+        int32 d = depend_on_this[c][j];
         if (!computable[d]) {  // d depends not yet known to be computable.
           if (is_queued.insert(d).second)  // if not already there
             queue.push_back(d);
