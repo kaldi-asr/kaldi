@@ -99,22 +99,6 @@ void PruneComputationGraph(
     ComputationGraph *computation_graph);
 
 
-/// Compute computation "phases".  These are going to be used to compute the
-/// computation "order" and later the computation "steps".  The reason for the
-/// phases is: suppose we have a RNN or LSTM followed by some fully connected
-/// layers, we want to do all the RNN or LSTM stuff first, then aggregate the
-/// result and do the fully-connected stuff, rather than applying the
-/// fully-connected layers frame by frame.  The concept of the "phases" is to
-/// group the nodes into an ordered list of sets, where we might have say,
-/// (input-node) (rnn-node1, rnn-node2, rnn-node3) (fully-connected-node1)
-/// (fully-connected-node2).  And we will do the computation in that order; this
-/// means that we'll finish doing all the RNN stuff before we start on the
-/// fully-connected layers.  This basically becomes a kind of constraint on the
-/// computation-order.
-void ComputeComputationPhases(
-    const Nnet &nnet,
-    std::vector<int32> *node_to_phase);
-
 
 /// Compute the order in which we can compute each cindex in the computation.
 /// each cindex will map to an order-index.  The order-index is 0 for input
@@ -128,13 +112,12 @@ void ComputeComputationPhases(
 /// that order-index.
 void ComputeComputationOrder(
     const Nnet &nnet,
-    const ComputationRequest &request,
     const ComputationGraph &computation_graph,
     std::vector<int32> *order,
     std::vector<std::vector<int32> > *by_order);
 
 
-/// Once the computation order has been computed by ComputeComputataionOrder,
+/// Once the computation order has been computed by ComputeComputationOrder,
 /// this function computes the "steps" of the computation.  These differ because
 /// if there are cindexes with a particular order-index and different node-ids
 /// (i.e. they belong to different nodes of the nnet), they need to be separated

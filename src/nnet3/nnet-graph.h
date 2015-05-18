@@ -72,6 +72,9 @@ void ComputeDfsOrder(const std::vector<std::vector<int32> > &graph,
                      std::vector<int32> *node_to_order);
 
 
+/// Outputs a graph in which the order of arcs is reversed.
+void ComputeGraphTranspose(const std::vector<std::vector<int32> > &graph,
+                           std::vector<std::vector<int32> > *graph_transpose);
 
 /// This function computes the order in which we need to compute each node in
 /// the graph, where each node-index n maps to an order-index t = 0, 1, ... that

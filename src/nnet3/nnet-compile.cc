@@ -33,7 +33,7 @@ void ComputationCreator::CreateComputation(NnetComputation *computation) {
   PruneComputationGraph(nnet_, request_, &graph_);
   std::vector<std::vector<int32> > by_order;
   // see function declaration's comment for meaning of "by_order".
-  ComputeComputationOrder(nnet_, request_, graph_, NULL, &by_order);
+  ComputeComputationOrder(nnet_, graph_, NULL, &by_order);
   std::vector<std::vector<int32> > by_step;
   ComputeComputationSteps(nnet_, request_, graph_, by_order, &by_step);
   by_order.clear();
