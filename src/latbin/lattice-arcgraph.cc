@@ -24,6 +24,8 @@
 #include "lat/kaldi-lattice.h"
 #include "hmm/transition-model.h"
 
+namespace kaldi {
+
 typedef fst::StdArc::StateId StateId;
 typedef fst::StdArc::Weight Weight;
 typedef fst::StdArc::Label Label;
@@ -135,9 +137,6 @@ void MapTransitionIdsToTransitionStates(kaldi::CompactLattice *lat,
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
     using fst::SymbolTable;
     using fst::VectorFst;
     using fst::StdArc;
@@ -262,4 +261,11 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
+}
+
+}  //namespace kaldi
+
+
+int main(int argc, char *argv[]) {
+  return kaldi::main(argc, argv);
 }

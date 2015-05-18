@@ -70,17 +70,25 @@ class VectorFstToKwsLexicographicFstMapper {
 
 }
 
-int main(int argc, char *argv[]) {
-  try {
-    using namespace kaldi;
-    using namespace fst;
-    typedef kaldi::int32 int32;
-    typedef kaldi::uint32 uint32;
-    typedef kaldi::uint64 uint64;
-    typedef KwsLexicographicArc Arc;
-    typedef Arc::Weight Weight;
-    typedef Arc::StateId StateId;
+using namespace fst;
+using kaldi::int32;
+using kaldi::uint64;
+using kaldi::BasicVectorHolder;
+using kaldi::DecodeLabelUid;
+using kaldi::EncodeLabel;
+using kaldi::KwsLexicographicArc;
+using kaldi::KwsLexicographicFst;
+using kaldi::ParseOptions;
+using kaldi::RandomAccessTableReader;
+using kaldi::SequentialTableReader;
+using kaldi::TableWriter;
+using kaldi::VectorFstToKwsLexicographicFstMapper;
 
+int main(int argc, char *argv[]) {
+  typedef KwsLexicographicArc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+  try {
     const char *usage =
         "Search the keywords over the index. This program can be executed parallely, either\n"
         "on the index side or the keywords side; we use a script to combine the final search\n"

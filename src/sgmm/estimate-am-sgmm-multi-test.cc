@@ -23,18 +23,12 @@
 #include "sgmm/estimate-am-sgmm-multi.h"
 #include "util/kaldi-io.h"
 
-using kaldi::AmSgmm;
-using kaldi::MleAmSgmmAccs;
-using kaldi::BaseFloat;
-namespace ut = kaldi::unittest;
+namespace kaldi {
 
 // Tests the MleAmSgmmUpdaterMulti (and MleAmSgmmGlobalAccs) classes.
 void TestMultiSgmmEst(const std::vector<AmSgmm*> &models,
                       const std::vector< kaldi::Matrix<BaseFloat> > &feats,
                       kaldi::SgmmUpdateFlagsType flags) {
-  using namespace kaldi;
-  typedef kaldi::int32 int32;
-
   int32 num_gauss = models[0]->NumGauss(),
       feat_dim = models[0]->FeatureDim(),
       phn_dim = models[0]->PhoneSpaceDim(),
@@ -101,7 +95,7 @@ void UnitTestEstimateSgmm() {
   int32 dim = 2 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random mixture size
   kaldi::FullGmm full_gmm;
-  ut::InitRandFullGmm(dim, num_comp, &full_gmm);
+  unittest::InitRandFullGmm(dim, num_comp, &full_gmm);
 
   int32 num_states = 1;
   int32 num_models = kaldi::RandInt(2, 9);
@@ -129,7 +123,7 @@ void UnitTestEstimateSgmm() {
     feats[i].Resize(num_feat_comp * 200, dim);
     for (int32 m = 0; m < num_feat_comp; ++m) {
       kaldi::SubMatrix<BaseFloat> tmp(feats[i], m*200, 200, 0, dim);
-      ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
+      unittest::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
   kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
@@ -143,9 +137,12 @@ void UnitTestEstimateSgmm() {
   kaldi::DeletePointers(&models);
 }
 
+}  // namespace kaldi
+
+
 int main() {
   for (int i = 0; i < 10; ++i)
-    UnitTestEstimateSgmm();
+    kaldi::UnitTestEstimateSgmm();
   std::cout << "Test OK.\n";
   return 0;
 }
