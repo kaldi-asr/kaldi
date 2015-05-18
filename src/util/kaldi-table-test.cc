@@ -22,9 +22,6 @@
 #include "util/kaldi-table.h"
 #include "util/kaldi-holder.h"
 #include "util/table-types.h"
-#ifndef _MSC_VER
-#include <unistd.h> // for sleep.
-#endif
 
 namespace kaldi {
 
@@ -60,13 +57,12 @@ void UnitTestReadScriptFile() {
     // suppress the warning since I already checked it's OK.
     KALDI_ASSERT(!ReadScriptFile(ss, false, &script));
   }
-#ifndef _MSC_VER
   {
     Output ko("| gzip -c > tmpf.gz", false);  // text mode.
     ko.Stream() << "a b\n";
     ko.Close();
     std::vector<pr> script;
-    sleep(1);  // This test does not work without this sleep:
+    Sleep(1);  // This test does not work without this sleep:
     bool ans = ReadScriptFile("gunzip -c tmpf.gz |", true, &script);
     KALDI_ASSERT(ans);
     std::vector<pr> script2;
@@ -80,14 +76,13 @@ void UnitTestReadScriptFile() {
     ko.Stream() << "a b\n";
     bool ans = ko.Close();
     KALDI_ASSERT(ans);
-    sleep(1);  // This test does not work without this sleep:
+    Sleep(1);  // This test does not work without this sleep:
     // seems to be some kind of file-system latency.
     std::vector<pr> script;
     ans = ReadScriptFile("gunzip -c tmpf.gz |", false, &script);
     KALDI_ASSERT(!ans);
   }
   unlink("tmpf.gz");
-#endif
 }
 
 

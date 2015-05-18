@@ -19,6 +19,7 @@
 #include "base/io-funcs.h"
 #include "util/kaldi-io.h"
 #include "base/kaldi-math.h"
+#include "base/kaldi-utils.h"
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
@@ -161,14 +162,9 @@ void UnitTestIoNew(bool binary) {
 void UnitTestIoPipe(bool binary) {
   // This is as UnitTestIoNew except with different filenames.
   {
-#ifdef _MSC_VER
-    const char *filename_out = "|more > tmpf.txt",
-        *filename_in = "type tmpf.txt |";
-#else
     const char *filename_out = "|gzip -c > tmpf.gz",
         *filename_in = "gunzip -c tmpf.gz |";
-#endif
-    
+
     Output ko(filename_out, binary);
     std::ostream &outfile = ko.Stream();
     if (!binary) outfile << "\t";
@@ -215,7 +211,7 @@ void UnitTestIoPipe(bool binary) {
     bool ans = ko.Close();
     KALDI_ASSERT(ans);
 #ifndef _MSC_VER
-    sleep(1);  // This test does not work without this sleep:
+    Sleep(1);  // This test does not work without this sleep:
     // seems to be some kind of file-system latency.
 #endif
     {

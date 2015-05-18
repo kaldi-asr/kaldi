@@ -114,7 +114,11 @@ class TpMatrix : public PackedMatrix<Real> {
     this->AddPacked(alpha, M);
   }
 
-  using PackedMatrix<Real>::operator =;
+  TpMatrix<Real>& operator=(const TpMatrix<Real> &other) {
+    PackedMatrix<Real>::operator=(other);
+    return *this;
+  }
+
   using PackedMatrix<Real>::Scale;
 
   void Resize(MatrixIndexT nRows, MatrixResizeType resize_type = kSetZero) {
