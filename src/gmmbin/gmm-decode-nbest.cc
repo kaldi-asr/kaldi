@@ -30,7 +30,7 @@
 #include "lat/kaldi-lattice.h" // for CompactLatticeArc
 #include "fstext/lattice-utils.h" // for ConvertLattice
 
-using namespace kaldi;
+namespace kaldi {
 
 fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
   // read decoding network FST
@@ -67,8 +67,6 @@ fst::Fst<fst::StdArc> *ReadNetwork(std::string filename) {
 
 int main(int argc, char *argv[]) {
   try {
-    typedef kaldi::int32 int32;
-
     const char *usage =
       "Decode features using GMM-based model, producing N-best lattice output.\n"
       "Note: this program was mainly intended to validate the lattice generation\n"
@@ -245,4 +243,9 @@ int main(int argc, char *argv[]) {
   }
 }
 
+}  //namespace kaldi
 
+
+int main(int argc, char *argv[]) {
+  return kaldi::main(argc, argv);
+}

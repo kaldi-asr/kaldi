@@ -29,7 +29,7 @@
 #include "tree/build-tree-questions.h"
 #include "fst/fstlib.h"
 
-using namespace kaldi;
+namespace kaldi {
 
 using std::vector;
 
@@ -212,4 +212,9 @@ int main(int argc, char *argv[]) {
   }
 }
 
+}  //namespace kaldi
 
+
+int main(int argc, char *argv[]) {
+  return kaldi::main(argc, argv);
+}

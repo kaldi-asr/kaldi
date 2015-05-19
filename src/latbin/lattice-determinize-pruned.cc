@@ -24,11 +24,10 @@
 #include "lat/push-lattice.h"
 #include "lat/minimize-lattice.h"
 
+namespace kaldi {
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;
-    
     const char *usage =
         "Determinize lattices, keeping only the best path (sequence of acoustic states)\n"
         "for each input-symbol sequence.  This version does pruning as part of the\n"
@@ -116,4 +115,11 @@ int main(int argc, char *argv[]) {
     std::cerr << e.what();
     return -1;
   }
+}
+
+}  //namespace kaldi
+
+
+int main(int argc, char *argv[]) {
+  return kaldi::main(argc, argv);
 }

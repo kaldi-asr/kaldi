@@ -28,13 +28,32 @@
 #include "lat/kws-functions.h"
 #include "fstext/epsilon-property.h"
 
+using fst::VectorFst;
+using kaldi::int32;
+using kaldi::uint64;
+using kaldi::BaseFloat;
+using kaldi::ClusterLattice;
+using kaldi::CompactLattice;
+using kaldi::CompactLatticeStateTimes;
+using kaldi::CompactLatticeStateTimes;
+using kaldi::CreateFactorTransducer;
+using kaldi::DoFactorDisambiguation;
+using kaldi::DoFactorMerging;
+using kaldi::KwsLexicographicArc;
+using kaldi::KwsLexicographicFst;
+using kaldi::KwsProductFst;
+using kaldi::MaybeDoSanityCheck;
+using kaldi::OptimizeFactorTransducer;
+using kaldi::ParseOptions;
+using kaldi::RandomAccessInt32Reader;
+using kaldi::RandomAccessTableReader;
+using kaldi::RemoveLongSilences;
+using kaldi::SequentialCompactLatticeReader;
+using kaldi::SequentialTableReader;
+using kaldi::TableWriter;
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    using fst::VectorFst;
-    typedef kaldi::int32 int32;
-    typedef kaldi::uint64 uint64;
-
     const char *usage =
         "Create an inverted index of the given lattices. The output index is in the T*T*T\n"
         "semiring. For details for the semiring, please refer to Dogan Can and Muran Saraclar's"

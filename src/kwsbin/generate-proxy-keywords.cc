@@ -17,7 +17,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-utils.h"
@@ -53,15 +52,16 @@ bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
 }
 }
 
+using namespace fst;
+using kaldi::int32;
+using kaldi::uint64;
+using kaldi::BasicVectorHolder;
+using kaldi::ParseOptions;
+using kaldi::SequentialInt32VectorReader;
+using kaldi::TableWriter;
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    using namespace fst;
-    typedef kaldi::int32 int32;
-    typedef kaldi::uint64 uint64;
-    typedef StdArc::StateId StateId;
-    typedef StdArc::Weight Weight;
-
     const char *usage =
         "Convert the keywords into in-vocabulary words using the given phone\n"
         "level edit distance fst (E.fst). The large lexicon (L2.fst) and\n"

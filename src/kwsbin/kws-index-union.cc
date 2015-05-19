@@ -24,13 +24,17 @@
 #include "lat/kaldi-kws.h"
 #include "lat/kws-functions.h"
 
+using namespace fst;
+using kaldi::int32;
+using kaldi::uint64;
+using kaldi::KwsLexicographicArc;
+using kaldi::KwsLexicographicFst;
+using kaldi::ParseOptions;
+using kaldi::SequentialTableReader;
+using kaldi::TableWriter;
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    using namespace fst;
-    typedef kaldi::int32 int32;
-    typedef kaldi::uint64 uint64;
-
     const char *usage =
         "Take a union of the indexed lattices. The input index is in the T*T*T semiring and\n"
         "the output index is also in the T*T*T semiring. At the end of this program, encoded\n"

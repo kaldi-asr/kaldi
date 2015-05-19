@@ -23,18 +23,12 @@
 #include "sgmm/estimate-am-sgmm.h"
 #include "util/kaldi-io.h"
 
-using kaldi::AmSgmm;
-using kaldi::MleAmSgmmAccs;
-using kaldi::BaseFloat;
-namespace ut = kaldi::unittest;
+namespace kaldi {
 
 // Tests the Read() and Write() methods for the accumulators, in both binary
 // and ASCII mode, as well as Check().
 void TestUpdateAndAccsIO(const AmSgmm &sgmm,
                          const kaldi::Matrix<BaseFloat> &feats) {
-  using namespace kaldi;
-  typedef kaldi::int32 int32;
-
   kaldi::SgmmUpdateFlagsType flags = kaldi::kSgmmAll;
   kaldi::SgmmPerFrameDerivedVars frame_vars;
   kaldi::SgmmPerSpkDerivedVars empty;
@@ -120,7 +114,7 @@ void UnitTestEstimateSgmm() {
   int32 dim = 1 + kaldi::RandInt(0, 9);  // random dimension of the gmm
   int32 num_comp = 2 + kaldi::RandInt(0, 9);  // random mixture size
   kaldi::FullGmm full_gmm;
-  ut::InitRandFullGmm(dim, num_comp, &full_gmm);
+  unittest::InitRandFullGmm(dim, num_comp, &full_gmm);
 
   int32 num_states = 1;
   AmSgmm sgmm;
@@ -144,15 +138,18 @@ void UnitTestEstimateSgmm() {
     feats.Resize(num_feat_comp * 200, dim);
     for (int32 m = 0; m < num_feat_comp; m++) {
       kaldi::SubMatrix<BaseFloat> tmp(feats, m*200, 200, 0, dim);
-      ut::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
+      unittest::RandDiagGaussFeatures(200, means.Row(m), vars.Row(m), &tmp);
     }
   }
   TestUpdateAndAccsIO(sgmm, feats);
 }
 
+}  // namespace kaldi
+
+
 int main() {
   for (int i = 0; i < 10; i++)
-    UnitTestEstimateSgmm();
+    kaldi::UnitTestEstimateSgmm();
   std::cout << "Test OK.\n";
   return 0;
 }

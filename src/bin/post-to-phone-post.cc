@@ -23,11 +23,10 @@
 #include "hmm/transition-model.h"
 #include "hmm/posterior.h"
 
+namespace kaldi {
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    typedef kaldi::int32 int32;  
-
     const char *usage =
         "Convert posteriors to phone-level posteriors\n"
         "See also: post-to-pdf-post, post-to-weights, get-post-on-ali\n"
@@ -75,3 +74,9 @@ int main(int argc, char *argv[]) {
   }
 }
 
+}  //namespace kaldi
+
+
+int main(int argc, char *argv[]) {
+  return kaldi::main(argc, argv);
+}
