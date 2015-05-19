@@ -31,20 +31,10 @@ typedef float   BaseFloat;
 }
 
 #ifdef _MSC_VER
-namespace kaldi {
-typedef unsigned __int16 uint16;
-typedef unsigned __int32 uint32;
-typedef __int16          int16;
-typedef __int32          int32;
-typedef __int64          int64;
-typedef unsigned __int64 uint64;
-typedef float          float32;
-typedef double        double64;
-}
 #include <basetsd.h>
 #define ssize_t SSIZE_T
+#endif
 
-#else
 // we can do this a different way if some platform
 // we find in the future lacks stdint.h
 #include <stdint.h>
@@ -59,6 +49,5 @@ typedef int64_t         int64;
 typedef float           float32;
 typedef double         double64;
 }  // end namespace kaldi
-#endif
 
 #endif  // KALDI_BASE_KALDI_TYPES_H_

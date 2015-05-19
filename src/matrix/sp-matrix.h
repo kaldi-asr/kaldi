@@ -123,7 +123,11 @@ class SpMatrix : public PackedMatrix<Real> {
     // Duplicating code from PackedMatrix.h
   }
 
-  using PackedMatrix<Real>::operator =;
+  SpMatrix<Real>& operator=(const SpMatrix<Real> &other) {
+    PackedMatrix<Real>::operator=(other);
+    return *this;
+  }
+
   using PackedMatrix<Real>::Scale;
 
   /// matrix inverse.

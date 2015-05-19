@@ -30,13 +30,15 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#ifndef _MSC_VER
 #include <dlfcn.h>
-#include <unistd.h> // for sleep
+#endif
 
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-matrix.h"
 #include "base/kaldi-error.h"
+#include "base/kaldi-utils.h"
 #include "util/common-utils.h"
 
 namespace kaldi {
@@ -105,7 +107,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
       KALDI_WARN << "Will try again to get a GPU after " << sec_sleep 
         << " seconds.";
-      sleep(sec_sleep);
+      Sleep(sec_sleep);
       cudaGetLastError(); // reset the error state    
       e = cudaThreadSynchronize(); //<< 2nd trial to get CUDA context.
       if (e != cudaSuccess) {
@@ -128,7 +130,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
                    << " seconds to get a GPU.";
       num_times++;
       wait_time += sec_sleep;
-      sleep(sec_sleep);
+      Sleep(sec_sleep);
       cudaGetLastError(); // reset the error state    
       e = cudaThreadSynchronize();
     }
@@ -377,6 +379,9 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     //pre-fill ``safe'' values that will not cause problems
     mem_free = 1; mem_total = 1;
     //open libcuda.so
+#ifdef _MSC_VER
+    cuMemGetInfo(&mem_free, &mem_total);
+#else
     void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
     if(NULL == libcuda) { 
       KALDI_WARN << "cannot open libcuda.so"; 
@@ -399,6 +404,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
       //close the library
       dlclose(libcuda);
     }
+#endif
   }
   // copy the output values outside
   if(NULL != free) *free = mem_free;
@@ -416,6 +422,9 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
 void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
   //prefill with something reasonable
   strncpy(name,"Unknown GPU",len);
+#ifdef _MSC_VER
+  cuDeviceGetName(name, len, dev);
+#else
   //open libcuda.so
   void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
   if(NULL == libcuda) {
@@ -434,6 +443,7 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
     //close the library
     dlclose(libcuda);
   }
+#endif
 }
 
 
