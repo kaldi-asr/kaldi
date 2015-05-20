@@ -160,6 +160,7 @@ class NnetOptimize {
        - renumber Matrices to get rid of zero-sized, un-needed ones, and a similar thing for Sub-matrices.
        - renumber Computations to get rid of no-ops introduced by earlier optimizations
          [also, modify forward_computation_end].
+       - maybe renumber Indexes to get rid of duplicates.
 
   (9) optimizations to replace row-by-row copy and add commands with whole-matrix
       commands on smaller sub-matrices (if the row-by-row copy commands have certain

@@ -144,11 +144,9 @@ struct NnetComputation {
     // kAddRows, kAddToRows, kCopyRows, kCopyToRows: arg1 (sub-matrix index) is
     //    the *this in operation, arg2 (sub-matrix index) is matrix argument of
     //    operation, changed, arg3 is index into "indexes"
-    // kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti: arg1
-    //    is sub-matrix index of *this matrix in operation, arg2 is index into
-    //    "indexes_multi", of which each pair is (sub-matrix index, row index)
-    //    [note: any negative sub-matrix index will be converted to a NULL
-    //    pointer argument].
+    // kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti: arg1 is
+    //    index into "indexes_multi", of which each pair is (sub-matrix index,
+    //    row index); and arg2 is sub-matrix index of *this matrix in operation.
     // kNoOperation: no operation (sometimes useful during compilation but not
     //  present in final "code").
     // kNoOperationMarker: no operation (sometimes useful during compilation but not
@@ -189,7 +187,7 @@ struct NnetComputation {
 
   // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
   std::vector<std::vector<int32> > indexes;
-
+  
   // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
   // contains pairs (sub-matrix index, row index).
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;

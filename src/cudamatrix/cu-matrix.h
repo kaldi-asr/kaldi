@@ -143,7 +143,8 @@ class CuMatrixBase {
   /// obtained from the RowData() function of another CuMatrix, or from
   /// CuVector::Data() (i.e. it should point to memory on the GPU if we're using
   /// a GPU, or on the CPU otherwise).  If src[r] is NULL, does not do anything
-  /// for that row.
+  /// for that row.  Requires that none of the memory regions pointed to by the
+  /// pointers in "src" overlap (e.g. none of the pointers should be the same).
   void AddToRows(Real alpha, const std::vector<Real*> &src) const;
   
 

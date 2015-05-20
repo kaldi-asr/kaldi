@@ -74,7 +74,7 @@ class ForwardingDescriptor {
   // Given an Index that's requested at the input of this Component (or at
   // an output of the network), maps it to a (node_index, Index) pair that
   // says where we are to get the data from.
-  Cindex MapToInput(const Index &output);
+  Cindex MapToInput(const Index &output) const;
   int32 Dim(const Nnet &nnet) const;
 
   ForwardingDescriptor & operator= (const ForwardingDescriptor &other);
@@ -105,7 +105,7 @@ class ForwardingDescriptor {
 // its declaration for an explanation of what it is).
 class ForwardingDescriptorImpl {
  public:
-  virtual Cindex MapToInput(const Index &output);
+  virtual Cindex MapToInput(const Index &output) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual ForwardingDescriptorImpl *Copy() const;
 

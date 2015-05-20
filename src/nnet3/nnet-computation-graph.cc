@@ -23,7 +23,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-int32 ComputationGraph::GetCindexId(Cindex cindex, bool *is_new) {
+int32 ComputationGraph::GetCindexId(const Cindex &cindex, bool *is_new) {
   typedef unordered_map<Cindex, int32, CindexHasher> map_type;
   int32 new_index = cindexes.size();  // we'll add this if we don't find it.
   std::pair<map_type::iterator, bool> p = cindex_to_cindex_id_.insert(
@@ -39,7 +39,7 @@ int32 ComputationGraph::GetCindexId(Cindex cindex, bool *is_new) {
     return p.first->second;
   }
 }
-int32 ComputationGraph::GetCindexId(Cindex cindex) const {
+int32 ComputationGraph::GetCindexId(const Cindex &cindex) const {
   typedef unordered_map<Cindex, int32, CindexHasher> map_type;
   map_type::const_iterator iter = cindex_to_cindex_id_.find(cindex);
   if (iter == cindex_to_cindex_id_.end())

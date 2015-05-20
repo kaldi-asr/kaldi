@@ -53,7 +53,8 @@ class ComputationCreator {
     int32 input_step;  // for nodes of type kComponent, the step-index of the
                        // step corresponding to the input.
     int32 value;  // matrix index of value that this step outputs.
-    int32 deriv;  // matrix index of derivative at the output of this step.
+    int32 deriv;  // matrix index of derivative at the output of this step; zero if
+                  // not used (note: index zero is reserved for the empty matrix).
 
     // precomputed_indexes_index is the index into the
     // component_precomputed_indexes array in the NnetComputation.
@@ -73,8 +74,8 @@ class ComputationCreator {
     // backprop).
     std::vector<int32> deriv_parts;
     
-    StepInfo(): node_index(-1), input_step(-1), value(-1), deriv(-1),
-                precomputed_indexes_index(-1) { }
+    StepInfo(): node_index(-1), input_step(-1), value(0), deriv(0),
+                precomputed_indexes_index(0) { }
   };
 
   // this sets up cindex_id_to_location_.
@@ -96,8 +97,11 @@ class ComputationCreator {
   std::vector<std::pair<int32, int32> > cindex_id_to_location_;
 
 
-  // Adds to the computation object the information about the matrix sizes.
+  // Adds to the computation object the information about the matrix sizes
   void DefineMatrices(NnetComputation *computation) const;
+
+  // sets up the input_output_info of the computation.
+  void SetInputOutputInfo(NnetComputation *computation) const;
 
   // Sets up sub-matrix indexes.  For each matrix index, an equal sub-matrix
   // index is created that corresponds to that entire matrix (including index
@@ -128,6 +132,22 @@ class ComputationCreator {
   void DoForwardComputationDescriptor(
       int32 step, const Descriptor &descriptor,
       NnetComputation *computation) const;
+
+  // Called from DoForwardComputationDescriptor.  
+  void DoForwardComputationForwardingDescriptor(
+      int32 step,
+      int32 value_submatrix_index,
+      bool is_first_term_in_sum,
+      const ForwardingDescriptor &descriptor,
+      NnetComputation *computation) const;
+
+  // Called from DoForwardComputationForwardingDescriptor.
+  void DoForwardComputationFromSubmatLocations(
+      int32 value_submatrix_index,
+      bool is_first_term_in_sum,
+      const std::vector<std::pair<int32, int32> > &submat_locations,
+      NnetComputation *computation) const;  
+  
   
   // Adds to "computation" the command(s) for the backward computation (if any) for
   // this step.

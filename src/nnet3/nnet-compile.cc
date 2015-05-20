@@ -42,6 +42,7 @@ void ComputationCreator::CreateComputation(NnetComputation *computation) {
 
   DefineMatrices(computation);
   DefineSubmatrices(computation);
+  SetInputOutputInfo(computation);
   int32 arbitrary_factor = 8;
   computation->commands.reserve(num_matrices_ * arbitrary_factor);
   SetUpMatrices(computation);
@@ -125,11 +126,11 @@ void ComputationCreator::DefineMatrices(NnetComputation *computation) const {
     int32 num_rows = this_info.output_cindex_ids.size(),
         node_index = this_info.node_index,
         num_cols = nnet_.GetNode(node_index).Dim(nnet_);
-    if (this_info.value != -1) {
+    if (this_info.value != 0) {
       computation->matrices[this_info.value].num_rows = num_rows;
       computation->matrices[this_info.value].num_cols = num_cols;
     }
-    if (this_info.deriv != -1) {
+    if (this_info.deriv != 0) {
       computation->matrices[this_info.deriv].num_rows = num_rows;
       computation->matrices[this_info.deriv].num_cols = num_cols;
     }
@@ -168,17 +169,34 @@ void ComputationCreator::DefineSubmatrices(NnetComputation *computation) {
       int32 num_parts = desc.parts.size();
       if (num_parts == 1) {
         this_info.value_parts.push_back(this_info.value);
-        this_info.deriv_parts.push_back(this_info.deriv);
+        if (this_info.deriv != 0)
+          this_info.deriv_parts.push_back(this_info.deriv);
       } else { // num_parts > 1.
         int32 cur_dim_offset = 0;
         for (int32 part = 0; part < num_parts; part++) {
           // Have multiple parts, so need to set up sub-matrices.
           this_info.value_parts.resize(num_parts);
-          if (this_info.deriv != -1)
+          if (this_info.deriv != 0)
             this_info.deriv_parts.resize(num_parts);
-          for (int32 part = 0; part < num_parts; part++) {
-            int32 this_dim = 1; // <- TODO. HERE
+          for (int32 p = 0; p < num_parts; p++) {
+            const SumDescriptor &this_part = desc.parts[p];
+            int32 this_dim = this_part.Dim(nnet_);
+            int32 num_rows = this_info.output_indexes.size();
+            int32 value_part_index = computation->sub_matrices.size();
+            computation->sub_matrices.push_back(
+                NnetComputation::SubMatrixInfo(this_info.value, 0, num_rows,
+                                               cur_dim_offset, this_dim));
+            this_info.value_parts[p] = value_part_index;
+            if (this_info.deriv != 0) {
+              int32 deriv_part_index = computation->sub_matrices.size();
+              computation->sub_matrices.push_back(
+                  NnetComputation::SubMatrixInfo(this_info.deriv, 0, num_rows,
+                                                 cur_dim_offset, this_dim));
+              this_info.deriv_parts[p] = deriv_part_index;
+            }
+            cur_dim_offset += this_dim;
           }
+          KALDI_ASSERT(cur_dim_offset == desc.Dim(nnet_));
         }
       }
     }
@@ -205,6 +223,132 @@ void ComputationCreator::DoForwardComputation(int32 step,
       KALDI_ERR << "Invalid node type";
   }      
 }
+
+
+void ComputationCreator::DoForwardComputationDescriptor(
+    int32 step, const Descriptor &descriptor,
+    NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  // the top-level descriptor has a bunch of parts that we concatenate features over.
+  KALDI_ASSERT(descriptor.parts.size() == step_info.value_parts.size());
+  int32 num_parts = descriptor.parts.size();
+  for (int32 part = 0; part < num_parts; part++) {
+    const SumDescriptor &sum_descriptor = descriptor.parts[part];
+    int32 value_submatrix_index = step_info.value_parts[part];
+    int32 num_terms = sum_descriptor.terms.size();
+    for (int32 term = 0; term < num_terms; term++) {
+      const ForwardingDescriptor &forwarding_descriptor =
+          sum_descriptor.terms[term];
+      bool is_first_term_in_sum = (term == 0);
+      DoForwardComputationForwardingDescriptor(step,
+                                               value_submatrix_index,
+                                               is_first_term_in_sum,
+                                               forwarding_descriptor,
+                                               computation);
+    }
+  }      
+}
+
+void ComputationCreator::DoForwardComputationForwardingDescriptor(
+    int32 step,    
+    int32 value_submatrix_index,
+    bool is_first_term_in_sum,
+    const ForwardingDescriptor &descriptor,
+    NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  const std::vector<Index> &output_indexes = step_info.output_indexes;
+  KALDI_ASSERT(descriptor.Dim(nnet_) ==
+               computation->sub_matrices[value_submatrix_index].num_cols);
+
+  // Note: these submat_locations will be pairs [submatrix-index, row-index]
+  // rather than the more normal [step-index, row-index].
+  std::vector<std::pair<int32, int32> > input_submat_locations(output_indexes.size());
+  int32 num_indexes = output_indexes.size();
+  for (int32 i = 0; i < num_indexes; i++) {
+    const Index &index = output_indexes[i];
+    Cindex input_cindex = descriptor.MapToInput(index);
+    // The following call to GetCindexId will crash if the Cindex is not present
+    // in computation graph.  That would be a bug anyway, so a crash is what we
+    // want.
+    int32 cindex_id = graph_.GetCindexId(input_cindex);
+    std::pair<int32, int32> location = cindex_id_to_location_[cindex_id];
+    int32 input_step = location.first, row_index = location.second,
+        submatrix_index = steps_[input_step].value;
+    input_submat_locations[i].first = submatrix_index;
+    input_submat_locations[i].second = row_index;
+  }
+  DoForwardComputationFromSubmatLocations(value_submatrix_index,
+                                          is_first_term_in_sum,
+                                          input_submat_locations,
+                                          computation);
+}
+
+void ComputationCreator::DoForwardComputationFromSubmatLocations(
+    int32 value_submatrix_index,
+    bool is_first_term_in_sum,
+    const std::vector<std::pair<int32, int32> > &submat_locations,        
+    NnetComputation *computation) const {
+  // This function creates a command to handle an individual piece of the
+  // Descriptor.  There are three separate cases that it handles, with
+  // increasing levels of generality (look for the "return" statements below
+  // to find them).
+  // First work out if all the input submatrix indexes are the same.
+  int32 num_rows = submat_locations.size();
+  std::vector<std::pair<int32, int32> >::const_iterator
+      iter = submat_locations.begin(), end = submat_locations.end();
+  int32 first_submat = iter->first;
+  for (++iter; iter != end; ++iter)
+    if (iter->first != first_submat)
+      break;
+  bool all_same_submatrix = (iter == end);
+  if (all_same_submatrix) {
+    int32 input_submatrix_index = first_submat;
+    std::vector<int32> indexes(num_rows);
+    for (int32 i = 0; i < num_rows; i++)
+      indexes[i] = submat_locations[i].second;    
+    int32 input_num_rows =
+        computation->sub_matrices[input_submatrix_index].num_rows;
+    if (input_num_rows == num_rows) {
+      int32 i;
+      for (i = 0; i < num_rows; i++)
+        if (indexes[i] != i)
+          break;
+      if (i == num_rows) {  // Simplest case: just matrix addition.
+        NnetComputation::CommandType ctype =
+            (is_first_term_in_sum ?
+             NnetComputation::kMatrixCopy : NnetComputation::kMatrixAdd);
+        computation->commands.push_back(
+            NnetComputation::Command(ctype, input_submatrix_index,
+                                     value_submatrix_index));
+        return;
+      }
+    }
+    // if we got to here, it's not just a case of matrix-copy or matrix-add,
+    // but it's still from a single source matrix.
+    int32 indexes_index = computation->indexes.size();
+    computation->indexes.push_back(indexes);
+    NnetComputation::CommandType ctype =
+        (is_first_term_in_sum ?
+         NnetComputation::kCopyRows : NnetComputation::kAddRows);
+    computation->commands.push_back(
+        NnetComputation::Command(ctype, input_submatrix_index,
+                                 value_submatrix_index, indexes_index));
+    return;
+  } else {
+    // There are multiple source matrices.
+    NnetComputation::CommandType ctype =
+        (is_first_term_in_sum ?
+         NnetComputation::kCopyRowsMulti : NnetComputation::kAddRowsMulti);
+    int32 indexes_multi_index = computation->indexes_multi.size();
+    computation->indexes_multi.push_back(submat_locations);
+    computation->commands.push_back(
+        NnetComputation::Command(ctype, value_submatrix_index,
+                                 indexes_multi_index));
+    return;
+  }
+}
+
+
 
 void ComputationCreator::DoBackwardComputation(int32 step,
                                                NnetComputation *computation) const {

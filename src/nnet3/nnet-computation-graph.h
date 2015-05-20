@@ -59,11 +59,11 @@ struct ComputationGraph {
   // Maps a Cindex to an integer cindex_id.  If not present, then add it and set
   // *is_new to true.  If present, set is_new to false and return the existing
   // cindex_id.
-  int32 GetCindexId(Cindex cindex, bool *is_new);
+  int32 GetCindexId(const Cindex &cindex, bool *is_new);
 
   // Const version of the above. Accepts no bool argument; it will return -1 if
   // the Cindex is not present, and the user should check for this.
-  int32 GetCindexId(Cindex cindex) const;
+  int32 GetCindexId(const Cindex &cindex) const;
 
   // This function renumbers the cindex-ids, keeping only for which keep[c] is
   // true.  Note, it first asserts that the optional array is empty as it does
