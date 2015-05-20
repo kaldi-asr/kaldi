@@ -20,9 +20,9 @@
 
 echo "$0 $@"  # Print the command line for logging
 
-fake=false
-fake_dims=       # If specified, can generate 'fake' stats (that won't normalize)
-                 # from a specified dimension.
+fake=false   # If specified, can generate fake/dummy CMVN stats (that won't normalize)
+fake_dims=   # as the "fake" option, but you can generate "fake" stats only for certain
+             # dimensions.
 two_channel=false
 
 if [ "$1" == "--fake" ]; then
