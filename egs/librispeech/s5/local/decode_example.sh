@@ -25,7 +25,8 @@ lang=data/lang
 lang_test=data/lang_test
 lang_test_tmp=data/local/lang_test_tmp/
 mkdir -p $lang_test_tmp
-cp -rT $lang $lang_test
+mkdir -p $lang_test
+cp -r $lang/* $lang_test
 gunzip -c $lm | utils/find_arpa_oovs.pl $lang_test/words.txt \
   > $lang_test_tmp/oovs.txt || exit 1
 gunzip -c $lm | \

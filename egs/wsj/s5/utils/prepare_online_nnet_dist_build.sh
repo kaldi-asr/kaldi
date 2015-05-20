@@ -42,7 +42,8 @@ done
 # Makes a copy of the original config files, as we will change the absolute path
 # to relative.
 rm -rf $modeldir/conf_abs_path
-cp -rT $modeldir/conf $modeldir/conf_abs_path
+mkdir -p $modeldir/conf_abs_path
+cp -r $modeldir/conf/* $modeldir/conf_abs_path
 
 for f in $conf_files; do 
   [ ! -f $modeldir/conf/$f ] && \
