@@ -20,6 +20,8 @@
 # The reason why this is useful is so that we can create a different
 # version of this program that uses a queueing system instead.
 
+# use Data::Dumper;
+
 @ARGV < 2 && die "usage: run.pl log-file command-line arguments...";
 
 
@@ -74,12 +76,12 @@ if (@ARGV > 0) {
     $jobend = $2;
     shift;
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "Warning: suspicious first argument to run.pl: $ARGV[0]\n";
+    print STDERR "run.pl: Warning: suspicious first argument to run.pl: $ARGV[0]\n";
   }
 }
 
 if ($ignored_opts ne "") {
-  print STDERR "Warning: run.pl ignoring options \"$ignored_opts\"\n";
+  print STDERR "run.pl: Warning: ignoring options \"$ignored_opts\"\n";
 }
 
 if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
@@ -89,7 +91,7 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
   if (open(P, "</proc/cpuinfo")) {  # Linux
     while (<P>) { if (m/^processor/) { $max_jobs_run++; } }
     if ($max_jobs_run == 0) {
-      print STDERR "run.pl: warning failed to detect any processors from /proc/cpuinfo\n";
+      print STDERR "run.pl: Warning: failed to detect any processors from /proc/cpuinfo\n";
       $max_jobs_run = 10;  # reasonable default.
     }
     close(P);
@@ -102,7 +104,7 @@ if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
     }
     close(P);
     if ($max_jobs_run == 0) {
-      print STDERR "run.pl: warning failed to detect any processors from sysctl -a\n";
+      print STDERR "run.pl: Warning: failed to detect any processors from sysctl -a\n";
       $max_jobs_run = 10;  # reasonable default.
     }
   } else {
@@ -138,18 +140,37 @@ foreach $x (@ARGV) {
     else { $cmd .= "\"$x\" "; } 
 }
 
+#$Data::Dumper::Indent=0;
 $ret = 0;
 $numfail = 0;
+%active_pids=();
 
+use POSIX ":sys_wait_h";
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-  $prev_jobid = $jobid - $max_jobs_run;
-  if ($prev_jobid >= $jobstart) {
-    $r = waitpid($pid[$prev_jobid], 0);
-    if ($r == -1) { die "Error waiting for child process"; } # should never happen.
-    if ($? != 0) { $numfail++; $ret = 1; } # The child process failed.
+  if (scalar(keys %active_pids) >= $max_jobs_run) {
+    
+    # Lets wait for a change in any child's status
+    # Then we have to work out which child finished
+    $r = waitpid(-1, 0);
+    $code = $?;
+    if ($r < 0 ) { die "run.pl: Error waiting for child process"; } # should never happen.
+    if ( defined $active_pids{$r} ) {
+        $jid=$active_pids{$r};
+        $fail[$jid]=$code; 
+        if ($code !=0) { $numfail++;}
+        delete $active_pids{$r};
+        # print STDERR "Finished: $r/$jid " .  Dumper(\%active_pids) . "\n";
+    } else {
+        die "run.pl: Cannot find the PID of the chold process that just finished.";
+    }
+
+    # In theory we could do a non-blocking waitpid over all jobs running just 
+    # to find out if only one or more jobs finished during the previous waitpid()
+    # However, we just omit this and will reap the next one in the next pass
+    # through the for(;;) cycle
   }
   $childpid = fork();
-  if (!defined $childpid) { die "Error forking in run.pl (writing to $logfile)"; }
+  if (!defined $childpid) { die "run.pl: Error forking in run.pl (writing to $logfile)"; }
   if ($childpid == 0) { # We're in the child... this branch
     # executes the job and returns (possibly with an error status).
     if (defined $jobname) { 
@@ -157,7 +178,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
       $logfile =~ s/$jobname/$jobid/g;
     }
     system("mkdir -p `dirname $logfile` 2>/dev/null");
-    open(F, ">$logfile") || die "Error opening log file $logfile";
+    open(F, ">$logfile") || die "run.pl: Error opening log file $logfile";
     print F "# " . $cmd . "\n";
     print F "# Started at " . `date`;
     $starttime = `date +'%s'`;
@@ -165,7 +186,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     close(F);
 
     # Pipe into bash.. make sure we're not using any other shell.
-    open(B, "|bash") || die "Error opening shell command"; 
+    open(B, "|bash") || die "run.pl: Error opening shell command"; 
     print B "( " . $cmd . ") 2>>$logfile >> $logfile";
     close(B);                   # If there was an error, exit status is in $?
     $ret = $?;
@@ -176,7 +197,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     else { $return_str = "code $highbits"; }
 
     $endtime = `date +'%s'`;
-    open(F, ">>$logfile") || die "Error opening log file $logfile (again)";
+    open(F, ">>$logfile") || die "run.pl: Error opening log file $logfile (again)";
     $enddate = `date`;
     chop $enddate;
     print F "# Accounting: time=" . ($endtime - $starttime) . " threads=1\n";
@@ -185,16 +206,39 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     exit($ret == 0 ? 0 : 1);
   } else {
     $pid[$jobid] = $childpid;
+    $active_pids{$childpid} = $jobid;
+    # print STDERR "Queued: " .  Dumper(\%active_pids) . "\n";
   }
 }
 
-for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-  if ($jobid > $jobend - $max_jobs_run) {
+# Now we have submitted all the jobs, lets wait until all the jobs finish
+foreach $child (keys %active_pids) {
+    $jobid=$active_pids{$child};
     $r = waitpid($pid[$jobid], 0);
-    if ($r == -1) { die "Error waiting for child process"; } # should never happen.
-    if ($? != 0) { $numfail++; $ret = 1; } # The child process failed.
-  }
+    $code = $?;
+    if ($r == -1) { die "run.pl: Error waiting for child process"; } # should never happen.
+    if ($r != 0) { $fail[$jobid]=$code; $numfail++ if $code!=0; } # Completed successfully
 }
+
+# Some sanity checks:
+# The $fail array should not contain undefined codes
+# The number of non-zeros in that array  should be equal to $numfail
+# We cannot do foreach() here, as the JOB ids do not necessarily start by zero
+$failed_jids=0;
+for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  $job_return = $fail[$jobid];
+  if (not defined $job_return ) {
+    # print Dumper(\@fail);
+    
+    die "run.pl: Sanity check failed: we have indication that some jobs are running " . 
+      "even after we waited for all jobs to finish" ; 
+  }
+  if ($job_return != 0 ){ $failed_jids++;}
+}
+if ($failed_jids != $numfail) {
+  die "run.pl: Sanity check failed: cannot find out how many jobs failed ($failed_jids x $numfail)."
+}
+if ($numfail > 0) { $ret = 1; }
 
 if ($ret != 0) {
   $njobs = $jobend - $jobstart + 1;
