@@ -12,6 +12,9 @@ stage=-1
 ## Features paramters
 window_size=100                   # 1s
 force_ignore_energy_opts=
+try_merge_sound_speech=false
+do_phase1=false
+smooth_vectors=false
 
 ## Phase 1 parameters
 num_frames_init_silence=2000      # 20s - Lowest energy frames selected to initialize Silence GMM
@@ -41,7 +44,15 @@ sil_gauss_incr_phase2=1
 sound_gauss_incr_phase2=2
 speech_gauss_incr_phase2=2
 num_iters_phase2=5
-window_size_phase2=10
+window_size_phase2_init=10
+window_size_phase2_next=1
+
+num_frames_init_speech_phase2=10000
+num_frames_init_silence_phase2=2000
+num_frames_init_sound_phase2=2000
+speech_frames_incr_phase2=2000
+sil_frames_incr_phase2=2000
+sound_frames_incr_phase2=2000
 
 ## Phase 3 parameters
 sil_num_gauss_init_phase3=2
@@ -83,7 +94,7 @@ zc_opts=
 [ -f conf/zc_vad.conf ] && zc_opts="--config=conf/zc_vad.conf"
 
 while IFS=$'\n' read line; do
-  feats="ark:echo $line | copy-feats scp:- ark:- | add-deltas ark:- ark:- |"
+  feats="ark:echo $line | copy-feats scp:- ark:- | add-deltas ark:- ark:- |${ignore_energy_opts}"
   utt_id=$(echo $line | awk '{print $1}')
   echo $utt_id > $dir/$utt_id.list
 
@@ -95,7 +106,7 @@ while IFS=$'\n' read line; do
     $cmd $dir/log/$utt_id.extract_pitch.log \
       utils/filter_scp.pl $dir/$utt_id.list $data/segments \| \
       extract-segments scp:$data/wav.scp - ark:- \| \
-      compute-kaldi-pitch-feats --config=conf/pitch.conf --frames-per-chunk=10 --simulate-first-pass-online \
+      compute-kaldi-pitch-feats --config=conf/pitch.conf --frames-per-chunk=10 --simulate-first-pass-online=true \
       ark:- ark:$dir/$utt_id.kaldi_pitch.ark || exit 1
   else 
     $cmd $dir/log/$utt_id.extract_zero_crossings.log \
@@ -103,7 +114,7 @@ while IFS=$'\n' read line; do
       compute-zero-crossings $zc_opts scp:- ark:$dir/$utt_id.zero_crossings.ark || exit 1
     $cmd $dir/log/$utt_id.extract_pitch.log \
       utils/filter_scp.pl $dir/$utt_id.list $data/wav.scp \| \
-      compute-kaldi-pitch-feats --config=conf/pitch.conf --frames-per-chunk=10 --simulate-first-pass-online \
+      compute-kaldi-pitch-feats --config=conf/pitch.conf --frames-per-chunk=10 --simulate-first-pass-online=true \
       scp:- ark:$dir/$utt_id.kaldi_pitch.ark || exit 1
   fi
 
@@ -122,7 +133,6 @@ while IFS=$'\n' read line; do
     feats="${feats} paste-feats ark:- \"ark:add-deltas ark:$dir/$utt_id.zero_crossings.ark ark:- |\" ark:- |" 
   fi
 
-  feats="${feats}${ignore_energy_opts}"
 
   ### Compute likelihoods wrt bootstrapping models
   $cmd $dir/log/$utt_id.compute_speech_like.bootstrap.log \
@@ -135,7 +145,7 @@ while IFS=$'\n' read line; do
 
   ### Get bootstrapping VAD
   $cmd $tmpdir/log/$utt_id.get_vad.bootstrap.log \
-    loglikes-to-class --weights=ark:$dir/$utt_id.post.bootstrap.ark \
+    loglikes-to-class --post=ark:$dir/$utt_id.post.bootstrap.ark \
     ark:$dir/$utt_id.silence_likes.bootstrap.ark \
     ark:$dir/$utt_id.speech_likes.bootstrap.ark \
     ark:$tmpdir/$utt_id.vad.bootstrap.ark || exit 1
@@ -146,33 +156,48 @@ while IFS=$'\n' read line; do
     if $add_zero_crossing_feats; then
       feats="${feats} paste-feats ark:- \"ark:add-deltas ark:$dir/$utt_id.zero_crossings.ark ark:- |\" ark:- |" 
     fi
-    feats="${feats}${ignore_energy_opts}"
   fi
-  
 
   ### Initialize Silence GMM using lowest energy chunks that were classified
   ### as silence by the bootstrapping model
   $cmd $tmpdir/log/$utt_id.init_silence_gmm.log \
     select-top-chunks \
-    --window-size=$window_size \
+    --window-size=$window_size --smooth-vectors=$smooth_vectors \
     --selection-mask=ark:$tmpdir/$utt_id.vad.bootstrap.ark --select-class=0 \
     --select-bottom-frames=true \
     --weights=ark:$dir/$utt_id.log_energies.ark --num-select-frames=$num_frames_silence \
-    "${feats}" ark:- \| gmm-global-init-from-feats \
+    "${feats}" ark:- ark:$tmpdir/$utt_id.silence_mask.0.ark \| \
+    gmm-global-init-from-feats \
     --min-variance=$min_sil_variance --num-gauss=$sil_num_gauss --num-iters=$[sil_num_gauss+2] ark:- \
     $tmpdir/$utt_id.silence.0.mdl || exit 1
 
-  ### Initialize Sound GMM using highest energy and highest zero-crossing 
+  ### Initialize Sound GMM using highest zero-crossing 
   ### chunks that were classified
   ### as silence by the bootstrapping model.
   $cmd $tmpdir/log/$utt_id.init_sound_gmm.log \
     select-top-chunks \
-    --window-size=$window_size \
+    --window-size=$window_size --smooth-vectors=$smooth_vectors \
     --selection-mask=ark:$tmpdir/$utt_id.vad.bootstrap.ark --select-class=0 \
     --weights="ark:extract-column ark:$dir/$utt_id.zero_crossings.ark ark:- |" --num-select-frames=$num_frames_sound \
-    "${feats}" ark:- \| gmm-global-init-from-feats \
+    "${feats}" ark:- ark:$tmpdir/$utt_id.sound_mask.0.ark \| \
+    gmm-global-init-from-feats \
     --min-variance=$min_sound_variance --num-gauss=$sound_num_gauss --num-iters=$[sound_num_gauss+2] ark:- \
     $tmpdir/$utt_id.sound.0.mdl || exit 1
+
+  ### Initialize Speech GMM using highest NCCF chunks that were classified as 
+  ### speech by the bootstrapping model.
+  $cmd $tmpdir/log/$utt_id.init_speech_gmm.log \
+    select-top-chunks \
+      --window-size=$window_size --smooth-vectors=$smooth_vectors \
+      --selection-mask=ark:$tmpdir/$utt_id.vad.bootstrap.ark --select-class=1 \
+      --weights="ark:extract-column ark:$dir/$utt_id.kaldi_pitch.ark ark:- |" \
+      --num-select-frames=$num_frames_init_speech \
+      "${feats}" ark:- ark:$tmpdir/$utt_id.speech_mask.0.ark \| \
+      gmm-global-init-from-feats \
+      --num-gauss=$sound_num_gauss --num-iters=$[speech_num_gauss+2] ark:- \
+      $tmpdir/$utt_id.speech.0.mdl || exit 1
+
+  if $do_phase1; then
 
   ### Compute likelihoods with the newly initialized Silence and Sound GMMs
 
@@ -183,12 +208,16 @@ while IFS=$'\n' read line; do
   $cmd $tmpdir/log/$utt_id.compute_sound_likes.0.log \
     gmm-global-get-frame-likes $tmpdir/$utt_id.sound.0.mdl \
     "${feats}" ark:$tmpdir/$utt_id.sound_likes.0.ark || exit 1
+  
+  $cmd $tmpdir/log/$utt_id.compute_speech_likes.0.log \
+    gmm-global-get-frame-likes $tmpdir/$utt_id.speech.0.mdl \
+    "${feats}" ark:$tmpdir/$utt_id.speech_likes.0.ark || exit 1
 
   ### Get initial VAD
   {
-    loglikes-to-class --weights=ark:$tmpdir/$utt_id.post.init.ark \
+    loglikes-to-class --post=ark:$tmpdir/$utt_id.post.init.ark \
       ark:$tmpdir/$utt_id.silence_likes.0.ark \
-      ark:$dir/$utt_id.speech_likes.bootstrap.ark \
+      ark:$tmpdir/$utt_id.speech_likes.0.ark \
       ark:$tmpdir/$utt_id.sound_likes.0.ark ark,t:- | \
       perl -pe 's/\[(.+)]/$1/' | \
       utils/apply_map.pl -f 2- <(echo -e "0 0\n1 1\n2 0") | \
@@ -200,7 +229,7 @@ while IFS=$'\n' read line; do
   ### while training Silence and Sound GMMs
   $cmd $tmpdir/log/$utt_id.select_feats_phase1.init.log \
     select-top-chunks \
-      --window-size=$window_size \
+      --window-size=$window_size --smooth-vectors=$smooth_vectors \
       --selection-mask=ark:$tmpdir/$utt_id.vad.init.ark --select-class=0 \
       "$feats" ark:$tmpdir/$utt_id.feats.init.ark \
       ark:$tmpdir/$utt_id.mask.init.ark || exit 1
@@ -225,7 +254,7 @@ while IFS=$'\n' read line; do
 
   $cmd $tmpdir/log/$utt_id.select_speech_likes.init.log \
     vector-extract-dims \
-    ark:$dir/$utt_id.speech_likes.bootstrap.ark \
+    ark:$tmpdir/$utt_id.speech_likes.0.ark \
     ark:$tmpdir/$utt_id.mask.init.ark \
     ark:$tmpdir/$utt_id.speech_likes.init.ark || exit 1
 
@@ -235,11 +264,12 @@ while IFS=$'\n' read line; do
     ### as silence  
     $cmd $tmpdir/log/$utt_id.update_silence_gmm.$[x+1].log \
       select-top-chunks \
-        --window-size=$window_size \
+        --window-size=$window_size --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$tmpdir/$utt_id.vad.$x.ark --select-class=0 \
         --select-bottom-frames=true --weights=ark:$tmpdir/$utt_id.energies.init.ark \
         --num-select-frames=$num_frames_silence \
-        ark:$tmpdir/$utt_id.feats.init.ark ark:- \| \
+        ark:$tmpdir/$utt_id.feats.init.ark ark:- \
+        ark:$tmpdir/$utt_id.mask_silence.$[x+1].ark \| \
         gmm-global-acc-stats \
         $tmpdir/$utt_id.silence.$x.mdl ark:- - \| \
         gmm-global-est --mix-up=$sil_num_gauss $tmpdir/$utt_id.silence.$x.mdl \
@@ -249,11 +279,12 @@ while IFS=$'\n' read line; do
     ### chunks currently classified as silence  
     $cmd $tmpdir/log/$utt_id.update_sound_gmm.$[x+1].log \
       select-top-chunks \
-        --window-size=$window_size \
+        --window-size=$window_size --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$tmpdir/$utt_id.vad.$x.ark --select-class=0 \
         --weights=ark:$tmpdir/$utt_id.zero_crossings.init.ark \
         --num-select-frames=$num_frames_sound \
-        ark:$tmpdir/$utt_id.feats.init.ark ark:- \| \
+        ark:$tmpdir/$utt_id.feats.init.ark ark:- \
+        ark:$tmpdir/$utt_id.mask_sound.$[x+1].ark \| \
         gmm-global-acc-stats \
         $tmpdir/$utt_id.sound.$x.mdl ark:- - \| \
         gmm-global-est --mix-up=$sound_num_gauss $tmpdir/$utt_id.sound.$x.mdl \
@@ -271,7 +302,7 @@ while IFS=$'\n' read line; do
     ### Get new VAD predictions on the subset selected for training
     ### Silence and Sound GMMs
     {
-      loglikes-to-class --weights=ark:$tmpdir/$utt_id.post.$[x+1].ark \
+      loglikes-to-class --post=ark:$tmpdir/$utt_id.post.$[x+1].ark \
         ark:$tmpdir/$utt_id.silence_likes.$[x+1].ark \
         ark:$tmpdir/$utt_id.speech_likes.init.ark \
         ark:$tmpdir/$utt_id.sound_likes.$[x+1].ark ark,t:- | \
@@ -290,9 +321,9 @@ while IFS=$'\n' read line; do
       "$feats" ark:$tmpdir/$utt_id.sound_all_likes.$[x+1].ark || exit 1
     
     $cmd $tmpdir/log/$utt_id.get_pred.$[x+1].log \
-      loglikes-to-class --weights=ark:$tmpdir/$utt_id.pred_post.$[x+1].ark \
+      loglikes-to-class --post=ark:$tmpdir/$utt_id.pred_post.$[x+1].ark \
       ark:$tmpdir/$utt_id.silence_all_likes.$[x+1].ark \
-      ark:$dir/$utt_id.speech_likes.bootstrap.ark \
+      ark:$tmpdir/$utt_id.speech_likes.0.ark \
       ark:$tmpdir/$utt_id.sound_all_likes.$[x+1].ark \
       ark:$tmpdir/$utt_id.pred.$[x+1].ark || exit 1 
 
@@ -308,53 +339,10 @@ while IFS=$'\n' read line; do
     fi
   done    ## Done training Silence and Speech GMMs
 
-  ### Compute likelihoods with the current Silence and Sound GMMs
-  $cmd $phase2_dir/log/$utt_id.compute_silence_likes.init.log \
-    gmm-global-get-frame-likes $tmpdir/$utt_id.silence.$x.mdl \
-    "$feats" ark:$phase2_dir/$utt_id.silence_likes.init.ark || exit 1
-
-  $cmd $phase2_dir/log/$utt_id.compute_sound_likes.init.log \
-    gmm-global-get-frame-likes $tmpdir/$utt_id.sound.$x.mdl \
-    "$feats" ark:$phase2_dir/$utt_id.sound_likes.init.ark || exit 1
-
-  ### Compute initial segmentation for phase 2 training
-  $cmd $phase2_dir/log/$utt_id.get_seg.init.log \
-    loglikes-to-class --weights=ark:$phase2_dir/$utt_id.post.init.ark \
-    ark:$phase2_dir/$utt_id.silence_likes.init.ark \
-    ark:$dir/$utt_id.speech_likes.bootstrap.ark \
-    ark:$phase2_dir/$utt_id.sound_likes.init.ark \
-    ark:$phase2_dir/$utt_id.seg.init.ark || exit 1
-
-  ### Initialize Speech GMM
-  $cmd $phase2_dir/log/$utt_id.init_speech_gmm.log \
-    select-top-chunks --window-size=1 \
-      --selection-mask=ark:$phase2_dir/$utt_id.seg.init.ark --select-class=1 \
-      --weights="ark:extract-column ark:$dir/$utt_id.kaldi_pitch.ark ark:- |" \
-      --num-select-frames=$num_frames_init_speech \
-      "$feats" ark:- \| gmm-global-init-from-feats \
-      --num-gauss=$speech_num_gauss --num-iters=$[speech_num_gauss+2] \
-      ark:- $phase2_dir/$utt_id.speech.0.mdl || exit 1
-  
-  $cmd $phase2_dir/log/$utt_id.compute_speech_likes.init.log \
-    gmm-global-get-frame-likes $phase2_dir/$utt_id.speech.0.mdl \
-    "$feats" ark:$phase2_dir/$utt_id.speech_likes.init.ark || exit 1
-  
-  ### Compute initial segmentation for phase 2 training
-  $cmd $phase2_dir/log/$utt_id.get_pred.init.log \
-    loglikes-to-class --weights=ark:$phase2_dir/$utt_id.pred_post.init.ark \
-    ark:$phase2_dir/$utt_id.silence_likes.init.ark \
-    ark:$phase2_dir/$utt_id.speech_likes.init.ark \
-    ark:$phase2_dir/$utt_id.sound_likes.init.ark \
-    ark:$phase2_dir/$utt_id.pred.init.ark || exit 1
-
-  cp $tmpdir/$utt_id.silence.$x.mdl $phase2_dir/$utt_id.silence.0.mdl
-  cp $tmpdir/$utt_id.sound.$x.mdl $phase2_dir/$utt_id.sound.0.mdl
-  
   #### Update Silence and Sound GMMs using new segmentation
   #select-top-chunks --window-size=1 \
   #  --selection-mask=ark:$phase2_dir/$utt_id.seg.init.ark --select-class=0 \
-  #  "$feats" ark:- | gmm-global-acc-stats \
-  #  $tmpdir/$utt_id.silence.$x.mdl ark:- - | \
+  #  "$feats" ark:- | gmm-global-acc-stats \ #  $tmpdir/$utt_id.silence.$x.mdl ark:- - | \
   #  gmm-global-est --mix-up=$sil_num_gauss \
   #  $tmpdir/$utt_id.silence.$x.mdl - $phase2_dir/$utt_id.silence.0.mdl || exit 1
 
@@ -364,6 +352,21 @@ while IFS=$'\n' read line; do
   #  $tmpdir/$utt_id.sound.$x.mdl ark:- - | \
   #  gmm-global-est --mix-up=$sound_num_gauss \
   #  $tmpdir/$utt_id.sound.$x.mdl - $phase2_dir/$utt_id.sound.0.mdl || exit 1
+    
+  cp $tmpdir/$utt_id.silence.$x.mdl $phase2_dir/$utt_id.silence.0.mdl
+  cp $tmpdir/$utt_id.sound.$x.mdl $phase2_dir/$utt_id.sound.0.mdl
+  cp $tmpdir/$utt_id.speech.0.mdl $phase2_dir/$utt_id.speech.0.mdl
+
+  else
+    cp $tmpdir/$utt_id.silence.0.mdl $phase2_dir/$utt_id.silence.0.mdl
+    cp $tmpdir/$utt_id.sound.0.mdl $phase2_dir/$utt_id.sound.0.mdl
+    cp $tmpdir/$utt_id.speech.0.mdl $phase2_dir/$utt_id.speech.0.mdl
+  fi
+
+  num_frames_speech=$num_frames_init_speech_phase2
+  num_frames_silence=$num_frames_init_silence_phase2
+  num_frames_sound=$num_frames_init_sound_phase2
+  window_size_phase2=$window_size_phase2_init
 
   x=0
   while [ $x -le $num_iters_phase2 ]; do
@@ -382,7 +385,7 @@ while IFS=$'\n' read line; do
 
     ### Get segmentation
     $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
-      loglikes-to-class --weights=ark:$phase2_dir/$utt_id.pred_post.$x.ark \
+      loglikes-to-class --post=ark:$phase2_dir/$utt_id.pred_post.$x.ark \
       ark:$phase2_dir/$utt_id.silence_likes.$x.ark \
       ark:$phase2_dir/$utt_id.speech_likes.$x.ark \
       ark:$phase2_dir/$utt_id.sound_likes.$x.ark \
@@ -390,47 +393,62 @@ while IFS=$'\n' read line; do
 
     ### Update Speech GMM
     $cmd $phase2_dir/log/$utt_id.update_gmm_speech.$[x+1].log \
-      select-top-chunks --window-size=$window_size_phase2 \
+      select-top-chunks --window-size=$window_size_phase2 --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$phase2_dir/$utt_id.seg.$x.ark --select-class=1 \
-        "$feats" ark:- \| gmm-global-acc-stats \
+        --num-frames=$num_frames_speech \
+        "$feats" ark:- ark:$phase2_dir/$utt_id.speech_mask.$[x+1].ark \| \
+        gmm-global-acc-stats \
         $phase2_dir/$utt_id.speech.$x.mdl ark:- - \| \
         gmm-global-est --mix-up=$speech_num_gauss \
         $phase2_dir/$utt_id.speech.$x.mdl - $phase2_dir/$utt_id.speech.$[x+1].mdl || exit 1
 
     ### Update Silence GMM
     $cmd $phase2_dir/log/$utt_id.update_gmm_silence.$[x+1].log \
-      select-top-chunks --window-size=$window_size_phase2 \
+      select-top-chunks --window-size=$window_size_phase2 --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$phase2_dir/$utt_id.seg.$x.ark --select-class=0 \
-        "$feats" ark:- \| gmm-global-acc-stats \
+        --num-frames=$num_frames_silence \
+        "$feats" ark:- ark:$phase2_dir/$utt_id.silence_mask.$[x+1].ark \| \
+        gmm-global-acc-stats \
         $phase2_dir/$utt_id.silence.$x.mdl ark:- - \| \
         gmm-global-est --mix-up=$sil_num_gauss \
         $phase2_dir/$utt_id.silence.$x.mdl - $phase2_dir/$utt_id.silence.$[x+1].mdl || exit 1
 
     ### Update Sound GMM
     $cmd $phase2_dir/log/$utt_id.update_gmm_sound.$[x+1].log \
-      select-top-chunks --window-size=$window_size_phase2 \
+      select-top-chunks --window-size=$window_size_phase2 --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$phase2_dir/$utt_id.seg.$x.ark --select-class=2 \
-        "$feats" ark:- \| gmm-global-acc-stats \
+        --num-frames=$num_frames_sound \
+        "$feats" ark:- ark:$phase2_dir/$utt_id.sound_mask.$[x+1].ark \| \
+        gmm-global-acc-stats \
         $phase2_dir/$utt_id.sound.$x.mdl ark:- - \| \
         gmm-global-est --mix-up=$sound_num_gauss \
         $phase2_dir/$utt_id.sound.$x.mdl - $phase2_dir/$utt_id.sound.$[x+1].mdl || exit 1
 
     if [ $sil_num_gauss -lt $sil_max_gauss_phase2 ]; then
       sil_num_gauss=$[sil_num_gauss + sil_gauss_incr_phase2]
+      num_frames_silence=$[num_frames_silence + sil_frames_incr_phase2]
     fi
 
     if [ $sound_num_gauss -lt $sound_max_gauss_phase2 ]; then
       sound_num_gauss=$[sound_num_gauss + sound_gauss_incr_phase2]
+      num_frames_sound=$[num_frames_sound + sound_frames_incr_phase2]
     fi
 
     if [ $speech_num_gauss -lt $speech_max_gauss_phase2 ]; then
       speech_num_gauss=$[speech_num_gauss + speech_gauss_incr_phase2]
+      num_frames_speech=$[num_frames_speech + speech_frames_incr_phase2]
+    fi
+
+    if [ $x -gt $window_size_incr_iter ]; then
+      window_size_phase2=$window_size_phase2_next
     fi
 
     x=$[x+1]
   done  ## Done training all 3 GMMs
 
-  exit 0
+  if ! $try_merge_sound_speech; then
+    continue;
+  fi
 
   x=$[x-1]
   mkdir -p $phase3_dir/log
@@ -444,9 +462,10 @@ while IFS=$'\n' read line; do
   } &> $phase3_dir/log/$utt_id.get_sil_nonsil.$x.log || exit 1
 
   $cmd $phase3_dir/log/$utt_id.init_gmm_nonsil.$x.log \
-    select-top-chunks --window-size=1 \
+    select-top-chunks --window-size=1 --smooth-vectors=$smooth_vectors \
       --selection-mask=ark:$phase3_dir/$utt_id.sil_nonsil.$x.ark --select-class=1 \
-      "$feats" ark:- \| gmm-global-init-from-feats \
+      "$feats" ark:- ark:$phase2_dir/$utt_id.nonsil.$x.ark \| \
+      gmm-global-init-from-feats \
       --num-gauss=$[sound_num_gauss + speech_num_gauss] --num-iters=20 \
       ark:- $phase2_dir/$utt_id.nonsil.$x.mdl || exit 1
    
@@ -494,17 +513,18 @@ while IFS=$'\n' read line; do
     sil_num_gauss=$sil_num_gauss_init_phase3
 
     $cmd $phase3_dir/$utt_id.init_gmm_speech.log \
-      select-top-chunks --window-size=1 \
+      select-top-chunks --window-size=1 --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$phase3_dir/$utt_id.sil_nonsil.$x.ark --select-class=1 \
-        "$feats" ark:- \| gmm-global-init-from-feats \
+        "$feats" ark:- ark:$phase3_dir/$utt_id.speech_mask.0.ark \| \
+        gmm-global-init-from-feats \
         --num-gauss=$speech_num_gauss --num-iters=$[speech_num_gauss+2] \
         ark:- $phase3_dir/$utt_id.speech.0.mdl || exit 1
 
     $cmd $phase3_dir/$utt_id.init_gmm_silence.log \
-      select-top-chunks --window-size=1 \
+      select-top-chunks --window-size=1 --smooth-vectors=$smooth_vectors \
         --selection-mask=ark:$phase3_dir/$utt_id.sil_nonsil.$x.ark --select-class=0 \
-        "$feats" ark:- \| gmm-global-init-from-feats \
-        --num-gauss=$sil_num_gauss --num-iters=$[sil_num_gauss+2] \
+        "$feats" ark:- ark:$phase3_dir/$utt_id.silence_mask.0.ark \| \
+        gmm-global-init-from-feats \ --num-gauss=$sil_num_gauss --num-iters=$[sil_num_gauss+2] \
         ark:- $phase3_dir/$utt_id.silence.0.mdl || exit 1
 
     cp $phase2_dir/$utt_id.silence.$x.mdl $phase3_dir/$utt_id.silence.0.mdl || exit 1
@@ -530,18 +550,20 @@ while IFS=$'\n' read line; do
 
       ### Update Speech GMM 
       $cmd $phase3_dir/$utt_id.update_speech.$[x+1].log \
-        select-top-chunks --window-size=1 \
+        select-top-chunks --window-size=1 --smooth-vectors=$smooth_vectors \
           --selection-mask=ark:$phase3_dir/$utt_id.vad.$x.ark --select-class=1 \
-          "$feats" ark:- \| gmm-global-acc-stats \
+          "$feats" ark:- ark:$phase3_dir/$utt_id.speech_mask.$[x+1].ark \| \
+          gmm-global-acc-stats \
           $phase3_dir/$utt_id.speech.$x.mdl ark:- - \| \
           gmm-global-est-map \
           $phase3_dir/$utt_id.speech.$x.mdl - $phase3_dir/$utt_id.speech.$[x+1].mdl || exit 1
 
       ### Update Silence GMM
       $cmd $phase3_dir/$utt_id.update_silence.$[x+1].log \
-        select-top-chunks --window-size=1 \
+        select-top-chunks --window-size=1 --smooth-vectors=$smooth_vectors \
           --selection-mask=ark:$phase3_dir/$utt_id.vad.$x.ark --select-class=0 \
-          "$feats" ark:- \| gmm-global-acc-stats \
+          "$feats" ark:- ark:$phase3_dir/$utt_id.silence_mask.$[x+1].ark \| \
+          gmm-global-acc-stats \
           $phase3_dir/$utt_id.silence.$x.mdl ark:- - \| \
           gmm-global-est-map \
           $phase3_dir/$utt_id.silence.$x.mdl - $phase3_dir/$utt_id.silence.$[x+1].mdl || exit 1
@@ -561,3 +583,4 @@ while IFS=$'\n' read line; do
     cp $phase3_dir/$utt_id.speech.$x.mdl $dir/$utt_id.speech.final.mdl
   fi
 done < $data/feats.scp
+

@@ -39,9 +39,11 @@ int main(int argc, char *argv[]) {
         " loglikes-to-pred ark:silence_likes.ark ark:speech_likes.ark ark:vad.ark\n";
     
     std::string weights_wspecifier;
+    std::string post_wspecifier;
 
     ParseOptions po(usage);
     po.Register("weights", &weights_wspecifier, "Write posterior probability of each class.");
+    po.Register("post", &post_wspecifier, "Write posteriors");
     
     po.Read(argc, argv);
 
@@ -59,6 +61,7 @@ int main(int argc, char *argv[]) {
         static_cast<RandomAccessBaseFloatVectorReader*>(NULL));
     BaseFloatVectorWriter prediction_writer(prediction_wspecifier);
     BaseFloatVectorWriter weights_writer(weights_wspecifier);
+    PosteriorWriter post_writer(post_wspecifier);
 
     for (int32 i = 0; i < po.NumArgs()-2; i++) 
       loglikes_readers[i] = new RandomAccessBaseFloatVectorReader(po.GetArg(i+2));
@@ -81,7 +84,8 @@ int main(int argc, char *argv[]) {
       
       Vector<BaseFloat> prediction(loglikes1.Dim());
       Vector<BaseFloat> weights;
-      
+      Posterior post(loglikes1.Dim());
+
       if (weights_wspecifier != "") 
         weights.Resize(loglikes1.Dim());
 
@@ -104,6 +108,13 @@ int main(int argc, char *argv[]) {
         }
         class_loglikes[prediction(j)] += max_like;
         class_counts[prediction(j)]++;
+
+        if (post_wspecifier != "") {
+          post[j].push_back(std::make_pair(0, Exp(this_log_likes(0) - this_log_likes.LogSumExp())));
+          for (int32 i = 0; i < po.NumArgs()-2; i++) {
+            post[j].push_back(std::make_pair(i+1, Exp(this_log_likes(i+1) - this_log_likes.LogSumExp())));
+          }
+        }
       }
     
       for (int32 i = 0; i < po.NumArgs()-2; i++) {
@@ -113,6 +124,9 @@ int main(int argc, char *argv[]) {
       prediction_writer.Write(key, prediction);
       if (weights_wspecifier != "") 
         weights_writer.Write(key, weights);
+
+      if (post_wspecifier != "") 
+        post_writer.Write(key, post);
 
       num_done++;
     }

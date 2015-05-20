@@ -57,20 +57,7 @@ done
 
 zc_opts=
 [ -f conf/zc_vad.conf ] && zc_opts="--config=conf/zc_vad.conf"
-
-if $add_zero_crossing_feats; then
-  mkdir -p $dir/data
-  if [ -f $data/segments ]; then
-    $cmd JOB=1$nj $dir/log/compute_zero_crossing.JOB.log \
-      extract-segments scp:$data/split$nj/JOB/wav.scp $data/split$nj/JOB/segments ark:- \| \
-      compute-zero-crossings $zc_opts ark:- ark:$dir/data/zero_crossings.JOB.ark,$dir/data/zero_crossings.JOB.scp || exit 1
-  else 
-    $cmd JOB=1$nj $dir/log/compute_zero_crossing.JOB.log \
-      compute-zero-crossings $zc_opts scp:$data/spilt$nj/JOB/wav.scp ark,scp:$dir/data/zero_crossings.JOB.ark,$dir/data/zero_crossings.JOB.scp || exit 1
-  fi
-
-  zero_crossing_opts="paste-feats ark:- scp:$dir/data/zero_crossing_feats.JOB.scp ark:- |"
-fi
+zero_crossing_opts=
 
 if [ ! -z "$vad_dir" ]; then
 
@@ -105,14 +92,29 @@ else
 
     utils/filter_scp.pl $data/utt2spk $vad_scp | split_scp.pl --utt2spk=$data/utt2spk - $split_files || exit 1
 
+    if $add_zero_crossing_feats; then
+      mkdir -p $dir/data
+      if [ -f $data/segments ]; then
+        $cmd JOB=1:$nj $dir/log/compute_zero_crossing.JOB.log \
+          extract-segments scp:$data/split$nj/JOB/wav.scp $data/split$nj/JOB/segments ark:- \| \
+          compute-zero-crossings $zc_opts ark:- ark,scp:$dir/data/zero_crossings.JOB.ark,$dir/data/zero_crossings.JOB.scp || exit 1
+      else 
+        $cmd JOB=1:$nj $dir/log/compute_zero_crossing.JOB.log \
+          compute-zero-crossings $zc_opts scp:$data/split$nj/JOB/wav.scp ark,scp:$dir/data/zero_crossings.JOB.ark,$dir/data/zero_crossings.JOB.scp || exit 1
+      fi
+
+      [ ! -f $dir/data/zero_crossings.1.scp ] && exit 1
+      zero_crossing_opts="paste-feats ark:- scp:$dir/data/zero_crossings.JOB.scp ark:- |"
+    fi
+
     $cmd JOB=1:$nj $dir/log/select_feats_init_speech.JOB.log \
-      select-interior-frames "ark:add-deltas scp:$dir/data/split$nj/JOB/feats.scp ark:- |$zero_crossing_feats" \
+      select-interior-frames "ark:copy-feats scp:$dir/data/split$nj/JOB/feats.scp ark:- |$zero_crossing_opts add-deltas ark:- ark:- |" \
         scp:$dir/data/vad.JOB.scp ark:- \| \
         select-top-chunks --frames-proportion=$top_frames_threshold --use-dim-as-weight=0 \
           --window-size=10 ark:- ark:$dir/init_feats_speech.JOB.ark || exit 1
 
     $cmd JOB=1:$nj $dir/log/select_feats_init_silence.JOB.log \
-      select-interior-frames --select-unvoiced-frames=true "ark:add-deltas scp:$dir/data/split$nj/JOB/feats.scp ark:- |$zero_crossing_opts" \
+      select-interior-frames --select-unvoiced-frames=true "ark:copy-feats scp:$dir/data/split$nj/JOB/feats.scp ark:- |$zero_crossing_opts add-deltas ark:- ark:- |" \
         scp:$dir/data/vad.JOB.scp ark:- \| \
         select-top-chunks --frames-proportion=$bottom_frames_threshold --use-dim-as-weight=0 --select-bottom-frames=true \
           --window-size=10 ark:- ark:$dir/init_feats_silence.JOB.ark || exit 1

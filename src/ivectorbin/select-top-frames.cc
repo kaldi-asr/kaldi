@@ -23,6 +23,37 @@
 #include "feat/feature-functions.h"
 
 namespace kaldi {
+
+  void SmoothVector(int32 window_size, Vector<BaseFloat> *weights) {
+    Vector<BaseFloat> weights_tmp(weights->Dim());
+    weights_tmp.CopyFromVec(*weights);
+
+    for (int32 i = 0; i < weights_tmp.Dim(); i++) {
+      int32 left_index = std::max(0, i - window_size);
+      int32 right_index = std::min(i + window_size, weights_tmp.Dim() - 1);
+      SubVector<BaseFloat> this_weights(weights_tmp,
+          left_index, right_index - left_index);
+      (*weights)(i) = this_weights.Sum() / this_weights.Dim();
+    }
+  }
+
+  void SmoothMask(int32 window_size, int32 select_class, BaseFloat threshold, 
+                  Vector<BaseFloat> *mask) {
+    Vector<BaseFloat> mask_tmp(mask->Dim());
+    mask_tmp.CopyFromVec(*mask);
+
+    for (int32 i = 0; i < mask_tmp.Dim(); i++) {
+      int32 left_index = std::max(0, i - window_size);
+      int32 right_index = std::min(i + window_size, mask_tmp.Dim() - 1);
+
+      int32 mask_sum = 0;
+      for (int32 j = left_index; j <= right_index; j++) {
+        mask_sum += (mask_tmp(j) == select_class ? 1 : 0);
+      }
+      (*mask)(i) = (static_cast<BaseFloat>(mask_sum) / (right_index - left_index + 1) >= threshold ? select_class : -1.0);
+    }
+  }
+
   template <typename T> 
   class OtherVectorComparator {
     public:
@@ -65,6 +96,9 @@ int main(int argc, char *argv[]) {
     int32 select_class = 1;
     int32 dim_as_weight = -1;
     bool select_bottom_frames = false, select_bottom_frames_next = false;
+    bool smooth_vectors = false;
+    int32 smoothing_window = 4;
+    BaseFloat selection_threshold = 0.5;
     
     ParseOptions po(usage);
     po.Register("frames-proportion", &frames_proportion,
@@ -93,7 +127,13 @@ int main(int argc, char *argv[]) {
     po.Register("use-dim-as-weight", &dim_as_weight,
                 "Use a particular dimension of feature (e.g. C0) as the weight "
                 "when --weights is not specified");
-
+    po.Register("smoothing-window", &smoothing_window, 
+                "Size of smoothing window. Applicable if --smooth-vectors=true");
+    po.Register("smooth-vectors", &smooth_vectors,
+                "Smooth mask and weights over a window");
+    po.Register("selection-threshold", &selection_threshold,
+                "Select chunks that have this fraction of frames to be "
+                "the select-class");
 
     po.Read(argc, argv);
 
@@ -197,6 +237,12 @@ int main(int argc, char *argv[]) {
       else
         chunk_mask.resize(num_chunks, 1);
 
+      if (smooth_vectors) {
+        SmoothVector(smoothing_window, &weights);
+        SmoothVector(smoothing_window, &weights_next);
+        SmoothMask(smoothing_window, select_class, selection_threshold, &mask);
+      }
+
       // Find average weight for each chunk
       for (int32 i = 0; i < num_chunks; i++) {
         if (weights_rspecifier != "") {
@@ -209,13 +255,14 @@ int main(int argc, char *argv[]) {
         }
         if (mask_rspecifier != "") { 
           SubVector<BaseFloat> this_chunk_mask(mask, i*chunk_size, chunk_size);
+          int32 mask_sum = 0;
           for (int32 j = 0; j < this_chunk_mask.Dim(); j++) {
             if (this_chunk_mask(j) == select_class) {
-              chunk_mask[i]++;
+              mask_sum++;
               num_masked++;
             }
           }
-          chunk_mask[i] /= chunk_size;
+          chunk_mask[i] = (static_cast<BaseFloat>(mask_sum) / chunk_size >= selection_threshold ? 1 : 0);
         }
       }
   

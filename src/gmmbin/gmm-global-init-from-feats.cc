@@ -29,7 +29,7 @@ namespace kaldi {
 
 // We initialize the GMM parameters by setting the variance to the global
 // variance of the features, and the means to distinct randomly chosen frames.
-void InitGmmFromRandomFrames(const Matrix<BaseFloat> &feats, DiagGmm *gmm) {
+void InitGmmFromRandomFrames(const Matrix<BaseFloat> &feats, BaseFloat var_floor, DiagGmm *gmm) {
   int32 num_gauss = gmm->NumGauss(), num_frames = feats.NumRows(),
       dim = feats.NumCols();
   KALDI_ASSERT(num_frames >= 10 * num_gauss && "Too few frames to train on");
@@ -39,8 +39,10 @@ void InitGmmFromRandomFrames(const Matrix<BaseFloat> &feats, DiagGmm *gmm) {
     var.AddVec2(1.0 / num_frames, feats.Row(i));
   }
   var.AddVec2(-1.0, mean);
-  if (var.Max() <= 0.0)
-    KALDI_ERR << "Features do not have positive variance " << var;
+  var.ApplyFloor(var_floor);
+
+  //if (var.Min() <= 0.0)
+  //  KALDI_ERR << "Features do not have positive variance " << var;
   
   DiagGmmNormal gmm_normal(*gmm);
 
@@ -183,7 +185,7 @@ int main(int argc, char *argv[]) {
     
     KALDI_LOG << "Initializing GMM means from random frames to "
               << num_gauss_init << " Gaussians.";
-    InitGmmFromRandomFrames(feats, &gmm);
+    InitGmmFromRandomFrames(feats, gmm_opts.min_variance, &gmm);
 
     // we'll increase the #Gaussians by splitting,
     // till halfway through training.
