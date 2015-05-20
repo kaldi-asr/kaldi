@@ -6,6 +6,17 @@
 # Script that shows how to modify the language model, and how to run the
 # decoding from scratch.
 
+warn="WARNING: you are supposed to unpack the tar ball under egs/librispeech/s5"
+
+if [ ! -f cmd.sh ]; then
+  echo "cmd.sh file is missing"
+  echo $warn && exit 1
+fi
+if [ ! -f path.sh ]; then
+  echo "path.sh file is missing"
+  echo $warn && exit 1
+fi
+
 . ./cmd.sh || exit 1
 . ./path.sh || exit 1
 
