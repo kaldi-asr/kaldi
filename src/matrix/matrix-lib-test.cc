@@ -731,7 +731,7 @@ static void UnitTestCopyRows() {
     for (int32 i = 0; i < num_rows2; i++)
       reorder[i] = -1 + (Rand() % (num_rows1 + 1));
     
-    N.CopyRows(M, reorder);
+    N.CopyRows(M, &(reorder[0]));
 
     for (int32 i = 0; i < num_rows2; i++)
       for (int32 j = 0; j < num_cols; j++)
@@ -756,7 +756,7 @@ static void UnitTestCopyCols() {
     for (int32 i = 0; i < num_cols2; i++)
       reorder[i] = -1 + (Rand() % (num_cols1 + 1));
     
-    N.CopyCols(M, reorder);
+    N.CopyCols(M, &(reorder[0]));
     
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)

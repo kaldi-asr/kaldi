@@ -199,7 +199,8 @@ void CuMatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &M,
   if (sizeof(Real) == sizeof(OtherReal) &&
       static_cast<const void*>(M.Data()) ==
       static_cast<const void*>(this->Data())) {
-
+    if (M.Data() == NULL)
+      return;
     // CopyFromMat called on same data.  Nothing to do (except sanity checks)
     KALDI_ASSERT(Trans == kNoTrans && M.NumRows() == NumRows() &&
                  M.NumCols() == NumCols() && M.Stride() == Stride());
@@ -1849,81 +1850,45 @@ void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
-                                  const std::vector<MatrixIndexT> &reorder) {
+                                  const CuArray<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(static_cast<MatrixIndexT>(reorder.size()) == NumCols());
-    KALDI_ASSERT(NumRows() == src.NumRows());
-#ifdef KALDI_PARANOID
-    MatrixIndexT src_cols = src.NumCols();
-    for (size_t i = 0; i < reorder.size(); i++)
-      KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_cols);
-#endif
-    CuArray<MatrixIndexT> cuda_reorder(reorder);
-    
-    Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    // This kernel, as it is newer has the (x,y) dims as (rows,cols).
-    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_copy_cols(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
-    CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    Mat().CopyCols(src.Mat(), reorder);
-  }
-}
-
-template<typename Real>
-void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
-                                  const CuArray<MatrixIndexT> &reorder) {
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(reorder.Dim() == NumCols());
+    KALDI_ASSERT(indices.Dim() == NumCols());
     KALDI_ASSERT(NumRows() == src.NumRows());
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     // This kernel, as it is newer has the (x,y) dims as (rows,cols).
     dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_copy_cols(dimGrid, dimBlock, data_, src.Data(), reorder.Data(), Dim(), src.Stride());
+    cuda_copy_cols(dimGrid, dimBlock, data_, src.Data(), indices.Data(), Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    std::vector<MatrixIndexT> reorder_cpu;
-    reorder.CopyToVec(&reorder_cpu);
-    Mat().CopyCols(src.Mat(), reorder_cpu);
+    Mat().CopyCols(src.Mat(), indices.Data());
   }
 }
 
   
 template<typename Real>
 void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
-                                  const std::vector<MatrixIndexT> &reorder) {
+                                  const CuArray<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(static_cast<MatrixIndexT>(reorder.size()) == NumRows());
+    KALDI_ASSERT(static_cast<MatrixIndexT>(indices.size()) == NumRows());
     KALDI_ASSERT(NumCols() == src.NumCols());
-#ifdef KALDI_PARANOID
-    MatrixIndexT src_rows = src.NumRows();
-    for (size_t i = 0; i < reorder.size(); i++)
-      KALDI_ASSERT(reorder[i] >= -1 && reorder[i] < src_rows);
-#endif
-    CuArray<MatrixIndexT> cuda_reorder(reorder);
     
     Timer tim;
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     // This kernel, as it is newer has the (x,y) dims as (rows,cols).
     dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_copy_rows(dimGrid, dimBlock, data_, src.Data(), cuda_reorder.Data(), Dim(), src.Stride());
+    cuda_copy_rows(dimGrid, dimBlock, data_, src.Data(), indices.Data(), Dim(), src.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    Mat().CopyRows(src.Mat(), reorder);
+    Mat().CopyRows(src.Mat(), indices.Data());
   }
 }
 

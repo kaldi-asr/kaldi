@@ -66,14 +66,14 @@ class ComputationCreator {
 
     // If this component is of type kComponentInput or kOutput (and note that
     // the top-level Descriptor is a concatenation over >= 1 parts), then we set
-    // this variable to contain a list of submatrix-indexes, each for the
-    // corresponding part of the value.  If there is only one part, it will have
-    // one element which will be the same as "value".
+    // value_parts to a list of submatrix-indexes, each for the corresponding
+    // part of the value.  If there is only one part, it will have one element
+    // which will be the same as "value".
     std::vector<int32> value_parts;
-    // as "value_parts", but for parts of the derivative (if we're doing
-    // backprop).
+    // deriv_parts is qas "value_parts", but for parts of the derivative (if
+    // we're doing backprop).
     std::vector<int32> deriv_parts;
-    
+
     StepInfo(): node_index(-1), input_step(-1), value(0), deriv(0),
                 precomputed_indexes_index(0) { }
   };
@@ -147,6 +147,15 @@ class ComputationCreator {
       bool is_first_term_in_sum,
       const std::vector<std::pair<int32, int32> > &submat_locations,
       NnetComputation *computation) const;  
+
+  // Called from DoForwardComputationFromSubmatLocations (special
+  // case where all input is from the same matrix).
+  void DoForwardComputationFromIndexes(
+      int32 value_submatrix_index,
+      int32 input_submatrix_index,
+      bool is_first_term_in_sum,
+      const std::vector<int32> &indexes,
+      NnetComputation *computation) const;  
   
   
   // Adds to "computation" the command(s) for the backward computation (if any) for
@@ -163,6 +172,26 @@ class ComputationCreator {
       int32 step, const Descriptor &descriptor,
       NnetComputation *computation) const;
 
+  // Called from DoBackwardComputationDescriptor.  
+  void DoBackwardComputationForwardingDescriptor(
+      int32 step, int32 deriv_submatrix_index,
+      const ForwardingDescriptor &descriptor,
+      NnetComputation *computation) const;
+
+  // Called from DoBackwardComputationForwardingDescriptor.
+  void DoBackwardComputationFromSubmatLocations(
+      int32 deriv_submatrix_index,
+      const std::vector<std::pair<int32, int32> > &submat_locations,
+      NnetComputation *computation) const;  
+
+  // Called from DoBackwardComputationFromSubmatLocations - special case where
+  // input is from just one matrix.
+  void DoBackwardComputationFromIndexes(
+      int32 deriv_submatrix_index,
+      int32 input_deriv_submatrix_index,
+      const std::vector<int32> &indexes,
+      NnetComputation *computation) const;
+  
   
   // [to be called after step_info_ is set up and all the forward and backprop
   // commands have been added].  Adds to the computation the commands that

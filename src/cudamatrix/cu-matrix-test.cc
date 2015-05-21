@@ -367,8 +367,9 @@ static void UnitTestCuMatrixCopyRows() {
     std::vector<int32> reorder(num_rows2);
     for (int32 i = 0; i < num_rows2; i++)
       reorder[i] = -1 + (Rand() % (num_rows1 + 1));
-    
-    N.CopyRows(M, reorder);
+
+    CuArray<int32> reorder_cuda(reorder);
+    N.CopyRows(M, reorder_cuda);
 
     for (int32 i = 0; i < num_rows2; i++)
       for (int32 j = 0; j < num_cols; j++)
@@ -472,12 +473,8 @@ static void UnitTestCuMatrixCopyCols() {
     for (int32 i = 0; i < num_cols2; i++)
       reorder[i] = -1 + (Rand() % (num_cols1 + 1));
 
-    if (Rand() % 2 == 0) {
-      N.CopyCols(M, reorder);
-    } else {
-      CuArray<int32> cuda_reorder(reorder);
-      N.CopyCols(M, cuda_reorder);
-    }
+    CuArray<int32> reorder_gpu(reorder);
+    N.CopyCols(M, reorder_gpu);
     
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)

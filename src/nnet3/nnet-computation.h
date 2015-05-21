@@ -129,8 +129,8 @@ struct NnetComputation {
     kResizeMatrixZeroed, kResizeMatrixUndefined,
     kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
     kCopyRows, kCopyToRows, kAddRows, kAddToRows,
-    kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti,
-    kAddToRowsMulti, kNoOperation, kNoOperationMarker };
+    kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
+    kAddRowRanges, kNoOperation, kNoOperationMarker };
   struct Command {
     CommandType command_type;
     // kResizeMatrixZeroed, kResizeMatrixUndefined: arg1 = index of matrix; arg2,arg3 are rows,cols.
@@ -145,8 +145,10 @@ struct NnetComputation {
     //    the *this in operation, arg2 (sub-matrix index) is matrix argument of
     //    operation, changed, arg3 is index into "indexes"
     // kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti: arg1 is
-    //    index into "indexes_multi", of which each pair is (sub-matrix index,
-    //    row index); and arg2 is sub-matrix index of *this matrix in operation.
+    //    sub-matrix index of *this matrix in operation; and arg2 is index into
+    //    "indexes_multi", of which each pair is (sub-matrix index, row index);
+    // kAddRowRanges: arg1 is source matrix, arg2 is dest matrix, arg3 is index
+    //   into "indexes_multi".
     // kNoOperation: no operation (sometimes useful during compilation but not
     //  present in final "code").
     // kNoOperationMarker: no operation (sometimes useful during compilation but not
@@ -190,6 +192,7 @@ struct NnetComputation {
   
   // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
   // contains pairs (sub-matrix index, row index).
+  // also used in kAddRowRanges where it contains pairs (start-index, end-index)
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
   
   // Information about where the values and derivatives of the neural net live,

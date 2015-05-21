@@ -2352,7 +2352,10 @@ void PermuteComponent::Propagate(const ChunkInfo &in_info,
   std::vector<int32> reverse_reorder(reorder_.size());
   for (size_t i = 0; i < reorder_.size(); i++)
     reverse_reorder[reorder_[i]] = i;
-  out->CopyCols(in, reverse_reorder);
+  // Note: if we were actually using this component type we could make the
+  // CuArray a member variable for efficiency.
+  CuArray<int32> cu_reverse_reorder(reverse_reorder);
+  out->CopyCols(in, cu_reverse_reorder);
 }
 
 void PermuteComponent::Backprop(const ChunkInfo &,  //in_info,
@@ -2364,7 +2367,10 @@ void PermuteComponent::Backprop(const ChunkInfo &,  //in_info,
                                 CuMatrix<BaseFloat> *in_deriv) const  {
   in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
   KALDI_ASSERT(out_deriv.NumCols() == OutputDim());
-  in_deriv->CopyCols(out_deriv, reorder_);
+  // Note: if we were actually using this component type we could make the
+  // CuArray a member variable for efficiency.
+  CuArray<int32> cu_reorder(reorder_);
+  in_deriv->CopyCols(out_deriv, cu_reorder);
 }
 
 void SumGroupComponent::Init(const std::vector<int32> &sizes) {
@@ -2650,14 +2656,17 @@ void SpliceComponent::Propagate(const ChunkInfo &in_info,
                                    0, dim),
         out_part(*out, 0, out->NumRows(),
                  c * dim, dim);
-    out_part.CopyRows(in_part, indexes[c]);
+    CuArray<int32> cu_indexes(indexes[c]);
+    out_part.CopyRows(in_part, cu_indexes);
   }
   if (const_dim != 0) {
     CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
                                    in.NumCols() - const_dim, const_dim),
         out_part(*out, 0, out->NumRows(),
                  out->NumCols() - const_dim, const_dim);
-    out_part.CopyRows(in_part, const_indexes);
+
+    CuArray<int32> cu_const_indexes(const_indexes);
+    out_part.CopyRows(in_part, cu_const_indexes);
   }
 }
 
@@ -2734,6 +2743,7 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
   CuMatrix<BaseFloat> temp_mat(in_deriv->NumRows(), dim, kUndefined);
 
   for (int32 c = 0; c < num_splice; c++) {
+    CuArray<int32> cu_indexes(indexes[c]);
     int32 dim = input_dim - const_dim;  // dimension we
     // are splicing
     CuSubMatrix<BaseFloat> out_deriv_part(out_deriv, 0, out_deriv.NumRows(),
@@ -2741,9 +2751,9 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
         in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
                       0, dim);
     if (c == 0) {
-      in_deriv_part.CopyRows(out_deriv_part, indexes[c]);
+      in_deriv_part.CopyRows(out_deriv_part, cu_indexes);
     } else {
-      temp_mat.CopyRows(out_deriv_part, indexes[c]);
+      temp_mat.CopyRows(out_deriv_part, cu_indexes);
       in_deriv_part.AddMat(1.0, temp_mat);
     }
   }
@@ -2753,7 +2763,8 @@ void SpliceComponent::Backprop(const ChunkInfo &in_info,
                                           const_dim),
         in_deriv_part(*in_deriv, 0, in_deriv->NumRows(),
                       in_deriv->NumCols() - const_dim, const_dim);
-    in_deriv_part.CopyRows(out_deriv_part, const_indexes);
+    CuArray<int32> cu_const_indexes(const_indexes);
+    in_deriv_part.CopyRows(out_deriv_part, cu_const_indexes);
   }
 }
 
@@ -2877,7 +2888,8 @@ void SpliceMaxComponent::Propagate(const ChunkInfo &in_info,
         input_chunk_inds[i] =
             in_info.GetIndex(out_chunk_offset + context_[offset]);
       }
-      input_chunk_part.CopyRows(input_chunk, input_chunk_inds);
+      CuArray<int32> cu_chunk_inds(input_chunk_inds);
+      input_chunk_part.CopyRows(input_chunk, cu_chunk_inds);
       if (offset == 0)  {
         output_chunk.CopyFromMat(input_chunk_part);
       } else {

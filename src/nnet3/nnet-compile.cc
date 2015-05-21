@@ -283,16 +283,51 @@ void ComputationCreator::DoForwardComputationForwardingDescriptor(
                                           computation);
 }
 
+void ComputationCreator::DoForwardComputationFromIndexes(
+    int32 value_submatrix_index,
+    int32 input_submatrix_index,    
+    bool is_first_term_in_sum,
+    const std::vector<int32> &indexes,
+    NnetComputation *computation) const {
+    
+  int32 input_num_rows =
+      computation->sub_matrices[input_submatrix_index].num_rows,
+      num_rows = indexes.size();
+  if (input_num_rows == num_rows) {
+    int32 i;
+    for (i = 0; i < num_rows; i++)
+      if (indexes[i] != i)
+        break;
+    if (i == num_rows) {  // Simplest case: just matrix addition.
+      NnetComputation::CommandType ctype =
+          (is_first_term_in_sum ?
+           NnetComputation::kMatrixCopy : NnetComputation::kMatrixAdd);
+      computation->commands.push_back(
+          NnetComputation::Command(ctype, input_submatrix_index,
+                                   value_submatrix_index));
+      return;
+    }
+  }
+  // if we got to here, it's not just a case of matrix-copy or matrix-add,
+  // but it's still from a single source matrix.
+  int32 indexes_index = computation->indexes.size();
+  computation->indexes.push_back(indexes);
+  NnetComputation::CommandType ctype =
+      (is_first_term_in_sum ?
+       NnetComputation::kCopyRows : NnetComputation::kAddRows);
+  computation->commands.push_back(
+      NnetComputation::Command(ctype, input_submatrix_index,
+                               value_submatrix_index, indexes_index));
+  return;
+}
+
 void ComputationCreator::DoForwardComputationFromSubmatLocations(
     int32 value_submatrix_index,
     bool is_first_term_in_sum,
     const std::vector<std::pair<int32, int32> > &submat_locations,        
     NnetComputation *computation) const {
-  // This function creates a command to handle an individual piece of the
-  // Descriptor.  There are three separate cases that it handles, with
-  // increasing levels of generality (look for the "return" statements below
-  // to find them).
-  // First work out if all the input submatrix indexes are the same.
+  // First work out if all the input submatrix indexes are the same (i.e. there
+  // is only one source).
   int32 num_rows = submat_locations.size();
   std::vector<std::pair<int32, int32> >::const_iterator
       iter = submat_locations.begin(), end = submat_locations.end();
@@ -305,34 +340,12 @@ void ComputationCreator::DoForwardComputationFromSubmatLocations(
     int32 input_submatrix_index = first_submat;
     std::vector<int32> indexes(num_rows);
     for (int32 i = 0; i < num_rows; i++)
-      indexes[i] = submat_locations[i].second;    
-    int32 input_num_rows =
-        computation->sub_matrices[input_submatrix_index].num_rows;
-    if (input_num_rows == num_rows) {
-      int32 i;
-      for (i = 0; i < num_rows; i++)
-        if (indexes[i] != i)
-          break;
-      if (i == num_rows) {  // Simplest case: just matrix addition.
-        NnetComputation::CommandType ctype =
-            (is_first_term_in_sum ?
-             NnetComputation::kMatrixCopy : NnetComputation::kMatrixAdd);
-        computation->commands.push_back(
-            NnetComputation::Command(ctype, input_submatrix_index,
-                                     value_submatrix_index));
-        return;
-      }
-    }
-    // if we got to here, it's not just a case of matrix-copy or matrix-add,
-    // but it's still from a single source matrix.
-    int32 indexes_index = computation->indexes.size();
-    computation->indexes.push_back(indexes);
-    NnetComputation::CommandType ctype =
-        (is_first_term_in_sum ?
-         NnetComputation::kCopyRows : NnetComputation::kAddRows);
-    computation->commands.push_back(
-        NnetComputation::Command(ctype, input_submatrix_index,
-                                 value_submatrix_index, indexes_index));
+      indexes[i] = submat_locations[i].second;
+    DoForwardComputationFromIndexes(value_submatrix_index,
+                                    input_submatrix_index,
+                                    is_first_term_in_sum,
+                                    indexes,
+                                    computation);
     return;
   } else {
     // There are multiple source matrices.
@@ -348,6 +361,235 @@ void ComputationCreator::DoForwardComputationFromSubmatLocations(
   }
 }
 
+
+void ComputationCreator::DoBackwardComputationForwardingDescriptor(
+    int32 step,    
+    int32 deriv_submatrix_index,    
+    const ForwardingDescriptor &descriptor,
+    NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  const std::vector<Index> &output_indexes = step_info.output_indexes;
+  KALDI_ASSERT(descriptor.Dim(nnet_) ==
+               computation->sub_matrices[deriv_submatrix_index].num_cols);
+  
+  // Note: these submat_locations will be pairs [submatrix-index, row-index]
+  // rather than the more normal [step-index, row-index].
+  std::vector<std::pair<int32, int32> > input_submat_locations(output_indexes.size());
+  int32 num_indexes = output_indexes.size();
+  for (int32 i = 0; i < num_indexes; i++) {
+    const Index &index = output_indexes[i];
+    Cindex input_cindex = descriptor.MapToInput(index);
+    // The following call to GetCindexId will crash if the Cindex is not present
+    // in computation graph.  That would be a bug anyway, so a crash is what we
+    // want.
+    int32 cindex_id = graph_.GetCindexId(input_cindex);
+    std::pair<int32, int32> location = cindex_id_to_location_[cindex_id];
+    int32 input_step = location.first, row_index = location.second,
+        submatrix_index = steps_[input_step].value;
+    input_submat_locations[i].first = submatrix_index;
+    input_submat_locations[i].second = row_index;
+  }
+  DoBackwardComputationFromSubmatLocations(deriv_submatrix_index,
+                                           input_submat_locations,
+                                           computation);
+}
+
+void ComputationCreator::DoBackwardComputationFromSubmatLocations(
+    int32 deriv_submatrix_index,
+    const std::vector<std::pair<int32, int32> > &submat_locations,        
+    NnetComputation *computation) const {
+  // This function creates a command to handle an individual piece of the
+  // Descriptor, for backprop.  Note: because the backprop case is a little
+  // trickier to implement efficiently on the GPU, there may be cases
+  // which we will refuse to implement backprop for if we get here.
+  
+  int32 num_rows = submat_locations.size();
+  std::vector<std::pair<int32, int32> >::const_iterator
+      iter = submat_locations.begin(), end = submat_locations.end();
+  int32 first_submat = iter->first;
+  for (++iter; iter != end; ++iter)
+    if (iter->first != first_submat)
+      break;
+  bool all_same_submatrix = (iter == end);
+  if (all_same_submatrix) {
+    int32 input_submatrix_index = first_submat;
+    std::vector<int32> indexes(num_rows);
+    for (int32 i = 0; i < num_rows; i++)
+      indexes[i] = submat_locations[i].second;
+    DoBackwardComputationFromIndexes(deriv_submatrix_index,
+                                     input_submatrix_index,
+                                     indexes,
+                                     computation);
+    return;
+  } else {
+    // There are multiple source matrices.
+    std::vector<std::pair<int32, int32> > submat_locations_sorted;
+    std::sort(submat_locations_sorted.begin(), submat_locations_sorted.end());
+    if (IsSortedAndUniq(submat_locations_sorted)) {
+      // There are no repeats in any of the submat locations.  This means that
+      // we can just use kAddToRowsMulti (i.e. AddToRows with pointer
+      // destination).  If there were repeats, the CUDA kernel would require
+      // special synchronization so we don't allow it.
+      int32 indexes_multi_index = computation->indexes_multi.size();
+      computation->indexes_multi.push_back(submat_locations);
+      computation->commands.push_back(
+          NnetComputation::Command(NnetComputation::kAddToRowsMulti,
+                                   deriv_submatrix_index,
+                                   indexes_multi_index));
+      return;
+    }
+    // If you reach this point, there is a case that wasn't handled.  Our
+    // intended strategy to handle it, if it's ever needed, is to create a
+    // temporary matrix consisting of all the unique submat_locations in the
+    // input.  We would first recurse to DoBackwardComputationFromIndexes, and
+    // let it write to this temporary matrix; and then do the kAddToRowsMulti
+    // command as above to go from the temporary matrix to the multiple
+    // matrices.
+    KALDI_ERR << "This case not handled.";
+  }
+}
+
+// This function returns true if for each integer i, all the indexes j at which
+// indexes[j] == i are consecutive with no gaps (more formally: if j1 < j2 < j3
+// and indexes[j1] == indexes[j3], then indexes[j1] == indexes[j2]).  If so it
+// also outputs to "reverse_indexes" the begin and end of these ranges, so that
+// indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j && j <
+// (*reverse_indexes)[i].second.
+static bool HasContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::pair<int32, int32> > *reverse_indexes) {
+  int32 num_indexes = indexes.size(),
+      num_input_indexes = *std::max_element(indexes.begin(), indexes.end()) + 1;
+  reverse_indexes->resize(num_input_indexes);
+  for (int32 i = 0; i < num_input_indexes; i++) {
+    (*reverse_indexes)[i].first = -1;
+    (*reverse_indexes)[i].second = -1;
+  }
+  // set each pair's "first" to the min index of all elements
+  // of "indexes" with that value, and the "second" to the
+  // max plus one.
+  for (int32 i = 0; i < num_indexes; i++) {
+    int32 j = indexes[i];
+    KALDI_ASSERT(j >= 0);
+    std::pair<int32, int32> &pair = (*reverse_indexes)[j];
+    if (pair.first == -1) {
+      pair.first = j;
+      pair.second = j + 1;
+    } else {
+      pair.first = std::min(pair.first, j);
+      pair.second = std::max(pair.second, j + 1);
+    }
+  }
+  // check that the contiguous property holds.
+  for (int32 i = 0; i < num_input_indexes; i++) {
+    std::pair<int32, int32> pair = (*reverse_indexes)[i];
+    if (pair.first != -1) {
+      for (int32 j = pair.first; j < pair.second; j++)
+        if (indexes[j] != i)
+          return false;
+    }
+  }
+  return true;
+}
+
+void ComputationCreator::DoBackwardComputationFromIndexes(
+    int32 deriv_submatrix_index,
+    int32 input_deriv_submatrix_index,      
+    const std::vector<int32> &indexes,
+    NnetComputation *computation) const {
+    
+  int32 num_rows = computation->sub_matrices[deriv_submatrix_index].num_rows,
+      input_num_rows =
+      computation->sub_matrices[input_deriv_submatrix_index].num_rows;
+  KALDI_ASSERT(indexes.size() == num_rows);
+  if (input_num_rows == num_rows) {
+    int32 i;
+    for (i = 0; i < num_rows; i++)
+      if (indexes[i] != i)
+        break;
+    if (i == num_rows) {  // Simplest case: just matrix addition.
+        computation->commands.push_back(
+            NnetComputation::Command(NnetComputation::kMatrixAdd,
+                                     deriv_submatrix_index,
+                                     input_deriv_submatrix_index));
+      return;
+    }
+  }
+  if (input_num_rows >= num_rows) {
+    // If there are no repeated elements in the "indexes" array, we can
+    // reverse the mapping and make it an operation of type kAddRows.
+    std::vector<int32> reverse_indexes(input_num_rows, -1);
+    int32 i;
+    for (i = 0; i < num_rows; i++) {
+      int32 index_i = indexes[i];
+      KALDI_ASSERT(index_i >= 0 && index_i < input_num_rows);
+      if (reverse_indexes[index_i] == -1)
+        reverse_indexes[index_i] = i;
+      else
+        break;
+    }
+    if (i == num_rows) {
+      // There were no repeated elements, and this strategy will work.
+      int32 indexes_index = computation->indexes.size();
+      computation->indexes.push_back(reverse_indexes);
+        computation->commands.push_back(
+            NnetComputation::Command(NnetComputation::kAddRows,
+                                     deriv_submatrix_index,
+                                     input_deriv_submatrix_index,
+                                     indexes_index));
+        return;
+    }
+  }
+  std::vector<std::pair<int32, int32> > ranges;
+  if (HasContiguousProperty(indexes, &ranges)) {
+    // the operation can be set up as AddRowRanges.
+    int32 indexes_multi_index = computation->indexes_multi.size();
+    computation->indexes_multi.push_back(ranges);
+    computation->commands.push_back(
+        NnetComputation::Command(NnetComputation::kAddRowRanges,
+                                 input_deriv_submatrix_index,
+                                 deriv_submatrix_index,
+                                 indexes_multi_index));
+    // TODO: if any of these ranges are quite long (summing over many rows), the
+    // resulting code could be inefficient because the AddRowRanges kernels
+    // takes time linear in the length of the range.  Using a temporary matrix
+    // with an intermediate size would make this more efficient in that case, so
+    // the one command would be two commands (plus commands to set up and
+    // destroy the temporary matrix).
+    return;
+  }
+
+  // If you ever reach here, it means someone has used a type of network that we
+  // don't yet support in the backprop.  Basically this case can be handled by
+  // creating a temporary matrix to reorder the matrix at deriv_submatrix_index,
+  // (using CopyRows), and doing AddRowRanges from that.
+  // It wouldn't be too much work.
+  KALDI_ERR << "This case not implemented yet.";
+}
+  
+
+void ComputationCreator::DoBackwardComputationDescriptor(
+    int32 step, const Descriptor &descriptor,
+    NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  // the top-level descriptor has a bunch of parts that we concatenate features over.
+  KALDI_ASSERT(descriptor.parts.size() == step_info.value_parts.size());
+  int32 num_parts = descriptor.parts.size();
+  for (int32 part = 0; part < num_parts; part++) {
+    const SumDescriptor &sum_descriptor = descriptor.parts[part];
+    int32 deriv_submatrix_index = step_info.deriv_parts[part];
+    KALDI_ASSERT(deriv_submatrix_index > 0);
+    int32 num_terms = sum_descriptor.terms.size();
+    for (int32 term = 0; term < num_terms; term++) {
+      const ForwardingDescriptor &forwarding_descriptor =
+          sum_descriptor.terms[term];
+      DoBackwardComputationForwardingDescriptor(step,
+                                                deriv_submatrix_index,
+                                                forwarding_descriptor,
+                                                computation);
+    }
+  }      
+}
 
 
 void ComputationCreator::DoBackwardComputation(int32 step,
