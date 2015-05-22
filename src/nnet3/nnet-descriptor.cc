@@ -22,6 +22,9 @@
 namespace kaldi {
 namespace nnet3 {
 
+int32 ForwardingDescriptor::Modulus() const {
+  return impl_->Modulus();
+}
 
 void InputDescriptor::GetInputCindexes(
     const Index &index,
@@ -49,6 +52,29 @@ void SimpleForwardingDescriptor::ComputeDependencies(
     std::vector<int32> *node_indexes) {
   node_indexes->push_back(src_node_);  
 }
+
+int32 SwitchingForwardingDescriptor::Modulus() const {
+  int32 ans = src_.size();;
+  for (int32 i = 0; i < src_.size(); i++)
+    ans = Lcm(ans, src_[i]->Modulus());
+  return ans;
+}
+
+
+int32 SumDescriptor::Modulus() const {
+  int32 ans = 1;
+  for (size_t i = 0; i < terms.size(); i++)
+    ans = Lcm(ans, terms[i].Modulus());
+  return ans;
+}
+
+int32 Descriptor::Modulus() const {
+  int32 ans = 1;
+  for (size_t i = 0; i < terms.size(); i++)
+    ans = Lcm(ans, parts[i].Modulus());
+  return ans;  
+}
+
 
 
 } // namespace nnet3

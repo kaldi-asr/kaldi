@@ -150,7 +150,7 @@ class Component {
   ///
   /// The default implementation of this function is suitable for any
   /// SimpleComponent; it just copies the output_index to a single identical
-  /// element in input_indexes, leaving is_optional empty.
+  /// element in input_indexes, and sets is_optional to false.
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
                                std::vector<Index> *input_indexes,

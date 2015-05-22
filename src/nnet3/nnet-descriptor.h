@@ -85,6 +85,14 @@ class ForwardingDescriptor {
   // unique) of all the node indexes that this descriptor may forward data from.
   void ComputeDependencies(std::vector<int32> *node_indexes) const;
 
+  // This function is for use in things like clockwork RNNs, where shifting the
+  // time of the inputs and outputs of the network by some multiple integer n
+  // would leave things the same, but shifting by non-multiples would change the
+  // network structure.  It returns the smallest modulus of the time-index t to
+  // which this descriptor is invariant; the lowest common multiple of all
+  // descriptors in the network gives you the modulus for the whole network.
+  int32 Modulus() const;
+
   // The Parse method is used for reading a config-file-style represenation.
   // the is will correspond to one line of the config file (one NetworkNode), as
   // we need to figure out all node names before we read any of them.
@@ -114,6 +122,14 @@ class ForwardingDescriptorImpl {
   // as we need to figure out all node names before we read any of them.
   static ForwardingDescriptorImpl *Parse(std::istringstream &is,
                                          const std::vector<std::string> &node_names);
+
+  /// This function is for use in things like clockwork RNNs, where shifting the
+  /// time of the inputs and outputs of the network by some multiple integer n
+  /// would leave things the same, but shifting by non-multiples would change the
+  /// network structure.  It returns the smallest modulus to which this
+  /// descriptor is invariant; the lowest common multiple of all descriptors in
+  /// the network gives you the modulus for the whole network.
+  virtual int32 Modulus() const { return 1; }
 
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
@@ -165,6 +181,8 @@ class OffsetForwardingDescriptorImpl: public ForwardingDescriptorImpl {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
+  virtual int32 Modulus() const { return src_->Modulus(); }
+  
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
   
   // takes ownership of src.
@@ -179,7 +197,7 @@ class OffsetForwardingDescriptorImpl: public ForwardingDescriptorImpl {
 
 // Chooses from different inputs based on the the time index modulo
 // (the number of ForwardingDescriptors given as inputs).
-class ModuloForwardingDescriptorImpl: public ForwardingDescriptorImpl {
+class SwitchingForwardingDescriptorImpl: public ForwardingDescriptorImpl {
  public:
   virtual Cindex MapToInput(const Index &ind) {
     KALDI_ASSERT(!src_.empty());
@@ -193,17 +211,57 @@ class ModuloForwardingDescriptorImpl: public ForwardingDescriptorImpl {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
+  virtual int32 Modulus() const;
+  
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of items in src.
-  ModuloForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
+  SwitchingForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
       src_(src) { }
-  virtual ~ModuloForwardingDescriptorImpl();
+  virtual ~SwitchingForwardingDescriptorImpl();
  private:
   // Pointers are owned here.
   std::vector<ForwardingDescriptorImpl*> src_; 
+};
+
+
+
+/// For use in clockwork RNNs and the like, this forwarding-descriptor
+/// rounds the time-index t down to the the closest t' <= t that is
+/// an exact multiple of t_modulus_.
+class RoundingForwardingDescriptorImpl: public ForwardingDescriptorImpl {
+ public:
+  virtual Cindex MapToInput(const Index &ind) {
+    KALDI_ASSERT(t_modulus_ >= 1);
+    Cindex ans = src_->MapToInput(ind);
+    int32 mod = ans.second.t % t_modulus_;
+    if (mod < 0)
+      mod += t_modulus_;
+    ans.second.t -= mod;
+    return ans;
+  }
+  virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
+  virtual ForwardingDescriptorImpl *Copy() const;
+  static void WriteConfig(std::ostream &is,
+                          const std::vector<std::string> &node_names);
+
+  virtual int32 Modulus() const { return t_modulus_; }
+
+  /// This function appends to "node_indexes" all the node indexes
+  // that this descriptor may access.
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+
+  // takes ownership of items in src.
+  RoundingForwardingDescriptorImpl(int32 t_modulus,
+                                   ForwardingDescriptorImpl *src):
+      t_modulus_(t_modulus), src_(src) { }
+
+  virtual ~RoundingForwardingDescriptorImpl() { delete src_; }
+ private:
+  int32 t_modulus_;
+  ForwardingDescriptorImpl *src_;
 };
 
 
@@ -224,6 +282,9 @@ struct SumDescriptor {
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
   void ComputeDependencies(std::vector<int32> *node_indexes) const;
+
+  // see Modulus function of ForwardingDescriptor for explanation.
+  int32 Modulus() const;
   
   std::vector<ForwardingDescriptor> terms;
 };
@@ -247,6 +308,9 @@ struct Descriptor {
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
   void ComputeDependencies(std::vector<int32> *node_indexes) const;
+
+  // see Modulus function of ForwardingDescriptor for explanation.
+  int32 Modulus() const;
   
   // This function gets all Cindexes that are required to compute this index.
   // Used for computing dependencies when constructing ComputationGraph.

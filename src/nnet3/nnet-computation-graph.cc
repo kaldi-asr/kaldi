@@ -221,6 +221,34 @@ static void ComputeOutputCindexIds(
                "Computation contains duplicate indexes.");
 }  
 
+
+// This function assumes indexes and optional have the same size, with each
+// element of "optional" saying whether this dependency is optional.  What it
+// does is to remove each element of "indexes" that is optional.  It's called if
+// the use_optional_dependencies member of the ComputationRequest is false,
+// which is only the case when the user is trying to discover the amount of
+// left-context and right context the network has.
+static void RemoveOptionalInputs(std::vector<Index> *indexes,
+                                 std::vector<bool> *optional) {
+  KALDI_ASSERT(indexes->size() == optional->size());
+  int32 size = indexes->size();
+  // "in" is the location we read from, "out" is the location we write to, as we
+  // copy only the non-optional elements.
+  int32 in = 0, out = 0;
+  for (; in != size; in++) {
+    if (! (*optional)[in]) {
+      if (out != in)
+        (*indexes)[out] = (*indexes)[in];
+      out++;
+    }
+  }
+  if (out != size) {
+    indexes->resize(out);
+    optional->clear();
+    optional->resize(out, false);
+  }
+}
+
 static void CheckOutputsAreComputable(
     const ComputationRequest &request,
     const Nnet &nnet,
@@ -331,6 +359,9 @@ void ComputeComputationGraph(const ComputationRequest &request,
         // input, of type kComponentInput.
         KALDI_ASSERT(nnet.GetNode(n-1).node_type ==
                      NetworkNode::kComponentInput);
+        if (!request.use_optional_dependencies)
+          RemoveOptionalInputs(&input_indexes, &is_optional);
+        
         input_cindexes.resize(input_indexes.size());
         for (size_t i = 0; i < input_indexes.size(); i++) {
           input_cindexes[i].first = n - 1;  // preceding node.

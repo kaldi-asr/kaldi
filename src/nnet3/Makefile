@@ -12,7 +12,7 @@ TESTFILES = natural-gradient-online-test
 
 OBJFILES = nnet-compile.o nnet-component.o nnet-parse.o natural-gradient-online.o \
   nnet-component-itf.o nnet-optimize.o nnet-computation.o nnet-computation-graph.o \
-  nnet-graph.o
+  nnet-graph.o nnet-utils.o am-nnet-simple.o
 
 LIBNAME = kaldi-nnet3
 

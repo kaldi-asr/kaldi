@@ -32,7 +32,6 @@
 #include <vector>
 #include <map>
 
-
 namespace kaldi {
 namespace nnet3 {
 
@@ -68,6 +67,8 @@ struct NetworkNode {
 
 class Nnet {
  public:
+  void Init(std::istream &config_file);
+  
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
@@ -92,10 +93,15 @@ class Nnet {
 
   void Write(std::ostream &ostream, bool binary) const;
 
-  /// one thing of many that we need to check is that no output nodes are
-  /// referred to in Descriptors.  This might mess up the combination of each
-  /// output node into a single step, as dependencies would be messed up.
-  void Check();
+  /// note to self: one thing of many that we need to check is that no output
+  /// nodes are referred to in Descriptors.  This might mess up the combination
+  /// of each output node into a single step, as dependencies would be messed
+  /// up.
+  void Check()const;
+
+  /// returns some human-readable information about the network, mostly for
+  /// debugging purposes.
+  std::string Info() const;
  private:
   // the names of the components of the network.  Note, these may be distinct
   // from the network node names below (and live in a different namespace); the

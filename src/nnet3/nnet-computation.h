@@ -93,10 +93,19 @@ struct ComputationRequest {
   // derivatives rather than training the model).
   bool simple_deriv;
 
+  // if this is true (and it will almost always be true), then when computing
+  // the computation graph we follow optional dependencies (see the is_optional
+  // argument of GetInputIndexes in nnet-component-itf.h; these are for use in
+  // recurrent nets).  If it is false we don't follow the optional dependencies;
+  // this is intended only for purposes of discovering the amount of
+  // left-context and right-context of the net.
+  bool use_optional_dependencies;
+
   // misc_info is for extensibility to things that don't easily fit into the framework
   MiscComputationInfo misc_info;
 
-  ComputationRequest(): model_to_update(NULL), simple_deriv(false) { }
+  ComputationRequest(): model_to_update(NULL), simple_deriv(false),
+                        use_optional_dependencies(true) { }
 
   // returns true if any of inputs[*].has_deriv is true, or model_to_update !=
   // NULL.
