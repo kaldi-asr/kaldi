@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
     int32 select_class = 1;
     int32 dim_as_weight = -1;
     bool select_bottom_frames = false, select_bottom_frames_next = false;
-    bool smooth_vectors = false;
+    bool smooth_weights = false, smooth_mask = false;
     int32 smoothing_window = 4;
     BaseFloat selection_threshold = 0.5;
     
@@ -129,8 +129,10 @@ int main(int argc, char *argv[]) {
                 "when --weights is not specified");
     po.Register("smoothing-window", &smoothing_window, 
                 "Size of smoothing window. Applicable if --smooth-vectors=true");
-    po.Register("smooth-vectors", &smooth_vectors,
-                "Smooth mask and weights over a window");
+    po.Register("smooth-weights", &smooth_weights,
+                "Smooth weights over a window");
+    po.Register("smooth-mask", &smooth_mask,
+                "Smooth mask over a window");
     po.Register("selection-threshold", &selection_threshold,
                 "Select chunks that have this fraction of frames to be "
                 "the select-class");
@@ -237,9 +239,12 @@ int main(int argc, char *argv[]) {
       else
         chunk_mask.resize(num_chunks, 1);
 
-      if (smooth_vectors) {
+      if (smooth_weights) {
         SmoothVector(smoothing_window, &weights);
         SmoothVector(smoothing_window, &weights_next);
+      }
+
+      if (smooth_mask) {
         SmoothMask(smoothing_window, select_class, selection_threshold, &mask);
       }
 
