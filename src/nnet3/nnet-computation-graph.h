@@ -29,10 +29,15 @@
 namespace kaldi {
 namespace nnet3 {
 
-// The first step in compilation is to turn the ComputationSpecification
-// into a ComputationGraph, where for each Cindex we have a list of
-// other Cindexes that it depends on, and compute the shortest distance to
-// the input.
+/// The first step in compilation is to turn the ComputationSpecification
+/// into a ComputationGraph, where for each Cindex we have a list of
+/// other Cindexes that it depends on.  Various manipulations of the computation
+/// use the ComputationGraph representation.
+/// 
+/// For efficiency, we give each Cindex its own integer identifier, called a
+/// "cindex_id".  A cindex_id is only interpretable relative to a
+/// ComputationGraph; it's an index into the "cindexes" array of the
+/// ComputationGraph.  The GetCindexId functions perform the reverse mapping.
 struct ComputationGraph {
 
   // This is the reverse mapping of cindex_to_cindex_id: it maps from cindex_id

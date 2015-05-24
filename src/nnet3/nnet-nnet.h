@@ -84,7 +84,7 @@ class Nnet {
   const NetworkNode &GetNode(int32 node) const;
 
   /// returns vector of node names (needed by some parsing code, for instance).
-  const std::vector<std::string> &GetNodeNames() { return node_names_; }
+  const std::vector<std::string> &GetNodeNames() const { return node_names_; }
 
   // returns index associated with this node name, or -1 if no such index.
   int32 IndexOfNode(const std::string &node_name) const;

@@ -32,10 +32,10 @@ namespace nnet3 {
 
 // This class creates an initial version of the NnetComputation, without any
 // optimization or sharing of matrices.  
-class ComputationCreator {
+class Compiler {
  public:
-  ComputationCreator(const ComputationRequest &request,
-                     const Nnet &nnet);
+  Compiler(const ComputationRequest &request,
+           const Nnet &nnet);
   
   void CreateComputation(NnetComputation *computation);
 
@@ -51,10 +51,10 @@ class ComputationCreator {
   struct StepInfo {
     int32 node_index;  // network-node index
     int32 input_step;  // for nodes of type kComponent, the step-index of the
-                       // step corresponding to the input.
+    // step corresponding to the input.
     int32 value;  // matrix index of value that this step outputs.
     int32 deriv;  // matrix index of derivative at the output of this step; zero if
-                  // not used (note: index zero is reserved for the empty matrix).
+    // not used (note: index zero is reserved for the empty matrix).
 
     // precomputed_indexes_index is the index into the
     // component_precomputed_indexes array in the NnetComputation.
@@ -62,7 +62,7 @@ class ComputationCreator {
 
     std::vector<Index> output_indexes;      // Indexes that this step outputs.
     std::vector<int32> output_cindex_ids;   // cindex_ids for each of the output
-                                            // indexes.
+    // indexes.
 
     // If this component is of type kComponentInput or kOutput (and note that
     // the top-level Descriptor is a concatenation over >= 1 parts), then we set
@@ -70,7 +70,7 @@ class ComputationCreator {
     // part of the value.  If there is only one part, it will have one element
     // which will be the same as "value".
     std::vector<int32> value_parts;
-    // deriv_parts is qas "value_parts", but for parts of the derivative (if
+    // deriv_parts is as "value_parts", but for parts of the derivative (if
     // we're doing backprop).
     std::vector<int32> deriv_parts;
 
@@ -195,8 +195,12 @@ class ComputationCreator {
   
   // [to be called after step_info_ is set up and all the forward and backprop
   // commands have been added].  Adds to the computation the commands that
-  // deinitialize all the matrices.
+  // deinitialize all the matrices, except those that may be requested by
+  // the user after the computation is done (i.e. outputs of the network,
+  // and input derivatives).
   void DestroyMatrices(NnetComputation *computation);
+
+  void AddCommands(NnetComputation *computation);
 
 };
 

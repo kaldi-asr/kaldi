@@ -227,6 +227,43 @@ class SwitchingForwardingDescriptorImpl: public ForwardingDescriptorImpl {
 };
 
 
+// This forwarding-descriptor uses the x value of the Index to choose from one
+// of multiple argument ForwardingDescriptorImpl's.  That is, suppose it is
+// initialized with two ForwardingDescriptorImpl's, it treats the x value as an
+// index into that array of ForwardingDescriptorImpl's; and it sets that x value
+// to zero before passing it to the chosen ForwardingDescriptorImpl.  This can
+// be used as a mechanism for the Component to switch between multiple different
+// inputs.
+// We chose the x index for this purpose as it's not used in most setups.
+class SelectForwardingDescriptorImpl: public ForwardingDescriptorImpl {
+ public:
+  virtual Cindex MapToInput(const Index &ind_in) {
+    Index ind(ind_in);
+    KALDI_ASSERT(!src_.empty());
+    int32 size = src_.size(), x = ind.x;
+    KALDI_ASSERT(x >= 0 && x < size);
+    ind.x = 0;
+    return src_[x]->MapToInput(ind);
+  }
+  virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
+  virtual ForwardingDescriptorImpl *Copy() const;
+  static void WriteConfig(std::ostream &is,
+                          const std::vector<std::string> &node_names);
+
+  /// This function appends to "node_indexes" all the node indexes
+  // that this descriptor may access.
+  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  
+  // takes ownership of items in src.
+  SelectForwardingDescriptorImpl(std::vector<ForwardingDescriptorImpl*> &src):
+      src_(src) { }
+  virtual ~SelectForwardingDescriptorImpl();
+ private:
+  // Pointers are owned here.
+  std::vector<ForwardingDescriptorImpl*> src_; 
+};
+
+
 
 /// For use in clockwork RNNs and the like, this forwarding-descriptor
 /// rounds the time-index t down to the the closest t' <= t that is

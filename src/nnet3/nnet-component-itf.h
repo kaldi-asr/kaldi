@@ -64,6 +64,8 @@ enum ComponentProperties {
                            // setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
+  kModifiesIndexes = 0x400  // true if the ModifyIndexes function might modify
+                            // the indexes.
 };
 
 
@@ -159,6 +161,7 @@ class Component {
   /// \brief (For non-simple Components) Returns some precomputed
   ///     component-specific and computation-specific indexes to be in used
   ///     in the Propagate and Backprop functions.
+  ///
   /// \param [in] misc_info  This argument is supplied to handle things that the
   ///       framework can't very easily supply: information like which time
   ///       indexes are needed for AggregateComponent, which time-indexes are
@@ -183,6 +186,22 @@ class Component {
       const std::vector<Index> &input_indexes,
       const std::vector<Index> &output_indexes,
       bool need_backprop) const { return NULL;  }
+
+
+  /// \brief (for non-simple Components)
+  /// This function provides an opportunity for a Component to reorder the
+  /// indexes at its input and output and possibly remove some of the indexes at
+  /// its input that (after considering what else is available) it decides that
+  /// it does not need.  This might be useful, for instance, if a component
+  /// requires a particular ordering of the indexes that doesn't correspond to
+  /// their natural ordering.   Components that might modify the indexes are
+  /// required to return the kModifiesIndexes flag in their Properties().
+  ///
+  ///  \param [in,out]  Indexes at the input of the Component.
+  ///  \param [in,out]  Indexes at the output of the Component
+  virtual void ModifyIndexes(std::vector<Index> *input_indexes,
+                             std::vector<Index> *output_indexes) const {}
+  
 
   /// \brief Returns a string such as "SigmoidComponent", describing
   ///        the type of the object.

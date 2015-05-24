@@ -80,27 +80,27 @@ class CuMatrixBase {
                                const CuArray<int32> &frame_offsets,
                                CuMatrixBase<Real> *tgt);
   friend void cu::Copy<Real>(const CuMatrixBase<Real> &src,
-                             const CuArray<int32> &copy_from_indices,
+                             const CuArray<int32> &copy_from_indexes,
                              CuMatrixBase<Real> *tgt);
   friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
                                   const CuArray<int32> &copy_from_idx,
                                   CuMatrixBase<Real> *tgt);
 
-  /// Copies column r from column indices[r] of src.
+  /// Copies column r from column indexes[r] of src.
   /// As a special case, if indexes[i] == -1, sets column i to zero
-  /// indices.size() must equal this->NumCols(),
+  /// indexes.size() must equal this->NumCols(),
   /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const CuMatrixBase<Real> &src,
-                const CuArray<MatrixIndexT> &indices);
+                const CuArray<MatrixIndexT> &indexes);
 
   
-  /// Copies row r from row indices[r] of src.
+  /// Copies row r from row indexes[r] of src.
   /// As a special case, if indexes[i] < 0, sets row i to zero  
   /// "reorder".size() must equal this->NumRows(), and
   /// src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
-                const CuArray<MatrixIndexT> &indices);
+                const CuArray<MatrixIndexT> &indexes);
 
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r], where src[r] is assumed to be obtained from the RowData()
@@ -118,14 +118,14 @@ class CuMatrixBase {
   void CopyToRows(const CuArray<Real*> &src) const;
   
 
-  /// Does for each row r, this.Row(r) += alpha * src.row(indices[r]).
-  /// If indices[r] < 0, does not add anything.
+  /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
+  /// If indexes[r] < 0, does not add anything.
   /// "reorder".size() must equal this->NumRows(), 
   /// all elements of "reorder" must be in [0, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void AddRows(Real alpha,
                const CuMatrixBase<Real> &src,
-               const CuArray<MatrixIndexT> &indices);
+               const CuArray<MatrixIndexT> &indexes);
 
   /// Does for each row r, this.Row(r) += alpha * src[r],
   /// treating src[r] as the beginning of a region of memory representing
@@ -145,17 +145,17 @@ class CuMatrixBase {
   
 
   /// For each row r of this and for each column c, sets (*this)(r, c) to the
-  /// sum \sum_j src(r, j), where j ranges from indices[c].first through
-  /// indices[c].second - 1.
+  /// sum \sum_j src(r, j), where j ranges from indexes[c].first through
+  /// indexes[c].second - 1.
   void SumColumnRanges(const CuMatrixBase<Real> &src,
-                       const CuArray<Int32Pair> &indices);
+                       const CuArray<Int32Pair> &indexes);
 
 
   /// For each row r of this and for each column c, do
   /// (*this)(r, c) += \sum_j src(j, c),
-  /// where j ranges from indices[c].first through indices[c].second - 1.
+  /// where j ranges from indexes[c].first through indexes[c].second - 1.
   void AddRowRanges(const CuMatrixBase<Real> &src,
-                    const CuArray<Int32Pair> &indices);
+                    const CuArray<Int32Pair> &indexes);
   
 
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,
@@ -476,10 +476,10 @@ class CuMatrixBase {
   // (*this).
   void AddElements(Real alpha, const std::vector<MatrixElement<Real> >& input);
 
-  // This function resizes the output to indices.size(), and for each element of
-  // "indices" it interprets it as a (row, column) index into *this, and puts
+  // This function resizes the output to indexes.size(), and for each element of
+  // "indexes" it interprets it as a (row, column) index into *this, and puts
   // (*this)(row, column) into the corresponding element of "output".
-  void Lookup(const std::vector<Int32Pair> &indices,
+  void Lookup(const std::vector<Int32Pair> &indexes,
               std::vector<Real> *output) const;
 
   // Creates binary mask with per-element equality predicates of *this, mat.

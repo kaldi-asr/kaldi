@@ -742,10 +742,11 @@ void AddOutputSteps(const Nnet &nnet,
 }
 
 /// Adds steps corresponding to everything that is not an input or output in the
-/// ComputataionRequest.  The way this works is: for each order-index, it takes
-/// all Cindexes that don't correspond to either inputs or outputs of the network,
-/// and it separates them into groups based on node-index so that things with the
-/// same order but different node-index will be in separate steps.
+/// ComputataionRequest.  The way this works is: for each order-index in turn,
+/// it takes all Cindexes that don't correspond to either inputs or outputs of
+/// the network, and it separates them into groups based on node-index so that
+/// things with the same order but different node-index will be in separate
+/// steps.
 void AddIntermediateSteps(
     const Nnet &nnet,
     const ComputationRequest &request,
@@ -803,6 +804,97 @@ void AddIntermediateSteps(
   }
 }
 
+/// This function would not be necessary if we had not added the ModifyIndexes
+/// function to class Component.  It is responsible for possibly modifying the
+/// order of the inputs and outputs of non-simple Components, and also possibly
+/// removing some inputs if the Component has decided it doesn't need them.  It
+/// may be a while before this is ever used for something.  An example use is
+/// that maybe in convolutional nets or simple models, some components may want
+/// a certain ordering of the input that differs from the normal order.
+///
+/// Note: right now we don't take any steps to further prune the computation
+/// graph in case the components' ModifyIndexes functions remove any input
+/// indexes.  We can add this later if it becomes necessary.
+void ModifyIndexes(const Nnet &nnet,
+                   const ComputationRequest &request,
+                   const ComputationGraph &graph,                   
+                   std::vector<std::vector<int32> > *by_step) {
+  
+  // cindex_id_to_step will map a cindex_id to the step it appears in.  For
+  // efficiency We only populate it with cindex_ids that are from a node of type
+  // kComponentInput whose corresponding Component modifies its input.  The
+  // other entries are left undefined.  This means that we need to be a bit
+  // careful when interpreting its values.
+  std::vector<int32> cindex_id_to_step(graph.cindexes.size());
+  for (int32 step = 0; step < by_step->size(); step++) {
+    std::vector<int32> &cindex_ids = (*by_step)[step];
+    KALDI_ASSERT(!cindex_ids.empty());
+    int32 first_cindex_id = cindex_ids.front();
+    int32 node_index = graph.cindexes[first_cindex_id].first;
+    const NetworkNode &node = nnet.GetNode(node_index);
+    if (node.node_type != NetworkNode::kComponentInput)
+      continue;  // nothing to do if not a component input.
+    // the corresponding Component is always numbered 1 more
+    const NetworkNode &next_node = nnet.GetNode(node_index + 1);
+    KALDI_ASSERT(next_node.node_type == NetworkNode::kComponent);
+    int32 c = next_node.u.component_index;
+    const Component *component = nnet.GetComponent(c);
+    if (!(component->Properties() & kModifiesIndexes))
+      continue;  // nothing to do if it doesn't modify indexes.
+    int32 size = cindex_ids.size();
+    for (int32 i = 0; i < size; i++) {
+      int32 cindex_id = cindex_ids[i];
+      cindex_id_to_step[cindex_id] = step;
+    }
+  }
+  
+  for (int32 step = 0; step < by_step->size(); step++) {
+    std::vector<int32> &cindex_ids = (*by_step)[step];
+    int32 cindex_id = cindex_ids.front();
+    int32 node_index = graph.cindexes[cindex_id].first;
+    const NetworkNode &node = nnet.GetNode(node_index);
+    if (node.node_type != NetworkNode::kComponent)
+      continue;  // nothing to do if not a Component.
+    int32 c = node.u.component_index;
+    const Component *component = nnet.GetComponent(c);
+    if (!(component->Properties() & kModifiesIndexes))
+      continue;  // nothing to do if it doesn't modify indexes.
+    const std::vector<int32> &this_dep = graph.dependencies[cindex_id];
+    KALDI_ASSERT(!this_dep.empty());
+    int32 input_cindex_id = this_dep.front();
+    int32 input_step = cindex_id_to_step[input_cindex_id];
+    KALDI_ASSERT(input_step >= 0 && input_step < step);
+    int32 input_node_index = graph.cindexes[input_cindex_id].first;
+    KALDI_ASSERT(input_node_index == node_index - 1);
+    // the following assert makes sure that the input_step is plausibly correct,
+    // which we're checking since the code that set up the cindex_id_to_step
+    // array was a bit complex and left un-needed elements undefined.  note that
+    // all cindex_ids in a step will share the node-index.
+    KALDI_ASSERT(graph.cindexes[(*by_step)[input_step].front()].first ==
+                 input_node_index);
+    std::vector<int32> &input_cindex_ids = (*by_step)[input_step];
+    KALDI_ASSERT(cindex_ids.size() == input_cindex_ids.size());
+    int32 size = cindex_ids.size();
+    std::vector<Index> input_indexes(size), indexes(size);
+    for (int32 i = 0; i < size; i++) {
+      input_indexes[i] = graph.cindexes[input_cindex_ids[i]].second;
+      indexes[i] = graph.cindexes[cindex_ids[i]].second;
+    }
+    component->ModifyIndexes(&input_indexes, &indexes);
+    input_cindex_ids.resize(input_indexes.size());
+    for (int32 i = 0; i < input_cindex_ids.size(); i++) {
+      Cindex cindex(input_node_index, input_indexes[i]);
+      input_cindex_ids[i] = graph.GetCindexId(cindex);
+    }
+    cindex_ids.resize(indexes.size());
+    for (int32 i = 0; i < cindex_ids.size(); i++) {
+      Cindex cindex(node_index, indexes[i]);
+      cindex_ids[i] = graph.GetCindexId(cindex);
+    }
+    // note: cindex_ids and input_cindex_ids are references.
+  }
+}
+
 } // namespace compute_computation_steps.
 
 
@@ -816,6 +908,7 @@ void ComputeComputationSteps(
   by_step->clear();
   AddInputSteps(nnet, request, graph, by_step);
   AddIntermediateSteps(nnet, request, graph, by_order, by_step);
+  ModifyIndexes(nnet, request, graph, by_step);
   AddOutputSteps(nnet, request, graph, by_step);
 }
 

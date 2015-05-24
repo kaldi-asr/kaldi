@@ -11,8 +11,9 @@ LDLIBS += $(CUDA_LDLIBS)
 TESTFILES = natural-gradient-online-test 
 
 OBJFILES = nnet-compile.o nnet-component.o nnet-parse.o natural-gradient-online.o \
-  nnet-component-itf.o nnet-optimize.o nnet-computation.o nnet-computation-graph.o \
-  nnet-graph.o nnet-utils.o am-nnet-simple.o
+  nnet-component-itf.o nnet-optimize.o nnet-computation.o \
+  nnet-computation-graph.o nnet-graph.o nnet-utils.o am-nnet-simple.o \
+  nnet-compute.o
 
 LIBNAME = kaldi-nnet3
 

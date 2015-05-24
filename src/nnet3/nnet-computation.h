@@ -80,18 +80,9 @@ struct ComputationRequest {
   std::vector<IoSpecification> inputs;
   std::vector<IoSpecification> outputs;
 
-  // if model_to_update is non-NULL, then we'll be doing either model training
-  // or model-derivative computation.  model_to_update must have the same
-  // structure as the model we're doing the forward computation with, but does
-  // not have to be the same actual model (e.g. for derivative computation (as
-  // opposed to SGD training) we use a separate copy of the model to accumulate
-  // the derivatives in).  This variable is not owned here.
-  Nnet *model_to_update;
-  
-  // if simple_deriv is true, we will use learning rates of 1.0 and will turn off
-  // any natural-gradient updates and the like (i.e. we're just accumulating
-  // derivatives rather than training the model).
-  bool simple_deriv;
+  // if need_model_derivative is true, then we'll be doing either model training
+  // or model-derivative computation.
+  bool need_model_derivative;
 
   // if this is true (and it will almost always be true), then when computing
   // the computation graph we follow optional dependencies (see the is_optional
@@ -104,8 +95,7 @@ struct ComputationRequest {
   // misc_info is for extensibility to things that don't easily fit into the framework
   MiscComputationInfo misc_info;
 
-  ComputationRequest(): model_to_update(NULL), simple_deriv(false),
-                        use_optional_dependencies(true) { }
+  ComputationRequest(): need_model_derivative(false), use_optional_dependencies(true) { }
 
   // returns true if any of inputs[*].has_deriv is true, or model_to_update !=
   // NULL.
@@ -137,7 +127,7 @@ struct NnetComputation {
   enum CommandType {
     kResizeMatrixZeroed, kResizeMatrixUndefined,
     kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
-    kCopyRows, kCopyToRows, kAddRows, kAddToRows,
+    kCopyRows, kAddRows,
     kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
     kAddRowRanges, kNoOperation, kNoOperationMarker };
   struct Command {
@@ -146,8 +136,9 @@ struct NnetComputation {
     // kResizeMatrixEmpty: arg1 = index of matrix.
     // kPropagate: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
     //   (0 if NULL); arg3, arg4 are sub-matrix indexes of matrix args (input and output)
-    // kBackprop: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
-    //   (0 if NULL); (arg3, arg4, arg5 and arg6) are respectively sub-matrix indexes of
+    // kBackprop: arg1 = index of neural net node (only needed for debug);
+    //    arg2 = index of component in nnet; arg3 is index of ComponentPrecomputedIndexes
+    //   (0 if NULL); (arg4, arg5, arg6 and arg7) are respectively sub-matrix indexes of
     //   (in-value, output-value, input-deriv, output-deriv).
     // kMatrixCopy,kMatrixAdd: arg1 is source sub-matrix, arg2 is dest sub-matrix.
     // kAddRows, kAddToRows, kCopyRows, kCopyToRows: arg1 (sub-matrix index) is
@@ -168,9 +159,10 @@ struct NnetComputation {
     int32 arg4;
     int32 arg5;
     int32 arg6;
+    int32 arg7;
     Command(CommandType command_type,
-            int32 arg1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
-            int32 arg5 = -1, int arg6 = -1):
+            int32 arg1 = -1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
+            int32 arg5 = -1, int arg6 = -1, int arg7 = -1):
         command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
   };
@@ -213,10 +205,26 @@ struct NnetComputation {
   // The sequence of commands.
   std::vector<Command> commands;
 
+  // This is a copy of "need_model_derivative" from the ComputationRequest.
+  bool need_model_derivative;
+  
   // the number of steps in the forward computation, so steps with index >= forward_computation_end
   // are part of the backward computation.
   int32 forward_computation_end;
+  
+  // computed from "indexes" by ComputeCudaIndexes().
+  std::vector<CuArray<int32> > indexes_cuda;
 
+  // computed from "indexes" by ComputeCudaIndexes(), but only
+  // those that are used in the kAddRowRanges command are computed.
+  std::vector<CuArray<Int32Pair> > indexes_multi_cuda;
+  
+  // This must be called after setting up the computation but prior to actually
+  // using the Computation object in a computation, to compute CUDA versions of
+  // the indexes.
+  void ComputeCudaIndexes();
+  
+  // destructor deletes pointers in component_precomputed_indexes.
   ~NnetComputation();
 };
 
