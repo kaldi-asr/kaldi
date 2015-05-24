@@ -166,7 +166,7 @@ done
 #steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/test $decode_dir $decode_dir.rescore || exit 1
 
 ## Run the nnet2 multisplice recipe
-# local/online/run_nnet2_ms.sh || exit 1;
+local/online/run_nnet2_ms.sh || exit 1;
 ## Run discriminative training on the top of multisplice recipe
 # local/online/run_nnet2_ms_disc.sh || exit 1;
 

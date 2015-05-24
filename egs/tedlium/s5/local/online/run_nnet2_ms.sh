@@ -12,6 +12,11 @@ stage=7
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
+mix_up_num=0
+presoftmax_prior_scale=true
+presoftmax_prior_scale_init_power=-0.25
+
+echo "$0 $@"  # Print the command line for logging
 
 set -e
 . cmd.sh
@@ -70,7 +75,9 @@ if [ $stage -le 7 ]; then
     --cmd "$decode_cmd" \
     --pnorm-input-dim 3500 \
     --pnorm-output-dim 350 \
-    --mix-up 12000 \
+    --presoftmax-prior-scale $presoftmax_prior_scale \
+    --presoftmax-prior-scale-init-power $presoftmax_prior_scale_init_power \
+    --mix-up $mix_up_num \
     data/train_hires data/lang exp/tri3 $dir  || exit 1;
 fi
 
@@ -95,7 +102,6 @@ if [ $stage -le 9 ]; then
       steps/lmrescore_const_arpa.sh data/lang_test data/lang_rescore data/${decode_set}_hires $decode_dir $decode_dir.rescore || exit 1
   done
 fi
-
 
 if [ $stage -le 10 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp
