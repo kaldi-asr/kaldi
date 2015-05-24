@@ -23,8 +23,6 @@ final_effective_lrate=0.001
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
-presoftmax_prior_scale=true
-presoftmax_prior_scale_init_power=-0.25
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
                    # be a problem with multi-threaded update. 
@@ -107,7 +105,6 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-echo $@
 if [ $# != 4 ]; then
   echo "Usage: $0 [opts] <data> <lang> <ali-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
@@ -119,11 +116,8 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
-  echo "  --learning-rate-scales-opts <ComponentA=0.1:ComponentB=0.2>   # Scale learning rate of components. separate with ':'"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
-  echo "  --presoftmax_prior_scale <bool|true>                 # inidcate if we will add a fixed scale for each output before softmax"
-  echo "  --presoftmax_prior_scale_init_power <power|-0.25>     # power applied on priors to initialize the per element scales before softmax"
   echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
   echo "                                                   # per context-dependent state.  Try a number several times #states."
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
@@ -262,7 +256,7 @@ if [ $stage -le -2 ]; then
   online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
 
   initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
-  
+
   # create the config files for nnet initialization
   python steps/nnet2/make_multisplice_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -289,41 +283,6 @@ if [ $stage -le -1 ]; then
   $cmd $dir/log/train_trans.log \
     nnet-train-transitions $dir/0.mdl "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl \
     || exit 1;
-
-  if [ $presoftmax_prior_scale ]; then
-    echo "prepare initial vector for FixedScaleComponent before softmax"
-    echo "use priors^$presoftmax_prior_scale_init_power and rescale to average 1"
-
-    # obtains raw pdf count    
-    $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
-      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
-      post-to-tacc --per-pdf=true --binary=false $alidir/final.mdl ark:- $dir/JOB.pacc || exit 1;
-    cat $dir/*.pacc > $dir/pacc
-    rm $dir/*.pacc
-    awk 'BEGIN { ORS = " " } {for(i=2; i<=NF-1; i++) {sum[i]+=$i}} 
-      END {for (i=2; i<=NF-1; i++) {print sum[i]}}' $dir/pacc > $dir/pdf_raw_count
-    total_frames=`awk '{for(i=1; i<=NF; i++) {x+=$i}} END {print x}' $dir/pdf_raw_count`
-    ave_pdf_count=$(perl -e "print int($total_frames/$num_leaves);")
-    total_smooth=$(perl -e "print ($total_frames+(0.01*$ave_pdf_count*$num_leaves))")
-
-    # computes priors^power with smoother pdf count
-    awk -v ave=$ave_pdf_count -v den=$total_smooth -v power=$presoftmax_prior_scale_init_power \
-      'BEGIN{ ORS = " " } {for(i=1; i<=NF; i++) {print (($i+0.01*ave)/den)^power}}' \
-      $dir/pdf_raw_count > $dir/priors_$presoftmax_prior_scale_init_power
-
-    # rescales priors^power to average 1
-    rescale=`awk -v leaves=$num_leaves \
-      '{for(i=1; i<=NF; i++) {x+=$i}} END {print x/leaves}' \
-      ${dir}/priors_${presoftmax_prior_scale_init_power}`
-    awk -v rescale=$rescale 'BEGIN{ ORS = " " } 
-      {print " ["; for(i=1; i<=NF; i++) {print $i/rescale}; print "]"}' \
-      ${dir}/priors_${presoftmax_prior_scale_init_power} > $dir/presoftmax_prior_scale_init_vecfile
-
-    echo "FixedScaleComponent scales=$dir/presoftmax_prior_scale_init_vecfile" > $dir/per_element.config
-    echo "insert an additional layer of FixedScaleComponent before softmax"
-    inp=`nnet-am-info $dir/0.mdl | grep 'Softmax' | awk '{print $2}'`
-    nnet-init $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
-  fi  
 fi
 
 # set num_iters so that as close as possible, we process the data $num_epochs
@@ -358,7 +317,6 @@ mix_up_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 [ $mix_up -gt 0 ] && echo "$0: Will mix up on iteration $mix_up_iter"
-[ $mix_up -eq 0 ] && echo "$0: Will not do mix up"
 
 if [ $num_threads -eq 1 ]; then
   parallel_suffix="-simple" # this enables us to use GPU code if
@@ -479,19 +437,11 @@ while [ $x -lt $num_iters ]; do
       [ $[$x%$add_layers_period] -eq 0 ]; then
       do_average=false # if we've just mixed up, don't do averaging take the best.
       cur_num_hidden_layers=$[$x/$add_layers_period];
-      inp=`nnet-am-info $dir/$x.mdl | grep 'Softmax' | awk '{print $2}'`
-
-      if [ $presoftmax_prior_scale ]; then
-        inp=$[$inp-2]
-      else
-        inp=$[$inp-1]
-      fi
-
-      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert --insert-at=$inp $dir/$x.mdl - - | nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate - -|"
+      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert $dir/$x.mdl - - | nnet-am-copy --learning-rate=$this_learning_rate - -|"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      mdl="nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet-am-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
