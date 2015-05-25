@@ -6,7 +6,7 @@
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
 # This recipe is based on the Switchboard corpus recipe, by Arnab Ghoshal,
-# in the egs/swbd/s5b/ directory.
+# in the egs/swbd/s5c/ directory.
 
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.

@@ -25,7 +25,7 @@
 # Config:
 config=conf/config_opt
 . $config
-gmmdir=exp/tri4 # Take about 14 hours
+gmmdir=exp/tri4
 data_fmllr=data-fmllr-tri4
 stage=0 # resume training with --stage=N
 # End of config.
@@ -51,7 +51,7 @@ if [ $stage -le 0 ]; then
   utils/subset_data_dir_tr_cv.sh $dir ${dir}_tr90 ${dir}_cv10 || exit 1
 fi
 
-if [ $stage -le 1 ]; then # Take about 10 hours
+if [ $stage -le 1 ]; then 
   # Pre-train DBN, i.e. a stack of RBMs
   dir=exp/dnn5b_pretrain-dbn
   (tail --pid=$$ -F $dir/log/pretrain_dbn.log 2>/dev/null)& # forward log
@@ -60,7 +60,7 @@ if [ $stage -le 1 ]; then # Take about 10 hours
 fi
 
 
-if [ $stage -le 2 ]; then  # Take about 12 hours
+if [ $stage -le 2 ]; then  
   # Train the DNN optimizing per-frame cross-entropy.
   dir=exp/dnn5b_pretrain-dbn_dnn
   ali=${gmmdir}_ali_nodup
@@ -86,7 +86,7 @@ dir=exp/dnn5b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn5b_pretrain-dbn_dnn
 acwt=0.0909
 
-if [ $stage -le 3 ]; then # Alignments : about 15 hours, Lattices : about 17 hours
+if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:
   steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali || exit 1;
@@ -94,7 +94,7 @@ if [ $stage -le 3 ]; then # Alignments : about 15 hours, Lattices : about 17 hou
     --acwt $acwt $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
-if [ $stage -le 4 ]; then # Take about 9 hours
+if [ $stage -le 4 ]; then 
   # Re-train the DNN by 1 iteration of sMBR 
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 1 --acwt $acwt --do-smbr true \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
@@ -114,7 +114,7 @@ dir=exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats
 srcdir=exp/dnn5b_pretrain-dbn_dnn_smbr
 acwt=0.0909
 
-if [ $stage -le 5 ]; then # Alignments : about 15 hours, Lattices : about 19 hours 
+if [ $stage -le 5 ]; then 
   # First we generate lattices and alignments:
   steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali || exit 1;
@@ -122,7 +122,7 @@ if [ $stage -le 5 ]; then # Alignments : about 15 hours, Lattices : about 19 hou
     --acwt $acwt $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
-if [ $stage -le 6 ]; then # 17 hours
+if [ $stage -le 6 ]; then 
   # Re-train the DNN by 1 iteration of sMBR 
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --acwt $acwt --do-smbr true \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1

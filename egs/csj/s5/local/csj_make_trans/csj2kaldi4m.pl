@@ -5,6 +5,7 @@
 # Apache 2.0
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
+# This script is for making word list with morpheme and segment information.
 
 use utf8;
 use open IN => ":encoding(euc-jp)";
@@ -12,7 +13,7 @@ use open OUT => ":utf8";
 use open ":std";
 
 if (@ARGV != 3){
-    die "$0 id.sdb 4lex 4trans(word-pair)\n";
+    die "$0 id.sdb 4lex 4trans\n";
 }
 
 $sdb = $ARGV[0];
@@ -31,7 +32,7 @@ while (<>) {
     $time = $line[3]; # Time information for segment
     $word = $line[5]; # Word
     $num = $line[9]; # Number and point
-    ##About morpheme
+    ## About morpheme
     $pos = $line[11]; # Part Of Speech 
     $acf = $line[12]; # A Conjugated Form
     $kacf = $line[13]; # Kind of A Conjugated Form
@@ -186,7 +187,7 @@ while (<>) {
 	}
     }
     
-    # Remove unnecessary tag, "N:"
+    # Remove unnecessary tag and fix absurd pronuciation
     $pron =~ tr/[\x00-\x7F]//d;
     $pron =~ tr/\笑//d;
     $pron =~ tr/\息//d;

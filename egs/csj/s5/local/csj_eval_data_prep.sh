@@ -5,28 +5,26 @@
 # Apache 2.0
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
-#  Eval data set (each set contains 10 speakers) preparation 
+# Official evaluation data set (each set contains 10 speakers) preparation 
 
 # To be run from one directory above this script.
 
-# The input is two directory names (possibly the same) containing the 
-# official evaluation test set and transcripts.
-#
+# The input is directory name containing the official evaluation test set.
 
 if [ $# -ne 2 ]; then
-  echo "Usage: "`basename $0`" <transcription-dir> <eval_dev>"
+  echo "Usage: "`basename $0`" <transcription-dir> <eval_num>"
   echo "See comments in the script for more details"
   exit 1
 fi
 
-tdir=$1 # transcription file
-eval_dev=$2
+tdir=$1 
+eval_num=$2
 . path.sh 
 
-dir=data/local/$eval_dev
+dir=data/local/$eval_num
 mkdir -p $dir
 
-cat $tdir/$eval_dev/*/*-wav.list | sort > $dir/wav.flist # Using Academic lecture parts                                                                             
+cat $tdir/$eval_num/*/*-wav.list | sort > $dir/wav.flist
 n=`cat $dir/wav.flist | wc -l`
 
 
@@ -50,10 +48,10 @@ awk '{
       name=T[1]; stime=$2; etime=$3; 
       printf("%s_%07.0f_%07.0f",name, int(1000*stime), int(1000*etime));
       for(i=4;i<=NF;i++) printf(" %s", tolower($i)); printf "\n"
-}' $tdir/$eval_dev/*/*-trans.text | sort > $dir/transcripts_${eval_dev}.txt
+}' $tdir/$eval_num/*/*-trans.text | sort > $dir/transcripts_${eval_num}.txt
 
 # Remove option
-cat $dir/transcripts_${eval_dev}.txt \
+cat $dir/transcripts_${eval_num}.txt \
  | perl -ane 's:\<s\>\s::gi;
                s:\<\/s\>\s::gi;
                 print;' \
@@ -70,12 +68,11 @@ awk '{
        print segment " " spkid " " startf/1000 " " endf/1000
    }' < $dir/text > $dir/segments
 
-# create an utt2spk file that assumes each conversation side is
-# a separate speaker.
+# create an utt2spk file that assumes each conversation side is a separate speaker.
 awk '{segment=$1; split(segment,S,"[_]"); spkid=S[1]; print $1 " " spkid}' $dir/segments > $dir/utt2spk || exit 1;
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
-dest=data/$eval_dev
+dest=data/$eval_num
 mkdir -p $dest
 for x in wav.scp segments text utt2spk spk2utt; do
   cp $dir/$x $dest/$x
@@ -88,4 +85,4 @@ if [ $(wc -l < $dest/wav.scp) -ne 10 ]; then
   exit 1;
 fi
 
-echo "Completed preparation $eval_dev "
+echo "Completed preparation evaluation set $eval_num"

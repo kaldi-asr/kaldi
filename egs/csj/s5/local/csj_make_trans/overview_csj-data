@@ -9,6 +9,5 @@ excluded/	Same speaker data including evaluation data (e.g. A01M0056) ( *** Extr
 ## About each file
 VOL3/A01F0055
 	A01F0055-trans.text	Transcriptions (utterances with R-tags are removed)
-	A01F0055.trn		Transctiptions with R-tag
-	A01F0055.t		Information of time segmentation of each utterance with R-tag
 	A01F0055-wav.list	Path about existing wav file
+	A01F0055.4lex		File for making lexicon

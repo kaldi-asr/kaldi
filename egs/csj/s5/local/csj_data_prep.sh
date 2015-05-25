@@ -45,6 +45,8 @@ cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
 #cat $CSJ/dvd*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
 #cat $CSJ/dvd*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
 cat $CSJ/dvd{3,5,6,7,8,9,10}/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data 
+#cat $CSJ/dvd{3,5,6,7,8,9,10}/A*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" data
+
 n=`cat $dir/wav.flist | wc -l`
 
 [ $n -ne 986 ] && \
@@ -62,7 +64,7 @@ awk '{
       name=T[1]; stime=$2; etime=$3;
       printf("%s_%07.0f_%07.0f",name, int(1000*stime), int(1000*etime));
       for(i=4;i<=NF;i++) printf(" %s", tolower($i)); printf "\n"
-}' $CSJ/{dvd*,excluded}/*/*-trans.text |sort > $dir/transcripts1.txt # Set data for training language models
+}' $CSJ/{dvd*,excluded}/*/*-trans.text |sort > $dir/transcripts1.txt # This data is for training language models
 # Except evaluation set (30 speakers) 
 
 # test if trans. file is sorted
@@ -100,8 +102,7 @@ awk '{segment=$1; split(segment,S,"[_]"); spkid=S[1]; print $1 " " spkid}' $dir/
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
-# Copy stuff into its final locations [this has been moved from the format_data
-# script]
+# Copy stuff into its final locations.
 mkdir -p data/train
 for f in spk2utt utt2spk wav.scp text segments; do
   cp data/local/train/$f data/train/$f || exit 1;
