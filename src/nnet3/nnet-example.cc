@@ -1,7 +1,7 @@
-// nnet2/nnet-example.cc
+// nnet3/nnet-example.cc
 
-// Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
-//                2014  Vimal Manohar
+// Copyright 2012-2015    Johns Hopkins University (author: Daniel Povey)
+//                2014    Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,12 +18,27 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet2/nnet-example.h"
+#include "nnet3/nnet-example.h"
 #include "lat/lattice-functions.h"
 #include "hmm/posterior.h"
 
 namespace kaldi {
-namespace nnet2 {
+namespace nnet3 {
+
+void InputFeature::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<feat>");
+  WriteToken(os, binary, name);
+  WriteIndexVector(os, binary, indexes);
+  features.Write(os, binary);
+}
+
+void InputFeature::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<feat>");
+  ReadToken(is, binary, &name);
+  ReadIndexVector(is, binary, &indexes);
+  features.Read(is, binary);
+}
+
 
 // This function returns true if the example has labels which, for each frame,
 // have a single element with probability one; and if so, it outputs them to the

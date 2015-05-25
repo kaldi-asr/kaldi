@@ -1,7 +1,7 @@
-// nnet2/nnet-example.h
+// nnet3/nnet-example.h
 
-// Copyright 2012  Johns Hopkins University (author: Daniel Povey)
-//           2014  Vimal Manohar
+// Copyright 2012-2015  Johns Hopkins University (author: Daniel Povey)
+//                2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,26 +21,51 @@
 #ifndef KALDI_NNET2_NNET_EXAMPLE_H_
 #define KALDI_NNET2_NNET_EXAMPLE_H_
 
-#include "nnet2/nnet-nnet.h"
+#include "nnet3/nnet-nnet.h"
 #include "util/table-types.h"
 #include "lat/kaldi-lattice.h"
 #include "thread/kaldi-semaphore.h"
 
 namespace kaldi {
-namespace nnet2 {
+namespace nnet3 {
 
-/// NnetExample is the input data and corresponding label (or labels) for one
-/// or more frames of input, used for standard cross-entropy training of neural
-/// nets (and possibly for other objective functions).  In the normal case there
-/// will be just one frame, and one label, with a weight of 1.0.
+
+struct InputFeature {
+  /// the name of the input in the neural net; in simple setups it
+  /// will just be "input".
+  std::string name;
+
+  /// "indexes" is a vector the same length as features.NumRows(), explaining
+  /// the meaning of each row of the "features" matrix.  Note: the "n" values
+  /// in the indexes will always be zero here, and are not read/written.
+  std::vector<Index> indexes;
+  
+  /// The features.
+  CompressedMatrix features;
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
+};
+
+
+/// NnetExample is the input data and corresponding label (or labels) for one or
+/// more frames of input, used for standard cross-entropy training of neural
+/// nets (and possibly for other objective functions). 
 struct NnetExample {
 
-  /// The label(s) for each frame in a sequence of frames; in the normal case,
-  /// this will be just [ [ (pdf-id, 1.0) ] ], i.e. one frame with one label.
-  /// Top-level index is the frame index; then for each frame, a list of pdf-ids
-  /// each with its weight.
-  /// In some contexts, we will require that labels.size() == 1.
+  int32 t0;  // time-index corresponding to the first label in the sequence of
+             // labels.  Will normally be zero.
+  
+  /// "labels" are the labels for each frame in a sequence of frames;it is
+  /// indexed first by time-index t = t0 + 0, t0 + 1, .. and then is a list of
+  /// (pdf-id, weight).  When training on hard (Viterbi) labels, the normal
+  /// case, the inner vectors will have length one, with a single element with
+  /// weight 1.0.
   std::vector<std::vector<std::pair<int32, BaseFloat> > > labels;  
+
+  /// some inputs.  Normally there will be just one element in this vector.
+  std::vector<InputFeature> features;
   
   /// The input data, with NumRows() >= labels.size() + left_context; it
   /// includes features to the left and right as needed for the temporal context

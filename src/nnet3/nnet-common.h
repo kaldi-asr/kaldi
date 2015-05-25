@@ -62,7 +62,18 @@ struct Index {
   Index operator + (const Index &other) const {
     return Index(n+other.n, t+other.t, x+other.x);
   }
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &os, bool binary);
 };
+
+void WriteIndexVector(std::ostream &os, bool binary,
+                      const std::vector<Index> &vec);
+
+void ReadIndexVector(std::istream &os, bool binary,
+                     std::vector<Index> *vec);
+
 
 /* A Cindex is a pair of a node-index (i.e. the index of a NetworkNode) and an
    Index.  It's frequently used so it gets its own typedef.
