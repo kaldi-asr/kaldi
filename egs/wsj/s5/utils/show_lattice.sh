@@ -1,7 +1,10 @@
 #!/bin/bash
 
 format=pdf # pdf svg
-mode=display # display save
+mode=save # display save
+lm_scale=0.0
+acoustic_scale=0.0
+#end of config
 
 . utils/parse_options.sh
 
@@ -19,7 +22,7 @@ words=$3
 
 tmpdir=$(mktemp -d kaldi.XXXX); # trap "rm -r $tmpdir" EXIT # cleanup
 
-gunzip -c $lat | lattice-to-fst ark:- "scp,p:echo $uttid $tmpdir/$uttid.fst|" || exit 1;
+gunzip -c $lat | lattice-to-fst --lm-scale=$lm_scale --acoustic-scale=$acoustic_scale ark:- "scp,p:echo $uttid $tmpdir/$uttid.fst|" || exit 1;
 ! [ -s $tmpdir/$uttid.fst ] && \
   echo "Failed to extract lattice for utterance $uttid (not present?)" && exit 1;
 fstdraw --portrait=true --osymbols=$words $tmpdir/$uttid.fst | dot -T${format} > $tmpdir/$uttid.${format}
