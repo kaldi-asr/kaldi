@@ -29,16 +29,14 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "paste-post : paste N posterior streams.\n"
-        "Useful for multi-task or multi-lingual DNN trainig.\n"
-        "Usage: paste-post featlen-rspecifier dims-csl post1-rspecifier ... postN-rspecifier post-wspecifier\n"
+        "paste-post : paste N posterior streams (combine the posteriors while applying an offset\n"
+        "             to the integer labels in all but the 1st posterior stream)\n"
+        "Useful for multi-task or multi-lingual DNN training.\n"
+        "Usage: paste-post <featlen-rspecifier> <dims-csl> <post1-rspecifier> ... <postN-rspecifier> <post-wspecifier>\n"
         "e.g.:\n"
-        " post-concat featlen.ark N1:N2:N3 ark:post1.ark ... ark:postN.ark ark:pasted.ark\n";
+        " paste-post 'ark:feat-to-len $feats ark,t:-|' 1029:1124 ark:post1.ark ark:post2.ark ark:pasted.ark\n";
 
     ParseOptions po(usage);
-
-    bool one_of_m = true;
-    po.Register("one-of-m", &one_of_m, "Perform sanity check for 1-of-M encoding");
 
     po.Read(argc, argv);
 
@@ -54,7 +52,7 @@ int main(int argc, char *argv[]) {
 
     // read dims of input posterior streams
     std::vector<int32> stream_dims;
-    if (!kaldi::SplitStringToIntegers(stream_dims_str, ":", false, &stream_dims))
+    if (!kaldi::SplitStringToIntegers(stream_dims_str, ":,", false, &stream_dims))
       KALDI_ERR << "Invalid stream-dims string " << stream_dims_str;
     if (stream_count != stream_dims.size()) {
       KALDI_ERR << "Mismatch in input posterior-stream count " << stream_count
@@ -74,54 +72,46 @@ int main(int argc, char *argv[]) {
       posterior_reader[s].Open(po.GetArg(s+3));
     }
 
-    int32 num_done = 0, num_reject = 0;
+    int32 num_done = 0, num_err = 0;
     SequentialInt32Reader featlen_reader(featlen_rspecifier);
     PosteriorWriter posterior_writer(post_wspecifier);
 
     // main loop, posterior pasting happens here,
     for (; !featlen_reader.Done(); featlen_reader.Next()) {
+      bool ok = true;
       std::string utt = featlen_reader.Key();
       KALDI_VLOG(2) << "Processing " << utt;
       int32 num_frames = featlen_reader.Value();
       // Create output posteriors: 
       Posterior post(num_frames);
       // Fill posterior from input streams:
-      for (int32 s=0; s<stream_count; s++) {
-        if (posterior_reader[s].HasKey(utt)) {
-          const Posterior& post_s = posterior_reader[s].Value(utt);
-          KALDI_ASSERT(num_frames <= post_s.size());
-          for (int32 f=0; f<num_frames; f++) {
-            for (int32 i=0; i<post_s[f].size(); i++) {
-              int32 id = post_s[f][i].first;
-              BaseFloat val = post_s[f][i].second;
-              KALDI_ASSERT(id < stream_dims[s]);
-              post[f].push_back(std::make_pair(stream_offset[s] + id, val));
-            }
+      for (int32 s = 0; s < stream_count; s++) {
+        if (!posterior_reader[s].HasKey(utt)) {
+          KALDI_WARN << "No such utterance " << utt
+                     << " in set " << (s+1) << " of posteriors.";
+          ok = false;
+          break;
+        }
+        const Posterior& post_s = posterior_reader[s].Value(utt);
+        KALDI_ASSERT(num_frames <= post_s.size());
+        for (int32 f = 0; f < num_frames; f++) {
+          for (int32 i = 0; i < post_s[f].size(); i++) {
+            int32 id = post_s[f][i].first;
+            BaseFloat val = post_s[f][i].second;
+            KALDI_ASSERT(id < stream_dims[s]);
+            post[f].push_back(std::make_pair(stream_offset[s] + id, val));
           }
         }
       }
-      // perform format sanity check,
-      bool format_ok = true;
-      // a) one-of-m encoding
-      if (one_of_m) {
-        for (int32 f=0; f<num_frames; f++) {
-          if(post[f].size() != 1) {
-            format_ok = false; break;
-          }
-        }
+      if (ok) {
+        posterior_writer.Write(featlen_reader.Key(), post);
+        num_done++;
+      } else {
+        num_err++;
       }
-      // accept or reject?
-      if (!format_ok) {
-        num_reject++;
-        KALDI_VLOG(1) << "Rejecting " << utt << " due to wrong format.";
-        break;
-      }
-      // Store
-      posterior_writer.Write(featlen_reader.Key(), post);
-      num_done++;
     }
     KALDI_LOG << "Pasted posteriors for " << num_done << " sentences, "
-              << "rejected " << num_reject << " due to bad format.";
+              << "failed for " << num_err;
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
