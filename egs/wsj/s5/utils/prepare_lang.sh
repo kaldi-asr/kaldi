@@ -56,6 +56,7 @@ reverse=false
 share_silence_phones=false  # if true, then share pdfs of different silence 
                             # phones together.
 sil_prob=0.5
+phone_symbol_table=              # if set, use a specified phones.txt file.
 # end configuration sections
 
 . utils/parse_options.sh 
@@ -75,6 +76,9 @@ if [ $# -ne 4 ]; then
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
   echo "                                                     # all non-silence phones. "
   echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 <= silprob < 1]"
+  echo "     --phone-symbol-table <filename>                 # default: \"\"; if not empty, use the provided "
+  echo "                                                     # phones.txt as phone symbol table. This is useful "
+  echo "                                                     # if you use a new dictionary for the existing setup."
   exit 1;
 fi
 
@@ -107,6 +111,22 @@ if ! utils/validate_dict_dir.pl $srcdir >&/dev/null; then
   exit 1;
 fi
 
+# phones.txt file provided, we will do some sanity check here.
+if [[ ! -z $phone_symbol_table ]]; then
+  # Checks if we have position dependent phones
+  n1=`cat $phone_symbol_table | grep -v -P "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
+  n2=`cat $phone_symbol_table | grep -v -P "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
+  $position_dependent_phones && [ $n1 -eq $n2 ] &&\
+    echo "$0: Position dependent phones requested, but not in provided phone symbols" && exit 1;
+  ! $position_dependent_phones && [ $n1 -ne $n2 ] &&\
+      echo "$0: Position dependent phones not requested, but appear in the provided phones.txt" && exit 1;
+
+  # Checks if the phone sets match.
+  cat $srcdir/{,non}silence_phones.txt | awk -v f=$phone_symbol_table '
+  BEGIN { while ((getline < f) > 0) { sub(/((_[BEIS])|) [0-9]+$/, "", $0); phones[$0] = 1; }}
+  { for (x = 1; x <= NF; ++x) { if (!($x in phones)) {
+      print "Phone appears in the lexicon but not in the provided phones.txt: "$x; exit 1; }}}' || exit 1;
+fi
 
 if $position_dependent_phones; then
   # Create $tmpdir/lexicon.original from $srcdir/lexicon.txt by
@@ -210,9 +230,9 @@ else
 fi
 
 cat $srcdir/silence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
- awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/silence.txt
+  awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/silence.txt
 cat $srcdir/nonsilence_phones.txt | utils/apply_map.pl $tmpdir/phone_map.txt | \
- awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/nonsilence.txt
+  awk '{for(n=1;n<=NF;n++) print $n;}' > $dir/phones/nonsilence.txt
 cp $srcdir/optional_silence.txt $dir/phones/optional_silence.txt
 cp $dir/phones/silence.txt $dir/phones/context_indep.txt
 
@@ -253,8 +273,15 @@ echo $ndisambig > $tmpdir/lex_ndisambig
 ( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) >$dir/phones/disambig.txt
 
 # Create phone symbol table.
-echo "<eps>" | cat - $dir/phones/{silence,nonsilence,disambig}.txt | \
-  awk '{n=NR-1; print $1, n;}' > $dir/phones.txt 
+if [[ ! -z $phone_symbol_table ]]; then
+  start_symbol=`grep \#0 $phone_symbol_table | awk '{print $2}'`
+  echo "<eps>" | cat - $dir/phones/{silence,nonsilence}.txt | awk -v f=$phone_symbol_table '
+  BEGIN { while ((getline < f) > 0) { phones[$1] = $2; }} { print $1" "phones[$1]; }' | sort -k2 -g |\
+    cat - <(cat $dir/phones/disambig.txt | awk -v x=$start_symbol '{n=x+NR-1; print $1, n;}') > $dir/phones.txt 
+else
+  echo "<eps>" | cat - $dir/phones/{silence,nonsilence,disambig}.txt | \
+    awk '{n=NR-1; print $1, n;}' > $dir/phones.txt
+fi
 
 # Create a file that describes the word-boundary information for
 # each phone.  5 categories.
