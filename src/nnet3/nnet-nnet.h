@@ -35,13 +35,17 @@
 namespace kaldi {
 namespace nnet3 {
 
-// NetworkNode is used to represent, in a neural net, either an input of the
-// network, an output of the network, an input to a Component, or an instance of
-// a Component.
-// Note: for each instance of a component in the network, there are always
-// two nodes one of type kComponentInput and one of type kComponent, and the
-// kComponent comes directly after the corresponding kComponentInput.  So the
-// input to a component always comes from the network-node directly before it.
+/// NetworkNode is used to represent, in a neural net, either an input of the
+/// network, an output of the network, a Component, or a node that collects the
+/// input to the component.  Each Component has a corresponding node of type
+/// kComponentInput that is numbered preceding to the Component.  This may seem
+/// unintuitive but it makes the implementation a lot easier; any apparent waste
+/// can be optimized out after compilation.
+///
+/// Note: in the actual computation you can provide input not only to nodes of
+/// type kInput but also to nodes of type kComponent; this is useful in things
+/// like recurrent nets where you may want to split the computation up into
+/// pieces.
 struct NetworkNode {
   enum NodeType { kInput, kOutput, kComponent, kComponentInput } node_type;
 

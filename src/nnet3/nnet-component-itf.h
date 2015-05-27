@@ -64,8 +64,11 @@ enum ComponentProperties {
                            // setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kModifiesIndexes = 0x400  // true if the ModifyIndexes function might modify
+  kModifiesIndexes = 0x400,  // true if the ModifyIndexes function might modify
                             // the indexes.
+  kAllowNoOptionalDependencies = 0x800  // true if we are to treat a Cindex as
+                                 // computable even if no optional dependencies
+                                 // were computable.
 };
 
 

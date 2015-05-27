@@ -45,13 +45,18 @@ class Compiler {
   ComputationGraph graph_;
 
   // Some generic information about each step of the computation... a step is an
-  // instance of a NetworkNode, but a NetworkNode may in unrolled computations
-  // have multiple steps.  A single step may turn into no commands (for input
-  // nodes), or multiple commands.
+  // instance of a NetworkNode, but a NetworkNode may in general have multiple
+  // steps.  A single step may turn into no commands (for input nodes), or
+  // multiple commands.
   struct StepInfo {
     int32 node_index;  // network-node index
     int32 input_step;  // for nodes of type kComponent, the step-index of the
-    // step corresponding to the input.
+                       // step corresponding to the input (of type
+                       // kComponentInput).
+    bool is_input;  // true if this step corresponds to an input to the
+                    // network.  For steps corresponding to nodes of type kInput,
+                    // is_input will always be true; for steps of type kComponent,
+                    // it may or may not be true; otherwise it will be false.
     int32 value;  // matrix index of value that this step outputs.
     int32 deriv;  // matrix index of derivative at the output of this step; zero if
     // not used (note: index zero is reserved for the empty matrix).
@@ -74,8 +79,8 @@ class Compiler {
     // we're doing backprop).
     std::vector<int32> deriv_parts;
 
-    StepInfo(): node_index(-1), input_step(-1), value(0), deriv(0),
-                precomputed_indexes_index(0) { }
+    StepInfo(): node_index(-1), input_step(-1), is_input(false),
+                value(0), deriv(0), precomputed_indexes_index(0) { }
   };
 
   // this sets up cindex_id_to_location_.

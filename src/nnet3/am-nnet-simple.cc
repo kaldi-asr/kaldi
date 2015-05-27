@@ -74,5 +74,5 @@ void AmNnetSimple::Init(const Nnet &nnet) {
 }
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi

@@ -40,10 +40,15 @@ namespace nnet3 {
 /// ComputationGraph.  The GetCindexId functions perform the reverse mapping.
 struct ComputationGraph {
 
-  // This is the reverse mapping of cindex_to_cindex_id: it maps from cindex_id
-  // to Cindex.
+  // This is the mapping of cindex_id to Cindex.
   std::vector<Cindex> cindexes;
-  
+
+  // For each Cindex this tells us whether it is an input to the network.  This
+  // would not be necessary if we didn't allow the outputs of Components to be
+  // supplied as inputs [this may be useful for things like RNNs if we want to
+  // do the computation piece by piece].
+  std::vector<bool> is_input;
+
   // dependencies[cindex_id] gives you the list of other cindex_ids that this
   // particular cindex_id directly depends on to compute it.
   std::vector<std::vector<int32> > dependencies;
@@ -61,10 +66,11 @@ struct ComputationGraph {
   // will set this to the empty vector.
   std::vector<std::vector<bool> > optional;
 
-  // Maps a Cindex to an integer cindex_id.  If not present, then add it and set
+  // Maps a Cindex to an integer cindex_id.  If not present, then add it (with
+  // the corresponding "is_input" flag set to the value "input") and set
   // *is_new to true.  If present, set is_new to false and return the existing
   // cindex_id.
-  int32 GetCindexId(const Cindex &cindex, bool *is_new);
+  int32 GetCindexId(const Cindex &cindex, bool input, bool *is_new);
 
   // Const version of the above. Accepts no bool argument; it will return -1 if
   // the Cindex is not present, and the user should check for this.

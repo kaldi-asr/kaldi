@@ -23,14 +23,17 @@ namespace kaldi {
 namespace nnet3 {
 
 
-int32 ComputationGraph::GetCindexId(const Cindex &cindex, bool *is_new) {
+int32 ComputationGraph::GetCindexId(const Cindex &cindex,
+                                    bool input, bool *is_new) {
   typedef unordered_map<Cindex, int32, CindexHasher> map_type;
   int32 new_index = cindexes.size();  // we'll add this if we don't find it.
   std::pair<map_type::iterator, bool> p = cindex_to_cindex_id_.insert(
       std::pair<Cindex, int32>(cindex, new_index));
   if (p.second == true) {  // We added something to the hash.
     *is_new = true;
+    KALDI_ASSERT(is_input.size() == cindexes.size());
     cindexes.push_back(cindex);
+    is_input.push_back(input);
     // make room for this "dependencies" entry.
     dependencies.resize(new_index + 1);
     return new_index;
@@ -69,10 +72,12 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
     return;
   }
   temp_graph.cindexes.resize(new_num_cindex_ids);
+  temp_graph.is_input.resize(new_num_cindex_ids);  
   temp_graph.dependencies.resize(new_num_cindex_ids);
   for (int32 c = 0; c < new_num_cindex_ids; c++) {
     int32 d = new2old[c];
     temp_graph.cindexes[c] = cindexes[d];
+    temp_graph.is_input[c] = is_input[d];
     temp_graph.dependencies[c].reserve(dependencies[d].size());
     std::vector<int32>::const_iterator
         iter = dependencies[d].begin(), end = dependencies[d].end();
@@ -82,10 +87,11 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
         temp_graph.dependencies[c].push_back(new_dep);
     }
   }
-  // at this point, rather than setting up cindex_to_cindex_id_ on the
-  // temporary graph, we copy cindexes and dependencies to this graph,
-  // and then set up cindex_to_cindex_id_ locally.
+  // at this point, rather than setting up cindex_to_cindex_id_ on the temporary
+  // graph, we copy cindexes, is_input and dependencies to this graph, and then
+  // set up cindex_to_cindex_id_ locally.
   cindexes.swap(temp_graph.cindexes);
+  is_input.swap(temp_graph.is_input);
   dependencies.swap(temp_graph.dependencies);
   optional.clear();
   cindex_to_cindex_id_.clear();
@@ -111,8 +117,8 @@ void AddOutputToGraph(const ComputationRequest &request,
                 << request.outputs[i].name;
     for (int32 j = 0; j < request.outputs[i].indexes.size(); j++) {
       Cindex cindex(n, request.outputs[i].indexes[j]);
-      bool is_new;
-      graph->GetCindexId(cindex, &is_new);  // ignore the return value.
+      bool is_input = false, is_new;
+      graph->GetCindexId(cindex, is_input, &is_new);  // ignore the return value.
       KALDI_ASSERT(is_new && "Output index seems to be listed more than once");
       num_added++;
     }
@@ -121,8 +127,8 @@ void AddOutputToGraph(const ComputationRequest &request,
 }  
 
 
-// This function adds cindex_ids corresponding to each input
-// index, to the graph.
+// This function adds cindex_ids corresponding to each input index, to the
+// graph.
 void AddInputToGraph(const ComputationRequest &request,
                      const Nnet &nnet,                      
                      ComputationGraph *graph) {
@@ -130,19 +136,22 @@ void AddInputToGraph(const ComputationRequest &request,
   for (int32 i = 0; i < request.inputs.size(); i++) {
     int32 n = nnet.IndexOfNode(request.inputs[i].name);
     if (n == -1)
-      KALDI_ERR << "Network has no output with name "
+      KALDI_ERR << "Network has no input with name "
                 << request.inputs[i].name;
+    NetworkNode::NodeType t = nnet.GetNode(n).node_type;
+    KALDI_ASSERT(t == NetworkNode::kInput || t == NetworkNode::kComponent &&
+                 "Inputs to graph only allowed for Input and Component nodes.");
+    
     for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
       Cindex cindex(n, request.inputs[i].indexes[j]);
-      bool is_new;
-      graph->GetCindexId(cindex, &is_new);  // ignore the return value.
+      bool is_input = true, is_new;
+      graph->GetCindexId(cindex, is_input, &is_new);  // ignore the return value.
       KALDI_ASSERT(is_new && "Input index seems to be listed more than once");
       num_added++;
     }
   }
-  KALDI_ASSERT(num_added > 0 && "AddOutputToGraph: nothing to add.");
+  KALDI_ASSERT(num_added > 0 && "AddInputToGraph: nothing to add.");
 }  
-
 
 
 // This function outputs to dependencies_subset[c], for each cindex_id c,
@@ -169,33 +178,8 @@ static void ComputeDependenciesSubset(
 }
 
 
-// compute a sorted (and naturally unique) list of cindex_ids in the
-// graph that are inputs in the "request".
-static void ComputeInputCindexIds(
-    const ComputationRequest &request,
-    const Nnet &nnet,
-    const ComputationGraph &graph,
-    std::vector<int32> *inputs) {
-  inputs->clear();
-  for (int32 i = 0; i < request.inputs.size(); i++) {
-    int32 n = nnet.IndexOfNode(request.inputs[i].name);
-    if (n == -1)
-      KALDI_ERR << "Network has no input with name "
-                << request.inputs[i].name;
-    for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
-      Cindex cindex(n, request.inputs[i].indexes[j]);
-      int32 cindex_id = graph.GetCindexId(cindex);
-      if (cindex_id != -1)
-        inputs->push_back(cindex_id);
-    }
-  }
-  std::sort(inputs->begin(), inputs->end());
-  KALDI_ASSERT(IsSortedAndUniq(*inputs) &&
-               "Computation contains duplicate indexes.");
-}  
-
-// compute a sorted (and naturally unique) list of cindex_ids in the
-// graph that are outputs in the "request".
+/// computes a sorted (and naturally unique) list of cindex_ids in the graph
+/// that are outputs in the "request".
 static void ComputeOutputCindexIds(
     const ComputationRequest &request,
     const Nnet &nnet,
@@ -325,8 +309,15 @@ void ComputeComputationGraph(const ComputationRequest &request,
 
   while (!queue.empty()) {
     int32 cindex_id = queue.back();
-    queue.pop_back();    
+    queue.pop_back();
+    if (static_cast<int32>(graph->dependencies.size()) <= cindex_id) {
+      graph->dependencies.resize(cindex_id + 1);
+      graph->optional.resize(cindex_id + 1);
+    }
+    if (graph->is_input[cindex_id])
+      continue;
     Cindex cindex = graph->cindexes[cindex_id];
+
     // find the dependencies of this cindex.
     int32 n = cindex.first;
     const Index &index = cindex.second;
@@ -336,12 +327,9 @@ void ComputeComputationGraph(const ComputationRequest &request,
     std::vector<bool> is_optional;  // says whether each required cindex is
                                     // optional or not (only for kComponent).
     
-    // the following switch statement sets up "required_cindexes"
-    // which is a list of this cindex's dependencies.
+    // the following switch statement sets up "input_cindexes" and
+    // "is_optional".
     switch (node.node_type) {
-      case NetworkNode::kInput:
-        // once we reach input nodes there will be no dependencies, so nothing to do.        
-        break;
       case NetworkNode::kOutput: case NetworkNode::kComponentInput:
         {
           // desc describes how this node obtains its input from other nodes.
@@ -349,7 +337,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
           desc.GetInputCindexes(index, &input_cindexes);
         }
         break;
-      case NetworkNode::kComponent:
+      case NetworkNode::kComponent: {
         int32 c = node.u.component_index;
         const Component *component = nnet.GetComponent(c);
         std::vector<Index> input_indexes;
@@ -368,19 +356,19 @@ void ComputeComputationGraph(const ComputationRequest &request,
           input_cindexes[i].second = input_indexes[i];
         }
         break;
-    }
-    if (static_cast<int32>(graph->dependencies.size()) <= cindex_id) {
-      // the "dependencies" and "optional" arrays always maintain the same size.
-      graph->dependencies.resize(cindex_id + 1);
-      graph->optional.resize(cindex_id + 1);
+      }
+      case NetworkNode::kInput: default:
+        // for kInput, you should have hit the "continue" statement above.
+        KALDI_ERR << "Invalid node type";
     }
     std::vector<int32> &this_dep = graph->dependencies[cindex_id];
     std::vector<bool> &this_opt = graph->optional[cindex_id];
     int32 num_dependencies = input_cindexes.size();
     this_dep.resize(num_dependencies);
     for (size_t i = 0; i < num_dependencies; i++) {
-      bool is_new;
-      int32 dep_cindex_id = graph->GetCindexId(input_cindexes[i], &is_new);
+      bool is_input = false, is_new;
+      int32 dep_cindex_id = graph->GetCindexId(input_cindexes[i],
+                                               is_input, &is_new);
       this_dep[i] = dep_cindex_id;
       if (is_new)
         queue.push_back(dep_cindex_id);
@@ -395,19 +383,27 @@ void ComputeComputationGraph(const ComputationRequest &request,
 /// The function ComputeComputationGraphOrder() from nnet-graph.h gives us a map
 /// from the NetworkNode index to an index we call the "super-order" index:
 /// basically, nodes that are computed first have a lower super-order index, and
-/// those that are part of strongly connected components have the same
+/// all nodes that are part of strongly connected components have the same
 /// super-order index.
-/// The overall computation order that we compute, will respect this super-order.
+/// The overall computation order that we compute, will respect this super-order
+/// (except that outputs of nodes of type kComponent that are actually provided
+/// as inputs to the network, won't be subject to these limitations but will
+/// come first in the order)... we will just ignore the output of this function
+/// as it concerns cindex-ids that are provided as input to the network.
+///
 ///  \param nnet [in] The neural net
 ///  \param graph [in] The computation graph
 ///  \param cindex_id_to_super_order [out] A vector that maps cindex_id to
-///            super_order index
+///            super_order index, as obtained by adding one to the output of
+///            ComputeNnetComputationOrder; however, input cindex_ids (those for
+///            which is_input[cindex_id] is true) always map to 0.
 ///  \param by_super_order [out] The same information as
 ///            cindex_id_to_super_order, but in a different format: for each
 ///            super_order, a list of cindex_ids with that super_order index.
 ///  \param super_order_is_trivial [out] A vector of bool, indexed by
 ///            super_order index that's true if this super_order index corresponds
-///            to just a single NetworkNode.
+///            to just a single NetworkNode. (and also true for super_order index 0,
+///            which corresponds only to inputs to the network).
 static void ComputeSuperOrderInfo(
     const Nnet &nnet,    
     const ComputationGraph &graph,
@@ -415,12 +411,16 @@ static void ComputeSuperOrderInfo(
     std::vector<std::vector<int32 > > *by_super_order,
     std::vector<bool> *super_order_is_trivial) {
 
-  // node_to_super_order maps each nnet node to an index that tells
+  // node_to_super_order maps each nnet node to an index >= 0that tells
   // us what order to compute them in... but we may need to compute
   // a finer ordering at the cindex_id level in cases like RNNs.
   std::vector<int32> node_to_super_order;
-  ComputeGraphComputationOrder(nnet, &node_to_super_order);
-
+  ComputeNnetComputationOrder(nnet, &node_to_super_order);
+  // Add one to the super-order info, because we will be reserving
+  // zero for inputs to the network, and we don't want to have to
+  // prove that super-order-index 0 would correspond only to inputs.
+  for (int32 i = 0; i < node_to_super_order.size(); i++)
+    node_to_super_order[i]++;
   int32 num_nodes = nnet.NumNodes(),
       num_cindex_ids = graph.cindexes.size(),
       num_super_order_indexes = 1 + *std::max_element(node_to_super_order.begin(),
@@ -436,15 +436,16 @@ static void ComputeSuperOrderInfo(
 
   super_order_is_trivial->resize(num_super_order_indexes);
   for (int32 o = 0; o < num_super_order_indexes; o++) {
-    KALDI_ASSERT(super_order_to_num_nodes[o] > 0);
-    (*super_order_is_trivial)[o] = (super_order_to_num_nodes[o] == 1);
+    KALDI_ASSERT(o == 0 || super_order_to_num_nodes[o] > 0);
+    (*super_order_is_trivial)[o] = (super_order_to_num_nodes[o] <= 1);
   }
   
   cindex_id_to_super_order->resize(num_cindex_ids);
   by_super_order->resize(num_super_order_indexes);
   for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
     int32 node_index = graph.cindexes[cindex_id].first,
-        super_order_index = node_to_super_order[node_index];
+        super_order_index = (graph.is_input[cindex_id] ? 0 :
+                             node_to_super_order[node_index]);
     (*cindex_id_to_super_order)[cindex_id] = super_order_index;
     (*by_super_order)[super_order_index].push_back(cindex_id);
   }
@@ -496,7 +497,6 @@ void ComputeComputationOrder(
     by_order->reserve(50);  // minimize unnecessary copies.  50 is very
                             // arbitrarily chosen.
   }
-  
 
   std::vector<int32> this_order, next_order_candidates;
   int32 num_computed = 0, cur_order = 0;
@@ -531,7 +531,11 @@ void ComputeComputationOrder(
 
       // The next if-statement is an optimization: if for this super-order index
       // there is just one node, there will be just one order-index for this
-      // super-order index, so we can skip the rest of this loop.
+      // super-order index, so we can skip the rest of this loop.  Note: if
+      // super_order == 0, even if there is just one node, cindex_ids from
+      // multiple nodes may be put here because of the rule that cindex_ids which
+      // are inputs always get super_order 0.  But it's still true that they
+      // will have no dependencies, so we can still skip the code below.
       if (super_order_is_trivial[super_order])
         break;
       
@@ -578,9 +582,9 @@ void ComputeComputationOrder(
   KALDI_ASSERT(num_computed == num_cindex_ids);
 }
 
-// This helper function used in PruneComputationGraph returns true if
-// we can compute cindex_id from the cindex_ids that are already computable
-// (i.e. whose entries in the "computable" array are true).
+// This helper function used in PruneComputationGraph returns true if we can
+// compute cindex_id from the cindex_ids that are already computable (i.e. whose
+// entries in the "computable" array are true).
 static bool IsComputable(const Nnet &nnet,
                          const ComputationRequest &request,
                          const ComputationGraph &graph,                         
@@ -607,8 +611,18 @@ static bool IsComputable(const Nnet &nnet,
   // At this point, we would have already returned false if a non-optional
   // dependency couldn't be computed.  The rule at this point is: if any
   // dependency can be computed, or there are no dependencies at all,
-  // return true; else return false.  The reason to insist t
-  return (num_computable > 0 || num_dependencies == 0);
+  // return true.
+  if (num_computable > 0 || num_dependencies == 0)
+    return true;
+  // At this point we have established that there were optional dependencies
+  // and none of them could be computed.  The return status now depends on
+  // the component type.  We shouldn't have reached here at all if this node is
+  // not a Component, as there are no optional dependencies for descriptors.
+  int32 node_index = graph.cindexes[cindex_id].first;
+  const NetworkNode &node = nnet.GetNode(node_index);
+  KALDI_ASSERT(node.node_type == NetworkNode::kComponent);
+  const Component *component = nnet.GetComponent(node.u.component_index);
+  return (component->Properties()&kAllowNoOptionalDependencies) != 0;
 }
 
 
@@ -625,24 +639,22 @@ void PruneComputationGraph(const Nnet &nnet,
   std::vector<std::vector<int32> > depend_on_this(num_cindex_ids);
   ComputeGraphTranspose(graph->dependencies, &depend_on_this);
   
-  std::vector<bool> computable(num_cindex_ids, false);
-
-  std::vector<int32> input_cindex_ids;  // list of input elements.
-  ComputeInputCindexIds(request, nnet, *graph,
-                        &input_cindex_ids);
+  std::vector<bool> computable = graph->is_input;
 
   unordered_set<int32> is_queued;
   std::deque<int32> queue;  // if this is slow we could try making this a deque
                             // and popping from the front.
-  for (size_t i = 0; i < input_cindex_ids.size(); i++) {
-    int32 c = input_cindex_ids[i];
-    computable[c] = true;
-    for (size_t j = 0; j < depend_on_this[c].size(); j++) {
-      int32 d = depend_on_this[c][j];
-      // note: d cannot be an input since it has a dependency.      
-      KALDI_ASSERT(!computable[d]);      
-      if (is_queued.insert(d).second)  // if not already there..
-        queue.push_back(d);
+  for (int32 c = 0; c < num_cindex_ids; c++) {
+    // First iterate over only the input cindex_ids (which may be from nodes of
+    // type kInput, but also of type kComponent).
+    if (graph->is_input[c]) {
+      for (size_t j = 0; j < depend_on_this[c].size(); j++) {
+        int32 d = depend_on_this[c][j];
+        // note: d cannot be an input since it has a dependency.      
+        KALDI_ASSERT(!computable[d]);      
+        if (is_queued.insert(d).second)  // if not already there..
+          queue.push_back(d);
+      }
     }
   }
   while (!queue.empty()) {
@@ -662,7 +674,6 @@ void PruneComputationGraph(const Nnet &nnet,
       }
     }
   }
-
   CheckOutputsAreComputable(request, nnet, *graph, computable);
   
   // At this point we can forget the information about which dependencies were
@@ -677,14 +688,16 @@ namespace compute_computation_steps {
 
 /// Adds a "step" for each of the inputs in the ComputationRequest.
 /// Does this in the same order in which they were declared in
-/// the request (this won't matter at all).
-void AddInputSteps(const Nnet &nnet,
-                   const ComputationRequest &request,
-                   const ComputationGraph &graph,                   
-                   std::vector<std::vector<int32> > *by_step) {
+/// the request (this order won't matter at all).
+/// returns the total number of cindex_ids that correspond to inputs.
+int32 AddInputSteps(const Nnet &nnet,
+                    const ComputationRequest &request,
+                    const ComputationGraph &graph,                   
+                    std::vector<std::vector<int32> > *by_step) {
   KALDI_ASSERT(by_step->empty());
   by_step->reserve(50);  // will minimize unnecessary copies of vectors.
-  std::set<int32> all_nodes;  // to make sure nothing listed twice.
+  unordered_set<int32> all_nodes;  // to make sure nothing is listed twice.
+  int32 num_cindex_ids = 0;
   for (int32 i = 0; i < request.inputs.size(); i++) {
     int32 n = nnet.IndexOfNode(request.inputs[i].name);
     if (n == -1)
@@ -705,7 +718,9 @@ void AddInputSteps(const Nnet &nnet,
       KALDI_ASSERT(cindex_id != -1);  // would be code error.
       this_step[j] = cindex_id;
     }
+    num_cindex_ids += request.inputs[i].indexes.size();
   }
+  return num_cindex_ids;
 }
 
 
@@ -742,7 +757,7 @@ void AddOutputSteps(const Nnet &nnet,
 }
 
 /// Adds steps corresponding to everything that is not an input or output in the
-/// ComputataionRequest.  The way this works is: for each order-index in turn,
+/// ComputationRequest.  The way this works is: for each order-index in turn,
 /// it takes all Cindexes that don't correspond to either inputs or outputs of
 /// the network, and it separates them into groups based on node-index so that
 /// things with the same order but different node-index will be in separate
@@ -755,16 +770,18 @@ void AddIntermediateSteps(
     std::vector<std::vector<int32> > *by_step) {
   int32 num_order_indexes = by_order.size();
 
-  std::vector<char> is_input_or_output(nnet.NumNodes(), '\0');
+  std::vector<char> is_output(nnet.NumNodes(), '\0');
   for (int32 node_index = 0; node_index < nnet.NumNodes(); node_index++) {
     NetworkNode::NodeType t = nnet.GetNode(node_index).node_type;
-    if (t == NetworkNode::kInput || t == NetworkNode::kOutput)
-      is_input_or_output[node_index] = static_cast<char>(1);
+    if (t == NetworkNode::kOutput)
+      is_output[node_index] = static_cast<char>(1);
   }
-
-
-  std::vector<Cindex> cindexes;  
-  for (int32 order_index = 0; order_index < num_order_indexes; order_index++) {
+  
+  std::vector<Cindex> cindexes;
+  // We don't include order_index = 0, because all inputs to the network
+  // (whether the node index is type kInput or kComponent) will be assigned to
+  // order_index 0, and no non-inputs should be there (we checked this).
+  for (int32 order_index = 1; order_index < num_order_indexes; order_index++) {
     const std::vector<int32> &this_cindex_ids = by_order[order_index];
     
     cindexes.clear();
@@ -773,13 +790,14 @@ void AddIntermediateSteps(
     for (int32 i = 0; i < num_cindex_ids; i++) {
       int32 cindex_id = this_cindex_ids[i],
           node_index = graph.cindexes[cindex_id].first;
-      if (!is_input_or_output[node_index])
+      KALDI_ASSERT(!graph.is_input[cindex_id]);
+      if (!is_output[node_index])
         cindexes.push_back(graph.cindexes[cindex_id]);
     }
-    // now "cindexes" contains all Cindexes that are not from input or output nodes.
-    // Sorting this array gives us the ordering we want, where Cindexes from different
-    // node-ids are separated into contiguous ranges, and within each range, they
-    // are sorted by Index.
+    // now "cindexes" contains all Cindexes that are not from output nodes [and
+    // we already eliminated all inputs].  Sorting this array gives us the
+    // ordering we want, where Cindexes from different node-ids are separated
+    // into contiguous ranges, and within each range, they are sorted by Index.
     std::sort(cindexes.begin(), cindexes.end());
 
     std::vector<Cindex>::iterator iter = cindexes.begin(), end = cindexes.end();
@@ -821,7 +839,7 @@ void ModifyIndexes(const Nnet &nnet,
                    std::vector<std::vector<int32> > *by_step) {
   
   // cindex_id_to_step will map a cindex_id to the step it appears in.  For
-  // efficiency We only populate it with cindex_ids that are from a node of type
+  // efficiency we only populate it with cindex_ids that are from a node of type
   // kComponentInput whose corresponding Component modifies its input.  The
   // other entries are left undefined.  This means that we need to be a bit
   // careful when interpreting its values.
@@ -853,8 +871,9 @@ void ModifyIndexes(const Nnet &nnet,
     int32 cindex_id = cindex_ids.front();
     int32 node_index = graph.cindexes[cindex_id].first;
     const NetworkNode &node = nnet.GetNode(node_index);
-    if (node.node_type != NetworkNode::kComponent)
-      continue;  // nothing to do if not a Component.
+    if (node.node_type != NetworkNode::kComponent ||
+        graph.is_input[cindex_id])
+      continue;  // nothing to do if an input, or if not a Component.
     int32 c = node.u.component_index;
     const Component *component = nnet.GetComponent(c);
     if (!(component->Properties() & kModifiesIndexes))
@@ -866,10 +885,10 @@ void ModifyIndexes(const Nnet &nnet,
     KALDI_ASSERT(input_step >= 0 && input_step < step);
     int32 input_node_index = graph.cindexes[input_cindex_id].first;
     KALDI_ASSERT(input_node_index == node_index - 1);
-    // the following assert makes sure that the input_step is plausibly correct,
-    // which we're checking since the code that set up the cindex_id_to_step
-    // array was a bit complex and left un-needed elements undefined.  note that
-    // all cindex_ids in a step will share the node-index.
+    // the following assert makes sure that the input_step is plausibly correct-
+    // we check this because the code that set up the cindex_id_to_step array
+    // was a bit complex and left un-needed elements undefined.  note that all
+    // cindex_ids in a step will share the node-index.
     KALDI_ASSERT(graph.cindexes[(*by_step)[input_step].front()].first ==
                  input_node_index);
     std::vector<int32> &input_cindex_ids = (*by_step)[input_step];
@@ -906,7 +925,11 @@ void ComputeComputationSteps(
     std::vector<std::vector<int32> > *by_step) {
   using namespace compute_computation_steps;
   by_step->clear();
-  AddInputSteps(nnet, request, graph, by_step);
+  int32 num_input_cindex_ids = AddInputSteps(nnet, request, graph, by_step);
+  // If the following assert fails, it means that one of our assumptions was
+  // wrong and would indicate a problem in the code somewhere.  by_order[0] is
+  // supposed to contain all the inputs, and only inputs.
+  KALDI_ASSERT(num_input_cindex_ids == by_order[0].size());
   AddIntermediateSteps(nnet, request, graph, by_order, by_step);
   ModifyIndexes(nnet, request, graph, by_step);
   AddOutputSteps(nnet, request, graph, by_step);
