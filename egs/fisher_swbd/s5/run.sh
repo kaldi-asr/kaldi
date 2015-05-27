@@ -7,7 +7,6 @@
 mfccdir=mfcc
 set -e
 rescore=true
-
 # prepare fisher data and put it under data/train_fisher
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -16,6 +15,7 @@ local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/L
 ####local/fisher_data_prep.sh /mnt/matylda6/jhu09/qpovey/FISHER/LDC2005T19 /mnt/matylda2/data/FISHER/
 
 local/swbd1_data_download.sh /export/corpora3/LDC/LDC97S62
+
 # prepare dictionary and acronym mapping list
 local/fisher_swbd_prepare_dict.sh
 
@@ -26,8 +26,8 @@ local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
 
 
-
-utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang_nopp data/lang_nopp
+utils/prepare_lang.sh data/local/dict_nosp \
+    "<unk>" data/local/lang_nosp data/lang_nosp
 
 # LM for swbd could be used for decoding purposes
 #fisher_opt="--fisher /scail/group/deeplearning/speech/datasets/LDC2004T19-Fisher-Transcripts"
@@ -47,12 +47,12 @@ local/fisher_train_lms.sh
 LM=data/local/lm/3gram-mincount/lm_unpruned.gz
 srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang_nopp $LM data/local/dict/lexicon.txt data/lang_nopp_fsh_sw1_tg
+  data/lang_nosp $LM data/local/dict_nosp/lexicon.txt data/lang_nosp_fsh_sw1_tg
 
 LM_fg=data/local/lm/4gram-mincount/lm_unpruned.gz
 [ -f $LM_fg ] || rescore=false
 if [ $rescore ]; then
-  utils/build_const_arpa_lm.sh $LM_fg data/lang_nopp data/lang_nopp_fsh_sw1_fg
+  utils/build_const_arpa_lm.sh $LM_fg data/lang_nosp data/lang_nosp_fsh_sw1_fg
 fi
 
 # Prepare Eval2000 and RT-03 test sets
@@ -146,84 +146,88 @@ steps/train_deltas.sh --cmd "$train_cmd" \
     3200 30000 data/train_30k_nodup data/lang_nopp exp/mono0a_ali exp/tri1a || exit 1;
 #used to be 2500 20000
 (
- graph_dir=exp/tri1a/graph_nopp_fsh_sw1_tg
- utils/mkgraph.sh data/lang_nopp_fsh_sw1_tg exp/tri1a $graph_dir
+ graph_dir=exp/tri1a/graph_nosp_fsh_sw1_tg
+ utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri1a $graph_dir
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri1a/decode_dev_nopp_fsh_sw1_tg
+   $graph_dir data/eval2000 exp/tri1a/decode_dev_nosp_fsh_sw1_tg
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/rt03 exp/tri1a/decode_rt03_nopp_fsh_sw1_tg
+   $graph_dir data/rt03 exp/tri1a/decode_rt03_nosp_fsh_sw1_tg
 )&
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang_nopp exp/tri1a exp/tri1a_ali || exit 1;
+   data/train_30k_nodup data/lang_nosp exp/tri1a exp/tri1a_ali || exit 1;
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-    3200 30000 data/train_30k_nodup data/lang_nopp exp/tri1a_ali exp/tri1b || exit 1;
+    3200 30000 data/train_30k_nodup data/lang_nosp exp/tri1a_ali exp/tri1b || exit 1;
 #used to be 2500 20000
-(utils/mkgraph.sh data/lang_nopp_fsh_sw1_tg exp/tri1b exp/tri1b/graph
+(
+ graph_dir=exp/tri1b/graph_nosp_fsh_sw1_tg
+ utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri1b $graph_dir
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri1b/graph data/eval2000 exp/tri1b/decode_dev_nopp_fsh_sw1_tg
+   $graph_dir data/eval2000 exp/tri1b/decode_dev_nosp_fsh_sw1_tg
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri1b/graph data/rt03 exp/tri1b/decode_rt03_nopp_fsh_sw1_tg)&
+   $graph_dir data/rt03 exp/tri1b/decode_rt03_nosp_fsh_sw1_tg
+)&
 steps/align_si.sh --nj 50 --cmd "$train_cmd" \
-   data/train_100k_nodup data/lang_nopp exp/tri1b exp/tri1b_ali || exit 1;
+   data/train_100k_nodup data/lang_nosp exp/tri1b exp/tri1b_ali || exit 1;
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-    5500 90000 data/train_100k_nodup data/lang_nopp exp/tri1b_ali exp/tri2 || exit 1;
+    5500 90000 data/train_100k_nodup data/lang_nosp exp/tri1b_ali exp/tri2 || exit 1;
  #used to be 2500 20000 on 30k
 ( 
-  graph_dir=exp/tri2/graph_nopp_fsh_sw1_tg 
-  utils/mkgraph.sh data/lang_nopp_fsh_sw1_tg exp/tri2 $graph_dir || exit 1;
+  graph_dir=exp/tri2/graph_nosp_fsh_sw1_tg 
+  utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri2 $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri2/decode_dev_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri2/decode_dev_nosp_fsh_sw1_tg || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/rt03 exp/tri2/decode_rt03_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/rt03 exp/tri2/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
 
 # Train tri3a, the last speaker-independent triphone stage, 
 # on the whole Switchboard training set
 steps/align_si.sh --nj 100 --cmd "$train_cmd" \
-   data/train_swbd data/lang_nopp exp/tri2 exp/tri2_ali || exit 1;
+   data/train_swbd data/lang_nosp exp/tri2 exp/tri2_ali || exit 1;
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-    11500 200000 data/train_swbd data/lang_nopp exp/tri2_ali exp/tri3a || exit 1;
+    11500 200000 data/train_swbd data/lang_nosp exp/tri2_ali exp/tri3a || exit 1;
  #used to be 2500 20000
 
 ( 
-  graph_dir=exp/tri3a/graph_nopp_fsh_sw1_tg 
-  utils/mkgraph.sh data/lang_nopp_fsh_sw1_tg exp/tri3a $graph_dir || exit 1;
+  graph_dir=exp/tri3a/graph_nosp_fsh_sw1_tg 
+  utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3a $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri3a/decode_dev_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri3a/decode_dev_nosp_fsh_sw1_tg || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/rt03 exp/tri3a/decode_rt03_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/rt03 exp/tri3a/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
 
 # Train tri3b, which is LDA+MLLT on the whole Switchboard+Fisher training set
 steps/align_si.sh --nj 100 --cmd "$train_cmd" \
-  data/train_nodup data/lang_nopp exp/tri3a exp/tri3a_ali || exit 1;
+  data/train_nodup data/lang_nosp exp/tri3a exp/tri3a_ali || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
    --splice-opts "--left-context=3 --right-context=3" \
-   11500 400000 data/train_nodup data/lang_nopp exp/tri3a_ali exp/tri3b || exit 1;
+   11500 400000 data/train_nodup data/lang_nosp exp/tri3a_ali exp/tri3b || exit 1;
 ( 
-  graph_dir=exp/tri3b/graph_nopp_fsh_sw1_tg 
-  utils/mkgraph.sh data/lang_nopp_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
+  graph_dir=exp/tri3b/graph_nosp_fsh_sw1_tg 
+  utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/eval2000 exp/tri3b/decode_dev_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/eval2000 exp/tri3b/decode_dev_nosp_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $graph_dir data/rt03 exp/tri3b/decode_rt03_nopp_fsh_sw1_tg || exit 1;
+   $graph_dir data/rt03 exp/tri3b/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
 
-steps/get_prons.sh --cmd "$train_cmd" data/train_nodup data/lang_nopp exp/tri3b
+steps/get_prons.sh --cmd "$train_cmd" data/train_nodup data/lang_nosp exp/tri3b
 
 utils/dict_dir_add_pronprobs.sh --max-normalize true \
-  data/local/dict exp/tri3b/pron_counts_nowb.txt data/local/dict_pp
+  data/local/dict_nosp exp/tri3b/pron_counts_nowb.txt exp/tri3b/sil_counts_nowb.txt \
+  exp/tri3b/pron_bigram_counts_nowb.txt data/local/dict
 
-utils/prepare_lang.sh data/local/dict_pp "<unk>" data/local/lang data/lang
+utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 LM=data/local/lm/3gram-mincount/lm_unpruned.gz
 srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-  data/lang $LM data/local/dict_pp/lexicon.txt data/lang_fsh_sw1_tg
+  data/lang $LM data/local/dict/lexicon.txt data/lang_fsh_sw1_tg
 
 LM_fg=data/local/lm/4gram-mincount/lm_unpruned.gz
 if [ $rescore ]; then

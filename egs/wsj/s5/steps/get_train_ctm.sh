@@ -54,7 +54,7 @@ mkdir -p $dir/log
 if [ $stage -le 0 ]; then
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
-      linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
@@ -67,7 +67,7 @@ if [ $stage -le 0 ]; then
       exit 1;
     fi
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
-      linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
+      set -o pipefail '&&' linear-to-nbest "ark:gunzip -c $dir/ali.JOB.gz|" \
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \

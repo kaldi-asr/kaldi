@@ -6,6 +6,8 @@
 . ./path.sh
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
+nDecodeJobs=40
+nDecodeJobs=120
 
 #train DNN
 mfcc_fmllr_dir=mfcc_fmllr
@@ -34,11 +36,12 @@ $cuda_cmd $dnnDir/train_nnet.log \
 steps/train_nnet.sh  --hid-dim 2048 --hid-layers 5 --learn-rate 0.008 \
   $trainTr90 $trainCV data/lang $alignDir $alignDir $dnnDir || exit 1;
 
-steps/decode_nnet.sh --nj $nDecodeJobs --cmd "$decode_cmd" --config conf/decode_dnn.config \
-  --nnet $dnnDir/final.nnet --acwt 0.08 $baseDir/graph data/test_fmllr $dnnDir/decode || exit 1;
+steps/decode_nnet.sh --nj $nDecodeJobs --cmd "$decode_cmd" \
+  --config conf/decode_dnn.config --nnet $dnnDir/final.nnet \
+  --acwt 0.08 $baseDir/graph data/test_fmllr $dnnDir/decode
 
 #
-steps/nnet/align.sh --nj $nJobs --cmd "$train_cmd" data/train_fmllr data/lang \
+steps/nnet/align.sh --nj $nDecodeJobs --cmd "$train_cmd" data/train_fmllr data/lang \
   $dnnDir $align_dnnDir || exit 1;
 
 steps/nnet/make_denlats.sh --nj $nJobs --cmd "$train_cmd" --config conf/decode_dnn.config --acwt 0.1 \
@@ -53,5 +56,7 @@ for n in 1 2 3 4 5 6; do
   --nnet $dnnMPEDir/$n.nnet --acwt 0.08 \
   $baseDir/graph data/test_fmllr $dnnMPEDir/decode_test_it$n || exit 1;
 done
+
+echo DNN success
 # End of DNN
 

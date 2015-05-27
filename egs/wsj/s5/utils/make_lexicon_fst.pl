@@ -75,6 +75,11 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
   while (<L>) {
     @A = split(" ", $_);
     @A == 0 && die "Empty lexicon line.";
+    foreach $a (@A) {
+      if ($a eq "<eps>") {
+        die "Bad lexicon line $_ (<eps> is forbidden)";
+      }
+    }
     $w = shift @A;
     if (! $pron_probs) {
       $pron_cost = 0.0;

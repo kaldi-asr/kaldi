@@ -1,0 +1,1 @@
+../../../wsj/s5/local/score_mbr.sh

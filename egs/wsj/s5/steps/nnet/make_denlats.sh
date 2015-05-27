@@ -180,8 +180,11 @@ else
 fi
 
 #2) Generate 'scp' for reading the lattices
+# make $dir an absolute pathname.
+[ '/' != ${dir:0:1} ] && dir=$PWD/$dir
 for n in `seq $nj`; do
-  find $dir/lat${n} -name "*.gz" | awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' 
-done >$dir/lat.scp
+  find $dir/lat${n} -name "*.gz" | perl -ape 's:.*/([^/]+)\.gz$:$1 gunzip -c $& |:; '
+done | sort >$dir/lat.scp
+[ -s $dir/lat.scp ] || exit 1
 
 echo "$0: done generating denominator lattices."

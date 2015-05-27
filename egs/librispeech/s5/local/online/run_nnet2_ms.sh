@@ -168,10 +168,30 @@ if [ $stage -le 13 ]; then
   done
 fi
 
+if [ $stage -le 14 ]; then
+  # Creates example data dir.
+  local/prepare_example_data.sh data/test_clean/ data/test_clean_example
+
+  # Copies example decoding script to current directory.
+  cp local/decode_example.sh .
+
+  other_files=data/local/lm/lm_tgsmall.arpa.gz
+  other_files="$other_files decode_example.sh"
+  other_dirs=data/test_clean_example/
+
+  dist_file=librispeech_`basename ${dir}_online`.tgz
+  utils/prepare_online_nnet_dist_build.sh \
+    --other-files "$other_files" --other-dirs "$other_dirs" \
+    data/lang ${dir}_online $dist_file
+
+  rm -rf decode_example.sh
+  echo "NOTE: If you would like to upload this build ($dist_file) to kaldi-asr.org please check the process at http://kaldi-asr.org/uploads.html"
+fi
+
 exit 0;
 ###### Comment out the "exit 0" above to run the multi-threaded decoding. #####
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # Demonstrate the multi-threaded decoding.
   test=dev_clean
   steps/online/nnet2/decode.sh --threaded true \
@@ -180,7 +200,7 @@ if [ $stage -le 14 ]; then
     ${dir}_online/decode_${test}_tgsmall_utt_threaded || exit 1;
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   # Demonstrate the multi-threaded decoding with endpointing.
   test=dev_clean
   steps/online/nnet2/decode.sh --threaded true --do-endpointing true \
@@ -189,7 +209,7 @@ if [ $stage -le 15 ]; then
     ${dir}_online/decode_${test}_tgsmall_utt_threaded_ep || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 17 ]; then
   # Demonstrate the multi-threaded decoding with silence excluded
   # from iVector estimation.
   test=dev_clean

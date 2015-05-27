@@ -72,7 +72,7 @@ else
   list=$list" tr05_simu_noisy dt05_simu_noisy"
 fi
 mfccdir=mfcc
-for x in $list; do
+for x in $list; do 
   steps/make_mfcc.sh --nj $nj \
     data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -118,15 +118,15 @@ for train in tr05_multi_noisy tr05_orig_clean; do
 
   utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_$train exp/tri3b_$train/graph_tgpr_5k || exit 1;
 
-  # if you want to know the result of the close talk microphone, plese try the following
+  # if you want to know the result of the close talk microphone, plese try the following 
   # decode close speech
-  #steps/decode_fmllr.sh --nj 4 \
+  #steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
   # decode noisy speech
-  steps/decode_fmllr.sh --nj 4 \
+  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
     exp/tri3b_$train/graph_tgpr_5k data/dt05_real_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_real_noisy &
   # decode simu speech
-  steps/decode_fmllr.sh --nj 4 \
+  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
     exp/tri3b_$train/graph_tgpr_5k data/dt05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_simu_noisy &
 done
 wait
@@ -134,6 +134,6 @@ wait
 # get the best scores
 #for train in tr05_multi_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
 for train in tr05_multi_noisy tr05_orig_clean; do
-  local/chime3_calc_wers.sh exp/tri3b_$train noisy \
-      | tee exp/tri3b_$train/best_wer_noisy.result
+  local/chime3_calc_wers.sh exp/tri3b_$train noisy > exp/tri3b_$train/best_wer_noisy.result
+  head -n 12 exp/tri3b_$train/best_wer_noisy.result
 done

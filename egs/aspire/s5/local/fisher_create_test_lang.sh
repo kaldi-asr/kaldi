@@ -57,5 +57,8 @@ fsttablecompose data/lang/L_disambig.fst data/lang_test/G.fst | \
    fstisstochastic || echo "[log:] LG is not stochastic"
 
 
+utils/build_const_arpa_lm.sh \
+    data/local/lm/4gram-mincount/lm_unpruned.gz data/lang data/lang_test_fg
+
 echo "$0 succeeded"
 

@@ -3,69 +3,82 @@
 # studio (for cygwin installation, see the instructions 
 # in ../INSTALL).
 
-# NOTE added in Jan 2012.  These instructions are woefully out of date.
-# The command below
-#  cp minimize.h partition.h openfstwin-1.2.6-src/openfst-1.2/src/include/fst
-# will not work because those files were removed from recent versions of
-# the repository and replaced by a patch file, which is hard to interpret
-# on Windows.  [Note: the command 
-#  svn up -r 500 minimize.h partition.h
-# seems to work to retreive them, although I'm not sure if that's a suitable
-# version number, it was just a guess.
-# It has been reported to me that the .proj file generated
-# by the scripts below do not work on Visual Studio 2010 (version issue?).
-# Also we have not been checking that the code compiles in Visual Studio.
-# If anyone would like to maintain the Windows setup, we would like that,
-# but unfortunately, the situation right now is that it is not being
-# maintained.
+#NOTE: These instructions are valid May 2015 and are tested only for MKL
+#NOTE: The build process were validated using MSVS2013 and partially MSVS2015-rc
+#NOTE: We support only openfst-1.3.x for now.
+#NOTE: I suggest to have git installed -- not only because we will 
+#      use it to download the source codes (you could download archives
+#      instead of it), but also because the windows version comes
+#      with a bunch of useful utilities. 
+#NOTE: The examples will assume you have installed the git for windows
+#      and during the installation you chose the GIT Shell to install as well.
+#      Moreover, all the commands are issued from the same session
 
-(A) Installing the Windows version of OpenFst.
-  This is maintained by Paul Dixon; it has some small code changes versus
-  the main version of OpenFst, and a Visual Studio solution.
+1) Checkout Kaldi trunk, either using the svn from the url
+   https://svn.code.sf.net/p/kaldi/code/trunk
+   or using git from 
+   https://github.com/kaldi-asr/kaldi.git
+   Example:
+     $ git clone https://github.com/kaldi-asr/kaldi.git kaldi
 
-# The next few lines would be executed from cygwin but it's
-# pretty obvious what you would have to do from Windows.
-cd ../tools
-wget http://openfst.cs.nyu.edu/twiki/pub/Contrib/OpenFstWin/openfstwin-1.2.6-src.zip
-unzip openfstwin-1.2.6-src.zip 
-# apply patches to minimization.
-cp minimize.h partition.h openfstwin-1.2.6-src/openfst-1.2/src/include/fst
+2) enter the (kaldi)/tools directory in the freshly 
+   checked-out kaldi repo. All following actions should
+   be taken in the tools dir
+   Example:
+     $ cd (kaldi)/tools
+	 (kaldi)/tools$ pwd
+   
+   
+2a) Use git to clone the OpenFST(win) from
+   https://github.com/jtrmal/openfstwin-1.3.4.git
+   Example:
+     (kaldi)/tools$ git clone https://github.com/jtrmal/openfstwin-1.3.4.git openfst
+   
+   
+2b) Download pthread-win32 (or wget or curl)
+   https://sourceforge.net/projects/pthreads4w/
+     (kaldi)/tools$ wget http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
+	 (kaldi)/tools$ mkdir pthreads; cd pthreads
+	 (kaldi)/tools/pthreads$ unzip ../pthreads-w32-2-9-1-release.zip
 
-open the solution in openfstwin-1.2.6-src/ and build with Visual Studio.  Note:
-you should compile in both Release and Debug mode if you will want to compile
-Kaldi in both Release and Debug mode (VS doesn't let you mix and match).  But
-start with Debug initially; Release mode compilation takes a while.  For FST
-algorithms in particular, code compiled in Debug mode on Windows can be very slow
-(e.g. hundreds of times slower than Release mode, for some code; you can see this
-with Kaldi's fstext-utils-test.exe).  Presumably this is due to the extra
-checking that Windows does for STL types in Debug mode.
+2c) Use patch (or you can use git patch) to patch the OpenFST(win)
+   patch location tools/extras/openfstwin-1.3.4.patch,
+   Example:
+     (kaldi)/tools$ cd openfst
+	 (kaldi)/tools/openfst$ patch -p1 <../extras/openfstwin-1.3.4.patch 
 
+3)  Open the OpenFST solution in VS -- 
+   for VS 2013, the correct solution is in VS2012 directory
+   for VS 2014, the correct solution is in VS2014 directory
+   switch the configuration to debug|x64 and build the solution
+   The same for configuration release|x64
+   If either of the two won't build, you should stop here and start figuring what's different!
+
+4)  Enter the (kaldi)/windows directory
+   Example:
+	 (kaldi)/tools/openfst$ cd ../../windows
+	 (kaldi)/windows $ pwd
+	 
+4a) modify the file variables.props to reflect 
+    the correct paths, using your favorite text editor.
+	Don't worry, it's a text file, even though you have to be 
+	careful to keep the structure itself intact
+	(kaldi)/windows $ vim variables.props
+
+4b) call the script that generates the MSVC solution
+	i.e.
+	generate_solution.pl --vsver <default|vs2013|vs2015>
+	i.e. for example
+	generate_solution.pl --vsver vs2013
+
+5)  Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build
+   Expect ~8 projects to fail, majority of them will fail because of missing include "portaudio.h"
+
+------  	
+NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the README.ATLAS)
 (B) either
    (i) compile ATLAS under cygwin [see INSTALL.atlas] and copy
   kaldiwin_atlas.props  to kaldiwin.props
-
-or (ii) obtain Intel's MKL library (which costs money; see INSTALL.mkl)
-  and copy kaldiwin_mkl.props to kaldiwin.props
-   
-(C) Generate the Visual Studio 2010 solution file
-
-You can do this from cygwin or DOS.
-
-Before going to the next step, be sure that you created the file
-kaldiwin.props as described above.
-
-In cygwin, cd to one level above this file (cd ..) and type
-windows/generate_solution.pl
-
-or:
-
-From the Windows command shell, you have to have ActiveState perl installed, or
-some other Windows version of perl.  cd to one level above this one, and type
-
- perl windows/generate_solution.pl
-
-This generates a solution file in ../kaldiwin_vs10_auto/kaldiwin_vs10.sln
-which can be interpreted by Visual Studio 2010.
 
 (D)
 If you had installed ATLAS, you next have to do this:

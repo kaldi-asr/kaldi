@@ -26,6 +26,21 @@ if [ $stage -le 1 ]; then
 
   for datadir in train dev test; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+    if [ "$datadir" == "train" ]; then
+      dir=data/train_hires
+      cat $dir/wav.scp | python -c "
+import sys, os, subprocess, re, random
+scale_low = 1.0/8
+scale_high = 2.0
+for line in sys.stdin.readlines():
+  if len(line.strip()) == 0:
+    continue
+  print '{0} sox --vol {1} -t wav - -t wav - |'.format(line.strip(), random.uniform(scale_low, scale_high))
+"| sort -k1,1 -u  > $dir/wav.scp_scaled || exit 1;
+     mv $dir/wav.scp $dir/wav.scp_nonorm
+     mv $dir/wav.scp_scaled $dir/wav.scp
+    fi
+
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
     steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;

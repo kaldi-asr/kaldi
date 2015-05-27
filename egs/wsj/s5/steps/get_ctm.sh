@@ -60,7 +60,7 @@ if [ $stage -le 0 ]; then
 
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/score_LMWT/ '&&' \
+      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
       nbest-to-ctm ark:- - \| \
@@ -73,7 +73,7 @@ if [ $stage -le 0 ]; then
     fi
 
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/score_LMWT/ '&&' \
+      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
       lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
       nbest-to-ctm ark:- - \| \

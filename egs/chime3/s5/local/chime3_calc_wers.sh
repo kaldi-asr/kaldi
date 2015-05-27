@@ -52,6 +52,7 @@ for task in simu real; do
     echo ""
     echo "-------------------"
 done
+echo ""
 # for spreadsheet cut&paste
 for task in simu real; do
     rdir=$dir/decode_tgpr_5k_dt05_${task}_$enhan
@@ -63,3 +64,13 @@ for task in simu real; do
 done
 cut -f 2 -d" " $dir/log/best_wer_$enhan
 echo $lmw
+
+echo "-------------------"
+echo "1-best transcription"
+echo "-------------------"
+for task in simu real; do
+    rdir=$dir/decode_tgpr_5k_dt05_${task}_$enhan
+    cat $rdir/scoring/$lmw.tra \
+	| utils/int2sym.pl -f 2- $rdir/../graph_tgpr_5k/words.txt \
+	| sed s:\<UNK\>::g
+done

@@ -39,6 +39,12 @@ fi
 local/online/run_nnet2_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 6 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] &&\
+    [ ! -d $dir/egs/storage ] && [ -z $common_egs_dir ]; then
+    utils/create_split_dir.pl \
+     /export/b0{4,5,6,7}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+  fi
+
   steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
     --num-epochs 6 --num-jobs-initial 3 --num-jobs-final 16 \
     --num-hidden-layers 4 --splice-indexes "$splice_indexes" \

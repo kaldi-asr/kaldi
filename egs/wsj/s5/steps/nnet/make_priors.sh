@@ -57,7 +57,7 @@ D=$nndir
 feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 # apply-cmvn (optional),
 [ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
-[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$srcdata/utt2spk scp:$srcdata/cmvn.scp ark:- ark:- |"
+[ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/utt2spk scp:$sdata/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
 #
