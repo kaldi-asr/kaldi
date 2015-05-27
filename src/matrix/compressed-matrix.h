@@ -169,6 +169,42 @@ class CompressedMatrix {
 
 };
 
+/// This class is a wrapper that enables you to store a matrix and compress it,
+/// or not, and write it to disk in its current state (maybe compressed or maybe
+/// not).  Useful when you want to be able to do I/O and configure whether or
+/// not you want the data to be compressed.  Note: if you write in text form,
+/// all reads will generate an uncompressed matrix.
+class PossiblyCompressedMatrix {
+
+  void Compress();  // Compress, if currently uncompressed.
+
+  void Uncompress();  // Uncompress, if currently compressed.
+
+  void Write(std::ostream &os, bool binary) const;
+  
+  void Read(std::istream &is, bool binary);
+
+  void Set(const Matrix<BaseFloat> &mat,
+           bool compress);
+
+  void GetMatrix(Matrix<BaseFloat> *mat) const;
+
+  int32 NumRows() const;
+
+  int32 NumCols() const;
+  
+  PossiblyCompressedMatrix(const Matrix<BaseFloat> &mat,
+                           bool compress = false);
+  PossiblyCompressedMatrix() { }
+  // Copy constructor
+  PossiblyCompressedMatrix(const PossiblyCompressedMatrix &other);
+  // Assignment operator.
+  PossiblyCompressedMatrix &operator =(const PossiblyCompressedMatrix &other);
+ private:
+  Matrix<BaseFloat> mat_;
+  CompressedMatrix cmat_;
+};
+
 
 /// @} end of \addtogroup matrix_group
 
