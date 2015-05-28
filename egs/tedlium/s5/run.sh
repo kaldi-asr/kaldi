@@ -58,16 +58,16 @@ fi
 
 # Train
 if [ $stage -le 3 ]; then
-  #steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
-  #  data/train_10kshort_nodup data/lang_nosp exp/mono0a || exit 1
+  steps/train_mono.sh --nj 20 --cmd "$train_cmd" \
+    data/train_10kshort_nodup data/lang_nosp exp/mono0a || exit 1
 
-  #steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  #  data/train data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1
 
-  #steps/train_deltas.sh --cmd "$train_cmd" \
-  #  2500 30000 data/train data/lang_nosp exp/mono0a_ali exp/tri1 || exit 1
+  steps/train_deltas.sh --cmd "$train_cmd" \
+    2500 30000 data/train data/lang_nosp exp/mono0a_ali exp/tri1 || exit 1
 
-  #utils/mkgraph.sh data/lang_nosp_test exp/tri1 exp/tri1/graph_nosp || exit 1
+  utils/mkgraph.sh data/lang_nosp_test exp/tri1 exp/tri1/graph_nosp || exit 1
 
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
     --num-threads 4 --parallel-opts "--num-threads 4" \
