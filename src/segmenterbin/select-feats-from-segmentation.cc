@@ -101,16 +101,20 @@ int main(int argc, char *argv[]) {
 
       Matrix<BaseFloat> feats_out(feats_in.NumRows(), feats_in.NumCols());
       int32 j = 0;
-      for (std::forward_list<Segment>::const_iterator it = seg.Begin();
+      for (SegmentList::const_iterator it = seg.Begin();
             it != seg.End(); ++it) {
         if (it->Label() != select_label) continue;
-        SubMatrix<BaseFloat> this_feats_in(feats_in, it->start_frame, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
-        SubMatrix<BaseFloat> this_feats_out(feats_in, j, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
+        const SubMatrix<BaseFloat> this_feats_in(feats_in, it->start_frame, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
+        SubMatrix<BaseFloat> this_feats_out(feats_out, j, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
         this_feats_out.CopyFromMat(this_feats_in);
+        j += this_feats_in.NumRows();
         num_frames_selected += this_feats_in.NumRows();
       }
+
+      feats_out.Resize(j, feats_in.NumCols(), kCopyData);
       num_frames += feats_in.NumRows();
 
+      feats_writer.Write(key, feats_out);
       num_done++;
     }
 

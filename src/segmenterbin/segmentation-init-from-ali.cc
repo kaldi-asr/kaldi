@@ -34,9 +34,9 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
+//SegmentationOptions opts;
 
-    opts.Register(&po);
+    //opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -45,15 +45,15 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    std::vector<int32> merge_labels;
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
+    //std::vector<int32> merge_labels;
+    //if (opts.merge_labels_csl != "") {
+    //  if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
+    //        &merge_labels)) {
+    //    KALDI_ERR << "Bad value for --merge-labels option: "
+    //      << opts.merge_labels_csl;
+    //  }
+    //  std::sort(merge_labels.begin(), merge_labels.end());
+    //}
 
     std::string ali_rspecifier = po.GetArg(1),
         segmentation_wspecifier = po.GetArg(2);
@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
     
     int32 num_done = 0;
     int64 num_segmentations = 0;
+
+    std::vector<int64> frames_count_per_class;
 
     for (; !alignment_reader.Done(); alignment_reader.Next()) {
       std::string key = alignment_reader.Key();
@@ -77,16 +79,23 @@ int main(int argc, char *argv[]) {
           if (state != -1) {
             seg.Emplace(start_frame, i-1, state);
             num_segmentations++;
+            if (frames_count_per_class.size() <= state) {
+              frames_count_per_class.resize(state + 1, 0);
+            }
+            frames_count_per_class[state] += i - start_frame;
           }
           start_frame = i;
           state = alignment[i];
         }
       }
       seg.Emplace(start_frame, alignment.size()-1, state);
-      num_segmentations++;
-      if (opts.merge_labels_csl != "") {
-        seg.MergeLabels(merge_labels, opts.merge_dst_label);
+      if (frames_count_per_class.size() <= state) {
+        frames_count_per_class.resize(state + 1, 0);
       }
+      frames_count_per_class[state] += alignment.size() - start_frame;
+      
+      num_segmentations++;
+      
       segmentation_writer.Write(key, seg);
       num_done++;
     }
@@ -94,6 +103,8 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Processed " << num_done << " utterances; "
               << "wrote "
               << num_segmentations << " segmentations.";
+    KALDI_LOG << "Number of frames for the different classes are : ";
+    WriteIntegerVector(KALDI_LOG, false, frames_count_per_class);
 
   } catch(const std::exception &e) {
     std::cerr << e.what();

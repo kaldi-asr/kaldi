@@ -36,17 +36,17 @@ int main(int argc, char *argv[]) {
 
     int32 top_select_label = 3, bottom_select_label = 1;
     int32 reject_label = 4;
-    int32 num_bins = 100, num_top_frames = 10000, num_bottom_frames = 2000;
+    int32 num_top_frames = 10000, num_bottom_frames = 2000;
     int32 window_size = 100, min_remainder = 50;
+    bool remove_rejected_frames = false; 
 
     SegmentationOptions opts;
+    HistogramOptions hist_opts;
+
     int32 &src_label = opts.merge_dst_label;
 
     po.Register("src-label", &src_label, "Select top segments of only this "
                 " class label");
-    po.Register("num-bins", &num_bins, "Number of bins in the histogram "
-                "created using the scores. Use larger number of bins to "
-                "make a finer selection");
     po.Register("num-top-frames", &num_top_frames, "Number of frames to "
                 "select from the top half");
     po.Register("num-bottom-frames", &num_bottom_frames, "Number of frames to "
@@ -62,7 +62,10 @@ int main(int argc, char *argv[]) {
                 "this size");
     po.Register("min-window-remainder", &min_remainder, "Do not split segment "
                 "if final piece is smaller than this size");
+    po.Register("remove-rejected-frames", &remove_rejected_frames, "If true, "
+                "then remove the chunks that are not selected");
     opts.Register(&po);
+    hist_opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -91,7 +94,7 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReader scores_reader(scores_rspecifier);
     SegmentationWriter segmentation_writer(segmentation_wspecifier);
     
-    int64 num_done = 0, num_err = 0, num_select_top = 0, num_select_bottom = 0;
+    int64 num_done = 0, num_err = 0, num_selected_top = 0, num_selected_bottom = 0;
 
     for (; !segmentation_reader.Done(); segmentation_reader.Next()) {
       std::string key = segmentation_reader.Key();
@@ -123,22 +126,36 @@ int main(int argc, char *argv[]) {
       out_seg.SplitSegments(window_size, min_remainder);
       
       HistogramEncoder hist_encoder;
-      out_seg.CreateHistogram(src_label, scores, num_bins, &hist_encoder);
-      num_select_top += out_seg.SelectTopBins(hist_encoder, src_label, 
-                            top_select_label, reject_label, num_top_frames);
+      out_seg.CreateHistogram(src_label, scores, hist_opts, &hist_encoder);
 
-      num_select_bottom += out_seg.SelectBottomBins(hist_encoder, src_label, 
-                               bottom_select_label, 
-                               reject_label, num_bottom_frames);
-      
+      if (top_select_label == -1)
+        num_selected_bottom += out_seg.SelectBottomBins(hist_encoder, src_label, 
+                                 bottom_select_label, 
+                                 reject_label, num_bottom_frames, 
+                                 remove_rejected_frames);
+      else if (bottom_select_label == -1)
+        num_selected_top += out_seg.SelectTopBins(hist_encoder, src_label, 
+                              top_select_label, reject_label, num_top_frames,
+                              remove_rejected_frames);
+      else {
+        std::pair<int32,int32> p = out_seg.SelectTopAndBottomBins(hist_encoder, src_label,
+                    top_select_label, num_top_frames, 
+                    bottom_select_label, num_bottom_frames, reject_label,
+                    remove_rejected_frames);
+        num_selected_top += p.first;
+        num_selected_bottom += p.second;
+      }
+
       segmentation_writer.Write(key, out_seg);
       num_done++;
     }
 
     KALDI_LOG << "Processed " << num_done << " segmentations; "
               << "error in " << num_err << "; "
-              << "Selected " << num_select_top << " and " 
-              << num_select_bottom << " frames respectively";
+              << "Selected " << num_selected_top << " and " 
+              << num_selected_bottom << " top and bottom frames respectively";
+
+    return (num_done == 0 || num_err >= num_done ? 1 : 0);
 
   } catch(const std::exception &e) {
     std::cerr << e.what();

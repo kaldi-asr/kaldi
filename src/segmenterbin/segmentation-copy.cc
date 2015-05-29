@@ -40,6 +40,8 @@ int main(int argc, char *argv[]) {
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
 
+    opts.Register(&po);
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -72,7 +74,7 @@ int main(int argc, char *argv[]) {
          != kNoWspecifier);
 
     if (in_is_rspecifier != out_is_wspecifier)
-      KALDI_ERR << "Cannot mix archives with regular files (copying vectors)";
+      KALDI_ERR << "Cannot mix regular files and archives";
     
     int64  num_done = 0, num_err = 0;
     
@@ -88,7 +90,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
       return 0;
     } else {
-      SegmentationWriter writer(segmentation_out_fn);
+      SegmentationWriter writer(segmentation_out_fn); 
       SequentialSegmentationReader reader(segmentation_in_fn);
       for (; !reader.Done(); reader.Next(), num_done++) {
         Segmentation seg(reader.Value());
@@ -110,6 +112,7 @@ int main(int argc, char *argv[]) {
 
         writer.Write(key, seg);
       }
+
       KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
                 << num_err << " segmentations";
       return (num_done != 0 ? 0 : 1);

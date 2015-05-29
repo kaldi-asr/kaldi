@@ -24,6 +24,77 @@
 #include "hmm/transition-model.h"
 #include "segmenter/segmenter.h"
 
+namespace kaldi {
+namespace segmenter {
+
+void MleAmDiagGmmUpdateSubsetPdfs (const MleDiagGmmOptions &config,
+                         const AccumAmDiagGmm &am_diag_gmm_acc,
+                         const std::vector<int32> *pdfs, 
+                         GmmFlagsType flags,
+                         AmDiagGmm *am_gmm,
+                         BaseFloat *obj_change_out,
+                         BaseFloat *count_out) {
+  KALDI_ASSERT(am_diag_gmm_acc.Dim() == am_gmm->Dim());
+  KALDI_ASSERT(am_gmm != NULL);
+  KALDI_ASSERT(am_diag_gmm_acc.NumAccs() == am_gmm->NumPdfs());
+  if (obj_change_out != NULL) *obj_change_out = 0.0;
+  if (count_out != NULL) *count_out = 0.0;
+
+  BaseFloat tot_obj_change = 0.0, tot_count = 0.0;
+  int32 tot_elems_floored = 0, tot_gauss_floored = 0,
+      tot_gauss_removed = 0;
+
+  if (pdfs != NULL) {
+    for (std::vector<int32>::const_iterator it = pdfs->begin();
+          it != pdfs->end(); ++it) {
+      BaseFloat obj_change, count;
+      int32 elems_floored, gauss_floored, gauss_removed;
+      MleDiagGmmUpdate(config, am_diag_gmm_acc.GetAcc(*it), flags,
+                       &(am_gmm->GetPdf(*it)),
+                       &obj_change, &count, &elems_floored,
+                       &gauss_floored, &gauss_removed);
+      KALDI_LOG << "Count for pdf " << *it << " is " << count;
+      tot_obj_change += obj_change;
+      tot_count += count;
+      tot_elems_floored += elems_floored;
+      tot_gauss_floored += gauss_floored;
+      tot_gauss_removed += gauss_removed;
+    }
+  } else {
+    for (int32 i = 0; i < am_diag_gmm_acc.NumAccs(); i++) {
+      BaseFloat obj_change, count;
+      int32 elems_floored, gauss_floored, gauss_removed;
+
+      MleDiagGmmUpdate(config, am_diag_gmm_acc.GetAcc(i), flags,
+          &(am_gmm->GetPdf(i)),
+          &obj_change, &count, &elems_floored,
+          &gauss_floored, &gauss_removed);
+      KALDI_LOG << "Count for pdf " << i << " is " << count;
+
+      tot_obj_change += obj_change;
+      tot_count += count;
+      tot_elems_floored += elems_floored;
+      tot_gauss_floored += gauss_floored;
+      tot_gauss_removed += gauss_removed;
+    }
+  }
+
+  if (obj_change_out != NULL) *obj_change_out = tot_obj_change;
+  if (count_out != NULL) *count_out = tot_count;
+  KALDI_LOG << tot_elems_floored << " variance elements floored in "
+            << tot_gauss_floored << " Gaussians, out of "
+            <<  am_gmm->NumGauss();
+  if (config.remove_low_count_gaussians) {
+    KALDI_LOG << "Removed " << tot_gauss_removed
+              << " Gaussians due to counts < --min-gaussian-occupancy="
+              <<  config.min_gaussian_occupancy
+              << " and --remove-low-count-gaussians=true";
+  }
+}
+
+}
+}
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace segmenter;
@@ -33,9 +104,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Accumulate pdf stats for GMM training from segmentation "
         "and update GMM\n"
-        "Usage:  gmm-acc-pdf-stats-segmentation [options] <model-in> <feature-rspecifier> "
-        "<segmentation-rspecifier> <stats-out>\n"
-        "e.g.:\n gmm-acc-stats-ali 1.mdl scp:train.scp ark:1.seg 1.acc\n";
+        "Usage:  gmm-est-segmentation [options] <model-in> <feature-rspecifier> "
+        "<segmentation-rspecifier> <model-out>\n"
+        "e.g.:\n gmm-acc-stats-ali 1.mdl scp:train.scp ark:1.seg 2.mdl\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -86,7 +157,6 @@ int main(int argc, char *argv[]) {
 
     kaldi::GmmFlagsType update_flags =
         StringToGmmFlags(update_flags_str);
-    update_flags &= !kGmmTransitions;
 
     std::string model_in_filename = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
@@ -168,6 +238,7 @@ int main(int argc, char *argv[]) {
     }
 
     RandomAccessSegmentationReader segmentation_reader(segmentation_rspecifier);
+    std::vector<Matrix<BaseFloat> > feats_per_pdf;
 
     for (int32 n = 0; n < num_iters; n++) {
       AccumAmDiagGmm gmm_accs;
@@ -192,13 +263,18 @@ int main(int argc, char *argv[]) {
         BaseFloat tot_like_this_file = 0.0;
         BaseFloat tot_t_this_file = 0.0;
 
-        for (std::forward_list<Segment>::const_iterator it = segmentation.Begin();
+        for (SegmentList::const_iterator it = segmentation.Begin();
             it != segmentation.End(); ++it) {
           int32 pdf_id;
           if (class2pdf_rxfilename != "")
-            pdf_id = it->Label();
+            try {
+              pdf_id = class2pdf.at(it->Label());
+            } catch (const std::out_of_range& oor) {
+              KALDI_VLOG(2) << "Out of Range error: " << oor.what() << '\n';
+              continue;
+            }
           else 
-            pdf_id = class2pdf.at(it->Label());
+            pdf_id = it->Label();
           if ( (pdfs_str != "" && std::binary_search(pdfs.begin(), pdfs.end(), pdf_id)) 
               || (pdfs_str == "" && pdf_id < am_gmm.NumPdfs() && pdf_id >=0) ) {
             KALDI_ASSERT(pdf_id >= 0 && pdf_id < am_gmm.NumPdfs());
@@ -210,6 +286,8 @@ int main(int argc, char *argv[]) {
         }
         tot_like += tot_like_this_file;
         tot_t += tot_t_this_file;
+        
+        num_done++;
 
         if (num_done % 50 == 0) {
           KALDI_LOG << "In iteration " << n << ", Processed " 
@@ -218,7 +296,6 @@ int main(int argc, char *argv[]) {
             << (tot_like/tot_t)
             << " over " << tot_t <<" frames.";
         }
-        num_done++;
       }
       KALDI_LOG << "In iteration " << n << ", done " << num_done << " files, " << num_err
                 << " with errors.";
@@ -226,14 +303,18 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "In iteration " << n << ", overall avg like per frame (Gaussian only) = "
                 << (tot_like/tot_t) << " over " << tot_t << " frames.";
 
+      KALDI_ASSERT(tot_t > 0);
+
       BaseFloat objf_impr, count;
-      MleAmDiagGmmUpdate(gmm_opts, gmm_accs, update_flags,
-                         &am_gmm, &objf_impr, &count);
+      MleAmDiagGmmUpdateSubsetPdfs(gmm_opts, gmm_accs, pdfs.size() > 0 ? &pdfs : NULL, update_flags,
+                                   &am_gmm, &objf_impr, &count);
 
       KALDI_LOG << "GMM update: In iteration " << n << ", overall "
                 << (objf_impr/count)
                 << " objective function improvement per frame over "
                 <<  count <<  " frames";
+
+      KALDI_ASSERT(count > 0);
 
       if (mixup != 0 || mixdown != 0 || 
           (n == num_iters - 1 && !occs_out_filename.empty()) ) {

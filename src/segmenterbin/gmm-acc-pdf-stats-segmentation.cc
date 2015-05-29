@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
       BaseFloat tot_like_this_file = 0.0;
       BaseFloat tot_t_this_file = 0.0;
 
-      for (std::forward_list<Segment>::const_iterator it = segmentation.Begin();
+      for (SegmentList::const_iterator it = segmentation.Begin();
             it != segmentation.End(); ++it) {
         int32 pdf_id;
         if (class2pdf_rxfilename != "")
