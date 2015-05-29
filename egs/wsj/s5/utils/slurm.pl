@@ -55,6 +55,8 @@ use Getopt::Long;
 # option gpu=0 -p shared
 # option gpu=*  -p gpu  #this has to be figured out
 
+#print STDERR "$0 " . join(" ", @ARGV) . "\n";
+
 my $qsub_opts = "";
 my $sync = 0;
 my $num_threads = 1;
@@ -162,15 +164,16 @@ if (exists $cli_options{"config"}) {
 
 my $default_config_file = <<'EOF';
 # Default configuration
-command sbatch --export=PATH 
+command sbatch --export=PATH  --ntasks-per-node=1
+option time=* --time $0
 option mem=* --mem-per-cpu $0
 option mem=0          # Do not add anything to qsub_opts
 option num_threads=* --cpus-per-task $0 --ntasks-per-node=1 
 option num_threads=1 --cpus-per-task 1  --ntasks-per-node=1 # Do not add anything to qsub_opts
-option max_jobs_run=* BUILTIN{max_jobs_run}=$0
+option max_jobs_run=*     # Do nothing
 default gpu=0
 option gpu=0 -p shared
-option gpu=* -p gpu $0  # this has to be figured out
+option gpu=* -p gpu --gres=gpu:$0 --time 4:0:0  # this has to be figured out
 EOF
 
 # Here the configuration options specified by the user on the command line
@@ -215,7 +218,7 @@ while(<CONFIG>) {
     my $option = $1;     # mem
     my $arg= $2;         # -l mem_free=$0,ram_free=$0
     if ($arg !~ m:\$0:) {  
-      die "Unable to parse line '$line' in config file ($config)\n";
+      print STDERR "Warning: the line '$line' in config file ($config) does not substitution variable \$0\n";
     }
     if (exists $cli_options{$option}) {
       # Replace $0 with the argument read from command line.
@@ -258,13 +261,17 @@ if ($read_command != 1) {
 
 for my $option (keys %cli_options) {
   if ($option eq "config") { next; }
-  if ($option eq "max_jobs_run" && $array_job != 1) { next; }
+  if ($option eq "max_jobs_run" && $array_job != 1) { print STDERR "Ignoring $option\n"; next; }
   my $value = $cli_options{$option};
+  
+  if ($option eq "max_jobs_run") { $max_jobs_run = $value; }
 
   if (exists $cli_default_options{($option,$value)}) {
     $qsub_opts .= "$cli_default_options{($option,$value)} ";
   } elsif (exists $cli_config_options{$option}) {
     $qsub_opts .= "$cli_config_options{$option} ";
+  } elsif (exists $cli_default_options{($option,"*")}) {
+    $qsub_opts .= $cli_default_options{($option,"*")} . " ";
   } else {
     if ($opened_config_file == 0) { $config = "default config file"; }
     die "$0: Command line option $option not described in $config (or value '$value' not allowed)\n";
@@ -370,6 +377,11 @@ print Q "  echo -n '# '; cat <<EOF\n";
 print Q "$cmd\n"; # this is a way of echoing the command into a comment in the log file,
 print Q "EOF\n"; # without having to escape things like "|" and quote characters.
 print Q ") >$logfile\n";
+print Q "if [ \"\$CUDA_VISIBLE_DEVICES\" == \"NoDevFiles\" ]; then\n";
+print Q "  ( echo CUDA_VISIBLE_DEVICES set to NoDevFiles, unsetting it... \n";
+print Q "  )>>$logfile\n";
+print Q "  unset CUDA_VISIBLE_DEVICES.\n";
+print Q "fi\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
 print Q "ret=\$?\n";
@@ -493,7 +505,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
           $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
           my $job_id = $1;
           if (defined $jobname) {
-            $logfile =~ s/\$SGE_TASK_ID/$job_id/g;
+            $logfile =~ s/\$SLURM_ARRAY_TASK_ID/$job_id/g;
           }
           my $last_line = `tail -n 1 $logfile`;
           if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {

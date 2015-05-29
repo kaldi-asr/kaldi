@@ -26,7 +26,7 @@ if [ ${host#*.} == "fit.vutbr.cz" ]; then
   export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1" 
 elif [ ${host#*.} == "cm.cluster" ]; then
   # MARCC bluecrab cluster:
-  export train_cmd="slurm.pl"
-  export decode_cmd="slurm.pl --mem 4G"
-  export cuda_cmd="slurm.pl" 
+  export train_cmd="slurm.pl --time 4:00:00 "
+  export decode_cmd="slurm.pl --mem 4G --time 4:00:00 "
+  export cuda_cmd="slurm.pl --gpu 1" 
 fi
