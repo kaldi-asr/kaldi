@@ -45,7 +45,7 @@ for ($state = 0; $state < $num_sil_states - 1; $state++) {
   print "<State> $state <PdfClass> 0 <Transition> $statep1 1.0 </State>\n";
 }
 $statep1 = $state+1;
-print "<State> $state <PdfClass> 0 <Transition> $state 0.9 <Transition> $statep1 0.1 </State>\n";
+print "<State> $state <PdfClass> 0 <Transition> $state 0.5 <Transition> $statep1 0.5 </State>\n";
 print "<State> $num_sil_states </State>\n"; # non-emitting final state.
 print "</TopologyEntry>\n";
 print "</Topology>\n";

@@ -44,7 +44,7 @@ if [ $stage -le 3 ]; then
   steps/compute_cmvn_stats.sh $data $tmpdir/make_mfcc_vad $featdir || exit 1
 fi
 
-if [ $stage -le 2 ]; then
-  sid/compute_vad_decision.sh --vad-config conf/vad.conf --cmd $cmd --nj $nj \
-    $data $tmpdir/make_vad $featdir || exit 1
-fi
+#if [ $stage -le 2 ]; then
+#  sid/compute_vad_decision.sh --vad-config conf/vad.conf --cmd $cmd --nj $nj \
+#    $data $tmpdir/make_vad $featdir || exit 1
+#fi

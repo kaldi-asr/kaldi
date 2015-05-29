@@ -2,7 +2,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = 
+TESTFILES = segmentation-io-test
 
 OBJFILES = segmenter.o
 

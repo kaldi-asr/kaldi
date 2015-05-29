@@ -120,7 +120,7 @@ int main(int argc, char *argv[]) {
     BaseFloat min_count = 20.0;
     std::string update_flags_str = "mvw";
     std::string occs_out_filename;
-    int32 num_iters = 2;
+    int32 num_iters = 3;
 
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("class2pdf", &class2pdf_rxfilename, 
@@ -201,8 +201,13 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_gmm.Read(ki.Stream(), binary);
     }
+
+    std::vector<int32> components_per_pdf(am_gmm.NumPdfs());
+    for (int32 i = 0; i < am_gmm.NumPdfs(); i++) {
+      components_per_pdf[i] = am_gmm.GetPdf(i).NumGauss();
+    }
     
-    unordered_map<int32,int32> components_per_pdf;
+    std::vector<int32> target_components_per_pdf(am_gmm.NumPdfs(), -1);
     if (mixup_per_pdf_str != "") {
       std::vector<int32> mixup_per_pdf;
       if (!SplitStringToIntegers(mixup_per_pdf_str, ":", true, &mixup_per_pdf)
@@ -211,7 +216,7 @@ int main(int argc, char *argv[]) {
                   << " or it has wrong size (!= " << am_gmm.NumPdfs() << ")";
       }
       for (int32 i = 0; i < am_gmm.NumPdfs(); i++) {
-        components_per_pdf.insert(std::make_pair(i, mixup_per_pdf[i]));
+        target_components_per_pdf[i] = mixup_per_pdf[i];
       }
     } else if (mixup_rxfilename != "") {
       Input ki(mixup_rxfilename);
@@ -233,19 +238,23 @@ int main(int argc, char *argv[]) {
         if (!ConvertStringToInteger(split_line[1], &num_mix)) {
           KALDI_ERR << "Invalid line in file [bad num_mix]: " << line;
         }
-        components_per_pdf.insert(std::make_pair(pdf_id, num_mix));
+        target_components_per_pdf[pdf_id] = num_mix;
       }
     }
 
+    std::vector<int32> components_incr_per_pdf(am_gmm.NumPdfs(), 0);
+    for (int32 i = 0 ; i < am_gmm.NumPdfs(); i++) {
+      components_incr_per_pdf[i] = std::ceil((target_components_per_pdf[i] - components_per_pdf[i]) / (num_iters / 2));
+    }
+
     RandomAccessSegmentationReader segmentation_reader(segmentation_rspecifier);
-    std::vector<Matrix<BaseFloat> > feats_per_pdf;
 
     for (int32 n = 0; n < num_iters; n++) {
-      AccumAmDiagGmm gmm_accs;
-      gmm_accs.Init(am_gmm, update_flags);
-
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
+      AccumAmDiagGmm gmm_accs;
+      gmm_accs.Init(am_gmm, update_flags);
+      
       double tot_like = 0.0;
       kaldi::int64 tot_t = 0;
     
@@ -286,17 +295,10 @@ int main(int argc, char *argv[]) {
         }
         tot_like += tot_like_this_file;
         tot_t += tot_t_this_file;
-        
-        num_done++;
 
-        if (num_done % 50 == 0) {
-          KALDI_LOG << "In iteration " << n << ", Processed " 
-            << num_done << " utterances; for utterance "
-            << key << " avg. like is "
-            << (tot_like/tot_t)
-            << " over " << tot_t <<" frames.";
-        }
+        num_done++;
       }
+
       KALDI_LOG << "In iteration " << n << ", done " << num_done << " files, " << num_err
                 << " with errors.";
 
@@ -341,11 +343,19 @@ int main(int argc, char *argv[]) {
         if (pdfs_str != "") {
           for (std::vector<int32>::const_iterator it = pdfs.begin();
               it != pdfs.end(); ++it) {
-            am_gmm.GetPdf(*it).Split(components_per_pdf.at(*it), gmm_opts.min_variance);
+            components_per_pdf[*it] += components_incr_per_pdf[*it];
+            if (target_components_per_pdf[*it] > 0 &&
+                components_per_pdf[*it] > target_components_per_pdf[*it])
+              components_per_pdf[*it] = target_components_per_pdf[*it];
+            am_gmm.GetPdf(*it).Split(components_per_pdf[*it], gmm_opts.min_variance);
           }
         } else {
           for (int32 i = 0; i < am_gmm.NumPdfs(); i++) {
-            am_gmm.GetPdf(i).Split(components_per_pdf.at(i), gmm_opts.min_variance);
+            components_per_pdf[i] += components_incr_per_pdf[i];
+            if (target_components_per_pdf[i] > 0 &&
+                components_per_pdf[i] > target_components_per_pdf[i])
+              components_per_pdf[i] = target_components_per_pdf[i];
+            am_gmm.GetPdf(i).Split(components_per_pdf[i], gmm_opts.min_variance);
           }
         }
       }

@@ -1,7 +1,7 @@
 #ifndef SEGMENTER_H
 #define SEGMENTER_H
 
-#include <forward_list>
+#include <list>
 #include "base/kaldi-common.h"
 #include "matrix/kaldi-matrix.h"
 #include "segmenter/segmenter.h"
@@ -12,7 +12,6 @@ namespace kaldi {
 namespace segmenter {
 
 typedef int32 ClassId;
-
 struct Segment {
   int32 start_frame;
   int32 end_frame;
@@ -37,7 +36,12 @@ struct HistogramEncoder {
   BaseFloat bin_width;
   BaseFloat min_score; 
   std::vector<int32> bin_sizes;
-  
+  bool select_from_full_histogram;
+
+  HistogramEncoder(): bin_width(-1), 
+                      min_score(std::numeric_limits<BaseFloat>::infinity()),
+                      select_from_full_histogram(false) {}
+
   inline int32 NumBins() const { return bin_sizes.size(); } 
   inline int32 BinSize(int32 i) const { return bin_sizes.at(i); }
 
@@ -47,7 +51,6 @@ struct HistogramEncoder {
 
 struct SegmentationOptions {
   std::string merge_labels_csl;
-  std::vector<int32> merge_labels;
   int32 merge_dst_label, filter_label;
   std::string filter_rspecifier;
 
@@ -66,8 +69,30 @@ struct SegmentationOptions {
     po->Register("filter-label", &filter_label, "The label on which the "
                  "filtering is done");
   }
+};
+
+struct HistogramOptions {
+  int32 num_bins;
+  bool select_above_mean;
+  bool select_from_full_histogram;
+
+  HistogramOptions() : num_bins(100), select_above_mean(false), select_from_full_histogram(false) {}
+  
+  void Register(OptionsItf *po) {
+    po->Register("num-bins", &num_bins, "Number of bins in the histogram "
+                 "created using the scores. Use larger number of bins to "
+                 "make a finer selection");
+    po->Register("select-above-mean", &select_above_mean, "If true, "
+                 "use mean as the reference instead of min");
+    po->Register("select-from-full-histogram", &select_from_full_histogram,
+                 "Do not restrict selection to one half");
+
+  }
 
 };
+
+
+typedef std::list<Segment> SegmentList;
 
 class Segmentation {
   public:
@@ -75,6 +100,8 @@ class Segmentation {
     Segmentation() {
       Clear();
     }
+    
+    void GenRandomSegmentation(int32 max_length, int32 num_classes);
 
     // Split the input segmentation into pieces of 
     // approximately segment_length and store it in
@@ -96,21 +123,28 @@ class Segmentation {
     // Create a Histogram Encoder that can map a segment to 
     // a bin based on the average score
     void CreateHistogram(int32 label, const Vector<BaseFloat> &score, 
-                         int32 num_bins, HistogramEncoder *hist);
+                         const HistogramOptions &opts, HistogramEncoder *hist);
 
     // Modify this segmentation to select the top bins in the 
     // histogram. Assumes that this segmentation also has the 
     // average scores.
     int32 SelectTopBins(const HistogramEncoder &hist, 
                         int32 src_label, int32 dst_label, int32 reject_label,
-                        int32 num_frames_select);
+                        int32 num_frames_select, bool remove_rejected_frames);
 
-    // Modify this segmentation to select the bottom bins in the 
-    // histogram. Assumes that this segmentation also has the 
-    // average scores.
+    // Modify this segmentation to select the bottom bins in the histogram.
+    // Assumes that this segmentation also has the average scores.
     int32 SelectBottomBins(const HistogramEncoder &hist, 
                            int32 src_label, int32 dst_label, int32 reject_label,
-                           int32 num_frames_select);
+                           int32 num_frames_select, bool remove_rejected_frames);
+
+    // Modify this segmentation to select the top and bottom bins in the 
+    // histogram. Assumes that this segmentation also has the average scores.
+    std::pair<int32,int32> SelectTopAndBottomBins(
+        const HistogramEncoder &hist_encoder, 
+        int32 src_label, int32 top_label, int32 num_frames_top,
+        int32 bottom_label, int32 num_frames_bottom,
+        int32 reject_label, bool remove_rejected_frames);
 
     // Initialize this segmentation from in_segmentation, but
     // keep only the segment regions where the label 
@@ -122,24 +156,31 @@ class Segmentation {
     void IntersectSegments(const Segmentation &filter_segmentation,
                            int32 filter_label);
 
+    void WidenSegments(int32 label, int32 length);
+    void RemoveShortSegments(int32 label, int32 max_length);
+
     void Clear();
     
     void Read(std::istream &is, bool binary);
     void Write(std::ostream &os, bool binary) const;
+
+    void WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time) const;
     
+    SegmentList::iterator Erase(SegmentList::iterator it);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id);
+    void Check() const;
   
     inline int32 Dim() const { return dim_; }
-    std::forward_list<Segment>::iterator Begin() { return segments_.begin(); }
-    std::forward_list<Segment>::const_iterator Begin() const { return segments_.begin(); }
-    std::forward_list<Segment>::iterator End() { return segments_.end(); }
-    std::forward_list<Segment>::const_iterator End() const { return segments_.end(); }
+    SegmentList::iterator Begin() { return segments_.begin(); }
+    SegmentList::const_iterator Begin() const { return segments_.begin(); }
+    SegmentList::iterator End() { return segments_.end(); }
+    SegmentList::const_iterator End() const { return segments_.end(); }
 
   private: 
     int32 dim_;
-    std::forward_list<Segment> segments_;
+    SegmentList segments_;
     std::vector<BaseFloat> mean_scores_;
-    std::forward_list<Segment>::iterator current_;
+    SegmentList::iterator current_;
 };
 
 typedef TableWriter<KaldiObjectHolder<Segmentation> > SegmentationWriter;

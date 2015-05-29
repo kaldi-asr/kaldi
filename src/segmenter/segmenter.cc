@@ -365,6 +365,47 @@ void Segmentation::IntersectSegments(
   }
   Check();
 }
+    
+void Segmentation::WidenSegments(int32 label, int32 length) {
+  for (SegmentList::iterator it = segments_.begin();
+        it != segments_.end(); ++it) {
+    if (it->Label() == label) {
+      if (it != segments_.begin())
+        it->start_frame -= length;
+      SegmentList::iterator next_it = it;
+      ++next_it;
+
+      if (next_it != segments_.end())
+        it->end_frame += length;
+    }
+  }
+}
+
+void Segmentation::RemoveShortSegments(int32 label, int32 max_length) {
+  for (SegmentList::iterator it = segments_.begin();
+        it != segments_.end();) {
+    if (it == segments_.begin()) {
+      ++it;
+      continue;
+    }
+    
+    SegmentList::iterator next_it = it;
+    ++next_it;
+    if (next_it == segments_.end()) break;
+    
+    SegmentList::iterator prev_it = it;
+    --prev_it;
+
+    if (next_it->Label() == prev_it->Label() && it->Label() == label 
+        && it->end_frame - it->start_frame + 1 < max_length) {
+      prev_it->end_frame = next_it->end_frame;
+      segments_.erase(it);
+      it = segments_.erase(next_it);
+      dim_ -= 2;
+    } else 
+      ++it;
+  }
+}
 
 void Segmentation::Clear() {
   segments_.clear();
@@ -460,8 +501,13 @@ void Segmentation::Read(std::istream &is, bool binary) {
 }
 
 void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id) {
-  segments_.emplace_back(start_frame, end_frame, class_id);
   dim_++;
+  segments_.emplace_back(start_frame, end_frame, class_id);
+}
+
+SegmentList::iterator Segmentation::Erase(SegmentList::iterator it) {
+  dim_--;
+  return segments_.erase(it);
 }
 
 void Segmentation::GenRandomSegmentation(int32 max_length, int32 num_classes) {

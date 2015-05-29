@@ -13,6 +13,7 @@
 stage=0
 cmd=run.pl
 iter=final  # use $iter.mdl from $model_dir
+tree=tree
 tscale=1.0 # transition scale.
 loopscale=0.1 # scale for self-loops.
 # End configuration section.
@@ -31,7 +32,7 @@ fi
 
 lang=$1
 model=$2/$iter.mdl
-tree=$2/tree
+tree=$2/$tree
 dir=$3
 
 for f in $lang/G.fst $model $tree; do
