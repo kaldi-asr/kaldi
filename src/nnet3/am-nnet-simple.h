@@ -36,11 +36,6 @@ namespace nnet3 {
   In addition to storing the Nnet it also deals with storing, and dividing by,
   the prior of each context-dependent state.
 
-  It also stores the acoustic left-context and right-context (number of frames)
-  required by the network; for now this will be provide from outside, since this
-  can't always be trivially worked out from the neural network itself.  This
-  will be used for padding of files at the beginning and end.
-
   We are calling it AmNnetSimple because it's intended to handle the case where
   there is just one type of input, called "input" in the network itself, and
   just one output called "output" (the posteriors).  We might later want other types

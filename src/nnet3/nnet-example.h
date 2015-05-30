@@ -30,19 +30,75 @@ namespace kaldi {
 namespace nnet3 {
 
 
-struct InputFeature {
+struct Feature {
   /// the name of the input in the neural net; in simple setups it
   /// will just be "input".
   std::string name;
 
   /// "indexes" is a vector the same length as features.NumRows(), explaining
   /// the meaning of each row of the "features" matrix.  Note: the "n" values
-  /// in the indexes will always be zero here, and are not read/written.
+  /// in the indexes will always be zero in individual examples, but in general
+  /// nonzero after we aggregate the examples into the minibatch level.
   std::vector<Index> indexes;
   
-  /// The features.
-  CompressedMatrix features;
+  /// The features.  We store them as PossiblyCompressedMatrix to easily support
+  /// turning the compression on and off.
+  PossiblyCompressedMatrix features;
 
+  /// This constructor creates Feature with name "name", indexes with n=0, x=0,
+  /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
+  /// the provided features.  t_begin should be the frame that feats.Row(0)
+  /// represents.
+  Feature(const std::string &name,
+          int32 t_begin, const MatrixBase<BaseFloat> &feats);
+  
+  // Use default copy constructor and assignment operators.
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
+};
+
+
+struct Supervision {
+  /// the name of the output of the neural net; in simple setups it will just be
+  /// "output", but in multi-task learning there could be multiple outputs.
+  std::string name;
+  
+  /// "indexes" is a vector the same length as "labels", explaining
+  /// the meaning of each element of "labels".
+  std::vector<Index> indexes;
+
+  /// each labels[i] is a list of (label, weight) pairs; in the normal case it
+  /// will contain just a single element, with weight 1.0.  this vector has the
+  /// same size sa "indexes", which explains which frame each label corresponds
+  /// to.
+  /// Note: this is the same type as typedef "Posterior".
+  std::vector<std::vector<std::pair<int32, BaseFloat> > > labels;
+
+  /// This constructor sets "name" to the provided string, sets "indexes" with
+  /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
+  /// as provided.  t_begin should be the frame to which labels[0] corresponds.
+  Supervision(const std::string &name,
+              int32 t_begin,
+              const std::vector<std::vector<std::pair<int32, BaseFloat> > > &labels);
+  
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
+
+  // Returns true if for each i, labels[i].size() == 1.
+  bool HasSimpleLabels() const;
+  
+};
+
+
+/// SupervisionVec is a vector of Supervision, to contain supervision for
+/// possibly multiple outputs of the neural net, although in typical setups this
+/// vector will have just one element.
+struct SupervisionVec {
+  std::vector<Supervision> supervision;
+  
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
@@ -54,27 +110,23 @@ struct InputFeature {
 /// nets (and possibly for other objective functions). 
 struct NnetExample {
 
-  int32 t0;  // time-index corresponding to the first label in the sequence of
-             // labels.  Will normally be zero.  [actually the only reason we
-             // might want to have it not zero is to train models that are
-             // not invariant to time-shift, e.g. clockwork RNNs.
-  
-  /// "labels" are the labels for each frame in a sequence of frames;it is
-  /// indexed first by time-index t = t0 + 0, t0 + 1, .. and then is a list of
-  /// (pdf-id, weight).  When training on hard (Viterbi) labels, the normal
-  /// case, the inner vectors will have length one, with a single element with
-  /// weight 1.0.
-  std::vector<std::vector<std::pair<int32, BaseFloat> > > labels;  
+  /// "input" contains the features.  In principle there can be multiple types
+  /// of feature with different names.
+  std::vector<Feature> input;
 
-  /// some inputs.  Normally there will be just one element in this vector,
-  /// with name "input".
-  std::vector<InputFeature> features;
+  /// "supervision" contains the labels.
+  std::vector<Supervision> supervision;
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  NnetExample(): t0(0) { }
+  // Compress any features that are not currently compressed.
+  void Compress();
+  
+  NnetExample() { }
 
+  NnetExample(const NnetExample &other);
+  
 };
 
 

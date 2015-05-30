@@ -25,14 +25,14 @@
 namespace kaldi {
 namespace nnet3 {
 
-void InputFeature::Write(std::ostream &os, bool binary) const {
+void Feature::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<feat>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   features.Write(os, binary);
 }
 
-void InputFeature::Read(std::istream &is, bool binary) {
+void Feature::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<feat>");
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
@@ -85,11 +85,17 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
       }
     }
   }
-  int32 num_inputs = features.size();
-  KALDI_ASSERT(num_inputs > 0);
-  WriteBasicType(os, binary, num_inputs);
-  for (int32 i = 0; i < num_inputs; i++)
-    features[i].Write(os, binary);
+
+  WriteToken(os, binary, "<Input>");
+  int32 size = input.size();
+  WriteBasicType(os, binary, size);
+  for (int32 i = 0; i < size; i++)
+    input[i].Write(os, binary);
+  WriteToken(os, binary, "<Supervision>");  
+  size = supervision.size();
+  WriteBasicType(os, binary, size);
+  for (int32 i = 0; i < size; i++)
+    supervision[i].Write(os, binary);
   WriteToken(os, binary, "</Nnet3Eg>");
 }
 
@@ -127,16 +133,25 @@ void NnetExample::Read(std::istream &is, bool binary) {
   } else {
     KALDI_ERR << "Expected token <Lab1> or <Lab2>, got " << token;
   }
-  int32 num_inputs;
-  ReadBasicType(is, binary, &num_inputs);
-  if (num_inputs < 0 || num_inputs > 100000)
-    KALDI_ERR << "num_inputs out of range: " << num_inputs;
-  features.resize(num_inputs);
-  for (int32 i = 0; i < num_inputs; i++)
-    features[i].Read(is, binary);
+
+  ExpectToken(is, binary, "<Input>");
+  int32 size;
+  ReadBasicType(is, binary, &size);
+  if (size < 0 || size > 1000000)
+    KALDI_ERR << "Invalid size " << size;
+  input.resize(size);
+  for (int32 i = 0; i < size; i++)
+    input[i].Read(is, binary);
+  ExpectToken(is, binary, "<Supervision>");  
+  ReadBasicType(os, binary, &size);
+  if (size < 0 || size > 1000000)
+    KALDI_ERR << "Invalid size " << size;
+  supervision.resize(size);
+  for (int32 i = 0; i < size; i++)
+    supervision[i].Read(is, binary);
+  
   ExpectToken(is, binary, "</Nnet3Eg>");
 }
-
 
 } // namespace nnet3
 } // namespace kaldi

@@ -175,7 +175,7 @@ class CompressedMatrix {
 /// not you want the data to be compressed.  Note: if you write in text form,
 /// all reads will generate an uncompressed matrix.
 class PossiblyCompressedMatrix {
-
+ public:
   void Compress();  // Compress, if currently uncompressed.
 
   void Uncompress();  // Uncompress, if currently compressed.
