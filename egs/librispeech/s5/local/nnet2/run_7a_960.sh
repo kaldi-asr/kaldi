@@ -25,7 +25,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   dir=exp/nnet7a_960_gpu
