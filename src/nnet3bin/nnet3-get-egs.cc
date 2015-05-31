@@ -117,7 +117,7 @@ int main(int argc, char *argv[]) {
         "into a special frame-by-frame format.  This program handles the\n"
         "common case where you have some input features, possibly some\n"
         "iVectors, and one set of labels.  If people in future want to\n"
-        "do weirder things they may have to extend this program or create\n"
+        "do different things they may have to extend this program or create\n"
         "different versions of it for different tasks.\n"
         "\n"
         "Usage:  nnet3-get-egs [options] <features-rspecifier> "
