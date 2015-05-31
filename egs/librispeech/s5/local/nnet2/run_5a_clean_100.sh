@@ -20,14 +20,14 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   dir=exp/nnet5a_clean_100_gpu
 else
   # with just 4 jobs this might be a little slow.
   num_threads=16
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads" 
   minibatch_size=128
   dir=exp/nnet5a_clean_100
 fi

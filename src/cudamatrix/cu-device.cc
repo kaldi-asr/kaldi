@@ -80,7 +80,11 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
 
   // Check that we have a gpu available
   int32 n_gpu = 0;
-  cudaGetDeviceCount(&n_gpu);
+  cudaError_t e;
+  e = cudaGetDeviceCount(&n_gpu);
+  if ( e != cudaSuccess ) {
+      KALDI_ERR << "Error querying for number of devices: " << cudaGetErrorString(e) << std::endl;
+  }
   if (n_gpu == 0) {
     if (use_gpu == "yes" || use_gpu == "wait") {
       KALDI_ERR << "No CUDA GPU detected!";
@@ -96,7 +100,6 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   // or default gpu_id=0. In the case with no free GPUs a context cannot be created
   // (compute-exclusive mode).
   //
-  cudaError_t e;
   e = cudaThreadSynchronize(); //<< CUDA context gets created here.
 
   if (use_gpu != "wait") {
