@@ -20,7 +20,6 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-learning_rate_scales_opts=""
 bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
@@ -120,10 +119,11 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
-  echo "  --learning-rate-scales-opts <ComponentA=0.1:ComponentB=0.2>   # Scale learning rate of components. separate with ':'"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
-  echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
+  echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors)"
+  echo "                                                   # to scale the pre-softmax outputs."
+  echo "                                                   # (set to 0.0 to disable the presoftmax element scale)"
   echo "  --mix-up <#pseudo-gaussians|0>                   # This option now does nothing; please remove it."
   echo "                                                   # per context-dependent state.  Try a number several times #states."
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
@@ -477,11 +477,11 @@ while [ $x -lt $num_iters ]; do
         inp=$[$inp-1]
       fi
 
-      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert --insert-at=$inp $dir/$x.mdl - - | nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate - -|"
+      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert --insert-at=$inp $dir/$x.mdl - - | nnet-am-copy --learning-rate=$this_learning_rate - -|"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      mdl="nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet-am-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
