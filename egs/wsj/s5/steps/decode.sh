@@ -16,7 +16,7 @@ beam=13.0
 lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # If you supply num-threads, you should supply this too.
+parallel_opts=  # ignored now.
 scoring_opts=
 # note: there are no more min-lmwt and max-lmwt options, instead use
 # e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
@@ -48,7 +48,7 @@ if [ $# != 3 ]; then
    echo "  --acwt <float>                                   # acoustic scale used for lattice generation "
    echo "  --scoring-opts <string>                          # options to local/score.sh"
    echo "  --num-threads <n>                                # number of threads to use, default 1."
-   echo "  --parallel-opts <opts>                           # e.g. '-pe smp 4' if you supply --num-threads 4"
+   echo "  --parallel-opts <opts>                           # ignored now, present for historical reasons."
    exit 1;
 fi
 
@@ -110,7 +110,7 @@ if [ $stage -le 0 ]; then
     [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $model | grep pdfs | awk '{print $NF}'` ] || \
       { echo "Mismatch in number of pdfs with $model"; exit 1; }
   fi
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

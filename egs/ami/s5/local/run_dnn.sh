@@ -67,10 +67,10 @@ if [ $stage -le 2 ]; then
     $data_fmllr/$mic/train_tr90 $data_fmllr/$mic/train_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf --acwt 0.1 \
-    --num-threads 3 --parallel-opts "-pe smp 4" \
+    --num-threads 3 \
     $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${lm_suffix} || exit 1;
   steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf --acwt 0.1 \
-    --num-threads 3 --parallel-opts "-pe smp 4" \
+    --num-threads 3 \
     $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${lm_suffix} || exit 1;
 fi
 
@@ -96,11 +96,11 @@ if [ $stage -le 4 ]; then
   # Decode (reuse HCLG graph)
   for ITER in 1; do
     steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --parallel-opts "-pe smp 4" \
+      --num-threads 3 \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${lm_suffix} || exit 1;
     steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --parallel-opts "-pe smp 4" \
+      --num-threads 3 \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${lm_suffix} || exit 1;
   done 
@@ -126,11 +126,11 @@ if [ $stage -le 6 ]; then
   # Decode (reuse HCLG graph)
   for ITER in 1 2 3 4; do
     steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --parallel-opts "-pe smp 4" \
+      --num-threads 3 \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${lm_suffix}_$ITER || exit 1;
     steps/nnet/decode.sh --nj 6 --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --parallel-opts "-pe smp 4" \
+      --num-threads 3 \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${lm_suffix}_$ITER || exit 1;
   done 

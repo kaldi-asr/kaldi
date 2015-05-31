@@ -51,7 +51,7 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
 
  # Note: I am commenting out the RNNLM-building commands below.  They take up a lot
  # of CPU time and are not really part of the "main recipe."
- # Be careful: appending things like "-l mem_free=10G" to $decode_cmd
+ # Be careful: appending things like "--mem 10G" to $decode_cmd
  # won't always work, it depends what $decode_cmd is.
   (
    local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
@@ -61,18 +61,18 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
    local/wsj_format_local_lms.sh --lang-suffix "_nosp" # &&
  #
  #   ( local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd -l mem_free=10G" data/local/rnnlm.h30.voc10k &
+ #       --cmd "$decode_cmd --mem 10G" data/local/rnnlm.h30.voc10k &
  #     sleep 20; # wait till tools compiled.
  #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd -l mem_free=12G" \
+ #       --cmd "$decode_cmd --mem 12G" \
  #       --hidden 100 --nwords 20000 --class 350 \
  #       --direct 1500 data/local/rnnlm.h100.voc20k &
  #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd -l mem_free=14G" \
+ #       --cmd "$decode_cmd --mem 14G" \
  #       --hidden 200 --nwords 30000 --class 350 \
  #       --direct 1500 data/local/rnnlm.h200.voc30k &
  #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd -l mem_free=16G" \
+ #       --cmd "$decode_cmd --mem 16G" \
  #       --hidden 300 --nwords 40000 --class 400 \
  #       --direct 2000 data/local/rnnlm.h300.voc40k &
  #   )
@@ -81,19 +81,19 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
        num_threads_rnnlm=8
        local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
          --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
        local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
          --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
        local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
          --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
        local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
          --rnnlm_ver rnnlm-hs-0.1b --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd -l mem_free=1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
+         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
          --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
    )
   ) &

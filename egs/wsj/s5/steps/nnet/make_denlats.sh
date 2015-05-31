@@ -21,7 +21,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # by something like 5 or 10 to get real bytes (not sure why so large)
 # End configuration section.
 use_gpu=no # yes|no|optional
-parallel_opts="-pe smp 2"
+parallel_opts="--num-threads 2"
 
 echo "$0 $@"  # Print the command line for logging
 

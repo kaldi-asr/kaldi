@@ -36,7 +36,7 @@ cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
 num_threads=32
-parallel_opts="-pe smp 32"
+parallel_opts=  # ignored now.
 online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.
 
@@ -68,8 +68,6 @@ if [ $# != 4 ]; then
   echo "                                                   # in initialization phase (then split)"
   echo " --num-threads <n|32>                              # number of threads to use in initialization"
   echo "                                                   # phase (must match with parallel-opts option)"
-  echo " --parallel-opts <string|'-pe smp 32'>             # Option should match number of threads in"
-  echo "                                                   # --num-threads option above"
   echo " --min-gaussian-weight <weight|0.0001>             # min Gaussian weight allowed in GMM"
   echo "                                                   # initialization (this relatively high"
   echo "                                                   # value keeps counts fairly even)"
@@ -115,7 +113,7 @@ if [ $stage -le -2 ]; then
   echo "$0: starting from $num_gauss_init Gaussians, reaching $num_gauss;"
   echo "$0: for $num_iters_init iterations, using at most $num_frames frames of data"
 
-  $cmd $parallel_opts $dir/log/gmm_init.log \
+  $cmd --num-threads $num_threads $dir/log/gmm_init.log \
     gmm-global-init-from-feats --num-threads=$num_threads --num-frames=$num_frames \
      --min-gaussian-weight=$min_gaussian_weight \
      --num-gauss=$num_gauss --num-gauss-init=$num_gauss_init --num-iters=$num_iters_init \

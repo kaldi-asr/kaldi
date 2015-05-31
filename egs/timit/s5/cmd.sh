@@ -14,8 +14,8 @@
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
   export train_cmd="queue.pl -l arch=*64*"
-  export decode_cmd="queue.pl -l arch=*64*,ram_free=3G,mem_free=3G"
-  export mkgraph_cmd="queue.pl -l arch=*64*,ram_free=4G,mem_free=4G"
+  export decode_cmd="queue.pl -l arch=*64* --mem 3G"
+  export mkgraph_cmd="queue.pl -l arch=*64* --mem 4G"
   export cuda_cmd="queue.pl -l gpu=1"
 elif [[ $(hostname -f) == *.fit.vutbr.cz ]]; then
   #b) BUT cluster options

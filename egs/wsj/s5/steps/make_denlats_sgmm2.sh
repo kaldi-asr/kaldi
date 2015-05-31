@@ -19,7 +19,7 @@ max_active=5000
 transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 num_threads=1
-parallel_opts=
+parallel_opts=  # ignored now.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -42,7 +42,6 @@ if [ $# != 4 ]; then
    echo "                           # will (individually) finish reasonably soon."
    echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
    echo "  --num-threads  <n>                # number of threads per decoding job"
-   echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
    exit 1;
 fi
 
@@ -57,9 +56,6 @@ cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 if [ $num_threads -gt 1 ]; then
   # the -parallel becomes part of the binary name we decode with.
   thread_string="-parallel --num-threads=$num_threads"
-  if [ -z $parallel_opts ]; then
-    parallel_opts="--num-threads $num_threads"
-  fi
 fi
 
 mkdir -p $dir/log
@@ -142,7 +138,7 @@ cleanup() {
 trap "cleanup" INT QUIT TERM EXIT
 
 if [ $sub_split -eq 1 ]; then 
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_den.JOB.log \
     sgmm2-latgen-faster$thread_string $spkvecs_opt "$gselect_opt" --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active \
@@ -171,7 +167,7 @@ else
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
-      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+      $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         sgmm2-latgen-faster$thread_string \
         $spkvecs_opt_subset "$gselect_opt_subset" \
         --beam=$beam --lattice-beam=$lattice_beam \

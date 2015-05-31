@@ -80,9 +80,10 @@ if (@ARGV > 0) {
   }
 }
 
-if ($ignored_opts ne "") {
-  print STDERR "run.pl: Warning: ignoring options \"$ignored_opts\"\n";
-}
+# Users found this message confusing so we are removing it.
+# if ($ignored_opts ne "") {
+#  print STDERR "run.pl: Warning: ignoring options \"$ignored_opts\"\n";
+# }
 
 if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
                            # then work out the number of processors if possible,

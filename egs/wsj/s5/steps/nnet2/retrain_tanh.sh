@@ -43,7 +43,7 @@ widen=0 # If specified, it will increase the hidden-layer dimension
 bias_stddev=0.5 # will be used for widen
 
 num_threads=16
-parallel_opts="-pe smp $num_threads"  # using a smallish #threads by default, out of stability concerns.
+parallel_opts="--num-threads $num_threads"  # using a smallish #threads by default, out of stability concerns.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 cleanup=true
 # End configuration section.
@@ -75,7 +75,7 @@ if [ $# != 3 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16\">            # extra options to pass to e.g. queue.pl for processes that"
+  echo "  --parallel-opts <opts|\"--num-threads 16\">            # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."

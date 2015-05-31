@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey)
 
 # Decoding script that does fMLLR.  This can be on top of delta+delta-delta, or
 # LDA+MLLT features.
@@ -42,7 +42,7 @@ cmd=run.pl
 si_dir=
 fmllr_update_type=full
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # If you supply num-threads, you should supply this too.
+parallel_opts=  # ignored now.
 skip_scoring=false
 scoring_opts=
 max_fmllr_jobs=25  # I've seen the fMLLR jobs overload NFS badly if the decoding
@@ -69,7 +69,6 @@ if [ $# != 3 ]; then
    echo "                                           # Caution-- must be with same tree"
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
    echo "  --num-threads <n>                        # number of threads to use, default 1."
-   echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
    echo "  --scoring-opts <opts>                    # options to local/score.sh"
    exit 1;
 fi
@@ -117,11 +116,11 @@ if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
       [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $alignment_model | grep pdfs | awk '{print $NF}'` ] || \
         { echo "Mismatch in number of pdfs with $alignment_model"; exit 1; }
     fi
-    steps/decode.sh --parallel-opts "$parallel_opts" --scoring-opts "$scoring_opts" \
-              --num-threads $num_threads --skip-scoring $skip_scoring \
-              --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
-              --model $alignment_model --max-active \
-              $first_max_active $graphdir $data $si_dir || exit 1;
+    steps/decode.sh --scoring-opts "$scoring_opts" \
+           --num-threads $num_threads --skip-scoring $skip_scoring \
+           --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
+           --model $alignment_model --max-active \
+           $first_max_active $graphdir $data $si_dir || exit 1;
   fi
 fi
 ##
@@ -171,7 +170,7 @@ if [ $stage -le 2 ]; then
     [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $adapt_model | grep pdfs | awk '{print $NF}'` ] || \
       { echo "Mismatch in number of pdfs with $adapt_model"; exit 1; }
   fi
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false \
     --allow-partial=true --word-symbol-table=$graphdir/words.txt \
@@ -208,7 +207,7 @@ feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.
 
 if [ $stage -le 4 ]; then
   echo "$0: doing a final pass of acoustic rescoring."
-  $cmd $parallel_opts JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
     gmm-rescore-lattice $final_model "ark:gunzip -c $dir/lat.tmp.JOB.gz|" "$feats" ark:- \| \
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;
