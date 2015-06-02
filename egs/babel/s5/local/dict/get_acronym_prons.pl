@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Reads a dictionary (for prons of letters), and an OOV list,
 # and puts out candidate pronunciations of words in that list

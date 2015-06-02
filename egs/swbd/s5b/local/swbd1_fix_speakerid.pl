@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 # Author: Peng Qi (pengqi@cs.stanford.edu)
 # This script maps Switchboard speaker IDs to the true physical speakers

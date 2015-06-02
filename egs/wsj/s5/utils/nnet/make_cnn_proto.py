@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Copyright 2014  Brno University of Technology (author: Katerina Zmolikova, Karel Vesely)
 

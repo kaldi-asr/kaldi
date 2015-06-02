@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #################################################
 ## PTDNN - Python Toolkit for Deep Neural Network
 ## Author: Yajie Miao

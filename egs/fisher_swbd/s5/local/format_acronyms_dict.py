@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # convert acronyms in swbd dict to fisher convention
 # IBM to i._b._m.
 # BBC to b._b._c.

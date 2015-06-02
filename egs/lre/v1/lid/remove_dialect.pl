@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Removes the dialect parts on an utt2lang file.
 # For example <utt> chinese.wu is converted to <utt> chinese.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Copyright  2014 Nickolay V. Shmyrev 
 # Apache 2.0

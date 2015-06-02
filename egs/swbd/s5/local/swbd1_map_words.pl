@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Modified from swbd_map_words.pl in Kaldi s5 recipe to make pattern
 # matches case-insensitive --Arnab (Jan 2013)

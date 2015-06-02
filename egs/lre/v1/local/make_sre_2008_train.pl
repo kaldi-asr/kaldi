@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Copyright 2013-2014 Daniel Povey
 #                2014 David Snyder

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 # In general, doing 
 #  run.pl some.log a b c is like running the command a b c in

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use strict ; 
 
 my $ignore_first_field = 0;

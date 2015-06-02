@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");

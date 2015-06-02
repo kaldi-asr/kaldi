@@ -1,4 +1,4 @@
-#! /usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)

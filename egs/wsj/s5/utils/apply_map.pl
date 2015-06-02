@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 

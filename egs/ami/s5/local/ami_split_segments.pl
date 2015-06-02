@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
 

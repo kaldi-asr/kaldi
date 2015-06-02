@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This takes the output of e.g. get_candidate_prons.pl or limit_candidate_prons.pl
 # or reverse_candidates.pl, which is 7-tuples, one per line, of the form:

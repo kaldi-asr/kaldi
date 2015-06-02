@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Oct 21, 2015 : Gaurav Kumar (Johns Hopkins University)
 # GNU General Public License, v3.0

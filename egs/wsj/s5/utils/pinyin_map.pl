@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 $num_args = $#ARGV + 1;
 if ($num_args != 1) {

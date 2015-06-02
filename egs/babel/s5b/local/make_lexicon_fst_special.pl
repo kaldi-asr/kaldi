@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
 # makes lexicon FST -- special version only for use in keyword search

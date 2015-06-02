@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This program creates suggested suffix rules from a dictionary.
 # It outputs quadruples of the form:

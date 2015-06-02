@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Reads a dictionary, and prints out a list of words that seem to be pronounced
 # as acronyms (not including plurals of acronyms, just acronyms).  Uses

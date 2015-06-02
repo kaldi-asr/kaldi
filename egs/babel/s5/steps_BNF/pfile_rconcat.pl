@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2013  Karlsruhe Institute of Technology (Author: Jonas Gehring)
 # Apache 2.0.

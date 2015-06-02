@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 This script assumes that the parallel files have the same filename with different extensions and you must
 specify the absolute path to the corpus from the root. The text files may only contain a single line of text.
