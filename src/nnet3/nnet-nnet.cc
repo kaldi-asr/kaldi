@@ -34,7 +34,7 @@ int32 NetworkNode::Dim(const Nnet &nnet) const {
     case kInput:
       ans = u.dim;
       break;
-    case kOutput: case kComponentInput:
+    case kDescriptor:
       ans = descriptor.Dim(nnet);
       break;
     case kComponentOutput:

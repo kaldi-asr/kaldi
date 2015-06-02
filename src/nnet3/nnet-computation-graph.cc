@@ -330,13 +330,12 @@ void ComputeComputationGraph(const ComputationRequest &request,
     // the following switch statement sets up "input_cindexes" and
     // "is_optional".
     switch (node.node_type) {
-      case NetworkNode::kOutput: case NetworkNode::kComponentInput:
-        {
-          // desc describes how this node obtains its input from other nodes.
-          const Descriptor &desc = node.descriptor;
-          desc.GetInputCindexes(index, &input_cindexes);
-        }
+      case NetworkNode::kDescriptor: {
+        // desc describes how this node obtains its input from other nodes.
+        const Descriptor &desc = node.descriptor;
+        desc.GetInputCindexes(index, &input_cindexes);
         break;
+      }
       case NetworkNode::kComponent: {
         int32 c = node.u.component_index;
         const Component *component = nnet.GetComponent(c);
@@ -344,9 +343,9 @@ void ComputeComputationGraph(const ComputationRequest &request,
         component->GetInputIndexes(request.misc_info, index,
                                    &input_indexes, &is_optional);
         // each Component node should be preceded by a node that describes its
-        // input, of type kComponentInput.
+        // input, of type kDescriptor
         KALDI_ASSERT(nnet.GetNode(n-1).node_type ==
-                     NetworkNode::kComponentInput);
+                     NetworkNode::kDescriptor);
         if (!request.use_optional_dependencies)
           RemoveOptionalInputs(&input_indexes, &is_optional);
         
@@ -772,8 +771,7 @@ void AddIntermediateSteps(
 
   std::vector<char> is_output(nnet.NumNodes(), '\0');
   for (int32 node_index = 0; node_index < nnet.NumNodes(); node_index++) {
-    NetworkNode::NodeType t = nnet.GetNode(node_index).node_type;
-    if (t == NetworkNode::kOutput)
+    if (nnet.IsOutput(node_index))
       is_output[node_index] = static_cast<char>(1);
   }
   
@@ -840,7 +838,7 @@ void ModifyIndexes(const Nnet &nnet,
   
   // cindex_id_to_step will map a cindex_id to the step it appears in.  For
   // efficiency we only populate it with cindex_ids that are from a node of type
-  // kComponentInput whose corresponding Component modifies its input.  The
+  // kDescriptor whose corresponding Component modifies its input.  The
   // other entries are left undefined.  This means that we need to be a bit
   // careful when interpreting its values.
   std::vector<int32> cindex_id_to_step(graph.cindexes.size());
@@ -850,7 +848,7 @@ void ModifyIndexes(const Nnet &nnet,
     int32 first_cindex_id = cindex_ids.front();
     int32 node_index = graph.cindexes[first_cindex_id].first;
     const NetworkNode &node = nnet.GetNode(node_index);
-    if (node.node_type != NetworkNode::kComponentInput)
+    if (node.node_type != NetworkNode::kDescriptor)
       continue;  // nothing to do if not a component input.
     // the corresponding Component is always numbered 1 more
     const NetworkNode &next_node = nnet.GetNode(node_index + 1);

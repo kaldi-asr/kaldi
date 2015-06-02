@@ -51,8 +51,7 @@ class Compiler {
   struct StepInfo {
     int32 node_index;  // network-node index
     int32 input_step;  // for nodes of type kComponent, the step-index of the
-                       // step corresponding to the input (of type
-                       // kComponentInput).
+                       // step corresponding to the input (of type kDescriptor).
     bool is_input;  // true if this step corresponds to an input to the
                     // network.  For steps corresponding to nodes of type kInput,
                     // is_input will always be true; for steps of type kComponent,
@@ -69,11 +68,11 @@ class Compiler {
     std::vector<int32> output_cindex_ids;   // cindex_ids for each of the output
     // indexes.
 
-    // If this component is of type kComponentInput or kOutput (and note that
-    // the top-level Descriptor is a concatenation over >= 1 parts), then we set
-    // value_parts to a list of submatrix-indexes, each for the corresponding
-    // part of the value.  If there is only one part, it will have one element
-    // which will be the same as "value".
+    // If this component is of type kDescriptor (and note that the top-level
+    // Descriptor is a concatenation over >= 1 parts), then we set value_parts
+    // to a list of submatrix-indexes, each for the corresponding part of the
+    // value.  If there is only one part, it will have one element which will be
+    // the same as "value".
     std::vector<int32> value_parts;
     // deriv_parts is as "value_parts", but for parts of the derivative (if
     // we're doing backprop).
@@ -132,8 +131,8 @@ class Compiler {
   // to a Component.
   void AddPropagateStep(int32 step, NnetComputation *computation) const;
 
-  // Called from DoForwardComputation, handles the case where the step corresponds
-  // to types kComponentInput or kOutput.
+  // Called from DoForwardComputation, handles the case where the step
+  // corresponds to type kDescriptor
   void DoForwardComputationDescriptor(
       int32 step, const Descriptor &descriptor,
       NnetComputation *computation) const;
@@ -172,7 +171,7 @@ class Compiler {
   void AddBackpropStep(int32 step, NnetComputation *computation) const;
 
   // Called from DoBackwardComputation, handles the case where the step
-  // corresponds to types kComponentInput or kOutput.
+  // corresponds to type kDescriptor.
   void DoBackwardComputationDescriptor(
       int32 step, const Descriptor &descriptor,
       NnetComputation *computation) const;

@@ -51,6 +51,8 @@ struct Feature {
   /// represents.
   Feature(const std::string &name,
           int32 t_begin, const MatrixBase<BaseFloat> &feats);
+
+  Feature() { }
   
   // Use default copy constructor and assignment operators.
 
@@ -72,16 +74,18 @@ struct Supervision {
   /// each labels[i] is a list of (label, weight) pairs; in the normal case it
   /// will contain just a single element, with weight 1.0.  this vector has the
   /// same size sa "indexes", which explains which frame each label corresponds
-  /// to.
-  /// Note: this is the same type as typedef "Posterior".
-  std::vector<std::vector<std::pair<int32, BaseFloat> > > labels;
-
+  /// to.  Posterior is typedef'ed to
+  /// std::vector<std::vector<std::pair<int32, BaseFloat> > >
+  Posterior labels;
+  
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
   Supervision(const std::string &name,
               int32 t_begin,
-              const std::vector<std::vector<std::pair<int32, BaseFloat> > > &labels);
+              const Posterior &labels);
+
+  Supervision() { }
   
   void Write(std::ostream &os, bool binary) const;
 

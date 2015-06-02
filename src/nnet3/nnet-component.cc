@@ -616,9 +616,9 @@ void NaturalGradientAffineComponent::InitFromString(std::string args) {
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_sample = 0.1;
-  int32 input_dim = -1, output_dim = -1, rank_in = 30, rank_out = 80,
-      update_period = 1;
+      max_change_per_sample = 0.075;
+  int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
+      update_period = 4;
   ParseFromString("learning-rate", &args, &learning_rate); // optional.
   ParseFromString("num-samples-history", &args, &num_samples_history);
   ParseFromString("alpha", &args, &alpha);

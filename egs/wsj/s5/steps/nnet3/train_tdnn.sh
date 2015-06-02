@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# note, TDNN is the same as what we used to call multisplice.
+
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey). 
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
@@ -7,11 +9,6 @@
 #           2014  Vijayaditya Peddinti
 # Apache 2.0.
 
-# train_multisplice_accel2.sh is a modified version of
-# train_pnorm_multisplice2.sh (still using pnorm).  The "accel" refers to the
-# fact that we increase the number of jobs during training (from
-# --num-jobs-initial to --num-jobs-final).  We dropped "pnorm" from the name as
-# it was getting too long.
 
 
 # Begin configuration section.
@@ -20,7 +17,6 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-bias_stddev=0.5
 pnorm_input_dim=3000 
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's.
@@ -63,25 +59,17 @@ splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
-alpha=4.0 # relates to preconditioning.
-update_period=4 # relates to online preconditioning: says how often we update the subspace.
-num_samples_history=2000 # relates to online preconditioning
-max_change_per_sample=0.075
-precondition_rank_in=20  # relates to online preconditioning
-precondition_rank_out=80 # relates to online preconditioning
+affine_opts=
 
-num_threads=16
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" 
-  # by default we use 16 threads; this lets the queue know.
-  # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
-combine_num_threads=8
-combine_parallel_opts="-pe smp 8"  # queue options for the "combine" stage.
+gpu=true    # if true, we run on GPU.
+cpu_num_threads=16  # if using CPU, the number of threads we use.
+combine_num_threads=8  # number of threads for the "combine" operation
 cleanup=true
 egs_dir=
+max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
-lda_dim=
 egs_opts=
-transform_dir=     # If supplied, overrides alidir
+transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
@@ -93,7 +81,7 @@ realign_times=          # List of times on which we realign.  Each time is
                         # number.
 num_jobs_align=30       # Number of jobs for realignment
 # End configuration section.
-frames_per_eg=8 # to be passed on to get_egs2.sh
+frames_per_eg=8 # to be passed on to get_egs.sh
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -102,6 +90,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
+echo $@
 if [ $# != 4 ]; then
   echo "Usage: $0 [opts] <data> <lang> <ali-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
@@ -113,14 +102,15 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
+  echo "  --learning-rate-scales-opts <ComponentA=0.1:ComponentB=0.2>   # Scale learning rate of components. separate with ':'"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
-  echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
-  echo "                                                   # per context-dependent state.  Try a number several times #states."
+  echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
+  echo "                                                   # the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
-  echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
-  echo "                                                   # as well as speed; may interact with batch size; if you increase"
+  echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
+  echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
@@ -180,7 +170,8 @@ cp $alidir/tree $dir
 # process the splice_inds string, to get a layer-wise context string
 # to be processed by the nnet-components
 # this would be mainly used by SpliceComponent|SpliceMaxComponent
-python steps/nnet2/make_multisplice_configs.py contexts --splice-indexes "$splice_indexes" $dir || exit -1;
+steps/nnet3/make_tdnn_configs.py contexts --splice-indexes "$splice_indexes" $dir || exit -1;
+
 context_string=$(cat $dir/vars) || exit -1
 echo $context_string
 eval $context_string || exit -1; #
@@ -250,6 +241,8 @@ if [ $stage -le -4 ]; then
 
   initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
 
+  mkdir -p $dir/configs || exit 1;
+  
   # create the config files for nnet initialization
   python steps/nnet3/make_multisplice_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -262,20 +255,101 @@ if [ $stage -le -4 ]; then
     --bias-stddev $bias_stddev  \
     --num-hidden-layers $num_hidden_layers \
     --num-targets  $num_leaves  \
-    configs  $dir || exit -1;
+    configs  $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.
   $cmd $dir/log/nnet_init.log \
-    nnet-init $dir/nnet.config $dir/0.raw || exit 1;
+    nnet3-raw-init $dir/configs/init.config $dir/0.raw || exit 1;
 
 fi
 
+if [ $stage -le -3 ]; then
+  echo "$0: getting preconditioning matrix for input features."
+  num_lda_jobs=$num_archives
+  [ $num_lda_jobs -gt $max_lda_jobs ] && num_lda_jobs=$max_lda_jobs
+
+  # Write stats with the same format as stats for LDA.
+  $cmd JOB=1:$num_lda_jobs $dir/log/get_transform_stats.JOB.log \
+      nnet3-get-transform-stats --num-leaves=$num_leaves \
+        $dir/0.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
+
+  all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
+  $cmd $dir/log/sum_transform_stats.log \
+    sum-lda-accs $dir/lda_stats $all_lda_accs || exit 1;
+
+  rm $all_lda_accs || exit 1;
+
+  # This program reads in 0.raw which just outputs the spliced features possibly with
+  # iVector appended, and adds to it a fixed affine transform computed in the way
+  # we described in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's
+  # a scaled variant of an LDA transform but without dimensionality reduction.
+  $cmd $dir/log/get_transform.log \
+    nnet3-add-feature-transform $lda_opts $dir/lda_stats $dir/0.raw $dir/1.raw || exit 1;
+
+  # work out the dimension after the transform... we have to decide on the
+  # output format of nnet3-raw-info before we can do this.
+  lda_output_dim=$(nnet3-raw-info $dir/1.raw | foo bar$)
+  
+  # now add the final transform layer and the final  softmax.
+  # Note: parameter stddev will default to 1/sqrt(input-dim), and defaults for the natural gradient
+  # update are all the ones we want.
+  cat >$dir/config/add_softmax.config
+component name=final-affine type=NaturalGradientAffineComponent $affine_opts input-dim=$lda_output_dim output-dim=$num_leaves bias-stddev=0
+component name=softmax type=SoftmaxComponent dim=$num_leaves
+# in next line, input of final-affine node is the same as whatever the input of
+# the current output node was.
+node name=final-affine type=component input=final-affine-input
+# rename the old output node to be the input of the
+rename-node old-name=output new-name=final-affine-input new-type=component-input
+# below, because the input is from a node of "component" type, a temporary
+# node of type component-input will be created, as if we had done as follows.
+# node name=softmax-input type=component-input input=final-affine
+node name=softmax type=component component=softmax input=final-affine
+
+
+input=InputOfNode(output)
+
+
+
+node name=output type=output 
+  
+  nnet3-raw-edit $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
+  
+fi
+
+
 if [ $stage -le -1 ]; then
-  echo "Training transition probabilities and setting priors"
+  echo "$0: training transition probabilities and setting priors"
   $cmd $dir/log/train_trans.log \
     nnet-train-transitions $dir/0.mdl "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl \
     || exit 1;
+
+  if [ "$presoftmax_prior_scale_power" != "0.0" ]; then
+    echo "prepare initial vector for FixedScaleComponent before softmax"
+    echo "use priors^$presoftmax_prior_scale_power and rescale to average 1"
+
+    # obtains raw pdf count    
+    $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
+      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
+      post-to-tacc --per-pdf=true --binary=false $alidir/final.mdl ark:- $dir/JOB.pacc || exit 1;
+    cat $dir/*.pacc > $dir/pacc
+    rm $dir/*.pacc
+    awk -v power=$presoftmax_prior_scale_power \
+      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} } 
+      END {
+        for (i=2; i<=NF-1; i++) {total+=sum[i]} 
+        ave_pdf=int(total/(NF-2)); total+=0.01*ave_pdf*(NF-2)
+        for (i=2; i<=NF-1; i++) {rescale+=((sum[i]+0.01*ave_pdf)/total)^power}
+        rescale/=(NF-2)
+        printf " [ "; for (i=2; i<=NF-1; i++) {printf("%f ", ((sum[i]+0.01*ave_pdf)/total)^power/rescale)}; print "]"
+      }' $dir/pacc > $dir/presoftmax_prior_scale_vecfile
+
+    echo "FixedScaleComponent scales=$dir/presoftmax_prior_scale_vecfile" > $dir/configs/per_element.config
+    echo "insert an additional layer of FixedScaleComponent before softmax"
+    inp=`nnet-am-info $dir/0.mdl | grep 'Softmax' | awk '{print $2}'`
+    nnet-init $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
+  fi  
 fi
 
 # set num_iters so that as close as possible, we process the data $num_epochs
@@ -309,7 +383,7 @@ mix_up_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n
   && exit 1;
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
-[ $mix_up -gt 0 ] && echo "$0: Will mix up on iteration $mix_up_iter"
+echo "$0: Will not do mix up"
 
 if [ $num_threads -eq 1 ]; then
   parallel_suffix="-simple" # this enables us to use GPU code if
@@ -430,11 +504,19 @@ while [ $x -lt $num_iters ]; do
       [ $[$x%$add_layers_period] -eq 0 ]; then
       do_average=false # if we've just mixed up, don't do averaging take the best.
       cur_num_hidden_layers=$[$x/$add_layers_period];
-      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert $dir/$x.mdl - - | nnet-am-copy --learning-rate=$this_learning_rate - -|"
+      inp=`nnet-am-info $dir/$x.mdl | grep 'Softmax' | awk '{print $2}'`
+
+      if [ "$presoftmax_prior_scale_power" != "0.0" ]; then
+        inp=$[$inp-2]
+      else
+        inp=$[$inp-1]
+      fi
+
+      mdl="nnet-init --srand=$x $dir/hidden_${cur_num_hidden_layers}.config - | nnet-insert --insert-at=$inp $dir/$x.mdl - - | nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate - -|"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      mdl="nnet-am-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet-am-copy $learning_rate_scales_opts --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -499,11 +581,8 @@ while [ $x -lt $num_iters ]; do
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
-      # mix up.
-      echo Mixing up from $num_leaves to $mix_up components
-      $cmd $dir/log/mix_up.$x.log \
-        nnet-am-mixup --min-count=10 --num-mixtures=$mix_up \
-        $dir/$[$x+1].mdl $dir/$[$x+1].mdl || exit 1;
+      echo "Warning: the mix up opertion is disabled!"
+      echo "    Ignore mix up leaves number specified"
     fi
     rm $nnets_list
     [ ! -f $dir/$[$x+1].mdl ] && exit 1;

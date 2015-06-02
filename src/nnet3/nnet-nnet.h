@@ -35,21 +35,27 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// NetworkNode is used to represent, in a neural net, either an input of the
-/// network, an output of the network, a Component, or a node that collects the
-/// input to the component.  Each Component has a corresponding node of type
-/// kComponentInput that is numbered preceding to the Component.  This may seem
+/// NetworkNode is used to represent, three types of thing: either an input of the
+/// network (which pretty much just states the dimension of the input vector);
+/// a Component (e.g. an affine component or a sigmoid component); or a Descriptor.
+/// A Descriptor is basically an expression that can do things like append
+/// the outputs of other components (or inputs) together, add them together, and
+/// do various other things like shifting the time index.
+///
+/// Each Component must have an input of type kDescriptor that is numbered
+/// preceding to the Component, and that is not used elsewhere.  This may seem
 /// unintuitive but it makes the implementation a lot easier; any apparent waste
-/// can be optimized out after compilation.
+/// can be optimized out after compilation.  And outputs must also be of type
+/// kDescriptor.
 ///
 /// Note: in the actual computation you can provide input not only to nodes of
 /// type kInput but also to nodes of type kComponent; this is useful in things
 /// like recurrent nets where you may want to split the computation up into
 /// pieces.
 struct NetworkNode {
-  enum NodeType { kInput, kOutput, kComponent, kComponentInput } node_type;
+  enum NodeType { kInput, kDescriptor, kComponent } node_type;
 
-  // This is relevant only for kOutput and kComponentInput.  It describes which
+  // This is relevant only for nodes of type kDescriptor.  It describes which
   // other network nodes it gets its input from, and how those inputs are
   // combined together; see type Descriptor in nnet-descriptor.h for
   // details.
@@ -76,7 +82,7 @@ class Nnet {
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
-
+  
   /// return component indexed c.  not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
@@ -86,6 +92,10 @@ class Nnet {
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const;
+
+  /// Returns true if this is an output node, meaning that it is of type kDescriptor
+  /// and is not directly followed by a node of type kComponent.
+  bool IsOutput(int32 node) const;
 
   /// returns vector of node names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetNodeNames() const { return node_names_; }
@@ -124,7 +134,7 @@ class Nnet {
   // foo, because the input to a component always gets its own NetworkNode index.
   std::vector<std::string> node_names_;
 
-  // the network nodes.
+  // the network nodes of the network.
   std::vector<NetworkNode> nodes_;
   
 };

@@ -171,8 +171,7 @@ void Compiler::DefineSubmatrices(NnetComputation *computation) {
   for (int32 step = 0; step < num_steps; step++) {
     StepInfo &this_info = steps_[step];
     const NetworkNode &node = nnet_.GetNode(this_info.node_index);
-    if (node.node_type == NetworkNode::kComponentInput ||
-        node.node_type == NetworkNode::kOutput) {
+    if (node.node_type == NetworkNode::kDescriptor) {
       const Descriptor &desc = node.descriptor;
       KALDI_ASSERT(!desc.parts.empty());
       int32 num_parts = desc.parts.size();
@@ -222,7 +221,7 @@ void Compiler::DoForwardComputation(int32 step,
 
   switch (node.node_type) {
     case NetworkNode::kInput: break;  // Nothing to do.
-    case NetworkNode::kOutput: case NetworkNode::kComponentInput:
+    case NetworkNode::kDescriptor:
       DoForwardComputationDescriptor(step, node.descriptor, computation);
       break;
     case NetworkNode::kComponent:
@@ -610,7 +609,7 @@ void Compiler::DoBackwardComputation(int32 step,
 
   switch (node.node_type) {
     case NetworkNode::kInput: break;  // Nothing to do.
-    case NetworkNode::kOutput: case NetworkNode::kComponentInput:
+    case NetworkNode::kDescriptor:
       DoBackwardComputationDescriptor(step, node.descriptor, computation);
       break;
     case NetworkNode::kComponent:
@@ -750,7 +749,7 @@ void Compiler::DestroyMatrices(NnetComputation *computation) {
   for (int32 step = 0; step < num_steps; step++) {
     const StepInfo &step_info = steps_[step];
     const NetworkNode &node = nnet_.GetNode(step_info.node_index);
-    if (node.node_type == NetworkNode::kOutput) {
+    if (nnet_.IsOutput(step_info.node_index)) {
       // steps corresponding to output nodes need to have their "value" kept.
       will_destroy[step_info.value] = false;
     } else if (node.node_type == NetworkNode::kInput) {
