@@ -80,14 +80,13 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
 
   // Check that we have a gpu available
   int32 n_gpu = 0;
+
   cudaError_t e;
   e = cudaGetDeviceCount(&n_gpu);
-  if ( e != cudaSuccess ) {
-      KALDI_ERR << "Error querying for number of devices: " << cudaGetErrorString(e) << std::endl;
-  }
+
   if (n_gpu == 0) {
     if (use_gpu == "yes" || use_gpu == "wait") {
-      KALDI_ERR << "No CUDA GPU detected!";
+      KALDI_CUDA_ERR(e, "No CUDA GPU detected!");
     }
     if (use_gpu == "optional") {
       KALDI_WARN << "Running on CPU!!! No CUDA GPU detected...";
@@ -113,7 +112,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       e = cudaThreadSynchronize(); //<< 2nd trial to get CUDA context.
       if (e != cudaSuccess) {
         if (use_gpu == "yes") {
-          KALDI_ERR << "Failed to create CUDA context, no more unused GPUs?";
+          KALDI_CUDA_ERR(e, "Failed to create CUDA context, no more unused GPUs?");
         }
         if (use_gpu == "optional") {
           KALDI_WARN << "Running on CPU!!! No more unused CUDA GPUs?";
@@ -181,7 +180,7 @@ void CuDevice::FinalizeActiveGpu() {
     cudaError_t e;
     e = cudaGetDevice(&act_gpu_id);
     if(e != cudaSuccess) {
-      KALDI_ERR << "Failed to get device-id of active device.";
+      KALDI_CUDA_ERR(e, "Failed to get device-id of active device.");
     }
     // Remember the id of active GPU 
     active_gpu_id_ = act_gpu_id; //CuDevice::Enabled() is true from now on
@@ -219,12 +218,12 @@ bool CuDevice::IsComputeExclusive() {
   int32 gpu_id = -1;
   cudaError_t e = cudaGetDevice(&gpu_id);
   if(e != cudaSuccess) {
-    KALDI_ERR << "Failed to get current device";
+    KALDI_CUDA_ERR(e, "Failed to get current device");
   }
   struct cudaDeviceProp gpu_prop;
   e = cudaGetDeviceProperties(&gpu_prop, gpu_id);
   if(e != cudaSuccess) {
-    KALDI_ERR << "Failed to get device properties";
+    KALDI_CUDA_ERR(e,  "Failed to get device properties");
   }
   // find out whether compute exclusive mode is used
   switch (gpu_prop.computeMode) {
@@ -243,7 +242,7 @@ bool CuDevice::IsComputeExclusive() {
       // in this case we release the GPU context...
       e = cudaThreadExit(); //deprecated, but for legacy reason not cudaDeviceReset
       if(e != cudaSuccess) {
-        KALDI_ERR << "Failed to release CUDA context on a GPU";
+        KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
       }
       return false;
   }
@@ -651,7 +650,7 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
           KALDI_WARN << "Allocation failed for the second time.    Printing "
                     << "device memory usage and exiting";
           device_->PrintMemoryUsage();
-          KALDI_ERR << "Memory allocation failure";
+          KALDI_CUDA_ERR(ret, "Memory allocation failure");
         }
       }
     } else {
@@ -668,7 +667,7 @@ void* CuAllocator::MallocInternal(size_t row_bytes,
           KALDI_WARN << "Allocation failed for the second time.    Printing "
                     << "device memory usage and exiting";
           device_->PrintMemoryUsage();
-          KALDI_ERR << "Memory allocation failure";
+          KALDI_CUDA_ERR(ret,  "Memory allocation failure");
         }
       }
       KALDI_ASSERT(pitch > 0);
