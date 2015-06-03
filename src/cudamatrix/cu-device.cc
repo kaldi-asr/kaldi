@@ -497,388 +497,45 @@ void CuDevice::CheckGpuHealth() {
 }
 
 
-struct CuAllocatorOptions {
-  bool cache_memory; // Enable GPU memory caching, (false = disable).
-  int32 count; // Number of times we free and delete a particular size before we
-               // start to cache it.
-  int32 cleanup_interval_bytes;
-  CuAllocatorOptions()
-   : cache_memory(true), count(1), cleanup_interval_bytes(1000000) { }
-};
-
-
-/// We define class CuAllocator inside the .cc file, because we don't want to
-/// expose it in the header.  Its purpose is to hang on to memory that we have
-/// freed, so that we don't waste time in cudaMalloc and cudaMallocPitch().
-/// For some reason, they are sometimes very slow.
-class CuAllocator {
- public:
-  CuAllocator(const CuAllocatorOptions &opts, CuDevice *device):
-      device_(device), opts_(opts),
-      cleanup_countdown_bytes_(opts.cleanup_interval_bytes) { }
-  
-  inline void *Malloc(size_t size);
-  
-  inline void *MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
-  
-  inline void Free(void *ptr);
-
-  inline void DisableCaching();
-
-  ~CuAllocator();
- private:
-  inline void *MallocInternal(size_t row_bytes, size_t num_rows, size_t *pitch);
-  
-  // struct MemInfoForSize stores information associated with a particular size
-  // of allocated memory.  The row_bytes and num_rows refer to the arguments of
-  // a cudaMallocPitch call; for regular, non-pitch allocations with cudaMalloc,
-  // we make "row_bytes" zero and the size in bytes is "num_rows"... there is a
-  // reason why we do it this way round (make num_rows contain the size in
-  // bytes); it relates to the ordering of the map, and the behavior when
-  // we didn't find the exact size and want to find larger match.
-
-  
-  struct MemInfoForSize {
-    size_t row_bytes; // or zero, if a regular CudaMalloc, not
-                      // CudaMallocPitch.
-    size_t num_rows; // or the number of rows, if it's a regular CudaMalloc
-                     // call, not CudaMallocPitch.
-    size_t pitch; // If CudaMallocPitch, the pitch returned by CudaMallocPitch;
-                  // this code assumes (and checks) that it's a deterministic
-                  // function of row_bytes and num_rows.
-    size_t countdown; // number that have been freed and not cached.
-    size_t currently_used; // number that are "in the wild".. kept for
-                           // diagnostics and error detection.
-    std::vector<void*> freed; // freed and cached...
-      
-    MemInfoForSize(size_t row_bytes,
-                   size_t num_rows,
-                   int32 count):
-        row_bytes(row_bytes),
-        num_rows(num_rows),
-        pitch(0),
-        countdown(count),
-        currently_used(0) { }
-  };
-
-
-  // FindMemInfo returns the MemInfoForSize object for this (row_bytes,
-  // num_rows) combination if it exists; otherwise...
-  // if there is a MemInfoForSize object with the same row_bytes and larger (but
-  // not more than twice larger) num_rows that has freed memory waiting, it
-  // returns that; otherwise, it returns a new MemInfoForSize object for the
-  // requested size).
-  
-  inline MemInfoForSize *FindMemInfo(size_t row_bytes,
-                                     size_t num_rows) {
-    if (row_bytes >= size_to_list_.size())
-      size_to_list_.resize(row_bytes + 1, NULL);
-    
-    // note: we set row_bytes to 0 for regular, linear allocation.
-    KALDI_ASSERT(num_rows != 0);
-
-    if (size_to_list_[row_bytes] == NULL)
-      size_to_list_[row_bytes] = new std::map<size_t, MemInfoForSize*>;
-
-
-    std::map<size_t, MemInfoForSize*> &size_to_list = *(size_to_list_[row_bytes]);
-
-    typedef std::map<size_t, MemInfoForSize* >::iterator IterType;
-
-    // get an iterator to the requested object or the next-larger one.
-    // Here, upper_bound(num_rows - 1) returns an object strictly greater
-    // than num_rows - 1, which could be num_rows itself.  We need to
-    // treat num_rows == 0 as a special case because of size_t being
-    // unsigned.
-    IterType iter = (num_rows == 0 ? size_to_list.begin() :
-                     size_to_list.upper_bound(num_rows - 1));
-    
-    if (iter != size_to_list.end() && iter->first == num_rows) {
-      // Found a MemInfoForSize object
-      // with the requested size -> return it.
-      KALDI_ASSERT(iter->second->row_bytes == row_bytes &&
-                   iter->second->num_rows == num_rows);
-      return iter->second;
-    } else if (iter != size_to_list.end() &&
-               iter->second->num_rows <= 2 * num_rows &&
-               !iter->second->freed.empty()) {
-      // Return the non-matching one with freed memory, which is larger than
-      // this one but not more than twice larger.
-      KALDI_ASSERT(iter->second->row_bytes == row_bytes &&
-                   iter->second->num_rows > num_rows); // confirm expectations.
-      return iter->second;
-    } else {
-      // There was no such object, and the next-larger object either did not
-      // exist, had more than twice the num-rows requested, or had no free
-      // memory -> create an object with the requested size.
-      return (size_to_list[num_rows] =  new MemInfoForSize(row_bytes, num_rows,
-                                                           opts_.count));
-    }
-  }
-                 
-  void PossiblyCleanup(size_t num_bytes);
-
-  // A periodic housekeeping task..
-  void Cleanup();
-
-  // Frees all memory in the "freed" vectors; memory that the
-  // user freed but we held on to.  If destroy == true, also
-  // clean up all memory held in the size_to_list_ object (i.e.
-  // allocated maps and MemInfoForSize objects).
-  void ReleaseAllCachedMemory(bool destroy = false);
-
-  CuDevice *device_; // device this is attached to...
-  CuAllocatorOptions opts_;
-
-
-  unordered_map<void*, MemInfoForSize*> addr_to_list_;
-
-  // size_to_list_ is indexed first by row_bytes (which is zero for linear
-  // mallocs) and then by num_rows (which for linear mallocs, is the actual size
-  // in bytes).
-  std::vector<std::map<size_t, MemInfoForSize*>* > size_to_list_;
-  
-  int32 cleanup_countdown_bytes_; // countdown in bytes, until the next time we check
-                                  // whether we should do cleanup
-};
-
-
-void* CuAllocator::Malloc(size_t size) {
-  KALDI_ASSERT(size > 0);
-  return MallocInternal(0, size, NULL);
+void CuDevice::Free(void *ptr) { 
+  CU_SAFE_CALL(cudaFree(ptr)); 
 }
-
-void* CuAllocator::MallocPitch(size_t num_rows, size_t row_bytes,
-                               size_t *pitch) {
-  KALDI_ASSERT(num_rows > 0 && row_bytes > 0 && pitch != NULL);
-  return MallocInternal(num_rows, row_bytes, pitch);
-}
-
-void* CuAllocator::MallocInternal(size_t row_bytes,
-                                  size_t num_rows,
-                                  size_t *pitch_out) {
-  // we share the code for standard cudaMalloc and cudaMallocPitch
-  // because most of it is the same.  for cudaMalloc, we'll have
-  // row_bytes == 0, and num_rows is just the size to be allocated.
-  KALDI_ASSERT(num_rows != 0 && (row_bytes != 0) == (pitch_out != NULL));
-  
-  MemInfoForSize *info = FindMemInfo(row_bytes, num_rows);
-  if (!info->freed.empty()) { // We can satisfy the request with cached,
-                              // previously-allocated memory.
-    void *ans = info->freed.back();
-    info->freed.pop_back();
-    info->currently_used++;
-    addr_to_list_[ans] = info;
-    if (pitch_out) *pitch_out = info->pitch;
-    return ans;
-  } else {
-    PossiblyCleanup(row_bytes == 0 ? num_rows : row_bytes * num_rows);
-    void *ans;
-    if (row_bytes == 0) { // Simple malloc request, not "MallocPitch".
-      size_t size = num_rows;
-      int32 ret = cudaMalloc(&ans, size);
-      if (ret != 0) {
-        KALDI_WARN << "Allocation of memory block of " << size << " bytes "
-                   << "failed, releasing cached memory and retrying.";
-        cudaGetLastError(); // reset the error state
-        ReleaseAllCachedMemory();
-        ret = cudaMalloc(&ans, size);
-        if (ret != 0) {
-          KALDI_WARN << "Allocation failed for the second time.    Printing "
-                    << "device memory usage and exiting";
-          device_->PrintMemoryUsage();
-          KALDI_CUDA_ERR(ret, "Memory allocation failure");
-        }
-      }
-    } else {
-      size_t pitch;
-      int32 ret = cudaMallocPitch(&ans, &pitch, row_bytes, num_rows);
-      if (ret != 0) { // allocation failed...
-        KALDI_WARN << "Allocation of " << num_rows << " rows, each of size "
-                   << row_bytes << " bytes failed,  releasing cached "
-                   << "memory and retrying.";
-        cudaGetLastError(); // reset the error state
-        ReleaseAllCachedMemory();
-        ret = cudaMallocPitch(&ans, &pitch, row_bytes, num_rows);
-        if (ret != 0) {
-          KALDI_WARN << "Allocation failed for the second time.    Printing "
-                    << "device memory usage and exiting";
-          device_->PrintMemoryUsage();
-          KALDI_CUDA_ERR(ret,  "Memory allocation failure");
-        }
-      }
-      KALDI_ASSERT(pitch > 0);
-      if (info->pitch == 0) { // First allocation; have not set info->pitch yet.
-        info->pitch = pitch;
-      } else if (pitch != info->pitch) {
-        KALDI_ERR << "Pitch differs between multiple calls with the same "
-                  << "parameters: " << pitch << " vs. " << info->pitch;
-      }
-      *pitch_out = info->pitch;
-    }
-    addr_to_list_[ans] = info;
-    info->currently_used++;
-    return ans;
-  }
-}
-
-void CuAllocator::Free(void *addr) {
-  unordered_map<void*, MemInfoForSize*>::iterator iter
-      = addr_to_list_.find(addr);
-  if (iter == addr_to_list_.end()) {
-    KALDI_ERR << "Attempt to free address " << addr << " that was not allocated "
-              << "by CuDevice::Malloc() (or was previously freed);";
-  }
-  MemInfoForSize *info = iter->second;
-  addr_to_list_.erase(addr); // Erase this element in the addr_to_list_ map.
-  info->currently_used--;
-  if (info->countdown == 0 && opts_.cache_memory) { 
-                              // We have freed [i.e. actually freed with
-                              // CudaFree()] enough of these that we think
-                              // we're wasting too much time this way and
-                              // need to start caching them.
-    info->freed.push_back(addr);
-  } else { // Actually free the address, and decrease "countdown".
-    info->countdown--;
-    /*
-      If you get an "unspecified launch error" after the cudaFree call below, it
-      may not be an error with the immediate call, but it could reflect an error
-      that happened earlier.  We encountered the CUBLAS bug described at
-      https://devtalk.nvidia.com/default/topic/758598/cublas-gemm-leads-to-invalid-reads-for-some-matrix-dimensions/
-      which causes sgemm to access invalid memory.  After reproducibly getting
-      "unspecified launch failure" at the location below, we ran the program in
-      cuda-memcheck and got the following:
-      ========= Invalid __global__ read of size 4
-      =========     at 0x00000180 in sgemm_sm_heavy_nt_ldg
-      =========     by thread (223,0,0) in block (0,0,0)
-      =========     Address 0x4a0052607c is out of bounds
-      (and lots more stuff like that).  It appears to only happen for certain
-      matrix sizes, usually encountered for partial minibatches at the end of a
-      training job.  It happened on K20s but not on K10s. We know this happened
-      with CUDA toolkit version 5.5, and the link above says the bug has been
-      resolved in version 6.5 of the toolkit.  Our fix was to just not run the
-      affected training runs on our K20s, since this bug seemed to show up quite
-      rarely.
-     */
-    CU_SAFE_CALL(cudaFree(addr)); // This is how we free, even if allocated with
-                                  // cudaMallocPitch().
-  }
-}
-
-
-inline void CuAllocator::DisableCaching() {
-  KALDI_LOG << "Disabling caching of GPU memory.";
-  KALDI_ASSERT(size_to_list_.empty()); // No memory allocated yet!
-  opts_.cache_memory = false;
-}
-
-void CuAllocator::ReleaseAllCachedMemory(bool destroy) {
-  KALDI_VLOG(2) << "Releasing all cached memory.";
-  for (size_t i = 0; i < size_to_list_.size(); i++) {
-    if (size_to_list_[i] == NULL)
-      continue;
-    typedef std::map<size_t, MemInfoForSize*>::iterator  IterType;
-    for (IterType iter = size_to_list_[i]->begin();
-         iter != size_to_list_[i]->end(); ++iter) {
-      MemInfoForSize *info = iter->second;
-      if (destroy && !info->freed.empty()) {
-        // When called from the destructor at program end, if verbose level is
-        // high, say the sizes we had.
-        if (info->row_bytes == 0) {
-          KALDI_VLOG(3) << "Releasing " << info->freed.size() << " blocks of "
-                        << info->num_rows << " bytes.";
-        } else {
-          KALDI_VLOG(3) << "Releasing " << info->freed.size()
-                        << " 2-d blocks of " << info->num_rows << " rows of "
-                        << info->row_bytes << " bytes each.";
-        }
-      }
-      if (!destroy) {
-        // We only do this freeing part when we're *not* called from the
-        // destuctor (destroy = false).  This leads to a crash when called from
-        // the destructor, with cudaFree returning "unload of CUDA runtime
-        // failed".  Presumably this has to do with the destruction order of
-        // C++, which we can't really control.
-        while (!info->freed.empty()) {
-          CU_SAFE_CALL(cudaFree(info->freed.back()));
-          info->freed.pop_back();
-        }
-      }
-      if (destroy)
-        delete info;
-    }
-    if (destroy) {
-      delete size_to_list_[i];
-      size_to_list_[i] = NULL;
-    }
-  }
-}
-
-void CuAllocator::Cleanup() {
-  // TODO: implement this or remove it (and also PossiblyCleanup).
-  // Actually we may never implement this, as just calling
-  // ReleaseAllCachedMemory whenever an allocation fails is probably
-  // sufficient.
-}
-void CuAllocator::PossiblyCleanup(size_t num_bytes) {
-  if (static_cast<size_t>(cleanup_countdown_bytes_) <= num_bytes) {
-    Cleanup();
-    cleanup_countdown_bytes_ = opts_.cleanup_interval_bytes;
-  } else {
-    cleanup_countdown_bytes_ -= static_cast<int32>(num_bytes);
-  }
-}
-
-CuAllocator::~CuAllocator() {
-  // Check that nothing was allocated by the user and not freed.
-  std::set<MemInfoForSize*> unfreed_set;
-  typedef unordered_map<void*, MemInfoForSize *>::iterator IterType;
-  for (IterType iter = addr_to_list_.begin(); iter != addr_to_list_.end();
-       ++iter)
-    unfreed_set.insert(iter->second);
-  for (std::set<MemInfoForSize*>::iterator iter = unfreed_set.begin();
-       iter != unfreed_set.end(); ++iter) {
-    MemInfoForSize *info = *iter;
-    KALDI_ASSERT(info->currently_used > 0); // Or should not be in this set
-                                            // (code error or memory corruption)
-    if (info->num_rows == 0) {
-      KALDI_WARN << info->currently_used << " memory chunks of size "
-                 << info->row_bytes << " were allocated and not freed.";
-    } else {
-      KALDI_WARN << info->currently_used << " memory chunks of size "
-                 << info->row_bytes << " per row, and " << info->num_rows
-                 << " rows, were allocated and not freed.";
-    }
-  }
-  
-  bool destroy = true;
-  ReleaseAllCachedMemory(destroy);
-}
-
-void CuDevice::Free(void *ptr) { allocator_->Free(ptr); }
 
 void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-  return allocator_->MallocPitch(row_bytes, num_rows, pitch);
+  void *ret_ptr = NULL;
+  cudaError_t e = cudaMallocPitch(&ret_ptr, pitch, row_bytes, num_rows);
+  if (e != cudaSuccess) {
+    PrintMemoryUsage();
+    KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory (" 
+      << row_bytes << " x " << num_rows << " = "
+      << row_bytes * num_rows << " bytes )";
+  }
+  return ret_ptr;
 }
 
 void* CuDevice::Malloc(size_t size) {
-  return allocator_->Malloc(size);
+  void *ret_ptr = NULL;
+  cudaError_t e = cudaMalloc(&ret_ptr, size);
+  if (e != cudaSuccess) {
+    PrintMemoryUsage();
+    KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
+      << " (" << size << " bytes )";
+  }
+  return ret_ptr;
 }
 
 void CuDevice::DisableCaching() {
-  allocator_->DisableCaching();
+  // just a no-op function now
 }
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
-                      allocator_(new CuAllocator(CuAllocatorOptions(), this))
+CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true)
   { }
 
 
 CuDevice::~CuDevice() {
-  if (allocator_ != NULL)
-    delete allocator_;
-  if (Enabled())
+  if (Enabled()) {
     CU_SAFE_CALL(cublasShutdown());
+  }
 }
   
 // The instance of the static singleton 

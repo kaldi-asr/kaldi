@@ -33,7 +33,6 @@
 
 namespace kaldi {
 
-class CuAllocator; // Forward declaration.
 
 /**
  * Singleton object which represents CUDA device
@@ -143,7 +142,6 @@ class CuDevice {
 
   bool verbose_;
 
-  CuAllocator *allocator_;
   
 }; // class CuDevice
 
