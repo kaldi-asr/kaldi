@@ -1,4 +1,5 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 use Cwd;
 use File::Basename;

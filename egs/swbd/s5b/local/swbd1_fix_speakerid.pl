@@ -1,4 +1,5 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 # Author: Peng Qi (pengqi@cs.stanford.edu)
 # This script maps Switchboard speaker IDs to the true physical speakers
