@@ -192,6 +192,8 @@ class PossiblyCompressedMatrix {
   int32 NumRows() const;
 
   int32 NumCols() const;
+
+  bool IsCompressed() const;
   
   PossiblyCompressedMatrix(const Matrix<BaseFloat> &mat,
                            bool compress = false);

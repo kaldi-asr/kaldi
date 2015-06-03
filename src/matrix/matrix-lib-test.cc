@@ -4172,7 +4172,93 @@ template<typename Real> static void UnitTestCompressedMatrix() {
 
   unlink("tmpf");
 }
-  
+
+template<typename Real> static void UnitTestPossiblyCompressedMatrix() {
+  // This is the basic test.
+
+  PossiblyCompressedMatrix empty_pmat;  // some tests on empty matrix
+  KALDI_ASSERT(empty_pmat.NumRows() == 0);
+  KALDI_ASSERT(empty_pmat.NumCols() == 0);
+
+  // could set num_tot to 10000 for more thorough testing.
+  MatrixIndexT num_failure = 0, num_tot = 10000, max_failure = 1;
+  for (MatrixIndexT n = 0; n < num_tot; n++) {
+    MatrixIndexT num_rows = Rand() % 20, num_cols = Rand() % 15;
+    if (num_rows * num_cols == 0) {
+      num_rows = 0;
+      num_cols = 0;
+    }
+    if (rand() % 2 == 0 && num_cols != 0) {
+      // smaller matrices are more likely to have problems.
+      num_cols = 1 + Rand() % 3;
+    }
+    Matrix<Real> M(num_rows, num_cols);
+    if (Rand() % 3 != 0) InitRand(&M);
+    else {
+      M.Add(RandGauss());
+    }
+    if (Rand() % 2 == 0 && num_rows != 0) {  // set one row to all the same value,
+      // which is one possible pathology.
+      // Give it large dynamic range to increase chance that it
+      // is the largest or smallest value in the matrix.
+      M.Row(Rand() % num_rows).Set(RandGauss() * 4.0);
+    }
+    double rand_val = RandGauss() * 4.0;
+    // set a bunch of elements to all one value: increases
+    // chance of pathologies.
+    MatrixIndexT modulus = 1 + Rand() % 5;
+    for (MatrixIndexT r = 0; r < num_rows; r++)
+      for (MatrixIndexT c = 0; c < num_cols; c++)
+        if (Rand() % modulus != 0) M(r, c) = rand_val;
+
+    PossiblyCompressedMatrix pmat(M, false);
+    pmat.Compress();
+    KALDI_ASSERT(pmat.NumRows() == num_rows);
+    KALDI_ASSERT(pmat.NumCols() == num_cols);
+    PossiblyCompressedMatrix pmat2(pmat);
+
+    Matrix<Real> M2(pmat2.NumRows(), pmat2.NumCols());
+    pmat2.GetMatrix(&M2);
+
+    Matrix<Real> diff(M2);
+    diff.AddMat(-1.0, M);
+
+    if (n < 5) {  // test I/O.
+      bool binary = (n % 2 == 1);
+      {
+        std::ofstream outs("tmpf", std::ios_base::out |std::ios_base::binary);
+        InitKaldiOutputStream(outs, binary);
+        pmat.Write(outs, binary);
+      }
+      PossiblyCompressedMatrix pmat3;
+      {
+        bool binary_in;
+        std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
+        InitKaldiInputStream(ins, &binary_in);
+        pmat3.Read(ins, binary_in);
+      }
+
+      Matrix<Real> M3(pmat3.NumRows(), pmat3.NumCols());
+      pmat3.GetMatrix(&M3);
+      AssertEqual(M, M3);
+    }
+
+    KALDI_LOG << "M = " << M;
+    KALDI_LOG << "M2 = " << M2;
+    double tot = M.FrobeniusNorm(), err = diff.FrobeniusNorm();
+    KALDI_LOG << "Compressed matrix, tot = " << tot << ", diff = "
+              << err;
+    if (err > 0.015 * tot) {
+      KALDI_WARN << "Failure in possibly compressed-matrix test.";
+      num_failure++;
+    }
+  }
+  if (num_failure > max_failure)
+    KALDI_ERR << "Too many failures in possibly compressed matrix test " << num_failure
+              << " > " << max_failure;
+
+  unlink("tmpf");
+}
 
 template<typename Real>
 static void UnitTestExtractCompressedMatrix() {
@@ -4326,6 +4412,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
+  UnitTestPossiblyCompressedMatrix<BaseFloat>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
   UnitTestMatrixExponentialBackprop();
