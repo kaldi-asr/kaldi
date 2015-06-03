@@ -49,8 +49,7 @@ if [ $stage -le 0 ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.${wip}.log \
       mkdir -p $dir/score_LMWT_${wip}/ '&&' \
       ACWT=\`perl -e \"print 1.0/LMWT\;\"\` '&&' \
-      lattice-scale --acoustic-scale=\$ACWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
+      lattice-add-penalty --word-ins-penalty=$wip "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
       lattice-to-ctm-conf --decode-mbr=$decode_mbr --acoustic-scale=\$ACWT  ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
