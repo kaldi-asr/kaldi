@@ -8,13 +8,11 @@ set -o pipefail
 
 cmd=run.pl
 stage=-1
+allow_partial=true
 
 ## Features paramters
 window_size=100                   # 1s
-try_merge_sound_speech=true
-smooth_mask=false
 min_data=200
-
 frames_per_gaussian=2000
 num_bins=100
 
@@ -138,6 +136,26 @@ if [ $stage -le -10 ]; then
   } | gmm-copy - $dir/init.mdl || exit 1
 fi
 
+if [ $stage -le -9 ]; then
+  lang=$dir/lang_test_4x
+  cp -r $dir/lang $lang
+  perl -e 'print "0 0 1 1 " . -log(1/11) . "\n0 0 2 2 ". -log(8/11). "\n0 0 3 3 ". -log(1/11) ."\n0 ". -log(1/11)' | \
+    fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
+    --keep_isymbols=false --keep_osymbols=false \
+    > $lang/G.fst || exit 1
+  diarization/make_vad_graph.sh --iter trans $lang $dir $dir/graph_test_4x || exit 1
+  
+  lang=$dir/lang_2class_test_4x
+  cp -r $dir/lang_2class $lang
+  perl -e 'print "0 0 1 1 " . -log(1/10) . "\n0 0 2 2 ". -log(8/10). "\n0 ". -log(1/10)' | \
+    fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
+    --keep_isymbols=false --keep_osymbols=false \
+    > $lang/G.fst || exit 1
+  
+  diarization/make_vad_graph.sh --iter trans_2class --tree tree_2class $lang $dir $dir/graph_2class_test_4x || exit 1
+fi
+
+
 while IFS=$'\n' read line; do
   feats="ark:echo $line | apply-cmvn --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |${ignore_energy_opts}"
   
@@ -187,7 +205,7 @@ while IFS=$'\n' read line; do
 
   # Get VAD: 0 for silence, 1 for speech and 2 for sound
   $cmd $dir/log/$utt_id.get_vad.bootstrap.log \
-    gmm-decode-simple --allow-partial=false \
+    gmm-decode-simple --allow-partial=$allow_partial \
     --word-symbol-table=$dir/graph_2class/words.txt \
     $dir/init.mdl $dir/graph_2class/HCLG.fst \
     "$feats" ark:/dev/null ark:- \| ali-to-pdf $dir/init.mdl ark:- ark:- \| \
@@ -222,7 +240,7 @@ while IFS=$'\n' read line; do
         segmentation-select-top --num-bins=$num_bins --src-label=2 \
         --num-top-frames=$num_frames_sound_next --num-bottom-frames=-1 \
         --top-select-label=2 --bottom-select-label=-1 --reject-label=1001 \
-        --remove-rejected-frames=true \
+        --remove-rejected-frames=true --select-from-full-histogram=true \
         --window-size=$window_size --min-window-remainder=$[window_size/2] \
         ark:$tmpdir/$utt_id.seg.first.$[x+1].ark "ark:extract-column ark:$dir/$utt_id.zero_crossings.ark ark:- |" \
         ark:$tmpdir/$utt_id.seg.second.$[x+1].ark || exit 1
@@ -251,16 +269,22 @@ while IFS=$'\n' read line; do
       } 2> $tmpdir/log/$utt_id.init_gmm.log | \
         gmm-copy - $tmpdir/$utt_id.$[x+1].mdl 2>> $tmpdir/log/$utt_id.init_gmm.log || exit 1
     else
+      #$cmd $tmpdir/log/$utt_id.gmm_update.$[x+1].log \
+      #  gmm-est-segmentation --pdfs=0:2 \
+      #  --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n2 $sound_num_gauss\" |" \
+      #  $tmpdir/$utt_id.$x.mdl "$feats" \
+      #  ark:$tmpdir/$utt_id.seg.second.$[x+1].ark \
+      #  $tmpdir/$utt_id.$[x+1].mdl || exit 1
       $cmd $tmpdir/log/$utt_id.gmm_update.$[x+1].log \
-        gmm-est-segmentation --pdfs=0:2 \
+        gmm-update-segmentation --pdfs=0:2 \
         --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n2 $sound_num_gauss\" |" \
         $tmpdir/$utt_id.$x.mdl "$feats" \
         ark:$tmpdir/$utt_id.seg.second.$[x+1].ark \
         $tmpdir/$utt_id.$[x+1].mdl || exit 1
     fi
     
-    $cmd $tmpdir/log/$utt_id.get_seg.$x.log \
-      gmm-decode-simple --allow-partial=false \
+    $cmd $tmpdir/log/$utt_id.get_seg.$[x+1].log \
+      gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/graph/words.txt \
       $tmpdir/$utt_id.$[x+1].mdl $dir/graph/HCLG.fst \
       "$feats" ark:/dev/null ark:- \| \
@@ -287,11 +311,20 @@ while IFS=$'\n' read line; do
       gmm-global-init-from-feats \
       --num-iters=$[speech_num_gauss+1] --num-gauss-init=1 --num-gauss=$speech_num_gauss \
       ark:- $phase2_dir/$utt_id.speech.0.mdl
-  if [ $? -ne 0 ]; then
-    num_selected_speech=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_it.init_speech.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
+  if [ $? -eq 0 ]; then
+    num_selected_speech=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_id.init_speech.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
     if [ $num_selected_speech -lt $min_data ]; then
+      echo "Insufficient frames for speech at the end of phase 1. $num_selected_speech < $min_data. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
       goto_phase3=true
     fi
+  else
+    echo "Failed to find any data for speech at the end of phase 1. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
+    goto_phase3=true
+  fi
+
+  if $goto_phase3; then
+    rm -f $dir/$utt_id.current_seg.ark
+    ln -s $tmpdir/$utt_id.seg.$x.ark $dir/$utt_id.current_seg.ark
   fi
 
   if ! $goto_phase3; then
@@ -314,7 +347,7 @@ while IFS=$'\n' read line; do
       fi
 
       $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
-        gmm-decode-simple --allow-partial=false \
+        gmm-decode-simple --allow-partial=$allow_partial \
         --word-symbol-table=$dir/graph/words.txt \
         $phase2_dir/$utt_id.$x.mdl $dir/graph/HCLG.fst \
         "$feats" ark:/dev/null ark:- \| \
@@ -322,8 +355,14 @@ while IFS=$'\n' read line; do
         segmentation-init-from-ali ark:- \
         ark:$phase2_dir/$utt_id.seg.$x.ark || exit 1
       
+      #$cmd $phase2_dir/log/$utt_id.gmm_update.$[x+1].log \
+      #  gmm-est-segmentation \
+      #  --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\n2 $sound_num_gauss\" |" \
+      #  $phase2_dir/$utt_id.$x.mdl "$feats" \
+      #  ark:$phase2_dir/$utt_id.seg.$x.ark \
+      #  $phase2_dir/$utt_id.$[x+1].mdl || exit 1
       $cmd $phase2_dir/log/$utt_id.gmm_update.$[x+1].log \
-        gmm-est-segmentation \
+        gmm-update-segmentation \
         --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\n2 $sound_num_gauss\" |" \
         $phase2_dir/$utt_id.$x.mdl "$feats" \
         ark:$phase2_dir/$utt_id.seg.$x.ark \
@@ -333,10 +372,10 @@ while IFS=$'\n' read line; do
     done  ## Done training all 3 GMMs
     cp $phase2_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
     rm -f $dir/$utt_id.graph_final
-    ln -s graph $dir/$utt_id.graph_final
+    ln -s graph_test_4x $dir/$utt_id.graph_final
 
     $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
-      gmm-decode-simple --allow-partial=false \
+      gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/graph/words.txt \
       $phase2_dir/$utt_id.$x.mdl $dir/graph/HCLG.fst \
       "$feats" ark:/dev/null ark:- \| \
@@ -346,10 +385,10 @@ while IFS=$'\n' read line; do
 
     mkdir -p $phase3_dir/log
     
-    $cmd $phase2_dir/$utt_id.init_nonsil.log \
-      segmentation-copy --merge-labels=0:2 --merge-dst-label=0 \
+    $cmd $phase2_dir/log/$utt_id.init_nonsil.log \
+      segmentation-copy --merge-labels=1:2 --merge-dst-label=1 \
       ark:$phase2_dir/$utt_id.seg.$x.ark ark:- \| \
-      select-feats-from-segmentation --select-label=0 \
+      select-feats-from-segmentation --select-label=1 \
         "$feats" ark:- ark:- \| \
         gmm-global-init-from-feats \
         --num-iters=$[sound_num_gauss + speech_num_gauss + 1] \
@@ -357,29 +396,68 @@ while IFS=$'\n' read line; do
         --num-gauss=$[sound_num_gauss + speech_num_gauss] ark:- \
         $phase2_dir/$utt_id.$x.nonsil.mdl || exit 1
   
-    speech_like=$(select-feats-from-segmentation --select-label=1 \
-      "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark ark:- | \
-      gmm-global-get-frame-likes \
-      "gmm-extract-pdf $phase2_dir/$utt_id.$x.mdl 1 - |" ark:- ark,t:- | \
-      perl -pe 's/.*\[(.+)]/$1/' | \
-      perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_speech_like.$x.log  || exit 1
+    $cmd $phase2_dir/log/$utt_id.select_speech_feats.$x.log \
+      select-feats-from-segmentation --select-label=1 \
+      "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark \
+      ark:$phase2_dir/$utt_id.speech_feats.$x.ark
     
-    sound_like=$(select-feats-from-segmentation --select-label=2 \
-      "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark ark:- | \
-      gmm-global-get-frame-likes \
-      "gmm-extract-pdf $phase2_dir/$utt_id.$x.mdl 1 - |" ark:- ark,t:- | \
-      perl -pe 's/.*\[(.+)]/$1/' | \
-      perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_sound_like.$x.log  || exit 1
+    if $goto_phase3; then
+      rm -f $dir/$utt_id.current_seg.ark
+      ln -s $phase2_dir/$utt_id.seg.$x.ark $dir/$utt_id.current_seg.ark
+    fi
 
-    nonsil_like=$(select-feats-from-segmentation --merge-labels=1:2 --select-label=1 \
-      "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark ark:- | \
-      gmm-global-get-frame-likes \
-      $phase2_dir/$utt_id.$x.nonsil.mdl ark:- ark,t:- | \
-      perl -pe 's/.*\[(.+)]/$1/' | \
-      perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_nonsil_like.$x.log  || exit 1
-    
-    if [ ! -z `perl -e "print \"true\" if ($sound_like + $speech_like < $nonsil_like)"` ]; then
+    if [ $? -eq 0 ]; then
+      num_selected_speech=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_id.select_speech_feats.$x.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
+      if [ $num_selected_speech -lt $min_data ]; then
+        echo "Insufficient frames for speech at the end of phase 2. $num_selected_speech < $min_data. See $phase2_dir/log/$utt_id.select_speech_feats.$x.log. Going to phase 3."
+        goto_phase3=true
+      fi
+    else
+      echo "Failed to find any data for speech at the end of phase 1. See $phase2_dir/log/$utt_id.select_speech_feats.$x.log. Going to phase 3."
       goto_phase3=true
+    fi
+
+    if ! $goto_phase3; then
+      speech_like=$(gmm-global-get-frame-likes \
+        "gmm-extract-pdf $phase2_dir/$utt_id.$x.mdl 1 - |" \
+        ark:$phase2_dir/$utt_id.speech_feats.$x.ark ark,t:- | \
+        perl -pe 's/.*\[(.+)]/$1/' | \
+        perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_speech_like.$x.log  || exit 1
+
+      $cmd $phase2_dir/log/$utt_id.select_sound_feats.$x.log \
+        select-feats-from-segmentation --select-label=2 \
+          "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark \
+          ark:$phase2_dir/$utt_id.sound_feats.$x.ark
+    
+      if [ $? -eq 0 ]; then
+        num_selected_sound=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_id.select_sound_feats.$x.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
+        if [ $num_selected_sound -lt $min_data ]; then
+          echo "Insufficient frames for sound at the end of phase 2. $num_selected_sound < $min_data. See $phase2_dir/log/$utt_id.select_sound_feats.$x.log. Going to phase 3."
+          goto_phase3=true
+        fi
+      else
+        echo "Failed to find any data for sound at the end of phase 1. See $phase2_dir/log/$utt_id.select_sound_feats.$x.log. Going to phase 3."
+        goto_phase3=true
+      fi
+    fi
+
+    if ! $goto_phase3; then
+      sound_like=$(gmm-global-get-frame-likes \
+        "gmm-extract-pdf $phase2_dir/$utt_id.$x.mdl 1 - |" \
+        ark:$phase2_dir/$utt_id.sound_feats.$x.ark ark,t:- | \
+        perl -pe 's/.*\[(.+)]/$1/' | \
+        perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_sound_like.$x.log  || exit 1
+
+      nonsil_like=$(select-feats-from-segmentation --merge-labels=1:2 --select-label=1 \
+        "$feats" ark:$phase2_dir/$utt_id.seg.$x.ark ark:- | \
+        gmm-global-get-frame-likes \
+        $phase2_dir/$utt_id.$x.nonsil.mdl ark:- ark,t:- | \
+        perl -pe 's/.*\[(.+)]/$1/' | \
+        perl -ane '$sum = 0; foreach(@F) { $sum = $sum + $_; $i = $i + 1;}; print STDOUT ($sum)') 2> $phase2_dir/$utt_id.compute_nonsil_like.$x.log  || exit 1
+
+      if [ ! -z `perl -e "print \"true\" if ($sound_like + $speech_like < $nonsil_like)"` ]; then
+        goto_phase3=true
+      fi
     fi
   fi
 
@@ -403,6 +481,7 @@ while IFS=$'\n' read line; do
         --top-select-label=0 --bottom-select-label=-1 \
         --reject-label=1000 --select-above-mean=true \
         --remove-rejected-frames=true --select-from-full-histogram=true \
+        --window-size=1 --min-window-remainder=1 \
         ark:$tmpdir/$utt_id.vad.bootstrap.ark \
         ark:$dir/$utt_id.silence_log_likes.bootstrap.ark ark:- | \
         select-feats-from-segmentation --select-label=0 "$feats" ark:- ark:- | \
@@ -418,7 +497,7 @@ while IFS=$'\n' read line; do
       gmm-copy - $phase3_dir/$utt_id.check.mdl 2>> $phase3_dir/log/$utt_id.check_gmm.log
       
     $cmd $phase3_dir/log/$utt_id.get_seg.check.log \
-      gmm-decode-simple --allow-partial=false \
+      gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/graph_2class/words.txt \
       $phase3_dir/$utt_id.check.mdl $dir/graph_2class/HCLG.fst \
       "$feats" ark:/dev/null ark:- \| \
@@ -444,6 +523,7 @@ while IFS=$'\n' read line; do
         --top-select-label=0 --bottom-select-label=-1 \
         --reject-label=1000 --select-above-mean=true \
         --remove-rejected-frames=true --select-from-full-histogram=true \
+        --window-size=1 --min-window-remainder=1 \
         ark:$tmpdir/$utt_id.vad.bootstrap.ark \
         ark:$dir/$utt_id.silence_log_likes.bootstrap.ark ark:- \| \
         select-feats-from-segmentation --select-label=0 "$feats" ark:- ark:- \| \
@@ -459,6 +539,7 @@ while IFS=$'\n' read line; do
         --top-select-label=1 --bottom-select-label=-1 \
         --reject-label=1000 --select-above-mean=true \
         --remove-rejected-frames=true --select-from-full-histogram=true \
+        --window-size=1 --min-window-remainder=1 \
         ark:$tmpdir/$utt_id.vad.bootstrap.ark \
         ark:$dir/$utt_id.speech_log_likes.bootstrap.ark ark:- \| \
         select-feats-from-segmentation --select-label=1 "$feats" ark:- ark:- \| \
@@ -471,7 +552,7 @@ while IFS=$'\n' read line; do
       x=0
       while [ $x -lt $num_iters_phase3 ]; do
         $cmd $phase3_dir/log/$utt_id.get_seg.$x.log \
-          gmm-decode-simple --allow-partial=false \
+          gmm-decode-simple --allow-partial=$allow_partial \
           --word-symbol-table=$dir/graph_2class/words.txt \
           $phase3_dir/$utt_id.$x.mdl $dir/graph_2class/HCLG.fst \
           "$feats" ark:/dev/null ark:- \| \
@@ -479,8 +560,14 @@ while IFS=$'\n' read line; do
           segmentation-init-from-ali ark:- \
           ark:$phase3_dir/$utt_id.seg.$x.ark || exit 1
 
+        #$cmd $phase3_dir/log/$utt_id.gmm_update.$[x+1].log \
+        #  gmm-est-segmentation \
+        #  --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\" |" \
+        #  $phase3_dir/$utt_id.$x.mdl "$feats" \
+        #  ark:$phase3_dir/$utt_id.seg.$x.ark \
+        #  $phase3_dir/$utt_id.$[x+1].mdl || exit 1
         $cmd $phase3_dir/log/$utt_id.gmm_update.$[x+1].log \
-          gmm-est-segmentation \
+          gmm-update-segmentation \
           --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\" |" \
           $phase3_dir/$utt_id.$x.mdl "$feats" \
           ark:$phase3_dir/$utt_id.seg.$x.ark \
@@ -499,12 +586,12 @@ while IFS=$'\n' read line; do
 
       cp $phase3_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
       rm -f $dir/$utt_id.graph_final
-      ln -s graph_2class $dir/$utt_id.graph_final
+      ln -s graph_2class_test_4x $dir/$utt_id.graph_final
     fi
   fi
 
   $cmd $dir/log/$utt_id.get_seg.final.log \
-    gmm-decode-simple --allow-partial=false \
+    gmm-decode-simple --allow-partial=$allow_partial \
     --word-symbol-table=$dir/$utt_id.graph_final/words.txt \
     $dir/$utt_id.final.mdl $dir/$utt_id.graph_final/HCLG.fst \
     "$feats" ark:/dev/null ark:- \| \

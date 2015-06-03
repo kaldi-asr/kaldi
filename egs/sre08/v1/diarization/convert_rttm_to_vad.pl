@@ -19,8 +19,7 @@ if (@ARGV > 1) {
   print STDERR "$0:\n" .
                "Usage: convert_rttm_to_vad.pl [options] [rttm] > <vad-out>\n";
   exit 1;
-}
-
+} 
 ($frame_shift > 0.0001 && $frame_shift <= 1.0) ||
   die "Very strange frame-shift value '$frame_shift'";
 ($ignore_boundaries eq "false" || $ignore_boundaries eq "true") || 
@@ -29,6 +28,7 @@ if (@ARGV > 1) {
 if ($segments_file ne "") {
   open (SEGMENTS, ">", $segments_file) 
     or die "Cannot open $segments_file for writingn\n";
+  print STDERR "Writing segments to $segments_file\n";
 }
 
 my %vad_for_file = ();

@@ -114,7 +114,8 @@ void Segmentation::CreateHistogram(
   mean_scores_.clear();
   mean_scores_.resize(Dim(), std::numeric_limits<BaseFloat>::quiet_NaN());
   
-  std::vector<int32> num_frames;
+  std::vector<int32> num_frames(Dim(), 0);
+
   int32 i = 0;
   for (SegmentList::iterator it = segments_.begin(); 
         it != segments_.end(); ++it, i++) {
@@ -123,11 +124,12 @@ void Segmentation::CreateHistogram(
     BaseFloat mean_score = this_segment_scores.Sum() / this_segment_scores.Dim();
     
     mean_scores_[i] = mean_score;
-    num_frames.push_back(this_segment_scores.Dim());
+    num_frames[i] = this_segment_scores.Dim();
 
     if (mean_score > max_score) max_score = mean_score;
     if (mean_score < min_score) min_score = mean_score;
   }
+  KALDI_ASSERT(i == mean_scores_.size());
 
   if (opts.select_above_mean) {
     min_score = scores.Sum() / scores.Dim();
@@ -139,11 +141,16 @@ void Segmentation::CreateHistogram(
   hist_encoder->select_from_full_histogram = opts.select_from_full_histogram;
 
   i = 0;
-  for (SegmentList::const_iterator it = segments_.begin(); it != segments_.end(); ++it) {
+  for (SegmentList::const_iterator it = segments_.begin(); it != segments_.end(); ++it, i++) {
     if (it->Label() != label) continue;
+    KALDI_ASSERT(!KALDI_ISNAN(mean_scores_[i]));
+
+    if (opts.select_above_mean && mean_scores_[i] < min_score) continue;
+    KALDI_ASSERT(mean_scores_[i] >= min_score);
+
     hist_encoder->Encode(mean_scores_[i], num_frames[i]);
-    i++;
   }
+  KALDI_ASSERT(i == mean_scores_.size());
   Check();
 }
 
@@ -159,10 +166,17 @@ int32 Segmentation::SelectTopBins(
   int32 num_top_frames = 0, i = hist_encoder.NumBins() - 1;
   while (i >= (hist_encoder.select_from_full_histogram ? 0 : (hist_encoder.NumBins() / 2))) {
     num_top_frames += hist_encoder.BinSize(i);
-    if (num_top_frames >= num_frames_select) break;
+    if (num_top_frames >= num_frames_select) {
+      num_top_frames -= hist_encoder.BinSize(i);
+      if (num_top_frames == 0) {
+        num_top_frames += hist_encoder.BinSize(i);
+        i--;
+      }
+      break;
+    }
     i--;
   }
-  min_score_for_selection = hist_encoder.min_score + i * hist_encoder.bin_width;
+  min_score_for_selection = hist_encoder.min_score + (i+1) * hist_encoder.bin_width;
 
   i = 0;
   for (SegmentList::iterator it = segments_.begin(); 
@@ -171,6 +185,7 @@ int32 Segmentation::SelectTopBins(
       ++it;
       continue;
     }
+    KALDI_ASSERT(!KALDI_ISNAN(mean_scores_[i]));
     if (mean_scores_[i] >= min_score_for_selection) {
       it->SetLabel(dst_label);
       ++it;
@@ -184,6 +199,7 @@ int32 Segmentation::SelectTopBins(
       }
     }
   }
+  KALDI_ASSERT(i == mean_scores_.size());
 
   if (remove_rejected_frames) mean_scores_.clear();
 
@@ -203,10 +219,17 @@ int32 Segmentation::SelectBottomBins(
   int32 num_bottom_frames = 0, i = 0;
   while (i < (hist_encoder.select_from_full_histogram ? hist_encoder.NumBins() : (hist_encoder.NumBins() / 2))) {
     num_bottom_frames += hist_encoder.BinSize(i);
-    if (num_bottom_frames >= num_frames_select) break;
+    if (num_bottom_frames >= num_frames_select) {
+      num_bottom_frames -= hist_encoder.BinSize(i);
+      if (num_bottom_frames == 0) {
+        num_bottom_frames += hist_encoder.BinSize(i);
+        i++;
+      }
+      break;
+    }
     i++;
   }
-  max_score_for_selection = hist_encoder.min_score + (i+1) * hist_encoder.bin_width;
+  max_score_for_selection = hist_encoder.min_score + i * hist_encoder.bin_width;
 
   i = 0;
   for (SegmentList::iterator it = segments_.begin(); 
@@ -215,6 +238,7 @@ int32 Segmentation::SelectBottomBins(
       ++it; 
       continue;
     }
+    KALDI_ASSERT(!KALDI_ISNAN(mean_scores_[i]));
     if (mean_scores_[i] < max_score_for_selection) {
       it->SetLabel(dst_label);
       ++it;
@@ -228,6 +252,7 @@ int32 Segmentation::SelectBottomBins(
       }
     }
   }
+  KALDI_ASSERT(i == mean_scores_.size());
 
   if (remove_rejected_frames) mean_scores_.clear();
 
@@ -247,25 +272,37 @@ std::pair<int32,int32> Segmentation::SelectTopAndBottomBins(
   BaseFloat min_score_for_selection = std::numeric_limits<BaseFloat>::infinity();
   int32 num_selected_top = 0, i = hist_encoder.NumBins() - 1;
   while (i >= hist_encoder.NumBins() / 2) {
-    num_selected_top += hist_encoder.BinSize(i);
-    if (num_selected_top >= num_frames_top) break;
+    int32 this_selected = hist_encoder.BinSize(i);
+    num_selected_top += this_selected;
+    if (num_selected_top >= num_frames_top) {
+      num_selected_top -= this_selected;
+      if (num_selected_top == 0) {
+        num_selected_top += this_selected;
+        i--;
+      }
+      break;
+    }
     i--;
   }
-  min_score_for_selection = hist_encoder.min_score + i * hist_encoder.bin_width;
+  min_score_for_selection = hist_encoder.min_score + (i+1) * hist_encoder.bin_width;
   
   BaseFloat max_score_for_selection = -std::numeric_limits<BaseFloat>::infinity();
   int32 num_selected_bottom= 0;
   i = 0;
   while (i < hist_encoder.NumBins() / 2) {
-    BaseFloat this_selected = hist_encoder.BinSize(i);
+    int32 this_selected = hist_encoder.BinSize(i);
     num_selected_bottom += this_selected;
     if (num_selected_bottom >= num_frames_bottom) {
       num_selected_bottom -= this_selected;
+      if (num_selected_bottom == 0) {
+        num_selected_bottom += this_selected;
+        i++;
+      }
       break;
     }
     i++;
   }
-  max_score_for_selection = hist_encoder.min_score + (i+1) * hist_encoder.bin_width;
+  max_score_for_selection = hist_encoder.min_score + i * hist_encoder.bin_width;
 
   i = 0;
   for (SegmentList::iterator it = segments_.begin(); 
@@ -274,6 +311,7 @@ std::pair<int32,int32> Segmentation::SelectTopAndBottomBins(
       ++it; 
       continue;
     }
+    KALDI_ASSERT(!KALDI_ISNAN(mean_scores_[i]));
     if (mean_scores_[i] >= min_score_for_selection) {
       it->SetLabel(top_label);
       ++it;
@@ -290,6 +328,7 @@ std::pair<int32,int32> Segmentation::SelectTopAndBottomBins(
       }
     }
   }
+  KALDI_ASSERT(i == mean_scores_.size());
   
   if (remove_rejected_frames) mean_scores_.clear();
 
@@ -370,13 +409,46 @@ void Segmentation::WidenSegments(int32 label, int32 length) {
   for (SegmentList::iterator it = segments_.begin();
         it != segments_.end(); ++it) {
     if (it->Label() == label) {
-      if (it != segments_.begin())
+      if (it != segments_.begin()) {
+        SegmentList::iterator prev_it = it;
+        --prev_it;
         it->start_frame -= length;
+        if (prev_it->Label() == label && it->start_frame < prev_it->end_frame) {
+          it->start_frame = prev_it->start_frame;
+          Erase(prev_it);
+        } else if (prev_it->Label() != label && 
+            it->start_frame < prev_it->end_frame) {
+          if (it->start_frame <= prev_it->start_frame) {
+            // The extended segment absorbs the previous segment into it
+            // So remove the previous segment
+            Erase(prev_it);
+          } else {
+            // The extended segment reduces the length of the previous
+            // segment. But does not completely overlap it.
+            prev_it->end_frame -= length;
+          }
+        }
+      }
       SegmentList::iterator next_it = it;
       ++next_it;
 
       if (next_it != segments_.end())
         it->end_frame += length;
+    } else { // if (it->Label() != label)
+      if (it != segments_.begin()) {
+        SegmentList::iterator prev_it = it;
+        --prev_it;
+        if (prev_it->end_frame >= it->end_frame) {
+          // The extended previous SPEECH segment completely overlaps the current
+          // SILENCE segment. So remove the SILENCE segment.
+          it = Erase(it);
+          --it;   // So that we can increment in the for loop
+        } else if (prev_it->end_frame >= it->start_frame) {
+          // The extended previous SPEECH segment reduces the length of this 
+          // SILENCE segment.
+          it->start_frame = prev_it->end_frame + 1;
+        }
+      } 
     }
   }
 }

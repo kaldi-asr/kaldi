@@ -106,6 +106,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Number of frames for the different classes are : ";
     WriteIntegerVector(KALDI_LOG, false, frames_count_per_class);
 
+    return (num_done > 0 ? 0 : 1); 
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

@@ -40,11 +40,11 @@ while (<STDIN>) {
     $min_time{$file_id} = $A[2];
   }
 
-  print STDOUT sprintf("SPEAKER $file_id 1 %5.2f %5.2f <NA> <NA> speech <NA>\n", $A[2], $A[3] - $A[2]);
+  print STDOUT sprintf("SPEAKER $file_id 1 %.2f %.2f <NA> <NA> speech <NA>\n", $A[2], $A[3] - $A[2]);
   $max_time{$file_id} = $A[3];
 }
 
 foreach (keys %min_time) {
-  print UEM sprintf("$_ 1 %5.2f %5.2f\n", $min_time{$_}, $max_time{$_});
+  print UEM sprintf("$_ 1 %.2f %.2f\n", $min_time{$_}, $max_time{$_});
 }
 

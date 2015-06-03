@@ -347,7 +347,7 @@ int main(int argc, char *argv[]) {
             if (target_components_per_pdf[*it] > 0 &&
                 components_per_pdf[*it] > target_components_per_pdf[*it])
               components_per_pdf[*it] = target_components_per_pdf[*it];
-            am_gmm.GetPdf(*it).Split(components_per_pdf[*it], gmm_opts.min_variance);
+            am_gmm.GetPdf(*it).Split(components_per_pdf[*it], perturb_factor);
           }
         } else {
           for (int32 i = 0; i < am_gmm.NumPdfs(); i++) {
@@ -355,7 +355,7 @@ int main(int argc, char *argv[]) {
             if (target_components_per_pdf[i] > 0 &&
                 components_per_pdf[i] > target_components_per_pdf[i])
               components_per_pdf[i] = target_components_per_pdf[i];
-            am_gmm.GetPdf(i).Split(components_per_pdf[i], gmm_opts.min_variance);
+            am_gmm.GetPdf(i).Split(components_per_pdf[i], perturb_factor);
           }
         }
       }

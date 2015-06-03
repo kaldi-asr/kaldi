@@ -104,7 +104,8 @@ int main(int argc, char *argv[]) {
           }
           const Segmentation &filter_segmentation = filter_reader.Value(key);
           seg.IntersectSegments(filter_segmentation, opts.filter_label);
-        }
+        } else if (opts.filter_label != -1)
+          seg.IntersectSegments(seg, opts.filter_label);
         
         if (opts.merge_labels_csl != "") {
           seg.MergeLabels(merge_labels, opts.merge_dst_label);

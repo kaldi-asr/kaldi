@@ -7,7 +7,8 @@ include ../kaldi.mk
 BINFILES = segmentation-copy segmentation-init-from-segments \
 					 segmentation-init-from-ali segmentation-select-top \
 					 gmm-acc-pdf-stats-segmentation select-feats-from-segmentation \
-					 gmm-est-segmentation segmentation-to-rttm segmentation-post-process
+					 gmm-est-segmentation segmentation-to-rttm segmentation-post-process \
+					 gmm-update-segmentation
 
 OBJFILES =
 

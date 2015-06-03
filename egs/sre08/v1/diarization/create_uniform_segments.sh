@@ -68,8 +68,8 @@ while (<STDIN>) {
     $end_time = ($i+1) * $this_window_length;
     $end_time = $duration if ($end_time > $duration);
 
-    $start_str = sprintf("%06d", $start_time);
-    $end_str = sprintf("%06d", $end_time);
+    $start_str = sprintf("%06d", $start_time / $frame_shift);
+    $end_str = sprintf("%06d", $end_time / $frame_shift);
 
     printf STDOUT ("$file_id-$start_str-$end_str $file_id %.2f %.2f\n", $start_time, $end_time);
   }
