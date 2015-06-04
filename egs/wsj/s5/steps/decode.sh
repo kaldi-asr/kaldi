@@ -68,6 +68,16 @@ if [ -z "$model" ]; then # if --model <mdl> was not specified on the command lin
   else model=$srcdir/$iter.mdl; fi
 fi
 
+if [ $(basename $model) != final.alimdl ] ; then
+  # Do not use the $srcpath -- look at the path where the model is
+  if [ -f $(dirname $model)/final.alimdl ] ; then
+    echo -e '\n\n' 
+    echo $0 'WARNING: Running speaker independent system decoding using a SAT model!' 
+    echo $0 'WARNING: This is OK if you know what you are doing...' 
+    echo -e '\n\n'
+  fi
+fi
+
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
 done
