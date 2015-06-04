@@ -524,10 +524,6 @@ void* CuDevice::Malloc(size_t size) {
   return ret_ptr;
 }
 
-void CuDevice::DisableCaching() {
-  // just a no-op function now
-}
-
 CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true)
   { }
 
