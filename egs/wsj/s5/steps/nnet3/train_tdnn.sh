@@ -285,37 +285,29 @@ if [ $stage -le -3 ]; then
   # we described in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's
   # a scaled variant of an LDA transform but without dimensionality reduction.
   $cmd $dir/log/get_transform.log \
-    nnet3-add-feature-transform $lda_opts $dir/lda_stats $dir/0.raw $dir/1.raw || exit 1;
+       nnet-get-feature-transform $lda_opts $dir/lda.mat $dir/lda_stats || exit 1;
+
+  ln -s ../lda.mat $dir/configs/lda.mat 
+  nnet3-raw-edit $dir/0.raw $dir/configs/
 
   # work out the dimension after the transform... we have to decide on the
   # output format of nnet3-raw-info before we can do this.
   lda_output_dim=$(nnet3-raw-info $dir/1.raw | foo bar$)
   
-  # now add the final transform layer and the final  softmax.
+  # now add the final transform layer and the final log-softmax.
   # Note: parameter stddev will default to 1/sqrt(input-dim), and defaults for the natural gradient
   # update are all the ones we want.
-  cat >$dir/config/add_softmax.config
+  cat >$dir/config/add_final.config <<EOF
 component name=final-affine type=NaturalGradientAffineComponent $affine_opts input-dim=$lda_output_dim output-dim=$num_leaves bias-stddev=0
 component name=softmax type=SoftmaxComponent dim=$num_leaves
 # in next line, input of final-affine node is the same as whatever the input of
 # the current output node was.
-node name=final-affine type=component input=final-affine-input
-# rename the old output node to be the input of the
-rename-node old-name=output new-name=final-affine-input new-type=component-input
-# below, because the input is from a node of "component" type, a temporary
-# node of type component-input will be created, as if we had done as follows.
-# node name=softmax-input type=component-input input=final-affine
-node name=softmax type=component component=softmax input=final-affine
-
-
-input=InputOfNode(output)
-
-
-
-node name=output type=output 
-  
-  nnet3-raw-edit $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
-  
+node name=final-affine type=component component=final-affine input=InputOf(output)
+node name=log-softmax type=component component=log-softmax input=final-affine
+node name=output type=output input=log-softmax
+EOF
+  $cmd $dir/log/add_final.log \
+    nnet3-raw-edit $dir/1.raw $dir/config/add_first_layer.config $dir/2.raw || exit 1;
 fi
 
 

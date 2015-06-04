@@ -179,7 +179,6 @@ class RectifiedLinearComponent: public NonlinearComponent {
 
 class FixedAffineComponent;
 
-
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
 // functions as a base-class for more specialized versions of

@@ -52,6 +52,11 @@ namespace nnet3 {
 /// type kInput but also to nodes of type kComponent; this is useful in things
 /// like recurrent nets where you may want to split the computation up into
 /// pieces.
+///
+/// Note that in the config-file format, there are three types of node: input,
+/// component and output.  output maps to kDescriptor, but the nodes of type
+/// kDescriptor that represent the input to a component, are described in the
+/// same config-file line as the Component itself.
 struct NetworkNode {
   enum NodeType { kInput, kDescriptor, kComponent } node_type;
 
