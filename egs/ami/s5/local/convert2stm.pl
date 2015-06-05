@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #           2013  University of Edinburgh (Author: Pawel Swietojanski)

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright 2013 MERL (author: Felix Weninger and Shinji Watanabe)
 # Modified from original Kaldi code: find_transcripts.pl
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 $waves_dir = $ARGV[0];
 $in_list = $ARGV[1];

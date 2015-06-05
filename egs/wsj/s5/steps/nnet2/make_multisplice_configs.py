@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Daniel Povey and Vijayaditya Peddinti).  Apache 2.0.
 
 # Creates the nnet.config and hidde_*.config scripts used in train_pnorm_multisplice.sh

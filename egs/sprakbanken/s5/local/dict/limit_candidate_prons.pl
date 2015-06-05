@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This program enforces the rule that
 # if a "more specific" rule applies, we cannot use the more general rule.

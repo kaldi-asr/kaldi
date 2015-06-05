@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 use strict;
 
 # Copyright 2012  Arnab Ghoshal

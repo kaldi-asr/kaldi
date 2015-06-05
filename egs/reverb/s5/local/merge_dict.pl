@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright 2013 MERL (author: Felix Weninger)
 
 # Licensed under the Apache License, Version 2.0 (the "License");

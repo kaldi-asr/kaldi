@@ -28,6 +28,11 @@ wsj_ali=../../wsj/s5/exp/tri4b_ali_si284
 stage=0
 . utils/parse_options.sh || exit 1;
 
+set -u 
+set -e
+set -o pipefail
+set -x
+
 # Make the FBANK features,
 if [ $stage -le 0 ]; then
   # Make datadir copies,
@@ -55,6 +60,7 @@ if [ $stage -le 0 ]; then
   utils/combine_data.sh $train_tr90_wsj ${train}_tr90 $wsj || exit 1
 fi
 
+
 # Prepare the merged targets,
 dir=exp/dnn4e-fbank_multisoftmax
 ali1_dim=$(hmm-info ${gmm}_ali/final.mdl | grep pdfs | awk '{ print $NF }')
@@ -67,12 +73,23 @@ ali1_dir=${gmm}_ali
 #
 if [ $stage -le 1 ]; then
   mkdir -p $dir/log
-  copy-int-vector "ark:gzcat ${wsj_ali}/ali.*.gz |" ark,t:- | awk -v prefix=wsj '{ $1=prefix $1; print; }' | gzip -c >$dir/ali_wsj.gz # Mapping utt key,
+  copy-int-vector "ark:gzcat ${wsj_ali}/ali.*.gz |" ark,t:- | awk -v prefix=wsj '{ $1=prefix $1; print; }' | \
+    gzip -c >$dir/ali_wsj.gz # Mapping keys at wsj alignment,
+
+  # Store posteriors to disk, indexed by 'scp',
+  ali-to-pdf ${gmm}_ali/final.mdl "ark:gzcat ${gmm}_ali/ali.*.gz |" ark:- | \
+    ali-to-post ark:- ark,scp:$dir/post1.ark,$dir/post1.scp
+  ali-to-pdf ${wsj_ali}/final.mdl "ark:gzcat $dir/ali_wsj.gz |" ark:- | \
+    ali-to-post ark:- ark,scp:$dir/post2.ark,$dir/post2.scp
+
   featlen="ark:feat-to-len 'scp:cat $train/feats.scp $wsj/feats.scp |' ark,t:- |"
-  ali1="ark:ali-to-pdf ${gmm}_ali/final.mdl 'ark:gzcat ${gmm}_ali/ali.*.gz |' ark:- | ali-to-post ark:- ark:- |"
-  ali2="ark:ali-to-pdf ${wsj_ali}/final.mdl 'ark:gzcat $dir/ali_wsj.gz |' ark:- | ali-to-post ark:- ark:- |" 
-  paste-post "$featlen" $ali1_dim:$ali2_dim "$ali1" "$ali2" ark,scp:$dir/pasted_post.ark,$dir/pasted_post.scp 2>$dir/log/paste_post.log || exit 1
+  post1=scp:$dir/post1.scp
+  post2=scp:$dir/post2.scp
+
+  paste-post --allow-partial=true "$featlen" $ali1_dim:$ali2_dim "$post1" "$post2" \
+    ark,scp:$dir/pasted_post.ark,$dir/pasted_post.scp 2>$dir/log/paste_post.log
 fi
+
 
 # Train <MultiSoftmax> system,
 if [ $stage -le 2 ]; then
@@ -100,6 +117,8 @@ if [ $stage -le 2 ]; then
     --nnet $dir/final.nnet.lang1 \
     $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
+
+exit 0
 
 # TODO, 
 # make nnet-copy support block selection, 

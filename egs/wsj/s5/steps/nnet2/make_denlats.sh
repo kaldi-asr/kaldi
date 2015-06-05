@@ -19,7 +19,7 @@ max_mem=20000000 # This will stop the processes getting too large.
 # by something like 5 or 10 to get real bytes (not sure why so large)
 num_threads=1
 online_ivector_dir=
-parallel_opts=
+parallel_opts= # ignored now
 feat_type=  # you can set this in order to run on top of delta features, although we don't
             # normally want to do this.
 # End configuration section.
@@ -45,7 +45,6 @@ if [ $# != 4 ]; then
   echo "                           # will (individually) finish reasonably soon."
   echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
   echo "  --num-threads  <n>                # number of threads per decoding job"
-  echo "  --parallel-opts <string>          # if >1 thread, add this to 'cmd', e.g. -pe smp 6"
   exit 1;
 fi
 
@@ -156,7 +155,7 @@ trap "cleanup" INT QUIT TERM EXIT
 
 
 if [ $sub_split -eq 1 ]; then 
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_den.JOB.log \
    nnet-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
     --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
      $dir/dengraph/HCLG.fst "$feats" "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
@@ -182,7 +181,7 @@ else
       mkdir -p $dir/part
       feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
 
-      $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
+      $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         nnet-latgen-faster$thread_string --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
         --max-mem=$max_mem --max-active=$max_active --word-symbol-table=$lang/words.txt $srcdir/final.mdl  \
           $dir/dengraph/HCLG.fst "$feats_subset" "ark:|gzip -c >$dir/lat.$n.JOB.gz" || touch $dir/.error &

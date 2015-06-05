@@ -1,11 +1,12 @@
-#! /usr/bin/perl -w                                                           
-
+#!/usr/bin/env perl
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
 # Apache 2.0
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
 # This script is to make lexicon for KALDI format.
+
+use warnings;
 
 while (<>){
     chomp;

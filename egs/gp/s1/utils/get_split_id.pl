@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # 
 # If the command-line argument is 4, this script prints "0 1 2 3";

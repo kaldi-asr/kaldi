@@ -236,7 +236,7 @@ utils/mkgraph.sh data/lang_test exp/sgmm5 exp/sgmm5/graph
 
 (
 
-  steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 --parallel-opts " -pe smp 5" \
+  steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 \
     --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev \
    exp/sgmm5/graph data/dev exp/sgmm5/decode_dev
 )&
@@ -247,7 +247,7 @@ steps/align_sgmm2.sh \
   data/train data/lang exp/sgmm5 exp/sgmm5_ali
 
 steps/make_denlats_sgmm2.sh \
-  --nj 32 --sub-split 32 --num-threads 4 --parallel-opts "-pe smp 4"\
+  --nj 32 --sub-split 32 --num-threads 4 \
   --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5a_ali \
   data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats
 
@@ -262,7 +262,7 @@ steps/decode_fmllr_extra.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parall
   --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 12"\
  exp/tri5a/graph data/dev exp/tri5a/decode_dev
 utils/mkgraph.sh data/lang_test exp/sgmm5 exp/sgmm5/graph
-steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 --parallel-opts " -pe smp 5" \
+steps/decode_sgmm2.sh --nj 13 --cmd "$decode_cmd" --num-threads 5 \
   --config conf/decode.config  --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev \
  exp/sgmm5/graph data/dev exp/sgmm5/decode_dev
 for iter in 1 2 3 4; do
@@ -276,9 +276,9 @@ done
 
 
 dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
-                       --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
+                       --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 --mem 2G")
 dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
-                       --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2G")
+                       --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 --mem 2G")
 
 steps/nnet2/train_pnorm_ensemble.sh \
   --mix-up 5000  --initial-learning-rate 0.008 --final-learning-rate 0.0008\

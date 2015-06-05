@@ -45,7 +45,7 @@ silence_weight=0.01
 cmd=run.pl
 si_dir=
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # If you supply num-threads, you should supply this too.
+parallel_opts=  # ignored now.
 skip_scoring=false
 scoring_opts=
 # End configuration section
@@ -70,7 +70,6 @@ if [ $# != 3 ]; then
    echo "                                           # Caution-- must be with same tree"
    echo "  --acwt <acoustic-weight>                 # default 0.08333 ... used to get posteriors"
    echo "  --num-threads <n>                        # number of threads to use, default 1."
-   echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
    echo "  --scoring-opts <opts>                    # options to local/score.sh"
    exit 1;
 fi
@@ -115,7 +114,7 @@ fi
 if [ -z "$si_dir" ]; then # we need to do the speaker-independent decoding pass.
   si_dir=${dir}.si # Name it as our decoding dir, but with suffix ".si".
   if [ $stage -le 0 ]; then
-    steps/decode.sh --parallel-opts "$parallel_opts" --scoring-opts "$scoring_opts" \
+    steps/decode.sh --scoring-opts "$scoring_opts" \
               --num-threads $num_threads --skip-scoring $skip_scoring \
               --acwt $acwt --nj $nj --cmd "$cmd" --beam $first_beam \
               --model $alignment_model --max-active \
@@ -166,7 +165,7 @@ pass1feats="$pass1splicedfeats transform-feats $srcdir/final.mat ark:- ark:- |"
 ## model, and it's more correct to store the full state-level lattice for this purpose.
 if [ $stage -le 2 ]; then
   echo "$0: doing main lattice generation phase"
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false \
     --allow-partial=true --word-symbol-table=$graphdir/words.txt \
@@ -217,7 +216,7 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: doing a final pass of acoustic rescoring."
-  $cmd $parallel_opts JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/acoustic_rescore.JOB.log \
     gmm-rescore-lattice $final_model "ark:gunzip -c $dir/lat.tmp.JOB.gz|" "$feats" ark:- \| \
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;

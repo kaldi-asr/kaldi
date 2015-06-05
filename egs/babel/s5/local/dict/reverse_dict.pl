@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Used in conjunction with get_rules.pl
 # example input line: XANTHE  Z AE1 N DH

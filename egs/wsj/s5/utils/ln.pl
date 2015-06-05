@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 use File::Spec;
 
 if ( @ARGV < 2 ) {

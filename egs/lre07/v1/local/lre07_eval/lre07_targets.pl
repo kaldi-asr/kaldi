@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#!/usr/bin/env perl
 #
 # Copyright 2014  David Snyder
 # Apache 2.0.

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # convert acronyms in swbd decode result
 # e.g. convert things like en_4156 B 414.26 0.65 u._c._l._a. to
 # en_4156 B 414.26 0.16 u

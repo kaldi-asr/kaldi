@@ -17,7 +17,7 @@ acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 ngselect=2; # Just use the 2 top Gaussians for fMMI/fMPE.  Should match train.
 transform_dir=
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # If you supply num-threads, you should supply this too.
+parallel_opts=  # ignored now.
 scoring_opts=
 # End configuration section.
 
@@ -46,7 +46,6 @@ if [ $# != 3 ]; then
    echo "  --scoring-opts <string>                          # options to local/score.sh"
    echo "                                                   # speaker-adapted decoding"
    echo "  --num-threads <n>                                # number of threads to use, default 1."
-   echo "  --parallel-opts <opts>                           # e.g. '-pe smp 4' if you supply --num-threads 4"
    exit 1;
 fi
 
@@ -98,7 +97,7 @@ if [ $stage -le 1 ]; then
 fi
   
 if [ $stage -le 2 ]; then
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst "$fmpefeats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;

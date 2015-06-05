@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Apache 2.0.
 # Copyright  2012   Guoguo Chen

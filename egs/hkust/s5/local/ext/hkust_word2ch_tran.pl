@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright 2013  Hong Kong University of Science and Technology (Author: Ricky Chan Ho Yin) 
 #                 
 # Apache 2.0.

@@ -12,8 +12,8 @@
 
 # JHU cluster:
 export train_cmd="queue.pl -l arch=*64*"
-export decode_cmd="queue.pl -l arch=*64* -l ram_free=4G,mem_free=4G"
-export cuda_cmd="queue.pl -l arch=*64*,gpu=1 -q g.q"
+export decode_cmd="queue.pl -l arch=*64* --mem 4G"
+export cuda_cmd="queue.pl -l arch=*64* --gpu 1"
 
 host=$(hostname -f)
 if [ ${host#*.} == "fit.vutbr.cz" ]; then

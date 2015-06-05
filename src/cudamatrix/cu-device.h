@@ -33,7 +33,6 @@
 
 namespace kaldi {
 
-class CuAllocator; // Forward declaration.
 
 /**
  * Singleton object which represents CUDA device
@@ -55,9 +54,6 @@ class CuDevice {
   
   void Free(void *ptr);
 
-  /// Disable GPU memory caching
-  void DisableCaching();
-  
   /// Select a GPU for computation, the 'use_gpu' modes are:
   ///  "yes"      -- Select GPU automatically and die if this fails.
   ///  "optional" -- Do as above, but if it fails, back off to CPU. 
@@ -143,7 +139,6 @@ class CuDevice {
 
   bool verbose_;
 
-  CuAllocator *allocator_;
   
 }; // class CuDevice
 

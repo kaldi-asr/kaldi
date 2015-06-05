@@ -26,7 +26,7 @@ skip_scoring=false
 scoring_opts="--min-lmwt 4 --max-lmwt 15"
 
 num_threads=1 # if >1, will use latgen-faster-parallel
-parallel_opts="-pe smp $((num_threads+1))" # use 2 CPUs (1 DNN-forward, 1 decoder)
+parallel_opts=   # Ignored now.
 use_gpu="no" # yes|no|optionaly
 # End configuration section.
 
@@ -111,7 +111,7 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 
 # Run the decoding in the queue,
 if [ $stage -le 0 ]; then
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd --num-threads $((num_threads+1)) JOB=1:$nj $dir/log/decode.JOB.log \
     nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     latgen-faster-mapped$thread_string --min-active=$min_active --max-active=$max_active --max-mem=$max_mem --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \

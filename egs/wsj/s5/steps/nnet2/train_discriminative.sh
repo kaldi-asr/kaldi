@@ -37,7 +37,7 @@ io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one t
 
 num_threads=16  # this is the default but you may want to change it, e.g. to 1 if
                 # using GPUs.
-parallel_opts="-pe smp 16 -l ram_free=1G,mem_free=1G" # by default we use 4 threads; this lets the queue know.
+parallel_opts="--num-threads 16 --mem 1G" # by default we use 4 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 transform_dir= # If this is a SAT system, directory for transforms
 cleanup=true
@@ -72,9 +72,8 @@ if [ $# != 6 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... "
   echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."

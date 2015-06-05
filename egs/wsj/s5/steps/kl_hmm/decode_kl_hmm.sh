@@ -21,7 +21,6 @@ acwt=0.1 # GMM:0.0833, note: only really affects pruning (scoring is on lattices
 scoring_opts="--min-lmwt 1 --max-lmwt 12"
 skip_scoring=false
 use_gpu="no" # disable gpu
-parallel_opts=""
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -104,7 +103,7 @@ fi
 
 # Run the decoding in the queue
 if [ $stage -le 0 ]; then
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
     nnet-forward --feature-transform=$feature_transform --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     latgen-faster-mapped --max-active=$max_active --max-mem=$max_mem --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \

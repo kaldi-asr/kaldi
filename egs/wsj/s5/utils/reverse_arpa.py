@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Copyright 2012 Mirko Hannemann BUT, mirko.hannemann@gmail.com
 

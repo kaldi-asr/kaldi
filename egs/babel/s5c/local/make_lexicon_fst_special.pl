@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)
 
 # makes lexicon FST -- special version only for use in keyword search

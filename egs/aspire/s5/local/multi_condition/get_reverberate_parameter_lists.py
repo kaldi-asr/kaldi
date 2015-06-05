@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 # script to generate multicondition training data / dev data / test data
 import argparse, glob, math, os, random, scipy.io.wavfile, sys

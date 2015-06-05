@@ -31,7 +31,7 @@ use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
-parallel_opts=  # If you supply num-threads, you should supply this too.
+parallel_opts=  # ignored now.
 skip_scoring=false
 scoring_opts=
 # note: there are no more min-lmwt and max-lmwt options, instead use
@@ -132,7 +132,7 @@ if [ $stage -le 2 ]; then
     [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $alignment_model | grep pdfs | awk '{print $NF}'` ] || \
       { echo "Mismatch in number of pdfs with $alignment_model"; exit 1; }
   fi
-  $cmd $parallel_opts JOB=1:$nj $dir/log/decode_pass1.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_pass1.JOB.log \
     sgmm2-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
     --acoustic-scale=$acwt --determinize-lattice=false --allow-partial=true \
     --word-symbol-table=$graphdir/words.txt --max-mem=$max_mem "$gselect_opt_1stpass" $alignment_model \
@@ -202,7 +202,7 @@ fi
 # corresponding model.  Prune and determinize the lattices to limit
 # their size.
 if [ $stage -le 6 ]; then
-  $cmd $parallel_opts JOB=1:$nj $dir/log/rescore.JOB.log \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/rescore.JOB.log \
     sgmm2-rescore-lattice "$gselect_opt" --utt2spk=ark:$sdata/JOB/utt2spk --spk-vecs=ark:$dir/vecs.JOB \
     $srcdir/final.mdl "ark:gunzip -c $dir/pre_lat.JOB.gz|" "$feats" ark:- \| \
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lattice_beam ark:- \

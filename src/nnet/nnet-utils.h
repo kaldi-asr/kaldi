@@ -21,6 +21,9 @@
 #ifndef KALDI_NNET_NNET_UTILS_H_
 #define KALDI_NNET_NNET_UTILS_H_
 
+#include <iterator>
+#include <algorithm>
+
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
@@ -29,6 +32,16 @@
 
 namespace kaldi {
 namespace nnet1 {
+
+
+/**
+ * Define stream insertion opeartor for 'std::vector', useful for log-prints,
+ */
+template <typename T> 
+std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
+  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os," "));
+  return os;
+}
 
 /**
  * Convert basic type to string (try not to overuse as ostringstream creation is slow)

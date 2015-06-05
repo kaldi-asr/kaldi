@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This program takes the output of score_prons.pl and collates
 # it for each (rule, destress) pair so that we get the

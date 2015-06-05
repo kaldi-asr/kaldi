@@ -111,9 +111,8 @@ if [ $# -lt 6 -o $[$#%2] -ne 0 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job (will affect results"
   echo "                                                   # as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... "
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
   exit 1;

@@ -22,6 +22,7 @@
 #define KALDI_NNET_NNET_ACTIVATION_H_
 
 #include "nnet/nnet-component.h"
+#include "nnet/nnet-utils.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
 #include "util/text-utils.h"
@@ -134,6 +135,10 @@ class BlockSoftmax : public Component {
       // here we should have only 0 and 1
       diff_bl.MulRowsVec(row_diff_mask);
     }
+  }
+
+  std::string Info() const {
+    return "\n  softmax-dims " + ToString(block_dims);
   }
 
   std::vector<int32> block_dims;

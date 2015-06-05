@@ -70,10 +70,10 @@ if [ $stage -le 3 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri1 exp/tri1/graph_nosp || exit 1
 
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri1/graph_nosp data/dev exp/tri1/decode_nosp_dev || exit 1
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri1/graph_nosp data/test exp/tri1/decode_nosp_test || exit 1
 fi
 
@@ -87,10 +87,10 @@ if [ $stage -le 4 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri2 exp/tri2/graph_nosp || exit 1
 
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri2/graph_nosp data/dev exp/tri2/decode_nosp_dev || exit 1
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri2/graph_nosp data/test exp/tri2/decode_nosp_test || exit 1
 fi
 
@@ -110,10 +110,10 @@ if [ $stage -le 5 ]; then
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1
 
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri2/graph data/dev exp/tri2/decode_dev || exit 1
   steps/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri2/graph data/test exp/tri2/decode_test || exit 1
 fi
 
@@ -127,10 +127,10 @@ if [ $stage -le 6 ]; then
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph || exit 1
 
   steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri3/graph data/dev exp/tri3/decode_dev || exit 1
   steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri3/graph data/test exp/tri3/decode_test || exit 1
 fi
 
@@ -147,10 +147,10 @@ if [ $stage -le 7 ]; then
 
   for iter in 4; do
   steps/decode.sh --transform-dir exp/tri3/decode_dev --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri3/graph data/dev exp/tri3_mmi_b0.1/decode_dev_it$iter || exit 1
   steps/decode.sh --transform-dir exp/tri3/decode_test --nj $decode_nj --cmd "$decode_cmd" --iter $iter \
-    --num-threads 4 --parallel-opts "--num-threads 4" \
+    --num-threads 4 \
     exp/tri3/graph data/test exp/tri3_mmi_b0.1/decode_test_it$iter || exit 1
   done
 fi

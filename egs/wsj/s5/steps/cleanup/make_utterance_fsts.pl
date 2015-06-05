@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 # makes unigram decoding-graph FSTs specific to each utterances, where the
 # supplied top-n-words list together with the supervision text of the utterance are

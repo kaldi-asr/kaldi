@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright 2010-2012 Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");

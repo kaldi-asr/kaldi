@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This script takes three command-line arguments (typically files, or "-"):
 # the suffix rules (as output by get_rules.pl), the rule-hierarchy 

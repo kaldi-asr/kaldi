@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 
 # script to read rir files from rwcp/air/reverb2014 databases

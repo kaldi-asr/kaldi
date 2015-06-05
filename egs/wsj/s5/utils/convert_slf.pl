@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Copyright 2014  Brno University of Technology (author Karel Vesely)
 # Copyright 2013  Korbinian Riedhammer

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Copyright 2014  David Snyder
 # Usage: make_lre07.pl <path-to-LDC2009S04> <output-dir>

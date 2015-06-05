@@ -33,7 +33,7 @@ lat_weights=
 word_ins_penalty=0.0
 min_lmwt=7
 max_lmwt=17
-parallel_opts="-pe smp 3"
+parallel_opts="--num-threads 3"
 skip_scoring=false
 ctm_name=
 #end configuration section.
@@ -49,7 +49,7 @@ Options:
   --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
   --stage (0|1|2)                 # (createCTM | filterCTM | runSclite).
   --parallel-opts <string>        # extra options to command for combination stage,
-                                  # default '-pe smp 3'
+                                  # default '--num-threads 3'
   --cer (0|1)                     # compute CER in addition to WER
 ";
 

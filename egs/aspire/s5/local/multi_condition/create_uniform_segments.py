@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Daniel Povey, Vijayaditya Peddinti).  Apache 2.0.
 
 # creates a segments file in the provided data directory 

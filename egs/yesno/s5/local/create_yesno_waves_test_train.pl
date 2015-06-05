@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 $full_list = $ARGV[0];
 $test_list = $ARGV[1];

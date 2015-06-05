@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.

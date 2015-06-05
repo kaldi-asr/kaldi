@@ -5,11 +5,14 @@ ifneq ($(KALDI_FLAVOR), dynamic)
 $(error Kaldi must compiled with dynamic libraries support. Run configure with --shared flag. )
 endif
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -I ../../tools/portaudio/install/include 
+EXTRA_CXXFLAGS += -Wno-sign-compare -I ../../tools/portaudio/install/include 
 EXTRA_CXXFLAGS += $(shell pkg-config --cflags gstreamer-1.0)
 EXTRA_CXXFLAGS += $(shell pkg-config --cflags glib-2.0)
 
-EXTRA_LDLIBS = -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgstreamer-1.0 -lgobject-2.0 -lgmodule-2.0 -lgthread-2.0 -lrt -lglib-2.0
+EXTRA_LDLIBS += -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgmodule-2.0 -lgthread-2.0 -lrt 
+EXTRA_LDLIBS += $(shell pkg-config --libs gstreamer-1.0)
+EXTRA_LDLIBS += $(shell pkg-config --libs glib-2.0)
+
 
 #Kaldi shared libraries required by the GStreamer plugin
 EXTRA_LDLIBS += -lkaldi-online -lkaldi-lat -lkaldi-decoder -lkaldi-feat -lkaldi-transform \

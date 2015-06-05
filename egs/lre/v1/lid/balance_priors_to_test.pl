@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 my ($train_file, $test_file, $lang_file, $priors_file) = @ARGV;
 open(UTT2LANG_TRAIN, "<$train_file") or die "no utt2lang training file";

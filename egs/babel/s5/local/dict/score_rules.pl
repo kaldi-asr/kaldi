@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This program takes the output of count_rules.pl, which is tuples
 # of the form

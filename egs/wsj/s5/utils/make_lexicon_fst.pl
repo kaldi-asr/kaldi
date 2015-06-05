@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 # Copyright 2010-2011  Microsoft Corporation
 #                2013  Johns Hopkins University (author: Daniel Povey)
 

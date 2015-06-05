@@ -1,4 +1,5 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
+use warnings; #sed replacement for -w perl parameter
 
 if (@ARGV != 1 || !($ARGV[0] =~ m/^-?\d+\.?\d*$/ &&  $ARGV[0] >= 0)) {
   print STDERR "Usage: extend_segments.pl time-in-seconds <segments >segments.extended \n" .

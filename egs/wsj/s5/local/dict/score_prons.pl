@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # This program takes candidate prons from "get_candidate_prons.pl" or
 # "limit_candidate_prons.pl", and a reference dictionary covering those words,

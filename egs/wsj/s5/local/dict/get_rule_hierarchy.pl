@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 #This reads in rules, of the form put out by get_rules.pl, e.g.:
 # ERT,,ER0 T,
