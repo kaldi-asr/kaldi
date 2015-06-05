@@ -21,8 +21,7 @@ parser.add_argument("--pnorm-output-dim", type=int,
 parser.add_argument("--relu-dim", type=int,
                     help="dimension of ReLU nonlinearities")
 parser.add_argument("--num-targets", type=int,
-                    help="number of network targets (e.g. num-pdf-ids/num-leaves)",
-                    default=0)
+                    help="number of network targets (e.g. num-pdf-ids/num-leaves)")
 parser.add_argument("config_dir",
                     help="Directory to write config files and variables");
 
@@ -85,8 +84,9 @@ input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
 print('right_context=' + str(right_context), file=f)
-print('initial_left_context=' + str(splice_array[0][0]), file=f)
-print('initial_right_context=' + str(splice_array[0][-1]), file=f)
+# the initial l/r contexts are actually not needed.
+# print('initial_left_context=' + str(splice_array[0][0]), file=f)
+# print('initial_right_context=' + str(splice_array[0][-1]), file=f)
 print('num_hidden_layers=' + str(num_hidden_layers), file=f)
 f.close()
 
@@ -94,7 +94,7 @@ f = open(args.config_dir + "/init.config", "w")
 print('# Config file for initializing neural network prior to', file=f)
 print('# preconditioning matrix computation', file=f)
 print('input-node name=input dim=' + str(args.feat_dim), file=f)
-list=[ 'Shift(input, {0})'.format(n) for n in splice_array[0] ]
+list=[ ('Shift(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
 if args.ivector_dim > 0:
     print('input-node name=ivector dim=' + str(args.ivector_dim), file=f)
     list.append('ivector')
@@ -107,7 +107,7 @@ for l in range(1, num_hidden_layers + 1):
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
     if l == 1:
-        print('component name=lda type=FixedAffineComponent matrix={0}/lda_mat'.
+        print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
     cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
 
@@ -115,7 +115,7 @@ for l in range(1, num_hidden_layers + 1):
     print('component name=affine{0} type=NaturalGradientAffineComponent '
           'input-dim={1} output-dim={2} bias-stddev=0'.
         format(l, cur_dim, nonlin_input_dim), file=f)
-    if args.relu_dim is None:
+    if args.relu_dim is not None:
         print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
               format(l, args.relu_dim), file=f)
     else:
@@ -123,17 +123,21 @@ for l in range(1, num_hidden_layers + 1):
         print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
               format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
     print('component name=renorm{0} type=RenormalizeComponent dim={1}'.format(
-        l, nonlin_output_dim), file=f)
+         l, nonlin_output_dim), file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
-           nonlin_output_dim, args.num_targets), file=f)
-
+          nonlin_output_dim, args.num_targets), file=f)
+    # printing out the next two, and their component-nodes, for l > 1 is not
+    # really necessary as they will already exist, but it doesn't hurt and makes
+    # the structure clearer.
+    print('component name=final-fixed-scale type=FixedScaleComponent '
+          'scales={0}/presoftmax_prior_scale.vec'.format(
+          args.config_dir), file=f)
     print('component name=final-log-softmax type=LogSoftmax dim={0}'.format(
-           args.num_targets), file=f)
-    
+          args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     if l == 1:
-        splices = [ 'Shift(input, {1})'.format(l-1, n) for n in splice_array[l-1] ]
+        splices = [ ('Shift(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
         if args.ivector_dim > 0: splices.append('ivector') 
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Shift(input, -2), ... Shift(input, 2), ivector)'
@@ -141,8 +145,9 @@ for l in range(1, num_hidden_layers + 1):
               file=f)
         cur_input='lda'
     else:
-        # e.g. cur_input = 'Append(Shift(renorm1, -2), Shift(renorm1, 2))'
-        splices = [ 'Shift(renorm{0}, {1})'.format(l-1, n) for n in splice_array[l-1] ]
+        # e.g. cur_input = 'Append(Shift(renorm1, -2), renorm1, Shift(renorm1, 2))'
+        splices = [ ('Shift(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
+                    for n in splice_array[l-1] ]
         cur_input='Append({0})'.format(', '.join(splices))
     print('component-node name=affine{0} component=affine{0} input={1} '.
           format(l, cur_input), file=f)
@@ -150,8 +155,13 @@ for l in range(1, num_hidden_layers + 1):
           format(l), file=f)
     print('component-node name=renorm{0} component=renorm{0} input=nonlin{0}'.
           format(l), file=f)
+
+    print('component-node name=final-affine component=final-affine input=renorm{0}'.
+          format(l), file=f)
+    print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+          file=f)
     print('component-node name=final-log-softmax component=final-log-softmax'
-          'input=final-affine', file=f)
+          'input=final-fixed-scale', file=f)
     print('output-node name=output input=final-log-softmax', file=f)
     f.close()
 

@@ -31,6 +31,7 @@ prior_subset_size=10000 # 10k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
+presoftmax_prior_scale_power=-0.25
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -47,11 +48,11 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # affect each others' gradients.
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
-num_hidden_layers=3
 stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
-splice_indexes="layer0/-4:-3:-2:-1:0:1:2:3:4 layer2/-5:-1:3"
+# count space-separated fields in splice_indexes to get num-hidden-layers.
+splice_indexes="-4,-3,-2,-1,0,1,2,3,4 0 -2,2 0 -4,4 0"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
@@ -167,31 +168,49 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
 
-# process the splice_inds string, to get a layer-wise context string
-# to be processed by the nnet-components
-# this would be mainly used by SpliceComponent|SpliceMaxComponent
-steps/nnet3/make_tdnn_configs.py contexts --splice-indexes "$splice_indexes" $dir || exit -1;
 
-context_string=$(cat $dir/vars) || exit -1
-echo $context_string
-eval $context_string || exit -1; #
-  # initializes variables used by get_lda.sh and get_egs.sh
-  # get_lda.sh : first_left_context, first_right_context,
-  # get_egs.sh : nnet_left_context & nnet_right_context
+if [ $stage -le -5 ]; then
+  echo "$0: creating neural net configs";
 
-extra_opts=()
-[ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-[ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
-[ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
+  if [ ! -z "$relu_dim" ]; then
+    dim_opts="--relu-dim $relu_dim"
+  else
+    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
+  fi
+  
+  # create the config files for nnet initialization
+  python steps/nnet3/make_multisplice_configs.py  \
+    --splice-indexes "$splice_indexes"  \
+    --feat-dim $feat_dim \
+    --ivector-dim $ivector_dim  \
+     $dim_opts \
+    --num-targets  $num_leaves  \
+   $dir/configs || exit 1;
+
+  # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
+  # matrix.
+  $cmd $dir/log/nnet_init.log \
+    nnet3-raw-init $dir/configs/init.config $dir/init.raw || exit 1;
+fi
+
+# set left_context, right_context, num_hidden_layers
+. $dir/configs/vars || exit 1;
+
+! [ "$num_hidden_layers" -gt 0 ] && echo \
+ "$0: Expected num_hidden_layers to be defined" && exit 1;
+
 [ -z "$transform_dir" ] && transform_dir=$alidir
-extra_opts+=(--transform-dir $transform_dir)
 
 
-if [ $stage -le -5 ] && [ -z "$egs_dir" ]; then
-
-  extra_opts+=(--left-context $nnet_left_context )
-  extra_opts+=(--right-context $nnet_right_context )
-  echo "$0: calling get_egs2.sh"
+if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
+  extra_opts=()
+  [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
+  [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
+  [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
+  extra_opts+=(--transform-dir $transform_dir)
+  extra_opts+=(--left-context $left_context)
+  extra_opts+=(--right-context $right_context)
+  echo "$0: calling get_egs.sh"
   steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --io-opts "$io_opts" \
@@ -204,15 +223,14 @@ fi
 feat_dim=$(cat $dir/info/feat_dim) || exit 1;
 ivector_dim=$(cat $dir/info/ivector_dim) || exit 1;
 
+[ -z $egs_dir ] && egs_dir=$dir/egs
 
-if [ -z $egs_dir ]; then
-  egs_dir=$dir/egs
-  # confirm that the provided egs_dir has the necessary context
-  egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
-  egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-  echo $egs_left_context  $nnet_left_context $egs_right_context $nnet_right_context
-  ([[ $egs_left_context -lt $nnet_left_context ]] || [[ $egs_right_context -lt $nnet_right_context ]]) &&
-    echo "Provided egs_dir $egs_dir does not have sufficient context to train the neural network." && exit -1;
+# confirm that the provided egs_dir has the necessary context
+egs_left_context=$ || exit -1
+egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
+( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
+  ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
+   echo "$0: egs in $egs_dir have too little context" && exit -1;
 fi
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -228,41 +246,7 @@ num_archives_expanded=$[$num_archives*$frames_per_eg]
 [ $num_jobs_final -gt $num_archives_expanded ] && \
   echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
 
-if ! [ $num_hidden_layers -ge 1 ]; then
-  echo "Invalid num-hidden-layers $num_hidden_layers"
-  exit 1
-fi
 
-if [ $stage -le -4 ]; then
-  echo "$0: initializing neural net";
-  lda_mat=$dir/lda.mat
-
-  online_preconditioning_opts="alpha=$alpha num-samples-history=$num_samples_history update-period=$update_period rank-in=$precondition_rank_in rank-out=$precondition_rank_out max-change-per-sample=$max_change_per_sample"
-
-  initial_lrate=$(perl -e "print ($initial_effective_lrate*$num_jobs_initial);")
-
-  mkdir -p $dir/configs || exit 1;
-  
-  # create the config files for nnet initialization
-  python steps/nnet3/make_multisplice_configs.py  \
-    --splice-indexes "$splice_indexes"  \
-    --feat-dim $feat_dim \
-    --ivector-dim $ivector_dim  \
-    --pnorm-input-dim $pnorm_input_dim  \
-    --pnorm-output-dim  $pnorm_output_dim \
-    --online-preconditioning-opts "$online_preconditioning_opts"  \
-    --initial-learning-rate $initial_lrate \
-    --bias-stddev $bias_stddev  \
-    --num-hidden-layers $num_hidden_layers \
-    --num-targets  $num_leaves  \
-    configs  $dir/configs || exit 1;
-
-  # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
-  # matrix.
-  $cmd $dir/log/nnet_init.log \
-    nnet3-raw-init $dir/configs/init.config $dir/0.raw || exit 1;
-
-fi
 
 if [ $stage -le -3 ]; then
   echo "$0: getting preconditioning matrix for input features."
@@ -272,7 +256,7 @@ if [ $stage -le -3 ]; then
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_transform_stats.JOB.log \
       nnet3-get-transform-stats --num-leaves=$num_leaves \
-        $dir/0.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
+        $dir/init.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
   $cmd $dir/log/sum_transform_stats.log \
@@ -280,69 +264,45 @@ if [ $stage -le -3 ]; then
 
   rm $all_lda_accs || exit 1;
 
-  # This program reads in 0.raw which just outputs the spliced features possibly with
-  # iVector appended, and adds to it a fixed affine transform computed in the way
-  # we described in Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's
-  # a scaled variant of an LDA transform but without dimensionality reduction.
+  # this computes a fixed affine transform computed in the way we described in
+  # Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled variant
+  # of an LDA transform but without dimensionality reduction.
   $cmd $dir/log/get_transform.log \
        nnet-get-feature-transform $lda_opts $dir/lda.mat $dir/lda_stats || exit 1;
 
-  ln -s ../lda.mat $dir/configs/lda.mat 
-  nnet3-raw-edit $dir/0.raw $dir/configs/
-
-  # work out the dimension after the transform... we have to decide on the
-  # output format of nnet3-raw-info before we can do this.
-  lda_output_dim=$(nnet3-raw-info $dir/1.raw | foo bar$)
-  
-  # now add the final transform layer and the final log-softmax.
-  # Note: parameter stddev will default to 1/sqrt(input-dim), and defaults for the natural gradient
-  # update are all the ones we want.
-  cat >$dir/config/add_final.config <<EOF
-component name=final-affine type=NaturalGradientAffineComponent $affine_opts input-dim=$lda_output_dim output-dim=$num_leaves bias-stddev=0
-component name=softmax type=SoftmaxComponent dim=$num_leaves
-# in next line, input of final-affine node is the same as whatever the input of
-# the current output node was.
-node name=final-affine type=component component=final-affine input=InputOf(output)
-node name=log-softmax type=component component=log-softmax input=final-affine
-node name=output type=output input=log-softmax
-EOF
-  $cmd $dir/log/add_final.log \
-    nnet3-raw-edit $dir/1.raw $dir/config/add_first_layer.config $dir/2.raw || exit 1;
+  ln -sf ../lda.mat $dir/configs/lda.mat
 fi
 
+
+if [ $stage -le -2 ]; then
+  echo "$0: preparing initial vector for FixedScaleComponent before softmax"
+  echo "  ... using priors^$presoftmax_prior_scale_power and rescaling to average 1"
+
+  # obtains raw pdf count    
+  $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
+     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
+     post-to-tacc --per-pdf=true  $alidir/final.mdl ark:- $dir/pdf_counts.JOB || exit 1;
+  $cmd $dir/log/sum_pdf_counts.log \
+       vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
+  rm $dir/pdf_counts.*
+  
+  awk -v power=$presoftmax_prior_scale_power smooth=0.01 \
+     '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
+        num_pdfs=NF-2;  average_count = total/num_pdfs;
+        for (i=0; i<num_pdfs; i++) stot += (scale[i] = (count[i] + smooth * average_count)^power)
+        printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]/stot); print "]" }' \
+     $dir/pdf_counts > $dir/presoftmax_prior_scale.vec
+  ln -sf ../presoftmax_prior_scale.vec $dir/configs/presoftmax_prior_scale.vec
+fi
 
 if [ $stage -le -1 ]; then
-  echo "$0: training transition probabilities and setting priors"
-  $cmd $dir/log/train_trans.log \
-    nnet-train-transitions $dir/0.mdl "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl \
-    || exit 1;
-
-  if [ "$presoftmax_prior_scale_power" != "0.0" ]; then
-    echo "prepare initial vector for FixedScaleComponent before softmax"
-    echo "use priors^$presoftmax_prior_scale_power and rescale to average 1"
-
-    # obtains raw pdf count    
-    $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
-      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
-      post-to-tacc --per-pdf=true --binary=false $alidir/final.mdl ark:- $dir/JOB.pacc || exit 1;
-    cat $dir/*.pacc > $dir/pacc
-    rm $dir/*.pacc
-    awk -v power=$presoftmax_prior_scale_power \
-      '{ for(i=2; i<=NF-1; i++) {sum[i]+=$i} } 
-      END {
-        for (i=2; i<=NF-1; i++) {total+=sum[i]} 
-        ave_pdf=int(total/(NF-2)); total+=0.01*ave_pdf*(NF-2)
-        for (i=2; i<=NF-1; i++) {rescale+=((sum[i]+0.01*ave_pdf)/total)^power}
-        rescale/=(NF-2)
-        printf " [ "; for (i=2; i<=NF-1; i++) {printf("%f ", ((sum[i]+0.01*ave_pdf)/total)^power/rescale)}; print "]"
-      }' $dir/pacc > $dir/presoftmax_prior_scale_vecfile
-
-    echo "FixedScaleComponent scales=$dir/presoftmax_prior_scale_vecfile" > $dir/configs/per_element.config
-    echo "insert an additional layer of FixedScaleComponent before softmax"
-    inp=`nnet-am-info $dir/0.mdl | grep 'Softmax' | awk '{print $2}'`
-    nnet-init $dir/per_element.config - | nnet-insert --insert-at=$inp --randomize-next-component=false $dir/0.mdl - $dir/0.mdl
-  fi  
+  # Add the first layer; this will add in the lda.mat and
+  # presoftmax_prior_scale.vec.
+  $cmd $dir/log/add_first_layer.log \
+       nnet3-raw-edit $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 fi
+
+
 
 # set num_iters so that as close as possible, we process the data $num_epochs
 # times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
@@ -357,25 +317,7 @@ num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
 finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 
-
-# mix up at the iteration where we've processed about half the data; this keeps
-# the overall training procedure fairly invariant to the number of initial and
-# final jobs.
-# j = initial, k = final, n = num-iters, x = half-of-data epoch,
-# p is proportion of data we want to process (e.g. p=0.5 here).
-# solve for x if the amount of data processed by epoch x is p
-# times the amount by iteration n.
-# put this in wolfram alpha:
-# solve { x*j + (k-j)*x*x/(2*n) = p * (j*n + (k-j)*n/2), {x} }
-# got: x = (j n-sqrt(-n^2 (j^2 (p-1)-k^2 p)))/(j-k) and j!=k and n!=0
-# simplified manually to: n * (sqrt(((1-p)j^2 + p k^2)/2) - j)/(j-k)
-mix_up_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n*(sqrt((1-$p)*$j*$j+$p*$k*$k)-$j)/($k-$j))); ' $num_jobs_initial $num_jobs_final $num_iters 0.5)
-! [ $mix_up_iter -gt $finish_add_layers_iter ] && \
-  echo "Mix-up-iter is $mix_up_iter, should be greater than $finish_add_layers_iter -> add more epochs?" \
-  && exit 1;
-
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
-echo "$0: Will not do mix up"
 
 if [ $num_threads -eq 1 ]; then
   parallel_suffix="-simple" # this enables us to use GPU code if
@@ -393,19 +335,20 @@ fi
 
 
 approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
-# First work out how many models we want to combine over in the final
-# nnet-combine-fast invocation.  This equals
+# First work out how many iterations we want to combine over in the final
+# nnet-combine-fast invocation.  (We may end up subsampling from these if the
+# number exceeds max_model_combine).  The number we use is:
 # min(max(max_models_combine, approx_iters_per_epoch_final),
-#     2/3 * iters_after_mixup)
-num_models_combine=$max_models_combine
-if [ $num_models_combine -lt $approx_iters_per_epoch_final ]; then
-   num_models_combine=$approx_iters_per_epoch_final
+#     1/2 * iters_after_last_layer_added)
+num_iters_combine=$max_models_combine
+if [ $num_iters_combine -lt $approx_iters_per_epoch_final ]; then
+   num_iters_combine=$approx_iters_per_epoch_final
 fi
-iters_after_mixup_23=$[(($num_iters-$mix_up_iter-1)*2)/3]
-if [ $num_models_combine -gt $iters_after_mixup_23 ]; then
-  num_models_combine=$iters_after_mixup_23
+half_iters_after_add_layers=$[($num_iters-$finish_add_layers_iter)/2]
+if [ $num_iters_combine -gt $half_iters_after_add_layers ]; then
+  num_iters_combine=$half_iters_after_add_layers
 fi
-first_model_combine=$[$num_iters-$num_models_combine+1]
+first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
 
@@ -594,12 +537,12 @@ if [ $stage -le $num_iters ]; then
   # Now do combination.
   nnets_list=()
   # the if..else..fi statement below sets 'nnets_list'.
-  if [ $max_models_combine -lt $num_models_combine ]; then
+  if [ $max_models_combine -lt $num_iters_combine ]; then
     # The number of models to combine is too large, e.g. > 20.  In this case,
     # each argument to nnet-combine-fast will be an average of multiple models.
     cur_offset=0 # current offset from first_model_combine.
     for n in $(seq $max_models_combine); do
-      next_offset=$[($n*$num_models_combine)/$max_models_combine]
+      next_offset=$[($n*$num_iters_combine)/$max_models_combine]
       sub_list="" 
       for o in $(seq $cur_offset $[$next_offset-1]); do
         iter=$[$first_model_combine+$o]
@@ -612,7 +555,7 @@ if [ $stage -le $num_iters ]; then
     done
   else
     nnets_list=
-    for n in $(seq 0 $[num_models_combine-1]); do
+    for n in $(seq 0 $[num_iters_combine-1]); do
       iter=$[$first_model_combine+$n]
       mdl=$dir/$iter.mdl
       [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
@@ -655,6 +598,15 @@ if [ $stage -le $num_iters ]; then
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then
+
+  # do this somewhere:
+#  echo "$0: training transition probabilities and setting priors"
+#  $cmd $dir/log/train_trans.log \
+#    nnet-train-transitions $dir/0.mdl "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl \
+#    || exit 1;
+
+
+  
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
