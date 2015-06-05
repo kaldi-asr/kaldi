@@ -14,7 +14,7 @@ GetOptions('frame-shift:f' => \$frame_shift);
 
 if (@ARGV != 1) {
   print STDERR "$0:\n" .
-               "Usage: cat <segments-file> | convert_vad_to_rttm.pl [options] <uem-file> > <rttm-out>\n";
+               "Usage: cat <segments-file> | convert_segments_to_rttm.pl [options] <uem-out-file> > <rttm-out>\n";
   exit 1;
 }
 open (UEM, ">", $ARGV[0]) or die "Could not open $ARGV[0]";

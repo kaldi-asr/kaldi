@@ -56,6 +56,8 @@ sil_gauss_incr_phase3=1
 speech_gauss_incr_phase3=2
 num_iters_phase3=7
 
+speech_to_sil_ratio=1
+
 . path.sh
 . parse_options.sh || exit 1
 
@@ -137,22 +139,23 @@ if [ $stage -le -10 ]; then
 fi
 
 if [ $stage -le -9 ]; then
-  lang=$dir/lang_test_4x
+  t=$speech_to_sil_ratio
+  lang=$dir/lang_test_${t}x
   cp -r $dir/lang $lang
-  perl -e 'print "0 0 1 1 " . -log(1/11) . "\n0 0 2 2 ". -log(8/11). "\n0 0 3 3 ". -log(1/11) ."\n0 ". -log(1/11)' | \
+  perl -e "print \"0 0 1 1 \" . -log(1/$[t+3]) . \"\n0 0 2 2 \". -log($t/$[t+3]). \"\n0 0 3 3 \". -log(1/$[t+3]) .\"\n0 \". -log(1/$[t+3])" | \
     fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
     --keep_isymbols=false --keep_osymbols=false \
     > $lang/G.fst || exit 1
-  diarization/make_vad_graph.sh --iter trans $lang $dir $dir/graph_test_4x || exit 1
+  diarization/make_vad_graph.sh --iter trans $lang $dir $dir/graph_test_${t}x || exit 1
   
-  lang=$dir/lang_2class_test_4x
+  lang=$dir/lang_2class_test_${t}x
   cp -r $dir/lang_2class $lang
-  perl -e 'print "0 0 1 1 " . -log(1/10) . "\n0 0 2 2 ". -log(8/10). "\n0 ". -log(1/10)' | \
+  perl -e "print \"0 0 1 1 \" . -log(1/$[t+2]) . \"\n0 0 2 2 \". -log($t/$[t+2]). \"\n0 \". -log(1/$[t+2])" | \
     fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
     --keep_isymbols=false --keep_osymbols=false \
     > $lang/G.fst || exit 1
   
-  diarization/make_vad_graph.sh --iter trans_2class --tree tree_2class $lang $dir $dir/graph_2class_test_4x || exit 1
+  diarization/make_vad_graph.sh --iter trans_2class --tree tree_2class $lang $dir $dir/graph_2class_test_${t}x || exit 1
 fi
 
 
@@ -372,7 +375,7 @@ while IFS=$'\n' read line; do
     done  ## Done training all 3 GMMs
     cp $phase2_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
     rm -f $dir/$utt_id.graph_final
-    ln -s graph_test_4x $dir/$utt_id.graph_final
+    ln -s graph_test_${speech_to_sil_ratio}x $dir/$utt_id.graph_final
 
     $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
       gmm-decode-simple --allow-partial=$allow_partial \
@@ -586,7 +589,9 @@ while IFS=$'\n' read line; do
 
       cp $phase3_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
       rm -f $dir/$utt_id.graph_final
-      ln -s graph_2class_test_4x $dir/$utt_id.graph_final
+      ln -s graph_2class_test_${speech_to_sil_ratio}x $dir/$utt_id.graph_final
+    else 
+      echo "Not going to phase3"
     fi
   fi
 

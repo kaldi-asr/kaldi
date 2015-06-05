@@ -168,6 +168,7 @@ int main(int argc, char *argv[]) {
         std::string file_id = key; 
         BaseFloat start_time = 0.0;
         if (segments_rxfilename != "") {
+          KALDI_ASSERT(utt2file.count(key) > 0 && utt2start_time.count(key) > 0);
           file_id = utt2file.at(key);
           start_time = utt2start_time.at(key);
         }
