@@ -28,7 +28,7 @@ nj=30
 chime3_data=$1
 wsj0_data=$chime3_data/data/WSJ0 # directory of WSJ0 in CHiME3. You can also specify your WSJ0 corpus directory
 
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 # process for clean speech and making LMs etc. from original WSJ0
 # note that training on clean data means original WSJ0 data only (no booth data)
@@ -44,7 +44,7 @@ local/clean_chime3_format_data.sh || exit 1;
 local/real_close_chime3_data_prep.sh $chime3_data || exit 1;
 
 # process for booth recording speech (will not be used)
-local/bth_chime3_data_prep.sh $chime3_data || exit 1;
+# local/bth_chime3_data_prep.sh $chime3_data || exit 1;
 
 # process for distant talking speech for real and simulation data
 local/real_noisy_chime3_data_prep.sh $chime3_data || exit 1;
@@ -61,9 +61,9 @@ else
 fi
 # real data
 if $eval_flag; then
-  list=$list" tr05_real_close tr05_real_noisy dt05_real_close dt05_real_noisy et05_real_close et05_real_noisy"
+  list=$list" tr05_real_noisy dt05_real_noisy et05_real_noisy"
 else
-  list=$list" tr05_real_close tr05_real_noisy dt05_real_close dt05_real_noisy"
+  list=$list" tr05_real_noisy dt05_real_noisy"
 fi
 # simulation data
 if $eval_flag; then
@@ -73,7 +73,7 @@ else
 fi
 mfccdir=mfcc
 for x in $list; do 
-  steps/make_mfcc.sh --nj $nj \
+  steps/make_mfcc.sh --nj 8 \
     data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
@@ -120,14 +120,20 @@ for train in tr05_multi_noisy tr05_orig_clean; do
 
   # if you want to know the result of the close talk microphone, plese try the following 
   # decode close speech
-  #steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
-  # decode noisy speech
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  #   exp/tri3b_$train/graph_tgpr_5k data/et05_real_close exp/tri3b_$train/decode_tgpr_5k_et05_real_close &
+  # decode real noisy speech
   steps/decode_fmllr.sh --nj 4 --num-threads 4 \
     exp/tri3b_$train/graph_tgpr_5k data/dt05_real_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_real_noisy &
-  # decode simu speech
+  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+    exp/tri3b_$train/graph_tgpr_5k data/et05_real_noisy exp/tri3b_$train/decode_tgpr_5k_et05_real_noisy &
+  # decode simu noisy speech
   steps/decode_fmllr.sh --nj 4 --num-threads 4 \
     exp/tri3b_$train/graph_tgpr_5k data/dt05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_simu_noisy &
+  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+    exp/tri3b_$train/graph_tgpr_5k data/et05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_et05_simu_noisy &
 done
 wait
 
@@ -135,5 +141,5 @@ wait
 #for train in tr05_multi_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
 for train in tr05_multi_noisy tr05_orig_clean; do
   local/chime3_calc_wers.sh exp/tri3b_$train noisy > exp/tri3b_$train/best_wer_noisy.result
-  head -n 12 exp/tri3b_$train/best_wer_noisy.result
+  head -n 15 exp/tri3b_$train/best_wer_noisy.result
 done
