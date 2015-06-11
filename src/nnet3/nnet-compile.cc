@@ -30,15 +30,23 @@ Compiler::Compiler(
 void Compiler::CreateComputation(NnetComputation *computation) {
 
   ComputeComputationGraph(nnet_, request_, &graph_);
-  PruneComputationGraph(nnet_, request_, &graph_);
-  std::vector<std::vector<int32> > by_order;
+  std::vector<bool> computable, required;
+  ComputeComputableArray(nnet_, request_, graph_, &computable);
+  PruneDependencies(nnet_, request_, computable, &graph_);
+  ComputeRequiredArray(nnet_, graph_, computable, &required);
+  if (!PruneComputationGraph(nnet_, computable, required, &graph_)) {
+    // possible issue with graph topology, or not enough inputs provided.
+    KALDI_ERR << "Computation cannot be done.";
+  }
+  PruneComputationGraph(nnet_, computable, required, &graph_);
   // see function declaration's comment for meaning of "by_order".
+  std::vector<std::vector<int32> > by_order;
   ComputeComputationOrder(nnet_, graph_, NULL, &by_order);
-  std::vector<std::vector<int32> > by_step;
-  ComputeComputationSteps(nnet_, request_, graph_, by_order, &by_step);
+  std::vector<std::vector<int32> > steps;
+  ComputeComputationSteps(nnet_, request_, graph_, by_order, &steps);
   by_order.clear();
-  CreateLocationInfo(by_step);
-  CreateStepInfo(&by_step);
+  CreateLocationInfo(steps);
+  CreateStepInfo(&steps);
 
   AddCommands(computation);
 }
@@ -67,7 +75,6 @@ void Compiler::AddCommands(NnetComputation *computation) {
 void Compiler::CreateStepInfo(
     std::vector<std::vector<int32> > *by_step) {
   KALDI_ASSERT(!by_step->empty());
-  KALDI_ASSERT(!cindex_id_to_location_.empty());
   int32 num_steps = by_step->size();
   bool need_derivs = request_.NeedDerivatives();
   steps_.resize(num_steps);
@@ -93,22 +100,12 @@ void Compiler::CreateStepInfo(
     } else {
       this_info.value = step + 1;
     }
-    // If this step corresponds to a component, we need to work out the step-index
-    // corresponding to its input.
-    if (nnet_.GetNode(this_info.node_index).node_type == NetworkNode::kComponent) {
-      // choose an arbitrary row index.
-      int32 row_index = RandInt(0, this_info.output_cindex_ids.size() - 1) ,
-          this_cindex_id = this_info.output_cindex_ids[row_index];
-      const std::vector<int32> &dependencies = graph_.dependencies[this_cindex_id];
-      KALDI_ASSERT(!dependencies.empty());
-      int32 dep_cindex_id = dependencies[0];
-      this_info.input_step = cindex_id_to_location_[dep_cindex_id].first;
-    }
   }
   num_matrices_ = 1 + num_steps * (need_derivs ? 2 : 1);
 }
 
-void Compiler::CreateLocationInfo(const std::vector<std::vector<int32> > &by_step) {
+void Compiler::CreateLocationInfo(
+    const std::vector<std::vector<int32> > &by_step) {
   KALDI_ASSERT(cindex_id_to_location_.empty());
   int32 num_steps = by_step.size();
   for (int32 step = 0; step < num_steps; step++) {
@@ -173,8 +170,8 @@ void Compiler::DefineSubmatrices(NnetComputation *computation) {
     const NetworkNode &node = nnet_.GetNode(this_info.node_index);
     if (node.node_type == NetworkNode::kDescriptor) {
       const Descriptor &desc = node.descriptor;
-      KALDI_ASSERT(!desc.parts.empty());
-      int32 num_parts = desc.parts.size();
+      int32 num_parts = desc.NumParts();
+      KALDI_ASSERT(num_parts > 0);
       if (num_parts == 1) {
         this_info.value_parts.push_back(this_info.value);
         if (this_info.deriv != 0)
@@ -187,8 +184,8 @@ void Compiler::DefineSubmatrices(NnetComputation *computation) {
           if (this_info.deriv != 0)
             this_info.deriv_parts.resize(num_parts);
           for (int32 p = 0; p < num_parts; p++) {
-            const SumDescriptor &this_part = desc.parts[p];
-            int32 this_dim = this_part.Dim(nnet_);
+            const SumDescriptor *this_part = desc.Part(p);
+            int32 this_dim = this_part->Dim(nnet_);
             int32 num_rows = this_info.output_indexes.size();
             int32 value_part_index = computation->sub_matrices.size();
             computation->sub_matrices.push_back(
@@ -238,30 +235,22 @@ void Compiler::DoForwardComputationDescriptor(
     NnetComputation *computation) const {
   const StepInfo &step_info = steps_[step];
   // the top-level descriptor has a bunch of parts that we concatenate features over.
-  KALDI_ASSERT(descriptor.parts.size() == step_info.value_parts.size());
-  int32 num_parts = descriptor.parts.size();
+  int32 num_parts = descriptor.NumParts();
+  KALDI_ASSERT(num_parts == step_info.value_parts.size());
   for (int32 part = 0; part < num_parts; part++) {
-    const SumDescriptor &sum_descriptor = descriptor.parts[part];
+    const SumDescriptor &sum_descriptor = descriptor.Part(part);
     int32 value_submatrix_index = step_info.value_parts[part];
-    int32 num_terms = sum_descriptor.terms.size();
-    for (int32 term = 0; term < num_terms; term++) {
-      const ForwardingDescriptor &forwarding_descriptor =
-          sum_descriptor.terms[term];
-      bool is_first_term_in_sum = (term == 0);
-      DoForwardComputationForwardingDescriptor(step,
-                                               value_submatrix_index,
-                                               is_first_term_in_sum,
-                                               forwarding_descriptor,
-                                               computation);
-    }
+    DoForwardComputationSumDescriptor(step,
+                                      value_submatrix_index,
+                                      sum_descriptor,
+                                      computation);
   }      
 }
 
-void Compiler::DoForwardComputationForwardingDescriptor(
+void Compiler::DoForwardComputationSumDescriptor(
     int32 step,    
     int32 value_submatrix_index,
-    bool is_first_term_in_sum,
-    const ForwardingDescriptor &descriptor,
+    const SumDescriptor &descriptor,
     NnetComputation *computation) const {
   const StepInfo &step_info = steps_[step];
   const std::vector<Index> &output_indexes = step_info.output_indexes;
@@ -271,9 +260,12 @@ void Compiler::DoForwardComputationForwardingDescriptor(
   // Note: these submat_locations will be pairs [submatrix-index, row-index]
   // rather than the more normal [step-index, row-index].
   std::vector<std::pair<int32, int32> > input_submat_locations(output_indexes.size());
+
+  
   int32 num_indexes = output_indexes.size();
   for (int32 i = 0; i < num_indexes; i++) {
     const Index &index = output_indexes[i];
+    
     Cindex input_cindex = descriptor.MapToInput(index);
     // The following call to GetCindexId will crash if the Cindex is not present
     // in computation graph.  That would be a bug anyway, so a crash is what we

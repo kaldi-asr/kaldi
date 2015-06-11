@@ -115,7 +115,8 @@ class Nnet {
   /// note to self: one thing of many that we need to check is that no output
   /// nodes are referred to in Descriptors.  This might mess up the combination
   /// of each output node into a single step, as dependencies would be messed
-  /// up.
+  /// up.  Also make sure no nodes referred to in Descriptors are themselves
+  /// Descriptors.
   void Check()const;
 
   /// returns some human-readable information about the network, mostly for

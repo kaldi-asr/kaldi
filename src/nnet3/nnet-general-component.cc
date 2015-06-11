@@ -1,4 +1,4 @@
-// nnet3/nnet-nnet.cc
+// nnet3/nnet-general-component.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,31 +19,11 @@
 
 #include <iterator>
 #include <sstream>
-#include "nnet3/nnet-nnet.h"
+#include "nnet3/nnet-general-component.h"
+#include "nnet3/nnet-parse.h"
 
 namespace kaldi {
 namespace nnet3 {
-
-// returns dimension that this node outputs.
-int32 NetworkNode::Dim(const Nnet &nnet) const {
-  int32 ans;
-  switch (node_type) {
-    case kInput:
-      ans = u.dim;
-      break;
-    case kDescriptor:
-      ans = descriptor.Dim(nnet);
-      break;
-    case kComponentOutput:
-      ans = nnet.GetComponent(u.component_index)->OutputDim();
-      break;
-    default:
-      KALDI_ERR << "Invalid node type.";
-  }
-  KALDI_ASSERT(ans > 0);
-  return ans;
-}
-
 
 
 

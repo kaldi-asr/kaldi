@@ -49,7 +49,8 @@ namespace nnet3 {
 // MiscComputationInfo is a place we enter information about a requested
 // computation that doesn't easily fit into the framework as given: things like
 // the maximum unrolling we want to do, or how far ahead in time we want a
-// particular adaptation method to be able to look.
+// particular adaptation method to be able to look.  Elements of this are
+// interpreted by individual components, for the most part.
 struct MiscComputationInfo {
   // will add members here as needed.
 };

@@ -64,11 +64,8 @@ enum ComponentProperties {
                            // setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kModifiesIndexes = 0x400,  // true if the ModifyIndexes function might modify
-                            // the indexes.
-  kAllowNoOptionalDependencies = 0x800  // true if we are to treat a Cindex as
-                                 // computable even if no optional dependencies
-                                 // were computable.
+  kReordersIndexes = 0x400,  // true if the ReordersIndexes function might reorder
+                             // the indexes (otherwise we can skip calling it).
 };
 
 
@@ -86,6 +83,8 @@ class ComponentPrecomputedIndexes {
   virtual ~ComponentPrecomputedIndexes();
 };
 
+
+class IndexSet;  // Forward declaration; declared in nnet-computation-graph.h.
 
 /// Abstract base-class for neural-net components.
 class Component {
@@ -133,8 +132,11 @@ class Component {
                                               // to "this" or different.
                         CuMatrixBase<BaseFloat> *in_deriv) const = 0;
 
-  /// \brief  For a given index at the output of the component, tells us what indexes
-  ///   are required at its input.
+  /// \brief  This function only does something interesting for non-simple Components.
+  ///   For a given index at the output of the component, tells us what indexes
+  ///   are required at its input (note: "required" encompasses also optionally-required
+  ///   things; it will enumerate all things that we'd like to have).  See also
+  ///   IsComputable().
   /// \param [in] misc_info  This argument is supplied to handle things that the
   ///       framework can't very easily supply: information like which time
   ///       indexes are needed for AggregateComponent, which time-indexes are
@@ -142,34 +144,75 @@ class Component {
   ///       add members to misc_info as needed.
   /// \param [in] output_index  The Index at the output of the component, for
   ///       which we are requesting the list of indexes at the component's input.
-  /// \param [out] input_indexes  A list of indexes that are definitely
-  ///        required at the input of this component.
-  /// \param [out] is_optional  Says, for each element of input_indexes, whether
-  ///        it can be considered optional (rather than required).  This is
-  ///        useful in things like RNNs and LSTMs to handle end effects at the
-  ///        start of the file.  If this function leaves the vector empty, the
-  ///        caller should assume all are required.  Note: the misc_info is
-  ///        supplied to give the code hints about, e.g., the min and max time
-  ///        indexes, so that the code doesn't have to nominate a ridiculously
-  ///        large number of optional indexes.
+  /// \param [out] desired_indexes  A list of indexes that are desired at the input.
+  ///       By "desired" we mean required or optionally-required.
   ///
   /// The default implementation of this function is suitable for any
   /// SimpleComponent; it just copies the output_index to a single identical
-  /// element in input_indexes, and sets is_optional to false.
+  /// element in input_indexes.
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
-                               std::vector<Index> *input_indexes,
-                               std::vector<bool> *is_optional) const;
+                               std::vector<Index> *desired_indexes) const;
 
-  /// \brief (For non-simple Components) Returns some precomputed
-  ///     component-specific and computation-specific indexes to be in used
-  ///     in the Propagate and Backprop functions.
+  /// \brief This function only does something interesting for non-simple
+  ///    Components, and it exists to make it possible to manage
+  ///    optionally-required inputs.  It tells the user whether a given output
+  ///    index is computable from a given set of input indexes, and if so,
+  ///    says which input indexes will be used in the computation.
+  ///
+  ///    Implementations of this function are required to have the property that
+  ///    adding an element to "input_index_set" can only ever change IsComputable
+  ///    from false to true, never vice versa.
+  ///
+  ///    @param [in] misc_info  Some information specific to the computation, such as
+  ///              minimum and maximum times for certain components to do adaptation on;
+  ///              it's a place to put things that don't easily fit in the framework.
+  ///    @param [in] output_index  The index that is to be computed at the output
+  ///              of this Component.
+  ///    @param [in] input_index_set  The set of indexes that is available at the
+  ///              input of this Component.
+  ///    @param [out] used_inputs  If non-NULL, then if the output is computable
+  ///       this will be set to the list of input indexes that will actually be
+  ///       used in the computation.
+  ///    @return Returns true iff this output is computable from the provided
+  ///          inputs.
+  ///
+  ///   The default implementation of this function is suitable for any
+  ///   SimpleComponent: it just returns true if output_index is in
+  ///   input_index_set, and if so sets used_inputs to vector containing that
+  ///   one Index.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const;
+  
+  /// \brief This function only does something interesting for non-simple
+  ///  Components.  It provides an opportunity for a Component to reorder the
+  ///  indexes at its input and output.  This might be useful, for instance, if
+  ///  a component requires a particular ordering of the indexes that doesn't
+  ///  correspond to their natural ordering.  Components that might modify the
+  ///  indexes are brequired to return the kReordersIndexes flag in their
+  ///  Properties().
+  ///
+  ///  \param [in,out]  Indexes at the input of the Component.
+  ///  \param [in,out]  Indexes at the output of the Component
+  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
+                              std::vector<Index> *output_indexes) const {}
+  
+
+  
+  /// \brief This function only returns non-NULL for non-simple Components (and
+  ///     may still return NULL for non-simple Compoennts).  Returns a pointer
+  ///     to a class that may contain some precomputed component-specific and
+  ///     computation-specific indexes to be in used in the Propagate and
+  ///     Backprop functions.
   ///
   /// \param [in] misc_info  This argument is supplied to handle things that the
   ///       framework can't very easily supply: information like which time
   ///       indexes are needed for AggregateComponent, which time-indexes are
-  ///       available at the input of a recurrent network, and so on.  We will
-  ///       add members to misc_info as needed.
+  ///       available at the input of a recurrent network, and so on.  misc_info
+  ///       may not even ever be used here.  We will add members to misc_info as
+  ///       needed.
   /// \param [in] input_indexes  A vector of indexes that explains
   ///       what time-indexes (and other indexes) each row of the
   ///       in/in_value/in_deriv matrices given to Propagate and Backprop will
@@ -190,21 +233,6 @@ class Component {
       const std::vector<Index> &output_indexes,
       bool need_backprop) const { return NULL;  }
 
-
-  /// \brief (for non-simple Components)
-  /// This function provides an opportunity for a Component to reorder the
-  /// indexes at its input and output and possibly remove some of the indexes at
-  /// its input that (after considering what else is available) it decides that
-  /// it does not need.  This might be useful, for instance, if a component
-  /// requires a particular ordering of the indexes that doesn't correspond to
-  /// their natural ordering.   Components that might modify the indexes are
-  /// required to return the kModifiesIndexes flag in their Properties().
-  ///
-  ///  \param [in,out]  Indexes at the input of the Component.
-  ///  \param [in,out]  Indexes at the output of the Component
-  virtual void ModifyIndexes(std::vector<Index> *input_indexes,
-                             std::vector<Index> *output_indexes) const {}
-  
 
   /// \brief Returns a string such as "SigmoidComponent", describing
   ///        the type of the object.

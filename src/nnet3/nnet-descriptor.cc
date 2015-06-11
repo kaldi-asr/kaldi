@@ -22,11 +22,7 @@
 namespace kaldi {
 namespace nnet3 {
 
-int32 ForwardingDescriptor::Modulus() const {
-  return impl_->Modulus();
-}
-
-void InputDescriptor::GetInputCindexes(
+void Descriptor::GetInputCindexes(
     const Index &index,
     std::vector<Cindex> *required_indexes) const {
   required_indexes->clear();

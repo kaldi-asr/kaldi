@@ -68,6 +68,10 @@ struct Index {
   void Read(std::istream &os, bool binary);
 };
 
+// this will be used only for debugging output.
+std::ostream &operator << (std::ostream &ostream, const Index &index);
+
+
 void WriteIndexVector(std::ostream &os, bool binary,
                       const std::vector<Index> &vec);
 
@@ -83,6 +87,11 @@ typedef std::pair<int32, Index> Cindex;
 struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
 };
+
+
+// this will be used only for debugging output.
+std::ostream &operator << (std::ostream &ostream, const Cindex &cindex);
+
 
 // some forward declarations.
 class Component;

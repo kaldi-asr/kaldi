@@ -1,4 +1,4 @@
-// nnet3/nnet-component.cc
+// nnet3/nnet-simple-component.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,11 +19,8 @@
 
 #include <iterator>
 #include <sstream>
-#include "nnet3/nnet-component.h"
+#include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
-
-// \file This file contains some more-generic component code: things in base classes.
-//       See nnet-component.cc for the code of the actual Components.
 
 namespace kaldi {
 namespace nnet3 {

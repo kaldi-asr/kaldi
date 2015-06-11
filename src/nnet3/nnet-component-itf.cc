@@ -20,7 +20,8 @@
 #include <iterator>
 #include <sstream>
 #include "nnet3/nnet-component-itf.h"
-#include "nnet3/nnet-component.h"
+#include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-parse.h"
 
 // \file This file contains some more-generic component code: things in base classes.
