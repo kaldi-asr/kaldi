@@ -242,6 +242,7 @@ void Compiler::DoForwardComputationDescriptor(
     int32 value_submatrix_index = step_info.value_parts[part];
     DoForwardComputationSumDescriptor(step,
                                       value_submatrix_index,
+                                      (num_parts == 1),
                                       sum_descriptor,
                                       computation);
   }      
@@ -250,37 +251,68 @@ void Compiler::DoForwardComputationDescriptor(
 void Compiler::DoForwardComputationSumDescriptor(
     int32 step,    
     int32 value_submatrix_index,
+    bool is_only_part,
     const SumDescriptor &descriptor,
     NnetComputation *computation) const {
   const StepInfo &step_info = steps_[step];
   const std::vector<Index> &output_indexes = step_info.output_indexes;
+  const std::vector<int32> &output_cindex_ids = step_info.output_cindex_ids;
   KALDI_ASSERT(descriptor.Dim(nnet_) ==
                computation->sub_matrices[value_submatrix_index].num_cols);
 
-  // Note: these submat_locations will be pairs [submatrix-index, row-index]
-  // rather than the more normal [step-index, row-index].
-  std::vector<std::pair<int32, int32> > input_submat_locations(output_indexes.size());
-
-  
   int32 num_indexes = output_indexes.size();
+  
+  // This vector is indexed first by output row-index i (i.e. the index of
+  // output_indexes or output_cindex_ids), and then is a list of input locations
+  // for that row-index, sorted in the natural order of Cindexes.  The semantics
+  // is that the i'th row of the output becomes a sum over the rows in the i'th
+  // list (or zero if that list is empty).
+  // Note: these submat_locations will be pairs [submatrix-index, row-index]
+  // rather than the "locations" [step-index, row-index].
+  std::vector<std::vector<std::pair<int32, int32> > > input_submat_locations(
+      num_indexes);
   for (int32 i = 0; i < num_indexes; i++) {
-    const Index &index = output_indexes[i];
-    
-    Cindex input_cindex = descriptor.MapToInput(index);
-    // The following call to GetCindexId will crash if the Cindex is not present
-    // in computation graph.  That would be a bug anyway, so a crash is what we
-    // want.
-    int32 cindex_id = graph_.GetCindexId(input_cindex);
-    std::pair<int32, int32> location = cindex_id_to_location_[cindex_id];
-    int32 input_step = location.first, row_index = location.second,
-        submatrix_index = steps_[input_step].value;
-    input_submat_locations[i].first = submatrix_index;
-    input_submat_locations[i].second = row_index;
+    int32 cindex_id = output_cindex_ids[i];
+    const std::vector &dependencies = graph.dependencies[cindex_id];
+
+    std::vector<int32> input_cindex_ids;
+    if (is_only_part) {
+      // this is an optimization.
+      input_cindex_ids = dependencies;
+    } else {
+      const Index &index = output_indexes[i];
+      std::vector<Cindex> input_cindexes;
+      CindexSet cindex_set(graph_);
+      bool ans = descriptor.IsComputable(index, cindex_set, &input_cindexes);
+      // earlier compilation stages should have checked that it is computable,
+      // and the graph should still contain required inputs.
+      KALDI_ASSERT(ans == true);
+      std::sort(input_cindexes.begin(), input_cindexes.end());
+      int32 size = input_cindexes.size();
+      input_cindex_ids.resize(size);
+      for (int32 j = 0; i < size; j++) {
+        int32 c = graph_.GetCindexId(input_cindexes[j]);
+        KALDI_ASSERT(c != -1);
+        input_cindex_ids[i] = c;
+      }
+    }
+    std::vector<std::pair<int32, int32> > &this_locations =
+        input_submat_locations[i];
+    int32 size = input_cindex_ids.size();
+    this_locations.resize(size);
+    for (int32 j = 0; j < size; j++) {
+      std::pair<int32,int32> loc = cindex_id_to_location_[input_cindex_ids[j]];
+      int32 input_step = loc.first, row_index = loc.second,
+          submatrix_index = steps_[input_step].value;
+      KALDI_ASSERT(input_step < step);
+      this_locations[j].first = submatrix_index;
+      this_locations[j].second = row_index;
+    }
   }
-  DoForwardComputationFromSubmatLocations(value_submatrix_index,
-                                          is_first_term_in_sum,
-                                          input_submat_locations,
-                                          computation);
+  DoForwardComputationFromSubmatLocationsList(value_submatrix_index,
+                                              is_first_term_in_sum,
+                                              input_submat_locations,
+                                              computation);
 }
 
 void Compiler::DoForwardComputationFromIndexes(
@@ -360,6 +392,14 @@ void Compiler::DoForwardComputationFromSubmatLocations(
     return;
   }
 }
+
+void DoForwardComputationFromSubmatLocationsList(
+    int32 value_submatrix_index,
+    const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
+    NnetComputation *computation) const {
+  
+}
+
 
 
 void Compiler::DoBackwardComputationForwardingDescriptor(

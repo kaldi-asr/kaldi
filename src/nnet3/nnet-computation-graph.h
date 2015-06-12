@@ -97,11 +97,13 @@ struct ComputationGraph {
 class CindexSet {
  public:
   // Returns true if this cindex exists in the set (i.e. cindex_id exists in
-  // graph and is_computable_[cindex_id] == true).
+  // graph and is_computable_.empty() || is_computable_[cindex_id] == true).
   bool operator () (Cindex &cindex) const;
 
   CindexSet(const ComputationGraph &graph,
             const std::vector<bool> &is_computable);
+  // With this constructor, assume everything is computable.
+  CindexSet(const ComputationGraph &graph);
  private:
   const ComputationGraph &graph_;
   const std::vector<bool> &is_computable_;

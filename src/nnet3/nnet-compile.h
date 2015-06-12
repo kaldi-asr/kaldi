@@ -147,17 +147,28 @@ class Compiler {
   // Called from DoForwardComputation, handles the case where the step
   // corresponds to type kDescriptor
   void DoForwardComputationSumDescriptor(
-      int32 step, const Descriptor &descriptor,
+      int32 step, int32 value_submatrix_index,
+      bool is_only_part, const Descriptor &descriptor,
       NnetComputation *computation) const;
 
 
-  // Called from DoForwardComputationForwardingDescriptor.
-  void DoForwardComputationFromSubmatLocations(
+  // Called from DoForwardComputationSumDescriptor.
+  // Does the forward computation for one sub-matrix of a Descriptor,
+  // after the caller has already worked out what the input terms for
+  // each row are in terms of a list of sub-matrix locations; each location
+  // is pair (submatrix-index, row-index)
+  void DoForwardComputationFromSubmatLocationsList(
       int32 value_submatrix_index,
-      bool is_first_term_in_sum,
-      const std::vector<std::pair<int32, int32> > &submat_locations,
+      const std::vector<std::vector<std::pair<int32, int32> > > &submat_locations,
       NnetComputation *computation) const;  
 
+
+  void DoForwardComputationFromSubmatLocations(
+      int32 value_submatrix_index,
+      const std::vector<std::pair<int32, int32> > &submat_locations,
+      NnetComputation *computation) const;  
+  
+  
   // Called from DoForwardComputationFromSubmatLocations (special
   // case where all input is from the same matrix).
   void DoForwardComputationFromIndexes(
