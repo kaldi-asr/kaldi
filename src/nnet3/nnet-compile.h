@@ -165,6 +165,7 @@ class Compiler {
 
   void DoForwardComputationFromSubmatLocations(
       int32 value_submatrix_index,
+      bool is_first_term_in_sum,
       const std::vector<std::pair<int32, int32> > &submat_locations,
       NnetComputation *computation) const;  
   

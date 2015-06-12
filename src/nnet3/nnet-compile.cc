@@ -358,21 +358,12 @@ void Compiler::DoForwardComputationFromSubmatLocations(
     bool is_first_term_in_sum,
     const std::vector<std::pair<int32, int32> > &submat_locations,        
     NnetComputation *computation) const {
-  // First work out if all the input submatrix indexes are the same (i.e. there
-  // is only one source).
-  int32 num_rows = submat_locations.size();
-  std::vector<std::pair<int32, int32> >::const_iterator
-      iter = submat_locations.begin(), end = submat_locations.end();
-  int32 first_submat = iter->first;
-  for (++iter; iter != end; ++iter)
-    if (iter->first != first_submat)
-      break;
-  bool all_same_submatrix = (iter == end);
-  if (all_same_submatrix) {
-    int32 input_submatrix_index = first_submat;
-    std::vector<int32> indexes(num_rows);
-    for (int32 i = 0; i < num_rows; i++)
-      indexes[i] = submat_locations[i].second;
+
+
+  int32 input_submatrix_index = -1;
+  std::vector<int32> indexes;
+
+  if (ConvertToIndexes(submat_locations, &submatrix_index, &indexes)) {
     DoForwardComputationFromIndexes(value_submatrix_index,
                                     input_submatrix_index,
                                     is_first_term_in_sum,
@@ -397,7 +388,15 @@ void DoForwardComputationFromSubmatLocationsList(
     int32 value_submatrix_index,
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
     NnetComputation *computation) const {
-  
+  std::vector<std::vector<std::pair<int32, int32> > > split_lists;  
+  SplitLocations(submat_lists, &split_lists);
+  int32 size = split_lists.size();
+  KALDI_ASSERT(size > 0);
+  for (int32 i = 0; i < size; i++)
+    DoForwardComputationFromSubmatLocations(
+        value_submatrix_index, (i == 0),
+        split_lists[i],
+        computation);
 }
 
 
