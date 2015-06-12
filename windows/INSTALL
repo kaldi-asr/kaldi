@@ -3,8 +3,12 @@
 # studio (for cygwin installation, see the instructions 
 # in ../INSTALL).
 
-#NOTE: These instructions are valid May 2015 and are tested only for MKL
-#NOTE: The build process were validated using MSVS2013 and partially MSVS2015-rc
+#NOTE: These instructions are valid June 2015, MKL and OpenBLAS are supported
+#NOTE: ATLAS is not supported and I personally have no intention to work on supporting
+#      it, as it requires whole cygwin environment
+#NOTE: While the 32bit project files will still be generated, we don't really
+#      care if they work or not. They will be removed in the near future.
+#NOTE: The build process were validated using MSVS2013 and partially (MKL only) using MSVS2015-rc
 #NOTE: We support only openfst-1.3.x for now.
 #NOTE: I suggest to have git installed -- not only because we will 
 #      use it to download the source codes (you could download archives
@@ -50,8 +54,8 @@
 3)  Open the OpenFST solution in VS -- 
    for VS 2013, the correct solution is in VS2012 directory
    for VS 2014, the correct solution is in VS2014 directory
-   switch the configuration to debug|x64 and build the solution
-   The same for configuration release|x64
+   !!!switch the configuration to debug|x64 and build the solution
+   !!!The same for configuration release|x64
    If either of the two won't build, you should stop here and start figuring what's different!
 
 4)  Enter the (kaldi)/windows directory
@@ -64,8 +68,19 @@
 	Don't worry, it's a text file, even though you have to be 
 	careful to keep the structure itself intact
 	(kaldi)/windows $ vim variables.props
+	
+	If you plan to use MKL, you can ignore the OPENBLASDIR path
+	If you plan to use OpenBLAS, you can ignore the MKLDIR path
+	No matter what you plan to use, set both the OPENFST* and PTHREADW
+	variables correctly
+	
+4b-1) For OpenBLAS support, copy the file "kaldiwin_openblas.props" to "kaldiwin.props"
+4b-2) For MKL support, you don't have to do anything, it should work out of the box. 
+      When you need to switch from OpenBLAS to MKL, copy the "kaldiwin_mkl.props" 
+	  to "kaldiwin.props"
 
-4b) call the script that generates the MSVC solution
+
+4c) call the script that generates the MSVC solution
 	i.e.
 	generate_solution.pl --vsver <default|vs2013|vs2015>
 	i.e. for example
