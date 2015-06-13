@@ -58,7 +58,7 @@ namespace nnet3 {
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
 struct NetworkNode {
-  enum NodeType { kInput, kDescriptor, kComponent } node_type;
+  enum NodeType { kInput, kDescriptor, kComponent, kDimRange } node_type;
 
   // This is relevant only for nodes of type kDescriptor.  It describes which
   // other network nodes it gets its input from, and how those inputs are
@@ -70,10 +70,15 @@ struct NetworkNode {
     // For kComponent, the index of the component in the network's components_
     // vector.
     int32 component_index;
-
-    // for kInput, the dimension of the input feature.
-    int32 dim;
+    // for kDimRange, the node-index of the input node, which must be of
+    // type kComponent or kInput.
+    int32 node_index;
   } u;
+  // for kInput, the dimension of the input feature.  For kDimRange, the dimension
+  // of the output (i.e. the length of the range)
+  int32 dim;
+  // for kDimRange, the dimension of the offset into the input component's feature.
+  int32 dim_offset;
   
   int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
 };
@@ -118,8 +123,8 @@ class Nnet {
   /// note to self: one thing of many that we need to check is that no output
   /// nodes are referred to in Descriptors.  This might mess up the combination
   /// of each output node into a single step, as dependencies would be messed
-  /// up.  Also make sure no nodes referred to in Descriptors are themselves
-  /// Descriptors.
+  /// up.  Also make sure no nodes referred to in Descriptors, or in kDimRange,
+  /// are themselves Descriptors.
   void Check()const;
 
   /// returns some human-readable information about the network, mostly for

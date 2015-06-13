@@ -279,7 +279,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
       case NetworkNode::kDescriptor: {
         // desc describes how this node obtains its input from other nodes.
         const Descriptor &desc = node.descriptor;
-        desc.GetInputCindexes(index, &input_cindexes);
+        desc.MapToInputs(index, &input_cindexes);
         break;
       }
       case NetworkNode::kComponent: {
@@ -300,6 +300,11 @@ void ComputeComputationGraph(const ComputationRequest &request,
           input_cindexes[i].first = n - 1;  // preceding node.
           input_cindexes[i].second = input_indexes[i];
         }
+        break;
+      }
+      case NetworkNode::kDimRange: {
+        input_cindexes.resize(1);
+        input_cindexes[0] = Cindex(node.u.node_index, index);
         break;
       }
       case NetworkNode::kInput: default:
@@ -558,6 +563,11 @@ static bool IsComputable(const Nnet &nnet,
       IndexSet index_set(graph, computable, node_id);
       return c->IsComputable(request.misc_info, index, index_set, NULL);
     }
+    case NetworkNode::kDimRange: {
+      Cindex input_cindex(node.u.node_index, index);
+      int32 cindex_id = graph.GetCindexId(input_cindex);
+      return (cindex_id != -1 && computable[cindex_id]);
+    }      
     case NetworkNode::kInput: default:
       // we shouldn't reach here because Cindexes from input nodes have
       // no dependencies, and dependencies becoming computable are what
@@ -685,6 +695,11 @@ static void PruneDependenciesForCindex(
       }
       break;
     }
+    case NetworkNode::kDimRange:
+      // there should be exactly one dependency and it is required, not
+      // optional, so leave it.
+      KALDI_ASSERT(dependencies.size() == 1);
+      break;
     case NetworkNode::kInput: default:
       // we shouldn't reach here because Cindexes from input nodes have
       // no dependencies, and dependencies becoming computable are what
@@ -1018,21 +1033,33 @@ void ReorderIndexes(const Nnet &nnet,
                     const ComputationRequest &request,
                     const ComputationGraph &graph,                   
                     std::vector<std::vector<int32> > *steps) {
+
+  // cindex_id_to_step is only needed to handle kDimRange nodes.
+  // map includes only 1st cindex_id in each step.
+  unordered_map<int32,int32> cindex_id_to_step;
+  for (int32 step = 0; step < steps->size(); step++)
+    if (!(*steps)[step].empty())
+      cindex_id_to_step[(*steps)[step].front()] = step;
+  // reordered is only needed to handle kDimRange nodes.
+  std::vector<bool> reordered(steps->size(), false);
   
   for (int32 step = 0; step < steps->size(); step++) {
     std::vector<int32> &cindex_ids = (*steps)[step];
+    if (cindex_ids.empty()) continue;
     int32 cindex_id = cindex_ids.front();
     int32 node_index = graph.cindexes[cindex_id].first;
     const NetworkNode &node = nnet.GetNode(node_index);
     if (node.node_type != NetworkNode::kComponent ||
         graph.is_input[cindex_id])
       continue;  // nothing to do if an input, or if not a Component.
+    
     int32 c = node.u.component_index;
     const Component *component = nnet.GetComponent(c);
     if (!(component->Properties() & kReordersIndexes))
       continue;  // nothing to do if it doesn't modify indexes.
     KALDI_ASSERT(step > 0);  // or should have continued already.
 
+    reordered[step] = true;
     // preceding step will be Cindexes from the input Descriptor.
     std::vector<int32> &input_cindex_ids = (*steps)[step - 1];
         
@@ -1064,6 +1091,37 @@ void ReorderIndexes(const Nnet &nnet,
     }
     // note: cindex_ids and input_cindex_ids are references, so we have
     // changed *steps by writing to them in the above two loops.
+  }
+
+  // This next loop exists only to handle kDimRange nodes, to
+  // reorder them in the same way as the corresponding kComponent nodes.
+  for (int32 step = 0; step < steps->size(); step++) {
+    std::vector<int32> &cindex_ids = (*steps)[step];    
+    if (cindex_ids.empty())
+      continue;
+    int32 cindex_id = cindex_ids.front();
+    int32 node_index = graph.cindexes[cindex_id].first;
+    const NetworkNode &node = nnet.GetNode(node_index);
+    if (node.node_type != NetworkNode::kDimRange)
+      continue;
+    Cindex input_cindex(node.u.node_index,
+                        graph.cindexes[cindex_id].second);
+    int32 input_cindex_id = graph.GetCindexId(input_cindex);
+    KALDI_ASSERT(input_cindex_id != -1 &&
+                 cindex_id_to_step.count(input_cindex_id) == 1);
+    int32 input_step = cindex_id_to_step[input_cindex_id];
+    if (!reordered[input_step])
+      continue;
+    const std::vector<int32> &input_cindex_ids = (*steps)[input_step];
+    KALDI_ASSERT(input_cindex_ids.size() == cindex_ids.size());
+    int32 size = cindex_ids.size();
+    for (int32 i = 0; i < size; i++) {
+      int32 input_cindex_id = input_cindex_ids[i];
+      Cindex cindex(node_index, graph.cindexes[input_cindex_id].second);
+      int32 cindex_id = graph.GetCindexId(cindex);
+      KALDI_ASSERT(cindex_id != -1);
+      cindex_ids[i] = cindex_id;  // reordering of kDimRange steps happens here.
+    }
   }
 }
 

@@ -22,30 +22,25 @@
 namespace kaldi {
 namespace nnet3 {
 
-void Descriptor::GetInputCindexes(
+void Descriptor::MapToInputs(
     const Index &index,
     std::vector<Cindex> *required_indexes) const {
   required_indexes->clear();
-  std::vector<SumDescriptor>::const_iterator sum_iter = parts.begin(),
-      sum_end = parts.end();
+  std::vector<SumDescriptor*>::const_iterator sum_iter = parts_.begin(),
+      sum_end = parts_.end();
+  std::vector<Cindex> this_part;
   for (; sum_iter != sum_end; ++sum_iter) {
-    const SumDescriptor &sum_descriptor = *sum_iter;
-    std::vector<ForwardingDescriptor>::const_iterator
-        forwarding_iter = sum_descriptor.terms.begin(),
-        forwarding_end = sum_descriptor.terms.end();
-    for (; forwarding_iter != forwarding_end; ++forwarding_iter) {
-      const ForwardindDescriptor &forwarding_desc = *forwarding_iter;
-      required_indexes->push_back(forwarding_desc.MapToInput(index));
-    }
+    const SumDescriptor &sum_descriptor = **sum_iter;
+    sum_descriptor.MapToInputs(index, &this_part);
+    required_indexes->insert(required_indexes->end(),
+                             this_part.begin(),
+                             this_part.end());
   }
 }
 
-Cindex ForwardingDescriptor::MapToInput(const Index &output) {
-  return impl_->MapToInput(output);
-}
 
 void SimpleForwardingDescriptor::ComputeDependencies(
-    std::vector<int32> *node_indexes) {
+    std::vector<int32> *node_indexes) const {
   node_indexes->push_back(src_node_);  
 }
 
@@ -57,17 +52,11 @@ int32 SwitchingForwardingDescriptor::Modulus() const {
 }
 
 
-int32 SumDescriptor::Modulus() const {
-  int32 ans = 1;
-  for (size_t i = 0; i < terms.size(); i++)
-    ans = Lcm(ans, terms[i].Modulus());
-  return ans;
-}
 
 int32 Descriptor::Modulus() const {
   int32 ans = 1;
-  for (size_t i = 0; i < terms.size(); i++)
-    ans = Lcm(ans, parts[i].Modulus());
+  for (size_t i = 0; i < parts_.size(); i++)
+    ans = Lcm(ans, parts_[i]->Modulus());
   return ans;  
 }
 

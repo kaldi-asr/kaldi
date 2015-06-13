@@ -28,8 +28,8 @@ namespace nnet3 {
 int32 NetworkNode::Dim(const Nnet &nnet) const {
   int32 ans;
   switch (node_type) {
-    case kInput:
-      ans = u.dim;
+    case kInput: case kDimRange:
+      ans = dim;
       break;
     case kDescriptor:
       ans = descriptor.Dim(nnet);

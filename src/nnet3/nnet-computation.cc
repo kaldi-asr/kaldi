@@ -64,5 +64,35 @@ void NnetComputation::ComputeCudaIndexes() {
   }
 }
 
+int32 NnetComputation::NewSubMatrix(int32 base_matrix, int32 dim_offset,
+                                    int32 dim) {
+  KALDI_ASSERT(static_cast<size_t>(base_matrix) < matrices.size());
+  int32 num_rows = matrices[base_matrix].num_rows,
+      num_cols = matrices[base_matrix].num_cols;
+  KALDI_ASSERT(dim_offset >= 0 && dim_offset + dim <= num_cols);
+  int32 ans = sub_matrices.size();
+  KALDI_ASSERT(ans >= matrices.size());
+  sub_matrices.push_back(
+      NnetComputation::SubMatrixInfo(base_matrix, 0, num_rows,
+                                     dim_offset, dim));
+  return ans;
+}
+  
+int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
+  KALDI_ASSERT(num_rows > 0 && num_cols && 0 &&
+               matrices.size() == sub_matrices.size());
+  if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
+    matrices.push_back(MatrixInfo(0, 0));
+    sub_matrices.push_back(SubMatrixInfo(0, 0, 0, 0, 0));
+  }
+  int32 matrix_index = matrices.size(),
+      submatrix_index = sub_matrices.size();
+  matrices.push_back(MatrixInfo(num_rows, num_cols));
+  sub_matrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
+  return submatrix_index;
+}
+
+  
+
 } // namespace nnet3
 } // namespace kaldi

@@ -327,7 +327,7 @@ class SumDescriptor {
   /// this in IsComputable().  [Basically, we forbid expressions like x + x within
   /// the sum, to avoid having to deal with coefficients].
   virtual void MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies) = 0;
+                           std::vector<Cindex> *dependencies) const = 0;
 
   /// This function exists to enable us to manage optional dependencies,
   /// i.e. for making sense of expressions like (A + (B is present)) and (A if
@@ -384,10 +384,10 @@ class SumDescriptor {
 /// contain just one term (the term is a ForwardingDescriptor).
 class SimpleSumDescriptor: public SumDescriptor {
   virtual void MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies);
+                           std::vector<Cindex> *dependencies) const;
   virtual bool IsComputable(const Index &ind,
                             const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs);
+                            std::vector<Cindex> *required_inputs) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
   virtual int32 Modulus() const;
@@ -409,10 +409,10 @@ class BinarySumDescriptor: public SumDescriptor {
     kChooseFirst, // A if defined, else B if defined, else 0.
   };
   virtual void MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies);
+                           std::vector<Cindex> *dependencies) const;
   virtual bool IsComputable(const Index &ind,
                             const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs);
+                            std::vector<Cindex> *required_inputs) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
   virtual int32 Modulus() const = 0;
@@ -443,12 +443,11 @@ class Descriptor {
   static void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
   
-  /// This function gets all Cindexes that are required to compute this index (
-  /// note, some of these may be optional requirements).  Used for computing
-  /// dependencies when constructing ComputationGraph.  This list is not
-  /// guaranteed unique, i.e. it may contain repeats.
-  void GetInputCindexes(const Index &index,
-                        std::vector<Cindex> *required_indexes) const;
+  /// This function outputs [rather than appends] to "dependencies" all Cindexes
+  /// that may be be used to to compute this index.  This list is not guaranteed
+  /// unique, i.e. it may contain repeats.
+  void MapToInputs(const Index &index,
+                   std::vector<Cindex> *dependencies) const;
 
   /// Has the same purpose and interface as the IsComputable function of the
   /// SumDescriptor function.
@@ -471,10 +470,11 @@ class Descriptor {
 
   /// Copy constructor
   Descriptor(const Descriptor &other);
+  /// Assignment operator.  
+  Descriptor &operator = (const Descriptor &other);
   /// Destructor
   ~Descriptor();
  private:
-  Descriptor &operator = (const Descriptor &other);  // Disallow.
   // the elements of parts_ are owned here.
   std::vector<SumDescriptor*> parts_;
 };

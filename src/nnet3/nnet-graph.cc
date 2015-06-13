@@ -43,6 +43,10 @@ void NnetToDirectedGraph(const Nnet &nnet,
         break;
       case NetworkNode::kComponent:
         dependencies.push_back(n - 1);
+      case NetworkNode::kDimRange:
+        dependencies.push_back(node.u.node_index);
+      default:
+        KALDI_ERR << "Invalid node type";
     }
     SortAndUniq(&dependencies);
     for (size_t i = 0; i < dependencies.size(); i++) {

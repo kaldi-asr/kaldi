@@ -114,6 +114,9 @@ struct NnetComputation {
   struct MatrixInfo {
     int32 num_rows;
     int32 num_cols;
+    MatrixInfo() { }
+    MatrixInfo(int32 num_rows, int32 num_cols):
+        num_rows(num_rows), num_cols(num_cols) {}
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
@@ -221,7 +224,16 @@ struct NnetComputation {
   // computed from "indexes" by ComputeCudaIndexes(), but only
   // those that are used in the kAddRowRanges command are computed.
   std::vector<CuArray<Int32Pair> > indexes_multi_cuda;
-  
+
+
+  // Convenience function used when adding new matrices.  Returns the corresponding
+  // sub-matrix index, which may or not equal the actual matrix index.
+  int32 NewMatrix(int32 num_rows, int32 num_cols);
+
+  // Convenience function used when adding new sub-matrices.  Returns the new
+  // sub-matrix index.
+  int32 NewSubMatrix(int32 base_matrix, int32 dim_offset, int32 dim);
+
   // This must be called after setting up the computation but prior to actually
   // using the Computation object in a computation, to compute CUDA versions of
   // the indexes.
