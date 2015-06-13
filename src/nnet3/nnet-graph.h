@@ -1,6 +1,7 @@
 // nnet3/nnet-graph.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
+//                  2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -63,13 +64,13 @@ void MakeSccGraph(const std::vector<std::vector<int32> > &graph,
 
 /// Given an acyclic graph (where each std::vector<int32> is a list of
 /// destination-nodes of arcs coming from the current node), compute a
-/// depth-first-search ordering of the graph nodes.  The output format is that
-/// node_to_order[n] contains the time-step t = 0, 1, ... at which node n is
-/// computed in a depth-first search.  node_to_order should contain some
+/// topological ordering of the graph nodes.  The output format is that
+/// node_to_order[n] contains an integer t = 0, 1, ... which is the order of
+/// node n in a topological sorting.  node_to_order should contain some
 /// permutation of the numbers 0 ... graph.size() - 1.  This function should
 /// crash if the graph contains cycles.
-void ComputeDfsOrder(const std::vector<std::vector<int32> > &graph,
-                     std::vector<int32> *node_to_order);
+void ComputeTopSortOrder(const std::vector<std::vector<int32> > &graph,
+                         std::vector<int32> *node_to_order);
 
 
 /// Outputs a graph in which the order of arcs is reversed.
@@ -85,7 +86,7 @@ void ComputeGraphTranspose(const std::vector<std::vector<int32> > &graph,
 /// depend on a node computed at a smaller order-index, but not vice versa.
 ///
 /// Internally it calls NnetToDirectedGraph, FindSccs, MakeSccGraph and
-/// ComputeDfsOrder.
+/// ComputeTopSortOrder.
 void ComputeNnetComputationOrder(const Nnet &nnet,
                                  std::vector<int32> *node_to_order);
 

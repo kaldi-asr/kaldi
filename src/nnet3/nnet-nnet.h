@@ -96,7 +96,10 @@ class Nnet {
   const Component *GetComponent(int32 c) const;
 
   /// returns const reference to a particular numbered network node.
-  const NetworkNode &GetNode(int32 node) const;
+  const NetworkNode &GetNode(int32 node) const {
+    KALDI_ASSERT(node >= 0 && node < nodes_.size());
+    return nodes_[node];
+  }
 
   /// Returns true if this is an output node, meaning that it is of type kDescriptor
   /// and is not directly followed by a node of type kComponent.
