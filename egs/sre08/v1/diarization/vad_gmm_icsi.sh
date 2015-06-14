@@ -2,7 +2,6 @@
 # Copyright 2015  Vimal Manohar
 # Apache 2.0.
 
-set -e
 set -u 
 set -o pipefail
 

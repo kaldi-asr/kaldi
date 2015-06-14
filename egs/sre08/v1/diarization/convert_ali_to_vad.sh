@@ -9,7 +9,7 @@ get_whole_vad=false
 
 . parse_options.sh
 
-if [ $# -gt 4 ]; then
+if [ $# -gt 4 ] || [ $# -lt 3 ]; then
   echo "Usage: convert_ali_to_vad.sh <data-dir> <lang-dir> <ali-dir> [<vad-dir>]"
   echo " e.g.: convert_ali_to_vad.sh <data-dir> data/lang exp/tri5_ali"
   exit 1

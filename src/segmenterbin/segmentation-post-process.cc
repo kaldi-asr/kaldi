@@ -34,21 +34,24 @@ int main(int argc, char *argv[]) {
         "   segmentation-copy ark:1.ali ark,t:-\n";
     
     bool binary = true;
-    int32 max_length = -1;
+    int32 max_remove_length = -1;
     int32 widen_length = -1;
     int32 widen_label = -1;
+    int32 max_segment_length = -1;
 
     ParseOptions po(usage);
     
     SegmentationOptions opts;
 
-    int32 &label = opts.merge_dst_label;
+    int32 &remove_label = opts.merge_dst_label;
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-    po.Register("label", &label, "The label for which the short segments are to be removed");
-    po.Register("max-length", &max_length, "The maximum length of segment that will be removed");
+    po.Register("remove-label", &remove_label, "The label for which the short segments are to be removed. "
+                "If --merge-labels is specified, then all of them would be removed instead.");
+    po.Register("max-remove-length", &max_remove_length, "The maximum length of segment that will be removed");
     po.Register("widen-label", &widen_label, "Widen segments of this label");
     po.Register("widen-length", &widen_length, "Widen by this amount on either sides");
+    po.Register("max-segment-length", &max_segment_length, "Split segment into pieces of this length");
 
     opts.Register(&po);
 
@@ -98,8 +101,11 @@ int main(int argc, char *argv[]) {
 
       if (widen_length > 0)
         seg.WidenSegments(widen_label, widen_length);
-      if (max_length >= 0)
-        seg.RemoveShortSegments(opts.merge_dst_label, max_length);
+      if (max_remove_length >= 0)
+        seg.RemoveShortSegments(opts.merge_dst_label, max_remove_length);
+
+      if (max_segment_length >= 0)
+        seg.SplitSegments(max_segment_length, max_segment_length/2);
 
       writer.Write(key, seg);
     }
@@ -112,7 +118,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
-
 

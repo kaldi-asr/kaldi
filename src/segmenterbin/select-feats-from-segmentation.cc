@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
               << "selected " << num_frames_selected << " out of " 
               << num_frames << " frames";
 
+    return (num_frames > 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
