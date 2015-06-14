@@ -28,7 +28,15 @@ my $solutionFileName = "kaldiwin_vs12.sln";
 my $srcDir = "$root/src";
 my $vsver="vs2013";
 
-GetOptions ("vsver=s" => \$vsver);
+my %ENABLED = (CUDA => 0,
+               OPENBLAS => 1,
+               MKL => 0 );
+ 
+GetOptions ("vsver=s" => \$vsver,
+            "enable-cuda" => \$ENABLED{CUDA},
+			"enable-openblas" => sub {$ENABLED{OPENBLAS}=1; $ENABLED{MKL}=0;},
+			"enable-mkl" => sub {$ENABLED{OPENBLAS}=0; $ENABLED{MKL}=1;},
+			);
 
 my %TOOLS=( default=>  "4.0",
             vs2013 => "12.0",
@@ -47,6 +55,7 @@ unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLS
 	die "Unknown vsver value: $vsver";
 }
 			 
+
 # The following files are in the same dir (windows/) as the 
 # Perl script.
 my @propsFiles = (
@@ -59,6 +68,10 @@ my @propsFiles = (
   "$Bin/openfstwin_release_win32.props",
 );
 
+my %optionalProps = (
+	CUDA => "$Bin/cuda_7.0.props"
+	);
+	
 # see http://www.mztools.com/Articles/2008/MZ2008017.aspx for list of GUIDs for VS solutions
 my $globalGUID = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";  # Windows (Visual C++)
 
@@ -193,6 +206,9 @@ sub parseMakefile {
   my $lines = join '', @lines;
   $lines =~ s/#[^\n]+//g;
   $lines =~ s/\\\s*\n//g;
+  if ($ENABLED{CUDA}) {
+    $lines =~ s/\n\s*ifeq\s+\(\$\(CUDA\),\strue\)\s*\n\s*OBJFILES\s*\+=\s*([^\n]+)\n\s*endif/\nOBJFILES = \1/gmi 
+  }
   @lines = split /\n/, $lines;
   #$lines =~ s/\\//g;
   #$lines =~ s/\n/\\/g;
@@ -348,8 +364,22 @@ sub writeProjectFiles {
     $conftype = "StaticLibrary";
     
     foreach my $obj (keys %{$projlist->{ALL}->{$projname}->{'objs'}}) {
-      my $cfile = winPath($projlist->{ALL}->{$projname}->{'path'} . $obj . '.cc');    
-      $srcfiles->{'cc'}->{$cfile} = 1;
+      my $cfile = winPath($projlist->{ALL}->{$projname}->{'path'} . $obj . '.cc');
+	  if (!-e &{$osPathConversion}($cfile)) {
+	    if ($ENABLED{CUDA}) {
+          my $cufile = winPath($projlist->{ALL}->{$projname}->{'path'} . $obj . '.cu');
+          $srcfiles->{'cu'}->{$cufile} = 1;
+          if (!-e &{$osPathConversion}($cufile)) {
+		    print "ERROR: file $cfile nor $cufile not found - project $projname\n";
+		  }
+        } else {
+          if (!-e &{$osPathConversion}($cfile)) {
+		    print "ERROR?: file $cfile not found - project $projname\n";
+		  }
+        }		
+      } else {
+        $srcfiles->{'cc'}->{$cfile} = 1;
+	  }
     }
   } else {
     $conftype = "Application";
@@ -465,29 +495,64 @@ sub writeProjectFiles {
   print PROJ
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.props\" />
   <ImportGroup Label=\"ExtensionSettings\">
-  </ImportGroup>
+";
+  if ($ENABLED{CUDA}) {
+  print PROJ
+'    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.0.props" />
+'
+  }
+  print PROJ
+"  </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\"  Label=\"PropertySheets\">  
     <Import Project=\"..\\variables.props\" />
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
-    <Import Project=\"..\\kaldiwin_win32.props\" />
+";
+  if ($ENABLED{CUDA}) {
+  print PROJ
+"    <Import Project=\"..\\cuda_7.0.props\" />
+"
+  }
+  print PROJ
+"    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_debug_win32.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
-    <Import Project=\"..\\kaldiwin.props\" />
+";
+  if ($ENABLED{CUDA}) {
+  print PROJ
+"    <Import Project=\"..\\cuda_7.0.props\" />
+";
+  }
+  print PROJ
+"    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_debug.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
-    <Import Project=\"..\\kaldiwin_win32.props\" />
+";
+  if ($ENABLED{CUDA}) {
+  print PROJ
+"    <Import Project=\"..\\cuda_7.0.props\" />
+";
+  }
+  print PROJ
+"    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_release_win32.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
-    <Import Project=\"..\\kaldiwin.props\" />
+";
+  if ($ENABLED{CUDA}) {
+  print PROJ
+"    <Import Project=\"..\\cuda_7.0.props\" />
+";
+  }
+  print PROJ
+"    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_release.props\" />
   </ImportGroup>
 ";
@@ -655,6 +720,20 @@ sub writeProjectFiles {
 "  </ItemGroup>
 ";
   }
+  # .cu files
+  if (scalar keys %{$srcfiles->{'cu'}} > 0) {
+    print PROJ
+"  <ItemGroup>
+";
+    foreach my $cfile (sort { $a cmp $b } keys %{$srcfiles->{'cu'}}) {
+      print PROJ
+"    <CudaCompile Include=\"" . makeRelPath($cfile, $projFileName) . "\" />
+";
+    }
+    print PROJ
+"  </ItemGroup>
+";
+  }
   
   # .h files
   if (scalar keys %{$srcfiles->{'h'}} > 0) {
@@ -694,7 +773,14 @@ sub writeProjectFiles {
   print PROJ
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.targets\" />
   <ImportGroup Label=\"ExtensionTargets\">
-  </ImportGroup>
+";
+  if ($ENABLED{CUDA}) {
+    print PROJ
+'    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.0.targets" />
+';
+  }
+  print PROJ
+"  </ImportGroup>
 </Project>
 ";
   close(PROJ);
@@ -727,6 +813,10 @@ sub writeProjectFiles {
     <Filter Include=\"Resource Files\">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include=\"Cuda Kernels\">
+      <UniqueIdentifier>{6841a02e-469b-487d-a1ea-7d138415dd41}</UniqueIdentifier>
+      <Extensions>cu</Extensions>
     </Filter>
   </ItemGroup>
 ";
@@ -761,6 +851,22 @@ sub writeProjectFiles {
     print FLTS
 "  </ItemGroup>
 ";  
+  }
+  # .cu files
+  if (scalar keys %{$srcfiles->{'cu'}} > 0) {
+    print FLTS
+"  <ItemGroup>
+";
+    foreach my $cufile (sort { $a cmp $b } keys %{$srcfiles->{'cu'}}) {
+      print FLTS
+"    <CudaCompile Include=\"" . makeRelPath($cufile, $projFileName) . "\">
+      <Filter>Cuda Kernels</Filter>
+    </CudaCompile>
+"; 
+    }
+    print FLTS
+"  </ItemGroup>
+";
   }
   print FLTS
 "</Project>
@@ -872,6 +978,13 @@ writeSolutionFile($solutionDir . '/' . $solutionFileName, $projlist, $projguids)
 foreach my $propFile (@propsFiles) {
   copy(&{$osPathConversion}($propFile), 
        &{$osPathConversion}($projDir . "/")) or die "ERROR: failed to copy prop file $propFile\n";
+}
+foreach my $option (keys %optionalProps) {
+	if ($ENABLED{$option} ) {
+		my $propFile = $optionalProps{$option};
+		copy(&{$osPathConversion}($propFile), &{$osPathConversion}($projDir . "/")) or 
+			die "ERROR: failed to copy prop file $propFile\n";
+	}
 }
 
 foreach my $projname (sort { $a cmp $b } keys %{$projlist->{ALL}}) {

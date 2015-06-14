@@ -6,6 +6,13 @@
 #NOTE: These instructions are valid June 2015, MKL and OpenBLAS are supported
 #NOTE: ATLAS is not supported and I personally have no intention to work on supporting
 #      it, as it requires whole cygwin environment
+#NOTE: We now (20150613) support CUDA on Windows as well. The build was 
+#      tested on CUDA 7.0. It is possible that the compilation fails
+#      for significantly older CUDA SDK (less than, say, 5.0)
+#      Please not that CUDA support for windows is not really that usefull,
+#      because, the speed benefit during decoding is not large. And for training
+#      one would have to re-implement the while training pipeline (as the 
+#      bash script wouldn't most probably work) 
 #NOTE: While the 32bit project files will still be generated, we don't really
 #      care if they work or not. They will be removed in the near future.
 #NOTE: The build process were validated using MSVS2013 and partially (MKL only) using MSVS2015-rc
@@ -60,7 +67,20 @@
 	  
 	  NOTE: Be carefull to download "Win64-int32" and not "Win64-int64"!
 	  
-2d-2) Install MKL	 
+2d-2) Install MKL
+2e) If you want enabled CUDA support, download and install NVidia CUDA SDK.
+    Be careful and strive for as standard install as possible. The installer
+	set certain environment variables on which the MSVC Build rules rely.
+	If you call "set" in the command line, you should see:
+    
+	(kaldi)/tools $ set | grep CUDA
+     CUDA_PATH='C:\Users\Yenda\Downloads\cuda'
+     CUDA_PATH_V7_0='C:\Users\Yenda\Downloads\cuda'
+     NVCUDASAMPLES7_0_ROOT='C:\Users\Yenda\Downloads\cuda'
+     NVCUDASAMPLES_ROOT='C:\Users\Yenda\Downloads\cuda'
+	
+    The first one (CUDA_PATH) is particulary important.
+ 	
 3)  Open the OpenFST solution in VS -- 
    for VS 2013, the correct solution is in VS2012 directory
    for VS 2014, the correct solution is in VS2014 directory
@@ -95,9 +115,13 @@
 	generate_solution.pl --vsver <default|vs2013|vs2015>
 	i.e. for example
 	generate_solution.pl --vsver vs2013
-
+	
+	For CUDA support, add switch --enable-cuda to the command line,
+	i.e. for example
+	generate_solution.pl --vsver vs2013 --enable-cuda
+	
 5)  Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build
-   Expect ~8 projects to fail, majority of them will fail because of missing include "portaudio.h"
+   Expect 10 projects to fail, majority of them will fail because of missing include "portaudio.h"
 
 ------  	
 NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the README.ATLAS)
