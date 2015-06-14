@@ -56,13 +56,8 @@ class AmNnetSimple {
 
   explicit AmNnetSimple(const Nnet &nnet): nnet_(nnet) { }
   
-  /// Initialize the neural network based acoustic model from a config file.
-  /// At this point the priors won't be initialized; you'd have to do
-  /// SetPriors for that.
-  void Init(std::istream &config_is);
-
   /// Initialize from a neural network that's already been set up.
-  /// Again, the priors will be empty at this point.
+  /// The priors will be empty at this point.
   void Init(const Nnet &nnet);
 
   int32 NumPdfs() const;

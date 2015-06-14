@@ -44,7 +44,7 @@ void Compiler::CreateComputation(NnetComputation *computation) {
   std::vector<std::vector<int32> > by_order;
   ComputeComputationOrder(nnet_, graph_, NULL, &by_order);
   std::vector<std::vector<int32> > steps;
-  ComputeComputationSteps(nnet_, request_, graph_, by_order, &steps);
+  ComputeComputationSteps(nnet_, request_, by_order, &graph_, &steps);
   by_order.clear();
   CreateLocationInfo(steps);
   CreateStepInfo(&steps, computation);
@@ -117,6 +117,9 @@ void Compiler::CreateStepInfo(
 
 void Compiler::CreateLocationInfo(
     const std::vector<std::vector<int32> > &by_step) {
+  cindex_id_to_location_.clear();
+  int32 num_cindex_ids = graph_.cindexes.size();
+  cindex_id_to_location_.resize(num_cindex_ids, std::pair<int32,int32>(-1,-1));
   KALDI_ASSERT(cindex_id_to_location_.empty());
   int32 num_steps = by_step.size();
   for (int32 step = 0; step < num_steps; step++) {
@@ -124,6 +127,13 @@ void Compiler::CreateLocationInfo(
     int32 num_rows = output_cindex_ids.size();
     for (int32 row = 0; row < num_rows; row++) {
       int32 cindex_id = output_cindex_ids[row];
+      if (cindex_id_to_location_[cindex_id].first != -1) {
+        int32 node_id = graph_.cindexes[cindex_id].first;
+        if (nnet_.GetNode(node_id).node_type != NetworkNode::kDescriptor ||
+            nnet_.GetNode(node_id + 1).node_type != NetworkNode::kComponent)
+          KALDI_ERR << "Cindexes may appear in >1 step only if they are "
+              "Descriptors for Component inputs: code error.";
+      }
       cindex_id_to_location_[cindex_id] = std::pair<int32,int32>(step, row);
     }
   }

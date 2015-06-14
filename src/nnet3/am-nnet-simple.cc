@@ -23,10 +23,6 @@ namespace kaldi {
 namespace nnet3 {
 
 
-void AmNnetSimple::Init(std::istream &config_is) {
-  nnet_.Init(config_is);
-}
-
 
 void AmNnetSimple::Write(std::ostream &os, bool binary) const {
   // We don't write any header or footer like <AmNnetSimple> and </AmNnetSimple> -- we just

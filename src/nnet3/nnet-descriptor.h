@@ -76,10 +76,13 @@ class ForwardingDescriptor {
   virtual ForwardingDescriptor *Copy() const;
 
   // The Parse method is used for reading a config-file-style represenation.
-  // the "is" will correspond to one line of the config file (one NetworkNode),
-  // as we need to figure out all node names before we read any of them.
-  static ForwardingDescriptor *Parse(std::istringstream &is,
-                                     const std::vector<std::string> &node_names);
+  // Assumes the input has already been tokenized into an array of strings, and
+  // it moves the begin-pointer "token_begin" to account for token that it
+  // consumes.  Dies on error.
+  static ForwardingDescriptor *Parse(const std::vector<std::string> &node_names,
+                                     const std::string *token_end,
+                                     const std::string **token_begin);
+  
 
   /// This function is for use in things like clockwork RNNs, where shifting the
   /// time of the inputs and outputs of the network by some multiple integer n
@@ -91,8 +94,8 @@ class ForwardingDescriptor {
 
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
-  static void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  virtual void WriteConfig(std::ostream &is,
+                           const std::vector<std::string> &node_names);
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
@@ -115,8 +118,8 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
   
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
-  static void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  virtual void WriteConfig(std::ostream &is,
+                           const std::vector<std::string> &node_names);
 
   SimpleForwardingDescriptor(int32 src_node): src_node_(src_node) {
     KALDI_ASSERT(src_node >= 0);
@@ -136,7 +139,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
 
-  static void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   virtual int32 Modulus() const { return src_->Modulus(); }
@@ -166,7 +169,7 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  static void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   virtual int32 Modulus() const;
@@ -205,7 +208,7 @@ class SelectForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  static void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   /// This function appends to "node_indexes" all the node indexes
@@ -239,7 +242,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  static void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   virtual int32 Modulus() const { return t_modulus_; }
@@ -278,7 +281,7 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  static void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &is,
                           const std::vector<std::string> &node_names);
 
   /// This function appends to "node_indexes" all the node indexes
@@ -367,21 +370,26 @@ class SumDescriptor {
   // see Modulus function of ForwardingDescriptor for explanation.
   virtual int32 Modulus() const = 0;
 
-  /// The Parse method is used for reading a config-file-style represenation.
-  /// "node_names" is provided to translate names into integers.
-  static void Parse(std::istringstream &is,
-                    const std::vector<std::string> &node_names);
-
+  // The Parse method is used for reading a config-file-style represenation.
+  // Assumes the input has already been tokenized into an array of strings, and
+  // it moves the begin-pointer "token_begin" to account for token that it
+  // consumes.  Dies on error.
+  static SumDescriptor* Parse(const std::vector<std::string> &node_names,
+                              const std::string *token_end,
+                              const std::string **token_begin);
+  
   /// Write in config-file format.  Conventional Read and Write methods are not
   /// supported.
-  static void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  virtual void WriteConfig(std::ostream &is,
+                           const std::vector<std::string> &node_names);
 
 
 };
 
-/// This is the base-case of class SumDescriptor, in which we
+/// This is the simple case of class SumDescriptor, in which we
 /// contain just one term (the term is a ForwardingDescriptor).
+/// You can initialize with reqired = false in order to express
+/// an optional quantity, like (A if defined, else zero).
 class SimpleSumDescriptor: public SumDescriptor {
   virtual void MapToInputs(const Index &ind,
                            std::vector<Cindex> *dependencies) const;
@@ -393,9 +401,11 @@ class SimpleSumDescriptor: public SumDescriptor {
   virtual int32 Modulus() const;
   SumDescriptor *Copy() const;
   
-  SimpleSumDescriptor(ForwardingDescriptor *src): src_(src) { }
+  SimpleSumDescriptor(ForwardingDescriptor *src,
+                      bool required = true): src_(src), required_(required) { }
  private:
   ForwardingDescriptor *src_;
+  bool required_;
 };
 
 
@@ -435,13 +445,17 @@ class Descriptor {
   int32 Dim(const Nnet &nnet) const;
 
   // The Parse method is used for reading a config-file-style represenation.
-  // the is will correspond to one line of the config file (one NetworkNode), as
-  // we need to figure out all node names before we read any of them.
-  static void Parse(std::istringstream &is,
-                    const std::vector<std::string> &node_names);
+  // Assumes the input has already been tokenized into an array of strings, and
+  // it moves the begin-pointer "token_begin" to account for token that it
+  // consumes.  Dies on error (including if there was junk after the last
+  // token.
+  static void Parse(const std::vector<std::string> &node_names,
+                    const std::string *token_end,
+                    const std::string **token_begin);
+  
   // Write in config-file format.
-  static void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  virtual void WriteConfig(std::ostream &is,
+                           const std::vector<std::string> &node_names);
   
   /// This function outputs [rather than appends] to "dependencies" all Cindexes
   /// that may be be used to to compute this index.  This list is not guaranteed

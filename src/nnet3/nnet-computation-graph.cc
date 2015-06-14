@@ -1018,7 +1018,104 @@ static void AddComponentInputSteps(
   }
   component_steps->clear();
 }
-  
+
+
+static void CreateCindexIdToStep(
+    const ComputationGraph &graph,    
+    const std::vector<std::vector<int32> > &all_steps,
+    std::vector<int32> *cindex_id_to_step) {
+  int32 num_cindex_ids = graph.cindexes.size();
+  cindex_id_to_step->clear();
+  cindex_id_to_step->resize(num_cindex_ids, -1);
+  int32 num_steps = all_steps.size();
+  for (int32 step = 0; step < num_steps; step++) {
+    std::vector<int32>::const_iterator iter = all_steps[step].begin(),
+        end = all_steps[step].end();
+    for (; iter != end; ++iter) {
+      int32 cindex_id = *iter;
+      (*cindex_id_to_step)[cindex_id] = step;
+    }
+  }
+}
+
+/// This function inserts into "all_steps", which at this point should contain
+/// all but the output steps, steps corresponding to any nodes of type kDimRange.
+/// "graph" is non-const as there are situations in which we might need to
+/// add cindexes for nodes of type kDimRange.
+static void AddDimRangeSteps(
+    const Nnet &nnet,    
+    ComputationGraph *graph,
+    std::vector<std::vector<int32> > *all_steps) {
+  int32 num_nodes = nnet.NumNodes();
+  bool dim_range_node_exists = false;
+  std::vector<char> is_dim_range_node(num_nodes, '\0');
+  for (int32 n = 0; n < num_nodes; n++) {
+    if (nnet.GetNode(n).node_type == NetworkNode::kDimRange) {
+      is_dim_range_node[n] = (char)1;
+      dim_range_node_exists = true;
+    }
+  }
+  if (!dim_range_node_exists)
+    return;
+
+  std::vector<int32> cindex_id_to_step;
+  CreateCindexIdToStep(*graph, *all_steps, &cindex_id_to_step);
+  int32 num_steps = all_steps->size();
+
+  // We are going to insert steps for nodes of type kDimRange just after the
+  // kInput or kComponent steps that the kDimRange nodes refer to.
+  // new_nodes_per_step will be a list of any nodes of type kDimRange that
+  // have input corresponding to something in that step.
+  std::vector<std::set<int32> > new_nodes_per_step(num_steps);
+  int32 num_cindex_ids = graph->cindexes.size();
+  std::vector<Cindex>::const_iterator iter = graph->cindexes.begin();
+  for (int32 i = 0; i < num_cindex_ids; i++,iter++) {
+    const Cindex &cindex = *iter;
+    int32 node_index = cindex.first;
+    if (!is_dim_range_node[node_index])
+      continue;
+    const NetworkNode &node = nnet.GetNode(node_index);
+    Cindex input_cindex(node.u.node_index, cindex.second);
+    int32 input_cindex_id = graph->GetCindexId(input_cindex);
+    KALDI_ASSERT(input_cindex_id != -1);
+    int32 input_step = cindex_id_to_step[input_cindex_id];
+    KALDI_ASSERT(input_step != -1);
+    new_nodes_per_step[input_step].insert(node_index);
+  }
+  int32 num_new_steps = 0, space_for_output = 10;
+  for (int32 step = 0; step < num_steps; step++)
+    num_new_steps += new_nodes_per_step[step].size();
+
+  // we'll later swap all_steps_out with all_steps.
+  std::vector<std::vector<int32> > all_steps_out;
+  all_steps_out.reserve(num_steps + num_new_steps + space_for_output);
+  for (int32 step = 0; step < num_steps; step++) {
+    std::vector<int32> &this_step = (*all_steps)[step];
+    int32 cur_out_index = all_steps_out.size();
+    all_steps_out.push_back(std::vector<int32>());  // make space for this step.
+    std::set<int32>::iterator iter = new_nodes_per_step[step].begin(),
+        end = new_nodes_per_step[step].end();
+    for (; iter != end; ++iter) {
+      int32 node = *iter, size = this_step.size();
+      std::vector<int32> new_step(size);
+      for (int32 i = 0; i < size; i++) {
+        int32 cindex_id = this_step[i];
+        Cindex dimrange_cindex(node, graph->cindexes[cindex_id].second);
+        bool input = false, is_new;
+        int32 dimrange_cindex_id = graph->GetCindexId(dimrange_cindex,
+                                                      input, &is_new);
+        // actually we don't care about is_new's value.  some new ones are
+        // allowed.
+        new_step[i] = dimrange_cindex_id;
+      }
+      all_steps_out.push_back(std::vector<int32>());
+      all_steps_out.back().swap(new_step);
+    }
+    all_steps_out[cur_out_index].swap(this_step);
+  }
+  all_steps->swap(all_steps_out);
+}
+
 
 
 /// This function would not be necessary if we had not added the ReorderIndexes
@@ -1034,15 +1131,6 @@ void ReorderIndexes(const Nnet &nnet,
                     const ComputationGraph &graph,                   
                     std::vector<std::vector<int32> > *steps) {
 
-  // cindex_id_to_step is only needed to handle kDimRange nodes.
-  // map includes only 1st cindex_id in each step.
-  unordered_map<int32,int32> cindex_id_to_step;
-  for (int32 step = 0; step < steps->size(); step++)
-    if (!(*steps)[step].empty())
-      cindex_id_to_step[(*steps)[step].front()] = step;
-  // reordered is only needed to handle kDimRange nodes.
-  std::vector<bool> reordered(steps->size(), false);
-  
   for (int32 step = 0; step < steps->size(); step++) {
     std::vector<int32> &cindex_ids = (*steps)[step];
     if (cindex_ids.empty()) continue;
@@ -1059,7 +1147,6 @@ void ReorderIndexes(const Nnet &nnet,
       continue;  // nothing to do if it doesn't modify indexes.
     KALDI_ASSERT(step > 0);  // or should have continued already.
 
-    reordered[step] = true;
     // preceding step will be Cindexes from the input Descriptor.
     std::vector<int32> &input_cindex_ids = (*steps)[step - 1];
         
@@ -1092,37 +1179,6 @@ void ReorderIndexes(const Nnet &nnet,
     // note: cindex_ids and input_cindex_ids are references, so we have
     // changed *steps by writing to them in the above two loops.
   }
-
-  // This next loop exists only to handle kDimRange nodes, to
-  // reorder them in the same way as the corresponding kComponent nodes.
-  for (int32 step = 0; step < steps->size(); step++) {
-    std::vector<int32> &cindex_ids = (*steps)[step];    
-    if (cindex_ids.empty())
-      continue;
-    int32 cindex_id = cindex_ids.front();
-    int32 node_index = graph.cindexes[cindex_id].first;
-    const NetworkNode &node = nnet.GetNode(node_index);
-    if (node.node_type != NetworkNode::kDimRange)
-      continue;
-    Cindex input_cindex(node.u.node_index,
-                        graph.cindexes[cindex_id].second);
-    int32 input_cindex_id = graph.GetCindexId(input_cindex);
-    KALDI_ASSERT(input_cindex_id != -1 &&
-                 cindex_id_to_step.count(input_cindex_id) == 1);
-    int32 input_step = cindex_id_to_step[input_cindex_id];
-    if (!reordered[input_step])
-      continue;
-    const std::vector<int32> &input_cindex_ids = (*steps)[input_step];
-    KALDI_ASSERT(input_cindex_ids.size() == cindex_ids.size());
-    int32 size = cindex_ids.size();
-    for (int32 i = 0; i < size; i++) {
-      int32 input_cindex_id = input_cindex_ids[i];
-      Cindex cindex(node_index, graph.cindexes[input_cindex_id].second);
-      int32 cindex_id = graph.GetCindexId(cindex);
-      KALDI_ASSERT(cindex_id != -1);
-      cindex_ids[i] = cindex_id;  // reordering of kDimRange steps happens here.
-    }
-  }
 }
 
 } // namespace compute_computation_steps.
@@ -1130,21 +1186,22 @@ void ReorderIndexes(const Nnet &nnet,
 void ComputeComputationSteps(
     const Nnet &nnet,
     const ComputationRequest &request,
-    const ComputationGraph &graph,
     const std::vector<std::vector<int32> > &by_order,
+    ComputationGraph *graph,
     std::vector<std::vector<int32> > *steps) {
   using namespace compute_computation_steps;
   steps->clear();
-  AddInputSteps(nnet, request, graph, steps);
+  AddInputSteps(nnet, request, *graph, steps);
   {
     std::vector<std::vector<int32> > component_steps;
-    AddComponentSteps(nnet, graph, by_order, &component_steps);
-    AddComponentInputSteps(graph, &component_steps, steps);
+    AddComponentSteps(nnet, *graph, by_order, &component_steps);
+    AddComponentInputSteps(*graph, &component_steps, steps);
   }
-  ReorderIndexes(nnet, request, graph, steps);
   // output steps don't get reordered so we do the reordering before adding
   // them.
-  AddOutputSteps(nnet, request, graph, steps);
+  ReorderIndexes(nnet, request, *graph, steps);
+  AddDimRangeSteps(nnet, graph, steps);
+  AddOutputSteps(nnet, request, *graph, steps);
 
   int32 num_cindexes = 0;
   for (int32 i = 0; i < steps->size(); i++)
@@ -1152,7 +1209,7 @@ void ComputeComputationSteps(
   // The next line has ">=" not "==" because it is possible (although unlikely
   // in normal setups) that some cindexes of Descriptors which are at the inputs
   // of Components,
-  KALDI_ASSERT(num_cindexes >= graph.cindexes.size());
+  KALDI_ASSERT(num_cindexes >= graph->cindexes.size());
 }
 
 

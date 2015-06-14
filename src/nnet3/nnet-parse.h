@@ -25,6 +25,56 @@
 namespace kaldi {
 namespace nnet3 {
 
+/**
+   This class is responsible for parsing input like
+     xx=yyy foo=bar  baz=123
+   and giving you access to the fields.  It parses lines pretty much
+   how you would expect from the examples above, except that it does
+   allow whitespaces in the values, and it parses lines by assuming the
+   values in expressions don't contain the '=' characters,
+   and that the values don't begin or end with whitespace, so that
+        xx=yyy foo=bar  baz=x y z  pp=qq
+   will assign "x y z" to baz.  Empty values are allowed (although not really
+   expected), so that
+      x=  y=bar
+   is allowed, and assigns "" to key x.  Key values may contain -_a-zA-Z0-9, but
+   must begin with a-zA-Z_.  
+ */
+class ConfigLine {
+ public:
+  ConfigLine();
+  // tries to parse the line as a config-file line.  Returns false if it could not
+  // for some reason, e.g. "x" is not a value config-file line, nor is "=y".
+  // Prints no warnings; the user should do this.
+  bool ParseLine(const std::string &line);
+
+  // the GetValue functions are overloaded for various types.  They return true
+  // if the key exists with value that can be converted to that type, and false
+  // otherwise.  They also mark the key-value pair as having been read.  It is
+  // not an error to read values twice.
+  bool GetValue(const std::string &key, std::string *value);
+  bool GetValue(const std::string &key, BaseFloat *value);
+  bool GetValue(const std::string &key, std::vector<int32> *value);
+  bool GetValue(const std::string &key, bool *value);
+  
+  bool HasUnusedValues() const;
+  /// returns e.g. foo=bar xxx=yyy if foo and xxx were not consumed by one
+  /// of the GetValue() functions.
+  std::string UnusedValues() const;
+
+  // use default assignment operator and copy constructor.
+ private:
+  
+  // data_ maps from key to (value, is-this-value-consumed?).
+  std::map<std::string, std::pair<std::string, bool> > data_;
+  
+  
+};
+             
+
+// Note: the ParseFromString functions are to be removed after we switch over to
+// using the ConfigLine mechanism.
+
 
 /// \file This header contains a few parsing-related functions that are used
 ///    while reading parsing neural network files and config files.
@@ -38,11 +88,6 @@ bool ParseFromString(const std::string &name, std::string *string,
 /// This version of ParseFromString is for parameters of type BaseFloat.
 bool ParseFromString(const std::string &name, std::string *string,
                      BaseFloat *param);
-
-/// This version of ParseFromString is for parameters of type std::vector<int32>; it expects
-/// them as a colon-separated list, without spaces.
-bool ParseFromString(const std::string &name, std::string *string,
-                     std::vector<int32> *param);
 
 /// This version of ParseFromString is for parameters of type bool, which can
 /// appear as any string beginning with f, F, t or T.
@@ -59,13 +104,52 @@ bool ParseFromString(const std::string &name, std::string *string,
 bool ParseFromString(const std::string &name, std::string *string,
                      std::vector<int32> *param);
 
-
 /// This function is like ExpectToken but for two tokens, and it will either
 /// accept token1 and then token2, or just token2.  This is useful in Read
 /// functions where the first token may already have been consumed.
 void ExpectOneOrTwoTokens(std::istream &is, bool binary,
                           const std::string &token1,
                           const std::string &token2);
+
+/**
+   This function tokenizes input when parsing Descriptor configuration
+   values.  A token in this context is not the same as a generic Kaldi token,
+   e.g. as defined in IsToken() in util/text_utils.h, which just means a non-empty
+   whitespace-free string.  Here a token is more like a programming-language token,
+   and currently the following are allowed as tokens:
+    "("
+    ")"
+    ","
+   - A nonempty string beginning with A-Za-z_, and containing only -_A-Za-z0-9.
+   - An integer, optionally beginning with - or + and then a nonempty sequence of 0-9.
+
+   This function should return false and print an informative error with local
+   context if it can't tokenize the input.
+ */
+bool DescriptorTokenize(const std::string &input,
+                        std::vector<std::string> *token);
+
+
+/**
+   This function reads in a config file and writes to a vector of lines;
+   it is responsible for removing comments (anything after '#') and
+   stripping out any lines that contain only whitespace after comment
+   removal.
+ */
+void ReadConfigFile(std::istream &is,
+                    std::vector<std::string> &lines);
+
+
+/**
+  Return a string used in error messages.  Here, "is" will be from an
+  istringstream derived from a single line or part of a line.
+  If "is" is at EOF or in error state, this should just say "end of line",
+  else if the contents of "is" before EOF is <20 characters it should return
+  it all, else it should return the first 20 characters followed by "...".
+*/
+std::string ErrorContext(std::istream &is);
+
+
 
 } // namespace nnet3
 } // namespace kaldi

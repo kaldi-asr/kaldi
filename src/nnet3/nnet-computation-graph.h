@@ -218,11 +218,17 @@ void ComputeComputationOrder(
 /// the order is the same as specified in the ComputationRequest; for other
 /// steps, it means that they are sorted using the order of struct Index (but
 /// this order may be modified by components that defined ReorderIndexes()).
+///
+/// The reason why computation_graph is not provided as a const argument is
+/// that in order to process nodes of type kDimRange, which will end up
+/// just being a sub-matrix looking at nodes of type kComponent or kInput,
+/// we may in some circumstances need to add some new cindexes to the graph,
+/// to fill in any gaps.
 void ComputeComputationSteps(
     const Nnet &nnet,
     const ComputationRequest &request,
-    const ComputationGraph &computation_graph,
     const std::vector<std::vector<int32> > &by_order,
+    ComputationGraph *computation_graph,
     std::vector<std::vector<int32> > *steps);
 
 

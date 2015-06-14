@@ -21,6 +21,7 @@
 #define KALDI_NNET3_NNET_COMPONENT_ITF_H_
 
 #include "nnet3/nnet-common.h"
+#include "nnet3/nnet-parse.h"
 #include "base/kaldi-error.h"
 #include "thread/kaldi-mutex.h"
 #include <iostream>
@@ -242,6 +243,12 @@ class Component {
   /// \param [in] args  A string containing any parameters that need to be
   ///            For example: "dim=100 param-stddev=0.1"
   virtual void InitFromString(std::string args) = 0;
+
+  /// TODO[vimal]: replace all the InitFromString functions with this
+  /// style of initialization.   Remember to check UnusedValues() returns
+  /// false at the end.
+  /// TODO: change this from { } to = 0 once it is implemented in child classes.
+  virtual void InitFromConfig(ConfigLine *line) { }
   
   /// \brief Returns input-dimension of this component.
   virtual int32 InputDim() const = 0;
@@ -264,6 +271,7 @@ class Component {
   /// \param [in] initializer_line  Typically something like
   ///      "AffineComponent input-dim=1000 output-dim=1000"
   /// \return Returns newly created Component.
+  /// TODO: delete this.
   static Component *NewFromString(const std::string &initializer_line);
 
   /// \brief Returns a new Component of the given type e.g. "SoftmaxComponent",

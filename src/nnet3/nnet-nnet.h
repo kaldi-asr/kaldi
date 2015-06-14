@@ -87,7 +87,10 @@ struct NetworkNode {
 
 class Nnet {
  public:
-  void Init(std::istream &config_file);
+  // This function can be used either to initialize a new Nnet from a config
+  // file, or to add to an existing Nnet, possibly replacing certain parts of
+  // it.  It will die with error if something went wrong.
+  void ReadConfig(std::istream &config_file);
   
   int32 NumComponents() const { return components_.size(); }
 
@@ -131,11 +134,21 @@ class Nnet {
   /// debugging purposes.
   std::string Info() const;
  private:
+
+  void ProcessComponentConfigLine(int32 initial_num_components,
+                                  const std::string &whole_line,
+                                  ConfigLine *config);
+  void ProcessComponentNodeConfigLine(int32 initial_num_nodes,
+                                      const std::string &whole_line,
+                                      ConfigLine *config);
+  
+
+  
   // the names of the components of the network.  Note, these may be distinct
   // from the network node names below (and live in a different namespace); the
   // same component may be used in multiple network nodes, to define parameter
   // sharing.
-  std::vector<std::string> names_;
+  std::vector<std::string> component_names_;
   
   // the components of the nnet, in arbitrary order.  The network topology is
   // defined separately, below; a given Component may appear more than once in
