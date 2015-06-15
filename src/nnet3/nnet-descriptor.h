@@ -77,11 +77,11 @@ class ForwardingDescriptor {
 
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
-  // it moves the begin-pointer "token_begin" to account for token that it
-  // consumes.  Dies on error.
+  // it moves the begin-pointer "next_token" to account for token that it
+  // consumes.  Calls KALDI_ERR on error.
+  // The list of tokens should be terminated with a string saying "end of input".
   static ForwardingDescriptor *Parse(const std::vector<std::string> &node_names,
-                                     const std::string *token_end,
-                                     const std::string **token_begin);
+                                     const std::string **next_token);
   
 
   /// This function is for use in things like clockwork RNNs, where shifting the
@@ -94,8 +94,8 @@ class ForwardingDescriptor {
 
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
-  virtual void WriteConfig(std::ostream &is,
-                           const std::vector<std::string> &node_names);
+  virtual void WriteConfig(std::ostream &os,
+                           const std::vector<std::string> &node_names) const;
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
@@ -118,7 +118,8 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
   
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
-  virtual void WriteConfig(std::ostream &is,
+  // written form is just the node-name of src_node_.
+  virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names);
 
   SimpleForwardingDescriptor(int32 src_node): src_node_(src_node) {
@@ -139,7 +140,8 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
 
-  virtual void WriteConfig(std::ostream &is,
+  // written form is: Offset(<src-written-form>, t-offset [, x-offset])
+  virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names);
   
   virtual int32 Modulus() const { return src_->Modulus(); }
@@ -148,7 +150,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   
   // takes ownership of src.
   OffsetForwardingDescriptor(ForwardingDescriptor *src,
-                                 Index offset): src_(src), offset_(offset) { }
+                             Index offset): src_(src), offset_(offset) { }
   
   virtual ~OffsetForwardingDescriptor();
  private:
@@ -169,7 +171,8 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  virtual void WriteConfig(std::ostream &is,
+  // Written form is "Switch(<written-form-of-src1>, <written-form-of-src2>, ... )"
+  virtual void WriteConfig(std::ostream &os,
                           const std::vector<std::string> &node_names);
 
   virtual int32 Modulus() const;
@@ -182,43 +185,6 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   SwitchingForwardingDescriptor(std::vector<ForwardingDescriptor*> &src):
       src_(src) { }
   virtual ~SwitchingForwardingDescriptor();
- private:
-  // Pointers are owned here.
-  std::vector<ForwardingDescriptor*> src_; 
-};
-
-
-// This forwarding-descriptor uses the x value of the Index to choose from one
-// of multiple argument ForwardingDescriptor's.  That is, suppose it is
-// initialized with two ForwardingDescriptor's, it treats the x value as an
-// index into that array of ForwardingDescriptor's; and it sets that x value
-// to zero before passing it to the chosen ForwardingDescriptor.  This can
-// be used as a mechanism for the Component to switch between multiple different
-// inputs.
-// We choose the x index for this purpose as it's not used in most setups.
-class SelectForwardingDescriptor: public ForwardingDescriptor {
- public:
-  virtual Cindex MapToInput(const Index &ind_in) {
-    Index ind(ind_in);
-    KALDI_ASSERT(!src_.empty());
-    int32 size = src_.size(), x = ind.x;
-    KALDI_ASSERT(x >= 0 && x < size);
-    ind.x = 0;
-    return src_[x]->MapToInput(ind);
-  }
-  virtual int32 Dim(const Nnet &nnet) const { return src_[0]->Dim(nnet); }
-  virtual ForwardingDescriptor *Copy() const;
-  virtual void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
-
-  /// This function appends to "node_indexes" all the node indexes
-  // that this descriptor may access.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
-  
-  // takes ownership of items in src.
-  SelectForwardingDescriptor(std::vector<ForwardingDescriptor*> &src):
-      src_(src) { }
-  virtual ~SelectForwardingDescriptor();
  private:
   // Pointers are owned here.
   std::vector<ForwardingDescriptor*> src_; 
@@ -242,8 +208,9 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  virtual void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  // Written form is "Round(<written-form-of-src>, <t_modulus>)"
+  virtual void WriteConfig(std::ostream &os,
+                          const std::vector<std::string> &node_names) const;
 
   virtual int32 Modulus() const { return t_modulus_; }
 
@@ -252,21 +219,22 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of src.
-  RoundingForwardingDescriptor(int32 t_modulus,
-                                   ForwardingDescriptor *src):
-      t_modulus_(t_modulus), src_(src) { }
+  RoundingForwardingDescriptor(ForwardingDescriptor *src,
+                               int32 t_modulus):
+      src_(src), t_modulus_(t_modulus) { }
 
   virtual ~RoundingForwardingDescriptor() { delete src_; }
  private:
-  int32 t_modulus_;
   ForwardingDescriptor *src_;
+  int32 t_modulus_;
+
 };
 
 /// This ForwardingDescriptor modifies the indexes (n, t, x) by replacing one
 /// of them (normally t) with a constant value and keeping the rest.
 class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {  
  public:
-  enum kVariableName { kN, kT, kX };
+  enum VariableName { kN, kT, kX };
   
   virtual Cindex MapToInput(const Index &ind) {
     Cindex ans = src_->MapToInput(ind);
@@ -281,34 +249,29 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
   }
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
   virtual ForwardingDescriptor *Copy() const;
-  virtual void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
+  // Written form is "ReplaceIndex(<written-form-of-src>, <variable-name>, <value>)"
+  // where <variable-name> is either "t" or "x".
+  virtual void WriteConfig(std::ostream &os,
+                          const std::vector<std::string> &node_names) const;
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of src.
-  ReplaceIndexForwardingDescriptor(kVariableName variable_name,
-                                       int32 value,
-                                       ForwardingDescriptor *src):
+  ReplaceIndexForwardingDescriptor(VariableName variable_name,
+                                   int32 value,
+                                   ForwardingDescriptor *src):
       variable_name_(variable_name), value_(value), src_(src) { }
   
   virtual ~ReplaceIndexForwardingDescriptor() { delete src_; }
  private:
-
-  kVariableName variable_name_;
+  VariableName variable_name_;
   int32 value_;
 
   ForwardingDescriptor *src_;
 };
 
-
-class CindexSetBase {
- public:
-  virtual bool CindexExists(const Cindex &cindex);
-  
-};
 
 /// Forward declaration.  This is declared in nnet-computation-graph.h.
 class CindexSet;
@@ -372,15 +335,15 @@ class SumDescriptor {
 
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
-  // it moves the begin-pointer "token_begin" to account for token that it
-  // consumes.  Dies on error.
+  // it moves the begin-pointer "next_token" to account for token that it
+  // consumes.  Calls KALDI_ERR on error.
+  // The input tokens should be terminated with a token that says "end of input". 
   static SumDescriptor* Parse(const std::vector<std::string> &node_names,
-                              const std::string *token_end,
-                              const std::string **token_begin);
+                              const std::string **next_token);
   
   /// Write in config-file format.  Conventional Read and Write methods are not
   /// supported.
-  virtual void WriteConfig(std::ostream &is,
+  virtual void WriteConfig(std::ostream &os,
                            const std::vector<std::string> &node_names);
 
 
@@ -390,7 +353,8 @@ class SumDescriptor {
 /// contain just one term (the term is a ForwardingDescriptor).
 /// You can initialize with reqired = false in order to express
 /// an optional quantity, like (A if defined, else zero).
-class SimpleSumDescriptor: public SumDescriptor {
+class UnarySumDescriptor: public SumDescriptor {
+ public:
   virtual void MapToInputs(const Index &ind,
                            std::vector<Cindex> *dependencies) const;
   virtual bool IsComputable(const Index &ind,
@@ -399,24 +363,31 @@ class SimpleSumDescriptor: public SumDescriptor {
   virtual int32 Dim(const Nnet &nnet) const;
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
   virtual int32 Modulus() const;
-  SumDescriptor *Copy() const;
+  /// written form is: if required_ == true, "<written-form-of-src>"
+  /// else "IfDefined(<written-form-of-src>)".
+  virtual void WriteConfig(std::ostream &os,
+                           const std::vector<std::string> &node_names) const;
+  virtual SumDescriptor *Copy() const;
   
-  SimpleSumDescriptor(ForwardingDescriptor *src,
-                      bool required = true): src_(src), required_(required) { }
+  UnarySumDescriptor(ForwardingDescriptor *src,
+                     bool required = true):
+      src_(src), required_(required) { }
  private:
   ForwardingDescriptor *src_;
   bool required_;
 };
 
 
+/// BinarySumDescriptor can represent either A + B, or (A if defined, else B).
+/// Other expressions such as A + (B if defined, else zero), (A if defined, else
+/// zero) + (B if defined, else zero), and (A if defined, else B if defined,
+/// else zero) can be expressed using combinations of the two provided options
+/// for BinarySumDescriptor and the variant
 class BinarySumDescriptor: public SumDescriptor {
-
+ public:
   enum Operation {
-    kAdd,  // A + B
-    kOneOptional, // A + (B if B defined)
-    kBothOptional, // 0 + (A if A defined) + (B if B defined)
+    kSum,  // A + B
     kFailover, // A if defined, else B.
-    kChooseFirst, // A if defined, else B if defined, else 0.
   };
   virtual void MapToInputs(const Index &ind,
                            std::vector<Cindex> *dependencies) const;
@@ -425,8 +396,13 @@ class BinarySumDescriptor: public SumDescriptor {
                             std::vector<Cindex> *required_inputs) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
-  virtual int32 Modulus() const = 0;
-  SumDescriptor *Copy() const;
+  virtual int32 Modulus() const;
+  /// Written form is: if op_ == kSum then "Sum(<src1>, <src2>)";
+  /// if op_ == kFailover, then "Failover(<src1>, <src2>)"
+  /// If you need more than binary operations, just use Sum(a, Sum(b, c)).
+  virtual void WriteConfig(std::ostream &os,
+                           const std::vector<std::string> &node_names) const;
+  virtual SumDescriptor *Copy() const;
   BinarySumDescriptor(Operation op, SumDescriptor *src1, SumDescriptor *src2):
       op_(op), src1_(src1), src2_(src2) {}
  private:
@@ -446,16 +422,18 @@ class Descriptor {
   
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
-  // it moves the begin-pointer "token_begin" to account for token that it
-  // consumes.  Dies on error (including if there was junk after the last
-  // token.
-  static void Parse(const std::vector<std::string> &node_names,
-                    const std::string *token_end,
-                    const std::string **token_begin);
+  // it moves the begin-pointer "next_token" to account for token that it
+  // consumes.  Prints warning and returns false on error (including if there
+  // was junk after the last token).
+  // The input tokens should be terminated with a token that says "end of input".
+  bool Parse(const std::vector<std::string> &node_names,
+             const std::string **next_token);
   
   // Write in config-file format.
-  virtual void WriteConfig(std::ostream &is,
-                           const std::vector<std::string> &node_names);
+  // if parts_.size() == 1, written form is just "<written-form-of-part0>"
+  // otherwise, written form is "Append(<written-form-of-part0>, <written-form-of-part1>,  ... )".
+  void WriteConfig(std::ostream &os,
+                   const std::vector<std::string> &node_names);
   
   /// This function outputs [rather than appends] to "dependencies" all Cindexes
   /// that may be be used to to compute this index.  This list is not guaranteed
@@ -487,8 +465,9 @@ class Descriptor {
   /// Assignment operator.  
   Descriptor &operator = (const Descriptor &other);
   /// Destructor
-  ~Descriptor();
+  ~Descriptor() { Destroy(); }
  private:
+  void Destroy(); // empties parts_ after deleting its members.
   // the elements of parts_ are owned here.
   std::vector<SumDescriptor*> parts_;
 };

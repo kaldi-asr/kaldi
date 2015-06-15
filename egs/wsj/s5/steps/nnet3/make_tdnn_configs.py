@@ -160,7 +160,7 @@ for l in range(1, num_hidden_layers + 1):
           format(l), file=f)
     print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
           file=f)
-    print('component-node name=final-log-softmax component=final-log-softmax'
+    print('component-node name=final-log-softmax component=final-log-softmax '
           'input=final-fixed-scale', file=f)
     print('output-node name=output input=final-log-softmax', file=f)
     f.close()

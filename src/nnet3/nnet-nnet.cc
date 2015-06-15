@@ -228,12 +228,13 @@ void Nnet::ProcessComponentNodeConfigLine(
     if (!DescriptorTokenize(input_descriptor, &tokens))
       KALDI_ERR << "Error tokenizing descriptor in config line "
                 << whole_line;
-    if (tokens.empty())
-      KALDI_ERR << "Empty descriptor in config line " << whole_line;
-    // if the following fails it will die.
-    nodes_[input_node_index].descriptor.Parse(node_names_,
-                                              &(tokens[0]),
-                                              &(tokens[0]) + tokens.size());
+    std::vector<std::string> node_names_temp;
+    GetSomeNodeNames(&node_names_temp);
+    tokens.push_back("end of input");
+    const std::string *next_token = &(tokens[0]);
+    if (!nodes_[input_node_index].descriptor.Parse(node_names_temp, &next_token))
+      KALDI_ERR << "Error parsing Descriptor in config line: "
+                << whole_line;
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
                 << " in config line: " << whole_line;
@@ -289,12 +290,15 @@ void Nnet::ProcessOutputNodeConfigLine(
     if (!DescriptorTokenize(input_descriptor, &tokens))
       KALDI_ERR << "Error tokenizing descriptor in config line "
                 << whole_line;
-    if (tokens.empty())
-      KALDI_ERR << "Empty descriptor in config line " << whole_line;
+    int32 size = tokens.size();
+    tokens.push_back("end of input");
     // if the following fails it will die.
-    nodes_[node_index].descriptor.Parse(node_names_,
-                                        &(tokens[0]),
-                                        &(tokens[0]) + tokens.size());
+    std::vector<std::string> node_names_temp;
+    GetSomeNodeNames(&node_names_temp);
+    const std::string *next_token = &(tokens[0]);
+    if (!nodes_[node_index].descriptor.Parse(node_names_temp, &next_token))
+      KALDI_ERR << "Error parsing descriptor (input=...) in config line "
+                << whole_line;
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
                 << " in config line: " << whole_line;
@@ -341,12 +345,11 @@ void Nnet::ProcessDimRangeNodeConfigLine(
     if (!DescriptorTokenize(input_descriptor, &tokens))
       KALDI_ERR << "Error tokenizing descriptor in config line "
                 << whole_line;
-    if (tokens.empty())
-      KALDI_ERR << "Empty descriptor in config line " << whole_line;
-    // if the following fails it will die.
-    nodes_[node_index].descriptor.Parse(node_names_,
-                                        &(tokens[0]),
-                                        &(tokens[0]) + tokens.size());
+    tokens.push_back("end of input");
+    if (!nodes_[node_index].descriptor.Parse(node_names_,
+                                             &(tokens[0])))
+      KALDI_ERR << "Error parsing descriptor (input=...) in config line "
+                << whole_line;
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
                 << " in config line: " << whole_line;

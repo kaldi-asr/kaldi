@@ -182,7 +182,13 @@ class Nnet {
   void ProcessDimRangeNodeConfigLine(int32 pass,
                                      const std::string &whole_line,
                                      ConfigLine *config);
-  
+
+  // This function output to "modified_node_names" a modified copy of
+  // node_names_, in which all nodes which are not of type kComponent or kInput
+  // are replaced with the string "***".  This is useful when parsing
+  // Descriptors, to avoid inadvertently accepting nodes of invalid types
+  // where they are not allowed.
+  void GetSomeNodeNames(std::vector<std::string> *modified_node_names) const;
 
   
   // the names of the components of the network.  Note, these may be distinct
