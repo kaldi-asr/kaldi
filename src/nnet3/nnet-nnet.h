@@ -58,8 +58,8 @@ namespace nnet3 {
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
 struct NetworkNode {
-  enum NodeType { kInput, kDescriptor, kComponent, kDimRange } node_type;
-
+  enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone } node_type;
+  
   // This is relevant only for nodes of type kDescriptor.  It describes which
   // other network nodes it gets its input from, and how those inputs are
   // combined together; see type Descriptor in nnet-descriptor.h for
@@ -81,6 +81,11 @@ struct NetworkNode {
   int32 dim_offset;
   
   int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
+
+  NetworkNode(NodeType nt = kNone):
+      node_type(nt), dim(-1), dim_offset(-1) { u.component_index = -1; }
+  NetworkNode(const NetworkNode &other);  // copy constructor.
+  // use default assignment operator
 };
 
 
@@ -113,11 +118,21 @@ class Nnet {
   /// and is not directly followed by a node of type kComponent.
   bool IsOutput(int32 node) const;
 
-  /// returns vector of node names (needed by some parsing code, for instance).
-  const std::vector<std::string> &GetNodeNames() const { return node_names_; }
+  /// Returns true if this is component-input node, i.e. a node of type kDescriptor
+  /// that immediately precedes a node of type kComponent.
+  bool IsComponentInput(int32 node) const;  
 
+  /// returns vector of node names (needed by some parsing code, for instance).
+  const std::vector<std::string> &GetNodeNames() const;
+
+  /// returns vector of component names (needed by some parsing code, for instance).
+  const std::vector<std::string> &GetComponentNames() const;
+  
   // returns index associated with this node name, or -1 if no such index.
-  int32 IndexOfNode(const std::string &node_name) const;
+  int32 GetNodeIndex(const std::string &node_name) const;
+
+  // returns index associated with this component name, or -1 if no such index.
+  int32 GetComponentIndex(const std::string &node_name) const;
   
   void Read(std::istream &istream, bool binary);
 
@@ -134,13 +149,39 @@ class Nnet {
   /// debugging purposes.
   std::string Info() const;
  private:
+  // This function returns as a string the contents of a line of a config-file
+  // corresponding to the node indexed "node_index", which must not be of type
+  // kComponentInput, in the same format as it would appear in a line of a
+  // config-file.
+  std::string GetAsConfigLine(int32 node_index) const;
+  
 
+  // This function is used when reading config files; it exists in order to
+  // handle replacement of existing nodes.  The two input vectors have the same
+  // size.  Its job is to remove redundant lines that do not have "component" as
+  // first_token, and where two lines have a configuration value name=xxx in the
+  // config with the same name.  In this case it removes the first of the two,
+  // but that first one must have index less than num_lines_initial, else it is
+  // an error.
+  // Also checks that for all names  (name=xxx), IsValidName(xxx) is true.
+  static void RemoveRedundantConfigLines(int32 num_lines_initial,
+                                         std::vector<std::string> *first_tokens,
+                                         std::vector<ConfigLine> *configs);
+  
   void ProcessComponentConfigLine(int32 initial_num_components,
                                   const std::string &whole_line,
                                   ConfigLine *config);
-  void ProcessComponentNodeConfigLine(int32 initial_num_nodes,
+  void ProcessComponentNodeConfigLine(int32 pass,
                                       const std::string &whole_line,
                                       ConfigLine *config);
+  void ProcessInputNodeConfigLine(const std::string &whole_line,
+                                  ConfigLine *config);
+  void ProcessOutputNodeConfigLine(int32 pass,
+                                   const std::string &whole_line,
+                                   ConfigLine *config);
+  void ProcessDimRangeNodeConfigLine(int32 pass,
+                                     const std::string &whole_line,
+                                     ConfigLine *config);
   
 
   

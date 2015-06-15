@@ -111,7 +111,7 @@ void AddOutputToGraph(const ComputationRequest &request,
                       ComputationGraph *graph) {
   int32 num_added = 0;
   for (int32 i = 0; i < request.outputs.size(); i++) {
-    int32 n = nnet.IndexOfNode(request.outputs[i].name);
+    int32 n = nnet.GetNodeIndex(request.outputs[i].name);
     if (n == -1)
       KALDI_ERR << "Network has no output with name "
                 << request.outputs[i].name;
@@ -134,7 +134,7 @@ void AddInputToGraph(const ComputationRequest &request,
                      ComputationGraph *graph) {
   int32 num_added = 0;
   for (int32 i = 0; i < request.inputs.size(); i++) {
-    int32 n = nnet.IndexOfNode(request.inputs[i].name);
+    int32 n = nnet.GetNodeIndex(request.inputs[i].name);
     if (n == -1)
       KALDI_ERR << "Network has no input with name "
                 << request.inputs[i].name;
@@ -813,7 +813,7 @@ int32 AddInputSteps(const Nnet &nnet,
   unordered_set<int32> all_nodes;  // to make sure nothing is listed twice.
   int32 num_cindex_ids = 0;
   for (int32 i = 0; i < request.inputs.size(); i++) {
-    int32 n = nnet.IndexOfNode(request.inputs[i].name);
+    int32 n = nnet.GetNodeIndex(request.inputs[i].name);
     if (n == -1)
       KALDI_ERR << "Network has no output with name "
                 << request.inputs[i].name;
@@ -848,7 +848,7 @@ void AddOutputSteps(const Nnet &nnet,
                     std::vector<std::vector<int32> > *steps) {
   std::set<int32> all_nodes;  // to make sure nothing listed twice.
   for (int32 i = 0; i < request.outputs.size(); i++) {
-    int32 n = nnet.IndexOfNode(request.outputs[i].name);
+    int32 n = nnet.GetNodeIndex(request.outputs[i].name);
     if (n == -1)
       KALDI_ERR << "Network has no output with name "
                 << request.outputs[i].name;

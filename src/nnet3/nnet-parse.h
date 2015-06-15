@@ -71,7 +71,6 @@ class ConfigLine {
   
 };
              
-
 // Note: the ParseFromString functions are to be removed after we switch over to
 // using the ConfigLine mechanism.
 
@@ -127,17 +126,22 @@ void ExpectOneOrTwoTokens(std::istream &is, bool binary,
    context if it can't tokenize the input.
  */
 bool DescriptorTokenize(const std::string &input,
-                        std::vector<std::string> *token);
+                        std::vector<std::string> *tokens);
+
+/// Returns true if 'name' would be a valid name for a component or node in a
+/// Nnet.  This is a nonempty string beginning with A-Za-z_, and containing only
+/// -_A-Za-z0-9.
+bool IsValidName(const std::string &name);
 
 
 /**
-   This function reads in a config file and writes to a vector of lines;
-   it is responsible for removing comments (anything after '#') and
-   stripping out any lines that contain only whitespace after comment
-   removal.
+   This function reads in a config file and appends its contents to a vector of
+   lines; it is responsible for removing comments (anything after '#') and
+   stripping out any lines that contain only whitespace after comment removal.
  */
 void ReadConfigFile(std::istream &is,
-                    std::vector<std::string> &lines);
+                    std::vector<std::string> *lines);
+
 
 
 /**

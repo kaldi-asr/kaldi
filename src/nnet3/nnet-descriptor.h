@@ -140,8 +140,8 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   virtual ForwardingDescriptor *Copy() const;
 
   virtual void WriteConfig(std::ostream &is,
-                          const std::vector<std::string> &node_names);
-
+                           const std::vector<std::string> &node_names);
+  
   virtual int32 Modulus() const { return src_->Modulus(); }
   
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
@@ -443,7 +443,7 @@ class BinarySumDescriptor: public SumDescriptor {
 class Descriptor {
  public:
   int32 Dim(const Nnet &nnet) const;
-
+  
   // The Parse method is used for reading a config-file-style represenation.
   // Assumes the input has already been tokenized into an array of strings, and
   // it moves the begin-pointer "token_begin" to account for token that it
@@ -469,7 +469,6 @@ class Descriptor {
                     const CindexSet &cindex_set,                    
                     std::vector<Cindex> *required_inputs) const;
   
-
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
   void ComputeDependencies(std::vector<int32> *node_indexes) const {}
@@ -482,6 +481,7 @@ class Descriptor {
   /// returns the n'th part.
   const SumDescriptor &Part(int32 n) const;
 
+  Descriptor() { }
   /// Copy constructor
   Descriptor(const Descriptor &other);
   /// Assignment operator.  

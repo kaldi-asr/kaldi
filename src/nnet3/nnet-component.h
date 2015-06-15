@@ -563,6 +563,34 @@ class FixedBiasComponent: public Component {
 };
 
 
+// NoOpComponent just duplicates its input.  We don't anticipate this being used
+// very often, but it may sometimes make your life easier
+class NoOpComponent: public NonlinearComponent {
+ public:
+  explicit NoOpComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }    
+  NoOpComponent() { }
+  virtual std::string Type() const { return "NoOpComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kPropagateInPlace;
+  }
+  virtual Component* Copy() const { return new NoOpComponent(*this); }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+ private:
+  NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
+};
+
+
+
 } // namespace nnet3
 } // namespace kaldi
 
