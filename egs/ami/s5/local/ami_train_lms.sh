@@ -105,7 +105,7 @@ if [ ! -z "$fisher" ]; then
 
   find $fisher -follow -path '*/trans/*fe*.txt' -exec cat {} \; | grep -v ^# | grep -v ^$ \
     | cut -d' ' -f4- | gzip -c > $dir/fisher/text0.gz
-  gunzip -c $dir/fisher/text0.gz | fisher_map_words.pl \
+  gunzip -c $dir/fisher/text0.gz | local/fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz
   ngram-count -debug 0 -text $dir/fisher/text1.gz -order $order -limit-vocab \
     -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
