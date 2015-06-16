@@ -49,7 +49,10 @@ cat $text_in | awk '{print $1}' > $tempdir/ids # e.g. utterance ids.
 cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
   -v logprobs=$tempdir/loglikes.oov \
  'BEGIN{ while((getline<voc)>0) { invoc[$1]=1; } while ((getline<unk)>0){ unkprob[$1]=$2;} }
-  { logprob=0; for (x=1;x<=NF;x++) { w=$x;  
+  { logprob=0;
+    if (NF==0) { printf "<RNN_UNK>"; logprob = log(1.0e-07);
+      print "Warning: empty sequence." | "cat 1>&2"; }
+    for (x=1;x<=NF;x++) { w=$x;  
     if (invoc[w]) { printf("%s ",w); } else {
       printf("<RNN_UNK> ");
       if (unkprob[w] != 0) { logprob += log(unkprob[w]); }
