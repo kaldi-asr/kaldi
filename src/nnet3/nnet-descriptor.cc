@@ -103,7 +103,7 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
     int32 value = ReadIntegerToken("ReplaceIndexForwardingDescriptor",
                                    next_token);
     ExpectToken(")", "ReplaceIndexForwardingDescriptor", next_token);
-    return new ReplaceIndexForwardingDescriptor(variable_name, value, src);
+    return new ReplaceIndexForwardingDescriptor(src, variable_name, value);
   } else {
     // Note, node_names will have any node names that aren't allowed to appear
     // in Descriptors (e.g. output nodes) replace with something that can never
@@ -139,17 +139,37 @@ void Descriptor::MapToInputs(
   }
 }
 
+virtual Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
+  return Cindex(src_node_, index);
+}
+
+ForwardingDescriptor *SimpleForwardingDescriptor::Copy() const {
+  return new SimpleForwardingDescriptor(src_node_);
+}
+
 void SimpleForwardingDescriptor::WriteConfig(
     std::ostream &os,
-    const std::vector<std::string> &node_names) {
+    const std::vector<std::string> &node_names) const {
   KALDI_ASSERT(static_cast<size_t>(src_node_) < node_names.size() &&
                IsValidName(node_names[src_node_]));
   os << node_names[src_node_];
 }
 
+
+Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
+  Cindex answer = src_->MapToInput(ind);
+  answer.second = answer.second + offset_;
+  return answer;
+}
+
+
+ForwardingDescriptor *OffsetForwardingDescriptor::Copy() const {
+  return new OffsetForwardingDescriptor(src_->Copy(), offset_);
+}
+
 void OffsetForwardingDescriptor::WriteConfig(
     std::ostream &os,
-    const std::vector<std::string> &node_names) {
+    const std::vector<std::string> &node_names) const {
   KALDI_ASSERT(offset_.n == 0);
   os << "Offset(";
   src_->WriteConfig(os, node_names);
@@ -159,10 +179,26 @@ void OffsetForwardingDescriptor::WriteConfig(
   os << ")";
 }
 
+Cindex SwitchingForwardingDescriptor::MapToInput(const Index &ind) const {
+  KALDI_ASSERT(!src_.empty());
+  int32 size = src_.size(), mod = ind.t % size;
+  // next line gets "mathematical" modulus, not broken "C" modulus.
+  if (mod < 0) mod += size;
+  return src_[mod]->MapToInput(ind);
+}
+
+
+ForwardingDescriptor *SwitchingForwardingDescriptor::Copy() const {
+  std::vector<ForwardingDescriptor*> src_copy(src_.size());
+  for (size_t i = 0; i < src_.size(); i++)
+    src_copy[i] = src_[i]->Copy();
+  return new SwitchingForwardingDescriptor(src_copy);
+}
+
 
 void SwitchingForwardingDescriptor::WriteConfig(
     std::ostream &os,
-    const std::vector<std::string> &node_names) {
+    const std::vector<std::string> &node_names) const {
   KALDI_ASSERT(!src_.empty());
   os << "Switch(";
   for (size_t i = 0; i < src_.size(); i++) {
@@ -174,6 +210,20 @@ void SwitchingForwardingDescriptor::WriteConfig(
 }
 
 
+Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
+  KALDI_ASSERT(t_modulus_ >= 1);
+  Cindex ans = src_->MapToInput(ind);
+  int32 mod = ans.second.t % t_modulus_;
+  if (mod < 0)
+    mod += t_modulus_;
+  ans.second.t -= mod;
+  return ans;
+}
+
+ForwardingDescriptor *RoundingForwardingDescriptor::Copy() const {
+  return new RoundingForwardingDescriptor(src_->Copy(), t_modulus_);
+}
+
 void RoundingForwardingDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const {
@@ -182,6 +232,24 @@ void RoundingForwardingDescriptor::WriteConfig(
   os << ", " << t_modulus_ << ")";
 }
 
+
+Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
+  Cindex ans = src_->MapToInput(ind);
+  switch (variable_name_) {
+    case kT: ans.second.t = value_; break;
+    case kX: ans.second.x = value_; break;
+    default:  // kN or any other value is not allowed (doesn't make sense
+      // to change the minibatch index in this way).
+      KALDI_ERR << "Invalid variable name";
+  }    
+  return ans;
+}
+
+ForwardingDescriptor *ReplaceIndexForwardingDescriptor::Copy() const {
+  return new ReplaceIndexForwardingDescriptor(src_->Copy(),
+                                              variable_name_, value_);
+                                              
+}
 
 void ReplaceIndexForwardingDescriptor::WriteConfig(
     std::ostream &os,
@@ -193,6 +261,11 @@ void ReplaceIndexForwardingDescriptor::WriteConfig(
      << value_ << ")";
 }
 
+SumDescriptor *UnarySumDescriptor::Copy() const {
+  return new UnarySumDescriptor(src_->Copy(), required_);
+}
+
+
 void UnarySumDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const{
@@ -201,6 +274,10 @@ void UnarySumDescriptor::WriteConfig(
   if (!required_) os << ")";  
 }
 
+
+SumDescriptor *BinarySumDescriptor::Copy() const {
+  return new BinarySumDescriptor(op_, src1_->Copy(), src2_->Copy());
+}
 
 void BinarySumDescriptor::WriteConfig(
     std::ostream &os,
@@ -310,13 +387,20 @@ bool Descriptor::Parse(const std::vector<std::string> &node_names,
   }
 }
 
+
+Descriptor& Descriptor::operator=(const Descriptor &other) {
+  Destroy();
+  for (size_t i = 0; i < other.parts_.size(); i++)
+    parts_.push_back(other.parts_[i]->Copy());
+  return *this;
+}
+
 int32 Descriptor::Modulus() const {
   int32 ans = 1;
   for (size_t i = 0; i < parts_.size(); i++)
     ans = Lcm(ans, parts_[i]->Modulus());
   return ans;  
 }
-
 
 
 } // namespace nnet3
