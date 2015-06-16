@@ -3,197 +3,185 @@
 . ./cmd.sh
 . ./path.sh
 
-#INITIAL COMMENTS
-#To run the whole recipe you're gonna to need
-# 1) SRILM 
-# 2) 
+# To run recipe you need : a) SRILM, 
 
-#1) some setings
-#do not change this, it's for ctr-c ctr-v of training commands between ihm, sdm and mdm
+# Do not change this, it's for ctr-c ctr-v of training commands between ihm, sdm and mdm
 mic=ihm
-#path where AMI whould be downloaded or where is locally available
-AMI_DIR=/disk/data2/amicorpus/
-# path to Fisher transcripts for background language model 
-# when not set only in-domain LM will be build
-FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher
 
-norm_vars=false
+# Path where AMI gets downloaded (or where locally available):
+#AMI_DIR=/disk/data2/amicorpus/ # Edinburgh,
+AMI_DIR=$PWD/DOWNLOAD/amicorpus/ # BUT,
 
-#1)
+# Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
+#FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 # Edinburgh,
+FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran # BUT,
 
-#in case you want download AMI corpus, uncomment this line
-#you need arount 130GB of free space to get whole data ihm+mdm
-local/ami_download.sh ihm $AMI_DIR || exit 1;
+stage=0
+. utils/parse_options.sh
 
-#2) Data preparation
-local/ami_text_prep.sh $AMI_DIR
+# Set bash to 'debug' mode, it will exit on : 
+# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
+set -e
+set -u
+set -o pipefail
+set -x
 
-local/ami_ihm_data_prep.sh $AMI_DIR || exit 1;
+# 1)
+# In case you want download AMI corpus, uncomment this line.
+# You need arount 130GB of free space to get whole data ihm+mdm
+if [ $stage -le 0 ]; then
+  local/ami_download.sh ihm $AMI_DIR
+fi
 
-local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev || exit 1;
 
-local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval || exit 1;
+# 2) Data preparation
+if [ $stage -le 1 ]; then
+  local/ami_text_prep.sh $AMI_DIR
 
-local/ami_prepare_dict.sh
+  local/ami_ihm_data_prep.sh $AMI_DIR
 
-utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+  local/ami_ihm_scoring_data_prep.sh $AMI_DIR dev
 
-local/ami_train_lms.sh --fisher $FISHER_TRANS data/ihm/train/text data/ihm/dev/text data/local/dict/lexicon.txt data/local/lm
+  local/ami_ihm_scoring_data_prep.sh $AMI_DIR eval
 
-final_lm=`cat data/local/lm/final_lm`
-LM=$final_lm.pr1-7
-nj=30
+  local/ami_prepare_dict.sh
 
-prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | \
-   gzip -c > data/local/lm/$LM.gz
+  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
-utils/format_lm.sh data/lang data/local/lm/$LM.gz data/local/dict/lexicon.txt data/lang_$LM
+  local/ami_train_lms.sh --fisher $FISHER_TRANS data/ihm/train/text data/ihm/dev/text data/local/dict/lexicon.txt data/local/lm
 
-#local/ami_format_data.sh data/local/lm/$LM.gz
+  final_lm=`cat data/local/lm/final_lm`
+  LM=$final_lm.pr1-7
+
+  prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | \
+    gzip -c > data/local/lm/$LM.gz
+
+  utils/format_lm.sh data/lang data/local/lm/$LM.gz data/local/dict/lexicon.txt data/lang_$LM
+fi
+
 
 # 3) Building systems
-# here starts the normal recipe, which is mostly shared across mic scenarios
-# one difference is for sdm and mdm we do not adapt for speaker byt for environment only
+# here starts the normal recipe, which is mostly shared across mic scenarios,
+# - for ihm we adapt to speaker by fMLLR,
+# - for sdm and mdm we do not adapt for speaker, but for environment only (cmn),
 
 mfccdir=mfcc_$mic
-(
- steps/make_mfcc.sh --nj 5  --cmd "$train_cmd" data/$mic/eval exp/$mic/make_mfcc/eval $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$mic/eval exp/$mic/make_mfcc/eval $mfccdir || exit 1
-)&
-(
- steps/make_mfcc.sh --nj 5 --cmd "$train_cmd" data/$mic/dev exp/$mic/make_mfcc/dev $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$mic/dev exp/$mic/make_mfcc/dev $mfccdir || exit 1
-)&
-(
- steps/make_mfcc.sh --nj 16 --cmd "$train_cmd" data/$mic/train exp/$mic/make_mfcc/train $mfccdir || exit 1;
- steps/compute_cmvn_stats.sh data/$mic/train exp/$mic/make_mfcc/train $mfccdir || exit 1
-)&
-
-wait;
-
-for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
+if [ $stage -le 2 ]; then
+  for dset in train dev eval; do
+    steps/make_mfcc.sh --nj 15 --cmd "$train_cmd" data/$mic/$dset exp/$mic/make_mfcc/$dset $mfccdir
+    steps/compute_cmvn_stats.sh data/$mic/$dset exp/$mic/make_mfcc/$dset $mfccdir
+  done
+  for dset in train eval dev; do utils/fix_data_dir.sh data/$mic/$dset; done
+fi
 
 # 4) Train systems
- nj=30
+nj=30 # number of parallel jobs,
 
- mkdir -p exp/$mic/mono
- steps/train_mono.sh --nj $nj --cmd "$train_cmd" --norm-vars $norm_vars \
-   data/$mic/train data/lang exp/$mic/mono >& exp/$mic/mono/train_mono.log || exit 1;
+if [ $stage -le 3 ]; then
+  # Taking a subset, accelerates the initial steps, we take ~20% of shortest sentences,
+  utils/subset_data_dir.sh --shortest data/$mic/train 10000 data/$mic/train_10k
+fi
 
- mkdir -p exp/$mic/mono_ali
- steps/align_si.sh --nj $nj --cmd "$train_cmd" data/$mic/train data/lang exp/$mic/mono \
-   exp/$mic/mono_ali >& exp/$mic/mono_ali/align.log || exit 1;
+if [ $stage -le 4 ]; then
+  # Mono,
+  steps/train_mono.sh --nj $nj --cmd "$train_cmd" --cmvn-opts "--norm-means=true --norm-vars=false" \
+    data/$mic/train_10k data/lang exp/$mic/mono
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train_10k data/lang exp/$mic/mono exp/$mic/mono_ali
 
- mkdir -p exp/$mic/tri1
- steps/train_deltas.sh --cmd "$train_cmd" --norm-vars $norm_vars \
-   5000 80000 data/$mic/train data/lang exp/$mic/mono_ali exp/$mic/tri1 \
-   >& exp/$mic/tri1/train.log || exit 1;
+  # Deltas,
+  steps/train_deltas.sh --cmd "$train_cmd" --cmvn-opts "--norm-means=true --norm-vars=false" \
+    3000 40000 data/$mic/train_10k data/lang exp/$mic/mono_ali exp/$mic/tri1
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train data/lang exp/$mic/tri1 exp/$mic/tri1_ali
+fi
 
- mkdir -p exp/$mic/tri1_ali
- steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-   data/$mic/train data/lang exp/$mic/tri1 exp/$mic/tri1_ali || exit 1;
+if [ $stage -le 5 ]; then
+  # Deltas again,
+  steps/train_deltas.sh --cmd "$train_cmd" --cmvn-opts "--norm-means=true --norm-vars=false" \
+    5000 80000 data/$mic/train data/lang exp/$mic/tri1_ali exp/$mic/tri2a
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali
+  # Decode,
+  graph_dir=exp/$mic/tri2a/graph_${LM}
+  $highmem_cmd $graph_dir/mkgraph.log \
+    utils/mkgraph.sh data/lang_${LM} exp/$mic/tri2a $graph_dir
+  steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${LM}
+  steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${LM}
+fi
 
- mkdir -p exp/$mic/tri2a
- steps/train_deltas.sh --cmd "$train_cmd" --norm-vars $norm_vars \
-  5000 80000 data/$mic/train data/lang exp/$mic/tri1_ali exp/$mic/tri2a \
-  >& exp/$mic/tri2a/train.log || exit 1;
+if [ $stage -le 6 ]; then
+  # Train tri3a, which is LDA+MLLT,
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    --splice-opts "--left-context=3 --right-context=3" \
+    5000 80000 data/$mic/train data/lang exp/$mic/tri2_ali exp/$mic/tri3a
+  # Align with SAT,
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali
+  # Decode,
+  graph_dir=exp/$mic/tri3a/graph_${LM}
+  $highmem_cmd $graph_dir/mkgraph.log \
+    utils/mkgraph.sh data/lang_${LM} exp/$mic/tri3a $graph_dir
+  steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${LM} 
+  steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${LM}
+fi 
 
- for lm_suffix in $LM; do
-  (
-    graph_dir=exp/$mic/tri2a/graph_${lm_suffix}
-    $highmem_cmd $graph_dir/mkgraph.log \
-      utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri2a $graph_dir
+if [ $stage -le 7 ]; then
+  # Train tri4a, which is LDA+MLLT+SAT
+  steps/train_sat.sh  --cmd "$train_cmd" \
+    5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali exp/$mic/tri4a
+  # Align,
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali
+  # Decode,  
+  graph_dir=exp/$mic/tri4a/graph_${LM}
+  $highmem_cmd $graph_dir/mkgraph.log \
+    utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
+  steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
+    $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM} 
+  steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM} 
+fi
 
-    steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir data/$mic/dev exp/$mic/tri2a/decode_dev_${lm_suffix} 
-   
-    steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir data/$mic/eval exp/$mic/tri2a/decode_eval_${lm_suffix} 
 
-  ) &
- done
+#exit 0 # We can skip MMI, when preparing the data to build Karel's DNN...
 
-mkdir -p exp/$mic/tri2a_ali
-steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-  data/$mic/train data/lang exp/$mic/tri2a exp/$mic/tri2_ali || exit 1;
 
-# Train tri3a, which is LDA+MLLT
-mkdir -p exp/$mic/tri3a
-steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  --splice-opts "--left-context=3 --right-context=3" \
-  5000 80000 data/$mic/train data/lang exp/$mic/tri2_ali exp/$mic/tri3a \
-  >& exp/$mic/tri3a/train.log || exit 1;
-
-for lm_suffix in $LM; do
-  (
-    graph_dir=exp/$mic/tri3a/graph_${lm_suffix}
-    $highmem_cmd $graph_dir/mkgraph.log \
-      utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri3a $graph_dir
-
-    steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir data/$mic/dev exp/$mic/tri3a/decode_dev_${lm_suffix} 
-
-    steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir data/$mic/eval exp/$mic/tri3a/decode_eval_${lm_suffix} 
-  ) &
-done
-
-# Train tri4a, which is LDA+MLLT+SAT
-steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-  data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali || exit 1;
-
-mkdir -p exp/$mic/tri4a
-steps/train_sat.sh  --cmd "$train_cmd" \
-  5000 80000 data/$mic/train data/lang exp/$mic/tri3a_ali \
-  exp/$mic/tri4a >& exp/$mic/tri4a/train.log || exit 1;
-
-for lm_suffix in $LM; do
-  (
-    graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
-    $highmem_cmd $graph_dir/mkgraph.log \
-      utils/mkgraph.sh data/lang_${lm_suffix} exp/$mic/tri4a $graph_dir
-
-    steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
-      $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${lm_suffix} 
-
-    steps/decode_fmllr.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-      $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${lm_suffix} 
-  ) &
-done
-
-# MMI training starting from the LDA+MLLT+SAT systems
-steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-  data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali || exit 1
-
-steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-  --transform-dir exp/$mic/tri4a_ali \
-  data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_denlats  || exit 1;
+if [ $stage -le 8 ]; then
+  # MMI training starting from the LDA+MLLT+SAT systems,
+  steps/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+    --transform-dir exp/$mic/tri4a_ali \
+    data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_denlats
+fi
 
 # 4 iterations of MMI seems to work well overall. The number of iterations is
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
 # default.
-num_mmi_iters=4
-steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
-  data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
-  exp/$mic/tri4a_mmi_b0.1 || exit 1;
+if [ $stage -le 9 ]; then
+  num_mmi_iters=4
+  steps/train_mmi.sh --cmd "$train_cmd" --boost 0.1 --num-iters $num_mmi_iters \
+    data/$mic/train data/lang exp/$mic/tri4a_ali exp/$mic/tri4a_denlats \
+    exp/$mic/tri4a_mmi_b0.1
 
-for lm_suffix in $LM; do
-  (
-    graph_dir=exp/$mic/tri4a/graph_${lm_suffix}
-    
-    for i in `seq 1 4`; do
-      decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${lm_suffix}
-      steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
-        --transform-dir exp/$mic/tri4a/decode_dev_${lm_suffix} --iter $i \
-        $graph_dir data/$mic/dev $decode_dir 
-      decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${lm_suffix}
-      steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
-        --transform-dir exp/$mic/tri4a/decode_eval_${lm_suffix} --iter $i \
-        $graph_dir data/$mic/eval $decode_dir 
-    done
-  ) &
-done
+  graph_dir=exp/$mic/tri4a/graph_${LM}
+  for i in 1 2 3 4; do
+    decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_dev_${i}.mdl_${LM}
+    steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
+      --transform-dir exp/$mic/tri4a/decode_dev_${LM} --iter $i \
+      $graph_dir data/$mic/dev $decode_dir 
+    decode_dir=exp/$mic/tri4a_mmi_b0.1/decode_eval_${i}.mdl_${LM}
+    steps/decode.sh --nj $nj --cmd "$decode_cmd"  --config conf/decode.conf \
+      --transform-dir exp/$mic/tri4a/decode_eval_${LM} --iter $i \
+      $graph_dir data/$mic/eval $decode_dir 
+  done
+fi
 
 # DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
 # Some of them would be out of date.
-local/run_dnn.sh $mic
+if [ $stage -le 10 ]; then
+  local/run_dnn.sh $mic
+fi

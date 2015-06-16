@@ -98,7 +98,7 @@ if [ ! -z "$swbd" ]; then
 fi
 
 if [ ! -z "$fisher" ]; then
-  [ ! -d "$fisher/part1/data/trans" ] \
+  [ ! -d "$fisher/data/trans" ] \
     && echo "Cannot find transcripts in Fisher directory: '$fisher'" \
     && exit 1;
   mkdir -p $dir/fisher
