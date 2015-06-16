@@ -42,7 +42,7 @@ namespace nnet3 {
  */
 class ConfigLine {
  public:
-  ConfigLine();
+  //ConfigLine();
   // tries to parse the line as a config-file line.  Returns false if it could not
   // for some reason, e.g. "x" is not a value config-file line, nor is "=y".
   // Prints no warnings; the user should do this.
@@ -67,7 +67,6 @@ class ConfigLine {
   
   // data_ maps from key to (value, is-this-value-consumed?).
   std::map<std::string, std::pair<std::string, bool> > data_;
-  
   
 };
              
@@ -153,7 +152,7 @@ void ReadConfigFile(std::istream &is,
 */
 std::string ErrorContext(std::istream &is);
 
-
+std::string ErrorContext(const std::string &str);
 
 } // namespace nnet3
 } // namespace kaldi

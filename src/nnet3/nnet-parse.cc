@@ -22,14 +22,149 @@
 namespace kaldi {
 namespace nnet3 {
 
-//TODO
-bool DescriptorTokenize(const std::string &input,
-                        std::vector<std::string> *tokens) {
+bool ConfigLine::ParseLine(const std::string &line) {
+  if (line.size() == 0) return false;   // Empty line
+  
+  // Line ends with space. line is expected to be preprocessed before.
+  if (isspace(line[line.size()-1]) || isspace(line[0])) return false;   
+  
+  size_t pos = 0;
+  size_t found_eq = line.find_first_of("=", pos + 1);
+  if (found_eq == std::string::npos) return false; // Could not find '='
+
+  
+  while (found_eq < line.size()) {
+    std::string key(line, pos, found_eq - pos);
+    if (!IsValidName(key)) return false;
+    if (found_eq == std::string::npos) return false; // Could not find '='
+    if (found_eq == line.size() - 1 || line[found_eq+1] == ' ' || line[found_eq+1] == '\t') {
+      // Empty value for key
+      data_.insert(std::make_pair(key, std::make_pair("", false)));
+      pos = line.find_first_not_of(" \t", found_eq + 1);
+      if (pos == std::string::npos) return true; // Done reading
+      found_eq = line.find_first_of("=", pos + 1);
+      continue;
+    } 
+ 
+    // See if there is next key
+    size_t found = line.find_first_of("=", found_eq + 1);
+    size_t value_end = std::string::npos;
+
+    if (found != std::string::npos) {
+      size_t found_ws = line.find_last_of(" \t", found);
+      if (found_ws < found_eq + 1) found_ws = found;
+
+      value_end = line.find_last_not_of(" \t", found_ws);
+      pos = line.find_first_not_of(" \t", found_ws + 1);
+    } else {
+      value_end = line.find_last_not_of(" \t", found);
+    }
+    
+    KALDI_ASSERT(value_end > found_eq);
+
+    std::string value(line, found_eq + 1, value_end - found_eq);
+
+    if (value[0] == ' ' || value[0] == '\t') return false;
+    data_.insert(std::make_pair(key, std::make_pair(value, false)));
+
+    found_eq = found;
+  }
+
   return true;
 }
 
-bool IsValidName(const std::string &name) {
-  return true;
+bool ConfigLine::GetValue(const std::string &key, std::string *value) {
+  KALDI_ASSERT(value != NULL);
+  value->clear();
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      *value = (it->second).first;
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::GetValue(const std::string &key, BaseFloat *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!ConvertStringToReal((it->second).first, value)) {
+        // KALDI_WARN << "Bad option " << (it->second).first;
+        return false;
+      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::GetValue(const std::string &key, std::vector<int32> *value) {
+  KALDI_ASSERT(value != NULL);
+  value->clear();
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!SplitStringToIntegers((it->second).first, ":,", true, value)) {
+        // KALDI_WARN << "Bad option " << (it->second).first;
+        return false;
+      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+  
+bool ConfigLine::GetValue(const std::string &key, bool *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if ((it->second).first.size() == 0) return false;
+      switch (((it->second).first)[0]) {
+        case 'F':
+        case 'f':
+          *value = false;
+          break;
+        case 'T':
+        case 't':
+          *value = true;
+          break;
+        default: 
+          return false;
+      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::HasUnusedValues() const {
+  std::map<std::string, std::pair<std::string, bool> >::const_iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (!(it->second).second) return true;
+  }
+  return false;
+}
+
+std::string ConfigLine::UnusedValues() const {
+  std::string unused_str;
+  std::map<std::string, std::pair<std::string, bool> >::const_iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (!(it->second).second) {
+      if (unused_str == "")
+        unused_str = it->first + "=" + (it->second).first;
+      else 
+        unused_str += " " + it->first + "=" + (it->second).first;
+    }
+  }
+  return unused_str;
 }
 
 // This is like ExpectToken but for two tokens, and it
@@ -51,7 +186,6 @@ void ExpectOneOrTwoTokens(std::istream &is, bool binary,
     }
   }
 }
-
 
 // static
 bool ParseFromString(const std::string &name, std::string *string,
@@ -190,6 +324,95 @@ bool ParseFromString(const std::string &name, std::string *string,
   return false;
 }
 
+bool DescriptorTokenize(const std::string &input,
+                        std::vector<std::string> *tokens) {
+  KALDI_ASSERT(tokens != NULL);
+  size_t start = input.find_first_not_of(" \t");
+  tokens->clear();
+  while (start < input.size()) {
+    KALDI_ASSERT(!isspace(input[start]));
+    if (input[start] == '(' || input[start] == ')' || input[start] == ',') {
+      tokens->push_back(std::string(input, start, 1));
+      start = input.find_first_not_of(" \t", start + 1);
+    } else {
+      size_t found = input.find_first_of(" \t(),", start);
+      KALDI_ASSERT(found != start);
+      if (found == std::string::npos) {
+        std::string str(input, start, input.size() - start);
+        int32 tmp;
+        if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
+          KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+          return false;
+        }
+        break;
+      } else {
+        if (input[found] == '(' || input[found] == ')' || input[found] == ',') {
+          std::string str(input, start, found - start);
+          int32 tmp;
+          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
+            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+            return false;
+          }
+          tokens->push_back(str);
+          start = found;
+        } else {
+          std::string str(input, start, found - start);
+          int32 tmp;
+          if (!IsValidName(str) && !ConvertStringToInteger(str, &tmp)) {
+            KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
+            return false;
+          }
+          tokens->push_back(str);
+          start = input.find_first_not_of(" \t", found);
+        }
+      }
+    }
+  }
+  return true;
+}
+
+bool IsValidName(const std::string &name) {
+  if (name.size() == 0) return false;
+  for (size_t i = 0; i < name.size(); i++) {
+    if (i == 0 && !isalpha(name[i]) && name[i] != '_')
+      return false;
+    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-')
+      return false;
+  }
+  return true;
+}
+
+void ReadConfigFile(std::istream &is, 
+                    std::vector<std::string> *lines) {
+  KALDI_ASSERT(lines != NULL);
+  lines->clear();
+  std::string line;
+  while (std::getline(is, line)) {
+    if (line.size() == 0) continue;
+    size_t start = line.find_first_not_of(" \t");
+    size_t end = line.find_first_of('#');
+    if (start == std::string::npos || start == end) continue;
+    end = line.find_last_not_of(" \t", end - 1);
+    KALDI_ASSERT(end >= start);
+    lines->push_back(line.substr(start, end - start + 1));
+  }
+}
+
+std::string ErrorContext(std::istream &is) {
+  if (!is.good()) return "end of line";
+  char buf[21];
+  is.read(buf, 21);
+  if (is) {
+    return (std::string(buf, 20) + "...");
+  } 
+  return std::string(buf, is.gcount());
+}
+
+std::string ErrorContext(const std::string &str) {
+  if (str.size() == 0) return "end of line";
+  if (str.size() <= 20) return str;
+  return std::string(str, 0, 20) + "...";
+}
 
 } // namespace nnet3
 } // namespace kaldi
