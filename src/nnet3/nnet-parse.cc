@@ -22,7 +22,15 @@
 namespace kaldi {
 namespace nnet3 {
 
+//TODO
+bool DescriptorTokenize(const std::string &input,
+                        std::vector<std::string> *tokens) {
+  return true;
+}
 
+bool IsValidName(const std::string &name) {
+  return true;
+}
 
 // This is like ExpectToken but for two tokens, and it
 // will either accept token1 and then token2, or just token2.

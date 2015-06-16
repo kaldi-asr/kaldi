@@ -114,13 +114,12 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
   virtual int32 Dim(const Nnet &nnet) const;
   virtual ForwardingDescriptor *Copy() const;
   virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
-
   
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
   // written form is just the node-name of src_node_.
   virtual void WriteConfig(std::ostream &os,
-                           const std::vector<std::string> &node_names);
+                           const std::vector<std::string> &node_names) const;
 
   SimpleForwardingDescriptor(int32 src_node): src_node_(src_node) {
     KALDI_ASSERT(src_node >= 0);

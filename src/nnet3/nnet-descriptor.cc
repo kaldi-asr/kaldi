@@ -139,7 +139,12 @@ void Descriptor::MapToInputs(
   }
 }
 
-virtual Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
+// TODO
+int32 SimpleForwardingDescriptor::Dim(const Nnet &nnet) const {
+  return 0;
+}
+
+Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
   return Cindex(src_node_, index);
 }
 
@@ -155,6 +160,10 @@ void SimpleForwardingDescriptor::WriteConfig(
   os << node_names[src_node_];
 }
 
+// TODO
+void OffsetForwardingDescriptor::ComputeDependencies(std::vector<int32> *node_indexes) const {
+  return;
+}
 
 Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
   Cindex answer = src_->MapToInput(ind);
@@ -177,6 +186,13 @@ void OffsetForwardingDescriptor::WriteConfig(
   if (offset_.x != 0)
     os << ", " << offset_.x;
   os << ")";
+}
+
+
+// TODO
+void SwitchingForwardingDescriptor::ComputeDependencies(
+                                      std::vector<int32> *node_indexes) const {
+  return;
 }
 
 Cindex SwitchingForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -209,6 +225,11 @@ void SwitchingForwardingDescriptor::WriteConfig(
   os << ")";
 }
 
+// TODO
+void RoundingForwardingDescriptor::ComputeDependencies(
+                                     std::vector<int32> *node_indexes) const {
+  return;
+}
 
 Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
   KALDI_ASSERT(t_modulus_ >= 1);
@@ -232,6 +253,12 @@ void RoundingForwardingDescriptor::WriteConfig(
   os << ", " << t_modulus_ << ")";
 }
 
+// TODO
+void ReplaceIndexForwardingDescriptor::ComputeDependencies(
+                                         std::vector<int32> *node_indexes)
+                                         const {
+  return;
+}
 
 Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
   Cindex ans = src_->MapToInput(ind);
@@ -261,19 +288,89 @@ void ReplaceIndexForwardingDescriptor::WriteConfig(
      << value_ << ")";
 }
 
+// TODO
+bool SumDescriptor::IsComputable(const Index &ind,
+                            const CindexSet &cindex_set,
+                            std::vector<Cindex> *required_inputs) const {
+  return true;
+}
+
+// TODO
+void SumDescriptor::WriteConfig(std::ostream &os,
+       const std::vector<std::string> &node_names) const {
+  return;
+}
+
 SumDescriptor *UnarySumDescriptor::Copy() const {
   return new UnarySumDescriptor(src_->Copy(), required_);
 }
 
+//TODO
+void UnarySumDescriptor::MapToInputs(const Index &ind,
+                           std::vector<Cindex> *dependencies) const {
+  return;
+}
+
+//TODO
+bool UnarySumDescriptor::IsComputable(const Index &ind,
+                            const CindexSet &cindex_set,
+                            std::vector<Cindex> *required_inputs) const {
+  return true;
+}
 
 void UnarySumDescriptor::WriteConfig(
     std::ostream &os,
-    const std::vector<std::string> &node_names) const{
+    const std::vector<std::string> &node_names) const {
   if (!required_) os << "IfDefined(";
   src_->WriteConfig(os, node_names);
   if (!required_) os << ")";  
 }
 
+// TODO
+int32 UnarySumDescriptor::Dim(const Nnet &nnet) const {
+  return 0;
+}
+
+// TODO
+void UnarySumDescriptor::ComputeDependencies(
+                           std::vector<int32> *node_indexes) const {
+  return;
+}
+
+// TODO
+int32 UnarySumDescriptor::Modulus() const {
+  return 0;
+}
+
+
+// TODO
+void BinarySumDescriptor::MapToInputs(const Index &ind,
+                           std::vector<Cindex> *dependencies) const {
+  return;
+}
+
+// TODO
+bool BinarySumDescriptor::IsComputable(const Index &ind,
+                            const CindexSet &cindex_set,
+                            std::vector<Cindex> *required_inputs) const {
+  return true;
+}
+
+// TODO
+int32 BinarySumDescriptor::Dim(const Nnet &nnet) const {
+  return 0;
+}
+
+// TODO
+void BinarySumDescriptor::ComputeDependencies(
+                            std::vector<int32> *node_indexes) const {
+  return;
+}
+
+// TODO
+int32 BinarySumDescriptor::Modulus() const {
+  return 0;
+}
 
 SumDescriptor *BinarySumDescriptor::Copy() const {
   return new BinarySumDescriptor(op_, src1_->Copy(), src2_->Copy());
