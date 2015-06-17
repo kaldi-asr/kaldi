@@ -53,7 +53,6 @@ int32 ComputationGraph::GetCindexId(const Cindex &cindex) const {
 
 
 void ComputationGraph::Renumber(const std::vector<bool> &keep) {
-  KALDI_ASSERT(optional.empty());
   int32 num_cindex_ids = cindexes.size();
   KALDI_ASSERT(keep.size() == num_cindex_ids);
   ComputationGraph temp_graph;
@@ -93,7 +92,6 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
   cindexes.swap(temp_graph.cindexes);
   is_input.swap(temp_graph.is_input);
   dependencies.swap(temp_graph.dependencies);
-  optional.clear();
   cindex_to_cindex_id_.clear();
   for (int32 c = 0; c < new_num_cindex_ids; c++)
     cindex_to_cindex_id_[cindexes[c]] = c;
@@ -177,66 +175,6 @@ static void ComputeDependenciesSubset(
   }
 }
 
-// This function assumes indexes and optional have the same size, with each
-// element of "optional" saying whether this dependency is optional.  What it
-// does is to remove each element of "indexes" that is optional.  It's called if
-// the use_optional_dependencies member of the ComputationRequest is false,
-// which is only the case when the user is trying to discover the amount of
-// left-context and right context the network has.
-static void RemoveOptionalInputs(std::vector<Index> *indexes,
-                                 std::vector<bool> *optional) {
-  KALDI_ASSERT(indexes->size() == optional->size());
-  int32 size = indexes->size();
-  // "in" is the location we read from, "out" is the location we write to, as we
-  // copy only the non-optional elements.
-  int32 in = 0, out = 0;
-  for (; in != size; in++) {
-    if (! (*optional)[in]) {
-      if (out != in)
-        (*indexes)[out] = (*indexes)[in];
-      out++;
-    }
-  }
-  if (out != size) {
-    indexes->resize(out);
-    optional->clear();
-    optional->resize(out, false);
-  }
-}
-
-
-// Sorts and uniq's a vector of int32, while keeping
-// an associated vector of bool in sync with the sorting if it is nonempty.
-// It is an error if the same int32 appears with two different boolean values.
-void SortAndUniqInSync(std::vector<int32> *int_vec,
-                       std::vector<bool> *bool_vec) {
-  if (bool_vec->empty()) {
-    SortAndUniq(int_vec);
-  } else {
-    int32 size = int_vec->size();
-    KALDI_ASSERT(bool_vec->size() == size);
-    std::vector<std::pair<int32, bool> > pairs(size);
-    for (int32 i = 0; i < size; i++) {
-      pairs[i].first = (*int_vec)[i];
-      pairs[i].second = (*bool_vec)[i];
-    }
-    SortAndUniq(&pairs);
-    int32 new_size = pairs.size();
-    if (new_size != size) {
-      int_vec->resize(new_size);
-      bool_vec->resize(new_size);
-    }
-    for (int32 i = 0; i < new_size; i++) {
-      (*int_vec)[i] = pairs[i].first;
-      (*bool_vec)[i] = pairs[i].second;
-      if (i > 0) {
-        KALDI_ASSERT((*int_vec)[i] != (*int_vec)[i-1] && "Component lists the "
-                     "same input as both optional and not optional");
-      }      
-    }
-  }
-}
-
 
 void ComputeComputationGraph(const ComputationRequest &request,
                              const Nnet &nnet,
@@ -256,10 +194,9 @@ void ComputeComputationGraph(const ComputationRequest &request,
   while (!queue.empty()) {
     int32 cindex_id = queue.back();
     queue.pop_back();
-    if (static_cast<int32>(graph->dependencies.size()) <= cindex_id) {
+    if (static_cast<int32>(graph->dependencies.size()) <= cindex_id)
       graph->dependencies.resize(cindex_id + 1);
-      graph->optional.resize(cindex_id + 1);
-    }
+
     if (graph->is_input[cindex_id])
       continue;
     Cindex cindex = graph->cindexes[cindex_id];
@@ -270,8 +207,6 @@ void ComputeComputationGraph(const ComputationRequest &request,
     const NetworkNode &node = nnet.GetNode(n);
 
     std::vector<Cindex> input_cindexes;
-    std::vector<bool> is_optional;  // says whether each required cindex is
-                                    // optional or not (only for kComponent).
     
     // the following switch statement sets up "input_cindexes" and
     // "is_optional".
@@ -279,7 +214,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
       case NetworkNode::kDescriptor: {
         // desc describes how this node obtains its input from other nodes.
         const Descriptor &desc = node.descriptor;
-        desc.MapToInputs(index, &input_cindexes);
+        desc.GetDependencies(index, &input_cindexes);
         break;
       }
       case NetworkNode::kComponent: {
@@ -292,8 +227,6 @@ void ComputeComputationGraph(const ComputationRequest &request,
         // input, of type kDescriptor
         KALDI_ASSERT(nnet.GetNode(n-1).node_type ==
                      NetworkNode::kDescriptor);
-        if (!request.use_optional_dependencies)
-          RemoveOptionalInputs(&input_indexes, &is_optional);
         
         input_cindexes.resize(input_indexes.size());
         for (size_t i = 0; i < input_indexes.size(); i++) {
@@ -312,7 +245,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
         KALDI_ERR << "Invalid node type";
     }
     std::vector<int32> &this_dep = graph->dependencies[cindex_id];
-    std::vector<bool> &this_opt = graph->optional[cindex_id];
+
     int32 num_dependencies = input_cindexes.size();
     this_dep.resize(num_dependencies);
     for (size_t i = 0; i < num_dependencies; i++) {
@@ -323,9 +256,9 @@ void ComputeComputationGraph(const ComputationRequest &request,
       if (is_new)
         queue.push_back(dep_cindex_id);
     }
-    this_opt = is_optional;
+
     // remove duplicates of dependencies.
-    SortAndUniqInSync(&this_dep, &this_opt);
+    SortAndUniq(&this_dep);
   }
 }
 

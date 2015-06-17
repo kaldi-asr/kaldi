@@ -99,7 +99,7 @@ class ForwardingDescriptor {
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const = 0;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const = 0;
   
   virtual ~ForwardingDescriptor() { }
   ForwardingDescriptor() { }
@@ -113,7 +113,7 @@ class SimpleForwardingDescriptor: public ForwardingDescriptor {
   virtual Cindex MapToInput(const Index &index) const;
   virtual int32 Dim(const Nnet &nnet) const;
   virtual ForwardingDescriptor *Copy() const;
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
   
   // Write to string that will be one line of a config-file-like format.  The
   // opposite of Parse.
@@ -141,7 +141,7 @@ class OffsetForwardingDescriptor: public ForwardingDescriptor {
   
   virtual int32 Modulus() const { return src_->Modulus(); }
   
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
   
   // takes ownership of src.
   OffsetForwardingDescriptor(ForwardingDescriptor *src,
@@ -168,7 +168,7 @@ class SwitchingForwardingDescriptor: public ForwardingDescriptor {
   
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of items in src.
   SwitchingForwardingDescriptor(std::vector<ForwardingDescriptor*> &src):
@@ -197,7 +197,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of src.
   RoundingForwardingDescriptor(ForwardingDescriptor *src,
@@ -226,7 +226,7 @@ class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {
 
   /// This function appends to "node_indexes" all the node indexes
   // that this descriptor may access.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
 
   // takes ownership of src.
   ReplaceIndexForwardingDescriptor(ForwardingDescriptor *src,
@@ -255,13 +255,11 @@ class CindexSet;
 class SumDescriptor {
  public:
 
-  /// Given an Index at the output of this Descriptor, output a list of Cindexes
-  /// that describes what inputs we potentially depend on.  The output list is
-  /// not necessarily sorted, and this function doesn't make sure that it's unique,
-  /// but it should be unique in allowed expressions, and we'll later be checking
-  /// this in IsComputable().  [Basically, we forbid expressions like x + x within
-  /// the sum, to avoid having to deal with coefficients].
-  virtual void MapToInputs(const Index &ind,
+  /// Given an Index at the output of this Descriptor, append to "dependencies"
+  /// a list of Cindexes that describes what inputs we potentially depend on.
+  /// The output list is not necessarily sorted, and this function doesn't make
+  /// sure that it's unique.
+  virtual void GetDependencies(const Index &ind,
                            std::vector<Cindex> *dependencies) const = 0;
 
   /// This function exists to enable us to manage optional dependencies,
@@ -270,24 +268,22 @@ class SumDescriptor {
   /// and the user represents that "cindex_set" is the set of Cindexes are
   /// available to the computation; then this function will return true if we
   /// can compute the expression given these inputs; and if so, will output to
-  /// "required_inputs" the set of Cindexes that this expression will be a
-  /// summation over.  We ensure that this is unique by just dying if the same
-  /// Cindex appears twice in the sum; this becomes a limitation on the kinds of
-  /// expressions the user is allowed to create.
+  /// "input_terms" the list of Cindexes that this expression will be a
+  /// summation over.
   ///
   ///  @param [in] ind  The index that we want to compute at the output of the
   ///                   Descriptor.
   ///  @param [in] cindex_set  The set of Cindexes that are available at the
   ///                   input of the Descriptor.
-  ///  @param [out] required_inputs If non-NULL, if this function returns true
-  ///                   the inputs that will actually participate in the
-  ///                   computation are output to here.  Else (if non-NULL) it
-  ///                   will be set to the empty vector.
+  ///  @param [out] input_terms If non-NULL, if this function returns true then
+  ///                  to this vector will be *appended* the inputs that will
+  ///                  actually participate in the computation.  Else (if non-NULL) it
+  ///                  will be left unchanged.
   ///  @return Returns true if this output is computable given the provided
   ///          inputs.
   virtual bool IsComputable(const Index &ind,
                             const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const;
+                            std::vector<Cindex> *input_terms) const = 0;
   
   virtual int32 Dim(const Nnet &nnet) const = 0;
 
@@ -297,7 +293,7 @@ class SumDescriptor {
 
   // This function appends to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const = 0;
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const = 0;
   
   // see Modulus function of ForwardingDescriptor for explanation.
   virtual int32 Modulus() const = 0;
@@ -313,7 +309,7 @@ class SumDescriptor {
   /// Write in config-file format.  Conventional Read and Write methods are not
   /// supported.
   virtual void WriteConfig(std::ostream &os,
-                           const std::vector<std::string> &node_names) const;
+                           const std::vector<std::string> &node_names) const = 0;
 
 
 };
@@ -324,14 +320,17 @@ class SumDescriptor {
 /// an optional quantity, like (A if defined, else zero).
 class UnarySumDescriptor: public SumDescriptor {
  public:
-  virtual void MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies) const;
+  virtual void GetDependencies(const Index &ind,
+                               std::vector<Cindex> *dependencies) const;
   virtual bool IsComputable(const Index &ind,
                             const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const;
+                            std::vector<Cindex> *input_terms) const;
   virtual int32 Dim(const Nnet &nnet) const;
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
-  virtual int32 Modulus() const;
+
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual int32 Modulus() const { return src_->Modulus(); }
   /// written form is: if required_ == true, "<written-form-of-src>"
   /// else "IfDefined(<written-form-of-src>)".
   virtual void WriteConfig(std::ostream &os,
@@ -359,13 +358,16 @@ class BinarySumDescriptor: public SumDescriptor {
     kSum,  // A + B
     kFailover, // A if defined, else B.
   };
-  virtual void MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies) const;
+  virtual void GetDependencies(const Index &ind,
+                               std::vector<Cindex> *dependencies) const;
   virtual bool IsComputable(const Index &ind,
                             const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const;
+                            std::vector<Cindex> *input_terms) const;
   virtual int32 Dim(const Nnet &nnet) const;
-  virtual void ComputeDependencies(std::vector<int32> *node_indexes) const;
+  
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
   virtual int32 Modulus() const;
   /// Written form is: if op_ == kSum then "Sum(<src1>, <src2>)";
   /// if op_ == kFailover, then "Failover(<src1>, <src2>)"
@@ -404,23 +406,41 @@ class Descriptor {
   // if parts_.size() == 1, written form is just "<written-form-of-part0>"
   // otherwise, written form is "Append(<written-form-of-part0>, <written-form-of-part1>,  ... )".
   void WriteConfig(std::ostream &os,
-                   const std::vector<std::string> &node_names);
+                   const std::vector<std::string> &node_names) const;
   
-  /// This function outputs [rather than appends] to "dependencies" all Cindexes
-  /// that may be be used to to compute this index.  This list is not guaranteed
-  /// unique, i.e. it may contain repeats.
-  void MapToInputs(const Index &index,
-                   std::vector<Cindex> *dependencies) const;
+  /// This function exists to enable us to manage optional dependencies,
+  /// i.e. for making sense of expressions like (A + (B is present)) and (A if
+  /// present; if not, B).  Suppose we are trying to compute the index "ind",
+  /// and the user represents that "cindex_set" is the set of Cindexes are
+  /// available to the computation; then this function will return true if we
+  /// can compute the expression given these inputs; and if so, will output to
+  /// "input_terms" the list of Cindexes (not necessarily unique) that this
+  /// expression will include.  Otherwise it will return false and set
+  /// input_terms to the empty vector.
+  ///
+  ///  @param [in] ind  The index that we want to compute at the output of the
+  ///                   Descriptor.
+  ///  @param [in] cindex_set  The set of Cindexes that are available at the
+  ///                   input of the Descriptor.
+  ///  @param [out] input_terms If non-NULL, if this function returns true then
+  ///                  to this vector will be *appended* the inputs that will
+  ///                  actually participate in the computation.  Else (if non-NULL) it
+  ///                  will be left unchanged.
+  ///  @return Returns true if this output is computable given the provided
+  ///          inputs.
+  void GetDependencies(const Index &index,
+                       std::vector<Cindex> *input_terms) const;
 
   /// Has the same purpose and interface as the IsComputable function of the
-  /// SumDescriptor function.
+  /// SumDescriptor function.   Outputs to input_terms rather than appending
+  /// to it, though.  input_terms will not be sorted or have repeats removed.
   bool IsComputable(const Index &ind,
                     const CindexSet &cindex_set,                    
-                    std::vector<Cindex> *required_inputs) const;
+                    std::vector<Cindex> *input_terms) const;
   
-  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // This function outputs to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
-  void ComputeDependencies(std::vector<int32> *node_indexes) const {}
+  void GetNodeDependencies(std::vector<int32> *node_indexes) const {}
 
   // see Modulus function of ForwardingDescriptor for explanation.
   int32 Modulus() const;

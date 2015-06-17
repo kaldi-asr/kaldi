@@ -14,7 +14,7 @@ OBJFILES = nnet-compile.o nnet-component-itf.o nnet-simple-component.o \
   nnet-general-component.o nnet-parse.o natural-gradient-online.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
-  nnet-example.o nnet-compile-utils.o
+  nnet-example.o nnet-compile-utils.o nnet-nnet.o
 
 LIBNAME = kaldi-nnet3
 

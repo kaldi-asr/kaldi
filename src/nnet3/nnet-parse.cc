@@ -92,10 +92,22 @@ bool ConfigLine::GetValue(const std::string &key, BaseFloat *value) {
   std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
   for (; it != data_.end(); ++it) {
     if (it->first == key) {
-      if (!ConvertStringToReal((it->second).first, value)) {
-        // KALDI_WARN << "Bad option " << (it->second).first;
+      if (!ConvertStringToReal((it->second).first, value))
         return false;
-      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::GetValue(const std::string &key, int32 *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!ConvertStringToInteger((it->second).first, value))
+        return false;
       (it->second).second = true;
       return true;
     }

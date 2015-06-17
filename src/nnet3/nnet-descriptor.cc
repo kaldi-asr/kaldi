@@ -18,6 +18,8 @@
 #include <iterator>
 #include <sstream>
 #include "nnet3/nnet-descriptor.h"
+#include "nnet3/nnet-nnet.h"
+#include "nnet3/nnet-computation-graph.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -123,25 +125,19 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
                         
 
 
-void Descriptor::MapToInputs(
+void Descriptor::GetDependencies(
     const Index &index,
     std::vector<Cindex> *dependencies) const {
   dependencies->clear();
   std::vector<SumDescriptor*>::const_iterator sum_iter = parts_.begin(),
       sum_end = parts_.end();
   std::vector<Cindex> this_part;
-  for (; sum_iter != sum_end; ++sum_iter) {
-    const SumDescriptor &sum_descriptor = **sum_iter;
-    sum_descriptor.MapToInputs(index, &this_part);
-    dependencies->insert(dependencies->end(),
-                         this_part.begin(),
-                         this_part.end());
-  }
+  for (; sum_iter != sum_end; ++sum_iter)
+    (*sum_iter)->GetDependencies(index, dependencies);
 }
 
-// TODO
 int32 SimpleForwardingDescriptor::Dim(const Nnet &nnet) const {
-  return 0;
+  return nnet.GetNode(src_node_).Dim(nnet);
 }
 
 Cindex SimpleForwardingDescriptor::MapToInput(const Index &index) const {
@@ -152,6 +148,11 @@ ForwardingDescriptor *SimpleForwardingDescriptor::Copy() const {
   return new SimpleForwardingDescriptor(src_node_);
 }
 
+void SimpleForwardingDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  node_indexes->push_back(src_node_);
+}
+
 void SimpleForwardingDescriptor::WriteConfig(
     std::ostream &os,
     const std::vector<std::string> &node_names) const {
@@ -160,9 +161,9 @@ void SimpleForwardingDescriptor::WriteConfig(
   os << node_names[src_node_];
 }
 
-// TODO
-void OffsetForwardingDescriptor::ComputeDependencies(std::vector<int32> *node_indexes) const {
-  return;
+void OffsetForwardingDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  src_->GetNodeDependencies(node_indexes);
 }
 
 Cindex OffsetForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -189,10 +190,10 @@ void OffsetForwardingDescriptor::WriteConfig(
 }
 
 
-// TODO
-void SwitchingForwardingDescriptor::ComputeDependencies(
+void SwitchingForwardingDescriptor::GetNodeDependencies(
                                       std::vector<int32> *node_indexes) const {
-  return;
+  for (size_t i = 0; i < src_.size(); i++)
+    src_[i]->GetNodeDependencies(node_indexes);
 }
 
 Cindex SwitchingForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -225,10 +226,9 @@ void SwitchingForwardingDescriptor::WriteConfig(
   os << ")";
 }
 
-// TODO
-void RoundingForwardingDescriptor::ComputeDependencies(
-                                     std::vector<int32> *node_indexes) const {
-  return;
+void RoundingForwardingDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  src_->GetNodeDependencies(node_indexes);
 }
 
 Cindex RoundingForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -253,11 +253,9 @@ void RoundingForwardingDescriptor::WriteConfig(
   os << ", " << t_modulus_ << ")";
 }
 
-// TODO
-void ReplaceIndexForwardingDescriptor::ComputeDependencies(
-                                         std::vector<int32> *node_indexes)
-                                         const {
-  return;
+void ReplaceIndexForwardingDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  src_->GetNodeDependencies(node_indexes);
 }
 
 Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
@@ -288,34 +286,24 @@ void ReplaceIndexForwardingDescriptor::WriteConfig(
      << value_ << ")";
 }
 
-// TODO
-bool SumDescriptor::IsComputable(const Index &ind,
-                            const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const {
-  return true;
-}
-
-// TODO
-void SumDescriptor::WriteConfig(std::ostream &os,
-       const std::vector<std::string> &node_names) const {
-  return;
-}
-
 SumDescriptor *UnarySumDescriptor::Copy() const {
   return new UnarySumDescriptor(src_->Copy(), required_);
 }
 
-//TODO
-void UnarySumDescriptor::MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies) const {
-  return;
+void UnarySumDescriptor::GetDependencies(const Index &ind,
+                                         std::vector<Cindex> *dependencies) const {
+  dependencies->push_back(src_->MapToInput(ind));
 }
 
-//TODO
-bool UnarySumDescriptor::IsComputable(const Index &ind,
-                            const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const {
-  return true;
+bool UnarySumDescriptor::IsComputable(
+    const Index &ind,
+    const CindexSet &cindex_set,
+    std::vector<Cindex> *required_inputs) const {
+  Cindex c = src_->MapToInput(ind);
+  bool src_present  = cindex_set(c);
+  if (src_present && required_inputs)
+    required_inputs->push_back(c);
+  return (src_present || !required_);
 }
 
 void UnarySumDescriptor::WriteConfig(
@@ -326,50 +314,80 @@ void UnarySumDescriptor::WriteConfig(
   if (!required_) os << ")";  
 }
 
-// TODO
 int32 UnarySumDescriptor::Dim(const Nnet &nnet) const {
-  return 0;
+  return src_->Dim(nnet);
 }
 
-// TODO
-void UnarySumDescriptor::ComputeDependencies(
-                           std::vector<int32> *node_indexes) const {
-  return;
-}
-
-// TODO
-int32 UnarySumDescriptor::Modulus() const {
-  return 0;
+void UnarySumDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  src_->GetNodeDependencies(node_indexes);
 }
 
 
-// TODO
-void BinarySumDescriptor::MapToInputs(const Index &ind,
-                           std::vector<Cindex> *dependencies) const {
-  return;
+void BinarySumDescriptor::GetDependencies(
+    const Index &ind, std::vector<Cindex> *dependencies) const {
+  src1_->GetDependencies(ind, dependencies);
+  src2_->GetDependencies(ind, dependencies);
 }
 
-// TODO
-bool BinarySumDescriptor::IsComputable(const Index &ind,
-                            const CindexSet &cindex_set,
-                            std::vector<Cindex> *required_inputs) const {
-  return true;
+bool BinarySumDescriptor::IsComputable(
+    const Index &ind,
+    const CindexSet &cindex_set,
+    std::vector<Cindex> *required_inputs) const {
+  KALDI_PARANOID_ASSERT(op_ == kSum || op_ == kFailover);
+  std::vector<Cindex> src1_inputs, src2_inputs;
+  bool r = (required_inputs != NULL);
+  bool src1_computable = src1_->IsComputable(ind, cindex_set,
+                                             r ? &src1_inputs: NULL),
+      src2_computable = src2_->IsComputable(ind, cindex_set,
+                                            r ? &src2_inputs : NULL);
+  if (op_ == kSum) {
+    if (src1_computable && src2_computable) {
+      if (r) {
+        required_inputs->insert(required_inputs->end(),
+                                src1_inputs.begin(), src1_inputs.end());
+        required_inputs->insert(required_inputs->end(),
+                                src2_inputs.begin(), src2_inputs.end());
+      }
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    KALDI_ASSERT(op_ == kFailover);
+    if (src1_computable) {
+      if (r)
+        required_inputs->insert(required_inputs->end(),
+                                src1_inputs.begin(), src1_inputs.end());
+      return true;
+    } else if (src2_computable) {
+      if (r) 
+        required_inputs->insert(required_inputs->end(),
+                                src2_inputs.begin(), src2_inputs.end());
+      return true;
+    } else {
+      return false;
+    }
+  }
 }
 
-// TODO
 int32 BinarySumDescriptor::Dim(const Nnet &nnet) const {
-  return 0;
+  int32 dim1 = src1_->Dim(nnet), dim2 = src2_->Dim(nnet);
+  if (dim1 != dim2)
+    KALDI_ERR << "Neural net contains " << (op_ == kSum ? "Sum" : "Failover")
+              << " expression with inconsistent dimension: " << dim1
+              << " vs. " << dim2;
+  return dim1;
 }
 
-// TODO
-void BinarySumDescriptor::ComputeDependencies(
-                            std::vector<int32> *node_indexes) const {
-  return;
+void BinarySumDescriptor::GetNodeDependencies(
+    std::vector<int32> *node_indexes) const {
+  src1_->GetNodeDependencies(node_indexes);
+  src2_->GetNodeDependencies(node_indexes);
 }
 
-// TODO
 int32 BinarySumDescriptor::Modulus() const {
-  return 0;
+  return Lcm(src1_->Modulus(), src2_->Modulus());
 }
 
 SumDescriptor *BinarySumDescriptor::Copy() const {
@@ -420,11 +438,6 @@ SumDescriptor* SumDescriptor::Parse(
   }
 }
 
-void SimpleForwardingDescriptor::ComputeDependencies(
-    std::vector<int32> *node_indexes) const {
-  node_indexes->push_back(src_node_);  
-}
-
 int32 SwitchingForwardingDescriptor::Modulus() const {
   int32 ans = src_.size();;
   for (int32 i = 0; i < src_.size(); i++)
@@ -433,7 +446,7 @@ int32 SwitchingForwardingDescriptor::Modulus() const {
 }
 
 void Descriptor::WriteConfig(std::ostream &os,
-                             const std::vector<std::string> &node_names) {
+                             const std::vector<std::string> &node_names) const {
   KALDI_ASSERT(parts_.size() > 0);
   if (parts_.size() == 1)
     parts_[0]->WriteConfig(os, node_names);
@@ -499,6 +512,21 @@ int32 Descriptor::Modulus() const {
   return ans;  
 }
 
+
+bool Descriptor::IsComputable(const Index &ind,
+                              const CindexSet &cindex_set,                    
+                              std::vector<Cindex> *input_terms) const {
+  input_terms->clear();
+  for (size_t i = 0; i < parts_.size(); i++) {
+    // if any of the parts is not computable, the whole is not computable.
+    if (!parts_[i]->IsComputable(ind, cindex_set, input_terms)) {
+      if (input_terms)
+        input_terms->clear();
+      return false;
+    }
+  }
+  return true;
+}
 
 } // namespace nnet3
 } // namespace kaldi
