@@ -68,7 +68,7 @@ class LmFstConverter {
   typedef fst::StdArc::Weight LmWeight;
   typedef fst::StdArc::StateId StateId;
   
-  typedef unordered_map<StateId, StateId> BkStateMap;
+  typedef unordered_map<StateId, StateId> BackoffStateMap;
   typedef unordered_map<std::string, StateId, StringHasher> HistStateMap;
 
  public:
@@ -110,19 +110,17 @@ class LmFstConverter {
                             int kstart,
                             int kend,
                             fst::StdVectorFst *pfst,
-                            bool &newlyAdded);
+                            bool &newly_added);
 
   StateId FindState(const std::string str) {
-    HistStateMap::const_iterator it = histState_.find(str);
-     if (it == histState_.end()) {
-       return -1;
-     }
-     return it->second;
+    HistStateMap::const_iterator it = hist_state_.find(str);
+     if (it == hist_state_.end()) return -1;
+     else return it->second;
   }
 
   bool use_natural_log_;
-  BkStateMap bkState_;
-  HistStateMap histState_;
+  BackoffStateMap backoff_state_;
+  HistStateMap hist_state_;
 };
 
 #ifndef HAVE_IRSTLM
