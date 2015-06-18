@@ -72,6 +72,30 @@ void Compiler::AddCommands(NnetComputation *computation) {
   DestroyMatrices(computation);
 }
 
+
+void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
+                            std::vector<bool> *step_needs_deriv) {
+  resize, false.
+  //  if don't need any derivs, return.
+
+  // check that at least one output provides derivative; else die.
+  
+  for (step) {
+    // if is input step:
+    //   and request for it wants derivative -> need derivative
+    // if it is dim-range step:
+    //   if input wants derivative -> need derivative.
+    // if it is descriptor step:
+    //   if input wants derivative -> need derivative. [note: add TODO regarding
+    //   unnecessary computation when there are multiple outputs, not all of which have derivatives.]
+    // if it is component step:
+
+
+    
+  }
+}
+
+      
 // Note: "by_step" is an input but is passed as a pointer because this
 // function destroys it.
 void Compiler::CreateStepInfo(
@@ -109,7 +133,7 @@ void Compiler::CreateStepInfo(
       this_info.value = computation->NewSubMatrix(steps_[input_step].value,
                                                   node.dim_offset, node.dim);
       if (need_derivs)
-        this_info.value = computation->NewSubMatrix(steps_[input_step].value,
+        this_info.deriv = computation->NewSubMatrix(steps_[input_step].deriv,
                                                     node.dim_offset, node.dim);
     }
   }

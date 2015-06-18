@@ -85,7 +85,8 @@ class NormalizeComponent: public NonlinearComponent {
   explicit NormalizeComponent(int32 dim): NonlinearComponent(dim) { }
   explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other) { }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|kBackpropInPlace;
+    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
+        kBackpropInPlace|kBackpropStoresStats;
   }
   NormalizeComponent() { }
   virtual std::string Type() const { return "NormalizeComponent"; }
@@ -116,7 +117,7 @@ class SigmoidComponent: public NonlinearComponent {
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kBackpropStoresStats;
   }
   virtual Component* Copy() const { return new SigmoidComponent(*this); }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -141,7 +142,8 @@ class TanhComponent: public NonlinearComponent {
   virtual std::string Type() const { return "TanhComponent"; }
   virtual Component* Copy() const { return new TanhComponent(*this); }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|
+        kBackpropStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -166,7 +168,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
   virtual std::string Type() const { return "RectifiedLinearComponent"; }
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace;
+    return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace|
+        kBackpropStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -293,7 +296,7 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput;
+    return kSimpleComponent|kBackpropNeedsOutput|kBackpropStoresStats;;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,

@@ -174,13 +174,12 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 Component *to_update, // may be NULL; may be identical
                                 // to "this" or different.
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
-  // The element by element equation would be:
-  // in_deriv = out_deriv * out_value * (1.0 - out_value);
 
-  // note, the following will work even if in_deriv == &out_deriv.
-  if (to_update == NULL) {
+  if (to_update == NULL && in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
-  } else {
+  } else if (to_update != NULL && in_deriv != NULL) {
+    // The element by element equation would be:
+    // in_deriv = out_deriv * out_value * (1.0 - out_value);
     in_deriv->Set(1.0);
     in_deriv->AddMat(-1.0, out_value);
     // now in_deriv = 1.0 - out_value [element by element]
@@ -190,6 +189,14 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
     dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
                                                               in_deriv);
     in_deriv->MulElements(out_deriv);    
+  } else if (to_update != NULL && in_deriv == NULL) {
+    CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(), out_value.NumCols(),
+                                   kUndefined);
+    temp_deriv.Set(1.0);
+    temp_deriv.AddMat(-1.0, out_value);
+    temp_deriv.MulElements(out_value);
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              temp_deriv);
   }
 }
 
@@ -231,9 +238,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
   // The element by element equation would be:
   // in_deriv = out_deriv * out_value * (1.0 - out_value);
 
-  if (to_update == NULL) {  // don't need the stats on average derivatives...
+  if (to_update == NULL && in_deriv != NULL) {
+    // don't need the stats on average derivatives...
     in_deriv->DiffTanh(out_value, out_deriv);
-  } else {
+  } else if (to_update != NULL && in_deriv != NULL) {
     /*
       Note on the derivative of the tanh function:
       tanh'(x) = sech^2(x) = -(tanh(x)+1) (tanh(x)-1) = 1 - tanh^2(x)
@@ -251,6 +259,13 @@ void TanhComponent::Backprop(const std::string &debug_info,
     dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
                                                               in_deriv);
     in_deriv->MulElements(out_deriv);    
+  } else if (to_update != NULL && in_deriv == NULL) {
+    CuMatrix<BaseFloat> temp_deriv(out_value);
+    temp_deriv.ApplyPow(2.0);
+    temp_deriv.Scale(-1.0);
+    temp_deriv.Add(1.0);
+    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                              temp_deriv);
   }
 }
 
@@ -271,15 +286,25 @@ void RectifiedLinearComponent::Backprop(
     const CuMatrixBase<BaseFloat> &out_deriv,
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
-  in_deriv->CopyFromMat(out_value);
-  in_deriv->ApplyHeaviside();
-  // Now in_deriv(i, j) equals (out_value(i, j) > 0.0 ? 1.0 : 0.0),
-  // which is the derivative of the nonlinearity (well, except at zero
-  // where it's undefined).
-  if (to_update != NULL)
-    dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
-                                                              in_deriv);
-  in_deriv->MulElements(out_deriv);
+
+  if (in_deriv != NULL) {
+    in_deriv->CopyFromMat(out_value);
+    in_deriv->ApplyHeaviside();
+    // Now in_deriv(i, j) equals (out_value(i, j) > 0.0 ? 1.0 : 0.0),
+    // which is the derivative of the nonlinearity (well, except at zero
+    // where it's undefined).
+    if (to_update != NULL)
+      dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                                in_deriv);
+    in_deriv->MulElements(out_deriv);
+  } else if (to_update != NULL) {
+    CuMatrix<BaseFloat> temp_deriv(out_value);
+    temp_deriv.ApplyHeaviside();
+    if (to_update != NULL)
+      dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
+                                                                temp_deriv);
+    
+  }
 }
 
 
@@ -999,6 +1024,16 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
                                 Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv == NULL && to_update_in == NULL)
+    return;
+  else if (in_deriv == NULL) {
+    // create a temporary and recurse, since it is actually required in the code.
+    CuMatrix<BaseFloat> in_deriv_temp(out_value.NumRows(), out_value.NumCols(),
+                                      kUndefined), empty;
+    Backprop(debug_info, indexes, empty, out_value, out_deriv, to_update_in,
+             &in_deriv_temp);
+    return;
+  }
   /*
     Note on the derivative of the softmax function: let it be
     p_i = exp(x_i) / sum_i exp_i

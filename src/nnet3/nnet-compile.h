@@ -59,9 +59,10 @@ class Compiler {
     int32 deriv;  // sub-matrix index of derivative at the output of this step; zero
                   // if not used (note: index zero is reserved for the empty
                   // matrix).
-
+    
     // precomputed_indexes_index is the index into the
-    // component_precomputed_indexes array in the NnetComputation.
+    // component_precomputed_indexes array in the NnetComputation, or zero if
+    // none needed.
     int32 precomputed_indexes_index;
 
     std::vector<Index> output_indexes;      // Indexes that this step outputs.
@@ -88,6 +89,12 @@ class Compiler {
 
   // this sets up cindex_id_to_location_.
   void CreateLocationInfo(const std::vector<std::vector<int32> > &by_step);
+
+  // This function outputs to "steps_needs_deriv" a vector saying for each step,
+  // whether we need to allocate the matrix of derivatives for that step
+  // (interpret this as being at the output of that step).
+  void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
+                              std::vector<bool> *step_needs_deriv);
   
   // this sets up steps_, destroying the input "by_step" in the process.  It
   // also sets various matrix and sub-matrix sizes in "computation".

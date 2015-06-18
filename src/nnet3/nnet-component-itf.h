@@ -47,26 +47,29 @@ enum ComponentProperties {
                                // linear function of its parameters, i.e. alpha times
                                // parameters gives you alpha times output.  This is true
                                // for all updatable components we envisage.
-  kBackpropNeedsInput  = 0x010,  // true if backprop operation needs access to
-                                 // forward-pass input.
-  kBackpropNeedsOutput = 0x020,  // true if backprop operation needs access to
-                                 // forward-pass output (e.g. true for Sigmoid).
-  kPropagateInPlace = 0x040,  // true if we can do the propagate operation in-place
+  kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
                               // (input and output matrices are the same).
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
-  kBackpropInPlace = 0x080,   // true if we can do the backprop operation in-place
-                             // (input and output matrices may be the same).
-  kPropagateAdds = 0x100,  // true if the Propagate function adds to, rather
+  kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kBackpropAdds = 0x200,   // true if the Backprop function adds to, rather than
-                           // setting, its output.  The Component chooses
+  kReordersIndexes = 0x040,  // true if the ReordersIndexes function might reorder
+                             // the indexes (otherwise we can skip calling it).
+  kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
+                           // setting, the "in_deriv" output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kReordersIndexes = 0x400,  // true if the ReordersIndexes function might reorder
-                             // the indexes (otherwise we can skip calling it).
+  kBackpropNeedsInput  = 0x100,  // true if backprop operation needs access to
+                                 // forward-pass input.
+  kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
+                                 // forward-pass output (e.g. true for Sigmoid).
+  kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
+                             // (input and output matrices may be the same).
+  kBackpropStoresStats = 0x800  // true if the backprop operation stores
+                                // statistics e.g. on average node activations
+                                // (as it does for Tanh, Sigmoid and Softmax).
 };
 
 
@@ -120,10 +123,12 @@ class Component {
   ///      Properties()&kBackpropNeedsOutput == 0
   ///   \param [in] out_deriv  The derivative at the output of this component.
   ///   \param [out] to_update  If model update is desired, the Component
-  ///       to be updated, else NULL.  Does not have to be idential to this.
+  ///       to be updated, else NULL.  Does not have to be identical to this.
   ///   \param [out] in_deriv   The derivative at the input of this component,
   ///       if needed (else NULL).   If  Properties()&kBackpropInPlace, may be
-  ///       the same matrix as out_deriv.
+  ///       the same matrix as out_deriv.  If Properties()&kBackpropAdds, this
+  ///       is added to by the Backprop routine, else it is set.  The component
+  ///       code chooses which mode to work in, based on convenience.
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,

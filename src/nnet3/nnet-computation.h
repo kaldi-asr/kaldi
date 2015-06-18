@@ -84,13 +84,21 @@ struct ComputationRequest {
   std::vector<IoSpecification> outputs;
 
   // if need_model_derivative is true, then we'll be doing either model training
-  // or model-derivative computation.
+  // or model-derivative computation, so updatable components need to be backprop'd.
   bool need_model_derivative;
+
+  // you should set need_component_stats to true if you will not need the
+  // average-activation and average-derivative statistics stored by components
+  // such as Tanh, Sigmoid and Softmax.
+  // To simplify debugging and reduce the number of code paths, we do not allow
+  // you to set need_component_stats = true but need_model_derivative = false.
+  bool need_component_stats;
 
   // misc_info is for extensibility to things that don't easily fit into the framework
   MiscComputationInfo misc_info;
 
-  ComputationRequest(): need_model_derivative(false) { }
+  ComputationRequest(): need_model_derivative(false),
+                        need_component_stats(false) { }
 
   // returns true if any of inputs[*].has_deriv is true, or model_to_update !=
   // NULL.
