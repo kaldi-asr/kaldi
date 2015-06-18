@@ -75,12 +75,12 @@ void Compiler::AddCommands(NnetComputation *computation) {
 
 void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
                             std::vector<bool> *step_needs_deriv) {
-  resize, false.
+  // resize, false.
   //  if don't need any derivs, return.
 
   // check that at least one output provides derivative; else die.
   
-  for (step) {
+  //for (step) {
     // if is input step:
     //   and request for it wants derivative -> need derivative
     // if it is dim-range step:
@@ -92,7 +92,7 @@ void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
 
 
     
-  }
+  //}
 }
 
       

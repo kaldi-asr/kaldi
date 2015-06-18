@@ -196,7 +196,7 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
     temp_deriv.AddMat(-1.0, out_value);
     temp_deriv.MulElements(out_value);
     dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
-                                                              temp_deriv);
+                                                              &temp_deriv);
   }
 }
 
@@ -265,7 +265,7 @@ void TanhComponent::Backprop(const std::string &debug_info,
     temp_deriv.Scale(-1.0);
     temp_deriv.Add(1.0);
     dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
-                                                              temp_deriv);
+                                                              &temp_deriv);
   }
 }
 
@@ -302,7 +302,7 @@ void RectifiedLinearComponent::Backprop(
     temp_deriv.ApplyHeaviside();
     if (to_update != NULL)
       dynamic_cast<NonlinearComponent*>(to_update)->UpdateStats(out_value,
-                                                                temp_deriv);
+                                                                &temp_deriv);
     
   }
 }

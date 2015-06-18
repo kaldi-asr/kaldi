@@ -24,7 +24,7 @@ namespace nnet3 {
 
 bool ComputationRequest::NeedDerivatives() const {
   // check for disallowed combination of options.
-  KALDI_ASSERT(!(need_component_stats && !need_model_derivative);
+  KALDI_ASSERT(!(need_component_stats && !need_model_derivative));
   if (need_model_derivative)
     return true;
   for (size_t i = 0; i < inputs.size(); i++)

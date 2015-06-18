@@ -37,14 +37,14 @@ void SplitLocations(
   // computing a histogram of the submat indexes in the submat_lists
   // each occurence in a given list is considered unique so we maintain
   // a vector to count each occurence seperately
-  std::unordered_map<int32, std::vector<int32> > submat_histogram;
+  unordered_map<int32, std::vector<int32> > submat_histogram;
   int32 max_submat_list_size = 0;  // max size of a submat_list 
 
   for (int32 i = 0; i < submat_lists.size(); i++) {
     if (submat_lists[i].size() > max_submat_list_size)
       max_submat_list_size = submat_lists[i].size();
     // compute a histogram of occurences of a submat in each list
-    std::unordered_map<int32, int32> submat_histogram_for_list; 
+    unordered_map<int32, int32> submat_histogram_for_list; 
     for (int32 j = 0; j < submat_lists[i].size(); j++)  {
       total_elements += 1;
       std::unordered_map<int32, int32>::const_iterator iter1 =
