@@ -42,7 +42,7 @@ local/simu_enhan_chime3_data_prep.sh $enhan $enhan_data || exit 1;
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=mfcc/$enhan
-for x in dt05_real_$enhan tr05_real_$enhan dt05_simu_$enhan tr05_simu_$enhan; do 
+for x in dt05_real_$enhan et05_real_$enhan tr05_real_$enhan dt05_simu_$enhan et05_simu_$enhan tr05_simu_$enhan; do 
   steps/make_mfcc.sh --nj $nj \
     data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -52,12 +52,17 @@ done
 # multi = simu + real
 utils/combine_data.sh data/tr05_multi_$enhan data/tr05_simu_$enhan data/tr05_real_$enhan
 utils/combine_data.sh data/dt05_multi_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
+utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
 
 # decode enhan speech using clean AMs
 steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_dt05_real_$enhan &
 steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_dt05_simu_$enhan &
+steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_et05_real_$enhan &
+steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_et05_simu_$enhan &
 
 # training models using enhan data
 steps/train_mono.sh --boost-silence 1.25 --nj $nj \
@@ -89,11 +94,15 @@ steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_dt05_real_$enhan &
 steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_dt05_simu_$enhan &
+steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_et05_real_$enhan &
+steps/decode_fmllr.sh --nj 4 --num-threads 4 \
+  exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_et05_simu_$enhan &
 
 wait;
 # decoded results of enhan speech using clean AMs
 local/chime3_calc_wers.sh exp/tri3b_tr05_orig_clean $enhan > exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
-head -n 11 exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
+head -n 15 exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
 # decoded results of enhan speech using enhan AMs
 local/chime3_calc_wers.sh exp/tri3b_tr05_multi_$enhan $enhan > exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result
-head -n 11 exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result
+head -n 15 exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result

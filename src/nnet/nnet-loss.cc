@@ -254,5 +254,116 @@ std::string Mse::Report() {
 }
 
 
+/* MultiTaskLoss */
+
+void MultiTaskLoss::InitFromString(const std::string& s) {
+  std::vector<std::string> v;
+  SplitStringToVector(s, ",:" /* delimiter */, false, &v);
+
+  KALDI_ASSERT(v.size()-1 % 3 == 0); // triplets,
+  KALDI_ASSERT(v[0] == "multitask"); // header,
+
+  // parse the definition of multitask loss,
+  std::vector<std::string>::iterator it(v.begin()+1); // skip header,
+  for ( ; it != v.end(); ++it) {
+    // type,
+    if (*it == "xent") {
+      loss_vec_.push_back(new Xent());
+    } else if (*it == "mse") {
+      loss_vec_.push_back(new Mse());
+    } else {
+      KALDI_ERR << "Unknown objective function code : " << *it;
+    }
+    ++it;
+    // dim,
+    int32 dim;
+    if (!ConvertStringToInteger(*it, &dim)) {
+      KALDI_ERR << "Cannot convert 'dim' " << *it << " to integer!";
+    }
+    loss_dim_.push_back(dim);
+    ++it;
+    // weight,
+    BaseFloat weight;
+    if (!ConvertStringToReal(*it, &weight)) {
+      KALDI_ERR << "Cannot convert 'weight' " << *it << " to integer!";
+    }
+    KALDI_ASSERT(weight >= 0.0);
+    loss_weights_.push_back(weight);
+  }
+
+  // build vector with starting-point offsets,
+  loss_dim_offset_.resize(loss_dim_.size()+1, 0); // 1st zero stays,
+  for (int32 i = 1; i <= loss_dim_.size(); i++) {
+    loss_dim_offset_[i] = loss_dim_offset_[i-1] + loss_dim_[i-1];
+  }
+
+  // sanity check,
+  KALDI_ASSERT(loss_vec_.size() > 0);
+  KALDI_ASSERT(loss_vec_.size() == loss_dim_.size());
+  KALDI_ASSERT(loss_vec_.size() == loss_weights_.size());
+}
+
+void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat>& net_out, 
+            const Posterior& post,
+            CuMatrix<BaseFloat>* diff) {
+  int32 num_frames = net_out.NumRows(),
+    num_output = net_out.NumCols();
+  KALDI_ASSERT(num_frames == post.size());
+  KALDI_ASSERT(num_output == loss_dim_offset_.back()); // sum of loss-dims,
+
+  // convert posterior to matrix,
+  PosteriorToMatrix(post, num_output, &tgt_mat_);
+
+  // allocate diff matrix,
+  diff->Resize(num_frames, num_output);
+  
+  // call the vector of loss functions,
+  CuMatrix<BaseFloat> diff_aux;
+  for (int32 i = 0; i < loss_vec_.size(); i++) {
+    loss_vec_[i]->Eval(frame_weights, 
+      net_out.ColRange(loss_dim_offset_[i], loss_dim_[i]),
+      tgt_mat_.ColRange(loss_dim_offset_[i], loss_dim_[i]),
+      &diff_aux);
+    // Scale the gradients,
+    diff_aux.Scale(loss_weights_[i]);
+    // Copy to diff,
+    diff->ColRange(loss_dim_offset_[i], loss_dim_[i]).CopyFromMat(diff_aux);
+  }
+}
+
+std::string MultiTaskLoss::Report() {
+  // calculate overall loss (weighted),
+  BaseFloat overall_loss = AvgLoss();
+  // copy the loss-values into a vector,
+  Vector<BaseFloat> loss_values(loss_vec_.size());
+  for (int32 i = 0; i < loss_vec_.size(); i++) {
+    loss_values(i) = loss_vec_[i]->AvgLoss();
+  }
+
+  // build the message,
+  std::ostringstream oss;
+  // individual loss reports first,
+  for (int32 i = 0; i < loss_vec_.size(); i++) {
+    oss << "Loss# " << i+1 << std::endl 
+        << "\t" << loss_vec_[i]->Report() << std::endl;
+  }
+  // overall loss is last,
+  oss << "### OVERALL LOSS ###" << std::endl;
+  oss << "AvgLoss: " << overall_loss << " (MultiTask)," << std::endl
+      << "[values  " << loss_values << "]" << std::endl
+      << "[weights " << loss_weights_ << "]" << std::endl;
+
+  return oss.str();
+}
+
+BaseFloat MultiTaskLoss::AvgLoss() {
+  BaseFloat ans(0.0);
+  for (int32 i = 0; i < loss_vec_.size(); i++) {
+    ans += loss_weights_[i] * loss_vec_[i]->AvgLoss();
+  }
+  return ans;
+}
+
 } // namespace nnet1
 } // namespace kaldi

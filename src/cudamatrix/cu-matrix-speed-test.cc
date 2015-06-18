@@ -1,6 +1,7 @@
 // cudamatrix/cu-matrix-speed-test.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+//           2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -258,6 +259,24 @@ template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixLogSoftmax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.ApplyLogSoftMaxPerRow(M);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::LogSoftmax" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
 template<typename Real> void TestCuMatrixGroupPnorm(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   int32 group_size = 4;
@@ -492,6 +511,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixMulRowsGroupMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixLogSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupPnorm<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

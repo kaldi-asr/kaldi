@@ -108,13 +108,14 @@ cat $output_dir/wav.scp | perl -e '
   foreach $seg (keys %seg2wav) {
     $index = 0;
     $step = $slen - $olen;
+    print UMAP "$seg";
     while ($seg_start{$seg} + $index * $step < $seg_end{$seg}) {
       $new_seg = $seg . "_" . sprintf("%05d", $index);
       $start = $seg_start{$seg} + $index * $step;
       $end = $start + $slen;
       defined($utt2spk{$seg}) || die "Error: speaker not found for $seg\n";
       print UO "$new_seg $utt2spk{$seg}\n";
-      print UMAP "$seg $new_seg\n"; 
+      print UMAP " $new_seg"; 
       $index += 1;
       if ($end - $olen + $mslen >= $seg_end{$seg}) {
         # last segment will have at least $mslen seconds.
@@ -125,6 +126,7 @@ cat $output_dir/wav.scp | perl -e '
         print SO "$new_seg $seg2wav{$seg} $start $end\n";
       }
     }
+    print UMAP "\n";
   }' $input_dir/utt2spk $output_dir/utt2spk \
     $input_dir/segments $output_dir/segments $output_dir/orig2utt \
     $sox $seg_length $min_seg_length $overlap_length

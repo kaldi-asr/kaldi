@@ -5,6 +5,7 @@
 //                       Go Vivace Inc.;  Yanmin Qian;  Jan Silovsky;
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
+//                2015   Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -602,9 +603,16 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     Real a = V.LogSumExp();
     V2.Set(exp(V.LogSumExp()));
     V1.DivElements(V2);
+    V2.CopyFromVec(V);
+
     Real b = V.ApplySoftMax();
     AssertEqual(V1, V);
     AssertEqual(a, b);
+
+    V.ApplyLog();
+    Real c = V2.ApplyLogSoftMax();
+    AssertEqual(V2, V);
+    AssertEqual(a, c);
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {

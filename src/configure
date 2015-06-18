@@ -181,6 +181,7 @@ function check_for_slow_expf {
 function exit_success {
   check_for_bad_gcc;
   check_for_slow_expf;
+  echo "SUCCESS"
   exit 0;
 }
 

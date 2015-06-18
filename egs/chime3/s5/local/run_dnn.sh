@@ -43,7 +43,7 @@ fi
 # make 40-dim fbank features for enhan data
 fbankdir=fbank/$enhan
 mkdir -p data-fbank
-for x in dt05_real_$enhan tr05_real_$enhan dt05_simu_$enhan tr05_simu_$enhan; do
+for x in dt05_real_$enhan et05_real_$enhan tr05_real_$enhan dt05_simu_$enhan et05_simu_$enhan tr05_simu_$enhan; do
   cp -r data/$x data-fbank
   steps/make_fbank.sh --nj $nj \
     data-fbank/$x exp/make_fbank/$x $fbankdir || exit 1;
@@ -53,6 +53,7 @@ done
 # multi = simu + real
 utils/combine_data.sh data-fbank/tr05_multi_$enhan data-fbank/tr05_simu_$enhan data-fbank/tr05_real_$enhan
 utils/combine_data.sh data-fbank/dt05_multi_$enhan data-fbank/dt05_simu_$enhan data-fbank/dt05_real_$enhan
+utils/combine_data.sh data-fbank/et05_multi_$enhan data-fbank/et05_simu_$enhan data-fbank/et05_real_$enhan
 
 # get alignment
 steps/align_fmllr.sh --nj $nj \
@@ -81,6 +82,10 @@ steps/nnet/decode.sh --nj 4 --num-threads 4 --acwt 0.10 --config conf/decode_dnn
   $dir/graph_tgpr_5k data-fbank/dt05_real_$enhan $dir/decode_tgpr_5k_dt05_real_$enhan &
 steps/nnet/decode.sh --nj 4 --num-threads 4 --acwt 0.10 --config conf/decode_dnn.config \
   $dir/graph_tgpr_5k data-fbank/dt05_simu_$enhan $dir/decode_tgpr_5k_dt05_simu_$enhan &
+steps/nnet/decode.sh --nj 4 --num-threads 4 --acwt 0.10 --config conf/decode_dnn.config \
+  $dir/graph_tgpr_5k data-fbank/et05_real_$enhan $dir/decode_tgpr_5k_et05_real_$enhan &
+steps/nnet/decode.sh --nj 4 --num-threads 4 --acwt 0.10 --config conf/decode_dnn.config \
+  $dir/graph_tgpr_5k data-fbank/et05_simu_$enhan $dir/decode_tgpr_5k_et05_simu_$enhan &
 wait;
 
 # Sequence training using sMBR criterion, we do Stochastic-GD
@@ -110,6 +115,12 @@ for ITER in 1; do
   steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --nnet $dir/${ITER}.nnet --acwt $acwt \
     exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/dt05_simu_${enhan} $dir/decode_tgpr_5k_dt05_simu_${enhan}_it${ITER} &
+  steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/et05_real_${enhan} $dir/decode_tgpr_5k_et05_real_${enhan}_it${ITER} &
+  steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/et05_simu_${enhan} $dir/decode_tgpr_5k_et05_simu_${enhan}_it${ITER} &
 done
 
 # Re-generate lattices, run 4 more sMBR iterations
@@ -135,15 +146,20 @@ for ITER in 1 2 3 4; do
   steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
     --nnet $dir/${ITER}.nnet --acwt $acwt \
     exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/dt05_simu_${enhan} $dir/decode_tgpr_5k_dt05_simu_${enhan}_it${ITER} &
+  steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/et05_real_${enhan} $dir/decode_tgpr_5k_et05_real_${enhan}_it${ITER} &
+  steps/nnet/decode.sh --nj 4 --num-threads 4 --cmd "$decode_cmd" --config conf/decode_dnn.config \
+    --nnet $dir/${ITER}.nnet --acwt $acwt \
+    exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k data-fbank/et05_simu_${enhan} $dir/decode_tgpr_5k_et05_simu_${enhan}_it${ITER} &
 done
 wait
 
 # decoded results of enhan speech using enhan DNN AMs
 local/chime3_calc_wers.sh exp/tri4a_dnn_tr05_multi_$enhan $enhan > exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result
-head -n 10 exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result
-echo "wrote the result to exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result"
+head -n 15 exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result
 # decoded results of enhan speech using enhan DNN AMs with sequence training
 ./local/chime3_calc_wers_smbr.sh exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats ${enhan} exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k \
     > exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result
-head -n 10 exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result
-echo "wrote the result to exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result"
+head -n 15 exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result
+

@@ -208,8 +208,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
 
     std::vector<Cindex> input_cindexes;
     
-    // the following switch statement sets up "input_cindexes" and
-    // "is_optional".
+    // the following switch statement sets up "input_cindexes".
     switch (node.node_type) {
       case NetworkNode::kDescriptor: {
         // desc describes how this node obtains its input from other nodes.

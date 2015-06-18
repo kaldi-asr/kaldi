@@ -4,6 +4,8 @@
 
 # Combine two decoding directories by composing the lattices (we
 # apply a weight to each of the original weights, by default 0.5 each).
+# Note, this is not the only combination method, or the most normal combination
+# method.  See also egs/wsj/s5/local/score_combine.sh.
 
 # Begin configuration section.
 weight1=0.5 # Weight on 1st set of lattices.

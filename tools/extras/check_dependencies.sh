@@ -37,6 +37,21 @@ if ! which awk >&/dev/null; then
   add_packages gawk gawk
 fi
 
+if which python >&/dev/null ; then
+  version=`python 2>&1 --version | awk '{print $2}' `
+  if [[ $version != "2."* ]] ; then
+    if which python2.7 >&/dev/null  || which python2 >&/dev/null ; then
+      echo "$0: python 2.7 is not the default python. You should either make it"
+      echo "$0: default or create an bash alias for kaldi scripts to run correctly"
+    else
+      echo "$0: python 2.7 is not installed"
+      add_packages python2.7 python2.7
+    fi
+  fi
+else
+  echo "$0: python 2.7 is not installed"
+  add_packages python2.7 python2.7
+fi
 
 printed=false
 status=0

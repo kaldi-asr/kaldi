@@ -86,13 +86,13 @@ void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
     // if it is dim-range step:
     //   if input wants derivative -> need derivative.
     // if it is descriptor step:
-    //   if input wants derivative -> need derivative. [note: add TODO regarding
+    //   if any input wants derivative -> need derivative. [note: add TODO regarding
     //   unnecessary computation when there are multiple outputs, not all of which have derivatives.]
     // if it is component step:
-
-
-    
+    //   if input wants derivative -> need derivative.
+    //
   //}
+  
 }
 
       

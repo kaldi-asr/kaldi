@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
 # Copyright 2010-2011 Microsoft Corporation
+#                2015 Guoguo Chen
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +19,11 @@
 # acceptor.  
 
 while(<>){
-    s:^(\d+\s+\d+\s+)\<eps\>(\s+):$1#0$2:;
-    print;
+  if (/\s+#0\s+/) {
+    print STDERR "$0: ERROR: LM has word #0, " .
+                 "which is reserved as disambiguation symbol\n";
+    exit 1;
+  }
+  s:^(\d+\s+\d+\s+)\<eps\>(\s+):$1#0$2:;
+  print;
 }

@@ -51,7 +51,9 @@ P=`tree-info --print-args=false $model_dir/tree |\
   grep "central-position" | awk '{print $NF}'`
 
 # Loops over all utterances.
-rm -rf $graph_dir/sub_graphs/HCLG.fsts.scp
+if [ -f $graph_dir/sub_graphs/HCLG.fsts.scp ]; then
+  rm $graph_dir/sub_graphs/HCLG.fsts.scp
+fi
 while read line; do
   uttid=`echo $line | cut -d ' ' -f 1`
   words=`echo $line | cut -d ' ' -f 2-`
@@ -117,7 +119,7 @@ fstcopy scp:$graph_dir/sub_graphs/HCLG.fsts.scp \
   "ark,scp:$graph_dir/HCLG.fsts,$graph_dir/HCLG.fsts.scp"
 
 if $cleanup; then
-  rm -rf $graph_dir/sub_graphs
+  rm -r $graph_dir/sub_graphs
 fi
 
 exit 0;
