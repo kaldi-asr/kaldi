@@ -1,4 +1,5 @@
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015                           (author: Vijayaditya Peddinti)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,109 +23,6 @@
 
 namespace kaldi {
 namespace nnet3 {
-
-bool pair_comparator(const std::pair<int32, int32>& first_pair, const std::pair<int32, int32>& second_pair) {
-    return first_pair.second > second_pair.second;
-}
-
-
-void SplitLocations(
-    const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
-    std::vector<std::vector<std::pair<int32, int32> > > *split_lists) {
-  
-  // (TODO : using index access of vectors for readability, check if this is a
-  // performance bottleneck and convert to iterator access if necessary)
-  
-  // computing a histogram of the submat indexes in the submat_lists
-  // each occurence in a given list is considered unique so we maintain
-  // a vector to count each occurence seperately
-  unordered_map<int32, std::vector<int32> > submat_histogram;
-  int32 max_submat_list_size = 0;  // max size of a submat_list 
-
-  for (int32 i = 0; i < submat_lists.size(); i++) {
-    if (submat_lists[i].size() > max_submat_list_size)
-      max_submat_list_size = submat_lists[i].size();
-    // compute a histogram of occurences of a submat in each list
-    unordered_map<int32, int32> submat_histogram_for_list; 
-    for (int32 j = 0; j < submat_lists[i].size(); j++)  {
-      total_elements += 1;
-      std::unordered_map<int32, int32>::const_iterator iter1 =
-        submat_occurences_for_list.find(submat_lists[i][j].first);
-      if (iter1 != submat_histogram_for_list.end())  {
-        iter1->second += 1;  
-      } else  {
-        submat_histogram_for_list[submat_lists[i][j].first] = 1;
-      }
-    }
-    // update the submat_histogram with the counts from 
-    // submat_histogram_for_list
-    std::unordered_map<int32, int32>::iterator iter2;
-    for (iter2 = submat_histogram_for_list.begin(),
-         iter2 != submat_histogram_for_list.end(),
-         ++iter2) {
-      // get the count from the submat_histogram_for_list
-      int32 count_in_list = iter2->second;
-      // get the count_vector from the submat_histogram
-      std::vector<int32> & count_vector = submat_histogram[iter2->first];
-      // update the count of each occurence in the vector
-      for (int32 x = 0; x < count_vector->size(); x++) {
-        if (count_in_list > 0)  {
-          count_vector->at(x) += 1;
-          count_in_list--;
-        } else  {
-          break;
-        }
-      }
-      // add additional counts for new occurrences
-      while (count_in_list > 0) {
-        count_vector.push_back(1);
-        count_in_list--;
-      }
-    }
-  }
-
-  // copy the key, occurence_counts from submat_histogram to a vector
-  std::vector<std::pair<int32, int32> > submat_histogram_vector;
-  std::unordered_map<int32, std::vector<int32> >::iterator hist_iter;
-  for (hist_iter = submat_histogram.begin();
-       hist_iter != submat_histogram.end();
-       ++hist_iter) {
-    for (int32 i = 0; i < (hist_iter->second).size(); i++)  {
-      submat_histogram_vector.push_backi(std::make_pair(hist_iter->first, (hist_iter->second)[i]))
-    }
-  }
-  
-  // sort the vector based on value
-  std::sort(submat_histogram_vector.begin(), submat_histogram_vector.end(), pair_comparator);
-
-  // determining which submat acceses can be collapsed into one list;
-  // to determine cost of memory accesses we define some constants
-  // for better optimization these have to be empirically tuned
-  BaseFloat kAddRowsMulti_cost = 1;  
-  BaseFloat kAddRows_cost = 0.5;  
-  int32 num_kAddRowsMulti = max_submat_list_size;
-
-  // TODO: write logic to decide kAddRows selection
-  while ((num_kAddRowsMulti * kAddRowsMulti_cost) > (kAddRows_cost + (num_kAddRowsMulti - 1) * kAddRows_cost)) {
-    // converting the vector of lists of pairs into a list of vectors of pairs
-    for (int32 i = 0; i < submat_histogram_vector; i++) {
-      submat_index = submat_histogram_vector[i].first;
-      for (int32 j = 0; j < submat_lists.size(); j++) {
-        
-      }
-    }
-  }
-}
-
-bool ConvertToIndexes(
-    const std::vector<std::pair<int32, int32> > &location_vector,
-    int32 *first_value,    
-    std::vector<int32> *second_values)  {
-  //TODO 
-}
-
-
-
 
 // this comparator will be used to sort/find pairs using first_element
 // we declare it as a struct as it will also be used by std::lower_bound
@@ -153,6 +51,12 @@ bool SecondElementComparator(const std::pair<int32, int32>& first_pair,
     return first_pair.second > second_pair.second;
 }
 
+// function to compute a histogram of the first_elements in the pairs of vectors
+// of lists of pairs. It also generates a copy of submat_lists where the lists
+// are sorted (this will be used in the caller function to do sort and find
+// operations effeciently). While computing the histogram multiple occurrences
+// of the same first_element are treated as seperate symbols. It also returns
+// the max_submat_list_size which is the maximum size of the lists in the vector
 void ComputeHistogram(
     const std::vector< std::vector<std::pair<int32, int32> > > submat_lists,
     std::vector<std::vector<std::pair<int32, int32> > > * sorted_submat_lists,
@@ -196,6 +100,9 @@ void ComputeHistogram(
   }
 }
 
+// function which does the actual splitting of submat_lists. But it operates on
+// sorted submat_lists and uses submat_histogram_vector. (See
+// nnet-compile-utils.h for description of the actual SplitLocations)
 void SplitLocations(
     // maximum size of the list in the sorted_submat_lists
     int32 max_submat_list_size,
@@ -206,6 +113,7 @@ void SplitLocations(
     // this is an empty vector where output is store
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists
     )  {
+  
   // sort the submat_histogram_vector based on second element of pair
   // in ascending order then first element of pair in descending order
   std::sort(submat_histogram_vector->begin(),
@@ -241,13 +149,26 @@ void SplitLocations(
           > max_remaining_submat_list_size ? remaining_submat_list_size :
           max_remaining_submat_list_size;
     }
+    
     if (max_remaining_submat_list_size
         <= prev_max_remaining_submat_list_size)  {
-      // since we will have a smaller max_remaining_submat_list_size by removing
-      // this submat_index, we will remove it
-      // this submat_index will be accessed using a kAddRows call
+      // since we will have a smaller max_remaining_submat_list_size by
+      // splitting this submat_index, we will split it into a seperate list;
+      // this submat_index will be accessed using a kAddRows call;
       // for this we go through the list of vector iterators and pop the
       // elements wherever available
+      // Note : To decide splits we could have solved a combinatorial 
+      // optimization problem where we find the best set of
+      // kAddRows + kAddRowsMulti calls;
+      // but given that both these calls have similar costs,
+      // and that the average number of elements in a list is around 4,
+      // it does not make sense to
+      // choose a kAddRows call unless it is able to immediately reduce a
+      // kAddRowsMulti call. So we simplify the process and stay away from any
+      // complex optimization algorithms.
+      // Implement dynamic programming based solution,
+      // if the length of the lists increases for newer NN architectures
+
       std::vector<std::pair<int32, int32> > list_of_pairs;
       list_of_pairs.reserve(sorted_submat_lists->size());
       for (int32 i = 0; i < output_iterator_list.size(); i++) {
@@ -263,6 +184,27 @@ void SplitLocations(
       }
       split_lists->push_back(list_of_pairs);
     }
+    prev_max_remaining_submat_list_size = max_remaining_submat_list_size;
+  }
+
+  // combine the remaining pairs into lists where
+  // paris with multiple first elements are allowed 
+  for (int32 i = 0; i < prev_max_remaining_submat_list_size; i++) {
+    std::vector<std::pair<int32, int32> > list_of_pairs;
+    list_of_pairs.reserve(sorted_submat_lists->size());
+    for (int32 j = 0; j < sorted_submat_lists->size(); j++)  {
+      if (sorted_submat_lists[i].size() == 0)  {
+        list_of_pairs.push_back(std::make_pair(-1, -1));
+        continue;
+      }
+      // Note : we don't yet know if there is any advantage of having multiple
+      // calls to the same submat in kAddRowsMulti. If this is actually helpful
+      // then use the sorted_histogram_vector to first copy submat_indexes which
+      // did not make it to kAddRows calls
+      list_of_pairs.push_back(sorted_submat_lists->at(i).back());
+      sorted_submat_lists->at(i).pop_back();
+    }
+    split_lists->push_back(list_of_pairs);
   }
 }
 
@@ -304,8 +246,6 @@ void SplitLocations(
                  &submat_histogram_vector, split_lists);
 }
 
-
-
 bool ConvertToIndexes(
     const std::vector<std::pair<int32, int32> > &location_vector,
     int32 *first_value,
@@ -326,8 +266,6 @@ bool ConvertToIndexes(
   }
   return true;
 }
-
-
 
 }  // namespace nnet3
 }  // namespace kaldi
