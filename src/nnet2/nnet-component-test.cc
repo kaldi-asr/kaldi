@@ -1,6 +1,7 @@
 // nnet2/nnet-component-test.cc
 
 // Copyright 2012-2014  Johns Hopkins University (author:  Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -805,6 +806,7 @@ int main() {
       UnitTestGenericComponent<PowerComponent>("power=1.0");
       UnitTestGenericComponent<PermuteComponent>();
       UnitTestGenericComponent<SoftmaxComponent>();
+      UnitTestGenericComponent<LogSoftmaxComponent>();
       UnitTestGenericComponent<RectifiedLinearComponent>();
       UnitTestGenericComponent<SoftHingeComponent>();
       UnitTestSpliceComponent();

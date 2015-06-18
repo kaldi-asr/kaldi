@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Lucas Ondel
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -544,7 +545,7 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true)
 
 CuDevice::~CuDevice() {
   if (Enabled()) {
-    CU_SAFE_CALL(cublasShutdown());
+    cublasShutdown();
   }
 }
   

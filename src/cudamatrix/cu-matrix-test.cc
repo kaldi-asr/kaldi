@@ -1532,6 +1532,36 @@ static void UnitTestCuSoftmax() {
 }
 
 
+template<typename Real> 
+static void UnitTestCuLogSoftmax() {
+
+  for (int32 i = 0; i < 2; i++) {
+    int row = 10 + Rand() % 40;
+    int col = 10 + Rand() % 50;
+
+    Matrix<Real> Hi(row, col);
+    Matrix<Real> Ho(row, col);
+    Hi.SetRandn();
+    Hi.Scale(5.0);
+  
+    CuMatrix<Real> Di(row, col);
+    CuMatrix<Real> Do(row, col);
+    Di.CopyFromMat(Hi);
+
+    //gpu
+    Do.ApplyLogSoftMaxPerRow(Di);
+    //cpu
+    Ho.CopyFromMat(Hi);
+    for(MatrixIndexT r=0; r<Ho.NumRows(); r++) {
+      Ho.Row(r).ApplyLogSoftMax();
+    }
+
+    Matrix<Real> Ho2(Do);
+
+    AssertEqual(Ho, Ho2, 0.00001);
+  }
+}
+
 
 template<typename Real> 
 static void UnitTestCuFindRowMaxId() {
@@ -2046,6 +2076,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulRowsGroupMat<Real>();
   UnitTestCuFindRowMaxId<Real>();
   UnitTestCuSoftmax<Real>();
+  UnitTestCuLogSoftmax<Real>();
   UnitTestCuDiffXent<Real>();
   UnitTestCheck<Real>();
   UnitTestSwapCu2Cu<Real>();

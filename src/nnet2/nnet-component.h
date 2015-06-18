@@ -4,7 +4,7 @@
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang    
 //                2014  Vijayaditya Peddinti
-//                2014  Guoguo Chen
+//           2014-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -386,6 +386,7 @@ class NonlinearComponent: public Component {
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
+  friend class LogSoftmaxComponent;
   friend class RectifiedLinearComponent;
   friend class SoftHingeComponent;
   
@@ -740,6 +741,32 @@ class SoftmaxComponent: public NonlinearComponent {
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
+};
+
+class LogSoftmaxComponent: public NonlinearComponent {
+ public:
+  explicit LogSoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit LogSoftmaxComponent(const LogSoftmaxComponent &other): NonlinearComponent(other) { }  
+  LogSoftmaxComponent() { }
+  virtual std::string Type() const { return "LogSoftmaxComponent"; }
+  virtual bool BackpropNeedsInput() const { return false; }
+  virtual bool BackpropNeedsOutput() const { return true; }
+  using Component::Propagate; // to avoid name hiding
+  virtual void Propagate(const ChunkInfo &in_info,
+                         const ChunkInfo &out_info,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const; 
+  virtual void Backprop(const ChunkInfo &in_info,
+                        const ChunkInfo &out_info,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+ 
+  virtual Component* Copy() const { return new LogSoftmaxComponent(*this); }
+ private:
+  LogSoftmaxComponent &operator = (const LogSoftmaxComponent &other); // Disallow.
 };
 
 

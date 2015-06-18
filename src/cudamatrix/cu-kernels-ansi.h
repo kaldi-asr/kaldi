@@ -4,7 +4,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu    
 //                2013  Xiaohui Zhang
-//                2013    Johns Hopkins University (author: Guoguo Chen)
+//           2013-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -128,6 +128,7 @@ void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int
  * cu::
  */
 void cudaF_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride);
+void cudaF_log_softmax_reduce(size_t Gr, size_t Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_soft_hinge(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
 void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size, float power);
 void cudaF_sigmoid(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride);
@@ -256,6 +257,7 @@ void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int
  * cu::
  */
 void cudaD_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride);
+void cudaD_log_softmax_reduce(size_t Gr, size_t Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_soft_hinge(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride, int group_size, double power);
 void cudaD_sigmoid(dim3 Gr, dim3 Bl, double *y, const double *x, MatrixDim d, int src_stride);
