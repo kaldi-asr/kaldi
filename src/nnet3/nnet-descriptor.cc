@@ -32,7 +32,7 @@ static void ExpectToken(const std::string &token,
               << what_we_are_parsing << ", got "
               << **next_token;
   else
-    **next_token++;
+    (*next_token)++;
 }
 
 static int32 ReadIntegerToken(const std::string &what_we_are_parsing,
@@ -42,7 +42,7 @@ static int32 ReadIntegerToken(const std::string &what_we_are_parsing,
     KALDI_ERR << "Expected integer while parsing "
               << what_we_are_parsing << ", got "
               << **next_token;
-  **next_token++;  
+  (*next_token)++;
   return ans;
 }
 

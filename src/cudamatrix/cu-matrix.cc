@@ -1899,7 +1899,7 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
                                   const CuArray<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(static_cast<MatrixIndexT>(indices.size()) == NumRows());
+    KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumRows());
     KALDI_ASSERT(NumCols() == src.NumCols());
     
     Timer tim;
