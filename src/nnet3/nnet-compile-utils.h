@@ -24,7 +24,6 @@
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-computation-graph.h"
-
 #include <iostream>
 
 namespace kaldi {
