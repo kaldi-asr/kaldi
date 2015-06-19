@@ -1,6 +1,7 @@
 // nnet3/nnet-simple-component.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -878,6 +879,90 @@ void NaturalGradientAffineComponent::Update(
                            in_value_precon_part, kNoTrans, 1.0);
 }
 
+std::string FixedAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size =
+      static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_params_stddev =
+      std::sqrt(TraceMatMat(linear_params_,
+                            linear_params_, kTrans) / linear_params_size);
+  BaseFloat bias_params_stddev =
+      std::sqrt(VecVec(bias_params_, bias_params_) / bias_params_.Dim());
+
+  stream << Component::Info() << ", linear-params-stddev="
+      << linear_params_stddev << ", bias-params-stddev=" << bias_params_stddev;
+  return stream.str();
+}
+
+void FixedAffineComponent::Init(const CuMatrixBase<BaseFloat> &mat) {
+  KALDI_ASSERT(mat.NumCols() > 1);
+  linear_params_ = mat.Range(0, mat.NumRows(), 0, mat.NumCols() - 1);
+  bias_params_.Resize(mat.NumRows());
+  bias_params_.CopyColFromMat(mat, mat.NumCols() - 1);
+}
+
+void FixedAffineComponent::InitFromString(std::string args) {
+  std::string orig_args = args;
+  std::string filename;
+  bool ok = ParseFromString("matrix", &args, &filename);
+
+  if (!ok || !args.empty())
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+
+  bool binary;
+  Input ki(filename, &binary);
+  CuMatrix<BaseFloat> mat;
+  mat.Read(ki.Stream(), binary);
+  KALDI_ASSERT(mat.NumRows() != 0);
+  Init(mat);
+}
+
+void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                     const CuMatrixBase<BaseFloat> &in,
+                                     CuMatrixBase<BaseFloat> *out) const  {
+  out->CopyRowsFromVec(bias_params_); // Adds the bias term first.
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
+}
+
+void FixedAffineComponent::Backprop(const std::string &debug_info,
+                                    const ComponentPrecomputedIndexes *indexes,
+                                    const CuMatrixBase<BaseFloat> &, //in_value
+                                    const CuMatrixBase<BaseFloat> &, //out_value
+                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                    Component *, //to_update
+                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // kBackpropAdds is true. It's the user's responsibility to zero out
+  // <in_deriv> if they need it to be so.
+  if (in_deriv)
+    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans,
+                        linear_params_, kNoTrans, 1.0);
+}
+
+Component* FixedAffineComponent::Copy() const {
+  FixedAffineComponent *ans = new FixedAffineComponent();
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  return ans;
+}
+
+void FixedAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FixedAffineComponent>");
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "</FixedAffineComponent>");
+}
+
+void FixedAffineComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<FixedAffineComponent>", "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "</FixedAffineComponent>");
+}
 
 void SumGroupComponent::Init(const std::vector<int32> &sizes) {
   KALDI_ASSERT(!sizes.empty());
@@ -1019,6 +1104,48 @@ void SoftmaxComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
   // stats.
   StoreStatsInternal(out_value, NULL);
 }  
+
+
+void LogSoftmaxComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                    const CuMatrixBase<BaseFloat> &in,
+                                    CuMatrixBase<BaseFloat> *out) const {
+  // Applies log softmax function to each row of the output. For each row, we do
+  // x_i = x_i - log(sum_j exp(x_j))
+  out->ApplyLogSoftMaxPerRow(in);
+}
+
+void LogSoftmaxComponent::Backprop(const std::string &debug_info,
+                                   const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &, // in_value
+                                   const CuMatrixBase<BaseFloat> &out_value,
+                                   const CuMatrixBase<BaseFloat> &out_deriv,
+                                   Component *, // to_update
+                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv == NULL)
+    return;
+
+  /*
+    Let the output be y, then
+      y_i = x_i - log(sum_i exp(x_i))
+    where x_i is the input to the component. The Jacobian matrix of this
+    function is
+      J = I - 1 exp(y^T)
+    where 1 is a vector of ones. Let the derivative vector at the output be e,
+    and at the input be d, then we have
+      d = e - exp(y) Sum(e)
+      d_i = e_i - exp(y_i) Sum(e)
+  */
+  const CuMatrixBase<BaseFloat> &Y(out_value), &E(out_deriv);
+  CuMatrixBase<BaseFloat> &D (*in_deriv);
+
+  D.CopyFromMat(Y);
+  D.ApplyExp();                           // exp(y)
+  CuVector<BaseFloat> E_sum(D.NumRows()); // Initializes to zero
+  E_sum.AddColSumMat(1.0, E);             // Sum(e)
+  D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+  D.Scale(-1.0);                          // - exp(y) Sum(e)
+  D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+}
 
 
 void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {

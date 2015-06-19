@@ -4,7 +4,7 @@
 //           2012-2015  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang    
 //                2014  Vijayaditya Peddinti
-//                2014  Guoguo Chen
+//           2014-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -317,6 +317,31 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
 };
 
+class LogSoftmaxComponent: public NonlinearComponent {
+ public:
+  explicit LogSoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
+  explicit LogSoftmaxComponent(const LogSoftmaxComponent &other):
+      NonlinearComponent(other) { }
+  LogSoftmaxComponent() { }
+  virtual std::string Type() const { return "LogSoftmaxComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const { return new LogSoftmaxComponent(*this); }
+ private:
+  LogSoftmaxComponent &operator = (const LogSoftmaxComponent &other); // Disallow.
+};
 
 /// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
 /// the top-level of the natural gradient code look here, and also in

@@ -1,6 +1,7 @@
 // nnet3/nnet-component-itf.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -426,6 +427,7 @@ class NonlinearComponent: public Component {
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
+  friend class LogSoftmaxComponent;
   friend class RectifiedLinearComponent;
   
   // This function updates the stats "value_sum_", "deriv_sum_", and

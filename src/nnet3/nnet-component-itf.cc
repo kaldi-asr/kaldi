@@ -1,6 +1,7 @@
 // nnet3/nnet-component-itf.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -53,6 +54,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new TanhComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
+  } else if (component_type == "LogSoftmaxComponent") {
+    ans = new LogSoftmaxComponent();
   } else if (component_type == "RectifiedLinearComponent") {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "NormalizeComponent") {
