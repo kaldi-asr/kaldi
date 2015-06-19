@@ -1,7 +1,8 @@
 // nnet/nnet-convolutional-component.h
 
-// Copyright 2014  Brno University of Technology (author: Karel Vesely),
-//                 Johns Hopkins University (author: Sri Harish Mallidi)
+// Copyright 2014-2015  Johns Hopkins University (author: Sri Harish Mallidi)
+//                      Brno University of Technology (author: Karel Vesely),
+//                 
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,12 +20,12 @@
 // limitations under the License.
 
 
-#ifndef KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
-#define KALDI_NNET_NNET_CONVOLUTIONAL_2D_COMPONENT_H_
+#ifndef KALDI_NNET_NNET_CONVOLUTIONAL2D_COMPONENT_H_
+#define KALDI_NNET_NNET_CONVOLUTIONAL2D_COMPONENT_H_
 
 
 #include "nnet/nnet-component.h"
-#include "nnet/nnet-utils.h"
+#include "nnet/nnet-various.h"
 #include "cudamatrix/cu-math.h"
 
 namespace kaldi {
@@ -332,39 +333,66 @@ class Convolutional2DComponent : public UpdatableComponent {
       feature_patch_diffs_[p].AddMatMat(1.0, out_diff_patch, kNoTrans, filters_, kNoTrans, 0.0);
     }
 
-    int32 out_fmap_cnt=0;
-    in_diff_summands_.Resize(in_diff->NumCols(), kSetZero);
-    for (int32 m=0; m < fmap_x_len_-filt_x_len_+1;m=m+filt_x_step_){
-      for (int32 n=0; n< fmap_y_len_-filt_y_len_+1; n=n+filt_y_step_){
-    int32 st=0;
-    if (connect_fmap_ == 1){
-      st=(m*fmap_y_len_+n)*num_input_fmaps;      
-    }
-    else{
-      st=m*fmap_y_len_*num_input_fmaps + n;
+    // compute in_diff_summands_ once
+    if (in_diff_summands_.Dim() == 0){
+      in_diff_summands_.Resize(in_diff->NumCols(), kSetZero);
+      for (int32 m=0; m < fmap_x_len_-filt_x_len_+1;m=m+filt_x_step_){
+	for (int32 n=0; n< fmap_y_len_-filt_y_len_+1; n=n+filt_y_step_){
+	  int32 st=0;
+	  if (connect_fmap_ == 1){
+	    st=(m*fmap_y_len_+n)*num_input_fmaps;
+	  }
+	  else{
+	    st=m*fmap_y_len_*num_input_fmaps + n;
+	  }  
+	  for (int32 i=0; i< filt_x_len_; i++){
+	    for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
+	      int32 c=0;
+	      if (connect_fmap_ == 1){
+		c=st+i*(num_input_fmaps*fmap_y_len_)+j;
+	      }
+	      else{
+		c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
+	      }
+	      // add 1.0
+	      in_diff_summands_.Range(c,1).Add(1.0);
+	    }
+	  }
+	}
+      }
+      in_diff_summands_.InvertElements();
     }
 
-    for (int32 i=0; i< filt_x_len_; i++){
-      for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
-        int32 c=0;
-        if (connect_fmap_ == 1){        
-          c=st+i*(num_input_fmaps*fmap_y_len_)+j;
-        }
-        else{
-          c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
-        }
-        CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j,1)); // from which col 
-        CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c,1)); // to which col?
-        tgt.AddMat(1.0, src);
-        // add 1.0 
-        in_diff_summands_.Range(c,1).Add(1.0);
-      }
-    }
-    out_fmap_cnt++;
+    int32 out_fmap_cnt=0;
+    // in_diff_summands_.Resize(in_diff->NumCols(), kSetZero);
+    for (int32 m=0; m < fmap_x_len_-filt_x_len_+1;m=m+filt_x_step_){
+      for (int32 n=0; n< fmap_y_len_-filt_y_len_+1; n=n+filt_y_step_){
+	int32 st=0;
+	if (connect_fmap_ == 1){
+	  st=(m*fmap_y_len_+n)*num_input_fmaps;      
+	}
+	else{
+	  st=m*fmap_y_len_*num_input_fmaps + n;
+	}
+
+	for (int32 i=0; i< filt_x_len_; i++){
+	  for (int32 j=0; j< filt_y_len_*num_input_fmaps; j++){
+	    int32 c=0;
+	    if (connect_fmap_ == 1){        
+	      c=st+i*(num_input_fmaps*fmap_y_len_)+j;
+	    }
+	    else{
+	      c=st+i*(num_input_fmaps*fmap_y_len_)+(j/num_input_fmaps)+(j%num_input_fmaps)*fmap_y_len_;
+	    }
+	    CuSubMatrix<BaseFloat> src(feature_patch_diffs_[out_fmap_cnt].ColRange(i*filt_y_len_*num_input_fmaps+j,1)); // from which col 
+	    CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c,1)); // to which col?
+	    tgt.AddMat(1.0, src);
+	  }
+	}
+	out_fmap_cnt++;
       }
     }
     // compensate for summands
-    in_diff_summands_.InvertElements();
     in_diff->MulColsVec(in_diff_summands_);
   }
 
