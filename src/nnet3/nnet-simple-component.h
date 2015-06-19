@@ -86,7 +86,7 @@ class NormalizeComponent: public NonlinearComponent {
   explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other) { }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropInPlace|kBackpropStoresStats;
+        kBackpropInPlace;
   }
   NormalizeComponent() { }
   virtual std::string Type() const { return "NormalizeComponent"; }
@@ -117,7 +117,7 @@ class SigmoidComponent: public NonlinearComponent {
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kBackpropStoresStats;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
   }
   virtual Component* Copy() const { return new SigmoidComponent(*this); }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -130,6 +130,7 @@ class SigmoidComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
  private:
   SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
@@ -142,8 +143,7 @@ class TanhComponent: public NonlinearComponent {
   virtual std::string Type() const { return "TanhComponent"; }
   virtual Component* Copy() const { return new TanhComponent(*this); }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|
-        kBackpropStoresStats;
+    return kSimpleComponent|kBackpropNeedsOutput|kPropagateInPlace|kStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -155,6 +155,7 @@ class TanhComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);  
  private:
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
@@ -169,7 +170,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
   virtual int32 Properties() const {
     return kSimpleComponent|kLinearInInput|kBackpropNeedsOutput|kPropagateInPlace|
-        kBackpropStoresStats;
+        kStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -181,6 +182,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);  
  private:
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
@@ -296,7 +298,7 @@ class SoftmaxComponent: public NonlinearComponent {
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsOutput|kBackpropStoresStats;;
+    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -308,6 +310,7 @@ class SoftmaxComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);    
   
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:

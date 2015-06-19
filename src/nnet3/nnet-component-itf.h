@@ -67,9 +67,10 @@ enum ComponentProperties {
                                  // forward-pass output (e.g. true for Sigmoid).
   kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kBackpropStoresStats = 0x800  // true if the backprop operation stores
-                                // statistics e.g. on average node activations
-                                // (as it does for Tanh, Sigmoid and Softmax).
+  kStoresStats = 0x800       // true if the StoreStats operation stores
+                             // statistics e.g. on average node activations and
+                             // derivatives of the nonlinearity, (as it does for
+                             // Tanh, Sigmoid, ReLU and Softmax).
 };
 
 
@@ -137,6 +138,16 @@ class Component {
                         Component *to_update, // may be NULL; may be identical
                                               // to "this" or different.
                         CuMatrixBase<BaseFloat> *in_deriv) const = 0;
+
+
+  /// \brief This function may store stats on average activation values, and for
+  ///        some component types, the average value of the derivative of the
+  ///        nonlinearity.  It only does something for those components that
+  ///        have nonzero Properties()&kStoresStats.  It only needs as input
+  ///        the value at the output of the nonlinearity.
+
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value) { }                      
+  
 
   /// \brief  This function only does something interesting for non-simple Components.
   ///   For a given index at the output of the component, tells us what indexes
@@ -420,8 +431,8 @@ class NonlinearComponent: public Component {
   // This function updates the stats "value_sum_", "deriv_sum_", and
   // count_. (If deriv == NULL, it won't update "deriv_sum_").
   // It will be called from the Backprop function of child classes.
-  void UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
-                   const CuMatrixBase<BaseFloat> *deriv = NULL);
+  void StoreStatsInternal(const CuMatrixBase<BaseFloat> &out_value,
+                          const CuMatrixBase<BaseFloat> *deriv = NULL);
 
   
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.

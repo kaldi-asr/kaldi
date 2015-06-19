@@ -470,6 +470,33 @@ void ComputeComputationOrder(
   KALDI_ASSERT(num_computed == num_cindex_ids);
 }
 
+CindexSet::CindexSet(const ComputationGraph &graph):
+    graph_(graph), is_computable_(NULL) { }
+
+CindexSet::CindexSet(const ComputationGraph &graph,
+                     const std::vector<bool> &is_computable):
+    graph_(graph), is_computable_(&is_computable) { }
+
+
+bool CindexSet::operator () (const Cindex &cindex) const {
+  int32 cindex_id = graph_.GetCindexId(cindex);
+  return cindex_id != -1 &&
+      (is_computable_ == NULL || (*is_computable_)[cindex_id]);
+}
+
+
+IndexSet::IndexSet(const ComputationGraph &graph,
+                   const std::vector<bool> &is_computable,
+                   int32 node_id):
+    graph_(graph), is_computable_(is_computable), node_id_(node_id) { }
+
+bool IndexSet::operator () (const Index &index) const {
+  int32 cindex_id = graph_.GetCindexId(Cindex(node_id_, index));
+  return cindex_id != -1 && is_computable_[cindex_id];
+}
+
+
+
 // This helper function used in PruneComputationGraph returns true if we can
 // compute cindex_id from the cindex_ids that are already computable (i.e. whose
 // entries in the current "computable" array are true).

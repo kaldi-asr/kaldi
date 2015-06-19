@@ -55,13 +55,13 @@ bool SecondElementComparator(const std::pair<int32, int32>& first_pair,
 // of lists of pairs. It also generates a copy of submat_lists where the lists
 // are sorted (this will be used in the caller function to do sort and find
 // operations effeciently). While computing the histogram multiple occurrences
-// of the same first_element are treated as seperate symbols. It also returns
+// of the same first_element are treated as separate symbols. It also outputs
 // the max_submat_list_size which is the maximum size of the lists in the vector
 void ComputeHistogram(
     const std::vector< std::vector<std::pair<int32, int32> > > submat_lists,
-    std::vector<std::vector<std::pair<int32, int32> > > * sorted_submat_lists,
-    unordered_map<int32, std::vector<int32> >* submat_histogram,
-    int32* max_submat_list_size) {
+    std::vector<std::vector<std::pair<int32, int32> > > *sorted_submat_lists,
+    unordered_map<int32, std::vector<int32> > *submat_histogram,
+    int32 *max_submat_list_size) {
   // computing the submat_histogram
   for (int32 i = 0; i < submat_lists.size(); i++) {
     if (submat_lists[i].size() > *max_submat_list_size)

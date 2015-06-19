@@ -81,7 +81,7 @@ struct ComputationGraph {
 /// An abstract representation of a set of Cindexes.
 class CindexSet {
  public:
-  /// Parenthesis operator; raeturns true if this cindex exists in the set.
+  /// Parenthesis operator; returns true if this cindex exists in the set.
   bool operator () (const Cindex &cindex) const;
 
   /// with this constructor, represents the set of all Cindexes that exist
@@ -94,8 +94,7 @@ class CindexSet {
             const std::vector<bool> &is_computable);
  private:
   const ComputationGraph &graph_;
-  const std::vector<bool> &is_computable_;
-
+  const std::vector<bool> *is_computable_;
 };
 
 
@@ -103,7 +102,7 @@ class CindexSet {
 class IndexSet {
  public:
   /// Returns true if this Index exists in the set. 
-  bool operator () (Index &cindex) const;
+  bool operator () (const Index &index) const;
 
   /// This constructor creates the set of all Indexes x such that a Cindex
   /// (node_id, x) which is computable exists in this graph.
@@ -112,8 +111,9 @@ class IndexSet {
            int32 node_id);
  private:
   const ComputationGraph &graph_;
+  const std::vector<bool> &is_computable_;  
   int32 node_id_;
-  const std::vector<bool> &is_computable_;
+
 
 };
 

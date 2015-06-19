@@ -73,8 +73,10 @@ void Compiler::AddCommands(NnetComputation *computation) {
 }
 
 
-void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
-                            std::vector<bool> *step_needs_deriv) {
+void Compiler::ComputeDerivNeededInfo(
+    const std::vector<std::vector<int32> > &steps,
+    std::vector<bool> *step_needs_deriv) {
+  step_needs_deriv->clear();
   // resize, false.
   //  if don't need any derivs, return.
 
@@ -89,8 +91,10 @@ void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
     //   if any input wants derivative -> need derivative. [note: add TODO regarding
     //   unnecessary computation when there are multiple outputs, not all of which have derivatives.]
     // if it is component step:
-    //   if input wants derivative -> need derivative.
-    //
+    //   if input wants derivative, or component is updatable and need model
+    //   derivatives, or component stores stats and need stats -> need derivative.
+
+  
   //}
   
 }

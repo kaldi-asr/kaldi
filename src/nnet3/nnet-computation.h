@@ -88,10 +88,8 @@ struct ComputationRequest {
   bool need_model_derivative;
 
   // you should set need_component_stats to true if you will not need the
-  // average-activation and average-derivative statistics stored by components
-  // such as Tanh, Sigmoid and Softmax.
-  // To simplify debugging and reduce the number of code paths, we do not allow
-  // you to set need_component_stats = true but need_model_derivative = false.
+  // average-activation and average-derivative statistics stored by the
+  // StoreStats() functiopns of components/ such as Tanh, Sigmoid and Softmax.
   bool need_component_stats;
 
   // misc_info is for extensibility to things that don't easily fit into the framework

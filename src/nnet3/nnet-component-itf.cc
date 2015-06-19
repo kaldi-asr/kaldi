@@ -119,8 +119,9 @@ std::string UpdatableComponent::Info() const {
   return stream.str();
 }
 
-void NonlinearComponent::UpdateStats(const CuMatrixBase<BaseFloat> &out_value,
-                                     const CuMatrixBase<BaseFloat> *deriv) {
+void NonlinearComponent::StoreStatsInternal(
+    const CuMatrixBase<BaseFloat> &out_value,
+    const CuMatrixBase<BaseFloat> *deriv) {
   KALDI_ASSERT(out_value.NumCols() == InputDim());
   // Check we have the correct dimensions.
   if (value_sum_.Dim() != InputDim() ||
