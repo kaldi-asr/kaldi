@@ -160,7 +160,7 @@ std::string Xent::Report() {
      oss << "]" << std::endl;
   }
   if (correct_ >= 0.0) {
-    oss << "\nFRAME_ACCURACY >> " << 100.0*correct_/frames_ << "% <<";
+    oss << "FRAME_ACCURACY >> " << 100.0*correct_/frames_ << "% <<" << std::endl;
   }
   return oss.str(); 
 }
@@ -260,7 +260,7 @@ void MultiTaskLoss::InitFromString(const std::string& s) {
   std::vector<std::string> v;
   SplitStringToVector(s, ",:" /* delimiter */, false, &v);
 
-  KALDI_ASSERT(v.size()-1 % 3 == 0); // triplets,
+  KALDI_ASSERT((v.size()-1) % 3 == 0); // triplets,
   KALDI_ASSERT(v[0] == "multitask"); // header,
 
   // parse the definition of multitask loss,
@@ -336,23 +336,24 @@ std::string MultiTaskLoss::Report() {
   // calculate overall loss (weighted),
   BaseFloat overall_loss = AvgLoss();
   // copy the loss-values into a vector,
-  Vector<BaseFloat> loss_values(loss_vec_.size());
+  std::vector<BaseFloat> loss_values;
   for (int32 i = 0; i < loss_vec_.size(); i++) {
-    loss_values(i) = loss_vec_[i]->AvgLoss();
+    loss_values.push_back(loss_vec_[i]->AvgLoss());
   }
 
   // build the message,
   std::ostringstream oss;
+  oss << "MultiTaskLoss, with " << loss_vec_.size() << " parallel loss functions." << std::endl;
   // individual loss reports first,
   for (int32 i = 0; i < loss_vec_.size(); i++) {
-    oss << "Loss# " << i+1 << std::endl 
-        << "\t" << loss_vec_[i]->Report() << std::endl;
+    oss << "Loss " << i+1 << ", " << loss_vec_[i]->Report() << std::endl;
   }
+
   // overall loss is last,
-  oss << "### OVERALL LOSS ###" << std::endl;
-  oss << "AvgLoss: " << overall_loss << " (MultiTask)," << std::endl
-      << "[values  " << loss_values << "]" << std::endl
-      << "[weights " << loss_weights_ << "]" << std::endl;
+  oss << "Loss (OVERALL), " 
+      << "AvgLoss: " << overall_loss << " (MultiTaskLoss), "
+      << "weights " << loss_weights_ << ", "
+      << "values " << loss_values << std::endl;
 
   return oss.str();
 }
