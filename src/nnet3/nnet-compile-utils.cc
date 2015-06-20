@@ -358,5 +358,12 @@ bool ConvertToIndexes(
   return true;
 }
 
+void SplitLocationsBackward(
+    const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
+    std::vector<std::vector<std::pair<int32, int32> > > *split_lists) {
+  // TODO.
+}
+
+
 }  // namespace nnet3
 }  // namespace kaldi

@@ -79,10 +79,14 @@ class Compiler {
     // we're doing backprop).
     std::vector<int32> deriv_parts;
 
-    // this is a quantity indexed[part-index][row-index], then a list of pairs,
-    // that we store here to avoid computing it twice in forward and backprop.
-    std::vector<std::vector<std::vector<std::pair<int32,int32> > > > submat_locations;
-
+    // for nodes corresponding to descriptors, input_locations_list will contain
+    // information about the inputs to this descriptor, telling us for each row
+    // of the matrix what other matrix rows it is a summation over.  this is a
+    // quantity indexed[part-index][row-index], then a list of pairs (step,
+    // row-index), that we store here to avoid computing it twice in forward and
+    // backprop.
+    std::vector<std::vector<std::vector<std::pair<int32,int32> > > > input_locations_list;
+                     
     StepInfo(): node_index(-1), is_input(false), value(0),
                 deriv(0), precomputed_indexes_index(0) { }
   };
@@ -90,15 +94,22 @@ class Compiler {
   // this sets up cindex_id_to_location_.
   void CreateLocationInfo(const std::vector<std::vector<int32> > &by_step);
 
-  // This function outputs to "steps_needs_deriv" a vector saying for each step,
-  // whether we need to allocate the matrix of derivatives for that step
-  // (interpret this as being at the output of that step).
-  void ComputeDerivNeededInfo(const std::vector<std::vector<int32> > &steps,
-                              std::vector<bool> *step_needs_deriv);
+  // Computes the set of preceding steps that this step depends on.  Assumes
+  // CreateLocationInfo() has already been called.
+  void ComputeStepDependencies(const std::vector<int32> &this_step,
+                               unordered_set<int32> *dep_steps);
+  
+  // This function outputs to each element of "deriv_needed" a bool saying
+  // whether, for that step, we need to allocate the matrix of derivatives
+  // (interpret this as being at the output of that step).  This variable
+  // also tells us whether we need to execute the backprop code for that step.
+  void ComputeDerivNeeded(const std::vector<std::vector<int32> > &steps,
+                          std::vector<bool> *deriv_needed);
   
   // this sets up steps_, destroying the input "by_step" in the process.  It
   // also sets various matrix and sub-matrix sizes in "computation".
-  void CreateStepInfo(std::vector<std::vector<int32> > *by_step,
+  void CreateStepInfo(const std::vector<bool> &deriv_needed,
+                      std::vector<std::vector<int32> > *by_step,
                       NnetComputation *computation);
 
 
@@ -134,7 +145,7 @@ class Compiler {
   
   // Adds to "computation" the command(s) for the forward computation 
   // for this step.
-  void DoForwardComputation(int32 step, NnetComputation *computation);
+  void DoForwardComputation(int32 step, NnetComputation *computation) const;
 
   // Called from DoForwardComputation, handles the case where the step corresponds
   // to a Component.
@@ -144,25 +155,45 @@ class Compiler {
   // Called from DoForwardComputation, handles the case where the step
   // corresponds to type kDescriptor
   void DoForwardComputationDescriptor(
-      int32 step, NnetComputation *computation);
+      int32 step, NnetComputation *computation) const;
 
-  // Not const because it may modify step_info.submat_locations.
   void DoForwardComputationSumDescriptor(
-      int32 step, int32 part_index, NnetComputation *computation);
+      int32 step, int32 part_index, NnetComputation *computation) const;
 
 
   // For the "part_index"'th part of the Descriptor for step "step" (which
   // must correspond to a Descriptor and not an Input or Component), this
   // function computes a vector of lists of submatrix locations of the inputs.
   // It is indexed by the number of rows in the output of this descriptor,
-  // and the i'th element of the output is a list of pairs (submatrix-index,
-  // row-index-of-submatrix).  The output of this row of this row of this part
+  // and the i'th element of the output is a list of pairs (step-index,
+  // row-index-of-matrix).  The output of this row of this row of this part
   // of the computation will be a sum over those pairs.
-  void ComputeSubmatLocationsList(
+  void ComputeInputLocationsList(
       int32 step, int32 part_index,
-      const NnetComputation &computation,      
-      std::vector<std::vector<std::pair<int32, int32> > > *submat_locations)
+      std::vector<std::vector<std::pair<int32, int32> > > *input_locations)
       const;
+
+  // Changes the format of the location-list produced by ComputeInputLocationsList,
+  // to have pairs (sub-matrix, row) instead of (step, row), by replacing each step
+  // (i.e. the first of each pair) with steps_[step].value.
+  void ComputeValueSubmatLocationsList(
+ const std::vector<std::vector<std::pair<int32, int32> > > &input_locations_list,
+     std::vector<std::vector<std::pair<int32, int32> > > *submat_locations_list)
+      const;
+
+
+  // Changes the format of the location-list produced by
+  // ComputeInputLocationsList, to have pairs (sub-matrix, row) instead of
+  // (step, row), but with locations of derivatives not values (for use in
+  // backprop).  It does this by replacing each step (i.e. the first of each
+  // pair) with steps_[step].deriv, but if this value is zero (i.e. no such
+  // derivative exists) it removes the pair.  This could occur in situations
+  // where we only need to propagate the derivative selectively to some inputs.
+  void ComputeDerivSubmatLocationsList(
+ const std::vector<std::vector<std::pair<int32, int32> > > &input_locations_list,
+ std::vector<std::vector<std::pair<int32, int32> > > *submat_locations_list)
+      const;
+  
 
 
   // Called from DoForwardComputationSumDescriptor.
@@ -239,7 +270,8 @@ class Compiler {
   // and input derivatives).
   void DestroyMatrices(NnetComputation *computation);
 
-  void AddCommands(NnetComputation *computation);
+  void AddCommands(const std::vector<bool> &deriv_needed,
+                   NnetComputation *computation);
 
 };
 

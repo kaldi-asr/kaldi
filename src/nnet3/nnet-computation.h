@@ -83,24 +83,36 @@ struct ComputationRequest {
   std::vector<IoSpecification> inputs;
   std::vector<IoSpecification> outputs;
 
-  // if need_model_derivative is true, then we'll be doing either model training
-  // or model-derivative computation, so updatable components need to be backprop'd.
+  /// if need_model_derivative is true, then we'll be doing either model
+  /// training or model-derivative computation, so updatable components need to
+  /// be backprop'd.
   bool need_model_derivative;
 
-  // you should set need_component_stats to true if you will not need the
-  // average-activation and average-derivative statistics stored by the
-  // StoreStats() functiopns of components/ such as Tanh, Sigmoid and Softmax.
-  bool need_component_stats;
+  /// you should set need_component_stats to true if you will not need the
+  /// average-activation and average-derivative statistics stored by the
+  /// StoreStats() functiopns of components/ such as Tanh, Sigmoid and Softmax.
+  bool store_component_stats;
 
-  // misc_info is for extensibility to things that don't easily fit into the framework
+  /// misc_info is for extensibility to things that don't easily fit into the
+  /// framework.
   MiscComputationInfo misc_info;
 
   ComputationRequest(): need_model_derivative(false),
-                        need_component_stats(false) { }
+                        store_component_stats(false) { }
 
-  // returns true if any of inputs[*].has_deriv is true, or model_to_update !=
-  // NULL.
+  /// returns true if any of inputs[*].has_deriv is true, or
+  /// need_model_derivative is true.
   bool NeedDerivatives() const;
+
+  /// Returns the index into "inputs" corresponding to the node with name
+  /// "node_name", or -1 if there is no such index.  It is an error if >1 inputs
+  /// have the same name.
+  int32 IndexForInput(const std::string &node_name) const;
+
+  /// Returns the index into "inputs" corresponding to the node with name
+  /// "node_name", or -1 if there is no such index.  It is an error if >1 inputs
+  /// have the same name.
+  int32 IndexForOutput(const std::string &node_name) const;
 };
 
 
@@ -130,8 +142,8 @@ struct NnetComputation {
   };
   enum CommandType {
     kResizeMatrixZeroed, kResizeMatrixUndefined,
-    kResizeMatrixEmpty, kPropagate, kBackprop, kMatrixCopy, kMatrixAdd,
-    kCopyRows, kAddRows,
+    kResizeMatrixEmpty, kPropagate, kStoreStats, kBackprop,
+    kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
     kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
     kAddRowRanges, kNoOperation, kNoOperationMarker };
   struct Command {
@@ -140,6 +152,8 @@ struct NnetComputation {
     // kResizeMatrixEmpty: arg1 = index of matrix.
     // kPropagate: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
     //   (0 if NULL); arg3, arg4 are sub-matrix indexes of matrix args (input and output)
+    // kStoreStats: arg1 = index of component in nnet; arg2 is sub-matrix index of the output
+    //    stored by Propagate (which is an input to the function).
     // kBackprop: arg1 = index of neural net node (only needed for debug);
     //    arg2 = index of component in nnet; arg3 is index of ComponentPrecomputedIndexes
     //   (0 if NULL); (arg4, arg5, arg6 and arg7) are respectively sub-matrix indexes of

@@ -60,23 +60,23 @@ std::string Nnet::GetAsConfigLine(int32 node_index) const {
   const NetworkNode &node = nodes_[node_index];
   const std::string &name = node_names_[node_index];
   switch (node.node_type) {
-    case NetworkNode::kInput:
+    case kInput:
       ans << "input-node name=" << name << " dim=" << node.dim;
       break;
-    case NetworkNode::kDescriptor:
+    case kDescriptor:
       // assert that it's an output-descriptor, not one describing the input to
       // a component-node.
       KALDI_ASSERT(IsOutput(node_index));
       ans << "output-node name=" << name << " input=";
       node.descriptor.WriteConfig(ans, node_names_);
       break;
-    case NetworkNode::kComponent:
+    case kComponent:
       ans << "component-node name=" << name << " component="
           << component_names_[node.u.component_index] << " input=";
-      KALDI_ASSERT(nodes_[node_index-1].node_type == NetworkNode::kDescriptor);
+      KALDI_ASSERT(nodes_[node_index-1].node_type == kDescriptor);
       nodes_[node_index-1].descriptor.WriteConfig(ans, node_names_);
       break;
-    case NetworkNode::kDimRange:
+    case kDimRange:
       ans << "dim-range-node name=" << name << " input-node="
           << node_names_[node.u.node_index] << " dim-offset="
           << node.dim_offset << " dim=" << node.dim;
@@ -205,8 +205,8 @@ void Nnet::ProcessComponentNodeConfigLine(
     KALDI_ASSERT(input_node_index == -1 && node_index == -1);
     // just set up the node types and names for now, we'll properly set them up
     // on pass 1.
-    nodes_.push_back(NetworkNode(NetworkNode::kDescriptor));
-    nodes_.push_back(NetworkNode(NetworkNode::kComponent));
+    nodes_.push_back(NetworkNode(kDescriptor));
+    nodes_.push_back(NetworkNode(kComponent));
     node_names_.push_back(input_name);
     node_names_.push_back(name);
     return;
@@ -261,7 +261,7 @@ void Nnet::ProcessInputNodeConfigLine(
   
   KALDI_ASSERT(GetNodeIndex(name) == -1);
   int32 node_index = nodes_.size();    
-  nodes_.push_back(NetworkNode(NetworkNode::kInput));
+  nodes_.push_back(NetworkNode(kInput));
   if (dim <= 0)
     KALDI_ERR << "Invalid dimension in config line: " << whole_line;
   nodes_[node_index].dim = dim;
@@ -279,7 +279,7 @@ void Nnet::ProcessOutputNodeConfigLine(
   int32 node_index = GetNodeIndex(name);
   if (pass == 0) {
     KALDI_ASSERT(node_index == -1);
-    nodes_.push_back(NetworkNode(NetworkNode::kDescriptor));
+    nodes_.push_back(NetworkNode(kDescriptor));
     node_names_.push_back(name);
   } else {
     KALDI_ASSERT(node_index != -1);
@@ -317,7 +317,7 @@ void Nnet::ProcessDimRangeNodeConfigLine(
   int32 node_index = GetNodeIndex(name);
   if (pass == 0) {
     KALDI_ASSERT(node_index == -1);
-    nodes_.push_back(NetworkNode(NetworkNode::kDimRange));
+    nodes_.push_back(NetworkNode(kDimRange));
     node_names_.push_back(name);
   } else {
     KALDI_ASSERT(node_index != -1);
@@ -335,8 +335,8 @@ void Nnet::ProcessDimRangeNodeConfigLine(
 
     int32 input_node_index = GetNodeIndex(input_node_name);
     if (input_node_index == -1 ||
-        !(nodes_[input_node_index].node_type == NetworkNode::kComponent ||
-          nodes_[input_node_index].node_type == NetworkNode::kInput))
+        !(nodes_[input_node_index].node_type == kComponent ||
+          nodes_[input_node_index].node_type == kInput))
       KALDI_ERR << "invalid input-node " << input_node_name
                 << ": " << whole_line;
 
@@ -345,7 +345,7 @@ void Nnet::ProcessDimRangeNodeConfigLine(
                 << " in config line: " << whole_line;
 
     NetworkNode &node = nodes_[node_index];
-    KALDI_ASSERT(node.node_type == NetworkNode::kDimRange);
+    KALDI_ASSERT(node.node_type == kDimRange);
     node.u.node_index = input_node_index;
     node.dim = dim;
     node.dim_offset = dim_offset;

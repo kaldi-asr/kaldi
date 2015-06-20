@@ -23,12 +23,52 @@ namespace kaldi {
 namespace nnet3 {
 
 bool ComputationRequest::NeedDerivatives() const {
+  bool ans = false;
   if (need_model_derivative)
-    return true;
-  for (size_t i = 0; i < inputs.size(); i++)
-    if (inputs[i].has_deriv)  // derivative requested for this input
-      return true;
+    ans = true;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    if (inputs[i].has_deriv) { // derivative requested for this input
+      ans = true;
+      break;
+    }
+  }
+  if (ans) {
+    // check that the output actually provides a derivative, else the
+    // request could not be meaningfully satisfied.
+    size_t i;
+    for (i = 0; i < outputs.size(); i++)
+      if (outputs[i].has_deriv)
+        break;
+    if (i == outputs.size()) {
+      KALDI_ERR << "You requested model derivatives or input derivatives, but "
+                << "provide no derivatives at the output.";
+    }
+  }
   return false;
+}
+
+int32 ComputationRequest::IndexForInput(
+    const std::string &node_name) const {
+  int32 ans = -1;
+  for (size_t i = 0; i < inputs.size(); i++) {
+    if (inputs[i].name == node_name) {
+      KALDI_ASSERT(ans == -1 && "Two inputs with the same name");
+      ans = i;
+    }
+  }
+  return ans;
+}
+
+int32 ComputationRequest::IndexForOutput(
+    const std::string &node_name) const {
+  int32 ans = -1;
+  for (size_t i = 0; i < outputs.size(); i++) {
+    if (outputs[i].name == node_name) {
+      KALDI_ASSERT(ans == -1 && "Two inputs with the same name");
+      ans = i;
+    }
+  }
+  return ans;
 }
 
 NnetComputation::~NnetComputation() {

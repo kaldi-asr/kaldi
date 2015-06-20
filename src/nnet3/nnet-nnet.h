@@ -35,6 +35,9 @@
 namespace kaldi {
 namespace nnet3 {
 
+enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
+
+
 /// NetworkNode is used to represent, three types of thing: either an input of the
 /// network (which pretty much just states the dimension of the input vector);
 /// a Component (e.g. an affine component or a sigmoid component); or a Descriptor.
@@ -57,13 +60,12 @@ namespace nnet3 {
 /// component and output.  output maps to kDescriptor, but the nodes of type
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
-struct NetworkNode {
-  enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone } node_type;
-  
+struct NetworkNode {  
   // This is relevant only for nodes of type kDescriptor.  It describes which
   // other network nodes it gets its input from, and how those inputs are
   // combined together; see type Descriptor in nnet-descriptor.h for
   // details.
+  NodeType node_type;
   Descriptor descriptor;
 
   union {

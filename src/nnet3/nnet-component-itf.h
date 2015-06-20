@@ -35,7 +35,6 @@ namespace nnet3 {
 // type for the bitmasks: instead use int32 for this type, e.g.
 // int32 properties = kSimpleComponent|kBackpropNeedsOutput.
 enum ComponentProperties {
-
   kSimpleComponent = 0x001,  // true if number of rows of input equals number of rows
                              // of output and this component doesn't care about the indexes
                              // (i.e. it maps each row of input to each row of output without

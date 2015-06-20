@@ -136,8 +136,8 @@ void AddInputToGraph(const ComputationRequest &request,
     if (n == -1)
       KALDI_ERR << "Network has no input with name "
                 << request.inputs[i].name;
-    NetworkNode::NodeType t = nnet.GetNode(n).node_type;
-    KALDI_ASSERT(t == NetworkNode::kInput || t == NetworkNode::kComponent &&
+    NodeType t = nnet.GetNode(n).node_type;
+    KALDI_ASSERT(t == kInput || t == kComponent &&
                  "Inputs to graph only allowed for Input and Component nodes.");
     
     for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
@@ -210,13 +210,13 @@ void ComputeComputationGraph(const ComputationRequest &request,
     
     // the following switch statement sets up "input_cindexes".
     switch (node.node_type) {
-      case NetworkNode::kDescriptor: {
+      case kDescriptor: {
         // desc describes how this node obtains its input from other nodes.
         const Descriptor &desc = node.descriptor;
         desc.GetDependencies(index, &input_cindexes);
         break;
       }
-      case NetworkNode::kComponent: {
+      case kComponent: {
         int32 c = node.u.component_index;
         const Component *component = nnet.GetComponent(c);
         std::vector<Index> input_indexes;
@@ -225,7 +225,7 @@ void ComputeComputationGraph(const ComputationRequest &request,
         // each Component node should be preceded by a node that describes its
         // input, of type kDescriptor
         KALDI_ASSERT(nnet.GetNode(n-1).node_type ==
-                     NetworkNode::kDescriptor);
+                     kDescriptor);
         
         input_cindexes.resize(input_indexes.size());
         for (size_t i = 0; i < input_indexes.size(); i++) {
@@ -234,12 +234,12 @@ void ComputeComputationGraph(const ComputationRequest &request,
         }
         break;
       }
-      case NetworkNode::kDimRange: {
+      case kDimRange: {
         input_cindexes.resize(1);
         input_cindexes[0] = Cindex(node.u.node_index, index);
         break;
       }
-      case NetworkNode::kInput: default:
+      case kInput: default:
         // for kInput, you should have hit the "continue" statement above.
         KALDI_ERR << "Invalid node type";
     }
@@ -512,22 +512,22 @@ static bool IsComputable(const Nnet &nnet,
   const Index &index = cindex.second;
   const NetworkNode &node = nnet.GetNode(node_id);
   switch (node.node_type) {
-    case NetworkNode::kDescriptor: {
+    case kDescriptor: {
       const Descriptor &desc = node.descriptor;
       CindexSet cindex_set(graph, computable);
       return desc.IsComputable(index, cindex_set, NULL);
     }
-    case NetworkNode::kComponent: {
+    case kComponent: {
       const Component *c = nnet.GetComponent(node.u.component_index);
       IndexSet index_set(graph, computable, node_id);
       return c->IsComputable(request.misc_info, index, index_set, NULL);
     }
-    case NetworkNode::kDimRange: {
+    case kDimRange: {
       Cindex input_cindex(node.u.node_index, index);
       int32 cindex_id = graph.GetCindexId(input_cindex);
       return (cindex_id != -1 && computable[cindex_id]);
     }      
-    case NetworkNode::kInput: default:
+    case kInput: default:
       // we shouldn't reach here because Cindexes from input nodes have
       // no dependencies, and dependencies becoming computable are what
       // triggers a call to this function.
@@ -608,7 +608,7 @@ static void PruneDependenciesForCindex(
   std::vector<int32> used_cindex_ids;
   
   switch (node.node_type) {
-    case NetworkNode::kDescriptor: {
+    case kDescriptor: {
       const Descriptor &desc = node.descriptor;
       CindexSet cindex_set(*graph, computable);
       std::vector<Cindex> used_cindexes;
@@ -631,7 +631,7 @@ static void PruneDependenciesForCindex(
       }
       break;      
     }
-    case NetworkNode::kComponent: {
+    case kComponent: {
       const Component *c = nnet.GetComponent(node.u.component_index);
       IndexSet index_set(*graph, computable, node_id);
       std::vector<Index> used_indexes;
@@ -654,12 +654,12 @@ static void PruneDependenciesForCindex(
       }
       break;
     }
-    case NetworkNode::kDimRange:
+    case kDimRange:
       // there should be exactly one dependency and it is required, not
       // optional, so leave it.
       KALDI_ASSERT(dependencies.size() == 1);
       break;
-    case NetworkNode::kInput: default:
+    case kInput: default:
       // we shouldn't reach here because Cindexes from input nodes have
       // no dependencies, and dependencies becoming computable are what
       // triggers a call to this function.
@@ -856,8 +856,8 @@ void AddComponentSteps(
     for (int32 i = 0; i < num_cindex_ids; i++) {
       int32 cindex_id = this_cindex_ids[i],
           node_index = graph.cindexes[cindex_id].first;
-      NetworkNode::NodeType t = nnet.GetNode(node_index).node_type;
-      if (t == NetworkNode::kComponent) {
+      NodeType t = nnet.GetNode(node_index).node_type;
+      if (t == kComponent) {
         // the following assert is only possible because order_index > 1.
         KALDI_ASSERT(!graph.is_input[cindex_id]);
         cindexes.push_back(graph.cindexes[cindex_id]);
@@ -1009,7 +1009,7 @@ static void AddDimRangeSteps(
   bool dim_range_node_exists = false;
   std::vector<char> is_dim_range_node(num_nodes, '\0');
   for (int32 n = 0; n < num_nodes; n++) {
-    if (nnet.GetNode(n).node_type == NetworkNode::kDimRange) {
+    if (nnet.GetNode(n).node_type == kDimRange) {
       is_dim_range_node[n] = (char)1;
       dim_range_node_exists = true;
     }
@@ -1096,7 +1096,7 @@ void ReorderIndexes(const Nnet &nnet,
     int32 cindex_id = cindex_ids.front();
     int32 node_index = graph.cindexes[cindex_id].first;
     const NetworkNode &node = nnet.GetNode(node_index);
-    if (node.node_type != NetworkNode::kComponent ||
+    if (node.node_type != kComponent ||
         graph.is_input[cindex_id])
       continue;  // nothing to do if an input, or if not a Component.
     

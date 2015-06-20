@@ -37,13 +37,13 @@ void NnetToDirectedGraph(const Nnet &nnet,
     // handle dependencies of this node.
     std::vector<int32> node_dependencies;
     switch (node.node_type) {
-      case NetworkNode::kInput: break;  // no node_dependencies.
-      case NetworkNode::kDescriptor: 
+      case kInput: break;  // no node_dependencies.
+      case kDescriptor: 
         node.descriptor.GetNodeDependencies(&node_dependencies);
         break;
-      case NetworkNode::kComponent:
+      case kComponent:
         node_dependencies.push_back(n - 1);
-      case NetworkNode::kDimRange:
+      case kDimRange:
         node_dependencies.push_back(node.u.node_index);
       default:
         KALDI_ERR << "Invalid node type";
