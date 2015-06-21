@@ -87,6 +87,35 @@ std::string Nnet::GetAsConfigLine(int32 node_index) const {
   return ans.str();
 }
 
+bool Nnet::IsOutput(int32 node) const {
+  int32 size = nodes_.size();  
+  KALDI_ASSERT(node >= 0 && node < size);  
+  return (nodes_[node].node_type == kDescriptor &&
+          (node + 1 == size ||
+           nodes_[node + 1].node_type != kComponent));
+}
+
+const Component *Nnet::GetComponent(int32 c) const {
+  KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
+  return components_[c];
+}
+
+Component *Nnet::GetComponent(int32 c) {
+  KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
+  return components_[c];
+}
+
+/// Returns true if this is component-input node, i.e. a node of type kDescriptor
+/// that immediately precedes a node of type kComponent.
+bool Nnet::IsComponentInput(int32 node) const {
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
+  return (node + 1 < size &&
+          nodes_[node].node_type == kDescriptor &&
+          nodes_[node+1].node_type == kComponent);
+}
+
+
 void Nnet::ReadConfig(std::istream &config_is) {
 
   std::vector<std::string> lines;
@@ -353,6 +382,23 @@ void Nnet::ProcessDimRangeNodeConfigLine(
 }
 
 
+int32 Nnet::GetNodeIndex(const std::string &node_name) const {
+  size_t size = node_names_.size();
+  for (size_t i = 0; i < size; i++)
+    if (node_names_[i] == node_name)
+      return static_cast<int32>(i);
+  return -1;
+}
+
+int32 Nnet::GetComponentIndex(const std::string &component_name) const {
+  size_t size = component_names_.size();
+  for (size_t i = 0; i < size; i++)
+    if (component_names_[i] == component_name)
+      return static_cast<int32>(i);
+  return -1;
+}
+
+
 //static
 void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
                                       std::vector<std::string> *first_tokens,
@@ -367,6 +413,31 @@ void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
   }
   // TODO.
   
+}
+
+// copy constructor.
+NetworkNode::NetworkNode(const NetworkNode &other):
+    node_type(other.node_type),
+    descriptor(other.descriptor),
+    dim(other.dim),
+    dim_offset(other.dim_offset) {
+  u.component_index = other.u.component_index;
+}
+
+
+void Nnet::GetSomeNodeNames(
+    std::vector<std::string> *modified_node_names) const {
+  modified_node_names->resize(node_names_.size());
+  const std::string invalid_name = "**";
+  size_t size = node_names_.size();
+  for (size_t i = 0; i < size; i++) {
+    if (nodes_[i].node_type == kComponent ||
+        nodes_[i].node_type == kInput) {
+      (*modified_node_names)[i] = node_names_[i];
+    } else {
+      (*modified_node_names)[i] = invalid_name;
+    }
+  }
 }
 
 

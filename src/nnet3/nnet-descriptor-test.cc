@@ -85,7 +85,7 @@ void GenRandDescriptor(int32 num_nodes,
 // Copy() function.
 void UnitTestDescriptorIo() {
   for (int32 i = 0; i < 100; i++) {
-    int32 num_nodes = rand() % 5;
+    int32 num_nodes = 1 + rand() % 5;
     std::vector<std::string> node_names(num_nodes);
     for (int32 i = 0; i < node_names.size(); i++) {
       std::ostringstream ostr;
@@ -116,6 +116,8 @@ void UnitTestDescriptorIo() {
 
     KALDI_ASSERT(ostr.str() == ostr2.str());
     KALDI_ASSERT(ostr.str() == ostr3.str());
+    KALDI_LOG << "x = " << ostr.str();
+    KALDI_LOG << "y = " << ostr4.str();
     KALDI_ASSERT(ostr.str() == ostr4.str());
   }
 }

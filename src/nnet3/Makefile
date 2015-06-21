@@ -11,11 +11,13 @@ TESTFILES = natural-gradient-online-test nnet-graph-test \
 						nnet-descriptor-test nnet-parse-test  \
 						nnet-compile-utils-test
 
-OBJFILES = nnet-compile.o nnet-component-itf.o nnet-simple-component.o \
+OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
+  nnet-simple-component.o \
   nnet-general-component.o nnet-parse.o natural-gradient-online.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
-  nnet-example.o nnet-nnet.o nnet-compile-utils.o nnet-nnet.o
+  nnet-example.o nnet-nnet.o nnet-compile-utils.o nnet-nnet.o \
+  nnet-compute.o
 
 LIBNAME = kaldi-nnet3
 

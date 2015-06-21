@@ -24,14 +24,30 @@
 namespace kaldi {
 namespace nnet3 {
 
+static std::string ParsingContext(const std::string *token_ptr) {
+  if (*token_ptr == "end of input")
+    return "";
+  std::string next_few_tokens = ", next part of line is: ";
+  // in the next line, *token_ptr should never equal "" but it's to mitigate the
+  // effect of bugs where we read past the end of the array.
+  while (*token_ptr != "end of input" && *token_ptr != "" &&
+         next_few_tokens.size() < 40) {
+    next_few_tokens = (next_few_tokens + " ") + *token_ptr;
+    token_ptr++;
+  }
+  if (*token_ptr != "end of input")
+    next_few_tokens = next_few_tokens + " ...";
+  return next_few_tokens;
+}
+
 static void ExpectToken(const std::string &token,
                         const std::string &what_we_are_parsing,
                         const std::string **next_token) {
   if (**next_token != token)
     KALDI_ERR << "Expected '" << token << "' while parsing "
               << what_we_are_parsing << ", got "
-              << **next_token;
-  else
+              << **next_token << ParsingContext(*next_token);
+  else  // advance token pointer.
     (*next_token)++;
 }
 
@@ -40,9 +56,9 @@ static int32 ReadIntegerToken(const std::string &what_we_are_parsing,
   int32 ans;
   if (!ConvertStringToInteger(**next_token, &ans))
     KALDI_ERR << "Expected integer while parsing "
-              << what_we_are_parsing << ", got "
-              << **next_token;
-  (*next_token)++;
+              << what_we_are_parsing << ", got '"
+              << **next_token << "'" << ParsingContext(*next_token);
+  (*next_token)++;  // advance token pointer.
   return ans;
 }
 
@@ -54,11 +70,12 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
     (*next_token)++;
     ExpectToken("(", "OffsetForwardingDescriptor", next_token);
     ForwardingDescriptor *src = Parse(node_names, next_token);
+    ExpectToken(",", "OffsetForwardingDescriptor", next_token);
     Index offset;
     offset.t = ReadIntegerToken("OffsetForwardingDescriptor", next_token);
     if (**next_token == ",") {
       (*next_token)++;      
-      offset.t = ReadIntegerToken("OffsetForwardingDescriptor", next_token);
+      offset.x = ReadIntegerToken("OffsetForwardingDescriptor", next_token);
     }
     ExpectToken(")", "OffsetForwardingDescriptor", next_token);
     return new OffsetForwardingDescriptor(src, offset);
@@ -117,7 +134,7 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
         return new SimpleForwardingDescriptor(i);
       }
     }
-    KALDI_ERR << "Parsing Decriptor, expected a Descriptor but got "
+    KALDI_ERR << "Parsing Decriptor, expected a ForwardingDescriptor but got "
               << **next_token;
     return NULL;  // suppress compiler warning.
   }
@@ -282,7 +299,7 @@ void ReplaceIndexForwardingDescriptor::WriteConfig(
   os << "ReplaceIndex(";
   src_->WriteConfig(os, node_names);
   KALDI_ASSERT(variable_name_ == kT || variable_name_ == kX);
-  os << (variable_name_ == kT  ? "t" : "x") << ", "
+  os << ", " << (variable_name_ == kT  ? "t" : "x") << ", "
      << value_ << ")";
 }
 
@@ -413,6 +430,7 @@ SumDescriptor* SumDescriptor::Parse(
     const std::string **next_token) {
 
   if (**next_token == "IfDefined") {
+    (*next_token)++;
     ExpectToken("(", "SumDescriptor", next_token);
     ForwardingDescriptor *src = ForwardingDescriptor::Parse(node_names,
                                                             next_token);
@@ -464,6 +482,18 @@ void Descriptor::Destroy() {
   for (size_t i = 0; i < parts_.size(); i++)
     delete parts_[i];
   parts_.clear();
+}
+
+int32 Descriptor::Dim(const Nnet &nnet) const {
+  size_t size = parts_.size();
+  KALDI_ASSERT(size != 0);
+  int32 ans = parts_[0]->Dim(nnet);
+  if (size > 1) {
+    int32 other_index = RandInt(1, size -1);
+    // make sure all dimensions are consistent; spot-check.
+    KALDI_ASSERT(parts_[other_index]->Dim(nnet) == ans);
+  }
+  return ans;
 }
 
 bool Descriptor::Parse(const std::vector<std::string> &node_names,

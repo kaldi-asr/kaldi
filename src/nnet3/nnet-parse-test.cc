@@ -204,6 +204,10 @@ namespace nnet3 {
     KALDI_ASSERT(DescriptorTokenize(str, &lines));
     KALDI_ASSERT(lines.size() == 4 && lines[0] == "sd" && lines[2] == "+112");
 
+    str = "foo";
+    KALDI_ASSERT(DescriptorTokenize(str, &lines));
+    KALDI_ASSERT(lines.size() == 1 && lines[0] == "foo");
+    
   }
 
 } // namespace nnet3

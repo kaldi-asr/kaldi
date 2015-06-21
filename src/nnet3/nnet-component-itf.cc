@@ -24,6 +24,7 @@
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-computation-graph.h"
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
@@ -106,6 +107,21 @@ void Component::GetInputIndexes(const MiscComputationInfo &misc_info,
   input_indexes->resize(1);
   (*input_indexes)[0] = output_index;
 }
+
+bool Component::IsComputable(const MiscComputationInfo &misc_info,
+                             const Index &output_index,
+                             const IndexSet &input_index_set,
+                             std::vector<Index> *used_inputs) const {
+  // the default Component dependency is for an output index to map directly to
+  // the same input index, which is required to compute the output.
+  if (!input_index_set(output_index))
+    return false;
+  used_inputs->clear();
+  used_inputs->push_back(output_index);
+  return true;
+}
+
+
 
 void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {
   learning_rate_ = lr;
@@ -223,7 +239,6 @@ void NonlinearComponent::InitFromString(std::string args) {
               << Type() << ": \"" << orig_args << "\"";
   Init(dim);
 }
-
 
 
 

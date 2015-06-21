@@ -339,9 +339,9 @@ bool ParseFromString(const std::string &name, std::string *string,
 bool DescriptorTokenize(const std::string &input,
                         std::vector<std::string> *tokens) {
   KALDI_ASSERT(tokens != NULL);
-  size_t start = input.find_first_not_of(" \t");
+  size_t start = input.find_first_not_of(" \t"), size = input.size();
   tokens->clear();
-  while (start < input.size()) {
+  while (start < size) {
     KALDI_ASSERT(!isspace(input[start]));
     if (input[start] == '(' || input[start] == ')' || input[start] == ',') {
       tokens->push_back(std::string(input, start, 1));
@@ -356,6 +356,7 @@ bool DescriptorTokenize(const std::string &input,
           KALDI_WARN << "Could not parse line " << ErrorContext(std::string(input, start));
           return false;
         }
+        tokens->push_back(str);
         break;
       } else {
         if (input[found] == '(' || input[found] == ')' || input[found] == ',') {
