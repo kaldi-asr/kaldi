@@ -103,7 +103,7 @@ namespace nnet3 {
     }
     {
       ConfigLine cfl;
-      str = "baz= pp=qq flag=t";
+      str = " baz= pp=qq flag=t  ";
       KALDI_ASSERT(cfl.ParseLine(str));
       
       std::string str_value;

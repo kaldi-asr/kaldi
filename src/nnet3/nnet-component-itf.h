@@ -277,7 +277,8 @@ class Component {
   ///   See enum ComponentProperties.
   virtual int32 Properties() const = 0;
 
-  /// \brief Read component from stream (works out its type)
+  /// \brief Read component from stream (works out its type).
+  ///     Dies on error.
   static Component* ReadNew(std::istream &is, bool binary);
 
   /// \brief Copies component (deep copy).

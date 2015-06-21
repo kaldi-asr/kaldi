@@ -115,16 +115,19 @@ bool Nnet::IsComponentInput(int32 node) const {
           nodes_[node+1].node_type == kComponent);
 }
 
-
-void Nnet::ReadConfig(std::istream &config_is) {
-
-  std::vector<std::string> lines;
-  // first get the config-file representation of our current structure.  it's
-  // more convenient to combine old and new in the config-file representation,
-  // as it avoids the need for explicit renumbering.
+void Nnet::GetConfigLines(std::vector<std::string> *config_lines) const {
+  config_lines->clear();
   for (int32 n = 0; n < NumNodes(); n++)
     if (!IsComponentInput(n))
-      lines.push_back(GetAsConfigLine(n));
+      config_lines->push_back(GetAsConfigLine(n));
+  
+}
+
+void Nnet::ReadConfig(std::istream &config_is) {
+  
+  std::vector<std::string> lines;
+  GetConfigLines(&lines);
+  
   // we'll later regenerate what we need from nodes_ and node_name_ from the
   // string representation.
   nodes_.clear();
@@ -140,12 +143,14 @@ void Nnet::ReadConfig(std::istream &config_is) {
   std::vector<ConfigLine> config_lines(lines.size());
   for (size_t i = 0; i < lines.size(); i++) {
     std::istringstream is(lines[i]);
-    std::string first_tokens;
-    is >> first_tokens;
+    std::string first_token;
+    is >> first_token;
+    first_tokens[i] = first_token;
     std::string rest_of_line;
     getline(is, rest_of_line);
     if (!config_lines[i].ParseLine(rest_of_line))
-      KALDI_ERR << "Could not parse config-file line " << lines[i];
+      KALDI_ERR << "Could not parse config-file line '" << lines[i] << "'";
+
   }
 
   // the next line will possibly remove some elements from "first_tokens" and
@@ -399,20 +404,73 @@ int32 Nnet::GetComponentIndex(const std::string &component_name) const {
 }
 
 
+// note: the input to this function is a config generated from the nnet,
+// containing the node info, concatenated with a config provided by the user.
 //static
 void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
                                       std::vector<std::string> *first_tokens,
                                       std::vector<ConfigLine> *configs) {
-  KALDI_ASSERT(first_tokens->size() == configs->size() &&
-               num_lines_initial <= first_tokens->size());
   int32 num_lines = first_tokens->size();
-  unordered_map<std::string, int32, StringHasher> name_to_line;
+  KALDI_ASSERT(configs->size() == num_lines &&
+               num_lines_initial <= num_lines);
+  // node names and component names live in different namespaces.
+  unordered_map<std::string, int32, StringHasher> node_name_to_most_recent_line;
+  unordered_set<std::string, StringHasher> component_names;
+  typedef unordered_map<std::string, int32, StringHasher>::iterator IterType;
+
   std::vector<bool> to_remove(num_lines, false);
   for (int32 line = 0; line < num_lines; line++) {
-    // TODO.
+    std::string first_token = (*first_tokens)[line];
+    ConfigLine &config_line = (*configs)[line];
+    std::string name;
+    if (!config_line.GetValue("name", &name))
+      KALDI_ERR << "Config line has no field 'name=xxx': "
+                << config_line.WholeLine();
+    if (!IsValidName(name))
+      KALDI_ERR << "Name '" << name << "' is not allowable, in line: "
+                << config_line.WholeLine();
+    if ((*first_tokens)[line] == "component") {
+      // a line starting with "component"... components live in their own
+      // namespace.  No repeats are allowed because we never wrote them
+      // to the config generated from the nnet.
+      if (!component_names.insert(name).second) {
+        // we could not insert it because it was already there.
+        KALDI_ERR << "Component name " << name
+                  << " appears twice in the same config file.";
+      }
+    } else {
+      // the line defines some sort of network node, e.g. component-node.
+      IterType iter = node_name_to_most_recent_line.find(name);
+      if (iter != node_name_to_most_recent_line.end()) {
+        // name is repeated.
+        int32 prev_line = iter->second;
+        if (prev_line >= num_lines_initial) {
+          // user-provided config contained repeat of node with this name.
+          KALDI_ERR << "Node name " << name
+                    << " appears twice in the same config file.";
+        }
+        // following assert checks that the config-file generated
+        // from an actual nnet does not contain repeats.. that
+        // would be a bug so check it with assert.
+        KALDI_ASSERT(line >= num_lines_initial);
+        to_remove[prev_line] = true;
+      }
+      node_name_to_most_recent_line[name] = line;
+    }
   }
-  // TODO.
-  
+  // Now remove any lines with to_remove[i] = true.
+  std::vector<std::string> first_tokens_out;
+  std::vector<ConfigLine> configs_out;
+  first_tokens_out.reserve(num_lines);
+  configs_out.reserve(num_lines);
+  for (int32 i = 0; i < num_lines; i++) {
+    if (!to_remove[i]) {
+      first_tokens_out.push_back((*first_tokens)[i]);
+      configs_out.push_back((*configs)[i]);
+    }
+  }
+  first_tokens->swap(first_tokens_out);
+  configs->swap(configs_out);
 }
 
 // copy constructor.
@@ -425,6 +483,15 @@ NetworkNode::NetworkNode(const NetworkNode &other):
 }
 
 
+void Nnet::Destroy() {
+  for (size_t i = 0; i < components_.size(); i++)
+    delete components_[i];
+  component_names_.clear();
+  components_.clear();
+  node_names_.clear();
+  nodes_.clear();
+}
+
 void Nnet::GetSomeNodeNames(
     std::vector<std::string> *modified_node_names) const {
   modified_node_names->resize(node_names_.size());
@@ -432,12 +499,69 @@ void Nnet::GetSomeNodeNames(
   size_t size = node_names_.size();
   for (size_t i = 0; i < size; i++) {
     if (nodes_[i].node_type == kComponent ||
-        nodes_[i].node_type == kInput) {
+        nodes_[i].node_type == kInput ||
+        nodes_[i].node_type == kDimRange) {
       (*modified_node_names)[i] = node_names_[i];
     } else {
       (*modified_node_names)[i] = invalid_name;
     }
   }
+}
+
+void Nnet::Read(std::istream &is, bool binary) {
+  Destroy();
+  ExpectToken(is, binary, "<Nnet3>");  
+  std::vector<std::string> config_lines;
+  std::string cur_line;
+  getline(is, cur_line);  // Eat up a single newline.
+  if (!(cur_line == "" || cur_line == "\r"))
+    KALDI_ERR << "Expected newline in config file, got " << cur_line;
+  while (getline(is, cur_line)) {
+    // config-file part of file is terminated by an empty line.
+    if (cur_line == "" || cur_line == "\r")
+      break;
+    config_lines.push_back(cur_line);
+  }
+  // Now we read the Components; later we try to parse the config_lines.
+  ExpectToken(is, binary, "<NumComponents>");
+  int32 num_components;
+  ReadBasicType(is, binary, &num_components);
+  KALDI_ASSERT(num_components >= 0 && num_components < 100000);
+  components_.resize(num_components, NULL);
+  component_names_.resize(num_components);
+  for (int32 c = 0; c < num_components; c++) {
+    ExpectToken(is, binary, "<ComponentName> ");
+    ReadToken(is, binary, &(component_names_[c]));
+    components_[c] = Component::ReadNew(is, binary);
+  }
+  ExpectToken(is, binary, "</Nnet3>");  
+}
+
+void Nnet::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<Nnet3>");
+  os << std::endl;
+  std::vector<std::string> config_lines;
+  GetConfigLines(&config_lines);
+  for (size_t i = 0; i < config_lines.size(); i++) {
+    KALDI_ASSERT(!config_lines[i].empty());
+    os << config_lines[i] << std::endl;
+  }
+  // A blank line terminates the config-like section of the file.
+  os << std::endl;
+  // Now write the Components
+  int32 num_components = components_.size();
+  WriteToken(os, binary, "<NumComponents>");
+  WriteBasicType(os, binary, num_components);
+  if (!binary)
+    os << std::endl;
+  for (int32 c = 0; c < num_components; c++) {
+    WriteToken(os, binary, "<ComponentName> ");
+    WriteToken(os, binary, component_names_[c]);
+    components_[c]->Write(os, binary);
+    if (!binary)
+      os << std::endl;
+  }
+  WriteToken(os, binary, "</Nnet3>");
 }
 
 

@@ -25,8 +25,15 @@ namespace nnet3 {
 bool ConfigLine::ParseLine(const std::string &line) {
   if (line.size() == 0) return false;   // Empty line
   
-  // Line ends with space. line is expected to be preprocessed before.
-  if (isspace(line[line.size()-1]) || isspace(line[0])) return false;   
+  // Line ends or begins with space -> remove it and recurse.
+  if (isspace(line[line.size()-1]) || isspace(line[0])) {
+    size_t initial_pos = line.find_first_not_of(" \t\r\n"),
+        final_pos = line.find_last_not_of(" \t\r\n");
+    if (initial_pos == std::string::npos || final_pos <= initial_pos)
+      return false;
+    std::string processed_line(line, initial_pos, final_pos - initial_pos + 1);
+    return ParseLine(processed_line);
+  }
   
   size_t pos = 0;
   size_t found_eq = line.find_first_of("=", pos + 1);
@@ -41,7 +48,8 @@ bool ConfigLine::ParseLine(const std::string &line) {
       // Empty value for key
       data_.insert(std::make_pair(key, std::make_pair("", false)));
       pos = line.find_first_not_of(" \t", found_eq + 1);
-      if (pos == std::string::npos) return true; // Done reading
+      if (pos == std::string::npos)
+        break; // Done reading
       found_eq = line.find_first_of("=", pos + 1);
       continue;
     } 
@@ -69,7 +77,7 @@ bool ConfigLine::ParseLine(const std::string &line) {
 
     found_eq = found;
   }
-
+  whole_line_ = line;
   return true;
 }
 

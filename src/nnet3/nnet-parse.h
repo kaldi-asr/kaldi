@@ -63,9 +63,10 @@ class ConfigLine {
   /// of the GetValue() functions.
   std::string UnusedValues() const;
 
+  const std::string WholeLine() { return whole_line_; }
   // use default assignment operator and copy constructor.
  private:
-  
+  std::string whole_line_;
   // data_ maps from key to (value, is-this-value-consumed?).
   std::map<std::string, std::pair<std::string, bool> > data_;
   

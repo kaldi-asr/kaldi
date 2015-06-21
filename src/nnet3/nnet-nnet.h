@@ -150,13 +150,21 @@ class Nnet {
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
   std::string Info() const;
+
+  ~Nnet() { Destroy(); }
  private:
+  void Destroy();
+  
   // This function returns as a string the contents of a line of a config-file
   // corresponding to the node indexed "node_index", which must not be of type
   // kComponentInput, in the same format as it would appear in a line of a
   // config-file.
   std::string GetAsConfigLine(int32 node_index) const;
-  
+
+  // This function outputs to "config_lines" the lines of a config file, which
+  // will be sufficient to reconstruct the nodes in the network (but not
+  // the components, which need to be written separately).
+  void GetConfigLines(std::vector<std::string> *config_lines) const;
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same
@@ -165,7 +173,11 @@ class Nnet {
   // config with the same name.  In this case it removes the first of the two,
   // but that first one must have index less than num_lines_initial, else it is
   // an error.
-  // Also checks that for all names  (name=xxx), IsValidName(xxx) is true.
+  // This function also checks that all lines have a config name=xxx, that
+  // IsValidName(xxx) is true, and that there are no two lines with "component"
+  // as the first token and with the same config name=xxx.  Note: here, "name"
+  // means literally "name", but "xxx" stands in for the actual name,
+  // e.g. "my-funky-component."
   static void RemoveRedundantConfigLines(int32 num_lines_initial,
                                          std::vector<std::string> *first_tokens,
                                          std::vector<ConfigLine> *configs);
@@ -186,10 +198,10 @@ class Nnet {
                                      ConfigLine *config);
 
   // This function output to "modified_node_names" a modified copy of
-  // node_names_, in which all nodes which are not of type kComponent or kInput
-  // are replaced with the string "***".  This is useful when parsing
-  // Descriptors, to avoid inadvertently accepting nodes of invalid types
-  // where they are not allowed.
+  // node_names_, in which all nodes which are not of type kComponent, kInput or
+  // kDimRange are replaced with the string "***".  This is useful when parsing
+  // Descriptors, to avoid inadvertently accepting nodes of invalid types where
+  // they are not allowed.
   void GetSomeNodeNames(std::vector<std::string> *modified_node_names) const;
 
   
