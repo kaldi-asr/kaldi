@@ -86,11 +86,15 @@ Component* Component::NewFromString(const std::string &initializer_line) {
   istr >> component_type >> std::ws;
   std::string rest_of_line;
   getline(istr, rest_of_line);
+  ConfigLine cfl;
+  if (!cfl.ParseLine(rest_of_line))
+    KALDI_ERR << "Bad config line: "
+              << rest_of_line;
   Component *ans = NewComponentOfType(component_type);
   if (ans == NULL)
     KALDI_ERR << "Bad initializer line (no such type of Component): "
               << initializer_line;
-  ans->InitFromString(rest_of_line);
+  ans->InitFromConfig(&cfl);
   return ans;
 }
 
@@ -230,17 +234,14 @@ NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
     count_(other.count_) { }
 
-void NonlinearComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
+void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim;
-  bool ok = ParseFromString("dim", &args, &dim);
-  if (!ok || !args.empty() || dim <= 0)
+  bool ok = cfl->GetValue("dim", &dim);
+  if (!ok || cfl->HasUnusedValues() || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim);
 }
-
-
 
 } // namespace nnet3
 } // namespace kaldi

@@ -49,7 +49,7 @@ class PnormComponent: public Component {
   }
   PnormComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "PnormComponent"; }
-  virtual void InitFromString(std::string args); 
+  virtual void InitFromConfig(ConfigLine *cfl); 
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,

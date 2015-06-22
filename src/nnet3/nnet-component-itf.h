@@ -255,16 +255,11 @@ class Component {
   ///        the type of the object.
   virtual std::string Type() const = 0; 
 
-  /// \brief  Initialize, typically from a line of a config file.
-  /// \param [in] args  A string containing any parameters that need to be
-  ///            For example: "dim=100 param-stddev=0.1"
-  virtual void InitFromString(std::string args) = 0;
-
-  /// TODO[vimal]: replace all the InitFromString functions with this
-  /// style of initialization.   Remember to check UnusedValues() returns
-  /// false at the end.
-  /// TODO: change this from { } to = 0 once it is implemented in child classes.
-  virtual void InitFromConfig(ConfigLine *line) { }
+  /// \brief  Initialize, from a ConfigLine object.
+  /// \param [in] cfl  A ConfigLine containing any parameters that
+  ///            are needed for initialization. For example: 
+  ///            "dim=100 param-stddev=0.1"
+  virtual void InitFromConfig(ConfigLine *cfl) = 0;
   
   /// \brief Returns input-dimension of this component.
   virtual int32 InputDim() const = 0;
@@ -400,8 +395,8 @@ class NonlinearComponent: public Component {
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   
-  /// We implement InitFromString at this level.
-  virtual void InitFromString(std::string args);
+  /// We implement InitFromConfig at this level.
+  virtual void InitFromConfig(ConfigLine *cfl);
   
   /// We implement Read at this level as it just needs the Type().
   virtual void Read(std::istream &is, bool binary);

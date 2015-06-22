@@ -50,7 +50,7 @@ class PnormComponent: public Component {
   }
   PnormComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "PnormComponent"; }
-  virtual void InitFromString(std::string args); 
+  virtual void InitFromConfig(ConfigLine *cfl); 
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -201,7 +201,7 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   virtual std::string Info() const;
-  virtual void InitFromString(std::string args);
+  virtual void InitFromConfig(ConfigLine *cfl); 
   
   AffineComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "AffineComponent"; }
@@ -370,8 +370,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
             std::string matrix_filename);
 
   virtual void Resize(int32 input_dim, int32 output_dim);
-  
-  virtual void InitFromString(std::string args);
+  virtual void InitFromConfig(ConfigLine *cfl); 
   virtual std::string Info() const;
   virtual Component* Copy() const;
   NaturalGradientAffineComponent(): max_change_per_sample_(0.0) { }
@@ -437,9 +436,9 @@ class FixedAffineComponent: public Component {
   /// matrix should be of size input-dim+1 to output-dim, last col is offset
   void Init(const CuMatrixBase<BaseFloat> &matrix); 
 
-  // InitFromString takes only the option matrix=<string>,
+  // The ConfigLine cfl contains just the option matrix=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
-  virtual void InitFromString(std::string args);
+  virtual void InitFromConfig(ConfigLine *cfl); 
 
   virtual int32 Properties() const { return kSimpleComponent|kBackpropAdds; }
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
@@ -486,7 +485,7 @@ public:
   void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
                                                   // each output-dim, how many
                                                   // inputs were summed over.
-  virtual void InitFromString(std::string args);
+  virtual void InitFromConfig(ConfigLine *cfl); 
   SumGroupComponent() { }
   virtual std::string Type() const { return "SumGroupComponent"; }
   virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
@@ -530,9 +529,9 @@ class FixedScaleComponent: public Component {
   
   void Init(const CuVectorBase<BaseFloat> &scales);
 
-  // InitFromString takes only the option scales=<string>,
+  // The ConfigLine cfl contains only the option scales=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
-  virtual void InitFromString(std::string args);
+  virtual void InitFromConfig(ConfigLine *cfl);
   
   virtual int32 InputDim() const { return scales_.Dim(); }
   virtual int32 OutputDim() const { return scales_.Dim(); }
@@ -572,10 +571,9 @@ class FixedBiasComponent: public Component {
   
   void Init(const CuVectorBase<BaseFloat> &scales); 
   
-  // InitFromString takes only the option bias=<string>,
+  // The ConfigLine cfl contains only the option bias=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
-  virtual void InitFromString(std::string args);
-  
+  virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return bias_.Dim(); }
   virtual int32 OutputDim() const { return bias_.Dim(); }
   using Component::Propagate; // to avoid name hiding

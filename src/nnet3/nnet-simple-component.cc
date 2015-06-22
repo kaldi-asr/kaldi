@@ -35,15 +35,14 @@ void PnormComponent::Init(int32 input_dim, int32 output_dim)  {
   KALDI_ASSERT(input_dim_ % output_dim_ == 0);
 }
 
-void PnormComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
+void PnormComponent::InitFromConfig(ConfigLine *cfl) {
   int32 input_dim = 0;
   int32 output_dim = 0;
-  bool ok = ParseFromString("output-dim", &args, &output_dim) &&
-      ParseFromString("input-dim", &args, &input_dim);
-  if (!ok || !args.empty() || output_dim <= 0)
+  bool ok = cfl->GetValue("output-dim", &output_dim) &&
+      cfl->GetValue("input-dim", &input_dim);
+  if (!ok || cfl->HasUnusedValues() || output_dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(input_dim, output_dim);
 }
 
@@ -397,37 +396,38 @@ void AffineComponent::Init(BaseFloat learning_rate,
   bias_params_.CopyColFromMat(mat, input_dim);
 }
 
-void AffineComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
+void AffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   BaseFloat learning_rate = learning_rate_;
   std::string matrix_filename;
   int32 input_dim = -1, output_dim = -1;
-  ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  if (ParseFromString("matrix", &args, &matrix_filename)) {
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  if (cfl->GetValue("matrix", &matrix_filename)) {
     Init(learning_rate, matrix_filename);
-    if (ParseFromString("input-dim", &args, &input_dim))
+    if (cfl->GetValue("input-dim", &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                    "input-dim mismatch vs. matrix.");
-    if (ParseFromString("output-dim", &args, &output_dim))
+    if (cfl->GetValue("output-dim", &output_dim))
       KALDI_ASSERT(output_dim == OutputDim() &&
                    "output-dim mismatch vs. matrix.");
   } else {
-    ok = ok && ParseFromString("input-dim", &args, &input_dim);
-    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0;
-    ParseFromString("param-stddev", &args, &param_stddev);
-    ParseFromString("bias-stddev", &args, &bias_stddev);
+    cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
     Init(learning_rate, input_dim, output_dim,
          param_stddev, bias_stddev);
   }
-  if (!args.empty())
+  if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-              << args;
+              << cfl->UnusedValues();
   if (!ok)
-    KALDI_ERR << "Bad initializer " << orig_args;
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
+
+
 
 
 void AffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -616,9 +616,7 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, ostr_end.str());
   SetNaturalGradientConfigs();
 }
-
-void NaturalGradientAffineComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
+void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
@@ -626,40 +624,40 @@ void NaturalGradientAffineComponent::InitFromString(std::string args) {
       max_change_per_sample = 0.075;
   int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
       update_period = 4;
-  ParseFromString("learning-rate", &args, &learning_rate); // optional.
-  ParseFromString("num-samples-history", &args, &num_samples_history);
-  ParseFromString("alpha", &args, &alpha);
-  ParseFromString("max-change-per-sample", &args, &max_change_per_sample);
-  ParseFromString("rank-in", &args, &rank_in);
-  ParseFromString("rank-out", &args, &rank_out);
-  ParseFromString("update-period", &args, &update_period);
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  cfl->GetValue("num-samples-history", &num_samples_history);
+  cfl->GetValue("alpha", &alpha);
+  cfl->GetValue("max-change-per-sample", &max_change_per_sample);
+  cfl->GetValue("rank-in", &rank_in);
+  cfl->GetValue("rank-out", &rank_out);
+  cfl->GetValue("update-period", &update_period);
 
-  if (ParseFromString("matrix", &args, &matrix_filename)) {
+  if (cfl->GetValue("matrix", &matrix_filename)) {
     Init(learning_rate, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample,
          matrix_filename);
-    if (ParseFromString("input-dim", &args, &input_dim))
+    if (cfl->GetValue("input-dim", &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                    "input-dim mismatch vs. matrix.");
-    if (ParseFromString("output-dim", &args, &output_dim))
+    if (cfl->GetValue("output-dim", &output_dim))
       KALDI_ASSERT(output_dim == OutputDim() &&
                    "output-dim mismatch vs. matrix.");
   } else {
-    ok = ok && ParseFromString("input-dim", &args, &input_dim);
-    ok = ok && ParseFromString("output-dim", &args, &output_dim);
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
         bias_stddev = 1.0;
-    ParseFromString("param-stddev", &args, &param_stddev);
-    ParseFromString("bias-stddev", &args, &bias_stddev);
+    cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
     Init(learning_rate, input_dim, output_dim, param_stddev,
          bias_stddev, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample);
   }
-  if (!args.empty())
+  if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
-              << args;
+              << cfl->UnusedValues();
   if (!ok)
-    KALDI_ERR << "Bad initializer " << orig_args;
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
 void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
@@ -902,14 +900,13 @@ void FixedAffineComponent::Init(const CuMatrixBase<BaseFloat> &mat) {
   bias_params_.CopyColFromMat(mat, mat.NumCols() - 1);
 }
 
-void FixedAffineComponent::InitFromString(std::string args) {
-  std::string orig_args = args;
+void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
-  bool ok = ParseFromString("matrix", &args, &filename);
+  bool ok = cfl->GetValue("matrix", &filename);
 
-  if (!ok || !args.empty())
+  if (!ok || cfl->HasUnusedValues())
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
 
   bool binary;
   Input ki(filename, &binary);
@@ -983,14 +980,13 @@ void SumGroupComponent::Init(const std::vector<int32> &sizes) {
   this->output_dim_ = sizes.size();
 }
 
-void SumGroupComponent::InitFromString(std::string args) {
-  std::string orig_args(args);
+void SumGroupComponent::InitFromConfig(ConfigLine *cfl) {
   std::vector<int32> sizes;
-  bool ok = ParseFromString("sizes", &args, &sizes);
+  bool ok = cfl->GetValue("sizes", &sizes);
 
-  if (!ok || !args.empty() || sizes.empty())
+  if (!ok || cfl->HasUnusedValues() || sizes.empty())
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
   this->Init(sizes);
 }
 
@@ -1153,14 +1149,14 @@ void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
   scales_ = scales;
 }
 
-void FixedScaleComponent::InitFromString(std::string args) {
-  std::string orig_args = args;
-  std::string filename;
-  bool ok = ParseFromString("scales", &args, &filename);
 
-  if (!ok || !args.empty())
+void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
+  std::string filename;
+  bool ok = cfl->GetValue("scales", &filename);
+
+  if (!ok || cfl->HasUnusedValues())
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
 
   CuVector<BaseFloat> vec;
   ReadKaldiObject(filename, &vec);
@@ -1222,20 +1218,18 @@ void FixedBiasComponent::Init(const CuVectorBase<BaseFloat> &bias) {
   bias_ = bias;
 }
 
-void FixedBiasComponent::InitFromString(std::string args) {
-  std::string orig_args = args;
+void FixedBiasComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
-  bool ok = ParseFromString("bias", &args, &filename);
+  bool ok = cfl->GetValue("bias", &filename);
 
-  if (!ok || !args.empty())
+  if (!ok || cfl->HasUnusedValues())
     KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << orig_args << "\"";
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
 
   CuVector<BaseFloat> vec;
   ReadKaldiObject(filename, &vec);
   Init(vec);
 }
-
 
 std::string FixedBiasComponent::Info() const {
   std::stringstream stream;
