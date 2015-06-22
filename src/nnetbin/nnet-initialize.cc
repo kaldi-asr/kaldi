@@ -28,10 +28,10 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy Neural Network model (and possibly change binary/text format)\n"
-        "Usage:  nnet-initialize [options] <nnet-config-in> <nnet-out>\n"
+        "Initialize Neural Network parameters according to a prototype.\n"
+        "Usage:  nnet-initialize [options] <nnet-prototype-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-copy --binary=false nnet.conf nnet.init\n";
+        " nnet-initialize --binary=false nnet.proto nnet.init\n";
 
     SetVerboseLevel(1); // be verbose by default
 
