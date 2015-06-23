@@ -7,10 +7,10 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = nnet-randomizer-test nnet-component-test
+TESTFILES = nnet-randomizer-test nnet-component-test nnet-io-socket-test
 
 OBJFILES = nnet-nnet.o nnet-component.o nnet-loss.o \
-           nnet-pdf-prior.o nnet-randomizer.o
+           nnet-pdf-prior.o nnet-randomizer.o nnet-io-socket.o
 
 LIBNAME = kaldi-nnet
 
