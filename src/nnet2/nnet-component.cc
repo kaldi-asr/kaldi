@@ -2,7 +2,7 @@
 //           2013-2014  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang
 //                2014  Vijayaditya Peddinti
-//                2014  Guoguo Chen
+//           2014-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -56,6 +56,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new PowerComponent();
   } else if (component_type == "SoftmaxComponent") {
     ans = new SoftmaxComponent();
+  } else if (component_type == "LogSoftmaxComponent") {
+    ans = new LogSoftmaxComponent();
   } else if (component_type == "RectifiedLinearComponent") {
     ans = new RectifiedLinearComponent();
   } else if (component_type == "NormalizeComponent") {
@@ -1016,6 +1018,62 @@ void SoftmaxComponent::Backprop(const ChunkInfo &in_info,
     to_update_nonlinear->UpdateStats(out_value);
   }
 }
+
+void LogSoftmaxComponent::Propagate(const ChunkInfo &in_info,
+                                    const ChunkInfo &out_info,
+                                    const CuMatrixBase<BaseFloat> &in,
+                                    CuMatrixBase<BaseFloat> *out) const  {
+  in_info.CheckSize(in);
+  out_info.CheckSize(*out);
+  KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
+  
+  // Applies log softmax function to each row of the output. For each row, we do
+  // x_i = x_i - log(sum_j exp(x_j))
+  out->ApplyLogSoftMaxPerRow(in);
+
+  // Just to be consistent with SoftmaxComponent::Propagate()
+  out->ApplyFloor(log(1.0e-20));
+}
+
+void LogSoftmaxComponent::Backprop(const ChunkInfo &in_info,
+                                   const ChunkInfo &out_info,
+                                   const CuMatrixBase<BaseFloat> &,  //in_value,
+                                   const CuMatrixBase<BaseFloat> &out_value,
+                                   const CuMatrixBase<BaseFloat> &out_deriv,
+                                   Component *to_update,
+                                   CuMatrix<BaseFloat> *in_deriv) const  {
+  /*
+    Let the output be y, then
+      y_i = x_i - log(sum_i exp(x_i))
+    where x_i is the input to the component. The Jacobian matrix of this
+    function is
+      J = I - 1 exp(y^T)
+    where 1 is a vector of ones. Let the derivative vector at the output be e,
+    and at the input be d, then we have
+      d = e - exp(y) Sum(e)
+      d_i = e_i - exp(y_i) Sum(e)
+  */
+  in_deriv->Resize(out_deriv.NumRows(), out_deriv.NumCols());
+  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *in_deriv));
+  const CuMatrixBase<BaseFloat> &Y(out_value), &E(out_deriv);
+  CuMatrixBase<BaseFloat> &D (*in_deriv);
+
+  D.CopyFromMat(Y);
+  D.ApplyExp();                           // exp(y)
+  CuVector<BaseFloat> E_sum(D.NumRows()); // Initializes to zero
+  E_sum.AddColSumMat(1.0, E);             // Sum(e)
+  D.MulRowsVec(E_sum);                    // exp(y) Sum(e)
+  D.Scale(-1.0);                          // - exp(y) Sum(e)
+  D.AddMat(1.0, E, kNoTrans);             // e - exp(y_i) Sum(e)
+
+  // Updates stats.
+  if (to_update != NULL) {
+    NonlinearComponent *to_update_nonlinear =
+        dynamic_cast<NonlinearComponent*>(to_update);
+    to_update_nonlinear->UpdateStats(out_value);
+  }
+}
+
 
 void AffineComponent::Scale(BaseFloat scale) {
   linear_params_.Scale(scale);

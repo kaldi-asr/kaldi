@@ -5,7 +5,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
-//                2013  Johns Hopkins University (author: Guoguo Chen)
+//           2013-2015  Guoguo Chen
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1648,6 +1648,77 @@ static void _softmax_reduce(Real*y, const Real*x, MatrixDim d, int src_stride) {
 
 }
 
+template<typename Real>
+__global__
+static void _log_softmax_reduce(Real *y, const Real *x,
+                                MatrixDim d, int src_stride) {
+  int j = blockIdx.x;
+  int THREADS = blockDim.x;
+  if (j >= d.rows) return;
+
+  __shared__ Real aux[CU1DBLOCK];
+  int steps = (d.cols - 1) / THREADS + 1;
+
+  // Maximum step 1: loads input data to <aux>. If <d.cols> is larger than
+  //                 <blockDim.x>, then we do a first pass filtering and only
+  //                 keep a <blockDim.x> size array.
+  aux[threadIdx.x] = x[threadIdx.x + j * d.stride];
+  for (int i = 1; i < steps; ++i) {
+    if (threadIdx.x + i * THREADS < d.cols
+        && aux[threadIdx.x] < x[threadIdx.x + i * THREADS + j * d.stride])
+      aux[threadIdx.x] = x[threadIdx.x + i * THREADS + j * d.stride];
+  }
+
+  // Maximum step 2: the standard max reduce.
+  int nTotalThreads = THREADS;
+  __syncthreads();
+  while (nTotalThreads > 1) {
+    int halfPoint = ((1 + nTotalThreads) >> 1);
+    if (threadIdx.x < halfPoint) {
+      if (threadIdx.x + halfPoint < nTotalThreads
+          && aux[threadIdx.x] < aux[threadIdx.x + halfPoint])
+        aux[threadIdx.x] = aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1 + nTotalThreads) >> 1);
+  }
+  Real max = aux[0];
+  __syncthreads();
+
+  // Log sum step 1: substracts max, and takes exponentials.
+  y[threadIdx.x + j * d.stride] = x[threadIdx.x + j * d.stride] - max;
+  aux[threadIdx.x] = exp(y[threadIdx.x + j * d.stride]);
+  for (int i = 1; i < steps; ++i) {
+    if (threadIdx.x + i * THREADS < d.cols) {
+      y[threadIdx.x + i * THREADS + j * d.stride] =
+        x[threadIdx.x + i * THREADS + j * d.stride] - max;
+      aux[threadIdx.x] += exp(y[threadIdx.x + i * THREADS + j * d.stride]);
+    }
+  }
+
+  // Log sum step 2: comptes summation and then takes logarithm.
+  nTotalThreads = THREADS;
+  __syncthreads();
+  while (nTotalThreads > 1) {
+    int halfPoint = ((1 + nTotalThreads) >> 1);
+    if (threadIdx.x < halfPoint)  {
+      if (threadIdx.x + halfPoint < nTotalThreads)
+        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1 + nTotalThreads) >> 1);
+  }
+  Real log_sum = log(aux[0]);
+  __syncthreads();
+
+  // Computes log softmax.
+  for (int i = 0; i < steps; ++i) {
+    if (threadIdx.x + i * THREADS < d.cols) {
+      y[threadIdx.x + i * THREADS + j * d.stride] -= log_sum;
+    }
+  }
+}
+
 
 template<typename Real>
 __global__
@@ -2183,6 +2254,9 @@ void cudaF_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, Matri
   _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
+void cudaF_log_softmax_reduce (size_t Gr, size_t Bl, float* y, const float* x, MatrixDim d, int src_stride) {
+  _log_softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
+}
 
 void cudaF_splice(dim3 Gr, dim3 Bl, float* y, const float* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {
   _splice<<<Gr,Bl>>>(y,x,off,d_out,d_in); 
@@ -2589,6 +2663,10 @@ void cudaD_diff_tanh (dim3 Gr, dim3 Bl, double* eout, const double* e, const dou
 
 void cudaD_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d, int src_stride) {
   _softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
+}
+
+void cudaD_log_softmax_reduce (size_t Gr, size_t Bl, double* y, const double* x, MatrixDim d, int src_stride) {
+  _log_softmax_reduce<<<Gr,Bl>>>(y, x, d, src_stride);
 }
 
 void cudaD_splice(dim3 Gr, dim3 Bl, double* y, const double* x, const int32_cuda* off, MatrixDim d_out, MatrixDim d_in) {

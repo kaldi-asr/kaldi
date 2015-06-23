@@ -74,7 +74,7 @@ done
 python local/multi_condition/get_reverberate_parameter_lists.py \
   --snrs $snrs --num-files-per-job $num_files_per_job --random-seed $random_seed \
 $src_dir/wav.scp $log_dir/corrupted_${random_seed}.list $impnoise_dir \
-$log_dir/corrupt_wavs.${random_seed}.list > $log_dir/num_corruption_jobs || exit -1;
+$log_dir/corrupt_wavs.${random_seed}.list > $log_dir/num_corruption_jobs || exit 1;
 
 num_jobs=$(cat $log_dir/num_corruption_jobs)
 $decode_cmd -V --max-jobs-run $max_jobs_run JOB=1:$num_jobs $log_dir/corrupt_wavs.${random_seed}.JOB.log  \

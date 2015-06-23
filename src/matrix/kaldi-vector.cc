@@ -4,6 +4,7 @@
 //                      Saarland University;   Go Vivace Inc.;  Ariya Rastrow;
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
 //                      Haihua Xu; Wei Shi
+//                2015  Guoguo Chen
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -843,6 +844,17 @@ Real VectorBase<Real>::ApplySoftMax() {
   }
   this->Scale(1.0 / sum);
   return max + Log(sum);
+}
+
+template<typename Real>
+Real VectorBase<Real>::ApplyLogSoftMax() {
+  Real max = this->Max(), sum = 0.0;
+  for (MatrixIndexT i = 0; i < dim_; i++) {
+    sum += Exp((data_[i] -= max));
+  }
+  sum = Log(sum);
+  this->Add(-1.0 * sum);
+  return max + sum;
 }
 
 #ifdef HAVE_MKL

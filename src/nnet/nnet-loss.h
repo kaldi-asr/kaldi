@@ -30,7 +30,33 @@
 namespace kaldi {
 namespace nnet1 {
 
-class Xent {
+
+class LossItf {
+ public:
+  LossItf() { }
+  virtual ~LossItf() { }
+
+  /// Evaluate cross entropy using target-matrix (supports soft labels),
+  virtual void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat> &net_out, 
+            const CuMatrixBase<BaseFloat> &target,
+            CuMatrix<BaseFloat> *diff) = 0;
+
+  /// Evaluate cross entropy using target-posteriors (supports soft labels),
+  virtual void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat> &net_out, 
+            const Posterior &target,
+            CuMatrix<BaseFloat> *diff) = 0;
+  
+  /// Generate string with error report,
+  virtual std::string Report() = 0;
+
+  /// Get loss value (frame average),
+  virtual BaseFloat AvgLoss() = 0;
+};
+
+
+class Xent : public LossItf {
  public:
   Xent() : frames_(0.0), correct_(0.0), loss_(0.0), entropy_(0.0), 
            frames_progress_(0.0), loss_progress_(0.0), entropy_progress_(0.0) { }
@@ -50,6 +76,11 @@ class Xent {
   
   /// Generate string with error report,
   std::string Report();
+
+  /// Get loss value (frame average),
+  BaseFloat AvgLoss() {
+    return (loss_ - entropy_) / frames_;
+  }
 
  private: 
   double frames_;
@@ -77,7 +108,7 @@ class Xent {
 };
 
 
-class Mse {
+class Mse : public LossItf {
  public:
   Mse() : frames_(0.0), loss_(0.0), 
           frames_progress_(0.0), loss_progress_(0.0) { }
@@ -98,6 +129,11 @@ class Mse {
   /// Generate string with error report
   std::string Report();
 
+  /// Get loss value (frame average),
+  BaseFloat AvgLoss() {
+    return loss_ / frames_;
+  }
+
  private:
   double frames_;
   double loss_;
@@ -112,6 +148,52 @@ class Mse {
 };
 
 
+class MultiTaskLoss : public LossItf {
+ public:
+  MultiTaskLoss() { }
+  ~MultiTaskLoss() {
+    while (loss_vec_.size() > 0) {
+      delete loss_vec_.back();
+      loss_vec_.pop_back();
+    }
+  }
+
+  /// Initialize from string, the format for string 's' is :
+  /// 'multitask,<type1>,<dim1>,<weight1>,...,<typeN>,<dimN>,<weightN>'
+  ///
+  /// Practically it can look like this :
+  /// 'multitask,xent,2456,1.0,mse,440,0.001'
+  void InitFromString(const std::string& s);
+
+  /// Evaluate mean square error using target-matrix,
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat>& net_out, 
+            const CuMatrixBase<BaseFloat>& target,
+            CuMatrix<BaseFloat>* diff) {
+    KALDI_ERR << "This is not supposed to be called!";
+  }
+
+  /// Evaluate mean square error using target-posteior,
+  void Eval(const VectorBase<BaseFloat> &frame_weights, 
+            const CuMatrixBase<BaseFloat>& net_out, 
+            const Posterior& target,
+            CuMatrix<BaseFloat>* diff);
+  
+  /// Generate string with error report
+  std::string Report();
+
+  /// Get loss value (frame average),
+  BaseFloat AvgLoss();
+
+ private:
+  std::vector<LossItf*>  loss_vec_;
+  std::vector<int32>     loss_dim_;
+  std::vector<BaseFloat> loss_weights_;
+  
+  std::vector<int32>     loss_dim_offset_;
+
+  CuMatrix<BaseFloat>    tgt_mat_;
+};
 
 } // namespace nnet1
 } // namespace kaldi

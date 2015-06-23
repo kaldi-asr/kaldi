@@ -178,6 +178,8 @@ exit 0
 
 # CNN systems (Karel - 25.9.2014)
 %WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
+# 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
+%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0 # per-frame training
 
 
 # Some system combination experiments.

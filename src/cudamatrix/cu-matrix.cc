@@ -5,7 +5,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
-//                2013  Johns Hopkins University (author: Guoguo Chen)
+//           2013-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1219,6 +1219,30 @@ void CuMatrixBase<Real>::ApplySoftMaxPerRow(const CuMatrixBase<Real> &src) {
     mat.CopyFromMat(src.Mat());
     for(MatrixIndexT r = 0; r < mat.NumRows(); r++) {
       mat.Row(r).ApplySoftMax();
+    }
+  }
+}
+
+template<typename Real> // Y->this, X->src
+void CuMatrixBase<Real>::ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+#if HAVE_CUDA == 1 
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    size_t dimBlock = src.num_cols_ > CU1DBLOCK ? CU1DBLOCK : src.num_cols_;
+    size_t dimGrid = src.num_rows_;
+    cuda_log_softmax_reduce(dimGrid, dimBlock,
+                            data_, src.data_, Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    MatrixBase<Real> &mat(this->Mat());
+    mat.CopyFromMat(src.Mat());
+    for(MatrixIndexT r = 0; r < mat.NumRows(); r++) {
+      mat.Row(r).ApplyLogSoftMax();
     }
   }
 }

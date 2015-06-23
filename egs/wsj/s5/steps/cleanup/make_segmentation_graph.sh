@@ -95,15 +95,17 @@ cat $graph_dir/tmp.HCLG.fsts.scp | perl -e '
   while (<O2U>) {
     chomp;
     @col = split;
-    @col == 2 || die "Error: bad line $_\n";
+    @col >= 2 || die "Error: bad line $_\n";
     defined($scp{$col[0]}) ||
       die "Error: $col[0] not defined in original scp file\n";
-    print "$col[1] $scp{$col[0]}\n"
+    for ($i = 1; $i < @col; $i += 1) {
+      print "$col[$i] $scp{$col[0]}\n"
+    }
   }' $data/orig2utt > $graph_dir/HCLG.fsts.scp
-rm -rf $graph_dir/tmp.HCLG.fsts.scp
+rm $graph_dir/tmp.HCLG.fsts.scp
 
 if $cleanup; then
-  rm -rf $graph_dir/split$nj
+  rm -r $graph_dir/split$nj
 fi
 
 exit 0;

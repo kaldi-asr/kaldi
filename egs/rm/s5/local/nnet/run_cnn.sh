@@ -17,7 +17,7 @@ stage=0
 . utils/parse_options.sh
 
 
-# Make the FBANK features
+# Make the FBANK features,
 if [ $stage -le 0 ]; then
   # Dev set
   utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp
@@ -33,7 +33,7 @@ if [ $stage -le 0 ]; then
   utils/subset_data_dir_tr_cv.sh --cv-spk-percent 10 $train ${train}_tr90 ${train}_cv10
 fi
 
-# Run the CNN pre-training.
+# Run the CNN pre-training,
 if [ $stage -le 1 ]; then
   dir=exp/cnn4c
   ali=${gmm}_ali
@@ -52,7 +52,7 @@ if [ $stage -le 1 ]; then
     $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
-# Pre-train stack of RBMs on top of the convolutional layers (4 layers, 1024 units)
+# Pre-train stack of RBMs on top of the convolutional layers (4 layers, 1024 units),
 if [ $stage -le 2 ]; then
   dir=exp/cnn4c_pretrain-dbn
   transf_cnn=exp/cnn4c/final.feature_transform_cnn # transform with convolutional layers
@@ -64,14 +64,14 @@ if [ $stage -le 2 ]; then
     $train $dir || exit 1
 fi
 
-# Re-align using CNN
+# Re-align using CNN,
 if [ $stage -le 3 ]; then
   dir=exp/cnn4c
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $train data/lang $dir ${dir}_ali || exit 1
 fi
 
-# Train the DNN optimizing cross-entropy.
+# Train the DNN optimizing cross-entropy,
 if [ $stage -le 4 ]; then
   dir=exp/cnn4c_pretrain-dbn_dnn; [ ! -d $dir ] && mkdir -p $dir/log;
   ali=exp/cnn4c_ali
@@ -81,8 +81,8 @@ if [ $stage -le 4 ]; then
   cnn_dbn=$dir/cnn_dbn.nnet
   { # Concatenate CNN layers and DBN,
     num_components=$(nnet-info $feature_transform | grep -m1 num-components | awk '{print $2;}')
-    nnet-concat "nnet-copy --remove-first-layers=$num_components $feature_transform_dbn - |" $dbn $cnn_dbn \
-      2>$dir/log/concat_cnn_dbn.log || exit 1 
+    cnn="nnet-copy --remove-first-layers=$num_components $feature_transform_dbn - |"
+    nnet-concat "$cnn" $dbn $cnn_dbn 2>$dir/log/concat_cnn_dbn.log || exit 1 
   }
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
@@ -96,12 +96,12 @@ if [ $stage -le 4 ]; then
 fi
 
 # Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. For RM good acwt is 0.2
+# with per-utterance updates. For RM good acwt is 0.2,
 dir=exp/cnn4c_pretrain-dbn_dnn_smbr
 srcdir=exp/cnn4c_pretrain-dbn_dnn
 acwt=0.2
 
-# First we generate lattices and alignments:
+# First we generate lattices and alignments,
 if [ $stage -le 4 ]; then
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $train data/lang $srcdir ${srcdir}_ali || exit 1;
@@ -109,7 +109,7 @@ if [ $stage -le 4 ]; then
     $train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
 
-# Re-train the DNN by 6 iterations of sMBR 
+# Re-train the DNN by 6 iterations of sMBR,
 if [ $stage -le 5 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
     $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1

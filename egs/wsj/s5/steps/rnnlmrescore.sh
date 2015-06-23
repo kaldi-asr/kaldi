@@ -14,6 +14,8 @@ use_phi=false  # This is kind of an obscure option.  If true, we'll remove the o
 test=false # Activate a testing option.
 stage=1 # Stage of this script, for partial reruns.
 rnnlm_ver=rnnlm-0.3e
+skip_scoring=true
+keep_ali=true
 # End configuration section.
 
 
@@ -54,12 +56,20 @@ acwt=`perl -e "print (1.0/$inv_acwt);"` # Note: we'll actually produce lattices
  # to the final one we'll pick, though, for best performance (it controls the
  # N-best list generation).
 
-for f in $oldlang/G.fst $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
+# Figures out if the old LM is G.fst or G.carpa
+oldlm=$oldlang/G.fst
+if [ -f $oldlang/G.carpa ]; then
+  oldlm=$oldlang/G.carpa
+elif [ ! -f $oldlm ]; then
+  echo "$0: expecting either $oldlang/G.fst or $oldlang/G.carpa to exist" &&\
+    exit 1;
+fi
+
+for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
 nj=`cat $indir/num_jobs` || exit 1;
-oldlm=$oldlang/G.fst
 adir=$dir/archives
 
 mkdir -p $dir;
@@ -75,39 +85,56 @@ mkdir -p $dir/log
 # need the alignments for what we're doing.
 if [ $stage -le 1 ]; then
   echo "$0: converting lattices to N-best."
-  $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
-    lattice-to-nbest --acoustic-scale=$acwt --n=$N \
-    "ark:gunzip -c $indir/lat.JOB.gz|" ark:- \|  \
-    lattice-rmali ark:- "ark:|gzip -c >$dir/nbest1.JOB.gz" || exit 1;
+  if $keep_ali; then
+    $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
+      lattice-to-nbest --acoustic-scale=$acwt --n=$N \
+      "ark:gunzip -c $indir/lat.JOB.gz|" \
+      "ark:|gzip -c >$dir/nbest1.JOB.gz" || exit 1;
+  else
+    $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
+      lattice-to-nbest --acoustic-scale=$acwt --n=$N \
+      "ark:gunzip -c $indir/lat.JOB.gz|" ark:- \|  \
+      lattice-rmali ark:- "ark:|gzip -c >$dir/nbest1.JOB.gz" || exit 1;
+  fi
 fi
 
-# next remove part of the old LM probs.  
-if $use_phi; then
-  if [ $stage -le 2 ]; then
-    echo "$0: removing old LM scores."
-    # Use the phi-matcher style of composition.. this is appropriate
-    # if the old LM scores were added e.g. by lmrescore.sh, using 
-    # phi-matcher composition.
-    $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-      lattice-compose --phi-label=$phi "ark:gunzip -c $dir/nbest1.JOB.gz|" $oldlm \
-      "ark:|gzip -c >$dir/nbest2.JOB.gz"  || exit 1;
-  fi    
+# next remove part of the old LM probs.
+if [ "$oldlm" == "$oldlang/G.fst" ]; then
+  if $use_phi; then
+    if [ $stage -le 2 ]; then
+      echo "$0: removing old LM scores."
+      # Use the phi-matcher style of composition.. this is appropriate
+      # if the old LM scores were added e.g. by lmrescore.sh, using 
+      # phi-matcher composition.
+      $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
+        lattice-compose --phi-label=$phi "ark:gunzip -c $dir/nbest1.JOB.gz|" $oldlm \
+        "ark:|gzip -c >$dir/nbest2.JOB.gz"  || exit 1;
+    fi    
+  else
+    if [ $stage -le 2 ]; then
+      echo "$0: removing old LM scores."
+      # this approach chooses the best path through the old LM FST, while
+      # subtracting the old scores.  If the lattices came straight from decoding,
+      # this is what we want.  Note here: each FST in "nbest1.JOB.gz" is a linear FST,
+      # it has no alternatives (the N-best format works by having multiple keys
+      # for each utterance).  When we do "lattice-1best" we are selecting the best
+      # path through the LM, there are no alternatives to consider within the
+      # original lattice.
+      $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
+        lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
+        lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
+        lattice-1best ark:- ark:- \| \
+        lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
+        || exit 1;
+    fi
+  fi
 else
   if [ $stage -le 2 ]; then
     echo "$0: removing old LM scores."
-    # this approach chooses the best path through the old LM FST, while
-    # subtracting the old scores.  If the lattices came straight from decoding,
-    # this is what we want.  Note here: each FST in "nbest1.JOB.gz" is a linear FST,
-    # it has no alternatives (the N-best format works by having multiple keys
-    # for each utterance).  When we do "lattice-1best" we are selecting the best
-    # path through the LM, there are no alternatives to consider within the
-    # original lattice.
     $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-      lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
-      lattice-1best ark:- ark:- \| \
-      lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
-      || exit 1;
+      lattice-lmrescore-const-arpa --lm-scale=-1.0 \
+      "ark:gunzip -c $dir/nbest1.JOB.gz|" $oldlm \
+      "ark:|gzip -c >$dir/nbest2.JOB.gz"  || exit 1;
   fi
 fi
 
@@ -174,9 +201,11 @@ if [ $stage -le 8 ]; then
     nbest-to-lattice ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $oldlang $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $oldlang $dir
+fi
 
 exit 0;
 

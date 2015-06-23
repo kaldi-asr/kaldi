@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Perform one iteration of Neural Network training by Stochastic Gradient Descent.\n"
         "This version use pdf-posterior as targets, prepared typically by ali-to-post.\n"
-        "The updates are done per-utternace, shuffling options are dummy for compatibility reason.\n"
+        "The updates are done per-utterance, shuffling options are dummy for compatibility reason.\n"
         "\n"
         "Usage:  nnet-train-perutt [options] <feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
         "e.g.: \n"
