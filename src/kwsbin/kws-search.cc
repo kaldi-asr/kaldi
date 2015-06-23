@@ -21,7 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-utils.h"
-#include "lat/kaldi-kws.h"
+#include "kws/kaldi-kws.h"
 
 namespace kaldi {
 

@@ -5,6 +5,7 @@
 //                       Ariya Rastrow;  Petr Schwarz;  Yanmin Qian;
 //                       Karel Vesely;  Go Vivace Inc.;  Arnab Ghoshal
 //                       Wei Shi;
+//                2015   Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -141,6 +142,11 @@ class VectorBase {
   /// Apply soft-max to vector and return normalizer (log sum of exponentials).
   /// This is the same as: \f$ x(i) = exp(x(i)) / \sum_i exp(x(i)) \f$
   Real ApplySoftMax();
+
+  /// Applies log soft-max to vector and returns normalizer (log sum of
+  /// exponentials).
+  /// This is the same as: \f$ x(i) = x(i) - log(\sum_i exp(x(i))) \f$
+  Real ApplyLogSoftMax();
 
   /// Sets each element of *this to the tanh of the corresponding element of "src".
   void Tanh(const VectorBase<Real> &src);

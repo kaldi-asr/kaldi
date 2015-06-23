@@ -28,8 +28,8 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Print human-readable information about the neural network\n"
-        "acoustic model to the standard output\n"
+        "Print human-readable information about the neural network.\n"
+        "(topology, various weight statistics, etc.) It prints to stdout.\n"
         "Usage:  nnet-info [options] <nnet-in>\n"
         "e.g.:\n"
         " nnet-info 1.nnet\n";

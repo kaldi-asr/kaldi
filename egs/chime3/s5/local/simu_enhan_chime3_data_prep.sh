@@ -19,7 +19,7 @@ fi
 
 echo "$0 $@"  # Print the command line for logging
 
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 enhan=$1
 audio_dir=$2

@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Karel Vesely
 //                2013  Lucas Ondel
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,8 +31,13 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#ifdef _MSC_VER
+#include <Windows.h>
+#define sleep(x) Sleep((x) * 1000)
+#else
 #include <dlfcn.h>
 #include <unistd.h> // for sleep
+#endif
 
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
@@ -404,6 +410,10 @@ void CuDevice::PrintProfile() {
 
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
 // WARNING! the CUDA API is inconsistent accross versions!
+#ifdef _MSC_VER
+	size_t mem_free, mem_total;
+	cuMemGetInfo_v2(&mem_free, &mem_total);
+#else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
   size_t mem_free, mem_total;
@@ -439,6 +449,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
       dlclose(libcuda);
     }
   }
+#endif
   // copy the output values outside
   if(NULL != free) *free = mem_free;
   if(NULL != total) *total = mem_total;
@@ -456,6 +467,9 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
   // prefill with something reasonable
   strncpy(name,"Unknown GPU",len);
   // open libcuda.so
+#ifdef _MSC_VER
+  cuDeviceGetName(name, len, dev);
+#else
   void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
   if(NULL == libcuda) {
     KALDI_WARN << "cannot open libcuda.so"; 
@@ -473,6 +487,7 @@ void CuDevice::DeviceGetName(char* name, int32 len, int32 dev) {
     // close the library
     dlclose(libcuda);
   }
+#endif
 }
 
 
@@ -530,7 +545,7 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true)
 
 CuDevice::~CuDevice() {
   if (Enabled()) {
-    CU_SAFE_CALL(cublasShutdown());
+    cublasShutdown();
   }
 }
   

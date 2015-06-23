@@ -302,6 +302,9 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
       if (line.find("\\end\\") != std::string::npos) break;
     }
 
+    std::size_t equal_symbol_pos = line.find("=");
+    if (equal_symbol_pos != std::string::npos)
+      line.replace(equal_symbol_pos, 1, " = "); // Inserts spaces around "="
     std::vector<std::string> col;
     SplitStringToVector(line, " \t", true, &col);
 
@@ -309,31 +312,35 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
     if (!keyword_found && col.size() == 1 && col[0] == "\\data\\") {
       KALDI_LOG << "Reading \"\\data\\\" section.";
       keyword_found = true;
+      continue;
     }
 
     // Enters "\data\" section, and looks for patterns like"ngram 1=1000", which
     // means there are 1000 unigrams.
-    if (keyword_found && col.size() == 2 && col[0] == "ngram") {
-      std::vector<std::string> sub_col;
-      SplitStringToVector(col[1], "=", true, &sub_col);
-      if (sub_col.size() == 2) {
+    if (keyword_found && col.size() == 4 && col[0] == "ngram") {
+      if (col[2] == "=") {
         int32 order, ngram_count;
-        if (!ConvertStringToInteger(sub_col[0], &order)) {
+        if (!ConvertStringToInteger(col[1], &order)) {
           KALDI_ERR << "bad line: " << line << "; fail to convert "
-              << sub_col[0] << " to integer.";
+              << col[1] << " to integer.";
         }
-        if (!ConvertStringToInteger(sub_col[1], &ngram_count)) {
+        if (!ConvertStringToInteger(col[3], &ngram_count)) {
           KALDI_ERR << "bad line: " << line << "; fail to convert "
-              << sub_col[1] << " to integer.";
+              << col[3] << " to integer.";
         }
         if (num_ngrams.size() <= order) {
           num_ngrams.resize(order + 1);
         }
         num_ngrams[order] = ngram_count;
+      } else {
+        KALDI_WARN << "Uninterpretable line \"\\data\\\" section: " << line;
       }
+    } else if (keyword_found) {
+      KALDI_WARN << "Uninterpretable line \"\\data\\\" section: " << line;
     }
   }
-  KALDI_ASSERT(num_ngrams.size() > 0);
+  if (num_ngrams.size() == 0)
+    KALDI_ERR << "Fail to read \"\\data\\\" section.";
   ngram_order_ = num_ngrams.size() - 1;
 
   // Processes "\N-grams:" section.

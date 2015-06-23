@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     int32 num_iters = 1; 
     po.Register("num-iters", &num_iters, 
                 "Number of iterations (smaller datasets should have more iterations, "
-                "iterating within tool becase of linear momentum scheduling)");
+                "iterating within tool because of linear momentum scheduling)");
 
     std::string feature_transform;
     po.Register("feature-transform", &feature_transform, "Feature transform in Nnet format");

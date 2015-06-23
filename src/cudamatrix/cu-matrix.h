@@ -4,7 +4,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
-//                2013  Johns Hopkins University (author: Guoguo Chen)
+//           2013-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -252,6 +252,11 @@ class CuMatrixBase {
   /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
   /// for each row, the max value is first subtracted for good numerical stability
   void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
+
+  /// LogSoftmax nonlinearity
+  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row
+  /// for each row, the max value is first subtracted for good numerical stability
+  void ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// Find the id of the maximal element for each row
   void FindRowMaxId(CuArray<int32> *id) const;

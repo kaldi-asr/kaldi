@@ -28,7 +28,8 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Convert features into posterior format, is used as NN training targets (Karel's nnet1).\n"
+        "Convert features into posterior format, which is used for NN training targets\n"
+        "in Karel's nnet1 tools.\n"
         "(speed is not an issue for reasonably low NN-output dimensions)\n"
         "Usage:  feat-to-post [options] feat-rspecifier posteriors-wspecifier\n"
         "e.g.:\n"

@@ -37,8 +37,8 @@ using std::string;
 using std::vector;
 
 #include "util/common-utils.h"
+#include "lat/lattice-functions.h"
 #include "lat/kaldi-lattice.h"
-#include "lat/kws-functions.h"
 #include "lat/sausages.h"
 
 namespace kaldi {

@@ -356,7 +356,16 @@ if [[ -z "$nnet_init" && -z "$nnet_proto" ]]; then
         "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto || exit 1 
       ;;
     cnn2d) 
-      #TODO, to be filled by Vijay...
+      delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
+      echo "Debug : $delta_opts, delta_order $delta_order"
+      utils/nnet/make_cnn2d_proto.py $cnn_proto_opts \
+        --splice=$splice --delta-order=$delta_order --dir=$dir \
+        $num_fea >$nnet_proto || exit 1
+      cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
+      utils/nnet/make_nnet_proto.py $proto_opts \
+        --no-proto-head --no-smaller-input-weights \
+        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
+        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto || exit 1
       ;;
     lstm)
       utils/nnet/make_lstm_proto.py $proto_opts \

@@ -26,6 +26,8 @@ if [ $# -ne 3 ]; then
   echo "segmentation and creates a new data directory for the new segmentation."
   echo ""
   echo "Usage: $0 [options] <ctm-file> <old-data-dir> <new-data-dir>"
+  echo " e.g.: $0 train_si284_split.ctm \\"
+  echo "                          data/train_si284_split data/train_si284_reseg"
   echo "Options:"
   echo "    --wer-cutoff            # ignore segments with WER higher than the"
   echo "                            # specified value. -1 means no segment will"
@@ -56,10 +58,9 @@ mkdir -p $new_data_dir/tmp/
 cp -f $old_data_dir/wav.scp $new_data_dir
 [ -f old_data_dir/spk2gender ] &&  cp -f $old_data_dir/spk2gender $new_data_dir
 
-# The following block does two things:
-# 1. Inserts <eps> as silence.
-# 2. Removes the overlapping region (in utils/split_long_utterance.sh we create
-#    the segmentation with overlapping region).
+# Removes the overlapping region (in utils/split_long_utterance.sh we create
+# the segmentation with overlapping region).
+#
 # Note that for each audio file, we expect its segments have been sorted in time
 # ascending order (if we ignore the overlap).
 cat $ctm | perl -e '
@@ -98,12 +99,7 @@ cat $ctm | perl -e '
 
     $new_start = sprintf("%.2f", $previous[2] + $previous[3]);
 
-    if ($new_start < $current[2]) {
-      # Case 1: inserts <eps> as silence.
-      $new_dur = sprintf("%.2f", $current[2] - $new_start);
-      push(@ctm, [$current[0], $current[1], $new_start, $new_dur, "<eps>"]);
-      push(@ctm, \@current);
-    } elsif ($new_start > $current[2]) {
+    if ($new_start > $current[2]) {
       # Case 2: scans for a splice point.
       $index = -1;
       while (defined($ctm[$index])
