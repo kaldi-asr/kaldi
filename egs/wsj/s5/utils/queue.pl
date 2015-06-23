@@ -365,6 +365,7 @@ print Q ") >$logfile\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
 print Q "ret=\$?\n";
+print Q "[ \$ret -eq 139 ] && echo '#' Ignored error code \$ret && ret=0; # bug at BUT cluster\n";
 print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$num_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
