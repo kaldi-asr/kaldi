@@ -110,7 +110,7 @@ if [ $stage -le 10 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp
   # to the script below.
   steps/online/nnet2/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
-    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+    data/lang exp/nnet2_multicondition/extractor "$dir" ${dir}_online || exit 1;
 fi
 
 if [ $stage -le 11 ]; then
@@ -119,8 +119,7 @@ if [ $stage -le 11 ]; then
   for data_dir in dev_rvb test_rvb dev_aspire dev test; do
    ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
       --config conf/decode.config \
-      --online-ivector-dir exp/nnet2_multicondition/ivectors_${data_dir} \
-      exp/tri5a/graph data/${data_dir}_hires $dir/decode_${data_dir} || exit 1;
+      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
    ) &
   done
   wait;
@@ -133,8 +132,7 @@ if [ $stage -le 12 ]; then
    ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
       --config conf/decode.config \
       --per-utt true \
-      --online-ivector-dir exp/nnet2_multicondition/ivectors_${data_dir} \
-      exp/tri5a/graph data/${data_dir}_hires $dir/decode_${data_dir} || exit 1;
+      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
    ) &
   done
   wait;
@@ -148,8 +146,7 @@ if [ $stage -le 13 ]; then
    ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
       --config conf/decode.config \
       --per-utt true --online false \
-      --online-ivector-dir exp/nnet2_multicondition/ivectors_${data_dir} \
-      exp/tri5a/graph data/${data_dir}_hires $dir/decode_${data_dir} || exit 1;
+      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
    ) &
   done
 fi
