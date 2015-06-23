@@ -63,6 +63,17 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
                                  Posterior *arc_post,
                                  double *acoustic_like_sum = NULL);
 
+// This function is something similar to LatticeForwardBackward(), but it is on
+// the CompactLattice lattice format. Also we only need the alpha in the forward 
+// path, not the posteriors.
+bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
+                                 vector<double> *alpha);
+
+// A sibling of the function CompactLatticeAlphas()... We compute the beta from
+// the backward path here.
+bool ComputeCompactLatticeBetas(const CompactLattice &lat,
+                                vector<double> *beta);
+
 /// Topologically sort the compact lattice if not already topologically sorted.
 /// Will crash if the lattice cannot be topologically sorted.
 void TopSortCompactLatticeIfNeeded(CompactLattice *clat);
