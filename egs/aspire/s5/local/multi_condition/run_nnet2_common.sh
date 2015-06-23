@@ -7,20 +7,30 @@
 
 stage=1
 num_data_reps=3
-dest_wav_dir=/export/a08/vpeddinti/rvb_wavs # directory to store the reverberated wav files
+dest_wav_dir=data/rvb_wavs # directory to store the reverberated wav files
 ali_dir=exp/
+db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
+                                      # only dbs used for ASpIRE submission system have been used here
+RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
+download_rirs=false # download the RIR databases from the urls or assume they are present in the RIR_home directory
+
 set -e
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+# check if the required tools are present
+local/multi_condition/check_version.sh || exit 1;
+
 mkdir -p exp/nnet2_multicondition
 if [ $stage -le 1 ]; then
   # prepare the impulse responses
-  false && {
   local/multi_condition/prepare_impulses_noises.sh --log-dir exp/make_reverb/log \
-    data/impulses_noises || exit -1;
-  }
+    --db-string "$db_string" \
+    --download-rirs $download_rirs \
+    --RIR-home $RIR_home \
+    data/impulses_noises || exit 1;
+  
   # corrupt the fisher data to generate multi-condition data 
   # for data_dir in train dev test; do
   for data_dir in train dev test; do
