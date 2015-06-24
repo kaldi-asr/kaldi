@@ -66,7 +66,7 @@ std::string Nnet::GetAsConfigLine(int32 node_index) const {
     case kDescriptor:
       // assert that it's an output-descriptor, not one describing the input to
       // a component-node.
-      KALDI_ASSERT(IsOutput(node_index));
+      KALDI_ASSERT(IsOutputNode(node_index));
       ans << "output-node name=" << name << " input=";
       node.descriptor.WriteConfig(ans, node_names_);
       break;
@@ -87,13 +87,38 @@ std::string Nnet::GetAsConfigLine(int32 node_index) const {
   return ans.str();
 }
 
-bool Nnet::IsOutput(int32 node) const {
+bool Nnet::IsOutputNode(int32 node) const {
   int32 size = nodes_.size();  
   KALDI_ASSERT(node >= 0 && node < size);  
   return (nodes_[node].node_type == kDescriptor &&
           (node + 1 == size ||
            nodes_[node + 1].node_type != kComponent));
 }
+
+bool Nnet::IsInputNode(int32 node) const {
+  int32 size = nodes_.size();  
+  KALDI_ASSERT(node >= 0 && node < size);  
+  return (nodes_[node].node_type == kInput);
+}
+
+bool Nnet::IsDescriptorNode(int32 node) const {
+  int32 size = nodes_.size();  
+  KALDI_ASSERT(node >= 0 && node < size);  
+  return (nodes_[node].node_type == kDescriptor);
+}
+
+bool Nnet::IsComponentNode(int32 node) const {
+  int32 size = nodes_.size();  
+  KALDI_ASSERT(node >= 0 && node < size);  
+  return (nodes_[node].node_type == kComponent);
+}
+
+bool Nnet::IsDimRangeNode(int32 node) const {
+  int32 size = nodes_.size();  
+  KALDI_ASSERT(node >= 0 && node < size);  
+  return (nodes_[node].node_type == kDimRange);
+}
+
 
 const Component *Nnet::GetComponent(int32 c) const {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
@@ -107,7 +132,7 @@ Component *Nnet::GetComponent(int32 c) {
 
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
 /// that immediately precedes a node of type kComponent.
-bool Nnet::IsComponentInput(int32 node) const {
+bool Nnet::IsComponentInputNode(int32 node) const {
   int32 size = nodes_.size();
   KALDI_ASSERT(node >= 0 && node < size);
   return (node + 1 < size &&
@@ -118,30 +143,34 @@ bool Nnet::IsComponentInput(int32 node) const {
 void Nnet::GetConfigLines(std::vector<std::string> *config_lines) const {
   config_lines->clear();
   for (int32 n = 0; n < NumNodes(); n++)
-    if (!IsComponentInput(n))
+    if (!IsComponentInputNode(n))
       config_lines->push_back(GetAsConfigLine(n));
   
 }
 
 void Nnet::ReadConfig(std::istream &config_is) {
-  
+
   std::vector<std::string> lines;
+  // Write into "lines" a config file corresponding to whatever
+  // nodes we currently have.  Because the numbering of nodes may
+  // change, it's most convenient to convert to the text representation
+  // and combine the existing and new config lines in that representation.
   GetConfigLines(&lines);
   
   // we'll later regenerate what we need from nodes_ and node_name_ from the
   // string representation.
   nodes_.clear();
   node_names_.clear();
-
+  
   int32 num_lines_initial = lines.size();
     
-  // add new lines corresponding to what is in the proi
   ReadConfigFile(config_is, &lines);
   // now "lines" will have comments removed and empty lines stripped out
 
   std::vector<std::string> first_tokens(lines.size());
   std::vector<ConfigLine> config_lines(lines.size());
   for (size_t i = 0; i < lines.size(); i++) {
+    KALDI_LOG << "Line " << i << " is " << lines[i];
     std::istringstream is(lines[i]);
     std::string first_token;
     is >> first_token;
@@ -294,11 +323,13 @@ void Nnet::ProcessInputNodeConfigLine(
               << " in config line: " << whole_line;
   
   KALDI_ASSERT(GetNodeIndex(name) == -1);
-  int32 node_index = nodes_.size();    
-  nodes_.push_back(NetworkNode(kInput));
   if (dim <= 0)
     KALDI_ERR << "Invalid dimension in config line: " << whole_line;
+  
+  int32 node_index = nodes_.size();    
+  nodes_.push_back(NetworkNode(kInput));
   nodes_[node_index].dim = dim;
+  node_names_.push_back(name);
 }
 
 
@@ -510,8 +541,8 @@ void Nnet::GetSomeNodeNames(
 
 void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
-  ExpectToken(is, binary, "<Nnet3>");  
-  std::vector<std::string> config_lines;
+  ExpectToken(is, binary, "<Nnet3>");
+  std::ostringstream config_file_out;
   std::string cur_line;
   getline(is, cur_line);  // Eat up a single newline.
   if (!(cur_line == "" || cur_line == "\r"))
@@ -520,7 +551,7 @@ void Nnet::Read(std::istream &is, bool binary) {
     // config-file part of file is terminated by an empty line.
     if (cur_line == "" || cur_line == "\r")
       break;
-    config_lines.push_back(cur_line);
+    config_file_out << cur_line << std::endl;
   }
   // Now we read the Components; later we try to parse the config_lines.
   ExpectToken(is, binary, "<NumComponents>");
@@ -530,11 +561,13 @@ void Nnet::Read(std::istream &is, bool binary) {
   components_.resize(num_components, NULL);
   component_names_.resize(num_components);
   for (int32 c = 0; c < num_components; c++) {
-    ExpectToken(is, binary, "<ComponentName> ");
+    ExpectToken(is, binary, "<ComponentName>");
     ReadToken(is, binary, &(component_names_[c]));
     components_[c] = Component::ReadNew(is, binary);
   }
-  ExpectToken(is, binary, "</Nnet3>");  
+  ExpectToken(is, binary, "</Nnet3>");
+  std::istringstream config_file_in(config_file_out.str());
+  this->ReadConfig(config_file_in);
 }
 
 void Nnet::Write(std::ostream &os, bool binary) const {
@@ -555,13 +588,39 @@ void Nnet::Write(std::ostream &os, bool binary) const {
   if (!binary)
     os << std::endl;
   for (int32 c = 0; c < num_components; c++) {
-    WriteToken(os, binary, "<ComponentName> ");
+    WriteToken(os, binary, "<ComponentName>");
     WriteToken(os, binary, component_names_[c]);
     components_[c]->Write(os, binary);
     if (!binary)
       os << std::endl;
   }
   WriteToken(os, binary, "</Nnet3>");
+}
+
+int32 Nnet::Modulus() const {
+  int32 ans = 1;
+  for (int32 n = 0; n < NumNodes(); n++) {
+    const NetworkNode &node = nodes_[n];
+    if (node.node_type == kDescriptor)
+      ans = Lcm(ans, node.descriptor.Modulus());
+  }
+  return ans;
+}
+
+
+int32 Nnet::InputDim(const std::string &input_name) const {
+  int32 n = GetComponentIndex(input_name);
+  if (n == -1) return -1;
+  const NetworkNode &node = nodes_[n];
+  if (node.node_type != kInput) return -1;
+  return node.dim;
+}
+
+int32 Nnet::OutputDim(const std::string &input_name) const {
+  int32 n = GetComponentIndex(input_name);
+  if (n == -1 || !IsOutputNode(n)) return -1;
+  const NetworkNode &node = nodes_[n];
+  return node.Dim(*this);
 }
 
 

@@ -406,7 +406,6 @@ bool IsValidName(const std::string &name) {
 void ReadConfigFile(std::istream &is, 
                     std::vector<std::string> *lines) {
   KALDI_ASSERT(lines != NULL);
-  lines->clear();
   std::string line;
   while (std::getline(is, line)) {
     if (line.size() == 0) continue;

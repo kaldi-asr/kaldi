@@ -116,13 +116,30 @@ class Nnet {
     return nodes_[node];
   }
 
+  /// Returns true if this is a component node, meaning that it is of type
+  /// kComponent.
+  bool IsComponentNode(int32 node) const;
+
+  /// Returns true if this is a dim-range node, meaning that it is of type
+  /// kDimRange.
+  bool IsDimRangeNode(int32 node) const;
+  
+  /// Returns true if this is an output node, meaning that it is of type
+  /// kInput.
+  bool IsInputNode(int32 node) const;
+
+  /// Returns true if this is a descriptor node, meaning that it is of type
+  /// kDescriptor.  Exactly one of IsOutput or IsComponentInput will also
+  /// apply.
+  bool IsDescriptorNode(int32 node) const;
+  
   /// Returns true if this is an output node, meaning that it is of type kDescriptor
   /// and is not directly followed by a node of type kComponent.
-  bool IsOutput(int32 node) const;
+  bool IsOutputNode(int32 node) const;
 
   /// Returns true if this is component-input node, i.e. a node of type kDescriptor
   /// that immediately precedes a node of type kComponent.
-  bool IsComponentInput(int32 node) const;  
+  bool IsComponentInputNode(int32 node) const;  
 
   /// returns vector of node names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetNodeNames() const;
@@ -135,6 +152,16 @@ class Nnet {
 
   // returns index associated with this component name, or -1 if no such index.
   int32 GetComponentIndex(const std::string &node_name) const;
+
+  // This convenience function returns the dimension of the input with name
+  // "input_name" (e.g. input_name="input" or "ivector"), or -1 if there is no
+  // such input.
+  int32 InputDim(const std::string &input_name) const;
+
+  // This convenience function returns the dimension of the output with
+  // name "input_name" (e.g. output_name="input"), or -1 if there is
+  // no such input.
+  int32 OutputDim(const std::string &output_name) const;
   
   void Read(std::istream &istream, bool binary);
 
@@ -150,6 +177,13 @@ class Nnet {
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
   std::string Info() const;
+
+
+  /// [Relevant for clockwork RNNs and similar].  Computes the smallest integer
+  /// n >=1 such that the neural net's behavior will be the same if we shift the
+  /// input and output's time indexes (t) by integer multiples of n.  Does this
+  /// by computing the lcm of all the moduli of the Descriptors in the network.
+  int32 Modulus() const;
 
   ~Nnet() { Destroy(); }
  private:

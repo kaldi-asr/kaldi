@@ -175,9 +175,84 @@ static void ComputeDependenciesSubset(
   }
 }
 
+/// This function computes certain information about "super-order" of cindex_ids.
+/// The function ComputeComputationGraphOrder() from nnet-graph.h gives us a map
+/// from the NetworkNode index to an index we call the "super-order" index:
+/// basically, nodes that are computed first have a lower super-order index, and
+/// all nodes that are part of strongly connected components have the same
+/// super-order index.
+/// The overall computation order that we compute, will respect this super-order
+/// (except that outputs of nodes of type kComponent that are actually provided
+/// as inputs to the network, won't be subject to these limitations but will
+/// come first in the order)... we will just ignore the output of this function
+/// as it concerns cindex-ids that are provided as input to the network.
+///
+///  \param nnet [in] The neural net
+///  \param graph [in] The computation graph
+///  \param cindex_id_to_super_order [out] A vector that maps cindex_id to
+///            super_order index, as obtained by adding one to the output of
+///            ComputeNnetComputationOrder; however, input cindex_ids (those for
+///            which is_input[cindex_id] is true) always map to 0.
+///  \param by_super_order [out] The same information as
+///            cindex_id_to_super_order, but in a different format: for each
+///            super_order, a list of cindex_ids with that super_order index.
+///  \param super_order_is_trivial [out] A vector of bool, indexed by
+///            super_order index that's true if this super_order index corresponds
+///            to just a single NetworkNode. (and also true for super_order index 0,
+///            which corresponds only to inputs to the network).
+static void ComputeSuperOrderInfo(
+    const Nnet &nnet,    
+    const ComputationGraph &graph,
+    std::vector<int32> *cindex_id_to_super_order,
+    std::vector<std::vector<int32 > > *by_super_order,
+    std::vector<bool> *super_order_is_trivial) {
 
-void ComputeComputationGraph(const ComputationRequest &request,
-                             const Nnet &nnet,
+  // node_to_super_order maps each nnet node to an index >= 0that tells
+  // us what order to compute them in... but we may need to compute
+  // a finer ordering at the cindex_id level in cases like RNNs.
+  std::vector<int32> node_to_super_order;
+  ComputeNnetComputationOrder(nnet, &node_to_super_order);
+  // Add one to the super-order info, because we will be reserving
+  // zero for inputs to the network, and we don't want to have to
+  // prove that super-order-index 0 would correspond only to inputs.
+  for (int32 i = 0; i < node_to_super_order.size(); i++)
+    node_to_super_order[i]++;
+  int32 num_nodes = nnet.NumNodes(),
+      num_cindex_ids = graph.cindexes.size(),
+      num_super_order_indexes = 1 + *std::max_element(node_to_super_order.begin(),
+                                                      node_to_super_order.end());
+  KALDI_ASSERT(node_to_super_order.size() == num_nodes);  
+
+  // super_order_to_num_nodes is only used so we know whether each super_order
+  // index corresponds to multiple nodes; if it's just one node then we know
+  // the computation is very simple and we can do an optimization.
+  std::vector<int32> super_order_to_num_nodes(num_super_order_indexes, 0);
+  for (int32 n = 0; n < num_nodes; n++)
+    super_order_to_num_nodes[node_to_super_order[n]]++;
+
+  super_order_is_trivial->resize(num_super_order_indexes);
+  for (int32 o = 0; o < num_super_order_indexes; o++) {
+    KALDI_ASSERT(o == 0 || super_order_to_num_nodes[o] > 0);
+    (*super_order_is_trivial)[o] = (super_order_to_num_nodes[o] <= 1);
+  }
+  
+  cindex_id_to_super_order->resize(num_cindex_ids);
+  by_super_order->resize(num_super_order_indexes);
+  for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
+    int32 node_index = graph.cindexes[cindex_id].first,
+        super_order_index = (graph.is_input[cindex_id] ? 0 :
+                             node_to_super_order[node_index]);
+    (*cindex_id_to_super_order)[cindex_id] = super_order_index;
+    (*by_super_order)[super_order_index].push_back(cindex_id);
+  }
+}
+    
+
+} // end namespace computation_graph
+
+
+void ComputeComputationGraph(const Nnet &nnet,
+                             const ComputationRequest &request,
                              ComputationGraph *graph) {
   using namespace computation_graph;
   // make sure graph is empty at the start.
@@ -260,81 +335,6 @@ void ComputeComputationGraph(const ComputationRequest &request,
     SortAndUniq(&this_dep);
   }
 }
-
-/// This function computes certain information about "super-order" of cindex_ids.
-/// The function ComputeComputationGraphOrder() from nnet-graph.h gives us a map
-/// from the NetworkNode index to an index we call the "super-order" index:
-/// basically, nodes that are computed first have a lower super-order index, and
-/// all nodes that are part of strongly connected components have the same
-/// super-order index.
-/// The overall computation order that we compute, will respect this super-order
-/// (except that outputs of nodes of type kComponent that are actually provided
-/// as inputs to the network, won't be subject to these limitations but will
-/// come first in the order)... we will just ignore the output of this function
-/// as it concerns cindex-ids that are provided as input to the network.
-///
-///  \param nnet [in] The neural net
-///  \param graph [in] The computation graph
-///  \param cindex_id_to_super_order [out] A vector that maps cindex_id to
-///            super_order index, as obtained by adding one to the output of
-///            ComputeNnetComputationOrder; however, input cindex_ids (those for
-///            which is_input[cindex_id] is true) always map to 0.
-///  \param by_super_order [out] The same information as
-///            cindex_id_to_super_order, but in a different format: for each
-///            super_order, a list of cindex_ids with that super_order index.
-///  \param super_order_is_trivial [out] A vector of bool, indexed by
-///            super_order index that's true if this super_order index corresponds
-///            to just a single NetworkNode. (and also true for super_order index 0,
-///            which corresponds only to inputs to the network).
-static void ComputeSuperOrderInfo(
-    const Nnet &nnet,    
-    const ComputationGraph &graph,
-    std::vector<int32> *cindex_id_to_super_order,
-    std::vector<std::vector<int32 > > *by_super_order,
-    std::vector<bool> *super_order_is_trivial) {
-
-  // node_to_super_order maps each nnet node to an index >= 0that tells
-  // us what order to compute them in... but we may need to compute
-  // a finer ordering at the cindex_id level in cases like RNNs.
-  std::vector<int32> node_to_super_order;
-  ComputeNnetComputationOrder(nnet, &node_to_super_order);
-  // Add one to the super-order info, because we will be reserving
-  // zero for inputs to the network, and we don't want to have to
-  // prove that super-order-index 0 would correspond only to inputs.
-  for (int32 i = 0; i < node_to_super_order.size(); i++)
-    node_to_super_order[i]++;
-  int32 num_nodes = nnet.NumNodes(),
-      num_cindex_ids = graph.cindexes.size(),
-      num_super_order_indexes = 1 + *std::max_element(node_to_super_order.begin(),
-                                                      node_to_super_order.end());
-  KALDI_ASSERT(node_to_super_order.size() == num_nodes);  
-
-  // super_order_to_num_nodes is only used so we know whether each super_order
-  // index corresponds to multiple nodes; if it's just one node then we know
-  // the computation is very simple and we can do an optimization.
-  std::vector<int32> super_order_to_num_nodes(num_super_order_indexes, 0);
-  for (int32 n = 0; n < num_nodes; n++)
-    super_order_to_num_nodes[node_to_super_order[n]]++;
-
-  super_order_is_trivial->resize(num_super_order_indexes);
-  for (int32 o = 0; o < num_super_order_indexes; o++) {
-    KALDI_ASSERT(o == 0 || super_order_to_num_nodes[o] > 0);
-    (*super_order_is_trivial)[o] = (super_order_to_num_nodes[o] <= 1);
-  }
-  
-  cindex_id_to_super_order->resize(num_cindex_ids);
-  by_super_order->resize(num_super_order_indexes);
-  for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
-    int32 node_index = graph.cindexes[cindex_id].first,
-        super_order_index = (graph.is_input[cindex_id] ? 0 :
-                             node_to_super_order[node_index]);
-    (*cindex_id_to_super_order)[cindex_id] = super_order_index;
-    (*by_super_order)[super_order_index].push_back(cindex_id);
-  }
-}
-    
-
-} // end namespace computation_graph
 
 void ComputeComputationOrder(
     const Nnet &nnet,    
@@ -715,7 +715,7 @@ void ComputeRequiredArray(const Nnet &nnet,
   for (int32 c = 0; c < num_cindex_ids; c++) {
     // First put the output cindex_ids into the queue.
     int32 node_id = graph.cindexes[c].first;
-    if (nnet.IsOutput(node_id)) {
+    if (nnet.IsOutputNode(node_id)) {
       (*required)[c] = true;
       queue.push_back(c);
     }
@@ -856,8 +856,7 @@ void AddComponentSteps(
     for (int32 i = 0; i < num_cindex_ids; i++) {
       int32 cindex_id = this_cindex_ids[i],
           node_index = graph.cindexes[cindex_id].first;
-      NodeType t = nnet.GetNode(node_index).node_type;
-      if (t == kComponent) {
+      if (nnet.IsComponentNode(node_index)) {
         // the following assert is only possible because order_index > 1.
         KALDI_ASSERT(!graph.is_input[cindex_id]);
         cindexes.push_back(graph.cindexes[cindex_id]);
@@ -1009,7 +1008,7 @@ static void AddDimRangeSteps(
   bool dim_range_node_exists = false;
   std::vector<char> is_dim_range_node(num_nodes, '\0');
   for (int32 n = 0; n < num_nodes; n++) {
-    if (nnet.GetNode(n).node_type == kDimRange) {
+    if (nnet.IsDimRangeNode(n)) {
       is_dim_range_node[n] = (char)1;
       dim_range_node_exists = true;
     }

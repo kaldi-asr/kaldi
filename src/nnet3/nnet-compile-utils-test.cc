@@ -118,7 +118,7 @@ void UnitTestSplitLocations() {
 int main()  {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-  for (int32 loop = 0; loop < 100; loop++)  {
+  for (int32 loop = 0; loop < 10; loop++)  {
     UnitTestSplitLocations();
   }
   KALDI_LOG << "Tests passed.";

@@ -115,7 +115,6 @@ void Compiler::ComputeDerivNeeded(
     int32 node_index = graph_.cindexes[cindex_id].first;
     bool is_input = graph_.is_input[cindex_id];
 
-    const NetworkNode &node = nnet_.GetNode(node_index);
     std::string node_name = nnet_.GetNodeNames()[node_index];
     unordered_set<int32> input_steps;
     ComputeStepDependencies(this_step, &input_steps);
@@ -140,7 +139,7 @@ void Compiler::ComputeDerivNeeded(
     // if this step is an output and the user is providing the derivative w.r.t. that
     // output, we need a place to store the derivative, so we set (*deriv_needed) to
     // true.
-    if (nnet_.IsOutput(node_index)) {
+    if (nnet_.IsOutputNode(node_index)) {
       int32 output_index = request_.IndexForOutput(node_name);
       KALDI_ASSERT(output_index != -1);
       if (request_.outputs[output_index].has_deriv)
@@ -148,7 +147,8 @@ void Compiler::ComputeDerivNeeded(
     }
     // If this is an updatable Component node and the user requested model
     // derivatives (e.g. during training), we need this step's derivative.
-    if (node.node_type == kComponent && request_.need_model_derivative) {
+    if (nnet_.IsComponentNode(node_index) && request_.need_model_derivative) {
+      const NetworkNode &node = nnet_.GetNode(node_index);
       const Component *c = nnet_.GetComponent(node.u.component_index);
       if (c->Properties() & kUpdatableComponent)
         (*deriv_needed)[step] = true;
@@ -873,11 +873,10 @@ void Compiler::DestroyMatrices(NnetComputation *computation) {
   int32 num_steps = steps_.size();
   for (int32 step = 0; step < num_steps; step++) {
     const StepInfo &step_info = steps_[step];
-    const NetworkNode &node = nnet_.GetNode(step_info.node_index);
-    if (nnet_.IsOutput(step_info.node_index)) {
+    if (nnet_.IsOutputNode(step_info.node_index)) {
       // steps corresponding to output nodes need to have their "value" kept.
       will_destroy[step_info.value] = false;
-    } else if (node.node_type == kInput) {
+    } else if (nnet_.IsInputNode(step_info.node_index)) {
       // steps corresponding to input nodes need to have their "deriv" kept, but
       // only if the corresponding input derivative was requested.  (we don't
       // need to worry about whether outputs were requested, because if they

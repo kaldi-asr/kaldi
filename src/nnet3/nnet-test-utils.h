@@ -21,7 +21,7 @@
 #define KALDI_NNET3_NNET_NNET_TEST_UTILS_H_
 
 #include "nnet3/nnet-nnet.h"
-
+#include "nnet3/nnet-utils.h"
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -49,6 +49,15 @@ struct NnetGenerationConfig {
 void GenerateConfigSequence(
     const NnetGenerationConfig &opts,
     std::vector<std::string> *configs);
+
+
+/// This function computes an example computation request, for testing purposes.
+/// The "Simple" in the name means that it currently only supports neural nets
+/// that satisfy IsSimple(nnet) (defined in nnet-utils.h).
+/// If there are 2 inputs, the "input" will be first, followed by "ivector".
+void ComputeExampleComputationRequestSimple(
+    const Nnet &nnet,
+    ComputationRequest *request);
 
 
 

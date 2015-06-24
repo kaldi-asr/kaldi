@@ -1,4 +1,4 @@
-// nnet3/nnet-nnet-test.cc
+// nnet3/nnet-utils-test.cc
 
 // Copyright 2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -24,34 +24,23 @@ namespace kaldi {
 namespace nnet3 {
 
 
-void UnitTestNnetIo() {
-  for (int32 n = 0; n < 100; n++) {
+void UnitTestNnetContext() {
+  for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationConfig gen_config;
     
-    bool binary = (rand() % 2 == 0);
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;
     std::istringstream is(configs[0]);
     nnet.ReadConfig(is);
 
-    std::ostringstream os;
-    nnet.Write(os, binary);
-    const std::string &original_output = os.str();
-    std::istringstream nnet_is(original_output);
-    nnet.Read(nnet_is, binary);
-    std::istringstream nnet_is2(original_output);
-    Nnet nnet2;
-    nnet2.Read(nnet_is2, binary);
-      
-    std::ostringstream os2, os3;
-    nnet.Write(os2, binary);
-    
-    nnet2.Write(os3, binary);
-    if (binary) {
-      KALDI_ASSERT(os2.str() == original_output);
-      KALDI_ASSERT(os3.str() == original_output);
-    }
+    // this test doesn't really test anything except that it runs;
+    // we manually inspect the output.
+    int32 left_context, right_context;
+
+    ComputeSimpleNnetContext(nnet, &left_context, &right_context);
+    KALDI_LOG << "Left,right-context= " << left_context << ","
+              << right_context << " for config: " << configs[0];
   }
 }
 
@@ -62,7 +51,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
 
-  UnitTestNnetIo();
+  UnitTestNnetContext();
 
   KALDI_LOG << "Nnet tests succeeded.";
 

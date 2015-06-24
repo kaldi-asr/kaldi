@@ -135,7 +135,8 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
       }
     }
     KALDI_ERR << "Parsing Decriptor, expected a ForwardingDescriptor but got "
-              << **next_token;
+              << (**next_token == "end of input" ?
+                  **next_token : std::string("'") + **next_token + "'");
     return NULL;  // suppress compiler warning.
   }
 }

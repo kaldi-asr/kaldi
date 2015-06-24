@@ -136,7 +136,7 @@ bool IsValidName(const std::string &name);
 
 
 /**
-   This function reads in a config file and appends its contents to a vector of
+   This function reads in a config file and *appends* its contents to a vector of
    lines; it is responsible for removing comments (anything after '#') and
    stripping out any lines that contain only whitespace after comment removal.
  */
