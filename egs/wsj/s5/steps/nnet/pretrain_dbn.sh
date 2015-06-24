@@ -95,13 +95,12 @@ echo "# INFO"
 echo "$0 : Pre-training Deep Belief Network as a stack of RBMs"
 printf "\t dir       : $dir \n"
 printf "\t Train-set : $data \n"
+echo
 
 [ -e $dir/${nn_depth}.dbn ] && echo "$0 Skipping, already have $dir/${nn_depth}.dbn" && exit 0
 
-# check if CUDA is compiled in,
-if ! $skip_cuda_check; then
-  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
-fi
+# check if CUDA compiled in and GPU is available,
+if ! $skip_cuda_check; then cuda-gpu-available || exit 1; fi
 
 mkdir -p $dir/log
 

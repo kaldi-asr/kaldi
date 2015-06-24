@@ -58,10 +58,8 @@ for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $s
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-# check if CUDA is compiled in,
-if ! $skip_cuda_check; then
-  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
-fi
+# check if CUDA compiled in and GPU is available,
+if ! $skip_cuda_check; then cuda-gpu-available || exit 1; fi
 
 mkdir -p $dir/log
 

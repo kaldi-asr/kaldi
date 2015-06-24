@@ -11,6 +11,7 @@ nnet_init=          # select initialized MLP (override initialization)
 nnet_proto=         # select network prototype (initialize it)
 proto_opts=        # non-default options for 'make_nnet_proto.py'
 feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
+pytel_transform=   # use external transform defined in python (BUT specific)
 network_type=dnn   # (dnn,cnn1d,cnn2d,lstm) select type of neural network
 cnn_proto_opts=     # extra options for 'make_cnn_proto.py'
 #
@@ -115,16 +116,15 @@ echo "$0 : Training Neural Network"
 printf "\t dir       : $dir \n"
 printf "\t Train-set : $data $alidir \n"
 printf "\t CV-set    : $data_cv $alidir_cv \n"
+echo
 
 mkdir -p $dir/{log,nnet}
 
 # skip when already trained
 [ -e $dir/final.nnet ] && printf "\nSKIPPING TRAINING... ($0)\nnnet already trained : $dir/final.nnet ($(readlink $dir/final.nnet))\n\n" && exit 0
 
-# check if CUDA is compiled in,
-if ! $skip_cuda_check; then
-  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
-fi
+# check if CUDA compiled in and GPU is available,
+if ! $skip_cuda_check; then cuda-gpu-available || exit 1; fi
 
 ###### PREPARE ALIGNMENTS ######
 echo
@@ -211,6 +211,15 @@ fi
 [ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
 [ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 #
+
+# optionally append python feature transform,
+if [ ! -z "$pytel_transform" ]; then
+  cp $pytel_transform $dir/pytel_transform.py
+  { echo; echo "### Comes from here: '$pytel_transform' ###"; } >> $dir/pytel_transform.py
+  pytel_transform=$dir/pytel_transform.py
+  feats_tr="$feats_tr /bin/env python $pytel_transform |"
+  feats_cv="$feats_cv /bin/env python $pytel_transform |"
+fi
 
 # get feature dim
 echo "Getting feature dim : "
@@ -391,7 +400,7 @@ fi
 echo
 echo "# RUNNING THE NN-TRAINING SCHEDULER"
 steps/nnet/train_scheduler.sh \
-  --feature-transform $feature_transform \
+  ${feature_transform:+ --feature-transform $feature_transform} \
   --learn-rate $learn_rate \
   --randomizer-seed $seed \
   ${train_opts} \

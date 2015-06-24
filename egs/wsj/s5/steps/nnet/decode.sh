@@ -75,12 +75,12 @@ echo $nj > $dir/num_jobs
 # Select default locations to model files (if not already set externally)
 [ -z "$nnet" ] && nnet=$srcdir/final.nnet
 [ -z "$model" ] && model=$srcdir/final.mdl
-[ -z "$feature_transform" ] && feature_transform=$srcdir/final.feature_transform
+[ -z "$feature_transform" -a -e $srcdir/final.feature_transform ] && feature_transform=$srcdir/final.feature_transform
 #
 [ -z "$class_frame_counts" -a -f $srcdir/prior_counts ] && class_frame_counts=$srcdir/prior_counts # priority,
 [ -z "$class_frame_counts" ] && class_frame_counts=$srcdir/ali_train_pdf.counts
 
-# Check that files exist
+# Check that files exist,
 for f in $sdata/1/feats.scp $nnet $model $feature_transform $class_frame_counts $graphdir/HCLG.fst; do
   [ ! -f $f ] && echo "$0: missing file $f" && exit 1;
 done
@@ -107,6 +107,8 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+# add-pytel transform (optional),
+[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
 #
 
 # Run the decoding in the queue,
