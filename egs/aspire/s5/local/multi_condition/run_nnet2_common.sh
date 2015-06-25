@@ -30,7 +30,7 @@ if [ $stage -le 1 ]; then
     --download-rirs $download_rirs \
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
-  
+    
   # corrupt the fisher data to generate multi-condition data 
   # for data_dir in train dev test; do
   for data_dir in train dev test; do

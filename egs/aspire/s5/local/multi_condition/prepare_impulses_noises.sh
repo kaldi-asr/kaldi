@@ -76,6 +76,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "Normalizing the extracted room impulse responses and noises, per type"
+  echo "Note: Due to wav-format mismatch between sox and scipy, there might be warnings generated during file normalization."
+  echo "      'WavFileWarning: Unknown wave file format' warnings are benign."
   # normalizing the RIR files 
   for i in `ls $log_dir/*type*.rir.list`; do
     echo "Processing files in $i"
