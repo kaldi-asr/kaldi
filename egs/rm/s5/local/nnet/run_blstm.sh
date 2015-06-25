@@ -3,8 +3,16 @@
 # Copyright 2015  Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
-# This example script trains a LSTM network on FBANK features.
-# The LSTM code comes from Yiayu DU, and Wei Li, thanks!
+# This example script trains a BLSTM network on FBANK features.
+# The BLSTM code comes from Ni Chongjia (I2R), thanks!
+
+# TODO, this BLSTM code needs to solve a problem how to determine the 
+# history for the 'backward' recurrency. Currently is taken the state
+# on 1st frame of previous mini-batch (20 frames).
+#
+# A more sensible approach should be single-stream training, 
+# and per-utterance updates. But the results were worse.
+#
 
 . ./cmd.sh
 . ./path.sh
@@ -38,16 +46,16 @@ fi
 
 if [ $stage -le 1 ]; then
   # Train the DNN optimizing per-frame cross-entropy.
-  dir=exp/lstm4f
+  dir=exp/blstm4g
   ali=${gmm}_ali
 
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
-    steps/nnet/train.sh --network-type lstm --learn-rate 0.0001 \
+    steps/nnet/train.sh --network-type blstm --learn-rate 0.0001 \
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
       --train-opts "--momentum 0.9 --halving-factor 0.5" \
-      --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
-      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 5.0" \
+      --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=0" \
+      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 50.0" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
   # Decode (reuse HCLG graph)

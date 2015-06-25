@@ -380,6 +380,10 @@ if [[ -z "$nnet_init" && -z "$nnet_proto" ]]; then
       utils/nnet/make_lstm_proto.py $proto_opts \
         $num_fea $num_tgt >$nnet_proto || exit 1 
       ;;
+    blstm)
+      utils/nnet/make_blstm_proto.py $proto_opts \
+        $num_fea $num_tgt >$nnet_proto || exit 1
+      ;; 
     *) echo "Unknown : --network_type $network_type" && exit 1;
   esac
 
