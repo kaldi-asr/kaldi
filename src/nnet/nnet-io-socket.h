@@ -61,10 +61,10 @@ class Socket {
   }
   ~Socket(); // disconnect,
 
-  std::istringstream& IStream() { 
+  std::istringstream& RecvStream() { 
     return iss_;
   }
-  std::ostringstream& OStream() {
+  std::ostringstream& SendStream() {
     return oss_;
   }
 

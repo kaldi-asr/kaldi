@@ -190,5 +190,5 @@ fi
 # DNN training. This script is based on egs/swbd/s5b/local/run_dnn.sh
 # Some of them would be out of date.
 if [ $stage -le 12 ]; then
-  local/run_dnn.sh $mic
+  local/nnet/run_dnn.sh $mic
 fi

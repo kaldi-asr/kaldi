@@ -3,13 +3,24 @@
 . ./cmd.sh
 . ./path.sh
 
+set -u
+set -e
+set -o pipefail
+set -x
+
 # MDM - Multiple Distant Microphones
 # Assuming text preparation, dict, lang and LM were build as in run_ihm
 
 nmics=8 #we use all 8 channels, possible other options are 2 and 4
 mic=mdm$nmics #subdir name under data/
-AMI_DIR=/disk/data2/amicorpus #root of AMI corpus
-MDM_DIR=/disk/data1/s1136550/ami/mdm #directory for beamformed waves
+
+# Edinburgh,
+#AMI_DIR=/disk/data2/amicorpus #root of AMI corpus
+#MDM_DIR=/disk/data1/s1136550/ami/mdm #directory for beamformed waves
+
+# BUT,
+AMI_DIR=DOWNLOAD/amicorpus #root of AMI corpus
+MDM_DIR=DOWNLOAD/amicorpus_beamform #directory for beamformed waves
 
 #1) Download AMI (distant channels)
 

@@ -36,13 +36,13 @@ static void UnitTestSendRecvRandomVector() {
     v(i) = RandGauss(); // Random,
   }
   // send,
-  v.Write(socket.OStream(), true); // binary,
+  v.Write(socket.SendStream(), true); // binary,
   socket.Send();
   // recieve,
   socket.Recv();
   // read to vector,
   Vector<BaseFloat> v2;
-  v2.Read(socket.IStream(), true); // binary,
+  v2.Read(socket.RecvStream(), true); // binary,
   // must be the same!
   AssertEqual(v, v2, 0.0);
 }
