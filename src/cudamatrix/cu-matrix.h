@@ -111,11 +111,13 @@ class CuMatrixBase {
   void CopyRows(const CuArray<const Real*> &src);
 
   /// For each row r of this matrix, copies it to the array of floats at
-  /// the location given by src[r], where src[r] is assumed to be obtained from the RowData()
+  /// the location given by dst[r], where dst[r] is assumed to be obtained from the RowData()
   /// function of another CuMatrix, or from CuVector::Data() (i.e. it should point
   /// to memory on the GPU if we're using a GPU, or on the CPU otherwise).
-  /// If src[r] is NULL, does not copy anywhere.
-  void CopyToRows(const CuArray<Real*> &src) const;
+  /// If dst[r] is NULL, does not copy anywhere.  Requires that none of the
+  /// memory regions pointed to by the pointers in "dst" overlap (e.g. none of
+  /// the pointers should be the same).
+  void CopyToRows(const CuArray<Real*> &dst) const;
   
 
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
@@ -135,13 +137,13 @@ class CuMatrixBase {
   
 
   /// For each row r of this matrix, adds it (times alpha) to the array of
-  /// floats at the location given by src[r], where src[r] is assumed to be
+  /// floats at the location given by dst[r], where dst[r] is assumed to be
   /// obtained from the RowData() function of another CuMatrix, or from
   /// CuVector::Data() (i.e. it should point to memory on the GPU if we're using
-  /// a GPU, or on the CPU otherwise).  If src[r] is NULL, does not do anything
+  /// a GPU, or on the CPU otherwise).  If dst[r] is NULL, does not do anything
   /// for that row.  Requires that none of the memory regions pointed to by the
-  /// pointers in "src" overlap (e.g. none of the pointers should be the same).
-  void AddToRows(Real alpha, const CuArray<Real*> &src) const;
+  /// pointers in "dst" overlap (e.g. none of the pointers should be the same).
+  void AddToRows(Real alpha, const CuArray<Real*> &dst) const;
   
 
   /// For each row r of this and for each column c, sets (*this)(r, c) to the

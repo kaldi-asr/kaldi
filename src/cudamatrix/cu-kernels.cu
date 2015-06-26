@@ -1259,10 +1259,79 @@ static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
     } else {
       dst[dst_index] = 0;
     }
+  }
+}
+
+template<typename Real>
+__global__
+static void _copy_rows(Real* dst, const Real *const *src, MatrixDim dst_dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int dst_index = i * dst_dim.stride + j;
+    if (src[i] != NULL) {
+      dst[dst_index] = src[i][j];
+    } else {
+      dst[dst_index] = 0;
+    }
+  }
+}
+
+template<typename Real>
+__global__
+static void _copy_to_rows(Real* const* dst,
+                          const Real *src, MatrixDim src_dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < src_dim.rows && j < src_dim.cols) {
+    if (dst[i] != NULL) {
+      dst[i][j] = src[i * src_dim.stride + j];
+    }
+  }
+}
+
+template<typename Real>
+__global__
+static void _add_rows(Real alpha, Real* dst, const Real *src,
+                     const MatrixIndexT_cuda* reorder,
+                     MatrixDim dst_dim, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int dst_index = i * dst_dim.stride + j;
+    if (reorder[i] >= 0) {
+      int src_index = reorder[i] * src_stride + j;
+      dst[dst_index] += alpha * src[src_index];
+    }
   } 
 }
 
+template<typename Real>
+__global__
+static void _add_rows(Real alpha,
+                      Real* dst, const Real *const *src, MatrixDim dst_dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int dst_index = i * dst_dim.stride + j;
+    if (src[i] != NULL) {
+      dst[dst_index] += alpha * src[i][j];
+    }
+  }
+}
 
+template<typename Real>
+__global__
+static void _add_to_rows(Real alpha,
+                         Real* const* dst, const Real *src, MatrixDim src_dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < src_dim.rows && j < src_dim.cols) {
+    if (dst[i] != NULL) {
+      dst[i][j] += alpha * src[i * src_dim.stride + j];
+    }
+  }
+}
 
 template<typename Real>
 __global__
@@ -1460,6 +1529,21 @@ static void _sum_column_ranges(Real *data, MatrixDim dim,
   for (int index = src_start_index; index < src_end_index; index++)
     sum += src_data[index];
   data[dst_index] = sum;
+}
+
+template<typename Real>
+__global__
+static void _add_row_ranges(Real *data, MatrixDim dim, const Real *src_data,
+                            MatrixDim src_dim, const Int32Pair *indexes) {
+  int row = blockIdx.x * blockDim.x + threadIdx.x;
+  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  if (row >= dim.rows || col >= dim.cols)
+    return;
+  int dst_index = row * dim.stride + col;
+  for (int row_index = indexes[col].first;
+      row_index < indexes[col].second; row_index++) {
+    data[dst_index] += src_data[row_index * src_dim.stride + col];
+  }
 }
 
 template<typename Real>
@@ -1989,6 +2073,26 @@ void cudaF_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const Matri
   _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
+void cudaF_copy_rows_direct(dim3 Gr, dim3 Bl, float* dst, const float* const* src, MatrixDim dst_dim) {
+  _copy_rows<<<Gr,Bl>>>(dst, src, dst_dim);
+}
+
+void cudaF_copy_to_rows_direct(dim3 Gr, dim3 Bl, float* const* dst, const float* src, MatrixDim src_dim) {
+  _copy_to_rows<<<Gr,Bl>>>(dst, src, src_dim);
+}
+
+void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaF_add_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* const* src, MatrixDim dst_dim) {
+  _add_rows<<<Gr,Bl>>>(alpha, dst, src, dst_dim);
+}
+
+void cudaF_add_to_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* const* dst, const float* src, MatrixDim src_dim) {
+  _add_to_rows<<<Gr,Bl>>>(alpha, dst, src, src_dim);
+}
+
 void cudaF_apply_floor(dim3 Gr, dim3 Bl, float* mat, float floor_val, MatrixDim d) {
   _apply_floor<<<Gr,Bl>>>(mat, floor_val, d);
 }
@@ -2325,6 +2429,12 @@ void cudaF_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
   _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
 }
 
+void cudaF_add_row_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                          const float *src_data, MatrixDim src_dim,
+                          const Int32Pair *indexes) {
+  _add_row_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indexes);
+}
+
 void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
                          const Int32Pair *indices, int indices_size,
                          float *output) {
@@ -2398,6 +2508,26 @@ void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const Mat
 
 void cudaD_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_copy_rows_direct(dim3 Gr, dim3 Bl, double* dst, const double* const* src, MatrixDim dst_dim) {
+  _copy_rows<<<Gr,Bl>>>(dst, src, dst_dim);
+}
+
+void cudaD_copy_to_rows_direct(dim3 Gr, dim3 Bl, double* const* dst, const double* src, MatrixDim src_dim) {
+  _copy_to_rows<<<Gr,Bl>>>(dst, src, src_dim);
+}
+
+void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst, const double* const* src, MatrixDim dst_dim) {
+  _add_rows<<<Gr,Bl>>>(alpha, dst, src, dst_dim);
+}
+
+void cudaD_add_to_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* const* dst, const double* src, MatrixDim src_dim) {
+  _add_to_rows<<<Gr,Bl>>>(alpha, dst, src, src_dim);
 }
 
 void cudaD_apply_floor(dim3 Gr, dim3 Bl, double* mat, double floor_val, MatrixDim d) {
@@ -2721,6 +2851,12 @@ void cudaD_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                              const double *src_data, MatrixDim src_dim,
                              const Int32Pair *indices) {
   _sum_column_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indices);
+}
+
+void cudaD_add_row_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                          const double *src_data, MatrixDim src_dim,
+                          const Int32Pair *indexes) {
+  _add_row_ranges<<<Gr,Bl>>>(data, dim, src_data, src_dim, indexes);
 }
 
 void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,

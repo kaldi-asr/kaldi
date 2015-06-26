@@ -23,6 +23,7 @@
 // limitations under the License.
 
 #include "matrix/matrix-lib.h"
+#include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
 // comment it (and that function) out if it causes problems.
@@ -733,19 +734,131 @@ static void UnitTestCopyRows() {
         num_cols = 10 + Rand() % 10;
     Matrix<Real> M(num_rows1, num_cols);
     InitRand(&M);
-    
-    Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+
+    Matrix<Real> N1(num_rows2, num_cols),
+        N2(num_rows2, num_cols), O(num_rows2, num_cols);
     std::vector<int32> reorder(num_rows2);
-    for (int32 i = 0; i < num_rows2; i++)
+    std::vector<const Real*> reorder_src(num_rows2, NULL);
+    for (int32 i = 0; i < num_rows2; i++) {
       reorder[i] = -1 + (Rand() % (num_rows1 + 1));
-    
-    N.CopyRows(M, &(reorder[0]));
+      if (reorder[i] != -1)
+        reorder_src[i] = M.RowData(reorder[i]);
+    }
+ 
+    N1.CopyRows(M, &(reorder[0]));
+    N2.CopyRows(&(reorder_src[0]));
 
     for (int32 i = 0; i < num_rows2; i++)
       for (int32 j = 0; j < num_cols; j++)
         if (reorder[i] < 0) O(i, j) = 0;
         else O(i, j) = M(reorder[i], j);
-    
+
+    AssertEqual(N1, O);
+    AssertEqual(N2, O);
+  }
+}
+
+template<typename Real>
+static void UnitTestCopyToRows() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_rows1 = 10 + Rand() % 10,
+        num_rows2 = 10 + Rand() % 10,
+        num_cols = 10 + Rand() % 10;
+    Matrix<Real> M(num_rows1, num_cols);
+    InitRand(&M);
+
+    Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+    std::vector<Real*> reorder_dst(num_rows1, NULL);
+    unordered_map<MatrixIndexT, bool> used_index;
+    for (int32 i = 0; i < num_rows1; i++) {
+      MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));
+      if (used_index.find(index) == used_index.end()) {
+        used_index[index] = true;
+      } else {
+        index = -1;
+      }
+      if (index != -1) {
+        reorder_dst[i] = N.RowData(index);
+        for (int32 j = 0; j < num_cols; j++)
+          O(index, j) = M(i, j);
+      }
+    }
+
+    M.CopyToRows(&(reorder_dst[0]));
+
+    AssertEqual(N, O);
+  }
+}
+
+template<typename Real>
+static void UnitTestAddRows() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_rows1 = 10 + Rand() % 10,
+        num_rows2 = 10 + Rand() % 10,
+        num_cols = 10 + Rand() % 10;
+    Matrix<Real> M(num_rows1, num_cols);
+    InitRand(&M);
+
+    Matrix<Real> N1(num_rows2, num_cols),
+        N2(num_rows2, num_cols), O(num_rows2, num_cols);
+    std::vector<int32> reorder(num_rows2);
+    std::vector<const Real*> reorder_src(num_rows2, NULL);
+    for (int32 i = 0; i < num_rows2; i++) {
+      reorder[i] = -1 + (Rand() % (num_rows1 + 1));
+      if (reorder[i] != -1)
+        reorder_src[i] = M.RowData(reorder[i]);
+    }
+
+    Real alpha =
+        static_cast<Real>((Rand() % num_rows2)) / static_cast<Real>(num_rows1);
+ 
+    N1.AddRows(alpha, M, &(reorder[0]));
+    N2.AddRows(alpha, &(reorder_src[0]));
+
+    for (int32 i = 0; i < num_rows2; i++) {
+      if (reorder[i] != -1) {
+        for (int32 j = 0; j < num_cols; j++) {
+          O(i, j) += alpha * M(reorder[i], j);
+        }
+      }
+    }
+
+    AssertEqual(N1, O);
+    AssertEqual(N2, O);
+  }
+}
+
+template<typename Real>
+static void UnitTestAddToRows() {
+  for (MatrixIndexT p = 0; p < 10; p++) {
+    MatrixIndexT num_rows1 = 10 + Rand() % 10,
+        num_rows2 = 10 + Rand() % 10,
+        num_cols = 10 + Rand() % 10;
+    Matrix<Real> M(num_rows1, num_cols);
+    InitRand(&M);
+
+    Real alpha =
+        static_cast<Real>((Rand() % num_rows2)) / static_cast<Real>(num_rows1);
+
+    Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
+    std::vector<Real*> reorder_dst(num_rows1, NULL);
+    unordered_map<MatrixIndexT, bool> used_index;
+    for (int32 i = 0; i < num_rows1; i++) {
+      MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));
+      if (used_index.find(index) == used_index.end()) {
+        used_index[index] = true;
+      } else {
+        index = -1;
+      }
+      if (index != -1) {
+        reorder_dst[i] = N.RowData(index);
+        for (int32 j = 0; j < num_cols; j++)
+          O(index, j) += alpha * M(i, j);
+      }
+    }
+
+    M.AddToRows(alpha, &(reorder_dst[0]));
+
     AssertEqual(N, O);
   }
 }
@@ -4509,6 +4622,9 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestNorm<Real>();
   UnitTestCopyCols<Real>();
   UnitTestCopyRows<Real>();
+  UnitTestCopyToRows<Real>();
+  UnitTestAddRows<Real>();
+  UnitTestAddToRows<Real>();
   UnitTestMul<Real>();
   KALDI_LOG << " Point I";
   UnitTestSolve<Real>();

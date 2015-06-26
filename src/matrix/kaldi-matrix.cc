@@ -2554,6 +2554,75 @@ void MatrixBase<Real>::CopyRows(const MatrixBase<Real> &src,
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::CopyRows(const Real *const *src) {
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    const Real *const src_data = src[r];
+    if (src_data == NULL) memset(this_data, 0, sizeof(Real) * num_cols);
+    else cblas_Xcopy(num_cols, src_data, 1, this_data, 1);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::CopyToRows(Real *const *dst) const {
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  const Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    Real *const dst_data = dst[r];
+    if (dst_data != NULL)
+      cblas_Xcopy(num_cols, this_data, 1, dst_data, 1);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::AddRows(Real alpha,
+                               const MatrixBase<Real> &src,
+                               const MatrixIndexT *indexes) {
+  KALDI_ASSERT(NumCols() == src.NumCols());
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    MatrixIndexT index = indexes[r];
+    KALDI_ASSERT(index >= -1 && index < src.NumRows());
+    if (index != -1)
+      cblas_Xaxpy(num_cols, alpha, src.RowData(index), 1, this_data, 1);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::AddRows(Real alpha, const Real *const *src) {
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    const Real *const src_data = src[r];
+    if (src_data != NULL)
+      cblas_Xaxpy(num_cols, alpha, src_data, 1, this_data, 1);
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::AddToRows(Real alpha, Real *const *dst) const {
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  const Real *this_data = this->data_;
+  
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride) {
+    Real *const dst_data = dst[r];
+    if (dst_data != NULL)
+      cblas_Xaxpy(num_cols, alpha, this_data, 1, dst_data, 1);
+  }
+}
+
 
 template<typename Real>
 void MatrixBase<Real>::Sigmoid(const MatrixBase<Real> &src) {

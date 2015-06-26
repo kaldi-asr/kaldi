@@ -1918,6 +1918,121 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
 
 
 template<typename Real>
+void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(src.Dim()) == NumRows());
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_rows(dimGrid, dimBlock, data_, src.Data(), Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyRows(src.Data());
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(dst.Dim()) == NumRows());
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_to_rows(dimGrid, dimBlock, dst.Data(), data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyToRows(dst.Data());
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::AddRows(Real alpha,
+                                 const CuMatrixBase<Real> &src,
+                                 const CuArray<MatrixIndexT> &indexes) {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+    KALDI_ASSERT(src.NumCols() == NumCols());
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_add_rows(dimGrid, dimBlock, alpha,
+                  data_, src.Data(), indexes.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddRows(alpha, src.Mat(), indexes.Data());
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::AddRows(Real alpha, const CuArray<const Real*> &src) {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(src.Dim()) == NumRows());
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_add_rows(dimGrid, dimBlock, alpha, data_, src.Data(), Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddRows(alpha, src.Data());
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::AddToRows(Real alpha,
+                                   const CuArray<Real*> &dst) const {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(dst.Dim()) == NumRows());
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_add_to_rows(dimGrid, dimBlock, alpha, dst.Data(), data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddToRows(alpha, dst.Data());
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
                                          const CuArray<Int32Pair> &indices) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumCols());
@@ -1954,6 +2069,44 @@ void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
   }
 }
 
+
+template<typename Real>
+void CuMatrixBase<Real>::AddRowRanges(const CuMatrixBase<Real> &src,
+                                      const CuArray<Int32Pair> &indexes) {
+  KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumCols());
+  KALDI_ASSERT(src.NumCols() >= NumCols());
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_add_row_ranges(dimGrid, dimBlock,
+                        data_, Dim(), src.Data(), src.Dim(), indexes.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  { // Implement here for the CPU..
+    int32 num_rows = this->num_rows_, num_cols = this->num_cols_,
+          this_stride = this->stride_, src_stride = src.stride_;
+    Real *data = this->data_;
+    const Real *src_data = src.data_;
+    const Int32Pair *indexes_data = indexes.Data();
+    for (int32 row = 0; row < num_rows; row++) {
+      for (int32 col = 0; col < num_cols; col++) {
+        int32 start_row = indexes_data[col].first,
+                end_row = indexes_data[col].second;
+        Real sum = 0.0;
+        for (int32 src_row = start_row; src_row < end_row; src_row++)
+          sum += src_data[src_row * src_stride + col];
+        data[row * this_stride + col] += sum;
+      }
+    }
+  }
+}
 
 
 template<typename Real>
