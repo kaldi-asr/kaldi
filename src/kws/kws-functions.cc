@@ -22,6 +22,7 @@
 #include "kws/kws-functions.h"
 #include "fstext/determinize-star.h"
 #include "fstext/epsilon-property.h"
+
 namespace kaldi {
 
 bool CompareInterval(const Interval &i1,
