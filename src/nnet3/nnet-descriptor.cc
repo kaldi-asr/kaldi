@@ -547,7 +547,8 @@ int32 Descriptor::Modulus() const {
 bool Descriptor::IsComputable(const Index &ind,
                               const CindexSet &cindex_set,                    
                               std::vector<Cindex> *input_terms) const {
-  input_terms->clear();
+  if (input_terms)
+    input_terms->clear();
   for (size_t i = 0; i < parts_.size(); i++) {
     // if any of the parts is not computable, the whole is not computable.
     if (!parts_[i]->IsComputable(ind, cindex_set, input_terms)) {

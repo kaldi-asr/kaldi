@@ -64,24 +64,9 @@ void EvaluateComputationRequest(
     const ComputationRequest &request,
     std::vector<std::vector<bool> > *is_computable) {
   ComputationGraph graph;
-  ComputeComputationGraph(nnet, request, &graph);
-  std::vector<bool> computable;
-  ComputeComputableArray(nnet, request, graph, &computable);
-  is_computable->resize(request.outputs.size());
-  for (size_t i = 0; i < request.outputs.size(); i++) {
-    const IoSpecification &output = request.outputs[i];
-    int32 n = nnet.GetNodeIndex(output.name);
-    KALDI_ASSERT(n != -1);
-    int32 size = output.indexes.size();
-    std::vector<bool> &this_vec = (*is_computable)[i];
-    this_vec.resize(size);
-    for (size_t j = 0; j < size; j++) {
-      Cindex cindex(n, output.indexes[j]);
-      int32 cindex_id = graph.GetCindexId(cindex);
-      KALDI_ASSERT(cindex_id != -1);
-      this_vec[j] = computable[cindex_id];
-    }
-  }  
+  ComputationGraphBuilder builder(nnet, request, &graph);
+  builder.Compute();
+  builder.GetComputableInfo(is_computable);
 }
 
 // this non-exported function is used in ComputeSimpleNnetContext
@@ -120,6 +105,7 @@ static void ComputeSimpleNnetContextForShift(
     request.inputs.push_back(ivector);
   std::vector<std::vector<bool> > computable;
   EvaluateComputationRequest(nnet, request, &computable);
+  
   KALDI_ASSERT(computable.size() == 1);
   std::vector<bool> &output_ok = computable[0];
   std::vector<bool>::iterator iter =

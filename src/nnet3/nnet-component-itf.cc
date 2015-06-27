@@ -120,8 +120,10 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
   // the same input index, which is required to compute the output.
   if (!input_index_set(output_index))
     return false;
-  used_inputs->clear();
-  used_inputs->push_back(output_index);
+  if (used_inputs) {
+    used_inputs->clear();
+    used_inputs->push_back(output_index);
+  }
   return true;
 }
 
