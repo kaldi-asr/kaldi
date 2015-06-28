@@ -75,7 +75,6 @@ done
 sort -k1,1 -u < $graphdir/HCLG.fsts.scp > $graphdir/HCLG.fsts.scp.sorted
 mv $graphdir/HCLG.fsts.scp.sorted $graphdir/HCLG.fsts.scp
 for x in `seq 1 $nj`; do
-for x in `seq 1 $nj`; do
   cat $graphdir/HCLG.fsts.scp |\
     utils/filter_scp.pl -f 1 <(cut -f 1 -d ' ' $sdata/$x/feats.scp) > $sdata/$x/graphs.scp
   num_feats=`cat $sdata/$x/feats.scp | wc -l`
