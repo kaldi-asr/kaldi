@@ -486,15 +486,12 @@ void Descriptor::Destroy() {
 }
 
 int32 Descriptor::Dim(const Nnet &nnet) const {
-  size_t size = parts_.size();
-  KALDI_ASSERT(size != 0);
-  int32 ans = parts_[0]->Dim(nnet);
-  if (size > 1) {
-    int32 other_index = RandInt(1, size -1);
-    // make sure all dimensions are consistent; spot-check.
-    KALDI_ASSERT(parts_[other_index]->Dim(nnet) == ans);
-  }
-  return ans;
+  int32 num_parts = parts_.size();
+  int32 dim = 0;
+  for (int32 part = 0; part < num_parts; part++)
+    dim += parts_[part]->Dim(nnet);
+  KALDI_ASSERT(dim > 0);
+  return dim;
 }
 
 bool Descriptor::Parse(const std::vector<std::string> &node_names,
@@ -558,6 +555,11 @@ bool Descriptor::IsComputable(const Index &ind,
     }
   }
   return true;
+}
+
+const SumDescriptor& Descriptor::Part(int32 n) const {
+  KALDI_ASSERT(static_cast<size_t>(n) < parts_.size());
+  return *(parts_[n]);
 }
 
 } // namespace nnet3

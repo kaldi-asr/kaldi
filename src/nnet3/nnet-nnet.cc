@@ -609,7 +609,7 @@ int32 Nnet::Modulus() const {
 
 
 int32 Nnet::InputDim(const std::string &input_name) const {
-  int32 n = GetComponentIndex(input_name);
+  int32 n = GetNodeIndex(input_name);
   if (n == -1) return -1;
   const NetworkNode &node = nodes_[n];
   if (node.node_type != kInput) return -1;
@@ -617,7 +617,7 @@ int32 Nnet::InputDim(const std::string &input_name) const {
 }
 
 int32 Nnet::OutputDim(const std::string &input_name) const {
-  int32 n = GetComponentIndex(input_name);
+  int32 n = GetNodeIndex(input_name);
   if (n == -1 || !IsOutputNode(n)) return -1;
   const NetworkNode &node = nodes_[n];
   return node.Dim(*this);

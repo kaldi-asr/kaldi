@@ -97,6 +97,56 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
     cindex_to_cindex_id_[cindexes[c]] = c;
 }
 
+void ComputationGraph::Print(std::ostream &os,
+                             const std::vector<std::string> &node_names) {
+  int32 max_cindexes_per_line = 50, max_dependencies = 5,
+      num_cindexes = cindexes.size();
+
+  std::vector<std::pair<Cindex, std::vector<Cindex> > > pairs;
+  pairs.reserve(num_cindexes);
+  for (int32 cindex_id = 0; cindex_id < num_cindexes; cindex_id++) {
+    int32 size = dependencies[cindex_id].size();
+    std::vector<Cindex> deps(size);
+    for (size_t i = 0; i < size; i++)
+      deps[i] = cindexes[dependencies[cindex_id][i]];
+    std::sort(deps.begin(), deps.end());
+    pairs.push_back(std::pair<Cindex, std::vector<Cindex> >(cindexes[cindex_id],
+                                                            deps));
+  }
+  std::sort(pairs.begin(), pairs.end());
+  int32 cur_start = 0;
+  for (int32 i = 0; i < num_cindexes; i++) {
+    if (pairs[i].first.first != pairs[cur_start].first.first) {
+      cur_start = i;
+      os << "\n";
+    }
+    if (i - cur_start < max_cindexes_per_line) {
+      os << "[ ";
+      PrintCindex(os, pairs[i].first, node_names);
+      if (! is_input[GetCindexId(pairs[i].first)]) {
+        // only print out dependences for cindexes that
+        // were not provided as inputs.
+        os << " -> ";
+        for (int32 j = 0; j < pairs[i].second.size(); j++) {
+          if (j < max_dependencies) {
+            PrintCindex(os, pairs[i].second[j], node_names);
+            if (j + 1 < pairs[i].second.size())
+              os << ", ";
+          } else if (j == max_dependencies) {
+            os << "...";
+          }
+        }
+      }
+      os << " ] ";
+    } else if (i - cur_start == max_cindexes_per_line) {
+      os << "...";
+    }
+  }
+  os << "\n";
+  
+}
+
+
 // inline
 void ComputationGraphBuilder::AddCindexId(int32 cindex_id,
                                           bool is_input,
@@ -179,6 +229,9 @@ bool ComputationGraphBuilder::AllOutputsAreComputable() {
   return true;
 }
 
+
+// this function limits the dependencies of cindex_id "cindex_id" to just those
+// which are actually used in computing it.
 void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
   ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
   // by the time this is called, there should be no cindexes with unknown state.
@@ -238,7 +291,7 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
       size_t size = used_indexes.size();
       used_cindex_ids.resize(size);
       for (size_t i = 0; i < size; i++) {
-        Cindex dep_cindex(node_id, used_indexes[i]);
+        Cindex dep_cindex(node_id - 1, used_indexes[i]);
         int32 dep_cindex_id = graph_->GetCindexId(dep_cindex);
         KALDI_ASSERT(dep_cindex_id != -1);
         used_cindex_ids[i] = dep_cindex_id;
@@ -253,11 +306,11 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
       // optional, so leave it.
       KALDI_ASSERT(dependencies.size() == 1);
       break;
-    case kInput: default:
-      // we shouldn't reach here because Cindexes from input nodes have
-      // no dependencies, and dependencies becoming computable are what
-      // triggers a call to this function.
-      KALDI_ERR << "Not expecting IsComputable to be called for inputs";
+    case kInput:
+      KALDI_ASSERT(dependencies.empty());
+      break;
+    default:
+      KALDI_ERR << "Invalid node type";
   }
   SortAndUniq(&used_cindex_ids);
   
@@ -290,8 +343,8 @@ void ComputationGraphBuilder::Compute() {
 
 void ComputationGraphBuilder::Check() const {
   int32 num_cindex_ids = graph_->cindexes.size();
-  for (int32 i = 0; i < 10; i++) {
-    int32 cindex_id = RandInt(0, num_cindex_ids - 1);
+  for (int32 cindex_id = 0; cindex_id < num_cindex_ids;
+       cindex_id += 1 + RandInt(0, num_cindex_ids / 100)) {
     { // check depend_on_this.
       std::vector<int32> depend_on_this = depend_on_this_[cindex_id];
       int32 size = depend_on_this.size();
@@ -336,7 +389,12 @@ void ComputationGraphBuilder::Check() const {
     if (computable_queue_.empty()) {
       ComputationGraphBuilder::ComputableInfo c =
           ComputeComputableInfo(cindex_id);
-      if (c != computable_info_[cindex_id]) {
+      // the status doesn't have to be correct if it's kWillNotCompute,
+      // because these are cindex-ids that we chose not to compute
+      // because we determined they would not be useful, and
+      // ComputeComputableInfo() will never return this value.
+      if (c != computable_info_[cindex_id] &&
+          computable_info_[cindex_id] != kWillNotCompute) {
         int32 count_cur = std::count(current_queue_.begin(),
                                      current_queue_.end(), cindex_id),
             count_next = std::count(next_queue_.begin(),
@@ -553,6 +611,10 @@ ComputationGraphBuilder::ComputeComputableInfo(int32 cindex_id)
 
 void ComputationGraphBuilder::GetComputableInfo(
     std::vector<std::vector<bool> > *computable) const {
+  KALDI_ASSERT(!graph_->cindexes.empty() &&
+               "You need to call this after Compute()!");
+  KALDI_ASSERT(!computable_info_.empty() &&
+               "You need to call this before Prune()!");
   computable->clear();
   computable->resize(request_.outputs.size());
   for (size_t i = 0; i < request_.outputs.size(); i++) {
@@ -960,23 +1022,132 @@ void ComputeComputationGraph(const Nnet &nnet,
   }
 }
 
+
+static int32 SumVectorSizes(const std::vector<std::vector<int32> > &vec) {
+  int32 ans = 0;
+  std::vector<std::vector<int32> >::const_iterator iter = vec.begin(),
+      end = vec.end();
+  for (; iter != end; ++iter)
+    ans += iter->size();
+  return ans;
+}
+
+// this function is called from ComputeComputationOrder; it handles the part of
+// the computation from one super-order (this code was broken out to avoid that
+// function being super-long)
+// dependencies_subset is the same as graph.dependencies, but only including
+// that subset of the dependencies that belong to this same super-order
+// (i.e. dependencies within the same strongly connected component of the
+// graph on nodes).  depend_on_subset is the tranpose of the graph
+// represented by dependencies_subset.
+static inline void ComputeComputationOrderForSuperOrder(
+    const Nnet &nnet,    
+    const ComputationGraph &graph,
+    const std::vector<std::vector<int32> > &dependencies_subset,
+    const std::vector<std::vector<int32> > &depend_on_subset,
+    const std::vector<int32> &this_super_order,
+    bool super_order_is_trivial,
+    std::vector<int32> *order,
+    std::vector<std::vector<int32> > *by_order) {
+  std::vector<int32> this_order, next_order_candidates;
+
+  if (this_super_order.empty())
+    return;
+
+  if (super_order_is_trivial) { // an optimization
+    this_order = this_super_order;
+  } else {
+    //  Start out with all elements of this super-order that have no
+    // dependencies within the same super-order.
+    std::vector<int32>::const_iterator iter = this_super_order.begin(),
+        end = this_super_order.end();
+    for (; iter != end; ++iter) {
+      int32 cindex_id = *iter;
+      if (dependencies_subset[cindex_id].empty())
+        this_order.push_back(cindex_id);
+    }
+  }
+
+  // if the next assert fails, the graph at the level of cindex_ids is not acyclic.
+  KALDI_ASSERT(!this_order.empty() &&
+               "Trying to process computation with cycles");
+
+  while (!this_order.empty()) {
+    by_order->push_back(this_order);
+    // The next if-statement is an optimization: if for this super-order index
+    // there is just one node, there will be just one order-index for this
+    // super-order index, so we can skip the rest of this loop.  Note: if
+    // super_order == 0, even if there is just one node, cindex_ids from
+    // multiple nodes may be put here because of the rule that cindex_ids which
+    // are inputs always get super_order 0.  But it's still true that they
+    // will have no dependencies, so we can still skip the code below.
+    if (super_order_is_trivial)
+      return;
+
+    int32 cur_order = by_order->size() - 1;
+    
+    // next_order_candidates is a list of cindexes that we should check
+    // whether they are computable now, because one of the things they depend
+    // on just became computable.
+    next_order_candidates.clear();
+    int32 size = this_order.size();
+    for (int32 i = 0; i < size; i++) {
+      int32 c = this_order[i];  // c is a cindex_id with order cur_order.
+      (*order)[c] = cur_order;
+      std::vector<int32>::const_iterator iter = depend_on_subset[c].begin(),
+          end = depend_on_subset[c].end();
+      for (; iter != end; ++iter) {
+        int32 d = *iter;  // cindex_id that depends on c.
+        next_order_candidates.push_back(d);
+      }
+    }
+    SortAndUniq(&next_order_candidates);
+    this_order.clear();
+    // now check the candidates that might be of the next order, and put any
+    // members that we are currently able to compute into "this_order".
+    std::vector<int32>::const_iterator iter = next_order_candidates.begin(),
+        end = next_order_candidates.end();
+    for (; iter != end; ++iter) {
+      int32 c = *iter;
+      std::vector<int32>::const_iterator
+          dep_iter = dependencies_subset[c].begin(),
+          dep_end = dependencies_subset[c].end();
+      for (; dep_iter != dep_end; ++dep_iter) {
+        int32 d = *dep_iter;  // d is cindex_id that c depends on.
+        if ((*order)[d] < 0)  // we can't compute c yet as something we depend
+          break;              // on is not yet computed.
+      }
+      if (dep_iter == dep_end) {
+        // we reached the end and did not break -> all dependencies satisfied
+        this_order.push_back(c);
+      }
+    }
+    if (!next_order_candidates.empty() && this_order.empty())  {
+      // this should have been caught earlier so likely a code error rather than
+      // a problem with user input.
+      KALDI_ERR << "Possibly some cindexes were not reachable (code error?)";
+    }
+  }
+  
+  
+    
+
+}
+
 void ComputeComputationOrder(
     const Nnet &nnet,    
     const ComputationGraph &graph,
-    std::vector<int32> *order,
     std::vector<std::vector<int32> > *by_order) {
   using namespace computation_graph;
-  if (order == NULL) {  // ensure order != NULL by recursing if it's NULL.
-    std::vector<int32> order_tmp;
-    ComputeComputationOrder(nnet, graph, &order_tmp, by_order);
-    return;
-  }
-  
+  int32 num_cindex_ids = graph.cindexes.size();
+      
   std::vector<int32> cindex_id_to_super_order;
   std::vector<std::vector<int32 > > by_super_order;
   std::vector<bool> super_order_is_trivial;
   ComputeSuperOrderInfo(nnet, graph, &cindex_id_to_super_order,
                         &by_super_order, &super_order_is_trivial);
+
+  KALDI_ASSERT(SumVectorSizes(by_super_order) == num_cindex_ids);
   
   // dependencies_subset contains just the subset of dependencies
   // of each cindex_id, that have the same super_order index as
@@ -988,110 +1159,37 @@ void ComputeComputationOrder(
   ComputeDependenciesSubset(graph, cindex_id_to_super_order,
                             &dependencies_subset);
   
-  
   // depend_on_subset is a subset of the normal "depend_on" list (i.e. a list of
   // all cindex_ids that depend on the current cindex_id), limited to just those
   // cindex_ids that have the same super_order index.
   std::vector<std::vector<int32> > depend_on_subset;
   ComputeGraphTranspose(dependencies_subset, &depend_on_subset);
 
-  int32 num_cindex_ids = graph.cindexes.size(),
-      num_super_order_indexes = super_order_is_trivial.size();
-  order->clear();
-  order->resize(num_cindex_ids, -1);
+  int32 num_super_order_indexes = super_order_is_trivial.size();
+
+  // "order" is used inside ComputeComputationOrderForSuperOrder.
+  std::vector<int32> order(num_cindex_ids, -1);
+  
   if (by_order) {
     by_order->clear();
     by_order->reserve(50);  // minimize unnecessary copies.  50 is very
                             // arbitrarily chosen.
   }
 
-  std::vector<int32> this_order, next_order_candidates;
-  int32 num_computed = 0, cur_order = 0;
-  
-  for (int32 super_order = 0; super_order < num_super_order_indexes; super_order++) {
-    // Each super-order index will correspond to one or more order indexes.
-    // we start out with those that have no dependencies.
-    const std::vector<int32> &this_cindexes = by_super_order[super_order];
-    if (by_super_order[super_order].empty())
-      continue;  
+  for (int32 super_order = 0;
+       super_order < num_super_order_indexes;
+       super_order++)
+    ComputeComputationOrderForSuperOrder(nnet, graph,
+                                         dependencies_subset,
+                                         depend_on_subset,
+                                         by_super_order[super_order],
+                                         super_order_is_trivial[super_order],
+                                         &order, by_order);
+    
 
-    // this_order is the list of elements of this order.  Start out with all
-    // elements of this super-order that have no dependencies within the same
-    // super-order.
-    {
-      std::vector<int32>::const_iterator iter = this_cindexes.begin(),
-          end = this_cindexes.end();
-      for (; iter != end; ++iter) {
-        int32 cindex_id = *iter;
-        if (dependencies_subset[cindex_id].empty())
-          this_order.push_back(cindex_id);
-      }
-    }
-    // if the next assert fails, the graph at the level of cindex_ids is not acyclic.
-    KALDI_ASSERT(!this_order.empty() &&
-                 "Trying to process computation with cycles");
-
-    for (; !this_order.empty(); cur_order++) {
-      if (by_order)
-        by_order->push_back(this_order);
-      num_computed += this_order.size();
-
-      // The next if-statement is an optimization: if for this super-order index
-      // there is just one node, there will be just one order-index for this
-      // super-order index, so we can skip the rest of this loop.  Note: if
-      // super_order == 0, even if there is just one node, cindex_ids from
-      // multiple nodes may be put here because of the rule that cindex_ids which
-      // are inputs always get super_order 0.  But it's still true that they
-      // will have no dependencies, so we can still skip the code below.
-      if (super_order_is_trivial[super_order])
-        break;
-      
-      // next_order_candidates is a list of cindexes that we should check
-      // whether they are computable now, because one of the things they depend
-      // on just became computable.  We declared it outside the current loop to
-      // avoid reallocation.
-      next_order_candidates.clear();  
-      for (int32 i = 0; i < this_order.size(); i++) {
-        int32 c = this_order[i];  // c is a cindex_id with order cur_order.
-        (*order)[c] = cur_order;
-        std::vector<int32>::const_iterator iter = depend_on_subset[c].begin(),
-            end = depend_on_subset[c].end();
-        for (; iter != end; ++iter) {
-          int32 d = *iter;  // cindex_id that depends on c.
-          next_order_candidates.push_back(d);
-        }
-      }
-      SortAndUniq(&next_order_candidates);
-      this_order.clear();
-      // now check the candidates that might be of the next order, and put any
-      // members that we are currently able to compute into "this_order".
-      std::vector<int32>::const_iterator iter = next_order_candidates.begin(),
-          end = next_order_candidates.end();
-      for (; iter != end; ++iter) {
-        int32 c = *iter;
-        std::vector<int32>::const_iterator
-            dep_iter = dependencies_subset[c].begin(),
-            dep_end = dependencies_subset[c].end();
-        for (; dep_iter != dep_end; ++dep_iter) {
-          int32 d = *dep_iter;  // d is cindex_id that c depends on.
-          if ((*order)[d] < 0)  // we can't compute c yet as something we depend
-            break;              // on is not yet computed.
-        }
-        if (dep_iter == dep_end) {
-          // we reached the end and did not break -> all dependencies satisfied
-          this_order.push_back(c);
-        }
-      }
-      if (!next_order_candidates.empty() && this_order.empty())  {
-        // this should have been caught earlier so likely a code error rather than
-        // a problem with user input.
-        KALDI_ERR << "Possibly some cindexes were not reachable (code error?)";
-      }
-    }
-  }
   // make sure everything was computable.  If the next assert fails it's likely
   // a bug in this function or in PruneComputataionGraph.
-  KALDI_ASSERT(num_computed == num_cindex_ids);
+  KALDI_ASSERT(SumVectorSizes(*by_order) == num_cindex_ids);
 }
 
 CindexSet::CindexSet(const ComputationGraph &graph):

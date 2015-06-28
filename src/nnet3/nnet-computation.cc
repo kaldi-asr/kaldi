@@ -119,8 +119,7 @@ int32 NnetComputation::NewSubMatrix(int32 base_matrix, int32 dim_offset,
 }
   
 int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
-  KALDI_ASSERT(num_rows > 0 && num_cols && 0 &&
-               matrices.size() == sub_matrices.size());
+  KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
     matrices.push_back(MatrixInfo(0, 0));
     sub_matrices.push_back(SubMatrixInfo(0, 0, 0, 0, 0));

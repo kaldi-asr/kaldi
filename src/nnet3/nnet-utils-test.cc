@@ -50,6 +50,7 @@ void UnitTestNnetContext() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
+  SetVerboseLevel(2);
 
   UnitTestNnetContext();
 

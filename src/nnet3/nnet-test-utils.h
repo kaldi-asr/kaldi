@@ -57,7 +57,8 @@ void GenerateConfigSequence(
 /// If there are 2 inputs, the "input" will be first, followed by "ivector".
 void ComputeExampleComputationRequestSimple(
     const Nnet &nnet,
-    ComputationRequest *request);
+    ComputationRequest *request,
+    std::vector<Matrix<BaseFloat> > *inputs);
 
 
 

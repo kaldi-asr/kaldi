@@ -67,6 +67,11 @@ void EvaluateComputationRequest(
   ComputationGraphBuilder builder(nnet, request, &graph);
   builder.Compute();
   builder.GetComputableInfo(is_computable);
+  if (GetVerboseLevel() >= 2) {
+    std::ostringstream graph_pretty;
+    graph.Print(graph_pretty, nnet.GetNodeNames());
+    KALDI_VLOG(2) << "Graph is " << graph_pretty.str();
+  }
 }
 
 // this non-exported function is used in ComputeSimpleNnetContext
@@ -113,13 +118,10 @@ static void ComputeSimpleNnetContextForShift(
   int32 first_ok = iter - output_ok.begin();
   int32 first_not_ok = std::find(iter, output_ok.end(), false) -
       output_ok.begin();
-  KALDI_LOG << "first_ok = " << first_ok << ", first_not_ok = " << first_not_ok;
   if (first_ok == window_size || first_not_ok <= first_ok)
     KALDI_ERR << "No outputs were computable (perhaps not a simple nnet?)";
   *left_context = first_ok;
   *right_context = window_size - first_not_ok;
-  KALDI_LOG << "left,right-context[" << input_start << "] = "
-            << *left_context << "," << *right_context;
 }
 
 void ComputeSimpleNnetContext(const Nnet &nnet,

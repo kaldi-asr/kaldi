@@ -75,6 +75,16 @@ struct ComputationGraph {
   /// This function renumbers the cindex-ids, keeping only for which keep[c] is
   /// true.  The "keep" array must be the same size as this->cindexes.
   void Renumber(const std::vector<bool> &keep);
+
+
+  /// This function, useful for debugging/visualization purposes,
+  /// prints out a summary of the computation graph (which will take up
+  /// multiple lines).
+  /// Format is: [ cindex1 -> dep-cindex1 dep-cindex2 ] [ cindex2 -> dep-cindex3 dep-cindex4 ]
+  /// showing each Cindex and the Cindexes it depends on.  cindexes from different network
+  /// nodes are shown on different lines.
+  void Print(std::ostream &os, const std::vector<std::string> &node_names);
+  
  private:
   /// Maps each Cindex to an integer cindex_id: reverse mapping of "cindexes".
   /// Must be accessed via the GetCindexId() functions.
@@ -94,23 +104,24 @@ class ComputationGraphBuilder {
   // whether each required cindex_id is computable), without the pruning.
   void Compute();
 
-  // to be called after Compute(), this returns true if all requested outputs
-  // are computable.
+  // to be called after Compute() but before Prune(), this returns true if all
+  // requested outputs are computable.
   bool AllOutputsAreComputable();
 
   // This function outputs to "computable" information about whether each
   // requested element of each output was computable.  "computable" will have
   // the same size as request_->outputs, and each element will have the same
-  // size as request_->outputs[i].indexes.size().  May be called only before
-  // Prune() was called.  If you have already called Prune(), you can just
-  // assume everything was computable, or else Prune() would have crashed.
+  // size as request_->outputs[i].indexes.size().  May only be called after
+  // Compute() but before Prune().  If you have already called Prune(), you can
+  // just assume everything was computable, or else Prune() would have crashed.
   void GetComputableInfo(std::vector<std::vector<bool> > *computable) const;
   
   // to be called after Compute(), this prunes away unused cindex_ids.
-  // If not all the outputs are computable, it is an error to call this.
-  // (you can check AllOutputsAreComputable() first).
+  // If not all the outputs are computable, this will die;
+  // you can check the return status of AllOutputsAreComputable() first if
+  // you want to avoid this.
   void Prune();
-
+  
   // This enum says for each cindex_id, whether we can compute it from the
   // given inputs or not.  Note that there may be situations where
   // before adding dependencies of a particular cindex_id we realize that
@@ -279,68 +290,6 @@ class IndexSet {
 };
 
 
-
-
-/// Computes an initial version of the computation-graph, with all dependencies
-/// including optional dependencies listed.  Does not check whether all inputs
-/// we depend on are contained in the input of the computation_request; that is
-/// done in ComputeComputableArray.
-void ComputeComputationGraph(const Nnet &nnet,
-                             const ComputationRequest &computation_request,
-                             ComputationGraph *computation_graph);
-
-/// Computes an array "computable" that says for each Cindex in the graph
-/// (indexed by cindex_id) whether it is provided in, or computable from, the
-/// supplied inputs.
-void ComputeComputableArray(const Nnet &nnet,
-                            const ComputationRequest &computation_request,
-                            const ComputationGraph &computation_graph,
-                            std::vector<bool> *computable);
-
-/// This function prunes the "dependencies" array of each cindex_id in the
-/// computation graph, to include just those that are used in the computation
-/// (rather than all dependencies that are desired).  It uses the IsComputable
-/// function of the Descriptors and Components to work out which inputs are
-/// used; this does something interesting only if we have non-simple components
-/// or descriptors that involve optional inputs.  It also clears the
-/// dependencies for all non-computable cindexes.
-void PruneDependencies(const Nnet &nnet,
-                       const ComputationRequest &computation_request,
-                       const std::vector<bool> &computable,
-                       ComputationGraph *computation_graph);
-                       
-
-/// Computes an array "required" that says for each Cindex in the graph (indexed
-/// by cindex_id) whether it is required to compute the outputs of the
-/// computation.  Normally this vector will be all true because we only populate
-/// the graph with things that we needed in the first place; but there are
-/// instances where this might not be the case: if "dependencies" for a certain
-/// output contains A and B, but the Descriptor has an expression like (A if
-/// present; if not, B) then because A is present, B is not required.  The same
-/// type of thing could occur with non-simple Components.  This function just
-/// looks at the "dependnecies" arrays; it must only be called after you have
-/// called "PruneDependencies" on the graph, otherwise it will just say
-/// everything is required.
-void ComputeRequiredArray(const Nnet &nnet,
-                          const ComputationGraph &computation_graph,
-                          const std::vector<bool> &computable,
-                          std::vector<bool> *required);
-
-
-/// Prunes a computatation graph by removing some Cindexes (this involves a
-/// renumbering).  Any Cindex that is not computable, or that is not required
-/// and is not an input (!graph.is_input[cindex_id]) is removed in the
-/// renumbering.  If this function detects that not all the requested outputs
-/// can be computed from the inputs, it returns false and the answer is
-/// undefined; otherwise it returns true and does the renumbering.  The caller
-/// should check the return status.
-bool PruneComputationGraph(
-    const Nnet &nnet,
-    const std::vector<bool> &computable,
-    const std::vector<bool> &required,
-    ComputationGraph *computation_graph);
-
-
 /// Compute the order in which we can compute each cindex in the computation;
 /// each cindex will map to an order-index.  This is a prelude to computing the
 /// steps of the computation (ComputeComputationSteps), and gives a coarser
@@ -348,14 +297,11 @@ bool PruneComputationGraph(
 /// general is n for any cindex that can be computed immediately from cindexes
 /// with order-index less than n.  It is an error if some cindexes cannot be
 /// computed (we assume that you have called PruneComputationGraph before this
-/// function).  If the "order" parameter is non-NULL, it will output to "order"
-/// a vector mapping cindex_id to order-index.  If the "by_order" parameter is
-/// non-NULL, it will output for each order-index 0, 1 and so on, a sorted
-/// vector of cindex_ids that have that order-index.
+/// function).  It will output to by_order, for each order-index 0, 1 and so on,
+/// a sorted vector of cindex_ids that have that order-index.
 void ComputeComputationOrder(
     const Nnet &nnet,
     const ComputationGraph &computation_graph,
-    std::vector<int32> *order,
     std::vector<std::vector<int32> > *by_order);
 
 

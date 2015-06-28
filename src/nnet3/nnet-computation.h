@@ -69,6 +69,12 @@ struct IoSpecification {
                    // will be supplied.  For input nodes, true if the derivative
                    // w.r.t. that input will be needed.
   IoSpecification(): has_deriv(false) { }
+
+  IoSpecification(const IoSpecification &other):
+      name(other.name), indexes(other.indexes), has_deriv(other.has_deriv) { }
+  IoSpecification(const std::string &name, const std::vector<Index> &indexes,
+                  bool has_deriv = false):
+      name(name), indexes(indexes), has_deriv(has_deriv) { }
 };
 
 
@@ -214,10 +220,10 @@ struct NnetComputation {
   // also used in kAddRowRanges where it contains pairs (start-index, end-index)
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
   
-  // Information about where the values and derivatives of the neural net live,
-  // indexed the same index as used for the nodes_ array in the Nnet.
-  // each pair is (value_submatrix_index, deriv_submatrix_index), with -1 for
-  // derivatives that are not present.
+  // Information about where the values and derivatives of the neural net live.
+  // Indexed by the node_index (the same index as used for the nodes_ array in
+  // the Nnet), each pair is (value_submatrix_index, deriv_submatrix_index),
+  // with 0 for derivatives that are not present.
   unordered_map<int32, std::pair<int32, int32> > input_output_info;
   
   // The sequence of commands.

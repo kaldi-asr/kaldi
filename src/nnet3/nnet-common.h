@@ -88,6 +88,9 @@ struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
 };
 
+// this will only be used for pretty-printing.
+void PrintCindex(std::ostream &ostream, const Cindex &cindex,
+                 const std::vector<std::string> &node_names);
 
 // this will be used only for debugging output.
 std::ostream &operator << (std::ostream &ostream, const Cindex &cindex);

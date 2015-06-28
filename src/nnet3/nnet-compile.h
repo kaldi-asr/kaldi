@@ -128,7 +128,8 @@ class Compiler {
   // Adds to the computation object the information about the matrix sizes
   void DefineMatrices(NnetComputation *computation) const;
 
-  // sets up the input_output_info of the computation.
+  // sets up the input_output_info of the computation (this says where the
+  // values and derivatives for the inputs and outputs live).
   void SetInputOutputInfo(NnetComputation *computation) const;
 
   // Sets up sub-matrix indexes for nodes of type Descriptor (needed mainly
@@ -138,7 +139,7 @@ class Compiler {
 
   // Adds to the computation object the commands to set up the matrices.
   void SetUpMatrices(NnetComputation *computation) const;
-
+  
   // Sets up the precomputed indexes for each component, and sets the
   // precomputed_indexes_index value for each step.
   void SetUpPrecomputedIndexes(NnetComputation *computation);
@@ -263,7 +264,7 @@ class Compiler {
       NnetComputation *computation) const;
   
   
-  // [to be called after step_info_ is set up and all the forward and backprop
+  // [to be called after steps_ is set up and all the forward and backprop
   // commands have been added].  Adds to the computation the commands that
   // deinitialize all the matrices, except those that may be requested by
   // the user after the computation is done (i.e. outputs of the network,
