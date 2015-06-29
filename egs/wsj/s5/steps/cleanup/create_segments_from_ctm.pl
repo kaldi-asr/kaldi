@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-# Copyright 2014  Guoguo Chen
+# Copyright 2014  Guoguo Chen; 2015 Nagendra Kumar Goel
 # Apache 2.0
 
 use strict;
@@ -40,6 +40,10 @@ Allowed options:
                       (default = "<***>")
   --wer-cutoff      : Ignore segments with WER higher than the specified value.
                       -1 means no segment will be ignored. (default = -1)
+  --use-silence-midpoints : Set to 1 if you want to use silence midpoints 
+                       instead of min_sil_length for silence overhang.(default 0)
+  --force-correct-boundary-words : Set to zero if the segments will not be required 
+                       to have boundary words to be correct. Default 1  
 EOU
 
 my $max_seg_length = 10.0;
@@ -48,11 +52,15 @@ my $min_sil_length = 0.5;
 my $separator = ";";
 my $special_symbol = "<***>";
 my $wer_cutoff = -1;
+my $use_silence_midpoints = 0; 
+my $force_correct_boundary_words = 1;
 GetOptions(
   'wer-cutoff=f' => \$wer_cutoff,
   'max-seg-length=f' => \$max_seg_length,
   'min-seg-length=f' => \$min_seg_length,
   'min-sil-length=f' => \$min_sil_length,
+  'use-silence-midpoints=f' => \$use_silence_midpoints,
+  'force-correct-boundary-words=f' => \$force_correct_boundary_words,
   'separator=s'      => \$separator,
   'special-symbol=s' => \$special_symbol);
 
@@ -110,10 +118,11 @@ sub PrintSegment {
   }
   my $pad_start_sil = ($aligned_ctm->[$seg_start_index]->[1] -
                        $aligned_ctm->[$index + 1]->[1]) / 2.0;
-  if ($pad_start_sil > $min_sil_length / 2.0) {
-    $pad_start_sil = $min_sil_length / 2.0;
+  if (!$use_silence_midpoints) {
+      if ($pad_start_sil > $min_sil_length / 2.0) {
+          $pad_start_sil = $min_sil_length / 2.0;
+      }
   }
-
   $index = $seg_end_index + 1;
   while ($index < scalar(@{$aligned_ctm}) &&
          $aligned_ctm->[$index]->[0] eq "<eps>") {
@@ -123,8 +132,10 @@ sub PrintSegment {
                      $aligned_ctm->[$index - 1]->[2] -
                      $aligned_ctm->[$seg_end_index]->[1] -
                      $aligned_ctm->[$seg_end_index]->[2]) / 2.0;
-  if ($pad_end_sil > $min_sil_length / 2.0) {
-    $pad_end_sil = $min_sil_length / 2.0;
+  if (!$use_silence_midpoints) {
+      if ($pad_end_sil > $min_sil_length / 2.0) {
+          $pad_end_sil = $min_sil_length / 2.0;
+      } 
   }
 
   my $seg_start = $aligned_ctm->[$seg_start_index]->[1] - $pad_start_sil;
@@ -302,8 +313,9 @@ sub ProcessWav {
     # length, and if there are no alignment error around it. We also make sure
     # that segment contains actual words, instead of pure silence.
     if ($aligned_ctm[$x]->[0] eq "<eps>" &&
-        $aligned_ctm[$x]->[2] > $min_sil_length &&
-        $lcorrect eq "true" && $rcorrect eq "true") {
+        $aligned_ctm[$x]->[2] >= $min_sil_length 
+       && (($force_correct_boundary_words && $lcorrect eq "true" && $rcorrect eq "true")
+           || !$force_correct_boundary_words)) {
       if ($current_seg_length <= $max_seg_length &&
           $current_seg_length >= $min_seg_length) {
         my $ans = PrintSegment(\@aligned_ctm, $wav_id, $min_sil_length,
@@ -347,7 +359,7 @@ sub InsertSilence {
 
     my $new_start = sprintf("%.2f",
                             $ctm_in->[$x - 1]->[2] + $ctm_in->[$x - 1]->[3]);
-    if ($new_start < $ctm_in->[$x]->[2]) {
+    if ($new_start <= $ctm_in->[$x]->[2]) {
       my $new_dur = sprintf("%.2f", $ctm_in->[$x]->[2] - $new_start);
       push(@{$ctm_out}, [$ctm_in->[$x - 1]->[0], $ctm_in->[$x - 1]->[1],
                          $new_start, $new_dur, "<eps>"]);
