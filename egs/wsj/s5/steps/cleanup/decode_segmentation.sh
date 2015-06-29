@@ -29,13 +29,16 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-   echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
-   echo "... where <decode-dir> is assumed to be a sub-directory of the"
-   echo "    directory where the model is."
-   echo ""
    echo "This is a special decoding script for segmentation where we use one"
    echo "decoding graph for each segment. We assume a file HCLG.fsts.scp exists"
    echo "which is the scp file of the graphs for each segment."
+   echo ""
+   echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
+   echo " e.g.: $0 exp/tri2b/graph_train_si284_split \\"
+   echo "             data/train_si284_split exp/tri2b/decode_train_si284_split"
+   echo ""
+   echo "where <decode-dir> is assumed to be a sub-directory of the directory"
+   echo "where the model is."
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
@@ -76,7 +79,7 @@ sort -k1,1 -u < $graphdir/HCLG.fsts.scp > $graphdir/HCLG.fsts.scp.sorted
 mv $graphdir/HCLG.fsts.scp.sorted $graphdir/HCLG.fsts.scp
 for x in `seq 1 $nj`; do
   cat $graphdir/HCLG.fsts.scp |\
-    utils/filter_scp.pl -f 1 <(cut -f 1 -d ' ' $sdata/$x/feats.scp) > $sdata/$x/graphs.scp
+    utils/filter_scp.pl -f 1 $sdata/$x/feats.scp > $sdata/$x/graphs.scp
   num_feats=`cat $sdata/$x/feats.scp | wc -l`
   num_graphs=`cat $sdata/$x/graphs.scp | wc -l`
   if [ $num_graphs -ne $num_feats ]; then
