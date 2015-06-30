@@ -76,6 +76,7 @@ class ParallelComponent : public UpdatableComponent {
         Nnet nnet;
         nnet.Read(nested_nnet_filename[i]);
         nnet_.push_back(nnet);
+        KALDI_LOG << "Loaded nested <Nnet> from file : " << nested_nnet_filename[i];
       }
     }
     // initialize nnets from prototypes
@@ -84,6 +85,7 @@ class ParallelComponent : public UpdatableComponent {
         Nnet nnet;
         nnet.Init(nested_nnet_proto[i]);
         nnet_.push_back(nnet);
+        KALDI_LOG << "Initialized nested <Nnet> from prototype : " << nested_nnet_proto[i];
       }
     }
     // check dim-sum of nested nnets
