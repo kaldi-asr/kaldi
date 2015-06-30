@@ -65,7 +65,6 @@
 /src/bin/align-mapped
 /src/bin/align-equal
 /src/bin/compute-wer
-/src/bin/arpa2fst.cc
 /src/bin/ali-to-phones
 /src/bin/ali-to-post
 /src/bin/acc-lda
