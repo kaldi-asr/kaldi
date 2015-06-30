@@ -144,13 +144,19 @@ class Nnet {
   /// returns vector of node names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetNodeNames() const;
 
+  /// returns individual node name.
+  const std::string &GetNodeName(int32 node_index) const;
+
   /// returns vector of component names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetComponentNames() const;
+
+  /// returns individual component name.
+  const std::string &GetComponentName(int32 component_index) const;
   
-  // returns index associated with this node name, or -1 if no such index.
+  /// returns index associated with this node name, or -1 if no such index.
   int32 GetNodeIndex(const std::string &node_name) const;
 
-  // returns index associated with this component name, or -1 if no such index.
+  /// returns index associated with this component name, or -1 if no such index.
   int32 GetComponentIndex(const std::string &node_name) const;
 
   // This convenience function returns the dimension of the input with name

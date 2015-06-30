@@ -31,6 +31,12 @@
 namespace kaldi {
 namespace nnet3 {
 
+struct CompilerOptions {
+  bool output_debug_info;
+
+  CompilerOptions(): output_debug_info(true) { }
+};
+
 // This class creates an initial version of the NnetComputation, without any
 // optimization or sharing of matrices.  
 class Compiler {
@@ -38,7 +44,8 @@ class Compiler {
   Compiler(const ComputationRequest &request,
            const Nnet &nnet);
   
-  void CreateComputation(NnetComputation *computation);
+  void CreateComputation(const CompilerOptions &opts,
+                         NnetComputation *computation);
 
  private:
   const ComputationRequest &request_;
@@ -271,6 +278,9 @@ class Compiler {
   // and input derivatives).
   void DestroyMatrices(NnetComputation *computation);
 
+  // sets up the debug_info member of "computation".
+  void OutputDebugInfo(NnetComputation *computation) const;
+  
   void AddCommands(const std::vector<bool> &deriv_needed,
                    NnetComputation *computation);
 

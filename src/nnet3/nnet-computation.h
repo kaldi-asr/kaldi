@@ -134,6 +134,12 @@ struct NnetComputation {
     MatrixInfo(int32 num_rows, int32 num_cols):
         num_rows(num_rows), num_cols(num_cols) {}
   };
+  struct MatrixDebugInfo {
+    bool is_deriv;  // true if this represents a derivative, not a value.
+    int32 node_index;  // network-node index.
+    std::vector<Index> indexes;
+    MatrixDebugInfo(): is_deriv(false), node_index(-1) {}
+  };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
     int32 row_offset;    
@@ -154,20 +160,22 @@ struct NnetComputation {
     kAddRowRanges, kNoOperation, kNoOperationMarker };
   struct Command {
     CommandType command_type;
-    // kResizeMatrixZeroed, kResizeMatrixUndefined: arg1 = index of matrix; arg2,arg3 are rows,cols.
+    // kResizeMatrixZeroed, kResizeMatrixUndefined: arg1 = index of matrix. (rows,cols are taken
+    //  from the "matrices" array).
     // kResizeMatrixEmpty: arg1 = index of matrix.
     // kPropagate: arg1 = index of component in nnet; arg2 is index of ComponentPrecomputedIndexes
     //   (0 if NULL); arg3, arg4 are sub-matrix indexes of matrix args (input and output)
     // kStoreStats: arg1 = index of component in nnet; arg2 is sub-matrix index of the output
     //    stored by Propagate (which is an input to the function).
-    // kBackprop: arg1 = index of neural net node (only needed for debug);
+    // kBackprop: arg1 = index of neural net node (only needed for debug info);
     //    arg2 = index of component in nnet; arg3 is index of ComponentPrecomputedIndexes
     //   (0 if NULL); (arg4, arg5, arg6 and arg7) are respectively sub-matrix indexes of
-    //   (in-value, output-value, input-deriv, output-deriv).
-    // kMatrixCopy,kMatrixAdd: arg1 is source sub-matrix, arg2 is dest sub-matrix.
-    // kAddRows, kAddToRows, kCopyRows, kCopyToRows: arg1 (sub-matrix index) is
-    //    the *this in operation, arg2 (sub-matrix index) is matrix argument of
-    //    operation, changed, arg3 is index into "indexes"
+    //   (in-value, output-value, output-deriv, input-deriv).
+    // kMatrixCopy,kMatrixAdd: arg1 is dest sub-matrix (the *this), arg2 is
+    //    source sub-matrix.
+    // kAddRows, kCopyRows: arg1 (sub-matrix index) is the *this in operation,
+    //    arg2 (sub-matrix index) is matrix argument of operation, changed, arg3
+    //    is index into "indexes"
     // kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti: arg1 is
     //    sub-matrix index of *this matrix in operation; and arg2 is index into
     //    "indexes_multi", of which each pair is (sub-matrix index, row index);
@@ -190,12 +198,17 @@ struct NnetComputation {
         command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
   };
-
+  
   // "matrices" describes the sizes of the matrices that we use as variables in
   // the computation [note: index zero is reserved for an empty matrix].  Most
   // commands refer to sub_matrices below (note: each matrix will have its own
   // sub-matrix that just refers to the entire matrix).
   std::vector<MatrixInfo> matrices;
+
+  // debug information for each of the matrices, only computed if requested
+  // in the compiler options.
+  std::vector<MatrixDebugInfo> matrix_debug_info;
+  
 
   // Because some parts of the computation may involve parts of matrix, we
   // declare sub-matrices.  Some of these sub-matrices correspond to entire
@@ -203,7 +216,7 @@ struct NnetComputation {
   // part of, or all of, a matrix).  The first one (index 0) is an empty
   // sub-matrix, which we use whenever an empty matrix is called for.
   std::vector<SubMatrixInfo> sub_matrices;
-
+  
   // For Components that require precomputed indexes for their Propagate and
   // Backprop operations.  The index into this vector is referred to in
   // kPropagate and kBackprop operations.  Index 0 in the vector is reserved for
@@ -252,10 +265,18 @@ struct NnetComputation {
   // sub-matrix index.
   int32 NewSubMatrix(int32 base_matrix, int32 dim_offset, int32 dim);
 
+  // returns true if this submatrix corresponds to the whole of a matrix.
+  // submatrix_index must be > 0.
+  bool IsWholeMatrix(int32 submatrix_index) const;
+
   // This must be called after setting up the computation but prior to actually
   // using the Computation object in a computation, to compute CUDA versions of
   // the indexes.
   void ComputeCudaIndexes();
+
+  // This function produces pretty-print ouput intended to allow a human to 
+  // interpret the computation.
+  void Print(std::ostream &os, const Nnet &nnet) const;
   
   // destructor deletes pointers in component_precomputed_indexes.
   ~NnetComputation();

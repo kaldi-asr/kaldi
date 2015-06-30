@@ -28,7 +28,8 @@ Compiler::Compiler(
     const Nnet &nnet): request_(request), nnet_(nnet) { }
 
 
-void Compiler::CreateComputation(NnetComputation *computation) {
+void Compiler::CreateComputation(const CompilerOptions &opts,
+                                 NnetComputation *computation) {
   ComputationGraphBuilder builder(nnet_, request_, &graph_);
   builder.Compute();
   builder.Prune();
@@ -44,6 +45,9 @@ void Compiler::CreateComputation(NnetComputation *computation) {
   ComputeDerivNeeded(steps, &deriv_needed);
   CreateStepInfo(deriv_needed, &steps, computation);
   AddCommands(deriv_needed, computation);
+  if (opts.output_debug_info)
+    OutputDebugInfo(computation);
+  
 }
 
 void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
@@ -429,21 +433,26 @@ void Compiler::DoForwardComputationFromIndexes(
           (is_first_term_in_sum ?
            NnetComputation::kMatrixCopy : NnetComputation::kMatrixAdd);
       computation->commands.push_back(
-          NnetComputation::Command(ctype, input_submatrix_index,
-                                   value_submatrix_index));
+          NnetComputation::Command(ctype, value_submatrix_index,
+                                   input_submatrix_index));
+                                   
       return;
     }
   }
   // if we got to here, it's not just a case of matrix-copy or matrix-add,
   // but it's still from a single source matrix.
+  // TODO: detect the case where the indexes are contiguous, but possibly
+  // with -1's at the beginning or end (e.g. [ -1 2 3 4 5 6 7 8 ]) and make
+  // it a standard matrix-copy command with new sub-matrices added as needed,
+  // possibly with a subset of the rows in the original sub-matrices.
   int32 indexes_index = computation->indexes.size();
   computation->indexes.push_back(indexes);
   NnetComputation::CommandType ctype =
       (is_first_term_in_sum ?
        NnetComputation::kCopyRows : NnetComputation::kAddRows);
   computation->commands.push_back(
-      NnetComputation::Command(ctype, input_submatrix_index,
-                               value_submatrix_index, indexes_index));
+      NnetComputation::Command(ctype, value_submatrix_index,
+                               input_submatrix_index, indexes_index));
   return;
 }
 
@@ -800,8 +809,8 @@ void Compiler::AddBackpropStep(int32 step,
                              step_info.precomputed_indexes_index,
                              input_submatrix_index,
                              output_submatrix_index,
-                             input_deriv_submatrix_index,
-                             output_deriv_submatrix_index);
+                             output_deriv_submatrix_index,
+                             input_deriv_submatrix_index);
   computation->commands.push_back(c);
 }
 
@@ -900,6 +909,34 @@ void Compiler::DestroyMatrices(NnetComputation *computation) {
           NnetComputation::Command(NnetComputation::kResizeMatrixEmpty, m));
 }
 
+void Compiler::OutputDebugInfo(NnetComputation *computation) const {
+  int32 num_matrices = computation->matrices.size(),
+      num_steps = steps_.size();
+  computation->matrix_debug_info.resize(num_matrices);
+  for (int32 step = 0; step < num_steps; step++) {
+    const StepInfo &step_info = steps_[step];
+    KALDI_ASSERT(step_info.value != 0);
+    if (!computation->IsWholeMatrix(step_info.value))
+      continue;
+    int32 value_matrix = computation->sub_matrices[step_info.value].matrix_index;
+    int32 deriv_matrix = 0;
+    if (step_info.deriv != 0 && computation->IsWholeMatrix(step_info.deriv))
+      deriv_matrix = computation->sub_matrices[step_info.deriv].matrix_index;    
+    
+    NnetComputation::MatrixDebugInfo &debug_info =
+        computation->matrix_debug_info[value_matrix];
+    debug_info.is_deriv = false;
+    debug_info.node_index = step_info.node_index;
+    debug_info.indexes = step_info.output_indexes;
+    if (deriv_matrix != 0) {
+      NnetComputation::MatrixDebugInfo &deriv_debug_info =
+          computation->matrix_debug_info[deriv_matrix];
+      deriv_debug_info.is_deriv = false;
+      deriv_debug_info.node_index = step_info.node_index;
+      deriv_debug_info.indexes = step_info.output_indexes;
+    }
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi
