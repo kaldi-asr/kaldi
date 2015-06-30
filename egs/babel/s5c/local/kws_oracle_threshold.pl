@@ -123,17 +123,24 @@ foreach my $kwid (keys %keywords) {
   my $local_otwv = 0.0;
   my $max_local_otwv = 0.0;
   my $local_atwv = 0.0;
+  my $active_otwv_threshold = "";
   foreach my $instance (@instances) {
     my @ins = @{$instance};
     my $gain = 1.0 / $Ntrue{$kwid};
     my $cost = $beta / ($duration - $Ntrue{$kwid});
     # OTWV.
+    if ($local_otwv > $max_local_otwv &&
+        $active_otwv_threshold ne "" && $active_otwv_threshold != $ins[0]) {
+      $max_local_otwv = $local_otwv;
+    }
     if ($ins[1] == 1) {
       $local_otwv += $gain;
     } else {
       $local_otwv -= $cost;
     }
-    if ($local_otwv > $max_local_otwv) {
+    $active_otwv_threshold = $ins[0];
+    if ($active_otwv_threshold == 1.0) {
+      # If score = 1.0, we always accept the instance as YES.
       $max_local_otwv = $local_otwv;
     }
 
@@ -152,6 +159,9 @@ foreach my $kwid (keys %keywords) {
         $mtwv_sweep{$threshold} -= $cost;
       }
     }
+  }
+  if ($local_otwv > $max_local_otwv) {
+    $max_local_otwv = $local_otwv;
   }
   $atwv += $local_atwv;
   $otwv += $max_local_otwv;
