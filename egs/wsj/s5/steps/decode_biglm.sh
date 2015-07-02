@@ -10,6 +10,7 @@ maxactive=7000
 beam=13.0
 lattice_beam=6.0
 acwt=0.083333
+skip_scoring=false
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -80,8 +81,11 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
   $srcdir/final.mdl $graphdir/HCLG.fst "$oldlm_cmd" "$newlm_cmd" "$feats" \
   "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 exit 0;

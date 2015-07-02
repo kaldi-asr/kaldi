@@ -18,6 +18,7 @@ acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 extra_beam=0.0 # small additional beam over varying beam
 max_beam=100.0 # maximum of varying beam
 scoring_opts=
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -119,9 +120,12 @@ else
      $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh $scoring_opts --cmd "$cmd" --reverse $reverse $scoring_opts $data $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh $scoring_opts --cmd "$cmd" --reverse $reverse $scoring_opts $data $graphdir $dir  ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 echo "Decoding done."
 exit 0;

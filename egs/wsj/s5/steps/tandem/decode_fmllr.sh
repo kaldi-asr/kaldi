@@ -42,6 +42,7 @@ silence_weight=0.01
 cmd=run.pl
 si_dir=
 fmllr_update_type=full
+skip_scoring=false
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -232,9 +233,12 @@ if [ $stage -le 4 ]; then
     "ark:|gzip -c > $dir/lat.JOB.gz" '&&' rm $dir/lat.tmp.JOB.gz || exit 1;
 fi
 
-[ ! -x local/score.sh ] && \
-  echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data1 $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data1 $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 rm $dir/{trans_tmp,pre_trans}.*
 

@@ -25,6 +25,7 @@ cmd=run.pl
 iter=final
 prob_scale=-0.25
 dimensions=0:13:104:117
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -166,8 +167,11 @@ fi
 rm $dir/lat.{left,right}.*.gz 2>/dev/null  # note: if these still exist, it will
  # confuse the scoring script.
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 exit 0;

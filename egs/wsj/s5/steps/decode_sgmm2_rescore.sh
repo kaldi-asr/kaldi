@@ -103,10 +103,11 @@ $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
   $srcdir/$iter.mdl "ark:gunzip -c $olddir/lat.JOB.gz|" "$feats" \
   "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-if  ! $skip_scoring  ; then
+if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+  local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 exit 0;

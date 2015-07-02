@@ -224,7 +224,8 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "$0: not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
+  local/score.sh --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 rm $dir/{trans_tmp,pre_trans}.*

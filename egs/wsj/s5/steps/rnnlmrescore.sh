@@ -14,7 +14,7 @@ use_phi=false  # This is kind of an obscure option.  If true, we'll remove the o
 test=false # Activate a testing option.
 stage=1 # Stage of this script, for partial reruns.
 rnnlm_ver=rnnlm-0.3e
-skip_scoring=true
+skip_scoring=false
 keep_ali=true
 # End configuration section.
 
@@ -204,7 +204,8 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $data $oldlang $dir
+  local/score.sh --cmd "$cmd" $data $oldlang $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 exit 0;

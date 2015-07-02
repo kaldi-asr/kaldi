@@ -23,6 +23,7 @@ lattice_beam=7.0
 acwt=0.083333
 batch_size=75 # Limits memory blowup in compile-train-graphs-fsts
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
+skip_scoring=false
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
@@ -84,8 +85,11 @@ $cmd JOB=1:$nj $dir/log/decode_lats.JOB.log \
     --allow-partial=true --word-symbol-table=$lang/words.txt \
     $srcdir/final.mdl ark:- "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $lang $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $lang $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 exit 0;
