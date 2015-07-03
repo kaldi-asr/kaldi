@@ -1,4 +1,9 @@
-
+#!/bin/bash
+# kaldi:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# sclite / asclite:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
 
 dev
 exp/ihm/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   38.0%   (35925)

@@ -16,3 +16,15 @@ export train_cmd=run.pl
 export decode_cmd=run.pl
 export highmem_cmd=run.pl
 export cuda_cmd=run.pl
+
+host=$(hostname -f)
+if [ ${host#*.} == "fit.vutbr.cz" ]; then
+  # BUT cluster:
+  queue="all.q@@blade,all.q@@speech"
+  gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"
+  storage="matylda5"
+  export train_cmd="queue.pl -q $queue -l ram_free=1500M,mem_free=1500M,${storage}=1"
+  export decode_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,${storage}=0.5"
+  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
+fi 
+

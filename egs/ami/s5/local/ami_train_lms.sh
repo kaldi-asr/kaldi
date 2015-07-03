@@ -59,8 +59,8 @@ set -o errexit
 mkdir -p $dir
 export LC_ALL=C 
 
-cut -d' ' -f2- $train | gzip -c > $dir/train.gz
-cut -d' ' -f2- $dev | gzip -c > $dir/dev.gz
+cut -d' ' -f6- $train | gzip -c > $dir/train.gz
+cut -d' ' -f6- $dev | gzip -c > $dir/dev.gz
 
 awk '{print $1}' $lexicon | sort -u > $dir/wordlist.lex
 gunzip -c $dir/train.gz | tr ' ' '\n' | grep -v ^$ | sort -u > $dir/wordlist.train
@@ -98,14 +98,14 @@ if [ ! -z "$swbd" ]; then
 fi
 
 if [ ! -z "$fisher" ]; then
-  [ ! -d "$fisher/part1/data/trans" ] \
+  [ ! -d "$fisher/data/trans" ] \
     && echo "Cannot find transcripts in Fisher directory: '$fisher'" \
     && exit 1;
   mkdir -p $dir/fisher
 
   find $fisher -follow -path '*/trans/*fe*.txt' -exec cat {} \; | grep -v ^# | grep -v ^$ \
     | cut -d' ' -f4- | gzip -c > $dir/fisher/text0.gz
-  gunzip -c $dir/fisher/text0.gz | fisher_map_words.pl \
+  gunzip -c $dir/fisher/text0.gz | local/fisher_map_words.pl \
     | gzip -c > $dir/fisher/text1.gz
   ngram-count -debug 0 -text $dir/fisher/text1.gz -order $order -limit-vocab \
     -vocab $dir/wordlist -unk -map-unk "<unk>" -kndiscount -interpolate \
