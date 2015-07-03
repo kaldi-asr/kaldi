@@ -898,6 +898,12 @@ static void ComputeSuperOrderInfo(
   // a finer ordering at the cindex_id level in cases like RNNs.
   std::vector<int32> node_to_super_order;
   ComputeNnetComputationOrder(nnet, &node_to_super_order);
+  {
+    std::ostringstream os;
+    PrintIntegerVector(os, node_to_super_order);
+    KALDI_LOG << "node_to_super_order: " << os.str();
+  }
+  
   // Add one to the super-order info, because we will be reserving
   // zero for inputs to the network, and we don't want to have to
   // prove that super-order-index 0 would correspond only to inputs.

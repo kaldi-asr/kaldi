@@ -110,9 +110,9 @@ int32 NnetComputation::NewSubMatrix(int32 base_matrix, int32 dim_offset,
   int32 num_rows = matrices[base_matrix].num_rows,
       num_cols = matrices[base_matrix].num_cols;
   KALDI_ASSERT(dim_offset >= 0 && dim_offset + dim <= num_cols);
-  int32 ans = sub_matrices.size();
+  int32 ans = submatrices.size();
   KALDI_ASSERT(ans >= matrices.size());
-  sub_matrices.push_back(
+  submatrices.push_back(
       NnetComputation::SubMatrixInfo(base_matrix, 0, num_rows,
                                      dim_offset, dim));
   return ans;
@@ -122,12 +122,12 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
   KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
     matrices.push_back(MatrixInfo(0, 0));
-    sub_matrices.push_back(SubMatrixInfo(0, 0, 0, 0, 0));
+    submatrices.push_back(SubMatrixInfo(0, 0, 0, 0, 0));
   }
   int32 matrix_index = matrices.size(),
-      submatrix_index = sub_matrices.size();
+      submatrix_index = submatrices.size();
   matrices.push_back(MatrixInfo(num_rows, num_cols));
-  sub_matrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
+  submatrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
   return submatrix_index;
 }
 
@@ -137,12 +137,12 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
 static void GetSubmatrixStrings(const Nnet &nnet,
                                 const NnetComputation &computation,
                                 std::vector<std::string> *submat_strings) {
-  int32 num_submatrices = computation.sub_matrices.size();
+  int32 num_submatrices = computation.submatrices.size();
   KALDI_ASSERT(num_submatrices > 0);
   submat_strings->resize(num_submatrices);
   (*submat_strings)[0] = "[]";  // the empty matrix
   for (int32 i = 1; i < num_submatrices; i++) {
-    const NnetComputation::SubMatrixInfo &submat = computation.sub_matrices[i];
+    const NnetComputation::SubMatrixInfo &submat = computation.submatrices[i];
     std::ostringstream os;    
     if (computation.IsWholeMatrix(i)) {
       os << 'm' << submat.matrix_index;
@@ -208,7 +208,7 @@ static void GetIndexesMultiStrings(
       } else {
         int32 submat_index = vec[j].first, row_index = vec[j].second;
         const NnetComputation::SubMatrixInfo &submat =
-            computation.sub_matrices[submat_index];
+            computation.submatrices[submat_index];
         const NnetComputation::MatrixInfo &mat =
             computation.matrices[submat.matrix_index];
         int32 row = row_index + submat.row_offset;
@@ -370,8 +370,8 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 bool NnetComputation::IsWholeMatrix(int32 submatrix_index) const {
-  KALDI_ASSERT(submatrix_index > 0 && submatrix_index < sub_matrices.size());
-  const SubMatrixInfo &submat_info = sub_matrices[submatrix_index];
+  KALDI_ASSERT(submatrix_index > 0 && submatrix_index < submatrices.size());
+  const SubMatrixInfo &submat_info = submatrices[submatrix_index];
   const MatrixInfo &mat_info = matrices[submat_info.matrix_index];
   return submat_info.row_offset == 0 && submat_info.col_offset == 0 &&
       submat_info.num_rows == mat_info.num_rows &&

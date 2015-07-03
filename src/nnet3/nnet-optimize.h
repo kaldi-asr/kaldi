@@ -52,9 +52,9 @@ class NnetOptimize {
   // this is all provisional.
   struct MatrixOptInfo {
     // list of all sub-matrix indexes that point to this matrix.
-    std::vector<int32> sub_matrices;
+    std::vector<int32> submatrices;
     // index of sub-matrix that is the whole of this matrix.
-    int32 whole_sub_matrix;
+    int32 whole_submatrix;
   };
 
   // this is all provisional.
@@ -64,7 +64,7 @@ class NnetOptimize {
     
     // list of other sub-matrix indexes that have some overlap with this one
     // (including this sub-matrix index).
-    std::vector<int32> overlapping_sub_matrices;
+    std::vector<int32> overlapping_submatrices;
 
     struct CommandInfo {
       bool writes;
@@ -72,13 +72,13 @@ class NnetOptimize {
     };
 
     // list of commands that reference this index or others in
-    // "overlapping_sub_matrices".
+    // "overlapping_submatrices".
     std::vector<int32> commands;
     
     std::vector<int32> writing_commands;
     
     // list of sub-matrix indexes corresponding to this matrix.
-    std::vector<int32> sub_matrices;
+    std::vector<int32> submatrices;
   };
 
   struct StepOptInfo {

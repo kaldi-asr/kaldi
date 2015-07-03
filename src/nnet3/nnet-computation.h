@@ -174,12 +174,13 @@ struct NnetComputation {
     // kMatrixCopy,kMatrixAdd: arg1 is dest sub-matrix (the *this), arg2 is
     //    source sub-matrix.
     // kAddRows, kCopyRows: arg1 (sub-matrix index) is the *this in operation,
-    //    arg2 (sub-matrix index) is matrix argument of operation, changed, arg3
+    //    arg2 (sub-matrix index) is matrix argument of operation, arg3
     //    is index into "indexes"
     // kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti: arg1 is
     //    sub-matrix index of *this matrix in operation; and arg2 is index into
-    //    "indexes_multi", of which each pair is (sub-matrix index, row index);
-    // kAddRowRanges: arg1 is source matrix, arg2 is dest matrix, arg3 is index
+    //    "indexes_multi", of which each pair is (sub-matrix index, row index),
+    //    or (-1,-1) meaning add nothing (or assign zero).
+    // kAddRowRanges: arg1 is dest matrix, arg2 is source matrix, arg3 is index
     //   into "indexes_multi".
     // kNoOperation: no operation (sometimes useful during compilation but not
     //  present in final "code").
@@ -201,7 +202,7 @@ struct NnetComputation {
   
   // "matrices" describes the sizes of the matrices that we use as variables in
   // the computation [note: index zero is reserved for an empty matrix].  Most
-  // commands refer to sub_matrices below (note: each matrix will have its own
+  // commands refer to submatrices below (note: each matrix will have its own
   // sub-matrix that just refers to the entire matrix).
   std::vector<MatrixInfo> matrices;
 
@@ -215,7 +216,7 @@ struct NnetComputation {
   // matrices (this is so that a sub-matrix index can be used to refer to either
   // part of, or all of, a matrix).  The first one (index 0) is an empty
   // sub-matrix, which we use whenever an empty matrix is called for.
-  std::vector<SubMatrixInfo> sub_matrices;
+  std::vector<SubMatrixInfo> submatrices;
   
   // For Components that require precomputed indexes for their Propagate and
   // Backprop operations.  The index into this vector is referred to in
@@ -229,8 +230,9 @@ struct NnetComputation {
   std::vector<std::vector<int32> > indexes;
   
   // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
-  // contains pairs (sub-matrix index, row index).
-  // also used in kAddRowRanges where it contains pairs (start-index, end-index)
+  // contains pairs (sub-matrix index, row index)- or (-1,-1) meaning don't
+  // do anything for this row.
+  // Also used in kAddRowRanges where it contains pairs (start-index, end-index)
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
   
   // Information about where the values and derivatives of the neural net live.

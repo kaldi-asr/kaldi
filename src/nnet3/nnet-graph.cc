@@ -245,22 +245,52 @@ void ComputeTopSortOrder(const std::vector<std::vector<int32> > &graph,
   }
 }
 
+std::string PrintGraphToString(const std::vector<std::vector<int32> > &graph) {
+  std::ostringstream os;
+  int32 num_nodes = graph.size();
+  for (int32 i = 0; i < num_nodes; i++) {
+    os << i << " -> (";
+    const std::vector<int32> &vec = graph[i];
+    int32 size = vec.size();
+    for (int32 j = 0; j < size; j++) {
+      os << vec[j];
+      if (j + 1 < size) os << ",";
+    }
+    os << ")";
+    if (i + 1 < num_nodes) os << "; ";
+  }
+  return os.str();
+}
+
 void ComputeNnetComputationOrder(const Nnet &nnet,
                                  std::vector<int32> *node_to_order) {
   KALDI_ASSERT(node_to_order != NULL);
-
+  
   std::vector<std::vector<int32> > graph;
   NnetToDirectedGraph(nnet, &graph);
+  KALDI_LOG << "graph is: " << PrintGraphToString(graph);
 
   std::vector<std::vector<int32> > sccs;
   FindSccs(graph, &sccs);
 
   std::vector<std::vector<int32> > scc_graph;
   MakeSccGraph(graph, sccs, &scc_graph);
+  KALDI_LOG << "scc graph is: " << PrintGraphToString(scc_graph);
+  
+  std::vector<std::vector<int32> > scc_graph_transpose;
+  // compute transpose because we actually want the reverse of the topological
+  // order so inputs come first and then outputs.
+  ComputeGraphTranspose(scc_graph, &scc_graph_transpose);
 
   std::vector<int32> scc_node_to_order;
   ComputeTopSortOrder(scc_graph, &scc_node_to_order);
-
+  {
+    std::ostringstream os;
+    for (int32 i = 0; i < scc_node_to_order.size(); i++)
+      os << scc_node_to_order[i] << ", ";
+    KALDI_LOG << "scc_node_to_order is: " << os.str();
+  }
+  
   node_to_order->clear();
   node_to_order->resize(graph.size());
   for (int32 i = 0; i < sccs.size(); ++i) {

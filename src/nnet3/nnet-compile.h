@@ -286,6 +286,8 @@ class Compiler {
 
 };
 
+// TODO: make sure inputs don't have resize commands to set up the sizes, and
+// outputs don't have resize commands to empty them.
 
 
 } // namespace nnet3

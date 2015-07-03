@@ -421,7 +421,7 @@ void Compiler::DoForwardComputationFromIndexes(
     NnetComputation *computation) const {
     
   int32 input_num_rows =
-      computation->sub_matrices[input_submatrix_index].num_rows,
+      computation->submatrices[input_submatrix_index].num_rows,
       num_rows = indexes.size();
   if (input_num_rows == num_rows) {
     int32 i;
@@ -640,9 +640,9 @@ void Compiler::DoBackwardComputationFromIndexes(
     const std::vector<int32> &indexes,
     NnetComputation *computation) const {
     
-  int32 num_rows = computation->sub_matrices[deriv_submatrix_index].num_rows,
+  int32 num_rows = computation->submatrices[deriv_submatrix_index].num_rows,
       input_num_rows =
-      computation->sub_matrices[input_deriv_submatrix_index].num_rows;
+      computation->submatrices[input_deriv_submatrix_index].num_rows;
   KALDI_ASSERT(indexes.size() == num_rows);
   if (input_num_rows == num_rows) {
     int32 i;
@@ -689,8 +689,8 @@ void Compiler::DoBackwardComputationFromIndexes(
     computation->indexes_multi.push_back(ranges);
     computation->commands.push_back(
         NnetComputation::Command(NnetComputation::kAddRowRanges,
-                                 input_deriv_submatrix_index,
                                  deriv_submatrix_index,
+                                 input_deriv_submatrix_index,
                                  indexes_multi_index));
     // TODO: if any of these ranges are quite long (summing over many rows), the
     // resulting code could be inefficient because the AddRowRanges kernels
@@ -818,12 +818,31 @@ void Compiler::AddBackpropStep(int32 step,
 
 void Compiler::SetUpMatrices(NnetComputation *computation) const {
   KALDI_ASSERT(computation->commands.empty());
-  for (int32 m = 0; m < computation->matrices.size(); m++) {
+  // Work out which matrices are inputs to the computation; we won't
+  // be setting these up.
+  unordered_set<int32> input_matrices;
+  int32 num_steps = steps_.size();
+  for (int32 step = 0; step < num_steps; step++) {
+    const StepInfo &this_info = steps_[step];
+    int32 node_index = this_info.node_index;
+    if (nnet_.IsInputNode(node_index)) {
+      int32 value_submatrix_index = this_info.value;
+      int32 value_matrix_index =
+          computation->submatrices[value_submatrix_index].matrix_index;
+      input_matrices.insert(value_matrix_index);
+    }
+  }
+  
+  for (int32 m = 1; m < computation->matrices.size(); m++) {
     // Later in the optimization phase, it turns out that zeroing is not
     // necessary for some matrices, we'll turn these commands into
     // kResizeMatrixUndefined.
-    NnetComputation::Command c(NnetComputation::kResizeMatrixZeroed, m);
-    computation->commands.push_back(c);
+    // We don't set up the matrices that are inputs to the computation;
+    // this happens when the user provides the input.
+    if (input_matrices.count(m) == 0) {
+      NnetComputation::Command c(NnetComputation::kResizeMatrixZeroed, m);
+      computation->commands.push_back(c);
+    }
   }
 }
 
@@ -881,7 +900,9 @@ void Compiler::DestroyMatrices(NnetComputation *computation) {
     const StepInfo &step_info = steps_[step];
     if (nnet_.IsOutputNode(step_info.node_index)) {
       // steps corresponding to output nodes need to have their "value" kept.
-      will_destroy[step_info.value] = false;
+      int32 value_matrix_index =
+          computation->submatrices[step_info.value].matrix_index;
+      will_destroy[value_matrix_index] = false;
     } else if (nnet_.IsInputNode(step_info.node_index)) {
       // steps corresponding to input nodes need to have their "deriv" kept, but
       // only if the corresponding input derivative was requested.  (we don't
@@ -898,8 +919,11 @@ void Compiler::DestroyMatrices(NnetComputation *computation) {
       }
       KALDI_ASSERT(i != num_inputs); // assert we found an input-request with
                                      // this name
-      if (has_deriv)
-        will_destroy[step_info.deriv] = false;
+      if (has_deriv) {
+        int32 deriv_matrix_index =
+          computation->submatrices[step_info.deriv].matrix_index;
+        will_destroy[deriv_matrix_index] = false;
+      }
     }
   }
   // note: matrix-index 0 is the empty matrix.
@@ -918,10 +942,10 @@ void Compiler::OutputDebugInfo(NnetComputation *computation) const {
     KALDI_ASSERT(step_info.value != 0);
     if (!computation->IsWholeMatrix(step_info.value))
       continue;
-    int32 value_matrix = computation->sub_matrices[step_info.value].matrix_index;
+    int32 value_matrix = computation->submatrices[step_info.value].matrix_index;
     int32 deriv_matrix = 0;
     if (step_info.deriv != 0 && computation->IsWholeMatrix(step_info.deriv))
-      deriv_matrix = computation->sub_matrices[step_info.deriv].matrix_index;    
+      deriv_matrix = computation->submatrices[step_info.deriv].matrix_index;    
     
     NnetComputation::MatrixDebugInfo &debug_info =
         computation->matrix_debug_info[value_matrix];

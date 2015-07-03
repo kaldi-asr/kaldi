@@ -36,6 +36,9 @@ namespace nnet3 {
 */
 
 
+/// Prints a graph to a string in a pretty way for human readability, e.g. as 0
+/// -> 1,2; 1 -> 2; 2 -> 3,4,5; etc.
+std::string PrintGraphToString(const std::vector<std::vector<int32> > &graph);
 
 /// This function takes an nnet and turns it to a directed graph on
 /// nodes.  The nodes will be numbered from 0 to graph->size() - 1,

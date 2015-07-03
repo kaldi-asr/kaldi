@@ -209,7 +209,7 @@ void OffsetForwardingDescriptor::WriteConfig(
 
 
 void SwitchingForwardingDescriptor::GetNodeDependencies(
-                                      std::vector<int32> *node_indexes) const {
+    std::vector<int32> *node_indexes) const {
   for (size_t i = 0; i < src_.size(); i++)
     src_[i]->GetNodeDependencies(node_indexes);
 }
@@ -560,6 +560,12 @@ bool Descriptor::IsComputable(const Index &ind,
 const SumDescriptor& Descriptor::Part(int32 n) const {
   KALDI_ASSERT(static_cast<size_t>(n) < parts_.size());
   return *(parts_[n]);
+}
+
+void Descriptor::GetNodeDependencies(std::vector<int32> *node_indexes) const {
+  node_indexes->clear();
+  for (size_t i = 0; i < parts_.size(); i++)
+    parts_[i]->GetNodeDependencies(node_indexes);
 }
 
 } // namespace nnet3

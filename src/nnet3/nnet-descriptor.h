@@ -440,7 +440,7 @@ class Descriptor {
   
   // This function outputs to "node_indexes" a list (not necessarily sorted or
   // unique) of all the node indexes that this descriptor may forward data from.
-  void GetNodeDependencies(std::vector<int32> *node_indexes) const {}
+  void GetNodeDependencies(std::vector<int32> *node_indexes) const;
 
   // see Modulus function of ForwardingDescriptor for explanation.
   int32 Modulus() const;
