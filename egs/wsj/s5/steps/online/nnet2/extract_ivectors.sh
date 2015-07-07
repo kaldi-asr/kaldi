@@ -144,7 +144,7 @@ if [ ! -z "$ali_or_decode_dir" ]; then
       rm $dir/weights.*.gz || exit 1;
     fi
   elif [ -f $ali_or_decode_dir ] && gunzip -c $ali_or_decode_dir >/dev/null; then
-    cp $ali_or_decode_dir $dir/weights.gz || exit 1;
+    cp -f $ali_or_decode_dir $dir/weights.gz || exit 1;
   else
     echo "$0: expected ali.1.gz or lat.1.gz to exist in $ali_or_decode_dir";
     exit 1;
@@ -172,8 +172,8 @@ if [ $sub_speaker_frames -gt 0 ]; then
       feat-to-len scp:$data/feats.scp ark,t:- > $dir/utt_counts || exit 1;
     fi
     if ! [ $(wc -l <$dir/utt_counts) -eq $(wc -l <$data/feats.scp) ]; then
-      echo "$0: error getting per-utterance counts."
-      exit 0;
+      echo "$0: error getting per-utterance counts. Number of lines in $dir/utt_counts differs from $data/feats.scp"
+      exit 1;
     fi
     cat $data/spk2utt | python -c "
 import sys
