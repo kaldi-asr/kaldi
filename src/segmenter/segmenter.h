@@ -146,26 +146,62 @@ class Segmentation {
         int32 bottom_label, int32 num_frames_bottom,
         int32 reject_label, bool remove_rejected_frames);
 
-    // Initialize this segmentation from in_segmentation, but
-    // keep only the segment regions where the label 
-    // in filter_segmentation filter_label
+    // Initialize this segmentation from in_segmentation.
+    // But select subsegments of this segmentation by including
+    // only regions for which the "filter_segmentation" has 
+    // the label "filter_label". 
     void IntersectSegments(const Segmentation &in_segmentation,
                            const Segmentation &filter_segmentation,
                            int32 filter_label);
 
+    // Select subsegments of this segmentation by including
+    // only regions for which the "filter_segmentation" has 
+    // the label "filter_label". 
+    // For e.g. if the segmentation is 
+    // start_frame end_frame label
+    // 5 10 1
+    // 8 12 2
+    // and filter_segmentation is 
+    // 0 7 1
+    // 7 10 2
+    // 10 13 1.
+    // And filter_label is 1. Then after intersection, this 
+    // object would hold 
+    // 5 7 1
+    // 8 10 2
+    // 10 12 2
     void IntersectSegments(const Segmentation &filter_segmentation,
                            int32 filter_label);
 
+    // Widen segments of label "label" by "length" frames 
+    // on either side. But don't increase the length beyond the
+    // neighboring segment. Also if the neighboring segment is
+    // of a different type than "label", that segment is 
+    // shortened to fix the boundary betten the segment and the 
+    // neighbor
     void WidenSegments(int32 label, int32 length);
+
+    // Remove segments of label "label" if they have a length
+    // less than "max_length"
     void RemoveShortSegments(int32 label, int32 max_length);
 
+    // Reset segmentation i.e. clear all values
     void Clear();
     
+    // Read segmentation object from input stream
     void Read(std::istream &is, bool binary);
+
+    // Write segmentation object to output stream
     void Write(std::ostream &os, bool binary) const;
 
+    // Write the segmentation in the form of an RTTM
     void WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time) const;
     
+    // Convert current segmentation to alignment
+    bool ConvertToAlignment(std::vector<int32> *alignment, 
+                            int32 default_label = 0, int32 length = -1,
+                            int32 tolerance = 2) const;
+
     SegmentList::iterator Erase(SegmentList::iterator it);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id);
     void Check() const;

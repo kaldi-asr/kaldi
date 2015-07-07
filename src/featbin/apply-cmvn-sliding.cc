@@ -36,9 +36,12 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: apply-cmvn-sliding [options] <feats-rspecifier> <feats-wspecifier>\n";
     
+    std::string skip_dims_str;
     ParseOptions po(usage);
     SlidingWindowCmnOptions opts;
     opts.Register(&po);
+    po.Register("skip-dims", &skip_dims_str, "Dimensions for which to skip "
+                "normalization: colon-separated list of integers, e.g. 13:14:15)");
 
     po.Read(argc, argv);
 
@@ -46,6 +49,15 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    
+    std::vector<int32> skip_dims;  // optionally use "fake"
+                                   // (zero-mean/unit-variance) stats for some
+                                   // dims to disable normalization.
+    if (!SplitStringToIntegers(skip_dims_str, ":", false, &skip_dims)) {
+      KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
+                <<  "integers)";
+    }
+    
 
     int32 num_done = 0, num_err = 0;
     

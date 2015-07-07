@@ -527,6 +527,39 @@ void Segmentation::WriteRttm(std::ostream &os, std::string key, BaseFloat frame_
   } 
 }
 
+bool Segmentation::ConvertToAlignment(std::vector<int32> *alignment,
+    int32 default_label, int32 length, int32 tolerance) const {
+  KALDI_ASSERT(alignment != NULL);
+  alignment->clear();
+
+  if (length != -1) {
+    KALDI_ASSERT(length >= 0);
+    alignment->resize(length, default_label);
+  }
+  
+  SegmentList::const_iterator it = segments_.begin();
+  for (; it != segments_.end(); ++it) {
+    if (length != -1 && it->end_frame >= length + tolerance) {
+      KALDI_WARN << "End frame (" << it->end_frame << ") "
+                << ">= length + tolerance (" << length + tolerance << ").";
+      return false;
+    }
+
+    int32 end_frame = it->end_frame;
+    if (length == -1) {
+      alignment->resize(it->end_frame + 1, default_label);
+    } else {
+      if (it->end_frame >= length) 
+        end_frame = length - 1;
+    }
+
+    for (size_t i = it->start_frame; i <= end_frame; i++) {
+      (*alignment).at(i) = it->Label();
+    }
+  } 
+  return true;
+}
+
 void Segmentation::Read(std::istream &is, bool binary) {
   Clear();
   
