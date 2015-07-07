@@ -6,9 +6,11 @@ set -u
 set -o pipefail
 
 cmd=run.pl
-stage=-1
+stage=-100
 allow_partial=true
 try_merge_speech_noise=false
+output_lattice=false
+write_feats=false
 
 ## Features paramters
 window_size=100                   # 1s
@@ -95,7 +97,7 @@ zc_opts=
 [ -f conf/zc_vad.conf ] && zc_opts="--config=conf/zc_vad.conf"
 
 # Prepare a lang directory
-if [ $stage -le -12 ]; then
+if [ $stage -le -4 ]; then
   mkdir -p $dir/local/dict
   mkdir -p $dir/local/lm
   mkdir -p $dir/local/dict_2class
@@ -122,7 +124,7 @@ fi
 
 feat_dim=`gmm-global-info $init_speech_model | grep "feature dimension" | awk '{print $NF}'` || exit 1
 
-if [ $stage -le -11 ]; then 
+if [ $stage -le -3 ]; then 
   run.pl $dir/log/create_transition_model.log gmm-init-mono \
     $dir/lang/topo $feat_dim - $dir/tree \| \
     copy-transition-model --binary=false - $dir/trans.mdl || exit 1
@@ -135,7 +137,7 @@ if [ $stage -le -11 ]; then
   diarization/make_vad_graph.sh --iter trans_2class --tree tree_2class $dir/lang_2class $dir $dir/graph_2class || exit 1
 fi
 
-if [ $stage -le -10 ]; then
+if [ $stage -le -2 ]; then
   {
     cat $dir/trans.mdl
     echo "<DIMENSION> $feat_dim <NUMPDFS> 3"
@@ -145,11 +147,11 @@ if [ $stage -le -10 ]; then
   } | gmm-copy - $dir/init.mdl || exit 1
 fi
 
-if [ $stage -le -9 ]; then
+if [ $stage -le -1 ]; then
   t=$speech_to_sil_ratio
   lang=$dir/lang_test_${t}x
   cp -r $dir/lang $lang
-  perl -e "print \"0 0 1 1 \" . -log(1/$[t+3]) . \"\n0 0 2 2 \". -log($t/$[t+3]). \"\n0 0 3 3 \". -log(1/$[t+3]) .\"\n0 \". -log(1/$[t+3])" | \
+  perl -e '$t = shift @ARGV; print "0 0 1 1 " . -log(1/($t+3)) . "\n0 0 2 2 ". -log($t/($t+3)). "\n0 0 3 3 ". -log(1/($t+3)) ."\n0 ". -log(1/($t+3))' $t | \
     fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
     --keep_isymbols=false --keep_osymbols=false \
     > $lang/G.fst || exit 1
@@ -157,7 +159,7 @@ if [ $stage -le -9 ]; then
   
   lang=$dir/lang_2class_test_${t}x
   cp -r $dir/lang_2class $lang
-  perl -e "print \"0 0 1 1 \" . -log(1/$[t+2]) . \"\n0 0 2 2 \". -log($t/$[t+2]). \"\n0 \". -log(1/$[t+2])" | \
+  perl -e '$t = shift @ARGV; print "0 0 1 1 " . -log(1/($t+2)) . "\n0 0 2 2 ". -log($t/($t+2)). "\n0 ". -log(1/($t+2))' $t | \
     fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
     --keep_isymbols=false --keep_osymbols=false \
     > $lang/G.fst || exit 1
@@ -212,6 +214,10 @@ while IFS=$'\n' read line; do
   fi
 
   feats="${feats} add-deltas ark:- ark:- |"
+
+  if $write_feats; then
+    copy-feats "$feats" ark:$dir/$utt_id.feat.ark
+  fi
 
   # Get VAD: 0 for silence, 1 for speech and 2 for sound
   $cmd $dir/log/$utt_id.get_vad.bootstrap.log \
@@ -599,14 +605,26 @@ while IFS=$'\n' read line; do
     ln -s graph_2class_test_${speech_to_sil_ratio}x $dir/$utt_id.graph_final
   fi
 
-  $cmd $dir/log/$utt_id.get_seg.final.log \
-    gmm-decode-simple --allow-partial=$allow_partial \
-    --word-symbol-table=$dir/$utt_id.graph_final/words.txt \
-    $dir/$utt_id.final.mdl $dir/$utt_id.graph_final/HCLG.fst \
-    "$feats" ark:/dev/null ark:- \| \
-    ali-to-pdf $dir/$utt_id.final.mdl ark:- ark:- \| \
-    segmentation-init-from-ali ark:- \
-    ark:$dir/$utt_id.vad.final.ark || exit 1
+  if $output_lattice; then
+    $cmd $dir/log/$utt_id.get_seg.final.log \
+      gmm-latgen-faster --allow-partial=$allow_partial \
+      --word-symbol-table=$dir/$utt_id.graph_final/words.txt \
+      $dir/$utt_id.final.mdl $dir/$utt_id.graph_final/HCLG.fst \
+      "$feats" ark,scp:$dir/$utt_id.lat.ark,$dir/$utt_id.lat.scp \
+      ark:/dev/null ark:- \| \
+      ali-to-pdf $dir/$utt_id.final.mdl ark:- ark:- \| \
+      segmentation-init-from-ali ark:- \
+      ark,scp:$dir/$utt_id.vad.final.ark,$dir/$utt_id.vad.final.scp || exit 1
+  else
+    $cmd $dir/log/$utt_id.get_seg.final.log \
+      gmm-decode-simple --allow-partial=$allow_partial \
+      --word-symbol-table=$dir/$utt_id.graph_final/words.txt \
+      $dir/$utt_id.final.mdl $dir/$utt_id.graph_final/HCLG.fst \
+      "$feats" ark:/dev/null ark:- \| \
+      ali-to-pdf $dir/$utt_id.final.mdl ark:- ark:- \| \
+      segmentation-init-from-ali ark:- \
+      ark,scp:$dir/$utt_id.vad.final.ark,$dir/$utt_id.vad.final.scp || exit 1
+  fi
 
 done < $data/feats.scp
 

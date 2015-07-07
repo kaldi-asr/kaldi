@@ -32,10 +32,10 @@ featdir=$3
 
 if [ $stage -le 1 ]; then
   if $add_pitch; then
-    steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
+    steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd "$cmd" \
       $data $tmpdir/make_mfcc_vad $featdir || exit 1
   else
-    steps/make_mfcc.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd $cmd \
+    steps/make_mfcc.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd "$cmd" \
       $data $tmpdir/make_mfcc_vad $featdir || exit 1
   fi
 fi
