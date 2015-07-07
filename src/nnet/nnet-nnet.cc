@@ -507,8 +507,8 @@ std::string Nnet::InfoBackPropagate() const {
 
 void Nnet::Check() const {
   // check we have correct number of buffers,
-  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1)
-  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1)
+  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1);
+  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1);
   // check dims,
   for (size_t i = 0; i + 1 < components_.size(); i++) {
     KALDI_ASSERT(components_[i] != NULL);

@@ -427,7 +427,7 @@ void MaxoutComponent::Init(int32 input_dim, int32 output_dim)  {
   if (input_dim_ == 0)
     input_dim_ = 10 * output_dim_; // default group size : 10
   KALDI_ASSERT(input_dim_ > 0 && output_dim_ >= 0);
-  KALDI_ASSERT(input_dim_ % output_dim_ == 0)
+  KALDI_ASSERT(input_dim_ % output_dim_ == 0);
 }
 
 void MaxoutComponent::InitFromString(std::string args) {
@@ -521,7 +521,7 @@ void PnormComponent::Init(int32 input_dim, int32 output_dim, BaseFloat p)  {
     input_dim_ = 10 * output_dim_; // default group size : 10
   p_ = p;
   KALDI_ASSERT(input_dim_ > 0 && output_dim_ >= 0 && p_ >= 0);
-  KALDI_ASSERT(input_dim_ % output_dim_ == 0)
+  KALDI_ASSERT(input_dim_ % output_dim_ == 0);
 }
 
 void PnormComponent::InitFromString(std::string args) {
@@ -2585,7 +2585,7 @@ int32 ChunkInfo::GetIndex(int32 offset) const  {
     std::vector<int32>::const_iterator iter = 
         std::lower_bound(offsets_.begin(), offsets_.end(), offset);
     // make sure offset is present in the vector
-    KALDI_ASSERT(iter != offsets_.end() && *iter == offset)
+    KALDI_ASSERT(iter != offsets_.end() && *iter == offset);
     return static_cast<int32>(iter - offsets_.begin());
   }
 }
@@ -2596,7 +2596,7 @@ int32 ChunkInfo::GetOffset(int32 index) const {
     KALDI_ASSERT((offset <= last_offset_) && (offset >= first_offset_));
     return offset;
   } else  {
-    KALDI_ASSERT((index >= 0) && (index < offsets_.size()))
+    KALDI_ASSERT((index >= 0) && (index < offsets_.size()));
     return offsets_[index];
   }
 }
@@ -3052,7 +3052,7 @@ void DctComponent::Init(int32 dim, int32 dct_dim, bool reorder, int32 dct_keep_d
 
   KALDI_ASSERT(dim > 0 && dct_dim > 0);
   KALDI_ASSERT(dim % dct_dim == 0); // dct_dim must divide dim.
-  KALDI_ASSERT(dct_dim >= dct_keep_dim_)
+  KALDI_ASSERT(dct_dim >= dct_keep_dim_);
   dim_ = dim;
   dct_mat_.Resize(dct_keep_dim_, dct_dim);
   reorder_ = reorder;

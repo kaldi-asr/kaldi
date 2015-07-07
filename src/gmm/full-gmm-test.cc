@@ -100,7 +100,7 @@ void UnitTestFullGmmEst() {
       predicted_change = 0.5 * num_params / num_frames; // Was there
   KALDI_LOG << "Objf change per frame was " << change << " vs. predicted "
             << predicted_change;
-  KALDI_ASSERT(change < 2.0 * predicted_change && change > 0.0)
+  KALDI_ASSERT(change < 2.0 * predicted_change && change > 0.0);
 }
 
 

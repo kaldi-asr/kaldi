@@ -116,9 +116,30 @@ class KaldiErrorMessage {
 #define __func__ __FUNCTION__
 #endif
 
+// Note on KALDI_ASSERT and KALDI_PARANOID_ASSERT
+// The original (simple) version of the code was this
+//
+// #define KALDI_ASSERT(cond) if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+//
+// That worked well, but we were concerned that it
+// could potentially cause a performance issue due to failed branch
+// prediction (best practice is to have the if branch be the commonly
+// taken one).
+// Therefore, we decided to move the call into the else{} branch.
+// A single block {} around if /else  does not work, because it causes 
+// syntax error (unmatched else block) in the following code:
+//
+// if (condition)
+//   KALDI_ASSERT(condition2);
+// else
+//   SomethingElse();
+//
+// do {} while(0)  -- note there is no semicolon at the end! --- works nicely
+// and compilers will be able to optimize the loop away (as the condition
+// is always false).
 #ifndef NDEBUG
 #define KALDI_ASSERT(cond) \
-  if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+  do { if ((cond)) ; else kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);} while(0)
 #else
 #define KALDI_ASSERT(cond)
 #endif
@@ -127,10 +148,11 @@ class KaldiErrorMessage {
 // also defined there.
 #ifdef KALDI_PARANOID // some more expensive asserts only checked if this defined
 #define KALDI_PARANOID_ASSERT(cond) \
-  if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+  do { if ((cond)) ; else kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);} while(0)
 #else
 #define KALDI_PARANOID_ASSERT(cond)
 #endif
+
 
 #define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
 #define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 

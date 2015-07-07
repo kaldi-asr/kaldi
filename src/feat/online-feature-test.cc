@@ -183,7 +183,8 @@ void TestOnlineMfcc() {
   for (int32 num_piece = 5; num_piece < 10; num_piece++) {
     OnlineMfcc online_mfcc(op);
     std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
 
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
@@ -231,7 +232,8 @@ void TestOnlinePlp() {
   for (int32 num_piece = 5; num_piece < 10; num_piece++) {
     OnlinePlp online_plp(op);
     std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
 
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
@@ -342,8 +344,8 @@ void TestOnlineAppendFeature() {
     OnlineAppendFeature online_mfcc_plp(&online_mfcc, &online_plp);
 
     std::vector<int32> piece_length(num_piece);
-    KALDI_ASSERT(RandomSplit(waveform.Dim(), &piece_length, num_piece));
-
+    bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
+    KALDI_ASSERT(ret);
     int32 offset_start = 0;
     for (int32 i = 0; i < num_piece; i++) {
       Vector<BaseFloat> wave_piece(

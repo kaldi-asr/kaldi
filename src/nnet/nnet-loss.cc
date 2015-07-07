@@ -71,7 +71,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   KALDI_ASSERT(KALDI_ISFINITE(target.Sum()));
 
   double num_frames = frame_weights.Sum();
-  KALDI_ASSERT(num_frames >= 0.0)
+  KALDI_ASSERT(num_frames >= 0.0);
 
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
@@ -182,7 +182,7 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   KALDI_ASSERT(KALDI_ISFINITE(target.Sum()));
 
   int32 num_frames = frame_weights.Sum();
-  KALDI_ASSERT(num_frames >= 0.0)
+  KALDI_ASSERT(num_frames >= 0.0);
 
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
