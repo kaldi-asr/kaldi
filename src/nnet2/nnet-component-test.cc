@@ -682,7 +682,7 @@ void UnitTestSpliceComponent() {
       const_dim =  RandInt(0, 10),
       left_context = RandInt(-5, 0),
       right_context = RandInt(0, 5),
-      num_chunks = RandInt(0, 20); 
+      num_chunks = RandInt(1, 20); 
         // multiple chunks are required as splice component
         // has separate index computation logic for more than one chunks
   KALDI_LOG << " Feat_dim :" << feat_dim << " const_dim: " << const_dim  ;

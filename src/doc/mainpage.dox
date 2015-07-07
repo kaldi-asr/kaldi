@@ -40,6 +40,7 @@
    - \subpage dependencies
    - \subpage legal
    - \subpage tutorial
+   - \subpage glossary
    - \subpage data_prep
    - \subpage build_setup 
    - \subpage style 

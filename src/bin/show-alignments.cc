@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Usage:  show-alignments  [options] <phone-syms> <model> <alignments-rspecifier>\n"
         "e.g.: \n"
         " show-alignments phones.txt 1.mdl ark:1.ali\n"
-        "See also: ali-to-phones\n";
+        "See also: ali-to-phones, copy-int-vector\n";
     ParseOptions po(usage);
 
     po.Read(argc, argv);

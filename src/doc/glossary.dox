@@ -1,0 +1,59 @@
+// doc/glossary.dox
+
+// Copyright 2015  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page glossary  Glossary of terms
+
+ This page contains a glossary of terms that Kaldi users might want to know
+ about.  The current content here consists just of a few examples; more content
+ will be added shortly.  The easiest way to search in this page is to use the
+ search function of your browser.  For convenience the definition of each
+ term's section is preceded and followed by a colon, so for
+ instance, typing ctrl-f ":lattice:" would take you to the section for "lattice".
+ 
+
+<div style="text-indent: -1.5em;  padding-left: 1.5em;">
+
+
+<b>:alignment:</b> A representation of the sequence of HMM states taken by the
+Viterbi (best-path) alignment of an utterance.  In Kaldi an alignment is
+synonymous with a sequence of <b>transition-ids</b>.  Most of the time an
+alignment is derived from aligning the reference transcript of an utterance,
+in which case it is called a <b>forced alignment</b>.  <b>lattices</b> also
+contain alignment information as sequences of transition-ids for each word
+sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows 
+alignments in a human-readable format.
+
+<b>:forced alignment:</b> see <b>alignment</b>.
+
+<b>:lattice:</b>  A representation of alternative likely transcriptions of an utterance, together
+ with associated alignment and cost information.  See \ref lattices.
+
+<b>:transition-id:</b> a one-based index that encodes the pdf-id (i.e. the clustered context-dependent HMM state),
+the phone identity, and information about whether we took the self-loop or forward transition in the HMM.
+Appears in lattices, decoding graphs and alignments.  See \ref transition_model.
+
+<b>:transition model:</b> The TransitionModel object encodes the transition probabilities
+of the HMMs, and also various other important integer mappings; see \ref transition_model.
+This object is generally written at the start of model files.  The program
+\ref bin/show-transitions.cc "show-transitions" shows these.
+
+</div>
+
+*/
