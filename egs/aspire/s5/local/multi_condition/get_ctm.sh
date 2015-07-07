@@ -50,8 +50,9 @@ lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- $decode_dir/score_$LMWT/penal
 if [ $window -gt 0 ]; then
   python local/multi_condition/resolve_ctm_overlaps.py --overlap $overlap --window-length $window $data_dir/utt2spk $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1; 
   merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged 
+else
+  merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping
 fi
-merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping
 
 cat $merged_ctm | utils/int2sym.pl -f 5 $lang/words.txt | \
 utils/convert_ctm.pl $data_dir/segments $data_dir/reco2file_and_channel | \
