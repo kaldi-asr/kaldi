@@ -1,6 +1,7 @@
 // lat/sausages.h
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+//           2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -64,7 +65,11 @@ class MinimumBayesRisk {
   MinimumBayesRisk(const CompactLattice &clat, bool do_mbr = true); // if do_mbr == false,
   // it will just use the MAP recognition output, but will get the MBR stats for things
   // like confidences.
-  
+
+  // Uses the provided <words> as <R_> instead of using the lattice best path. 
+  MinimumBayesRisk(const CompactLattice &clat,
+                   const std::vector<int32> &words, bool do_mbr = false);
+
   const std::vector<int32> &GetOneBest() const { // gets one-best (with no epsilons)
     return R_;
   }
@@ -96,6 +101,8 @@ class MinimumBayesRisk {
   }  
 
  private:
+  void PrepareLatticeAndInitStats(CompactLattice *clat);
+
   /// Minimum-Bayes-Risk Decode. Top-level algorithm.  Figure 6 of the paper.
   void MbrDecode(); 
 

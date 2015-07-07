@@ -1,6 +1,7 @@
 // lat/sausages.cc
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+//           2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -264,21 +265,20 @@ void MinimumBayesRisk::AccStats() {
   }  
 }
 
-MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
-    do_mbr_(do_mbr) {
-  CompactLattice clat(clat_in); // copy.
+void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
+  KALDI_ASSERT(clat != NULL);
 
-  CreateSuperFinal(&clat); // Add super-final state to clat... this is
+  CreateSuperFinal(clat); // Add super-final state to clat... this is
   // one of the requirements of the MBR algorithm, as mentioned in the
   // paper (i.e. just one final state).
   
   // Topologically sort the lattice, if not already sorted.
-  kaldi::uint64 props = clat.Properties(fst::kFstProperties, false);
+  kaldi::uint64 props = clat->Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted)) {
-    if (fst::TopSort(&clat) == false)
+    if (fst::TopSort(clat) == false)
       KALDI_ERR << "Cycles detected in lattice.";
   }
-  CompactLatticeStateTimes(clat, &state_times_); // work out times of
+  CompactLatticeStateTimes(*clat, &state_times_); // work out times of
   // the states in clat
   state_times_.push_back(0); // we'll convert to 1-based numbering.
   for (size_t i = state_times_.size()-1; i > 0; i--)
@@ -289,13 +289,13 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
   // arcs preceding any given state.
   // Note: in our internal format the states will be numbered from 1,
   // which involves adding 1 to the OpenFst states.
-  int32 N = clat.NumStates();
+  int32 N = clat->NumStates();
   pre_.resize(N+1);
 
   // Careful: "Arc" is a class-member struct, not an OpenFst type of arc as one
   // would normally assume.
   for (int32 n = 1; n <= N; n++) {
-    for (fst::ArcIterator<CompactLattice> aiter(clat, n-1);
+    for (fst::ArcIterator<CompactLattice> aiter(*clat, n-1);
          !aiter.Done();
          aiter.Next()) {
       const CompactLatticeArc &carc = aiter.Value();
@@ -312,6 +312,13 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
       arcs_.push_back(arc);
     }
   }
+}
+
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
+    do_mbr_(do_mbr) {
+  CompactLattice clat(clat_in); // copy.
+
+  PrepareLatticeAndInitStats(&clat);
 
   // We don't need to look at clat.Start() or clat.Final(state):
   // we know clat.Start() == 0 since it's topologically sorted,
@@ -341,5 +348,17 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
   
 }
 
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
+                                   const std::vector<int32> &words,
+                                   bool do_mbr): do_mbr_(do_mbr) {
+  CompactLattice clat(clat_in); // copy.
+
+  PrepareLatticeAndInitStats(&clat);
+
+  R_ = words;
+  L_ = 0.0;
+
+  MbrDecode();
+}
 
 }  // namespace kaldi
