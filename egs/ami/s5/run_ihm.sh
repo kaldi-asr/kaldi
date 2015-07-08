@@ -172,4 +172,9 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn.sh $mic
 fi
 
+# TDNN training.
+if [ $stage -le 13 ]; then
+  local/online/run_nnet2_ms_perturbed.sh --mic $mic
+fi
+
 echo "Done!"
