@@ -65,9 +65,8 @@ fi
 
 if [ $stage -le 4 ]; then
   # Taking a subset, now unused, can be handy for quick experiments,
-  # Full set 77h, reduced set 9.5h,
-  local/remove_dup_utts.sh 20 data/$mic/train data/$mic/train_nodup # remvove uh-huh,
-  utils/subset_data_dir.sh --shortest data/$mic/train_nodup 30000 data/$mic/train_30k
+  # Full set 77h, reduced set 10.8h,
+  utils/subset_data_dir.sh data/$mic/train 15000 data/$mic/train_15k
 fi
 
 # Train systems,
