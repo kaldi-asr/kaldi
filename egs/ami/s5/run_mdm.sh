@@ -7,6 +7,18 @@
 nmics=8 #we use all 8 channels, possible other options are 2 and 4
 mic=mdm$nmics
 
+# Path where AMI gets downloaded (or where locally available):
+#AMI_DIR=$PWD/wav_db # Default,
+AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
+
+# MDM_DIR is directory for beamformed waves,
+#MDM_DIR=/disk/data1/s1136550/ami/mdm # [Edinburgh]
+MDM_DIR=$AMI_DIR/beamformed # [Default]
+
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
+final_lm=`cat data/local/lm/final_lm`
+LM=$final_lm.pr1-7
+
 stage=0
 . utils/parse_options.sh
 
@@ -16,17 +28,6 @@ set -e
 set -u
 set -o pipefail
 set -x
-
-# Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
-
-# MDM_DIR is directory for beamformed waves,
-MDM_DIR=$AMI_DIR/beamformed # [Default]
-#MDM_DIR=/disk/data1/s1136550/ami/mdm # [Edinburgh]
-
-final_lm=`cat data/local/lm/final_lm`
-LM=$final_lm.pr1-7
 
 # Download AMI corpus (distant channels), You need around 130GB of free space to get whole data ihm+mdm,
 if [ $stage -le 0 ]; then
@@ -165,4 +166,4 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-echo "Done!"
+echo "Done."

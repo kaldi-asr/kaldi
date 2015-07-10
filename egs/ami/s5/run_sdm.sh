@@ -18,9 +18,10 @@ set -o pipefail
 set -x
 
 # Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
+#AMI_DIR=$PWD/DOWNLOAD/ami # Default,
+AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
 
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
@@ -155,7 +156,7 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-echo "Done!"
+echo "Done."
 
 
 # By default we do not build systems adapted to sessions for AMI in distant scnearios 

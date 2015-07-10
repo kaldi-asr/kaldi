@@ -18,9 +18,10 @@ set -o pipefail
 set -x
 
 # Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
+#AMI_DIR=$PWD/DOWNLOAD/ami # Default,
+AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
 
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
@@ -177,4 +178,4 @@ if [ $stage -le 13 ]; then
   local/online/run_nnet2_ms_perturbed.sh --mic $mic
 fi
 
-echo "Done!"
+echo "Done."

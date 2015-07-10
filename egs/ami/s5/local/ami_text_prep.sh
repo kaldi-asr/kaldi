@@ -12,26 +12,26 @@ fi
 set -e
 set -u
 
-amidir=$1
-mkdir -p $amidir
+dir=$1
+mkdir -p $dir
 
-echo "Downloading annotiations..."
+echo "Downloading annotations..."
 
 amiurl=http://groups.inf.ed.ac.uk/ami
 annotver=ami_public_manual_1.6.1
-annot="$amidir/$annotver"
+annot="$dir/$annotver"
 
 logdir=data/local/downloads; mkdir -p $logdir/log
 [ ! -f $annot.zip ] && wget -nv -O $annot.zip $amiurl/AMICorpusAnnotations/$annotver.zip &> $logdir/log/download_ami_annot.log
 
-mkdir -p $amidir/annotations
-unzip -o -d $amidir/annotations $annot.zip &> /dev/null
+mkdir -p $dir/annotations
+unzip -o -d $dir/annotations $annot.zip &> /dev/null
 
-[ ! -f "$amidir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $amidir/annotations." && exit 1;
+[ ! -f "$dir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $dir/annotations." && exit 1;
 
 
 # extract text from AMI XML annotations,
-local/ami_xml2text.sh $amidir
+local/ami_xml2text.sh $dir
 
 wdir=data/local/annotations
 [ ! -f $wdir/transcripts1 ] && echo "$0: File $wdir/transcripts1 not found." && exit 1;
@@ -39,7 +39,7 @@ wdir=data/local/annotations
 echo "Preprocessing transcripts..."
 local/ami_split_segments.pl $wdir/transcripts1 $wdir/transcripts2 &> $wdir/log/split_segments.log
 
-#make final train/dev/eval splits
+# make final train/dev/eval splits
 for dset in train eval dev; do
   [ ! -f local/split_$dset.final  ] &&  cp local/split_$dset.orig local/split_$dset.final
   grep -f local/split_$dset.final $wdir/transcripts2 > $wdir/$dset.txt
