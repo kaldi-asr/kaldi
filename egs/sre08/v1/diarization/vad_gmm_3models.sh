@@ -63,6 +63,17 @@ speech_gauss_incr_phase4=2
 num_iters_phase3=5
 num_iters_phase4=5
 
+## Phase 5 parameters
+num_frames_silence_phase5_init=2000
+num_frames_speech_phase5_init=2000
+sil_num_gauss_init_phase5=2
+speech_num_gauss_init_phase5=2
+sil_max_gauss_phase5=5
+speech_max_gauss_phase5=12
+sil_gauss_incr_phase5=1
+speech_gauss_incr_phase5=2
+num_iters_phase5=7
+
 speech_to_sil_ratio=1
 
 . path.sh
@@ -84,6 +95,7 @@ mkdir -p $dir
 tmpdir=$dir/phase1
 phase2_dir=$dir/phase2
 phase3_dir=$dir/phase3
+phase5_dir=$dir/phase5
 
 mkdir -p $tmpdir
 mkdir -p $phase2_dir
@@ -145,6 +157,13 @@ if [ $stage -le -2 ]; then
     gmm-global-copy --binary=false $init_speech_model - || exit 1
     gmm-global-copy --binary=false $init_sound_model - || exit 1
   } | gmm-copy - $dir/init.mdl || exit 1
+  
+  {
+    cat $dir/trans_2class.mdl
+    echo "<DIMENSION> $feat_dim <NUMPDFS> 2"
+    gmm-global-copy --binary=false $init_silence_model - || exit 1
+    gmm-global-copy --binary=false $init_speech_model - || exit 1
+  } | gmm-copy - $dir/init_2class.mdl || exit 1
 fi
 
 if [ $stage -le -1 ]; then
@@ -283,7 +302,13 @@ while IFS=$'\n' read line; do
           --num-iters=$[sound_num_gauss+1] --num-gauss-init=1 --num-gauss=$sound_num_gauss \
           ark:- - || exit 1
       } 2> $tmpdir/log/$utt_id.init_gmm.log | \
-        gmm-copy - $tmpdir/$utt_id.$[x+1].mdl 2>> $tmpdir/log/$utt_id.init_gmm.log || exit 1
+        gmm-copy - $tmpdir/$utt_id.$[x+1].mdl 2>> $tmpdir/log/$utt_id.init_gmm.log
+      if [ $? -ne 0 ]; then
+        echo "Insufficient frames for training silence or sound model. Skipping to phase 3"
+        goto_phase3=true
+        break;
+      fi
+      #|| { echo "See $tmpdir/log/$utt_id.init_gmm.log for errors"; exit 1; }
     else
       #$cmd $tmpdir/log/$utt_id.gmm_update.$[x+1].log \
       #  gmm-est-segmentation --pdfs=0:2 \
@@ -319,31 +344,35 @@ while IFS=$'\n' read line; do
     x=$[x+1]
   done    ## Done training Silence and Speech GMMs
   
-  $cmd $phase2_dir/log/$utt_id.init_speech.log \
-    segmentation-copy --filter-rspecifier=ark:$tmpdir/$utt_id.vad.bootstrap.ark \
-    --filter-label=1 ark:$tmpdir/$utt_id.seg.$num_iters.ark ark:- \| \
-    select-feats-from-segmentation --select-label=1 "$feats" \
-      ark:- ark:- \| \
-      gmm-global-init-from-feats \
-      --num-iters=$[speech_num_gauss+1] --num-gauss-init=1 --num-gauss=$speech_num_gauss \
-      ark:- $phase2_dir/$utt_id.speech.0.mdl
-  if [ $? -eq 0 ]; then
-    num_selected_speech=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_id.init_speech.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
-    if [ $num_selected_speech -lt $min_data ]; then
-      echo "Insufficient frames for speech at the end of phase 1. $num_selected_speech < $min_data. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
+  if ! $goto_phase3; then
+    $cmd $phase2_dir/log/$utt_id.init_speech.log \
+      segmentation-copy --filter-rspecifier=ark:$tmpdir/$utt_id.vad.bootstrap.ark \
+      --filter-label=1 ark:$tmpdir/$utt_id.seg.$num_iters.ark ark:- \| \
+      select-feats-from-segmentation --select-label=1 "$feats" \
+        ark:- ark:- \| \
+        gmm-global-init-from-feats \
+        --num-iters=$[speech_num_gauss+1] --num-gauss-init=1 --num-gauss=$speech_num_gauss \
+        ark:- $phase2_dir/$utt_id.speech.0.mdl
+    if [ $? -eq 0 ]; then
+      num_selected_speech=$(grep "Processed .* segmentations; selected" $phase2_dir/log/$utt_id.init_speech.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
+      if [ $num_selected_speech -lt $min_data ]; then
+        echo "Insufficient frames for speech at the end of phase 1. $num_selected_speech < $min_data. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
+        goto_phase3=true
+      fi
+    else
+      echo "Failed to find any data for speech at the end of phase 1. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
       goto_phase3=true
     fi
-  else
-    echo "Failed to find any data for speech at the end of phase 1. See $phase2_dir/log/$utt_id.init_speech.log. Going to phase 3."
-    goto_phase3=true
-  fi
-
-  if $goto_phase3; then
-    rm -f $dir/$utt_id.current_seg.ark
-    ln -s $tmpdir/$utt_id.seg.$x.ark $dir/$utt_id.current_seg.ark
+    
+    if $goto_phase3; then
+      rm -f $dir/$utt_id.current_seg.ark
+      ln -s $tmpdir/$utt_id.seg.$x.ark $dir/$utt_id.current_seg.ark
+    fi
   fi
 
   if ! $goto_phase3; then
+    echo "Beginning phase 2 for utterance $utt_id"
+    
     $cmd $phase2_dir/log/$utt_id.init_gmm.log \
       gmm-init-pdf-from-global $tmpdir/$utt_id.$num_iters.mdl 1 \
       $phase2_dir/$utt_id.speech.0.mdl $phase2_dir/$utt_id.0.mdl || exit 1
@@ -480,21 +509,20 @@ while IFS=$'\n' read line; do
   fi
 
   if $goto_phase3; then
+    echo "Beginning phase 3 for utterance $utt_id"
     speech_num_gauss=$speech_num_gauss_init_phase3
     sil_num_gauss=$sil_num_gauss_init_phase3
 
-    $cmd $phase3_dir/log/$utt_id.compute_silence_likes.bootstrap.log \
-      gmm-global-get-frame-likes $init_silence_model "$feats" \
-      ark:$dir/$utt_id.silence_log_likes.bootstrap.ark || exit 1
-    
-    $cmd $phase3_dir/log/$utt_id.compute_speech_likes.bootstrap.log \
-      gmm-global-get-frame-likes $init_speech_model "$feats" \
-      ark:$dir/$utt_id.speech_log_likes.bootstrap.ark || exit 1
-  
-    cp $tmpdir/$utt_id.vad.bootstrap.ark $phase3_dir/$utt_id.vad.0.ark 
+    $cmd $phase3_dir/log/$utt_id.get_vad.bootstrap.log \
+      gmm-decode-simple --allow-partial=$allow_partial \
+      --word-symbol-table=$dir/graph_2class/words.txt \
+      $dir/init_2class.mdl $dir/graph_2class/HCLG.fst \
+      "$feats" ark:/dev/null ark:- \| ali-to-pdf $dir/init_2class.mdl ark:- ark:- \| \
+      segmentation-init-from-ali ark:- \
+      ark:$phase3_dir/$utt_id.vad.0.ark || exit 1
 
     x=0
-    goto_phase3=false
+    skip_phase4=false
 
     while [ $x -lt $num_iters_phase3 ]; do
       num_frames_silence=$[num_frames_init_silence + sil_num_gauss * frames_per_gaussian ] 
@@ -502,10 +530,10 @@ while IFS=$'\n' read line; do
       if [ $x -lt 3 ]; then
         $cmd $phase3_dir/log/$utt_id.select_top.second.$[x+1].log \
           segmentation-copy --filter-label=0 \
-          --filter-rspecifier=ark:$tmpdir/$utt_id.vad.bootstrap.ark \
+          --filter-rspecifier=ark:$phase3_dir/$utt_id.vad.0.ark \
           ark:$phase3_dir/$utt_id.vad.$x.ark ark:- \| \
           segmentation-select-top --num-bins=$num_bins \
-          --merge-dst-label=0 \
+          --merge-dst-label=0 --select-from-full-histogram=true \
           --num-top-frames=-1 --num-bottom-frames=$num_frames_silence \
           --top-select-label=-1 --bottom-select-label=0 --reject-label=1000 \
           --remove-rejected-frames=true \
@@ -515,7 +543,7 @@ while IFS=$'\n' read line; do
 
       else
         $cmd $phase3_dir/log/$utt_id.select_top.$[x+1].log \
-          segmentation-copy --filter-rspecifier=ark:$tmpdir/$utt_id.vad.bootstrap.ark \
+          segmentation-copy --filter-rspecifier=ark:$phase3_dir/$utt_id.vad.0.ark \
           --filter-label=0 ark:$phase3_dir/$utt_id.vad.$x.ark \
           ark:$phase3_dir/$utt_id.vad.second.$[x+1].ark || exit 1
       fi
@@ -558,49 +586,61 @@ while IFS=$'\n' read line; do
     done    ## Done training Silence and Speech GMMs
 
     $cmd $phase3_dir/log/$utt_id.init_speech.log \
-      segmentation-copy --filter-rspecifier=ark:$tmpdir/$utt_id.vad.bootstrap.ark \
-      --filter-label=1 ark:$phase3_dir/$utt_id.vad.$x.ark ark:- \| \
+      segmentation-copy \
+      ark:$phase3_dir/$utt_id.vad.$x.ark ark:- \| \
       select-feats-from-segmentation --select-label=1 "$feats" \
         ark:- ark:- \| \
         gmm-global-init-from-feats \
         --num-iters=$[speech_num_gauss+1] --num-gauss-init=1 --num-gauss=$speech_num_gauss \
         ark:- $phase3_dir/$utt_id.speech.$x.mdl
 
-    $cmd $phase3_dir/log/$utt_id.init_gmm.log \
-      gmm-init-pdf-from-global $phase3_dir/$utt_id.$x.mdl 1 \
-      $phase3_dir/$utt_id.speech.$x.mdl $phase3_dir/$utt_id.$[x+1].mdl || exit 1
-
-    x=$[x+1]
-
-    while [ $x -lt $[num_iters_phase4 + num_iters_phase3+1] ]; do
-      if [ $sil_num_gauss -lt $sil_max_gauss_phase4 ]; then
-        sil_num_gauss=$[sil_num_gauss + sil_gauss_incr_phase4]
+    if [ $? -eq 0 ]; then
+      num_selected_speech=$(grep "Processed .* segmentations; selected" $phase3_dir/log/$utt_id.init_speech.log | perl -pe 's/.+selected (\S+) out of \S+ frames/$1/')
+      if [ $num_selected_speech -lt $min_data ]; then
+        echo "Insufficient frames for speech at the end of phase 3. $num_selected_speech < $min_data. Not re-training speech model."
+        skip_phase4=true
       fi
+    else
+      echo "Failed to find any data for speech at the end of phase 3. See $phase3_dir/log/$utt_id.init_speech.log. Not re-training speech model."
+      skip_phase4=true
+    fi
 
-      if [ $speech_num_gauss -lt $speech_max_gauss_phase4 ]; then
-        speech_num_gauss=$[speech_num_gauss + speech_gauss_incr_phase4]
-      fi
-
-      $cmd $phase3_dir/log/$utt_id.get_seg.$x.log \
-        gmm-decode-simple --allow-partial=$allow_partial \
-        --word-symbol-table=$dir/graph_2class/words.txt \
-        $phase3_dir/$utt_id.$x.mdl $dir/graph_2class/HCLG.fst \
-        "$feats" ark:/dev/null ark:- \| \
-        ali-to-pdf $phase3_dir/$utt_id.$x.mdl ark:- ark:- \| \
-        segmentation-init-from-ali ark:- \
-        ark:$phase3_dir/$utt_id.vad.$x.ark || exit 1
-      
-      $cmd $phase3_dir/log/$utt_id.gmm_update.$[x+1].log \
-        gmm-update-segmentation \
-        --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\" |" \
-        $phase3_dir/$utt_id.$x.mdl "$feats" \
-        ark:$phase3_dir/$utt_id.vad.$x.ark \
-        $phase3_dir/$utt_id.$[x+1].mdl || exit 1
-      
+    if ! $skip_phase4; then
+      $cmd $phase3_dir/log/$utt_id.init_gmm.log \
+        gmm-init-pdf-from-global $phase3_dir/$utt_id.$x.mdl 1 \
+        $phase3_dir/$utt_id.speech.$x.mdl $phase3_dir/$utt_id.$[x+1].mdl || exit 1
       x=$[x+1]
-    done  ## Done training all 3 GMMs
+    
+      while [ $x -lt $[num_iters_phase4 + num_iters_phase3+1] ]; do
+        if [ $sil_num_gauss -lt $sil_max_gauss_phase4 ]; then
+          sil_num_gauss=$[sil_num_gauss + sil_gauss_incr_phase4]
+        fi
 
+        if [ $speech_num_gauss -lt $speech_max_gauss_phase4 ]; then
+          speech_num_gauss=$[speech_num_gauss + speech_gauss_incr_phase4]
+        fi
+
+        $cmd $phase3_dir/log/$utt_id.get_seg.$x.log \
+          gmm-decode-simple --allow-partial=$allow_partial \
+          --word-symbol-table=$dir/graph_2class/words.txt \
+          $phase3_dir/$utt_id.$x.mdl $dir/graph_2class/HCLG.fst \
+          "$feats" ark:/dev/null ark:- \| \
+          ali-to-pdf $phase3_dir/$utt_id.$x.mdl ark:- ark:- \| \
+          segmentation-init-from-ali ark:- \
+          ark:$phase3_dir/$utt_id.vad.$x.ark || exit 1
+
+        $cmd $phase3_dir/log/$utt_id.gmm_update.$[x+1].log \
+          gmm-update-segmentation \
+          --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\" |" \
+          $phase3_dir/$utt_id.$x.mdl "$feats" \
+          ark:$phase3_dir/$utt_id.vad.$x.ark \
+          $phase3_dir/$utt_id.$[x+1].mdl || exit 1
+
+        x=$[x+1]
+      done  ## Done training all 3 GMMs
+    fi
     cp $phase3_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
+    
     rm -f $dir/$utt_id.graph_final
     ln -s graph_2class_test_${speech_to_sil_ratio}x $dir/$utt_id.graph_final
   fi

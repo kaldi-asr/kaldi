@@ -27,8 +27,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
-  echo "Usage: diarization/train_vad_gmm_ntu.sh <data> <vad-dir|vad-scp> <exp>"
-  echo " e.g.: diarization/train_vad_gmm_ntu.sh data/dev exp/tri4_ali/vad exp/vad_dev"
+  echo "Usage: diarization/train_vad_gmm_supervised.sh <data> <vad-dir|vad-scp> <exp>"
+  echo " e.g.: diarization/train_vad_gmm_supervised.sh data/dev exp/tri4_ali/vad exp/vad_dev"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
