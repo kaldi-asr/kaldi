@@ -68,8 +68,16 @@ affix=_${affix}_iter${iter}
 act_data_id=${data_id}
 if [ "$data_id" == "test_aspire" ]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
+  if [ $stage -le 0 ]; then
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc_hires.conf ${data_dir} exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh $data_dir exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+  fi
 elif [ "$data_id" == "eval_aspire" ]; then
   out_file=single_eval${affix}_$model_affix.ctm
+  if [ $stage -le 0 ]; then
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc_hires.conf ${data_dir} exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+    steps/compute_cmvn_stats.sh $data_dir exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+  fi
 else
   if $create_whole_dir; then
     if [ $stage -le 0 ]; then
@@ -114,7 +122,7 @@ split_data.sh ${vad_dir}/data_uniform_windows600 $nj
 
 if [ $stage -le 3 ]; then
   $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
-    diarization/vad_gmm_3models.sh --config conf/vad_icsi_babel.conf \
+    diarization/vad_gmm_3models.sh --config conf/vad_icsi_babel_3models.conf \
     --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
     ${vad_dir}/data_uniform_windows600/split$nj/JOB \
     $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
@@ -406,6 +414,8 @@ fi
 
 if [ $stage -le 13 ]; then
   cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
-  echo "Generated the ctm @ $out_file from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
+  cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
+  python local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names
+  echo "Generated the ctm @ $out_file.submission from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
 fi
 
