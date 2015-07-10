@@ -3,7 +3,6 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; d
 exit 0
 
 # Monophone, MFCC+delta+accel
-
 %WER 8.74 [ 1095 / 12533, 143 ins, 226 del, 726 sub ] exp/mono/decode/wer_2
 
 # MFCC+delta+accel
@@ -164,23 +163,6 @@ exit 0
 %WER 7.73 [ 969 / 12533, 74 ins, 157 del, 738 sub ] exp/nnet5e_mpe_gpu/decode_ug_epoch4/wer_9
 
 
-# DNN systems (Karel - 25.9.2014)
-# Per-frame cross-entropy training
-%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
-%WER 7.77 [ 974 / 12533, 81 ins, 158 del, 735 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_7
-# Sequence-based sMBR training
-%WER 1.61 [ 202 / 12533, 32 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
-%WER 1.62 [ 203 / 12533, 33 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_3
-%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_3
-%WER 1.64 [ 206 / 12533, 32 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
-%WER 1.63 [ 204 / 12533, 32 ins, 41 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_3
-%WER 1.64 [ 206 / 12533, 20 ins, 58 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
-
-# CNN systems (Karel - 25.9.2014)
-%WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
-# 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
-%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0 # per-frame training
-
 
 # Some system combination experiments.
 %WER 3.18 [ 398 / 12533, 60 ins, 75 del, 263 sub ] exp/combine_1_2a/decode/wer_4
@@ -248,10 +230,34 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 7.33 [ 919 / 12533, 80 ins, 153 del, 686 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch3/wer_13
 %WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 
+
+### nnet1 results ###
+# DNN systems (Karel - 25.9.2014)
+# Per-frame cross-entropy training
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
+%WER 7.77 [ 974 / 12533, 81 ins, 158 del, 735 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_7
+# Sequence-based sMBR training
+%WER 1.61 [ 202 / 12533, 32 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
+%WER 1.62 [ 203 / 12533, 33 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_3
+%WER 1.64 [ 206 / 12533, 32 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 41 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_3
+%WER 1.64 [ 206 / 12533, 20 ins, 58 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
+
+# CNN systems (Karel - 25.9.2014)
+%WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
+# 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
+%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0 # per-frame training
+
+# Joint training with WSJ data, FBANK+pitch features. 2 softmax layers, multitask training,
+# (Karel - 10.7.2015)
+%WER 1.52 [ 191 / 12533, 17 ins, 52 del, 122 sub ] exp/dnn4e-fbank_blocksoftmax/decode/wer_4_0.5
+%WER 7.86 [ 985 / 12533, 84 ins, 160 del, 741 sub ] exp/dnn4e-fbank_blocksoftmax/decode_ug/wer_8_0.0
+
 # LSTM result
 for x in exp/lstm4f/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 %WER 2.04 [ 256 / 12533, 18 ins, 60 del, 178 sub ] exp/lstm4f_c512_r200_c512_r200_lr0.0001_mmt0.9_clip50/decode/wer_4_0.5
 # BLSTM result
 %WER 2.09 [ 262 / 12533, 25 ins, 69 del, 168 sub ] exp/blstm4g/decode/wer_4_0.0
 
-
+### nnet1 results, the end ###

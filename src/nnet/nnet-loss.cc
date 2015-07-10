@@ -38,7 +38,7 @@ namespace nnet1 {
 template <typename T>
 inline void CountCorrectFramesWeighted(const CuArray<T> &v1, 
                                        const CuArray<T> &v2, 
-                                       const VectorBase<BaseFloat> &weights, 
+                                       const CuVectorBase<BaseFloat> &weights, 
                                        double *correct) {
   KALDI_ASSERT(v1.Dim() == v2.Dim());
   KALDI_ASSERT(v1.Dim() == weights.Dim());
@@ -47,10 +47,12 @@ inline void CountCorrectFramesWeighted(const CuArray<T> &v1,
   std::vector<T> v1_h(dim), v2_h(dim);
   v1.CopyToVec(&v1_h);
   v2.CopyToVec(&v2_h);
+  Vector<BaseFloat> w(dim);
+  weights.CopyToVec(&w);
   // Get correct frame count (weighted),
   double corr = 0.0;
   for (int32 i=0; i<dim; i++) {
-   corr += weights(i) * (v1_h[i] == v2_h[i] ? 1.0 : 0.0);
+   corr += w(i) * (v1_h[i] == v2_h[i] ? 1.0 : 0.0);
   }
   // Return,
   (*correct) = corr;
@@ -70,9 +72,6 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   KALDI_ASSERT(KALDI_ISFINITE(net_out.Sum()));
   KALDI_ASSERT(KALDI_ISFINITE(targets.Sum()));
 
-  double num_frames = frame_weights.Sum();
-  KALDI_ASSERT(num_frames >= 0.0);
-
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
 
@@ -84,6 +83,10 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   target_sum_.AddColSumMat(1.0, targets, 0.0);
   frame_weights_.MulElements(target_sum_);
 
+  // get the number of frames after the masking,
+  double num_frames = frame_weights_.Sum();
+  KALDI_ASSERT(num_frames >= 0.0);
+
   // compute derivative wrt. activations of last layer of neurons,
   *diff = net_out;
   diff->AddMat(-1.0, targets);
@@ -93,7 +96,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   double correct; 
   net_out.FindRowMaxId(&max_id_out_); // find max in nn-output
   targets.FindRowMaxId(&max_id_tgt_); // find max in targets
-  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, frame_weights, &correct);
+  CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, frame_weights_, &correct);
 
   // calculate cross_entropy (in GPU),
   xentropy_aux_ = net_out; // y

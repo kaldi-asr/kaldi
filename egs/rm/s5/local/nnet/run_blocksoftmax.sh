@@ -100,7 +100,7 @@ if [ $stage -le 2 ]; then
       --delta-opts "--delta-order=2" --splice 5 \
       --labels "scp:$dir/pasted_post.scp" --num-tgt $output_dim \
       --proto-opts "--block-softmax-dims='$ali1_dim:$ali2_dim'" \
-      --train-tool "nnet-train-frmshuff --objective-function 'multitask,xent,$ali1_dim,$objw1,xent,$ali2_dim,$objw2'" \
+      --train-tool "nnet-train-frmshuff --objective-function=multitask,xent,$ali1_dim,$objw1,xent,$ali2_dim,$objw2" \
       --learn-rate 0.008 \
       ${train_tr90_wsj} ${train}_cv10 lang-dummy ali-dummy ali-dummy $dir
   # Create files used in decdoing, missing due to --labels use,
