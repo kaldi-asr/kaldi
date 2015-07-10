@@ -1,12 +1,11 @@
 #!/bin/bash
 # Copyright 2015   David Snyder
+#           2015   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#           2015   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 #
 # See README.txt for more info on data required.
 # Results (EERs) are inline in comments below.
-
-# This example script is still a bit of a mess, and needs to be
-# cleaned up, but it shows you all the basic ingredients.
 
 . cmd.sh
 . path.sh

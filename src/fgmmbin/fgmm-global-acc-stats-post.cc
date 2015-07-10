@@ -1,6 +1,8 @@
 // fgmmbin/fgmm-global-acc-stats-post.cc
 
 // Copyright 2015 David Snyder
+//           2015 Johns Hopkins University (Author: Daniel Povey)
+//           2015 Johns Hopkins University (Author: Daniel Garcia-Romero)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
