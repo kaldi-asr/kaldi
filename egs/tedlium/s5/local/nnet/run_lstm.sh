@@ -51,7 +51,7 @@ if [ $stage -le 1 ]; then
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
+  steps/nnet/decode.sh --nj 11 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode_test || exit 1;
 fi
 

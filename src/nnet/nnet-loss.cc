@@ -59,16 +59,16 @@ inline void CountCorrectFramesWeighted(const CuArray<T> &v1,
 
 void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
                 const CuMatrixBase<BaseFloat> &net_out, 
-                const CuMatrixBase<BaseFloat> &target, 
+                const CuMatrixBase<BaseFloat> &targets, 
                 CuMatrix<BaseFloat> *diff) {
   // check inputs,
-  KALDI_ASSERT(net_out.NumCols() == target.NumCols());
-  KALDI_ASSERT(net_out.NumRows() == target.NumRows());
+  KALDI_ASSERT(net_out.NumCols() == targets.NumCols());
+  KALDI_ASSERT(net_out.NumRows() == targets.NumRows());
   KALDI_ASSERT(net_out.NumRows() == frame_weights.Dim());
 
   KALDI_ASSERT(KALDI_ISFINITE(frame_weights.Sum()));
   KALDI_ASSERT(KALDI_ISFINITE(net_out.Sum()));
-  KALDI_ASSERT(KALDI_ISFINITE(target.Sum()));
+  KALDI_ASSERT(KALDI_ISFINITE(targets.Sum()));
 
   double num_frames = frame_weights.Sum();
   KALDI_ASSERT(num_frames >= 0.0);
@@ -76,30 +76,38 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   // get frame_weights to GPU,
   frame_weights_ = frame_weights;
 
+  // There may be frames for which the sum of targets is zero.
+  // This happens in multi-lingual training when the frame 
+  // has target class in the softmax of another language.
+  // We 'switch-off' such frames by masking the 'frame_weights_',
+  target_sum_.Resize(targets.NumRows());
+  target_sum_.AddColSumMat(1.0, targets, 0.0);
+  frame_weights_.MulElements(target_sum_);
+
   // compute derivative wrt. activations of last layer of neurons,
   *diff = net_out;
-  diff->AddMat(-1.0, target);
+  diff->AddMat(-1.0, targets);
   diff->MulRowsVec(frame_weights_); // weighting,
 
   // evaluate the frame-level classification,
   double correct; 
   net_out.FindRowMaxId(&max_id_out_); // find max in nn-output
-  target.FindRowMaxId(&max_id_tgt_); // find max in targets
+  targets.FindRowMaxId(&max_id_tgt_); // find max in targets
   CountCorrectFramesWeighted(max_id_out_, max_id_tgt_, frame_weights, &correct);
 
   // calculate cross_entropy (in GPU),
   xentropy_aux_ = net_out; // y
   xentropy_aux_.Add(1e-20); // avoid log(0)
   xentropy_aux_.ApplyLog(); // log(y)
-  xentropy_aux_.MulElements(target); // t*log(y)
+  xentropy_aux_.MulElements(targets); // t*log(y)
   xentropy_aux_.MulRowsVec(frame_weights_); // w*t*log(y) 
   double cross_entropy = -xentropy_aux_.Sum();
   
   // caluculate entropy (in GPU),
-  entropy_aux_ = target; // t
+  entropy_aux_ = targets; // t
   entropy_aux_.Add(1e-20); // avoid log(0)
   entropy_aux_.ApplyLog(); // log(t)
-  entropy_aux_.MulElements(target); // t*log(t)
+  entropy_aux_.MulElements(targets); // t*log(t)
   entropy_aux_.MulRowsVec(frame_weights_); // w*t*log(t) 
   double entropy = -entropy_aux_.Sum();
 

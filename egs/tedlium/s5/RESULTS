@@ -4,7 +4,7 @@ filter_regexp=.
 [ $# -ge 1 ] && filter_regexp=$1
 
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
-  for x in exp/{mono,tri,sgmm,nnet,dnn}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null | grep $filter_regexp
+  for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null | grep $filter_regexp
 exit 0
 
 # Results from Nikolay, using kaldi scoring:
@@ -103,7 +103,18 @@ exit 0
 %WER 17.6 | 1155 27512 | 85.9 11.1 3.0 3.5 17.6 87.8 | -0.210 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_12/ctm.filt.filt.sys
 %WER 17.2 | 1155 27512 | 86.5 10.8 2.7 3.7 17.2 87.4 | -0.236 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt_offline/score_11/ctm.filt.filt.sys
 
+# new dict, lm,
 %WER 13.3 | 1155 27512 | 88.7 8.7 2.6 2.0 13.3 81.5 | -0.097 | exp/nnet2_online/nnet_ms_sp/decode_test/score_10/ctm.filt.filt.sys
 %WER 13.2 | 1155 27512 | 88.6 8.5 2.8 1.9 13.2 81.6 | -0.102 | exp/nnet2_online/nnet_ms_sp_online/decode_test/score_11/ctm.filt.filt.sys
 %WER 13.6 | 1155 27512 | 88.5 8.9 2.6 2.1 13.6 82.7 | -0.095 | exp/nnet2_online/nnet_ms_sp_online/decode_test_utt/score_10/ctm.filt.filt.sys
+
+### LSTM vs. DNN ###
+# DNN on MFCC-fMLLR
+%WER 19.1 | 1155 27512 | 84.4 12.1 3.5 3.5 19.1 90.0 | -0.025 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_12/ctm.filt.filt.sys
+# DNN on FBANK-pitch (we see pitch compensated degradation of not having fMLLR),
+%WER 19.2 | 1155 27512 | 84.4 12.3 3.3 3.6 19.2 89.2 | -0.021 | exp/dnn4d-fbank_pretrain-dbn_dnn/decode_test/score_12/ctm.filt.filt.sys
+# LSTM
+%WER 20.3 | 1155 27512 | 83.3 13.2 3.5 3.6 20.3 90.7 | -0.176 | exp/lstm4f_ClipGradient5_lrate1e-4/decode_test/score_11/ctm.filt.filt.sys
+# 2xLSTM
+TODO...
 

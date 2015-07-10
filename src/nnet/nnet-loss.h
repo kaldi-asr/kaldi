@@ -96,6 +96,7 @@ class Xent : public LossItf {
 
   // weigting buffer,
   CuVector<BaseFloat> frame_weights_;
+  CuVector<BaseFloat> target_sum_;
 
   // loss computation buffers
   CuMatrix<BaseFloat> tgt_mat_;
