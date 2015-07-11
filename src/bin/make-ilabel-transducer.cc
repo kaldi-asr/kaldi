@@ -120,6 +120,11 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> map_fst;
     CreateMapFst(old2new_mapping, &map_fst);
 
+#if _MSC_VER
+    if (fst_out_filename == "")
+      _setmode(_fileno(stdout),  _O_BINARY);
+#endif
+
     if (!map_fst.Write(fst_out_filename)) {
       KALDI_ERR << "Error writing output fst to "
                  << (fst_out_filename == "" ? " standard output "

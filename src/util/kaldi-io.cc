@@ -20,9 +20,28 @@
 #include "base/kaldi-math.h"
 #include "util/text-utils.h"
 #include "util/parse-options.h"
+#include <cstdlib>
 #include <errno.h>
 
 #include "util/kaldi-pipebuf.h"
+
+#ifdef KALDI_CYGWIN_COMPAT
+#include "util/kaldi-cygwin-io-inl.h"
+#define MapOsPath(x) MapCygwinPath(x)
+#else  // KALDI_CYGWIN_COMPAT
+#define MapOsPath(x) x
+#endif  // KALDI_CYGWIN_COMPAT
+
+#ifdef _MSC_VER
+static FILE *popen(const char* command, const char* mode) {
+#ifdef KALDI_CYGWIN_COMPAT
+  return kaldi::CygwinCompatPopen(command, mode);
+#else  // KALDI_CYGWIN_COMPAT
+  return _popen(command, mode);
+#endif  // KALDI_CYGWIN_COMPAT
+}
+#endif  // _MSC_VER
+
 namespace kaldi {
 
 #ifndef _MSC_VER // on VS, we don't need this type.
@@ -133,7 +152,6 @@ InputType ClassifyRxfilename(const std::string &filename) {
   }
 }
 
-
 class OutputImplBase {
  public:
   // Open will open it as a file (no header), and return true
@@ -151,8 +169,9 @@ class FileOutputImpl: public OutputImplBase {
     if (os_.is_open()) KALDI_ERR << "FileOutputImpl::Open(), "
                                 << "open called on already open file.";
     filename_ = filename;
-    os_.open(filename_.c_str(), binary ? std::ios_base::out|std::ios_base::binary
-             : std::ios_base::out);
+    os_.open(MapOsPath(filename_).c_str(),
+             binary ? std::ios_base::out | std::ios_base::binary
+                    : std::ios_base::out);
     return os_.is_open();
   }
 
@@ -228,7 +247,7 @@ class PipeOutputImpl: public OutputImplBase {
     KALDI_ASSERT(wxfilename.length() != 0 && wxfilename[0] == '|');  // should start with '|'
     std::string cmd_name(wxfilename, 1);
 #ifdef _MSC_VER
-    f_ = _popen(cmd_name.c_str(), (binary ? "wb" : "w"));
+    f_ = popen(cmd_name.c_str(), (binary ? "wb" : "w"));
 #else
     f_ = popen(cmd_name.c_str(), "w");
 #endif
@@ -322,8 +341,9 @@ class FileInputImpl: public InputImplBase {
   virtual bool Open(const std::string &filename, bool binary) {
     if (is_.is_open()) KALDI_ERR << "FileInputImpl::Open(), "
                                 << "open called on already open file.";
-    is_.open(filename.c_str(), binary ? std::ios_base::in|std::ios_base::binary
-             : std::ios_base::in);
+    is_.open(MapOsPath(filename).c_str(),
+             binary ? std::ios_base::in | std::ios_base::binary
+                    : std::ios_base::in);
     return is_.is_open();
   }
 
@@ -383,7 +403,6 @@ class StandardInputImpl: public InputImplBase {
   bool is_open_;
 };
 
-
 class PipeInputImpl: public InputImplBase {
  public:
   PipeInputImpl(): f_ (NULL), is_(NULL) { }
@@ -395,7 +414,7 @@ class PipeInputImpl: public InputImplBase {
            rxfilename[rxfilename.length()-1] == '|');  // should end with '|'
     std::string cmd_name(rxfilename, 0, rxfilename.length()-1);
 #ifdef _MSC_VER
-    f_ = _popen(cmd_name.c_str(), (binary ? "rb" : "r"));
+    f_ = popen(cmd_name.c_str(), (binary ? "rb" : "r"));
 #else
     f_ = popen(cmd_name.c_str(), "r");
 #endif
@@ -542,8 +561,9 @@ class OffsetFileInputImpl: public InputImplBase {
       } else {
         is_.close();  // don't bother checking error status of is_.
         filename_ = tmp_filename;
-        is_.open(filename_.c_str(), binary ? std::ios_base::in|std::ios_base::binary
-                 : std::ios_base::in);
+        is_.open(MapOsPath(filename_).c_str(),
+                 binary ? std::ios_base::in | std::ios_base::binary
+                        : std::ios_base::in);
         if (!is_.is_open()) return false;
         else return Seek(offset);
       }
@@ -551,8 +571,9 @@ class OffsetFileInputImpl: public InputImplBase {
       size_t offset;
       SplitFilename(rxfilename, &filename_, &offset);
       binary_ = binary;
-      is_.open(filename_.c_str(), binary ? std::ios_base::in|std::ios_base::binary
-               : std::ios_base::in);
+      is_.open(MapOsPath(filename_).c_str(),
+                binary ? std::ios_base::in | std::ios_base::binary
+                      : std::ios_base::in);
       if (!is_.is_open()) return false;
       else return Seek(offset);
     }

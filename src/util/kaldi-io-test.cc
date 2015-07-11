@@ -19,6 +19,7 @@
 #include "base/io-funcs.h"
 #include "util/kaldi-io.h"
 #include "base/kaldi-math.h"
+#include "base/kaldi-utils.h"
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
@@ -161,14 +162,14 @@ void UnitTestIoNew(bool binary) {
 void UnitTestIoPipe(bool binary) {
   // This is as UnitTestIoNew except with different filenames.
   {
-#ifdef _MSC_VER
-    const char *filename_out = "|more > tmpf.txt",
-        *filename_in = "type tmpf.txt |";
+#if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
+    const char *filename_out = "|copy /b con tmpf.gz",
+        *filename_in = "copy /b tmpf.gz con|";
 #else
     const char *filename_out = "|gzip -c > tmpf.gz",
         *filename_in = "gunzip -c tmpf.gz |";
 #endif
-    
+
     Output ko(filename_out, binary);
     std::ostream &outfile = ko.Stream();
     if (!binary) outfile << "\t";
@@ -215,7 +216,7 @@ void UnitTestIoPipe(bool binary) {
     bool ans = ko.Close();
     KALDI_ASSERT(ans);
 #ifndef _MSC_VER
-    sleep(1);  // This test does not work without this sleep:
+    Sleep(1);  // This test does not work without this sleep:
     // seems to be some kind of file-system latency.
 #endif
     {
@@ -296,15 +297,31 @@ void UnitTestIoStandard() {
   }
 }
 
+// This is Windows-specific.
+void UnitTestNativeFilename() {
+#ifdef _MSC_VER
+  extern std::string map_os_path(const std::string &filename);
 
+  KALDI_ASSERT(map_os_path("") == "");
+  KALDI_ASSERT(map_os_path(".") == ".");
+  KALDI_ASSERT(map_os_path("..") == "..");
+  KALDI_ASSERT(map_os_path("/dev/null")[0] != '/');
+  KALDI_ASSERT(map_os_path("/tmp")[1] == ':');
+  KALDI_ASSERT(map_os_path("/tmp/")[1] == ':');
+  KALDI_ASSERT(map_os_path("/tmp/foo")[1] == ':');
+  KALDI_ASSERT(map_os_path("/cygdrive/c") == "c:/");
+  KALDI_ASSERT(map_os_path("/cygdrive/c/") == "c:/");
+  KALDI_ASSERT(map_os_path("/cygdrive/c/foo") == "c:/foo");
+#endif
+}
 
 }  // end namespace kaldi.
-
 
 
 int main() {
   using namespace kaldi;
 
+  UnitTestNativeFilename();
   UnitTestIoNew(false);
   UnitTestIoNew(true);
   UnitTestIoPipe(true);

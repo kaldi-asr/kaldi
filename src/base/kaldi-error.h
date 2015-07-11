@@ -27,9 +27,7 @@
 #include <sstream>
 #include <cstdio>
 
-#ifdef _MSC_VER
-#define NOEXCEPT(Predicate)
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
+#if _MSC_VER >= 0x1400 || !defined(MSC_VER) && __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
 #define NOEXCEPT(Predicate) noexcept((Predicate))
 #else
 #define NOEXCEPT(Predicate)

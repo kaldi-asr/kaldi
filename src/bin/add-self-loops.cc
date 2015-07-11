@@ -72,7 +72,12 @@ int main(int argc, char *argv[]) {
     if (fst_in_filename == "-") fst_in_filename = "";
     std::string fst_out_filename = po.GetOptArg(3);
     if (fst_out_filename == "-") fst_out_filename = "";
-
+#if _MSC_VER
+    if (fst_in_filename == "")
+      _setmode(_fileno(stdin),  _O_BINARY);
+    if (fst_out_filename == "")
+      _setmode(_fileno(stdout),  _O_BINARY);
+#endif
 
     std::vector<int32> disambig_syms_in;
     if (disambig_in_filename != "") {
