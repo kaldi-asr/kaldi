@@ -99,19 +99,28 @@ awk '{print $1}' $tmpdir/segments | \
 #(important for simulatenous asclite scoring to proceed).
 #There is actually only one such case for devset and automatic segmentetions
 join $tmpdir/utt2spk_stm $tmpdir/segments | \
-   perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
-           if ($pu eq $_[1] && $pt > $_[3]) {
-             print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"
-           }
-           $pu=$_[1]; $pt=$_[4]; 
-         }' > $tmpdir/segments_to_fix
+  awk '{ utt=$1; spk=$2; wav=$3; t_beg=$4; t_end=$5;
+         if(spk_prev == spk && t_end_prev > t_beg) {
+           print utt, wav, t_beg, t_end">"utt, wav, t_end_prev, t_end;
+         }
+         spk_prev=spk; t_end_prev=t_end;
+       }' > $tmpdir/segments_to_fix
+# BUG-FIX from Karel, the original 'perl' code is rewritten to 'awk', had a problem in JSALT cluster,
+#join $tmpdir/utt2spk_stm $tmpdir/segments | \
+#  perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
+#           if ($pu eq $_[1] && $pt > $_[3]) {
+#             print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"
+#           }
+#           $pu=$_[1]; $pt=$_[4]; 
+#         }' > $tmpdir/segments_to_fix
+
 if [ `cat $tmpdir/segments_to_fix | wc -l` -gt 0 ]; then
   echo "$0. Applying following fixes to segments"
   cat $tmpdir/segments_to_fix
   while read line; do
      p1=`echo $line | awk -F'>' '{print $1}'`
      p2=`echo $line | awk -F'>' '{print $2}'`
-     sed -ir "s!$p1!$p2!" $tmpdir/segments
+     sed -ir "s:$p1:$p2:" $tmpdir/segments
   done < $tmpdir/segments_to_fix
 fi
 
