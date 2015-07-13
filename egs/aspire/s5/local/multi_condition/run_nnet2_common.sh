@@ -6,6 +6,7 @@
 . cmd.sh
 
 stage=1
+snrs="20:10:15:5:0"
 num_data_reps=3
 dest_wav_dir=data/rvb_wavs # directory to store the reverberated wav files
 ali_dir=exp/
@@ -45,6 +46,7 @@ if [ $stage -le 1 ]; then
       cur_dest_dir=" data/temp_${data_dir}_${i}" 
       local/multi_condition/reverberate_data_dir.sh --random-seed $i --log-dir exp/make_reverb/log \
         --dest-wav-dir ${dest_wav_dir}/wavs${i}/ \
+        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
         data/${data_dir}  data/impulses_noises $cur_dest_dir
       reverb_data_dirs+=" $cur_dest_dir" 
     done

@@ -134,13 +134,6 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  for epoch in $(seq $decode_start_epoch $num_epochs); do
-   steps/nnet2/adjust_priors.sh --iter epoch${epoch} --out-model epoch${epoch} \
-     ${srcdir}/egs ${srcdir}_${criterion}_${learning_rate}_nj${num_jobs_nnet}  
-  done
-fi
-
-if [ $stage -le 6 ]; then
   dir=${srcdir}_${criterion}_${learning_rate}_nj${num_jobs_nnet}
   #ln -sf $(readlink -f ${srcdir}_multicondition/conf) $dir/conf # so it acts like an online-decoding directory
   graph_dir=exp/tri5a/graph
@@ -154,7 +147,7 @@ if [ $stage -le 6 ]; then
   for dir in $dir/decode*; do grep WER $dir/wer_* | utils/best_wer.sh; done
 fi
 
-if [ $stage -le 7 ] && $cleanup; then
+if [ $stage -le 6 ] && $cleanup; then
   # if you run with "--cleanup true --stage 6" you can clean up.
   rm ${srcdir}_denlats/lat.*.gz || true
   rm ${srcdir}_ali/ali.*.gz || true

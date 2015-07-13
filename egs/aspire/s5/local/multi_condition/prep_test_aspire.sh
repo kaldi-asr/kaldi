@@ -51,7 +51,7 @@ dir=$3 # exp/nnet2_multicondition/nnet_ms_a
 
 model_affix=`basename $dir`
 ivector_dir=`dirname $dir`
-ivector_affix=${affix:+_$affix}_$model_affix
+ivector_affix=${affix:+_$affix}_${model_affix}_iter$iter
 affix=_${affix}_iter${iter}
 act_data_dir=${data_dir}
 if [ "$data_dir" == "test_aspire" ]; then
@@ -352,5 +352,7 @@ fi
 
 if [ $stage -le 13 ]; then
   cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
-  echo "Generated the ctm @ $out_file from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
+  cat data/${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
+  local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names
+  echo "Generated the ctm @ $out_file.submission from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
 fi
