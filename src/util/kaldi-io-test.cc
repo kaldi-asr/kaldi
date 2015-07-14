@@ -299,19 +299,19 @@ void UnitTestIoStandard() {
 
 // This is Windows-specific.
 void UnitTestNativeFilename() {
-#ifdef _MSC_VER
-  extern std::string map_os_path(const std::string &filename);
+#ifdef KALDI_CYGWIN_COMPAT
+  extern std::string MapCygwinPath(const std::string &filename);
 
-  KALDI_ASSERT(map_os_path("") == "");
-  KALDI_ASSERT(map_os_path(".") == ".");
-  KALDI_ASSERT(map_os_path("..") == "..");
-  KALDI_ASSERT(map_os_path("/dev/null")[0] != '/');
-  KALDI_ASSERT(map_os_path("/tmp")[1] == ':');
-  KALDI_ASSERT(map_os_path("/tmp/")[1] == ':');
-  KALDI_ASSERT(map_os_path("/tmp/foo")[1] == ':');
-  KALDI_ASSERT(map_os_path("/cygdrive/c") == "c:/");
-  KALDI_ASSERT(map_os_path("/cygdrive/c/") == "c:/");
-  KALDI_ASSERT(map_os_path("/cygdrive/c/foo") == "c:/foo");
+  KALDI_ASSERT(MapCygwinPath("") == "");
+  KALDI_ASSERT(MapCygwinPath(".") == ".");
+  KALDI_ASSERT(MapCygwinPath("..") == "..");
+  KALDI_ASSERT(MapCygwinPath("/dev/null")[0] != '/');
+  KALDI_ASSERT(MapCygwinPath("/tmp")[1] == ':');
+  KALDI_ASSERT(MapCygwinPath("/tmp/")[1] == ':');
+  KALDI_ASSERT(MapCygwinPath("/tmp/foo")[1] == ':');
+  KALDI_ASSERT(MapCygwinPath("/cygdrive/c") == "c:/");
+  KALDI_ASSERT(MapCygwinPath("/cygdrive/c/") == "c:/");
+  KALDI_ASSERT(MapCygwinPath("/cygdrive/c/foo") == "c:/foo");
 #endif
 }
 
