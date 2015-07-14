@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     }
     
     unordered_map<std::string, std::string, StringHasher> utt2file;
-    unordered_map<std::string, int32, StringHasher> utt2start_time;
+    unordered_map<std::string, BaseFloat, StringHasher> utt2start_time;
 
     if (segments_rxfilename != "") {
       Input ki(segments_rxfilename); // no binary argment: never binary.
