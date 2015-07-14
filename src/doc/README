@@ -22,6 +22,13 @@
 doc/make_tools.sh
 doxygen
 cp doc/*.pptx html/;
+# get the style sheet in the html/ directory.
+# note, we actually use a modified version of the header, which is checked into
+# doc/.  
+doxygen -w html header.html footer.html stylesheet.css
+rm header.html footer.html
+mv stylesheet.css html/
+
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
@@ -56,6 +63,6 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
-# Also did similar with stylesheet.
+
 
 

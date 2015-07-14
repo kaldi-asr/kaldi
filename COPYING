@@ -20,21 +20,22 @@
  // Copyright    2013   Johns Hopkins University (author: Daniel Povey)
 
  it is because the individual who wrote the code was at that institution as an
- employee, so the copyright is owned by the university (we have checked that the
- contributions were in accordance with the open-source policies of the
+ employee, so the copyright is owned by the university (and we will have checked
+ that the contributions were in accordance with the open-source policies of the
  institutions concerned, including getting them vetted individually where
- necessary).  In some cases, however, particularly early on, we just wrote the
- name of the university or company concerned, without the actual author's name
- in parentheses.  If you see something like
+ necessary).  From a legal point of view the copyright ownership is that of the
+ institution concerned, and the (author: xxx) in parentheses is just
+ informational, to identify the actual person who wrote the code, and is not
+ intended to have any legal implications.  In some cases, however, particularly
+ early on, we just wrote the name of the university or company concerned,
+ without the actual author's name in parentheses.  If you see something like
 
  //  Copyright  2009-2012   Arnab Ghoshal  Microsoft Corporation
 
  it does not imply that Arnab was working for Microsoft, it is because someone
  else contributed to the file while working at Microsoft (this would be Daniel
  Povey, in fact, who was working at Microsoft Research at the outset of the
- project).  If the actual author's name in parentheses, it is just to clarify
- who wrote the code; it is not supposed to signify ownership of the copyright by
- that individual.
+ project).
 
  The list of authors of each file is in an essentially arbitrary order, but is
  often chronological if they contributed in different years.
