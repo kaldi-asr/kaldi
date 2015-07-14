@@ -1,6 +1,7 @@
 // nnet2bin/nnet-am-compute.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+//           2015  Johns Hopkins University (author:  Daniel Garcia-Romero)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -42,12 +43,15 @@ int main(int argc, char *argv[]) {
     
     bool apply_log = false;
     bool pad_input = true;
+    std::string use_gpu = "no";
     ParseOptions po(usage);
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
     po.Register("pad-input", &pad_input, "If true, duplicate the first and last frames "
                 "of input features as required for temporal context, to prevent #frames "
                 "of output being less than those of input.");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     
     po.Read(argc, argv);
     
@@ -55,6 +59,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
     
     std::string nnet_rxfilename = po.GetArg(1),
         features_rspecifier = po.GetArg(2),
@@ -98,6 +105,9 @@ int main(int argc, char *argv[]) {
       num_frames += feats.NumRows();
       num_done++;
     }
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_frames << " frames of input were processed.";
