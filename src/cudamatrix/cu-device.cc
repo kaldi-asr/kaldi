@@ -126,8 +126,6 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   // Create a CUDA context.
   bool got_context = GetCudaContext(num_gpus);
 
-  e = cudaThreadSynchronize(); // << CUDA context gets created here.
-
   if (use_gpu != "wait") {
     if (!got_context) {
       // So far no we don't have context, sleep a bit and retry.
