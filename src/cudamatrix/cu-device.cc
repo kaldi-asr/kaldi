@@ -46,6 +46,32 @@ namespace kaldi {
 
 
 /**
+   This function was added by Dan in July 2015 after upgrading on the CLSP
+   cluster to the CUDA 7.0 toolkit; the old mechanism of just calling
+   cudaThreadSynchronize() [==cudaDeviceSynchronize()] and having it
+   automagically select a GPU (when exclusive mode is on) doesn't seem to work
+   any more, in situations where GPU 0 is already being used.  This works.  It's
+   not 100% clear if the fact that the old code wasn't working was a bug, or a
+   changed feature (the NVidia docs were never super-clear regarding device
+   initialization).  But regardless, changing to this new mechanism should be
+   harmless even if the problem was specific to the CLSP grid.
+ */
+
+static bool GetCudaContext(int32 num_gpus) {
+  cudaError_t e;
+  for (int32 device = 0; device < num_gpus; device++) {
+    cudaSetDevice(device);
+    e = cudaDeviceSynchronize(); // << CUDA context gets created here.
+    cudaGetLastError(); // reset the error state     
+    if (e == cudaSuccess) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+/**
  * SelectGpuId(use_gpu)
  *
  * There are 3 'use_gpu' modes for GPU selection:
@@ -82,12 +108,12 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   }
 
   // Check that we have a gpu available
-  int32 n_gpu = 0;
+  int32 num_gpus = 0;
 
   cudaError_t e;
-  e = cudaGetDeviceCount(&n_gpu);
+  e = cudaGetDeviceCount(&num_gpus);
 
-  if (n_gpu == 0) {
+  if (num_gpus == 0) {
     if (use_gpu == "yes" || use_gpu == "wait") {
       KALDI_CUDA_ERR(e, "No CUDA GPU detected!");
     }
@@ -97,23 +123,19 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     }
   }
 
-  //
-  // Create a CUDA context : in case of compute-exclusive mode OS selects gpu_id,
-  // or default gpu_id=0. In the case with no free GPUs a context cannot be created
-  // (compute-exclusive mode).
-  //
+  // Create a CUDA context.
+  bool got_context = GetCudaContext(num_gpus);
+
   e = cudaThreadSynchronize(); // << CUDA context gets created here.
 
   if (use_gpu != "wait") {
-    if (e != cudaSuccess) {
+    if (!got_context) {
       // So far no we don't have context, sleep a bit and retry.
       int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
       KALDI_WARN << "Will try again to get a GPU after " << sec_sleep
         << " seconds.";
       Sleep(sec_sleep);
-      cudaGetLastError(); // reset the error state
-      e = cudaThreadSynchronize(); // << 2nd trial to get CUDA context.
-      if (e != cudaSuccess) {
+      if (! GetCudaContext(num_gpus)) {      
         if (use_gpu == "yes") {
           KALDI_CUDA_ERR(e, "Failed to create CUDA context, no more unused GPUs?");
         }
@@ -126,7 +148,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   } else {
     int32 num_times = 0;
     BaseFloat wait_time = 0.0;
-    while (e != cudaSuccess) {
+    while (! got_context) {
       int32 sec_sleep = 5;
       if (num_times == 0)
         KALDI_WARN << "Will try again indefinitely every " << sec_sleep
@@ -134,8 +156,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       num_times++;
       wait_time += sec_sleep;
       Sleep(sec_sleep);
-      cudaGetLastError(); // reset the error state
-      e = cudaThreadSynchronize();
+      got_context = GetCudaContext(num_gpus);
     }
 
     KALDI_WARN << "Waited " << wait_time
@@ -151,11 +172,11 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Or suggest to use compute exclusive mode
-    if(n_gpu > 1) {
+    if(num_gpus > 1) { 
       KALDI_WARN << "Suggestion: use 'nvidia-smi -c 1' to set compute exclusive mode";
     }
     // And select the GPU according to proportion of free memory
-    if(SelectGpuIdAuto()) {
+    if (SelectGpuIdAuto()) {
       FinalizeActiveGpu();
       return;
     } else {
@@ -259,9 +280,9 @@ bool greater_pair(const std::pair<TA, TB> &left, const std::pair<TA, TB>& right)
 bool CuDevice::SelectGpuIdAuto() {
   // Check that we have at least one gpu
   cudaError_t e;
-  int32 n_gpu = 0;
-  e = cudaGetDeviceCount(&n_gpu);
-  if(n_gpu == 0) {
+  int32 num_gpus = 0;
+  e = cudaGetDeviceCount(&num_gpus);
+  if(num_gpus == 0) {
     KALDI_WARN << "No CUDA devices found";
     if (e != cudaSuccess) {
       KALDI_WARN << "cudaGetDeviceCount() returned " << e
@@ -271,11 +292,11 @@ bool CuDevice::SelectGpuIdAuto() {
   }
 
   // The GPU is selected according to maximal free memory ratio
-  std::vector< std::pair<int, float> > free_mem_ratio(n_gpu);
+  std::vector< std::pair<int, float> > free_mem_ratio(num_gpus);
 
   // Get ratios of memory use, if possible
-  KALDI_LOG << "Selecting from " << n_gpu << " GPUs";
-  for(int32 n = 0; n < n_gpu; n++) {
+  KALDI_LOG << "Selecting from " << num_gpus << " GPUs";
+  for(int32 n = 0; n < num_gpus; n++) {
     int32 ret = cudaSetDevice(n);
     switch(ret) {
       case cudaSuccess : {
