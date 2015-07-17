@@ -34,7 +34,7 @@ data=$1
 
 mic=$(echo $data | awk -F '/' '{print $2}')
 case $mic in
-  ihm)
+  ihm*)
     #echo "use standard scoring took for ihm (close talk)"
     #eval steps/score_kaldi.sh $orig_args
     echo "use sclite for ihm (close talk), better outputs than with kaldi scoring"
