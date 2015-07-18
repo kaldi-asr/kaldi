@@ -6,7 +6,7 @@
 cmd=run.pl
 stage=0
 min_lmwt=9
-max_lmwt=20
+max_lmwt=15
 reverse=false
 asclite=true
 overlap_spk=4
@@ -82,11 +82,34 @@ if [ $stage -le 2 ]; then
   if [ "$asclite" == "true" ]; then
     oname=$name
     [ ! -z $overlap_spk ] && oname=${name}_o$overlap_spk
+    echo "asclite is starting"
+    # Run scoring, meaning of hubscr.pl options:
+    # -G .. produce alignment graphs,
+    # -v .. verbose,
+    # -m .. max-memory in GBs,
+    # -o .. max N of overlapping speakers,
+    # -a .. use asclite,
+    # -C .. compression for asclite,
+    # -B .. blocksize for asclite (kBs?),
+    # -p .. path for other components,
+    # -V .. skip validation of input transcripts,
+    # -h rt-stt .. removes non-lexical items from CTM,
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
       cp $data/stm $dir/ascore_LMWT/ '&&' \
       cp $dir/ascore_LMWT/${name}.ctm $dir/ascore_LMWT/${oname}.ctm '&&' \
       $hubscr -G -v -m 1:2 -o$overlap_spk -a -C -B 8192 -p $hubdir -V -l english \
-         -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${oname}.ctm || exit 1;
+        -h rt-stt -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${oname}.ctm || exit 1
+    # Compress some scoring outputs : alignment info and graphs,
+    echo -n "compressing asclite outputs "
+    for LMWT in $(seq $min_lmwt $max_lmwt); do
+      ascore=$dir/ascore_${LMWT}
+      gzip $ascore/${oname}.ctm.filt.aligninfo.csv
+      cp $ascore/${oname}.ctm.filt.alignments/index.html $ascore/${oname}.ctm.filt.overlap.html
+      tar -C $ascore -czf $ascore/${oname}.ctm.filt.alignments.tar.gz ${oname}.ctm.filt.alignments
+      rm -r $ascore/${oname}.ctm.filt.alignments
+      echo -n $LMWT
+    done
+    echo done
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
       cp $data/stm $dir/ascore_LMWT/ '&&' \

@@ -53,8 +53,8 @@ cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/am
 wgetfile=$wdir/wget_$mic.sh
 
 # TODO fix this with Pawel, files don't exist anymore,
-manifest="wget -O --continue $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
-license="wget -O --continue $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
+manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
+license="wget --continue -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
 
 echo "#!/bin/bash" > $wgetfile
 echo $manifest >> $wgetfile
