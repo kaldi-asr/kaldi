@@ -12,8 +12,8 @@
 #export scoring_cmd="queue.pl -P inf_hcrc_cstr_nst  -l h_rt=00:20:00"
 
 # JSALT2015 workshop, cluster AWS-EC2, (setup from Vijay)
-export train_cmd="queue.pl -l arch=*64*"
-export decode_cmd="queue.pl -l arch=*64* --mem 4G"
+export train_cmd="queue.pl -l arch=*64* --mem 1000M"
+export decode_cmd="queue.pl -l arch=*64* --mem 2000M"
 export highmem_cmd="queue.pl -l arch=*64* --mem 4G"
 export scoring_cmd="queue.pl -l arch=*64*"
 export cuda_cmd="queue.pl --gpu 1"

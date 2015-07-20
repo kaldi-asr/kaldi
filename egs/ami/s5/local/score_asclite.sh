@@ -103,11 +103,11 @@ if [ $stage -le 2 ]; then
     echo -n "compressing asclite outputs "
     for LMWT in $(seq $min_lmwt $max_lmwt); do
       ascore=$dir/ascore_${LMWT}
-      gzip $ascore/${oname}.ctm.filt.aligninfo.csv
+      gzip -f $ascore/${oname}.ctm.filt.aligninfo.csv
       cp $ascore/${oname}.ctm.filt.alignments/index.html $ascore/${oname}.ctm.filt.overlap.html
       tar -C $ascore -czf $ascore/${oname}.ctm.filt.alignments.tar.gz ${oname}.ctm.filt.alignments
       rm -r $ascore/${oname}.ctm.filt.alignments
-      echo -n $LMWT
+      echo -n "$LMWT "
     done
     echo done
   else
