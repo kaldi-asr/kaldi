@@ -25,7 +25,7 @@ else
   endif
 endif
 
-all: check_required_programs sph2pipe atlas irstlm_tgt sclite openfst
+all: check_required_programs sph2pipe atlas sclite openfst irstlm_tgt
 
 check_required_programs:
 	extras/check_dependencies.sh
