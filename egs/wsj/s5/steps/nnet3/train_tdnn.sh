@@ -189,7 +189,7 @@ if [ $stage -le -5 ]; then
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.
   $cmd $dir/log/nnet_init.log \
-    nnet3-raw-init $dir/configs/init.config $dir/init.raw || exit 1;
+    nnet3-init $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 
 # set left_context, right_context, num_hidden_layers
@@ -298,7 +298,7 @@ if [ $stage -le -1 ]; then
   # Add the first layer; this will add in the lda.mat and
   # presoftmax_prior_scale.vec.
   $cmd $dir/log/add_first_layer.log \
-       nnet3-edit --raw=true $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
+       nnet3-edit $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 
   # Convert to .mdl, train the transitions, set the priors.
   $cmd $dir/log/init_mdl.log \
@@ -449,7 +449,8 @@ while [ $x -lt $num_iters ]; do
     if [ $x -gt 0 ] && \
       [ $x -le $[($num_hidden_layers-1)*$add_layers_period] ] && \
       [ $[$x%$add_layers_period] -eq 0 ]; then
-      do_average=false # if we've just mixed up, don't do averaging take the best.
+      do_average=false # if we've just mixed up, don't do averaging but take the
+                       # best.
       cur_num_hidden_layers=$[$x/$add_layers_period];
       inp=`nnet3-info $dir/$x.mdl | grep 'Softmax' | awk '{print $2}'`
 
@@ -459,11 +460,11 @@ while [ $x -lt $num_iters ]; do
         inp=$[$inp-1]
       fi
       config=$dir/config/layer$[$cur_num_hidden_layers+1].config
-      raw="nnet3-edit --srand=$x $dir/$x.mdl  $config - | nnet3-copy --learning-rate=$this_learning_rate - -|"
+      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -| nnet3-edit --srand=$x - $config - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      raw="nnet3-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -496,10 +497,9 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_gpu_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix $parallel_train_opts \
-          --minibatch-size=$this_minibatch_size --srand=$x "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-|" \
-          $dir/$[$x+1].$n.mdl || touch $dir/.error &
+          nnet3-train$parallel_suffix $parallel_train_opts --minibatch-size=$this_minibatch_size --srand=$x "$raw" \
+          "ark:nnet3-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
     )
@@ -509,13 +509,14 @@ while [ $x -lt $num_iters ]; do
 
     nnets_list=
     for n in `seq 1 $this_num_jobs`; do
-      nnets_list="$nnets_list $dir/$[$x+1].$n.mdl"
+      nnets_list="$nnets_list $dir/$[$x+1].$n.raw"
     done
 
     if $do_average; then
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
-        nnet3-average --raw=true $nnets_list $dir/$[$x+1].mdl || exit 1;
+        nnet3-average $nnets_list - \| \
+        nnet3-am-replace-model $dir/$x.mdl - $dir/$[$x+1].raw || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -524,7 +525,8 @@ while [ $x -lt $num_iters ]; do
           close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
-      cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+      $cmd $dir/log/select.$x.log \
+        nnet3-am-replace-model $dir/$x.mdl $dir/$[$x+1].n.raw $dir/$[$x+1].mdl || exit 1;
     fi
 
     rm $nnets_list
@@ -542,39 +544,22 @@ done
 if [ $stage -le $num_iters ]; then
   echo "Doing final combination to produce final.mdl"
 
-  # Now do combination.
+  # Now do combination.  In the nnet3 setup, the logic
+  # for doing averaging of subsets of the models in the case where
+  # there are too many models to reliably esetimate interpolation
+  # factors (max_models_combine) is moved into the nnet3-combine
   nnets_list=()
-  # the if..else..fi statement below sets 'nnets_list'.
-  if [ $max_models_combine -lt $num_iters_combine ]; then
-    # The number of models to combine is too large, e.g. > 20.  In this case,
-    # each argument to nnet3-combine-fast will be an average of multiple models.
-    cur_offset=0 # current offset from first_model_combine.
-    for n in $(seq $max_models_combine); do
-      next_offset=$[($n*$num_iters_combine)/$max_models_combine]
-      sub_list="" 
-      for o in $(seq $cur_offset $[$next_offset-1]); do
-        iter=$[$first_model_combine+$o]
-        mdl=$dir/$iter.mdl
-        [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
-        sub_list="$sub_list $mdl"
-      done
-      nnets_list[$[$n-1]]="nnet3-am-average $sub_list - |"
-      cur_offset=$next_offset
-    done
-  else
-    nnets_list=
-    for n in $(seq 0 $[num_iters_combine-1]); do
-      iter=$[$first_model_combine+$n]
-      mdl=$dir/$iter.mdl
-      [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
-      nnets_list[$n]=$mdl
-    done
-  fi
+  for n in $(seq 0 $[num_iters_combine-1]); do
+    iter=$[$first_model_combine+$n]
+    mdl=$dir/$iter.mdl
+    [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
+    nnets_list[$n]="nnet3-am-copy --raw=true $mdl -|";
+  done
 
+  # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
+  # as if there are many models it can give out-of-memory error; and we set
+  # num-threads to 8 to speed it up (this isn't ideal...)
 
-  # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU, as
-  # if there are many models it can give out-of-memory error; set num-threads to 8
-  # to speed it up (this isn't ideal...)
   num_egs=`nnet3-copy-egs ark:$cur_egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
   mb=$[($num_egs+$combine_num_threads-1)/$combine_num_threads]
   [ $mb -gt 512 ] && mb=512
@@ -585,24 +570,23 @@ if [ $stage -le $num_iters ]; then
   # nnet3-combine-fast uses for scaling, which after flooring and inversion, has
   # the effect that the initial model chosen gets much higher learning rates
   # than the others.  This prevents the optimization from working well.
-  $cmd $combine_parallel_opts $dir/log/combine.log \
-    nnet3-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
-      --num-threads=$combine_num_threads \
-      --verbose=3 --minibatch-size=$mb "${nnets_list[@]}" ark:$cur_egs_dir/combine.egs \
-      $dir/final.mdl || exit 1;
 
-  # Normalize stddev for affine or block affine layers that are followed by a
-  # pnorm layer and then a normalize layer.
-  $cmd $dir/log/normalize.log \
-    nnet3-normalize-stddev $dir/final.mdl $dir/final.mdl || exit 1;
+  $cmd --num-threads $num_threads $dir/log/combine.log \
+    nnet3-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
+    --num-threads=$combine_num_threads --max-models-combine=$max_models_combine \
+    --normalize-stddevs=true \
+    --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=$mb $cur_egs_dir/combine.egs ark:-|" \
+    "|nnet3-am-replace-model $dir/$num_iters.mdl -  $dir/combined.mdl" || exit 1;
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-compute-prob $dir/final.mdl ark:$cur_egs_dir/valid_diagnostic.egs &
+    nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
+    ark:$cur_egs_dir/valid_diagnostic.egs &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-compute-prob $dir/final.mdl ark:$cur_egs_dir/train_diagnostic.egs &
+    nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
+    ark:$cur_egs_dir/train_diagnostic.egs &
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then
@@ -613,7 +597,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-compute-from-egs "nnet3-to-raw $dir/final.mdl -|" ark:- ark:- \| \
+    nnet3-compute-from-egs "nnet3-am-copy --raw=true $dir/final.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
   sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
@@ -625,7 +609,7 @@ if [ $stage -le $[$num_iters+1] ]; then
 
   echo "Re-adjusting priors based on computed posteriors"
   $cmd $dir/log/adjust_priors.final.log \
-    nnet3-adjust-priors $dir/final.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
+    nnet3-am-adjust-priors $dir/final.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
 fi
 
 

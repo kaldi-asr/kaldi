@@ -28,7 +28,7 @@ void UnitTestNnetIo() {
   for (int32 n = 0; n < 100; n++) {
     struct NnetGenerationConfig gen_config;
     
-    bool binary = (rand() % 2 == 0);
+    bool binary = (Rand() % 2 == 0);
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;

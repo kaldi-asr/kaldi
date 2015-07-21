@@ -720,8 +720,8 @@ void PossiblyCompressedMatrix::Read(std::istream &is, bool binary) {
     KALDI_ERR << "Failed to read data.";
 }
 
-void PossiblyCompressedMatrix::Set(const Matrix<BaseFloat> &mat,
-           bool compress) {
+void PossiblyCompressedMatrix::Set(const MatrixBase<BaseFloat> &mat,
+                                   bool compress) {
   if (compress) {
     cmat_.CopyFromMat(mat);
     mat_.Resize(0, 0);
@@ -758,6 +758,14 @@ void PossiblyCompressedMatrix::GetMatrix(Matrix<BaseFloat> *mat) const {
   }
 }
 
+void PossiblyCompressedMatrix::CopyToMat(MatrixBase<BaseFloat> *mat) const {
+  KALDI_ASSERT(mat->NumCols() == NumCols() && mat->NumRows() == NumRows());
+  if (IsCompressed())
+    cmat_.CopyToMat(mat);
+  else
+    mat->CopyFromMat(mat_);
+}
+
 bool PossiblyCompressedMatrix::IsCompressed() const {
   if (cmat_.NumRows() != 0) {
     return true;
@@ -782,8 +790,8 @@ int32 PossiblyCompressedMatrix::NumCols() const {
   }
 }
 
-PossiblyCompressedMatrix::PossiblyCompressedMatrix(const Matrix<BaseFloat> &mat,
-           bool compress) {
+PossiblyCompressedMatrix::PossiblyCompressedMatrix(
+    const MatrixBase<BaseFloat> &mat, bool compress) {
   Set(mat, compress);
 }
 

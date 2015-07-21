@@ -31,17 +31,15 @@ namespace nnet3 {
   The class AmNnetSimple (AM stands for "acoustic model") has the job of taking
   the "Nnet" class, which is a quite general neural network, and giving it an
   interface that's suitable for acoustic modeling, i.e. all the stuff that's
-  specific to the speech recognition application.
+  specific to the speech recognition application, including dividing
+  by the prior.
 
-  In addition to storing the Nnet it also deals with storing, and dividing by,
-  the prior of each context-dependent state.
-
-  We are calling it AmNnetSimple because it's intended to handle the case where
-  there is just one type of input, called "input" in the network itself, and
-  just one output called "output" (the posteriors).  We might later want other types
-  of network that have possibly multiple different-named inputs, or might make use
-  of the "x" dimension of the Index structure..
-*/
+  We are calling it AmNnetSimple because it's intended to handle the restricted
+  case where there is just one time-dependent type of input, called "input" in
+  the network itself, plus possibly a non-time-dependent input called "ivector",
+  and just one output called "output" (the posteriors).  We might later want
+  other types of network that have possibly multiple different-named inputs, or
+  might make use of the "x" dimension of the Index structure..  */
 
 
 class AmNnetSimple {
@@ -81,6 +79,13 @@ class AmNnetSimple {
 
   /// Minimum right context required to compute an output.
   int32 RightContext() const;
+
+  /// Returns the input feature dim.
+  int32 InputDim() const;
+
+  /// Returns the iVector dimension, or -1 if there is no such input.
+  int32 IvectorDim() const;
+  
  private:
   const AmNnetSimple &operator = (const AmNnetSimple &other); // Disallow.
   Nnet nnet_;

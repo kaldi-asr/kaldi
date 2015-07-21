@@ -97,7 +97,7 @@ inline void Uniq(std::vector<T> *vec) {  // must be already sorted.
 /// Copies the elements of a set to a vector.
 template<class T>
 void CopySetToVector(const std::set<T> &s, std::vector<T> *v) {
-  // adds members of s to v, in sorted order from lowest to highest
+  // copies members of s into v, in sorted order from lowest to highest
   // (because the set was in sorted order).
   KALDI_ASSERT(v != NULL);
   v->resize(s.size());

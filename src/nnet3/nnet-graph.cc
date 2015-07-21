@@ -262,9 +262,9 @@ std::string PrintGraphToString(const std::vector<std::vector<int32> > &graph) {
   return os.str();
 }
 
-void ComputeNnetComputationOrder(const Nnet &nnet,
-                                 std::vector<int32> *node_to_order) {
-  KALDI_ASSERT(node_to_order != NULL);
+void ComputeNnetComputationEpochs(const Nnet &nnet,
+                                  std::vector<int32> *node_to_epoch) {
+  KALDI_ASSERT(node_to_epoch != NULL);
   
   std::vector<std::vector<int32> > graph;
   NnetToDirectedGraph(nnet, &graph);
@@ -282,22 +282,22 @@ void ComputeNnetComputationOrder(const Nnet &nnet,
   // order so inputs come first and then outputs.
   ComputeGraphTranspose(scc_graph, &scc_graph_transpose);
 
-  std::vector<int32> scc_node_to_order;
-  ComputeTopSortOrder(scc_graph, &scc_node_to_order);
+  std::vector<int32> scc_node_to_epoch;
+  ComputeTopSortOrder(scc_graph, &scc_node_to_epoch);
   {
     std::ostringstream os;
-    for (int32 i = 0; i < scc_node_to_order.size(); i++)
-      os << scc_node_to_order[i] << ", ";
-    KALDI_LOG << "scc_node_to_order is: " << os.str();
+    for (int32 i = 0; i < scc_node_to_epoch.size(); i++)
+      os << scc_node_to_epoch[i] << ", ";
+    KALDI_LOG << "scc_node_to_epoch is: " << os.str();
   }
   
-  node_to_order->clear();
-  node_to_order->resize(graph.size());
+  node_to_epoch->clear();
+  node_to_epoch->resize(graph.size());
   for (int32 i = 0; i < sccs.size(); ++i) {
     for (int32 j = 0; j < sccs[i].size(); ++j) {
       int32 node = sccs[i][j];
       KALDI_ASSERT(node >= 0 && node < graph.size());
-      (*node_to_order)[node] = scc_node_to_order[i];
+      (*node_to_epoch)[node] = scc_node_to_epoch[i];
     }
   }
 }

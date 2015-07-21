@@ -63,11 +63,7 @@ void UnitTestNnetCompute() {
 
     if (RandInt(0, 1) == 0) {
       NnetOptimizeConfig opt_config;
-      opt_config.initialize_undefined = false;
-      opt_config.propagate_in_place = false;
-      opt_config.backprop_in_place = false;
-      opt_config.remove_assignments = false;
-    
+
       Optimize(opt_config, nnet, request, &computation);
       {
         std::ostringstream os;
@@ -76,8 +72,13 @@ void UnitTestNnetCompute() {
       }
     }
 
+    NnetComputeOptions compute_opts;
+    if (RandInt(0, 1) == 0)
+      compute_opts.debug = true;
+    
     computation.ComputeCudaIndexes();
-    NnetComputer computer(computation,
+    NnetComputer computer(compute_opts,
+                          computation,
                           nnet,
                           &nnet);
     // provide the input to the computation.

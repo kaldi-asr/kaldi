@@ -22,11 +22,15 @@
 #include "nnet3/nnet-analyze.h"
 #include "nnet3/nnet-test-utils.h"
 #include "nnet3/nnet-optimize.h"
+#include "nnet3/nnet-compute.h"
 
 namespace kaldi {
 namespace nnet3 {
 
 
+
+// This test runs the computation with and without optimization, and checks that
+// the outputs are the same.
 void UnitTestNnetOptimize() {
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationConfig gen_config;
@@ -60,32 +64,92 @@ void UnitTestNnetOptimize() {
     ComputationChecker checker(check_config, nnet, request, computation);
     checker.Check();
 
-    NnetOptimizeConfig opt_config;
-    opt_config.initialize_undefined = false;
-    opt_config.propagate_in_place = false;
-    opt_config.backprop_in_place = false;
-    opt_config.remove_assignments = false;
+
+    NnetComputation computation_opt(computation);
     
-    Optimize(opt_config, nnet, request, &computation);
     {
+      NnetOptimizeConfig opt_config;
+      Optimize(opt_config, nnet, request, &computation_opt);
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
     }
 
-    {
-      CheckComputationConfig check_config;
-      ComputationChecker checker(check_config, nnet, request, computation);
-      checker.Check();
+    NnetComputeOptions compute_opts;
+    if (RandInt(0, 1) == 0)
+      compute_opts.debug = true;
+    
+    computation.ComputeCudaIndexes();
+    computation_opt.ComputeCudaIndexes();    
+    NnetComputer computer(compute_opts,
+                          computation,
+                          nnet,
+                          &nnet);
+    Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
+                          // necessary in case backprop changes parameters.
+
+    // NnetComputer for the optimized version of the computation.
+    NnetComputer computer_opt(compute_opts,
+                              computation_opt,
+                              nnet_opt,
+                              &nnet_opt);
+    
+    // provide the input to the computations.
+    for (size_t i = 0; i < request.inputs.size(); i++) {
+      CuMatrix<BaseFloat> temp(inputs[i]);
+      KALDI_LOG << "Input sum is " << temp.Sum();
+      computer.AcceptInput(request.inputs[i].name, &temp);
+      CuMatrix<BaseFloat> temp2(inputs[i]);
+      computer_opt.AcceptInput(request.inputs[i].name, &temp2);
     }
-    {
-      Analyzer analyzer;
-      analyzer.Init(nnet, computation);
-      KALDI_LOG << "Matrix accesses are: ";
-      PrintMatrixAccesses(std::cerr, analyzer.matrix_accesses);
-      KALDI_LOG << "Command attributes are: ";
-      PrintCommandAttributes(std::cerr, analyzer.command_attributes);
+    KALDI_LOG << "Running non-optimized forward computation";
+    computer.Forward();
+    KALDI_LOG << "Running optimized forward computation";
+    computer_opt.Forward();
+        
+    const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
+    KALDI_LOG << "Output sum (not optimized) is " << output.Sum();
+    const CuMatrixBase<BaseFloat> &output_opt(computer_opt.GetOutput("output"));
+    KALDI_LOG << "Output sum (optimized) is " << output_opt.Sum();
+    if (!ApproxEqual(output, output_opt)) {
+      KALDI_ERR << "Non-optimized and optimized versions of the computation give "
+                << "different outputs.";
     }
+    
+    CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
+    output_deriv.SetRandn();
+    CuMatrix<BaseFloat> output_deriv_opt(output_deriv);
+    
+    if (request.outputs[0].has_deriv) {
+      computer.AcceptOutputDeriv("output", &output_deriv);
+      computer_opt.AcceptOutputDeriv("output", &output_deriv_opt);
+    }
+
+    KALDI_LOG << "Running non-optimized backward computation";
+    computer.Backward();
+    KALDI_LOG << "Running optimized backward computation";
+    computer_opt.Backward();
+    for (size_t i = 0; i < request.inputs.size(); i++) {
+      if (request.inputs[i].has_deriv) {
+        const CuMatrixBase<BaseFloat> &in_deriv =
+            computer.GetInputDeriv(request.inputs[i].name);
+        const CuMatrixBase<BaseFloat> &in_deriv_opt =
+            computer_opt.GetInputDeriv(request.inputs[i].name);
+        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                  << "' (non-optimized) is " << in_deriv.Sum();
+        KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
+                  << "' (optimized) is " << in_deriv_opt.Sum();
+        if (!ApproxEqual(in_deriv, in_deriv_opt)) {
+          KALDI_ERR << "Non-optimized and optimized versions of the computation give "
+                    << "different input-derivs.";
+        }
+      }
+    }
+
+    if (!NnetParametersAreIdentical(nnet, nnet_opt, 1.0e-05)) {
+      KALDI_ERR << "Neural networks differ after training, between optimized "
+                << "and non-optimized computation.";
+    }    
   }
 }
 
@@ -97,9 +161,19 @@ int main() {
   using namespace kaldi::nnet3;
   //SetVerboseLevel(2);
 
-  UnitTestNnetOptimize();
+
+  for (int32 loop = 0; loop < 2; loop++) {
+#if HAVE_CUDA == 1
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId("no");
+    else
+      CuDevice::Instantiate().SelectGpuId("yes");
+#endif
+    UnitTestNnetOptimize();
+  }
 
   KALDI_LOG << "Nnet tests succeeded.";
 
   return 0;
 }
+

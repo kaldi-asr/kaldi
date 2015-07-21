@@ -55,6 +55,7 @@ class ConfigLine {
   bool GetValue(const std::string &key, std::string *value);
   bool GetValue(const std::string &key, BaseFloat *value);
   bool GetValue(const std::string &key, int32 *value);
+  // Values may be separated by ":" or by ",".
   bool GetValue(const std::string &key, std::vector<int32> *value);
   bool GetValue(const std::string &key, bool *value);
   

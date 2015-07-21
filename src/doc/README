@@ -23,25 +23,23 @@ doc/make_tools.sh
 doxygen
 cp doc/*.pptx html/;
 # get the style sheet in the html/ directory.
-# note, we actually use a modified version of the header, which is checked into
-# doc/.  
 doxygen -w html header.html footer.html stylesheet.css
 rm header.html footer.html
 mv stylesheet.css html/
 
-
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
-   scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
 
    #may have to do this:
-   ssh danielpovey,kaldi@shell.sourceforge.net create
+   # caution, don't merge this back to trunk!  putting it to www.danielpovey.com temporarily,
+   # while nnet3 is not merged.
 
-   # Running the shell command on sourceforge, from svatava:
-   echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-        tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-           | ssh danielpovey,kaldi@shell.sourceforge.net bash
+   scp html.tar.gz newrelay:/var/www/danielpovey/
+
+   echo 'cd /var/www/danielpovey/; rm -rf html kaldi-docs;
+        tar -xzf html.tar.gz; mv html kaldi-docs ' \
+           | ssh newrelay bash
 fi
 
 
@@ -63,6 +61,6 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
-
+# Also did similar with stylesheet. [?]
 
 

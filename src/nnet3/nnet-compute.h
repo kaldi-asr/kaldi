@@ -23,6 +23,7 @@
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-computation.h"
+#include "nnet3/nnet-analyze.h"
 
 #include <iostream>
 #include <sstream>
@@ -34,6 +35,11 @@ namespace kaldi {
 namespace nnet3 {
 
 
+struct NnetComputeOptions {
+  bool debug;
+  NnetComputeOptions(): debug(false) { }
+};
+
 
 /**
   class NnetComputer is responsible for executing the computation described in the
@@ -44,9 +50,13 @@ namespace nnet3 {
   GetInputDeriv()).
  */
 class NnetComputer {
+ public:
   /// Constructor.  nnet_to_update will be NULL if you are not doing
   /// model update or model-derivative computation.
-  NnetComputer(const NnetComputation &computation,
+  /// You must call computation.ComputeCudaIndexes()  before calling
+  /// this function.
+  NnetComputer(const NnetComputeOptions &options,
+               const NnetComputation &computation,
                const Nnet &nnet,
                Nnet *nnet_to_update);
 
@@ -59,11 +69,17 @@ class NnetComputer {
   void AcceptInput(const std::string &input_name,
                    CuMatrix<BaseFloat> *input);
 
+  
   // Does the forward computation.
   void Forward();
   
   // e.g. GetOutput ("output").  Will crash if no such output.
-  const CuMatrixBase<BaseFloat> &GetOutput(const std::string &output_name);
+  const CuMatrixBase<BaseFloat> &GetOutput(const std::string &output_name) const;
+
+  /// e.g. AcceptOutputDeriv("output", &output_deriv_mat).
+  void AcceptOutputDeriv(const std::string &output_name,
+                         CuMatrix<BaseFloat> *output_deriv);
+  
 
   // Does the backward computation.
   void Backward();
@@ -71,19 +87,30 @@ class NnetComputer {
   // e.g. GetInputDeriv ("input").  Will crash if no such input derivative.
   // You may only call this if you requested this input derivative in the
   // ComputationRequest.
-  const CuMatrixBase<BaseFloat> &GetInputDeriv(const std::string &input_name);
+  const CuMatrixBase<BaseFloat> &GetInputDeriv(
+      const std::string &input_name) const;
   
  private:
+  const NnetComputeOptions &options_;
   const NnetComputation &computation_;
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   bool forward_done_;
-
+  // command_attributes_ is only used if debug=true.
+  std::vector<CommandAttributes> command_attributes_;
+  // command_strings_ is only used if debug=true.
+  std::vector<std::string> command_strings_;
+  
   // The matrices used in the computation.
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
   // executes the command in computation_.commands[command].
   void ExecuteCommand(int32 command);
+
+  // Consolidate some code for getting input and output node locations (and
+  // deriv locations, with error checking.
+  int32 GetMatrixIndex(const std::string &node_name,
+                       bool expect_output, bool is_deriv) const;
 
   CuSubMatrix<BaseFloat> GetSubMatrix(int32 submatrix_index);
 
@@ -93,6 +120,20 @@ class NnetComputer {
   void GetPointers(int32 indexes_multi_index,
                    int32 num_cols,                   
                    CuArray<const BaseFloat*> *pointers);
+
+  // with check_output_deriv = false, checks we have all inputs.
+  // with check_output_deriv = true, checks we have all required output-derivs.
+  void CheckInputs(bool check_output_deriv) const;
+
+
+  struct CommandDebugInfo {
+    // sums of all matrices that this command writes.
+    std::vector<BaseFloat> matrices_written_sums;
+  };
+  void DebugBeforeExecute(int32 command,
+                          CommandDebugInfo *info) const;
+  void DebugAfterExecute(int32 command,
+                         const CommandDebugInfo &info) const;
 
   
 };

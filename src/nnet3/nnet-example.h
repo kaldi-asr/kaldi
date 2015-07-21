@@ -68,6 +68,10 @@ struct Supervision {
   /// the name of the output of the neural net; in simple setups it will just be
   /// "output", but in multi-task learning there could be multiple outputs.
   std::string name;
+
+  /// The dimension of the features-- typically the same as the number of pdfs.
+  /// Included as a consistency check.
+  int32 dim;
   
   /// "indexes" is a vector the same length as "labels", explaining
   /// the meaning of each element of "labels".
@@ -75,15 +79,18 @@ struct Supervision {
 
   /// each labels[i] is a list of (label, weight) pairs; in the normal case it
   /// will contain just a single element, with weight 1.0.  this vector has the
-  /// same size sa "indexes", which explains which frame each label corresponds
-  /// to.  Posterior is typedef'ed to
+  /// same size as "indexes", which explains which frame each label corresponds
+  /// to.  Posterior is typedef'ed to:
   /// std::vector<std::vector<std::pair<int32, BaseFloat> > >
+  /// Note: in speech-recognition applications, the Posterior here won't use
+  /// transition-ids, it will be a "pdf-post" containing pdf_ids as the labels.
   Posterior labels;
   
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
   Supervision(const std::string &name,
+              int32 dim,
               int32 t_begin,
               const Posterior &labels);
 
@@ -93,21 +100,9 @@ struct Supervision {
 
   void Read(std::istream &is, bool binary);
 
-  // Returns true if for each i, labels[i].size() == 1.
+  /// Returns true if for each i, labels[i].size() == 1.
   bool HasSimpleLabels() const;
   
-};
-
-
-/// SupervisionVec is a vector of Supervision, to contain supervision for
-/// possibly multiple outputs of the neural net, although in typical setups this
-/// vector will have just one element.
-struct SupervisionVec {
-  std::vector<Supervision> supervision;
-  
-  void Write(std::ostream &os, bool binary) const;
-
-  void Read(std::istream &is, bool binary);
 };
 
 
@@ -116,11 +111,11 @@ struct SupervisionVec {
 /// nets (and possibly for other objective functions). 
 struct NnetExample {
 
-  /// "input" contains the features.  In principle there can be multiple types
-  /// of feature with different names.
-  std::vector<Feature> input;
+  /// "features" contains the features.  In principle there can be multiple types
+  /// of feature with different names.  The order is irrelevant.
+  std::vector<Feature> features;
 
-  /// "supervision" contains the labels.
+  /// "supervision" contains the labels.  The order is irrelevant.
   std::vector<Supervision> supervision;
   
   void Write(std::ostream &os, bool binary) const;
@@ -134,6 +129,12 @@ struct NnetExample {
   NnetExample(const NnetExample &other);
   
 };
+
+/** Merge a set of input examples into a single example (typically the size of
+    "src" will be the minibatch size).  Will crash if "src" is the empty vector.
+ */
+void MergeExamples(const std::vector<NnetExample> &src,
+                   NnetExample *dest);
 
 
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;

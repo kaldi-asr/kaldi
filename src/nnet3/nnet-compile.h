@@ -58,10 +58,7 @@ class Compiler {
   // multiple commands.
   struct StepInfo {
     int32 node_index;  // network-node index
-    bool is_input;  // true if this step corresponds to an input to the
-                    // network.  For steps corresponding to nodes of type kInput,
-                    // is_input will always be true; for steps of type kComponent,
-                    // it may or may not be true; otherwise it will be false.
+    bool is_input;  // true if step corresponds to an input to the computation.
     int32 value;  // sub-matrix index of value that this step outputs.
     int32 deriv;  // sub-matrix index of derivative at the output of this step; zero
                   // if not used (note: index zero is reserved for the empty
@@ -144,8 +141,8 @@ class Compiler {
   // feature-dimension ranges, and they live in sub-matrices.
   void DefineSubmatrices(NnetComputation *computation);
 
-  // Adds to the computation object the commands to set up the matrices.
-  void SetUpMatrices(NnetComputation *computation) const;
+  // Adds to the computation object the commands to allocate the matrices.
+  void AllocateMatrices(NnetComputation *computation) const;
   
   // Sets up the precomputed indexes for each component, and sets the
   // precomputed_indexes_index value for each step.
@@ -276,7 +273,7 @@ class Compiler {
   // deinitialize all the matrices, except those that may be requested by
   // the user after the computation is done (i.e. outputs of the network,
   // and input derivatives).
-  void DestroyMatrices(NnetComputation *computation);
+  void DeallocateMatrices(NnetComputation *computation);
 
   // sets up the debug_info member of "computation".
   void OutputDebugInfo(NnetComputation *computation) const;

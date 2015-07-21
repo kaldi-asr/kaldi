@@ -90,8 +90,8 @@ void ComputeGraphTranspose(const std::vector<std::vector<int32> > &graph,
 ///
 /// Internally it calls NnetToDirectedGraph, FindSccs, MakeSccGraph and
 /// ComputeTopSortOrder.
-void ComputeNnetComputationOrder(const Nnet &nnet,
-                                 std::vector<int32> *node_to_order);
+void ComputeNnetComputationEpochs(const Nnet &nnet,
+                                  std::vector<int32> *node_to_epoch);
 
 
 } // namespace nnet3

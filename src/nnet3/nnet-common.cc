@@ -45,13 +45,13 @@ static void WriteIndexVectorElementBinary(
     std::ostream &os,
     const std::vector<Index> &vec,
     int32 i) {
-  bool binary = false;
+  bool binary = true;
   Index index = vec[i];
   if (i == 0) {
     if (index.n == 0 && index.x == 0 &&
-        abs(index.t) < 125) {
+        std::abs(index.t) < 125) {
       // handle this common case in one character.
-      os.put(index.t);
+      os.put(static_cast<signed char>(index.t));
     } else {  // handle the general case less efficiently.
       os.put(127);
       WriteBasicType(os, binary, index.n);
@@ -61,8 +61,9 @@ static void WriteIndexVectorElementBinary(
   } else {
     Index last_index = vec[i-1];
     if (index.n == last_index.n && index.x == last_index.x &&
-        abs(index.t - last_index.t) < 125) {
-      os.put(index.t - last_index.t);
+        std::abs(index.t - last_index.t) < 125) {
+      signed char c = index.t - last_index.t;
+      os.put(c);
     } else {  // handle the general case less efficiently.
       os.put(127);
       WriteBasicType(os, binary, index.n);
@@ -70,6 +71,8 @@ static void WriteIndexVectorElementBinary(
       WriteBasicType(os, binary, index.x);
     }
   }
+  if (!os.good())
+    KALDI_ERR << "Output stream error detected";
 }
 
 
@@ -77,13 +80,13 @@ static void ReadIndexVectorElementBinary(
     std::istream &is,
     int32 i,
     std::vector<Index> *vec) {
-  bool binary = false;
+  bool binary = true;
   Index &index = (*vec)[i];
+  if (!is.good())
+    KALDI_ERR << "End of file while reading vector of Index.";
+  signed char c = is.get();
   if (i == 0) {
-    int c = is.get();
-    if (c == -1)
-      KALDI_ERR << "End of file while reading vector of Index.";
-    if (abs(c) < 125) {
+    if (std::abs(int(c)) < 125) {
       index.n = 0;
       index.t = c;
       index.x = 0;
@@ -97,10 +100,7 @@ static void ReadIndexVectorElementBinary(
     }
   } else {
     Index &last_index = (*vec)[i-1];
-    int c = is.get();
-    if (c == -1)
-      KALDI_ERR << "End of file while reading vector of Index.";
-    if (abs(c) < 125) {
+    if (std::abs(int(c)) < 125) {
       index.n = last_index.n;
       index.t = last_index.t + c;
       index.x = last_index.x;

@@ -8,9 +8,11 @@ LDLIBS += $(CUDA_LDLIBS)
 
 
 TESTFILES = natural-gradient-online-test nnet-graph-test \
-  nnet-descriptor-test nnet-parse-test  \
+  nnet-descriptor-test nnet-parse-test nnet-component-test \
   nnet-compile-utils-test nnet-nnet-test nnet-utils-test \
-  nnet-compile-test nnet-analyze-test
+  nnet-compile-test nnet-analyze-test nnet-compute-test \
+  nnet-optimize-test nnet-derivative-test nnet-example-test \
+  nnet-common-test
 
 OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-simple-component.o \
@@ -18,7 +20,8 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
   nnet-example.o nnet-nnet.o nnet-compile-utils.o nnet-nnet.o \
-  nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o
+  nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
+  nnet-compute.o nnet-example-utils.o
 
 LIBNAME = kaldi-nnet3
 

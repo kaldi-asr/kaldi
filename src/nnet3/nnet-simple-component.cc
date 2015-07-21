@@ -264,6 +264,7 @@ void RectifiedLinearComponent::Backprop(
   if (in_deriv != NULL) {
     in_deriv->CopyFromMat(out_value);
     in_deriv->ApplyHeaviside();
+    in_deriv->MulElements(out_deriv);
   }
 }
 
@@ -902,19 +903,32 @@ void FixedAffineComponent::Init(const CuMatrixBase<BaseFloat> &mat) {
 
 void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
-  bool ok = cfl->GetValue("matrix", &filename);
+  // Two forms allowed: "matrix=<rxfilename>", or "input-dim=x output-dim=y"
+  // (for testing purposes only).
+  if (cfl->GetValue("matrix", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
 
-  if (!ok || cfl->HasUnusedValues())
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-
-  bool binary;
-  Input ki(filename, &binary);
-  CuMatrix<BaseFloat> mat;
-  mat.Read(ki.Stream(), binary);
-  KALDI_ASSERT(mat.NumRows() != 0);
-  Init(mat);
+    bool binary;
+    Input ki(filename, &binary);
+    CuMatrix<BaseFloat> mat;
+    mat.Read(ki.Stream(), binary);
+    KALDI_ASSERT(mat.NumRows() != 0);
+    Init(mat);
+  } else {
+    int32 input_dim, output_dim;
+    if (!cfl->GetValue("input-dim", &input_dim) ||
+        !cfl->GetValue("output-dim", &output_dim) || cfl->HasUnusedValues()) {
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    }
+    CuMatrix<BaseFloat> mat(output_dim, input_dim + 1);
+    mat.SetRandn();
+    Init(mat);
+  }
 }
+    
 
 void FixedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                      const CuMatrixBase<BaseFloat> &in,
@@ -1152,15 +1166,24 @@ void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
 
 void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
-  bool ok = cfl->GetValue("scales", &filename);
-
-  if (!ok || cfl->HasUnusedValues())
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-
-  CuVector<BaseFloat> vec;
-  ReadKaldiObject(filename, &vec);
-  Init(vec);
+  // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
+  if (cfl->GetValue("scales", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    CuVector<BaseFloat> vec;
+    ReadKaldiObject(filename, &vec);
+    Init(vec);
+  } else {
+    int32 dim;
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+    CuVector<BaseFloat> vec(dim);
+    vec.SetRandn();
+    Init(vec);
+  }
 }
 
 
@@ -1220,15 +1243,24 @@ void FixedBiasComponent::Init(const CuVectorBase<BaseFloat> &bias) {
 
 void FixedBiasComponent::InitFromConfig(ConfigLine *cfl) {
   std::string filename;
-  bool ok = cfl->GetValue("bias", &filename);
-
-  if (!ok || cfl->HasUnusedValues())
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-
-  CuVector<BaseFloat> vec;
-  ReadKaldiObject(filename, &vec);
-  Init(vec);
+  // Accepts "bias" config (for filename) or "dim" -> random init, for testing.
+  if (cfl->GetValue("bias", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    CuVector<BaseFloat> vec;
+    ReadKaldiObject(filename, &vec);
+    Init(vec);
+  } else {
+    int32 dim;
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+    CuVector<BaseFloat> vec(dim);
+    vec.SetRandn();
+    Init(vec);
+  }
 }
 
 std::string FixedBiasComponent::Info() const {

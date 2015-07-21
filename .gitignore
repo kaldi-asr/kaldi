@@ -7,6 +7,8 @@
 # emacs saves
 [#]*[#]
 *~
+# .depend.mk files
+.depend.mk
 
 # Compiled Dynamic libraries
 *.so
@@ -889,3 +891,13 @@
 /src/nnetbin/paste-post
 /src/nnetbin/train-transitions
 /src/online2bin/online2-wav-nnet2-latgen-threaded
+/src/nnet2/online-nnet2-decodable-test
+/src/nnet3/natural-gradient-online-test
+/src/nnet3/nnet-compile-test
+/src/nnet3/nnet-compile-utils-test
+/src/nnet3/nnet-descriptor-test
+/src/nnet3/nnet-graph-test
+/src/nnet3/nnet-nnet-test
+/src/nnet3/nnet-parse-test
+/src/nnet3/nnet-utils-test
+/src/nnet3/nnet-analyze-test

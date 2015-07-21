@@ -53,6 +53,23 @@ int32 NumOutputNodes(const Nnet &nnet);
 /// returns the number of input nodes of this nnet.
 int32 NumInputNodes(const Nnet &nnet);
 
+/// Calls SetZero (with the given is_gradient parameter) on all updatable
+/// components of the nnet.
+void SetZero(bool is_gradient,
+             Nnet *nnet);
+
+/// Calls PerturbParams (with the given stddev) on all updatable components of
+/// the nnet.
+void PerturbParams(BaseFloat stddev,
+                   Nnet *nnet);
+
+
+/// Returns dot product between two networks of the same structure (calls the
+/// DotProduct functions of the Updatable components and sums up the return
+/// values).
+BaseFloat DotProduct(const Nnet &nnet1,
+                     const Nnet &nnet2);
+
 
 /// This function returns true if the nnet has the following properties:
 ///  It has one output, called "output".

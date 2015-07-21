@@ -33,11 +33,160 @@ struct ComparePair : public std::unary_function<std::pair<int32, int32>, bool>
   std::pair<int32, int32> correct_pair_;
 };
 
+struct PairIsEqualComparator  :
+    public std::unary_function<std::pair<int32, int32>, bool>
+{
+  explicit PairIsEqualComparator(const std::pair<int32, int32> pair):
+      pair_(pair) {}
+  bool operator() (std::pair<int32, int32> const &arg)
+  {
+    if (pair_.first == arg.first)
+      return pair_.second == arg.second;
+    return false;
+  }
+  std::pair<int32, int32> pair_;
+};
+
+void PrintVectorVectorPair(
+    std::vector<std::vector<std::pair<int32, int32> > > vec_vec_pair)  {
+  std::ostringstream ostream;
+  for (int32 i = 0; i < vec_vec_pair.size(); i++) {
+    for (int32 j = 0; j < vec_vec_pair[i].size(); j++)  {
+      ostream << "(" << vec_vec_pair[i][j].first << "," 
+              << vec_vec_pair[i][j].second << ") ";
+    }
+    ostream << std::endl;
+  }
+  KALDI_LOG << ostream.str();
+}
+
+// Function to check SplitLocationsBackward() method
+// checks if the submat_lists and split_lists have the same non-dummy elements
+// checks if the submat_lists are split into same first_element lists wherever
+// possible
+// checks if the split_lists satisfy either "unique contiguous segments"
+// property or unique pairs property (see SplitLocationsBackward in 
+// nnet-compile-utils.h for more details)
+void UnitTestSplitLocationsBackward(bool verbose) {
+  int32 minibatch_size = Rand() % 1024 + 100;
+  int32 num_submat_indexes = Rand() % 10 + 1;
+  int32 max_submat_list_size = Rand() % 10 + 1;
+  int32 min_num_kAddRows = Rand() % 2; // minimum number of kAddRows compatible
+  // lists expected in the final split lists. This value will be used to
+  // create input submat_lists so that this is guaranteed
+  max_submat_list_size = min_num_kAddRows + max_submat_list_size;
+
+  std::vector<std::pair<int32, int32> > all_pairs;
+  all_pairs.reserve(minibatch_size * max_submat_list_size);
+  std::vector<std::vector<std::pair<int32, int32> > > 
+      submat_lists(minibatch_size),
+      split_lists;
+  std::vector<int32> submat_indexes(num_submat_indexes);
+  for (int32 i = 0; i < num_submat_indexes; i++)  {
+    submat_indexes[i] = Rand();
+  }
+
+  // generating submat_lists
+  int32 max_generated_submat_list_size = 0;
+  for (int32 i = 0; i < minibatch_size; i++)  {
+    int32 num_locations = Rand() % max_submat_list_size + 1;
+    max_generated_submat_list_size =
+        max_generated_submat_list_size < num_locations ?
+        num_locations : max_generated_submat_list_size;
+    submat_lists[i].reserve(num_locations);
+    for (int32 j = 0; j < num_locations; j++) {
+      if (j <= min_num_kAddRows)
+        // since we need min_num_kAddRows in the split_lists we ensure that
+        // we add a pair with the same first element in all the submat_lists 
+        submat_lists[i].push_back(std::make_pair(submat_indexes[j],
+                           Rand() % minibatch_size));
+      submat_lists[i].push_back(
+          std::make_pair(submat_indexes[Rand() % num_submat_indexes],
+                         Rand() % minibatch_size));
+    }
+    all_pairs.insert(all_pairs.end(), submat_lists[i].begin(),
+                     submat_lists[i].end());
+  }
+
+  SplitLocationsBackward(submat_lists, &split_lists);
+  // Checking split_lists has all the necessary properties
+  for (int32 i = 0; i < split_lists.size(); i++)  {
+    int32 first_value;
+    std::vector<int32> second_values;
+    if (ConvertToIndexes(split_lists[i], &first_value, &second_values))  {
+      // checking for contiguity and uniqueness of .second elements
+      std::vector<int32> occurred_values;
+      int32 prev_value = -10; // using a negative value as all indices are > 0
+      for (int32 j = 0; j < second_values.size(); j++)  {
+        if (second_values[j] == -1)
+          continue;
+        if (second_values[j] != prev_value) {
+          std::vector<int32>::iterator iter = std::find(occurred_values.begin(),
+                                                        occurred_values.end(),
+                                                        second_values[j]);
+          KALDI_ASSERT(iter == occurred_values.end());
+        }
+      }
+    } else {
+      std::vector<std::pair<int32, int32> > list_of_pairs;
+      // checking for uniques of elements in the list 
+      for (int32 j = 0; j < split_lists[i].size(); j++)  {
+        if (split_lists[i][j].first == -1)
+          continue;
+        std::vector<std::pair<int32, int32> >::const_iterator iter = 
+            std::find_if(list_of_pairs.begin(), list_of_pairs.end(),
+                         PairIsEqualComparator(split_lists[i][j]));
+        KALDI_ASSERT(iter == list_of_pairs.end());
+        list_of_pairs.push_back(split_lists[i][j]);
+      }
+    }
+  } 
+  if (verbose)  {
+    KALDI_LOG << "submat_list";
+    PrintVectorVectorPair(submat_lists);
+    KALDI_LOG << "split_lists";
+    PrintVectorVectorPair(split_lists);
+    KALDI_LOG << "===========================";
+  }
+  int32 num_kAddRows_in_output = 0;
+  int32 first_value;
+  std::vector<int32> second_values;
+  // ensure that elements in submat_lists are also present
+  // in split_lists
+  for (int32 i = 0 ; i < split_lists.size(); i++) {
+    second_values.clear();
+    if (ConvertToIndexes(split_lists[i], &first_value, &second_values)) {
+      // Checking if ConvertToIndexes did a proper conversion of the indexes
+      KALDI_ASSERT(second_values.size() == split_lists[i].size());
+      for (int32 j = 0; j < second_values.size(); j++)  {
+        if (split_lists[i][j].first != -1)
+          KALDI_ASSERT((split_lists[i][j].first == first_value) &&
+                       (split_lists[i][j].second == second_values[j]));
+      }
+      num_kAddRows_in_output++;
+    }
+    for (int32 j = 0; j < split_lists[i].size(); j++) {
+      if (split_lists[i][j].first == -1)
+        continue;
+      std::vector<std::pair<int32, int32> >::iterator iter =
+          std::find_if(all_pairs.begin(), all_pairs.end(),
+                    ComparePair(split_lists[i][j]));
+      KALDI_ASSERT(iter != all_pairs.end());
+      all_pairs.erase(iter);
+    }
+  }
+  KALDI_ASSERT(all_pairs.size() == 0);
+  // ensure that there are at least as many kAddRows compatible split_lists as
+  // specified
+  KALDI_ASSERT(num_kAddRows_in_output >= min_num_kAddRows);
+}
+
+
 // Function to check SplitLocations() method
 // checks if the submat_lists and split_lists have the same non-dummy elements
 // checks if the submat_lists are split into same first_element lists wherever
 // possible
-void UnitTestSplitLocations() {
+void UnitTestSplitLocations(bool verbose) {
   int32 minibatch_size = Rand() % 1024 + 100;
   int32 num_submat_indexes = Rand() % 10 + 1;
   int32 max_submat_list_size = Rand() % 10 + 1;
@@ -78,8 +227,16 @@ void UnitTestSplitLocations() {
     all_pairs.insert(all_pairs.end(), submat_lists[i].begin(),
                      submat_lists[i].end());
   }
-  SplitLocations(submat_lists, &split_lists);
 
+  SplitLocations(submat_lists, &split_lists);
+  if (verbose)  {
+    KALDI_LOG << "submat_list";
+    PrintVectorVectorPair(submat_lists);
+    KALDI_LOG << "split_lists";
+    PrintVectorVectorPair(split_lists);
+    KALDI_LOG << "===========================";
+    KALDI_LOG << split_lists.size(); 
+  } 
   int32 num_kAddRows_in_output = 0;
   int32 first_value;
   std::vector<int32> second_values;
@@ -118,8 +275,10 @@ void UnitTestSplitLocations() {
 int main()  {
   using namespace kaldi;
   using namespace kaldi::nnet3;
+  bool verbose = false;
   for (int32 loop = 0; loop < 10; loop++)  {
-    UnitTestSplitLocations();
+    UnitTestSplitLocations(verbose);
+    UnitTestSplitLocationsBackward(verbose);
   }
   KALDI_LOG << "Tests passed.";
   return 0;

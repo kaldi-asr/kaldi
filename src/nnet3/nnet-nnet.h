@@ -46,7 +46,7 @@ enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
 /// do various other things like shifting the time index.
 ///
 /// Each Component must have an input of type kDescriptor that is numbered
-/// preceding to the Component, and that is not used elsewhere.  This may seem
+/// Preceding to the Component, and that is not used elsewhere.  This may seem
 /// unintuitive but it makes the implementation a lot easier; any apparent waste
 /// can be optimized out after compilation.  And outputs must also be of type
 /// kDescriptor.
@@ -61,16 +61,11 @@ enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
 struct NetworkNode {  
-  // This is relevant only for nodes of type kDescriptor.  It describes which
-  // other network nodes it gets its input from, and how those inputs are
-  // combined together; see type Descriptor in nnet-descriptor.h for
-  // details.
   NodeType node_type;
+  // "descriptor" is relevant only for nodes of type kDescriptor.
   Descriptor descriptor;
-
   union {
-    // For kComponent, the index of the component in the network's components_
-    // vector.
+    // For kComponent, the index into Nnet::components_
     int32 component_index;
     // for kDimRange, the node-index of the input node, which must be of
     // type kComponent or kInput.
@@ -109,6 +104,15 @@ class Nnet {
   /// return component indexed c (const version).  not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
+
+
+  /// return the component corresponding to the node indexed n, which must
+  /// be of type kComponent.  Convenience function.  Result is not a copy and
+  /// not owned by the caller.
+  Component *GetComponentForNode(int32 n);
+  /// Const version of GetComponentForNode().
+  const Component *GetComponentForNode(int32 n) const;
+
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {
@@ -178,7 +182,7 @@ class Nnet {
   /// of each output node into a single step, as dependencies would be messed
   /// up.  Also make sure no nodes referred to in Descriptors, or in kDimRange,
   /// are themselves Descriptors.
-  void Check()const;
+  void Check() const;
 
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
@@ -192,7 +196,20 @@ class Nnet {
   int32 Modulus() const;
 
   ~Nnet() { Destroy(); }
+
+  // Default constructor
+  Nnet() { }
+
+
+  // Copy constructor
+  Nnet(const Nnet &nnet);
+
+  Nnet *Copy() const { return new Nnet(*this); }
+
+  // Assignment operator
+  Nnet& operator =(const Nnet &nnet);
  private:
+  
   void Destroy();
   
   // This function returns as a string the contents of a line of a config-file
@@ -223,18 +240,13 @@ class Nnet {
                                          std::vector<ConfigLine> *configs);
   
   void ProcessComponentConfigLine(int32 initial_num_components,
-                                  const std::string &whole_line,
                                   ConfigLine *config);
   void ProcessComponentNodeConfigLine(int32 pass,
-                                      const std::string &whole_line,
                                       ConfigLine *config);
-  void ProcessInputNodeConfigLine(const std::string &whole_line,
-                                  ConfigLine *config);
+  void ProcessInputNodeConfigLine(ConfigLine *config);
   void ProcessOutputNodeConfigLine(int32 pass,
-                                   const std::string &whole_line,
                                    ConfigLine *config);
   void ProcessDimRangeNodeConfigLine(int32 pass,
-                                     const std::string &whole_line,
                                      ConfigLine *config);
 
   // This function output to "modified_node_names" a modified copy of

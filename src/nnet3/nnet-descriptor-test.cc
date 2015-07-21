@@ -23,32 +23,32 @@ namespace kaldi {
 namespace nnet3 {
 
 ForwardingDescriptor *GenRandForwardingDescriptor(int32 num_nodes) {
-  if (rand() % 2 != 0) {
-    return new SimpleForwardingDescriptor(rand() % num_nodes);
+  if (Rand() % 2 != 0) {
+    return new SimpleForwardingDescriptor(Rand() % num_nodes);
   } else {
-    int32 r = rand() % 4;
+    int32 r = Rand() % 4;
     if (r == 0) {
       Index offset;
-      offset.t = rand() % 5;
-      offset.x = rand() % 2;
+      offset.t = Rand() % 5;
+      offset.x = Rand() % 2;
       return
           new OffsetForwardingDescriptor(GenRandForwardingDescriptor(num_nodes),
                                          offset);
     } else if (r == 1) {
       std::vector<ForwardingDescriptor*> vec;
-      int32 n = 1 + rand() % 3;
+      int32 n = 1 + Rand() % 3;
       for (int32 i = 0; i < n; i++)
         vec.push_back(GenRandForwardingDescriptor(num_nodes));
       return new SwitchingForwardingDescriptor(vec);
     } else if (r == 2) {
       return new RoundingForwardingDescriptor(
-          GenRandForwardingDescriptor(num_nodes), 1 + rand() % 4);
+          GenRandForwardingDescriptor(num_nodes), 1 + Rand() % 4);
     } else {
       return new ReplaceIndexForwardingDescriptor(
           GenRandForwardingDescriptor(num_nodes),
-          (rand() % 2 == 0 ? ReplaceIndexForwardingDescriptor::kT :
+          (Rand() % 2 == 0 ? ReplaceIndexForwardingDescriptor::kT :
            ReplaceIndexForwardingDescriptor::kX),
-          -2 + rand() % 4);
+          -2 + Rand() % 4);
     }
   }
 }
@@ -56,12 +56,12 @@ ForwardingDescriptor *GenRandForwardingDescriptor(int32 num_nodes) {
 // generates a random descriptor.
 SumDescriptor *GenRandSumDescriptor(
     int32 num_nodes) {
-  if (rand() % 3 != 0) {
-    bool required = (rand() % 2 == 0);
+  if (Rand() % 3 != 0) {
+    bool required = (Rand() % 2 == 0);
     return new UnarySumDescriptor(GenRandForwardingDescriptor(num_nodes),
                                   required);
   } else {
-    return new BinarySumDescriptor((rand() % 2 == 0 ? BinarySumDescriptor::kSum:
+    return new BinarySumDescriptor((Rand() % 2 == 0 ? BinarySumDescriptor::kSum:
                                     BinarySumDescriptor::kFailover),
                                    GenRandSumDescriptor(num_nodes),
                                    GenRandSumDescriptor(num_nodes));
@@ -72,7 +72,7 @@ SumDescriptor *GenRandSumDescriptor(
 // generates a random descriptor.
 void GenRandDescriptor(int32 num_nodes,
                        Descriptor *desc) {
-  int32 num_parts = 1 + rand() % 3;
+  int32 num_parts = 1 + Rand() % 3;
   std::vector<SumDescriptor*> parts;
   for (int32 part = 0; part < num_parts; part++)
     parts.push_back(GenRandSumDescriptor(num_nodes));
@@ -85,7 +85,7 @@ void GenRandDescriptor(int32 num_nodes,
 // Copy() function.
 void UnitTestDescriptorIo() {
   for (int32 i = 0; i < 100; i++) {
-    int32 num_nodes = 1 + rand() % 5;
+    int32 num_nodes = 1 + Rand() % 5;
     std::vector<std::string> node_names(num_nodes);
     for (int32 i = 0; i < node_names.size(); i++) {
       std::ostringstream ostr;

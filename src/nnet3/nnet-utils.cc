@@ -157,6 +157,49 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
       *std::max_element(right_contexts.begin(), right_contexts.end());
 }
 
+void SetZero(bool is_gradient,
+             Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
+      KALDI_ASSERT(u_comp != NULL);
+      u_comp->SetZero(is_gradient);
+    }
+  }
+}
+
+void PerturbParams(BaseFloat stddev,
+                   Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *u_comp = dynamic_cast<UpdatableComponent*>(comp);
+      KALDI_ASSERT(u_comp != NULL);
+      u_comp->PerturbParams(stddev);
+    }
+  }
+}
+
+
+BaseFloat DotProduct(const Nnet &nnet1,
+                     const Nnet &nnet2) {
+  KALDI_ASSERT(nnet1.NumComponents() == nnet2.NumComponents());
+  BaseFloat ans = 0.0;
+  for (int32 c = 0; c < nnet1.NumComponents(); c++) {
+    const Component *comp1 = nnet1.GetComponent(c),
+                    *comp2 = nnet2.GetComponent(c);
+    if (comp1->Properties() & kUpdatableComponent) {
+      const UpdatableComponent
+          *u_comp1 = dynamic_cast<const UpdatableComponent*>(comp1),
+          *u_comp2 = dynamic_cast<const UpdatableComponent*>(comp2);
+      KALDI_ASSERT(u_comp1 != NULL && u_comp2 != NULL);
+      ans += u_comp1->DotProduct(*u_comp2);
+    }
+  }
+  return ans;
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

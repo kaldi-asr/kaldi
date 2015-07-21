@@ -156,6 +156,8 @@ class CuMatrixBase {
   /// For each row r of this and for each column c, do
   /// (*this)(r, c) += \sum_j src(j, c),
   /// where j ranges from indexes[c].first through indexes[c].second - 1.
+  /// All indexes must be >= 0 and < src.NumRows(); to represent an empty range
+  /// just use the same index twice.
   void AddRowRanges(const CuMatrixBase<Real> &src,
                     const CuArray<Int32Pair> &indexes);
   

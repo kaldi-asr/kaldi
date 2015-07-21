@@ -33,9 +33,11 @@ void UnitTestNnetAnalyze() {
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;
-    std::istringstream is(configs[0]);
-    nnet.ReadConfig(is);
-
+    for (size_t j = 0; j < configs.size(); j++) {
+      KALDI_LOG << "Input config[" << j << "] is: " << configs[j];
+      std::istringstream is(configs[j]);
+      nnet.ReadConfig(is);
+    }
 
     ComputationRequest request;
     std::vector<Matrix<BaseFloat> > inputs;

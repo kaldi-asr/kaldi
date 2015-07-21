@@ -180,7 +180,7 @@ void ComputationGraphBuilder::AddInputs() {
       KALDI_ERR << "Network has no input with name "
                 << request_.inputs[i].name;
     NodeType t = nnet_.GetNode(n).node_type;
-    KALDI_ASSERT(t == kInput || t == kComponent &&
+    KALDI_ASSERT((t == kInput || t == kComponent) &&
                  "Inputs to graph only allowed for Input and Component nodes.");
     
     for (int32 j = 0; j < request_.inputs[i].indexes.size(); j++) {
@@ -823,7 +823,7 @@ void AddInputToGraph(const ComputationRequest &request,
       KALDI_ERR << "Network has no input with name "
                 << request.inputs[i].name;
     NodeType t = nnet.GetNode(n).node_type;
-    KALDI_ASSERT(t == kInput || t == kComponent &&
+    KALDI_ASSERT((t == kInput || t == kComponent) &&
                  "Inputs to graph only allowed for Input and Component nodes.");
     
     for (int32 j = 0; j < request.inputs[i].indexes.size(); j++) {
@@ -840,102 +840,103 @@ void AddInputToGraph(const ComputationRequest &request,
 
 // This function outputs to dependencies_subset[c], for each cindex_id c,
 // the subset of elements d of graph.dependencies[c] such that
-// cindex_id_to_order[d] == cindex_id_to_order[d].
+// cindex_id_to_phase[d] == cindex_id_to_phase[d].
 static void ComputeDependenciesSubset(
     const ComputationGraph &graph,
-    const std::vector<int32> &cindex_id_to_order,
+    const std::vector<int32> &cindex_id_to_phase,
     std::vector<std::vector<int32> > *dependencies_subset) {
   int32 num_cindex_ids = graph.cindexes.size();
-  KALDI_ASSERT(cindex_id_to_order.size() == num_cindex_ids);
+  KALDI_ASSERT(cindex_id_to_phase.size() == num_cindex_ids);
   dependencies_subset->resize(num_cindex_ids);
   for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
-    int32 order_index = cindex_id_to_order[cindex_id];
+    int32 phase_index = cindex_id_to_phase[cindex_id];
     const std::vector<int32> &dependencies = graph.dependencies[cindex_id];
     std::vector<int32> &dep_subset = (*dependencies_subset)[cindex_id];
     int32 num_dep = dependencies.size();
     for (int32 i = 0; i < num_dep; i++) {
       int32 d = dependencies[i];
-      if (cindex_id_to_order[d] == order_index)
+      if (cindex_id_to_phase[d] == phase_index)
         dep_subset.push_back(d);
     }
   }
 }
 
-/// This function computes certain information about "super-order" of cindex_ids.
+/// This function computes certain information about "epochs" of cindex_ids.
 /// The function ComputeComputationGraphOrder() from nnet-graph.h gives us a map
-/// from the NetworkNode index to an index we call the "super-order" index:
-/// basically, nodes that are computed first have a lower super-order index, and
+/// from the NetworkNode index to an index we call the "epoch" index:
+/// basically, nodes that are computed first have a lower epoch index, and
 /// all nodes that are part of strongly connected components have the same
-/// super-order index.
-/// The overall computation order that we compute, will respect this super-order
-/// (except that outputs of nodes of type kComponent that are actually provided
-/// as inputs to the network, won't be subject to these limitations but will
-/// come first in the order)... we will just ignore the output of this function
-/// as it concerns cindex-ids that are provided as input to the network.
+/// epoch index.
+/// The overall computation order that we compute, will respect this ordering
+/// into epochs (except that outputs of nodes of type kComponent that are
+/// actually provided as inputs to the network, won't be subject to these
+/// limitations but will come first in the order)... we will just ignore the
+/// output of this function as it concerns cindex-ids that are provided as input
+/// to the network.
 ///
 ///  \param nnet [in] The neural net
 ///  \param graph [in] The computation graph
-///  \param cindex_id_to_super_order [out] A vector that maps cindex_id to
-///            super_order index, as obtained by adding one to the output of
+///  \param cindex_id_to_epoch [out] A vector that maps cindex_id to
+///            epoch index, as obtained by adding one to the output of
 ///            ComputeNnetComputationOrder; however, input cindex_ids (those for
 ///            which is_input[cindex_id] is true) always map to 0.
-///  \param by_super_order [out] The same information as
-///            cindex_id_to_super_order, but in a different format: for each
-///            super_order, a list of cindex_ids with that super_order index.
-///  \param super_order_is_trivial [out] A vector of bool, indexed by
-///            super_order index that's true if this super_order index corresponds
-///            to just a single NetworkNode. (and also true for super_order index 0,
+///  \param epochs [out] The same information as
+///            cindex_id_to_epoch, but in a different format: for each
+///            epoch, a list of cindex_ids with that epoch index.
+///  \param epoch_is_trivial [out] A vector of bool, indexed by
+///            epoch index that's true if this epoch index corresponds
+///            to just a single NetworkNode. (and also true for epoch index 0,
 ///            which corresponds only to inputs to the network).
-static void ComputeSuperOrderInfo(
+static void ComputeEpochInfo(
     const Nnet &nnet,    
     const ComputationGraph &graph,
-    std::vector<int32> *cindex_id_to_super_order,
-    std::vector<std::vector<int32 > > *by_super_order,
-    std::vector<bool> *super_order_is_trivial) {
+    std::vector<int32> *cindex_id_to_epoch,
+    std::vector<std::vector<int32 > > *epochs,
+    std::vector<bool> *epoch_is_trivial) {
 
-  // node_to_super_order maps each nnet node to an index >= 0that tells
+  // node_to_epoch maps each nnet node to an index >= 0that tells
   // us what order to compute them in... but we may need to compute
   // a finer ordering at the cindex_id level in cases like RNNs.
-  std::vector<int32> node_to_super_order;
-  ComputeNnetComputationOrder(nnet, &node_to_super_order);
+  std::vector<int32> node_to_epoch;
+  ComputeNnetComputationEpochs(nnet, &node_to_epoch);
   {
     std::ostringstream os;
-    PrintIntegerVector(os, node_to_super_order);
-    KALDI_LOG << "node_to_super_order: " << os.str();
+    PrintIntegerVector(os, node_to_epoch);
+    KALDI_LOG << "node_to_epoch: " << os.str();
   }
   
-  // Add one to the super-order info, because we will be reserving
+  // Add one to the epoch numbering because we will be reserving
   // zero for inputs to the network, and we don't want to have to
-  // prove that super-order-index 0 would correspond only to inputs.
-  for (int32 i = 0; i < node_to_super_order.size(); i++)
-    node_to_super_order[i]++;
+  // prove that epoch number 0 would correspond only to inputs.
+  for (int32 i = 0; i < node_to_epoch.size(); i++)
+    node_to_epoch[i]++;
   int32 num_nodes = nnet.NumNodes(),
       num_cindex_ids = graph.cindexes.size(),
-      num_super_order_indexes = 1 + *std::max_element(node_to_super_order.begin(),
-                                                      node_to_super_order.end());
-  KALDI_ASSERT(node_to_super_order.size() == num_nodes);  
+      num_epoch_indexes = 1 + *std::max_element(node_to_epoch.begin(),
+                                                      node_to_epoch.end());
+  KALDI_ASSERT(node_to_epoch.size() == num_nodes);  
 
-  // super_order_to_num_nodes is only used so we know whether each super_order
+  // epoch_to_num_nodes is only used so we know whether each epoch
   // index corresponds to multiple nodes; if it's just one node then we know
   // the computation is very simple and we can do an optimization.
-  std::vector<int32> super_order_to_num_nodes(num_super_order_indexes, 0);
+  std::vector<int32> epoch_to_num_nodes(num_epoch_indexes, 0);
   for (int32 n = 0; n < num_nodes; n++)
-    super_order_to_num_nodes[node_to_super_order[n]]++;
+    epoch_to_num_nodes[node_to_epoch[n]]++;
 
-  super_order_is_trivial->resize(num_super_order_indexes);
-  for (int32 o = 0; o < num_super_order_indexes; o++) {
-    KALDI_ASSERT(o == 0 || super_order_to_num_nodes[o] > 0);
-    (*super_order_is_trivial)[o] = (super_order_to_num_nodes[o] <= 1);
+  epoch_is_trivial->resize(num_epoch_indexes);
+  for (int32 o = 0; o < num_epoch_indexes; o++) {
+    KALDI_ASSERT(o == 0 || epoch_to_num_nodes[o] > 0);
+    (*epoch_is_trivial)[o] = (epoch_to_num_nodes[o] <= 1);
   }
   
-  cindex_id_to_super_order->resize(num_cindex_ids);
-  by_super_order->resize(num_super_order_indexes);
+  cindex_id_to_epoch->resize(num_cindex_ids);
+  epochs->resize(num_epoch_indexes);
   for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++) {
     int32 node_index = graph.cindexes[cindex_id].first,
-        super_order_index = (graph.is_input[cindex_id] ? 0 :
-                             node_to_super_order[node_index]);
-    (*cindex_id_to_super_order)[cindex_id] = super_order_index;
-    (*by_super_order)[super_order_index].push_back(cindex_id);
+        epoch_index = (graph.is_input[cindex_id] ? 0 :
+                             node_to_epoch[node_index]);
+    (*cindex_id_to_epoch)[cindex_id] = epoch_index;
+    (*epochs)[epoch_index].push_back(cindex_id);
   }
 }
     
@@ -1038,81 +1039,82 @@ static int32 SumVectorSizes(const std::vector<std::vector<int32> > &vec) {
   return ans;
 }
 
-// this function is called from ComputeComputationOrder; it handles the part of
-// the computation from one super-order (this code was broken out to avoid that
+// this function is called from ComputeComputationPhases; it handles the part of
+// the computation from one epoch (this code was broken out to avoid that
 // function being super-long)
 // dependencies_subset is the same as graph.dependencies, but only including
-// that subset of the dependencies that belong to this same super-order
+// that subset of the dependencies that belong to this same epoch
 // (i.e. dependencies within the same strongly connected component of the
 // graph on nodes).  depend_on_subset is the tranpose of the graph
 // represented by dependencies_subset.
-static inline void ComputeComputationOrderForSuperOrder(
+// phase_index maps cindex_id to phase_index (or -1 if not assigned yet).
+static inline void ComputeComputationPhasesForEpoch(
     const Nnet &nnet,    
     const ComputationGraph &graph,
     const std::vector<std::vector<int32> > &dependencies_subset,
     const std::vector<std::vector<int32> > &depend_on_subset,
-    const std::vector<int32> &this_super_order,
-    bool super_order_is_trivial,
-    std::vector<int32> *order,
-    std::vector<std::vector<int32> > *by_order) {
-  std::vector<int32> this_order, next_order_candidates;
+    const std::vector<int32> &this_epoch,
+    bool epoch_is_trivial,
+    std::vector<int32> *phase_index,
+    std::vector<std::vector<int32> > *phases) {
+  std::vector<int32> this_phase, next_phase_candidates;
 
-  if (this_super_order.empty())
+  if (this_epoch.empty())
     return;
 
-  if (super_order_is_trivial) { // an optimization
-    this_order = this_super_order;
+  if (epoch_is_trivial) { // an optimization
+    this_phase = this_epoch;
   } else {
-    //  Start out with all elements of this super-order that have no
-    // dependencies within the same super-order.
-    std::vector<int32>::const_iterator iter = this_super_order.begin(),
-        end = this_super_order.end();
+    //  Start out with all elements of this epoch that have no
+    // dependencies within the same epoch
+    std::vector<int32>::const_iterator iter = this_epoch.begin(),
+        end = this_epoch.end();
     for (; iter != end; ++iter) {
       int32 cindex_id = *iter;
       if (dependencies_subset[cindex_id].empty())
-        this_order.push_back(cindex_id);
+        this_phase.push_back(cindex_id);
     }
   }
 
   // if the next assert fails, the graph at the level of cindex_ids is not acyclic.
-  KALDI_ASSERT(!this_order.empty() &&
+  KALDI_ASSERT(!this_phase.empty() &&
                "Trying to process computation with cycles");
 
-  while (!this_order.empty()) {
-    by_order->push_back(this_order);
-    // The next if-statement is an optimization: if for this super-order index
+  while (!this_phase.empty()) {
+    phases->push_back(this_phase);
+    // The next if-statement is an optimization: if for this epoch index
     // there is just one node, there will be just one order-index for this
-    // super-order index, so we can skip the rest of this loop.  Note: if
-    // super_order == 0, even if there is just one node, cindex_ids from
+    // epoch, so we can skip the rest of this loop.  Note: if
+    // epoch == 0, even if there is just one node, cindex_ids from
     // multiple nodes may be put here because of the rule that cindex_ids which
-    // are inputs always get super_order 0.  But it's still true that they
+    // are inputs always get epoch 0.  But it's still true that they
     // will have no dependencies, so we can still skip the code below.
-    if (super_order_is_trivial)
+    if (epoch_is_trivial)
       return;
 
-    int32 cur_order = by_order->size() - 1;
+    int32 cur_phase_index = phases->size() - 1;
     
-    // next_order_candidates is a list of cindexes that we should check
+    // next_phases_candidates is a list of cindexes that we should check
     // whether they are computable now, because one of the things they depend
     // on just became computable.
-    next_order_candidates.clear();
-    int32 size = this_order.size();
+    next_phase_candidates.clear();
+    int32 size = this_phase.size();
     for (int32 i = 0; i < size; i++) {
-      int32 c = this_order[i];  // c is a cindex_id with order cur_order.
-      (*order)[c] = cur_order;
+      int32 c = this_phase[i];  // c is a cindex_id with phase cur_phase_index.
+      (*phase_index)[c] = cur_phase_index;
       std::vector<int32>::const_iterator iter = depend_on_subset[c].begin(),
           end = depend_on_subset[c].end();
       for (; iter != end; ++iter) {
         int32 d = *iter;  // cindex_id that depends on c.
-        next_order_candidates.push_back(d);
+        next_phase_candidates.push_back(d);
       }
     }
-    SortAndUniq(&next_order_candidates);
-    this_order.clear();
-    // now check the candidates that might be of the next order, and put any
-    // members that we are currently able to compute into "this_order".
-    std::vector<int32>::const_iterator iter = next_order_candidates.begin(),
-        end = next_order_candidates.end();
+    SortAndUniq(&next_phase_candidates);
+    this_phase.clear();
+    // now check the candidates that might be in the next phase, and put any
+    // members that we are currently able to compute into "this_phase".
+    std::vector<int32>::const_iterator iter = next_phase_candidates.begin(),
+        end = next_phase_candidates.end();
     for (; iter != end; ++iter) {
       int32 c = *iter;
       std::vector<int32>::const_iterator
@@ -1120,82 +1122,78 @@ static inline void ComputeComputationOrderForSuperOrder(
           dep_end = dependencies_subset[c].end();
       for (; dep_iter != dep_end; ++dep_iter) {
         int32 d = *dep_iter;  // d is cindex_id that c depends on.
-        if ((*order)[d] < 0)  // we can't compute c yet as something we depend
+        if ((*phase_index)[d] < 0)  // we can't compute c yet as something we depend
           break;              // on is not yet computed.
       }
       if (dep_iter == dep_end) {
         // we reached the end and did not break -> all dependencies satisfied
-        this_order.push_back(c);
+        this_phase.push_back(c);
       }
     }
-    if (!next_order_candidates.empty() && this_order.empty())  {
+    if (!next_phase_candidates.empty() && this_phase.empty())  {
       // this should have been caught earlier so likely a code error rather than
       // a problem with user input.
       KALDI_ERR << "Possibly some cindexes were not reachable (code error?)";
     }
   }
-  
-  
-    
-
 }
 
-void ComputeComputationOrder(
+void ComputeComputationPhases(
     const Nnet &nnet,    
     const ComputationGraph &graph,
-    std::vector<std::vector<int32> > *by_order) {
+    std::vector<std::vector<int32> > *phases) {
   using namespace computation_graph;
   int32 num_cindex_ids = graph.cindexes.size();
       
-  std::vector<int32> cindex_id_to_super_order;
-  std::vector<std::vector<int32 > > by_super_order;
-  std::vector<bool> super_order_is_trivial;
-  ComputeSuperOrderInfo(nnet, graph, &cindex_id_to_super_order,
-                        &by_super_order, &super_order_is_trivial);
+  std::vector<int32> cindex_id_to_epoch;
+  std::vector<std::vector<int32 > > epochs;
+  std::vector<bool> epoch_is_trivial;
+  ComputeEpochInfo(nnet, graph, &cindex_id_to_epoch,
+                        &epochs, &epoch_is_trivial);
 
-  KALDI_ASSERT(SumVectorSizes(by_super_order) == num_cindex_ids);
+  KALDI_ASSERT(SumVectorSizes(epochs) == num_cindex_ids);
   
   // dependencies_subset contains just the subset of dependencies
-  // of each cindex_id, that have the same super_order index as
+  // of each cindex_id, that have the same epoch index as
   // cindex_id itself.  This will be used to correctly order
-  // cindexes that have a certain super-order index (i.e. they
+  // cindexes that have a certain epoch index (i.e. they
   // likely come from the same strongly connected component of
   // the graph of nodes).
   std::vector<std::vector<int32> > dependencies_subset;
-  ComputeDependenciesSubset(graph, cindex_id_to_super_order,
+  ComputeDependenciesSubset(graph, cindex_id_to_epoch,
                             &dependencies_subset);
   
   // depend_on_subset is a subset of the normal "depend_on" list (i.e. a list of
   // all cindex_ids that depend on the current cindex_id), limited to just those
-  // cindex_ids that have the same super_order index.
+  // cindex_ids that have the same epoch index.
   std::vector<std::vector<int32> > depend_on_subset;
   ComputeGraphTranspose(dependencies_subset, &depend_on_subset);
 
-  int32 num_super_order_indexes = super_order_is_trivial.size();
+  int32 num_epoch_indexes = epoch_is_trivial.size();
 
-  // "order" is used inside ComputeComputationOrderForSuperOrder.
-  std::vector<int32> order(num_cindex_ids, -1);
+  // "phase_index" is used inside ComputeComputationPhasesForEpoch.
+  std::vector<int32> phase_index(num_cindex_ids, -1);
   
-  if (by_order) {
-    by_order->clear();
-    by_order->reserve(50);  // minimize unnecessary copies.  50 is very
+  if (phases) {
+    phases->clear();
+    phases->reserve(50);  // minimize unnecessary copies.  50 is very
                             // arbitrarily chosen.
   }
 
-  for (int32 super_order = 0;
-       super_order < num_super_order_indexes;
-       super_order++)
-    ComputeComputationOrderForSuperOrder(nnet, graph,
-                                         dependencies_subset,
-                                         depend_on_subset,
-                                         by_super_order[super_order],
-                                         super_order_is_trivial[super_order],
-                                         &order, by_order);
+  for (int32 epoch = 0;
+       epoch < num_epoch_indexes;
+       epoch++)
+    ComputeComputationPhasesForEpoch(nnet, graph,
+                                     dependencies_subset,
+                                     depend_on_subset,
+                                     epochs[epoch],
+                                     epoch_is_trivial[epoch],
+                                     &phase_index, phases);
     
 
   // make sure everything was computable.  If the next assert fails it's likely
   // a bug in this function or in PruneComputataionGraph.
-  KALDI_ASSERT(SumVectorSizes(*by_order) == num_cindex_ids);
+  KALDI_ASSERT(SumVectorSizes(*phases) == num_cindex_ids);
 }
 
 CindexSet::CindexSet(const ComputationGraph &graph):
@@ -1326,39 +1324,50 @@ void AddOutputSteps(const Nnet &nnet,
   }
 }
 
+/// Convert the cindex_ids in the vector "cindex_ids" to cindexes, but only
+/// keeping those that correspond to nodes of type kComponent.
+/// Asserts that none of these cindexes have the "is_input" set to true.
+/// [this is possible because we call this only for phases >1, and inputs
+/// should not be there.]
+static void ExtractOnlyComponentCindexes(const std::vector<int32> &cindex_ids,
+                                         const ComputationGraph &graph,
+                                         const Nnet &nnet,
+                                         std::vector<Cindex> *cindexes) {
+  cindexes->clear();
+  cindexes->reserve(cindex_ids.size());
+  std::vector<int32>::const_iterator iter = cindex_ids.begin(),
+                                      end = cindex_ids.end();
+  for (; iter != end; ++iter) {
+    int32 cindex_id = *iter;
+    const Cindex &cindex = graph.cindexes[cindex_id];
+    if (nnet.IsComponentNode(cindex.first)) {
+      KALDI_ASSERT(!graph.is_input[cindex_id]);
+      cindexes->push_back(cindex);
+    }
+  }
+}
+
 /// Outputs into component_steps, steps corresponding to all Cindexes that
 /// correspond to Component nodes and that are not inputs to the network.  (note
 /// that a Cindex for a Component node that's provided as an input to the
 /// network is not case we anticipate being common, but it's possible in the
 /// framework).  Note, a step is just a list of cindex_ids that can all be computed
 /// at the same time.
-void AddComponentSteps(
+static void AddComponentSteps(
     const Nnet &nnet,
     const ComputationGraph &graph,
-    const std::vector<std::vector<int32> > &by_order,
+    const std::vector<std::vector<int32> > &phases,
     std::vector<std::vector<int32> > *component_steps) {
-  int32 num_order_indexes = by_order.size();
+  int32 num_phase_indexes = phases.size();
 
   std::vector<Cindex> cindexes;
 
-  // We don't include order_index = 0, because all inputs to the network
+  // We don't include phase_index = 0, because all inputs to the network
   // (whether the node index is type kInput or kComponent) will be assigned to
-  // order_index 0, and no non-inputs should be there (we checked this).
-  for (int32 order_index = 1; order_index < num_order_indexes; order_index++) {
-    const std::vector<int32> &this_cindex_ids = by_order[order_index];
-    
-    cindexes.clear();
-    cindexes.reserve(this_cindex_ids.size());
-    int32 num_cindex_ids = this_cindex_ids.size();
-    for (int32 i = 0; i < num_cindex_ids; i++) {
-      int32 cindex_id = this_cindex_ids[i],
-          node_index = graph.cindexes[cindex_id].first;
-      if (nnet.IsComponentNode(node_index)) {
-        // the following assert is only possible because order_index > 1.
-        KALDI_ASSERT(!graph.is_input[cindex_id]);
-        cindexes.push_back(graph.cindexes[cindex_id]);
-      }
-    }
+  // phase_index 0, and no non-inputs should be there (we checked this).
+  for (int32 phase_index = 1; phase_index < num_phase_indexes; phase_index++) {
+    ExtractOnlyComponentCindexes(phases[phase_index], graph, nnet, &cindexes);
+
     // now "cindexes" contains all Cindexes that are from Component nodes (and
     // we have made sure that none of these are being provided as inputs).
     // Sorting this array gives us the ordering we want, where Cindexes from
@@ -1641,7 +1650,7 @@ void ReorderIndexes(const Nnet &nnet,
 void ComputeComputationSteps(
     const Nnet &nnet,
     const ComputationRequest &request,
-    const std::vector<std::vector<int32> > &by_order,
+    const std::vector<std::vector<int32> > &phases,
     ComputationGraph *graph,
     std::vector<std::vector<int32> > *steps) {
   using namespace compute_computation_steps;
@@ -1649,7 +1658,7 @@ void ComputeComputationSteps(
   AddInputSteps(nnet, request, *graph, steps);
   {
     std::vector<std::vector<int32> > component_steps;
-    AddComponentSteps(nnet, *graph, by_order, &component_steps);
+    AddComponentSteps(nnet, *graph, phases, &component_steps);
     AddComponentInputSteps(*graph, &component_steps, steps);
   }
   // output steps don't get reordered so we do the reordering before adding

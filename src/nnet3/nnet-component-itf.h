@@ -272,19 +272,11 @@ class Component {
   ///   See enum ComponentProperties.
   virtual int32 Properties() const = 0;
 
-  /// \brief Read component from stream (works out its type).
-  ///     Dies on error.
+  /// \brief Read component from stream (works out its type).  Dies on error.
   static Component* ReadNew(std::istream &is, bool binary);
 
   /// \brief Copies component (deep copy).
   virtual Component* Copy() const = 0;  
-  
-  /// \brief Initialize the Component from one config-file line
-  /// \param [in] initializer_line  Typically something like
-  ///      "AffineComponent input-dim=1000 output-dim=1000"
-  /// \return Returns newly created Component.
-  /// TODO: delete this.
-  static Component *NewFromString(const std::string &initializer_line);
 
   /// \brief Returns a new Component of the given type e.g. "SoftmaxComponent",
   ///   or NULL if no such component type exists. 
@@ -335,10 +327,12 @@ class UpdatableComponent: public Component {
   virtual ~UpdatableComponent() { }
 
   /// \brief Computes dot-product between parameters of two instances of a
-  ///  Component.
+  ///  Component.  Can be used for computing parameter-norm of an
+  ///  UpdatableComponent.
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const = 0;
   
-  /// This function is to be used in testing.
+  /// This function is to be used in testing.  It adds unit noise times "stddev"
+  /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
   
   /// This virtual function (not in base-class Component) scales the parameters

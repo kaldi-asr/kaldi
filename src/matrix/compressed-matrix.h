@@ -184,10 +184,14 @@ class PossiblyCompressedMatrix {
   
   void Read(std::istream &is, bool binary);
 
-  void Set(const Matrix<BaseFloat> &mat,
+  void Set(const MatrixBase<BaseFloat> &mat,
            bool compress);
 
   void GetMatrix(Matrix<BaseFloat> *mat) const;
+
+  // This function copies the contents to "mat", which must already have the
+  // correct size.
+  void CopyToMat(MatrixBase<BaseFloat> *mat) const;
 
   int32 NumRows() const;
 
@@ -195,7 +199,7 @@ class PossiblyCompressedMatrix {
 
   bool IsCompressed() const;
   
-  PossiblyCompressedMatrix(const Matrix<BaseFloat> &mat,
+  PossiblyCompressedMatrix(const MatrixBase<BaseFloat> &mat,
                            bool compress = false);
   PossiblyCompressedMatrix() { }
   // Copy constructor

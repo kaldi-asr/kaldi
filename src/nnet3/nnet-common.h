@@ -92,8 +92,13 @@ struct CindexHasher {
 void PrintCindex(std::ostream &ostream, const Cindex &cindex,
                  const std::vector<std::string> &node_names);
 
-// this will only be used for pretty-printing.  It prints
-// a vector of Indexes in a compact, human-readable way.
+/// this will only be used for pretty-printing.  It prints
+/// a vector of Indexes in a compact, human-readable way with
+/// compression of ranges (it also doesn't print the x index if it's
+/// 1.0.  Example output:
+///  "[ (1,1:20), (2, 1:20) ]"
+/// which would correspond to the indexes
+/// [ (1,1,0), (1,2,0) ... (1,20,0) (2,1,0) ... (2,20,0) ].
 void PrintIndexes(std::ostream &ostream,
                   const std::vector<Index> &indexes);
 

@@ -75,26 +75,9 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedScaleComponent();
   } else if (component_type == "FixedBiasComponent") {
     ans = new FixedBiasComponent();
+  } else if (component_type == "NoOpComponent") {
+    ans = new NoOpComponent();
   }
-  return ans;
-}
-
-// static
-Component* Component::NewFromString(const std::string &initializer_line) {
-  std::istringstream istr(initializer_line);
-  std::string component_type; // e.g. "SigmoidComponent".
-  istr >> component_type >> std::ws;
-  std::string rest_of_line;
-  getline(istr, rest_of_line);
-  ConfigLine cfl;
-  if (!cfl.ParseLine(rest_of_line))
-    KALDI_ERR << "Bad config line: "
-              << rest_of_line;
-  Component *ans = NewComponentOfType(component_type);
-  if (ans == NULL)
-    KALDI_ERR << "Bad initializer line (no such type of Component): "
-              << initializer_line;
-  ans->InitFromConfig(&cfl);
   return ans;
 }
 

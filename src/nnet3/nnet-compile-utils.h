@@ -55,6 +55,8 @@ namespace nnet3 {
    more efficient command in the compiled code.  It doesn't have to be 100%
    optimal.  Note: in the most common case, all the lists will have the same
    length and padding will not be necessary at all.
+
+   See documentation here: \ref dnn3_compile_compiler_split_locations
  */
 
 void SplitLocations(
@@ -84,7 +86,8 @@ void SplitLocations(
   print a warning (once per process).  If we have to split into too many lists it
   will generate inefficient computations, and we will need to extend the backprop
   code to support more general types of operation.
-   
+  If all elements of submat_lists are empty, the output split_lists will be
+  the empty vector.
  */
 void SplitLocationsBackward(
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,

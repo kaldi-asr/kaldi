@@ -21,78 +21,177 @@
 #define KALDI_NNET3_NNET_OPTIMIZE_H_
 
 #include "nnet3/nnet-compile.h"
-
-#include <iostream>
+#include "nnet3/nnet-analyze.h"
 
 namespace kaldi {
 namespace nnet3 {
 
-// Options class for optimizing a NnetComputation
+// Options class for optimizing a NnetComputation The main projected use for
+// this is in debugging the optimization code itself, so that if an error is
+// detected, we can work out which optimization was responsible for the error.
 struct NnetOptimizeConfig {
-  // This will have options to disable various of the optimizations, which
-  // might come in useful in debugging, to locate where a problematic
-  // operation comes in.
+  bool optimize;  // setting this false disallow all optimization.
+  bool propagate_in_place;
+  bool backprop_in_place;
+  bool remove_assignments;
+  bool initialize_undefined;
+  bool move_sizing_commands;
+
+  NnetOptimizeConfig(): optimize(true),
+                        propagate_in_place(true),
+                        backprop_in_place(true),
+                        remove_assignments(true),
+                        initialize_undefined(true),
+                        move_sizing_commands(true) { }
   
   void Register(OptionsItf *po) {
   }
 };
 
 
-// this was a very early draft.  could end up completely changed.  I'll leave this till
-// last as it's not essential to get the framework working.
-class NnetOptimize {
- public:
-  NnetOptimize(NnetComputation *computation);
+/// This is the top-level function for optimizing a computation.
+/// The rest of this file contains various things that are
+/// called from this, and which you probably won't need to call
+/// directly.
+void Optimize(const NnetOptimizeConfig &config,
+              const Nnet &nnet,
+              const ComputationRequest &request,
+              NnetComputation *computation);
 
-  // Top-level optimization routine.
-  void OptimizeComputation();
+
+/**
+   This class is responsible for merging matrices.  Suppose there are m1 and s1
+   on the one hand, where s1 is a submatrix consisting of the whole of m1, and
+   s2 which is a submatrix of m2 on the other hand, and somewhere in the
+   computation we have a command C, which is one of:
+      (a) the assignment command  "s2 = s1", or
+      (b) a propagate command with s1 as input and s2 as output, with a component
+          that supports propagate in place, or
+      (c) a backprop command with s1 as output-deriv and s2 as input-deriv, with
+          a component that supports backprop in place.
+   Suppose also that:
+     - m1 is not an output (or it's case (a))
+     - m1 is not an input, or s2 is the whole of m2.
+     - after command C, s1 is never accessed [apart from deallocating its matrix]
+       (or it's case (a) and s1 is never written to after command C).
+     - before command C, s2 is never accessed, apart from initializing it and possibly
+       zeroing it
+     - m2 is not an input.
+   Of course the matrices will have the same size.
+
+   We merge the variables as follows:
+     - All submatrices that reference m1, make them reference m2 instead.
+       [later we'll renumber so that there are no duplicates.]
+     - If m1 was an input, replace it as an input with m2.
+     - If it was case (a), replace the assignment command with a no-op.
+     - If both m1 and m2 have commands that deallocate them, keep only the
+       later of the two and make it refer to m2 (otherwise delete any
+       deallocation command).
+
+    At the end when we call RemoveOrphanMatrices(), renumbering code will
+    automatically detect that there are duplicate submatrices, and will merge
+    them, as well as removing the now-unused matrix indexes.
+ */
+class VariableMergingOptimizer {
+ public:
+  VariableMergingOptimizer(const NnetOptimizeConfig &config,
+                           const Nnet &nnet,
+                           const ComputationRequest &request,
+                           NnetComputation *computation);
+  // Note: you can call this only once.  If it returns true, it means it has
+  // merged variables.  In this case, you have the option to instantiate another
+  // copy of the class and try again with that other copy.
+  bool MergeVariables();
 
  private:
-
-  // this is all provisional.
-  struct MatrixOptInfo {
-    // list of all sub-matrix indexes that point to this matrix.
-    std::vector<int32> submatrices;
-    // index of sub-matrix that is the whole of this matrix.
-    int32 whole_submatrix;
-  };
-
-  // this is all provisional.
-  struct SubmatrixOptInfo {
-    // true if this sub-matrix is the whole of a matrix.
-    bool is_whole_matrix;
-    
-    // list of other sub-matrix indexes that have some overlap with this one
-    // (including this sub-matrix index).
-    std::vector<int32> overlapping_submatrices;
-
-    struct CommandInfo {
-      bool writes;
-      bool reads;
-    };
-
-    // list of commands that reference this index or others in
-    // "overlapping_submatrices".
-    std::vector<int32> commands;
-    
-    std::vector<int32> writing_commands;
-    
-    // list of sub-matrix indexes corresponding to this matrix.
-    std::vector<int32> submatrices;
-  };
-
-  struct StepOptInfo {
-  };
+  // this function, called while testing whether the pair (s1,s2) is a candidate
+  // for optimization, returns true if all the following conditions hold:
+  //   - s1 != s2
+  //   - s1 and s2 correspond to the whole of their corresponding matrices m1 and m2.
+  //   - neither matrix_already_optimized_[m1] nor matrix_already_optimized_[m2] is true
+  //   - m1 is not an output of the computation (or command command_index is an
+  //     assignment).
+  //   - m2 is not an input of the computation
+  //   - after command "command_index", no part of m1 is ever accessed [apart
+  //     from deallocating it] (or command "command_index" is an assignment and
+  //     no part of m1 is written to after command "command_index"
+  //   - before command C, no part of m2 is never accessed, apart from
+  //     initializing it and possibly zeroing it.
+  bool IsCandidate(int32 command_index, int32 s1, int32 s2) const;
   
+  // performs the merge.
+  // compute m1,m2 from s1,s2.
+  //  - All submatrices that reference m2, make them reference m1 instead.
+  //   [later we'll renumber so that there are no duplicates.]
+  //  - If m1 was an input, replace it as an input with m2 and remove
+  //    the command that initializes m2.
+  //  - If it was case (a), replace the assignment command with a no-op.
+  //  - If both m2 and m1 have commands that deallocate them, keep only the
+  //    later of the two and make it refer to m1 (otherwise delete any
+  //    deallocation command).
+  //  - Remove the original command that allocated m1, if it exists.
+  void DoMerge(int32 command_index, int32 s1, int32 s2);
+
+  void Initialize();
+
+  const NnetOptimizeConfig &config_;
+  const Nnet &nnet_;
+  const ComputationRequest &request_;
   NnetComputation *computation_;
 
-  std::vector<MatrixOptInfo> matrix_info_;
-
-  std::vector<SubmatrixOptInfo> submatrix_info_;
+  Analyzer analyzer_;
   
-  std::vector<StepOptInfo> step_info_;
+  // lists of submatrices that correspond to each matrix.
+  std::vector<std::vector<int32> > submatrix_lists_;
 
+  // true for each matrix that has already been part of
+  // an optimization (either as m1 or m2), so we can
+  // void potential
+  std::vector<bool> matrix_already_optimized_;  
 };
+
+/// This optimization function changes, where possible, matrix initializations
+/// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
+void RemoveUnnecessaryZeroing(const Nnet &nnet, NnetComputation *computation);
+
+
+/// This optimization moves commands that initialize matrices to as late as
+/// possible, and commands that empty matrices to as early as possible.
+void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
+
+/// This function detects matrices that have no submatrices corresponding to
+/// them (due, to changes made in other optimization code), and removes them
+/// from the computation.  It also renumbers the submatrix indexes to remove
+/// duplicates.
+void RemoveOrphanMatrices(NnetComputation *computation);
+
+/// Removes commands of type kNoOperation in the computation.
+void RemoveNoOps(NnetComputation *computation);
+
+/// Wherever matrix orig_matrix_index appears in the input of the network
+/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
+/// Returns true if it did replace it.
+bool ReplaceInInput(
+    const Nnet &nnet,
+    int32 orig_matrix_index, int32 new_matrix_index,
+    NnetComputation *computation);
+
+/// This function outputs to "submatrix_args" the addresses of a subset of
+/// arguments arg1 through arg6 in "command", that correspond to the indexes
+/// of submatrices.  This is useful in renumbering code.
+void IdentifySubmatrixArgs(NnetComputation::Command *command,
+                           std::vector<int32*> *submatrix_args);
+
+/// This function outputs to "matrix_args" the addresses of a subset of the
+/// arguments arg1 through arg6 in "command", that correspond to the indexes of
+/// matrices.  This is useful in renumbering code.  (Note: only a few types of
+/// command use matrix indexes).
+void IdentifyMatrixArgs(NnetComputation::Command *command,
+                        std::vector<int32*> *matrix_args);
+
+
+
+
 
   
 /*
@@ -151,7 +250,6 @@ class NnetOptimize {
       thereof) is set, it is set in a copy operation, or in a Propagate or
       Backprop operation that sets (rather than adds to) its output, then
       we can initialize it with kUndefined rather than kZero.
-
 
   (7) optimizations for memory consumption.
       The idea here is to move the command to initialize a matrix to just

@@ -260,8 +260,8 @@ class SumDescriptor {
   /// The output list is not necessarily sorted, and this function doesn't make
   /// sure that it's unique.
   virtual void GetDependencies(const Index &ind,
-                           std::vector<Cindex> *dependencies) const = 0;
-
+                               std::vector<Cindex> *dependencies) const = 0;
+  
   /// This function exists to enable us to manage optional dependencies,
   /// i.e. for making sense of expressions like (A + (B is present)) and (A if
   /// present; if not, B).  Suppose we are trying to compute the index "ind",

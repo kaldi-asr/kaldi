@@ -22,10 +22,7 @@
 
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-utils.h"
-#include <iostream>
-#include <sstream>
-#include <vector>
-#include <map>
+#include "nnet3/nnet-example.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -34,33 +31,65 @@ namespace nnet3 {
     This file contains various routines that are useful in test code.
 */
 struct NnetGenerationConfig {
+  bool allow_context;
+  bool allow_nonlinearity;
   bool allow_recursion;
   bool allow_clockwork;
   bool allow_multiple_inputs;
   bool allow_multiple_outputs;
+  bool allow_final_nonlinearity;
 
   NnetGenerationConfig():
-      allow_recursion(true), allow_clockwork(true) { }
+      allow_context(true),
+      allow_nonlinearity(true),
+      allow_recursion(true),
+      allow_clockwork(true),
+      allow_multiple_inputs(true),
+      allow_multiple_outputs(false),
+      allow_final_nonlinearity(true) { }
 };
 
-/// GenerateConfigSequence generates a sequence of at least one config files,
-/// output as strings, where the first in the sequence is the initial nnet,
-/// and the remaining ones may do things like add layers.
-void GenerateConfigSequence(
-    const NnetGenerationConfig &opts,
-    std::vector<std::string> *configs);
+/** Generates a sequence of at least one config files, output as strings, where
+    the first in the sequence is the initial nnet, and the remaining ones may do
+    things like add layers.  */
+void GenerateConfigSequence(const NnetGenerationConfig &opts,
+                            std::vector<std::string> *configs);
 
 
-/// This function computes an example computation request, for testing purposes.
-/// The "Simple" in the name means that it currently only supports neural nets
-/// that satisfy IsSimple(nnet) (defined in nnet-utils.h).
-/// If there are 2 inputs, the "input" will be first, followed by "ivector".
+/**  This function computes an example computation request, for testing purposes.
+     The "Simple" in the name means that it currently only supports neural nets
+     that satisfy IsSimple(nnet) (defined in nnet-utils.h).
+     If there are 2 inputs, the "input" will be first, followed by "ivector". */
 void ComputeExampleComputationRequestSimple(
     const Nnet &nnet,
     ComputationRequest *request,
     std::vector<Matrix<BaseFloat> > *inputs);
 
+Component *GenerateRandomSimpleComponent();
 
+
+/** Used for testing that the updatable parameters in two networks are the same.
+    May crash if structure differs.  Prints warning and returns false if
+    parameters differ.  E.g. set threshold to 1.0e-05 (it's a relative
+    threshold, applied per component). */
+bool NnetParametersAreIdentical(const Nnet &nnet1,
+                                const Nnet &nnet2,
+                                BaseFloat threshold);
+
+
+/** Low-level function that generates an nnet training example.  By "simple" we
+    mean there is one output named "output", an input named "input", and
+    possibly also an input named "ivector" (this will be assumed absent if
+    ivector_dim <= 0).  This function generates exactly "left_context" or
+    "right_context" frames of context on the left and right respectively. */
+void GenerateSimpleNnetTrainingExample(
+    int32 num_supervised_frames,    
+    int32 left_context,
+    int32 right_context,
+    int32 input_dim,
+    int32 output_dim,
+    int32 ivector_dim,
+    NnetExample *example);
 
 } // namespace nnet3
 } // namespace kaldi
