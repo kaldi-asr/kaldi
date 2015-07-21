@@ -33,6 +33,17 @@ mv stylesheet.css html/
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
+
+   echo "**First copying to kaldi-asr.org**"
+   # First copy to kaldi-asr.org/docs
+   scp html.tar.gz newrelay:/var/www/kaldi-asr
+
+   echo 'cd /var/www/kaldi-asr/; rm -rf html doc.old;
+        tar -xzf html.tar.gz; mv doc doc.old; mv html doc; rm -rf doc.old' \
+           | ssh newrelay bash
+
+   echo "**Now copying to sourceforge**"
+   # Next copy to sourceforge.
    scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
 
    #may have to do this:
