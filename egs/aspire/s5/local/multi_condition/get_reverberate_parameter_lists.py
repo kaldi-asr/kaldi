@@ -57,7 +57,6 @@ if __name__ == "__main__":
   wav_out_files = return_nonempty_lines(open(params.output_wav_file_list, 'r').readlines())
   assert(len(wav_files) == len(wav_out_files))
   impulses = list_cyclic_iterator(return_nonempty_lines(open(params.impulses_noises_dir+'/info/impulse_files').readlines()), random_seed = params.random_seed)
-  noises = return_nonempty_lines(open(params.impulses_noises_dir+'/info/noise_files').readlines())
   noises_impulses_files = glob.glob(params.impulses_noises_dir+'/info/noise_impulse_*')
   impulse_noise_index = []
   for file in noises_impulses_files:

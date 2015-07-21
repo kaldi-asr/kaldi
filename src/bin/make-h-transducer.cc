@@ -82,6 +82,10 @@ int main(int argc, char *argv[]) {
                                                      trans_model,
                                                      hcfg,
                                                      &disambig_syms_out);
+#if _MSC_VER
+    if (fst_out_filename == "")
+      _setmode(_fileno(stdout),  _O_BINARY);
+#endif
 
     if (disambig_out_filename != "") {  // if option specified..
       if (disambig_out_filename == "-")

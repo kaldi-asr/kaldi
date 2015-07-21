@@ -15,6 +15,7 @@ lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
 min_lmwt=9
 max_lmwt=20
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -136,8 +137,11 @@ $cmd JOB=1:$nj $dir/log/decode.JOB.log \
    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
   $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data1 $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" --min_lmwt $min_lmwt --max_lmwt $max_lmwt $data1 $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }   
+fi
 
 exit 0;

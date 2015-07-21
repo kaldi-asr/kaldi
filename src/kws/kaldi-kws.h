@@ -47,8 +47,7 @@ typedef fst::VectorFst<KwsLexicographicArc> KwsLexicographicFst;
 typedef LogXStdXStdprimeWeight KwsProductWeight;
 typedef LogXStdXStdprimeArc KwsProductArc;
 typedef fst::VectorFst<KwsProductArc> KwsProductFst;
-           
 
-} // namespace kaldi
 
+}  // namespace kaldi
 #endif  // KALDI_LAT_KALDI_KWS_H_

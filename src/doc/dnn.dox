@@ -64,7 +64,7 @@ namespace kaldi {
 
   The best published descriptions of the DNN setups are:
   - Karel's setup : <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2013/vesely_interspeech2013_IS131333.pdf">Sequence-discriminative training of deep neural networks</a>
-  - Dans's setup : <a href="http://arxiv-web3.library.cornell.edu/pdf/1410.7455v4">Parallel training of DNNs with natural gradient and parameter averaging</a>
+  - Dan's setup : <a href="http://arxiv-web3.library.cornell.edu/pdf/1410.7455v4">Parallel training of DNNs with natural gradient and parameter averaging</a>
 
   The setups use incompatible DNN formats, while there is a converter of Karel's network into Dan's format \ref dnn1_conversion_to_dnn2.
 

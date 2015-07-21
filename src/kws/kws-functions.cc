@@ -18,7 +18,8 @@
 // limitations under the License.
 
 
-#include "lat/kws-functions.h"
+#include "lat/lattice-functions.h"
+#include "kws/kws-functions.h"
 #include "fstext/determinize-star.h"
 #include "fstext/epsilon-property.h"
 
@@ -106,83 +107,6 @@ bool ClusterLattice(CompactLattice *clat,
   return true;
 }
 
-bool ComputeCompactLatticeAlphas(const CompactLattice &clat,
-                                 vector<double> *alpha) {
-  using namespace fst;
-
-  // typedef the arc, weight types
-  typedef CompactLattice::Arc Arc;
-  typedef Arc::Weight Weight;
-  typedef Arc::StateId StateId;
-
-  //Make sure the lattice is topologically sorted.
-  if (clat.Properties(fst::kTopSorted, true) == 0) {
-    KALDI_WARN << "Input lattice must be topologically sorted.";
-    return false;
-  }
-  if (clat.Start() != 0) {
-    KALDI_WARN << "Input lattice must start from state 0.";
-    return false;
-  }
-
-  int32 num_states = clat.NumStates();
-  (*alpha).resize(0);
-  (*alpha).resize(num_states, kLogZeroDouble);
-
-  // Now propagate alphas forward. Note that we don't acount the weight of the
-  // final state to alpha[final_state] -- we acount it to beta[final_state];
-  (*alpha)[0] = 0.0;
-  for (StateId s = 0; s < num_states; s++) {
-    double this_alpha = (*alpha)[s];
-    for (ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done(); aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Weight().Value1() + arc.weight.Weight().Value2());
-      (*alpha)[arc.nextstate] = LogAdd((*alpha)[arc.nextstate], this_alpha + arc_like);
-    }
-  }
-
-  return true;
-}
-
-bool ComputeCompactLatticeBetas(const CompactLattice &clat,
-                                vector<double> *beta) {
-  using namespace fst;
-
-  // typedef the arc, weight types
-  typedef CompactLattice::Arc Arc;
-  typedef Arc::Weight Weight;
-  typedef Arc::StateId StateId;
-
-  // Make sure the lattice is topologically sorted.
-  if (clat.Properties(fst::kTopSorted, true) == 0) {
-    KALDI_WARN << "Input lattice must be topologically sorted.";
-    return false;
-  }
-  if (clat.Start() != 0) {
-    KALDI_WARN << "Input lattice must start from state 0.";
-    return false;
-  }
-
-  int32 num_states = clat.NumStates();
-  (*beta).resize(0);
-  (*beta).resize(num_states, kLogZeroDouble);
-
-  // Now propagate betas backward. Note that beta[final_state] contains the
-  // weight of the final state in the lattice -- compare that with alpha.
-  for (StateId s = num_states-1; s >= 0; s--) {
-    Weight f = clat.Final(s);
-    double this_beta = -(f.Weight().Value1()+f.Weight().Value2());
-    for (ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done(); aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      double arc_like = -(arc.weight.Weight().Value1()+arc.weight.Weight().Value2());
-      double arc_beta = (*beta)[arc.nextstate] + arc_like;
-      this_beta = LogAdd(this_beta, arc_beta);
-    }
-    (*beta)[s] = this_beta;
-  }
-
-  return true;
-}
 
 class CompactLatticeToKwsProductFstMapper {
  public:

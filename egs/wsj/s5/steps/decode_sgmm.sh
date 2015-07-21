@@ -31,7 +31,7 @@ vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
 use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
-
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -252,12 +252,15 @@ fi
 
 
 if [ $stage -le 7 ]; then
-  [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  echo "score best paths"
-  local/score.sh --cmd "$cmd" $data $graphdir $dir
-  echo "score confidence and timing with sclite"
-  #local/score_sclite_conf.sh --cmd "$cmd" --language turkish $data $graphdir $dir
+  if ! $skip_scoring ; then
+    [ ! -x local/score.sh ] && \
+      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    echo "score best paths"
+    local/score.sh --cmd "$cmd" $data $graphdir $dir ||
+      { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+    #echo "score confidence and timing with sclite"
+    #local/score_sclite_conf.sh --cmd "$cmd" --language turkish $data $graphdir $dir
+  fi
 fi
 echo "Decoding done."
 exit 0;

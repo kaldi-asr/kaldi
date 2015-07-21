@@ -24,8 +24,8 @@
 #include "fstext/fstext-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "lat/kaldi-kws.h"
-#include "lat/kws-functions.h"
+#include "kws/kaldi-kws.h"
+#include "kws/kws-functions.h"
 #include "fstext/epsilon-property.h"
 
 int main(int argc, char *argv[]) {

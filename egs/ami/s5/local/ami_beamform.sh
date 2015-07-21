@@ -1,7 +1,7 @@
 #!/bin/bash
 
-#Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
-#Apache 2.0
+# Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# Apache 2.0
 
 wiener_filtering=false
 nj=4
@@ -28,12 +28,17 @@ sdir=$2
 odir=$3
 wdir=data/local/beamforming
 
+set -e 
+set -u
+
 mkdir -p $odir
 mkdir -p $wdir/log
 
 meetings=$wdir/meetings.list
 
 cat local/split_train.orig local/split_dev.orig local/split_eval.orig | sort > $meetings
+# Removing ``lost'' MDM session-ids : http://groups.inf.ed.ac.uk/ami/corpus/dataproblems.shtml 
+mv $meetings{,.orig}; grep -v "IS1003b\|IS1007d" $meetings.orig >$meetings
 
 ch_inc=$((8/$numch))
 bmf=
@@ -43,7 +48,7 @@ done
 
 echo "Will use the following channels: $bmf"
 
-#make the channel file
+# make the channel file,
 if [ -f $wdir/channels_$numch ]; then
   rm $wdir/channels_$numch
 fi
@@ -58,17 +63,14 @@ do
   echo $channels >> $wdir/channels_$numch
 done < $meetings
 
-#do noise cancellation
-
+# do noise cancellation,
 if [ $wiener_filtering == "true" ]; then
   echo "Wiener filtering not yet implemented."
   exit 1;
 fi
 
-#do beamforming
-
+# do beamforming,
 echo -e "Beamforming\n"
-
 $cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
      local/beamformit.sh $nj JOB $numch $meetings $sdir $odir
 

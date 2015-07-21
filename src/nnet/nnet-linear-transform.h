@@ -45,30 +45,43 @@ class LinearTransform : public UpdatableComponent {
     // define options
     float param_stddev = 0.1;
     float learn_rate_coef = 1.0;
+    std::string read_matrix_file;
     // parse config
     std::string token; 
     while (!is.eof()) {
       ReadToken(is, false, &token); 
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
+      else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev)";
+                     << " (ParamStddev|ReadMatrix|LearnRateCoef)";
       is >> std::ws; // eat-up whitespace
     }
 
     //
     // initialize
     //
-    Matrix<BaseFloat> mat(output_dim_, input_dim_);
-    for (int32 r=0; r<output_dim_; r++) {
-      for (int32 c=0; c<input_dim_; c++) {
-        mat(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+    if (read_matrix_file != "") { // load from file,
+      bool binary;
+      Input in(read_matrix_file, &binary);
+      linearity_.Read(in.Stream(), binary);
+      in.Close();
+      KALDI_LOG << "Loaded <LinearTransform> matrix from file : " << read_matrix_file;
+    } else { // random initialization,
+      linearity_.Resize(output_dim_, input_dim_);
+      for (int32 r=0; r<output_dim_; r++) {
+        for (int32 c=0; c<input_dim_; c++) {
+          linearity_(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
+        }
       }
     }
-    linearity_ = mat;
     //
     learn_rate_coef_ = learn_rate_coef;
     //
+
+    // check dims,
+    KALDI_ASSERT(linearity_.NumRows() == output_dim_);
+    KALDI_ASSERT(linearity_.NumCols() == input_dim_);
   }
 
   void ReadData(std::istream &is, bool binary) {

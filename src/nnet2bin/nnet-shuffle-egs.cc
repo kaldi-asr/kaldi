@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
                                     new NnetExample(example_reader.Value()));
         } else {
           example_writer.Write(egs[index].first, *(egs[index].second));
+          egs[index].first = example_reader.Key();
           *(egs[index].second) = example_reader.Value();
           num_done++;
         }

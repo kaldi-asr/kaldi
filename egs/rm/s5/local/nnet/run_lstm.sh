@@ -47,13 +47,13 @@ if [ $stage -le 1 ]; then
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
       --train-opts "--momentum 0.9 --halving-factor 0.5" \
       --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
-      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 50.0" \
+      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 5.0" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 

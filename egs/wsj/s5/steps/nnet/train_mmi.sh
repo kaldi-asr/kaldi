@@ -58,10 +58,8 @@ for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.scp $s
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-# check if CUDA is compiled in,
-if ! $skip_cuda_check; then
-  cuda-compiled || { echo 'CUDA was not compiled in, skipping! Check src/kaldi.mk and src/configure' && exit 1; }
-fi
+# check if CUDA compiled in,
+if ! $skip_cuda_check; then cuda-compiled || { echo "Error, CUDA not compiled-in!"; exit 1; } fi
 
 mkdir -p $dir/log
 
@@ -138,20 +136,20 @@ lats="scp:$denlatdir/lat.scp"
 
 # Optionally apply boosting
 if [[ "$boost" != "0.0" && "$boost" != 0 ]]; then
-  #make lattice scp with same order as the shuffled feature scp
-  awk '{ if(r==0) { latH[$1]=$2; }
-         if(r==1) { if(latH[$1] != "") { print $1" "latH[$1] } }
-  }' $denlatdir/lat.scp r=1 $dir/train.scp > $dir/lat.scp
-  #get the list of alignments
+  # make lattice scp with same order as the shuffled feature scp,
+  awk '{ if(r==0) { utt_id=$1; latH[$1]=$0; } # lat.scp
+         if(r==1) { if(latH[$1] != "") { print latH[$1]; } } # train.scp
+  }' r=0 $denlatdir/lat.scp r=1 $dir/train.scp > $dir/lat.scp
+  # get the list of alignments,
   ali-to-phones $alidir/final.mdl "$ali" ark,t:- | awk '{print $1;}' > $dir/ali.lst
-  #remove feature files which have no lattice or no alignment,
-  #(so that the mmi training tool does not blow-up due to lattice caching)
+  # remove from features sentences which have no lattice or no alignment,
+  # (so that the mmi training tool does not blow-up due to lattice caching),
   mv $dir/train.scp $dir/train.scp_unfilt
-  awk '{ if(r==0) { latH[$1]="1"; }
-         if(r==1) { aliH[$1]="1"; }
-         if(r==2) { if((latH[$1] != "") && (aliH[$1] != "")) { print $0; } }
-  }' $dir/lat.scp r=1 $dir/ali.lst r=2 $dir/train.scp_unfilt > $dir/train.scp
-  #create the lat pipeline
+  awk '{ if(r==0) { latH[$1]="1"; } # lat.scp
+         if(r==1) { aliH[$1]="1"; } # ali.lst
+         if(r==2) { if((latH[$1] != "") && (aliH[$1] != "")) { print $0; } } # train.scp_
+  }' r=0 $dir/lat.scp r=1 $dir/ali.lst r=2 $dir/train.scp_unfilt > $dir/train.scp
+  # create the lat pipeline,
   lats="ark,o:lattice-boost-ali --b=$boost --silence-phones=$silphonelist $alidir/final.mdl scp:$dir/lat.scp '$ali' ark:- |"
 fi
 ###

@@ -23,12 +23,6 @@
 
 
 int main(int argc, char *argv[]) {
-#ifdef _MSC_VER
-  if (0) {
-    fst::VectorFst<fst::StdArc> *fst = NULL;
-    fst->Write("");
-  }
-#endif
   try {
     using namespace kaldi;
     typedef kaldi::int32 int32;
@@ -57,6 +51,11 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(trans_model_filename, &trans_model);
 
     fst::VectorFst<fst::StdArc> *fst = GetPdfToTransitionIdTransducer(trans_model);
+
+#if _MSC_VER
+    if (fst_out_filename == "")
+      _setmode(_fileno(stdout),  _O_BINARY);
+#endif
 
     if (!fst->Write(fst_out_filename))
       KALDI_ERR << "Error writing fst to "

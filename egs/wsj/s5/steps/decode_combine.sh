@@ -10,6 +10,7 @@
 # Begin configuration section.
 weight1=0.5 # Weight on 1st set of lattices.
 cmd=run.pl
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -54,8 +55,11 @@ $cmd JOB=1:$nj $dir/log/interp.JOB.log \
   lattice-copy-backoff "ark,s,cs:gunzip -c $srcdir1/lat.JOB.gz|" ark,s,cs:- \
    "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $lang_or_graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $lang_or_graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 exit 0;

@@ -1,0 +1,10 @@
+# On Windows it is important to keep unix-style line endings in all egs/ files.
+egs/**             eol=lf
+
+# Windows build files fare better when stored in native Windows CR-LF line
+# ending format.
+msbuild/*.*proj    eol=crlf
+msbuild/*.targets  eol=crlf
+msbuild/*.props    eol=crlf
+msbuild/*.ps1      eol=crlf
+

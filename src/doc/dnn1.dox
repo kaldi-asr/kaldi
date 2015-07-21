@@ -94,7 +94,7 @@ Besides the DNN recipe, there are also other example scripts which can be handy:
 - CNN : egs/rm/s5/local/nnet/run_cnn.sh , (CNN = Convolutional Neural Network, <a href="www.cs.toronto.edu/~asamir/papers/icassp13_cnn.pdf">see paper</a>, we have 1D convolution on frequency axis)
 - Autoencoder training : egs/timit/s5/local/nnet/run_autoencoder.sh
 - Tandem system : egs/swbd/s5c/local/nnet/run_dnn_tandem_uc.sh , (uc = Universal context network, <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2011/vesely_asru2011_00042.pdf">see paper</a>)
-- Multilingual/Multitask : egs/rm/s5/local/nnet/run_multisoftmax.sh, (Network with <BlockSoftmax> output trained on RM and WSJ, same C++ design as was used in <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2012/vesely_slt2012_0000336.pdf">SLT2012 paper</a>)
+- Multilingual/Multitask : egs/rm/s5/local/nnet/run_blocksoftmax.sh, (Network with <BlockSoftmax> output trained on RM and WSJ, same C++ design as was used in <a href="http://www.fit.vutbr.cz/research/groups/speech/publi/2012/vesely_slt2012_0000336.pdf">SLT2012 paper</a>)
 
 
 <hr><!-- #################################################################################################################### -->

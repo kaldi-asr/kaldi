@@ -20,7 +20,7 @@
 #include <pthread.h>
 #include <assert.h>
 
-#define MAX_STRING 100
+#define MAX_STRING 1024
 #define MAX_SENTENCE_LENGTH 10000
 #define MAX_CODE_LENGTH 40
 
@@ -915,6 +915,16 @@ int ArgPos(char *str, int argc, char **argv) {
   return -1;
 }
 
+void CopyOrFail(char *output, const char *input) {
+  if (strlen(input) >= MAX_STRING ) {
+    fprintf(stderr, "The string %s is too long! Probably too deep directory"
+        "structure. Either patch the rnnlm.c or change the directory path\n",
+        input);
+  } else {
+    strcpy(output, input);
+  }
+}
+
 int main(int argc, char **argv) {
   int i;
   if (argc == 1) {
@@ -970,9 +980,9 @@ int main(int argc, char **argv) {
   model_file[0] = 0;
   test_file[0] = 0;
   if ((i = ArgPos((char *)"-hidden", argc, argv)) > 0) layer1_size = atoi(argv[i + 1]);
-  if ((i = ArgPos((char *)"-train", argc, argv)) > 0) strcpy(train_file, argv[i + 1]);
-  if ((i = ArgPos((char *)"-valid", argc, argv)) > 0) strcpy(valid_file, argv[i + 1]);
-  if ((i = ArgPos((char *)"-test", argc, argv)) > 0) strcpy(test_file, argv[i + 1]);
+  if ((i = ArgPos((char *)"-train", argc, argv)) > 0) CopyOrFail(train_file, argv[i + 1]);
+  if ((i = ArgPos((char *)"-valid", argc, argv)) > 0) CopyOrFail(valid_file, argv[i + 1]);
+  if ((i = ArgPos((char *)"-test", argc, argv)) > 0) CopyOrFail(test_file, argv[i + 1]);
   if ((i = ArgPos((char *)"-debug", argc, argv)) > 0) debug_mode = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-bptt", argc, argv)) > 0) bptt = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-bptt-block", argc, argv)) > 0) bptt_block = atoi(argv[i + 1]);
@@ -982,8 +992,8 @@ int main(int argc, char **argv) {
   if ((i = ArgPos((char *)"-stop", argc, argv)) > 0) stop = atof(argv[i + 1]);
   if ((i = ArgPos((char *)"-retry", argc, argv)) > 0) max_retry = atoi(argv[i + 1]);
   if ((i = ArgPos((char *)"-rnnlm", argc, argv)) > 0) {
-    strcpy(model_file, argv[i + 1]);
-    strcpy(model_file_nnet, argv[i + 1]);
+    CopyOrFail(model_file, argv[i + 1]);
+    CopyOrFail(model_file_nnet, argv[i + 1]);
     strcat(model_file_nnet, ".nnet");
   }
   if ((i = ArgPos((char *)"-threads", argc, argv)) > 0) num_threads = atoi(argv[i + 1]);

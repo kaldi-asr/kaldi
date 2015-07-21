@@ -57,6 +57,8 @@ if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <input-model> <egs-dir> <exp-dir>"
   echo " e.g.: $0 exp/nnet4c/final.mdl exp/nnet4c/egs exp/nnet5c/"
   echo "see also the older script update_nnet.sh which creates the egs itself"
+  echo "You probably now want to use train_more2.sh, which uses the newer,"
+  echo "more compact egs format."
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"

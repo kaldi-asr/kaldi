@@ -20,6 +20,7 @@ weight_tau=10
 flags=mw  # could also contain "v" for variance; the default
           # tau for that is 50.
 stage=1
+skip_scoring=false
 # End configuration section.
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -107,8 +108,11 @@ fi
 #rm -f $dir/pass1_decode.*.ali
 #rm -f $dir/tmp.*.tra
 
-[ ! -x local/score.sh ] && \
-  echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-local/score.sh --cmd "$cmd" $data $graphdir $dir
+if ! $skip_scoring ; then
+  [ ! -x local/score.sh ] && \
+    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+  local/score.sh --cmd "$cmd" $data $graphdir $dir ||
+    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+fi
 
 exit 0;

@@ -175,7 +175,7 @@ local/multi_condition/run_nnet2_ms_disc.sh
  local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
    --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
- #%WER 29.0 | 2120 27212 | 77.6 15.1 7.3 6.6 29.0 78.0 | -1.248 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iter430_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
+ #%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
 
  local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \

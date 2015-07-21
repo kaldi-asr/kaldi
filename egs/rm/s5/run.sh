@@ -248,3 +248,6 @@ local/run_sgmm2.sh
 
 # Karel's CNN recipe.
 # local/nnet/run_cnn.sh
+
+# Karel's 2D-CNN recipe (from Harish).
+# local/nnet/run_cnn2d.sh

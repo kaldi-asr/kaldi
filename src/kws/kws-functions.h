@@ -22,7 +22,7 @@
 #define KALDI_LAT_KWS_FUNCTIONS_H_
 
 #include "lat/kaldi-lattice.h"
-#include "lat/kaldi-kws.h"
+#include "kws/kaldi-kws.h"
 
 namespace kaldi {
 
@@ -63,17 +63,6 @@ bool CompareInterval(const Interval &i1,
 // ilabels.
 bool ClusterLattice(CompactLattice *clat, 
                     const vector<int32> &state_times);
-
-// This function is something similar to LatticeForwardBackward(), but it is on
-// the CompactLattice lattice format. Also we only need the alpha in the forward 
-// path, not the posteriors.
-bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
-                                 vector<double> *alpha);
-
-// A sibling of the function CompactLatticeAlphas()... We compute the beta from
-// the backward path here.
-bool ComputeCompactLatticeBetas(const CompactLattice &lat,
-                                vector<double> *beta);
 
 // This function contains two steps: weight pushing and factor generation. The
 // original ShortestDistance() is not very efficient, so we do the weight

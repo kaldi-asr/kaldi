@@ -24,7 +24,7 @@
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
 #include "nnet/nnet-lstm-projected-streams.h"
-
+#include "nnet/nnet-blstm-projected-streams.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -357,6 +357,10 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
       LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
     }
+    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
+      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
+      comp.ResetLstmStreams(stream_reset_flag);
+    }
   }
 }
 
@@ -503,8 +507,8 @@ std::string Nnet::InfoBackPropagate() const {
 
 void Nnet::Check() const {
   // check we have correct number of buffers,
-  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1)
-  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1)
+  KALDI_ASSERT(propagate_buf_.size() == NumComponents()+1);
+  KALDI_ASSERT(backpropagate_buf_.size() == NumComponents()+1);
   // check dims,
   for (size_t i = 0; i + 1 < components_.size(); i++) {
     KALDI_ASSERT(components_[i] != NULL);

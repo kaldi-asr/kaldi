@@ -54,6 +54,7 @@ class Component {
     kConvolutionalComponent,
     kConvolutional2DComponent,
     kLstmProjectedStreams,
+    kBLstmProjectedStreams,
 
     kActivationFunction = 0x0200, 
     kSoftmax, 

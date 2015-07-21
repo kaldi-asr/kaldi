@@ -34,7 +34,7 @@ use_fmllr=false
 fmllr_iters=10
 fmllr_min_count=1000
 scale_opts="--transition-scale=1.0 --self-loop-scale=0.1"
-
+skip_scoring=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -260,12 +260,13 @@ fi
 
 
 if [ $stage -le 7 ]; then
-  [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  echo "score best paths"
-  local/score.sh --cmd "$cmd" $data $lang $dir
-  echo "score confidence and timing with sclite"
-  #local/score_sclite_conf.sh --cmd "$cmd" --language turkish $data $lang $dir
+  if ! $skip_scoring ; then
+    [ ! -x local/score.sh ] && \
+      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    echo "score best paths"
+    local/score.sh --cmd "$cmd" $data $lang $dir ||
+      { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+  fi
 fi
 echo "Decoding done."
 exit 0;

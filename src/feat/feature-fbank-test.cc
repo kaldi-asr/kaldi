@@ -38,7 +38,7 @@ static void UnitTestReadWave() {
   std::cout << "<<<=== Reading waveform\n";
 
   {
-    std::ifstream is("test_data/test.wav");
+    std::ifstream is("test_data/test.wav", std::ios_base::binary);
     WaveData wave;
     wave.Read(is);
     const Matrix<BaseFloat> data(wave.Data());
@@ -112,7 +112,7 @@ static void UnitTestSimple() {
 static void UnitTestHTKCompare1() {
   std::cout << "=== UnitTestHTKCompare1() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -193,7 +193,7 @@ static void UnitTestHTKCompare1() {
 static void UnitTestHTKCompare2() {
   std::cout << "=== UnitTestHTKCompare2() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -273,7 +273,7 @@ static void UnitTestHTKCompare2() {
 static void UnitTestHTKCompare3() {
   std::cout << "=== UnitTestHTKCompare3() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -359,7 +359,7 @@ static void UnitTestHTKCompare3() {
 static void UnitTestHTKCompare4() {
   std::cout << "=== UnitTestHTKCompare4() ===\n";
 
-  std::ifstream is("test_data/test.wav");
+  std::ifstream is("test_data/test.wav", std::ios_base::binary);
   WaveData wave;
   wave.Read(is);
   KALDI_ASSERT(wave.Data().NumRows() == 1);

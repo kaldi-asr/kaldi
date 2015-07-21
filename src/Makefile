@@ -6,7 +6,7 @@ SHELL := /bin/bash
 
 
 SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
-          fstext hmm lm decoder lat cudamatrix nnet \
+          fstext hmm lm decoder lat kws cudamatrix nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 nnet2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin
@@ -177,4 +177,5 @@ online2bin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fst
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2
-kwsbin: fstext lat base util hmm tree matrix
+kws: base util hmm tree matrix lat
+kwsbin: fstext kws lat base util hmm tree matrix

@@ -9,6 +9,8 @@ cmd=run.pl
 tscale=1.0      # transition scale.
 loopscale=0.1   # scale for self-loops.
 cleanup=true
+ngram_order=1
+srilm_options="-wbdiscount"   # By default, use Witten-Bell discounting in SRILM
 # End configuration section.
 
 set -e
@@ -19,16 +21,23 @@ echo "$0 $@"
 . parse_options.sh || exit 1;
 
 if [ $# -ne 4 ]; then
-  echo "This script is a wrapper of steps/cleanup/make_transcript_graph.sh. In"
-  echo "the segmentation case graphs are created for the original transcript"
-  echo "(the long transcript before split), therefore we have to duplicate the"
-  echo "graphs for the new utterances. We do this in the scp file so that we"
-  echo "can avoid storing the duplicate graphs on the disk."
+  echo "This script builds one decoding graph for each truncated utterance in"
+  echo "segmentation. It first calls steps/cleanup/make_utterance_graph.sh to"
+  echo "build one decoding graph for each original utterance, which will be"
+  echo "shared by the truncated utterances from the same original utterance."
+  echo "We assign the decoding graph to each truncated utterance using the scp"
+  echo "file so that we can avoid duplicating the graphs on the disk."
   echo ""
   echo "Usage: $0 [options] <data-dir> <lang-dir> <model-dir> <graph-dir>"
+  echo " e.g.: $0 data/train_si284_split/ \\"
+  echo "                data/lang exp/tri2b/ exp/tri2b/graph_train_si284_split"
+  echo ""
   echo "Options:"
-  echo "    --lm-order              # order of n-gram language model"
-  echo "    --lm-options            # options for ngram-count in SRILM tool"
+  echo "    --ngram-order           # order of n-gram language model"
+  echo "    --srilm-options         # options for ngram-count in SRILM tool"
+  echo "    --tscale                # transition scale"
+  echo "    --loopscale             # scale for self-loops"
+  echo "    --cleanup               # if true, removes the intermediate files"
   exit 1;
 fi
 
@@ -44,6 +53,27 @@ for f in $data/text.orig $data/orig2utt $lang/L_disambig.fst \
     exit 1;
   fi
 done
+
+# If --ngram-order is larger than 1, we will have to use SRILM
+if [ $ngram_order -gt 1 ]; then
+  ngram_count=`which ngram-count`;
+  if [ -z $ngram_count ]; then
+    if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+      sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+    else
+      sdir=`pwd`/../../../tools/srilm/bin/i686
+    fi
+    if [ -f $sdir/ngram-count ]; then
+      echo Using SRILM tools from $sdir
+      export PATH=$PATH:$sdir
+    else
+      echo You appear to not have SRILM tools installed, either on your path,
+      echo or installed in $sdir.  See tools/install_srilm.sh for installation
+      echo instructions.
+      exit 1
+    fi
+  fi
+fi
 
 # Creates one graph for each transcript. We parallelize the process a little
 # bit.
@@ -63,9 +93,10 @@ for n in $(seq $nj); do
 done
 utils/split_scp.pl $data/text.orig $split_texts
 
-$cmd JOB=1:$nj $graph_dir/log/make_transcript_graph.JOB.log \
-  steps/cleanup/make_transcript_graph.sh --cleanup $cleanup \
+$cmd JOB=1:$nj $graph_dir/log/make_utterance_graph.JOB.log \
+  steps/cleanup/make_utterance_graph.sh --cleanup $cleanup \
   --tscale $tscale --loopscale $loopscale \
+  --ngram-order $ngram_order --srilm-options "$srilm_options" \
   $graph_dir/split$nj/JOB/text $lang \
   $model_dir $graph_dir/split$nj/JOB || exit 1;
 

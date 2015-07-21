@@ -1,0 +1,5 @@
+This directory contains DNN scripts based on the nnet2 recipes found in
+the ASR examples (e.g., fisher_english). The scripts have been modified
+for speaker recognition purposes. Most of the scripts are lightly modified
+versions of those appearing in the steps or local directories of
+egs/fisher_english.

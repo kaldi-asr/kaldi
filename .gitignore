@@ -2,6 +2,7 @@
 *.slo
 *.lo
 *.o
+*.obj
 
 # emacs saves
 [#]*[#]
@@ -10,14 +11,23 @@
 # Compiled Dynamic libraries
 *.so
 *.dylib
+*.dll
 
 # Compiled Static libraries
 *.lai
 *.la
 *.a
+*.lib
 
 # some weird thing that MacOs creates.
 *.dSYM
+
+# Windows executable, symbol and some weird files.
+*.exe
+*.pdb
+*.exp
+*.manifest
+
 
 # /tools/
 /tools/ATLAS/
@@ -65,7 +75,6 @@
 /src/bin/align-mapped
 /src/bin/align-equal
 /src/bin/compute-wer
-/src/bin/arpa2fst.cc
 /src/bin/ali-to-phones
 /src/bin/ali-to-post
 /src/bin/acc-lda
