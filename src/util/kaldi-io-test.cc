@@ -163,8 +163,9 @@ void UnitTestIoPipe(bool binary) {
   // This is as UnitTestIoNew except with different filenames.
   {
 #if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
-    const char *filename_out = "|copy /b con tmpf.gz",
-        *filename_in = "copy /b tmpf.gz con|";
+    // self-invocation on Windows that emulates cat(1)
+    const char *filename_out = "|kaldi-io-test cat > tmpf.gz",
+        *filename_in = "kaldi-io-test cat tmpf.gz|";
 #else
     const char *filename_out = "|gzip -c > tmpf.gz",
         *filename_in = "gunzip -c tmpf.gz |";
@@ -317,9 +318,37 @@ void UnitTestNativeFilename() {
 
 }  // end namespace kaldi.
 
+#if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
+//         /\_/\   Windows has no cat!
+//    ____/ o o \
+//  /~____  =%= /  There is probably no suitable tool to test popen I/O
+// (______)__m_m)  on Windows, so we emulate a lame version of cat(1).
+static int TinyCat(int argc, const char** argv) {
+  const char* name_in = argc > 0 && strcmp(argv[0], "-") ? argv[0] : NULL;
+  int fd_in = name_in ? _open(name_in, _O_RDONLY) : _fileno(stdin);
+  if (fd_in < 0)
+    return 1;
 
-int main() {
+  int fd_out = _fileno(stdout);
+  _setmode(fd_in, _O_BINARY);
+  _setmode(fd_out, _O_BINARY);
+
+  char buffer[100];
+  int last_read;
+  while ((last_read = _read(fd_in, buffer, sizeof(buffer))) > 0)
+    _write(fd_out, buffer, last_read);
+
+  if (name_in) _close(fd_in);
+  return 0;
+}
+#endif
+
+int main(int argc, const char** argv) {
   using namespace kaldi;
+#if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
+  if (argc > 1 && strcmp(argv[1], "cat") == 0)
+    return TinyCat(argc - 2, argv + 2);
+#endif
 
   UnitTestNativeFilename();
   UnitTestIoNew(false);
@@ -333,4 +362,3 @@ int main() {
   KALDI_ASSERT(1);  // just wanted to check that KALDI_ASSERT does not fail for 1.
   return 0;
 }
-
