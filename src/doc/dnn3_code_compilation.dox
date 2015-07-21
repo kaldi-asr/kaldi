@@ -1,0 +1,927 @@
+// doc/dnn3_code_compilation.dox
+
+
+// Copyright 2015   Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+namespace nnet3 {
+
+/**
+  \page dnn3_code_compilation Compilation in the "nnet3" setup
+
+  \section dnn3_code_compilation_intro Introduction
+
+  This page covers the compilation process in the "nnet3" setup.  It will
+  generally only be of interest to those who want to understand the internals of
+  the framework.
+
+  - Up: \ref dnn3.
+  - Previous: \ref dnn3_code_data_types
+  - Next: \ref dnn3_code_optimization
+
+  \section dnn3_compile_overview Overview of compilation
+
+   We assume that the reader is familiar with the data types introduced in
+   \ref dnn3_code_data_types.  The compilation process is something that
+   takes as input an Nnet and a ComputationRequest, and outputs a
+   NnetComputation.  The ComputationRequest includes a representation of
+   what output indexes are requested and what input indexes are available;
+   the reason why we don't just supply the output indexes and let the compiler
+   work out what input indexes are required, is that some networks such as RNNs
+   may consume an arbitrary amount of input to produce a given output.
+
+   Something that might be considered a part of the compilation process, but
+   which we discuss in a separate page, is code optimization: see \ref dnn3_code_optimization.
+
+ This page covers:
+   - \ref dnn3_compile_graph
+   - \ref dnn3_compile_steps
+   - \ref dnn3_compile_compiler
+
+  \section dnn3_compile_graph Creating the computation graph
+
+
+   \subsection dnn3_compile_graph_graph Details of ComputationGraph
+
+   We previously gave a brief introduction to struct ComputationGraph, but
+  here we provide a few more details.  Remember that the ComputationGraph
+  maps back and forth between Cindexes and integer cindex_ids for efficiency.
+  We show just the data members of ComputationGraph here (remember that
+in C++, a struct is just a class whose members are public by default):
+\verbatim
+struct ComputationGraph {
+  // The mapping of cindex_id to Cindex.
+  std::vector<Cindex> cindexes;
+
+  // For each Cindex this tells us whether it was provided as an input to the
+  // computation.
+  std::vector<bool> is_input;
+
+  // dependencies[cindex_id] gives you the list of other cindex_ids that this
+  // particular cindex_id directly depends on to compute it.
+  std::vector<std::vector<int32> > dependencies;
+private:
+  // Maps each Cindex to an integer cindex_id: reverse mapping of "cindexes".
+  // Must be accessed via the GetCindexId() function.
+  unordered_map<Cindex, int32, CindexHasher> cindex_to_cindex_id_;
+};
+\endverbatim
+ The most important thing is that a ComputationGraph maps back and forth
+ between Cindexes and cindex_ids (integers), and stores a list of "dependencies",
+ saying for each cindex_id which other cindex_ids are required to compute it.
+ The exact meaning of "dependencies" depends on the stage of the compilation.
+ At early stages it contains all cindex_ids corresponding to Cindexes that
+ were returned by the \ref Descriptor::GetDependencies() "GetDependencies()"
+ function of class Descriptor.  Later on it is pruned back to only those dependencies
+ that are actually used in the computation.
+ Note that Components also have a similar \ref Component::GetDependencies() "GetDependencies()"
+ function, and an \ref Component::IsComputable() "IsComputable()" function, like Descriptors.
+ However, this only does someathing interesting in the case of non-simple Components.
+
+
+ The ComputationGraph also has a vector "is_input", saying whether each cindex_id
+ is an input to the computation.  This might seem redundant, because we could just
+ look up whether its node is of type kInput.  It is needed because we have actually
+ designed the framework so that you can provide previously computed values of nodes
+ of type kComponent: this has an envisaged use in online decoding for speech 
+ recognition with things like RNNs.
+
+ \subsection dnn3_compile_graph_building  Building the ComputationGraph
+
+
+  \subsubsection dnn3_compile_graph_building_intro Introduction
+
+ Class ComputationGraphBuilder is responsible for building the ComputationGraph.
+ In the simple case where there are no optional dependencies, the process is
+ quite simple.   (By optional dependencies, we mean descriptors
+ with <code>Failover(X,Y)</code> or <code>IfDefined(X)</code>, or certain non-simple
+ Components).  The simple version of the process is that we start with requested outputs
+ of the network, compute their dependencies and add them to the ComputationGraph,
+ and keep working backward adding dependencies until we hit input nodes.  At that
+ point, hopefully all Cindexes we require at input nodes are ones that have been 
+ supplied in the ComputationRequest; if they are not supplied, we would have to
+ say that the computation is not possible.
+ 
+
+ \subsubsection dnn3_compile_graph_building_basic  Basic algorithm
+
+ Here we describe a basic algorithm which is <em>not</em> what we use but which
+ serves to motivate the actual algorithm.  While building the computation graph
+ we need to be able to work out whether each Cindex is computable from supplied
+ inputs.  (We will use the terms Cindex and cindex_id fairly interchangeably,
+ because there is a one-to-one mapping).  One simple and natural and algorithm
+ would be as follows:
+    - First follow back all possible dependencies from the
+      output using the <code>GetDependencies()</code> functions of Descriptors and Components.
+    - In the opposite direction, starting from the input, work out which Cindexes are
+      computable (using <code>IsComputable()</code>), and prune back the dependencies to just those that
+      participate in the computation.
+    - Check that all requested outputs were computable.
+    - Prune away all cindex_ids that are not actually necessary to compute the
+      outputs.
+    .
+ However, this algorithm wouldn't work in all cases of interest, for instance
+ RNNs.  The problem is that the first phase (following back all possible dependencies)
+ would run forever, with t approaching -\infin.  
+
+ \subsubsection dnn3_compile_graph_building_idea Motivation for the algorithm we use
+
+ Instead we need a slightly more sophisticated algorithm.  We haven't proven that this algorithm
+ would always terminate in all possible cases of interest, but it seems likely to terminate in all
+ the cases we have in mind.  Consider the case of an RNN where some recurrent layer has a
+ dependency that goes back to time t-1, and the input starts at t = 0.  Following dependencies
+ will take t all the way back to -\infin, but we should be able to figure out that
+ those hidden-layer Cindexes for negative t are never going to participate in the computation,
+ because if we follow <em>their</em> dependencies back to the input we will see that the
+ corresponding inputs were not supplied, so they are not computable.  The way we make use
+ of this to avoid recursing to -\infin is to note that if a Cindex is not computable,
+ there is no point following its dependencies back because we know they will never be used.
+ The problem is that this is a chicken-and-egg situation because before we process the
+ dependencies of a Cindex we don't <em>know</em> that it's not computable.
+
+ \subsubsection dnn3_compile_graph_building_real The algorithm we use
+
+ The way we solve this problem is as follows.  We assign to each Cindex an enum 
+ \ref ComputationGraphBuilder::ComputableInfo "ComputableInfo", defined as:
+\verbatim
+  enum ComputableInfo {
+    kUnknown = 0,
+    kComputable = 1,
+    kNotComputable = 2,
+    kWillNotCompute = 3
+  };
+\endverbatim
+ whose meaning is as follows:
+  - kUnknown: we are not yet sure whether this Cindex is computable
+  - kComputable: we know that this Cindex is computable
+  - kNotComputable: we know that this Cindex is not computable
+  - kWillNotCompute: we are not going to compute this Cindex regardless of whether
+    it's computable, because we have determined that it is not usable.  Treated the same
+    as kNotComputable for most purposes.
+    .
+The way we determine whether a Cindex is usable is as follows.
+We assign to each Cindex an integer \ref ComputationGraphBuilder::usable_count_ "usable_count" which functions
+a little like a reference-count in memory management.  If the \ref ComputationGraphBuilder::usable_count_ "usable_count" for a Cindex
+is >0, it means that that that Cindex might possibly partipate in the final computation.
+We ensure that the \ref ComputationGraphBuilder::usable_count_ "usable_count" always has
+a value determined by the following rules:
+  - 1 if this Cindex is a requested output in the ComputationRequest.  Otherwise..
+  - The number of other Cindexes j such that:
+     - The ComputableInfo of j is not kNotComputable, and
+     - The usable_count of j is greater than zero, and
+     - This Cindex is a dependency of j in the computation graph.
+     .
+  .
+The way we avoid infinitely recursing in the processing of dependencies is that 
+if the usable_count of a Cindex is zero we set its state to kWillNotCompute and
+then we refrain from adding its dependencies to the computation graph.
+For this to work, we make sure to process the dependencies in breadth-first
+order: that is, we process dependencies at one hop from the output, then two
+hops from the output, and so on.  This avoids the case where, in the RNN, we might
+process the hidden layer all the way back to t = -\infin before noticing that
+the corresponding inputs were not available.
+
+Class ComputationGraphBuilder maintains two queues: one for Cindexes that
+we haven't yet added their dependencies to the graph, and one 
+(\ref ComputationGraphBuilder::computable_queue_ "computable_queue_") for
+Cindexes such that we need to re-evaluate whether they are computable
+(i.e. update their ComputableInfo).  When the ComputableInfo of a Cindex
+changes, we need to re-check the ComputableInfo of Cindexes that depend on it,
+and to do so we add them to \ref ComputationGraphBuilder::computable_queue_ "computable_queue_".
+
+ 
+ \subsubsection dnn3_compile_graph_building_interface Interface of ComputationGraphBuilder
+
+We list the most important parts of the public interface of ComputationGraph Builder below;
+it should be quite self-explanatory.
+\verbatim
+class ComputationGraphBuilder {
+ public:
+  ComputationGraphBuilder(const Nnet &nnet,
+                          const ComputationRequest &request,
+                          ComputationGraph *graph);
+  // Does the initial computation (populating the graph and computing
+  // whether each required cindex_id is computable), without the pruning.
+  void Compute();
+  // Returns true if all requested outputs are computable.  To be called after
+  // Compute() but before Prune(().
+  bool AllOutputsAreComputable();
+  // Removed unused Cinndexes from the graph.
+  void Prune();
+  ...
+};
+\endverbatim
+
+
+\section dnn3_compile_steps  Organizing the computation into steps
+
+ \subsection dnn3_compile_steps_intro Introduction to steps
+
+Once we have the computation graph, we have enough information in principle to
+execute the computation without doing much more work.  We could sort the
+Cindexes in topological order in the computation graph, and individually
+evaluate each Cindex using its dependencies as inputs.  Unfortunately this
+wouldn't be very efficient because matrix operations don't reach their full
+efficiency unless they are operating on quite large matrices; this is
+particularly true when using GPUs.  So what we want to do is to group
+the Cindexes into batches such that the Cindexes in the same batch can
+all be computed at the same time.  This batch is going to be called a "step",
+and it will roughly correspond to one command in the NnetComputation.
+
+We are going to arrange the set of all cindex_ids in the computation into a sequence
+of steps, with the following properties:
+  - All cindex_ids within a given step correspond to the same node in the graph
+  - All dependencies of cindex_ids within a given step have been computed in 
+    earlier steps.
+  .
+There are also some extra, more obscure properties that the sequence of steps
+must satisfy:
+  - (a) Any input or output in the ComputationRequest must be in one step, with the
+    Indexes in the same order as specified in the ComputationRequest.  (Note:
+    inputs can be for nodes of type kComponent as well as kInput).
+  - (b) If a step corresponds to a node of type kComponent (and does not correspond to
+    an input in the ComputationRequest), then the immediately 
+    preceding step must correspond to a node of type kDescriptor, and the sequence of
+    Indexes in the two steps must be identical.
+  - (c) If a step corresponds to a node of type kDimRange, then there must
+    be another step corresponding to the source node, with exactly the same
+    Indexes appearing in the same order.  (This lets us use a sub-matrix for
+    the kDimRange node).
+   .
+The reason for rule (b) is to ensure that the Component can use the output
+of the Descriptor directly as its input, without any additional reordering or
+regrouping (since such reordering and regrouping is, by design, the
+responsibility of the Descriptors).  Because of this rule, it is possible
+in principle for a cindex_id from a node of type kDescriptor to appear
+separately in more than one different step, although this could only happen if
+we were using non-simple Components.  Also, to ensure that rule (c) is satisfied
+we may occasionally have to add new cindex_ids to the computation graph.
+
+ \subsection dnn3_compile_steps_creating  Creating the sequence of steps (basic algorithm)
+
+Here we describe a basic algorithm for creating the sequence of steps
+that we <em>do not use</em>, but will serve to motivate the actual algorithm that
+we'll describe later.
+This basic algorithm would be:
+  - First put aside Cindexes corresponding to input and output nodes, 
+    separate them by node-index, order within each of those steps
+    to the same order as the ComputationRequests, and put them on the side.
+  - Next process the intermediate Cindexes that are not inputs or outputs as follows:
+    - Take the remaining Cindexes and arrange them into sets called "phases"
+      where the first phase contains all Cindexes that depend only on inputs;
+      and in general the n'th phase contains all remaining Cindexes that depend
+      only on quantities present in phases less than n.
+    - Remove from each phase all Cindexes not corresponding to nodes of type kComponent
+      (we'll handle kDimRange and component-input nodes  later).
+    - Order the steps by using the ordering operator of struct Index.
+    - Create the steps for component-input nodes as follows:
+       - For each step of type kComponent, compute the set of all its
+         dependencies using the "dependencies" member of the ComputationGraph.
+       - Order them using the ordering operator of struct Index.  (for simple
+         Components this ensures they are in the same order as the output
+         of the Component).
+       - (Obscure feature): non-simple Components that want to reorder their
+         inputs are allowed to do so at this point; see Component::ReorderIndexes().
+       - Place this step immediately before the corresponding step of the Component.
+    - Create the steps for dim-range nodes as follows:
+       - Take all the Cindexes in the graph corresponding to dim-range nodes, and
+         work out the step that their input comes from.
+       - Note for each existing step the set of dim-range nodes that have an existing
+         Cindex that gets input from that step.
+       - For each existing step s, for each dim-range node that has an existing
+         Cindex getting input from that step, create a step containing the same
+         sequence of Indexes as step s, and place the new step immediately after step s.
+    
+  - Order all the steps so that inputs come first, intermediate steps come next, 
+    and output-steps come last.
+  
+ The problem with the algorithm described above is that it would end up
+ splitting things into to many steps.  For instance, imagine that we have a recurrent
+ layer followed by a standard feedforward layer.  The recurrent layer has to be
+ split up into as many steps as there are time indexes, but the above algorithm
+ would also split up the computation of the the fully-connected layer into many steps
+ because those Cindexes become computable immediately after the corresponding Cindexes
+ for the recurrent layer.  What we want it for it to do all computation of the
+ recurrent layer, then do the computation for the fully-connected layer in one step.
+
+ \subsection dnn3_compile_steps_creating  Creating the sequence of steps (actual algorithm)
+
+ In order to handle architectures like RNNs without creating an excessive number
+ of computation steps, we first do some graph-theoretic processing on the neural
+ network itself to determine the order in which we can process nodes in the
+ graph.  We can express the neural network itself as a directed graph on nodes,
+ where there is an arc from node A to node B if node B ever refers to quantities
+ from node A (see \ref NnetToDirectedGraph()).  
+
+ The function \ref ComputeNnetComputationEpochs() produces a mapping from nodes
+ to epoch indexes, where nodes that are part of the same strongly connected
+ component (SCC) in the graph (e.g. nodes that are part of the recurrency in an
+ RNN) go to the same epoch, but nodes that are in an earlier epoch can always
+ be computed first.  That is, roughly the epoch will correspond to the layer index
+ in the neural net.
+
+ The actual algorithm, then, produces three progressively more specific orderings
+ of Cindexes: first epochs, then phases, then steps.  We use essentially the algorithm
+ described in the previous section, except modified to respect the division into
+ epochs.   We first call \ref ComputeComputationPhases() to divide the cindexes
+ into phases, and then \ref ComputeComputationSteps() which works out the actual
+ steps.
+ 
+
+\section dnn3_compile_compiler Class Compiler
+
+\subsection dnn3_compile_compiler_intro  Introduction to class Compiler
+
+The Compiler class has overall responsibility for turning the
+ComputationRequest, together with an Nnet, into a NnetComputation.  Internally
+it first creates a ComputationGraph and a sequence of steps using the classes
+and functions we have introduced above.
+
+Its public interface is very simple:
+\verbatim
+class Compiler {
+ public:
+  Compiler(const ComputationRequest &request,
+           const Nnet &nnet);
+  
+  void CreateComputation(const CompilerOptions &opts,
+                         NnetComputation *computation);
+  ...
+};
+\endverbatim
+
+\subsection dnn3_compile_compiler_creating Creating the computation
+
+Most of the work of this class happens in its \ref Compiler::CreateComputation "CreateComputation()"
+function, and the implementation of this function is below.
+\verbatim
+void Compiler::CreateComputation(const CompilerOptions &opts,
+                                 NnetComputation *computation) {
+  ComputationGraphBuilder builder(nnet_, request_, &graph_);
+  builder.Compute();
+  builder.Prune();
+
+  // see function declaration's comment for meaning of "phases".
+  std::vector<std::vector<int32> > phases;
+  ComputeComputationPhases(nnet_, graph_, &phases);
+  std::vector<std::vector<int32> > steps;
+  ComputeComputationSteps(nnet_, request_, phases, &graph_, &steps);
+  phases.clear();
+  CreateLocationInfo(steps);
+  std::vector<bool> deriv_needed;
+  ComputeDerivNeeded(steps, &deriv_needed);
+  CreateStepInfo(deriv_needed, &steps, computation);
+  AddCommands(deriv_needed, computation);
+  if (opts.output_debug_info)
+    OutputDebugInfo(computation);
+}  
+\endverbatim
+The commands up to ComputeComputationSteps() correspond to things that we have
+discussed above, and should be clear.  Below we will discuss some of the remaining
+commands, and use them to give an overview of the compilation process.
+
+
+\subsection dnn3_compile_compiler_location Setting up the location information
+
+The function 
+\ref Compiler::CreateLocationInfo() "CreateLocationInfo()"
+sets up a mapping \ref Compiler::cindex_id_to_location_ "cindex_id_to_location_"
+that maps each cindex_id to a <em>location</em>, where a location defined as a
+pair (step-index, matrix-row-index).  The matrix-row-index corresponds to the
+position of the cindex_id in the vector of cindex_ids for that step.  We
+previously mentioned that it's possible in principle for cindex_ids
+corresponding to network-nodes of type kDescriptor that represent
+\ref Nnet::IsComponentInputNode() "component inputs", to exist in more than one step; this doesn't matter here, because we
+won't be relying on this information for component-input nodes.
+
+We will be dealing with "location information" in a couple of different formats.
+The  \ref Compiler::cindex_id_to_location_ "cindex_id_to_location_" vector contains
+locations as pair (step-index, matrix-row-index).  Elsewhere, and later on in the
+compilation process, we sometimes
+deal with what we call "submat-locations" which are pairs (submatrix-index, row-index).
+A submatrix-index is an index into the "submatrices" vector of the Computation.
+Once we have decided where the values and derivatives for each of the steps live,
+we will be able to compute the "submat-locations".
+
+\subsection dnn3_compile_compiler_deriv_needed Checking whether derivatives are needed
+
+Continuing to step line by line through the function \ref Compiler::CreateComputation "CreateComputation()",
+we next encounter the lines:
+\verbatim
+  std::vector<bool> deriv_needed;
+  ComputeDerivNeeded(steps, &deriv_needed);
+\endverbatim
+These compute an array that says for each step, whether we need to allocate the matrix of
+derivatives for the <em>output</em> of that step.  The logic for the function
+\ref Compiler::ComputeDerivNeeded "ComputeDerivNeeded()" is a little complicated, and
+we will try to explain it.  Firstly, we will remind the user of the relevant aspects of
+struct ComputationRequest:
+\verbatim
+struct ComputationRequest {
+  std::vector<IoSpecification> inputs;
+  std::vector<IoSpecification> outputs;
+  bool need_model_derivative;
+  ...
+};
+
+struct IoSpecification {
+  std::string name;
+  std::vector<Index> indexes;
+  bool has_deriv;
+  ...
+};
+\endverbatim
+If <code>need_model_derivative</code> is false, and <code>has_deriv</code> is false for all inputs and outputs,
+then we won't be needing to allocate matrices for any derivatives at all.  The detailed procedure follows.
+First we initialize the whole <code>need_deriv</code> vector to false.  Then for each step counting upward,
+we use roughly the following logic.  First define the steps we depend on as those that are listed in
+dependencies of cindex_ids in this step (we can work this out from the computation graph).  Now,
+   - If any step we depend on needs the derivative, this step needs the derivative.
+   - If this step is an input to the computation and its corresponding <code>has_deriv</code> is true
+     (an input-derivative was requested), then we need the derivative.
+   - If this step is an output of the computation and its corresponding <code>has_deriv</code> is true
+     (an output-derivative was requested), then we need the derivative.  (We need somewhere to put it,
+     even if it will never be used).
+   - If this is an updatable Component node (i.e. for a Component whose \ref Component::Properties() "Properties()"
+     returns a number with the kUpdatable flag set) and the <code>need_model_derivative</code> flag of
+     the ComputationRequest is true, then we need the derivative.
+   .
+
+\subsection dnn3_compile_compiler_step_info Computing the StepInfo
+
+The next line in \ref Compiler::CreateComputation "CreateComputation()", is:
+\verbatim
+  CreateStepInfo(deriv_needed, &steps, computation);
+\endverbatim
+This sets up a variety of information associated with each step.  Class Compiler
+has a member \ref Compiler::steps_ "steps_", of type <code>std::vector<StepInfo></code>,
+which stores all this information:
+\verbatim
+class Compiler { 
+   ...
+  struct StepInfo {
+    int32 node_index;  // network-node index
+    bool is_input;  // true if step corresponds to an input to the computation.
+    int32 value;  // sub-matrix index of value that this step outputs.
+    int32 deriv;  // sub-matrix index of derivative at the output of this step (or zero).
+    int32 precomputed_indexes_index;  // ignore; only relevant for non-simple Components
+    std::vector<Index> output_indexes;      // Indexes that this step outputs.
+    std::vector<int32> output_cindex_ids;   // cindex_ids corresponding to the above.
+    
+    // If this component is of type kDescriptor (and note that the top-level
+    // Descriptor is a concatenation over >= 1 parts), then we set value_parts
+    // to a list of submatrix-indexes, each for the corresponding part of the
+    // value.  If there is only one part, it will have one element which will be
+    // the same as "value".
+    std::vector<int32> value_parts;
+    // deriv_parts is as "value_parts", but for parts of the derivative (only
+    // set up if deriv != 0.
+    std::vector<int32> deriv_parts;
+
+    // for nodes corresponding to descriptors, input_locations_list will contain
+    // information about the inputs to this descriptor, telling us for each row
+    // of the matrix what other matrix rows it is a summation over.  this is a
+    // quantity indexed[part-index][row-index], then a list of pairs (step,
+    // row-index), that we store here to avoid computing it twice in forward and
+    // backprop.
+    std::vector<std::vector<std::vector<std::pair<int32,int32> > > > input_locations_list;
+  };
+  std::vector<StepInfo> steps_;
+  ...
+};
+\endverbatim
+We will discuss some of the members of struct \ref Compiler::StepInfo "StepInfo"o
+here.  The quantities <code>node_index</code> and
+<code>is_input</code> can be immediately computed from the ComputationGraph and
+computation request.  Likewise, <code>output_cindex_ids</code> is just a copy of
+the cindex_ids that this step consists of; and <code>output_indexes</code> can
+be immediately computed from the <code>output_cindex_ids</code> and the 
+ComputationGraph.  The members <code>value</code> and <code>deriv</code>
+are sub-matrix ids that we need to allocate for this step. 
+
+ \subsubsection dnn3_compile_compiler_allocating  Allocating matrices and submatrices (background)
+  
+ Now is a good time to discuss matrix and sub-matrix indexes, and how we allocate matrix 
+ and sub-matrix indexes.  A matrix index is an index into the 
+ \ref NnetComputer::matrices_ "matrices_" array of class NnetComputer, and also
+ into the \ref NnetComputation::matrices "matrices" array of class NnetComputation,
+ (where only the size information is stored).  We reserve matrix index zero for
+ the empty matrix, or for the NULL matrix (depending on context).  A submatrix
+ index is an index \ref NnetComputation::submatrices "submatrices" array of class NnetComputation,
+ and represents a particular row and column range of a particular numbered matrix.
+ Whenever possible we prefer to use the submatrix index instead of the matrix index
+ even if we know that it will correspond to a whole matrix, to avoid possible confusion
+ between the two types of index.
+
+ Struct NnetComputation has the following two functions which are used when allocating
+ matrices and submatrices:
+\verbatim
+struct NnetComputation {
+  ...
+  int32 NewMatrix(int32 num_rows, int32 num_cols);
+  int32 NewSubMatrix(int32 base_matrix, int32 dim_offset, int32 dim);
+  ...
+};
+\endverbatim
+The \ref NnetComputation::NewMatrix() "NewMatrix()" function allocates a new matrix
+and a sub-matrix referring to its entirety, and returns the sub-matrix index; the
+\ref NnetComputation::NewSubMatrix() "NewSubMatrix()" function returns 
+a new sub-matrix corresponding to a column range of an existing matrix.
+  
+\subsubsection dnn3_compile_compiler_parts  Allocating matrices and submatrices for StepInfo
+
+All steps except those of type kDimRange have a matrix allocated to store their
+value, and if <code>has_deriv[step_index]</code> is true they also have a matrix allocated
+to store their derivative.   The code that allocates the value matrix looks like this:
+\verbatim
+  this_info.value = computation->NewMatrix(num_rows, num_cols);
+\endverbatim
+(where <code>this_info</code> is of type \ref Compiler::StepInfo "StepInfo").
+For steps of type kDimRange, the command that sets up the "value" matrix looks like this:
+\verbatim
+  this_info.value = computation->NewSubMatrix(steps_[input_step].value,
+                                              node.dim_offset, node.dim);
+\endverbatim
+For steps of type kDescriptor, we also need to set up sub-matrices for the different
+"parts" of the value and (if applicable) the derivative.  Recall that a "part"
+corresponds to the term in the top-level <code>Append(...)</code> expression in the
+Descriptor; if there is no <code>Append(...)</code> then there is just one part.
+If there are multiple parts, the command to set up one sub-matrix looks like this:
+\verbatim
+  this_info.value_parts[p] = computation->NewSubMatrix(this_info.value,
+                                                       cur_dim_offset,
+                                                       this_dim); 
+\endverbatim
+
+
+\subsubsection dnn3_compile_compiler_locations  The input locations list
+
+For each part of a Descriptor, we also call a member-function \ref Compiler::ComputeInputLocationsList "ComputeInputLocationsList()"
+of class Compiler:
+\verbatim
+  ComputeInputLocationsList(step, p,
+                            &(this_info.input_locations_list[p]));
+\endverbatim
+The output of this function, <code>this_info.input_locations_list[p]</code> (<code>p</code>
+is the part index), is of type
+<code>std::vector<std::vector<std::pair<int32, int32> > ></code>.  It is a vector
+that tells us where we get the data from to compute this part of the Descriptor.
+It is indexed first by the row-index of the matrix (which is the same as the index
+into the Cindexes/cindex_ids for the step), and then is a list of locations, which
+we defined above as (step-index, row-index).
+Because a Descriptor can only represent an unweighted sum over matrix rows, the
+<code>input_locations_list</code> actually contains all the information we need
+to generate the forward and backward code for it.  So we won't have to deal directly
+with the Descriptor once we compute this quantity.  Inside the code for
+\ref Compiler::ComputeInputLocationsList "ComputeInputLocationsList()", you'll see the
+following lines:
+\verbatim
+    std::vector<Cindex> input_cindexes;
+    CindexSet cindex_set(graph_);
+    bool ans = descriptor.IsComputable(index, cindex_set, &input_cindexes);
+    KALDI_ASSERT(ans);
+\endverbatim
+As you might recall, the \ref Descriptor::IsComputable() "IsComputable()" function
+outputs the Cindexes that were actually used in the computation.  It might seem
+surprising that we have to call this, instead of just relying on the dependencies
+listed in the computation graph.  The reason is that the dependencies are listed for
+each Cindex, but we want only the dependencies for one <em>part</em> of a Cindex,
+and in the graph they are not broken down in that way.
+
+
+\subsection dnn3_compile_compiler_input_output_info Computing the input_output_info
+
+The next step in the code of \ref Compiler::CreateComputation() "CreateComputation()" is:
+\verbatim
+  AddCommands(deriv_needed, computation);
+\endverbatim
+However, a lot of things happen inside  \ref Compiler::AddCommands() "AddCommands()", so
+we'll go through some lines of that function.  It starts off this way:
+\verbatim
+void Compiler::AddCommands(const std::vector<bool> &deriv_needed,
+                           NnetComputation *computation) {
+  SetInputOutputInfo(computation);
+  ...
+\endverbatim
+The function \ref Compiler::SetInputOutputInfo "SetInputOutputInfo" is responsible
+for setting up the following member of struct NnetComputation:
+\verbatim
+  unordered_map<int32, std::pair<int32, int32> > input_output_info;
+\endverbatim
+This contains information about where the inputs and outputs of the network live
+(and their corresponding derivatives, if applicable).  It is a map from
+node-index to pair (value-matrix-index, derivative-matrix-index).
+
+
+\subsection dnn3_compile_compiler_allocate  Allocating the matrices
+
+Skipping a couple of minor things, the next function call in
+\ref Compiler::AddCommands() "AddCommands()" is:
+\verbatim
+  AllocateMatrices(computation);
+\endverbatim
+This function adds commands to the computation, to allocate and zero
+all the matrices we declared in the "matrices" member of class Computation
+(Except those corresponding to inputs; those will be set up when the user
+provides the input).
+The commands will be of type kAllocateMatrixZeroed, with one argument
+corresponding to the matrix index.  Later, in the optimization phase, we will
+replace some of these commands with kAllocateMatrixUndefined, if we determine
+that zeroing the newly allocated matrix was not necessary.
+ 
+
+\subsection dnn3_compile_compiler_forward  The forward computation
+
+The next stage of \ref Compiler::AddCommands() "AddCommands()" is the following:
+\verbatim
+  int32 num_steps = steps_.size();
+  for (int32 step = 0; step < num_steps; step++)
+    DoForwardComputation(step, computation);
+\endverbatim
+\ref Compiler::DoForwardComputation() "DoForwardComputation()" adds the commands
+for the forward part of the computation.  The code for this function,
+with a couple of checks removed, is below:
+\verbatim
+void Compiler::DoForwardComputation(int32 step,
+                                    NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  const NetworkNode &node = nnet_.GetNode(step_info.node_index);
+  switch (node.node_type) {
+    case kInput: case kDimRange: break;  // Nothing to do.
+    case kComponent:
+      AddPropagateStep(step, computation);
+      break;
+    case kDescriptor:
+      DoForwardComputationDescriptor(step, computation);
+      break;
+  }      
+}
+\endverbatim
+
+\subsubsection dnn3_compile_compiler_forward_component  Forward computation for Components
+
+If the step is of type kComponent, setting up the forward computation is quite simple.
+The function \ref Compiler::AddPropagateStep() "AddPropagateStep()" adds a single command
+of type kPropagate, of which the key part is this:
+\verbatim
+  NnetComputation::Command c(NnetComputation::kPropagate,
+                             node.u.component_index,
+                             step_info.precomputed_indexes_index,
+                             input_submatrix_index,
+                             output_submatrix_index);
+  computation->commands.push_back(c);
+\endverbatim
+This function is also responsible for adding the command to store the
+per-component stats (i.e. to call the function Component::StoreStats()), if
+this is requested.  The purpose of these stats is to detect nonlinearities
+that are oversaturated.  The code is:
+\verbatim
+  if (request_.store_component_stats) {
+    const Component *c = nnet_.GetComponent(node.u.component_index);
+    if (c->Properties() & kStoresStats) {
+      NnetComputation::Command c(NnetComputation::kStoreStats,
+                                 node.u.component_index,
+                                 output_submatrix_index);
+      computation->commands.push_back(c);
+    }
+  }
+\endverbatim
+
+\subsubsection dnn3_compile_compiler_forward_descriptor  Forward computation for Descriptors (top-level)
+
+Setting up the forward computation for Descriptors is a little more complicated.
+The function call <code>DoForwardComputationDescriptor(step, computation)</code>
+calls the following code:
+\verbatim
+void Compiler::DoForwardComputationDescriptor(
+    int32 step, NnetComputation *computation) const {
+  int32 num_parts = steps_[step].value_parts.size();
+  for (int32 part = 0; part < num_parts; part++)
+    DoForwardComputationSumDescriptor(step, part, computation);
+}
+\endverbatim
+\ref Compiler::DoForwardComputationSumDescriptor() "DoForwardComputationSumDescriptor()"
+is defined as follows:
+\verbatim
+void Compiler::DoForwardComputationSumDescriptor(
+    int32 step, int32 part_index, NnetComputation *computation) const {
+  const StepInfo &step_info = steps_[step];
+  std::vector<std::vector<std::pair<int32, int32> > > submat_locations_list;
+  ComputeValueSubmatLocationsList(step_info.input_locations_list[part_index],
+                                  &submat_locations_list);
+  int32 value_submatrix_index = step_info.value_parts[part_index];
+  DoForwardComputationFromSubmatLocationsList(
+      value_submatrix_index,
+      submat_locations_list,
+      computation);
+}
+\endverbatim
+The call to \ref Compiler::ComputeValueSubmatLocationsList()
+"ComputeValueSubmatLocationsList()" turns the previously discussed
+input_locations_list in the standard location format with pairs
+(step-index, row-index) into
+submat-location format with pairs (submatrix-index, row-index).
+Stepping into \ref Compiler::DoForwardComputationFromSubmatLocationsList()
+"DoForwardComputationFromSubmatLocationsList()", we see the following code:
+\verbatim
+void Compiler::DoForwardComputationFromSubmatLocationsList(
+    int32 value_submatrix_index,
+    const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
+    NnetComputation *computation) const {
+  std::vector<std::vector<std::pair<int32, int32> > > split_lists;  
+  SplitLocations(submat_lists, &split_lists);
+  for (int32 i = 0; i < split_lists.size(); i++)
+    DoForwardComputationFromSubmatLocations(
+        value_submatrix_index, (i == 0),
+        split_lists[i],
+        computation);
+}
+\endverbatim
+
+\subsubsection dnn3_compile_compiler_split_locations  Forward computation for Descriptors (SplitLocations)
+
+The function SplitLocations() is important.  Its input and output is of the same
+type (<code>std::vector<std::pair<int32, int32> ></code>, but it performs a change
+of format.  The input <code>submat_lists</code> is indexed by matrix-row and is then a list
+of input locations to be summed over.  SplitLocations() pads all 
+those lists with (-1, -1) so they are all the same length and then turns the
+vector of lists into a list of vectors (<code>split_lists</code>).  For example, if we had a matrix with 1000
+rows and the input submat_lists were all of length not exceeding 2, the SplitLocations()
+would output a vector of length 2, each element being a vector of length 1000; and there
+would be (-1, -1) pairs in one or both of those output lists, if not all of the
+input vectors had size exactly 2.
+
+In fact, SplitLocations() tries to be a bit clever about how it splits things up, to
+try to ensure that inputs from the same submatrix are allocated as much as possible
+to the same vector in the output.  This will enable us to use slightly more efficient
+commands in the compiled computation.  SplitLocations() may end up outputting
+a slightly larger number of vectors in order to achieve this.
+
+\subsubsection dnn3_compile_compiler_forward_submat  Forward computation with DoForwardComputationFromSubmatLocations
+
+After splitting up the submat-location lists using SplitLocations(), we give each
+vector in the resulting list
+to \ref Compiler::DoForwardComputationFromSubmatLocations() "DoForwardComputationFromSubmatLocations()".
+The main input to this function is a vector of submat-locations, i.e. a vector
+of pairs (submatrix-index, row-index), where the length of the vector corresponds to the
+number of matrix rows (or equivalently, the number of cindex_ids in the step).
+This function works out the appropriate command to use in the forward propagation,
+trying to figure out which one will be the most efficient.  The code for this
+function is quite simple so we show it:
+\verbatim
+void Compiler::DoForwardComputationFromSubmatLocations(
+    int32 value_submatrix_index,
+    bool is_first_term_in_sum,
+    const std::vector<std::pair<int32, int32> > &submat_locations, 
+    NnetComputation *computation) const {
+
+  int32 input_submatrix_index = -1;
+  std::vector<int32> indexes;
+
+  if (ConvertToIndexes(submat_locations, &input_submatrix_index, &indexes)) {
+    DoForwardComputationFromIndexes(value_submatrix_index,
+                                    input_submatrix_index,
+                                    is_first_term_in_sum,
+                                    indexes,
+                                    computation);
+    return;
+  } else {
+    // There are multiple source matrices.
+    NnetComputation::CommandType ctype =
+        (is_first_term_in_sum ?
+         NnetComputation::kCopyRowsMulti : NnetComputation::kAddRowsMulti);
+    int32 indexes_multi_index = computation->indexes_multi.size();
+    computation->indexes_multi.push_back(submat_locations);
+    computation->commands.push_back(
+        NnetComputation::Command(ctype, value_submatrix_index,
+                                 indexes_multi_index));
+    return;
+  }
+}
+\endverbatim
+The function ConvertToIndexes() is detecting for us the case where all inputs
+come from the same submatrix, and if so, converts the submat-locations vector to
+a single submatrix index a vector of row indexes, which will contain -1's corresponding
+to any (-1, -1) values in the input submat_locations.  In this case we
+call \ref Compiler::DoForwardComputationFromIndexes() "DoForwardComputationFromIndexes()",
+which if possible creates a command for a simple matrix copy or add (commands kMatrixCopy
+and kMatrixAdd), and otherwise into a command of type kCopyRows or kAddRows, which will
+call the functions \ref CuMatrix::CopyRows() "CopyRows()" \ref CuMatrix::AddRows() "AddRows()"
+of class CuMatrix.
+
+If there were multiple source sub-matrices, then we generate a command of type
+kCopyRowsMulti or kAddRowsMulti, calling the functions
+\ref CuMatrix::CopyRowsMulti() "CopyRowsMulti()" \ref CuMatrix::AddRowsMulti() "AddRowsMulti()"
+of class CuMatrix.  These functions take pointer arguments, pointing to the row-address
+of the source data for each row of the destination matrix.  We prefer not to call those
+functions, because to use them we transfer the addresses to the GPU card for each minibatch
+(we reallocate the matrices each time, so the addresses might change).  This is a minor
+issue, though.
+
+\subsubsection dnn3_compile_compiler_forward_end Marking the end of the forward computation
+
+After we are finished setting up the commands for the forward computation, we mark
+that it's over.  This is done as follows:
+\verbatim
+  computation->commands.push_back(
+      NnetComputation::Command(NnetComputation::kNoOperationMarker));
+\endverbatim
+The execution code will later detect this marker to know when the forward part
+of the computation ends and the backward part begins.
+
+\subsection dnn3_compile_compiler_backward   The backward computation
+
+The backward computation is created in the following statements
+from \ref Compiler::AddCommands() "AddCommands()":
+\verbatim
+  for (int32 step = num_steps - 1; step >= 0; step--)
+    if (deriv_needed[step])
+      DoBackwardComputation(step, computation);
+\endverbatim
+The code for \ref Compiler::DoBackwardComputation() "DoBackwardComputation()" mostly mirrors
+that of "DoForwardComputation()", so we won't go into it in detail.  However, we
+would like to point out that
+\ref Compiler::DoBackwardComputationFromSubmatLocationsList() "DoBackwardComputationSubmatLocationsList()"
+differs from
+\ref Compiler::DoForwardComputationSubmatLocationsList() "DoForwardComputationSubmatLocationsList()"
+in that it calls the function \ref SplitLocationsBackward()
+instead of SplitLocations().  The issue is that when splitting the submatrix-locations, we need to
+be a little more careful to ensure we generate valid commands.  In the forward computation,
+if multiple locations of the matrix are copied (or added-to) from the same input location, it
+is not a problem.  However, in the backward computation, this would be a problem because it
+could lead to different CUDA kernels attempting to update the same location at the same time.
+While there are solutions to this synchronization problem, they have a cost and we prefer
+to avoid the issue.
+
+Our solution is essentially as follows, and see the documentation of SplitLocationsBackward() for
+more details.  We first split the locations into separate vectors as for SplitLocations().  Then
+we split further as needed in order to ensure that either one of the two following properties
+holds: that for each vector, either:
+   - All pairs (submatrix-index, row-index) in the vector are unique, except possibly
+     the special pair (-1, -1) may be repeated
+   - The .first values (submatrix-index) in the list are all the same, and the .second
+     have a special property (see the function HasContiguousProperty()) that allows
+     us to call CuMatrix::AddRowRanges().  The property is that each unique
+     row-index must appear only in a single contiguous run.
+   .
+
+
+\subsection dnn3_compile_compiler_deallocating the matrices  Deallocating the matrices
+
+The last command of \ref Compiler::AddCommands() "AddCommands()" adds commands to
+deallocate the matrices:
+\verbatim
+  DeallocateMatrices(computation);
+\endverbatim
+We add commands (kDeallocMatrix) to deallocate each of the matrices in the computation,
+except those that are outputs of the computation (including requested derivatives
+at the inputs).
+
+\subsection dnn3_compile_compiler_debug  Adding debug information
+
+\ref Compiler::AddCommands() "AddCommands()" terminates, the last command remaining
+in the function \ref Compiler::CreateComputation() "CreateComputation()" is to
+output the debug information, if requested:
+\verbatim
+  if (opts.output_debug_info)
+    OutputDebugInfo(computation);
+\endverbatim
+This information is intended mostly for diagnostics and to help
+users interpret the meaning of matrices in a compiler computation, and consists of the following:
+\verbatim
+  struct MatrixDebugInfo {
+    bool is_deriv;  // true if this represents a derivative, not a value.
+    int32 node_index;  // network-node index.
+    std::vector<Index> indexes;
+    MatrixDebugInfo(): is_deriv(false), node_index(-1) {}
+  };
+\endverbatim
+We won't go into further detail on this, since it's quite obvious what this function
+would do.  We note that in the optimization phase, we sometimes merge matrices together
+as an optimization.  In this case the associated \ref NnetComputation::debug_info "debug_info"
+will correspond to the debug information of one of the matrices that we merged.
+
+
+ - Up: \ref dnn3
+ - Previous: \ref dnn3_code_data_types
+ - Next: \ref dnn3_code_optimization
+
+*/
+
+}
+}
