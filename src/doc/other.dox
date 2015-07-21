@@ -23,39 +23,19 @@
  \page other Other Kaldi-related resources (and how to get help)
 
  The main places where Kaldi knowledge can be found are this website,
- and in the subversion repository (see \ref install for instructions).
+ and in the code repository (which we are currently in the process of moving
+from subversion to git; see \ref install for instructions).
  The repository contains the Kaldi code; the installation scripts;
  and example scripts for a number of different datasets, which are located
  in the sub-directory egs/).  
+  
 
- Kaldi's <a href=http://sourceforge.net/projects/kaldi/>project page on Sourceforge</a> also contains
- a number of useful resources.
+ Kaldi's <a href=http://sourceforge.net/projects/kaldi/>project page on Sourceforge</a> contains
+ a number of useful resources, but after the recent extended outage we are migrating away from
+ Sourceforge.  <a href=http://kaldi-asr.org/>kaldi-asr.org/</a> is now the top-level
+ location you should go to; see in particular information about help forums and email
+ lists at <a href=http://kaldi-asr.org/forums.html>kaldi-asr.org/forums.html</a>.
 
- The <a href=https://sourceforge.net/projects/kaldi/forums> Kaldi forums on Sourceforge </a> are
- a good place to ask questions.  Most user questions go to the "Help" forum.  If you want to receive
- all the traffic, you have to be logged in to Sourceforge; you can subscribe to the forum by clicking
- on the "Help" forum and then clicking the envelope icon towards the top right.  There are also
- "Open Discussion" and "Developers" forums, which get less traffic.
-
- There is a mailing list <a
- href=mailto:kaldi-developers@lists.sourceforge.net>kaldi-developers@lists.sourceforge.net</a>
- (<a href=https://sourceforge.net/p/kaldi/mailman/>archives here</a>), which you
- may subscribe to <a
- href=https://lists.sourceforge.net/lists/listinfo/kaldi-developers>here</a>.
- This gets only a moderate amount of traffic, and the aim is for any important
- developments to be communicated to that list.  Clueless questions to that list
- are discouraged.  There is also a kaldi-users list there, which gets less
- traffic and is deprecated.  Note: if you email these lists and your email address is not
- subscribed to that list, it goes to the moderators so there will be a delay
- before your message appears.
-
- The site <a href="http://kaldi-asr.org"> kaldi-asr.org </a> was created in August 2014 to host the Kaldi model-build
- directories that were built with the example scripts.  This will be useful as a reference for
- debugging and for those who want access to the built models.  With time it will contain an increasingly
- large fraction of the outputs of the example scripts in the repository.
-
- This <a href=http://www.danielpovey.com/jobs.html> job postings page </a> is not directly Kaldi-related
- but may be useful to many of the same people.
 
 
 */

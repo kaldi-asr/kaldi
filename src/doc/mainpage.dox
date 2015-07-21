@@ -29,6 +29,11 @@
 
 /**
   \mainpage Kaldi
+
+   Now <a href=kaldi.sourceforge.net>kaldi.sourceforge.net</a> is now only a backup
+   location.  <a href=http://kaldi-asr.org>kaldi-asr.org/doc</a> is the
+   definitive location of this documentation.  We are working on transitioning the 
+   code repository away from Sourceforge.
     
    See also Kaldi's <a href=http://sourceforge.net/projects/kaldi/>project page on Sourceforge</a>,
     and <a href=http://kaldi-asr.org>kaldi-asr.org</a>  where you can download pre-built models.

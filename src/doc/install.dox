@@ -22,18 +22,28 @@
  \page install Downloading and installing Kaldi
 
 
-  \section install_warning Warning on recent Sourceforge update
+  \section install_transition  Transition to github
 
-   This is a warning to all those who originally downloaded Kaldi before March 20, 2013.
-   The svn location where Kaldi's repository resides has changed.  In order to get the
-  latest updates you need to update your repository.  Go to the root of the directory where
-  you previously checked it out, and type:
- \verbatim
-   svn switch --relocate  https://kaldi.svn.sourceforge.net/svnroot/kaldi svn://svn.code.sf.net/p/kaldi/code
- \endverbatim
-  You can verify that it worked by typing "svn info".  You should see the new location.
+  Due to the long recent sourceforge outage, we have now transitioned to
+ github for all future development.  We still intend to maintain a
+ read-only subversion mirror of the github parent, located at sourceforge and mirrored
+ by us; however, we won't be able to set that up until Sourceforge comes back up.
 
- \section install_download  Dowloading Kaldi
+  While sourceforge is still down, the easiest way to access Kaldi as follows:
+\verbatim
+  git clone https://github.com/kaldi-asr/kaldi.git
+\endverbatim
+ You can then keep it up-to-date using "git pull".
+  When sourceforge comes back up, you will be free to access it either through github
+  or through the subversion commands below.
+
+ If you may want to contribute to Kaldi, this will mostly be done using pull requests.
+ You would first log in to github and go to https://github.com/kaldi-asr/kaldi and click on
+ "fork" to fork the repository.  Then, in your local fork of the repository you would
+ do your work in a differently named branch, and generate a pull request through the
+ online interface of github.  We will soon provide more detailed instructions on this.
+
+ \section install_download  Dowloading Kaldi (old instructions)
 
   You first need to install Subversion (SVN).  The most current version of Kaldi,
   possibly including unfinished and experimental features, can
@@ -41,9 +51,6 @@
   \verbatim
     svn co https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
   \endverbatim
- We used to maintain a "stable" branch of Kaldi, but found that this
- was too much additional work; currently, we always recommend people to use
- the latest version of trunk, and we do our best to make sure that it always works.
  If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim
@@ -65,68 +72,4 @@
 
   The example scripts are in egs/
 
-  \section install_switch For contributors: switching repositories
-
- Just for reference: if you have downloaded a copy of Kaldi in the normal "read-only" way without
- using your Sourceforge account and you want to contribute to the project, then you need
- to create a username on Sourceforge and give it to one of the administrators (typically Dan Povey, dpovey@gmail.com).
- After discussing what it is you want to contribute and the best way to proceed, we may add your username to the project, and
- you should switch your repository over to an SSH-based link which
- will allow you to commit changes:
-\verbatim
-svn switch --relocate https://svn.code.sf.net/p/kaldi/code svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
-\endverbatim
- where USERNAME is replaced by your Sourceforge username.  Do this while
- you are in the top level of your copy of the repository (e.g. in trunk/).  To avoid entering passwords
- every time you update, use ssh keys: see https://sourceforge.net/account/ssh.
- 
-   \section git_svn Using Kaldi with git
-
-  <a href=http://git-scm.com/docs/git-svn>git-svn</a>  is a useful tool for bridging
- between git and svn. A local git repository of the trunk branch of
- kaldi can be created using
-  \verbatim
-    git svn clone https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
-  \endverbatim
- To get the latest updates and bug-fixes from the SVN repository, type 
-  \verbatim
-    git svn rebase
-  \endverbatim
- Your local git repository can be used like any other git repository. However,
- it is recommended that you always maintain a linear history by avoiding
- integrating changes into your own branches and remotes using merge. For this
- "git rebase" must be used instead of "git merge" and "git pull --rebase"
- instead of "git pull". It is a good practice is to leave the master branch of
- your git repository "clean" with only commits from SVN and work on a branch
- such as "trunk", which can be periodically rebased onto master.
-
- As an alternative to using git-svn, you can clone or fork the git mirror at
- https://github.com/vimal-manohar91/kaldi-git. The master branch of this is
- synced with the trunk branch of the SVN repository. The recommendations for
- linear history apply here as well. 
-
-    \section git_contributor Contributing from git
-  If you are a contributor, you would have to change the remote to an SSH-based
-  link which allows you to commit changes:
-\verbatim
-  git remote add origin svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
-\endverbatim
-  or in case you cloned your git kaldi repository from another git repository
-\verbatim
-  git remote set-url origin svn+ssh://USERNAME@svn.code.sf.net/p/kaldi/code
-\endverbatim
-  in both cases USERNAME here is that of your Sourceforge account.
-  Changes can be committed directly to SVN using "git svn dcommit". You would
-  still need to follow the instructions in \ref install_switch. 
-  
-  "dcommit", by default, creates a commit in SVN for each Git commit. So it is
-  preferred that you squash all your commits into a single commit and "dcommit"
-  only this single commit. For example, if your changes are in the trunk branch, 
-  you can do 
-\verbatim 
-  git rebase -i master 
-\endverbatim
-and using the editor, choose to "squash" everything but "pick" only the oldest
-commit. You can then "git merge" the branch with master and commit it afterward
-using "git svn dcommit".
 */
