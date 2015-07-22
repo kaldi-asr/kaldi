@@ -190,10 +190,13 @@ done
 
 echo "MPE/sMBR training finished"
 
-echo "Re-estimating priors by forwarding the training set."
-. cmd.sh
-nj=$(cat $alidir/num_jobs)
-steps/nnet/make_priors.sh --cmd "$train_cmd" ${ivector:+--ivector "$ivector"} --nj $nj \
-  $data $dir || exit 1
+if [ -e $dir/prior_counts ]; then
+  echo "Priors are already re-estimated, skipping... ($dir/prior_counts)"
+else
+  echo "Re-estimating priors by forwarding the training set."
+  . cmd.sh
+  nj=$(cat $alidir/num_jobs)
+  steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj $data $dir || exit 1
+fi
 
 exit 0

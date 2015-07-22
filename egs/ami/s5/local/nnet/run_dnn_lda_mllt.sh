@@ -50,6 +50,7 @@ if [ $stage -le 1 ]; then
   # - re-use CMVN options,
   feat_dim=$(feat-to-dim scp:data/$mic/train/feats.scp -)
   cmvn_opts=$(cat $gmmdir/cmvn_opts)
+  [ -z $cmvn_opts ] && cmvn_opts="--norm-means=true --norm-vars=false" # GMM default,
   {
     echo "<Splice> <InputDim> $feat_dim <OutputDim> $((feat_dim*7)) <ReadVector> [ -3 -2 -1 0 1 2 3 ]"
     echo "<LinearTransform> <InputDim> $((feat_dim*7)) <OutputDim> 40 <ReadMatrix> $gmmdir/final.mat"
