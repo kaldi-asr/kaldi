@@ -64,8 +64,8 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
 if [ -z $IRSTLM ] ; then
   export IRSTLM=$KALDI_ROOT/tools/irstlm/
 fi
-
-if [ ! -f $IRSTLM/bin/dict ] ; then
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: the IRSTLM is not available or compiled" >&2
   echo "$0: Error: We used to install it by default, but." >&2
   echo "$0: Error: this is no longer the case." >&2
@@ -77,10 +77,10 @@ fi
 cut -d' ' -f2- $srcdir/train.text | sed -e 's:^:<s> :' -e 's:$: </s>:' \
   > $srcdir/lm_train.text
 
-$IRSTLM/bin/build-lm.sh -i $srcdir/lm_train.text -n 2 \
+build-lm.sh -i $srcdir/lm_train.text -n 2 \
   -o $tmpdir/lm_phone_bg.ilm.gz
 
-$IRSTLM/bin/compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
+compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
 grep -v unk | gzip -c > $lmdir/lm_phone_bg.arpa.gz 
 
 echo "Dictionary & language model preparation succeeded"

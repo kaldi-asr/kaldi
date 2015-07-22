@@ -178,8 +178,8 @@ ngram -lm $sdir/srilm.o3g.pr7.kn.gz -ppl $sdir/cleaned.heldout
 if [ -z $IRSTLM ] ; then
   export IRSTLM=$KALDI_ROOT/tools/irstlm/
 fi
-
-if [ ! -f $IRSTLM/bin/dict ] ; then
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: the IRSTLM is not available or compiled" >&2
   echo "$0: Error: We used to install it by default, but." >&2
   echo "$0: Error: this is no longer the case." >&2
@@ -193,12 +193,12 @@ mkdir $idir
 gunzip -c $srcdir/cleaned.gz | tail -n +$heldout_sent | $IRSTLM/scripts/add-start-end.sh | \
   gzip -c > $idir/train.gz
 
-$IRSTLM/bin/dict -i=WSJ.cleaned.irstlm.txt -o=dico -f=y -sort=no
+dict -i=WSJ.cleaned.irstlm.txt -o=dico -f=y -sort=no
  cat dico | gawk 'BEGIN{while (getline<"vocab.20k.nooov") v[$1]=1; print "DICTIONARY 0 "length(v);}FNR>1{if ($1 in v)\
 {print $0;}}' > vocab.irstlm.20k
 
 
-$IRSTLM/bin/build-lm.sh -i "gunzip -c $idir/train.gz" -o $idir/lm_3gram.gz  -p yes \
+build-lm.sh -i "gunzip -c $idir/train.gz" -o $idir/lm_3gram.gz  -p yes \
   -n 3 -s improved-kneser-ney -b yes
 # Testing perplexity with SRILM tools:
 ngram -lm $idir/lm_3gram.gz  -ppl $sdir/cleaned.heldout 

@@ -12,6 +12,19 @@ exit 1;
 . cmd.sh
 . path.sh
 
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
+
 # Data prep
 # Here we make some Edinburgh-specific changes from the Kaldi recipe in 
 # trunk/egs/swbd/s5 (rev. 1841). The major differences are that everything is
@@ -47,7 +60,8 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
   data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_tg
 
 # For some funny reason we are still using IRSTLM for doing LM pruning :)
-prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz /dev/stdout \
+prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz \
+  /dev/stdout \
   | gzip -c > data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
 LM=data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
