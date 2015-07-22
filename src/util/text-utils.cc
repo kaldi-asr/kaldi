@@ -165,7 +165,7 @@ inline bool starts_with(const std::string &in, const std::string &prefix) {
 }
 
 inline bool stricmp(const std::string &in, const std::string &prefix) {
-  int ret = _stricmp(in.c_str(), prefix.c_str());
+  int ret = KALDI_STRCASECMP(in.c_str(), prefix.c_str());
   return ret == 0;
 }
 
