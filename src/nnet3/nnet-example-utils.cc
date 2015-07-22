@@ -214,7 +214,7 @@ static void MergeSupervision(const std::vector<NnetExample> &src,
   int32 num_sup = names.size();
   std::vector<int32> cur_size(num_sup, 0);
   merged_eg->supervision.clear();
-  merged_eg->features.resize(num_sup);
+  merged_eg->supervision.resize(num_sup);
   for (int32 s = 0; s < num_sup; s++) {
     Supervision &sup = merged_eg->supervision[s];
     int32 dim = dims[s], size = sizes[s];
@@ -281,7 +281,7 @@ void MergeExamples(const std::vector<NnetExample> &src,
       supervision_dims, supervision_sizes;
   GetFeatureDimsAndSizes(src, feature_names,
                          &feature_dims, &feature_sizes);
-  GetSupervisionDimsAndSizes(src, feature_names,
+  GetSupervisionDimsAndSizes(src, supervision_names,
                              &supervision_dims, &supervision_sizes);
   MergeFeatures(src, feature_names, feature_dims, feature_sizes,
                 compress, merged_eg);

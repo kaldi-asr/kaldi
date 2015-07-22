@@ -125,6 +125,15 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</Nnet3Eg>");
 }
 
+NnetExample::NnetExample(const NnetExample &other):
+    features(other.features),
+    supervision(other.supervision) { }
+
+void NnetExample::Swap(NnetExample *other) {
+  features.swap(other->features);
+  supervision.swap(other->supervision);
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

@@ -908,3 +908,10 @@
 /src/nnet3/nnet-parse-test
 /src/nnet3/nnet-utils-test
 /src/nnet3/nnet-analyze-test
+/src/nnet3/nnet-common-test
+/src/nnet3/nnet-component-test
+/src/nnet3/nnet-compute-test
+/src/nnet3/nnet-derivative-test
+/src/nnet3/nnet-example-test
+/src/nnet3/nnet-optimize-test
+

@@ -127,7 +127,8 @@ struct NnetExample {
   NnetExample() { }
 
   NnetExample(const NnetExample &other);
-  
+
+  void Swap(NnetExample *other);
 };
 
 /** Merge a set of input examples into a single example (typically the size of
