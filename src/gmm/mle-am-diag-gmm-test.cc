@@ -115,7 +115,7 @@ void UnitTestMleAmDiagGmm() {
     for (int32 m = 0; m < num_feat_comp; m++) {
       for (int32 d= 0; d < dim; d++) {
         means(m, d) = kaldi::RandGauss();
-        vars(m, d) = exp(kaldi::RandGauss()) + 1e-2;
+        vars(m, d) = Exp(kaldi::RandGauss()) + 1e-2;
       }
     }
     // Now generate random features with those means and variances.

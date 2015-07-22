@@ -77,7 +77,7 @@ BaseFloat SgmmClusterable::Objf() const {
       if (prob > 0.0) { // Note: prob could be zero due to underflow-- this
         // happened! [we can get tiny values due to floating-point roundoff
         // while subtracting clusterable objects].
-        ans += gamma * log(gamma / tot_gamma);
+        ans += gamma * Log(gamma / tot_gamma);
       }        
     }
     tot_gamma2 += gamma;

@@ -32,7 +32,7 @@ void ProcessPovFeatures(Matrix<BaseFloat> *mat) {
   for (int32 i = 0; i < num_frames; i++) {
     BaseFloat p = (*mat)(i, 0);
     KALDI_ASSERT(p >= 0.0 && p <= 1.0);
-    (*mat)(i, 0) = log((p + 0.0001) / (1.0001 - p));
+    (*mat)(i, 0) = Log((p + 0.0001) / (1.0001 - p));
   }
 }
 
@@ -40,7 +40,7 @@ void TakeLogOfPitch(Matrix<BaseFloat> *mat) {
   int32 num_frames = mat->NumRows();
   for (int32 i = 0; i < num_frames; i++) {
     KALDI_ASSERT((*mat)(i, 1) > 0.0);
-    (*mat)(i, 1) = log((*mat)(i, 1));
+    (*mat)(i, 1) = Log((*mat)(i, 1));
   }
 }
 

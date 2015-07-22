@@ -700,7 +700,7 @@ void AmSgmm::ComputeNormalizers() {
   KALDI_LOG << "Entropy of weights in substates is "
             << (entropy_sum / entropy_count) << " over " << entropy_count
             << " substates, equivalent to perplexity of "
-            << (exp(entropy_sum /entropy_count));
+            << (Exp(entropy_sum /entropy_count));
   KALDI_LOG << "Done computing normalizers";
 }
 
@@ -709,7 +709,7 @@ void AmSgmm::ComputeNormalizersInternal(int32 num_threads, int32 thread,
                                         int32 *entropy_count,
                                         double *entropy_sum) {
 
-  BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
+  BaseFloat DLog2pi = FeatureDim() * Log(2 * M_PI);
   Vector<BaseFloat> log_det_Sigma(NumGauss());
 
   for (int32 i = 0; i < NumGauss(); i++) {
@@ -740,7 +740,7 @@ void AmSgmm::ComputeNormalizersInternal(int32 num_threads, int32 thread,
       {  // DIAGNOSTIC CODE
         (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
-          (*entropy_sum) -= log_w_jm(m, i) * exp(log_w_jm(m, i));
+          (*entropy_sum) -= log_w_jm(m, i) * Exp(log_w_jm(m, i));
         }
       }
     }      
@@ -753,7 +753,7 @@ void AmSgmm::ComputeNormalizersInternal(int32 num_threads, int32 thread,
       for (int32 m = 0; m < NumSubstates(j); m++) {
         // mu_{jmi} * \Sigma_{i}^{-1} * mu_{jmi}
         BaseFloat mu_SigmaInv_mu = VecVec(mu_jmi.Row(m), SigmaInv_mu.Row(m));
-        BaseFloat logc = log(c_[j](m));
+        BaseFloat logc = Log(c_[j](m));
 
         // Suggestion: Both mu_jmi and SigmaInv_mu could
         // have been computed at once for i,
@@ -793,7 +793,7 @@ void AmSgmm::ComputeNormalizersNormalized(
   }
 
   KALDI_LOG << "Computing normalizers [normalized]";
-  BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
+  BaseFloat DLog2pi = FeatureDim() * Log(2 * M_PI);
   Vector<BaseFloat> mu_jmi(FeatureDim());
   Vector<BaseFloat> SigmaInv_mu(FeatureDim());
   Vector<BaseFloat> log_det_Sigma(NumGauss());
@@ -814,7 +814,7 @@ void AmSgmm::ComputeNormalizersNormalized(
 
     n_[j].Resize(NumGauss(), NumSubstates(j));
     for (int32 m = 0; m < NumSubstates(j); m++) {
-      BaseFloat logc = log(c_[j](m));
+      BaseFloat logc = Log(c_[j](m));
 
       // (in logs): w_jm = softmax([w_{k1}^T ... w_{kD}^T] * v_{jkm}) eq.(7)
       log_w_jm.AddMatVec(1.0, w_, kNoTrans, v_[j].Row(m), 0.0);
@@ -824,8 +824,8 @@ void AmSgmm::ComputeNormalizersNormalized(
         const std::vector<int32> &this_set(normalize_sets[n]);
         double sum = 0.0;
         for (int32 p = 0; p < this_set.size(); p++)
-          sum += exp(log_w_jm(this_set[p]));
-        double offset = -log(sum);  // add "offset", to normalize weights.
+          sum += Exp(log_w_jm(this_set[p]));
+        double offset = -Log(sum);  // add "offset", to normalize weights.
         for (int32 p = 0; p < this_set.size(); p++)
           log_w_jm(this_set[p]) += offset;
       }

@@ -21,6 +21,7 @@
 #define KALDI_FSTEXT_RESCALE_INL_H_
 #include <cstring>
 #include "base/kaldi-common.h"
+#include "base/kaldi-math.h"
 #include "util/stl-utils.h"
 #include "fstext/fstext-utils.h"
 
@@ -119,7 +120,7 @@ inline LogWeight RescaleToStochastic(MutableFst<LogArc> *fst,
     return Weight::One();  // can't rescale empty FST.
 
   // total weight).
-  Weight max = Weight(-log(2.0));
+  Weight max = Weight(-kaldi::Log(2.0));
 
   // upper_bound and lower_bound are in terms of weight.Value(),
   // in terms of weight they would have the reversed names.
@@ -132,6 +133,11 @@ inline LogWeight RescaleToStochastic(MutableFst<LogArc> *fst,
   Weight cur_rescale = Weight::One();
   Weight cur_tot;
   while (1) {
+    {
+      FstPrinter<LogArc> fstprinter(*fst, NULL, NULL, NULL, false, true);
+      fstprinter.Print(&std::cout, "standard output");
+    }
+
     cur_tot = ComputeTotalWeight(*fst, max, delta);
     std::cerr << "Current rescaling factor is " << cur_rescale <<", total is: " << cur_tot << '\n';
     if (cur_tot.Value() < Weight::One().Value()) {  // read as: cur_tot > 1.

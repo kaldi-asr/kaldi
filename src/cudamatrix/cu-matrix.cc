@@ -1193,7 +1193,7 @@ void CuMatrix<Real>::CompObjfAndDeriv(const std::vector<MatrixElement<Real> >& s
       //KALDI_ASSERT(label >= 0 && label < nnet_.OutputDim());
       Real this_prob = output(m, label);
       KALDI_ASSERT(this_prob >= 0.99e-20); // we floored to 1.0e-20 in SoftmaxLayer.
-      *tot_objf += weight * log(this_prob);
+      *tot_objf += weight * Log(this_prob);
       *tot_weight += weight;
       (*this)(m, label) += weight / this_prob; 
     }
@@ -1399,7 +1399,7 @@ void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
     for(int32 r = 0; r < num_rows; r++) {
       int32 col_tgt = tgt.Data()[r];
       Real &value = Mat()(r, col_tgt);
-      log_post_tgt->Vec()(r) = log(value);
+      log_post_tgt->Vec()(r) = Log(value);
       value -= 1.0;
     }
   }

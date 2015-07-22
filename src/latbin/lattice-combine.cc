@@ -81,7 +81,7 @@ bool CompactLatticeNormalize(CompactLattice *clat, BaseFloat weight,
 
   // If exp_weights = false, add to the log AM & LM scores.
   if (!exp_weights)
-    total_backward_cost -= std::log(weight);
+    total_backward_cost -= Log(weight);
   
   for (fst::StateIterator<CompactLattice> sit(*clat); !sit.Done(); sit.Next()) {
     CompactLatticeWeight f = clat->Final(sit.Value());

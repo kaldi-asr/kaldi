@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       for (int32 i = 0; i < logprobs.NumRows(); i++) {
         SubVector<BaseFloat> row(logprobs, i);
         for (int32 j = 0; j < row.Dim(); j++) {
-          BaseFloat p = exp(row(j));
+          BaseFloat p = Exp(row(j));
           if (p >= min_post) {
             post[i].push_back(std::make_pair(j, p));
           } else if (random_prune && (p / min_post) >= RandUniform()) {

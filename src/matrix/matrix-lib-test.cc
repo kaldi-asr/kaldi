@@ -601,7 +601,7 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     V1.CopyFromVec(V);
     V1.ApplyExp();
     Real a = V.LogSumExp();
-    V2.Set(exp(V.LogSumExp()));
+    V2.Set(Exp(V.LogSumExp()));
     V1.DivElements(V2);
     V2.CopyFromVec(V);
 
@@ -1144,7 +1144,7 @@ template<typename Real> static void UnitTestDeterminantSign() {
 
     // add in a scaling factor too.
     Real tmp = 1.0 + ((Rand() % 5) * 0.01);
-    Real logdet_factor = dimM * log(tmp);
+    Real logdet_factor = dimM * Log(tmp);
     N.Scale(tmp);
     S.Scale(tmp);
 
@@ -1422,7 +1422,7 @@ template<typename Real> static void UnitTestEig() {
     {  // Check that the eigenvalues match up with the determinant.
       BaseFloat logdet_check = 0.0, logdet = M.LogDet();
       for (MatrixIndexT i = 0; i < dimM ; i++)
-        logdet_check += 0.5 * log(real_eigs(i)*real_eigs(i) + imag_eigs(i)*imag_eigs(i));
+        logdet_check += 0.5 * Log(real_eigs(i)*real_eigs(i) + imag_eigs(i)*imag_eigs(i));
       AssertEqual(logdet_check, logdet);
     }
     Matrix<Real> Pinv(P);
@@ -2305,9 +2305,9 @@ template<typename Real> static void  UnitTestTanh() {
       for (int32 c = 0; c < dimN; c++) {
         Real x = N(r, c);
         if (x > 0.0) {
-          x = -1.0 + 2.0 / (1.0 + exp(-2.0 * x));
+          x = -1.0 + 2.0 / (1.0 + Exp(-2.0 * x));
         } else {
-          x = 1.0 - 2.0 / (1.0 + exp(2.0 * x));
+          x = 1.0 - 2.0 / (1.0 + Exp(2.0 * x));
         }
         N(r, c) = x;
         Real out_diff = P(r, c), in_diff = out_diff * (1.0 - x * x);
@@ -2331,7 +2331,7 @@ template<typename Real> static void  UnitTestSigmoid() {
     for(int32 r = 0; r < dimM; r++) {
       for (int32 c = 0; c < dimN; c++) {
         Real x = N(r, c),
-            y = 1.0 / (1 + exp(-x));
+            y = 1.0 / (1 + Exp(-x));
         N(r, c) = y;
         Real out_diff = P(r, c), in_diff = out_diff * y * (1.0 - y);
         Q(r, c) = in_diff;
@@ -2356,7 +2356,7 @@ template<typename Real> static void  UnitTestSoftHinge() {
         Real x = M(r, c);
         Real &y = N(r, c);
         if (x > 10.0) y = x;
-        else y = log(1.0 + exp(x));
+        else y = Log1p(Exp(x));
       }
     }
     O.SoftHinge(M);
@@ -2395,7 +2395,7 @@ template<typename Real> static void  UnitTestSimple() {
     {
       Vector<Real> V2(V);
       for (MatrixIndexT i = 0; i < V2.Dim(); i++)
-        V2(i) = exp(V2(i));
+        V2(i) = Exp(V2(i));
       V.ApplyExp();
       AssertEqual(V, V2);
     }
@@ -2403,7 +2403,7 @@ template<typename Real> static void  UnitTestSimple() {
       Matrix<Real> N2(N), N3(N);
       for (MatrixIndexT i = 0; i < N.NumRows(); i++)
         for (MatrixIndexT j = 0; j < N.NumCols(); j++)
-          N2(i, j) = exp(N2(i, j));
+          N2(i, j) = Exp(N2(i, j));
       N3.ApplyExp();
       AssertEqual(N2, N3);
     }
@@ -3121,7 +3121,7 @@ template<typename Real> static void UnitTestLbfgs() {
       Vector<Real> dlogf_dx(v); //  derivative of log(f) w.r.t. x.
       dlogf_dx.AddSpVec(-1.0, S, x, 1.0);
       KALDI_VLOG(2) << "Gradient magnitude is " << dlogf_dx.Norm(2.0);
-      Real f = exp(c * logf);
+      Real f = Exp(c * logf);
       Vector<Real> df_dx(dlogf_dx);
       df_dx.Scale(f * c); // comes from derivative of the exponential function.
       f *= sign;

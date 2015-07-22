@@ -310,7 +310,8 @@ void TwvMetricsOptions::Register(OptionsItf *po) {
   // a mandatory argument, not optional
 }
 
-struct TwvMetricsStats {
+class TwvMetricsStats {
+ public:
   kws_internal::KwScoreStats global_keyword_stats;
   kws_internal::KwStats keyword_stats;
   kws_internal::PerKwSweepStats otwv_sweep_cache;

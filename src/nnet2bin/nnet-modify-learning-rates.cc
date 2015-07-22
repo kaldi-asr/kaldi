@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
     // Gets target geometric mean.
     BaseFloat target_geometric_mean = 0.0; 
     if (average_learning_rate == 0.0) {
-      target_geometric_mean = exp(cur_nnet_learning_rates.SumLog()
+      target_geometric_mean = Exp(cur_nnet_learning_rates.SumLog()
                                   / static_cast<BaseFloat>(num_updatable));
     } else {
       target_geometric_mean = average_learning_rate;
@@ -177,7 +177,7 @@ int main(int argc, char *argv[]) {
     nnet_learning_rates(num_updatable - 1) *= last_layer_factor;
     KALDI_ASSERT(first_layer_factor > 0.0);
     nnet_learning_rates(0) *= first_layer_factor;
-    BaseFloat cur_geometric_mean = exp(nnet_learning_rates.SumLog()
+    BaseFloat cur_geometric_mean = Exp(nnet_learning_rates.SumLog()
                                  / static_cast<BaseFloat>(num_updatable));
     nnet_learning_rates.Scale(target_geometric_mean / cur_geometric_mean);
     KALDI_LOG << "New learning rates for current model per layer are "

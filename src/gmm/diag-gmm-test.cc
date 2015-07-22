@@ -34,10 +34,10 @@ void InitRandomGmm(DiagGmm *gmm_in) {
   Vector<BaseFloat> weights(num_gauss);
   for (int32 i = 0; i < num_gauss; i++) {
     for (int32 j = 0; j < dim; j++) {
-      inv_vars(i, j) = exp(RandGauss() * (1.0 / (1 + j)));
+      inv_vars(i, j) = Exp(RandGauss() * (1.0 / (1 + j)));
       means(i, j) = RandGauss() * (1.0 / (1 + j));
     }
-    weights(i) = exp(RandGauss());
+    weights(i) = Exp(RandGauss());
   }
   weights.Scale(1.0 / weights.Sum());
   gmm.SetWeights(weights);
@@ -107,7 +107,7 @@ void UnitTestDiagGmm() {
     weights(m) = kaldi::RandUniform();
     for (size_t d= 0; d < dim; d++) {
       means(m, d) = kaldi::RandGauss();
-      vars(m, d) = exp(kaldi::RandGauss()) + 1e-5;
+      vars(m, d) = Exp(kaldi::RandGauss()) + 1e-5;
     }
     tot_weight += weights(m);
   }
@@ -116,10 +116,10 @@ void UnitTestDiagGmm() {
   for (size_t m = 0; m < nMix; m++) {
     weights(m) /= tot_weight;
     for (size_t d= 0; d < dim; d++) {
-      loglikes(m) += -0.5 * (M_LOG_2PI + log(vars(m, d)) + (feat(d) -
+      loglikes(m) += -0.5 * (M_LOG_2PI + Log(vars(m, d)) + (feat(d) -
           means(m, d)) * (feat(d) - means(m, d)) / vars(m, d));
     }
-    loglikes(m) += log(weights(m));
+    loglikes(m) += Log(weights(m));
   }
 
   loglike = loglikes.LogSumExp();
@@ -282,8 +282,8 @@ void UnitTestDiagGmm() {
     gmm1.ComputeGconsts();
 
     std::vector<std::pair<BaseFloat, const DiagGmm*> > vec;
-    vec.push_back(std::make_pair(0.4, (const DiagGmm*)(&gmm1)));
-    vec.push_back(std::make_pair(0.6, (const DiagGmm*)(&gmm1)));
+    vec.push_back(std::make_pair(static_cast<BaseFloat>(0.4), (const DiagGmm*)(&gmm1)));
+    vec.push_back(std::make_pair(static_cast<BaseFloat>(0.6), (const DiagGmm*)(&gmm1)));
     
     DiagGmm gmm2(vec);
 

@@ -77,10 +77,10 @@ BaseFloat NccfToPov(BaseFloat n) {
   BaseFloat ndash = fabs(n);
   if (ndash > 1.0) ndash = 1.0;  // just in case it was slightly outside [-1, 1]
 
-  BaseFloat r = -5.2 + 5.4 * exp(7.5 * (ndash - 1.0)) + 4.8 * ndash -
-                2.0 * exp(-10.0 * ndash) + 4.2 * exp(20.0 * (ndash - 1.0));
+  BaseFloat r = -5.2 + 5.4 * Exp(7.5 * (ndash - 1.0)) + 4.8 * ndash -
+                2.0 * Exp(-10.0 * ndash) + 4.2 * Exp(20.0 * (ndash - 1.0));
   // r is the approximate log-prob-ratio of voicing, log(p/(1-p)).
-  BaseFloat p = 1.0 / (1 + exp(-1.0 * r));
+  BaseFloat p = 1.0 / (1 + Exp(-1.0 * r));
   KALDI_ASSERT(p - p == 0);  // Check for NaN/inf
   return p;
 }
@@ -210,7 +210,7 @@ class PitchFrameInfo {
   /// info for the final state; the iterator will be decremented inside this
   /// function. 
   void SetBestState(int32 best_state,
-      std::vector<std::pair<int32, BaseFloat> >::iterator lag_nccf_iter);
+      std::vector<std::pair<int32, BaseFloat> > &lag_nccf);
 
   /// This function may be called on the last (most recent) PitchFrameInfo
   /// object; it computes how many frames of latency there is because the
@@ -313,7 +313,7 @@ void PitchFrameInfo::ComputeBacktraces(
   Vector<BaseFloat> local_cost(num_states, kUndefined);
   ComputeLocalCost(nccf_pitch, lags, opts, &local_cost);
 
-  const BaseFloat delta_pitch_sq = pow(log(1.0 + opts.delta_pitch), 2.0),
+  const BaseFloat delta_pitch_sq = pow(Log(1.0 + opts.delta_pitch), 2.0),
       inter_frame_factor = delta_pitch_sq * opts.penalty_factor;
 
   // index local_cost, prev_forward_cost and this_forward_cost using raw pointer
@@ -483,10 +483,14 @@ void PitchFrameInfo::ComputeBacktraces(
 
 void PitchFrameInfo::SetBestState(
     int32 best_state,
-    std::vector<std::pair<int32, BaseFloat> >::iterator iter) {
+    std::vector<std::pair<int32, BaseFloat> > &lag_nccf) {
+
   // This function would naturally be recursive, but we have coded this to avoid
   // recursion, which would otherwise eat up the stack.  Think of it as a static
   // member function, except we do use "this" right at the beginning.
+
+  std::vector<std::pair<int32, BaseFloat> >::reverse_iterator iter = lag_nccf.rbegin();
+
   PitchFrameInfo *this_info = this;  // it will change in the loop.
   while (this_info != NULL) {
     PitchFrameInfo *prev_info = this_info->prev_info_;
@@ -501,7 +505,7 @@ void PitchFrameInfo::SetBestState(
     if (prev_info != NULL)  // don't write anything for frame -1.
       iter->second = this_info->state_info_[state_info_index].pov_nccf;
     this_info = prev_info;
-    iter--;
+    if (this_info != NULL) ++iter;
   }
 }
 
@@ -989,9 +993,7 @@ void OnlinePitchFeatureImpl::RecomputeBacktraces() {
   if (lag_nccf_.size() != static_cast<size_t>(num_frames))
     lag_nccf_.resize(num_frames);
   
-  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
-      lag_nccf_.end() - 1;
-  frame_info_.back()->SetBestState(best_final_state, last_iter);  
+  frame_info_.back()->SetBestState(best_final_state, lag_nccf_);
   frames_latency_ =
       frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
   for (size_t i = 0; i < nccf_info_.size(); i++)
@@ -1146,9 +1148,7 @@ void OnlinePitchFeatureImpl::AcceptWaveform(
   int32 best_final_state;
   forward_cost_.Min(&best_final_state);
   lag_nccf_.resize(frame_info_.size() - 1);  // will keep any existing data.
-  std::vector<std::pair<int32, BaseFloat> >::iterator last_iter =
-      lag_nccf_.end() - 1;
-  frame_info_.back()->SetBestState(best_final_state, last_iter);
+  frame_info_.back()->SetBestState(best_final_state, lag_nccf_);
   frames_latency_ =
       frame_info_.back()->ComputeLatency(opts_.max_frames_latency);
   KALDI_VLOG(4) << "Latency is " << frames_latency_;
@@ -1425,7 +1425,7 @@ BaseFloat OnlineProcessPitch::GetRawLogPitchFeature(int32 frame) const {
   src_->GetFrame(frame, &tmp);
   BaseFloat pitch = tmp(1);
   KALDI_ASSERT(pitch > 0);
-  return log(pitch);
+  return Log(pitch);
 }
 
 BaseFloat OnlineProcessPitch::GetNormalizedLogPitchFeature(int32 frame) {
@@ -1487,7 +1487,7 @@ void OnlineProcessPitch::UpdateNormalizationStats(int32 frame) {
         Vector<BaseFloat> tmp(kRawFeatureDim);
         src_->GetFrame(prev_window_begin, &tmp);
         BaseFloat accurate_pov = NccfToPov(tmp(0)),
-            log_pitch = log(tmp(1));
+            log_pitch = Log(tmp(1));
         this_stats.sum_pov -= accurate_pov;
         this_stats.sum_log_pitch_pov -= accurate_pov * log_pitch;
       }
@@ -1496,7 +1496,7 @@ void OnlineProcessPitch::UpdateNormalizationStats(int32 frame) {
         Vector<BaseFloat> tmp(kRawFeatureDim);
         src_->GetFrame(prev_window_end, &tmp);
         BaseFloat accurate_pov = NccfToPov(tmp(0)),
-            log_pitch = log(tmp(1));
+            log_pitch = Log(tmp(1));
         this_stats.sum_pov += accurate_pov;
         this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
       }
@@ -1515,7 +1515,7 @@ void OnlineProcessPitch::UpdateNormalizationStats(int32 frame) {
   for (int32 f = this_window_begin; f < this_window_end; f++) {
     src_->GetFrame(f, &tmp);
     BaseFloat accurate_pov = NccfToPov(tmp(0)),
-        log_pitch = log(tmp(1));    
+        log_pitch = Log(tmp(1));
     this_stats.sum_pov += accurate_pov;
     this_stats.sum_log_pitch_pov += accurate_pov * log_pitch;
   }

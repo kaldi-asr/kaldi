@@ -21,12 +21,7 @@ use lib "$Bin";
 use Data::Dumper;
 use Getopt::Long;
 
-my $root = "$Bin/..";
-my $solutionDir = "$root/kaldiwin_vs12_auto";
-my $projDir = "$solutionDir/kaldiwin";
-my $solutionFileName = "kaldiwin_vs12.sln";
-my $srcDir = "$root/src";
-my $vsver="vs2013";
+my $vsver="vs2015";
 
 my %ENABLED = (CUDA => 0,
                OPENBLAS => 1,
@@ -55,6 +50,27 @@ unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLS
 	die "Unknown vsver value: $vsver";
 }
 			 
+my $features_suffix;
+my @features_enabled;
+
+if ($ENABLED{OPENBLAS}) {
+  push @features_enabled, "OPENBLAS";
+}
+if ($ENABLED{MKL}) {
+  push @features_enabled, "MKL";
+}
+if ($ENABLED{CUDA}) {
+  push @features_enabled, "CUDA";
+}
+
+$features_suffix = join("_", @features_enabled);
+
+my $root = "$Bin/..";
+my $solutionDir = "$root/kaldiwin_${vsver}_${features_suffix}";
+my $projDir = "$solutionDir/kaldiwin";
+my $solutionFileName = "kaldiwin_${vsver}.sln";
+my $srcDir = "$root/src";
+
 
 # The following files are in the same dir (windows/) as the 
 # Perl script.

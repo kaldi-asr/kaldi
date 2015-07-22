@@ -149,12 +149,14 @@ template<class IntType> class LatticeStringRepository {
   void ConvertToVector(const Entry *entry, vector<IntType> *out) const {
     size_t length = Size(entry);
     out->resize(length);
-    typename vector<IntType>::iterator iter = out->end() - 1;
+    if (entry != NULL) {
+      typename vector<IntType>::reverse_iterator iter = out->rbegin();
     while (entry != NULL) {
       *iter = entry->i;
       entry = entry->parent;
-      --iter;
+        ++iter;
     }
+  }
   }
 
   const Entry *ConvertFromVector(const vector<IntType> &vec) {

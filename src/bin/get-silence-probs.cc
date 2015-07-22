@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(quantize >= 0.0 && quantize <= 1.0);
 
 
-    double sil_log_bias = log(sil_prior / (1.0 - sil_prior));
+    double sil_log_bias = Log(sil_prior / (1.0 - sil_prior));
     
     std::string silence_likes_rspecifier = po.GetArg(1),
         nonsilence_likes_rspecifier = po.GetArg(2),
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
         if (sil_loglike > 10) {
           sil_probs(f) = 1.0; // because the exp below might fail.
         } else {
-          BaseFloat e_sil_loglike = exp(sil_loglike);
+          BaseFloat e_sil_loglike = Exp(sil_loglike);
           BaseFloat sil_prob = e_sil_loglike / (1.0 + e_sil_loglike);
           if ( !(sil_prob >= 0.0 && sil_prob  <= 1.0)) {
             KALDI_WARN << "Bad silence prob (NaNs found?), setting to 0.5";

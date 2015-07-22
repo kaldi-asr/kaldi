@@ -389,7 +389,7 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
 
 BaseFloat OnlinePreconditioner::Eta(int32 N) const {
   KALDI_ASSERT(num_samples_history_ > 0.0);
-  return 1.0 - exp(-N / num_samples_history_);
+  return 1.0 - Exp(-N / num_samples_history_);
 }
 
 void OnlinePreconditioner::ComputeWt1(int32 N,

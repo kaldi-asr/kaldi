@@ -117,7 +117,7 @@ void UnitTestTrain() {
   double objf_rand_w = classifier.GetObjfAndGrad(xs_with_prior, ys, 
                                                  xw_rand, &grad, normalizer);
   KALDI_ASSERT(objf_trained > objf_rand_w);
-  KALDI_ASSERT(objf_trained > std::log(1.0 / n_xs));
+  KALDI_ASSERT(objf_trained > Log(1.0 / n_xs));
 }
 }
 

@@ -41,7 +41,7 @@ BaseFloat KlDivergence(const Vector<BaseFloat> &p,
 
   for (int32 i = 0; i < p.Dim(); i++) {
     BaseFloat p_prob = p(i) / sum_p, q_prob = q(i) / sum_q;
-    ans += p_prob * log(p_prob / q_prob);
+    ans += p_prob * Log(p_prob / q_prob);
   }
   return ans;
 }

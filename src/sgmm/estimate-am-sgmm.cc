@@ -1267,7 +1267,7 @@ void MleAmSgmmUpdater::ComputeMPrior(AmSgmm *model) {
     Matrix<double> MDiff(Ddim, Sdim);
     for (int32 iter = 0; iter < update_options_.map_M_prior_iters; iter++) {
       { // diagnostic block.
-        double prior_like = -0.5 * nGaussians * (Ddim * Sdim * log(2 * M_PI)
+        double prior_like = -0.5 * nGaussians * (Ddim * Sdim * Log(2 * M_PI)
                 + Sdim * (-model->row_cov_inv_.LogPosDefDet())
                 + Ddim * (-model->col_cov_inv_.LogPosDefDet()));
         for (int32 i = 0; i < nGaussians; i++) {
@@ -1639,7 +1639,7 @@ double MleAmSgmmUpdater::UpdateWSequential(
           double this_unnormalized_weight = VecVec(w_i, model->v_[j].Row(m));
           double normalizer = weight_tots[j](m);
           double this_log_w = this_unnormalized_weight - normalizer,
-              this_w = exp(this_log_w),
+              this_w = Exp(this_log_w),
               substate_count = gamma_jm[j](m),
               this_count = accs.gamma_[j](m, i);
 
@@ -2000,7 +2000,7 @@ double MleAmSgmmUpdater::UpdateSubstateWeights(
         cur_weight = 1.0e-10;  // future work(arnab): remove magic numbers
       }
       model->c_[j](m) = smoothed_occs(m) / gamma_j_sm;
-      objf_impr += log(model->c_[j](m) / cur_weight) * occs(m);
+      objf_impr += Log(model->c_[j](m) / cur_weight) * occs(m);
     }
     tot_gamma += gamma_j_(j);
   }

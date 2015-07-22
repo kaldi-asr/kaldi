@@ -166,7 +166,7 @@ class Rbm : public RbmBase {
       for(int32 d = 0; d < p.Dim(); d++) {
         if(p(d) < 0.0001) p(d) = 0.0001;
         if(p(d) > 0.9999) p(d) = 0.9999;
-        logit_p(d) = log(p(d)) - log(1.0 - p(d));
+        logit_p(d) = Log(p(d)) - Log(1.0 - p(d));
       }
       vis_bias_ = logit_p;
       KALDI_ASSERT(vis_bias_.Dim() == InputDim());

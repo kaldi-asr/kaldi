@@ -124,9 +124,9 @@ static void ComputeGconsts(const VectorBase<BaseFloat> &weights,
 
   for (int32 gauss = 0; gauss < num_gauss; gauss++) {
     KALDI_ASSERT(weights(gauss) >= 0);  // Cannot have negative weights.
-    BaseFloat gc = log(weights(gauss)) + offset;  // May be -inf if weights == 0
+    BaseFloat gc = Log(weights(gauss)) + offset;  // May be -inf if weights == 0
     for (int32 d = 0; d < dim; d++) {
-      gc += 0.5 * log(inv_vars(gauss, d)) - 0.5 * means(gauss, d)
+      gc += 0.5 * Log(inv_vars(gauss, d)) - 0.5 * means(gauss, d)
         * means(gauss, d) * inv_vars(gauss, d);  // diff from DiagGmm version.
     }
 

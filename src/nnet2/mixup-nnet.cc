@@ -199,7 +199,7 @@ void SoftmaxComponent::MixUp(int32 num_mixtures,
       rand.SetRandn();
       cur_vec.AddVec(perturb_stddev, rand);
       new_vec.AddVec(-perturb_stddev, rand);
-      this_new_bias_term(max_index) += log(0.5);
+      this_new_bias_term(max_index) += Log(0.5);
       this_new_bias_term(new_index) = this_new_bias_term(max_index);
     }
     old_offset += this_old_dim;

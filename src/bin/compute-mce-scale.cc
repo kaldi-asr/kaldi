@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         // means it's more comparable with MMI/MPE.
         BaseFloat den_score = den_score_reader.Value(key);
         BaseFloat score_difference = mce_alpha * (num_score - den_score) + mce_beta;
-        BaseFloat sigmoid_difference = 1.0 / (1.0 + exp(score_difference));
+        BaseFloat sigmoid_difference = 1.0 / (1.0 + Exp(score_difference));
         // It might be more natural to make the scale
         //
         BaseFloat scale = 4.0 * sigmoid_difference * (1 - sigmoid_difference);

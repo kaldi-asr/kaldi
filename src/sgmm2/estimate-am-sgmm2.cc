@@ -1108,7 +1108,7 @@ void MleAmSgmm2Updater::ComputeMPrior(AmSgmm2 *model) {
     Matrix<double> MDiff(Ddim, Sdim);
     for (int32 iter = 0; iter < options_.map_M_prior_iters; iter++) {
       { // diagnostic block.
-        double prior_like = -0.5 * nGaussians * (Ddim * Sdim * log(2 * M_PI)
+        double prior_like = -0.5 * nGaussians * (Ddim * Sdim * Log(2 * M_PI)
                 + Sdim * (-model->row_cov_inv_.LogPosDefDet())
                 + Ddim * (-model->col_cov_inv_.LogPosDefDet()));
         for (int32 i = 0; i < nGaussians; i++) {
@@ -1695,7 +1695,7 @@ double MleAmSgmm2Updater::UpdateSubstateWeights(
         cur_weight = 1.0e-10;  // future work(arnab): remove magic numbers
       }
       model->c_[j2](m) = smoothed_occs(m) / gamma_j_sm;
-      objf_impr += log(model->c_[j2](m) / cur_weight) * occs(m);
+      objf_impr += Log(model->c_[j2](m) / cur_weight) * occs(m);
     }
   }
   KALDI_LOG << "**Overall objf impr for c is " << (objf_impr/tot_gamma)

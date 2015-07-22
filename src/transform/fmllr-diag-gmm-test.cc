@@ -34,10 +34,10 @@ void InitRandomGmm (DiagGmm *gmm_in) {
   Vector<BaseFloat> weights(num_gauss);
   for (int32 i = 0; i < num_gauss; i++) {
     for (int32 j = 0; j < dim; j++) {
-      inv_vars(i, j) = exp(RandGauss() * (1.0 / (1 + j)));
+      inv_vars(i, j) = Exp(RandGauss() * (1.0 / (1 + j)));
       means(i, j) = RandGauss() * (1.0 / (1 + j));
     }
-    weights(i) = exp(RandGauss());
+    weights(i) = Exp(RandGauss());
   }
   weights.Scale(1.0 / weights.Sum());
   gmm.SetWeights(weights);

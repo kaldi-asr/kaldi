@@ -43,7 +43,7 @@ void UnitTestEstimateMmieDiagGmm() {
   for (size_t m = 0; m < nMix; m++) {
     for (size_t d= 0; d < dim; d++) {
       means_f(m, d) = kaldi::RandGauss()*100.0F;
-      vars_f(m, d) = exp(kaldi::RandGauss())*1000.0F+ 1.0F;
+      vars_f(m, d) = Exp(kaldi::RandGauss())*1000.0F+ 1.0F;
     }
     // std::cout << "Gauss " << m << ": Mean = " << means_f.Row(m) << '\n'
     //          << "Vars = " << vars_f.Row(m) << '\n';
@@ -104,7 +104,7 @@ void UnitTestEstimateMmieDiagGmm() {
   Matrix<BaseFloat> means(1, dim), vars(1, dim), invvars(1, dim);
   for (size_t d= 0; d < dim; d++) {
     means(0, d) = kaldi::RandGauss()*100.0F;
-    vars(0, d) = exp(kaldi::RandGauss()) *10.0F + 1e-5F;
+    vars(0, d) = Exp(kaldi::RandGauss()) *10.0F + 1e-5F;
   }
   weights(0) = 1.0F;
   invvars.CopyFromMat(vars);
