@@ -25,18 +25,20 @@ else
   endif
 endif
 
-all: check_required_programs sph2pipe atlas sclite openfst irstlm_tgt
+all: check_required_programs sph2pipe atlas sclite openfst
+	@echo -e "\n\n"
+	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
+	@echo "Warning: use the script extras/install_irstlm.sh"
+	@echo "All done OK."
 
 check_required_programs:
 	extras/check_dependencies.sh
 
-clean: openfst_cleaned sclite_cleaned  irstlm_cleaned
+clean: openfst_cleaned sclite_cleaned
 
 openfst_cleaned:
 	$(MAKE) -C openfst-$(OPENFST_VERSION) clean
 
-irstlm_cleaned:
-	$(MAKE) -C irstlm clean 
 
 sclite_cleaned:
 	$(MAKE) -C sctk clean
@@ -46,7 +48,6 @@ distclean:
 	rm -rf sctk-2.4.9/
 	rm -rf sctk
 	rm -rf ATLAS/
-	rm -rf irstlm/
 	rm -rf sph2pipe_v2.5/
 	rm -rf sph2pipe_v2.5.tar.gz
 	rm -rf atlas3.8.3.tar.gz
@@ -115,22 +116,6 @@ sctk-2.4.9-20141015-1634Z.tar.bz2:
 	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2|| \
     wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
 
-irstlm_tgt: irstlm_compiled
-
-.PHONY: irstlm_compiled
-irstlm_compiled: irstlm/Makefile
-	cd irstlm/; \
-	make; $(MAKE) install	
-
-irstlm/Makefile: irstlm
-	cd irstlm; \
-	    automake --version | grep 1.13.1 >/dev/null && \
-         sed s:AM_CONFIG_HEADER:AC_CONFIG_HEADERS: <configure.in >configure.ac; \
-	(./regenerate-makefiles.sh || ./regenerate-makefiles.sh) && \
-	./configure --prefix `pwd` 
-
-irstlm:
-	svn -r 618 co --non-interactive --trust-server-cert https://svn.code.sf.net/p/irstlm/code/trunk irstlm
 
 atlas: ATLAS/include/cblas.h
 
