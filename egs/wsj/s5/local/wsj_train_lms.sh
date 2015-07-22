@@ -174,7 +174,19 @@ ngram -lm $sdir/srilm.o3g.pr7.kn.gz -ppl $sdir/cleaned.heldout
 
 ##  From here is how to train with
 # IRSTLM.  This is not really working at the moment.
-export IRSTLM=$KALDI_ROOT/tools/irstlm/
+
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+
+if [ ! -f $IRSTLM/bin/dict ] ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
 
 idir=$dir/irstlm
 mkdir $idir

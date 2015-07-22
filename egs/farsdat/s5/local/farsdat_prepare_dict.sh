@@ -60,17 +60,26 @@ cat $dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ", $_))
  >> $dir/extra_questions.txt || exit 1;
 
 # (2) Create the phone bigram LM
-  [ -z "$IRSTLM" ] && \
-    echo "LM building won't work without setting the IRSTLM env variable" && exit 1;
-  ! which build-lm.sh 2>/dev/null  && \
-    echo "IRSTLM does not seem to be installed (build-lm.sh not on your path): " && \
-    echo "go to <kaldi-root>/tools and try 'make irstlm_tgt'" && exit 1;
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
 
-  cut -d' ' -f2- $srcdir/text | sed -e 's:^:<s> :' -e 's:$: </s>:' \
-    > $srcdir/lm_train
-  build-lm.sh -i $srcdir/lm_train -n 2 -o $tmpdir/lm_phone_bg.ilm.gz
+if [ ! -f $IRSTLM/bin/dict ] ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
 
-  compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
+cut -d' ' -f2- $srcdir/text | sed -e 's:^:<s> :' -e 's:$: </s>:' \
+  > $srcdir/lm_train
+
+$IRSTLM/bin/build-lm.sh -i $srcdir/lm_train -n 2 \
+  -o $tmpdir/lm_phone_bg.ilm.gz
+
+$IRSTLM/bin/compile-lm $tmpdir/lm_phone_bg.ilm.gz -t=yes /dev/stdout | \
   grep -v unk | gzip -c > $lmdir/lm_phone_bg.arpa.gz 
 
 

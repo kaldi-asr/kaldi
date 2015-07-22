@@ -97,13 +97,30 @@ cut -f1 data/local/lexicon.txt \
 
 # (4) Create the phone bigram LM
 (
-  [ -z "$IRSTLM" ] && \
-    error_exit "LM building wo'nt work without setting the IRSTLM env variable"
-  cut -d' ' -f2- data/local/train.trans2 | sed -e 's:^:<s> :' -e 's:$: </s>:' \
-    > data/local/lm_train.txt
-  build-lm.sh -i data/local/lm_train.txt -n 2 -o data/local/lm_phone_bg.ilm.gz
-  compile-lm data/local/lm_phone_bg.ilm.gz --text yes /dev/stdout \
-    | grep -v unk | gzip -c > data/local/lm_phone_bg.arpa.gz 
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+
+if [ ! -f $IRSTLM/bin/dict ] ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
+
+cut -d' ' -f2- $srcdir/text | sed -e 's:^:<s> :' -e 's:$: </s>:' \
+  > $srcdir/lm_train
+
+cut -d' ' -f2- data/local/train.trans2 | sed -e 's:^:<s> :' -e 's:$: </s>:' \
+  > data/local/lm_train.txt
+
+$IRSTLM/bin/build-lm.sh -i data/local/lm_train.txt -n 2 \
+  -o data/local/lm_phone_bg.ilm.gz
+
+$IRSTLM/bin/compile-lm data/local/lm_phone_bg.ilm.gz --text yes /dev/stdout \
+  | grep -v unk | gzip -c > data/local/lm_phone_bg.arpa.gz 
 
 ) >& data/prepare_lm.log
 
