@@ -19,6 +19,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include "base/kaldi-math.h"
 #include "gmm/model-test-common.h"
 #include "sgmm2/am-sgmm2.h"
 #include "sgmm2/estimate-am-sgmm2.h"
@@ -28,6 +29,8 @@ using kaldi::AmSgmm2;
 using kaldi::MleAmSgmm2Accs;
 using kaldi::int32;
 using kaldi::BaseFloat;
+using kaldi::Exp;
+
 namespace ut = kaldi::unittest;
 
 // Tests the Read() and Write() methods for the accumulators, in both binary
@@ -143,7 +146,7 @@ void UnitTestEstimateSgmm2() {
     for (int32 m = 0; m < num_feat_comp; m++) {
       for (int32 d= 0; d < dim; d++) {
         means(m, d) = kaldi::RandGauss();
-        vars(m, d) = exp(kaldi::RandGauss()) + 1e-2;
+        vars(m, d) = Exp(kaldi::RandGauss()) + 1e-2;
       }
     }
     // Now generate random features with those means and variances.

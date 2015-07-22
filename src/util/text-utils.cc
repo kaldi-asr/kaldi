@@ -104,8 +104,8 @@ bool IsToken(const std::string &token) {
   size_t l = token.length();
   if (l == 0) return false;
   for (size_t i = 0; i < l; i++) {
-    char c = token[i];
-    if ( (!isprint(c) || isspace(c)) && (isascii(c) || c == (char)255) ) return false;
+    unsigned char c = token[i];
+    if ( (!isprint(c) || isspace(c)) && (isascii(c) || c == (unsigned char)255) ) return false;
     // The "&& (isascii(c) || c == 255)" was added so that we won't reject non-ASCII
     // characters such as French characters with accents [except for 255 which is
     // "nbsp", a form of space].
@@ -159,11 +159,65 @@ bool IsLine(const std::string &line) {
   return true;
 }
 
+
+inline bool starts_with(const std::string &in, const std::string &prefix) {
+  return in.substr(0, prefix.size()) == prefix;
+}
+
+inline bool stricmp(const std::string &in, const std::string &prefix) {
+  int ret = KALDI_STRCASECMP(in.c_str(), prefix.c_str());
+  return ret == 0;
+}
+
+inline bool is_nan_text(const std::string &in, const std::string &prefix) {
+  if (in.size() < prefix.size())
+    return false;
+
+  if (stricmp(in, prefix))
+    return true;
+
+  for (int i = 0; i < prefix.size(); ++i)
+    if (tolower(in[i]) != tolower(prefix[i]))
+      return false;
+
+  for (int i = prefix.size(); i < in.size(); ++i)
+    if (!isalpha(in[i]) && (in[i] != '_'))
+      return false;
+
+  return true;
+}
+
+template<typename T>
+bool convert_special_number(const std::string &str, T *out) {
+  if (stricmp(str, "infinity") || stricmp(str, "inf") || starts_with(str, "1.#INF")) {
+    *out = std::numeric_limits<T>::infinity();
+    return true;
+  } else if (stricmp(str, "-infinity") || stricmp(str, "-inf") || starts_with(str, "-1.#INF")) {
+    *out = -std::numeric_limits<T>::infinity();
+    return true;
+  } else if (is_nan_text(str, "nan") || starts_with(str, "1.#QNAN")) {
+    *out = std::numeric_limits<T>::quiet_NaN();
+    return true;
+  } else if (is_nan_text(str, "-nan") || starts_with(str, "-1.#QNAN")) {
+    *out = -std::numeric_limits<T>::quiet_NaN();
+    return true;
+  }
+  return false;
+}
+
 bool ConvertStringToReal(const std::string &str,
                          double *out) {
   const char *this_str = str.c_str();
   char *end = NULL;
   errno = 0;
+
+#if defined(_MSC_VER)
+  // TODO: check if the new MSVC already supports it
+  // depending on claims of the C++11 support, it should have
+  if (convert_special_number(str, out))
+    return true;
+#endif // defined(_MSC_VER)
+
   double d = KALDI_STRTOD(this_str, &end);
   if (end != this_str)
     while (isspace(*end)) end++;
@@ -178,6 +232,14 @@ bool ConvertStringToReal(const std::string &str,
   const char *this_str = str.c_str();
   char *end = NULL;
   errno = 0;
+
+#ifdef _MSC_VER
+  // TODO: check if the new MSVC already supports it
+  // depending on claims of the C++11 support, it should have
+  if (convert_special_number(str, out))
+    return true;
+#endif // _MSC_VER
+
   float f = KALDI_STRTOF(this_str, &end);
   if (end != this_str)
     while (isspace(*end)) end++;

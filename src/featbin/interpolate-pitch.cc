@@ -139,8 +139,8 @@ class PitchInterpolator {
     BaseFloat constant_prob = (1.0 - p_voicing_[t]) * opts_.interpolator_factor,
         specified_prob = p_voicing_[t] + constant_prob;
     // specified_prob adds in the extra probability mass at the observed pitch value.
-    BaseFloat log_constant_prob = log(constant_prob),
-        log_ratio = log(specified_prob / constant_prob);
+    BaseFloat log_constant_prob = Log(constant_prob),
+        log_ratio = Log(specified_prob / constant_prob);
     log_alpha_.Add(log_constant_prob); // add log_constant_prob to all pitches at this time.
     
     log_alpha_(pitch_[t]) += log_ratio; // corrects this to be like adding

@@ -78,10 +78,10 @@ static bool EBWUpdateGaussian(
       int32 dim = orig_mean.Dim();
       for (int32 i = 0; i < dim; i++) {
         BaseFloat mean_diff = (*mean)(i) - orig_mean(i);
-        old_auxf += (occ+D) * -0.5 * (log(orig_var(i)) +
+        old_auxf += (occ+D) * -0.5 * (Log(orig_var(i)) +
                                       ((*var)(i) + mean_diff*mean_diff)
                                       / orig_var(i));
-        new_auxf += (occ+D) * -0.5 * (log((*var)(i)) + 1.0);
+        new_auxf += (occ+D) * -0.5 * (Log((*var)(i)) + 1.0);
         
       }
       *auxf_impr = new_auxf - old_auxf;

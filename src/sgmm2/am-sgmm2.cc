@@ -559,7 +559,7 @@ BaseFloat AmSgmm2::LogLikelihood(const Sgmm2PerFrameDerivedVars &per_frame_vars,
   }
   
   BaseFloat log_like = substate_cache.remaining_log_like
-      + log(VecVec(substate_cache.likes, c_[j2]));
+      + Log(VecVec(substate_cache.likes, c_[j2]));
 
   if (random_test)
     KALDI_ASSERT(ApproxEqual(pdf_cache.log_like, log_like));
@@ -589,7 +589,7 @@ AmSgmm2::ComponentPosteriors(const Sgmm2PerFrameDerivedVars &per_frame_vars,
 
   BaseFloat tot_like = post->Sum();
   KALDI_ASSERT(tot_like != 0.0); // note: not valid to have zero weights.
-  loglike += log(tot_like);
+  loglike += Log(tot_like);
   post->Scale(1.0 / tot_like); // so "post" now sums to one, and "loglike"
   // contains the correct log-likelihood of the data given the pdf.
 
@@ -859,7 +859,7 @@ void AmSgmm2::ComputeNormalizers() {
   KALDI_LOG << "Entropy of weights in substates is "
             << (entropy_sum / entropy_count) << " over " << entropy_count
             << " substates, equivalent to perplexity of "
-            << (exp(entropy_sum /entropy_count));
+            << (Exp(entropy_sum /entropy_count));
   KALDI_LOG << "Done computing normalizers";
 }
 
@@ -868,7 +868,7 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
                                          int32 *entropy_count,
                                          double *entropy_sum) {
 
-  BaseFloat DLog2pi = FeatureDim() * log(2 * M_PI);
+  BaseFloat DLog2pi = FeatureDim() * Log(2 * M_PI);
   Vector<BaseFloat> log_det_Sigma(NumGauss());
 
   for (int32 i = 0; i < NumGauss(); i++) {
@@ -902,7 +902,7 @@ void AmSgmm2::ComputeNormalizersInternal(int32 num_threads, int32 thread,
       {  // DIAGNOSTIC CODE
         (*entropy_count)++;
         for (int32 i = 0; i < NumGauss(); i++) {
-          (*entropy_sum) -= log_w_jm(m, i) * exp(log_w_jm(m, i));
+          (*entropy_sum) -= log_w_jm(m, i) * Exp(log_w_jm(m, i));
         }
       }
     }      
@@ -952,7 +952,7 @@ BaseFloat AmSgmm2::GetDjms(int32 j1, int32 m,
     log_d.AddMatVec(1.0, w_jmi_[j1], kNoTrans, spk_vars->b_is, 0.0);
     log_d.ApplyLog();    
   }
-  return exp(log_d(m));
+  return Exp(log_d(m));
 }
 
 

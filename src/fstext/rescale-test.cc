@@ -20,11 +20,14 @@
 #include "fstext/rescale.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/fst-test-utils.h"
+#include "base/kaldi-math.h"
 // Just check that it compiles, for now.
 
 namespace fst
 {
 
+  using kaldi::Exp;
+  using kaldi::Log;
 
 template<class Arc> void TestComputeTotalWeight() {
   typedef typename Arc::Weight Weight;
@@ -40,7 +43,7 @@ template<class Arc> void TestComputeTotalWeight() {
     fstprinter.Print(&std::cout, "standard output");
   }
 
-  Weight max(-log(2.0));
+  Weight max(-Log(2.0));
   Weight tot = ComputeTotalWeight(*fst, max);
   std::cout << "Total weight is: " << tot.Value() << '\n';
 
@@ -80,7 +83,7 @@ void TestRescaleToStochastic() {
 
   RescaleToStochastic(fst, diff);
   Weight tot = ShortestDistance(*fst),
-      tot2 = ComputeTotalWeight(*fst, Weight(-log(2.0)));
+      tot2 = ComputeTotalWeight(*fst, Weight(-Log(2.0)));
   std::cerr <<  " tot is " << tot<<", tot2 = "<<tot2<<'\n';
   assert(ApproxEqual(tot2, Weight::One(), diff));
 

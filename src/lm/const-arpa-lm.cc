@@ -22,6 +22,7 @@
 #include "lm/const-arpa-lm.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+#include "base/kaldi-math.h"
 
 namespace kaldi {
 
@@ -396,8 +397,8 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
         KALDI_ASSERT(ConvertStringToReal(col[0], &logprob));
         KALDI_ASSERT(ConvertStringToReal(col[1 + cur_order], &backoff_logprob));
         if (natural_base_) {
-          logprob *= log(10);
-          backoff_logprob *= log(10);
+          logprob *= Log(10.0f);
+          backoff_logprob *= Log(10.0f);
         }
        
         // If <ngram_order_> is larger than 1, then we do not create LmState for

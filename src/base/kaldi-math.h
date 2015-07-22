@@ -75,6 +75,51 @@
 
 namespace kaldi {
 
+#if !defined(_MSC_VER) || (_MSC_VER >= 1900)
+inline double Exp(double x) { return exp(x); }
+#ifndef KALDI_NO_EXPF
+inline float Exp(float x) { return expf(x); }
+#else
+inline float Exp(float x) { return exp(static_cast<double>(x)); }
+#endif // KALDI_NO_EXPF
+#else
+inline double Exp(double x) { return exp(x); }
+#if !defined(__INTEL_COMPILER) && _MSC_VER == 1800 && defined(_M_X64)
+// Microsoft CL v18.0 buggy 64-bit implementation of
+// expf() incorrectly returns -inf for exp(-inf).
+inline float Exp(float x) { return exp(static_cast<double>(x)); }
+#else
+inline float Exp(float x) { return expf(x); }
+#endif // !defined(__INTEL_COMPILER) && _MSC_VER == 1800 && defined(_M_X64)
+#endif // !defined(_MSC_VER) || (_MSC_VER >= 1900)
+
+inline double Log(double x) { return log(x); }
+inline float Log(float x) { return logf(x); }
+
+#if !defined(_MSC_VER) || (_MSC_VER >= 1700)
+inline double Log1p(double x) {  return log1p(x); }
+inline float Log1p(float x) {  return log1pf(x); }
+#else
+inline double Log1p(double x) {
+  const double cutoff = 1.0e-08;
+  if (x < cutoff)
+    return x - 2 * x * x;
+  else
+    return Log(1.0 + x);
+}
+
+inline float Log1p(float x) {
+  const float cutoff = 1.0e-07;
+  if (x < cutoff)
+    return x - 2 * x * x;
+  else
+    return Log(1.0 + x);
+}
+#endif
+
+static const double kMinLogDiffDouble = Log(DBL_EPSILON);  // negative!
+static const float kMinLogDiffFloat = Log(FLT_EPSILON);  // negative!
+
 // -infinity
 const float kLogZeroFloat = -std::numeric_limits<float>::infinity();
 const double kLogZeroDouble = -std::numeric_limits<double>::infinity();
@@ -103,7 +148,7 @@ inline float RandUniform(struct RandomState* state = NULL) {
 }
 
 inline float RandGauss(struct RandomState* state = NULL) {
-  return static_cast<float>(sqrtf (-2 * logf(RandUniform(state)))
+  return static_cast<float>(sqrtf (-2 * Log(RandUniform(state)))
                             * cosf(2*M_PI*RandUniform(state)));
 }
 
@@ -129,8 +174,6 @@ inline Float RandPrune(Float post, BaseFloat prune_thresh, struct RandomState* s
       (RandUniform(state) <= fabs(post)/prune_thresh ? prune_thresh : 0.0);
 }
 
-static const double kMinLogDiffDouble = std::log(DBL_EPSILON);  // negative!
-static const float kMinLogDiffFloat = std::log(FLT_EPSILON);  // negative!
 
 inline double LogAdd(double x, double y) {
   double diff;
@@ -144,13 +187,7 @@ inline double LogAdd(double x, double y) {
 
   if (diff >= kMinLogDiffDouble) {
     double res;
-#if _MSC_VER >= 1800 || __cplusplus >= 201103L
-    res = x + std::log1p(std::exp(diff));
-#elif defined _MSC_VER
-    res = x + log(1.0 + exp(diff));
-#else
-    res = x + log1p(exp(diff));
-#endif
+    res = x + Log1p(Exp(diff));
     return res;
   } else {
     return x;  // return the larger one.
@@ -170,13 +207,7 @@ inline float LogAdd(float x, float y) {
 
   if (diff >= kMinLogDiffFloat) {
     float res;
-#if _MSC_VER >= 1800 || __cplusplus >= 201103L
-    res = x + std::log1p(std::exp(diff));
-#elif defined _MSC_VER
-    res = x + logf(1.0 + expf(diff));
-#else
-    res = x + log1pf(expf(diff));
-#endif
+    res = x + Log1p(Exp(diff));
     return res;
   } else {
     return x;  // return the larger one.
@@ -194,7 +225,7 @@ inline double LogSub(double x, double y) {
   }
 
   double diff = y - x;  // Will be negative.
-  double res = x + log(1.0 - exp(diff));
+  double res = x + Log(1.0 - Exp(diff));
 
   // res might be NAN if diff ~0.0, and 1.0-exp(diff) == 0 to machine precision
   if (KALDI_ISNAN(res))
@@ -213,7 +244,7 @@ inline float LogSub(float x, float y) {
   }
 
   float diff = y - x;  // Will be negative.
-  float res = x + logf(1.0 - expf(diff));
+  float res = x + Log(1.0f - Exp(diff));
 
   // res might be NAN if diff ~0.0, and 1.0-exp(diff) == 0 to machine precision
   if (KALDI_ISNAN(res))
@@ -301,42 +332,9 @@ template<class I> void Factorize(I m, std::vector<I> *factors) {
 }
 
 inline double Hypot(double x, double y) {  return hypot(x, y); }
-
 inline float Hypot(float x, float y) {  return hypotf(x, y); }
 
-#if !defined(_MSC_VER) || (_MSC_VER >= 1800)
-inline double Log1p(double x) {  return log1p(x); }
 
-inline float Log1p(float x) {  return log1pf(x); }
-#else
-inline double Log1p(double x) {
-    const double cutoff = 1.0e-08;
-    if (x < cutoff)
-        return x - 2 * x * x;
-    else 
-        return log(1.0 + x);
-}
-
-inline float Log1p(float x) {
-    const float cutoff = 1.0e-07;
-    if (x < cutoff)
-        return x - 2 * x * x;
-    else 
-        return log(1.0 + x);
-}
-#endif
-
-inline double Exp(double x) { return exp(x); }
-
-#ifndef KALDI_NO_EXPF
-inline float Exp(float x) { return expf(x); }
-#else
-inline float Exp(float x) { return exp(x); }
-#endif
-
-inline double Log(double x) { return log(x); }
-
-inline float Log(float x) { return logf(x); }
 
 
 }  // namespace kaldi

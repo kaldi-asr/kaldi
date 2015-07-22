@@ -67,7 +67,7 @@ rand_diag_gmm(size_t num_comp, size_t dim, DiagGmm *gmm) {
     weights(m) = kaldi::RandUniform();
     for (size_t d= 0; d < dim; d++) {
       means(m, d) = kaldi::RandGauss();
-      vars(m, d) = exp(kaldi::RandGauss()) + 1e-5;
+      vars(m, d) = Exp(kaldi::RandGauss()) + 1e-5;
     }
     tot_weight += weights(m);
   }

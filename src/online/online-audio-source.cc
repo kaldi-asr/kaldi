@@ -55,7 +55,7 @@ OnlinePaSource::OnlinePaSource(const uint32 timeout,
       report_interval_(report_interval), nread_calls_(0),
       noverflows_(0), samples_lost_(0) {
   using namespace std;
-  int32 rb_bits = static_cast<int32>(ceil(log(rb_size) / log(2)));
+  int32 rb_bits = static_cast<int32>(ceil(Log(rb_size) / Log(2)));
   if (rb_bits > 30) // ok, this limit is somewhat arbitrary
     throw invalid_argument("PortAudio ring buffer too large!");
   rb_size_ = 1 << rb_bits;

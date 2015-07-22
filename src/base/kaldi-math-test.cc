@@ -18,6 +18,7 @@
 // limitations under the License.
 #include "base/kaldi-math.h"
 #include "base/timer.h"
+#include <limits>
 
 namespace kaldi {
 
@@ -25,8 +26,10 @@ template<class I> void UnitTestGcdLcmTpl() {
   for (I a = 1; a < 15; a++) {  // a is min gcd.
     I b = (I)(Rand() % 10);
     I c = (I)(Rand() % 10);
-    if (Rand()%2 == 0 && std::numeric_limits<I>::is_signed) b = -b;
-    if (Rand()%2 == 0 && std::numeric_limits<I>::is_signed) c = -c;
+    if (std::numeric_limits<I>::is_signed) {
+      if (Rand() % 2 == 0) b = -b;
+      if (Rand() % 2 == 0) c = -c;
+    }
     if (b == 0 && c == 0) continue;  // gcd not defined for such numbers.
     I g = Gcd(b*a, c*a);
     KALDI_ASSERT(g >= a);
@@ -157,14 +160,14 @@ void UnitTestLogAddSub() {
   using namespace kaldi;
   for (int i = 0; i < 100; i++) {
     double f1 = Rand() % 10000, f2 = Rand() % 20;
-    double add1 = exp(LogAdd(log(f1), log(f2)));
-    double add2 = exp(LogAdd(log(f2), log(f1)));
+    double add1 = Exp(LogAdd(Log(f1), Log(f2)));
+    double add2 = Exp(LogAdd(Log(f2), Log(f1)));
     double add = f1 + f2, thresh = add*0.00001;
     KALDI_ASSERT(std::abs(add-add1) < thresh && std::abs(add-add2) < thresh);
 
 
     try {
-      double f2_check = exp(LogSub(log(add), log(f1))), thresh = (f2*0.01)+0.001;
+      double f2_check = Exp(LogSub(Log(add), Log(f1))), thresh = (f2*0.01)+0.001;
       KALDI_ASSERT(std::abs(f2_check-f2) < thresh);
     } catch(...) {
       KALDI_ASSERT(f2 == 0);  // It will probably crash for f2=0.
@@ -173,8 +176,8 @@ void UnitTestLogAddSub() {
 }
 
 void UnitTestDefines() {  // Yes, we even unit-test the preprocessor statements.
-  KALDI_ASSERT(exp(kLogZeroFloat) == 0.0);
-  KALDI_ASSERT(exp(kLogZeroDouble) == 0.0);
+  KALDI_ASSERT(Exp(kLogZeroFloat) == 0.0);
+  KALDI_ASSERT(Exp(kLogZeroDouble) == 0.0);
   BaseFloat den = 0.0;
   KALDI_ASSERT(KALDI_ISNAN(0.0 / den));
   KALDI_ASSERT(!KALDI_ISINF(0.0 / den));
@@ -194,8 +197,8 @@ void UnitTestDefines() {  // Yes, we even unit-test the preprocessor statements.
                && "If this test fails, you can probably just comment it out-- may mean your CPU exceeds expected floating point precision");
   KALDI_ASSERT(std::abs(sin(M_PI)) < 1.0e-05 && std::abs(cos(M_PI)+1.0) < 1.0e-05);
   KALDI_ASSERT(std::abs(sin(M_2PI)) < 1.0e-05 && std::abs(cos(M_2PI)-1.0) < 1.0e-05);
-  KALDI_ASSERT(std::abs(sin(exp(M_LOG_2PI))) < 1.0e-05);
-  KALDI_ASSERT(std::abs(cos(exp(M_LOG_2PI)) - 1.0) < 1.0e-05);
+  KALDI_ASSERT(std::abs(sin(Exp(M_LOG_2PI))) < 1.0e-05);
+  KALDI_ASSERT(std::abs(cos(Exp(M_LOG_2PI)) - 1.0) < 1.0e-05);
 }
 
 void UnitTestAssertFunc() {  // Testing Assert** *functions

@@ -1032,7 +1032,7 @@ void LogSoftmaxComponent::Propagate(const ChunkInfo &in_info,
   out->ApplyLogSoftMaxPerRow(in);
 
   // Just to be consistent with SoftmaxComponent::Propagate()
-  out->ApplyFloor(log(1.0e-20));
+  out->ApplyFloor(Log(1.0e-20));
 }
 
 void LogSoftmaxComponent::Backprop(const ChunkInfo &in_info,

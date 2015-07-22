@@ -123,9 +123,9 @@ int32 DiagGmm::ComputeGconsts() {
 
   for (int32 mix = 0; mix < num_mix; mix++) {
     KALDI_ASSERT(weights_(mix) >= 0);  // Cannot have negative weights.
-    BaseFloat gc = log(weights_(mix)) + offset;  // May be -inf if weights == 0
+    BaseFloat gc = Log(weights_(mix)) + offset;  // May be -inf if weights == 0
     for (int32 d = 0; d < dim; d++) {
-      gc += 0.5 * log(inv_vars_(mix, d)) - 0.5 * means_invvars_(mix, d)
+      gc += 0.5 * Log(inv_vars_(mix, d)) - 0.5 * means_invvars_(mix, d)
         * means_invvars_(mix, d) / inv_vars_(mix, d);
     }
     // Change sign for logdet because var is inverted. Also, note that
@@ -348,7 +348,7 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
   for (int32 i = 0; i < num_comp; i++) {
     discarded_component[i] = false;
     for (int32 d = 0; d < dim; d++) {
-      logdet(i) += 0.5 * log(inv_vars_(i, d));  // +0.5 because var is inverted
+      logdet(i) += 0.5 * Log(inv_vars_(i, d));  // +0.5 because var is inverted
     }
   }
 
@@ -431,7 +431,7 @@ void DiagGmm::Merge(int32 target_components, std::vector<int32> *history) {
     // Update logdet for merged component
     logdet(max_i) = 0.0;
     for (int32 d = 0; d < dim; d++) {
-      logdet(max_i) += 0.5 * log(inv_vars_(max_i, d));
+      logdet(max_i) += 0.5 * Log(inv_vars_(max_i, d));
       // +0.5 because var is inverted
     }
 
@@ -488,7 +488,7 @@ BaseFloat DiagGmm::merged_components_logdet(BaseFloat w1, BaseFloat w2,
   tmp_var.AddVec2(-1.0, tmp_mean);
   BaseFloat merged_logdet = 0.0;
   for (int32 d = 0; d < dim; d++) {
-    merged_logdet -= 0.5 * log(tmp_var(d));
+    merged_logdet -= 0.5 * Log(tmp_var(d));
     // -0.5 because var is not inverted
   }
   return merged_logdet;

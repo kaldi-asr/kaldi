@@ -26,7 +26,7 @@ namespace kaldi {
 Fbank::Fbank(const FbankOptions &opts)
     : opts_(opts), feature_window_function_(opts.frame_opts), srfft_(NULL) {
   if (opts.energy_floor > 0.0)
-    log_energy_floor_ = log(opts.energy_floor);
+    log_energy_floor_ = Log(opts.energy_floor);
 
   int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
   if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
@@ -136,7 +136,7 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
     // Compute energy after window function (not the raw one)
     if (opts_.use_energy && !opts_.raw_energy)
-      log_energy = log(std::max(VecVec(window, window),
+      log_energy = Log(std::max(VecVec(window, window),
                                 std::numeric_limits<BaseFloat>::min()));
 
     if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.

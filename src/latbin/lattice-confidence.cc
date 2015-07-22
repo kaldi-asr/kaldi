@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         }
         num_done++;
         confidence = std::min(max_output, confidence); // disallow infinity.
-        sum_neg_exp += exp(-confidence); // diagnostic.
+        sum_neg_exp += Exp(-confidence); // diagnostic.
         confidence_writer.Write(key, confidence);
       }
     } else {
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
         }
         num_done++;
         confidence = std::min(max_output, confidence); // disallow infinity.
-        sum_neg_exp += exp(-confidence); // diagnostic.
+        sum_neg_exp += Exp(-confidence); // diagnostic.
         confidence_writer.Write(key, confidence);
       }
     }
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
               << num_empty << " were equivalent to the empty lattice.";
     if (num_done != 0)
       KALDI_LOG << "Average confidence (averaged in negative-log space) is "
-                << -log(sum_neg_exp / num_done);
+                << -Log(sum_neg_exp / num_done);
     
     if (num_same_sentence != 0) {
       KALDI_WARN << num_same_sentence << " lattices had the same sentence on "

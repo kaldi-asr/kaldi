@@ -1621,7 +1621,7 @@ static void UnitTestCuDiffXent() {
   //cpu
   for(MatrixIndexT r=0; r<Hi.NumRows(); r++) {
     int32 col_tgt = Htgt[r];
-    Hlogpost(r) = log(Hi(r, col_tgt));
+    Hlogpost(r) = Log(Hi(r, col_tgt));
     Hi(r, col_tgt) -= 1.0;
   }
 

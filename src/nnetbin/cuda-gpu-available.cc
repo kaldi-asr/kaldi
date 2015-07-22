@@ -62,6 +62,7 @@ int main(int argc, char *argv[]) try {
             << std::endl
             << "### - Check with NVidia web that your 'display driver' and 'CUDA toolkit' is not too old." 
             << std::endl;
+  static_cast<void>(e);  //To avoid "unreferenced local variable"
   return 1;
 }
 

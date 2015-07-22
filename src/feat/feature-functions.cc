@@ -153,7 +153,7 @@ void ExtractWindow(const VectorBase<BaseFloat> &wave,
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max(VecVec(window_part, window_part),
                                 std::numeric_limits<BaseFloat>::min());
-    *log_energy_pre_window = log(energy);
+    *log_energy_pre_window = Log(energy);
   }
 
   if (opts.preemph_coeff != 0.0)
@@ -385,7 +385,7 @@ BaseFloat ComputeLpc(const VectorBase<BaseFloat> &autocorr_in,
                           tmp.Data());
   if (ans <= 0.0)
     KALDI_WARN << "Zero energy in LPC computation";
-  return -log((double)1.0/ans);  // forms the C0 value
+  return -Log((double)1.0/ans);  // forms the C0 value
 }
 
 void SpliceFrames(const MatrixBase<BaseFloat> &input_features,

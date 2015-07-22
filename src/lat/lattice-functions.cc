@@ -326,18 +326,18 @@ BaseFloat LatticeForwardBackward(const Lattice &lat, Posterior *post,
 
       // The following "if" is an optimization to avoid un-needed exp().
       if (transition_id != 0 || acoustic_like_sum != NULL) {
-        double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
+        double posterior = Exp(alpha[s] + arc_beta - tot_forward_prob);
 
         if (transition_id != 0) // Arc has a transition-id on it [not epsilon]
           (*post)[state_times[s]].push_back(std::make_pair(transition_id,
-                                                               posterior));
+                                                           static_cast<kaldi::BaseFloat>(posterior)));
         if (acoustic_like_sum != NULL)
           *acoustic_like_sum -= posterior * arc.weight.Value2();
       }
     }
     if (acoustic_like_sum != NULL && f != Weight::Zero()) {
       double final_logprob = - ConvertToCost(f),
-          posterior = exp(alpha[s] + final_logprob - tot_forward_prob);
+          posterior = Exp(alpha[s] + final_logprob - tot_forward_prob);
       *acoustic_like_sum -= posterior * f.Value2();
     }
     beta[s] = this_beta;
@@ -894,12 +894,12 @@ BaseFloat LatticeForwardBackwardMpeVariants(
       beta_smbr[s] += arc_scale * (beta_smbr[arc.nextstate] + frame_acc);
 
       if (transition_id != 0) { // Arc has a transition-id on it [not epsilon]
-        double posterior = exp(alpha[s] + arc_beta - tot_forward_prob);
+        double posterior = Exp(alpha[s] + arc_beta - tot_forward_prob);
         double acc_diff = alpha_smbr[s] + frame_acc + beta_smbr[arc.nextstate]
                                - tot_forward_score;
         double posterior_smbr = posterior * acc_diff;
         (*post)[state_times[s]].push_back(std::make_pair(transition_id,
-                                                             posterior_smbr));
+                                                         static_cast<BaseFloat>(posterior_smbr)));
       }
     }
   }

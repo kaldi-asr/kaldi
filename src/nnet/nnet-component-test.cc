@@ -292,7 +292,6 @@ namespace nnet1 {
     AssertEqual(mat_in_diff, mat_in_diff_ref);
 
     delete c;
-	
   }
 
 } // namespace nnet1

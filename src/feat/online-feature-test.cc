@@ -70,6 +70,7 @@ bool RandomSplit(int32 wav_dim,
                  int32 num_pieces,
                  int32 trials = 5) {
   piece_dim->clear();
+  piece_dim->resize(num_pieces, 0);
 
   int32 dim_mean = wav_dim / (num_pieces * 2);
   int32 cnt = 0;
@@ -182,7 +183,8 @@ void TestOnlineMfcc() {
   // we try to break it into from 5 pieces to 9(not essential to do so)
   for (int32 num_piece = 5; num_piece < 10; num_piece++) {
     OnlineMfcc online_mfcc(op);
-    std::vector<int32> piece_length(num_piece);
+    std::vector<int32> piece_length(num_piece, 0);
+
     bool ret = RandomSplit(waveform.Dim(), &piece_length, num_piece);
     KALDI_ASSERT(ret);
 

@@ -122,7 +122,7 @@ double MinimumBayesRisk::EditDistance(int32 N, int32 Q,
           alpha_dash_arc(q) = std::min(a1, std::min(a2, a3));
         }
         // line 19:
-        alpha_dash(n, q) += exp(alpha(s_a) + p_a - alpha(n)) * alpha_dash_arc(q);
+        alpha_dash(n, q) += Exp(alpha(s_a) + p_a - alpha(n)) * alpha_dash_arc(q);
       }
     }
   }
@@ -182,7 +182,7 @@ void MinimumBayesRisk::AccStats() {
       beta_dash_arc.SetZero(); // line 19.
       for (int32 q = Q; q >= 1; q--) {
         // line 21:
-        beta_dash_arc(q) += exp(alpha(s_a) + p_a - alpha(n)) * beta_dash(n, q);
+        beta_dash_arc(q) += Exp(alpha(s_a) + p_a - alpha(n)) * beta_dash(n, q);
         switch (static_cast<int>(b_arc[q])) { // lines 22 and 23:
           case 1:
             beta_dash(s_a, q-1) += beta_dash_arc(q);
@@ -210,7 +210,7 @@ void MinimumBayesRisk::AccStats() {
             KALDI_ERR << "Invalid b_arc value"; // error in code.
         }
       }
-      beta_dash_arc(0) += exp(alpha(s_a) + p_a - alpha(n)) * beta_dash(n, 0);
+      beta_dash_arc(0) += Exp(alpha(s_a) + p_a - alpha(n)) * beta_dash(n, 0);
       beta_dash(s_a, 0) += beta_dash_arc(0); // line 26.
     }
   }
