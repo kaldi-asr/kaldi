@@ -60,8 +60,7 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
   data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_fsh_tg
 
 # For some funny reason we are still using IRSTLM for doing LM pruning :)
-prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz \
-  /dev/stdout \
+prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o3g.kn.gz /dev/stdout \
   | gzip -c > data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
 LM=data/local/lm/sw1_fsh.o3g.pr1-7.kn.gz
 utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
