@@ -1407,6 +1407,20 @@ Component *AffineComponent::CollapseWithNext(
   return ans;
 }
 
+Component *AffineComponent::CollapseWithNext(
+    const FixedScaleComponent &next_component) const {
+  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
+  AffineComponent *ans =
+      dynamic_cast<AffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  ans->linear_params_.MulRowsVec(next_component.scales_);
+  ans->bias_params_.MulElements(next_component.scales_);
+
+  return ans;
+}
+
+
+
 Component *AffineComponent::CollapseWithPrevious(
     const FixedAffineComponent &prev_component) const {
   // If at least one was non-updatable, make the whole non-updatable.
