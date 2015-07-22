@@ -56,6 +56,7 @@
 /tools/srilm
 /tools/CLAPACK_include
 /tools/kaldi_lm
+/tools/env.sh
 
 # /src/
 /src/kaldi.mk
@@ -67,6 +68,7 @@
 /src/base/kaldi-math-test
 /src/base/io-funcs-test
 /src/base/kaldi-error-test
+/src/base/timer-test
 
 # /src/bin/
 /src/bin/.depend.mk
@@ -467,6 +469,7 @@
 /src/matrix/Matrix.vcxproj
 /src/matrix/matrix-lib-test
 /src/matrix/kaldi-gpsr-test
+/src/matrix/tmpf
 
 # /src/nnet/
 /src/nnet/.depend.mk
@@ -498,6 +501,7 @@
 # /src/nnet2/
 /src/nnet2/.depend.mk
 /src/nnet2/nnet-component-test
+/src/nnet2/nnet-compute-test
 
 # /src/nnet2bin/
 /src/nnet2bin/.depend.mk
