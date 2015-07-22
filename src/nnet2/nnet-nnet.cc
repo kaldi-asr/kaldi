@@ -372,16 +372,43 @@ void Nnet::ResizeOutputLayer(int32 new_num_pdfs) {
   if ((sc = dynamic_cast<SoftmaxComponent*>(components_[nc - 1])) == NULL)
     KALDI_ERR << "Expected last component to be SoftmaxComponent.";
 
+  // check if nc-1 has a FixedScaleComponent
+  bool has_fixed_scale_component = false;
+  int32 fixed_scale_component_index = -1;
+  int32 final_affine_component_index = nc - 2;
+  int32 softmax_component_index = nc - 1;
+  FixedScaleComponent *fsc =
+      dynamic_cast<FixedScaleComponent*>(
+          components_[final_affine_component_index]);
+  if (fsc != NULL)  {
+    has_fixed_scale_component = true; 
+    fixed_scale_component_index = nc - 2;
+    final_affine_component_index = nc - 3;
+  }
+    
   // note: it could be child class of AffineComponent.
-  AffineComponent *ac = dynamic_cast<AffineComponent*>(components_[nc - 2]);
+  AffineComponent *ac = dynamic_cast<AffineComponent*>(
+      components_[final_affine_component_index]);
   if (ac == NULL)
     KALDI_ERR << "Network doesn't have expected structure (didn't find final "
               << "AffineComponent).";
-  
+  if (has_fixed_scale_component)  {
+    // collapse the fixed_scale_component with the affine_component before it
+    AffineComponent *ac_new = dynamic_cast<AffineComponent*>(ac->CollapseWithNext(*fsc));
+    KALDI_ASSERT(ac_new != NULL);
+    delete fsc;
+    delete ac;
+    components_.erase(components_.begin() + fixed_scale_component_index,
+                      components_.begin() + (fixed_scale_component_index + 1));
+    components_[final_affine_component_index] = ac_new;
+    ac = ac_new;
+    softmax_component_index = softmax_component_index - 1;
+  }
+   
   ac->Resize(ac->InputDim(), new_num_pdfs);
   // Remove the softmax component, and replace it with a new one
-  delete components_[nc - 1];
-  components_[nc - 1] = new SoftmaxComponent(new_num_pdfs);
+  delete components_[softmax_component_index];
+  components_[softmax_component_index] = new SoftmaxComponent(new_num_pdfs);
   this->Check();
 }
 
