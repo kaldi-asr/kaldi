@@ -707,9 +707,9 @@ class ScaleComponent: public Component {
 
 
 
-class SumGroupComponent; // Forward declaration.
-class AffineComponent; // Forward declaration.
-class FixedScaleComponent; // Forward declaration.
+class SumGroupComponent;  // Forward declaration.
+class AffineComponent;  // Forward declaration.
+class FixedScaleComponent;  // Forward declaration.
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
@@ -1475,7 +1475,7 @@ class FixedScaleComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
 
  protected:
-  friend class AffineComponent; // necessary for collapse
+  friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;  
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
