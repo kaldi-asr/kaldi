@@ -190,7 +190,7 @@ fi
 
 idir=$dir/irstlm
 mkdir $idir
-gunzip -c $srcdir/cleaned.gz | tail -n +$heldout_sent | $IRSTLM/scripts/add-start-end.sh | \
+gunzip -c $srcdir/cleaned.gz | tail -n +$heldout_sent | add-start-end.sh | \
   gzip -c > $idir/train.gz
 
 dict -i=WSJ.cleaned.irstlm.txt -o=dico -f=y -sort=no
