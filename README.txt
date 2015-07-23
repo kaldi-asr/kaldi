@@ -27,5 +27,10 @@ Kaldi forum, mailing-lists: http://kaldi-asr.org/forums.html
 
 Development pattern for contributors:
 A) create a personal fork of the kaldi-asr/kaldi repository in github,
-B) make your changes in a named branch different from "master", e.g. you create a branch "my-awesome-feature"
+B) make your changes in a named branch different from "master", e.g. you create
+   a branch "my-awesome-feature". 
 C) generate a pull request through the web interface of github
+D) as a general rule, please follow Google C++ Style Guide. There are a few 
+   exceptions in Kaldi -- please consult http://kaldi-asr.org/doc/style.html
+   You can use the Google's cpplint.py to verify that your code is free
+   of some basic mistakes. 
