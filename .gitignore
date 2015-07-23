@@ -675,6 +675,16 @@
 /src/util/text-utils-test
 /src/util/parse-options-test
 
+# /src/online and /src/onlinebin
+/src/online/.depend.mk
+/src/online/online-feat-test
+/src/onlinebin/.depend.mk
+/src/onlinebin/online-audio-client
+/src/onlinebin/online-audio-server-decode-faster
+/src/onlinebin/online-gmm-decode-faster
+/src/onlinebin/online-net-client
+/src/onlinebin/online-server-gmm-decode-faster
+/src/onlinebin/online-wav-gmm-decode-faster
 
 # we should probably have more things like this in
 # the .gitignore:
