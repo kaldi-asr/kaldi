@@ -21,11 +21,11 @@ use lib "$Bin";
 use Data::Dumper;
 use Getopt::Long;
 
-my $vsver="vs2015";
+my $vsver="vs2013";
 
 my %ENABLED = (CUDA => 0,
-               OPENBLAS => 1,
-               MKL => 0 );
+               OPENBLAS => 0,
+               MKL => 1 );
 
 GetOptions ("vsver=s" => \$vsver,
             "enable-cuda" => \$ENABLED{CUDA},
