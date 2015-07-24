@@ -197,7 +197,22 @@ class CuMatrixBase {
   /// "output-elem" is whichever element of output depends on that input element.
   void GroupPnormDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output, Real power);
-  
+
+  /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
+  /// where G = x.NumCols() / y.NumCols() must be an integer.
+  /// [note: y corresponds to *this and x to src, so
+  ///  src.NumCols() / this->NumCols() must be an integer.
+  void GroupMax(const CuMatrixBase<Real> &src);
+
+  /// Calculate derivatives for the GroupMax function above...
+  /// if "input" is the input to the GroupMax function above (i.e. the "src" variable),
+  /// and "output" is the result of the computation (i.e. the "this" of that function
+  /// call), and *this has the same dimension as "input", then it sets each element
+  /// of *this to the derivative d(output-elem)/d(input-elem) for each element of "input" where
+  /// "output-elem" is equal to the "input-eleme", and 0 otherwise.
+  void GroupMaxDeriv(const CuMatrixBase<Real> &input,
+                       const CuMatrixBase<Real> &output);
+
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
   void Tanh(const CuMatrixBase<Real> &src);
