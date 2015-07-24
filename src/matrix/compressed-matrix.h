@@ -169,48 +169,82 @@ class CompressedMatrix {
 
 };
 
-/// This class is a wrapper that enables you to store a matrix and compress it,
-/// or not, and write it to disk in its current state (maybe compressed or maybe
-/// not).  Useful when you want to be able to do I/O and configure whether or
-/// not you want the data to be compressed.  Note: if you write in text form,
-/// all reads will generate an uncompressed matrix.
-class PossiblyCompressedMatrix {
+enum GeneralMatrixType {
+  int32 kFullMatrix,
+  int32 kCompressedMatrix,
+  int32 kSparseMatrix
+};
+
+/// This class is a wrapper that enables you to store a matrix
+/// in one of three forms: either as a Matrix<BaseFloat>, or a CompressedMatrix,
+/// or a SparseMatrix<BaseFloat>.  It handles the I/O for you, i.e. you read
+/// and write a single object type.  It is useful for neural-net training targets
+/// which might be sparse or not, and might be compressed or not.
+class GeneralMatrix {
  public:
-  void Compress();  // Compress, if currently uncompressed.
+  GeneralMatrixType Type();
 
-  void Uncompress();  // Uncompress, if currently compressed.
+  void Compress();  // Must only be called if Type() == kFullMatrix.
+                    // Compresses and changes Type() to kCompressedMatrix.
 
-  void Write(std::ostream &os, bool binary) const;
+  void Uncompress();  // Must only be called if Type() == kCompressedMatrix.
+                      // Uncompresses and changes Type() to kFullMatrix.
   
+  void Write(std::ostream &os, bool binary) const;
+
+  /// Note: if you write a compressed matrix in text form, it will be read as
+  /// uncompressed.
   void Read(std::istream &is, bool binary);
 
-  void Set(const MatrixBase<BaseFloat> &mat,
-           bool compress);
+  /// Outputs the contents as a SparseMatrix.  This will only work if
+  /// Type() returns kSparseMatrix.
+  void GetSparseMatrix(SparseMatrix<BaseFloat> *smat);
 
+  /// Outputs the contents as a matrix.  This will work regardless of
+  /// Type().
   void GetMatrix(Matrix<BaseFloat> *mat) const;
 
-  // This function copies the contents to "mat", which must already have the
-  // correct size.
-  void CopyToMat(MatrixBase<BaseFloat> *mat) const;
+  /// Assignment from regular matrix.
+  GeneralMatrix &operator = (const MatrixBase<BaseFloat> &mat);
+
+  /// Assignment from compressed matrix.
+  GeneralMatrix &operator = (CompressedMatrix &mat) const;
+
+  /// Assignment from sparse matrix
+  template <typename Real>
+  GeneralMatrix &operator = (SparseMatrix<BaseFloat> &smat) const;
 
   int32 NumRows() const;
 
   int32 NumCols() const;
 
-  bool IsCompressed() const;
+  GeneralMatrix(const MatrixBase<BaseFloat> &mat) { *this = mat; }
+
+  GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
+
+  GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
   
-  PossiblyCompressedMatrix(const MatrixBase<BaseFloat> &mat,
-                           bool compress = false);
-  PossiblyCompressedMatrix() { }
+  GeneralMatrix() { }
   // Copy constructor
-  PossiblyCompressedMatrix(const PossiblyCompressedMatrix &other);
+  GeneralMatrix(const GeneralMatrix &other);
   // Assignment operator.
-  PossiblyCompressedMatrix &operator =(const PossiblyCompressedMatrix &other);
+  GeneralMatrix &operator =(const GeneralMatrix &other);
+  // Sets to the empty matrix.
+  void Clear(); 
  private:
+  // We don't explicitly store the type of the matrix.  Rather, we make
+  // sure that only one of the matrices is ever nonempty, and the Type()
+  // returns that one, or kFullMatrix if all are empty.
   Matrix<BaseFloat> mat_;
   CompressedMatrix cmat_;
+  SparseMatrix<BaseFloat> smat_;
 };
 
+
+/// Appends all the matrix rows of a list of GeneralMatrixes, to get a single
+/// GeneralMatrix.  Preserves sparsity if all inputs were sparse.
+void AppendMatrixRows(const std::vector<const GeneralMatrix *> &src,
+                      GeneralMatrix *mat);
 
 /// @} end of \addtogroup matrix_group
 
