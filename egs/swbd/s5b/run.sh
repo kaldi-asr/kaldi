@@ -18,6 +18,19 @@ set -e # exit on error
 # want to store MFCC features. 
 mfccdir=mfcc
 
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
+
 
 # Prepare Switchboard data. This command can also take a second optional argument
 # which specifies the directory to Switchboard documentations. Specifically, if
@@ -54,6 +67,7 @@ local/swbd1_train_lms.sh data/local/train/text \
   data/local/dict/lexicon.txt data/local/lm $fisher_dirs
 # We don't really need all these options for SRILM, since the LM training script
 # does some of the same processings (e.g. -subset -tolower)
+
 for order in 3 4; do
   lm_suffix="tg"
   [ $order -eq 3 ] || lm_suffix="fg"
@@ -66,7 +80,6 @@ for order in 3 4; do
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_$lm_suffix
   
   # For some funny reason we are still using IRSTLM for doing LM pruning :)
-  export PATH=$PATH:../../../tools/irstlm/bin/
   prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o${order}g.kn.gz /dev/stdout \
     | gzip -c > data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz || exit 1
   LM=data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz

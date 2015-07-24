@@ -9,7 +9,18 @@
 # data/train_si284, data/train_si84, etc.
 
 . ./path.sh || exit 1;
-export PATH=$KALDI_ROOT/tools/irstlm/bin:$PATH
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v ngt >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
 
 srcdict=$1
 newtext=$2
@@ -119,7 +130,7 @@ if [ ! -f $lmdir/extra4.ngt ];
   awk '{if(NF>=4){ printf("%s\n",$0); }}' > $lmdir/text.filt
     
   # Envelop LM training data in context cues
-  $irstbin/add-start-end.sh < $lmdir/text.filt > $lmdir/lm_input
+  add-start-end.sh < $lmdir/text.filt > $lmdir/lm_input
 
 
     echo "Creating new binary ngram table $lmdir/extra4.ngt"

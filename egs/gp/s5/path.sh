@@ -4,6 +4,8 @@
 export LC_ALL=C  # For expected sorting and joining behaviour
 
 KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
+[ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
+
 KALDISRC=$KALDI_ROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
