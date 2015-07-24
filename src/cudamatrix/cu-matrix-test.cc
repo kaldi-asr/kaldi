@@ -267,6 +267,27 @@ static void UnitTestCuMatrixGroupPnorm() {
 }
 
 template<typename Real> 
+static void UnitTestCuMatrixGroupMax() {
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
+  // M = 256; N = 256;
+  for (int32 K = 5; K < 7; K++) {
+    int32 N_src = N * K;
+    Matrix<Real> H_src(M, N_src);
+    H_src.SetRandn();
+    if (rand () % 2 == 0)
+      H_src.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                             // do derivatives.
+    Matrix<Real> H(M, N);
+    H.GroupMax(H_src);
+    CuMatrix<Real> D(H_src);
+    CuMatrix<Real> E(M, N);
+    E.GroupMax(D);
+    Matrix<Real> H2(E);
+    AssertEqual(H,H2);
+  }
+}
+
+template<typename Real> 
 static void UnitTestCuMatrixSet() {
   for (int32 i = 0; i < 2; i++) {
     BaseFloat value= 0.333;
@@ -679,6 +700,39 @@ static void UnitTestCuMatrixGroupPnormDeriv() {
   // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
   Dr.GroupPnormDeriv(Dm, Ds, power);
   Hr.GroupPnormDeriv(Hm, Hs, power);
+  
+  // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
+  Matrix<Real> Hr2(dimM, dimN);
+  Dr.CopyToMat(&Hr2);
+  AssertEqual(Hr,Hr2);
+}
+
+template<typename Real> 
+static void UnitTestCuMatrixGroupMaxDeriv() {
+  int32 dimM = 100 + Rand() % 200, dimNs = 100 + Rand() % 200;
+  int32 group_size = 1 + Rand() % 10;
+  // int32 dimM = 256, dimNs = 2;
+  // int32 group_size = 2;
+  int32 dimN = group_size * dimNs;
+  Matrix<Real> Hm(dimM, dimN);
+  Matrix<Real> Hr(dimM, dimN);
+  Matrix<Real> Hs(dimM, dimNs);
+  Hs.SetRandn();
+  if (rand () % 2 == 0)
+    Hm.ApplyFloor(0.0); // will put some zeros in the matrix.. harder to
+                        // do derivatives.
+  Hs.GroupMax(Hm);
+  
+  CuMatrix<Real> Dm(dimM, dimN);
+  CuMatrix<Real> Dr(dimM, dimN);
+  CuMatrix<Real> Ds(dimM, dimNs);
+  Dm.CopyFromMat(Hm);
+  Dr.CopyFromMat(Hr);
+  Ds.CopyFromMat(Hs);
+  
+  // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
+  Dr.GroupMaxDeriv(Dm, Ds);
+  Hr.GroupMaxDeriv(Hm, Hs);
   
   // KALDI_LOG << "Hr " << Hr << " Dr " << Dr << "Ds" << Ds << " Hs " << Hs ; 
   Matrix<Real> Hr2(dimM, dimN);
@@ -2072,6 +2126,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuDiffSigmoid<Real>();
   UnitTestCuMatrixGroupPnorm<Real>();  
   UnitTestCuMatrixGroupPnormDeriv<Real>();
+  UnitTestCuMatrixGroupMax<Real>();  
+  UnitTestCuMatrixGroupMaxDeriv<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixMulRowsGroupMat<Real>();
   UnitTestCuFindRowMaxId<Real>();
