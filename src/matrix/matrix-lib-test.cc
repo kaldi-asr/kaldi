@@ -4294,10 +4294,10 @@ template<typename Real> static void UnitTestCompressedMatrix() {
   unlink("tmpf");
 }
 
-template<typename Real> static void UnitTestPossiblyCompressedMatrix() {
+template<typename Real> static void UnitTestGeneralMatrix() {
   // This is the basic test.
 
-  PossiblyCompressedMatrix empty_pmat;  // some tests on empty matrix
+  GeneralMatrix empty_pmat;  // some tests on empty matrix
   KALDI_ASSERT(empty_pmat.NumRows() == 0);
   KALDI_ASSERT(empty_pmat.NumCols() == 0);
 
@@ -4332,11 +4332,11 @@ template<typename Real> static void UnitTestPossiblyCompressedMatrix() {
       for (MatrixIndexT c = 0; c < num_cols; c++)
         if (Rand() % modulus != 0) M(r, c) = rand_val;
 
-    PossiblyCompressedMatrix pmat(M, false);
+    GeneralMatrix pmat(M, false);
     pmat.Compress();
     KALDI_ASSERT(pmat.NumRows() == num_rows);
     KALDI_ASSERT(pmat.NumCols() == num_cols);
-    PossiblyCompressedMatrix pmat2(pmat);
+    GeneralMatrix pmat2(pmat);
 
     Matrix<Real> M2(pmat2.NumRows(), pmat2.NumCols());
     pmat2.GetMatrix(&M2);
@@ -4351,7 +4351,7 @@ template<typename Real> static void UnitTestPossiblyCompressedMatrix() {
         InitKaldiOutputStream(outs, binary);
         pmat.Write(outs, binary);
       }
-      PossiblyCompressedMatrix pmat3;
+      GeneralMatrix pmat3;
       {
         bool binary_in;
         std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
@@ -4533,7 +4533,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
-  UnitTestPossiblyCompressedMatrix<BaseFloat>();
+  UnitTestGeneralMatrix<BaseFloat>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
   UnitTestMatrixExponentialBackprop();

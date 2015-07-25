@@ -664,7 +664,7 @@ template void CompressedMatrix::CopyToMat(int32,
                int32,
                MatrixBase<double> *dest) const;
 
-void CompressedMatrix::Destroy() {
+void CompressedMatrix::Clear() {
   if (data_ != NULL) {
     delete [] static_cast<float*>(data_);
     data_ = NULL;
@@ -676,7 +676,7 @@ CompressedMatrix::CompressedMatrix(const CompressedMatrix &mat): data_(NULL) {
 }
 
 CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
-  Destroy(); // now this->data_ == NULL.
+  Clear(); // now this->data_ == NULL.
   if (mat.data_ != NULL) {
     MatrixIndexT data_size = DataSize(*static_cast<GlobalHeader*>(mat.data_));
     data_ = AllocateData(data_size);
@@ -687,122 +687,5 @@ CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
   return *this;
 }
 
-void PossiblyCompressedMatrix::Write(std::ostream &os, bool binary) const {
-  if (IsCompressed()) {
-    cmat_.Write(os, binary);
-  } else { // if cmat_ is empty
-    mat_.Write(os, binary);
-  }
-  if (os.fail())
-    KALDI_ERR << "Error writing compressed matrix to stream.";
-}
-
-
-void PossiblyCompressedMatrix::Read(std::istream &is, bool binary) {
-  if (binary) {
-    int peekval = Peek(is, binary);
-    if (peekval == 'C') {
-      // Token CM for compressed matrix
-      mat_.Resize(0, 0);
-      cmat_.Read(is, binary);
-    } else {
-      // For token DM or FM, just read into the matrix
-      Matrix<BaseFloat> empty_mat;
-      cmat_.CopyFromMat(empty_mat);
-      mat_.Read(is, binary);
-    }
-  } else {  // For binary=false, just read into the matrix
-    Matrix<BaseFloat> empty_mat;
-    cmat_.CopyFromMat(empty_mat);
-    mat_.Read(is, binary);
-  }
-  if (is.fail())
-    KALDI_ERR << "Failed to read data.";
-}
-
-void PossiblyCompressedMatrix::Set(const MatrixBase<BaseFloat> &mat,
-                                   bool compress) {
-  if (compress) {
-    cmat_.CopyFromMat(mat);
-    mat_.Resize(0, 0);
-  } else {
-    mat_.Resize(mat.NumRows(), mat.NumCols());
-    mat_.CopyFromMat(mat);
-    Matrix<BaseFloat> empty_mat;
-    cmat_.CopyFromMat(empty_mat);
-  }
-}
-
-void PossiblyCompressedMatrix::Compress() {
-  if (mat_.NumRows() != 0) {
-    cmat_.CopyFromMat(mat_);
-    mat_.Resize(0, 0);
-  } 
-}
-
-void PossiblyCompressedMatrix::Uncompress() {
-  if (IsCompressed()) {
-    cmat_.CopyToMat(&mat_);
-    Matrix<BaseFloat> empty_mat;
-    cmat_.CopyFromMat(empty_mat);
-  }
-}
-
-void PossiblyCompressedMatrix::GetMatrix(Matrix<BaseFloat> *mat) const {
-  if (IsCompressed()) {
-    mat->Resize(cmat_.NumRows(), cmat_.NumCols());
-    cmat_.CopyToMat(mat);
-  } else {
-    mat->Resize(mat_.NumRows(), mat_.NumCols());
-    mat->CopyFromMat(mat_);
-  }
-}
-
-void PossiblyCompressedMatrix::CopyToMat(MatrixBase<BaseFloat> *mat) const {
-  KALDI_ASSERT(mat->NumCols() == NumCols() && mat->NumRows() == NumRows());
-  if (IsCompressed())
-    cmat_.CopyToMat(mat);
-  else
-    mat->CopyFromMat(mat_);
-}
-
-bool PossiblyCompressedMatrix::IsCompressed() const {
-  if (cmat_.NumRows() != 0) {
-    return true;
-  } else {
-    return false;
-  }
-}
-
-int32 PossiblyCompressedMatrix::NumRows() const {
-  if (IsCompressed()) {
-    return cmat_.NumRows();
-  } else {
-    return mat_.NumRows();
-  }
-}
-
-int32 PossiblyCompressedMatrix::NumCols() const {
-  if (IsCompressed()) {
-    return cmat_.NumCols();
-  } else {
-    return mat_.NumCols();
-  }
-}
-
-PossiblyCompressedMatrix::PossiblyCompressedMatrix(
-    const MatrixBase<BaseFloat> &mat, bool compress) {
-  Set(mat, compress);
-}
-
-PossiblyCompressedMatrix::PossiblyCompressedMatrix(const PossiblyCompressedMatrix &other) {
-  *this = other; // use assignment operator.
-}
-
-PossiblyCompressedMatrix &PossiblyCompressedMatrix::operator = (const PossiblyCompressedMatrix &other) {
-  mat_ = other.mat_;
-  cmat_ = other.cmat_;
-  return *this;
-}
 
 }  // namespace kaldi

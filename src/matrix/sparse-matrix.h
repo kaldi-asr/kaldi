@@ -21,6 +21,8 @@
 #define KALDI_MATRIX_SPARSE_MATRIX_H_ 1
 
 #include "matrix/matrix-common.h"
+#include "matrix/kaldi-matrix.h"
+#include "matrix/compressed-matrix.h"
 
 namespace kaldi {
 
@@ -28,40 +30,87 @@ namespace kaldi {
 /// \addtogroup matrix_group
 /// @{
 
-/// Base class which provides matrix operations not involving resizing
-/// or allocation.   Classes Matrix and SubMatrix inherit from it and take care
-/// of allocation and resizing.
-
 template <typename Real>
 class SparseVector {
+ public:
+  MatrixIndexT Dim() const { return dim_; }
 
-  int32 Dim() const;
+  void CopyToVec(VectorBase<Real> *vec) const;
 
-  void CopyToVector(VectorBase<Real> *other);
+  // *vec += alpha * *this.
+  void AddToVec(Real alpha,
+                VectorBase<Real> *vec) const;
 
   SparseVector<Real> &operator = (const SparseVector<Real> &other); 
       
   SparseVector(const SparseVector<Real> &other) { *this = other; }
-
+  
   void Swap(SparseVector<Real> *other);
 
-  // initializer.
-  SparseVector(const std::vector<std::pair<int32, BaseFloat> > &pairs);
+  
+  /// Returns the number of nonzero elements.
+  MatrixIndexT NumElements() const { return pairs_.size(); }
 
+  /// get an indexed element (0 <= i < NumElements()).
+  const std::pair<MatrixIndexT, Real> &GetElement(MatrixIndexT i) const {
+    return pairs_[i];
+  }
+
+  // returns pointer to element data, or NULL if empty (use with NumElements()).
+  std::pair<MatrixIndexT, Real> *Data();
+
+  // returns pointer to element data, or NULL if empty (use with NumElements());
+  // const version
+  const std::pair<MatrixIndexT, Real> *Data() const;
+
+  /// Sets elements to zero with probability zero_prob, else normally
+  /// distributed.  Useful in testing.
+  void SetRandn(BaseFloat zero_prob);
+  
+  SparseVector(): dim_(0) { }
+
+  SparseVector(MatrixIndexT dim): dim_(dim) { KALDI_ASSERT(dim>=0); }
+
+  // constructor from pairs; does not assume input pairs are sorted and uniq
+  SparseVector(MatrixIndexT dim,
+               const std::vector<std::pair<MatrixIndexT, Real> > &pairs);
+
+  /// Resizes to this dimension.  resize_type == kUndefined
+  /// behaves the same as kSetZero.
+  void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &os, bool binary);
+  
  private:
+  MatrixIndexT dim_;
   // pairs of (row-index, value).  Stored in sorted order with no duplicates.
   // For now we use std::vector, but we could change this.
-  std::vector<std::pair<int32, BaseFloat> > pairs_;
+  std::vector<std::pair<MatrixIndexT, Real> > pairs_;
 };
+
+
+template <typename Real>
+Real VecSvec(const VectorBase<Real> &vec,
+             const SparseVector<Real> &svec);
+
+
 
 template <typename Real>
 class SparseMatrix {
-  int32 NumRows() const;
+ public:
+  MatrixIndexT NumRows() const;
 
-  int32 NumCols() const;
+  MatrixIndexT NumCols() const;
 
-  void CopyToMatrix(MatrixBase<Real> *other);
+  void CopyToMat(MatrixBase<Real> *other,
+                 MatrixTransposeType t = kNoTrans) const;
 
+  /// Does *other = *other + alpha * *this.
+  void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
+                MatrixTransposeType t = kNoTrans) const;
+  
   SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other); 
       
   SparseMatrix(const SparseMatrix<Real> &other) { *this = other; }
@@ -69,9 +118,12 @@ class SparseMatrix {
   void Swap(SparseMatrix<Real> *other);
 
   // initializer from the type that elsewhere in Kaldi is referred to as type Posterior.
-  // indexed first by row-index; the pairs are (column-index, value).
-  SparseMatrix(const std::vector<std::vector<std::pair<int32, BaseFloat> > > &pairs);
+  // indexed first by row-index; the pairs are (column-index, value), and the constructor
+  // does not require them to be sorted and uniq.
+  SparseMatrix(int32 dim,
+               const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
 
+               
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
   /// with probability zero_prob and else normally distributed- mostly for
   /// purposes of testing.
@@ -81,19 +133,117 @@ class SparseMatrix {
 
   void Read(std::istream &os, bool binary);
 
+  const SparseVector<Real> &Row(MatrixIndexT r) const;
+
+  SparseMatrix() { }
+
+  SparseMatrix(int32 num_rows, int32 num_cols) { Resize(num_rows, num_cols); }
+
+  /// Resizes the matrix; analogous to Matrix::Resize().  resize_type ==
+  /// kUndefined behaves the same as kSetZero.
+  void Resize(MatrixIndexT rows, MatrixIndexT cols,
+              MatrixResizeType resize_type = kSetZero);
+  
   // Use the Matrix::CopyFromSmat() function to copy from this to Matrix.  Also
   // see Matrix::AddSmat().  There is not very extensive functionality for SparseMat just yet
   // (e.g. no matrix multiply); we will add things as needed and as it seems necessary.
  private:
-  // vector of SparseVector (use an stl vector for now; this could change).
+  // vector of SparseVectors, all of same dime (use an stl vector for now; this
+  // could change).
   std::vector<SparseVector<Real> > rows_;
 };
 
 
 template<typename Real>
-Real TraceMatSmat(const CuMatrixBase<Real> &A,
-                  const CuSparseMatrix<Real> &B,
+Real TraceMatSmat(const MatrixBase<Real> &A,
+                  const SparseMatrix<Real> &B,
                   MatrixTransposeType trans = kNoTrans);
+
+
+enum GeneralMatrixType {
+  kFullMatrix,
+  kCompressedMatrix,
+  kSparseMatrix
+};
+
+/// This class is a wrapper that enables you to store a matrix
+/// in one of three forms: either as a Matrix<BaseFloat>, or a CompressedMatrix,
+/// or a SparseMatrix<BaseFloat>.  It handles the I/O for you, i.e. you read
+/// and write a single object type.  It is useful for neural-net training targets
+/// which might be sparse or not, and might be compressed or not.
+class GeneralMatrix {
+ public:
+  GeneralMatrixType Type() const;
+
+  void Compress();  // If it was a full matrix, compresses, changing Type() to
+                    // kCompressedMatrix; otherwise does nothing.
+
+  void Uncompress();  // If it was a compressed matrix, uncompresses, changing Type()
+                      // to kFullMatrix; otherwise does nothing.
+  
+  void Write(std::ostream &os, bool binary) const;
+
+  /// Note: if you write a compressed matrix in text form, it will be read as
+  /// a regular full matrix.
+  void Read(std::istream &is, bool binary);
+
+  /// Outputs the contents as a SparseMatrix.  This will only work if
+  /// Type() returns kSparseMatrix.
+  void GetSparseMatrix(SparseMatrix<BaseFloat> *smat) const;
+
+  /// Outputs the contents as a compressed matrix.  This will only work if
+  /// Type() returns kCompressedMatrix.
+  void GetCompressedMatrix(CompressedMatrix *mat) const;
+  
+  /// Outputs the contents as a matrix.  This will work regardless of
+  /// Type().
+  void GetMatrix(Matrix<BaseFloat> *mat) const;
+
+  /// Copies contents, regardless of type, to "mat", which must be 
+  /// correctly sized.
+  void CopyToMat(MatrixBase<BaseFloat> *mat) const;
+
+  /// Assignment from regular matrix.
+  GeneralMatrix &operator= (const MatrixBase<BaseFloat> &mat);
+
+  /// Assignment from compressed matrix.
+  GeneralMatrix &operator= (const CompressedMatrix &mat);
+
+  /// Assignment from SparseMatrix<BaseFloat>
+  GeneralMatrix &operator= (const SparseMatrix<BaseFloat> &smat);
+
+  MatrixIndexT NumRows() const;
+
+  MatrixIndexT NumCols() const;
+
+  GeneralMatrix(const MatrixBase<BaseFloat> &mat) { *this = mat; }
+
+  GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
+
+  GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
+  
+  GeneralMatrix() { }
+  // Assignment operator.
+  GeneralMatrix &operator =(const GeneralMatrix &other);
+  // Copy constructor
+  GeneralMatrix(const GeneralMatrix &other) { *this = other; }
+  // Sets to the empty matrix.
+  void Clear(); 
+ private:
+  // We don't explicitly store the type of the matrix.  Rather, we make
+  // sure that only one of the matrices is ever nonempty, and the Type()
+  // returns that one, or kFullMatrix if all are empty.
+  Matrix<BaseFloat> mat_;
+  CompressedMatrix cmat_;
+  SparseMatrix<BaseFloat> smat_;
+};
+
+
+/// Appends all the matrix rows of a list of GeneralMatrixes, to get a single
+/// GeneralMatrix.  Preserves sparsity if all inputs were sparse.
+void AppendMatrixRows(const std::vector<const GeneralMatrix *> &src,
+                      GeneralMatrix *mat);
+
 
 
 /// @} end of \addtogroup matrix_group

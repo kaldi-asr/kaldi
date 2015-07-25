@@ -25,6 +25,7 @@
 #include "matrix/jama-svd.h"
 #include "matrix/jama-eig.h"
 #include "matrix/compressed-matrix.h"
+#include "matrix/sparse-matrix.h"
 
 namespace kaldi {
 
@@ -1848,6 +1849,12 @@ Matrix<Real>::Matrix(const CompressedMatrix &M): MatrixBase<Real>() {
   Resize(M.NumRows(), M.NumCols(), kUndefined);  
   M.CopyToMat(this);
 }
+
+template<class Real>
+void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<Real> &mat) {
+  mat.CopyToMat(this);
+}
+
 
 template<typename Real>
 void MatrixBase<Real>::InvertElements() {

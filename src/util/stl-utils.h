@@ -306,6 +306,12 @@ inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
   std::sort(vec->begin(), vec->end(), c); // sort on 1st element. 
   typename std::vector<std::pair<I, F> >::iterator out = vec->begin(),
       in = vec->begin(), end = vec->end();
+  // special case: while there is nothing to be changed, skip over
+  // initial input (avoids unnecessary copying).
+  while (in + 1 < end && in[0].first != in[1].first && in[0].second != 0.0) {
+    in++;
+    out++;
+  }
   while (in < end) {
     // We reach this point only at the first element of
     // each stretch of identical .first elements.

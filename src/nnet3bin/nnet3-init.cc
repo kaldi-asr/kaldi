@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-raw-init.cc
+// nnet3bin/nnet3-init.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 
@@ -34,8 +34,10 @@ int main(int argc, char *argv[]) {
         "Initialize nnet3 neural network from a config file; outputs 'raw' nnet\n"
         "without associated information such as transition model and priors.\n"
         "Search for examples in scripts in /egs/wsj/s5/steps/nnet3/\n"
+        "Can also be used to add layers to existing model (provide existing model\n"
+        "as 1st arg)\n"
         "\n"
-        "Usage:  nnet3-raw-init [options] <config-in> <raw-nnet-out>\n"
+        "Usage:  nnet3-init [options] [<existing-model-in>] <config-in> <raw-nnet-out>\n"
         "e.g.:\n"
         " nnet3-init nnet.config 0.raw\n";
     
