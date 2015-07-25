@@ -204,12 +204,13 @@ class CuMatrixBase {
   ///  src.NumCols() / this->NumCols() must be an integer.
   void GroupMax(const CuMatrixBase<Real> &src);
 
-  /// Calculate derivatives for the GroupMax function above...
-  /// if "input" is the input to the GroupMax function above (i.e. the "src" variable),
+  /// Calculate derivatives for the GroupMax function above, where
+  /// "input" is the input to the GroupMax function above (i.e. the "src" variable),
   /// and "output" is the result of the computation (i.e. the "this" of that function
-  /// call), and *this has the same dimension as "input", then it sets each element
-  /// of *this to the derivative d(output-elem)/d(input-elem) for each element of "input" where
-  /// "output-elem" is equal to the "input-eleme", and 0 otherwise.
+  /// call), and *this must have the same dimension as "input". Each element
+  /// of *this will be set to 1 if the corresponding input equals the output of
+  /// the group, and 0 otherwise. The equals the function derivative where it is
+  /// defined (it's not defined where multiple inputs in the group are equal to the output).
   void GroupMaxDeriv(const CuMatrixBase<Real> &input,
                        const CuMatrixBase<Real> &output);
 
