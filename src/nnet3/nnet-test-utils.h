@@ -91,6 +91,13 @@ void GenerateSimpleNnetTrainingExample(
     int32 ivector_dim,
     NnetExample *example);
 
+
+/// Returns true if the examples are approximately equal (only intended to be
+/// used in testing).
+bool ExampleApproxEqual(const NnetExample &eg1,
+                        const NnetExample &eg2,
+                        BaseFloat delta);
+
 } // namespace nnet3
 } // namespace kaldi
 

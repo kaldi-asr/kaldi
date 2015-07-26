@@ -81,7 +81,7 @@ void SparseVector<Real>::Write(std::ostream &os, bool binary) const {
   } else {
     // In text-mode, use a human-friendly, script-friendly format;
     // format is "dim=5 [ dim=5 0 0.2 3 0.9 ] "
-    os << "dim=" << dim_ << " ";
+    os << "dim=" << dim_ << " [ ";
     typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
         iter = pairs_.begin(), end = pairs_.end();
     for (; iter != end; ++iter)
@@ -406,6 +406,36 @@ void SparseMatrix<Real>::Resize(MatrixIndexT num_rows,
   }
 }
 
+template <typename Real>
+void SparseMatrix<Real>::AppendSparseMatrixRows(
+    std::vector<SparseMatrix<Real> > *inputs) {
+  rows_.clear();
+  size_t num_rows = 0;
+  typename std::vector<SparseMatrix<Real> >::iterator
+      input_iter = inputs->begin(),
+      input_end = inputs->end();
+  for (; input_iter != input_end; ++input_iter)
+    num_rows += input_iter->rows_.size();
+  rows_.resize(num_rows);
+  typename std::vector<SparseVector<Real> >::iterator
+      row_iter = rows_.begin(),
+      row_end = rows_.end();
+  for (input_iter = inputs->begin(); input_iter != input_end; ++input_iter) {
+    typename std::vector<SparseVector<Real> >::iterator
+        input_row_iter = input_iter->rows_.begin(),
+        input_row_end = input_iter->rows_.end();
+    for (; input_row_iter != input_row_end; ++input_row_iter,++row_iter)
+      row_iter->Swap(&(*input_row_iter));
+  }
+  KALDI_ASSERT(row_iter == row_end);
+  int32 num_cols = NumCols();
+  for (row_iter = rows_.begin(); row_iter != row_end; ++row_iter) {
+    if (row_iter->Dim() != num_cols)
+      KALDI_ERR << "Appending rows with inconsistent dimensions, "
+                << row_iter->Dim() << " vs. " << num_cols;
+  }
+  inputs->clear();
+}
 
 template<typename Real>
 Real TraceMatSmat(const MatrixBase<Real> &A,
@@ -539,15 +569,27 @@ void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat) const {
 }
 
 void GeneralMatrix::GetSparseMatrix(SparseMatrix<BaseFloat> *smat) const {
-  if (Type() != kSparseMatrix)
+  if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
   *smat = smat_;        
 }
 
-void GeneralMatrix::GetCompressedMatrix(CompressedMatrix *cmat) const {
-  if (Type() != kCompressedMatrix)
+void GeneralMatrix::SwapSparseMatrix(SparseMatrix<BaseFloat> *smat) {
+  if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
+  smat->Swap(&smat_);
+}
+
+void GeneralMatrix::GetCompressedMatrix(CompressedMatrix *cmat) const {
+  if (mat_.NumRows() != 0 || smat_.NumRows() != 0)
+    KALDI_ERR << "GetCompressedMatrix called on GeneralMatrix of wrong type.";
   *cmat = cmat_;
+}
+
+void GeneralMatrix::SwapMatrix(Matrix<BaseFloat> *mat) {
+  if (cmat_.NumRows() != 0 || smat_.NumRows() != 0)
+    KALDI_ERR << "SwapMatrix called on GeneralMatrix of wrong type.";
+  mat->Swap(&mat_);
 }
 
 void GeneralMatrix::Write(std::ostream &os, bool binary) const {
@@ -586,7 +628,58 @@ void GeneralMatrix::Read(std::istream &is, bool binary) {
     }
   }
 }
-    
+
+
+void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
+                             GeneralMatrix *mat) {
+  mat->Clear();
+  int32 size = src.size();
+  if (size == 0)
+    return;
+  bool all_sparse = true;
+  for (int32 i = 0; i < size; i++) {
+    if (src[i]->Type() != kSparseMatrix && src[i]->NumRows() != 0) {
+      all_sparse = false;
+      break;
+    }
+  }
+  if (all_sparse) {
+    std::vector<SparseMatrix<BaseFloat> > sparse_mats(size);
+    for (int32 i = 0; i < size; i++)
+      src[i]->GetSparseMatrix(&(sparse_mats[i]));
+    SparseMatrix<BaseFloat> appended_mat;
+    appended_mat.AppendSparseMatrixRows(&sparse_mats);
+    mat->SwapSparseMatrix(&appended_mat);
+  } else {
+    int32 tot_rows = 0, num_cols = -1;
+    for (int32 i = 0; i < size; i++) {
+      const GeneralMatrix &src_mat = *(src[i]);
+      int32 src_rows = src_mat.NumRows(), src_cols = src_mat.NumCols();
+      if (src_rows != 0) {
+        tot_rows += src_rows;
+        if (num_cols == -1) num_cols = src_cols;
+        else if (num_cols != src_cols)
+          KALDI_ERR << "Appending rows of matrices with inconsistent num-cols: "
+                    << num_cols << " vs. " << src_cols;
+      }
+    }
+    Matrix<BaseFloat> appended_mat(tot_rows, num_cols, kUndefined);
+    int32 row_offset = 0;
+    for (int32 i = 0; i < size; i++) {
+      const GeneralMatrix &src_mat = *(src[i]);
+      int32 src_rows = src_mat.NumRows();
+      if (src_rows != 0) {
+        SubMatrix<BaseFloat> dest_submat(appended_mat, row_offset, src_rows,
+                                         0, num_cols);
+        src_mat.CopyToMat(&dest_submat);
+        row_offset += src_rows;
+      }
+    }
+    KALDI_ASSERT(row_offset == tot_rows);
+    mat->SwapMatrix(&appended_mat);
+  }
+}
+
 template class SparseVector<float>;
 template class SparseVector<double>;
 template class SparseMatrix<float>;

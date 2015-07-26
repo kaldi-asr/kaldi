@@ -29,6 +29,7 @@ namespace nnet3 {
 
 /** Merge a set of input examples into a single example (typically the size of
     "src" will be the minibatch size).  Will crash if "src" is the empty vector.
+    If "compress" is true, it will compress any non-sparse features in the output.
  */
 void MergeExamples(const std::vector<NnetExample> &src,
                    bool compress,

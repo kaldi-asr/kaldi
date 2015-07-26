@@ -25,6 +25,7 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-example-utils.h"
+#include "base/kaldi-math.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -57,6 +58,7 @@ void UnitTestNnetExample() {
     if (binary) {
       KALDI_ASSERT(os.str() == os2.str());
     }
+    KALDI_ASSERT(ExampleApproxEqual(eg, eg_copy, 0.1));
   }
 }
 

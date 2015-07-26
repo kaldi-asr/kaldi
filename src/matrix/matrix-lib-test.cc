@@ -3288,8 +3288,10 @@ template<typename Real> static void UnitTestLinearCgd() {
 
     if (iters >= M) {
       // should have converged fully.
-      KALDI_LOG << "error = " << error << ", b norm is " << b.Norm(2.0);
-      KALDI_ASSERT(error < 1.0e-03 * b.Norm(2.0));
+      Real max_abs = A.MaxAbsEig();
+      KALDI_LOG << "error = " << error << ", b norm is " << b.Norm(2.0)
+                << ", A max-abs-eig is " << max_abs;
+      KALDI_ASSERT(error < 1.0e-04 * b.Norm(2.0) * max_abs);
     } else {
       BaseFloat wiggle_room = 1.1;
       if (opts.max_iters >= 0) {
@@ -4332,8 +4334,18 @@ template<typename Real> static void UnitTestGeneralMatrix() {
       for (MatrixIndexT c = 0; c < num_cols; c++)
         if (Rand() % modulus != 0) M(r, c) = rand_val;
 
-    GeneralMatrix pmat(M, false);
-    pmat.Compress();
+    GeneralMatrix pmat(M);
+    if (RandInt(0, 1) == 0)
+      pmat.Compress();
+
+    if (RandInt(0, 1) == 0) {
+      SparseMatrix<BaseFloat> smat(num_rows, num_cols);
+      smat.SetRandn(0.1);
+      pmat.Clear();
+      smat.CopyToMat(&M, kNoTrans);
+      pmat.SwapSparseMatrix(&smat);
+    }
+    
     KALDI_ASSERT(pmat.NumRows() == num_rows);
     KALDI_ASSERT(pmat.NumCols() == num_cols);
     GeneralMatrix pmat2(pmat);
@@ -4522,7 +4534,10 @@ template<typename Real> static void UnitTestTriVecSolver() {
   }
 }
 
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
+  UnitTestLinearCgd<Real>();
+  UnitTestGeneralMatrix<BaseFloat>();
   UnitTestTridiagonalize<Real>();
   UnitTestTridiagonalizeAndQr<Real>();  
   UnitTestAddMatSmat<Real>();
@@ -4530,10 +4545,8 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestFloorUnit<Real>();
   UnitTestAddMat2Sp<Real>();
   UnitTestLbfgs<Real>();
-  UnitTestLinearCgd<Real>();
   // UnitTestSvdBad<Real>(); // test bug in Jama SVD code.
   UnitTestCompressedMatrix<Real>();
-  UnitTestGeneralMatrix<BaseFloat>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
   UnitTestMatrixExponentialBackprop();
@@ -4679,6 +4692,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 int main() {
   using namespace kaldi;
   bool full_test = false;
+  SetVerboseLevel(5);
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";

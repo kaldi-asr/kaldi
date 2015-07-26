@@ -32,7 +32,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-struct Feature {
+struct NnetIo {
   /// the name of the input in the neural net; in simple setups it
   /// will just be "input".
   std::string name;
@@ -43,67 +43,33 @@ struct Feature {
   /// nonzero after we aggregate the examples into the minibatch level.
   std::vector<Index> indexes;
   
-  /// The features.  We store them as PossiblyCompressedMatrix to easily support
-  /// turning the compression on and off.
-  PossiblyCompressedMatrix features;
-
-  /// This constructor creates Feature with name "name", indexes with n=0, x=0,
+  /// The features or labels.  GeneralMatrix may contain either a CompressedMatrix,
+  /// a Matrix, or SparseMatrix (a SparseMatrix would be the natural format for posteriors).
+  GeneralMatrix features;
+  
+  /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
   /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
   /// the provided features.  t_begin should be the frame that feats.Row(0)
   /// represents.
-  Feature(const std::string &name,
-          int32 t_begin, const MatrixBase<BaseFloat> &feats);
+  NnetIo(const std::string &name,
+         int32 t_begin, const MatrixBase<BaseFloat> &feats);
 
-  Feature() { }
-  
-  // Use default copy constructor and assignment operators.
-
-  void Write(std::ostream &os, bool binary) const;
-
-  void Read(std::istream &is, bool binary);
-};
-
-
-struct Supervision {
-  /// the name of the output of the neural net; in simple setups it will just be
-  /// "output", but in multi-task learning there could be multiple outputs.
-  std::string name;
-
-  /// The dimension of the features-- typically the same as the number of pdfs.
-  /// Included as a consistency check.
-  int32 dim;
-  
-  /// "indexes" is a vector the same length as "labels", explaining
-  /// the meaning of each element of "labels".
-  std::vector<Index> indexes;
-
-  /// each labels[i] is a list of (label, weight) pairs; in the normal case it
-  /// will contain just a single element, with weight 1.0.  this vector has the
-  /// same size as "indexes", which explains which frame each label corresponds
-  /// to.  Posterior is typedef'ed to:
-  /// std::vector<std::vector<std::pair<int32, BaseFloat> > >
-  /// Note: in speech-recognition applications, the Posterior here won't use
-  /// transition-ids, it will be a "pdf-post" containing pdf_ids as the labels.
-  Posterior labels;
-  
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
-  Supervision(const std::string &name,
-              int32 dim,
-              int32 t_begin,
-              const Posterior &labels);
-
-  Supervision() { }
+  NnetIo(const std::string &name,
+         int32 dim,
+         int32 t_begin,
+         const Posterior &labels);
   
+  NnetIo() { }
+  
+  // Use default copy constructor and assignment operators.
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
-
-  /// Returns true if for each i, labels[i].size() == 1.
-  bool HasSimpleLabels() const;
-  
 };
+
 
 
 /// NnetExample is the input data and corresponding label (or labels) for one or
@@ -111,24 +77,19 @@ struct Supervision {
 /// nets (and possibly for other objective functions). 
 struct NnetExample {
 
-  /// "features" contains the features.  In principle there can be multiple types
-  /// of feature with different names.  The order is irrelevant.
-  std::vector<Feature> features;
+  /// "io" contains the input and output.  In principle there can be multiple
+  /// types of both input and output, with different names.  The order is
+  /// irrelevant.
+  std::vector<NnetIo> io;
 
-  /// "supervision" contains the labels.  The order is irrelevant.
-  std::vector<Supervision> supervision;
-  
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  // Compress any features that are not currently compressed.
-  void Compress();
-  
   NnetExample() { }
 
-  NnetExample(const NnetExample &other);
+  NnetExample(const NnetExample &other): io(other.io) { }
 
-  void Swap(NnetExample *other);
+  void Swap(NnetExample *other) { io.swap(other->io); }
 };
 
 /** Merge a set of input examples into a single example (typically the size of

@@ -440,46 +440,64 @@ void GenerateSimpleNnetTrainingExample(
   KALDI_ASSERT(num_supervised_frames > 0 && left_context >= 0 &&
                right_context >= 0 && output_dim > 0 && input_dim > 0
                && example != NULL);
-  example->features.clear();
-  example->supervision.clear();
-
-
-  Posterior labels(num_supervised_frames);
-  for (int32 t = 0; t < num_supervised_frames; t++) {
-    int32 num_labels = RandInt(1, 3);
-    BaseFloat remaining_prob_mass = 1.0;
-    for (int32 i = 0; i < num_labels; i++) {
-      BaseFloat this_prob = (i+1 == num_labels ? 1.0 : RandUniform()) *
-                            remaining_prob_mass;
-      remaining_prob_mass -= this_prob;
-      labels[t].push_back(std::pair<int32, BaseFloat>(RandInt(0, output_dim-1),
-                                                      this_prob));
-    }
-  }
-  int32 feature_t_begin = RandInt(0, 2),
-    supervision_t_begin = feature_t_begin + left_context;
-  Supervision input_sup("input", output_dim, supervision_t_begin,
-                        labels);
-  example->supervision.push_back(input_sup);
-
+  example->io.clear();
+  
+  int32 feature_t_begin = RandInt(0, 2);
   int32 num_feat_frames = left_context + right_context + num_supervised_frames;
   Matrix<BaseFloat> input_mat(num_feat_frames, input_dim);
   input_mat.SetRandn();
-  Feature input_feat("input", feature_t_begin, input_mat);
+  NnetIo input_feat("input", feature_t_begin, input_mat);
   if (RandInt(0, 1) == 0)
     input_feat.features.Compress();
-  example->features.push_back(input_feat);
+  example->io.push_back(input_feat);
 
   if (ivector_dim > 0) {
     // Create a feature for the iVectors.  iVectors always have t=0 in the
     // current framework.
     Matrix<BaseFloat> ivector_mat(1, ivector_dim);
     ivector_mat.SetRandn();
-    Feature ivector_feat("ivector", 0, ivector_mat);
+    NnetIo ivector_feat("ivector", 0, ivector_mat);
     if (RandInt(0, 1) == 0)
       ivector_feat.features.Compress();
-    example->features.push_back(ivector_feat);
+    example->io.push_back(ivector_feat);
   }
+
+  {  // set up the output supervision.
+    Posterior labels(num_supervised_frames);
+    for (int32 t = 0; t < num_supervised_frames; t++) {
+      int32 num_labels = RandInt(1, 3);
+      BaseFloat remaining_prob_mass = 1.0;
+      for (int32 i = 0; i < num_labels; i++) {
+        BaseFloat this_prob = (i+1 == num_labels ? 1.0 : RandUniform()) *
+            remaining_prob_mass;
+        remaining_prob_mass -= this_prob;
+        labels[t].push_back(std::pair<int32, BaseFloat>(RandInt(0, output_dim-1),
+                                                        this_prob));
+      }
+    }
+    int32 supervision_t_begin = feature_t_begin + left_context;
+    NnetIo output_sup("output", output_dim, supervision_t_begin,
+                      labels);
+    example->io.push_back(output_sup);
+  }
+}
+
+bool ExampleApproxEqual(const NnetExample &eg1,
+                        const NnetExample &eg2,
+                        BaseFloat delta) {
+  if (eg1.io.size() != eg2.io.size())
+    return false;
+  for (size_t i = 0; i < eg1.io.size(); i++) {
+    NnetIo io1 = eg1.io[i], io2 = eg2.io[i];
+    if (io1.name != io2.name || io1.indexes != io2.indexes)
+      return false;
+    Matrix<BaseFloat> feat1, feat2;
+    io1.features.GetMatrix(&feat1);
+    io2.features.GetMatrix(&feat2);
+    if (!ApproxEqual(feat1, feat2, delta))
+      return false;
+  }
+  return true;
 }
 
 

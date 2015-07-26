@@ -46,7 +46,6 @@ class SparseVector {
   SparseVector(const SparseVector<Real> &other) { *this = other; }
   
   void Swap(SparseVector<Real> *other);
-
   
   /// Returns the number of nonzero elements.
   MatrixIndexT NumElements() const { return pairs_.size(); }
@@ -135,6 +134,12 @@ class SparseMatrix {
 
   const SparseVector<Real> &Row(MatrixIndexT r) const;
 
+  /// Sets *this to all the rows of *inputs appended together; this
+  /// function is destructive of the inputs.  Requires, obviously,
+  /// that the inputs all have the same dimension (although some may be
+  /// empty).
+  void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> > *inputs);
+  
   SparseMatrix() { }
 
   SparseMatrix(int32 num_rows, int32 num_cols) { Resize(num_rows, num_cols); }
@@ -188,16 +193,24 @@ class GeneralMatrix {
   void Read(std::istream &is, bool binary);
 
   /// Outputs the contents as a SparseMatrix.  This will only work if
-  /// Type() returns kSparseMatrix.
+  /// Type() returns kSparseMatrix, or NumRows() == 0.
   void GetSparseMatrix(SparseMatrix<BaseFloat> *smat) const;
 
+  /// Swaps the with the given SparseMatrix.  This will only work if
+  /// Type() returns kSparseMatrix, or NumRows() == 0.
+  void SwapSparseMatrix(SparseMatrix<BaseFloat> *smat);
+  
   /// Outputs the contents as a compressed matrix.  This will only work if
-  /// Type() returns kCompressedMatrix.
+  /// Type() returns kCompressedMatrix (or NumRows() == 0
   void GetCompressedMatrix(CompressedMatrix *mat) const;
   
   /// Outputs the contents as a matrix.  This will work regardless of
   /// Type().
   void GetMatrix(Matrix<BaseFloat> *mat) const;
+
+  /// Swaps the with the given Matrix.  This will only work if
+  /// Type() returns kFullMatrix, or NumRows() == 0.
+  void SwapMatrix(Matrix<BaseFloat> *mat);
 
   /// Copies contents, regardless of type, to "mat", which must be 
   /// correctly sized.
@@ -240,9 +253,11 @@ class GeneralMatrix {
 
 
 /// Appends all the matrix rows of a list of GeneralMatrixes, to get a single
-/// GeneralMatrix.  Preserves sparsity if all inputs were sparse.
-void AppendMatrixRows(const std::vector<const GeneralMatrix *> &src,
-                      GeneralMatrix *mat);
+/// GeneralMatrix.  Preserves sparsity if all inputs were sparse (or empty).
+/// Does not preserve compression, if inputs were compressed; you have to
+/// re-compress manually, if that's what you need.
+void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
+                             GeneralMatrix *mat);
 
 
 

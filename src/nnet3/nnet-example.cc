@@ -25,25 +25,25 @@
 namespace kaldi {
 namespace nnet3 {
 
-void Feature::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<Feat>");
+void NnetIo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetIo>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   features.Write(os, binary);
-  WriteToken(os, binary, "</Feat>");
+  WriteToken(os, binary, "</NnetIo>");
   KALDI_ASSERT(static_cast<size_t>(features.NumRows()) == indexes.size());
 }
 
-void Feature::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<Feat>");
+void NnetIo::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetIo>");
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   features.Read(is, binary);
-  ExpectToken(is, binary, "</Feat>");    
+  ExpectToken(is, binary, "</NnetIo>");    
 }
 
-Feature::Feature(const std::string &name,
-                 int32 t_begin, const MatrixBase<BaseFloat> &feats):
+NnetIo::NnetIo(const std::string &name,
+               int32 t_begin, const MatrixBase<BaseFloat> &feats):
     name(name), features(feats) {
   int32 num_rows = feats.NumRows();
   KALDI_ASSERT(num_rows > 0);
@@ -52,87 +52,48 @@ Feature::Feature(const std::string &name,
     indexes[i].t = t_begin + i;
 }
 
-Supervision::Supervision(const std::string &name,
-                         int32 dim,
-                         int32 t_begin,
-                         const Posterior &labels):
-    name(name), dim(dim), labels(labels) {
-  int32 num_frames = labels.size();
-  KALDI_ASSERT(num_frames > 0);
-  indexes.resize(num_frames);  // sets all n,t,x to zeros.
-  for (int32 i = 0; i < num_frames; i++)
+NnetIo::NnetIo(const std::string &name,
+               int32 dim,
+               int32 t_begin,
+               const Posterior &labels):
+    name(name) {
+  int32 num_rows = labels.size();
+  KALDI_ASSERT(num_rows > 0);
+  SparseMatrix<BaseFloat> sparse_feats(dim, labels);
+  features = sparse_feats;
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
     indexes[i].t = t_begin + i;
-  // do a spot-check of one of the label indexes, that it's less than dim.
-  KALDI_ASSERT(!labels.empty() &&
-               (labels.back().empty() || labels.back().back().first < dim));
-  
 }
 
-void Supervision::Write(std::ostream &os, bool binary) const{
-  WriteToken(os, binary, "<Sup>");
-  WriteToken(os, binary, name);
-  WriteBasicType(os, binary, dim);
-  WriteIndexVector(os, binary, indexes);
-  WritePosterior(os, binary, labels);
-  WriteToken(os, binary, "</Sup>");
-  KALDI_ASSERT(labels.size() == indexes.size());
-}
 
-void Supervision::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<Sup>");
-  ReadToken(is, binary, &name);
-  ReadBasicType(is, binary, &dim);
-  ReadIndexVector(is, binary, &indexes);
-  ReadPosterior(is, binary, &labels);
-  ExpectToken(is, binary, "</Sup>");
-}
 
 void NnetExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
   WriteToken(os, binary, "<Nnet3Eg>");
 
-  WriteToken(os, binary, "<Features>");
-  int32 size = features.size();
+  WriteToken(os, binary, "<NumIo>");
+  int32 size = io.size();
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
-    features[i].Write(os, binary);
-  WriteToken(os, binary, "<Supervision>");  
-  size = supervision.size();
-  WriteBasicType(os, binary, size);
-  for (int32 i = 0; i < size; i++)
-    supervision[i].Write(os, binary);
+    io[i].Write(os, binary);
   WriteToken(os, binary, "</Nnet3Eg>");
 }
 
 void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Nnet3Eg>");
-  ExpectToken(is, binary, "<Features>");
+  ExpectToken(is, binary, "<NumIo>");
   int32 size;
   ReadBasicType(is, binary, &size);
   if (size < 0 || size > 1000000)
     KALDI_ERR << "Invalid size " << size;
-  features.resize(size);
+  io.resize(size);
   for (int32 i = 0; i < size; i++)
-    features[i].Read(is, binary);
-  ExpectToken(is, binary, "<Supervision>");  
-  ReadBasicType(is, binary, &size);
-  if (size < 0 || size > 1000000)
-    KALDI_ERR << "Invalid size " << size;
-  supervision.resize(size);
-  for (int32 i = 0; i < size; i++)
-    supervision[i].Read(is, binary);
+    io[i].Read(is, binary);
   ExpectToken(is, binary, "</Nnet3Eg>");
 }
 
-NnetExample::NnetExample(const NnetExample &other):
-    features(other.features),
-    supervision(other.supervision) { }
-
-void NnetExample::Swap(NnetExample *other) {
-  features.swap(other->features);
-  supervision.swap(other->supervision);
-}
 
 
 } // namespace nnet3
