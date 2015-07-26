@@ -98,10 +98,10 @@ class CuMatrixBase {
   void CopyCols(const CuMatrixBase<Real> &src,
                 const CuArray<MatrixIndexT> &indices);
 
-  
+
   /// Copies row r from row indices[r] of src.
-  /// As a special case, if indexes[i] <== -1, sets row i to zero  
-  /// "reorder".size() must equal this->NumRows(), 
+  /// As a special case, if indexes[i] <== -1, sets row i to zero
+  /// "reorder".size() must equal this->NumRows(),
   /// all elements of "reorder" must be in [0, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
@@ -122,7 +122,7 @@ class CuMatrixBase {
   /// Adds "value" to the diagonal elements of the matrix.  The matrix
   /// *this does not have to be square.
   void AddToDiag(Real value);
-  
+
   /// Dimensions
   MatrixIndexT NumRows() const { return num_rows_;  }
   MatrixIndexT NumCols() const { return num_cols_;  }
@@ -130,21 +130,21 @@ class CuMatrixBase {
 
   // MatrixDim is a struct containing "rows", "cols" and "stride",
   // that is an argument of most CUDA kernels.
-  ::MatrixDim Dim() const { 
-    ::MatrixDim d = { num_rows_, num_cols_, stride_ }; 
-    return d; 
+  ::MatrixDim Dim() const {
+    ::MatrixDim d = { num_rows_, num_cols_, stride_ };
+    return d;
   }
 
   Real FrobeniusNorm() const { return sqrt(TraceMatMat(*this, *this, kTrans)); }
 
-  bool IsUnit(Real tol = 0.001) const;  
+  bool IsUnit(Real tol = 0.001) const;
 
   /// True if ((*this)-other).FrobeniusNorm() <= tol * this->FrobeniusNorm()
   bool ApproxEqual(const CuMatrixBase<Real> &other, float tol = 0.01) const;
-  
+
   /// Get size of matrix in bytes
   MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
-  
+
   // Copy functions.  These do not resize.
   template<typename OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> &src,
@@ -152,25 +152,25 @@ class CuMatrixBase {
 
   void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
-  
+
   void CopyFromSp(const CuSpMatrix<Real> &M);
-  
+
   template<typename OtherReal>
   void CopyFromTp(const CuTpMatrix<OtherReal> &M,
                   MatrixTransposeType trans = kNoTrans);
-  
+
   template<typename OtherReal>
   void CopyFromMat(const CuMatrixBase<OtherReal> &M,
-                   MatrixTransposeType trans = kNoTrans); 
+                   MatrixTransposeType trans = kNoTrans);
 
   template<typename OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *dst,
                  MatrixTransposeType trans = kNoTrans) const;
-  
+
   void CopyRowsFromVec(const CuVectorBase<Real> &v);
 
   void CopyRowsFromVec(const VectorBase<Real> &v);
-  
+
   /// Copy vector into specific column of matrix.
   void CopyColFromVec(const CuVectorBase<Real> &v, const MatrixIndexT col);
 
@@ -227,9 +227,9 @@ class CuMatrixBase {
   /// tanh output.  Does, element-by-element, *this = diff * (1 - value^2).
   void DiffTanh(const CuMatrixBase<Real> &value,
                 const CuMatrixBase<Real> &diff);
-  
+
   /// Differentiate the block [softmax+cross-entropy] :
-  /// dE/da = posterior_mat - target_mat, 
+  /// dE/da = posterior_mat - target_mat,
   /// 'E' is error function, 'a' is activation on softmax input
   ///
   /// Interface:
@@ -238,7 +238,7 @@ class CuMatrixBase {
   /// log_post_tgt ... per-frame statistics for cross-entropy computations :
   ///                  log(sum_row(posterior_mat .* target_mat))
   void DiffXent(const CuArray<int32> &tgt,
-                CuVector<Real> *log_post_tgt);  
+                CuVector<Real> *log_post_tgt);
 
   /// This function does sets *this to the Cholesky factor of *this (i.e.  the C
   /// satisfying *this = C C^T), and sets "inv_cholesky" (if supplied) to its
@@ -250,11 +250,11 @@ class CuMatrixBase {
   /// Inversion for positive definite symmetric matrices.
   /// Treats the input as symmetric but only reads the lower triangle.
   /// The output is symmetric.
-  void SymInvertPosDef(); 
+  void SymInvertPosDef();
 
   void ApplyPow(Real power);
-  ///< Apply power to the absolute value of each element. 
-  ///< If inlude_sign is true, the result will be multiplied with 
+  ///< Apply power to the absolute value of each element.
+  ///< If inlude_sign is true, the result will be multiplied with
   ///< the sign of the input value.
   ///< If the power is negative and the input to the power is zero,
   ///< The output will be set zero. If include_sign is true, it will
@@ -276,7 +276,7 @@ class CuMatrixBase {
 
   /// Find the id of the maximal element for each row
   void FindRowMaxId(CuArray<int32> *id) const;
-  
+
   /*
   // Copy row interval from matrix
   // @param r      [in] number of rows to copy.
@@ -285,7 +285,7 @@ class CuMatrixBase {
   // @param dst_ro [in] destination matrix row offset.
   // void CopyRowsFromMat(int32 r, const CuMatrixBase<Real> &src, int32 src_ro, int32 dst_ro);
   */
-  
+
   /// Math operations, some calling kernels
   void SetZero();
   void Set(Real value);
@@ -294,16 +294,16 @@ class CuMatrixBase {
   void SetZeroAboveDiag();
   void Scale(Real value);
   void ApplyLog();
-  
+
   /// Multiply two matrices elementwise: C = A .* C
   void MulElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
-  void MulColsVec(const CuVectorBase<Real> &scale); 
+  void MulColsVec(const CuVectorBase<Real> &scale);
   /// scale i'th row by scale[i]
   void MulRowsVec(const CuVectorBase<Real> &scale);
-  /// divide each row into src.NumCols() groups, and then scale i'th row's jth group of elements by src[i, j].   
+  /// divide each row into src.NumCols() groups, and then scale i'th row's jth group of elements by src[i, j].
   void MulRowsGroupMat(const CuMatrixBase<Real> &src);
   /// divide i'th row by scale[i]
   void DivRowsVec(const CuVectorBase<Real> &div);
@@ -327,24 +327,24 @@ class CuMatrixBase {
   void SymAddMat2(const Real alpha, const CuMatrixBase<Real> &M,
                   MatrixTransposeType transA, Real beta);
 
-  
+
   /// This function is like AddMatMat but for where the second argument is of
   /// type CuBlockMatrix (a block-diagonal matrix of blocks).
   void AddMatBlock(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                    const CuBlockMatrix<Real> &B, MatrixTransposeType transB, Real beta);
-  
+
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).
   void AddDiagVecMat(const Real alpha, CuVectorBase<Real> &v,
-                     const CuMatrixBase<Real> &M, MatrixTransposeType transM, 
-                     Real beta = 1.0);  
+                     const CuMatrixBase<Real> &M, MatrixTransposeType transM,
+                     Real beta = 1.0);
 
   // *this = beta * *this + alpha * M  * diag(v) [or M^T].
   // The same as adding M but scaling each column M_j by v(j).
   void AddMatDiagVec(const Real alpha,
                      const CuMatrixBase<Real> &M, MatrixTransposeType transM,
                      CuVectorBase<Real> &v,
-                     Real beta = 1.0);  
+                     Real beta = 1.0);
 
   /// *this = beta * *this + alpha * A .* B (.* element by element multiplication)
   void AddMatMatElements(const Real alpha,
@@ -360,7 +360,7 @@ class CuMatrixBase {
     CuMatrix<Real> M(B);
     return AddMatMat(alpha, A, transA, M, kNoTrans, beta);
   }
-  
+
   /// this <-- beta*this + alpha*SpA*B
   void AddSpMat(const Real alpha,
                 const CuSpMatrix<Real> &A,
@@ -406,7 +406,7 @@ class CuMatrixBase {
   }
   inline CuSubMatrix<Real> ColRange(const MatrixIndexT col_offset,
                                     const MatrixIndexT num_cols) const {
-    return CuSubMatrix<Real>(*this, 0, num_rows_, col_offset, num_cols); 
+    return CuSubMatrix<Real>(*this, 0, num_rows_, col_offset, num_cols);
   }
 
   inline const CuSubVector<Real> Row(MatrixIndexT i) const {
@@ -428,7 +428,7 @@ class CuMatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
     return CuValue<Real>(data_ + r * stride_ + c);
   }
-  
+
   inline Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(r) <
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
@@ -474,7 +474,7 @@ class CuMatrixBase {
   inline MatrixBase<Real> &Mat() {
     return *(reinterpret_cast<MatrixBase<Real>* >(this));
   }
-  
+
   /// Get raw row pointer
   inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
   inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
@@ -482,13 +482,13 @@ class CuMatrixBase {
   inline Real *Data() { return data_; }
 
 
-  
+
   // The constructors are protected to prevent the user creating an instance of
   // this class.
-  
+
   /// Default constructor
   CuMatrixBase<Real>(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
-  
+
   /// This constructor takes the #rows, #cols and stride; it's called from
   /// the constructor of CuSubMatrix.
   CuMatrixBase<Real>(Real *data,
@@ -519,11 +519,11 @@ class CuMatrix: public CuMatrixBase<Real> {
  public:
 
   CuMatrix() { }
-    
+
   /// Constructor with memory initialisation
   CuMatrix(MatrixIndexT rows, MatrixIndexT cols,
            MatrixResizeType resize_type = kSetZero) {
-    Resize(rows, cols, resize_type); 
+    Resize(rows, cols, resize_type);
   }
 
   // Note: we had to remove the "explicit" keyword due
@@ -533,7 +533,7 @@ class CuMatrix: public CuMatrixBase<Real> {
 
   explicit CuMatrix(const CuBlockMatrix<Real> &other,
                     MatrixTransposeType trans = kNoTrans);
-  
+
   explicit CuMatrix(const CuMatrixBase<Real> &other,
                     MatrixTransposeType trans = kNoTrans);
 
@@ -541,7 +541,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   explicit CuMatrix(const MatrixBase<OtherReal> &other,
                     MatrixTransposeType trans = kNoTrans);
 
-  /// Copy constructor taking SpMatrix... 
+  /// Copy constructor taking SpMatrix...
   explicit CuMatrix(const CuSpMatrix<Real> &M) : CuMatrixBase<Real>() {
     Resize(M.NumRows(), M.NumRows(), kUndefined);
     this->CopyFromSp(M);
@@ -559,7 +559,7 @@ class CuMatrix: public CuMatrixBase<Real> {
   template<typename OtherReal>
   explicit CuMatrix(const CuMatrixBase<OtherReal> &M,
                     MatrixTransposeType trans = kNoTrans);
-  
+
   CuMatrix<Real> &operator = (const CuMatrixBase<Real> &other) {
     this->Resize(other.NumRows(), other.NumCols(), kUndefined);
     this->CopyFromMat(other);
@@ -570,8 +570,8 @@ class CuMatrix: public CuMatrixBase<Real> {
     this->Resize(other.NumRows(), other.NumCols(), kUndefined);
     this->CopyFromMat(other);
     return *this;
-  }  
-  
+  }
+
   CuMatrix<Real> &operator = (const MatrixBase<Real> &other) {
     this->Resize(other.NumRows(), other.NumCols(), kUndefined);
     this->CopyFromMat(other);
@@ -583,13 +583,13 @@ class CuMatrix: public CuMatrixBase<Real> {
   /// Allocate the memory
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
-    
+
   void Swap(Matrix<Real> *mat);
   void Swap(CuMatrix<Real> *mat);
 
   template<typename OtherReal>
   void Swap(CuMatrix<OtherReal> *mat);
-  
+
   /// I/O functions
   void Read(std::istream &is, bool binary);
 
@@ -632,7 +632,7 @@ class CuSubMatrix: public CuMatrixBase<Real> {
                      const MatrixIndexT num_rows,
                      const MatrixIndexT col_offset,
                      const MatrixIndexT num_cols);
-                    
+
   /// This type of constructor is needed for Range() to work [in CuMatrix base
   /// class]. Cannot make it explicit or that breaks.
   inline CuSubMatrix<Real> (const CuSubMatrix &other):
