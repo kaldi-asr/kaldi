@@ -6,6 +6,7 @@ cmd=run.pl
 nj=4
 stage=-1
 get_whole_vad=false
+phone_map=
 
 . parse_options.sh
 
@@ -36,10 +37,16 @@ echo $num_jobs > $dir/num_jobs
 
 split_data.sh $data $num_jobs
 
-{
-awk '{print $1" 0"}' $lang/phones/silence.int;
-awk '{print $1" 1"}' $lang/phones/nonsilence.int;
-} > $dir/phone_map
+if [ -z "$phone_map" ]; then
+  {
+    awk '{print $1" 0"}' $lang/phones/silence.txt;
+    awk '{print $1" 1"}' $lang/phones/nonsilence.txt;
+  } | awk '{ if ($1 !~ /oov/) { print $1" "$2} else {print $1" 1"} }' | utils/sym2int.pl -f 1 $lang/phones.txt | \
+    sort -k1,1 -n > $dir/phone_map
+else
+  cat $phone_map | utils/sym2int.pl -f 1 $lang/phones.txt | \
+    sort -k1,1 -n > $dir/phone_map || exit 1
+fi
 
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$num_jobs $dir/log/convert_ali_to_vad.JOB.log \

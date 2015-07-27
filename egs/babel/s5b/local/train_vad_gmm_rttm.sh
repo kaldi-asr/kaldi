@@ -18,7 +18,7 @@ stage=-10
 cleanup=true
 top_frames_threshold=1.0
 bottom_frames_threshold=1.0
-ignore_energy=false
+ignore_energy=true
 add_zero_crossing_feats=true
 nj=4
 # End configuration section.

@@ -34,6 +34,8 @@ int main(int argc, char *argv[]) {
         "   segmentation-to-rttm ark:1.seg -\n";
     
     bool binary = true;
+    bool map_to_speech_and_sil = true;
+
     BaseFloat frame_shift = 0.01;
     std::string segments_rxfilename;
     ParseOptions po(usage);
@@ -43,6 +45,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("frame-shift", &frame_shift, "Frame shift in seconds");
     po.Register("segments", &segments_rxfilename, "Segments file");
+    po.Register("map-to-speech-and-sil", &map_to_speech_and_sil, "Map all classes to SPEECH and SILENCE");
 
     opts.Register(&po);
 
@@ -173,12 +176,19 @@ int main(int argc, char *argv[]) {
           start_time = utt2start_time.at(key);
         }
 
-        if (seen_files.count(file_id) == 0) {
-          ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SILENCE <NA>\n";
-          ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SPEECH <NA>\n";
-          seen_files.insert(file_id);
+        int32 largest_class = seg.WriteRttm(ko.Stream(), file_id, frame_shift, start_time, map_to_speech_and_sil);
+
+        if (map_to_speech_and_sil) {
+          if (seen_files.count(file_id) == 0) {
+            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SILENCE <NA>\n";
+            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SPEECH <NA>\n";
+            seen_files.insert(file_id);
+          }
+        } else {
+          for (int32 i = 0; i < largest_class; i++) {
+            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown " << i << " <NA>\n";
+          }
         }
-        seg.WriteRttm(ko.Stream(), file_id, frame_shift, start_time);
 
       }
 

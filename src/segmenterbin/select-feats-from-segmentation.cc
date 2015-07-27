@@ -36,9 +36,13 @@ int main(int argc, char *argv[]) {
 
     SegmentationOptions opts;
     int32 &select_label = opts.merge_dst_label;
+    int32 selection_padding = 0;
 
     po.Register("select-label", &select_label, "Select frames of only this "
                 "class label");
+    po.Register("selection-padding", &selection_padding, "If this is > 0, then "
+                "this number of frames at the boundary are not selected."
+                "Similar to program select-interior-frames.");
     
     opts.Register(&po);
 
@@ -50,7 +54,6 @@ int main(int argc, char *argv[]) {
     }
 
     std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
 
     if (opts.merge_labels_csl != "") {
       if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
@@ -83,38 +86,34 @@ int main(int argc, char *argv[]) {
       const Segmentation &in_seg = segmentation_reader.Value(key);
 
       Segmentation seg(in_seg);
-      if (opts.filter_rspecifier != "" || opts.merge_labels_csl != "") {
-        if (opts.filter_rspecifier != "") {
-          if (!filter_reader.HasKey(key)) {
-            KALDI_WARN << "Could not find filter for utterance " << key;
-            num_err++;
-            continue;
-          }
-          const Segmentation &filter_segmentation = filter_reader.Value(key);
-          seg.IntersectSegments(filter_segmentation, opts.filter_label);
-        }
-
-        if (opts.merge_labels_csl != "") {
-          seg.MergeLabels(merge_labels, opts.merge_dst_label);
-        }
-      } 
+      if (opts.merge_labels_csl != "") {
+        seg.MergeLabels(merge_labels, opts.merge_dst_label);
+      }
 
       Matrix<BaseFloat> feats_out(feats_in.NumRows(), feats_in.NumCols());
       int32 j = 0;
       for (SegmentList::const_iterator it = seg.Begin();
             it != seg.End(); ++it) {
-        if (it->Label() != select_label) continue;
-        const SubMatrix<BaseFloat> this_feats_in(feats_in, it->start_frame, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
-        SubMatrix<BaseFloat> this_feats_out(feats_out, j, it->end_frame - it->start_frame + 1, 0, feats_in.NumCols());
+        if (it->Label() != select_label || 
+            it->end_frame - it->start_frame + 1 <= 2 * selection_padding) continue;
+        const SubMatrix<BaseFloat> this_feats_in(feats_in, 
+            it->start_frame + selection_padding, 
+            it->end_frame - it->start_frame + 1 - 2 * selection_padding, 
+            0, feats_in.NumCols());
+        SubMatrix<BaseFloat> this_feats_out(feats_out, j, 
+            it->end_frame - it->start_frame + 1 - 2 * selection_padding, 
+            0, feats_in.NumCols());
         this_feats_out.CopyFromMat(this_feats_in);
         j += this_feats_in.NumRows();
         num_frames_selected += this_feats_in.NumRows();
       }
 
-      feats_out.Resize(j, feats_in.NumCols(), kCopyData);
       num_frames += feats_in.NumRows();
-
-      feats_writer.Write(key, feats_out);
+      // If no frames are selected, then we don't write anything
+      if (j > 0) {
+        feats_out.Resize(j, feats_in.NumCols(), kCopyData);
+        feats_writer.Write(key, feats_out);
+      }
       num_done++;
     }
 
@@ -128,6 +127,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
 

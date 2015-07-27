@@ -51,10 +51,10 @@ struct HistogramEncoder {
 
 struct SegmentationOptions {
   std::string merge_labels_csl;
-  int32 merge_dst_label, filter_label;
-  std::string filter_rspecifier;
+  int32 merge_dst_label, filter_label, mask_label;
+  std::string filter_rspecifier, mask_rspecifier;
 
-  SegmentationOptions() : merge_dst_label(-1), filter_label(-1) { }
+  SegmentationOptions() : merge_dst_label(-1), filter_label(-1), mask_label(-1) { }
   
   void Register(OptionsItf *po) {
     po->Register("merge-labels", &merge_labels_csl, "Merge labels into a single "
@@ -68,6 +68,11 @@ struct SegmentationOptions {
                  "filter segmentation");
     po->Register("filter-label", &filter_label, "The label on which the "
                  "filtering is done");
+    po->Register("mask-rspecifier", &mask_rspecifier, "Unselect "
+                 "those regions that have label mask-label in this "
+                 "mask-segmentation");
+    po->Register("mask-label", &mask_label, "The label on which the "
+                 "masking is done");
   }
 };
 
@@ -111,12 +116,14 @@ class Segmentation {
     
     // Split this segmentation into pieces of size 
     // segment_length such that the last remaining piece
-    // is not longer than min_remainder
+    // is not longer than min_remainder.
+    // Typically used to create 1s windows from 10 minute long chunks
     void SplitSegments(int32 segment_length,
                        int32 min_remainder);
 
     // Modify this segmentation to merge labels in merge_labels vector into a
-    // single label dest_label
+    // single label dest_label.
+    // e.g Merge noise and silence into a single silence label
     void MergeLabels(const std::vector<int32> &merge_labels,
                      int32 dest_label);
 
@@ -173,6 +180,15 @@ class Segmentation {
     void IntersectSegments(const Segmentation &filter_segmentation,
                            int32 filter_label);
 
+    // Create subsegments of this segmentation and assign new labels to 
+    // the filtered regions. This is similar to "IntersectSegments" but 
+    // instead of keeping only the filtered subsegments, all the 
+    // subsegments are kept, while only changing the labels of the 
+    // filtered subsegment to "subsegment_label"
+    void CreateSubSegments(const Segmentation &filter_segmentation, 
+                           int32 filter_label,
+                           int32 subsegment_label);
+
     // Widen segments of label "label" by "length" frames 
     // on either side. But don't increase the length beyond the
     // neighboring segment. Also if the neighboring segment is
@@ -182,8 +198,12 @@ class Segmentation {
     void WidenSegments(int32 label, int32 length);
 
     // Remove segments of label "label" if they have a length
-    // less than "max_length"
+    // less than "max_length", label "label" and the previous
+    // and next segments have the same label (not necessarily "label")
     void RemoveShortSegments(int32 label, int32 max_length);
+
+    // Remove segments of label "label"
+    void RemoveSegments(int32 label);
 
     // Reset segmentation i.e. clear all values
     void Clear();
@@ -195,7 +215,7 @@ class Segmentation {
     void Write(std::ostream &os, bool binary) const;
 
     // Write the segmentation in the form of an RTTM
-    void WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time) const;
+    int32 WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time, bool map_to_speech_and_sil) const;
     
     // Convert current segmentation to alignment
     bool ConvertToAlignment(std::vector<int32> *alignment, 

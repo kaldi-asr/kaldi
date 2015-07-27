@@ -8,6 +8,7 @@ set -u
 set -o pipefail
 set -e 
 
+use_icsi_method=false
 iter=final
 mfccdir=mfcc_reverb_submission
 stage=0
@@ -39,6 +40,8 @@ create_whole_dir=true
 use_vad_prob=false
 use_lats=true
 transform_weights=false
+speech_to_sil_ratio=1
+use_bootstrap_vad=false
 nj=30
 . cmd.sh
 
@@ -120,13 +123,39 @@ fi
 
 split_data.sh ${vad_dir}/data_uniform_windows600 $nj
 
+noise_model_found=false
+if [ -f $vad_model_dir/noise.11.mdl ]; then
+  noise_model_found=true
+fi
+
 if [ $stage -le 3 ]; then
-  $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
-    diarization/vad_gmm_3models.sh --config conf/vad_icsi_babel_3models.conf \
-    --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
-    ${vad_dir}/data_uniform_windows600/split$nj/JOB \
-    $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
-    $vad_model_dir/noise.11.mdl ${vad_dir}/JOB || exit 1
+  if $noise_model_found; then
+    $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
+      diarization/vad_gmm_3models.sh --config conf/vad_icsi_babel_3models.conf \
+      --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
+      --speech-to-sil-ratio $speech_to_sil_ratio --use-bootstrap-vad $use_bootstrap_vad \
+      ${vad_dir}/data_uniform_windows600/split$nj/JOB \
+      $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
+      $vad_model_dir/noise.11.mdl ${vad_dir}/JOB || exit 1
+  else
+    if ! $use_icsi_method; then
+      $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
+        diarization/vad_gmm_2models.sh --config conf/vad_icsi_babel_3models.conf \
+        --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
+        --speech-to-sil-ratio $speech_to_sil_ratio \
+        ${vad_dir}/data_uniform_windows600/split$nj/JOB \
+        $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
+        ${vad_dir}/JOB || exit 1
+    else
+      $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
+        diarization/vad_gmm_icsi.sh --config conf/vad_icsi_babel.conf \
+        --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
+        --speech-to-sil-ratio $speech_to_sil_ratio \
+        ${vad_dir}/data_uniform_windows600/split$nj/JOB \
+        $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
+        ${vad_dir}/JOB || exit 1
+    fi
+  fi
 
   for n in `seq $nj`; do
     for x in `cat ${vad_dir}/data_uniform_windows600/split$nj/$n/utt2spk | awk '{print $1}'`; do
@@ -138,7 +167,7 @@ fi
 segmented_data_dir=data/${data_id}_uniformsegmented_win${window}_over${overlap}
 
 if [ $stage -le 4 ]; then
-  if ! $use_vad_prob; then
+  if $use_bootstrap_vad || ! $use_vad_prob; then
     $train_cmd ${vad_dir}/get_vad_per_file.log \
       segmentation-to-rttm \
       --segments=${vad_dir}/data_uniform_windows600/segments \
@@ -241,14 +270,17 @@ else
         ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark \
         "ark:| gzip -c > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz"
     fi
+  fi
 
-    cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments
+  cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments
 
+  x_th=0.8
+  if [ $stage -le 8 ]; then
     if $transform_weights; then
       $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
         extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz |" \
         $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments ark,t:- \| \
-        awk '{printf $1" [ "; for(i=3;i<=NF-1;i++) printf 1/(1+exp(2*(0.5-$i)))" "; print "]"}' \| \
+        awk -v x_th=$x_th '{printf $1" [ "; for(i=3;i<=NF-1;i++) printf 1/sqrt(1+2*exp(-20*($i-x_th)))" " ; print "]"}' \| \
         copy-vector ark,t:- "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
     else 
       $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
@@ -256,13 +288,11 @@ else
         $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments \
         "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
     fi
-
   fi
-
   ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   echo "Extracting i-vectors, stage 2 with input $ivector_extractor_input"
   # this does offline decoding, except we estimate the iVectors per
   # speaker, excluding silence (based on alignments from a GMM decoding), with a
@@ -278,7 +308,7 @@ if [ $stage -le 8 ]; then
 fi
 
 decode_dir=$dir/decode_${segmented_data_id}${affix}_pp
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   echo "Generating lattices, stage 2 with --acwt $acwt"
   local/multi_condition/decode.sh --nj $decode_num_jobs --cmd "$decode_cmd" --config conf/decode.config $pass2_decode_opts \
     --skip-scoring true --iter $iter --acwt $acwt --lattice-beam $lattice_beam \
@@ -287,7 +317,7 @@ if [ $stage -le 9 ]; then
     { echo "$0: Error decoding";  exit 1; }
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   echo "Rescoring lattices"
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     --skip-scoring true \
@@ -343,7 +373,7 @@ EOF
 filter_ctm_command="python $decode_dir/scoring/filter_ctm.py "
 
 if  $tune_hyper ; then
-  if [ $stage -le 11 ]; then
+  if [ $stage -le 12 ]; then
     if [[ "$act_data_id" =~ "dev_aspire" ]]; then
       wip_string=$(echo $word_ins_penalties | sed 's/,/ /g')
       temp_wips=($wip_string)
@@ -405,14 +435,14 @@ wipfile.close()
 fi
 
 # lattice to ctm conversion and scoring.
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   echo "Generating CTMs with LMWT $LMWT and word insertion penalty of $word_ins_penalty"
   local/multi_condition/get_ctm.sh --filter-ctm-command "$filter_ctm_command" \
     --beam $ctm_beam --decode-mbr $decode_mbr \
     $LMWT $word_ins_penalty $lang data/${segmented_data_id}_hires $model $decode_dir 2>$decode_dir/scoring/finalctm.LMWT$LMWT.WIP$word_ins_penalty.log || exit 1;
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
   cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
   python local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names

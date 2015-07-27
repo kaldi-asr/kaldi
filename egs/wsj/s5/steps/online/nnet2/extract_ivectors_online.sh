@@ -41,6 +41,7 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
+max_remembered_frames=1000
 
 # End configuration section.
 
@@ -102,9 +103,9 @@ echo "--ivector-extractor=$srcdir/final.ie" >>$ieconf
 echo "--num-gselect=$num_gselect"  >>$ieconf
 echo "--min-post=$min_post" >>$ieconf
 echo "--posterior-scale=$posterior_scale" >>$ieconf
-echo "--max-remembered-frames=1000" >>$ieconf # the default
+echo "--max-remembered-frames=$max_remembered_frames" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
-
+echo "--ivector-period=$ivector_period" >> $ieconf
 
 
 for n in $(seq $nj); do

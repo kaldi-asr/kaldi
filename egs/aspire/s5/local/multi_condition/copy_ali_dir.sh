@@ -18,6 +18,7 @@
 # begin configuration section
 utt_prefix=
 utt_suffix=
+cmd=run.pl
 # end configuration section
 
 . utils/parse_options.sh
@@ -72,6 +73,6 @@ for line in sys.stdin:
 set +o pipefail; # unset the pipefail option.
 EOF
 chmod +x $dest_dir/temp/copy_ali.sh
-$decode_cmd -v PATH JOB=1:$nj $dest_dir/temp/copy_ali.JOB.log $dest_dir/temp/copy_ali.sh JOB || exit 1;
+$cmd -v PATH JOB=1:$nj $dest_dir/temp/copy_ali.JOB.log $dest_dir/temp/copy_ali.sh JOB || exit 1;
 
 echo "$0: copied alignments from $src_dir to $dest_dir"

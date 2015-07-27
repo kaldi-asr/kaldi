@@ -15,7 +15,7 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            logistic-regression-train logistic-regression-eval \
            logistic-regression-copy create-split-from-vad \
            ivector-extract-online ivector-adapt-plda \
-					 select-top-frames
+					 select-top-frames speaker-diarization
 
 OBJFILES =
 

@@ -387,18 +387,74 @@ void Segmentation::IntersectSegments(
       int32 start_frame = it->start_frame;
       it->start_frame = filter_it->end_frame + 1;
       segments_.emplace(it, start_frame, filter_it->end_frame, it->Label());
-
-      //Forward list
-      //int32 end_frame = it->end_frame;
-      //it->end_frame = filter_it->end_frame;
-      //it = segments_.emplace(it+1, filter_it->end_frame + 1, 
-      //    end_frame, it->Label());
-      
       dim_++;
     } else {
       // filter segment ends after the end of this current segment. So 
       // we don't need to create any new segment. Just advance the iterator 
       // to the next segment.
+      ++it;
+    }
+  }
+  Check();
+}
+
+void Segmentation::CreateSubSegments(
+    const Segmentation &filter_segmentation,
+    int32 filter_label,
+    int32 subsegment_label) {
+  SegmentList::iterator it = segments_.begin();
+  SegmentList::const_iterator filter_it = filter_segmentation.Begin();
+
+  while (it != segments_.end()) {
+    
+    // If the start of the segment in the filter is before the current
+    // segment then move the filter iterator up to the first segment where the
+    // end point of the filter segment is just after the start of the current
+    // segment
+    while (filter_it != filter_segmentation.End() && 
+           (filter_it->end_frame < it->start_frame || 
+           filter_it->Label() != filter_label)) {
+      ++filter_it;
+    }
+    
+    // If the filter has reached the end, then we are done
+    if (filter_it == filter_segmentation.End()) {
+      break;
+    }
+
+    // If the segment in the filter is beyond the end of the current segment,
+    // then increment the iterator until the current segment end 
+    // point is just after the start of the filter segment
+    if (filter_it->start_frame > it->end_frame) {
+      ++it; 
+      continue;
+    }
+
+    // filter start_frame is after the start_frame of this segment. 
+    // So split the segment into two parts at filter_start. 
+    // Create a new segment for the
+    // first part which retains the same label as before.
+    // For now, retain the same label for the second part. The 
+    // label would change while processing the end of the subsegment.
+    if (filter_it->start_frame > it->start_frame) {
+      segments_.emplace(it, it->start_frame, filter_it->start_frame - 1, it->Label());
+      dim_++;
+      it->start_frame = filter_it->start_frame;
+    }
+      
+    if (filter_it->end_frame < it->end_frame) {
+      // filter segment ends before the end of the current segment. Then end 
+      // the current segment right at the end of the filter and leave the 
+      // remaining part for the next segment
+      int32 start_frame = it->start_frame;
+      it->start_frame = filter_it->end_frame + 1;
+      segments_.emplace(it, start_frame, filter_it->end_frame, subsegment_label);
+      dim_++;
+    } else {
+      // filter segment ends after the end of this current segment. 
+      // So change the label of this frame to
+      // subsegment_label
+      it->SetLabel(subsegment_label);
       ++it;
     }
   }
@@ -479,6 +535,17 @@ void Segmentation::RemoveShortSegments(int32 label, int32 max_length) {
   }
 }
 
+void Segmentation::RemoveSegments(int32 label) {
+  for (SegmentList::iterator it = segments_.begin();
+        it != segments_.end();) {
+    if (it->Label() == label) {
+      it = segments_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
 void Segmentation::Clear() {
   segments_.clear();
   dim_ = 0;
@@ -509,22 +576,33 @@ void Segmentation::Write(std::ostream &os, bool binary) const {
   }
 }
 
-void Segmentation::WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time) const {
+int32 Segmentation::WriteRttm(std::ostream &os, std::string key, BaseFloat frame_shift, BaseFloat start_time, bool map_to_speech_and_sil) const {
   SegmentList::const_iterator it = segments_.begin();
+  int32 largest_class = 0;
   for (; it != segments_.end(); ++it) {
     os << "SPEAKER " << key << " 1 "
        << it->start_frame * frame_shift + start_time << " " 
        << (it->end_frame - it->start_frame + 1) * frame_shift << " <NA> <NA> ";
-    switch (it->Label()) {
-      case 1:
-        os << "SPEECH ";
-        break;
-      default:
-        os << "SILENCE ";
-        break;
+    if (map_to_speech_and_sil) {
+      switch (it->Label()) {
+        case 1:
+          os << "SPEECH ";
+          break;
+        default:
+          os << "SILENCE ";
+          break;
+      }
+      largest_class = 1;
+    } else {
+      if (it->Label() >= 0) {
+        os << it->Label() << " ";
+        if (it->Label() > largest_class)
+          largest_class = it->Label();
+      }
     }
     os << "<NA>" << std::endl;
   } 
+  return largest_class;
 }
 
 bool Segmentation::ConvertToAlignment(std::vector<int32> *alignment,

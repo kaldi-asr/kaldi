@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Compute log-likelihoods from GMM-based model\n"
         "(outputs matrices of log-likelihoods indexed by (frame, pdf)\n"
-        "Usage: gmm-compute-likes [options] <model-in|model-rspecifier> features-rspecifier likes-wspecifier\n";
+        "Usage: gmm-compute-likes [options] model-in features-rspecifier likes-wspecifier\n";
     ParseOptions po(usage);
 
     po.Read(argc, argv);
@@ -53,32 +53,20 @@ int main(int argc, char *argv[]) {
         loglikes_wspecifier = po.GetArg(3);
 
     AmDiagGmm am_gmm;
-    if (ClassifyRspecifier(model_in_filename, NULL, NULL) == kNoRspecifier) {
-      {
-        bool binary;
-        TransitionModel trans_model;  // not needed.
-        Input ki(model_in_filename, &binary);
-        trans_model.Read(ki.Stream(), binary);
-        am_gmm.Read(ki.Stream(), binary);
-      }
+    {
+      bool binary;
+      TransitionModel trans_model;  // not needed.
+      Input ki(model_in_filename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_gmm.Read(ki.Stream(), binary);
     }
 
     BaseFloatMatrixWriter loglikes_writer(loglikes_wspecifier);
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-    RandomAccessTableReader<AmDiagGmm> model_reader(model_in_filename);
-
-    int32 num_done = 0, num_err = 0;
+    int32 num_done = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
-      if (ClassifyRspecifier(model_in_filename, NULL, NULL) != kNoRspecifier) {
-        if (!model_reader.HasKey(key)) {
-          KALDI_WARN << "Could not read model for key " << key;
-          num_err++;
-          continue;
-        }
-        am_gmm = model_reader.Value(key);
-      }
       const Matrix<BaseFloat> &features (feature_reader.Value());
       Matrix<BaseFloat> loglikes(features.NumRows(), am_gmm.NumPdfs());
       for (int32 i = 0; i < features.NumRows(); i++) {
@@ -93,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "gmm-compute-likes: computed likelihoods for " << num_done
               << " utterances.";
-    return (num_done != 0 ? 0 : -1);
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

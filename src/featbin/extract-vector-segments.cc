@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
 
     BaseFloat min_segment_length = 0.1,  // Minimum segment length in seconds.
               max_overshoot = 0.0;  // max time by which last segment can overshoot
+    int32 trim_last_frames = 0;
     BaseFloat frame_shift = 0.01;
 
     // Register the options
@@ -46,6 +47,9 @@ int main(int argc, char *argv[]) {
     po.Register("max-overshoot", &max_overshoot,
                 "End segments overshooting by less (in seconds) are truncated,"
                 " else rejected.");
+    po.Register("trim-last-frames", &trim_last_frames,
+                "Remove last few frames so that the extracted vector is "
+                "consistent with the features");
 
     po.Read(argc, argv);
     
@@ -149,7 +153,7 @@ int main(int argc, char *argv[]) {
        * if yes, skip the segment
        */
 
-      SubVector<BaseFloat> segment_vector(vector, start_samp, end_samp-start_samp);
+      SubVector<BaseFloat> segment_vector(vector, start_samp, end_samp-start_samp-trim_last_frames);
       Vector<BaseFloat> out_vector(segment_vector);
       vector_writer.Write(segment, out_vector);  // write segment in feature archive.
       num_success++;
@@ -164,5 +168,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
 
