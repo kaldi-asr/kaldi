@@ -18,7 +18,9 @@ has_fisher=true
 mic=ihm
 nj=70
 affix=
+hidden_dim=950
 num_threads_ubm=32
+use_sat_alignments=true
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -33,6 +35,16 @@ EOF
   parallel_opts="--gpu 1" 
   num_threads=1
   minibatch_size=512
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
+    parallel_opts="$parallel_opts --config conf/queue_no_k20.conf --allow-k20 false"
+    # that config is like the default config in the text of queue.pl, but adding the following lines.
+    # default allow_k20=true
+    # option allow_k20=true
+    # option allow_k20=false -l 'hostname=!g01&!g02&!b06'
+    # It's a workaround for an NVidia CUDA library bug for our currently installed version
+    # of the CUDA toolkit, that only shows up on k20's
+  fi
+
   # the _a is in case I want to change the parameters.
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
@@ -43,12 +55,21 @@ else
 fi
 
 dir=exp/$mic/nnet2_online/nnet_ms_sp${affix:+_$affix}
+
+if [ "$use_sat_alignments" == "true" ] ; then
+  gmm_dir=exp/$mic/tri4a
+  align_script=steps/align_fmllr.sh
+else
+  gmm_dir=exp/$mic/tri3a
+  align_script=steps/align_si.sh
+fi
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
-graph_dir=exp/$mic/tri4a/graph_${LM}
+graph_dir=$gmm_dir/graph_${LM}
 
 # Run the common stages of training, including training the iVector extractor
 local/online/run_nnet2_common.sh --stage $stage --mic $mic \
+  --use-sat-alignments $use_sat_alignments \
   --num-threads-ubm $num_threads_ubm|| exit 1;
 
 if [ $stage -le 6 ]; then
@@ -70,8 +91,8 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/$mic/train_sp data/lang exp/$mic/tri4a exp/$mic/tri4a_sp_ali || exit 1
+  $align_script --nj $nj --cmd "$train_cmd" \
+    data/$mic/train_sp data/lang $gmm_dir ${gmm_dir}_sp_ali || exit 1
 fi
 
 if [ $stage -le 8 ]; then
@@ -118,9 +139,9 @@ if [ $stage -le 10 ]; then
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
     --egs-dir "$common_egs_dir" \
-    --pnorm-input-dim 950 \
-    --pnorm-output-dim 950 \
-    data/$mic/train_hires_sp data/lang exp/$mic/tri4a_sp_ali $dir  || exit 1;
+    --pnorm-input-dim $hidden_dim \
+    --pnorm-output-dim $hidden_dim \
+    data/$mic/train_hires_sp data/lang ${gmm_dir}_sp_ali $dir  || exit 1;
 fi
 
 if [ $stage -le 11 ]; then

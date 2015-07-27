@@ -91,8 +91,10 @@ utils/split_data.sh $data $nj
 
 if [ $nj_ali -eq $nj ]; then
   ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz |"
+  prior_ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
 else
   ali_rspecifier="scp:$dir/ali.scp"
+  prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
     all_ids=$(seq -s, $nj_ali)
@@ -266,7 +268,7 @@ echo "$0: dumping egs for prior adjustment in the background."
 
 $cmd JOB=1:$nj $dir/log/create_priors_subset.JOB.log \
   nnet-get-egs $ivectors_opt $nnet_context_opts "$priors_feats" \
-  "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- | ali-to-post ark:- ark:- |" \
+  "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
   ark:- \| nnet-copy-egs ark:- $priors_egs_list || \
   { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.*.log"; exit 1; }
 
