@@ -188,7 +188,6 @@ class Nnet {
   /// debugging purposes.
   std::string Info() const;
 
-
   /// [Relevant for clockwork RNNs and similar].  Computes the smallest integer
   /// n >=1 such that the neural net's behavior will be the same if we shift the
   /// input and output's time indexes (t) by integer multiples of n.  Does this
@@ -214,14 +213,19 @@ class Nnet {
   
   // This function returns as a string the contents of a line of a config-file
   // corresponding to the node indexed "node_index", which must not be of type
-  // kComponentInput, in the same format as it would appear in a line of a
-  // config-file.
-  std::string GetAsConfigLine(int32 node_index) const;
+  // kComponentInput.  If include_dim=false, it appears in the same format as it
+  // would appear in a line of a config-file; if include_dim=true, we also
+  // include dimension information that would not be provided in a config file.
+  std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
 
-  // This function outputs to "config_lines" the lines of a config file, which
-  // will be sufficient to reconstruct the nodes in the network (but not
-  // the components, which need to be written separately).
-  void GetConfigLines(std::vector<std::string> *config_lines) const;
+  // This function outputs to "config_lines" the lines of a config file.  If you
+  // provide include_dim=false, this will enable you to reconstruct the nodes in
+  // the network (but not the components, which need to be written separately).
+  // If you provide include_dim=true, it also adds extra information about
+  // node dimensions which is useful for a human reader but won't be
+  // accepted as the config-file format.
+  void GetConfigLines(bool include_dim,
+                      std::vector<std::string> *config_lines) const;
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same

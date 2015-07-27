@@ -35,24 +35,25 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
+                        int32 num_pdfs,
                         int32 left_context,
                         int32 right_context,
-                        int32 num_frames,
+                        int32 frames_per_eg,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
                         NnetExampleWriter *example_writer) {
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   
-  for (int32 t = 0; t < feats.NumRows(); t += num_frames) {
-    int32 this_num_frames = std::min(num_frames,
-                                     feats.NumRows() - t);
+  for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
+    int32 this_frames_per_eg = std::min(frames_per_eg,
+                                        feats.NumRows() - t);
 
-    int32 tot_frames = left_context + this_num_frames + right_context;
+    int32 tot_frames = left_context + this_frames_per_eg + right_context;
 
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols());
     
     // Set up "input_frames".
-    for (int32 j = -left_context; j < this_num_frames + right_context; j++) {
+    for (int32 j = -left_context; j < this_frames_per_eg + right_context; j++) {
       int32 t2 = j + t;
       if (t2 < 0) t2 = 0;
       if (t2 >= feats.NumRows()) t2 = feats.NumRows() - 1;
@@ -64,27 +65,28 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     NnetExample eg;
     
     // call the regular input "input".
-    eg.input.push_back(Feature("input", t - left_context,
-                               input_frames));
-
-    // get the labels.
-    Posterior labels(num_frames);
-    for (int32 i = 0; i < num_frames; i++)
-      labels[i] = pdf_post[t + i];
-    eg.supervision.push_back(Supervision("output", t, labels));
+    eg.io.push_back(NnetIo("input", t - left_context,
+                           input_frames));
 
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
       // try to get closest frame to middle of window to get
       // a representative iVector.
-      int32 closest_frame = t + (num_frames / 2);
+      int32 closest_frame = t + (frames_per_eg / 2);
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
       ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
-      eg.input.push_back(Feature("ivector", 0, ivector));
+      eg.io.push_back(NnetIo("ivector", 0, ivector));
     }
+
+    // add the labels.
+    Posterior labels(frames_per_eg);
+    for (int32 i = 0; i < frames_per_eg; i++)
+      labels[i] = pdf_post[t + i];
+    eg.io.push_back(NnetIo("output", num_pdfs, t, labels));
+    
     if (compress)
       eg.Compress();
       
@@ -93,7 +95,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     std::string key = os.str(); // key is <utt_id>-<frame_id>
 
-    *num_frames_written += this_num_frames;
+    *num_frames_written += this_frames_per_eg;
     *num_egs_written += 1;
 
     example_writer->Write(key, eg);
@@ -112,25 +114,26 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Get frame-by-frame examples of data for neural network training.\n"
+        "Get frame-by-frame examples of data for nnet3 neural network training.\n"
         "Essentially this is a format change from features and posteriors\n"
         "into a special frame-by-frame format.  This program handles the\n"
         "common case where you have some input features, possibly some\n"
         "iVectors, and one set of labels.  If people in future want to\n"
         "do different things they may have to extend this program or create\n"
-        "different versions of it for different tasks.\n"
+        "different versions of it for different tasks (the egs format is quite\n"
+        "general)\n"
         "\n"
         "Usage:  nnet3-get-egs [options] <features-rspecifier> "
         "<pdf-post-rspecifier> <egs-out>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "nnet-get-egs --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
+        "nnet-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n";
         
 
     bool compress = true;
-    int32 left_context = 0, right_context = 0,
+    int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
     std::string ivector_rspecifier;
@@ -138,6 +141,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format.");
+    po.Register("num-pdfs", &num_pdfs, "Number of pdfs in the acoustic "
+                "model");
     po.Register("left-context", &left_context, "Number of frames of left "
                 "context the neural net requires.");
     po.Register("right-context", &right_context, "Number of frames of right "
@@ -155,6 +160,10 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
+    if (num_pdfs <= 0)
+      KALDI_ERR << "--num-pdfs options is required.";
+    
 
     std::string feature_rspecifier = po.GetArg(1),
         pdf_post_rspecifier = po.GetArg(2),
@@ -207,7 +216,7 @@ int main(int argc, char *argv[]) {
         }
           
         ProcessFile(feats, ivector_feats, pdf_post, key, compress,
-                    left_context, right_context, num_frames,
+                    num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);
         num_done++;

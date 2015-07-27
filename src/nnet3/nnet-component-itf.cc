@@ -156,6 +156,13 @@ void NonlinearComponent::StoreStatsInternal(
   }
 }
 
+std::string NonlinearComponent::Info() const {
+  std::stringstream stream;
+  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
+  stream << Type() << ", dim=" << InputDim();
+  return stream.str();
+}
+
 void NonlinearComponent::Scale(BaseFloat scale) {
   value_sum_.Scale(scale);
   deriv_sum_.Scale(scale);

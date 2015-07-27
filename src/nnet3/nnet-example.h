@@ -90,6 +90,9 @@ struct NnetExample {
   NnetExample(const NnetExample &other): io(other.io) { }
 
   void Swap(NnetExample *other) { io.swap(other->io); }
+
+  /// Compresses any features that are not sparse.
+  void Compress();
 };
 
 /** Merge a set of input examples into a single example (typically the size of

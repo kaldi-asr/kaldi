@@ -291,6 +291,8 @@ class Component {
   virtual void Write(std::ostream &os, bool binary) const = 0;
 
   /// \brief Returns some text-form information about this component, for diagnostics.
+  ///     Starts with the type of the component.  E.g. "SigmoidComponent dim=900",
+  ///     although most components will have much more info.
   virtual std::string Info() const;
 
   Component() { }
@@ -394,6 +396,8 @@ class NonlinearComponent: public Component {
   
   /// We implement Read at this level as it just needs the Type().
   virtual void Read(std::istream &is, bool binary);
+
+  virtual std::string Info() const;
   
   /// Write component to stream.
   virtual void Write(std::ostream &os, bool binary) const;

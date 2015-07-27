@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-raw-init.cc
+// nnet3bin/nnet3-info.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 
@@ -19,25 +19,22 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
-#include "nnet2/am-nnet.h"
-#include "hmm/transition-model.h"
-#include "tree/context-dep.h"
+#include "nnet3/nnet-nnet.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::nnet2;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Initialize nnet3 neural network from a config file; outputs 'raw' nnet\n"
-        "without associated information such as transition model and priors.\n"
-        "Search for examples in scripts in /egs/wsj/s5/steps/nnet3/\n"
+        "Print some text information about 'raw' nnet3 neural network, to\n"
+        "standard output\n"
         "\n"
-        "Usage:  nnet3-raw-init [options] <config-in> <raw-nnet-out>\n"
+        "Usage:  nnet3-info [options] <raw-nnet>\n"
         "e.g.:\n"
-        " nnet3-init nnet.config 0.raw\n";
+        " nnet3-info 0.raw\n"
+        "See also: nnet3-am-info\n";
     
     bool binary_write = true;
     int32 srand_seed = 0;
@@ -47,30 +44,39 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator");
     
     po.Read(argc, argv);
-    srand(srand_seed);
     
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string config_rxfilename = po.GetArg(1),
-        raw_nnet_wxfilename = po.GetArg(2);
+    std::string raw_nnet_rxfilename = po.GetArg(1);
     
     Nnet nnet;
-    {
-      bool binary;
-      Input ki(config_rxfilename, &binary);
-      KALDI_ASSERT(!binary && "Expect config file to contain text.");
-      nnet.Init(ki.Stream());
-    }
+    ReadKaldiObject(raw_nnet_rxfilename, &nnet);
 
-    WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
-    KALDI_LOG << "Initialized raw neural net and wrote it to "
-              << raw_nnet_wxfilename;
+    std::cout << nnet.Info();
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
+
+/*
+Test script:
+
+cat <<EOF | nnet3-init --binary=false - - | nnet3-info -
+component name=affine1 type=NaturalGradientAffineComponent input-dim=72 output-dim=59
+component name=relu1 type=RectifiedLinearComponent dim=59
+component name=final_affine type=NaturalGradientAffineComponent input-dim=59 output-dim=298
+component name=logsoftmax type=SoftmaxComponent dim=298
+input-node name=input dim=18
+component-node name=affine1_node component=affine1 input=Append(Offset(input, -4), Offset(input, -3), Offset(input, -2), Offset(input, 0))
+component-node name=nonlin1 component=relu1 input=affine1_node
+component-node name=final_affine component=final_affine input=nonlin1
+component-node name=output_nonlin component=logsoftmax input=final_affine
+output-node name=output input=output_nonlin  
+EOF
+*/

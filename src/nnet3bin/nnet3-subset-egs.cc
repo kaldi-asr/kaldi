@@ -1,7 +1,7 @@
-// nnet2bin/nnet-subset-egs.cc
+// nnet3bin/nnet3-subset-egs.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
-// Copyright 2014  Vimal Manohar
+// Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
+//                2014  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,13 +20,12 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
-#include "nnet2/nnet-example-functions.h"
+#include "nnet3/nnet-example.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::nnet2;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
@@ -61,7 +60,7 @@ int main(int argc, char *argv[]) {
         examples_wspecifier = po.GetArg(2);
 
     std::vector<std::pair<std::string, NnetExample> > egs;
-    egs.reserve(n);    
+    egs.reserve(n);
     
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 

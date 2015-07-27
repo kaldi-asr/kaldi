@@ -122,7 +122,6 @@ class SparseMatrix {
   SparseMatrix(int32 dim,
                const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
 
-               
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
   /// with probability zero_prob and else normally distributed- mostly for
   /// purposes of testing.
@@ -133,6 +132,9 @@ class SparseMatrix {
   void Read(std::istream &os, bool binary);
 
   const SparseVector<Real> &Row(MatrixIndexT r) const;
+
+  /// Sets row r to "vec"; makes sure it has the correct dimension.
+  void SetRow(int32 r, const SparseVector<Real> &vec);
 
   /// Sets *this to all the rows of *inputs appended together; this
   /// function is destructive of the inputs.  Requires, obviously,
@@ -192,17 +194,21 @@ class GeneralMatrix {
   /// a regular full matrix.
   void Read(std::istream &is, bool binary);
 
-  /// Outputs the contents as a SparseMatrix.  This will only work if
-  /// Type() returns kSparseMatrix, or NumRows() == 0.
-  void GetSparseMatrix(SparseMatrix<BaseFloat> *smat) const;
+  /// Returns the contents as a SparseMatrix.  This will only work if
+  /// Type() returns kSparseMatrix, or NumRows() == 0; otherwise it will crash.
+  const SparseMatrix<BaseFloat> &GetSparseMatrix() const;
 
   /// Swaps the with the given SparseMatrix.  This will only work if
   /// Type() returns kSparseMatrix, or NumRows() == 0.
   void SwapSparseMatrix(SparseMatrix<BaseFloat> *smat);
   
-  /// Outputs the contents as a compressed matrix.  This will only work if
-  /// Type() returns kCompressedMatrix (or NumRows() == 0
-  void GetCompressedMatrix(CompressedMatrix *mat) const;
+  /// Returns the contents as a compressed matrix.  This will only work if
+  /// Type() returns kCompressedMatrix, or NumRows() == 0; otherwise it will crash.
+  const CompressedMatrix &GetCompressedMatrix() const;
+
+  /// Returns the contents as a Matrix<BaseFloat>.  This will only work if
+  /// Type() returns kFullMatrix, or NumRows() == 0; otherwise it will crash.
+  const Matrix<BaseFloat>& GetFullMatrix() const;
   
   /// Outputs the contents as a matrix.  This will work regardless of
   /// Type().
@@ -210,7 +216,7 @@ class GeneralMatrix {
 
   /// Swaps the with the given Matrix.  This will only work if
   /// Type() returns kFullMatrix, or NumRows() == 0.
-  void SwapMatrix(Matrix<BaseFloat> *mat);
+  void SwapFullMatrix(Matrix<BaseFloat> *mat);
 
   /// Copies contents, regardless of type, to "mat", which must be 
   /// correctly sized.
@@ -234,7 +240,8 @@ class GeneralMatrix {
   GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
 
   GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
-  
+
+
   GeneralMatrix() { }
   // Assignment operator.
   GeneralMatrix &operator =(const GeneralMatrix &other);
@@ -259,6 +266,39 @@ class GeneralMatrix {
 void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
                              GeneralMatrix *mat);
 
+
+/// Outputs a SparseMatrix<Real> containing only the rows r of "in" such that
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows must contain
+/// at least one "true" element.
+template <typename Real>
+void FilterSparseMatrixRows(const SparseMatrix<Real> &in,
+                            const std::vector<bool> &keep_rows,
+                            SparseMatrix<Real> *out);
+
+/// Outputs a Matrix<Real> containing only the rows r of "in" such that
+/// keep_keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and
+/// keep_rows must contain at least one "true" element.
+template <typename Real>
+void FilterMatrixRows(const Matrix<Real> &in,
+                      const std::vector<bool> &keep_rows,
+                      Matrix<Real> *out);
+
+/// Outputs a Matrix<Real> containing only the rows r of "in" such that
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows must contain
+/// at least one "true" element.
+void FilterCompressedMatrixRows(const CompressedMatrix &in,
+                                const std::vector<bool> &keep_rows,
+                                Matrix<BaseFloat> *out);
+
+
+/// Outputs a GeneralMatrix containing only the rows r of "in" such that
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and keep_rows must contain
+/// at least one "true" element.  If in.Type() is kCompressedMatrix, the result
+/// will not be compressed; otherwise, the type is preserved.
+void FilterGeneralMatrixRows(const GeneralMatrix &in,
+                             const std::vector<bool> &keep_rows,
+                             GeneralMatrix *out);
+  
 
 
 /// @} end of \addtogroup matrix_group

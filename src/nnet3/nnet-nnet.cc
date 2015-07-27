@@ -53,7 +53,7 @@ const std::vector<std::string> &Nnet::GetComponentNames() const {
   return component_names_;
 }
 
-std::string Nnet::GetAsConfigLine(int32 node_index) const {
+std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
   std::ostringstream ans;
   KALDI_ASSERT(node_index < nodes_.size() &&
                nodes_.size() == node_names_.size());
@@ -69,12 +69,17 @@ std::string Nnet::GetAsConfigLine(int32 node_index) const {
       KALDI_ASSERT(IsOutputNode(node_index));
       ans << "output-node name=" << name << " input=";
       node.descriptor.WriteConfig(ans, node_names_);
+      if (include_dim)
+        ans << " dim=" << node.Dim(*this);
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
           << component_names_[node.u.component_index] << " input=";
       KALDI_ASSERT(nodes_[node_index-1].node_type == kDescriptor);
       nodes_[node_index-1].descriptor.WriteConfig(ans, node_names_);
+      if (include_dim)      
+        ans << " input-dim=" << nodes_[node_index-1].Dim(*this)
+            << " output-dim=" << node.Dim(*this);
       break;
     case kDimRange:
       ans << "dim-range-node name=" << name << " input-node="
@@ -140,11 +145,12 @@ bool Nnet::IsComponentInputNode(int32 node) const {
           nodes_[node+1].node_type == kComponent);
 }
 
-void Nnet::GetConfigLines(std::vector<std::string> *config_lines) const {
+void Nnet::GetConfigLines(bool include_dim,
+                          std::vector<std::string> *config_lines) const {
   config_lines->clear();
   for (int32 n = 0; n < NumNodes(); n++)
     if (!IsComponentInputNode(n))
-      config_lines->push_back(GetAsConfigLine(n));
+      config_lines->push_back(GetAsConfigLine(n, include_dim));
   
 }
 
@@ -155,7 +161,8 @@ void Nnet::ReadConfig(std::istream &config_is) {
   // nodes we currently have.  Because the numbering of nodes may
   // change, it's most convenient to convert to the text representation
   // and combine the existing and new config lines in that representation.
-  GetConfigLines(&lines);
+  const bool include_dim = false;
+  GetConfigLines(include_dim, &lines);
   
   // we'll later regenerate what we need from nodes_ and node_name_ from the
   // string representation.
@@ -570,7 +577,8 @@ void Nnet::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Nnet3>");
   os << std::endl;
   std::vector<std::string> config_lines;
-  GetConfigLines(&config_lines);
+  const bool include_dim = false;
+  GetConfigLines(include_dim, &config_lines);
   for (size_t i = 0; i < config_lines.size(); i++) {
     KALDI_ASSERT(!config_lines[i].empty());
     os << config_lines[i] << std::endl;
@@ -732,6 +740,20 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
     components_[i] = nnet.components_[i]->Copy();
   Check();
   return *this;
+}
+
+std::string Nnet::Info() const {
+  std::ostringstream os;
+  std::vector<std::string> config_lines;
+  bool include_dim = true;
+  GetConfigLines(include_dim, &config_lines);
+  for (size_t i = 0; i < config_lines.size(); i++)
+    os << config_lines[i] << "\n";
+  // Get component info.
+  for (size_t i = 0; i < components_.size(); i++)
+    os << "component name=" << component_names_[i]
+       << " type=" << components_[i]->Info() << "\n";
+  return os.str();
 }
 
 } // namespace nnet3

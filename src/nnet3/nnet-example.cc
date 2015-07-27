@@ -72,7 +72,6 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
   // struct.
   WriteToken(os, binary, "<Nnet3Eg>");
-
   WriteToken(os, binary, "<NumIo>");
   int32 size = io.size();
   WriteBasicType(os, binary, size);
@@ -95,6 +94,13 @@ void NnetExample::Read(std::istream &is, bool binary) {
 }
 
 
+void NnetExample::Compress() {
+  std::vector<NnetIo>::iterator iter = io.begin(), end = io.end();
+  // calling features.Compress() will do nothing if they are sparse or already
+  // compressed.
+  for (; iter != end; ++iter)
+    iter->features.Compress();
+}
 
 } // namespace nnet3
 } // namespace kaldi

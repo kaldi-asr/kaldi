@@ -356,7 +356,14 @@ const SparseVector<Real> &SparseMatrix<Real>::Row(MatrixIndexT r) const {
   KALDI_ASSERT(static_cast<size_t>(r) < rows_.size());
   return rows_[r];
 }
-    
+
+template <typename Real>
+void SparseMatrix<Real>::SetRow(int32 r, const SparseVector<Real> &vec) {
+  KALDI_ASSERT(static_cast<size_t>(r) < rows_.size() &&
+               vec.Dim() == rows_[0].Dim());
+  rows_[r] = vec;
+}
+
 template <typename Real>
 SparseMatrix<Real>& SparseMatrix<Real>::operator = (
     const SparseMatrix<Real> &other) {
@@ -568,10 +575,10 @@ void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat) const {
   }
 }
 
-void GeneralMatrix::GetSparseMatrix(SparseMatrix<BaseFloat> *smat) const {
+const SparseMatrix<BaseFloat>& GeneralMatrix::GetSparseMatrix() const {
   if (mat_.NumRows() != 0 || cmat_.NumRows() != 0)
     KALDI_ERR << "GetSparseMatrix called on GeneralMatrix of wrong type.";
-  *smat = smat_;        
+  return smat_;
 }
 
 void GeneralMatrix::SwapSparseMatrix(SparseMatrix<BaseFloat> *smat) {
@@ -580,13 +587,20 @@ void GeneralMatrix::SwapSparseMatrix(SparseMatrix<BaseFloat> *smat) {
   smat->Swap(&smat_);
 }
 
-void GeneralMatrix::GetCompressedMatrix(CompressedMatrix *cmat) const {
+const CompressedMatrix &GeneralMatrix::GetCompressedMatrix() const {
   if (mat_.NumRows() != 0 || smat_.NumRows() != 0)
     KALDI_ERR << "GetCompressedMatrix called on GeneralMatrix of wrong type.";
-  *cmat = cmat_;
+  return cmat_;
 }
 
-void GeneralMatrix::SwapMatrix(Matrix<BaseFloat> *mat) {
+const Matrix<BaseFloat> &GeneralMatrix::GetFullMatrix() const {
+  if (smat_.NumRows() != 0 || cmat_.NumRows() != 0)
+    KALDI_ERR << "GetFullMatrix called on GeneralMatrix of wrong type.";
+  return mat_;
+}
+
+
+void GeneralMatrix::SwapFullMatrix(Matrix<BaseFloat> *mat) {
   if (cmat_.NumRows() != 0 || smat_.NumRows() != 0)
     KALDI_ERR << "SwapMatrix called on GeneralMatrix of wrong type.";
   mat->Swap(&mat_);
@@ -646,7 +660,7 @@ void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
   if (all_sparse) {
     std::vector<SparseMatrix<BaseFloat> > sparse_mats(size);
     for (int32 i = 0; i < size; i++)
-      src[i]->GetSparseMatrix(&(sparse_mats[i]));
+      sparse_mats[i] = src[i]->GetSparseMatrix();
     SparseMatrix<BaseFloat> appended_mat;
     appended_mat.AppendSparseMatrixRows(&sparse_mats);
     mat->SwapSparseMatrix(&appended_mat);
@@ -676,9 +690,163 @@ void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
       }
     }
     KALDI_ASSERT(row_offset == tot_rows);
-    mat->SwapMatrix(&appended_mat);
+    mat->SwapFullMatrix(&appended_mat);
   }
 }
+
+void FilterCompressedMatrixRows(const CompressedMatrix &in,
+                                const std::vector<bool> &keep_rows,
+                                Matrix<BaseFloat> *out) {
+  KALDI_ASSERT(keep_rows.size() == static_cast<size_t>(in.NumRows()));
+  int32 num_kept_rows = 0;
+  std::vector<bool>::const_iterator iter = keep_rows.begin(),
+                                     end = keep_rows.end();
+  for (; iter != end; ++iter)
+    if (*iter)
+      num_kept_rows++;
+  if (num_kept_rows == 0)
+    KALDI_ERR << "No kept rows";
+  if (num_kept_rows == static_cast<int32>(keep_rows.size())) {
+    out->Resize(in.NumRows(), in.NumCols(), kUndefined);
+    in.CopyToMat(out);
+    return;
+  }
+  out->Resize(num_kept_rows, in.NumCols(), kUndefined);
+  iter = keep_rows.begin();
+  int32 out_row = 0;
+  for (int32 in_row = 0; iter != end; ++iter,++in_row) {
+    if (*iter) {
+      SubVector<BaseFloat> dest(*out, out_row);
+      in.CopyRowToVec(in_row, &dest);
+      out_row++;
+    }
+  }
+  KALDI_ASSERT(out_row == num_kept_rows);
+}
+
+template <typename Real>
+void FilterMatrixRows(const Matrix<Real> &in,
+                      const std::vector<bool> &keep_rows,
+                      Matrix<Real> *out) {
+  KALDI_ASSERT(keep_rows.size() == static_cast<size_t>(in.NumRows()));
+  int32 num_kept_rows = 0;
+  std::vector<bool>::const_iterator iter = keep_rows.begin(),
+                                     end = keep_rows.end();
+  for (; iter != end; ++iter)
+    if (*iter)
+      num_kept_rows++;
+  if (num_kept_rows == 0)
+    KALDI_ERR << "No kept rows";
+  if (num_kept_rows == static_cast<int32>(keep_rows.size())) {
+    *out = in;
+    return;
+  }
+  out->Resize(num_kept_rows, in.NumCols(), kUndefined);
+  iter = keep_rows.begin();
+  int32 out_row = 0;
+  for (int32 in_row = 0; iter != end; ++iter,++in_row) {
+    if (*iter) {
+      SubVector<Real> src(in, in_row);
+      SubVector<Real> dest(*out, out_row);
+      dest.CopyFromVec(src);
+      out_row++;
+    }
+  }
+  KALDI_ASSERT(out_row == num_kept_rows);
+}
+
+template
+void FilterMatrixRows(const Matrix<float> &in,
+                      const std::vector<bool> &keep_rows,
+                      Matrix<float> *out);
+template
+void FilterMatrixRows(const Matrix<double> &in,
+                      const std::vector<bool> &keep_rows,
+                      Matrix<double> *out);
+
+template <typename Real>
+void FilterSparseMatrixRows(const SparseMatrix<Real> &in,
+                            const std::vector<bool> &keep_rows,
+                            SparseMatrix<Real> *out) {
+  KALDI_ASSERT(keep_rows.size() == static_cast<size_t>(in.NumRows()));
+  int32 num_kept_rows = 0;
+  std::vector<bool>::const_iterator iter = keep_rows.begin(),
+                                     end = keep_rows.end();
+  for (; iter != end; ++iter)
+    if (*iter)
+      num_kept_rows++;
+  if (num_kept_rows == 0)
+    KALDI_ERR << "No kept rows";
+  if (num_kept_rows == static_cast<int32>(keep_rows.size())) {
+    *out = in;
+    return;
+  }
+  out->Resize(num_kept_rows, in.NumCols(), kUndefined);
+  iter = keep_rows.begin();
+  int32 out_row = 0;
+  for (int32 in_row = 0; iter != end; ++iter,++in_row) {
+    if (*iter) {
+      out->SetRow(out_row, in.Row(in_row));
+      out_row++;
+    }
+  }
+  KALDI_ASSERT(out_row == num_kept_rows);
+}
+
+template
+void FilterSparseMatrixRows(const SparseMatrix<float> &in,
+                            const std::vector<bool> &keep_rows,
+                            SparseMatrix<float> *out);
+template
+void FilterSparseMatrixRows(const SparseMatrix<double> &in,
+                            const std::vector<bool> &keep_rows,
+                            SparseMatrix<double> *out);
+
+
+void FilterGeneralMatrixRows(const GeneralMatrix &in,
+                             const std::vector<bool> &keep_rows,
+                             GeneralMatrix *out) {
+  out->Clear();
+  KALDI_ASSERT(keep_rows.size() == static_cast<size_t>(in.NumRows()));
+  int32 num_kept_rows = 0;
+  std::vector<bool>::const_iterator iter = keep_rows.begin(),
+                                     end = keep_rows.end();
+  for (; iter != end; ++iter)
+    if (*iter)
+      num_kept_rows++;
+  if (num_kept_rows == 0)
+    KALDI_ERR << "No kept rows";
+  if (num_kept_rows == static_cast<int32>(keep_rows.size())) {
+    *out = in;
+    return;
+  }
+  switch (in.Type()) {
+    case kCompressedMatrix: {
+      const CompressedMatrix &cmat = in.GetCompressedMatrix();
+      Matrix<BaseFloat> full_mat;
+      FilterCompressedMatrixRows(cmat, keep_rows, &full_mat);
+      out->SwapFullMatrix(&full_mat);
+      return;
+    }
+    case kSparseMatrix: {
+      const SparseMatrix<BaseFloat> &smat = in.GetSparseMatrix();
+      SparseMatrix<BaseFloat> smat_out;
+      FilterSparseMatrixRows(smat, keep_rows, &smat_out);
+      out->SwapSparseMatrix(&smat_out);
+      return;
+    }
+    case kFullMatrix: {
+      const Matrix<BaseFloat> &full_mat = in.GetFullMatrix();
+      Matrix<BaseFloat> full_mat_out;
+      FilterMatrixRows(full_mat, keep_rows, &full_mat_out);
+      out->SwapFullMatrix(&full_mat_out);
+      return;
+    }
+    default:
+      KALDI_ERR << "Invalid general-matrix type.";
+  }
+}
+
 
 template class SparseVector<float>;
 template class SparseVector<double>;
