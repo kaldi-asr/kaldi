@@ -34,7 +34,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Do forward-backward and collect posteriors over lattices.\n"
         "Usage: lattice-to-post [options] lats-rspecifier posts-wspecifier [loglikes-wspecifier]\n"
-        " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n";
+        " e.g.: lattice-to-post --acoustic-scale=0.1 ark:1.lats ark:1.post\n"
+        "See also: lattice-to-ctm-conf, post-to-pdf-post\n";
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     kaldi::ParseOptions po(usage);
