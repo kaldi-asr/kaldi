@@ -23,7 +23,8 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         build-pfile-from-ali get-post-on-ali tree-info am-info \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
         transform-vec align-text matrix-dim \
-				loglikes-to-post copy-post-mapped weight-pdf-post
+				loglikes-to-post copy-post-mapped weight-pdf-post \
+				split-speakers-on-diarization-assigments
 
 
 OBJFILES =
