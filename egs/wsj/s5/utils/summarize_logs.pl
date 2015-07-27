@@ -107,7 +107,7 @@ foreach $c (sort (keys %fmap)) {
       $total_cpu_time += $time * $threads;
       $total_threads += $threads;
       if ( $time > $total_clock_time ) {
-        $total_clock_time += $time;
+        $total_clock_time = $time;
       }
     }
   }
