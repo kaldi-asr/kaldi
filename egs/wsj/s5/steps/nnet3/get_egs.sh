@@ -235,7 +235,7 @@ if [ $stage -le 2 ]; then
 
   $cmd $dir/log/create_valid_subset.log \
     nnet3-get-egs $valid_ivector_opt $egs_opts "$valid_feats" \
-    "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
+     "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     nnet3-get-egs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \

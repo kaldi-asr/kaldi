@@ -187,13 +187,17 @@ if [ $stage -le -5 ]; then
    $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
-  # matrix.
+  # matrix.  This first config just does any initial splicing that we do;
+  # we do this as it's a convenient way to get the stats for the 'lda-like'
+  # transform.
   $cmd $dir/log/nnet_init.log \
     nnet3-init $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 
 # set left_context, right_context, num_hidden_layers
 . $dir/configs/vars || exit 1;
+
+context_opts="--left-context=$left_context --right-context=$right_context"
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
@@ -253,8 +257,8 @@ if [ $stage -le -3 ]; then
   [ $num_lda_jobs -gt $max_lda_jobs ] && num_lda_jobs=$max_lda_jobs
 
   # Write stats with the same format as stats for LDA.
-  $cmd JOB=1:$num_lda_jobs $dir/log/get_transform_stats.JOB.log \
-      nnet3-get-transform-stats --num-leaves=$num_leaves \
+  $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
+      nnet3-get-lda-stats --rand-prune=$rand_prune \
         $dir/init.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
@@ -402,7 +406,7 @@ while [ $x -lt $num_iters ]; do
       # we're using different random subsets of it.
       rm $dir/post.$x.*.vec 2>/dev/null
       $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
-        nnet3-copy-egs --srand=JOB --frame=random ark:$prev_egs_dir/egs.1.ark ark:- \| \
+        nnet3-copy-egs --srand=JOB --frame=random $context_opts ark:$prev_egs_dir/egs.1.ark ark:- \| \
         nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
         nnet3-compute-from-egs "nnet3-to-raw $dir/$x.mdl -|" ark:- ark:- \| \
         matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
@@ -498,7 +502,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_gpu_opt $dir/log/train.$x.$n.log \
           nnet3-train$parallel_suffix $parallel_train_opts --minibatch-size=$this_minibatch_size --srand=$x "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -595,7 +599,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-compute-from-egs "nnet3-am-copy --raw=true $dir/final.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

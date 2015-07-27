@@ -915,3 +915,9 @@
 /src/nnet3/nnet-example-test
 /src/nnet3/nnet-optimize-test
 
+/src/nnet3bin/nnet3-copy-egs
+/src/nnet3bin/nnet3-get-egs
+/src/nnet3bin/nnet3-info
+/src/nnet3bin/nnet3-init
+/src/nnet3bin/nnet3-shuffle-egs
+/src/nnet3bin/nnet3-subset-egs
