@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
     int32 widen_length = -1;
     int32 widen_label = -1;
     int32 max_segment_length = -1;
+    bool merge_adjacent_segments = false;
 
     ParseOptions po(usage);
     
@@ -48,19 +49,23 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("remove-label", &remove_label, "The label for which the short segments are to be removed. "
                 "If --merge-labels is specified, then all of them would be removed instead.");
-    po.Register("max-remove-length", &max_remove_length, "The maximum length of segment that will be removed");
+    po.Register("max-remove-length", &max_remove_length, "The maximum length of segment in number of frames that will be removed");
     po.Register("widen-label", &widen_label, "Widen segments of this label");
-    po.Register("widen-length", &widen_length, "Widen by this amount on either sides");
-    po.Register("max-segment-length", &max_segment_length, "Split segment into pieces of this length");
+    po.Register("widen-length", &widen_length, "Widen by this amount of frames on either sides");
+    po.Register("max-segment-length", &max_segment_length, "Split segment into pieces of this number of frames");
+    po.Register("merge-adjacent-segments", &merge_adjacent_segments, 
+                "Merge adjacent segments of the same label");
 
     opts.Register(&po);
 
-    po.Read(argc, argv);
-
+    po.Read(argc, argv); 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
+    
+    if (merge_adjacent_segments) 
+      KALDI_LOG << "Merging adjacent segments...";
 
     std::vector<int32> merge_labels;
     RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
@@ -103,6 +108,9 @@ int main(int argc, char *argv[]) {
         seg.WidenSegments(widen_label, widen_length);
       if (max_remove_length >= 0)
         seg.RemoveShortSegments(opts.merge_dst_label, max_remove_length);
+
+      if (merge_adjacent_segments)
+        seg.MergeAdjacentSegments();
 
       if (max_segment_length >= 0)
         seg.SplitSegments(max_segment_length, max_segment_length/2);

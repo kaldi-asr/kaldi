@@ -127,6 +127,9 @@ class Segmentation {
     void MergeLabels(const std::vector<int32> &merge_labels,
                      int32 dest_label);
 
+    // Merge adjacent segments of the same label
+    void MergeAdjacentSegments();
+
     // Create a Histogram Encoder that can map a segment to 
     // a bin based on the average score
     void CreateHistogram(int32 label, const Vector<BaseFloat> &score, 

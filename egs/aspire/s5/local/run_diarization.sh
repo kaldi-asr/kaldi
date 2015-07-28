@@ -56,6 +56,8 @@ extractor=$4
 plda=$5
 dir=$6
 
+echo "$0: file weights are ignored by this script"
+
 data_id=`basename $data_dir`
 segmented_data_dir=${data_dir}_uniformsegmented_win${window}_over${overlap}
 
@@ -64,7 +66,7 @@ if [ $stage -le 0 ]; then
   cp $data_dir/reco2file_and_channel $segmented_data_dir || exit 1
 
   local/multi_condition/create_uniform_segments.py --overlap $overlap --window $window $segmented_data_dir || exit 1
-  for file in cmvn.scp feats.scp; do 
+  for file in cmvn.scp feats.scp text; do 
     rm -f $segmented_data_dir/$file
   done
 fi
@@ -83,12 +85,12 @@ if [ $stage -le 1 ]; then
   utils/validate_data_dir.sh --no-text $segmented_data_dir || exit 1
 fi
 
-if [ $stage -le 2 ]; then 
-  $train_cmd $dir/ivector_weights/log/extract_weights.log \
-    extract-vector-segments --trim-last-frames=2 --max-overshoot=0.025 \
-    "$file_weights" $segmented_data_dir/segments \
-    "ark:| gzip -c > $dir/ivector_weights/weights.gz" || exit 1
-fi
+#if [ $stage -le 2 ]; then 
+#  $train_cmd $dir/ivector_weights/log/extract_weights.log \
+#    extract-vector-segments --trim-last-frames=2 --max-overshoot=0.025 \
+#    "$file_weights" $segmented_data_dir/segments \
+#    "ark:| gzip -c > $dir/ivector_weights/weights.gz" || exit 1
+#fi
 
 if [ $stage -le 3 ]; then
   diarization/extract_ivectors.sh --cmd "$train_cmd" --nj $nj \
@@ -120,3 +122,15 @@ if [ $stage -le 5 ]; then
     "scp:utils/filter_scp.pl $segmented_data_dir/split$nj/JOB/utt2spk $dir/ivectors/ivectors_utt.scp |" \
     ark,t:$dir/diarization/diarization_results.JOB.txt || exit 1
 fi
+
+if [ $stage -le 6 ]; then
+  mkdir -p $dir/diarization/data_out
+  $train_cmd JOB=1:$nj $dir/diarization/log/convert_diarization_to_segments.JOB.log \
+    segmentation-init-from-diarization --diarization-window-overlap=0.5 \
+    ark,t:$dir/diarization/diarization_results.JOB.txt \
+    $segmented_data_dir/split$nj/JOB/segments ark:- \| \
+    segmentation-to-segments ark:- ark,t:$dir/diarization/data_out/utt2spk.JOB \
+    $dir/diarization/data_out/segments.JOB || exit 1
+fi
+
+

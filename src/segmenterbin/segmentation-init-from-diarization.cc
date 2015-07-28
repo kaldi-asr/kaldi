@@ -130,11 +130,11 @@ int main(int argc, char *argv[]) {
           start += overlap / 2;
 
         seg.Emplace(std::round(start / frame_shift), 
-                    std::round(end / frame_shift), label);
+                    std::round(end / frame_shift) - 1, label);
       }
 
       if (per_utt) {
-        seg.Emplace(0.0, std::round((end - start)/ frame_shift), label);
+        seg.Emplace(0.0, std::round((end - start)/ frame_shift) - 1, label);
         writer.Write(segment, seg);
         num_segmentations++;
         seg.Clear();

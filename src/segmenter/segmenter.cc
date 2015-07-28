@@ -101,6 +101,25 @@ void Segmentation::MergeLabels(const std::vector<int32> &merge_labels,
   Check();
 }
 
+void Segmentation::MergeAdjacentSegments() {
+  for (SegmentList::iterator it = segments_.begin(), prev_it = segments_.begin(); 
+      it != segments_.end();) {
+
+    if (it != segments_.begin() &&
+        it->Label() == prev_it->Label() && 
+        prev_it->end_frame + 1 >= it->start_frame) {
+      if (prev_it->end_frame < it->end_frame) 
+        prev_it->end_frame = it->end_frame;
+      it = segments_.erase(it);
+      dim_--;
+    } else {
+      prev_it = it;
+      ++it;
+    }
+  }
+  Check();
+}
+
 void Segmentation::CreateHistogram(
     int32 label, const Vector<BaseFloat> &scores, 
     const HistogramOptions &opts, HistogramEncoder *hist_encoder) {
@@ -716,7 +735,9 @@ void Segmentation::GenRandomSegmentation(int32 max_length, int32 num_classes) {
 void Segmentation::Check() const {
   int32 dim = 0;
   for (SegmentList::const_iterator it = segments_.begin();
-        it != segments_.end(); ++it, dim++);
+        it != segments_.end(); ++it, dim++) {
+    KALDI_ASSERT(it->Label() >= 0);
+  };
   KALDI_ASSERT(dim == dim_);
   KALDI_ASSERT(mean_scores_.size() == 0 || mean_scores_.size() == dim_);
 }

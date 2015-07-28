@@ -1,6 +1,6 @@
 // segmenterbin/segmentation-to-rttm.cc
 
-// Copyright 2015   Vimal Manohar (Johns Hopkins University)
+// Copyright 2015   Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Copy segmentation or archives of segmentation\n"
+        "Convert segmentation into RTTM\n"
         "\n"
         "Usage: segmentation-to-rttm [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) rttm-out-wxfilename\n"
         " e.g.: segmentation-to-rttm foo -\n"
