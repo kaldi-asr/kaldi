@@ -37,8 +37,10 @@ struct CompilerOptions {
   CompilerOptions(): output_debug_info(true) { }
 };
 
-// This class creates an initial version of the NnetComputation, without any
-// optimization or sharing of matrices.  
+/// This class creates an initial version of the NnetComputation, without any
+/// optimization or sharing of matrices.    Note: for a user-level interface
+/// that includes optimization, see class CachingOptimizingCompiler in
+/// nnet-optimize.h.
 class Compiler {
  public:
   Compiler(const ComputationRequest &request,
@@ -282,9 +284,6 @@ class Compiler {
                    NnetComputation *computation);
 
 };
-
-// TODO: make sure inputs don't have resize commands to set up the sizes, and
-// outputs don't have resize commands to empty them.
 
 
 } // namespace nnet3

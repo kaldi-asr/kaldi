@@ -95,12 +95,6 @@ struct NnetExample {
   void Compress();
 };
 
-/** Merge a set of input examples into a single example (typically the size of
-    "src" will be the minibatch size).  Will crash if "src" is the empty vector.
- */
-void MergeExamples(const std::vector<NnetExample> &src,
-                   NnetExample *dest);
-
 
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetExample > > SequentialNnetExampleReader;

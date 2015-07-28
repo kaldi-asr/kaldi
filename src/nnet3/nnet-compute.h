@@ -24,6 +24,7 @@
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-analyze.h"
+#include "nnet3/nnet-example.h"
 
 #include <iostream>
 #include <sstream>
@@ -68,6 +69,12 @@ class NnetComputer {
   /// IoSpecification.
   void AcceptInput(const std::string &input_name,
                    CuMatrix<BaseFloat> *input);
+
+  /// This function calls AcceptInput() in turn on all the inputs in
+  /// the training example.  It needs "nnet" only in order to distinguish
+  /// inputs from outputs.
+  void AcceptInputs(const Nnet &nnet,
+                    const NnetExample &example);
 
   
   // Does the forward computation.

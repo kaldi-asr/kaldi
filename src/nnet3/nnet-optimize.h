@@ -59,6 +59,28 @@ void Optimize(const NnetOptimizeConfig &config,
               NnetComputation *computation);
 
 
+/// This class enables you to do the compilation and optimization in one call,
+/// and also ensures that if the ComputationRequest is identical to the previous
+/// one, the compilation process is not repeated.
+class CachingOptimizingCompiler {
+ public:
+  CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
+  
+  CachingOptimizingCompiler(const Nnet &nnet,
+                            const NnetOptimizeConfig &opt_config):
+      nnet_(nnet), opt_config_(opt_config) { }
+
+  /// Does the compilation and returns a const pointer to
+  /// the result, which is owned by this class, not the caller.
+  const NnetComputation* Compile(const ComputationRequest  &request);
+ private:
+  const Nnet &nnet_;
+  NnetOptimizeConfig opt_config_;
+  ComputationRequest request_;
+  NnetComputation computation_;
+};
+
+
 /**
    This class is responsible for merging matrices.  Suppose there are m1 and s1
    on the one hand, where s1 is a submatrix consisting of the whole of m1, and

@@ -409,6 +409,22 @@ void NnetComputer::CheckInputs(bool check_output_deriv) const {
   }
 }
 
+void NnetComputer::AcceptInputs(const Nnet &nnet,
+                                const NnetExample &example) {
+  for (size_t i = 0; i < example.io.size(); i++) {
+    const NnetIo &io = example.io[i];
+    int32 node_index = nnet.GetNodeIndex(io.name);
+    if (node_index == -1)
+      KALDI_ERR << "No node named '" << io.name << "' in nnet.";
+    if (nnet.IsInputNode(node_index)) {
+      CuMatrix<BaseFloat> cu_input(io.features.NumRows(),
+                                   io.features.NumCols(),
+                                   kUndefined);
+      cu_input.CopyFromGeneralMat(io.features);
+      this->AcceptInput(io.name, &cu_input);
+    }
+  }
+}
 
 } // namespace nnet3
 } // namespace kaldi

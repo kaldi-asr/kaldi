@@ -716,6 +716,38 @@ void Optimize(const NnetOptimizeConfig &config,
     MoveSizingCommands(nnet, computation);
 }
 
+const NnetComputation* CachingOptimizingCompiler::Compile(
+    const ComputationRequest  &request) {
+  if (!(request == request_)) {
+    request_ = request;
+    Compiler compiler(request_, nnet_);
+    CompilerOptions opts;
+
+    compiler.CreateComputation(opts, &computation_);
+    
+    int32 verbose_level = 4;
+    if (GetVerboseLevel() >= verbose_level) {
+      std::ostringstream os;
+      computation_.Print(os, nnet_);
+      KALDI_LOG << "Generated computation is: " << os.str();
+    }
+    { // some checking.
+      CheckComputationConfig check_config;
+      // we can do the rewrite check since it's before optimization.
+      check_config.check_rewrite = true;  
+      ComputationChecker checker(check_config, nnet_, request_,
+                                 computation_);
+      checker.Check();
+    }
+    Optimize(opt_config_, nnet_, request_, &computation_);
+    { // check the computation again.
+      CheckComputationConfig check_config;
+      ComputationChecker checker(check_config, nnet_, request_, computation_);
+      checker.Check();
+    }
+  }
+  return &computation_;
+}
 
 
 } // namespace nnet3

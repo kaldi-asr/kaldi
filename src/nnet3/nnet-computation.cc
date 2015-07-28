@@ -453,6 +453,19 @@ void ComputationRequest::Print(std::ostream &os) const {
   misc_info.Print(os);
 }
 
+bool IoSpecification::operator== (const IoSpecification &other) const {
+  return (name == other.name && indexes == other.indexes &&
+          has_deriv == other.has_deriv);
+}
+
+bool ComputationRequest::operator== (const ComputationRequest &other) const {
+  // rely on the std::vector's default implementation of ==, which in turn
+  // relies on the == operator of class IoSpecification.
+  return inputs == other.inputs && outputs == other.outputs &&
+      need_model_derivative == other.need_model_derivative &&
+      store_component_stats == other.store_component_stats &&
+      misc_info == other.misc_info;
+}
 
 } // namespace nnet3
 } // namespace kaldi

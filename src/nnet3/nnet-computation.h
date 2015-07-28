@@ -54,6 +54,7 @@ namespace nnet3 {
 struct MiscComputationInfo {
   // will add members here as needed.
 
+  bool operator== (const MiscComputationInfo &other) const { return true; }
   // This will print this in a human-readable way, for debugging.
   void Print(std::ostream &os) const { };
 };
@@ -82,6 +83,8 @@ struct IoSpecification {
   /// This function is for printing in a human-readable way, for debugging.
   /// Output ends in a newline.
   void Print(std::ostream &os) const;
+
+  bool operator== (const IoSpecification &other) const;
 };
 
 
@@ -130,6 +133,8 @@ struct ComputationRequest {
   /// This function is for printing info about the computation request
   /// in a human-readable way.
   void Print(std::ostream &os) const;
+
+  bool operator== (const ComputationRequest &other) const;
 };
 
 
@@ -163,7 +168,7 @@ struct NnetComputation {
                   int32 col_offset, int32 num_cols):
         matrix_index(matrix_index), row_offset(row_offset), num_rows(num_rows),
         col_offset(col_offset), num_cols(num_cols) {}
-    bool operator == (const SubMatrixInfo &other) const;
+    bool operator== (const SubMatrixInfo &other) const;
   };
   /**
     CommandType is an enum that describes the category of the command.  We
