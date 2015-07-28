@@ -63,7 +63,7 @@ OLIST=${OLIST:-/dev/null}  # Default for output list
 which shorten > /dev/null
 which sox > /dev/null
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 mkdir -p $tmpdir/raw $ODIR

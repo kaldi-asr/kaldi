@@ -62,7 +62,7 @@ done
 
 [ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 grep "^$LCODE" $DEVSPK | cut -f2- | tr ' ' '\n' \

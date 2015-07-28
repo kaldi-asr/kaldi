@@ -46,7 +46,7 @@ if [ -d $*/TRAIN ]; then
   test_dir=TEST
 fi
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 # Get the list of speakers. The list of speakers in the 24-speaker core test 
