@@ -116,6 +116,7 @@ if [ $stage -le 5 ]; then
   #  ark,t:$dir/diarization/feat_len.JOB.txt \
   #  "scp:utils/filter_scp.pl $segmented_data_dir/split$nj/JOB/utt2spk $dir/ivectors/ivectors_utt.scp |" \
   #  ark,t:$dir/diarization/diarization_results.JOB.txt || exit 1
+  plda=
   $train_cmd JOB=1:$nj $dir/diarization/log/do_diarization.JOB.log \
     speaker-diarization --num-speakers=3 $plda \
     ark:$segmented_data_dir/split$nj/JOB/spk2utt \

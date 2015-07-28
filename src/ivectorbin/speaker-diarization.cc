@@ -45,23 +45,35 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 4 && po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
     int32 num_utt_err = 0;
     int32 num_utt_done = 0;
 
-    std::string plda_rxfilename = po.GetArg(1);
-    std::string spk2utt_rspecifier = po.GetArg(2);
-    std::string ivector_rspecifier = po.GetArg(3);
-    std::string diar_wspecifier = po.GetArg(4);
+    std::string plda_rxfilename, spk2utt_rspecifier, ivector_rspecifier,
+                diar_wspecifier;
+
+    if (po.NumArgs() == 4) {
+      plda_rxfilename = po.GetArg(1);
+      spk2utt_rspecifier = po.GetArg(2);
+      ivector_rspecifier = po.GetArg(3);
+      diar_wspecifier = po.GetArg(4);
+    } else {
+      spk2utt_rspecifier = po.GetArg(1);
+      ivector_rspecifier = po.GetArg(2);
+      diar_wspecifier = po.GetArg(3);
+    }
 
     Plda plda;
     PldaConfig plda_config;
-    ReadKaldiObject(plda_rxfilename, &plda);
+    int32 dim = 0;
 
-    int32 dim = plda.Dim();
+    if (plda_rxfilename != "") {
+      ReadKaldiObject(plda_rxfilename, &plda);
+      dim = plda.Dim();
+    } 
 
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatVectorReader ivector_reader(ivector_rspecifier);
@@ -80,13 +92,23 @@ int main(int argc, char *argv[]) {
         } else {
           ivector_clusters.resize(ivector_clusters.size() + 1);
           Vector<BaseFloat> ivector = ivector_reader.Value(utt);
-          Vector<BaseFloat> transformed_ivector(dim);
+          Vector<BaseFloat> *transformed_ivector;
 
-          plda.TransformIvector(plda_config, ivector,
-              &transformed_ivector);
-          Clusterable *cluster = new VectorClusterable(transformed_ivector, 1.0);
+          if (plda_rxfilename != "") {
+            transformed_ivector = new Vector<BaseFloat>(dim);
+            plda.TransformIvector(plda_config, ivector,
+                                  transformed_ivector);
+          } else {
+            transformed_ivector = &ivector;
+          }
+
+          Clusterable *cluster = new VectorClusterable(*transformed_ivector, 1.0);
           ivector_clusters.back() = cluster;
           num_utt_done++;
+          
+          if (plda_rxfilename != "") {
+            delete transformed_ivector;
+          }
         }
       }
       std::vector<Clusterable *> ivector_clusters_out;
