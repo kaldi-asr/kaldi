@@ -18,7 +18,7 @@ mkdir -p $data/.backup
 
 [ ! -f $data/utt2spk ] && echo "$0: no such file $data/utt2spk" && exit 1;
 
-tmpdir=$(mktemp -d kaldi.XXXX);
+tmpdir=$(mktemp -d $data/tmp_$(basename $0).XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
