@@ -117,15 +117,15 @@ void WaveData::Read(std::istream &is) {
   else if (strcmp(tmp, "RIFF"))
     KALDI_ERR << "WaveData: expected RIFF or RIFX, got " << tmp;
 
-#ifdef __BIG_ENDIAN__  
+#ifdef __BIG_ENDIAN__
   bool swap = !is_rifx;
 #else
   bool swap = is_rifx;
 #endif
-  
+
   uint32 riff_chunk_size = ReadUint32(is, swap);
   Expect4ByteTag(is, "WAVE");
-  
+
   uint32 riff_chunk_read = 0;
   riff_chunk_read += 4;  // WAVE included in riff_chunk_size.
 
@@ -200,14 +200,14 @@ void WaveData::Read(std::istream &is) {
   // be a single "fact" subchunk, but on Windows there can also be a
   // "list" subchunk.
   while (strncmp(next_chunk_name, "data", 4) != 0) {
-    // We will just ignore the data in these chunks.  
+    // We will just ignore the data in these chunks.
     uint32 chunk_sz = ReadUint32(is, swap);
     if (chunk_sz != 4 && strncmp(next_chunk_name, "fact", 4) == 0)
       KALDI_WARN << "Expected fact chunk to be 4 bytes long.";
     for (uint32 i = 0; i < chunk_sz; i++)
       is.get();
     riff_chunk_read += 4 + chunk_sz;  // for chunk_sz (4) + chunk contents (chunk-sz)
-    
+
     // Now read the next chunk name.
     Read4ByteTag(is, next_chunk_name);
     riff_chunk_read += 4;
@@ -220,7 +220,9 @@ void WaveData::Read(std::istream &is) {
   uint32 data_chunk_size = ReadUint32(is, swap);
   riff_chunk_read += 4;
 
-  if (std::abs((riff_chunk_read + data_chunk_size) - riff_chunk_size) > 1) {
+  if (std::abs(static_cast<int64>(riff_chunk_read) +
+	       static_cast<int64>(data_chunk_size) -
+	       static_cast<int64>(riff_chunk_size)) > 1) {
     // we allow the size to be off by one, because there is a weirdness in the
     // format of RIFF files that means that the input may sometimes be padded
     // with 1 unused byte to make the total size even.
@@ -262,12 +264,12 @@ void WaveData::Read(std::istream &is) {
   } else if (num_bytes_read != data_chunk_size) {
     KALDI_ASSERT(num_bytes_read < data_chunk_size);
     KALDI_WARN << "Read fewer bytes than specified in the header: "
-               << num_bytes_read << " < " << data_chunk_size;    
+               << num_bytes_read << " < " << data_chunk_size;
   }
-  
+
   if (data_chunk_size == 0)
     KALDI_ERR << "WaveData: empty file (no data)";
-  
+
   uint32 num_samp = num_bytes_read / block_align;
   data_.Resize(num_channels, num_samp);
   for (uint32 i = 0; i < num_samp; i++) {

@@ -2,6 +2,8 @@
 # the GlobalPhone experiments.
 
 KALDIROOT=/exports/home/aghoshal/kaldi/trunk
+[ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
+
 KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin

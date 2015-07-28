@@ -27,7 +27,7 @@
 
 #ifndef KALDI_NO_PORTAUDIO
 #include "base/timer.h"
-#endif //KALDI_NO_PORTAUDIO
+#endif  // KALDI_NO_PORTAUDIO
 
 #include "online-audio-source.h"
 
@@ -55,8 +55,16 @@ OnlinePaSource::OnlinePaSource(const uint32 timeout,
       report_interval_(report_interval), nread_calls_(0),
       noverflows_(0), samples_lost_(0) {
   using namespace std;
-  int32 rb_bits = static_cast<int32>(ceil(Log(rb_size) / Log(2)));
-  if (rb_bits > 30) // ok, this limit is somewhat arbitrary
+
+  // Note this will work for 32bit integers but not for 64bit.
+  // For 64bit integers even double wouldn't work
+  // You would ahve to use something like
+  // int64 rb_bits = 0; while (rb_size != 0) {++rb_bits; rb_size >>= 1;}
+  // it would be much faster than two logs of FP numbers (even floats), too,
+  // but I dont have the time to test it.
+  float f = Log(static_cast<float>(rb_size)) / Log(static_cast<float>(2));
+  int32 rb_bits = static_cast<int32>(ceil(f));
+  if (rb_bits > 30)  // ok, this limit is somewhat arbitrary
     throw invalid_argument("PortAudio ring buffer too large!");
   rb_size_ = 1 << rb_bits;
   ring_buffer_ = new char[rb_size_];
@@ -92,7 +100,7 @@ OnlinePaSource::~OnlinePaSource() {
 
 
 bool OnlinePaSource::Read(Vector<BaseFloat> *data) {
-  if (!pa_started_) { // start stream the first time Read() is called
+  if (!pa_started_) {  // start stream the first time Read() is called
     PaError paerr = Pa_StartStream(pa_stream_);
     if (paerr != paNoError)
       throw std::runtime_error("Error while trying to open PortAudio stream");
@@ -102,14 +110,16 @@ bool OnlinePaSource::Read(Vector<BaseFloat> *data) {
   if (report_interval_ != 0
       && (++nread_calls_ % report_interval_) == 0
       && noverflows_ > 0) {
-      KALDI_VLOG(1) << noverflows_ << " PortAudio ring buffer overflows detected "
+      KALDI_VLOG(1) << noverflows_
+                    << " PortAudio ring buffer overflows detected "
                     << "and " << samples_lost_ << " sample(s) were lost";
       samples_lost_ = noverflows_ = 0;
   }
-  uint32 nsamples_req = data->Dim(); // samples to request
+  uint32 nsamples_req = data->Dim();  // samples to request
   timed_out_ = false;
   while (true) {
-    ring_buffer_size_t nsamples = PaUtil_GetRingBufferReadAvailable(&pa_ringbuf_);
+    ring_buffer_size_t nsamples;
+    nsamples = PaUtil_GetRingBufferReadAvailable(&pa_ringbuf_);
     if (nsamples >= nsamples_req)
       break;
     if (timeout_ > 0) {
@@ -124,7 +134,8 @@ bool OnlinePaSource::Read(Vector<BaseFloat> *data) {
     Pa_Sleep(2);
   }
   std::vector<int16> buf(nsamples_req);
-  rbs_t nsamples_rcv = PaUtil_ReadRingBuffer(&pa_ringbuf_, buf.data(), nsamples_req);
+  rbs_t nsamples_rcv;
+  nsamples_rcv = PaUtil_ReadRingBuffer(&pa_ringbuf_, buf.data(), nsamples_req);
   if (nsamples_rcv != nsamples_req) {
     KALDI_WARN << "Requested: " << nsamples_req
                << "; Received: " << nsamples_rcv << " samples";
@@ -155,7 +166,7 @@ int OnlinePaSource::Callback(const void *input, void *output,
   return paContinue;
 }
 
-#endif //KALDI_NO_PORTAUDIO
+#endif  // KALDI_NO_PORTAUDIO
 
 bool OnlineVectorSource::Read(Vector<BaseFloat> *data) {
   KALDI_ASSERT(data->Dim() > 0);
@@ -163,14 +174,15 @@ bool OnlineVectorSource::Read(Vector<BaseFloat> *data) {
                           static_cast<uint32>(data->Dim()));
   if (n_elem > 0) {
     SubVector<BaseFloat> subsrc(src_, pos_, n_elem);
-    if (data->Dim() == subsrc.Dim())
+    if (data->Dim() == subsrc.Dim()) {
       data->CopyFromVec(subsrc);
-    else
+    } else {
       for (int32 i = 0; i < subsrc.Dim(); ++i)
         (*data)(i) = subsrc(i);
+    }
     pos_ += n_elem;
   }
   return (pos_ < src_.Dim());
 }
 
-} // namespace kaldi
+}  // namespace kaldi

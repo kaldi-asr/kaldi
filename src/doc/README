@@ -44,15 +44,18 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
 
    echo "**Now copying to sourceforge**"
    # Next copy to sourceforge.
-   scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
-
-   #may have to do this:
-   ssh danielpovey,kaldi@shell.sourceforge.net create
-
-   # Running the shell command on sourceforge, from svatava:
-   echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-        tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-           | ssh danielpovey,kaldi@shell.sourceforge.net bash
+   if true; then  # use method that works when their shell access is down.
+     rm -rf htdocs # make sure it's not left over from before.
+     mv html htdocs
+     scp -r htdocs  danielpovey@web.sourceforge.net:/home/project-web/kaldi/
+     mv htdocs html
+   else
+     scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
+     ssh danielpovey,kaldi@shell.sourceforge.net create
+     echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
+         tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
+          | ssh danielpovey,kaldi@shell.sourceforge.net bash
+   fi
 fi
 
 
