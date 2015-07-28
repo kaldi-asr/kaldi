@@ -46,9 +46,9 @@ struct NnetComputeOptions {
   class NnetComputer is responsible for executing the computation described in the
   "computation" object.
 
-  You call in sequence, the constructor, then AcceptInput(), then Forward(),
-  then GetOutput(), then if applicable (Backward(), then if applicable
-  GetInputDeriv()).
+  You call in sequence, the constructor, then AcceptInput() [or AcceptInputs()],
+  then Forward(), then GetOutput(), then if applicable (Backward(), then if
+  applicable GetInputDeriv()).
  */
 class NnetComputer {
  public:

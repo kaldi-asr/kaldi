@@ -2,7 +2,6 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
-
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,10 +45,10 @@ class CuSparseMatrix {
   /// Copy from possibly-GPU-based matrix.
   CuSparseMatrix<Real> &operator = (CuSparseMatrix<Real> &smat);  
 
-  /// Swap with CPU-based matrix.  
+  /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);
 
-  /// Swap with possibly-CPU-based matrix.    
+  /// Swap with possibly-CPU-based matrix.
   void Swap(CuSparseMatrix<Real> *smat);
 
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
@@ -60,6 +59,9 @@ class CuSparseMatrix {
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
+
+  // Constructor from CPU-based sparse matrix.
+  CuSparseMatrix(const SparseMatrix<Real> &smat);
   
   ~CuSparseMatrix() { }
 

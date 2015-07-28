@@ -39,6 +39,7 @@
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-block-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 #include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
@@ -2213,6 +2214,42 @@ Real CuMatrixBase<Real>::Trace(bool check_square) const {
   }
 }
 
+template <typename Real>
+void CuMatrixBase<Real>::CopyFromGeneralMat(const GeneralMatrix &src,
+                                            MatrixTransposeType trans) {
+  switch (src.Type()) {
+    case kFullMatrix: {
+      const Matrix<BaseFloat> &src_full_mat = src.GetFullMatrix();
+      this->CopyFromMat(src_full_mat, trans);
+      return;
+    }
+    case kCompressedMatrix: {
+      Matrix<BaseFloat> mat;
+      src.GetMatrix(&mat);
+      this->CopyFromMat(mat, trans);
+      return;
+    }
+    case kSparseMatrix: {
+      const SparseMatrix<BaseFloat> &smat = src.GetSparseMatrix();
+#if HAVE_CUDA == 1
+      if (CuDevice::Instantiate().Enabled()) {
+        // only take this branch if we're actually using CUDA, or it would
+        // entail a wasteful copy of the sparse matrix.
+        CuSparseMatrix<BaseFloat> cu_smat(smat);
+        this->CopyFromSmat(cu_smat, trans);
+        return;
+      }
+#endif
+      Matrix<BaseFloat> mat(trans == kNoTrans ? smat.NumRows() : smat.NumCols(),
+                            trans == kNoTrans ? smat.NumCols() : smat.NumRows(),
+                            kUndefined);
+      Mat().CopyFromSmat(smat, trans);
+      return;
+    }
+    default:
+      KALDI_ERR << "Invalid GeneralMatrix type.";
+  }
+}
 
 
 
@@ -2263,7 +2300,6 @@ CuMatrix<Real>::CuMatrix(const CuMatrixBase<OtherReal> & M,
     Resize(M.NumCols(), M.NumRows());
     this->CopyFromMat(M, kTrans);
   }
-
 }
 
 // Instantiate this constructor for float->double and double->float.

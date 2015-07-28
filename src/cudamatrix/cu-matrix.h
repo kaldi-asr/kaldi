@@ -33,6 +33,7 @@
 #include "cudamatrix/cu-value.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/sparse-matrix.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
@@ -197,8 +198,15 @@ class CuMatrixBase {
   void CopyFromMat(const MatrixBase<OtherReal> &src,
                    MatrixTransposeType trans = kNoTrans);
 
+  void CopyFromGeneralMat(const GeneralMatrix &src,
+                          MatrixTransposeType trans = kNoTrans);
+
   void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
+
+  template <typename OtherReal>
+  void CopyFromSmat(const CuSparseMatrix<OtherReal> &src,
+                    MatrixTransposeType trans = kNoTrans);
   
   void CopyFromSp(const CuSpMatrix<Real> &M);
   
@@ -340,8 +348,10 @@ class CuMatrixBase {
   void DivRowsVec(const CuVectorBase<Real> &div);
   /// invert the matrix by elements.
   void InvertElements();
-  /// B = alpha * A
-  void AddMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA = kNoTrans);
+  /// *this += alpha * A
+  void AddMat(Real alpha, const CuMatrixBase<Real> &A,
+              MatrixTransposeType trans = kNoTrans);
+  
   /// (for each column c of *this), c = alpha * col + beta * c
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);
   /// (for each row r of *this), r = alpha * row + beta * r

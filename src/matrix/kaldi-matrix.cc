@@ -1851,8 +1851,10 @@ Matrix<Real>::Matrix(const CompressedMatrix &M): MatrixBase<Real>() {
 }
 
 template<class Real>
-void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<Real> &mat) {
-  mat.CopyToMat(this);
+template<class OtherReal>
+void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &mat,
+                                    MatrixTransposeType trans) {
+  mat.CopyToMat(this, trans);
 }
 
 

@@ -139,7 +139,9 @@ class MatrixBase {
   void CopyFromMat(const CompressedMatrix &M);
 
   /// Copy from sparse matrix.
-  void CopyFromSmat(const SparseMatrix<Real> &M);
+  template<typename OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &M,
+                    MatrixTransposeType trans = kNoTrans);
   
   /// Copy given spmatrix. (no resize is done).
   template<typename OtherReal>

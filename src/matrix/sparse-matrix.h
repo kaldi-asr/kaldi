@@ -35,11 +35,13 @@ class SparseVector {
  public:
   MatrixIndexT Dim() const { return dim_; }
 
-  void CopyToVec(VectorBase<Real> *vec) const;
+  template <class OtherReal>
+  void CopyToVec(VectorBase<OtherReal> *vec) const;
 
   // *vec += alpha * *this.
+  template <class OtherReal>
   void AddToVec(Real alpha,
-                VectorBase<Real> *vec) const;
+                VectorBase<OtherReal> *vec) const;
 
   SparseVector<Real> &operator = (const SparseVector<Real> &other); 
       
@@ -103,7 +105,8 @@ class SparseMatrix {
 
   MatrixIndexT NumCols() const;
 
-  void CopyToMat(MatrixBase<Real> *other,
+  template <class OtherReal>
+  void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
 
   /// Does *other = *other + alpha * *this.

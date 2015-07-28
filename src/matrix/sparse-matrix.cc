@@ -24,10 +24,11 @@
 namespace kaldi {
 
 template <typename Real>
-void SparseVector<Real>::CopyToVec(VectorBase<Real> *vec) const {
+template <typename OtherReal>
+void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == this->dim_);
   vec->SetZero();
-  Real *other_data = vec->Data();
+  OtherReal *other_data = vec->Data();
   typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
       iter = pairs_.begin(), end = pairs_.end();
   for (; iter != end; ++iter)
@@ -36,10 +37,11 @@ void SparseVector<Real>::CopyToVec(VectorBase<Real> *vec) const {
   
 
 template <typename Real>
+template <typename OtherReal>
 void SparseVector<Real>::AddToVec(Real alpha,
-                                   VectorBase<Real> *vec) const {
+                                  VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == dim_);
-  Real *other_data = vec->Data();
+  OtherReal *other_data = vec->Data();
   typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
       iter = pairs_.begin(), end = pairs_.end();
   if (alpha == 1.0) {  // treat alpha==1.0 case specially.
@@ -50,6 +52,16 @@ void SparseVector<Real>::AddToVec(Real alpha,
       other_data[iter->first] += alpha * iter->second;
   }
 }
+
+template
+void SparseVector<float>::AddToVec(float alpha, VectorBase<float> *vec) const;
+template
+void SparseVector<float>::AddToVec(float alpha, VectorBase<double> *vec) const;
+template
+void SparseVector<double>::AddToVec(double alpha, VectorBase<float> *vec) const;
+template
+void SparseVector<double>::AddToVec(double alpha, VectorBase<double> *vec) const;
+
 
 template <typename Real>
 SparseVector<Real>& SparseVector<Real>::operator = (
@@ -221,17 +233,18 @@ MatrixIndexT SparseMatrix<Real>::NumCols() const {
 }
 
 template <typename Real>
-void SparseMatrix<Real>::CopyToMat(MatrixBase<Real> *other,
+template <typename OtherReal>
+void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
                                    MatrixTransposeType trans) const {
   if (trans == kNoTrans) {
     MatrixIndexT num_rows = rows_.size();
     KALDI_ASSERT(other->NumRows() == num_rows);
     for (MatrixIndexT i = 0; i < num_rows; i++) {
-      SubVector<Real> vec(*other, i);
+      SubVector<OtherReal> vec(*other, i);
       rows_[i].CopyToVec(&vec);
     }
   } else {
-    Real *other_col_data = other->Data();
+    OtherReal *other_col_data = other->Data();
     MatrixIndexT other_stride = other->Stride(),
         num_rows = NumRows(), num_cols = NumCols();
     KALDI_ASSERT(num_rows == other->NumCols() && num_cols == other->NumRows());
@@ -245,6 +258,19 @@ void SparseMatrix<Real>::CopyToMat(MatrixBase<Real> *other,
     }
   }
 }
+
+template
+void SparseMatrix<float>::CopyToMat(MatrixBase<float> *other,
+                                    MatrixTransposeType trans) const;
+template
+void SparseMatrix<float>::CopyToMat(MatrixBase<double> *other,
+                                    MatrixTransposeType trans) const;
+template
+void SparseMatrix<double>::CopyToMat(MatrixBase<float> *other,
+                                    MatrixTransposeType trans) const;
+template
+void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
+                                    MatrixTransposeType trans) const;
 
 template <typename Real>
 void SparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
