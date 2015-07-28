@@ -46,7 +46,7 @@ if [ -d $*/CD1 ]; then
   cd2_dir=CD2
 fi
 
-tmpdir=$(mktemp -d);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 find $*/{$cd1_dir/SENTENCE/,$cd2_dir/SENTENCE/} -iname '*.SNT' -print |\

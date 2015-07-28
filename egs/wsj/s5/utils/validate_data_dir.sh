@@ -54,7 +54,7 @@ if [ "$ns" == 1 ]; then
 fi
 
 
-tmpdir=$(mktemp -d kaldi.XXXX);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT HUP INT PIPE TERM
 
 export LC_ALL=C
