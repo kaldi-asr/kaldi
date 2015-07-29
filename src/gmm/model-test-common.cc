@@ -93,10 +93,10 @@ void InitRandDiagGmm(int32 dim, int32 num_comp, DiagGmm *gmm) {
   Matrix<BaseFloat> means(num_comp, dim), inv_vars(num_comp, dim);
 
   for (int32 m = 0; m < num_comp; m++) {
-    weights(m) = exp(RandGauss());
+    weights(m) = Exp(RandGauss());
     for (int32 d= 0; d < dim; d++) {
       means(m, d) = RandGauss() / (1 + d);
-      inv_vars(m, d) = exp(RandGauss() / (1 + d)) + 1e-2;
+      inv_vars(m, d) = Exp(RandGauss() / (1 + d)) + 1e-2;
     }
   }
   weights.Scale(1.0 / weights.Sum());

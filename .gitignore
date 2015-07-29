@@ -58,6 +58,7 @@
 /tools/srilm
 /tools/CLAPACK_include
 /tools/kaldi_lm
+/tools/env.sh
 
 # /src/
 /src/kaldi.mk
@@ -69,6 +70,7 @@
 /src/base/kaldi-math-test
 /src/base/io-funcs-test
 /src/base/kaldi-error-test
+/src/base/timer-test
 
 # /src/bin/
 /src/bin/.depend.mk
@@ -469,6 +471,7 @@
 /src/matrix/Matrix.vcxproj
 /src/matrix/matrix-lib-test
 /src/matrix/kaldi-gpsr-test
+/src/matrix/tmpf
 
 # /src/nnet/
 /src/nnet/.depend.mk
@@ -500,6 +503,7 @@
 # /src/nnet2/
 /src/nnet2/.depend.mk
 /src/nnet2/nnet-component-test
+/src/nnet2/nnet-compute-test
 
 # /src/nnet2bin/
 /src/nnet2bin/.depend.mk
@@ -673,6 +677,16 @@
 /src/util/text-utils-test
 /src/util/parse-options-test
 
+# /src/online and /src/onlinebin
+/src/online/.depend.mk
+/src/online/online-feat-test
+/src/onlinebin/.depend.mk
+/src/onlinebin/online-audio-client
+/src/onlinebin/online-audio-server-decode-faster
+/src/onlinebin/online-gmm-decode-faster
+/src/onlinebin/online-net-client
+/src/onlinebin/online-server-gmm-decode-faster
+/src/onlinebin/online-wav-gmm-decode-faster
 
 # we should probably have more things like this in
 # the .gitignore:

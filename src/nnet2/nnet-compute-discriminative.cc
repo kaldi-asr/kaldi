@@ -251,7 +251,7 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
       num_floored++;
     }
     int32 pdf_id = requested_indexes[index].second;
-    BaseFloat pseudo_loglike = log(post / priors(pdf_id)) * opts_.acoustic_scale;
+    BaseFloat pseudo_loglike = Log(post / priors(pdf_id)) * opts_.acoustic_scale;
     KALDI_ASSERT(!KALDI_ISINF(pseudo_loglike) && !KALDI_ISNAN(pseudo_loglike));
     answers[index] = pseudo_loglike;
   }

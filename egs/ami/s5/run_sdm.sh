@@ -38,7 +38,6 @@ if [ $stage -le 2 ]; then
   local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid dev
   local/ami_sdm_scoring_data_prep.sh $AMI_DIR $micid eval
 fi
-
 # Here starts the normal recipe, which is mostly shared across mic scenarios,
 # - for ihm we adapt to speaker by fMLLR,
 # - for sdm and mdm we do not adapt for speaker, but for environment only (cmn),
@@ -155,7 +154,20 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-echo "Done!"
+# TDNN training.
+if [ $stage -le 13 ]; then
+  local/online/run_nnet2_ms_perturbed.sh \
+    --mic $mic \
+    --hidden-dim 850 \
+    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+    --use-sat-alignments false
+  
+  local/online/run_nnet2_ms_sp_disc.sh  \
+    --mic $mic  \
+    --gmm-dir exp/$mic/tri3a \
+    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+fi
+echo "Done."
 
 
 # By default we do not build systems adapted to sessions for AMI in distant scnearios 

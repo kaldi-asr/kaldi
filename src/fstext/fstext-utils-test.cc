@@ -103,6 +103,9 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   int n_syms = 2 + kaldi::Rand() % 5, n_states = 3 + kaldi::Rand() % 10, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%3;  // Up to 2 unique symbols.
   cout << "Testing pre-determinize with "<<n_syms<<" symbols, "<<n_states<<" states and "<<n_arcs<<" arcs and "<<n_final<<" final states.\n";
   SymbolTable *sptr = new SymbolTable("my-symbol-table");
+  sptr->AddSymbol("<eps>");
+  delete sptr;
+  sptr = new SymbolTable("my-symbol-table");
 
   vector<Label> all_syms;  // including epsilon.
   // Put symbols in the symbol table from 1..n_syms-1.

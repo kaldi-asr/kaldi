@@ -162,6 +162,7 @@ int main() {
     }
     return 0;
   } catch (const std::exception &e) {
+    static_cast<void>(e);
     return 1;
   }
   

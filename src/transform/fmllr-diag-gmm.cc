@@ -221,9 +221,9 @@ void FmllrInnerUpdate(SpMatrix<double> &inv_G,
   double discr = std::sqrt(e2 * e2 + 4 * e1 * beta);
   double alpha1 = (-e2 + discr) / (2 * e1);
   double alpha2 = (-e2 - discr) / (2 * e1);
-  double auxf1 = beta * std::log(std::abs(alpha1 * e1 + e2)) -
+  double auxf1 = beta * Log(std::abs(alpha1 * e1 + e2)) -
       0.5 * alpha1 * alpha1 * e1;
-  double auxf2 = beta * std::log(std::abs(alpha2 * e1 + e2)) -
+  double auxf2 = beta * Log(std::abs(alpha2 * e1 + e2)) -
       0.5 * alpha2 * alpha2 * e1;
   double alpha = (auxf1 > auxf2) ? alpha1 : alpha2;
 

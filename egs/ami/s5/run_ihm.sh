@@ -174,7 +174,16 @@ fi
 
 # TDNN training.
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh --mic $mic
+  local/online/run_nnet2_ms_perturbed.sh \
+    --mic $mic \
+    --hidden-dim 950 \
+    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+    --use-sat-alignments true
+  
+  local/online/run_nnet2_ms_sp_disc.sh  \
+    --mic $mic  \
+    --gmm-dir exp/$mic/tri4a \
+    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
 
 echo "Done!"

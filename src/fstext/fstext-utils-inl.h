@@ -244,7 +244,7 @@ bool GetLinearSymbolSequences(const Fst<Arc> &fst,
   if (weights_out) weights_out->resize(N);
 
   bool error = false;
-  
+
   for (ArcIterator<Fst<Arc> > aiter(fst, start_state);
        !aiter.Done();
        aiter.Next(), n++) {
@@ -306,7 +306,7 @@ void ConvertNbestToVector(const Fst<Arc> &fst,
     StateId start_state_out = fsts_out->back().AddState();
     fsts_out->back().SetFinal(start_state_out, fst.Final(start_state));
   }
-  
+
   for (ArcIterator<Fst<Arc> > start_aiter(fst, start_state);
        !start_aiter.Done();
        start_aiter.Next()) {
@@ -356,7 +356,7 @@ void NbestAsFsts(const Fst<Arc> &fst,
   VectorFst<Arc> nbest_fst;
   ShortestPath(fst, &nbest_fst, n);
   ConvertNbestToVector(nbest_fst, fsts_out);
-}    
+}
 
 template<class Arc, class I>
 void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
@@ -758,7 +758,7 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
   // "cache" is used as an optimization when some of the pointers in "fsts"
   // may have the same value.
   unordered_map<const ExpandedFst<Arc> *, Arc> cache;
-  
+
   for (Label i = 0; i < static_cast<Label>(fsts.size()); i++) {
     const ExpandedFst<Arc> *fst = fsts[i];
     if (fst == NULL) continue;
@@ -773,20 +773,20 @@ VectorFst<Arc>* MakeLoopFst(const vector<const ExpandedFst<Arc> *> &fsts) {
         continue;
       }
     }
-    
+
     KALDI_ASSERT(fst->Properties(kAcceptor, true) == kAcceptor);  // expect acceptor.
 
     StateId fst_num_states = fst->NumStates();
     StateId fst_start_state = fst->Start();
-    
+
     if (fst_start_state == kNoStateId)
       continue;  // empty fst.
-    
+
     bool share_start_state =
         fst->Properties(kInitialAcyclic, true) == kInitialAcyclic
         && fst->NumArcs(fst_start_state) == 1
         && fst->Final(fst_start_state) == Weight::Zero();
-    
+
     vector<StateId> state_map(fst_num_states);  // fst state -> ans state
     for (StateId s = 0; s < fst_num_states; s++) {
       if (s == fst_start_state && share_start_state) state_map[s] = loop_state;
@@ -882,7 +882,7 @@ template<class Arc>
 bool EqualAlign(const Fst<Arc> &ifst,
                 typename Arc::StateId length,
                 int rand_seed,
-                MutableFst<Arc> *ofst, 
+                MutableFst<Arc> *ofst,
                 int num_retries) {
   srand(rand_seed);
   KALDI_ASSERT(ofst->NumStates() == 0);  // make sure ofst empty.
@@ -907,9 +907,9 @@ bool EqualAlign(const Fst<Arc> &ifst,
   int retry_no = 0;
 
   // Under normal circumstances, this will be one-pass-only process
-  // Multiple tries might be needed in special cases, typically when 
-  // the number of frames is close to number of transitions from 
-  // the start node to the final node. It usually happens for really 
+  // Multiple tries might be needed in special cases, typically when
+  // the number of frames is close to number of transitions from
+  // the start node to the final node. It usually happens for really
   // short utterances
   do {
     num_ilabels = 0;
@@ -949,7 +949,7 @@ bool EqualAlign(const Fst<Arc> &ifst,
 
   if (num_ilabels > length) {
     std::stringstream ilabel_vec;
-    std::copy(nof_ilabels.begin(), nof_ilabels.end(), 
+    std::copy(nof_ilabels.begin(), nof_ilabels.end(),
           std::ostream_iterator<int>(ilabel_vec, ","));
     std::string s = ilabel_vec.str();
     s.erase(s.end() - 1);
@@ -1134,7 +1134,7 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
   typedef typename Arc::Weight Weight;
   typedef typename Arc::StateId StateId;
   typedef std::pair<StateId, StateId> StatePair;
-  typedef unordered_map<StatePair, StateId, 
+  typedef unordered_map<StatePair, StateId,
     kaldi::PairHasher<StateId> > MapType;
   typedef typename MapType::iterator IterType;
 
@@ -1155,18 +1155,18 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
   std::pair<const StatePair, StateId> start_map(start_pair, start_state);
   std::pair<IterType, bool> result = state_map.insert(start_map);
   KALDI_ASSERT(result.second == true);
-   
+
   while (!state_queue.empty()) {
     StatePair q = state_queue.front();
     StateId q1 = q.first,
             q2 = q.second;
     state_queue.pop();
-    // If the product of the final weights of the two fsts is non-zero then 
+    // If the product of the final weights of the two fsts is non-zero then
     // we can create a final state in fst_composed.
     Weight final_weight = Times(fst1.Final(q1), fst2->Final(q2));
     if (final_weight != Weight::Zero()) {
       KALDI_ASSERT(state_map.find(q) != state_map.end());
-      fst_composed->SetFinal(state_map[q], final_weight); 
+      fst_composed->SetFinal(state_map[q], final_weight);
     }
 
     // for each pair of edges from fst1 and fst2 at q1 and q2.
@@ -1177,8 +1177,8 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
       StateId next_state1 = arc1.nextstate,
               next_state2,
               next_state;
-      // If there is an epsilon on the arc of fst1 we transition to the next 
-      // state but keep fst2 at the current state. 
+      // If there is an epsilon on the arc of fst1 we transition to the next
+      // state but keep fst2 at the current state.
       if (arc1.olabel == 0) {
         next_state2 = q2;
       } else {
@@ -1205,10 +1205,10 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
         next_state = sitr->second;
       }
       if (arc1.olabel == 0) {
-        fst_composed->AddArc(state_map[q], Arc(0, 0, arc1.weight, 
+        fst_composed->AddArc(state_map[q], Arc(0, 0, arc1.weight,
           next_state));
       } else {
-        fst_composed->AddArc(state_map[q], Arc(arc1.ilabel, arc2.olabel, 
+        fst_composed->AddArc(state_map[q], Arc(arc1.ilabel, arc2.olabel,
           Times(arc1.weight, arc2.weight), next_state));
       }
     }
@@ -1233,7 +1233,7 @@ void PropagateFinalInternal(
         num_phis++;
         if (arc.nextstate == s) continue; // don't expect
         // phi loops but ignore them anyway.
-        
+
         // If this recurses infinitely, it means there
         // are loops of phi transitions, which there should
         // not be in a normal backoff LM.  We could make this

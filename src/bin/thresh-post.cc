@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
           if (weight < threshold) weight *= scale;
           total_weight_out += weight;
           if (weight != 0.0)
-            new_post[i].push_back(std::make_pair(tid, weight));
+            new_post[i].push_back(std::make_pair(tid, static_cast<BaseFloat>(weight)));
         }
       }
       posterior_writer.Write(posterior_reader.Key(), new_post);

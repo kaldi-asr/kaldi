@@ -132,7 +132,7 @@ BaseFloat GetLogLikeTest(const FullGmm &gmm,
 
   for (int32 i = 0; i < gmm.NumGauss(); i++) {
     BaseFloat logdet = -(inv_covars[i].LogPosDefDet());
-    BaseFloat log_like = log(gmm.weights()(i))
+    BaseFloat log_like = Log(gmm.weights()(i))
       -0.5 * (gmm.Dim() * M_LOG_2PI + logdet);
     Vector<BaseFloat> offset(feats);
     offset.AddVec(-1.0, means.Row(i));

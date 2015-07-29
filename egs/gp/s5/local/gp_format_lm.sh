@@ -49,6 +49,19 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
+
 for L in $LANGUAGES; do
   lm=$LMDIR/${L}.3gram.lm.gz
   [ -f $lm ] || { echo "LM '$lm' not found"; exit 1; }

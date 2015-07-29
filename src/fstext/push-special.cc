@@ -20,6 +20,7 @@
 
 #include "fstext/push-special.h"
 #include "base/kaldi-error.h"
+#include "base/kaldi-math.h"
 
 namespace fst {
 
@@ -101,10 +102,10 @@ class PushSpecialClass {
            !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         StateId t = arc.nextstate;
-        double weight = exp(-arc.weight.Value());
+        double weight = kaldi::Exp(-arc.weight.Value());
         pred_[t].push_back(std::make_pair(s, weight));
       }
-      double final = exp(-fst_->Final(s).Value());
+      double final = kaldi::Exp(-fst_->Final(s).Value());
       if (final != 0.0)
         pred_[initial_state_].push_back(std::make_pair(s, final));
     }
@@ -121,9 +122,9 @@ class PushSpecialClass {
            !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
         StateId t = arc.nextstate;
-        sum += exp(-arc.weight.Value()) * occ_[t] / occ_[s];
+        sum += kaldi::Exp(-arc.weight.Value()) * occ_[t] / occ_[s];
       }
-      sum += exp(-(fst_->Final(s).Value())) * occ_[initial_state_] / occ_[s];
+      sum += kaldi::Exp(-(fst_->Final(s).Value())) * occ_[initial_state_] / occ_[s];
       if (s == 0) {
         min_sum = sum;
         max_sum = sum;
@@ -133,7 +134,7 @@ class PushSpecialClass {
       }
     }
     KALDI_VLOG(4) << "min,max is " << min_sum << " " << max_sum;
-    return log(max_sum / min_sum); // In FST world we'll actually
+    return kaldi::Log(max_sum / min_sum); // In FST world we'll actually
     // dealing with logs, so the log of the ratio is more suitable
     // to compare with delta (makes testing the algorithm easier).
   }
@@ -187,7 +188,7 @@ class PushSpecialClass {
     // First get the potentials as negative-logs, like the values
     // in the FST.
     for (StateId s = 0; s < num_states_; s++) {
-      occ_[s] = -log(occ_[s]);
+      occ_[s] = -kaldi::Log(occ_[s]);
       if (KALDI_ISNAN(occ_[s]) || KALDI_ISINF(occ_[s]))
         KALDI_WARN << "NaN or inf found: " << occ_[s];
     }

@@ -3,6 +3,7 @@
 
 # The KALDIROOT enviromnent variable must be set by the user.
 # KALDIROOT=/absolute/path/to/kaldi/installation
+[ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh 
 KALDISRC=$KALDIROOT/src
 KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
@@ -28,7 +29,6 @@ TOOLS=$SPH2PIPE
 
 export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS:$TOOLS
 export LC_ALL=C
-export IRSTLM=$KALDIROOT/tools/irstlm
 
 ## Site-specific configs for Edinburgh
 # [ `hostname -y` == ecdf ] && \

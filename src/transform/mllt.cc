@@ -105,12 +105,12 @@ void MlltAccs::Update(double beta,
       // for hidden markov models, eq.  (22)),
       // row = G_i^{-1} cofactor sqrt(beta / cofactor^T G_i^{-1} cofactor). (1)
       // here, "row" and "cofactor" are considered as column vectors.
-      double objf_before = beta * log(std::abs(VecVec(row, cofactor)))
+      double objf_before = beta * Log(std::abs(VecVec(row, cofactor)))
           -0.5 * VecSpVec(row, G[i], row);
       // do eq. (1) above:
       row.AddSpVec(std::sqrt(beta / VecSpVec(cofactor, Ginv[i], cofactor)),
                    Ginv[i], cofactor, 0.0);
-      double objf_after = beta * log(std::abs(VecVec(row, cofactor)))
+      double objf_after = beta * Log(std::abs(VecVec(row, cofactor)))
           -0.5 * VecSpVec(row, G[i], row);
       if (objf_after < objf_before - fabs(objf_before)*0.00001)
         KALDI_ERR << "Objective decrease in MLLT update.";

@@ -78,7 +78,7 @@ if [ -z $loc ]; then
 fi
 
 echo "Converting '$lm' to FST"
-tmpdir=$(mktemp -d kaldi.XXXX);
+tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT
 
 mkdir -p $out_dir

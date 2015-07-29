@@ -20,6 +20,7 @@
 
 #include <vector>
 
+#include "base/kaldi-math.h"
 #include "gmm/model-test-common.h"
 #include "sgmm/am-sgmm.h"
 #include "sgmm/fmllr-sgmm.h"
@@ -30,6 +31,8 @@ using kaldi::int32;
 using kaldi::BaseFloat;
 using kaldi::Vector;
 using kaldi::Matrix;
+using kaldi::Exp;
+
 namespace ut = kaldi::unittest;
 
 void ApplyFmllrXform(const kaldi::VectorBase<BaseFloat> &in,
@@ -206,7 +209,7 @@ void TestSgmmFmllr() {
     for (int32 m = 0; m < num_feat_comp; m++) {
       for (int32 d= 0; d < dim; d++) {
         means(m, d) = kaldi::RandGauss();
-        vars(m, d) = exp(kaldi::RandGauss()) + 1e-2;
+        vars(m, d) = Exp(kaldi::RandGauss()) + 1e-2;
       }
     }
     // Now generate random features with those means and variances.

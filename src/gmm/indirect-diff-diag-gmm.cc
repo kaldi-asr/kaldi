@@ -217,7 +217,7 @@ void DoRescalingUpdate(const AccumDiagGmm &old_ml_acc,
       double divergence = 
           0.5 *(((new_model_mean-old_model_mean)*(new_model_mean-old_model_mean) +
                  new_model_var - old_model_var)/old_model_var +
-                log(old_model_var / new_model_var));
+                Log(old_model_var / new_model_var));
       if (divergence < 0.0)
         KALDI_WARN << "Negative divergence " << divergence;
       *tot_divergence += divergence * new_ml_count;

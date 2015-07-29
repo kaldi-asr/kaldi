@@ -1034,7 +1034,7 @@ void LogSoftmaxComponent::Propagate(const ChunkInfo &in_info,
   out->ApplyLogSoftMaxPerRow(in);
 
   // Just to be consistent with SoftmaxComponent::Propagate()
-  out->ApplyFloor(log(1.0e-20));
+  out->ApplyFloor(Log(1.0e-20));
 }
 
 void LogSoftmaxComponent::Backprop(const ChunkInfo &in_info,
@@ -1408,6 +1408,20 @@ Component *AffineComponent::CollapseWithNext(
                               this->bias_params_, 1.0);
   return ans;
 }
+
+Component *AffineComponent::CollapseWithNext(
+    const FixedScaleComponent &next_component) const {
+  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
+  AffineComponent *ans =
+      dynamic_cast<AffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  ans->linear_params_.MulRowsVec(next_component.scales_);
+  ans->bias_params_.MulElements(next_component.scales_);
+
+  return ans;
+}
+
+
 
 Component *AffineComponent::CollapseWithPrevious(
     const FixedAffineComponent &prev_component) const {

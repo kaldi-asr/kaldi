@@ -125,7 +125,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
         // no pdf, hence non-estimated probability.
         // [would not happen with normal topology] .  There is no transition-state
         // involved in this case.
-        log_prob = log(entry[hmm_state].transitions[trans_idx].second);
+        log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
         label = 0;
       } else {  // normal probability.
         int32 trans_state =
@@ -225,7 +225,7 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
         // [would not happen with normal topology] .  There is no transition-state
         // involved in this case.
         KALDI_ASSERT(!is_self_loop);
-        log_prob = log(entry[hmm_state].transitions[trans_idx].second);
+        log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
         label = 0;
       } else {  // normal probability.
         int32 trans_state =

@@ -27,10 +27,6 @@ dir=$3
 
 model=$dir/../final.mdl # assume model one level up from decoding dir.
 
-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
-[ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
-hubdir=`dirname $hubscr`
-
 for f in $data/text $lang/words.txt $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done

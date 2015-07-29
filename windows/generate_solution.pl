@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# 
-# Copyright:2012-2015 Jan Silovsky 
+#
+# Copyright:2012-2015 Jan Silovsky
 #           2015 Johns Hopkins University (Author: Jan "Yenda" Trmal <jtrmal@gmail.com>)
 
 # Licence: Apache 2.0
@@ -21,17 +21,12 @@ use lib "$Bin";
 use Data::Dumper;
 use Getopt::Long;
 
-my $root = "$Bin/..";
-my $solutionDir = "$root/kaldiwin_vs12_auto";
-my $projDir = "$solutionDir/kaldiwin";
-my $solutionFileName = "kaldiwin_vs12.sln";
-my $srcDir = "$root/src";
 my $vsver="vs2013";
 
 my %ENABLED = (CUDA => 0,
-               OPENBLAS => 1,
-               MKL => 0 );
- 
+               OPENBLAS => 0,
+               MKL => 1 );
+
 GetOptions ("vsver=s" => \$vsver,
             "enable-cuda" => \$ENABLED{CUDA},
 			"enable-openblas" => sub {$ENABLED{OPENBLAS}=1; $ENABLED{MKL}=0;},
@@ -48,15 +43,36 @@ my %FORMAT=( default=> "11.00",
 
 my %TOOLSET=( default=> "v100",
               vs2013 => "v120",
-              vs2015 => "v140"); 			 
+              vs2015 => "v140");
 
 
 unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLSET{$vsver})) {
 	die "Unknown vsver value: $vsver";
 }
-			 
 
-# The following files are in the same dir (windows/) as the 
+my $features_suffix;
+my @features_enabled;
+
+if ($ENABLED{OPENBLAS}) {
+  push @features_enabled, "OPENBLAS";
+}
+if ($ENABLED{MKL}) {
+  push @features_enabled, "MKL";
+}
+if ($ENABLED{CUDA}) {
+  push @features_enabled, "CUDA";
+}
+
+$features_suffix = join("_", @features_enabled);
+
+my $root = "$Bin/..";
+my $solutionDir = "$root/kaldiwin_${vsver}_${features_suffix}";
+my $projDir = "$solutionDir/kaldiwin";
+my $solutionFileName = "kaldiwin_${vsver}.sln";
+my $srcDir = "$root/src";
+
+
+# The following files are in the same dir (windows/) as the
 # Perl script.
 my @propsFiles = (
   "$Bin/variables.props",
@@ -71,7 +87,7 @@ my @propsFiles = (
 my %optionalProps = (
 	CUDA => "$Bin/cuda_7.0.props"
 	);
-	
+
 # see http://www.mztools.com/Articles/2008/MZ2008017.aspx for list of GUIDs for VS solutions
 my $globalGUID = "{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}";  # Windows (Visual C++)
 
@@ -108,16 +124,16 @@ sub makeRelPath {
   my $path = winPath(shift);
   my $actual_path = winPath(shift);
   my $relpath = '';
-  
+
   $path =~ s/\\cygdrive\\(.)\\/$1:\\/;
   $actual_path =~ s/\\cygdrive\\(.)\\/$1:\\/;
-  
+
   #$path =~ s/[\\\/]+[^\\\/]*$//;
   $actual_path =~ s/[\\\/]+[^\\\/]*$//;
-  
+
   my @path = split /\\+/, $path;
   my @actual_path = split /\\+/, $actual_path;
-  
+
   my $i = 0;
   for ($i; $i < @actual_path; $i++) {
     # the zero-length condition may seem ackward, but it solves encountered troubles when two empty string were evaluated as different
@@ -129,28 +145,28 @@ sub makeRelPath {
   my $j = $i;
   for ($i; $i < @actual_path; $i++) {
     $relpath .= "..\\";
-  }  
+  }
   for ($j; $j < (@path - 1); $j++) {
     $relpath .= $path[$j] . "\\";
   }
   $relpath .= $path[$j];
-  
+
   return $relpath;
 }
 
 # function
 sub checkCRLF {
   my $filename = shift;
-  
+
   if ($^O =~ /MSWin32/i) {
     print "INFO: function checkCRLF supported only for non-Win environment\n";
     return;
   }
-  
+
   open(FILE, '<', $filename);
   my @data = <FILE>;
   close(FILE);
-  
+
   open(FILE, '>', $filename);
   foreach my $line (@data) {
     $line =~ s/(\n|\r\n)$//;
@@ -160,10 +176,10 @@ sub checkCRLF {
 }
 
 # function
-sub loadHashTxtFile {  
+sub loadHashTxtFile {
   my $filename = shift;
   my $hash = shift;
-  
+
   open(FILE, '<', &{$osPathConversion}($filename));
   while (my $line = <FILE>) {
     $line =~ s/(\n|\r\n)$//;
@@ -194,11 +210,11 @@ sub parseMakefile {
   my $list = shift;
   my $deps = shift;
   my $libs = shift;
-  
+
   my $file = $makefile;
   my $path = $file;
   $path =~ s/Makefile$//i;
-  
+
   open(FILE, '<', &{$osPathConversion}($file));
   my @lines = <FILE>;
   close(FILE);
@@ -207,25 +223,25 @@ sub parseMakefile {
   $lines =~ s/#[^\n]+//g;
   $lines =~ s/\\\s*\n//g;
   if ($ENABLED{CUDA}) {
-    $lines =~ s/\n\s*ifeq\s+\(\$\(CUDA\),\strue\)\s*\n\s*OBJFILES\s*\+=\s*([^\n]+)\n\s*endif/\nOBJFILES = \1/gmi 
+    $lines =~ s/\n\s*ifeq\s+\(\$\(CUDA\),\strue\)\s*\n\s*OBJFILES\s*\+=\s*([^\n]+)\n\s*endif/\nOBJFILES = \1/gmi
   }
   @lines = split /\n/, $lines;
   #$lines =~ s/\\//g;
   #$lines =~ s/\n/\\/g;
   #print $lines . "\n";
   #@lines = split /\\/, $lines;
-  
+
   my $aobjects = {};
   my $alibs = {};
   foreach my $line (@lines) {
     $line =~ s/(\n|\r\n)$//;
-    
+
     if (my ($type, $items) = $line =~ /^\s*(TESTFILES|LIBNAME|BINFILES)\s+=(.+?)$/) {
       #my @items = split /\s+/, $items;
       my @items = $items =~ /(\S+)/g;
       foreach my $item (@items) {
         # $item =~ s/\.a$//i;
-        
+
         $list->{$type}->{$item} = 1;
         $list->{ALL}->{$item}->{'type'} = $type;
         $list->{ALL}->{$item}->{'path'} = $path;
@@ -245,9 +261,9 @@ sub parseMakefile {
       foreach my $item (@items) {
         $item =~ s/^.*[\\\/]//;
         $item =~ s/\.[^\.]*$//;
-      
+
         $deps->{$path}->{$item} = 1;
-        
+
       }
     }
 
@@ -258,7 +274,7 @@ sub parseMakefile {
       }
     }
   }
-  
+
   if (scalar keys %{$aobjects} > 0) {
     if (scalar keys %{$alibs} != 1) {
       print STDERR "ERROR: less or more than one libfile, cannot assign aobjects\n";
@@ -274,7 +290,7 @@ sub parseMakefile {
 
 # function
 sub makefileFilter {
-  if ($_ =~ /Makefile/) { return 1; } 
+  if ($_ =~ /Makefile/) { return 1; }
 }
 
 # function
@@ -289,9 +305,9 @@ sub writeSolutionFile {
   my $filename = shift;
   my $projlist = shift;
   my $projguids = shift;
-  
+
   open(SLN, '>', &{$osPathConversion}($filename));
-  print SLN 
+  print SLN
 "Microsoft Visual Studio Solution File, Format Version $FORMAT{$vsver}
 # Visual Studio 2013
 ";
@@ -350,7 +366,7 @@ sub writeProjectFiles {
   my $projdeps = shift;
   my $projlibs = shift;
   my $projguids = shift;
-  
+
   my $projFileName = winPath(getProjFileDir($projname) . "/$projname.vcxproj");
 
   my $guid = $projguids->{$projname};
@@ -358,11 +374,11 @@ sub writeProjectFiles {
   $rootnamespace =~ s/\W+//g;
   my $srcfiles = {};
   my $conftype = "";
-  
+
   # set projtype-specific params and add .cc files
   if ($projlist->{ALL}->{$projname}->{'type'} =~ /LIBNAME/) {
     $conftype = "StaticLibrary";
-    
+
     foreach my $obj (keys %{$projlist->{ALL}->{$projname}->{'objs'}}) {
       my $cfile = winPath($projlist->{ALL}->{$projname}->{'path'} . $obj . '.cc');
 	  if (!-e &{$osPathConversion}($cfile)) {
@@ -376,15 +392,15 @@ sub writeProjectFiles {
           if (!-e &{$osPathConversion}($cfile)) {
 		    print "ERROR?: file $cfile not found - project $projname\n";
 		  }
-        }		
+        }
       } else {
         $srcfiles->{'cc'}->{$cfile} = 1;
 	  }
     }
   } else {
     $conftype = "Application";
-    
-    my $cfile = winPath($projlist->{ALL}->{$projname}->{'path'} . $projname . '.cc');    
+
+    my $cfile = winPath($projlist->{ALL}->{$projname}->{'path'} . $projname . '.cc');
     $srcfiles->{'cc'}->{$cfile} = 1;
   }
 
@@ -402,7 +418,7 @@ sub writeProjectFiles {
     $hinlfile =~ s/\.[^\.]+$/-inl.h/;
     if (-e &{$osPathConversion}($hinlfile)) {
       $srcfiles->{'h'}->{$hinlfile} = 1;
-    }    
+    }
   }
 
   open(PROJ, '>', &{$osPathConversion}($projFileName));
@@ -491,7 +507,7 @@ sub writeProjectFiles {
   </PropertyGroup>
 ";
   }
-  
+
   print PROJ
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.props\" />
   <ImportGroup Label=\"ExtensionSettings\">
@@ -503,7 +519,7 @@ sub writeProjectFiles {
   }
   print PROJ
 "  </ImportGroup>
-  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\"  Label=\"PropertySheets\">  
+  <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|Win32'\"  Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
     <Import Project=\"\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props\" Condition=\"exists('\$(UserRootDir)\\Microsoft.Cpp.\$(Platform).user.props')\" Label=\"LocalAppDataPlatform\" />
 ";
@@ -734,7 +750,7 @@ sub writeProjectFiles {
 "  </ItemGroup>
 ";
   }
-  
+
   # .h files
   if (scalar keys %{$srcfiles->{'h'}} > 0) {
     print PROJ
@@ -747,11 +763,11 @@ sub writeProjectFiles {
     }
     print PROJ
 "  </ItemGroup>
-";  
+";
   }
-  
+
   # refs
-  if (($projlist->{ALL}->{$projname}->{'type'} !~ /LIBNAME/) && 
+  if (($projlist->{ALL}->{$projname}->{'type'} !~ /LIBNAME/) &&
       (scalar keys %{$projdeps->{$projlist->{ALL}->{$projname}->{'path'}}} > 0)) {
     print PROJ
 "  <ItemGroup>
@@ -766,9 +782,9 @@ sub writeProjectFiles {
     }
     print PROJ
 "  </ItemGroup>
-";  
+";
   }
-  
+
   # terminate
   print PROJ
 "  <Import Project=\"\$(VCTargetsPath)\\Microsoft.Cpp.targets\" />
@@ -784,7 +800,7 @@ sub writeProjectFiles {
 </Project>
 ";
   close(PROJ);
-  
+
   # create .user file
   #   my $filename_userfile = $projFileName . '.user';
     # open(USER, '>', &{$osPathConversion}($filename_userfile));
@@ -793,8 +809,8 @@ sub writeProjectFiles {
   # <Project ToolsVersion=\"4.0\" xmlns=\"http://schemas.microsoft.com/developer/msbuild/2003\">
   # </Project>
   # ";
-    # close(USER); 
-  
+    # close(USER);
+
   # create .filters file
   my $filename_filtersfile = $projFileName . '.filters';
   open(FLTS, '>', &{$osPathConversion}($filename_filtersfile));
@@ -850,7 +866,7 @@ sub writeProjectFiles {
     }
     print FLTS
 "  </ItemGroup>
-";  
+";
   }
   # .cu files
   if (scalar keys %{$srcfiles->{'cu'}} > 0) {
@@ -862,7 +878,7 @@ sub writeProjectFiles {
 "    <CudaCompile Include=\"" . makeRelPath($cufile, $projFileName) . "\">
       <Filter>Cuda Kernels</Filter>
     </CudaCompile>
-"; 
+";
     }
     print FLTS
 "  </ItemGroup>
@@ -871,29 +887,29 @@ sub writeProjectFiles {
   print FLTS
 "</Project>
 ";
-  close(FLTS);  
+  close(FLTS);
 }
 
 
-sub ltrim { 
+sub ltrim {
    my $s = shift;
-    $s =~ s/^\s+//;      
+    $s =~ s/^\s+//;
      return $s;
 }
 
 sub isEmptyLine{
    my $line = shift;
-   
+
    my $lineTrimmed  = ltrim($line);
-   
+
    if($lineTrimmed eq "")
    {
        return 1;
    }
    else
-   {   
+   {
        return 0;
-   }   
+   }
 }
 
 sub isValidProjectLine{
@@ -906,8 +922,8 @@ sub isValidProjectLine{
    else
    {
        return 0;
-   }   
-} 
+   }
+}
 
 
 
@@ -934,7 +950,7 @@ my $projdeps = {};
 my $projlibs = {};
 
 #my $makefiles = [];
-#find(sub { if ($_ =~ /Makefile$/) { push @$makefiles, $File::Find::name; } }, 
+#find(sub { if ($_ =~ /Makefile$/) { push @$makefiles, $File::Find::name; } },
 #     &{$osPathConversion}($srcDir));
 
 my @makefiles = (); # will be all the Makefiles in the subdirectories.
@@ -952,11 +968,11 @@ while(<M>) {
        if($f eq "#"){
            last;
        }
-        push @makefiles, "$srcDir/$f/Makefile"; 
+        push @makefiles, "$srcDir/$f/Makefile";
       }
       $_ = <M>;
     }
-  }          
+  }
 }
 ##foreach my $f (@makefiles) { print STDERR "Adding $f\n"; }
 
@@ -976,13 +992,13 @@ foreach my $makefile (@makefiles) {
 writeSolutionFile($solutionDir . '/' . $solutionFileName, $projlist, $projguids);
 
 foreach my $propFile (@propsFiles) {
-  copy(&{$osPathConversion}($propFile), 
+  copy(&{$osPathConversion}($propFile),
        &{$osPathConversion}($projDir . "/")) or die "ERROR: failed to copy prop file $propFile\n";
 }
 foreach my $option (keys %optionalProps) {
 	if ($ENABLED{$option} ) {
 		my $propFile = $optionalProps{$option};
-		copy(&{$osPathConversion}($propFile), &{$osPathConversion}($projDir . "/")) or 
+		copy(&{$osPathConversion}($propFile), &{$osPathConversion}($projDir . "/")) or
 			die "ERROR: failed to copy prop file $propFile\n";
 	}
 }
@@ -998,7 +1014,7 @@ saveHashTxtFile($projguidListFileName, $projguids);
 # make Windows line-endings in non-Win environment
 if ($^O !~ /MSWin32/i) {
   my $allfiles = [];
-  find(sub { if ($_ =~ /sln$|vcxproj$|props$/) { push @$allfiles, $File::Find::name; } }, 
+  find(sub { if ($_ =~ /sln$|vcxproj$|props$/) { push @$allfiles, $File::Find::name; } },
        &{$osPathConversion}($solutionDir));
   foreach my $file (@$allfiles) {
     checkCRLF($file);

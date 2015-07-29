@@ -125,7 +125,7 @@ BaseFloat NnetComputer::ComputeLastLayerDeriv(const Posterior &pdf_post,
       KALDI_ASSERT(label >= 0 && label < num_pdfs);
       BaseFloat this_prob = last_layer_output(i, label);
       KALDI_ASSERT(this_prob > 0.99e-20); // We floored to 1.0e-20 in SoftmaxLayer.
-      tot_objf += weight * log(this_prob);
+      tot_objf += weight * Log(this_prob);
       tot_weight += weight;
       (*deriv)(i, label) += weight / this_prob; // could be "=", assuming the
       // labels are all distinct.

@@ -61,7 +61,7 @@ void init_rand_diag_gmm(DiagGmm *gmm) {
     weights(m) = kaldi::RandUniform();
     for (size_t d= 0; d < dim; d++) {
       means(m, d) = kaldi::RandGauss();
-      vars(m, d) = exp(kaldi::RandGauss()) + 1e-5;
+      vars(m, d) = Exp(kaldi::RandGauss()) + 1e-5;
     }
     tot_weight += weights(m);
   }
@@ -156,7 +156,7 @@ UnitTestFullGmm() {
       + VecSpVec(means.Row(m), invcovars[m], means.Row(m))
       + VecSpVec(feat, invcovars[m], feat))
       + VecSpVec(means.Row(m), invcovars[m], feat);
-    loglikes(m) += log(weights(m));
+    loglikes(m) += Log(weights(m));
   }
 
   loglike = loglikes.LogSumExp();

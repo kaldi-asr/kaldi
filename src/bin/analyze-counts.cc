@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
       // sort the counts
       std::vector<std::pair<int32,int32> > sorted_counts;
       for (int32 i = 0; i < counts.size(); i++) {
-        sorted_counts.push_back(std::make_pair(counts[i], i));
+        sorted_counts.push_back(std::make_pair(static_cast<int32>(counts[i]), i));
       }
       std::sort(sorted_counts.begin(), sorted_counts.end());
       

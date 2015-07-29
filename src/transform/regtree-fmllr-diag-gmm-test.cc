@@ -98,7 +98,7 @@ generate_features(cova_type covariance_type,
       // random diagonal covariance for gaussian j
       Sj.SetZero();
       for (size_t d = 0; d < dim; d++) {
-        Sj(d, d) = 2*exp(RandGauss());
+        Sj(d, d) = 2*Exp(RandGauss());
       }
     }
     if (covariance_type == full) {

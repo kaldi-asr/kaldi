@@ -249,7 +249,7 @@ BaseFloat LogisticRegression::GetObjfAndGrad(
       class_sum += row(cols[j]);
     }
     if (class_sum < 1.0e-20) class_sum = 1.0e-20;
-    raw_objf += std::log(class_sum);
+    raw_objf += Log(class_sum);
     // Iterate over weights for each component. If there are no
     // mixtures each row corresponds to a class.
     for (int32 k = 0; k < weights_.NumRows(); k++) {
