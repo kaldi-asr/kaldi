@@ -96,6 +96,12 @@ struct HistogramOptions {
 
 };
 
+class SegmentComparator {
+  public:
+    bool operator() (const Segment &lhs, const Segment &rhs) const {
+      return lhs.start_frame < rhs.start_frame;
+    }
+};
 
 typedef std::list<Segment> SegmentList;
 
@@ -228,8 +234,9 @@ class Segmentation {
     SegmentList::iterator Erase(SegmentList::iterator it);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id);
     void Check() const;
+    void Sort();
   
-    inline int32 Dim() const { return dim_; }
+    inline int32 Dim() const { return segments_.size(); }
     SegmentList::iterator Begin() { return segments_.begin(); }
     SegmentList::const_iterator Begin() const { return segments_.begin(); }
     SegmentList::iterator End() { return segments_.end(); }

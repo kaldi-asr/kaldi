@@ -123,6 +123,7 @@ int main(int argc, char *argv[]) {
     }
     
     if (!per_utt) {
+      seg.Sort();
       writer.Write(prev_recording, seg);
       num_segmentations++;
     }

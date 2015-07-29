@@ -80,8 +80,6 @@ void Segmentation::SplitSegments(int32 segment_length,
       // Forward list code
       // it->end_frame = start_frame + segment_length - 1;
       // it = segments_.emplace(it+1, it->end_frame + 1, end_frame, it->Label());
-      
-      dim_++;
     }
   }
   Check();
@@ -740,6 +738,10 @@ void Segmentation::Check() const {
   };
   KALDI_ASSERT(dim == dim_);
   KALDI_ASSERT(mean_scores_.size() == 0 || mean_scores_.size() == dim_);
+}
+
+void Segmentation::Sort() {
+  segments_.sort(SegmentComparator());
 }
 
 }

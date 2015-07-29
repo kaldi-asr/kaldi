@@ -16,16 +16,24 @@
 # limitations under the License.
 
 split_per_spk=true
+split_per_reco=false
+
 if [ "$1" == "--per-utt" ]; then
   split_per_spk=false
   shift
+elif [ "$1" == "--per-reco" ]; then
+  split_per_reco=true
+  split_per_spk=false
 fi
 
 if [ $# != 2 ]; then
-  echo "Usage: split_data.sh [--per-utt] <data-dir> <num-to-split>"
+  echo "Usage: split_data.sh [--per-utt|--per-reco] <data-dir> <num-to-split>"
   echo "This script will not split the data-dir if it detects that the output is newer than the input."
   echo "By default it splits per speaker (so each speaker is in only one split dir),"
   echo "but with the --per-utt option it will ignore the speaker information while splitting."
+  echo "If --per-reco is specified instead, then the split will be such that "
+  echo "each recording is in only one split. This is useful when diarization "
+  echo "is done."
   exit 1
 fi
 
@@ -77,10 +85,13 @@ for n in `seq $numsplit`; do
    utt2spks="$utt2spks $data/split$numsplit/$n/utt2spk"
 done
 
+utt2spk_opt=
 if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
-else
-  utt2spk_opt=
+elif $split_per_reco; then
+  if [ -f $data/segments ]; then
+    utt2spk_opt="--utt2spk=<(cut -d ' ' -f 1-2 $data/segments)"
+  fi
 fi
 
 # If lockfile is not installed, just don't lock it.  It's not a big deal.
