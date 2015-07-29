@@ -51,7 +51,7 @@ stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4 0 -2,2 0 -4,4 0"
+splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
@@ -62,7 +62,7 @@ randprune=4.0 # speeds up LDA.
 affine_opts=
 
 gpu=true    # if true, we run on GPU.
-cpu_num_threads=16  # if using CPU, the number of threads we use.
+num_threads=16  # if using CPU, the number of threads we use.
 combine_num_threads=8  # number of threads for the "combine" operation
 cleanup=true
 egs_dir=
@@ -257,7 +257,7 @@ if [ $stage -le -3 ]; then
 
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
-      nnet3-get-lda-stats --rand-prune=$rand_prune \
+      nnet3-acc-lda-stats --rand-prune=$rand_prune \
         $dir/init.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
@@ -327,25 +327,25 @@ finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
-if [ $num_threads -eq 1 ]; then
+if $gpu; then
   parallel_suffix="-simple" # this enables us to use GPU code if
                             # we have just one thread.
+  train_queue_opt="--gpu 1"
   parallel_train_opts=
-  if !$gpu; then
-    train_gpu_opt="--gpu 1"
-    if ! cuda-compiled; then
-      echo "$0: WARNING: you are running with one thread but you have not compiled"
-      echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
-      echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
-      exit 1
-    fi
-  else
-    echo "$0: WARNING: running with 1 thread and no GPU: this will be slow."
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are running with one thread but you have not compiled"
+    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
+    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
+    exit 1
   fi
 else
-  $gpu && echo "$0: you must use --gpu false if you supply num-threads > 1" && exit 1;
-  parallel_suffix="-parallel"
-  parallel_train_opts="--num-threads=$num_threads"
+  if [ $num_threads -gt 1 ]; then
+    parallel_suffix="-parallel"
+    parallel_train_opts="--num-threads=$num_threads"
+    train_queue_opt="--num-threads $num_threads"
+  else
+    parallel_suffix="-simple"
+  fi
 fi
 
 
@@ -366,7 +366,6 @@ fi
 first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
-
 
 for realign_time in $realign_times; do
   # Work out the iterations on which we will re-align, if the --realign-times
@@ -407,7 +406,8 @@ while [ $x -lt $num_iters ]; do
       $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
         nnet3-copy-egs --srand=JOB --frame=random $context_opts ark:$prev_egs_dir/egs.1.ark ark:- \| \
         nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-        nnet3-compute-from-egs "nnet3-to-raw $dir/$x.mdl -|" ark:- ark:- \| \
+        nnet3-merge-egs ark:- ark:- \| \
+        nnet3-compute-from-egs --apply-exp "nnet3-to-raw $dir/$x.mdl -|" ark:- ark:- \| \
         matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
       sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
@@ -499,7 +499,7 @@ while [ $x -lt $num_iters ]; do
         # same archive with different frame indexes will give similar gradients,
         # so we want to separate them in time.
 
-        $cmd $train_gpu_opt $dir/log/train.$x.$n.log \
+        $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train$parallel_suffix $parallel_train_opts --minibatch-size=$this_minibatch_size --srand=$x "$raw" \
           "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
@@ -600,7 +600,8 @@ if [ $stage -le $[$num_iters+1] ]; then
   $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-compute-from-egs "nnet3-am-copy --raw=true $dir/final.mdl -|" ark:- ark:- \| \
+    nnet3-merge-egs ark:- ark:- \| \
+    nnet3-compute-from-egs --apply-exp=true "nnet3-am-copy --raw=true $dir/final.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
   sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.

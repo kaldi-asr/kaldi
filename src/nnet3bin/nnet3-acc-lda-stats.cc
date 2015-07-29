@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-get-lda-stats.cc
+// nnet3bin/nnet3-acc-lda-stats.cc
 
 // Copyright 2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -125,16 +125,14 @@ int main(int argc, char *argv[]) {
         "training examples is used for the class labels.  Used in obtaining\n"
         "feature transforms that help nnet training work better.\n"
         "\n"
-        "Usage:  nnet3-get-lda-stats [options] <raw-nnet-in> <training-examples-in> <lda-stats-out>\n"
+        "Usage:  nnet3-acc-lda-stats [options] <raw-nnet-in> <training-examples-in> <lda-stats-out>\n"
         "e.g.:\n"
-        "nnet3-get-lda-stats 0.raw ark:1.egs 1.acc\n"
+        "nnet3-acc-lda-stats 0.raw ark:1.egs 1.acc\n"
         "See also: nnet-get-feature-transform\n";
     
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
 
-    LdaEstimate lda;
-    
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune,

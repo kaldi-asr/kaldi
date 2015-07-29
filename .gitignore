@@ -6,6 +6,7 @@
 
 # emacs saves
 [#]*[#]
+.[#]*
 *~
 # .depend.mk files
 .depend.mk
@@ -59,6 +60,7 @@
 /tools/CLAPACK_include
 /tools/kaldi_lm
 /tools/env.sh
+/tools/rnnlm-hs-0.1b/rnnlm
 
 # /src/
 /src/kaldi.mk

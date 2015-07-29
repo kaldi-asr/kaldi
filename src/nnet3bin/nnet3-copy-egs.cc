@@ -253,9 +253,9 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-copy-egs [options] <egs-rspecifier> <egs-wspecifier1> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet-copy-egs ark:train.egs ark,t:text.egs\n"
+        "nnet3-copy-egs ark:train.egs ark,t:text.egs\n"
         "or:\n"
-        "nnet-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
+        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
         
     bool random = false;
     int32 srand_seed = 0;
