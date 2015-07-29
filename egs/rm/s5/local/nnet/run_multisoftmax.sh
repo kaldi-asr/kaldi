@@ -28,17 +28,14 @@ wsj_ali=../../wsj/s5/exp/tri4b_ali_si284
 stage=0
 . utils/parse_options.sh || exit 1;
 
-set -u 
-set -e
-set -o pipefail
-set -x
+set -euxo pipefail
 
 # Make the FBANK features,
-if [ $stage -le 0 ]; then
+[ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Make datadir copies,
-  utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp 2>/dev/null
-  utils/copy_data_dir.sh $train_original $train || exit 1; rm $train/{cmvn,feats}.scp 2>/dev/null
-  utils/copy_data_dir.sh --utt-prefix wsj --spk-prefix wsj $wsj_original $wsj || exit 1; rm $wsj/{cmvn,feats}.scp 2>/dev/null
+  utils/copy_data_dir.sh $dev_original $dev; rm $dev/{cmvn,feats}.scp
+  utils/copy_data_dir.sh $train_original $train; rm $train/{cmvn,feats}.scp
+  utils/copy_data_dir.sh --utt-prefix wsj --spk-prefix wsj $wsj_original $wsj; rm $wsj/{cmvn,feats}.scp
   
   # Feature extraction,
   # Dev set,

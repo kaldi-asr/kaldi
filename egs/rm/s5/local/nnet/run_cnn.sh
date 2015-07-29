@@ -16,9 +16,10 @@ gmm=exp/tri3b
 stage=0
 . utils/parse_options.sh
 
+set -euxo pipefail
 
 # Make the FBANK features,
-if [ $stage -le 0 ]; then
+[ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Dev set
   utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
@@ -37,19 +38,22 @@ fi
 if [ $stage -le 1 ]; then
   dir=exp/cnn4c
   ali=${gmm}_ali
+  hid_layers=2
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh \
       --cmvn-opts "--norm-means=true --norm-vars=true" \
       --delta-opts "--delta-order=2" --splice 5 \
       --network-type cnn1d --cnn-proto-opts "--patch-dim1 8 --pitch-dim 3" \
-      --hid-layers 2 --learn-rate 0.008 \
+      --hid-layers $hid_layers --learn-rate 0.008 \
       ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
+  # Concat 'feature_transform' with convolutional layers,
+  nnet-concat $src/final.feature_transform \
+    "nnet-copy --remove-last-layers=$(((hid_layers+1)*2)) $src/final.nnet - |" \
+    $dir/final.feature_transform_cnn
 fi
 
 # Pre-train stack of RBMs on top of the convolutional layers (4 layers, 1024 units),
@@ -114,7 +118,7 @@ if [ $stage -le 5 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
     $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
-  for ITER in 1 2 3 4 5 6; do
+  for ITER in 1 3 6; do
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmm/graph $dev $dir/decode_it${ITER} || exit 1

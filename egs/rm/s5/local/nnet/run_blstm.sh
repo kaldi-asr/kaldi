@@ -28,6 +28,8 @@ gmm=exp/tri3b
 stage=0
 . utils/parse_options.sh || exit 1;
 
+set -eu
+
 # Make the FBANK features
 [ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Dev set

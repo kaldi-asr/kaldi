@@ -3,6 +3,8 @@
 . path.sh
 . cmd.sh
 
+set -eu
+
 # Train,
 dir=exp/autoencoder
 data_fmllr=data-fmllr-tri3b
