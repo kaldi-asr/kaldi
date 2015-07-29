@@ -102,7 +102,6 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
-  echo "  --learning-rate-scales-opts <ComponentA=0.1:ComponentB=0.2>   # Scale learning rate of components. separate with ':'"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
@@ -178,7 +177,7 @@ if [ $stage -le -5 ]; then
   fi
   
   # create the config files for nnet initialization
-  python steps/nnet3/make_multisplice_configs.py  \
+  python steps/nnet3/make_tdnn_configs.py  \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
@@ -271,7 +270,7 @@ if [ $stage -le -3 ]; then
   # Appendix C.6 of http://arxiv.org/pdf/1410.7455v6.pdf; it's a scaled variant
   # of an LDA transform but without dimensionality reduction.
   $cmd $dir/log/get_transform.log \
-       nnet-get-feature-transform $lda_opts $dir/lda.mat $dir/lda_stats || exit 1;
+     nnet-get-feature-transform $lda_opts $dir/lda.mat $dir/lda_stats || exit 1;
 
   ln -sf ../lda.mat $dir/configs/lda.mat
 fi

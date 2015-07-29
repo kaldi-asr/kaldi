@@ -118,14 +118,17 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "****Train the neural network parameters with backprop and stochastic\n"
-        "gradient descent using minibatches.  Training examples would be\n"
-        "produced by nnet-get-egs.\n"
+        "Accumulate statistics in the same format as acc-lda (i.e. stats for\n"
+        "estimation of LDA and similar types of transform), starting from nnet\n"
+        "training examples.  This program puts the features through the network,\n"
+        "and the network output will be the features; the supervision in the\n"
+        "training examples is used for the class labels.  Used in obtaining\n"
+        "feature transforms that help nnet training work better.\n"
         "\n"
-        "Usage:  nnet-train-simple [options] <model-in> <training-examples-in> <model-out>\n"
-        "\n"
+        "Usage:  nnet3-get-lda-stats [options] <raw-nnet-in> <training-examples-in> <lda-stats-out>\n"
         "e.g.:\n"
-        "nnet-train-simple 1.nnet ark:1.egs 2.nnet\n";
+        "nnet3-get-lda-stats 0.raw ark:1.egs 1.acc\n"
+        "See also: nnet-get-feature-transform\n";
     
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
