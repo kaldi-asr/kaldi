@@ -21,7 +21,7 @@
 
 mode=$1
 
-tmp="$(mktemp -d)"
+tmp="$(mktemp -d /tmp/kaldi.XXXX)"
 
 dir=$(pwd)/local/norm_dk
 
