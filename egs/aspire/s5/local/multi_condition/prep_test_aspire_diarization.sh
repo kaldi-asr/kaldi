@@ -233,8 +233,6 @@ if [ $stage -le 6 ]; then
   utils/validate_data_dir.sh --no-text --no-feats $diarized_data_dir || exit 1
 fi
 
-segmented_data_dir=$diarized_data_dir
-
 segmented_data_id=`basename $segmented_data_dir`
 if [ $stage -le 7 ]; then
   echo "Extracting features for the segments"
@@ -254,14 +252,14 @@ if [ ! -z $weights_file ]; then
   ivector_extractor_input=$weights_file
 else
   if [ $stage -le 8 ]; then
-    mkdir -p $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
-    $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/get_file_lengths.log \
+    mkdir -p $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}
+    $train_cmd $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/log/get_file_lengths.log \
       feat-to-len scp:data/${data_id}/feats.scp \
-      ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark
+      ark,t:$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_lengths.ark
 
     if ! $use_vad_prob; then
       segmentation-to-ali --default-label=0 \
-        --lengths=ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark \
+        --lengths=ark,t:$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_lengths.ark \
         ark:${vad_dir}/vad_per_file.ark ark,t:- | \
         perl -e '
       my $silence_weight = shift @ARGV;
@@ -278,39 +276,41 @@ else
         }
       }
       print STDOUT " ]\n";
-    }' $silence_weight | copy-vector ark,t:- "ark:| gzip -c > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz"
+    }' $silence_weight | copy-vector ark,t:- "ark:| gzip -c > $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_weights.gz"
     else 
       weight_vecs=
       for n in `seq $nj`; do 
         weight_vecs="${weight_vecs}${vad_dir}/weights.$n.ark "
       done
 
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/get_vad_file_weights.log \
-        combine-vector-segments --max-overshoot=2 "ark:cat $weight_vecs|" \
-        ${vad_dir}/data_uniform_windows600/segments \
-        ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark \
-        "ark:| gzip -c > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz"
+      awk '${print $1" "$2}' ${vad_dir}/data_uniform_windows600/segments | utils/utt2spk_to_spk2utt.pl > ${vad_dir}/data_uniform_windows600/reco2utt
+
+      $train_cmd $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/log/get_vad_file_weights.log \
+        combine-vector-segments --max-overshoot=2 --overlap=0 "ark:cat $weight_vecs|" \
+        ark:${vad_dir}/data_uniform_windows600/reco2utt ark:${vad_dir}/data_uniform_windows600/segments \
+        ark,t:$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_lengths.ark \
+        "ark:| gzip -c > $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_weights.gz"
     fi
   fi
 
-  cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments
+  cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/truncated_segments
 
   x_th=0.8
   if [ $stage -le 9 ]; then
     if $transform_weights; then
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
-        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz |" \
-        $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments ark,t:- \| \
+      $train_cmd $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/log/extract_weights.log \
+        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_weights.gz |" \
+        $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/truncated_segments ark,t:- \| \
         awk -v x_th=$x_th '{printf $1" [ "; for(i=3;i<=NF-1;i++) printf 1/sqrt(1+2*exp(-20*($i-x_th)))" " ; print "]"}' \| \
-        copy-vector ark,t:- "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
+        copy-vector ark,t:- "ark:| gzip -c >$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/weights.gz"
     else 
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
-        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz |" \
-        $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments \
-        "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
+      $train_cmd $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/log/extract_weights.log \
+        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/file_weights.gz |" \
+        $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/truncated_segments \
+        "ark:| gzip -c >$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/weights.gz"
     fi
   fi
-  ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
+  ivector_extractor_input=$ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/weights.gz
 fi
 
 if [ $stage -le 10 ]; then
@@ -321,11 +321,15 @@ if [ $stage -le 10 ]; then
   # the --sub-speaker-frames is optional; if provided, it will divide each speaker
   # up into "sub-speakers" of at least that many frames... can be useful if
   # acoustic conditions drift over time within the speaker's data.
-  steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj 20 \
+  steps/online/nnet2/extract_ivectors_for_recording.sh --cmd "$train_cmd" --nj 20 \
     --silence-weight $silence_weight \
     --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
-    data/${segmented_data_id}_hires $lang $ivector_dir/extractor \
-    $ivector_extractor_input $ivector_dir/ivectors_${segmented_data_id}${ivector_affix} || exit 1;
+    data/${diarized_data_id}_hires $lang $ivector_dir/extractor \
+    $ivector_extractor_input $ivector_dir/ivectors_reco${ivector_affix} || exit 1;
+
+  steps/online/nnet2/segment_recording_ivectors.sh $segmented_data_dir \
+    $ivector_dir/ivectors_reco${ivector_affix} \
+    $ivector_dir/ivectors${segmented_data_id}${ivector_affix}
 fi
 
 decode_dir=$dir/decode_${segmented_data_id}${affix}_pp

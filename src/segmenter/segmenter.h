@@ -16,10 +16,16 @@ struct Segment {
   int32 start_frame;
   int32 end_frame;
   ClassId class_id;
+  Vector<BaseFloat> vector_value;
 
   inline int32 Label() const { return class_id; }
   inline void SetLabel(int32 label) { class_id = label; }
 
+  Segment(int32 start, int32 end, int32 label, const Vector<BaseFloat>& vec) : 
+    start_frame(start), end_frame(end), class_id(label) { 
+    vector_value.Resize(vec.Dim());
+    vector_value.CopyFromVec(vec);
+  }
   Segment(int32 start, int32 end, int32 label) : 
     start_frame(start), end_frame(end), class_id(label) { }
   Segment() : start_frame(-1), end_frame(-1), class_id(-1) { }
@@ -30,6 +36,8 @@ struct Segment {
   static size_t SizeOf() {
     return (sizeof(int32) + sizeof(int32) + sizeof(ClassId));
   }
+
+  const Vector<BaseFloat>& VectorValue() const { return vector_value; }
 };
 
 struct HistogramEncoder {
@@ -232,7 +240,9 @@ class Segmentation {
                             int32 tolerance = 2) const;
 
     SegmentList::iterator Erase(SegmentList::iterator it);
+    void Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const Vector<BaseFloat> &vec);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id);
+
     void Check() const;
     void Sort();
   

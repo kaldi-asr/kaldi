@@ -15,7 +15,7 @@ BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
            logistic-regression-train logistic-regression-eval \
            logistic-regression-copy create-split-from-vad \
            ivector-extract-online ivector-adapt-plda \
-					 select-top-frames speaker-diarization
+					 select-top-frames speaker-diarization ivector-combine-to-recording
 
 OBJFILES =
 
@@ -26,6 +26,6 @@ TESTFILES =
 
 ADDLIBS = ../ivector/kaldi-ivector.a ../hmm/kaldi-hmm.a ../gmm/kaldi-gmm.a \
     ../tree/kaldi-tree.a ../thread/kaldi-thread.a ../matrix/kaldi-matrix.a \
-    ../util/kaldi-util.a ../base/kaldi-base.a 
+    ../util/kaldi-util.a ../base/kaldi-base.a ../segmenter/kaldi-segmenter.a
 
 include ../makefiles/default_rules.mk

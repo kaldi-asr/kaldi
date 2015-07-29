@@ -80,6 +80,7 @@ void Segmentation::SplitSegments(int32 segment_length,
       // Forward list code
       // it->end_frame = start_frame + segment_length - 1;
       // it = segments_.emplace(it+1, it->end_frame + 1, end_frame, it->Label());
+      dim_++;
     }
   }
   Check();
@@ -699,6 +700,12 @@ void Segmentation::Read(std::istream &is, bool binary) {
   }
   Check();
 }
+
+void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const Vector<BaseFloat> &vec) {
+  dim_++;
+  segments_.emplace_back(start_frame, end_frame, class_id, vec);
+}
+
 
 void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id) {
   dim_++;

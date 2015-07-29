@@ -251,8 +251,13 @@ if [ $stage -le 3 ]; then
   done
 fi
 
+run.pl JOB=1:$nj $dir/log/get_reco2utt.JOB.log \
+  awk '{print $1" "$2}' $this_sdata/JOB/segments \| \
+  utils/utt2spk_to_spk2utt.pl '>' $this_sdata/JOB/reco2utt || exit 1
+
 $cmd JOB=1:$nj $dir/log/combine_ivectors_for_reco.JOB.log \
-  ivector-combine-to-recording $this_sdata/JOB/segments \
+  ivector-combine-to-recording ark:$this_sdata/JOB/reco2utt \
+  ark:$this_sdata/JOB/segments \
   ark,t:$dir/ivectors_utt.JOB.ark ark:$dir/reco_segmentation.JOB.ark \
   ark:$dir/ivectors_reco.JOB.ark
 
