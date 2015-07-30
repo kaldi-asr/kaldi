@@ -39,7 +39,6 @@
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-block-matrix.h"
-#include "cudamatrix/cu-sparse-matrix.h"
 #include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
@@ -254,6 +253,53 @@ void CuMatrixBase<double>::CopyFromMat<float>(const CuMatrixBase<float> &M,
 template
 void CuMatrixBase<double>::CopyFromMat<double>(const CuMatrixBase<double> &M,
                                                MatrixTransposeType Trans);
+
+template <typename Real>
+template <typename OtherReal>
+void CuMatrixBase<Real>::CopyFromSmat(const CuSparseMatrix<OtherReal> &M,
+                                      MatrixTransposeType trans) {
+  // Sanity check.
+  if (trans == kNoTrans) {
+    KALDI_ASSERT(M.NumRows() == num_rows_ && M.NumCols() == num_cols_);
+  } else {
+    KALDI_ASSERT(M.NumCols() == num_rows_ && M.NumRows() == num_cols_);
+  }
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(M.NumElements(), CU1DBLOCK), 1);
+    if (trans == kNoTrans) {
+      cuda_copy_from_smat(dimGrid, dimBlock, this->data_,
+                          M.Data(), this->Dim(), M.NumElements());
+    } else {
+      cuda_copy_from_smat_trans(dimGrid, dimBlock, this->data_,
+                                M.Data(), this->Dim(), M.NumElements());
+    }
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+  } else
+#endif
+  {
+    Mat().CopyFromSmat(M.Mat(), trans);
+  }
+}
+
+// Instantiate the template above.
+template
+void CuMatrixBase<float>::CopyFromSmat<float>(const CuSparseMatrix<float> &M,
+                                              MatrixTransposeType trans);
+
+template
+void CuMatrixBase<float>::CopyFromSmat<double>(const CuSparseMatrix<double> &M,
+                                               MatrixTransposeType trans);
+
+template
+void CuMatrixBase<double>::CopyFromSmat<float>(const CuSparseMatrix<float> &M,
+                                               MatrixTransposeType trans);
+
+template
+void CuMatrixBase<double>::CopyFromSmat<double>(const CuSparseMatrix<double> &M,
+                                                MatrixTransposeType trans);
 
 template<typename Real>
 template<typename OtherReal>
@@ -2240,9 +2286,6 @@ void CuMatrixBase<Real>::CopyFromGeneralMat(const GeneralMatrix &src,
         return;
       }
 #endif
-      Matrix<BaseFloat> mat(trans == kNoTrans ? smat.NumRows() : smat.NumCols(),
-                            trans == kNoTrans ? smat.NumCols() : smat.NumRows(),
-                            kUndefined);
       Mat().CopyFromSmat(smat, trans);
       return;
     }

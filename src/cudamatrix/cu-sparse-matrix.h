@@ -1,6 +1,7 @@
 // cudamatrix/cu-sparse-matrix.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,6 +30,7 @@
 #include "cudamatrix/cu-value.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/sparse-matrix.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
@@ -38,12 +40,25 @@ namespace kaldi {
 template <class Real>
 class CuSparseMatrix {
  public:
+  MatrixIndexT NumRows() const { return num_rows_; }
+
+  MatrixIndexT NumCols() const { return num_cols_; }
+
+  MatrixIndexT NumElements() const { return elements_.Dim(); }
+
+  // returns pointer to element data, or NULL if empty (use with NumElements()).
+  // This should only be called when CUDA is enabled.
+  MatrixElement<Real> *Data();
+
+  // returns pointer to element data, or NULL if empty (use with NumElements()),
+  // const version. This should only be called when CUDA is enabled.
+  const MatrixElement<Real> *Data() const;
 
   /// Copy from CPU-based matrix.
-  CuSparseMatrix<Real> &operator = (SparseMatrix<Real> &smat);
+  CuSparseMatrix<Real> &operator = (const SparseMatrix<Real> &smat);
 
   /// Copy from possibly-GPU-based matrix.
-  CuSparseMatrix<Real> &operator = (CuSparseMatrix<Real> &smat);  
+  CuSparseMatrix<Real> &operator = (const CuSparseMatrix<Real> &smat);  
 
   /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);
@@ -58,12 +73,22 @@ class CuSparseMatrix {
   
   void Write(std::ostream &os, bool binary) const;
 
-  void Read(std::istream &os, bool binary);
+  void Read(std::istream &is, bool binary);
 
   // Constructor from CPU-based sparse matrix.
   CuSparseMatrix(const SparseMatrix<Real> &smat);
   
   ~CuSparseMatrix() { }
+
+  // The following two functions should only be called if we did not compile
+  // with CUDA or could not get a CUDA card; in that case the contents are
+  // interpreted the same as a regular sparse matrix.
+  inline const SparseMatrix<Real> &Mat() const {
+    return *(reinterpret_cast<const SparseMatrix<Real>* >(this));
+  }
+  inline SparseMatrix<Real> &Mat() {
+    return *(reinterpret_cast<SparseMatrix<Real>* >(this));
+  }
 
   // Use the CuMatrix::CopyFromSmat() function to copy from this to
   // CuMatrix.
@@ -73,6 +98,9 @@ class CuSparseMatrix {
   // This member is only used if we did not compile for the GPU, or if the GPU
   // is not enabled.  It needs to be first because we reinterpret_cast this
   std::vector<SparseVector<Real> > cpu_rows_;
+
+  MatrixIndexT num_rows_;
+  MatrixIndexT num_cols_;
 
   // This is where the data lives if we are using a GPU.  Notice that the format
   // is a little different from on CPU, as there is only one list, of matrix
