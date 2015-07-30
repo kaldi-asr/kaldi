@@ -286,20 +286,20 @@ void CuMatrixBase<Real>::CopyFromSmat(const CuSparseMatrix<OtherReal> &M,
 
 // Instantiate the template above.
 template
-void CuMatrixBase<float>::CopyFromSmat<float>(const CuSparseMatrix<float> &M,
-                                              MatrixTransposeType trans);
+void CuMatrixBase<float>::CopyFromSmat(const CuSparseMatrix<float> &M,
+                                      MatrixTransposeType trans);
 
 template
-void CuMatrixBase<float>::CopyFromSmat<double>(const CuSparseMatrix<double> &M,
-                                               MatrixTransposeType trans);
+void CuMatrixBase<float>::CopyFromSmat(const CuSparseMatrix<double> &M,
+                                       MatrixTransposeType trans);
 
 template
-void CuMatrixBase<double>::CopyFromSmat<float>(const CuSparseMatrix<float> &M,
-                                               MatrixTransposeType trans);
+void CuMatrixBase<double>::CopyFromSmat(const CuSparseMatrix<float> &M,
+                                        MatrixTransposeType trans);
 
 template
-void CuMatrixBase<double>::CopyFromSmat<double>(const CuSparseMatrix<double> &M,
-                                                MatrixTransposeType trans);
+void CuMatrixBase<double>::CopyFromSmat(const CuSparseMatrix<double> &M,
+                                        MatrixTransposeType trans);
 
 template<typename Real>
 template<typename OtherReal>
@@ -694,6 +694,29 @@ void CuMatrixBase<Real>::MulElements(const CuMatrixBase<Real>& A) {
   #endif
   {
     Mat().MulElements(A.Mat());
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::DivElements(const CuMatrixBase<Real>& A) {
+  #if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    KALDI_ASSERT(num_cols_ == A.NumCols());
+    KALDI_ASSERT(num_rows_ == A.NumRows());
+    
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_div_elements(dimGrid, dimBlock, data_, A.data_, Dim(), A.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().DivElements(A.Mat());
   }
 }
 

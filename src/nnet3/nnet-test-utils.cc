@@ -396,6 +396,12 @@ start:
         goto start;
       GenerateConfigSequenceLstm(opts, configs);
       break;
+    case 5:
+      if (!opts.allow_recursion || !opts.allow_context ||
+          !opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceLstm(opts, configs);
+      break;
     default:
       KALDI_ERR << "Error generating config sequence.";
   }

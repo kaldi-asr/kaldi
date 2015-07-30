@@ -117,11 +117,10 @@ void ElementwiseProductComponent::Propagate(
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(in.NumCols() == input_dim_);
-  out->Resize(in.NumRows(), output_dim_);
   int32 num_inputs = input_dim_ / output_dim_;
   for (int32 i = 0; i < num_inputs; i++)  {
-    CuSubMatrix current_in(in, 0, in.NumRows(),
-                           i * output_dim_, (i + 1) * output_dim_);
+    CuSubMatrix<BaseFloat> current_in(in, 0, in.NumRows(),
+                                      i * output_dim_, (i + 1) * output_dim_);
     if (i == 0) {
       out->CopyFromMat(current_in);
     } else  {
@@ -138,12 +137,14 @@ void ElementwiseProductComponent::Backprop(const std::string &debug_info,
                               Component *to_update,
                               CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)  return;  
-  num_inputs = input_dim_ / output_dim_;
+  int32 num_inputs = input_dim_ / output_dim_;
   for (int32 i = 0; i < num_inputs; i++)  {
-    CuSubMatrix current_in_value(in_value, 0, in_values.NumRows(),
-                           i * output_dim_, (i + 1) * output_dim_);
-    CuSubMatrix current_in_deriv(in, 0, in.NumRows(),
-                           i * output_dim_, (i + 1) * output_dim_);
+    CuSubMatrix<BaseFloat> current_in_value(in_value, 0, in_value.NumRows(),
+                                            i * output_dim_,
+                                            (i + 1) * output_dim_);
+    CuSubMatrix<BaseFloat> current_in_deriv(*in_deriv, 0, in_deriv->NumRows(),
+                                            i * output_dim_,
+                                            (i + 1) * output_dim_);
     current_in_deriv.CopyFromMat(out_value);
     current_in_deriv.DivElements(current_in_value);
     current_in_deriv.MulElements(out_deriv);

@@ -142,6 +142,9 @@ inline void cuda_apply_log(dim3 Gr, dim3 Bl, float *mat, MatrixDim d) { cudaF_ap
 inline void cuda_mul_elements(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride) {
   cudaF_mul_elements(Gr,Bl,mat,A,dst_d,src_stride);
 }
+inline void cuda_div_elements(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride) {
+  cudaF_div_elements(Gr,Bl,mat,A,dst_d,src_stride);
+}
 inline void cuda_max(dim3 Gr, dim3 Bl, float *mat, const float *A, MatrixDim dst_d, int src_stride) {
   cudaF_max(Gr,Bl,mat,A,dst_d,src_stride);
 }
@@ -318,6 +321,9 @@ inline void cuda_scale(dim3 Gr, dim3 Bl, double *mat, double value, MatrixDim d)
 inline void cuda_apply_log(dim3 Gr, dim3 Bl, double *mat, MatrixDim d) { cudaD_apply_log(Gr,Bl,mat,d); }
 inline void cuda_mul_elements(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride) {
   cudaD_mul_elements(Gr,Bl,mat,A,dst_d,src_stride);
+}
+inline void cuda_div_elements(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride) {
+  cudaD_div_elements(Gr,Bl,mat,A,dst_d,src_stride);
 }
 inline void cuda_max(dim3 Gr, dim3 Bl, double *mat, const double *A, MatrixDim dst_d, int src_stride) {
   cudaD_max(Gr,Bl,mat,A,dst_d,src_stride);
