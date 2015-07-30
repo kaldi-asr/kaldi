@@ -1856,6 +1856,18 @@ void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &mat,
                                     MatrixTransposeType trans) {
   mat.CopyToMat(this, trans);
 }
+template
+void MatrixBase<float>::CopyFromSmat<float>(const SparseMatrix<float> &mat,
+                                            MatrixTransposeType trans);
+template
+void MatrixBase<float>::CopyFromSmat<double>(const SparseMatrix<double> &mat,
+                                             MatrixTransposeType trans);
+template
+void MatrixBase<double>::CopyFromSmat<float>(const SparseMatrix<float> &mat,
+                                             MatrixTransposeType trans);
+template
+void MatrixBase<double>::CopyFromSmat<double>(const SparseMatrix<double> &mat,
+                                              MatrixTransposeType trans);
 
 
 template<typename Real>

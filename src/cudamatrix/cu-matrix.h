@@ -31,6 +31,7 @@
 #include "cudamatrix/cu-matrixdim.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-value.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sparse-matrix.h"

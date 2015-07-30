@@ -303,6 +303,15 @@ void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const float* 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, MatrixDim d_out, MatrixDim d_in);
 
+void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_fd(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<double>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_df(dim3 Gr, dim3 Bl, double* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_dd(dim3 Gr, dim3 Bl, double* mat_out, const MatrixElement<double>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_fd_trans(dim3 Gr, dim3 Bl, float* mat_out, const MatrixElement<double>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const MatrixElement<float>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+void cuda_copy_from_smat_dd_trans(dim3 Gr, dim3 Bl, double* mat_out, const MatrixElement<double>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in);
+
 void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, MatrixElement<double>* x, int s);
 void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<double>* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t);
 

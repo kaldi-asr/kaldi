@@ -233,6 +233,19 @@ MatrixIndexT SparseMatrix<Real>::NumCols() const {
 }
 
 template <typename Real>
+SparseVector<Real>* SparseMatrix<Real>::Data() {
+  if (rows_.empty()) return NULL;
+  else return rows_.data();
+}
+
+template <typename Real>
+const SparseVector<Real>* SparseMatrix<Real>::Data() const {
+  if (rows_.empty()) return NULL;
+  else return rows_.data();
+}
+
+
+template <typename Real>
 template <typename OtherReal>
 void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
                                    MatrixTransposeType trans) const {

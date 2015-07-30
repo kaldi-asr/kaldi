@@ -119,6 +119,13 @@ class SparseMatrix {
 
   void Swap(SparseMatrix<Real> *other);
 
+  // returns pointer to element data, or NULL if empty (use with NumElements()).
+  SparseVector<Real> *Data();
+
+  // returns pointer to element data, or NULL if empty (use with NumElements());
+  // const version
+  const SparseVector<Real> *Data() const;
+
   // initializer from the type that elsewhere in Kaldi is referred to as type Posterior.
   // indexed first by row-index; the pairs are (column-index, value), and the constructor
   // does not require them to be sorted and uniq.
