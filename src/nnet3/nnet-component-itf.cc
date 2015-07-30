@@ -77,6 +77,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedBiasComponent();
   } else if (component_type == "NoOpComponent") {
     ans = new NoOpComponent();
+  } else if (component_type == "ElementwiseProductComponent") {
+    ans = new ElementwiseProductComponent();
   }
   return ans;
 }
