@@ -25,7 +25,6 @@ if [ $stage -le 1 ]; then
   utils/subset_data_dir.sh --first data/train_si284_hires 7138 data/train_si84_hires || exit 1
 fi
 
-1
 if [ $stage -le 2 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We align the si84 data for this purpose.

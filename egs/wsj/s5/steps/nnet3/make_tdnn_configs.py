@@ -26,6 +26,8 @@ parser.add_argument("--num-targets", type=int,
 parser.add_argument("config_dir",
                     help="Directory to write config files and variables");
 
+print(' '.join(sys.argv))
+
 args = parser.parse_args()
 
 if not os.path.exists(args.config_dir):
@@ -95,12 +97,12 @@ f = open(args.config_dir + "/init.config", "w")
 print('# Config file for initializing neural network prior to', file=f)
 print('# preconditioning matrix computation', file=f)
 print('input-node name=input dim=' + str(args.feat_dim), file=f)
-list=[ ('Shift(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
+list=[ ('Offset(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
 if args.ivector_dim > 0:
     print('input-node name=ivector dim=' + str(args.ivector_dim), file=f)
     list.append('ivector')
 # example of next line:
-# output-node name=output input="Append(Shift(input, -3), Shift(input, -2), Shift(input, -1), ... , Shift(input, 3), ivector)"
+# output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ReplaceIndex(ivector, t, 0))"
 print('output-node name=output input=Append({0})'.format(", ".join(list)), file=f)
 f.close()
 
@@ -138,16 +140,16 @@ for l in range(1, num_hidden_layers + 1):
           args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     if l == 1:
-        splices = [ ('Shift(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
-        if args.ivector_dim > 0: splices.append('ivector') 
+        splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
+        if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)') 
         orig_input='Append({0})'.format(', '.join(splices))
-        # e.g. orig_input = 'Append(Shift(input, -2), ... Shift(input, 2), ivector)'
+        # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
         print('component-node name=lda component=lda input={0}'.format(orig_input),
               file=f)
         cur_input='lda'
     else:
-        # e.g. cur_input = 'Append(Shift(renorm1, -2), renorm1, Shift(renorm1, 2))'
-        splices = [ ('Shift(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
+        # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
+        splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
                     for n in splice_array[l-1] ]
         cur_input='Append({0})'.format(', '.join(splices))
     print('component-node name=affine{0} component=affine{0} input={1} '.
@@ -176,7 +178,7 @@ for l in range(1, num_hidden_layers + 1):
 # ##will look like this, if we have iVectors:
 # input-node name=input dim=13
 # input-node name=ivector dim=100
-# output-node name=output input="Append(Shift(input, -3), Shift(input, -2), Shift(input, -1), ... , Shift(input, 3), ivector)"
+# output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ivector)"
 
 # ## Write file $config_dir/layer1.config that adds the LDA matrix, assumed to be in the config directory as
 # ## lda.mat, the first hidden layer, and the output layer.
@@ -201,7 +203,7 @@ for l in range(1, num_hidden_layers + 1):
 # component name=nonlin2 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
 # component name=renorm2 type=RenormalizeComponent dim=$pnorm_output_dim
 # component name=final-affine type=NaturalGradientAffineComponent input-dim=$pnorm_output_dim output-dim=$num_leaves param-stddev=0 bias-stddev=0
-# component-node name=affine2 component=affine2 input=Append(Shift(renorm1, -2), Shift(renorm1, 2))
+# component-node name=affine2 component=affine2 input=Append(Offset(renorm1, -2), Offset(renorm1, 2))
 # component-node name=nonlin2 component=nonlin2 input=affine2
 # component-node name=renorm2 component=renorm2 input=nonlin2
 # component-node name=final-affine component=final-affine input=renorm2

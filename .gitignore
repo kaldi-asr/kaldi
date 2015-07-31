@@ -904,6 +904,7 @@
 /egs/librispeech/s5/mfcc
 /egs/librispeech/s5/exp
 /src/bin/align-text
+/src/bin/matrix-dim
 /src/latbin/nbest-to-prons
 /src/matrix/matrix-lib-speed-test
 /src/nnet2bin/nnet-am-reinitialize
@@ -937,3 +938,6 @@
 /src/nnet3bin/nnet3-init
 /src/nnet3bin/nnet3-shuffle-egs
 /src/nnet3bin/nnet3-subset-egs
+/src/nnet3bin/nnet3-merge-egs
+/src/nnet3bin/nnet3-compute-from-egs
+/src/nnet3bin/nnet3-acc-lda-stats

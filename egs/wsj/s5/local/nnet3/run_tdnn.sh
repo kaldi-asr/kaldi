@@ -26,7 +26,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/online/run_ivector_common.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -37,7 +37,6 @@ if [ $stage -le 8 ]; then
 
   steps/nnet3/train_tdnn.sh --stage $train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
-    --num-hidden-layers 4 \
     --splice-indexes "-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
@@ -47,7 +46,6 @@ if [ $stage -le 8 ]; then
     --cmd "$decode_cmd" \
     --pnorm-input-dim 2000 \
     --pnorm-output-dim 250 \
-    --mix-up 12000 \
     data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 

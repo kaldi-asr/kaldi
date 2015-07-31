@@ -15,7 +15,7 @@
 
 # Begin configuration section.
 cmd=run.pl
-feat_type=          # e.g. set it to "raw" to use raw MFCC
+feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
@@ -63,7 +63,7 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --samples-per-iter <#samples;400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
-  echo "  --feat-type <lda|raw>                            # (by default it tries to guess).  The feature type you want"
+  echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
   echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
@@ -118,9 +118,6 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
 ## Set up features. 
-if [ -z $feat_type ]; then
-  if [ -f $alidir/final.mat ] && [ ! -f $transform_dir/raw_trans.1 ]; then feat_type=lda; else feat_type=raw; fi
-fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
@@ -140,7 +137,7 @@ case $feat_type in
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
-  *) echo "$0: invalid feature type $feat_type" && exit 1;
+  *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
 esac
 
 if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
@@ -174,7 +171,7 @@ if [ $stage -le 0 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s/JOB/1/g)"
-  feat_dim=$(feat-to-dim "$feats_one") || exit 1;
+  feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
   echo $feat_dim > $dir/info/feat_dim
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
