@@ -19,5 +19,27 @@ exp/mdm8/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:P
 exp/mdm8/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   61.9%   (55738)
 exp/mdm8/tri3a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.dtl:Percent Total Error       =   59.3%   (53370)
 
-# Karel, JSALT 2015, (13.7.2015)
-# TODO,
+# Karel, JSALT 2015, (31.7.2015)
+
+# dev,
+## GMM,
+%WER 59.1 | 14105 94500 | 47.5 34.3 18.2 6.6 59.1 76.0 | -22.348 | exp/mdm8/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 57.2 | 14807 94503 | 49.6 33.2 17.3 6.8 57.2 72.1 | -22.450 | exp/mdm8/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 55.0 | 14511 94490 | 51.1 30.0 18.8 6.2 55.0 73.0 | -22.760 | exp/mdm8/tri3a_mmi_b0.1/decode_dev_2.mdl_ami_fsh.o3g.kn.pr1-7/ascore_11/dev_o4.ctm.filt.sys
+## DNN-Xent,
+%WER 48.2 | 15246 94513 | 58.4 28.7 12.9 6.7 48.2 67.3 | -23.329 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+## DNN-sMBR,
+%WER 46.2 | 15260 94500 | 60.1 26.0 13.9 6.3 46.2 66.3 | -23.908 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it1/ascore_13/dev_o4.ctm.filt.sys
+%WER 45.1 | 14204 94504 | 61.1 24.9 14.0 6.2 45.1 70.7 | -24.225 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it4/ascore_13/dev_o4.ctm.filt.sys
+
+# eval,
+## GMM,
+%WER 64.4 | 14362 90002 | 41.7 36.6 21.8 6.0 64.4 71.2 | -22.256 | exp/mdm8/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+%WER 62.1 | 13700 89987 | 44.0 35.5 20.5 6.2 62.1 74.1 | -22.267 | exp/mdm8/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+%WER 59.5 | 13822 89978 | 46.3 32.8 20.9 5.7 59.5 72.6 | -22.394 | exp/mdm8/tri3a_mmi_b0.1/decode_eval_2.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.sys
+## DNN-Xent,
+%WER 52.1 | 13642 89829 | 53.6 30.7 15.7 5.7 52.1 71.6 | -22.884 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+## DNN-sMBR,
+%WER 50.3 | 14264 89966 | 54.7 27.6 17.8 5.0 50.3 67.5 | -23.397 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it1/ascore_13/eval_o4.ctm.filt.sys
+%WER 49.1 | 13969 89982 | 55.8 26.7 17.4 4.9 49.1 68.4 | -23.629 | exp/mdm8/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it4/ascore_13/eval_o4.ctm.filt.sys
+
