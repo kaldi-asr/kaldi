@@ -72,7 +72,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     if (ivector_feats != NULL) {
       // try to get closest frame to middle of window to get
       // a representative iVector.
-      int32 closest_frame = t + (frames_per_eg / 2);
+      int32 closest_frame = t + (this_frames_per_eg / 2);
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
@@ -82,8 +82,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     }
 
     // add the labels.
-    Posterior labels(frames_per_eg);
-    for (int32 i = 0; i < frames_per_eg; i++)
+    Posterior labels(this_frames_per_eg);
+    for (int32 i = 0; i < this_frames_per_eg; i++)
       labels[i] = pdf_post[t + i];
     eg.io.push_back(NnetIo("output", num_pdfs, t, labels));
     
