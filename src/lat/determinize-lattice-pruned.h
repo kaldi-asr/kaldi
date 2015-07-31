@@ -124,7 +124,7 @@ struct DeterminizeLatticePrunedOptions {
                                      max_states(-1),
                                      max_arcs(-1),
                                      retry_cutoff(0.5) { }
-  void Register (kaldi::OptionsItf *po) {
+  void Register (kaldi::OptionsItf *opts) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
                 "determinization (real usage might be many times this)");
@@ -160,7 +160,7 @@ struct DeterminizeLatticePhonePrunedOptions {
                                           phone_determinize(true),
                                           word_determinize(true),
                                           minimize(false) {}
-  void Register (kaldi::OptionsItf *po) {
+  void Register (kaldi::OptionsItf *opts) {
     po->Register("delta", &delta, "Tolerance used in determinization");
     po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
                 "determinization (real usage might be many times this).");

@@ -41,7 +41,7 @@ struct RegtreeMllrOptions {
 
   RegtreeMllrOptions(): min_count(1000.0), use_regtree(true) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("mllr-min-count", &min_count,
                  "Minimum count to estimate an MLLR transform.");
     po->Register("mllr-use-regtree", &use_regtree,

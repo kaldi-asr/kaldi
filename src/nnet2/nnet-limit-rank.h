@@ -35,7 +35,7 @@ struct NnetLimitRankOpts {
   
   NnetLimitRankOpts(): num_threads(1), parameter_proportion(0.75) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("num-threads", &num_threads, "Number of threads used for "
                  "rank-limiting operation; note, will never use more than "
                  "#layers.");

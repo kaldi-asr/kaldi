@@ -53,7 +53,7 @@ struct FbankOptions {
                  htk_compat(false),
                  use_log_fbank(true) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     frame_opts.Register(po);
     mel_opts.Register(po);
     po->Register("use-energy", &use_energy,

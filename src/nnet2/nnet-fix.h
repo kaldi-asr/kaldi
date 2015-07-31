@@ -51,7 +51,7 @@ struct NnetFixConfig {
 
   NnetFixConfig(): min_average_deriv(0.1), max_average_deriv(0.75),
                    parameter_factor(2.0), relu_bias_change(1.0) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("min-average-deriv", &min_average_deriv, "Miniumum derivative, "
                  "averaged over the training data, that we allow for a nonlinearity,"
                  "expressed relative to the maximum derivative of the nonlinearity,"

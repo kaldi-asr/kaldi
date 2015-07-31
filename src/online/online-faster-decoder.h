@@ -48,7 +48,7 @@ struct OnlineFasterDecoderOpts : public FasterDecoderOptions {
     update_interval(3), beam_update(.01),
     max_beam_update(0.05) {}
 
-  void Register(OptionsItf *po, bool full) {
+  void Register(OptionsItf *opts, bool full) {
     FasterDecoderOptions::Register(po, full);
     po->Register("rt-min", &rt_min,
                  "Approximate minimum decoding run time factor");

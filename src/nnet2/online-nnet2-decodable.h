@@ -44,7 +44,7 @@ struct DecodableNnet2OnlineOptions {
       pad_input(true),
       max_nnet_batch_size(256) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("acoustic-scale", &acoustic_scale,
                  "Scaling factor for acoustic likelihoods");
     po->Register("pad-input", &pad_input,

@@ -70,7 +70,7 @@ struct NnetCombineFastConfig {
                            alpha(0.01), fisher_minibatch_size(64), minibatch_size(1024),
                            max_lbfgs_dim(10), regularizer(0.0) {}
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
                  "optimization from.  If 0 ... #models-1, then specifies the model; "
                  "if >= #models, then the average of all inputs; if <0, chosen "

@@ -53,7 +53,7 @@ struct LatticeSimpleDecoderConfig {
                                 determinize_lattice(true),
                                 beam_ratio(0.9),
                                 prune_scale(0.1) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     det_opts.Register(po);
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");

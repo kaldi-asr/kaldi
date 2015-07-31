@@ -35,7 +35,7 @@ struct LogisticRegressionConfig {
          power;
   LogisticRegressionConfig(): max_steps(20), mix_up(0), 
                               normalizer(0.0025), power(0.15){ }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("max-steps", &max_steps,
                  "Maximum steps in L-BFGS.");
     po->Register("normalizer", &normalizer,

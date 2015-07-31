@@ -100,7 +100,7 @@ struct MleAmSgmmOptions {
     full_col_cov = false;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleAmSgmmOptions: ";
     po->Register("tau-vec", &tau_vec, module+
                  "Smoothing for phone vector estimation.");

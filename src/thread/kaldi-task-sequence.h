@@ -61,7 +61,7 @@ struct TaskSequencerConfig {
   int32 num_threads;
   int32 num_threads_total;
   TaskSequencerConfig(): num_threads(1), num_threads_total(0)  { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("num-threads", &num_threads, "Number of actively processing "
                  "threads to run in parallel");
     po->Register("num-threads-total", &num_threads_total, "Total number of "

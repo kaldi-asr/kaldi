@@ -93,10 +93,10 @@ struct GpsrConfig {
     max_iters_debias = 50;
   }
 
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
-inline void GpsrConfig::Register(OptionsItf *po) {
+inline void GpsrConfig::Register(OptionsItf *opts) {
   std::string module = "GpsrConfig: ";
   po->Register("use-gpsr-bb", &use_gpsr_bb, module+
                "Use the Barzilai-Borwein gradient projection method.");

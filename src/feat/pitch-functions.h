@@ -130,7 +130,7 @@ struct PitchExtractionOptions {
       nccf_ballast_online(false),
       snip_edges(true) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform "
                  "file, if specified there)");

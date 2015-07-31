@@ -64,7 +64,7 @@ struct OnlineGmmDecodingAdaptationPolicyConfig {
       adaptation_delay(5.0),
       adaptation_ratio(2.0) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("adaptation-first-utt-delay", &adaptation_first_utt_delay,
                  "Delay before first basis-fMLLR adaptation for first utterance "
                  "of each speaker");
@@ -122,7 +122,7 @@ struct OnlineGmmDecodingConfig {
   OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1),
                               silence_weight(0.1) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     { // register basis_opts with prefix, there are getting to be too many
       // options.
       ParseOptions basis_po("basis", po);

@@ -48,7 +48,7 @@ struct NnetDiscriminativeUpdateOptions {
                                      one_silence_class(false),
                                      boost(0.0) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr', "
                  "determines the objective function to use.  Should match "
                  "option used when we created the examples.");

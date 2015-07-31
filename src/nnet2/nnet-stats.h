@@ -35,7 +35,7 @@ struct NnetStatsConfig {
   BaseFloat bucket_width;
   NnetStatsConfig(): bucket_width(0.025) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("bucket-width", &bucket_width, "Width of bucket in average-derivative "
                  "stats for analysis.");
   }

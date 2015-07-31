@@ -89,7 +89,7 @@ struct SplitDiscriminativeExampleConfig {
       determinize(true), minimize(true), test(false), drop_frames(false),
       split(true), excise(true) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
 
     po->Register("max-length", &max_length, "Maximum length allowed for any "
                 "segment (i.e. max #frames for any example");

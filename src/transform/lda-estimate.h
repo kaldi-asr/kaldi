@@ -35,7 +35,7 @@ struct LdaEstimateOptions {
   LdaEstimateOptions(): remove_offset(false), dim(40), allow_large_dim(false),
                         within_class_factor(1.0) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("remove-offset", &remove_offset, "If true, output an affine "
                  "transform that makes the projected data mean equal to zero.");
     po->Register("dim", &dim, "Dimension to project to with LDA");

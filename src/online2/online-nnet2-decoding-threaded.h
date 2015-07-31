@@ -160,7 +160,7 @@ struct OnlineNnet2DecodingThreadedConfig {
 
   void Check();
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     decoder_opts.Register(po);
     po->Register("acoustic-scale", &acoustic_scale, "Scale used on acoustics "
                  "when decoding");

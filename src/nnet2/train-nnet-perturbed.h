@@ -191,7 +191,7 @@ struct NnetPerturbedTrainerConfig {
                                 tune_d_power(0.5),
                                 max_d_factor(2.0){ }
   
-  void Register (OptionsItf *po) {
+  void Register (OptionsItf *opts) {
     po->Register("minibatch-size", &minibatch_size,
                  "Number of samples per minibatch of training data.");
     po->Register("minibatches-per-phase", &minibatches_per_phase,

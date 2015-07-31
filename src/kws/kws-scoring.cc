@@ -110,7 +110,7 @@ typedef unordered_map <std::string, SweepThresholdStats> PerKwSweepStats;
 }  // namespace kws_internal
 
 
-void KwsTermsAlignerOptions::Register(OptionsItf *po) {
+void KwsTermsAlignerOptions::Register(OptionsItf *opts) {
   po->Register("max_distance", &max_distance,
                "Max distance on the ref and hyp centers "
                "to be considered as a potential match");
@@ -294,7 +294,7 @@ TwvMetricsOptions::TwvMetricsOptions(): cost_fa(0.1f),
                                         sweep_step(0.05f),
                                         audio_duration(0.0f) {}
 
-void TwvMetricsOptions::Register(OptionsItf *po) {
+void TwvMetricsOptions::Register(OptionsItf *opts) {
   po->Register("cost-fa", &cost_fa,
               "The cost of an incorrect detection");
   po->Register("value-corr", &value_corr,

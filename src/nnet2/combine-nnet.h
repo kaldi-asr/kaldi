@@ -47,7 +47,7 @@ struct NnetCombineConfig {
                        initial_impr(0.01),
                        test_gradient(false) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("initial-model", &initial_model, "Specifies where to start the "
                  "optimization from.  If 0 ... #models-1, then specifies the model; "
                  "if #models, then the average of all inputs; otherwise, chosen "

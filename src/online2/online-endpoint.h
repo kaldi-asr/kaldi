@@ -99,7 +99,7 @@ struct OnlineEndpointRule {
       max_relative_cost(max_relative_cost),
       min_utterance_length(min_utterance_length) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("must-contain-nonsilence", &must_contain_nonsilence,
                  "If true, for this endpointing rule to apply there must"
                  "be nonsilence in the best-path traceback.");
@@ -117,7 +117,7 @@ struct OnlineEndpointRule {
   // for convenience add this RegisterWithPrefix function, because
   // we'll be registering this as a config with several different
   // prefixes.
-  void RegisterWithPrefix(const std::string &prefix, OptionsItf *po) {
+  void RegisterWithPrefix(const std::string &prefix, OptionsItf *opts) {
     ParseOptions po_prefix(prefix, po);
     this->Register(&po_prefix);
   }
@@ -155,7 +155,7 @@ struct OnlineEndpointConfig {
       rule4(true, 2.0, std::numeric_limits<BaseFloat>::infinity(), 0.0),
       rule5(false, 0.0, std::numeric_limits<BaseFloat>::infinity(), 20.0) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("endpoint.silence-phones", &silence_phones, "List of phones "
                  "that are considered to be silence phones by the "
                  "endpointing code.");

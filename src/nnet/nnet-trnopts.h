@@ -40,7 +40,7 @@ struct NnetTrainOptions {
                        l1_penalty(0.0) 
                        { }
   // register options
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("learn-rate", &learn_rate, "Learning rate");
     po->Register("momentum", &momentum, "Momentum");
     po->Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
@@ -76,7 +76,7 @@ struct RbmTrainOptions {
                       l2_penalty(0.0002)
                       { }
   // register options
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("learn-rate", &learn_rate, "Learning rate");
 
     po->Register("momentum", &momentum, "Initial momentum for linear scheduling");

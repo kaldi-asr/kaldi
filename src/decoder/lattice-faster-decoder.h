@@ -64,7 +64,7 @@ struct LatticeFasterDecoderConfig {
                                 beam_delta(0.5),
                                 hash_ratio(2.0),
                                 prune_scale(0.1) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     det_opts.Register(po);
     po->Register("beam", &beam, "Decoding beam.");
     po->Register("max-active", &max_active, "Decoder max active states.");
