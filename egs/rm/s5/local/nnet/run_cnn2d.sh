@@ -1,9 +1,22 @@
 #!/bin/bash
 
+# Copyright 2012-2015  Brno University of Technology (Author: Karel Vesely)
+# Apache 2.0
+
+# This example shows how to build CNN with 2D convolution along both frequency 
+# and time axis. First we train CNN, then build RBMs on top, then do train 
+# per-frame training and sequence-discriminative training.
+
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
 . ./path.sh ## Source the tools/utils (import the queue.pl)
+
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 
 dev=data-fbank/test
 train=data-fbank/train
@@ -36,7 +49,7 @@ fi
 
 # Run the CNN pre-training,
 if [ $stage -le 1 ]; then
-  dir=exp/cnn2d4c
+  dir=exp/cnn4g-2D
   ali=${gmm}_ali
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
@@ -47,16 +60,14 @@ if [ $stage -le 1 ]; then
       --hid-layers 2 --learn-rate 0.008 \
       ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
 # Pre-train stack of RBMs on top of the convolutional layers (4 layers, 1024 units),
 if [ $stage -le 2 ]; then
-  dir=exp/cnn2d4c_pretrain-dbn
-  transf_cnn=exp/cnn2d4c/final.feature_transform_cnn # transform with convolutional layers
+  dir=exp/cnn4g-2D_pretrain-dbn
+  transf_cnn=exp/cnn4g-2D/final.feature_transform_cnn # transform with convolutional layers
   # Train
   $cuda_cmd $dir/log/pretrain_dbn.log \
     steps/nnet/pretrain_dbn.sh --nn-depth 4 --hid-dim 1024 --rbm-iter 20 \
@@ -67,18 +78,18 @@ fi
 
 # Re-align using CNN,
 if [ $stage -le 3 ]; then
-  dir=exp/cnn2d4c
+  dir=exp/cnn4g-2D
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $train data/lang $dir ${dir}_ali || exit 1
 fi
 
 # Train the DNN optimizing cross-entropy,
 if [ $stage -le 4 ]; then
-  dir=exp/cnn2d4c_pretrain-dbn_dnn; [ ! -d $dir ] && mkdir -p $dir/log;
-  ali=exp/cnn2d4c_ali
-  feature_transform=exp/cnn2d4c/final.feature_transform
-  feature_transform_dbn=exp/cnn2d4c_pretrain-dbn/final.feature_transform
-  dbn=exp/cnn2d4c_pretrain-dbn/4.dbn
+  dir=exp/cnn4g-2D_pretrain-dbn_dnn; [ ! -d $dir ] && mkdir -p $dir/log;
+  ali=exp/cnn4g-2D_ali
+  feature_transform=exp/cnn4g-2D/final.feature_transform
+  feature_transform_dbn=exp/cnn4g-2D_pretrain-dbn/final.feature_transform
+  dbn=exp/cnn4g-2D_pretrain-dbn/4.dbn
   cnn_dbn=$dir/cnn_dbn.nnet
   { # Concatenate CNN layers and DBN,
     num_components=$(nnet-info $feature_transform | grep -m1 num-components | awk '{print $2;}')
@@ -90,17 +101,17 @@ if [ $stage -le 4 ]; then
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $cnn_dbn --hid-layers 0 \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
-# Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. For RM good acwt is 0.2,
-dir=exp/cnn2d4c_pretrain-dbn_dnn_smbr
-srcdir=exp/cnn2d4c_pretrain-dbn_dnn
-acwt=0.2
+
+# Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+dir=exp/cnn4g-2D_pretrain-dbn_dnn_smbr
+srcdir=exp/cnn4g-2D_pretrain-dbn_dnn
+acwt=0.1
 
 # First we generate lattices and alignments,
 if [ $stage -le 4 ]; then

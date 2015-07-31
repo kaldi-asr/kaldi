@@ -12,7 +12,9 @@
 #
 # A more sensible approach should be single-stream training, 
 # and per-utterance updates. But the results were worse.
-#
+
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 
 . ./cmd.sh
 . ./path.sh
@@ -48,7 +50,7 @@ fi
 
 if [ $stage -le 1 ]; then
   # Train the DNN optimizing per-frame cross-entropy.
-  dir=exp/blstm4g
+  dir=exp/blstm4i
   ali=${gmm}_ali
 
   # Train
@@ -63,8 +65,6 @@ if [ $stage -le 1 ]; then
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
 # TODO : sequence training,

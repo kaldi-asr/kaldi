@@ -15,6 +15,9 @@
 #    the objective is to emphasize state-sequences with better 
 #    frame accuracy w.r.t. reference alignment.
 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
@@ -72,13 +75,12 @@ if [ $stage -le 2 ]; then
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
 
-# Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. We use usually good acwt 0.1
+# Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 dir=exp/dnn4d-fbank_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn4d-fbank_pretrain-dbn_dnn
 acwt=0.1

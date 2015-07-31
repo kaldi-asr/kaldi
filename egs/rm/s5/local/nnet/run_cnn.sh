@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# Copyright 2012-2015  Brno University of Technology (Author: Karel Vesely)
+# Apache 2.0
+
+# This example shows how to build CNN with convolution along frequency axis.
+# First we train CNN, then build RBMs on top, then do train per-frame training 
+# and sequence-discriminative training.
+
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
@@ -35,10 +45,10 @@ set -euxo pipefail
 fi
 
 # Run the CNN pre-training,
+hid_layers=2
 if [ $stage -le 1 ]; then
   dir=exp/cnn4c
   ali=${gmm}_ali
-  hid_layers=2
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh \
@@ -47,17 +57,21 @@ if [ $stage -le 1 ]; then
       --network-type cnn1d --cnn-proto-opts "--patch-dim1 8 --pitch-dim 3" \
       --hid-layers $hid_layers --learn-rate 0.008 \
       ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
-  # Decode
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  # Decode,
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
+fi
+
+if [ $stage -le 2 ]; then
   # Concat 'feature_transform' with convolutional layers,
-  nnet-concat $src/final.feature_transform \
-    "nnet-copy --remove-last-layers=$(((hid_layers+1)*2)) $src/final.nnet - |" \
+  dir=exp/cnn4c
+  nnet-concat $dir/final.feature_transform \
+    "nnet-copy --remove-last-layers=$(((hid_layers+1)*2)) $dir/final.nnet - |" \
     $dir/final.feature_transform_cnn
 fi
 
 # Pre-train stack of RBMs on top of the convolutional layers (4 layers, 1024 units),
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   dir=exp/cnn4c_pretrain-dbn
   transf_cnn=exp/cnn4c/final.feature_transform_cnn # transform with convolutional layers
   # Train
@@ -69,14 +83,14 @@ if [ $stage -le 2 ]; then
 fi
 
 # Re-align using CNN,
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   dir=exp/cnn4c
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $train data/lang $dir ${dir}_ali || exit 1
 fi
 
 # Train the DNN optimizing cross-entropy,
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   dir=exp/cnn4c_pretrain-dbn_dnn; [ ! -d $dir ] && mkdir -p $dir/log;
   ali=exp/cnn4c_ali
   feature_transform=exp/cnn4c/final.feature_transform
@@ -93,20 +107,20 @@ if [ $stage -le 4 ]; then
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $cnn_dbn --hid-layers 0 \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
-# Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. For RM good acwt is 0.2,
+
+# Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 dir=exp/cnn4c_pretrain-dbn_dnn_smbr
 srcdir=exp/cnn4c_pretrain-dbn_dnn
-acwt=0.2
+acwt=0.1
 
 # First we generate lattices and alignments,
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
   steps/nnet/align.sh --nj 20 --cmd "$train_cmd" \
     $train data/lang $srcdir ${srcdir}_ali || exit 1;
   steps/nnet/make_denlats.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
@@ -114,7 +128,7 @@ if [ $stage -le 4 ]; then
 fi
 
 # Re-train the DNN by 6 iterations of sMBR,
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
     $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode

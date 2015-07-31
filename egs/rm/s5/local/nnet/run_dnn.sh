@@ -15,6 +15,9 @@
 #    the objective is to emphasize state-sequences with better 
 #    frame accuracy w.r.t. reference alignment.
 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
@@ -64,18 +67,19 @@ if [ $stage -le 2 ]; then
     steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate 0.008 \
     $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $ali $ali $dir
   # Decode (reuse HCLG graph)
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $data_fmllr/test $dir/decode
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.2 \
+  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph_ug $data_fmllr/test $dir/decode_ug
 fi
 
 
-# Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. For RM good acwt is 0.2
+# Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 dir=exp/dnn4b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn4b_pretrain-dbn_dnn
-acwt=0.2
+acwt=0.1
 
 if [ $stage -le 3 ]; then
   # First we generate lattices and alignments:

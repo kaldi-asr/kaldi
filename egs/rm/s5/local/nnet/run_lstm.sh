@@ -6,6 +6,9 @@
 # This example script trains a LSTM network on FBANK features.
 # The LSTM code comes from Yiayu DU, and Wei Li, thanks!
 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh
 . ./path.sh
 
@@ -47,8 +50,9 @@ if [ $stage -le 1 ]; then
   $cuda_cmd $dir/log/train_nnet.log \
     steps/nnet/train.sh --network-type lstm --learn-rate 0.0001 \
       --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
-      --train-opts "--momentum 0.9 --halving-factor 0.5" \
-      --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=5" \
+      --scheduler-opts "--momentum 0.9 --halving-factor 0.5" \
+      --train-tool "nnet-train-lstm-streams" \
+      --train-tool-opts "--num-stream=4 --targets-delay=5" \
       --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 5.0" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 

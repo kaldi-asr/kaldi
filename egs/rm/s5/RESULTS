@@ -164,24 +164,6 @@ exit 0
 %WER 7.73 [ 969 / 12533, 74 ins, 157 del, 738 sub ] exp/nnet5e_mpe_gpu/decode_ug_epoch4/wer_9
 
 
-# DNN systems (Karel - 25.9.2014)
-# Per-frame cross-entropy training
-%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
-%WER 7.77 [ 974 / 12533, 81 ins, 158 del, 735 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_7
-# Sequence-based sMBR training
-%WER 1.61 [ 202 / 12533, 32 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
-%WER 1.62 [ 203 / 12533, 33 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_3
-%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_3
-%WER 1.64 [ 206 / 12533, 32 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
-%WER 1.63 [ 204 / 12533, 32 ins, 41 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_3
-%WER 1.64 [ 206 / 12533, 20 ins, 58 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
-
-# CNN systems (Karel - 25.9.2014)
-%WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
-# 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
-%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0 # per-frame training
-
-
 # Some system combination experiments.
 %WER 3.18 [ 398 / 12533, 60 ins, 75 del, 263 sub ] exp/combine_1_2a/decode/wer_4
 %WER 1.56 [ 196 / 12533, 27 ins, 32 del, 137 sub ] exp/combine_sgmm2_4a_3b/decode/wer_2
@@ -248,10 +230,59 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 7.33 [ 919 / 12533, 80 ins, 153 del, 686 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch3/wer_13
 %WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 
-# LSTM result
-for x in exp/lstm4f/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
-%WER 2.04 [ 256 / 12533, 18 ins, 60 del, 178 sub ] exp/lstm4f_c512_r200_c512_r200_lr0.0001_mmt0.9_clip50/decode/wer_4_0.5
-# BLSTM result
+
+
+
+### nnet1 results ###
+
+# dnn4b, MFCC,LDA,fMLLR feaures, (Karel - 30.7.2015)
+# Xent,
+%WER 1.75 [ 219 / 12533, 36 ins, 35 del, 148 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_2_0.0
+%WER 7.90 [ 990 / 12533, 90 ins, 147 del, 753 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_5_1.0
+# sMBR,
+%WER 1.77 [ 222 / 12533, 21 ins, 57 del, 144 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_4_0.0
+%WER 1.68 [ 210 / 12533, 24 ins, 43 del, 143 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_4_0.0
+%WER 1.58 [ 198 / 12533, 20 ins, 41 del, 137 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5_0.0
+
+# cnn4c, FBANK+pitch features, (Karel - 30.7.2015)
+# Xent, no-RBM,
+%WER 2.00 [ 251 / 12533, 34 ins, 54 del, 163 sub ] exp/cnn4c/decode/wer_3_0.5
+# Xent, RBM on top of CNN,
+%WER 2.04 [ 256 / 12533, 20 ins, 78 del, 158 sub ] exp/cnn4c_pretrain-dbn_dnn/decode/wer_6_0.5
+# sMBR,
+%WER 2.02 [ 253 / 12533, 35 ins, 54 del, 164 sub ] exp/cnn4c_pretrain-dbn_dnn_smbr/decode_it1/wer_5_0.0
+%WER 1.93 [ 242 / 12533, 23 ins, 62 del, 157 sub ] exp/cnn4c_pretrain-dbn_dnn_smbr/decode_it3/wer_6_0.5
+%WER 1.90 [ 238 / 12533, 29 ins, 49 del, 160 sub ] exp/cnn4c_pretrain-dbn_dnn_smbr/decode_it6/wer_6_0.0
+
+# dnn4d, FBANK+pitch, (Karel - 30.7.2015)
+# Xent,
+%WER 1.95 [ 245 / 12533, 22 ins, 63 del, 160 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn/decode/wer_4_1.0
+# sMBR,
+%WER 1.98 [ 248 / 12533, 35 ins, 50 del, 163 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it1/wer_3_0.0
+%WER 1.91 [ 239 / 12533, 19 ins, 60 del, 160 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it3/wer_5_0.5
+%WER 1.88 [ 236 / 12533, 17 ins, 61 del, 158 sub ] exp/dnn4d-fbank_pretrain-dbn_dnn_smbr/decode_it6/wer_6_0.5
+
+# dnn4e, FBANK+pitch, 2 output layers: rm + wsj, (Karel - 10.7.2015)
+%WER 1.52 [ 191 / 12533, 17 ins, 52 del, 122 sub ] exp/dnn4e-fbank_blocksoftmax/decode/wer_4_0.5 <<<[BEST]
+%WER 7.86 [ 985 / 12533, 84 ins, 160 del, 741 sub ] exp/dnn4e-fbank_blocksoftmax/decode_ug/wer_8_0.0
+
+# lstm4f, FBANK+pitch, 2LSTMs, (Karel - 30.7.2015)
+%WER 2.15 [ 270 / 12533, 20 ins, 69 del, 181 sub ] exp/lstm4f/decode/wer_5_0.0
+
+# cnn4g-2D, FBANK+pitch, 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
+%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0
+
+# dnn4h, FBANK+pitch, ``dummy ivector'', should be same as 'dnn4d', (Karel - 30.7.2015)
+# Xent, no-RBM,
+%WER 2.14 [ 268 / 12533, 29 ins, 71 del, 168 sub ] exp/dnn4h-dummy-ivec/decode/wer_4_0.0
+# Xent, RBM,
+%WER 1.84 [ 230 / 12533, 29 ins, 51 del, 150 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn/decode/wer_3_1.0
+# sMBR,
+%WER 1.83 [ 229 / 12533, 29 ins, 50 del, 150 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn_smbr/decode_it1/wer_3_1.0
+%WER 1.81 [ 227 / 12533, 29 ins, 49 del, 149 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn_smbr/decode_it3/wer_3_1.0
+%WER 1.86 [ 233 / 12533, 34 ins, 46 del, 153 sub ] exp/dnn4h-dummy-ivec_pretrain-dbn_dnn_smbr/decode_it6/wer_3_0.5
+
+# blstm4i, FBANK+pitch, (Karel - ??.6.2015) 
 %WER 2.09 [ 262 / 12533, 25 ins, 69 del, 168 sub ] exp/blstm4g/decode/wer_4_0.0
 
-
+### ^^^ nnet1 results ^^^ ###
