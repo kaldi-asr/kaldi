@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2013 Karel Vesely, Daniel Povey
+# Copyright 2012-2015 Brno University of Technology (author: Karel Vesely), Daniel Povey
 # Apache 2.0
 
 # Begin configuration section. 
@@ -9,6 +9,7 @@ feature_transform=  # non-default location of feature_transform (optional)
 model=              # non-default location of transition model (optional)
 class_frame_counts= # non-default location of PDF counts (optional)
 srcdir=             # non-default location of DNN-dir (decouples model dir from decode dir)
+ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
 stage=0 # stage=1 skips lattice generation
 nj=4
@@ -34,6 +35,8 @@ echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 3 ]; then
    echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
@@ -109,7 +112,16 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
 # add-pytel transform (optional),
 [ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
-#
+
+# add-ivector (optional),
+if [ -e $D/ivector_dim ]; then
+  ivector_dim=$(cat $D/ivector_dim)
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
+  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
+  # Append to feats
+  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+fi
 
 # Run the decoding in the queue,
 if [ $stage -le 0 ]; then
