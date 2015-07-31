@@ -100,7 +100,7 @@ struct EbwAmSgmm2Options {
     epsilon = 1.0e-40;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "EbwAmSgmm2Options: ";
     po->Register("tau-v", &tau_v, module+
                  "Smoothing constant for phone vector estimation.");

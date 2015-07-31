@@ -52,7 +52,7 @@ struct MelBanksOptions {
       : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
         vtln_high(-500), debug_mel(false), htk_mode(false) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("num-mel-bins", &num_bins,
                  "Number of triangular mel-frequency bins");
     po->Register("low-freq", &low_freq,
@@ -95,7 +95,7 @@ struct FrameExtractionOptions {
       round_to_power_of_two(true),
       snip_edges(true){ }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("sample-frequency", &samp_freq,
                  "Waveform data sample frequency (must match the waveform file, "
                  "if specified there)");
@@ -197,7 +197,7 @@ struct DeltaFeaturesOptions {
 
   DeltaFeaturesOptions(int32 order = 2, int32 window = 2):
       order(order), window(window) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("delta-order", &order, "Order of delta computation");
     po->Register("delta-window", &window,
                  "Parameter controlling window for delta computation (actual window"
@@ -233,7 +233,7 @@ struct ShiftedDeltaFeaturesOptions {
 
   ShiftedDeltaFeaturesOptions():
       window(1), num_blocks(7), block_shift(3) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("delta-window", &window, "Size of delta advance and delay.");
     po->Register("num-blocks", &num_blocks, "Number of delta blocks in advance"
                  " of each frame to be concatenated");
@@ -320,7 +320,7 @@ struct SlidingWindowCmnOptions {
       normalize_variance(false),
       center(false) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("cmn-window", &cmn_window, "Window in frames for running "
                  "average CMN computation");
     po->Register("min-cmn-window", &min_window, "Minimum CMN window "

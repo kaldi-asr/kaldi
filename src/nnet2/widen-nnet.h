@@ -39,7 +39,7 @@ struct NnetWidenConfig {
                      param_stddev_factor(1.0),
                      bias_stddev(0.5) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("hidden-layer-dim", &hidden_layer_dim, "[required option]: "
                  "target dimension of hidden layers");
     po->Register("param-stddev-factor", &param_stddev_factor, "Factor in "

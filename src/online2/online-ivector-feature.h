@@ -106,7 +106,7 @@ struct OnlineIvectorExtractionConfig {
                                    greedy_ivector_extractor(false),
                                    max_remembered_frames(1000) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("lda-matrix", &lda_mat_rxfilename, "Filename of LDA matrix, "
                  "e.g. final.mat; used for iVector extraction. ");
     po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
@@ -410,7 +410,7 @@ struct OnlineSilenceWeightingConfig {
   OnlineSilenceWeightingConfig():
       silence_weight(1.0), max_state_duration(-1) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("silence-phones", &silence_phones_str, "(RE weighting in "
                  "iVector estimation for online decoding) List of integer ids of "
                  "silence phones, separated by colons (or commas).  Data that "
@@ -426,7 +426,7 @@ struct OnlineSilenceWeightingConfig {
                  "than this will be weighted down to the silence-weight.");
   }
   // e.g. prefix = "ivector-silence-weighting"
-  void RegisterWithPrefix(std::string prefix, OptionsItf *po) {
+  void RegisterWithPrefix(std::string prefix, OptionsItf *opts) {
     ParseOptions po_prefix(prefix, po);
     this->Register(&po_prefix);
   }

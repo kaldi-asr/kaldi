@@ -88,7 +88,7 @@ struct MleAmSgmm2Options {
     full_col_cov = false;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleAmSgmm2Options: ";
     po->Register("tau-c", &tau_c, module+
                  "Count for smoothing weight update.");

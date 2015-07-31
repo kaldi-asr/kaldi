@@ -173,7 +173,7 @@ struct UbmClusteringOptions {
         : ubm_num_gauss(ncomp), reduce_state_factor(red),
           intermediate_num_gauss(interm_gauss), cluster_varfloor(vfloor),
           max_am_gauss(max_am_gauss) {}
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "UbmClusteringOptions: ";
     po->Register("max-am-gauss", &max_am_gauss, module+
                  "We first reduce acoustic model to this max #Gauss before clustering.");

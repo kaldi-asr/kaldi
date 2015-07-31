@@ -63,7 +63,7 @@ struct HTransducerConfig {
   // Note-- this Register registers the easy-to-register options
   // but not the "sym_type" which is an enum and should be handled
   // separately in main().
-  void Register (OptionsItf *po) {
+  void Register (OptionsItf *opts) {
     po->Register("transition-scale", &transition_scale,
                  "Scale of transition probs (relative to LM)");
     po->Register("reverse", &reverse,

@@ -49,7 +49,7 @@ struct VadEnergyOptions {
                       vad_energy_mean_scale(0.5),
                       vad_frames_context(5),
                       vad_proportion_threshold(0.6) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("vad-energy-threshold", &vad_energy_threshold,
                  "Constant term in energy threshold for MFCC0 for VAD (also see "
                  "--vad-energy-mean-scale)");

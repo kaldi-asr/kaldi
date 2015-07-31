@@ -61,7 +61,7 @@ struct SpeexOptions {
                   speex_bits_frame_size(106),
                   speex_wave_frame_size(320) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("sample-rate", &sample_rate, "Sample frequency of the waveform.");
     po->Register("speex-quality", &speex_quality, "Speex speech quality.");
     po->Register("speex-bits-frame-size", &speex_bits_frame_size,

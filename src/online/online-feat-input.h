@@ -335,7 +335,7 @@ struct OnlineFeatureMatrixOptions {
                    // before we give up.
   OnlineFeatureMatrixOptions(): batch_size(27),
                                 num_tries(5) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("batch-size", &batch_size,
                  "Number of feature vectors processed w/o interruption");
     po->Register("num-tries", &num_tries,

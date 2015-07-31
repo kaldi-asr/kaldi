@@ -49,7 +49,7 @@ struct NnetCombineAconfig {
                         max_learning_rate_factor(2.0),
                         min_learning_rate(0.0001) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
                  "evaluations for BFGS to use when optimizing combination weights");
     po->Register("initial-step", &initial_step, "Parameter in the optimization, "

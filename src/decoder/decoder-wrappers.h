@@ -38,7 +38,7 @@ struct AlignConfig {
 
   AlignConfig(): beam(200.0), retry_beam(0.0), careful(false) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("beam", &beam, "Decoding beam used in alignment");
     po->Register("retry-beam", &retry_beam,
                  "Decoding beam for second try at alignment");

@@ -89,7 +89,7 @@ struct OnlineNnet2FeaturePipelineConfig {
       feature_type("mfcc"), add_pitch(false) { }
       
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("feature-type", &feature_type,
                  "Base feature type [mfcc, plp, fbank]");
     po->Register("mfcc-config", &mfcc_config, "Configuration file for "

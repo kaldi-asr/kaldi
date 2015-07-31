@@ -41,7 +41,7 @@ struct PdfPriorOptions {
                       prior_scale(1.0),
                       prior_floor(1e-10) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("class-frame-counts", &class_frame_counts,
                  "Vector with frame-counts of pdfs to compute log-priors."
                  " (priors are typically subtracted from log-posteriors"

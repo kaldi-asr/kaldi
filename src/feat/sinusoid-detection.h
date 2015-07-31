@@ -269,7 +269,7 @@ struct MultiSinusoidDetectorConfig {
       max_freq(1800.0), subsample_freq(4000),
       subsample_filter_cutoff(1900.0), subsample_filter_zeros(5) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("frame-length", &frame_length_ms,
                  "Frame length in milliseconds");
     po->Register("frame-shift", &frame_shift_ms,

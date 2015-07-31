@@ -41,7 +41,7 @@ struct NBestDecoderOptions {
                          max_active(std::numeric_limits<int32>::max()),
                          n_best(1),
                          beam_delta(0.5), hash_ratio(2.0) { }
-  void Register(OptionsItf *po, bool full) {  /// if "full", use obscure
+  void Register(OptionsItf *opts, bool full) {  /// if "full", use obscure
     /// options too.
     /// Depends on program.
     po->Register("beam", &beam, "Decoder beam");

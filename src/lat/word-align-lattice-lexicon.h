@@ -126,7 +126,7 @@ struct WordAlignLatticeLexiconOpts {
   WordAlignLatticeLexiconOpts(): partial_word_label(0), reorder(true),
                                  test(false), max_expand(-1.0) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("partial-word-label", &partial_word_label, "Numeric id of "
                  "word symbol that is to be used for arcs in the word-aligned "
                  "lattice corresponding to partial words at the end of "

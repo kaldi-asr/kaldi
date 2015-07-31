@@ -99,7 +99,7 @@ struct Sgmm2SplitSubstatesConfig {
                                power(0.2),
                                max_cond(100.0),
                                min_count(40.0) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("split-substates", &split_substates, "Increase number of "
                  "substates to this overall target.");
     po->Register("max-cond-split", &max_cond, "Max condition number of smoothing "
@@ -126,7 +126,7 @@ struct Sgmm2GselectConfig {
     diag_gmm_nbest = 50;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
         " full-covariance Gaussians selected per frame.");
     po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"

@@ -54,7 +54,7 @@ struct OnlineNnet2DecodingConfig {
   
   OnlineNnet2DecodingConfig() {  decodable_opts.acoustic_scale = 0.1; }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     decoder_opts.Register(po);
     decodable_opts.Register(po);
   }

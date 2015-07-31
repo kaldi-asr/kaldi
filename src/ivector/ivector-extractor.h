@@ -51,7 +51,7 @@ struct IvectorEstimationOptions {
   double acoustic_weight;
   double max_count;
   IvectorEstimationOptions(): acoustic_weight(1.0), max_count(0.0) {}
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("acoustic-weight", &acoustic_weight,
                  "Weight on part of auxf that involves the data (e.g. 0.2); "
                  "if this weight is small, the prior will have more effect.");
@@ -108,7 +108,7 @@ struct IvectorExtractorOptions {
   bool use_weights;
   IvectorExtractorOptions(): ivector_dim(400), num_iters(2),
                              use_weights(true) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("num-iters", &num_iters, "Number of iterations in "
                  "iVector estimation (>1 needed due to weights)");
     po->Register("ivector-dim", &ivector_dim, "Dimension of iVector");
@@ -426,7 +426,7 @@ struct IvectorExtractorStatsOptions {
                          compute_auxf(true),
                          num_samples_for_weights(10),
                          cache_size(100) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("update-variances", &update_variances, "If true, update the "
                  "Gaussian variances");
     po->Register("compute-auxf", &compute_auxf, "If true, compute the "
@@ -450,7 +450,7 @@ struct IvectorExtractorEstimationOptions {
   IvectorExtractorEstimationOptions(): variance_floor_factor(0.1),
                                        gaussian_min_count(100.0),
                                        diagonalize(true) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     po->Register("variance-floor-factor", &variance_floor_factor,
                  "Factor that determines variance flooring (we floor each covar "
                  "to this times global average covariance");

@@ -66,7 +66,7 @@ struct PlpOptions {
                  cepstral_scale(1.0),
                  htk_compat(false) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     frame_opts.Register(po);
     mel_opts.Register(po);
     po->Register("lpc-order", &lpc_order,

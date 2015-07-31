@@ -63,10 +63,10 @@ struct Sgmm2FmllrConfig {
     bases_occ_scale = 0.2;
   }
 
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
-inline void Sgmm2FmllrConfig::Register(OptionsItf *po) {
+inline void Sgmm2FmllrConfig::Register(OptionsItf *opts) {
   std::string module = "Sgmm2FmllrConfig: ";
   po->Register("fmllr-iters", &fmllr_iters, module+
                "Number of iterations in FMLLR estimation.");

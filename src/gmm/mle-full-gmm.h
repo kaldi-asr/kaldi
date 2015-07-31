@@ -53,7 +53,7 @@ struct MleFullGmmOptions {
     max_condition          = 1.0e+04;
     remove_low_count_gaussians = true;
   }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleFullGmmOptions: ";
     po->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");

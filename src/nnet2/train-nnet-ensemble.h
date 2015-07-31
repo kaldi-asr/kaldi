@@ -38,7 +38,7 @@ struct NnetEnsembleTrainerConfig {
                              minibatches_per_phase(50),
                              beta(0.5) { }
   
-  void Register (OptionsItf *po) {
+  void Register (OptionsItf *opts) {
     po->Register("minibatch-size", &minibatch_size,
                  "Number of samples per minibatch of training data.");
     po->Register("minibatches-per-phase", &minibatches_per_phase,

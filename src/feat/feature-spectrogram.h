@@ -44,7 +44,7 @@ struct SpectrogramOptions {
     energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
     raw_energy(true) {}
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     frame_opts.Register(po);
     po->Register("energy-floor", &energy_floor,
                  "Floor on energy (absolute, not relative) in Spectrogram computation");
