@@ -6,6 +6,7 @@
 
 # emacs saves
 [#]*[#]
+.[#]*
 *~
 
 # Compiled Dynamic libraries
