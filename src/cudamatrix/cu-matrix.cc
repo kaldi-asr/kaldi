@@ -760,6 +760,32 @@ void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
+                                       const CuMatrixBase<Real> &src2) {
+  KALDI_ASSERT(src2.NumCols() > 0);
+  int group_size = this->NumCols() / src2.NumCols();
+  KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+
+    cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_,
+                              src1.Data(), src2.Data(), Dim(),
+                              src2.Stride(), group_size);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().GroupMaxDeriv(src1.Mat(), src2.Mat());
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::DivRowsVec(const CuVectorBase<Real> &div) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1134,6 +1160,27 @@ void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
   #endif
   {
     Mat().GroupPnorm(src.Mat(), power);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::GroupMax(const CuMatrixBase<Real> &src) {
+  int group_size = src.NumCols() / this->NumCols();
+  KALDI_ASSERT(src.NumCols() == this->NumCols() * group_size &&
+               this->NumRows() == src.NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(src.NumCols(), CU2DBLOCK), n_blocks(src.NumRows(), CU2DBLOCK));
+    cuda_group_max(dimGrid, dimBlock, this->data_, src.data_,
+                   this->Dim(), src.Stride(), group_size);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().GroupMax(src.Mat());
   }
 }
 

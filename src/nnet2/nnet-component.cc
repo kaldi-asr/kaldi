@@ -451,14 +451,7 @@ void MaxoutComponent::Propagate(const ChunkInfo &in_info,
   in_info.CheckSize(in);
   out_info.CheckSize(*out);
   KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
-  
-  int32 group_size = input_dim_ / output_dim_;
-  for (MatrixIndexT j = 0; j < output_dim_; j++) {
-    CuSubMatrix<BaseFloat> pool(out->ColRange(j, 1));
-    pool.Set(-1e20);
-    for (MatrixIndexT i = 0; i < group_size; i++)
-      pool.Max(in.ColRange(j * group_size + i, 1));
-  }
+  out->GroupMax(in);  
 }
 
 void MaxoutComponent::Backprop(const ChunkInfo &, // in_info,
@@ -468,26 +461,9 @@ void MaxoutComponent::Backprop(const ChunkInfo &, // in_info,
                                const CuMatrixBase<BaseFloat> &out_deriv,
                                Component *to_update,  
                                CuMatrix<BaseFloat> *in_deriv) const {
-  int32 group_size = input_dim_ / output_dim_;
   in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
-  for (MatrixIndexT j = 0; j < output_dim_; j++) {
-    CuSubMatrix<BaseFloat> out_j(out_value.ColRange(j, 1));
-    for (MatrixIndexT i = 0; i < group_size; i++) {
-        CuSubMatrix<BaseFloat> in_i(
-            in_value.ColRange(j * group_size + i, 1));
-        CuSubMatrix<BaseFloat> in_deriv_i(
-            in_deriv->ColRange(j * group_size + i, 1));
-        CuMatrix<BaseFloat> out_deriv_j(out_deriv.ColRange(j, 1));
-
-        // Only the pool-inputs with 'max-values'
-        // are used to back-propagate into,
-        // the rest of derivatives is zeroed-out by a mask.
-        CuMatrix<BaseFloat> mask;
-        in_i.EqualElementMask(out_j, &mask);
-        out_deriv_j.MulElements(mask);
-        in_deriv_i.AddMat(1.0, out_deriv_j);
-    }
-  }
+  in_deriv->GroupMaxDeriv(in_value, out_value);
+  in_deriv->MulRowsGroupMat(out_deriv);
 }
 
 void MaxoutComponent::Read(std::istream &is, bool binary) {

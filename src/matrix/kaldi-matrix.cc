@@ -1110,6 +1110,26 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::GroupMaxDeriv(const MatrixBase<Real> &input,
+                                     const MatrixBase<Real> &output) {
+  KALDI_ASSERT(input.NumCols() == this->NumCols() &&
+              input.NumRows() == this->NumRows());
+  KALDI_ASSERT(this->NumCols() % output.NumCols() == 0 &&
+               this->NumRows() == output.NumRows());
+
+  int group_size = this->NumCols() / output.NumCols(),
+      num_rows = this->NumRows(), num_cols = this->NumCols();
+
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    for (MatrixIndexT j = 0; j < num_cols; j++) {
+      Real input_val = input(i, j);
+      Real output_val = output(i, j / group_size);
+      (*this)(i, j) = (input_val == output_val ? 1 : 0);
+    }
+  }
+}
+
 template<typename Real>  // scales each column by scale[i].
 void MatrixBase<Real>::MulColsVec(const VectorBase<Real> &scale) {
   KALDI_ASSERT(scale.Dim() == num_cols_);
@@ -2497,6 +2517,26 @@ void MatrixBase<Real>::GroupPnorm(const MatrixBase<Real> &src, Real power) {
   for (MatrixIndexT i = 0; i < num_rows; i++)
     for (MatrixIndexT j = 0; j < num_cols; j++)
       (*this)(i, j) = src.Row(i).Range(j * group_size,  group_size).Norm(power);
+}
+
+template<typename Real>
+void MatrixBase<Real>::GroupMax(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(src.NumCols() % this->NumCols() == 0 &&
+               src.NumRows() == this->NumRows());
+  int group_size = src.NumCols() / this->NumCols(),
+      num_rows = this->NumRows(), num_cols = this->NumCols();
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    const Real *src_row_data = src.RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++) {
+      Real max_val = -1e20;
+      for (MatrixIndexT k = 0; k < group_size; k++) {
+        Real src_data = src_row_data[j * group_size + k];
+        if (src_data > max_val)
+          max_val = src_data;
+      }
+      (*this)(i, j) = max_val;
+    }
+  }
 }
 
 template<typename Real>
