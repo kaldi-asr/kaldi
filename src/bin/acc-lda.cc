@@ -43,7 +43,8 @@ int main(int argc, char *argv[]) {
     BaseFloat rand_prune = 0.0;
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write accumulators in binary mode.");
-    po.Register("rand-prune", &rand_prune, "Randomized pruning threshold for posteriors");
+    po.Register("rand-prune", &rand_prune,
+                "Randomized pruning threshold for posteriors");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {

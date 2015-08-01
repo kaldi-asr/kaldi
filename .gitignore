@@ -8,6 +8,8 @@
 [#]*[#]
 .[#]*
 *~
+# .depend.mk files
+.depend.mk
 
 # Compiled Dynamic libraries
 *.so
@@ -58,6 +60,7 @@
 /tools/CLAPACK_include
 /tools/kaldi_lm
 /tools/env.sh
+/tools/rnnlm-hs-0.1b/rnnlm
 
 # /src/
 /src/kaldi.mk
@@ -911,3 +914,26 @@
 /src/nnetbin/paste-post
 /src/nnetbin/train-transitions
 /src/online2bin/online2-wav-nnet2-latgen-threaded
+/src/nnet2/online-nnet2-decodable-test
+/src/nnet3/natural-gradient-online-test
+/src/nnet3/nnet-compile-test
+/src/nnet3/nnet-compile-utils-test
+/src/nnet3/nnet-descriptor-test
+/src/nnet3/nnet-graph-test
+/src/nnet3/nnet-nnet-test
+/src/nnet3/nnet-parse-test
+/src/nnet3/nnet-utils-test
+/src/nnet3/nnet-analyze-test
+/src/nnet3/nnet-common-test
+/src/nnet3/nnet-component-test
+/src/nnet3/nnet-compute-test
+/src/nnet3/nnet-derivative-test
+/src/nnet3/nnet-example-test
+/src/nnet3/nnet-optimize-test
+
+/src/nnet3bin/nnet3-copy-egs
+/src/nnet3bin/nnet3-get-egs
+/src/nnet3bin/nnet3-info
+/src/nnet3bin/nnet3-init
+/src/nnet3bin/nnet3-shuffle-egs
+/src/nnet3bin/nnet3-subset-egs

@@ -30,16 +30,15 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
 
-    // TODO: specify in the usage message where the example scripts are.
     const char *usage =
-        "Initialize the neural network from a config file with a line for each\n"
+        "Initialize the nnet2 neural network from a config file with a line for each\n"
         "component.  Note, this only outputs the neural net itself, not the associated\n"
         "information such as the transition-model; you'll probably want to pipe\n"
         "the output into something like nnet-am-init.\n"
         "\n"
         "Usage:  nnet-init [options] <config-in> <raw-nnet-out>\n"
         "e.g.:\n"
-        " nnet-init tree topo nnet.config 1.nnet\n";
+        " nnet-init nnet.config 1.raw\n";
     
     bool binary_write = true;
     int32 srand_seed = 0;

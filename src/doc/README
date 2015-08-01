@@ -23,39 +23,23 @@ doc/make_tools.sh
 doxygen
 cp doc/*.pptx html/;
 # get the style sheet in the html/ directory.
-# note, we actually use a modified version of the header, which is checked into
-# doc/.  
 doxygen -w html header.html footer.html stylesheet.css
 rm header.html footer.html
 mv stylesheet.css html/
-
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
 
-   echo "**First copying to kaldi-asr.org**"
-   # First copy to kaldi-asr.org/docs
-   scp html.tar.gz newrelay:/var/www/kaldi-asr
+   #may have to do this:
+   # caution, don't merge this back to trunk!  putting it to www.danielpovey.com temporarily,
+   # while nnet3 is not merged.
 
-   echo 'cd /var/www/kaldi-asr/; rm -rf html doc.old;
-        tar -xzf html.tar.gz; mv doc doc.old; mv html doc; rm -rf doc.old' \
+   scp html.tar.gz newrelay:/var/www/danielpovey/
+
+   echo 'cd /var/www/danielpovey/; rm -rf html kaldi-docs;
+        tar -xzf html.tar.gz; mv html kaldi-docs ' \
            | ssh newrelay bash
-
-   echo "**Now copying to sourceforge**"
-   # Next copy to sourceforge.
-   if true; then  # use method that works when their shell access is down.
-     rm -rf htdocs # make sure it's not left over from before.
-     mv html htdocs
-     scp -r htdocs  danielpovey@web.sourceforge.net:/home/project-web/kaldi/
-     mv htdocs html
-   else
-     scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
-     ssh danielpovey,kaldi@shell.sourceforge.net create
-     echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-         tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-          | ssh danielpovey,kaldi@shell.sourceforge.net bash
-   fi
 fi
 
 
@@ -77,6 +61,6 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
-
+# Also did similar with stylesheet. [?]
 
 

@@ -481,6 +481,175 @@ void TestCuMatrixLookup(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";  
 }
 
+template<typename Real> void TestCuMatrixCopyRows1(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<int32> reorder(dim);
+  for (int32 i = 0; i < dim; i++) {
+    reorder[i] = i;
+  }
+  CuArray<int32> reorder_cuda(reorder);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyRows(N, reorder_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixCopyRows2(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<const Real*> reorder_src(dim, NULL);
+  for (int32 i = 0; i < dim; i++) {
+    reorder_src[i] = N.RowData(i);
+  }
+  CuArray<const Real*> reorder_src_cuda(reorder_src);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyRows(reorder_src_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixCopyToRows(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<Real*> reorder_dst(dim, NULL);
+  for (int32 i = 0; i < dim; i++) {
+    reorder_dst[i] = N.RowData(i);
+  }
+  CuArray<Real*> reorder_dst_cuda(reorder_dst);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.CopyToRows(reorder_dst_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::CopyToRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixAddRows1(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<int32> reorder(dim);
+  for (int32 i = 0; i < dim; i++) {
+    reorder[i] = i;
+  }
+  CuArray<int32> reorder_cuda(reorder);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.AddRows(0.5, N, reorder_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixAddRows2(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<const Real*> reorder_src(dim, NULL);
+  for (int32 i = 0; i < dim; i++) {
+    reorder_src[i] = N.RowData(i);
+  }
+  CuArray<const Real*> reorder_src_cuda(reorder_src);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.AddRows(0.5, reorder_src_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixAddToRows(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<Real*> reorder_dst(dim, NULL);
+  for (int32 i = 0; i < dim; i++) {
+    reorder_dst[i] = N.RowData(i);
+  }
+  CuArray<Real*> reorder_dst_cuda(reorder_dst);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.AddToRows(0.5, reorder_dst_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddToRows" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixAddRowRanges(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+
+  std::vector<Int32Pair> indexes(dim);
+  for (int32 i = 0; i < dim; i++) {
+    indexes[i].first = i;
+    indexes[i].second = i + 1;
+  }
+  CuArray<Int32Pair> indexes_cuda(indexes);
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.AddRowRanges(N, indexes_cuda);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddRowRanges" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -533,6 +702,20 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++) 
     TestCuMatrixLookup<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixCopyRows1<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixCopyRows2<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixCopyToRows<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixAddRows1<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixAddRows2<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixAddToRows<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++) 
+    TestCuMatrixAddRowRanges<Real>(sizes[s]);
 }
 
 

@@ -242,6 +242,8 @@ void CuVectorBase<Real>::SetRandn() {
 
 template<typename Real>
 Real CuVectorBase<Real>::Sum() const {
+  if (dim_ == 0)
+    return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -1089,7 +1091,8 @@ template<typename Real>
 void CuVectorBase<Real>::AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat,
                                       Real beta) {
   KALDI_ASSERT(mat.NumCols() == Dim());
-  
+  if (Dim() == 0)
+    return;
   CuVector<Real> ones(mat.NumRows());
   ones.Set(1.0);
   this->AddMatVec(alpha, mat, kTrans, ones, beta);

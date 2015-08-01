@@ -141,8 +141,6 @@
  For most purposes, the "trunk" is the version you should use, and you should 
  frequently do "svn up" to keep it up to date; see \ref install for more details.
 
- See \ref roadmap for details of features we are currently working on.
-
   @section about_reference Referencing Kaldi in papers
 
 You can use the following reference if you want to cite Kaldi in papers.

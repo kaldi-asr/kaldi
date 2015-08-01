@@ -2,6 +2,7 @@
 
 // Copyright 2012    Johns Hopkins University (author: Daniel Povey)
 //                   Frantisek Skala, Wei Shi
+//           2015    Tom Ko
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -663,7 +664,7 @@ template void CompressedMatrix::CopyToMat(int32,
                int32,
                MatrixBase<double> *dest) const;
 
-void CompressedMatrix::Destroy() {
+void CompressedMatrix::Clear() {
   if (data_ != NULL) {
     delete [] static_cast<float*>(data_);
     data_ = NULL;
@@ -675,7 +676,7 @@ CompressedMatrix::CompressedMatrix(const CompressedMatrix &mat): data_(NULL) {
 }
 
 CompressedMatrix &CompressedMatrix::operator = (const CompressedMatrix &mat) {
-  Destroy(); // now this->data_ == NULL.
+  Clear(); // now this->data_ == NULL.
   if (mat.data_ != NULL) {
     MatrixIndexT data_size = DataSize(*static_cast<GlobalHeader*>(mat.data_));
     data_ = AllocateData(data_size);

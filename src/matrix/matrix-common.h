@@ -54,6 +54,7 @@ template<typename Real> class Matrix;
 template<typename Real> class SpMatrix;
 template<typename Real> class TpMatrix;
 template<typename Real> class PackedMatrix;
+template<typename Real> class SparseMatrix;
 
 // these are classes that won't be defined in this
 // directory; they're mostly needed for friend declarations.

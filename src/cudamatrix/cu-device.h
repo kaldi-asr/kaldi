@@ -95,6 +95,11 @@ class CuDevice {
   /// Check if GPU is in good condition by multiplying small matrices on GPU+CPU.
   /// Overheated GPUs may give inaccurate results, which we want to detect.
   void CheckGpuHealth();
+
+  /// If Enabled(), returns the number n of bytes such that the matrix stride
+  /// will always be a multiple of n (from properties_.textureAlignment).
+  /// Otherwise, return 16, which is the stride used for CPU matrices.
+  int32 GetMatrixAlignment() const;
   
  private:
   CuDevice();

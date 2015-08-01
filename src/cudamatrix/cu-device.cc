@@ -426,6 +426,10 @@ void CuDevice::PrintProfile() {
 
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
 // WARNING! the CUDA API is inconsistent accross versions!
+#ifdef _MSC_VER
+	size_t mem_free, mem_total;
+	cuMemGetInfo_v2(&mem_free, &mem_total);
+#else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
   size_t mem_free, mem_total;
@@ -465,6 +469,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     }
 #endif
   }
+#endif
   // copy the output values outside
   if(NULL != free) *free = mem_free;
   if(NULL != total) *total = mem_total;

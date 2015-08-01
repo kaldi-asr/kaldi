@@ -137,6 +137,11 @@ class MatrixBase {
 
   /// Copy from compressed matrix.
   void CopyFromMat(const CompressedMatrix &M);
+
+  /// Copy from sparse matrix.
+  template<typename OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &M,
+                    MatrixTransposeType trans = kNoTrans);
   
   /// Copy given spmatrix. (no resize is done).
   template<typename OtherReal>
@@ -269,21 +274,50 @@ class MatrixBase {
   void Transpose();
 
   /// Copies column r from column indices[r] of src.
-  /// As a special case, if indexes[i] == -1, sets column i to zero
-  /// indices.size() must equal this->NumCols(),
-  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
+  /// As a special case, if indexes[i] == -1, sets column i to zero.
+  /// all elements of "indices" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const MatrixBase<Real> &src,
-                const std::vector<MatrixIndexT> &indices);
+                const MatrixIndexT *indices);
 
-  /// Copies row r from row indices[r] of src.
-  /// As a special case, if indexes[i] == -1, sets row i to zero
-  /// "reorder".size() must equal this->NumRows(),
-  /// all elements of "reorder" must be in [-1, src.NumRows()-1],
+  /// Copies row r from row indices[r] of src (does nothing
+  /// As a special case, if indexes[i] == -1, sets row i to zero.
+  /// all elements of "indices" must be in [-1, src.NumRows()-1],
   /// and src.NumCols() must equal this.NumCols()
   void CopyRows(const MatrixBase<Real> &src,
-                const std::vector<MatrixIndexT> &indices);
+                const MatrixIndexT *indices);
   
+  /// Copies row r of this matrix from an array of floats at the location given
+  /// by src[r]. If any src[r] is NULL then this.Row(r) will be set to zero.
+  /// Note: we are using "pointer to const pointer to const object" for "src",
+  ///       because we may create "src" by calling Data() of const CuArray 
+  void CopyRows(const Real *const *src);
+
+  /// Copies row r of this matrix to the array of floats at the location given
+  /// by dst[r]. If dst[r] is NULL, does not copy anywhere.  Requires that none
+  /// of the memory regions pointed to by the pointers in "dst" overlap (e.g.
+  /// none of the pointers should be the same).
+  void CopyToRows(Real *const *dst) const;
+
+  /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
+  /// If indexes[r] < 0, does not add anything. all elements of "indexes" must
+  /// be in [-1, src.NumRows()-1], and src.NumCols() must equal this.NumCols().
+  void AddRows(Real alpha,
+               const MatrixBase<Real> &src,
+               const MatrixIndexT *indexes);
+
+  /// Does for each row r, this.Row(r) += alpha * src[r], treating src[r] as the
+  /// beginning of a region of memory representing a vector of floats, of the
+  /// same length as this.NumCols(). If src[r] is NULL, does not add anything.
+  void AddRows(Real alpha, const Real *const *src);
+
+  /// For each row r of this matrix, adds it (times alpha) to the array of
+  /// floats at the location given by dst[r]. If dst[r] is NULL, does not do
+  /// anything for that row. Requires that none of the memory regions pointed
+  /// to by the pointers in "dst" overlap (e.g. none of the pointers should be
+  /// the same).
+  void AddToRows(Real alpha, Real *const *dst) const;
+ 
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 
