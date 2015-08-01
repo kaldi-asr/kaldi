@@ -97,6 +97,7 @@ void ElementwiseProductComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
   output_dim_ = output_dim;
   KALDI_ASSERT(input_dim_ > 0 && output_dim_ >= 0);
+  KALDI_ASSERT(input_dim_ > output_dim_);
   KALDI_ASSERT(input_dim_ % output_dim_ == 0);
 }
 
@@ -139,15 +140,19 @@ void ElementwiseProductComponent::Backprop(const std::string &debug_info,
   if (!in_deriv)  return;  
   int32 num_inputs = input_dim_ / output_dim_;
   for (int32 i = 0; i < num_inputs; i++)  {
-    CuSubMatrix<BaseFloat> current_in_value(in_value, 0, in_value.NumRows(),
-                                            i * output_dim_,
-                                            (i + 1) * output_dim_);
     CuSubMatrix<BaseFloat> current_in_deriv(*in_deriv, 0, in_deriv->NumRows(),
                                             i * output_dim_,
                                             (i + 1) * output_dim_);
-    current_in_deriv.CopyFromMat(out_value);
-    current_in_deriv.DivElements(current_in_value);
-    current_in_deriv.MulElements(out_deriv);
+    current_in_deriv.CopyFromMat(out_deriv);
+    for (int32 j = 0; j < num_inputs; j++)  {
+      if (i == j)
+        continue;
+      CuSubMatrix<BaseFloat> in_value_partition(in_value, 0,
+                                                in_value.NumRows(),
+                                                j * output_dim_,
+                                                (j + 1) * output_dim_);
+      current_in_deriv.MulElements(in_value_partition);
+    }
   }
 }
 

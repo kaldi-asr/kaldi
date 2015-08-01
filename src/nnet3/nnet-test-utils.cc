@@ -369,7 +369,7 @@ void GenerateConfigSequence(
     const NnetGenerationConfig &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 3);
+  int32 network_type = RandInt(0, 4);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);

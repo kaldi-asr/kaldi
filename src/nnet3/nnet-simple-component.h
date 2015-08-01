@@ -85,7 +85,7 @@ class ElementwiseProductComponent: public Component {
     Init(input_dim, output_dim);
   }
   virtual int32 Properties() const {
-    return kSimpleComponent|kLinearInInput|kBackpropNeedsInput|kBackpropNeedsOutput;
+    return kSimpleComponent|kBackpropNeedsInput;
   }
   ElementwiseProductComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "ElementwiseProductComponent"; }
