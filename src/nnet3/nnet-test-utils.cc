@@ -1,6 +1,7 @@
 // nnet3/nnet-test-utils.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University (author: Vijayaditya Peddinti)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -203,6 +204,167 @@ void GenerateConfigSequenceRnn(
 }
 
 
+// This generates a single config corresponding to an LSTM.
+// based on the equations in 
+// Sak et. al. "LSTM based RNN architectures for LVCSR", 2014
+// We name the components based on the following equations (Eqs 7-15 in paper)
+//      i(t) = S(Wix * x(t) + Wir * r(t-1) + Wic * c(t-1) + bi)
+//      f(t) = S(Wfx * x(t) + Wfr * r(t-1) + Wfc * c(t-1) + bf) 
+//      c(t) = {f(t) .* c(t-1)} + {i(t) .* g(Wcx * x(t) + Wcr * r(t-1) + bc)}
+//      o(t) = S(Wox * x(t) + Wor * r(t-1) + Woc * c(t) + bo)
+//      m(t) = o(t) .* h(c(t))
+//      r(t) = Wrm * m(t)
+//      p(t) = Wpm * m(t)
+//      y(t) = Wyr * r(t) + Wyp * p(t) + by
+// where S : sigmoid
+      
+// matrix with feed-forward connections
+// from the input x(t)
+// W*x = [Wix^T, Wfx^T, Wcx^T, Wox^T]^T 
+
+// matrix with recurrent (feed-back) connections
+// from the output projection
+// W*r = [Wir^T, Wfr^T, Wcr^T, Wor^T]^T
+
+// matrix to generate r(t) and p(t)
+// m(t) 
+// W*m = [Wrm^T, Wpm^T]^T
+// matrix to generate y(t)
+// Wy* = [Wyr^T, Wyp^T] 
+ 
+// Diagonal matrices with recurrent connections and feed-forward connections
+// from the cell output c(t) since these can be both recurrent and
+// feed-forward we dont combine the matrices
+// Wic, Wfc, Woc
+
+void GenerateConfigSequenceLstm(
+    const NnetGenerationConfig &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream os;
+
+  std::vector<int32> splice_context;
+  for (int32 i = -5; i < 4; i++)
+    if (Rand() % 3 == 0)
+      splice_context.push_back(i);
+  if (splice_context.empty())
+    splice_context.push_back(0);
+  
+  int32 input_dim = 10 + Rand() % 20,
+      spliced_dim = input_dim * splice_context.size(),
+      output_dim = 100 + Rand() % 200,
+      cell_dim = 40 + Rand() % 50,
+      projection_dim = std::ceil(cell_dim / (Rand() % 10 + 2));
+
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  // Parameter Definitions W*
+  os << "component name=W*x type=NaturalGradientAffineComponent input-dim="
+     << spliced_dim << " output-dim=" << 4 * cell_dim << std::endl;
+  os << "component name=W*r type=NaturalGradientAffineComponent input-dim="
+     << projection_dim << " output-dim=" << 4 * cell_dim << std::endl;
+  os << "component name=W*m type=NaturalGradientAffineComponent input-dim="
+     << cell_dim << " output-dim=" << 2 * projection_dim  << std::endl;
+  os << "component name=Wyr type=NaturalGradientAffineComponent input-dim="
+     << projection_dim << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Wyp type=NaturalGradientAffineComponent input-dim="
+     << projection_dim << " output-dim=" << cell_dim << std::endl;
+  // Defining the diagonal matrices
+  os << "component name=Wic type=NaturalGradientDiagonalAffineComponent"
+     << " input-dim=" << cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Wfc type=NaturalGradientDiagonalAffineComponent"
+     << " input-dim=" << cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Woc type=NaturalGradientDiagonalAffineComponent"
+     << " input-dim=" << cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
+  // Defining the final affine transform 
+  os << "component name=final_affine type=NaturalGradientAffineComponent" 
+     << "input-dim=" << cell_dim << " output-dim=" << output_dim << std::endl;
+  os << "component name=logsoftmax type=LogSoftmaxComponent dim="
+     << output_dim << std::endl;
+
+  // Defining the non-linearities
+  os << "component name=i_t type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=f_t type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=o_t type=SigmoidComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=g type=TanhComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=h type=TanhComponent dim="
+     << cell_dim << std::endl;
+  os << "component name=f_t.*c_{t-1} type=ElementwiseMultiply dim="
+     << 2 * cell_dim << std::endl;
+  os << "component name=i_t.*g type=ElementwiseMultiply dim="
+     << 2 * cell_dim << std::endl;
+    
+
+  // Defining the computations
+  os << "component-node name=W*x component=affine1 input=Append(";
+  for (size_t i = 0; i < splice_context.size(); i++) {
+    int32 offset = splice_context[i];
+    os << "Offset(input, " << offset << ")";
+    if (i + 1 < splice_context.size())
+      os << ", ";
+  }
+  os << ")\n";
+
+  os << "component-node name=W*r component=W*r input=Offset(r_t, -1)\n";
+  os << "component-node name=W*m component=W*m input=m_t \n";
+  os << "component-node name=Wic component=Wic input=Offset(c_t, -1)\n";
+  os << "component-node name=Wfc component=Wfc input=Offset(c_t, -1)\n";
+  os << "component-node name=Woc component=Woc input=c_t\n";
+
+  // Splitting the outputs of W*m node
+  os << "dim-range-node name=r_t input-node=W*m dim-offset=0"
+     << "dim=" << projection_dim << std::endl;
+  os << "dim-range-node name=p_t input-node=W*m dim-offset=" << projection_dim
+     << "dim=" << projection_dim << std::endl;
+  
+  // Splitting outputs of W*x node
+  os << "dim-range-node name=W_{ix}*x_t input_node=W*x dim-offset=0"
+     << "dim=" << cell_dim << std::endl;
+  os << "dim-range-node name=W_{fx}*x_t input_node=W*x "
+     << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
+  os << "dim-range-node name=W_{cx}*x_t input_node=W*x "
+     << "dim-offset=" << 2 * cell_dim << " dim="<<cell_dim << std::endl;
+  os << "dim-range-node name=W_{ox}*x_t input_node=W*x "
+     << "dim-offset=" << 3 * cell_dim << " dim="<<cell_dim << std::endl;
+  
+  // Splitting outputs of W*r node
+  os << "dim-range-node name=W_{ir}*r_{t-1} input_node=W*r dim-offset=0"
+     << "dim=" << cell_dim << std::endl;
+  os << "dim-range-node name=W_{fr}*r_{t-1} input_node=W*r "
+     << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
+  os << "dim-range-node name=W_{cr}*r_{t-1} input_node=W*r "
+     << "dim-offset=" << 2 * cell_dim << " dim="<<cell_dim << std::endl;
+  os << "dim-range-node name=W_{or}*r_{t-1} input_node=W*r "
+     << "dim-offset=" << 3 * cell_dim << " dim="<<cell_dim << std::endl;
+  os << "c_t = Sum(f_t.*c_{t-1}, i_t.*g)\n";
+
+  // Non-linear operations
+  os << "component-node name=i_t component=i_t input=Sum(W_{ix}*x_t, W_{ir}_*r_{t-1}, W_{ic}*c_{t-1})\n";
+  os << "component-node name=f_t component=f_t input=Sum(W_{fx}*x_t, W_{fr}_*r_{t-1}, W_{fc}*c_{t-1})\n";
+  os << "component-node name=o_t component=o_t input=Sum(W_{ox}*x_t, W_{or}_*r_{t-1}, W_{oc}*c_t)\n";
+  os << "component-node name=f_t.*c_{t-1} input=Append(f_t, Offset(c_t, -1))\n";
+  os << "component-node name=i_t.*g input=Append(i_t, g)\n";
+  
+  os << "component-node name=g component=g input=Sum(W_{cx}*x_t, W_{cr}_*r_{t-1})\n";
+  os << "component-node name=h component=h input=c_t\n";
+  
+  // Final affine transform
+  os << "component-node name=Wyr input_node=r_t\n";
+  os << "component-node name=Wyp input_node=p_t\n";
+
+  os << "component-node name=final_affine component=final_affine input=Sum(Wyr, Wyp)\n";
+  
+  os << "component-node name=output_nonlin component=logsoftmax input=final_affine\n";
+  os << "output-node name=posteriors input=output_nonlin\n";
+  
+  configs->push_back(os.str());
+}
+ 
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
@@ -227,6 +389,18 @@ start:
           !opts.allow_nonlinearity)
         goto start;
       GenerateConfigSequenceRnn(opts, configs);
+      break;
+    case 4:
+      if (!opts.allow_recursion || !opts.allow_context ||
+          !opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceLstm(opts, configs);
+      break;
+    case 5:
+      if (!opts.allow_recursion || !opts.allow_context ||
+          !opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceLstm(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";
@@ -382,7 +556,6 @@ static void GenerateRandomComponentConfig(std::string *component_type,
   }
   *config = os.str();
 }
-
 
 /// Generates random simple component for testing.
 Component *GenerateRandomSimpleComponent() {

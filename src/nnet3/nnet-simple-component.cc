@@ -93,6 +93,89 @@ std::string PnormComponent::Info() const {
 }
 
 
+void ElementwiseProductComponent::Init(int32 input_dim, int32 output_dim)  {
+  input_dim_ = input_dim;
+  output_dim_ = output_dim;
+  KALDI_ASSERT(input_dim_ > 0 && output_dim_ >= 0);
+  KALDI_ASSERT(input_dim_ % output_dim_ == 0);
+}
+
+void ElementwiseProductComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 input_dim = 0;
+  int32 output_dim = 0;
+  bool ok = cfl->GetValue("output-dim", &output_dim) &&
+      cfl->GetValue("input-dim", &input_dim);
+  if (!ok || cfl->HasUnusedValues() || output_dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(input_dim, output_dim);
+}
+
+
+void ElementwiseProductComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumCols() == input_dim_);
+  int32 num_inputs = input_dim_ / output_dim_;
+  for (int32 i = 0; i < num_inputs; i++)  {
+    CuSubMatrix<BaseFloat> current_in(in, 0, in.NumRows(),
+                                      i * output_dim_, (i + 1) * output_dim_);
+    if (i == 0) {
+      out->CopyFromMat(current_in);
+    } else  {
+      out->MulElements(current_in);
+    }
+  }
+}
+
+void ElementwiseProductComponent::Backprop(const std::string &debug_info,
+                              const ComponentPrecomputedIndexes *indexes,
+                              const CuMatrixBase<BaseFloat> &in_value,
+                              const CuMatrixBase<BaseFloat> &out_value,                        
+                              const CuMatrixBase<BaseFloat> &out_deriv,
+                              Component *to_update,
+                              CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (!in_deriv)  return;  
+  int32 num_inputs = input_dim_ / output_dim_;
+  for (int32 i = 0; i < num_inputs; i++)  {
+    CuSubMatrix<BaseFloat> current_in_value(in_value, 0, in_value.NumRows(),
+                                            i * output_dim_,
+                                            (i + 1) * output_dim_);
+    CuSubMatrix<BaseFloat> current_in_deriv(*in_deriv, 0, in_deriv->NumRows(),
+                                            i * output_dim_,
+                                            (i + 1) * output_dim_);
+    current_in_deriv.CopyFromMat(out_value);
+    current_in_deriv.DivElements(current_in_value);
+    current_in_deriv.MulElements(out_deriv);
+  }
+}
+
+void ElementwiseProductComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ElementwiseProductComponent>",
+                       "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "</ElementwiseProductComponent>");
+}
+
+void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ElementwiseProductComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "</ElementwiseProductComponent>");
+}
+
+std::string ElementwiseProductComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim = " << input_dim_
+         << ", output-dim = " << output_dim_;
+  return stream.str();
+}
+
 const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
 // root-mean-square equals 1.0.

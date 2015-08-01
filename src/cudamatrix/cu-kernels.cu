@@ -417,6 +417,16 @@ static void _mul_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_str
 
 template<typename Real>
 __global__
+static void _div_elements(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda dst_index = i + j*dst_d.stride, src_index = i + j*src_stride;
+  if (i < dst_d.cols  &&  j < dst_d.rows)
+    mat[dst_index] = mat[dst_index] / A[src_index];
+}
+
+template<typename Real>
+__global__
 static void _max(Real* mat, const Real* A, MatrixDim dst_d, int src_stride) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -2159,6 +2169,10 @@ void cudaF_mul_elements(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim 
   _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
+void cudaF_div_elements(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride) {
+  _div_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
+}
+
 void cudaF_max(dim3 Gr, dim3 Bl, float* mat, const float* A, MatrixDim dst_d, int src_stride) {
   _max<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
@@ -2594,6 +2608,10 @@ void cudaD_apply_log(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 
 void cudaD_mul_elements(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride) {
   _mul_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
+}
+
+void cudaD_div_elements(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride) {
+  _div_elements<<<Gr,Bl>>>(mat,A,dst_d,src_stride); 
 }
 
 void cudaD_max(dim3 Gr, dim3 Bl, double* mat, const double* A, MatrixDim dst_d, int src_stride) {
