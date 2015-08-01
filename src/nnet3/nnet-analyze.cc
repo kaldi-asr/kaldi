@@ -498,7 +498,7 @@ void ComputeMatrixAccesses(
         
 
 ComputationChecker::ComputationChecker(
-    const CheckComputationConfig &config,
+    const CheckComputationOptions &config,
     const Nnet &nnet,
     const ComputationRequest &request,
     const NnetComputation &computation):

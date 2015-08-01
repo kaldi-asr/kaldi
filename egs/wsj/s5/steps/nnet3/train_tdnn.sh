@@ -371,7 +371,7 @@ else
     parallel_train_opts="--num-threads=$num_threads"
     train_queue_opt="--num-threads $num_threads"
   else
-    parallel_suffix="-simple"
+    parallel_suffix=""
   fi
 fi
 

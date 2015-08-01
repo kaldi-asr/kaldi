@@ -156,6 +156,12 @@ void NonlinearComponent::StoreStatsInternal(
   }
 }
 
+void NonlinearComponent::ZeroStats() {
+  value_sum_.SetZero();
+  deriv_sum_.SetZero();
+  count_ = 0.0;
+}
+
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   KALDI_ASSERT(InputDim() == OutputDim());  // always the case

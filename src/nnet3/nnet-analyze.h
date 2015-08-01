@@ -307,18 +307,18 @@ void ComputeCommandAttributes(
     std::vector<CommandAttributes> *attributes);
 
 
-struct CheckComputationConfig {
+struct CheckComputationOptions {
   // do the check_rewrite check only for a non-optimized computation, it may
   // legitimately fail after optimization.  see code for details.
   bool check_rewrite;
 
-  CheckComputationConfig(): check_rewrite(false) { }
+  CheckComputationOptions(): check_rewrite(false) { }
 };
 
 
 class ComputationChecker {
  public:
-  ComputationChecker(const CheckComputationConfig &config,
+  ComputationChecker(const CheckComputationOptions &config,
                      const Nnet &nnet,
                      const ComputationRequest &request,
                      const NnetComputation &computation);
@@ -338,7 +338,7 @@ class ComputationChecker {
   void CheckComputationMatrixAccesses() const;
 
 
-  const CheckComputationConfig &config_;
+  const CheckComputationOptions &config_;
   const Nnet &nnet_;
   const ComputationRequest &request_;
   const NnetComputation &computation_;

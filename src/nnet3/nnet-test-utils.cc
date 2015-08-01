@@ -29,7 +29,7 @@ namespace nnet3 {
 // A super-simple case that is just a single affine component, no nonlinearity,
 // no splicing.
 void GenerateConfigSequenceSimplest(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
@@ -48,7 +48,7 @@ void GenerateConfigSequenceSimplest(
 
 // A setup with context and an affine component, but no nonlinearity.
 void GenerateConfigSequenceSimpleContext(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
@@ -86,7 +86,7 @@ void GenerateConfigSequenceSimpleContext(
 // Generate a single config with one input, splicing, and one hidden layer.
 // Also sometimes generate a part of the config that adds a new hidden layer.
 void GenerateConfigSequenceSimple(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
@@ -157,7 +157,7 @@ void GenerateConfigSequenceSimple(
 
 // This generates a single config corresponding to an RNN.
 void GenerateConfigSequenceRnn(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
@@ -204,7 +204,7 @@ void GenerateConfigSequenceRnn(
 
 
 void GenerateConfigSequence(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
   int32 network_type = RandInt(0, 3);

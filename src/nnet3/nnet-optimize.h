@@ -29,7 +29,7 @@ namespace nnet3 {
 // Options class for optimizing a NnetComputation The main projected use for
 // this is in debugging the optimization code itself, so that if an error is
 // detected, we can work out which optimization was responsible for the error.
-struct NnetOptimizeConfig {
+struct NnetOptimizeOptions {
   bool optimize;  // setting this false disallow all optimization.
   bool propagate_in_place;
   bool backprop_in_place;
@@ -37,12 +37,12 @@ struct NnetOptimizeConfig {
   bool initialize_undefined;
   bool move_sizing_commands;
 
-  NnetOptimizeConfig(): optimize(true),
-                        propagate_in_place(true),
-                        backprop_in_place(true),
-                        remove_assignments(true),
-                        initialize_undefined(true),
-                        move_sizing_commands(true) { }
+  NnetOptimizeOptions(): optimize(true),
+                         propagate_in_place(true),
+                         backprop_in_place(true),
+                         remove_assignments(true),
+                         initialize_undefined(true),
+                         move_sizing_commands(true) { }
   
   void Register(OptionsItf *po) {
   }
@@ -53,7 +53,7 @@ struct NnetOptimizeConfig {
 /// The rest of this file contains various things that are
 /// called from this, and which you probably won't need to call
 /// directly.
-void Optimize(const NnetOptimizeConfig &config,
+void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               const ComputationRequest &request,
               NnetComputation *computation);
@@ -67,7 +67,7 @@ class CachingOptimizingCompiler {
   CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
   
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const NnetOptimizeConfig &opt_config):
+                            const NnetOptimizeOptions &opt_config):
       nnet_(nnet), opt_config_(opt_config) { }
 
   /// Does the compilation and returns a const pointer to
@@ -75,7 +75,7 @@ class CachingOptimizingCompiler {
   const NnetComputation* Compile(const ComputationRequest  &request);
  private:
   const Nnet &nnet_;
-  NnetOptimizeConfig opt_config_;
+  NnetOptimizeOptions opt_config_;
   ComputationRequest request_;
   NnetComputation computation_;
 };
@@ -116,7 +116,7 @@ class CachingOptimizingCompiler {
  */
 class VariableMergingOptimizer {
  public:
-  VariableMergingOptimizer(const NnetOptimizeConfig &config,
+  VariableMergingOptimizer(const NnetOptimizeOptions &config,
                            const Nnet &nnet,
                            const ComputationRequest &request,
                            NnetComputation *computation);
@@ -156,7 +156,7 @@ class VariableMergingOptimizer {
 
   void Initialize();
 
-  const NnetOptimizeConfig &config_;
+  const NnetOptimizeOptions &config_;
   const Nnet &nnet_;
   const ComputationRequest &request_;
   NnetComputation *computation_;

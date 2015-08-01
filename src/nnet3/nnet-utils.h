@@ -79,6 +79,9 @@ BaseFloat DotProduct(const Nnet &nnet1,
 ///  be checking, and we may add more later on.
 bool IsSimpleNnet(const Nnet &nnet);
 
+/// Zeroes the component stats in all nonlinear components in the nnet.
+void ZeroComponentStats(Nnet *nnet);
+
 
 /// ComputeNnetContext computes the left-context and right-context of a nnet.
 /// The nnet must satisfy IsSimpleNnet(nnet).

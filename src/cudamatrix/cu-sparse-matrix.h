@@ -46,6 +46,8 @@ class CuSparseMatrix {
 
   MatrixIndexT NumElements() const { return elements_.Dim(); }
 
+  Real Sum() const;
+
   // returns pointer to element data, or NULL if empty (use with NumElements()).
   // This should only be called when CUDA is enabled.
   MatrixElement<Real> *Data();

@@ -49,12 +49,13 @@ void ShiftTime(int32 t_offset,
                const std::vector<std::string> &exclude_names,
                NnetExample *eg);
 
-/**  This function extracts from a NnetExample (which should already have
-     been frame-selected, if desired, and merged into a minibatch) a
-     ComputationRequest (which basically takes the indexes and ignores
-     the actual data).
+/**  This function takes a NnetExample (which should already have
+     been frame-selected, if desired, and merged into a minibatch) an produces
+     a ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do,
      you can create the ComputationRequest manually.
+     Assumes that if need_model_derivative is true, you will be supplying
+     derivatives w.r.t. all outputs.
 */
 void GetComputationRequest(const Nnet &nnet,
                            const NnetExample &eg,
@@ -67,4 +68,4 @@ void GetComputationRequest(const Nnet &nnet,
 } // namespace nnet3
 } // namespace kaldi
 
-#endif // KALDI_NNET3_NNET_EXAMPLE_H_
+#endif // KALDI_NNET3_NNET_EXAMPLE_UTILS_H_

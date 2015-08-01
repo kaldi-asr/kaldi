@@ -26,7 +26,7 @@ namespace nnet3 {
 
 void UnitTestNnetContext() {
   for (int32 n = 0; n < 20; n++) {
-    struct NnetGenerationConfig gen_config;
+    struct NnetGenerationOptions gen_config;
     
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);

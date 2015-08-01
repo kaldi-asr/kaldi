@@ -30,7 +30,7 @@ namespace nnet3 {
 /** @file
     This file contains various routines that are useful in test code.
 */
-struct NnetGenerationConfig {
+struct NnetGenerationOptions {
   bool allow_context;
   bool allow_nonlinearity;
   bool allow_recursion;
@@ -39,7 +39,7 @@ struct NnetGenerationConfig {
   bool allow_multiple_outputs;
   bool allow_final_nonlinearity;
 
-  NnetGenerationConfig():
+  NnetGenerationOptions():
       allow_context(true),
       allow_nonlinearity(true),
       allow_recursion(true),
@@ -52,7 +52,7 @@ struct NnetGenerationConfig {
 /** Generates a sequence of at least one config files, output as strings, where
     the first in the sequence is the initial nnet, and the remaining ones may do
     things like add layers.  */
-void GenerateConfigSequence(const NnetGenerationConfig &opts,
+void GenerateConfigSequence(const NnetGenerationOptions &opts,
                             std::vector<std::string> *configs);
 
 

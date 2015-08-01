@@ -201,5 +201,13 @@ BaseFloat DotProduct(const Nnet &nnet1,
 }
 
 
+void ZeroComponentStats(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    comp->ZeroStats();  // for some components, this won't do anything.
+  }
+}
+
+
 } // namespace nnet3
 } // namespace kaldi

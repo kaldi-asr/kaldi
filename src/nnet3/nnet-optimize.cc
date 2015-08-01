@@ -384,7 +384,7 @@ bool ReplaceInInput(
 }
 
 VariableMergingOptimizer::VariableMergingOptimizer(
-    const NnetOptimizeConfig &config,
+    const NnetOptimizeOptions &config,
     const Nnet &nnet,
     const ComputationRequest &request,
     NnetComputation *computation):
@@ -696,7 +696,7 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
   }
 }
 
-void Optimize(const NnetOptimizeConfig &config,
+void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               const ComputationRequest &request,
               NnetComputation *computation) {
@@ -732,7 +732,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       KALDI_LOG << "Generated computation is: " << os.str();
     }
     { // some checking.
-      CheckComputationConfig check_config;
+      CheckComputationOptions check_config;
       // we can do the rewrite check since it's before optimization.
       check_config.check_rewrite = true;  
       ComputationChecker checker(check_config, nnet_, request_,
@@ -741,7 +741,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     }
     Optimize(opt_config_, nnet_, request_, &computation_);
     { // check the computation again.
-      CheckComputationConfig check_config;
+      CheckComputationOptions check_config;
       ComputationChecker checker(check_config, nnet_, request_, computation_);
       checker.Check();
     }

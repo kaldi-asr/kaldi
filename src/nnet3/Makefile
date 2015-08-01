@@ -21,7 +21,7 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
   nnet-example.o nnet-nnet.o nnet-compile-utils.o nnet-nnet.o \
   nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
-  nnet-compute.o nnet-example-utils.o
+  nnet-compute.o nnet-example-utils.o nnet-training.o
 
 LIBNAME = kaldi-nnet3
 

@@ -26,7 +26,7 @@ namespace nnet3 {
 
 void UnitTestNnetIo() {
   for (int32 n = 0; n < 100; n++) {
-    struct NnetGenerationConfig gen_config;
+    struct NnetGenerationOptions gen_config;
     
     bool binary = (Rand() % 2 == 0);
     std::vector<std::string> configs;

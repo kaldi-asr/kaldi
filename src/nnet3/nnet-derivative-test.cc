@@ -32,7 +32,7 @@ namespace nnet3 {
 void UnitTestNnetModelDerivatives() {
   int32 num_tries = 20, num_success = 0;
   for (int32 n = 0; n < num_tries; n++) {
-    struct NnetGenerationConfig gen_config;
+    struct NnetGenerationOptions gen_config;
     //gen_config.allow_nonlinearity = false;
     //gen_config.allow_recursion = false;
     //gen_config.allow_final_nonlinearity = true;
@@ -68,14 +68,14 @@ void UnitTestNnetModelDerivatives() {
       computation.Print(os, nnet);
       KALDI_LOG << "Generated computation is: " << os.str();
     }
-    CheckComputationConfig check_config;
+    CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;  
     ComputationChecker checker(check_config, nnet, request, computation);
     checker.Check();
     
     if (RandInt(0, 3) != 0 && allow_optimization) {
-      NnetOptimizeConfig opt_config;
+      NnetOptimizeOptions opt_config;
       Optimize(opt_config, nnet, request, &computation);
       std::ostringstream os;
       computation.Print(os, nnet);
@@ -185,7 +185,7 @@ void UnitTestNnetModelDerivatives() {
 void UnitTestNnetInputDerivatives() {
   int32 num_tries = 20, num_success = 0;
   for (int32 n = 0; n < num_tries; n++) {
-    struct NnetGenerationConfig gen_config;
+    struct NnetGenerationOptions gen_config;
     //gen_config.allow_nonlinearity = false;
     //gen_config.allow_recursion = false;
     //gen_config.allow_final_nonlinearity = true;
@@ -221,14 +221,14 @@ void UnitTestNnetInputDerivatives() {
       computation.Print(os, nnet);
       KALDI_LOG << "Generated computation is: " << os.str();
     }
-    CheckComputationConfig check_config;
+    CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;  
     ComputationChecker checker(check_config, nnet, request, computation);
     checker.Check();
     
     if (RandInt(0, 3) != 0 && allow_optimization) {
-      NnetOptimizeConfig opt_config;
+      NnetOptimizeOptions opt_config;
       Optimize(opt_config, nnet, request, &computation);
       std::ostringstream os;
       computation.Print(os, nnet);

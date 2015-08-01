@@ -8,7 +8,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-shuffle-egs nnet3-acc-lda-stats nnet3-merge-egs \
-   nnet3-compute-from-egs
+   nnet3-compute-from-egs nnet3-train
 
 OBJFILES =
 

@@ -39,6 +39,11 @@ namespace nnet3 {
 struct NnetComputeOptions {
   bool debug;
   NnetComputeOptions(): debug(false) { }
+  void Register(OptionsItf *opts) {
+    opts->Register("debug", &debug, "If true, turn on "
+                   "debug for the neural net computation (very verbose!)");
+  }
+  
 };
 
 

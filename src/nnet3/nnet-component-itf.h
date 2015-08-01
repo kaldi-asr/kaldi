@@ -146,7 +146,13 @@ class Component {
   ///        have nonzero Properties()&kStoresStats.  It only needs as input
   ///        the value at the output of the nonlinearity.
 
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value) { }                      
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value) { }
+
+  /// \brief Components that provide an implementation of StoreStats should also
+  ///        provide an implementation of ZeroStats(), to set those stats to
+  ///        zero.
+  virtual void ZeroStats() { }
+  
   
 
   /// \brief  This function only does something interesting for non-simple Components.
@@ -397,6 +403,8 @@ class NonlinearComponent: public Component {
   /// We implement Read at this level as it just needs the Type().
   virtual void Read(std::istream &is, bool binary);
 
+  virtual void ZeroStats();
+  
   virtual std::string Info() const;
   
   /// Write component to stream.

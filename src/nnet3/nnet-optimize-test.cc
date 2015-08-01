@@ -33,7 +33,7 @@ namespace nnet3 {
 // the outputs are the same.
 void UnitTestNnetOptimize() {
   for (int32 n = 0; n < 20; n++) {
-    struct NnetGenerationConfig gen_config;
+    struct NnetGenerationOptions gen_config;
     
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
@@ -58,7 +58,7 @@ void UnitTestNnetOptimize() {
       computation.Print(os, nnet);
       KALDI_LOG << "Generated computation is: " << os.str();
     }
-    CheckComputationConfig check_config;
+    CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;  
     ComputationChecker checker(check_config, nnet, request, computation);
@@ -68,7 +68,7 @@ void UnitTestNnetOptimize() {
     NnetComputation computation_opt(computation);
     
     {
-      NnetOptimizeConfig opt_config;
+      NnetOptimizeOptions opt_config;
       Optimize(opt_config, nnet, request, &computation_opt);
       std::ostringstream os;
       computation.Print(os, nnet);
