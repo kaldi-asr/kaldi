@@ -1857,17 +1857,17 @@ void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &mat,
   mat.CopyToMat(this, trans);
 }
 template
-void MatrixBase<float>::CopyFromSmat<float>(const SparseMatrix<float> &mat,
-                                            MatrixTransposeType trans);
+void MatrixBase<float>::CopyFromSmat(const SparseMatrix<float> &mat,
+                                     MatrixTransposeType trans);
 template
-void MatrixBase<float>::CopyFromSmat<double>(const SparseMatrix<double> &mat,
-                                             MatrixTransposeType trans);
+void MatrixBase<float>::CopyFromSmat(const SparseMatrix<double> &mat,
+                                     MatrixTransposeType trans);
 template
-void MatrixBase<double>::CopyFromSmat<float>(const SparseMatrix<float> &mat,
-                                             MatrixTransposeType trans);
+void MatrixBase<double>::CopyFromSmat(const SparseMatrix<float> &mat,
+                                      MatrixTransposeType trans);
 template
-void MatrixBase<double>::CopyFromSmat<double>(const SparseMatrix<double> &mat,
-                                              MatrixTransposeType trans);
+void MatrixBase<double>::CopyFromSmat(const SparseMatrix<double> &mat,
+                                      MatrixTransposeType trans);
 
 
 template<typename Real>

@@ -714,6 +714,31 @@ static void UnitTestCuMatrixMulElements() {
 }
 
 template<typename Real> 
+static void UnitTestCuMatrixDivElements() {
+  for (int32 i = 0; i < 2; i++) {
+    MatrixIndexT dimM = 100 + Rand() % 256, dimN = 100 + Rand() % 256;
+  
+    Matrix<Real> Ha(dimM, dimN);
+    Matrix<Real> Hb(dimM, dimN);
+    Ha.SetRandn();
+    Hb.SetRandn();
+
+    CuMatrix<Real> Da(dimM, dimN);
+    CuMatrix<Real> Db(dimM, dimN);
+    Da.CopyFromMat(Ha);
+    Db.CopyFromMat(Hb);
+
+    Da.DivElements(Db);
+    Ha.DivElements(Hb);
+
+    Matrix<Real> Ha2(dimM, dimN);
+    Da.CopyToMat(&Ha2);
+
+    AssertEqual(Ha,Ha2);
+  }
+}
+
+template<typename Real> 
 static void UnitTestCuMatrixMax() {
   Matrix<Real> Ha(100,100);
   Matrix<Real> Hb(100,100);
@@ -2182,6 +2207,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
+  UnitTestCuMatrixDivElements<Real>();
   UnitTestCuMatrixMax<Real>();
   UnitTestCuMatrixMulColsVec<Real>();
   UnitTestCuMatrixMulRowsVec<Real>();
