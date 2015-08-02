@@ -52,20 +52,20 @@ struct MelBanksOptions {
       : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
         vtln_high(-500), debug_mel(false), htk_mode(false) {}
 
-  void Register(OptionsItf *po) {
-    po->Register("num-mel-bins", &num_bins,
-                 "Number of triangular mel-frequency bins");
-    po->Register("low-freq", &low_freq,
-                 "Low cutoff frequency for mel bins");
-    po->Register("high-freq", &high_freq,
-                 "High cutoff frequency for mel bins (if < 0, offset from Nyquist)");
-    po->Register("vtln-low", &vtln_low,
-                 "Low inflection point in piecewise linear VTLN warping function");
-    po->Register("vtln-high", &vtln_high,
-                 "High inflection point in piecewise linear VTLN warping function"
-                 " (if negative, offset from high-mel-freq");
-    po->Register("debug-mel", &debug_mel,
-                 "Print out debugging information for mel bin computation");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-mel-bins", &num_bins,
+                   "Number of triangular mel-frequency bins");
+    opts->Register("low-freq", &low_freq,
+                   "Low cutoff frequency for mel bins");
+    opts->Register("high-freq", &high_freq,
+                   "High cutoff frequency for mel bins (if < 0, offset from Nyquist)");
+    opts->Register("vtln-low", &vtln_low,
+                   "Low inflection point in piecewise linear VTLN warping function");
+    opts->Register("vtln-high", &vtln_high,
+                   "High inflection point in piecewise linear VTLN warping function"
+                   " (if negative, offset from high-mel-freq");
+    opts->Register("debug-mel", &debug_mel,
+                   "Print out debugging information for mel bin computation");
   }
 };
 
@@ -95,26 +95,26 @@ struct FrameExtractionOptions {
       round_to_power_of_two(true),
       snip_edges(true){ }
 
-  void Register(OptionsItf *po) {
-    po->Register("sample-frequency", &samp_freq,
-                 "Waveform data sample frequency (must match the waveform file, "
-                 "if specified there)");
-    po->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
-    po->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
-    po->Register("preemphasis-coefficient", &preemph_coeff,
-                 "Coefficient for use in signal preemphasis");
-    po->Register("remove-dc-offset", &remove_dc_offset,
-                 "Subtract mean from waveform on each frame");
-    po->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
-    po->Register("window-type", &window_type, "Type of window "
-                 "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
-    po->Register("round-to-power-of-two", &round_to_power_of_two,
-                 "If true, round window size to power of two.");
-    po->Register("snip-edges", &snip_edges,
-                 "If true, end effects will be handled by outputting only frames that "
-                 "completely fit in the file, and the number of frames depends on the "
-                 "frame-length.  If false, the number of frames depends only on the "
-                 "frame-shift, and we reflect the data at the ends.");
+  void Register(OptionsItf *opts) {
+    opts->Register("sample-frequency", &samp_freq,
+                   "Waveform data sample frequency (must match the waveform file, "
+                   "if specified there)");
+    opts->Register("frame-length", &frame_length_ms, "Frame length in milliseconds");
+    opts->Register("frame-shift", &frame_shift_ms, "Frame shift in milliseconds");
+    opts->Register("preemphasis-coefficient", &preemph_coeff,
+                   "Coefficient for use in signal preemphasis");
+    opts->Register("remove-dc-offset", &remove_dc_offset,
+                   "Subtract mean from waveform on each frame");
+    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
+    opts->Register("window-type", &window_type, "Type of window "
+                   "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
+    opts->Register("round-to-power-of-two", &round_to_power_of_two,
+                   "If true, round window size to power of two.");
+    opts->Register("snip-edges", &snip_edges,
+                   "If true, end effects will be handled by outputting only frames that "
+                   "completely fit in the file, and the number of frames depends on the "
+                   "frame-length.  If false, the number of frames depends only on the "
+                   "frame-shift, and we reflect the data at the ends.");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
@@ -197,11 +197,11 @@ struct DeltaFeaturesOptions {
 
   DeltaFeaturesOptions(int32 order = 2, int32 window = 2):
       order(order), window(window) { }
-  void Register(OptionsItf *po) {
-    po->Register("delta-order", &order, "Order of delta computation");
-    po->Register("delta-window", &window,
-                 "Parameter controlling window for delta computation (actual window"
-                 " size for each delta order is 1 + 2*delta-window-size)");
+  void Register(OptionsItf *opts) {
+    opts->Register("delta-order", &order, "Order of delta computation");
+    opts->Register("delta-window", &window,
+                   "Parameter controlling window for delta computation (actual window"
+                   " size for each delta order is 1 + 2*delta-window-size)");
   }
 };
 
@@ -233,11 +233,11 @@ struct ShiftedDeltaFeaturesOptions {
 
   ShiftedDeltaFeaturesOptions():
       window(1), num_blocks(7), block_shift(3) { }
-  void Register(OptionsItf *po) {
-    po->Register("delta-window", &window, "Size of delta advance and delay.");
-    po->Register("num-blocks", &num_blocks, "Number of delta blocks in advance"
-                 " of each frame to be concatenated");
-    po->Register("block-shift", &block_shift, "Distance between each block");
+  void Register(OptionsItf *opts) {
+    opts->Register("delta-window", &window, "Size of delta advance and delay.");
+    opts->Register("num-blocks", &num_blocks, "Number of delta blocks in advance"
+                   " of each frame to be concatenated");
+    opts->Register("block-shift", &block_shift, "Distance between each block");
   }
 };
 
@@ -320,17 +320,17 @@ struct SlidingWindowCmnOptions {
       normalize_variance(false),
       center(false) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("cmn-window", &cmn_window, "Window in frames for running "
-                 "average CMN computation");
-    po->Register("min-cmn-window", &min_window, "Minimum CMN window "
-                 "used at start of decoding (adds latency only at start). "
-                 "Only applicable if center == false, ignored if center==true");
-    po->Register("norm-vars", &normalize_variance, "If true, normalize "
-                 "variance to one."); // naming this as in apply-cmvn.cc
-    po->Register("center", &center, "If true, use a window centered on the "
-                 "current frame (to the extent possible, modulo end effects). "
-                 "If false, window is to the left.");
+  void Register(OptionsItf *opts) {
+    opts->Register("cmn-window", &cmn_window, "Window in frames for running "
+                   "average CMN computation");
+    opts->Register("min-cmn-window", &min_window, "Minimum CMN window "
+                   "used at start of decoding (adds latency only at start). "
+                   "Only applicable if center == false, ignored if center==true");
+    opts->Register("norm-vars", &normalize_variance, "If true, normalize "
+                   "variance to one."); // naming this as in apply-cmvn.cc
+    opts->Register("center", &center, "If true, use a window centered on the "
+                   "current frame (to the extent possible, modulo end effects). "
+                   "If false, window is to the left.");
   }
   void Check() const;
 };

@@ -41,17 +41,17 @@ struct NBestDecoderOptions {
                          max_active(std::numeric_limits<int32>::max()),
                          n_best(1),
                          beam_delta(0.5), hash_ratio(2.0) { }
-  void Register(OptionsItf *po, bool full) {  /// if "full", use obscure
+  void Register(OptionsItf *opts, bool full) {  /// if "full", use obscure
     /// options too.
     /// Depends on program.
-    po->Register("beam", &beam, "Decoder beam");
-    po->Register("max-active", &max_active, "Decoder max active states.");
-    po->Register("n-best", &n_best, "Decoder number of best tokens.");
+    opts->Register("beam", &beam, "Decoder beam");
+    opts->Register("max-active", &max_active, "Decoder max active states.");
+    opts->Register("n-best", &n_best, "Decoder number of best tokens.");
     if (full) {
-      po->Register("beam-delta", &beam_delta,
-                   "Increment used in decoder [obscure setting]");
-      po->Register("hash-ratio", &hash_ratio,
-                   "Setting used in decoder to control hash behavior");
+      opts->Register("beam-delta", &beam_delta,
+                     "Increment used in decoder [obscure setting]");
+      opts->Register("hash-ratio", &hash_ratio,
+                     "Setting used in decoder to control hash behavior");
     }
   }
 };

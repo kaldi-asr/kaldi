@@ -45,13 +45,13 @@ struct FmllrOptions {
   BaseFloat min_count;
   int32 num_iters;
   FmllrOptions(): update_type("full"), min_count(500.0), num_iters(40) { }
-  void Register(OptionsItf *po) {
-    po->Register("fmllr-update-type", &update_type,
-                 "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
-    po->Register("fmllr-min-count", &min_count,
-                 "Minimum count required to update fMLLR");
-    po->Register("fmllr-num-iters", &num_iters,
-                 "Number of iterations in fMLLR update phase.");
+  void Register(OptionsItf *opts) {
+    opts->Register("fmllr-update-type", &update_type,
+                   "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
+    opts->Register("fmllr-min-count", &min_count,
+                   "Minimum count required to update fMLLR");
+    opts->Register("fmllr-num-iters", &num_iters,
+                   "Number of iterations in fMLLR update phase.");
   }
 };
 

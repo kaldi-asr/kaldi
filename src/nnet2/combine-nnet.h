@@ -47,17 +47,17 @@ struct NnetCombineConfig {
                        initial_impr(0.01),
                        test_gradient(false) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("initial-model", &initial_model, "Specifies where to start the "
-                 "optimization from.  If 0 ... #models-1, then specifies the model; "
-                 "if #models, then the average of all inputs; otherwise, chosen "
-                 "automatically from the previous options.");
-    po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
-                 "evaluations for BFGS to use when optimizing combination weights");
-    po->Register("initial-impr", &initial_impr, "Amount of objective-function change "
-                 "we aim for on the first iteration.");
-    po->Register("test-gradient", &test_gradient, "If true, activate code that "
-                 "tests the gradient is accurate.");
+  void Register(OptionsItf *opts) {
+    opts->Register("initial-model", &initial_model, "Specifies where to start the "
+                   "optimization from.  If 0 ... #models-1, then specifies the model; "
+                   "if #models, then the average of all inputs; otherwise, chosen "
+                   "automatically from the previous options.");
+    opts->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
+                   "evaluations for BFGS to use when optimizing combination weights");
+    opts->Register("initial-impr", &initial_impr, "Amount of objective-function change "
+                   "we aim for on the first iteration.");
+    opts->Register("test-gradient", &test_gradient, "If true, activate code that "
+                   "tests the gradient is accurate.");
   }  
 };
 

@@ -335,12 +335,12 @@ struct OnlineFeatureMatrixOptions {
                    // before we give up.
   OnlineFeatureMatrixOptions(): batch_size(27),
                                 num_tries(5) { }
-  void Register(OptionsItf *po) {
-    po->Register("batch-size", &batch_size,
-                 "Number of feature vectors processed w/o interruption");
-    po->Register("num-tries", &num_tries,
-                 "Number of successive repetitions of timeout before we "
-                 "terminate stream");
+  void Register(OptionsItf *opts) {
+    opts->Register("batch-size", &batch_size,
+                   "Number of feature vectors processed w/o interruption");
+    opts->Register("num-tries", &num_tries,
+                   "Number of successive repetitions of timeout before we "
+                   "terminate stream");
   }
 };
 

@@ -89,28 +89,28 @@ struct SplitDiscriminativeExampleConfig {
       determinize(true), minimize(true), test(false), drop_frames(false),
       split(true), excise(true) { }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
 
-    po->Register("max-length", &max_length, "Maximum length allowed for any "
-                "segment (i.e. max #frames for any example");
-    //po->Register("target-length", &target_length, "Target length for a "
+    opts->Register("max-length", &max_length, "Maximum length allowed for any "
+                   "segment (i.e. max #frames for any example");
+    //opts->Register("target-length", &target_length, "Target length for a "
     // "segment");
-    po->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr'. "
-                 "Determines which frames may be dropped from lattices.");
-    po->Register("collapse-transition-ids", &collapse_transition_ids,
-                 "This option included for debugging purposes");
-    po->Register("determinize", &determinize, "If true, we determinize "
-                 "lattices (as Lattice) before splitting and possibly minimize");
-    po->Register("minimize", &minimize, "If true, we push and "
-                 "minimize lattices (as Lattice) before splitting");
-    po->Register("test", &test, "If true, activate self-testing code.");
+    opts->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr'. "
+                   "Determines which frames may be dropped from lattices.");
+    opts->Register("collapse-transition-ids", &collapse_transition_ids,
+                   "This option included for debugging purposes");
+    opts->Register("determinize", &determinize, "If true, we determinize "
+                   "lattices (as Lattice) before splitting and possibly minimize");
+    opts->Register("minimize", &minimize, "If true, we push and "
+                   "minimize lattices (as Lattice) before splitting");
+    opts->Register("test", &test, "If true, activate self-testing code.");
     // See "Sequence-discriminative training of deep neural networks", Vesely et al,
     // ICASSP 2013 for explanation of frame dropping.
-    po->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
-                 "with no overlap of num and den frames");
-    po->Register("split", &split, "Set to false to disable lattice-splitting.");
-    po->Register("excise", &excise, "Set to false to disable excising un-needed "
-                 "frames (option included for debug purposes)");
+    opts->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
+                   "with no overlap of num and den frames");
+    opts->Register("split", &split, "Set to false to disable lattice-splitting.");
+    opts->Register("excise", &excise, "Set to false to disable excising un-needed "
+                   "frames (option included for debug purposes)");
   }
 };
 

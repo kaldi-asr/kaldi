@@ -54,17 +54,17 @@ struct NnetRescaleConfig {
                        delta(0.01),
                        max_change(0.2), min_change(1.0e-05) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("target-avg-deriv", &target_avg_deriv, "Target average derivative "
-                 "for hidden layers that are the not the first or last hidden layer "
-                 "(as fraction of maximum derivative of the nonlinearity)");
-    po->Register("target-first-layer-avg-deriv", &target_first_layer_avg_deriv,
-                 "Target average derivative for the first hidden layer"
-                 "(as fraction of maximum derivative of the nonlinearity)");
-    po->Register("target-last-layer-avg-deriv", &target_last_layer_avg_deriv,
-                 "Target average derivative for the last hidden layer, if "
-                 "#hid-layers > 1"
-                 "(as fraction of maximum derivative of the nonlinearity)");
+  void Register(OptionsItf *opts) {
+    opts->Register("target-avg-deriv", &target_avg_deriv, "Target average derivative "
+                   "for hidden layers that are the not the first or last hidden layer "
+                   "(as fraction of maximum derivative of the nonlinearity)");
+    opts->Register("target-first-layer-avg-deriv", &target_first_layer_avg_deriv,
+                   "Target average derivative for the first hidden layer"
+                   "(as fraction of maximum derivative of the nonlinearity)");
+    opts->Register("target-last-layer-avg-deriv", &target_last_layer_avg_deriv,
+                   "Target average derivative for the last hidden layer, if "
+                   "#hid-layers > 1"
+                   "(as fraction of maximum derivative of the nonlinearity)");
   }  
 };
 

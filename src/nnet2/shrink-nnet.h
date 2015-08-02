@@ -39,11 +39,11 @@ struct NnetShrinkConfig {
   BaseFloat initial_step;
   
   NnetShrinkConfig(): num_bfgs_iters(10), initial_step(0.1) { }
-  void Register(OptionsItf *po) {
-    po->Register("num-bfgs-iters", &num_bfgs_iters, "Number of iterations of "
-                 "BFGS to use when optimizing shrinkage parameters");
-    po->Register("initial-step", &initial_step, "Parameter in the optimization, "
-                 "used to set the initial step length");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-bfgs-iters", &num_bfgs_iters, "Number of iterations of "
+                   "BFGS to use when optimizing shrinkage parameters");
+    opts->Register("initial-step", &initial_step, "Parameter in the optimization, "
+                   "used to set the initial step length");
   }  
 };
 

@@ -160,20 +160,20 @@ struct OnlineNnet2DecodingThreadedConfig {
 
   void Check();
   
-  void Register(OptionsItf *po) {
-    decoder_opts.Register(po);
-    po->Register("acoustic-scale", &acoustic_scale, "Scale used on acoustics "
-                 "when decoding");
-    po->Register("max-buffered-features", &max_buffered_features, "Obscure "
-                 "setting, affects multi-threaded decoding.");
-    po->Register("feature-batch-size", &max_buffered_features, "Obscure "
-                 "setting, affects multi-threaded decoding.");
-    po->Register("nnet-batch-size", &nnet_batch_size, "Maximum batch size "
-                 "(in frames) used when evaluating neural net likelihoods");
-    po->Register("max-loglikes-copy", &max_loglikes_copy,  "Obscure "
-                 "setting, affects multi-threaded decoding.");
-    po->Register("decode-batch-sie", &decode_batch_size, "Obscure "
-                 "setting, affects multi-threaded decoding.");
+  void Register(OptionsItf *opts) {
+    decoder_opts.Register(opts);
+    opts->Register("acoustic-scale", &acoustic_scale, "Scale used on acoustics "
+                   "when decoding");
+    opts->Register("max-buffered-features", &max_buffered_features, "Obscure "
+                   "setting, affects multi-threaded decoding.");
+    opts->Register("feature-batch-size", &max_buffered_features, "Obscure "
+                   "setting, affects multi-threaded decoding.");
+    opts->Register("nnet-batch-size", &nnet_batch_size, "Maximum batch size "
+                   "(in frames) used when evaluating neural net likelihoods");
+    opts->Register("max-loglikes-copy", &max_loglikes_copy,  "Obscure "
+                   "setting, affects multi-threaded decoding.");
+    opts->Register("decode-batch-sie", &decode_batch_size, "Obscure "
+                   "setting, affects multi-threaded decoding.");
   }
 };
 

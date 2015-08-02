@@ -53,17 +53,17 @@ struct IvectorEstimationOptions {
   double acoustic_weight;
   double max_count;
   IvectorEstimationOptions(): acoustic_weight(1.0), max_count(0.0) {}
-  void Register(OptionsItf *po) {
-    po->Register("acoustic-weight", &acoustic_weight,
-                 "Weight on part of auxf that involves the data (e.g. 0.2); "
-                 "if this weight is small, the prior will have more effect.");
-    po->Register("max-count", &max_count,
-                 "Maximum frame count (affects prior scaling): if >0, the prior "
-                 "term will be scaled up after the frame count exceeds this "
-                 "value.  Note that this count is considered after posterior "
-                 "scaling (e.g. --acoustic-weight option, or scale argument to "
-                 "scale-post), so you would normally use a cutoff 10 times "
-                 "smaller than the corresponding number of frames.");
+  void Register(OptionsItf *opts) {
+    opts->Register("acoustic-weight", &acoustic_weight,
+                   "Weight on part of auxf that involves the data (e.g. 0.2); "
+                   "if this weight is small, the prior will have more effect.");
+    opts->Register("max-count", &max_count,
+                   "Maximum frame count (affects prior scaling): if >0, the prior "
+                   "term will be scaled up after the frame count exceeds this "
+                   "value.  Note that this count is considered after posterior "
+                   "scaling (e.g. --acoustic-weight option, or scale argument to "
+                   "scale-post), so you would normally use a cutoff 10 times "
+                   "smaller than the corresponding number of frames.");
   }
 };
 
@@ -110,12 +110,12 @@ struct IvectorExtractorOptions {
   bool use_weights;
   IvectorExtractorOptions(): ivector_dim(400), num_iters(2),
                              use_weights(true) { }
-  void Register(OptionsItf *po) {
-    po->Register("num-iters", &num_iters, "Number of iterations in "
-                 "iVector estimation (>1 needed due to weights)");
-    po->Register("ivector-dim", &ivector_dim, "Dimension of iVector");
-    po->Register("use-weights", &use_weights, "If true, regress the "
-                 "log-weights on the iVector");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-iters", &num_iters, "Number of iterations in "
+                   "iVector estimation (>1 needed due to weights)");
+    opts->Register("ivector-dim", &ivector_dim, "Dimension of iVector");
+    opts->Register("use-weights", &use_weights, "If true, regress the "
+                   "log-weights on the iVector");
   }
 };
 
@@ -428,17 +428,17 @@ struct IvectorExtractorStatsOptions {
                          compute_auxf(true),
                          num_samples_for_weights(10),
                          cache_size(100) { }
-  void Register(OptionsItf *po) {
-    po->Register("update-variances", &update_variances, "If true, update the "
-                 "Gaussian variances");
-    po->Register("compute-auxf", &compute_auxf, "If true, compute the "
-                 "auxiliary functions on training data; can be used to "
-                 "debug and check convergence.");
-    po->Register("num-samples-for-weights", &num_samples_for_weights,
-                 "Number of samples from iVector distribution to use "
-                 "for accumulating stats for weight update.  Must be >1");
-    po->Register("cache-size", &cache_size, "Size of an internal "
-                 "cache (not critical, only affects speed/memory)");
+  void Register(OptionsItf *opts) {
+    opts->Register("update-variances", &update_variances, "If true, update the "
+                   "Gaussian variances");
+    opts->Register("compute-auxf", &compute_auxf, "If true, compute the "
+                   "auxiliary functions on training data; can be used to "
+                   "debug and check convergence.");
+    opts->Register("num-samples-for-weights", &num_samples_for_weights,
+                   "Number of samples from iVector distribution to use "
+                   "for accumulating stats for weight update.  Must be >1");
+    opts->Register("cache-size", &cache_size, "Size of an internal "
+                   "cache (not critical, only affects speed/memory)");
   }
 };
 
@@ -452,17 +452,17 @@ struct IvectorExtractorEstimationOptions {
   IvectorExtractorEstimationOptions(): variance_floor_factor(0.1),
                                        gaussian_min_count(100.0),
                                        diagonalize(true) { }
-  void Register(OptionsItf *po) {
-    po->Register("variance-floor-factor", &variance_floor_factor,
-                 "Factor that determines variance flooring (we floor each covar "
-                 "to this times global average covariance");
-    po->Register("gaussian-min-count", &gaussian_min_count,
-                 "Minimum total count per Gaussian, below which we refuse to "
-                 "update any associated parameters.");
-    po->Register("diagonalize", &diagonalize, 
-                 "If true, diagonalize the quadratic term in the "
-                 "objective function. This reorders the ivector dimensions"
-                 "from most to least important.");
+  void Register(OptionsItf *opts) {
+    opts->Register("variance-floor-factor", &variance_floor_factor,
+                   "Factor that determines variance flooring (we floor each covar "
+                   "to this times global average covariance");
+    opts->Register("gaussian-min-count", &gaussian_min_count,
+                   "Minimum total count per Gaussian, below which we refuse to "
+                   "update any associated parameters.");
+    opts->Register("diagonalize", &diagonalize, 
+                   "If true, diagonalize the quadratic term in the "
+                   "objective function. This reorders the ivector dimensions"
+                   "from most to least important.");
   }
 };
 

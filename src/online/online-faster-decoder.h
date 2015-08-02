@@ -48,21 +48,21 @@ struct OnlineFasterDecoderOpts : public FasterDecoderOptions {
     update_interval(3), beam_update(.01),
     max_beam_update(0.05) {}
 
-  void Register(OptionsItf *po, bool full) {
-    FasterDecoderOptions::Register(po, full);
-    po->Register("rt-min", &rt_min,
-                 "Approximate minimum decoding run time factor");
-    po->Register("rt-max", &rt_max,
-                 "Approximate maximum decoding run time factor");
-    po->Register("update-interval", &update_interval,
-                 "Beam update interval in frames");
-    po->Register("beam-update", &beam_update, "Beam update rate");
-    po->Register("max-beam-update", &max_beam_update, "Max beam update rate");
-    po->Register("inter-utt-sil", &inter_utt_sil,
-                 "Maximum # of silence frames to trigger new utterance");
-    po->Register("max-utt-length", &max_utt_len_,
-                 "If the utterance becomes longer than this number of frames, "
-                 "shorter silence is acceptable as an utterance separator");
+  void Register(OptionsItf *opts, bool full) {
+    FasterDecoderOptions::Register(opts, full);
+    opts->Register("rt-min", &rt_min,
+                   "Approximate minimum decoding run time factor");
+    opts->Register("rt-max", &rt_max,
+                   "Approximate maximum decoding run time factor");
+    opts->Register("update-interval", &update_interval,
+                   "Beam update interval in frames");
+    opts->Register("beam-update", &beam_update, "Beam update rate");
+    opts->Register("max-beam-update", &max_beam_update, "Max beam update rate");
+    opts->Register("inter-utt-sil", &inter_utt_sil,
+                   "Maximum # of silence frames to trigger new utterance");
+    opts->Register("max-utt-length", &max_utt_len_,
+                   "If the utterance becomes longer than this number of frames, "
+                   "shorter silence is acceptable as an utterance separator");
   }
 };
 

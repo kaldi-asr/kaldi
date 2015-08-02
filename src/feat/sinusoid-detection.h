@@ -271,30 +271,30 @@ struct MultiSinusoidDetectorConfig {
       max_freq(1800.0), subsample_freq(4000),
       subsample_filter_cutoff(1900.0), subsample_filter_zeros(5) {}
 
-  void Register(OptionsItf *po) {
-    po->Register("frame-length", &frame_length_ms,
-                 "Frame length in milliseconds");
-    po->Register("frame-shift", &frame_shift_ms,
-                 "Frame shift in milliseconds");
-    po->Register("two-freq-min-energy", &two_freq_min_energy,
-                 "For detecting two-frequency tones, minimum energy that "
-                 "the quieter frequency must have (relative to total "
-                 "enegy of frame)");
-    po->Register("two-freq-min-total-energy", &two_freq_min_total_energy,
-                 "For detecting two-frequency tones, minimum energy that "
-                 "the two frequencies together must have (relative to total "
-                 "energy of frame)");
-    po->Register("one-freq-min-energy", &one_freq_min_energy, "For detecting "
-                 "single-frequency tones, minimum energy that the frequency "
-                 "must have relative to total energy of frame");
-    po->Register("min-freq", &min_freq, "Minimum frequency of sinusoid that "
-                 "will be detected");
-    po->Register("max-freq", &max_freq, "Maximum frequency of sinusoid that "
-                 "will be detected");
-    po->Register("subsample-freq", &subsample_freq, "Frequency at which "
-                 "we subsample the signal");
-    po->Register("subsample-filter-cutoff", &subsample_filter_cutoff, "Filter "
-                 "cut-off frequency used in subsampling");
+  void Register(OptionsItf *opts) {
+    opts->Register("frame-length", &frame_length_ms,
+                   "Frame length in milliseconds");
+    opts->Register("frame-shift", &frame_shift_ms,
+                   "Frame shift in milliseconds");
+    opts->Register("two-freq-min-energy", &two_freq_min_energy,
+                   "For detecting two-frequency tones, minimum energy that "
+                   "the quieter frequency must have (relative to total "
+                   "enegy of frame)");
+    opts->Register("two-freq-min-total-energy", &two_freq_min_total_energy,
+                   "For detecting two-frequency tones, minimum energy that "
+                   "the two frequencies together must have (relative to total "
+                   "energy of frame)");
+    opts->Register("one-freq-min-energy", &one_freq_min_energy, "For detecting "
+                   "single-frequency tones, minimum energy that the frequency "
+                   "must have relative to total energy of frame");
+    opts->Register("min-freq", &min_freq, "Minimum frequency of sinusoid that "
+                   "will be detected");
+    opts->Register("max-freq", &max_freq, "Maximum frequency of sinusoid that "
+                   "will be detected");
+    opts->Register("subsample-freq", &subsample_freq, "Frequency at which "
+                   "we subsample the signal");
+    opts->Register("subsample-filter-cutoff", &subsample_filter_cutoff, "Filter "
+                   "cut-off frequency used in subsampling");
   }
   void Check() const {
     KALDI_ASSERT(frame_length_ms > 0 && frame_length_ms >= frame_shift_ms &&

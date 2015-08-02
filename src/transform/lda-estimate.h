@@ -35,19 +35,19 @@ struct LdaEstimateOptions {
   LdaEstimateOptions(): remove_offset(false), dim(40), allow_large_dim(false),
                         within_class_factor(1.0) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("remove-offset", &remove_offset, "If true, output an affine "
-                 "transform that makes the projected data mean equal to zero.");
-    po->Register("dim", &dim, "Dimension to project to with LDA");
-    po->Register("allow-large-dim", &allow_large_dim, "If true, allow an LDA "
-                 "dimension larger than the number of classes.");
-    po->Register("within-class-factor", &within_class_factor, "(Deprecated) If 1.0, do "
-                 "conventional LDA where the within-class variance will be "
-                 "unit in the projected space.  May be set to less than 1.0, "
-                 "which scales the features to have less variance, particularly "
-                 "for dimensions where between-class variance is small; "
-                 "this is a feature being experimented with for neural-net "
-                 "input.");
+  void Register(OptionsItf *opts) {
+    opts->Register("remove-offset", &remove_offset, "If true, output an affine "
+                   "transform that makes the projected data mean equal to zero.");
+    opts->Register("dim", &dim, "Dimension to project to with LDA");
+    opts->Register("allow-large-dim", &allow_large_dim, "If true, allow an LDA "
+                   "dimension larger than the number of classes.");
+    opts->Register("within-class-factor", &within_class_factor, "(Deprecated) If 1.0, do "
+                   "conventional LDA where the within-class variance will be "
+                   "unit in the projected space.  May be set to less than 1.0, "
+                   "which scales the features to have less variance, particularly "
+                   "for dimensions where between-class variance is small; "
+                   "this is a feature being experimented with for neural-net "
+                   "input.");
   }    
 };
 

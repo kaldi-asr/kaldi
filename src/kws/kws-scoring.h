@@ -130,7 +130,7 @@ struct KwsTermsAlignerOptions {
                      // Default: 50 frames (usually 0.5 seconds)
 
   inline KwsTermsAlignerOptions(): max_distance(50) {}
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
 class KwsTermsAligner {
@@ -213,7 +213,7 @@ struct TwvMetricsOptions {
     return (cost_fa/value_corr) * (1.0/prior_probability - 1);
   }
 
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
 class TwvMetricsStats;

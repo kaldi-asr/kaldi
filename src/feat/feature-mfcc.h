@@ -57,23 +57,23 @@ struct MfccOptions {
                   cepstral_lifter(22.0),
                   htk_compat(false) {}
 
-  void Register(OptionsItf *po) {
-    frame_opts.Register(po);
-    mel_opts.Register(po);
-    po->Register("num-ceps", &num_ceps,
-                 "Number of cepstra in MFCC computation (including C0)");
-    po->Register("use-energy", &use_energy,
-                 "Use energy (not C0) in MFCC computation");
-    po->Register("energy-floor", &energy_floor,
-                 "Floor on energy (absolute, not relative) in MFCC computation");
-    po->Register("raw-energy", &raw_energy,
-                 "If true, compute energy before preemphasis and windowing");
-    po->Register("cepstral-lifter", &cepstral_lifter,
-                 "Constant that controls scaling of MFCCs");
-    po->Register("htk-compat", &htk_compat,
-                 "If true, put energy or C0 last and use a factor of sqrt(2) on "
-                 "C0.  Warning: not sufficient to get HTK compatible features "
-                 "(need to change other parameters).");
+  void Register(OptionsItf *opts) {
+    frame_opts.Register(opts);
+    mel_opts.Register(opts);
+    opts->Register("num-ceps", &num_ceps,
+                   "Number of cepstra in MFCC computation (including C0)");
+    opts->Register("use-energy", &use_energy,
+                   "Use energy (not C0) in MFCC computation");
+    opts->Register("energy-floor", &energy_floor,
+                   "Floor on energy (absolute, not relative) in MFCC computation");
+    opts->Register("raw-energy", &raw_energy,
+                   "If true, compute energy before preemphasis and windowing");
+    opts->Register("cepstral-lifter", &cepstral_lifter,
+                   "Constant that controls scaling of MFCCs");
+    opts->Register("htk-compat", &htk_compat,
+                   "If true, put energy or C0 last and use a factor of sqrt(2) on "
+                   "C0.  Warning: not sufficient to get HTK compatible features "
+                   "(need to change other parameters).");
   }
 };
 

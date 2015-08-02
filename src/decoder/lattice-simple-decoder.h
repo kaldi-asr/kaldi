@@ -53,15 +53,15 @@ struct LatticeSimpleDecoderConfig {
                                 determinize_lattice(true),
                                 beam_ratio(0.9),
                                 prune_scale(0.1) { }
-  void Register(OptionsItf *po) {
-    det_opts.Register(po);
-    po->Register("beam", &beam, "Decoding beam.");
-    po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
-    po->Register("prune-interval", &prune_interval, "Interval (in frames) at "
-                 "which to prune tokens");
-    po->Register("determinize-lattice", &determinize_lattice, "If true, "
-                 "determinize the lattice (in a special sense, keeping only "
-                 "best pdf-sequence for each word-sequence).");
+  void Register(OptionsItf *opts) {
+    det_opts.Register(opts);
+    opts->Register("beam", &beam, "Decoding beam.");
+    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
+    opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+                   "which to prune tokens");
+    opts->Register("determinize-lattice", &determinize_lattice, "If true, "
+                   "determinize the lattice (in a special sense, keeping only "
+                   "best pdf-sequence for each word-sequence).");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && lattice_beam > 0.0 && prune_interval > 0);

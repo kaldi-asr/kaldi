@@ -94,39 +94,39 @@ struct EbwAmSgmmOptions {
     epsilon = 1.0e-40;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "EbwAmSgmmOptions: ";
-    po->Register("tau-v", &tau_v, module+
-                 "Smoothing constant for phone vector estimation.");
-    po->Register("lrate-v", &lrate_v, module+
-                 "Learning rate constant for phone vector estimation.");
-    po->Register("tau-m", &tau_M, module+
-                 "Smoothing constant for estimation of phonetic-subspace projections (M).");
-    po->Register("lrate-m", &lrate_M, module+
-                 "Learning rate constant for phonetic-subspace projections.");
-    po->Register("tau-n", &tau_N, module+
-                 "Smoothing constant for estimation of speaker-subspace projections (N).");
-    po->Register("lrate-n", &lrate_N, module+
-                 "Learning rate constant for speaker-subspace projections.");
-    po->Register("tau-c", &tau_c, module+
-                 "Smoothing constant for estimation of substate weights (c)");
-    po->Register("tau-w", &tau_w, module+
-                 "Smoothing constant for estimation of weight projections (w)");
-    po->Register("lrate-w", &lrate_w, module+
-                 "Learning rate constant for weight-projections");
-    po->Register("tau-sigma", &tau_Sigma, module+
-                 "Smoothing constant for estimation of within-class covariances (Sigma)");
-    po->Register("lrate-sigma", &lrate_Sigma, module+
-                 "Constant that controls speed of learning for variances (larger->slower)");
-    po->Register("cov-min-value", &cov_min_value, module+
-                 "Minimum value that an eigenvalue of the updated covariance matrix can take, "
-                 "relative to its old value (maximum is inverse of this.)");
-    po->Register("min-substate-weight", &min_substate_weight, module+
-                 "Floor for weights of sub-states.");
-    po->Register("max-cond", &max_cond, module+
-                 "Value used in handling singular matrices during update.");
-    po->Register("epsilon", &max_cond, module+
-                 "Value used in handling singular matrices during update.");
+    opts->Register("tau-v", &tau_v, module+
+                   "Smoothing constant for phone vector estimation.");
+    opts->Register("lrate-v", &lrate_v, module+
+                   "Learning rate constant for phone vector estimation.");
+    opts->Register("tau-m", &tau_M, module+
+                   "Smoothing constant for estimation of phonetic-subspace projections (M).");
+    opts->Register("lrate-m", &lrate_M, module+
+                   "Learning rate constant for phonetic-subspace projections.");
+    opts->Register("tau-n", &tau_N, module+
+                   "Smoothing constant for estimation of speaker-subspace projections (N).");
+    opts->Register("lrate-n", &lrate_N, module+
+                   "Learning rate constant for speaker-subspace projections.");
+    opts->Register("tau-c", &tau_c, module+
+                   "Smoothing constant for estimation of substate weights (c)");
+    opts->Register("tau-w", &tau_w, module+
+                   "Smoothing constant for estimation of weight projections (w)");
+    opts->Register("lrate-w", &lrate_w, module+
+                   "Learning rate constant for weight-projections");
+    opts->Register("tau-sigma", &tau_Sigma, module+
+                   "Smoothing constant for estimation of within-class covariances (Sigma)");
+    opts->Register("lrate-sigma", &lrate_Sigma, module+
+                   "Constant that controls speed of learning for variances (larger->slower)");
+    opts->Register("cov-min-value", &cov_min_value, module+
+                   "Minimum value that an eigenvalue of the updated covariance matrix can take, "
+                   "relative to its old value (maximum is inverse of this.)");
+    opts->Register("min-substate-weight", &min_substate_weight, module+
+                   "Floor for weights of sub-states.");
+    opts->Register("max-cond", &max_cond, module+
+                   "Value used in handling singular matrices during update.");
+    opts->Register("epsilon", &max_cond, module+
+                   "Value used in handling singular matrices during update.");
   }
 };
 

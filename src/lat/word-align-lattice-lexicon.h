@@ -126,23 +126,23 @@ struct WordAlignLatticeLexiconOpts {
   WordAlignLatticeLexiconOpts(): partial_word_label(0), reorder(true),
                                  test(false), max_expand(-1.0) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("partial-word-label", &partial_word_label, "Numeric id of "
-                 "word symbol that is to be used for arcs in the word-aligned "
-                 "lattice corresponding to partial words at the end of "
-                 "\"forced-out\" utterances (zero is OK)");
-    po->Register("reorder", &reorder, "True if the lattices were generated "
-                 "from graphs that had the --reorder option true, relating to "
-                 "reordering self-loops (typically true)");
-    po->Register("test", &test, "If true, testing code will be activated "
-                 "(the purpose of this is to validate the algorithm).");
-    po->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
-                 "by which we allow the lattice-alignment code to increase the #states"
-                 "in a lattice (vs. the phone-aligned lattice) before we fail and "
-                 "refuse to align the lattice.  This is helpful in order to "
-                 "prevent 'pathological' lattices from causing the program to "
-                 "exhaust memory.  Actual max-states is 1000 + max-expand * "
-                 "orig-num-states.");
+  void Register(OptionsItf *opts) {
+    opts->Register("partial-word-label", &partial_word_label, "Numeric id of "
+                   "word symbol that is to be used for arcs in the word-aligned "
+                   "lattice corresponding to partial words at the end of "
+                   "\"forced-out\" utterances (zero is OK)");
+    opts->Register("reorder", &reorder, "True if the lattices were generated "
+                   "from graphs that had the --reorder option true, relating to "
+                   "reordering self-loops (typically true)");
+    opts->Register("test", &test, "If true, testing code will be activated "
+                   "(the purpose of this is to validate the algorithm).");
+    opts->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
+                   "by which we allow the lattice-alignment code to increase the #states"
+                   "in a lattice (vs. the phone-aligned lattice) before we fail and "
+                   "refuse to align the lattice.  This is helpful in order to "
+                   "prevent 'pathological' lattices from causing the program to "
+                   "exhaust memory.  Actual max-states is 1000 + max-expand * "
+                   "orig-num-states.");
   }
 };
 

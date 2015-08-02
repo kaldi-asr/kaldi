@@ -56,15 +56,15 @@ struct MleDiagGmmOptions {
     min_variance            = 0.001;
     remove_low_count_gaussians = true;
   }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleDiagGmmOptions: ";
-    po->Register("min-gaussian-weight", &min_gaussian_weight,
+    opts->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
-    po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
+    opts->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum occupancy to update a Gaussian.");
-    po->Register("min-variance", &min_variance,
+    opts->Register("min-variance", &min_variance,
                  module+"Variance floor (absolute variance).");
-    po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
+    opts->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
                  module+"If true, remove Gaussians that fall below the floors.");
   }
 };
@@ -90,14 +90,14 @@ struct MapDiagGmmOptions {
                              variance_tau(50.0),
                              weight_tau(10.0) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("mean-tau", &mean_tau,
-                 "Tau value for updating means.");
-    po->Register("variance-tau", &mean_tau,
-                 "Tau value for updating variances (note: only relevant if "
-                 "update-flags contains \"v\".");
-    po->Register("weight-tau", &weight_tau,
-                 "Tau value for updating weights.");
+  void Register(OptionsItf *opts) {
+    opts->Register("mean-tau", &mean_tau,
+                   "Tau value for updating means.");
+    opts->Register("variance-tau", &mean_tau,
+                   "Tau value for updating variances (note: only relevant if "
+                   "update-flags contains \"v\".");
+    opts->Register("weight-tau", &weight_tau,
+                   "Tau value for updating weights.");
   }
 };
 

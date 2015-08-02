@@ -41,15 +41,15 @@ struct PdfPriorOptions {
                       prior_scale(1.0),
                       prior_floor(1e-10) {}
 
-  void Register(OptionsItf *po) {
-    po->Register("class-frame-counts", &class_frame_counts,
-                 "Vector with frame-counts of pdfs to compute log-priors."
-                 " (priors are typically subtracted from log-posteriors"
-                 " or pre-softmax activations)");
-    po->Register("prior-scale", &prior_scale,
-                 "Scaling factor to be applied on pdf-log-priors");
-    po->Register("prior-floor", &prior_floor,
-                 "Flooring constatnt for prior probability (i.e. label rel. frequency)");
+  void Register(OptionsItf *opts) {
+    opts->Register("class-frame-counts", &class_frame_counts,
+                   "Vector with frame-counts of pdfs to compute log-priors."
+                   " (priors are typically subtracted from log-posteriors"
+                   " or pre-softmax activations)");
+    opts->Register("prior-scale", &prior_scale,
+                   "Scaling factor to be applied on pdf-log-priors");
+    opts->Register("prior-floor", &prior_floor,
+                   "Flooring constatnt for prior probability (i.e. label rel. frequency)");
   }
 };
 

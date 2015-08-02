@@ -173,22 +173,22 @@ struct UbmClusteringOptions {
         : ubm_num_gauss(ncomp), reduce_state_factor(red),
           intermediate_num_gauss(interm_gauss), cluster_varfloor(vfloor),
           max_am_gauss(max_am_gauss) {}
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "UbmClusteringOptions: ";
-    po->Register("max-am-gauss", &max_am_gauss, module+
-                 "We first reduce acoustic model to this max #Gauss before clustering.");
-    po->Register("ubm-num-gauss", &ubm_num_gauss, module+
-                 "Number of Gaussians components in the final UBM.");
-    po->Register("ubm-numcomps", &ubm_num_gauss, module+
-                 "Backward compatibility option (see ubm-num-gauss)");
-    po->Register("reduce-state-factor", &reduce_state_factor, module+
-                 "Intermediate number of clustered states (as fraction of total states).");
-    po->Register("intermediate-num-gauss", &intermediate_num_gauss, module+
-                 "Intermediate number of merged Gaussian components.");
-    po->Register("intermediate-numcomps", &intermediate_num_gauss, module+
-                 "Backward compatibility option (see intermediate-num-gauss)");
-    po->Register("cluster-varfloor", &cluster_varfloor, module+
-                 "Variance floor used in bottom-up state clustering.");
+    opts->Register("max-am-gauss", &max_am_gauss, module+
+                   "We first reduce acoustic model to this max #Gauss before clustering.");
+    opts->Register("ubm-num-gauss", &ubm_num_gauss, module+
+                   "Number of Gaussians components in the final UBM.");
+    opts->Register("ubm-numcomps", &ubm_num_gauss, module+
+                   "Backward compatibility option (see ubm-num-gauss)");
+    opts->Register("reduce-state-factor", &reduce_state_factor, module+
+                   "Intermediate number of clustered states (as fraction of total states).");
+    opts->Register("intermediate-num-gauss", &intermediate_num_gauss, module+
+                   "Intermediate number of merged Gaussian components.");
+    opts->Register("intermediate-numcomps", &intermediate_num_gauss, module+
+                   "Backward compatibility option (see intermediate-num-gauss)");
+    opts->Register("cluster-varfloor", &cluster_varfloor, module+
+                   "Variance floor used in bottom-up state clustering.");
   }
 
   void Check();

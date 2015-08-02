@@ -93,14 +93,14 @@ struct MleTransitionUpdateConfig {
                             bool share_for_pdfs = false):
       floor(floor), mincount(mincount), share_for_pdfs(share_for_pdfs) {}
   
-  void Register (OptionsItf *po) {
-    po->Register("transition-floor", &floor,
-                 "Floor for transition probabilities");
-    po->Register("transition-min-count", &mincount,
-                 "Minimum count required to update transitions from a state");
-    po->Register("share-for-pdfs", &share_for_pdfs,
-                 "If true, share all transition parameters where the states "
-                 "have the same pdf.");
+  void Register (OptionsItf *opts) {
+    opts->Register("transition-floor", &floor,
+                   "Floor for transition probabilities");
+    opts->Register("transition-min-count", &mincount,
+                   "Minimum count required to update transitions from a state");
+    opts->Register("share-for-pdfs", &share_for_pdfs,
+                   "If true, share all transition parameters where the states "
+                   "have the same pdf.");
   }
 };
 
@@ -109,12 +109,12 @@ struct MapTransitionUpdateConfig {
   bool share_for_pdfs; // If true, share all transition parameters that have the same pdf.
   MapTransitionUpdateConfig(): tau(5.0), share_for_pdfs(false) { }
 
-  void Register (OptionsItf *po) {
-    po->Register("transition-tau", &tau, "Tau value for MAP estimation of transition "
-                 "probabilities.");
-    po->Register("share-for-pdfs", &share_for_pdfs,
-                 "If true, share all transition parameters where the states "
-                 "have the same pdf.");
+  void Register (OptionsItf *opts) {
+    opts->Register("transition-tau", &tau, "Tau value for MAP estimation of transition "
+                   "probabilities.");
+    opts->Register("share-for-pdfs", &share_for_pdfs,
+                   "If true, share all transition parameters where the states "
+                   "have the same pdf.");
   }
 };
 

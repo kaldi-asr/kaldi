@@ -232,7 +232,7 @@ class ParseOptions : public OptionsItf {
 /// This template is provided for convenience in reading config classes from
 /// files; this is not the standard way to read configuration options, but may
 /// occasionally be needed.  This function assumes the config has a function
-/// "void Register(OptionsItf *po)" which it can call to register the
+/// "void Register(OptionsItf *opts)" which it can call to register the
 /// ParseOptions object.
 template<class C> void ReadConfigFromFile(const std::string config_filename,
                                           C *c) {
