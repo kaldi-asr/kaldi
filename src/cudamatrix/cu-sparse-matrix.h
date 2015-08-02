@@ -37,14 +37,30 @@
 
 namespace kaldi {
 
+template <typename Real>
+Real TraceMatSmat(const CuMatrixBase<Real> &A,
+                  const CuSparseMatrix<Real> &B,
+                  MatrixTransposeType trans = kNoTrans);
+
 template <class Real>
 class CuSparseMatrix {
  public:
+  friend class CuMatrixBase<float>;
+  friend class CuMatrixBase<double>;
+  friend class CuMatrixBase<Real>;
+  friend class CuVectorBase<float>;
+  friend class CuVectorBase<double>;
+  friend class CuVectorBase<Real>;
+
+  friend Real TraceMatSmat<Real>(const CuMatrixBase<Real> &A,
+                                 const CuSparseMatrix<Real> &B,
+                                 MatrixTransposeType trans);
+
   MatrixIndexT NumRows() const { return num_rows_; }
 
   MatrixIndexT NumCols() const { return num_cols_; }
 
-  MatrixIndexT NumElements() const { return elements_.Dim(); }
+  MatrixIndexT NumElements() const;
 
   Real Sum() const;
 
@@ -60,7 +76,17 @@ class CuSparseMatrix {
   CuSparseMatrix<Real> &operator = (const SparseMatrix<Real> &smat);
 
   /// Copy from possibly-GPU-based matrix.
-  CuSparseMatrix<Real> &operator = (const CuSparseMatrix<Real> &smat);  
+  CuSparseMatrix<Real> &operator = (const CuSparseMatrix<Real> &smat);
+
+  /// Copy from CPU-based matrix. We will add the transpose option later when it
+  /// is necessary.
+  template <typename OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
+
+  /// Copy to CPU-based matrix. We will add the transpose option later when it
+  /// is necessary.
+  template <typename OtherReal>
+  void CopyToSmat(SparseMatrix<OtherReal> *smat) const;
 
   /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);
@@ -78,10 +104,15 @@ class CuSparseMatrix {
   void Read(std::istream &is, bool binary);
 
   // Constructor from CPU-based sparse matrix.
-  CuSparseMatrix(const SparseMatrix<Real> &smat);
+  CuSparseMatrix(const SparseMatrix<Real> &smat) { this->CopyFromSmat(smat); }
   
   ~CuSparseMatrix() { }
 
+  // Use the CuMatrix::CopyFromSmat() function to copy from this to
+  // CuMatrix.
+  // Also see CuMatrix::AddSmat().
+  
+ protected:
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular sparse matrix.
@@ -92,10 +123,6 @@ class CuSparseMatrix {
     return *(reinterpret_cast<SparseMatrix<Real>* >(this));
   }
 
-  // Use the CuMatrix::CopyFromSmat() function to copy from this to
-  // CuMatrix.
-  // Also see CuMatrix::AddSmat().
-  
  private:
   // This member is only used if we did not compile for the GPU, or if the GPU
   // is not enabled.  It needs to be first because we reinterpret_cast this
@@ -110,13 +137,6 @@ class CuSparseMatrix {
   // CUDA code.
   CuArray<MatrixElement<Real> > elements_;
 };
-
-
-template<typename Real>
-Real TraceMatSmat(const CuMatrixBase<Real> &A,
-                  const CuSparseMatrix<Real> &B,
-                  MatrixTransposeType trans = kNoTrans);
-
 
 
 }  // namespace

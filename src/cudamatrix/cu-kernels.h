@@ -108,6 +108,32 @@ inline void cuda_copy_from_smat_trans(dim3 Gr, dim3 Bl, double* mat_out, const M
   cuda_copy_from_smat_dd_trans(Gr, Bl, mat_out, smat_in, d_out, d_in);
 }
 
+inline void cuda_copy_from_smat_as_vec(dim3 Gr, dim3 Bl, float* vec_out, const MatrixElement<float>* smat_in, MatrixIndexT_cuda d_in) {
+  cuda_copy_from_smat_as_vec_ff(Gr, Bl, vec_out, smat_in, d_in);
+}
+inline void cuda_copy_from_smat_as_vec(dim3 Gr, dim3 Bl, float* vec_out, const MatrixElement<double>* smat_in, MatrixIndexT_cuda d_in) {
+  cuda_copy_from_smat_as_vec_fd(Gr, Bl, vec_out, smat_in, d_in);
+}
+inline void cuda_copy_from_smat_as_vec(dim3 Gr, dim3 Bl, double* vec_out, const MatrixElement<float>* smat_in, MatrixIndexT_cuda d_in) {
+  cuda_copy_from_smat_as_vec_df(Gr, Bl, vec_out, smat_in, d_in);
+}
+inline void cuda_copy_from_smat_as_vec(dim3 Gr, dim3 Bl, double* vec_out, const MatrixElement<double>* smat_in, MatrixIndexT_cuda d_in) {
+  cuda_copy_from_smat_as_vec_dd(Gr, Bl, vec_out, smat_in, d_in);
+}
+
+inline void cuda_trace_mat_smat(dim3 Gr, dim3 Bl, const float* mat_in, const MatrixElement<float>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, float* trace_vec_out) {
+  cudaF_trace_mat_smat(Gr, Bl, mat_in, smat_in, mat_d_in, smat_d_in, trace_vec_out);
+}
+inline void cuda_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const float* mat_in, const MatrixElement<float>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, float* trace_vec_out) {
+  cudaF_trace_mat_smat_trans(Gr, Bl, mat_in, smat_in, mat_d_in, smat_d_in, trace_vec_out);
+}
+inline void cuda_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat_in, const MatrixElement<double>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, double* trace_vec_out) {
+  cudaD_trace_mat_smat(Gr, Bl, mat_in, smat_in, mat_d_in, smat_d_in, trace_vec_out);
+}
+inline void cuda_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in, const MatrixElement<double>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, double* trace_vec_out) {
+  cudaD_trace_mat_smat_trans(Gr, Bl, mat_in, smat_in, mat_d_in, smat_d_in, trace_vec_out);
+}
+
 inline void cuda_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) { cudaF_copy_col_from_vec(Gr,Bl,mat,v,col,d); }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_apply_exp(Gr,Bl,mat,d); }
 inline void cuda_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim dim) { cudaF_apply_pow(Gr,Bl,mat,power,dim); }

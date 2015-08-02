@@ -31,13 +31,12 @@
 #include "cudamatrix/cu-matrixdim.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-value.h"
-#include "cudamatrix/cu-sparse-matrix.h"
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
-#include "matrix/sparse-matrix.h"
 #include "cudamatrix/cu-array.h"
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-rand.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 
 namespace kaldi {
 
@@ -76,6 +75,9 @@ class CuMatrixBase {
   friend class CuRand<Real>;
   friend class CuSubVector<Real>;
   friend class CuBlockMatrix<Real>;
+  friend class CuSparseMatrix<float>;
+  friend class CuSparseMatrix<double>;
+  friend class CuSparseMatrix<Real>;
   friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
                                      CuMatrixBase<Real> *grad, Real l1, Real lr);
   friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
@@ -167,6 +169,10 @@ class CuMatrixBase {
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,
                                 const CuMatrixBase<Real> &B,
                                 MatrixTransposeType trans);
+
+  friend Real TraceMatSmat<Real>(const CuMatrixBase<Real> &A,
+                                 const CuSparseMatrix<Real> &B,
+                                 MatrixTransposeType trans);
 
   /// Adds "value" to the diagonal elements of the matrix.  The matrix
   /// *this does not have to be square.

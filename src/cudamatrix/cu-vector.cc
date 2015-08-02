@@ -15,6 +15,7 @@
 #include "cudamatrix/cu-rand.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 #include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
@@ -758,6 +759,34 @@ template
 void CuVectorBase<float>::CopyFromVec(const VectorBase<double> &src);
 template
 void CuVectorBase<double>::CopyFromVec(const VectorBase<double> &src);
+
+template<typename Real>
+template<typename OtherReal>
+void CuVectorBase<Real>::CopyFromSmat(const CuSparseMatrix<OtherReal> &smat) {
+  KALDI_ASSERT(dim_ == smat.NumElements());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {      
+    Timer tim;
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(smat.NumElements(), CU1DBLOCK), 1);
+    cuda_copy_from_smat_as_vec(dimGrid, dimBlock, this->data_,
+                               smat.Data(), smat.NumElements());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vector<Real> tmp(smat.Mat());
+    this->CopyFromVec(tmp);
+  }
+}
+template
+void CuVectorBase<float>::CopyFromSmat(const CuSparseMatrix<float> &smat);
+template
+void CuVectorBase<float>::CopyFromSmat(const CuSparseMatrix<double> &smat);
+template
+void CuVectorBase<double>::CopyFromSmat(const CuSparseMatrix<float> &smat);
+template
+void CuVectorBase<double>::CopyFromSmat(const CuSparseMatrix<double> &smat);
 
 template<typename Real>
 template<typename OtherReal>

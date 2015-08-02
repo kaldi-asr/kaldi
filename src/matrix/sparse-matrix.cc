@@ -1,6 +1,7 @@
 // matrix/sparse-matrix.cc
 
 // Copyright 2015     Johns Hopkins University (author: Daniel Povey)
+//           2015     Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,6 +23,27 @@
 #include <algorithm>
 
 namespace kaldi {
+
+template <typename Real>
+std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() {
+  if (pairs_.empty()) return NULL;
+  else return &(pairs_[0]);
+}
+
+template <typename Real>
+const std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() const {
+  if (pairs_.empty()) return NULL;
+  else return &(pairs_[0]);
+}
+
+template <typename Real>
+Real SparseVector<Real>::Sum() const {
+  Real sum = 0;
+  for (int32 i = 0; i < pairs_.size(); ++i) {
+    sum += pairs_[i].second;
+  }
+  return sum;
+}
 
 template <typename Real>
 template <typename OtherReal>
@@ -62,10 +84,32 @@ void SparseVector<double>::AddToVec(double alpha, VectorBase<float> *vec) const;
 template
 void SparseVector<double>::AddToVec(double alpha, VectorBase<double> *vec) const;
 
+template <typename Real>
+template <typename OtherReal>
+void SparseVector<Real>::CopyFromSvec(const SparseVector<OtherReal> &other) {
+  dim_ = other.Dim();
+  pairs_.clear();
+  if (dim_ == 0) return;
+  for (int32 i = 0; i < other.NumElements(); ++i) {
+    pairs_.push_back(std::make_pair(
+        other.GetElement(i).first,
+        static_cast<Real>(other.GetElement(i).second)));
+  }
+}
+template
+void SparseVector<float>::CopyFromSvec(const SparseVector<float> &svec);
+template
+void SparseVector<float>::CopyFromSvec(const SparseVector<double> &svec);
+template
+void SparseVector<double>::CopyFromSvec(const SparseVector<float> &svec);
+template
+void SparseVector<double>::CopyFromSvec(const SparseVector<double> &svec);
+
 
 template <typename Real>
 SparseVector<Real>& SparseVector<Real>::operator = (
     const SparseVector<Real> &other) {
+  this->CopyFromSvec(other);
   dim_ = other.dim_;
   pairs_ = other.pairs_;
   return *this;
@@ -233,17 +277,38 @@ MatrixIndexT SparseMatrix<Real>::NumCols() const {
 }
 
 template <typename Real>
+MatrixIndexT SparseMatrix<Real>::NumElements() const {
+  int32 num_elements = 0;
+  for (int32 i = 0; i < rows_.size(); ++i) {
+    num_elements += rows_[i].NumElements();
+  }
+  return num_elements;
+}
+
+template <typename Real>
 SparseVector<Real>* SparseMatrix<Real>::Data() {
-  if (rows_.empty()) return NULL;
-  else return rows_.data();
+  if (rows_.empty())
+    return NULL;
+  else
+    return rows_.data();
 }
 
 template <typename Real>
 const SparseVector<Real>* SparseMatrix<Real>::Data() const {
-  if (rows_.empty()) return NULL;
-  else return rows_.data();
+  if (rows_.empty())
+    return NULL;
+  else
+    return rows_.data();
 }
 
+template <typename Real>
+Real SparseMatrix<Real>::Sum() const {
+  Real sum = 0;
+  for (int32 i = 0; i < rows_.size(); ++i) {
+    sum += rows_[i].Sum();
+  }
+  return sum;
+}
 
 template <typename Real>
 template <typename OtherReal>
@@ -284,6 +349,43 @@ void SparseMatrix<double>::CopyToMat(MatrixBase<float> *other,
 template
 void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
                                     MatrixTransposeType trans) const;
+
+template <typename Real>
+template <typename OtherReal>
+void SparseMatrix<Real>::CopyToVec(VectorBase<OtherReal> *other) const {
+  KALDI_ASSERT(other->Dim() == NumElements());
+  OtherReal *dst_data = other->Data();
+  int32 dst_index = 0;
+  for (int32 i = 0; i < rows_.size(); ++i) {
+    for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
+      dst_data[dst_index] =
+          static_cast<OtherReal>(rows_[i].GetElement(j).second);
+      dst_index++;
+    }
+  }
+}
+template void SparseMatrix<float>::CopyToVec(VectorBase<float> *other) const;
+template void SparseMatrix<float>::CopyToVec(VectorBase<double> *other) const;
+template void SparseMatrix<double>::CopyToVec(VectorBase<float> *other) const;
+template void SparseMatrix<double>::CopyToVec(VectorBase<double> *other) const;
+
+template <typename Real>
+template <typename OtherReal>
+void SparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &other) {
+  rows_.resize(other.NumRows());
+  if (rows_.size() == 0) return;
+  for (int32 r = 0; r < rows_.size(); ++r) {
+    rows_[r].CopyFromSvec(other.Row(r));
+  }
+}
+template
+void SparseMatrix<float>::CopyFromSmat(const SparseMatrix<float> &other);
+template
+void SparseMatrix<float>::CopyFromSmat(const SparseMatrix<double> &other);
+template
+void SparseMatrix<double>::CopyFromSmat(const SparseMatrix<float> &other);
+template
+void SparseMatrix<double>::CopyFromSmat(const SparseMatrix<double> &other);
 
 template <typename Real>
 void SparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
@@ -364,31 +466,25 @@ void SparseMatrix<Real>::AddToMat(BaseFloat alpha,
   }
 }
 
-
-template <typename Real>
-std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() {
-  if (pairs_.empty()) return NULL;
-  else return &(pairs_[0]);
-}
-
-template <typename Real>
-const std::pair<MatrixIndexT, Real>* SparseVector<Real>::Data() const {
-  if (pairs_.empty()) return NULL;
-  else return &(pairs_[0]);
-}
-
 template <typename Real>
 Real VecSvec(const VectorBase<Real> &vec,
              const SparseVector<Real> &svec) {
   KALDI_ASSERT(vec.Dim() == svec.Dim());
   MatrixIndexT n = svec.NumElements();
   const std::pair<MatrixIndexT,Real> *sdata = svec.Data();
-  Real *data = vec.Data();
+  const Real *data = vec.Data();
   Real ans = 0.0;
   for (MatrixIndexT i = 0; i < n; i++)
     ans += data[sdata[i].first] * sdata[i].second;
   return ans;
 }
+
+template
+float VecSvec(const VectorBase<float> &vec,
+              const SparseVector<float> &svec);
+template
+double VecSvec(const VectorBase<double> &vec,
+              const SparseVector<double> &svec);
 
 template <typename Real>
 const SparseVector<Real> &SparseMatrix<Real>::Row(MatrixIndexT r) const {
@@ -511,6 +607,14 @@ Real TraceMatSmat(const MatrixBase<Real> &A,
   return sum;
 }
 
+template
+float TraceMatSmat(const MatrixBase<float> &A,
+                   const SparseMatrix<float> &B,
+                   MatrixTransposeType trans);
+template
+double TraceMatSmat(const MatrixBase<double> &A,
+                   const SparseMatrix<double> &B,
+                   MatrixTransposeType trans);
 
 void GeneralMatrix::Clear() {
   mat_.Resize(0, 0);

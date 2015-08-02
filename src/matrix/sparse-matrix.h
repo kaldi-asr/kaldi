@@ -1,6 +1,7 @@
 // matrix/sparse-matrix.h
 
 // Copyright  2015  Johns Hopkins University (author: Daniel Povey)
+//            2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,6 +23,7 @@
 
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/kaldi-vector.h"
 #include "matrix/compressed-matrix.h"
 
 namespace kaldi {
@@ -35,6 +37,8 @@ class SparseVector {
  public:
   MatrixIndexT Dim() const { return dim_; }
 
+  Real Sum() const;
+
   template <class OtherReal>
   void CopyToVec(VectorBase<OtherReal> *vec) const;
 
@@ -42,6 +46,9 @@ class SparseVector {
   template <class OtherReal>
   void AddToVec(Real alpha,
                 VectorBase<OtherReal> *vec) const;
+
+  template <class OtherReal>
+  void CopyFromSvec(const SparseVector<OtherReal> &other);
 
   SparseVector<Real> &operator = (const SparseVector<Real> &other); 
       
@@ -105,9 +112,23 @@ class SparseMatrix {
 
   MatrixIndexT NumCols() const;
 
+  MatrixIndexT NumElements() const;
+
+  Real Sum() const;
+
   template <class OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
+
+  /// Copies the values of all the elements in SparseMatrix into a VectorBase
+  /// object.
+  template <class OtherReal>
+  void CopyToVec(VectorBase<OtherReal> *other) const;
+
+  /// Copies data from another sparse matrix. We will add the transpose option
+  /// later when it is necessary.
+  template <class OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &other);
 
   /// Does *other = *other + alpha * *this.
   void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,

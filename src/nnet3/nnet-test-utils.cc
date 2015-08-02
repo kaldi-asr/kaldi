@@ -238,7 +238,7 @@ void GenerateConfigSequenceRnn(
 // Wic, Wfc, Woc
 
 void GenerateConfigSequenceLstm(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
