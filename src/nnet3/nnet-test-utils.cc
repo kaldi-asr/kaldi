@@ -238,7 +238,7 @@ void GenerateConfigSequenceRnn(
 // Wic, Wfc, Woc
 
 void GenerateConfigSequenceLstm(
-    const NnetGenerationConfig &opts,
+    const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
@@ -268,17 +268,17 @@ void GenerateConfigSequenceLstm(
   os << "component name=Wyp type=NaturalGradientAffineComponent input-dim="
      << projection_dim << " output-dim=" << cell_dim << std::endl;
   // Defining the diagonal matrices
-  os << "component name=Wic type=NaturalGradientDiagonalAffineComponent"
+  os << "component name=Wic type=NaturalGradientDiagonalAffineComponent "
      << " input-dim=" << cell_dim 
      << " output-dim=" << cell_dim << std::endl;
-  os << "component name=Wfc type=NaturalGradientDiagonalAffineComponent"
+  os << "component name=Wfc type=NaturalGradientDiagonalAffineComponent "
      << " input-dim=" << cell_dim 
      << " output-dim=" << cell_dim << std::endl;
-  os << "component name=Woc type=NaturalGradientDiagonalAffineComponent"
+  os << "component name=Woc type=NaturalGradientDiagonalAffineComponent "
      << " input-dim=" << cell_dim 
      << " output-dim=" << cell_dim << std::endl;
   // Defining the final affine transform 
-  os << "component name=final_affine type=NaturalGradientAffineComponent" 
+  os << "component name=final_affine type=NaturalGradientAffineComponent " 
      << "input-dim=" << cell_dim << " output-dim=" << output_dim << std::endl;
   os << "component name=logsoftmax type=LogSoftmaxComponent dim="
      << output_dim << std::endl;
@@ -317,13 +317,13 @@ void GenerateConfigSequenceLstm(
   os << "component-node name=Woc component=Woc input=c_t\n";
 
   // Splitting the outputs of W*m node
-  os << "dim-range-node name=r_t input-node=W*m dim-offset=0"
+  os << "dim-range-node name=r_t input-node=W*m dim-offset=0 "
      << "dim=" << projection_dim << std::endl;
   os << "dim-range-node name=p_t input-node=W*m dim-offset=" << projection_dim
      << "dim=" << projection_dim << std::endl;
   
   // Splitting outputs of W*x node
-  os << "dim-range-node name=W_{ix}*x_t input_node=W*x dim-offset=0"
+  os << "dim-range-node name=W_{ix}*x_t input_node=W*x dim-offset=0 "
      << "dim=" << cell_dim << std::endl;
   os << "dim-range-node name=W_{fx}*x_t input_node=W*x "
      << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
@@ -333,7 +333,7 @@ void GenerateConfigSequenceLstm(
      << "dim-offset=" << 3 * cell_dim << " dim="<<cell_dim << std::endl;
   
   // Splitting outputs of W*r node
-  os << "dim-range-node name=W_{ir}*r_{t-1} input_node=W*r dim-offset=0"
+  os << "dim-range-node name=W_{ir}*r_{t-1} input_node=W*r dim-offset=0 "
      << "dim=" << cell_dim << std::endl;
   os << "dim-range-node name=W_{fr}*r_{t-1} input_node=W*r "
      << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
