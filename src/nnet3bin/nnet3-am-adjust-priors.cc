@@ -1,4 +1,4 @@
-// nnet2bin/nnet-adjust-priors.cc
+// nnet3bin/nnet3-am-adjust-priors.cc
 
 // Copyright 2014  Johns Hopkins University (author:  Daniel Povey)
 
@@ -19,12 +19,12 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet2/am-nnet.h"
+#include "nnet3/am-nnet-simple.h"
 #include "hmm/transition-model.h"
 #include "tree/context-dep.h"
 
 namespace kaldi {
-namespace nnet2 {
+namespace nnet3 {
 
 
 // Computes one-sided K-L divergence from p to q.
@@ -64,27 +64,27 @@ void PrintPriorDiagnostics(const Vector<BaseFloat> &old_priors,
 }
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::nnet2;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Set the priors of the neural net to the computed posterios from the net,\n"
+        "Set the priors of the nnet3 neural net to the computed posterios from the net,\n"
         "on typical data (e.g. training data). This is correct under more general\n"
         "circumstances than using the priors of the class labels in the training data\n"
         "\n"
         "Typical usage of this program will involve computation of an average pdf-level\n"
-        "posterior with nnet-compute or nnet-compute-from-egs, piped into matrix-sum-rows\n"
+        "posterior with nnet3-compute or nnet3-compute-from-egs, piped into matrix-sum-rows\n"
         "and then vector-sum, to compute the average posterior\n"
         "\n"
-        "Usage: nnet-adjust-priors [options] <nnet-in> <summed-posterior-vector-in> <nnet-out>\n"
+        "Usage: nnet3-am-adjust-priors [options] <nnet-in> <summed-posterior-vector-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-adjust-priors final.mdl prior.vec final.mdl\n";
+        " nnet3-am-adjust-priors final.mdl counts.vec final.mdl\n";
     
     bool binary_write = true;
     BaseFloat prior_floor = 1.0e-15; // Have a very low prior floor, since this method
@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
         nnet_wxfilename = po.GetArg(3);
     
     TransitionModel trans_model;
-    AmNnet am_nnet;
+    AmNnetSimple am_nnet;
     {
       bool binary_read;
       Input ki(nnet_rxfilename, &binary_read);

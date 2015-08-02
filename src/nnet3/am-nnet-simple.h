@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_AM_NNET_H_
-#define KALDI_NNET3_AM_NNET_H_
+#ifndef KALDI_NNET3_AM_NNET_SIMPLE_H_
+#define KALDI_NNET3_AM_NNET_SIMPLE_H_
 
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
@@ -28,18 +28,22 @@ namespace kaldi {
 namespace nnet3 {
 
 /*
+
   The class AmNnetSimple (AM stands for "acoustic model") has the job of taking
   the "Nnet" class, which is a quite general neural network, and giving it an
   interface that's suitable for acoustic modeling, i.e. all the stuff that's
-  specific to the speech recognition application, including dividing
-  by the prior.
+  specific to the speech recognition application, including dividing by the
+  prior.
 
-  We are calling it AmNnetSimple because it's intended to handle the restricted
-  case where there is just one time-dependent type of input, called "input" in
-  the network itself, plus possibly a non-time-dependent input called "ivector",
-  and just one output called "output" (the posteriors).  We might later want
-  other types of network that have possibly multiple different-named inputs, or
-  might make use of the "x" dimension of the Index structure..  */
+  This class is intended for wrapping "simple" neural nets, defined as those
+  having one output named "output", an input named "input" (provided for various
+  t and x=0) and a possible input named "ivector" (provided only for t=0,x=0).
+  The inputs and outputs should have the expected relationship, e.g. the minimum
+  context required to compute an output should be expressible as a left-context
+  and right-context sufficient to cover all cases (for instance, the output
+  can't depend on the input at 2*t).
+  
+*/
 
 
 class AmNnetSimple {
@@ -47,17 +51,14 @@ class AmNnetSimple {
   AmNnetSimple() { }
 
   AmNnetSimple(const AmNnetSimple &other):
-      nnet_(other.nnet_),
-      priors_(other.priors_),
-      left_context_(other.left_context_),
-      right_context_(other.right_context_) { }
-
-  explicit AmNnetSimple(const Nnet &nnet): nnet_(nnet) { }
+    nnet_(other.nnet_),
+    priors_(other.priors_),
+    left_context_(other.left_context_),
+    right_context_(other.right_context_) { }
   
-  /// Initialize from a neural network that's already been set up.
-  /// The priors will be empty at this point.
-  void Init(const Nnet &nnet);
-
+  explicit AmNnetSimple(const Nnet &nnet):
+    nnet_(nnet) { SetContext(); }
+  
   int32 NumPdfs() const;
   
   void Write(std::ostream &os, bool binary) const;
@@ -68,6 +69,8 @@ class AmNnetSimple {
   
   Nnet &GetNnet() { return nnet_; }
 
+  void SetNnet(const Nnet &nnet);
+
   void SetPriors(const VectorBase<BaseFloat> &priors);
   
   const VectorBase<BaseFloat> &Priors() const { return priors_; }
@@ -75,18 +78,20 @@ class AmNnetSimple {
   std::string Info() const;
 
   /// Minimum left context required to compute an output.
-  int32 LeftContext() const;
+  int32 LeftContext() const { return left_context_; }
 
-  /// Minimum right context required to compute an output.
-  int32 RightContext() const;
+  /// Minimum right context required to compute an output. 
+  int32 RightContext() const { return right_context_; }
 
   /// Returns the input feature dim.
-  int32 InputDim() const;
+  int32 InputDim() const { return nnet_.InputDim("input-dim"); }
 
   /// Returns the iVector dimension, or -1 if there is no such input.
-  int32 IvectorDim() const;
+  int32 IvectorDim() const { return nnet_.InputDim("ivector-dim"); }
   
  private:
+  void SetContext();
+               
   const AmNnetSimple &operator = (const AmNnetSimple &other); // Disallow.
   Nnet nnet_;
   Vector<BaseFloat> priors_;
@@ -102,4 +107,4 @@ class AmNnetSimple {
 } // namespace nnet3
 } // namespace kaldi
 
-#endif // KALDI_NNET3_AM_NNET_H_
+#endif // KALDI_NNET3_AM_NNET_SIMPLE_H_

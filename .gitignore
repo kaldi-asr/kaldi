@@ -941,3 +941,8 @@
 /src/nnet3bin/nnet3-merge-egs
 /src/nnet3bin/nnet3-compute-from-egs
 /src/nnet3bin/nnet3-acc-lda-stats
+/src/nnet3bin/nnet3-am-adjust-priors
+/src/nnet3bin/nnet3-am-init
+/src/nnet3bin/nnet3-am-train-transitions
+
+

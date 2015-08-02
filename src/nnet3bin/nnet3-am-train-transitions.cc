@@ -1,6 +1,6 @@
-// nnet2bin/nnet-train-transitions.cc
+// nnet3bin/nnet3-am-train-transitions.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,16 +19,16 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet2/am-nnet.h"
 #include "hmm/transition-model.h"
+#include "nnet3/am-nnet-simple.h"
 #include "tree/context-dep.h"
 
 namespace kaldi {
-namespace nnet2 {
+namespace nnet3 {
 void SetPriors(const TransitionModel &tmodel,
                const Vector<double> &transition_accs,
                double prior_floor,
-               AmNnet *am_nnet) {
+               AmNnetSimple *am_nnet) {
   KALDI_ASSERT(tmodel.NumPdfs() == am_nnet->NumPdfs());
   Vector<BaseFloat> pdf_counts(tmodel.NumPdfs());
   KALDI_ASSERT(transition_accs(0) == 0.0); // There is
@@ -47,21 +47,21 @@ void SetPriors(const TransitionModel &tmodel,
 }               
 
 
-} // namespace nnet2
+} // namespace nnet3
 } // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::nnet2;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Train the transition probabilities of a neural network acoustic model\n"
+        "Train the transition probabilities of an nnet3 neural network acoustic model\n"
         "\n"
-        "Usage:  nnet-train-transitions [options] <nnet-in> <alignments-rspecifier> <nnet-out>\n"
+        "Usage:  nnet3-am-train-transitions [options] <nnet-in> <alignments-rspecifier> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-train-transitions 1.nnet \"ark:gunzip -c ali.*.gz|\" 2.nnet\n";
+        " nnet3-am-train-transitions 1.nnet \"ark:gunzip -c ali.*.gz|\" 2.nnet\n";
     
     bool binary_write = true;
     bool set_priors = true; // Also set the per-pdf priors in the model.
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
         nnet_wxfilename = po.GetArg(3);
     
     TransitionModel trans_model;
-    AmNnet am_nnet;
+    AmNnetSimple am_nnet;
     {
       bool binary_read;
       Input ki(nnet_rxfilename, &binary_read);

@@ -333,7 +333,7 @@ if [ $stage -le -1 ]; then
   # Convert to .mdl, train the transitions, set the priors.
   $cmd $dir/log/init_mdl.log \
     nnet3-am-init $alidir/tree $lang/topo $dir/0.raw - \| \
-    nnet3-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl
+    nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl
 fi
 
 
@@ -445,7 +445,7 @@ while [ $x -lt $num_iters ]; do
 
       echo "Re-adjusting priors based on computed posteriors"
       $cmd $dir/log/adjust_priors.$x.log \
-        nnet3-adjust-priors $dir/$x.mdl $dir/post.$x.vec $dir/$x.mdl || exit 1;
+        nnet3-am-adjust-priors $dir/$x.mdl $dir/post.$x.vec $dir/$x.mdl || exit 1;
 
       sleep 2
 
