@@ -30,9 +30,9 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Write to standard output various properties of full-covariance GMM model\n"
         "This is for a single mixture of Gaussians, e.g. as used for a UBM.\n"
-        "Usage:  gmm-info [options] <gmm>\n"
+        "Usage:  fgmm-global-info [options] <gmm>\n"
         "e.g.:\n"
-        " fgmm-info 1.ubm\n";
+        " fgmm-global-info 1.ubm\n";
     
     ParseOptions po(usage);
     

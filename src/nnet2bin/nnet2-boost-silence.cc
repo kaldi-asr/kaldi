@@ -37,8 +37,7 @@ int main(int argc, char *argv[]) {
        "It is implemented by dividing the corresponding priors by that\n"
        "factor (since we divide by the prior when we evaluate likelihoods).\n"
        "\n"
-       "Usage:\n" 
-       " nnet2-boost-silence [options] <silence-phones-list> <model-in> <model-out>\n"
+       "Usage: nnet2-boost-silence [options] <silence-phones-list> <model-in> <model-out>\n"
        "e.g.:   nnet2-boost-silence --boost=0.2 1:2:3 final.mdl final_boost.mdl\n"
        "See also: gmm-boost-silence\n";
    

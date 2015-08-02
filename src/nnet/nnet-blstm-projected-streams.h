@@ -19,8 +19,8 @@
 
 
 
-#ifndef KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
-#define KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
+#ifndef KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
+#define KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"

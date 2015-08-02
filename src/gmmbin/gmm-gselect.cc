@@ -36,8 +36,7 @@ int main(int argc, char *argv[]) {
         " sorted from best to worst.\n"
         "See also: gmm-global-get-post, fgmm-global-gselect-to-post,\n"
         "copy-gselect, fgmm-gselect\n"
-        "Usage: \n"
-        " gmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
+        "Usage: gmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
         "The --gselect option (which takes an rspecifier) limits selection to a subset\n"
         "of indices:\n"
         "e.g.: gmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >gselect.1.gz\"\n";

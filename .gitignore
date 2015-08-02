@@ -60,6 +60,10 @@
 /tools/env.sh
 
 # /src/
+/src/doc/table/
+/src/doc/tools.dox
+/src/htdocs/
+/src/html.tar.gz
 /src/kaldi.mk
 /src/kaldi.mk.tmp
 /src/kaldi.mk.bak
