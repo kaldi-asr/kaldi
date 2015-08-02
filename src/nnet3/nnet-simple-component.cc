@@ -644,6 +644,30 @@ Component *AffineComponent::CollapseWithNext(
   return ans;
 }
 
+Component *AffineComponent::CollapseWithNext(
+    const FixedScaleComponent &next_component) const {
+  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
+  AffineComponent *ans =
+      dynamic_cast<AffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  ans->linear_params_.MulRowsVec(next_component.scales_);
+  ans->bias_params_.MulElements(next_component.scales_);
+
+  return ans;
+}
+
+Component *AffineComponent::CollapseWithNext(
+    const PerElementScaleComponent &next_component) const {
+  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
+  AffineComponent *ans =
+      dynamic_cast<AffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  ans->linear_params_.MulRowsVec(next_component.scales_);
+  ans->bias_params_.MulElements(next_component.scales_);
+
+  return ans;
+}
+
 Component *AffineComponent::CollapseWithPrevious(
     const FixedAffineComponent &prev_component) const {
   // If at least one was non-updatable, make the whole non-updatable.
@@ -662,6 +686,212 @@ Component *AffineComponent::CollapseWithPrevious(
 }
 
 
+void PerElementScaleComponent::Scale(BaseFloat scale) {
+  scales_.Scale(scale);
+}
+
+void PerElementScaleComponent::Resize(int32 dim) {
+  KALDI_ASSERT(dim > 0);
+  scales_.Resize(dim);
+}
+
+void PerElementScaleComponent::Add(BaseFloat alpha,
+                                   const UpdatableComponent &other_in) {
+  const PerElementScaleComponent *other =
+      dynamic_cast<const PerElementScaleComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  scales_.AddVec(alpha, other->scales_);
+}
+
+PerElementScaleComponent::PerElementScaleComponent(
+    const PerElementScaleComponent &component):
+    UpdatableComponent(component),
+    scales_(component.scales_) { }
+
+PerElementScaleComponent::PerElementScaleComponent(
+    const CuVectorBase<BaseFloat> &scales,
+    BaseFloat learning_rate):
+    UpdatableComponent(learning_rate),
+    scales_(scales) {
+  KALDI_ASSERT(scales.Dim() != 0);
+}
+
+
+
+void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+  }
+  scales_.SetZero();
+  if (treat_as_gradient)
+    is_gradient_ = true;
+}
+
+void PerElementScaleComponent::SetParams(const VectorBase<BaseFloat> &scales) {
+  scales_ = scales;
+  KALDI_ASSERT(scales_.Dim() > 0);
+}
+
+void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp_scales(scales_);
+  temp_scales.SetRandn();
+  scales_.AddVec(stddev, temp_scales);
+}
+
+std::string PerElementScaleComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat scales_stddev = std::sqrt(VecVec(scales_, scales_) /
+                              scales_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", scales-stddev=" << scales_stddev
+         << ", learning-rate=" << LearningRate();
+  return stream.str();
+}
+
+Component* PerElementScaleComponent::Copy() const {
+  PerElementScaleComponent *ans = new PerElementScaleComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->scales_ = scales_;
+  ans->is_gradient_ = is_gradient_;
+  return ans;
+}
+
+BaseFloat PerElementScaleComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  const PerElementScaleComponent *other =
+      dynamic_cast<const PerElementScaleComponent*>(&other_in);
+  return VecVec(scales_, other->scales_);
+}
+
+void PerElementScaleComponent::Init(BaseFloat learning_rate, int32 dim,
+                                    BaseFloat param_stddev) {
+  UpdatableComponent::Init(learning_rate);
+  scales_.Resize(dim);
+  KALDI_ASSERT(dim > 0 && param_stddev >= 0.0);
+  scales_.SetRandn();
+  scales_.Scale(param_stddev);
+}
+
+void PerElementScaleComponent::Init(BaseFloat learning_rate,
+                                    std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  CuMatrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() == 1);
+  int32 dim = mat.NumRows();
+  scales_.Resize(dim);
+  scales_.CopyColFromMat(mat, 0);
+}
+
+void PerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_;
+  std::string matrix_filename;
+  int32 dim = -1;
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    Init(learning_rate, matrix_filename);
+    if (cfl->GetValue("dim", &dim))
+      KALDI_ASSERT(dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && cfl->GetValue("dim", &dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(dim);
+    cfl->GetValue("param-stddev", &param_stddev);
+    Init(learning_rate, dim, param_stddev);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+void PerElementScaleComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);
+  out->MulColsVec(scales_);
+}
+
+void PerElementScaleComponent::UpdateSimple(
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  scales_.AddDiagMatMat(learning_rate_, out_deriv, kTrans,
+                        in_value, kNoTrans, 1.0);
+}
+
+void PerElementScaleComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  PerElementScaleComponent *to_update =
+      dynamic_cast<PerElementScaleComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  in_deriv->CopyFromMat(out_deriv);
+  in_deriv->MulColsVec(scales_);
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    if (to_update->is_gradient_)
+      to_update->UpdateSimple(in_value, out_deriv);
+    else  // the call below is to a virtual function that may be re-implemented
+      to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+  }
+}
+
+void PerElementScaleComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
+  // might not see the "<AffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<Params>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");  
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, ostr_end.str());
+}
+
+void PerElementScaleComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<Params>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+int32 PerElementScaleComponent::GetParameterDim() const {
+  return InputDim();
+}
+
+void PerElementScaleComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->Range(0, OutputDim()).CopyFromVec(scales_);
+}
+
+void PerElementScaleComponent::UnVectorize(
+    const VectorBase<BaseFloat> &params) {
+  scales_.CopyFromVec(params.Range(0, OutputDim()));
+}
 
 // virtual
 void NaturalGradientAffineComponent::Resize(

@@ -3,7 +3,7 @@
 // Copyright 2011-2013  Karel Vesely
 //           2012-2015  Johns Hopkins University (author: Daniel Povey)
 //                2013  Xiaohui Zhang    
-//                2014  Vijayaditya Peddinti
+//           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -227,6 +227,8 @@ class RectifiedLinearComponent: public NonlinearComponent {
 };
 
 class FixedAffineComponent;
+class FixedScaleComponent;
+class PerElementScaleComponent;
 
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
@@ -305,6 +307,8 @@ class AffineComponent: public UpdatableComponent {
   // FixedLinearComponent yet.
   Component *CollapseWithNext(const AffineComponent &next) const ;
   Component *CollapseWithNext(const FixedAffineComponent &next) const;
+  Component *CollapseWithNext(const FixedScaleComponent &next) const;
+  Component *CollapseWithNext(const PerElementScaleComponent &next) const;
   Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
 
  protected:
@@ -590,6 +594,7 @@ class FixedScaleComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
 
  protected:
+  friend class AffineComponent;  // necessary for collapse
   CuVector<BaseFloat> scales_;  
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
@@ -660,6 +665,93 @@ class NoOpComponent: public NonlinearComponent {
  private:
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
+
+// PerElementScaleComponent.
+class PerElementScaleComponent: public UpdatableComponent {
+ public:
+  int32 InputDim() const { return scales_.Dim(); }
+  int32 OutputDim() const { return scales_.Dim(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl); 
+  
+  PerElementScaleComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "PerElementScaleComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInInput|
+        kLinearInParameters|kBackpropNeedsInput|kPropagateInPlace;
+  }
+
+  
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;  
+  virtual int32 GetParameterDim() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+  
+  // This new function is used when mixing up:
+  virtual void SetParams(const VectorBase<BaseFloat> &scales);
+  const CuVector<BaseFloat> &Params() { return scales_; }
+  explicit PerElementScaleComponent(const PerElementScaleComponent &other);
+  // The next constructor is used in converting from nnet1.
+  PerElementScaleComponent(const CuVectorBase<BaseFloat> &scales,
+                           BaseFloat learning_rate);
+  void Init(BaseFloat learning_rate,
+            int32 dim,
+            BaseFloat param_stddev);
+  void Init(BaseFloat learning_rate,
+            std::string vector_filename);
+
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 dim);
+
+ protected:
+  friend class AffineComponent;  // necessary for collapse
+  // This function Update() is for extensibility; child classes may override
+  // this, e.g. for natural gradient update.
+  virtual void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv) {
+    UpdateSimple(in_value, out_deriv);
+  }
+  // UpdateSimple is used when *this is a gradient.  Child classes may override
+  // this if needed, but typically won't need to.
+  virtual void UpdateSimple(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);  
+
+  const PerElementScaleComponent &operator 
+      = (const PerElementScaleComponent &other); // Disallow.
+  CuVector<BaseFloat> scales_;
+
+};
+
+
 
 
 } // namespace nnet3

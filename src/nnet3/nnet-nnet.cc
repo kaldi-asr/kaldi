@@ -695,7 +695,7 @@ void Nnet::Check() const {
       }
       case kDimRange: {
         int32 input_node = node.u.node_index;
-        KALDI_ASSERT(input_node <= 0 && input_node < num_nodes);
+        KALDI_ASSERT(input_node >= 0 && input_node < num_nodes);
         NodeType input_type = nodes_[input_node].node_type;
         if (input_type != kInput && input_type != kComponent)
           KALDI_ERR << "Invalid source node type in DimRange node: source node "
