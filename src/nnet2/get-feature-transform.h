@@ -44,18 +44,18 @@ struct FeatureTransformEstimateOptions {
   FeatureTransformEstimateOptions(): remove_offset(true), dim(200),
                                      within_class_factor(0.001), max_singular_value(5.0) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("remove-offset", &remove_offset, "If true, output an affine "
-                 "transform that makes the projected data mean equal to zero.");
-    po->Register("dim", &dim, "Dimension to project to with LDA");
-    po->Register("within-class-factor", &within_class_factor, "If 1.0, do "
-                 "conventional LDA where the within-class variance will be "
-                 "unit in the projected space.  May be set to less than 1.0, "
-                 "which scales the features to have less variance, particularly "
-                 "for dimensions where between-class variance is small. ");
-    po->Register("max-singular-value", &max_singular_value, "If >0, maximum "
-                 "allowed singular value of final transform (they are floored "
-                 "to this)");
+  void Register(OptionsItf *opts) {
+    opts->Register("remove-offset", &remove_offset, "If true, output an affine "
+                   "transform that makes the projected data mean equal to zero.");
+    opts->Register("dim", &dim, "Dimension to project to with LDA");
+    opts->Register("within-class-factor", &within_class_factor, "If 1.0, do "
+                   "conventional LDA where the within-class variance will be "
+                   "unit in the projected space.  May be set to less than 1.0, "
+                   "which scales the features to have less variance, particularly "
+                   "for dimensions where between-class variance is small. ");
+    opts->Register("max-singular-value", &max_singular_value, "If >0, maximum "
+                   "allowed singular value of final transform (they are floored "
+                   "to this)");
   }    
 };
 

@@ -45,15 +45,15 @@ struct RegtreeFmllrOptions {
   RegtreeFmllrOptions(): update_type("full"), min_count(1000.0),
                          num_iters(10), use_regtree(true) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("fmllr-update-type", &update_type,
-                 "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
-    po->Register("fmllr-min-count", &min_count,
-                 "Minimum count to estimate an fMLLR transform.");
-    po->Register("fmllr-num-iters", &num_iters,
-                 "Number of fMLLR iterations (if using an iterative update).");
-    po->Register("fmllr-use-regtree", &use_regtree,
-                 "Use a regression-class tree for fMLLR.");
+  void Register(OptionsItf *opts) {
+    opts->Register("fmllr-update-type", &update_type,
+                   "Update type for fMLLR (\"full\"|\"diag\"|\"offset\"|\"none\")");
+    opts->Register("fmllr-min-count", &min_count,
+                   "Minimum count to estimate an fMLLR transform.");
+    opts->Register("fmllr-num-iters", &num_iters,
+                   "Number of fMLLR iterations (if using an iterative update).");
+    opts->Register("fmllr-use-regtree", &use_regtree,
+                   "Use a regression-class tree for fMLLR.");
   }
 };
 

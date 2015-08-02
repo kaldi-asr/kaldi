@@ -89,24 +89,24 @@ struct OnlineNnet2FeaturePipelineConfig {
       feature_type("mfcc"), add_pitch(false) { }
       
 
-  void Register(OptionsItf *po) {
-    po->Register("feature-type", &feature_type,
-                 "Base feature type [mfcc, plp, fbank]");
-    po->Register("mfcc-config", &mfcc_config, "Configuration file for "
-                 "MFCC features (e.g. conf/mfcc.conf)");
-    po->Register("plp-config", &plp_config, "Configuration file for "
-                 "PLP features (e.g. conf/plp.conf)");
-    po->Register("fbank-config", &fbank_config, "Configuration file for "
-                 "filterbank features (e.g. conf/fbank.conf)");
-    po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
-                 "MFCC/PLP/filterbank features [but not for iVector extraction]");
-    po->Register("online-pitch-config", &online_pitch_config, "Configuration "
-                 "file for online pitch features, if --add-pitch=true (e.g. "
-                 "conf/online_pitch.conf)");
-    po->Register("ivector-extraction-config", &ivector_extraction_config,
-                 "Configuration file for online iVector extraction, "
-                 "see class OnlineIvectorExtractionConfig in the code");
-    silence_weighting_config.RegisterWithPrefix("ivector-silence-weighting", po);
+  void Register(OptionsItf *opts) {
+    opts->Register("feature-type", &feature_type,
+                   "Base feature type [mfcc, plp, fbank]");
+    opts->Register("mfcc-config", &mfcc_config, "Configuration file for "
+                   "MFCC features (e.g. conf/mfcc.conf)");
+    opts->Register("plp-config", &plp_config, "Configuration file for "
+                   "PLP features (e.g. conf/plp.conf)");
+    opts->Register("fbank-config", &fbank_config, "Configuration file for "
+                   "filterbank features (e.g. conf/fbank.conf)");
+    opts->Register("add-pitch", &add_pitch, "Append pitch features to raw "
+                   "MFCC/PLP/filterbank features [but not for iVector extraction]");
+    opts->Register("online-pitch-config", &online_pitch_config, "Configuration "
+                   "file for online pitch features, if --add-pitch=true (e.g. "
+                   "conf/online_pitch.conf)");
+    opts->Register("ivector-extraction-config", &ivector_extraction_config,
+                   "Configuration file for online iVector extraction, "
+                   "see class OnlineIvectorExtractionConfig in the code");
+    silence_weighting_config.RegisterWithPrefix("ivector-silence-weighting", opts);
   }
 };
 

@@ -99,17 +99,17 @@ struct Sgmm2SplitSubstatesConfig {
                                power(0.2),
                                max_cond(100.0),
                                min_count(40.0) { }
-  void Register(OptionsItf *po) {
-    po->Register("split-substates", &split_substates, "Increase number of "
-                 "substates to this overall target.");
-    po->Register("max-cond-split", &max_cond, "Max condition number of smoothing "
-                "matrix used in substate splitting.");
-    po->Register("perturb-factor", &perturb_factor, "Perturbation factor for "
-                "state vectors while splitting substates.");
-    po->Register("power", &power, "Exponent for substate occupancies used while "
-                "splitting substates.");
-    po->Register("min-count", &min_count, "Minimum allowed count, used in allocating "
-                 "sub-states to state in mixture splitting.");
+  void Register(OptionsItf *opts) {
+    opts->Register("split-substates", &split_substates, "Increase number of "
+                   "substates to this overall target.");
+    opts->Register("max-cond-split", &max_cond, "Max condition number of smoothing "
+                   "matrix used in substate splitting.");
+    opts->Register("perturb-factor", &perturb_factor, "Perturbation factor for "
+                   "state vectors while splitting substates.");
+    opts->Register("power", &power, "Exponent for substate occupancies used while "
+                   "splitting substates.");
+    opts->Register("min-count", &min_count, "Minimum allowed count, used in allocating "
+                   "sub-states to state in mixture splitting.");
   }
 };
 
@@ -126,11 +126,11 @@ struct Sgmm2GselectConfig {
     diag_gmm_nbest = 50;
   }
 
-  void Register(OptionsItf *po) {
-    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
-        " full-covariance Gaussians selected per frame.");
-    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
-        " diagonal-covariance Gaussians selected per frame.");
+  void Register(OptionsItf *opts) {
+    opts->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
+                   " full-covariance Gaussians selected per frame.");
+    opts->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
+                   " diagonal-covariance Gaussians selected per frame.");
   }
 };
 

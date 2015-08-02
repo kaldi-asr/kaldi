@@ -70,32 +70,32 @@ struct NnetCombineFastConfig {
                            alpha(0.01), fisher_minibatch_size(64), minibatch_size(1024),
                            max_lbfgs_dim(10), regularizer(0.0) {}
   
-  void Register(OptionsItf *po) {
-    po->Register("initial-model", &initial_model, "Specifies where to start the "
-                 "optimization from.  If 0 ... #models-1, then specifies the model; "
-                 "if >= #models, then the average of all inputs; if <0, chosen "
-                 "automatically from the previous options.");
-    po->Register("num-lbfgs-iters", &num_lbfgs_iters, "Maximum number of function "
-                 "evaluations for L-BFGS to use when optimizing combination weights");
-    po->Register("initial-impr", &initial_impr, "Amount of objective-function change "
-                 "We aim for on the first iteration.");
-    po->Register("num-threads", &num_threads, "Number of threads to use in "
-                 "multi-core computation");
-    po->Register("fisher-floor", &fisher_floor,
-                 "Floor for diagonal of Fisher matrix (used in preconditioning)");
-    po->Register("alpha", &alpha, "Value we use in smoothing the Fisher matrix "
-                 "with its diagonal, in preconditioning the update.");
-    po->Register("fisher-minibatch-size", &fisher_minibatch_size, "Size of minibatch "
-                 "used in computation of Fisher matrix (smaller -> better "
-                 "preconditioning");
-    po->Register("minibatch-size", &minibatch_size, "Minibatch size used in computing "
-                 "gradients (only affects speed)");
-    po->Register("max-lbfgs-dim", &max_lbfgs_dim, "Maximum dimension to use in "
-                 "L-BFGS (will not get higher than this even if the dimension "
-                 "of the space gets higher.)");
-    po->Register("regularizer", &regularizer, "Add to the objective "
-                 "function (which is average log-like per frame), -0.5 * "
-                 "regularizer * square of parameters.");
+  void Register(OptionsItf *opts) {
+    opts->Register("initial-model", &initial_model, "Specifies where to start the "
+                   "optimization from.  If 0 ... #models-1, then specifies the model; "
+                   "if >= #models, then the average of all inputs; if <0, chosen "
+                   "automatically from the previous options.");
+    opts->Register("num-lbfgs-iters", &num_lbfgs_iters, "Maximum number of function "
+                   "evaluations for L-BFGS to use when optimizing combination weights");
+    opts->Register("initial-impr", &initial_impr, "Amount of objective-function change "
+                   "We aim for on the first iteration.");
+    opts->Register("num-threads", &num_threads, "Number of threads to use in "
+                   "multi-core computation");
+    opts->Register("fisher-floor", &fisher_floor,
+                   "Floor for diagonal of Fisher matrix (used in preconditioning)");
+    opts->Register("alpha", &alpha, "Value we use in smoothing the Fisher matrix "
+                   "with its diagonal, in preconditioning the update.");
+    opts->Register("fisher-minibatch-size", &fisher_minibatch_size, "Size of minibatch "
+                   "used in computation of Fisher matrix (smaller -> better "
+                   "preconditioning");
+    opts->Register("minibatch-size", &minibatch_size, "Minibatch size used in computing "
+                   "gradients (only affects speed)");
+    opts->Register("max-lbfgs-dim", &max_lbfgs_dim, "Maximum dimension to use in "
+                   "L-BFGS (will not get higher than this even if the dimension "
+                   "of the space gets higher.)");
+    opts->Register("regularizer", &regularizer, "Add to the objective "
+                   "function (which is average log-like per frame), -0.5 * "
+                   "regularizer * square of parameters.");
   }  
 };
 

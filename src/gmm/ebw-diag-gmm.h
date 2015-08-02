@@ -36,11 +36,11 @@ struct EbwOptions {
   BaseFloat tau; // This is only useful for smoothing "to the model":
   // if you want to smooth to ML stats, you need to use gmm-ismooth-stats
   EbwOptions(): E(2.0), tau(0.0) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "EbwOptions: ";
-    po->Register("E", &E, module+"Constant E for Extended Baum-Welch (EBW) update");
-    po->Register("tau", &tau, module+"Tau value for smoothing to the model "
-                 "parameters only (for smoothing to ML stats, use gmm-ismooth-stats");
+    opts->Register("E", &E, module+"Constant E for Extended Baum-Welch (EBW) update");
+    opts->Register("tau", &tau, module+"Tau value for smoothing to the model "
+                   "parameters only (for smoothing to ML stats, use gmm-ismooth-stats");
   }
 };
 
@@ -52,14 +52,14 @@ struct EbwWeightOptions {
   EbwWeightOptions(): min_num_count_weight_update(10.0),
                       min_gaussian_weight(1.0e-05),
                       tau(0.0) { }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "EbwWeightOptions: ";
-    po->Register("min-num-count-weight-update", &min_num_count_weight_update,
+    opts->Register("min-num-count-weight-update", &min_num_count_weight_update,
                  module+"Minimum numerator count required at "
                  "state level before we update the weights (only active if tau == 0.0)");
-    po->Register("min-gaussian-weight", &min_gaussian_weight,
+    opts->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Minimum Gaussian weight allowed in EBW update of weights");
-    po->Register("weight-tau", &tau,
+    opts->Register("weight-tau", &tau,
                  module+"Tau value for smoothing Gaussian weight update.");
   }
 };

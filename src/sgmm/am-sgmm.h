@@ -47,11 +47,11 @@ struct SgmmGselectConfig {
     diag_gmm_nbest = 50;
   }
 
-  void Register(OptionsItf *po) {
-    po->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
-        " full-covariance Gaussians selected per frame.");
-    po->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
-        " diagonal-covariance Gaussians selected per frame.");
+  void Register(OptionsItf *opts) {
+    opts->Register("full-gmm-nbest", &full_gmm_nbest, "Number of highest-scoring"
+                   " full-covariance Gaussians selected per frame.");
+    opts->Register("diag-gmm-nbest", &diag_gmm_nbest, "Number of highest-scoring"
+                   " diagonal-covariance Gaussians selected per frame.");
   }
 };
 

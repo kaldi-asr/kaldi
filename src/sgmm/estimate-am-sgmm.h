@@ -100,36 +100,36 @@ struct MleAmSgmmOptions {
     full_col_cov = false;
   }
 
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleAmSgmmOptions: ";
-    po->Register("tau-vec", &tau_vec, module+
-                 "Smoothing for phone vector estimation.");
-    po->Register("tau-c", &tau_c, module+
-                 "Smoothing for substate weights estimation.");
-    po->Register("cov-floor", &cov_floor, module+
-                 "Covariance floor (fraction of average covariance).");
-    po->Register("cov-diag-ratio", &cov_diag_ratio, module+
-                 "Minimum occ/dim ratio below which use diagonal covariances.");
-    po->Register("max-cond", &max_cond, module+"Maximum condition number beyond"
-                 " which matrices are not updated.");
-    po->Register("weight-projections-iters", &weight_projections_iters, module+
-                 "Number for iterations for weight projection estimation.");
-    po->Register("renormalize-v", &renormalize_V, module+"If true, renormalize "
-                 "the phonetic-subspace vectors to have meaningful sizes.");
-    po->Register("check-v", &check_v, module+"If true, check real auxf "
-                 "improvement in update of v and backtrack if needed "
-                 "(not compatible with smoothing v)");
-    po->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
-                 "the speaker subspace to have meaningful sizes.");
+    opts->Register("tau-vec", &tau_vec, module+
+                   "Smoothing for phone vector estimation.");
+    opts->Register("tau-c", &tau_c, module+
+                   "Smoothing for substate weights estimation.");
+    opts->Register("cov-floor", &cov_floor, module+
+                   "Covariance floor (fraction of average covariance).");
+    opts->Register("cov-diag-ratio", &cov_diag_ratio, module+
+                   "Minimum occ/dim ratio below which use diagonal covariances.");
+    opts->Register("max-cond", &max_cond, module+"Maximum condition number beyond"
+                   " which matrices are not updated.");
+    opts->Register("weight-projections-iters", &weight_projections_iters, module+
+                   "Number for iterations for weight projection estimation.");
+    opts->Register("renormalize-v", &renormalize_V, module+"If true, renormalize "
+                   "the phonetic-subspace vectors to have meaningful sizes.");
+    opts->Register("check-v", &check_v, module+"If true, check real auxf "
+                   "improvement in update of v and backtrack if needed "
+                   "(not compatible with smoothing v)");
+    opts->Register("renormalize-n", &renormalize_N, module+"If true, renormalize "
+                   "the speaker subspace to have meaningful sizes.");
 
-    po->Register("tau-map-M", &tau_map_M, module+"Smoothing for MAP estimate "
-                 "of M (0 means ML update).");
-    po->Register("map-M-prior-iters", &map_M_prior_iters, module+
-                 "Number of iterations to estimate prior covariances for M.");
-    po->Register("full-row-cov", &full_row_cov, module+
-                 "Estimate row covariance instead of using I.");
-    po->Register("full-col-cov", &full_col_cov, module+
-                 "Estimate column covariance instead of using I.");
+    opts->Register("tau-map-M", &tau_map_M, module+"Smoothing for MAP estimate "
+                   "of M (0 means ML update).");
+    opts->Register("map-M-prior-iters", &map_M_prior_iters, module+
+                   "Number of iterations to estimate prior covariances for M.");
+    opts->Register("full-row-cov", &full_row_cov, module+
+                   "Estimate row covariance instead of using I.");
+    opts->Register("full-col-cov", &full_col_cov, module+
+                   "Estimate column covariance instead of using I.");
   }
 };
 

@@ -39,14 +39,14 @@ struct NnetWidenConfig {
                      param_stddev_factor(1.0),
                      bias_stddev(0.5) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("hidden-layer-dim", &hidden_layer_dim, "[required option]: "
-                 "target dimension of hidden layers");
-    po->Register("param-stddev-factor", &param_stddev_factor, "Factor in "
-                 "standard deviation of linear parameters of new part of "
-                 "transform (multiply by 1/sqrt of input-dim)");
-    po->Register("bias-stddev", &bias_stddev, "Standard deviation of added "
-                 "bias parameters");
+  void Register(OptionsItf *opts) {
+    opts->Register("hidden-layer-dim", &hidden_layer_dim, "[required option]: "
+                   "target dimension of hidden layers");
+    opts->Register("param-stddev-factor", &param_stddev_factor, "Factor in "
+                   "standard deviation of linear parameters of new part of "
+                   "transform (multiply by 1/sqrt of input-dim)");
+    opts->Register("bias-stddev", &bias_stddev, "Standard deviation of added "
+                   "bias parameters");
   }  
 };
 

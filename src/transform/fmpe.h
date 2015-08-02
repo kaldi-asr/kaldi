@@ -72,12 +72,12 @@ struct FmpeOptions {
   FmpeOptions(): context_expansion("0,1.0:-1,1.0:1,1.0:-2,0.5;-3,0.5:2,0.5;3,0.5:-4,0.5;-5,0.5:4,0.5;5,0.5:-6,0.333;-7,0.333;-8,0.333:6,0.333;7,0.333;8,0.333"),
                 post_scale(5.0) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("post-scale", &post_scale, "Scaling constant on posterior "
-                 "element of offset features, to give it a faster learning "
-                 "rate.");
-    po->Register("context-expansion", &context_expansion, "Specifies the "
-                 "temporal context-splicing of high-dimensional features.");
+  void Register(OptionsItf *opts) {
+    opts->Register("post-scale", &post_scale, "Scaling constant on posterior "
+                   "element of offset features, to give it a faster learning "
+                   "rate.");
+    opts->Register("context-expansion", &context_expansion, "Specifies the "
+                   "temporal context-splicing of high-dimensional features.");
   }
   // We include write and read functions, since this
   // object is included as a member of the fMPE object.
@@ -92,11 +92,11 @@ struct FmpeUpdateOptions {
   
   FmpeUpdateOptions(): learning_rate(0.1), l2_weight(100.0) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("learning-rate", &learning_rate,
-                 "Learning rate constant (like inverse of E in fMPE papers)");
-    po->Register("l2-weight", &l2_weight,
-                 "Weight on l2 regularization term in objective function.");
+  void Register(OptionsItf *opts) {
+    opts->Register("learning-rate", &learning_rate,
+                   "Learning rate constant (like inverse of E in fMPE papers)");
+    opts->Register("l2-weight", &l2_weight,
+                   "Weight on l2 regularization term in objective function.");
   }  
 };
 

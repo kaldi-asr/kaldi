@@ -59,35 +59,35 @@ struct WordBoundaryInfoOpts {
                           reorder(true), silence_may_be_word_internal(false),
                           silence_has_olabels(false) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("wbegin-phones", &wbegin_phones, "Colon-separated list of "
-                 "numeric ids of phones that begin a word");
-    po->Register("wend-phones", &wend_phones, "Colon-separated list of "
-                 "numeric ids of phones that end a word");
-    po->Register("winternal-phones", &winternal_phones, "Colon-separated list "
-                 "of numeric ids of phones that are internal to a word");
-    po->Register("wbegin-and-end-phones", &wbegin_and_end_phones, "Colon-separated "
-                 "list of numeric ids of phones that are used for "
-                 "single-phone words.");
-    po->Register("silence-phones", &silence_phones, "Colon-separated list of "
-                 "numeric ids of phones that are used for silence (and other "
-                 "non-word events such as noise - anything that doesn't have "
-                 "a corresponding symbol in the lexicon.");
-    po->Register("silence-label", &silence_label, "Numeric id of word symbol "
-                 "that is to be used for silence arcs in the word-aligned "
-                 "lattice (zero is OK)");
-    po->Register("partial-word-label", &partial_word_label, "Numeric id of "
-                 "word symbol that is to be used for arcs in the word-aligned "
-                 "lattice corresponding to partial words at the end of "
-                 "\"forced-out\" utterances (zero is OK)");
-    po->Register("reorder", &reorder, "True if the lattices were generated "
-                 "from graphs that had the --reorder option true, relating to "
-                 "reordering self-loops (typically true)");
-    po->Register("silence-may-be-word-internal", &silence_may_be_word_internal,
-                 "If true, silence may appear inside words' prons (but not at begin/end!)\n");
-    po->Register("silence-has-olabels", &silence_has_olabels, 
-                 "If true, silence phones have output labels in the lattice, just\n"
-                 "like regular words.  [This means you can't have un-labeled silences]");
+  void Register(OptionsItf *opts) {
+    opts->Register("wbegin-phones", &wbegin_phones, "Colon-separated list of "
+                   "numeric ids of phones that begin a word");
+    opts->Register("wend-phones", &wend_phones, "Colon-separated list of "
+                   "numeric ids of phones that end a word");
+    opts->Register("winternal-phones", &winternal_phones, "Colon-separated list "
+                   "of numeric ids of phones that are internal to a word");
+    opts->Register("wbegin-and-end-phones", &wbegin_and_end_phones, "Colon-separated "
+                   "list of numeric ids of phones that are used for "
+                   "single-phone words.");
+    opts->Register("silence-phones", &silence_phones, "Colon-separated list of "
+                   "numeric ids of phones that are used for silence (and other "
+                   "non-word events such as noise - anything that doesn't have "
+                   "a corresponding symbol in the lexicon.");
+    opts->Register("silence-label", &silence_label, "Numeric id of word symbol "
+                   "that is to be used for silence arcs in the word-aligned "
+                   "lattice (zero is OK)");
+    opts->Register("partial-word-label", &partial_word_label, "Numeric id of "
+                   "word symbol that is to be used for arcs in the word-aligned "
+                   "lattice corresponding to partial words at the end of "
+                   "\"forced-out\" utterances (zero is OK)");
+    opts->Register("reorder", &reorder, "True if the lattices were generated "
+                   "from graphs that had the --reorder option true, relating to "
+                   "reordering self-loops (typically true)");
+    opts->Register("silence-may-be-word-internal", &silence_may_be_word_internal,
+                   "If true, silence may appear inside words' prons (but not at begin/end!)\n");
+    opts->Register("silence-has-olabels", &silence_has_olabels, 
+                   "If true, silence phones have output labels in the lattice, just\n"
+                   "like regular words.  [This means you can't have un-labeled silences]");
   }
 };
 
@@ -101,17 +101,17 @@ struct WordBoundaryInfoNewOpts {
   WordBoundaryInfoNewOpts(): silence_label(0), partial_word_label(0),
                              reorder(true) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("silence-label", &silence_label, "Numeric id of word symbol "
-                 "that is to be used for silence arcs in the word-aligned "
-                 "lattice (zero is OK)");
-    po->Register("partial-word-label", &partial_word_label, "Numeric id of "
-                 "word symbol that is to be used for arcs in the word-aligned "
-                 "lattice corresponding to partial words at the end of "
-                 "\"forced-out\" utterances (zero is OK)");
-    po->Register("reorder", &reorder, "True if the lattices were generated "
-                 "from graphs that had the --reorder option true, relating to "
-                 "reordering self-loops (typically true)");
+  void Register(OptionsItf *opts) {
+    opts->Register("silence-label", &silence_label, "Numeric id of word symbol "
+                   "that is to be used for silence arcs in the word-aligned "
+                   "lattice (zero is OK)");
+    opts->Register("partial-word-label", &partial_word_label, "Numeric id of "
+                   "word symbol that is to be used for arcs in the word-aligned "
+                   "lattice corresponding to partial words at the end of "
+                   "\"forced-out\" utterances (zero is OK)");
+    opts->Register("reorder", &reorder, "True if the lattices were generated "
+                   "from graphs that had the --reorder option true, relating to "
+                   "reordering self-loops (typically true)");
   }
 };
 

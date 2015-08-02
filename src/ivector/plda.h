@@ -53,11 +53,11 @@ struct PldaConfig {
   // prior to dot-product scoring.
   bool normalize_length;
   PldaConfig(): normalize_length(true) { }
-  void Register(OptionsItf *po) {
-    po->Register("normalize-length", &normalize_length,
-                 "If true, do length normalization as part of PLDA.  This "
-                 "normalizes the length of the iVectors to be equal to the "
-                 "square root of the iVector dimension.");
+  void Register(OptionsItf *opts) {
+    opts->Register("normalize-length", &normalize_length,
+                   "If true, do length normalization as part of PLDA.  This "
+                   "normalizes the length of the iVectors to be equal to the "
+                   "square root of the iVector dimension.");
   }
 };
 
@@ -188,9 +188,9 @@ class PldaStats {
 struct PldaEstimationConfig {
   int32 num_em_iters;
   PldaEstimationConfig(): num_em_iters(10){ }
-  void Register(OptionsItf *po) {
-    po->Register("num-em-iters", &num_em_iters,
-                 "Number of iterations of E-M used for PLDA estimation");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-em-iters", &num_em_iters,
+                   "Number of iterations of E-M used for PLDA estimation");
   }
 };
 
@@ -260,17 +260,17 @@ struct PldaUnsupervisedAdaptorConfig {
       within_covar_scale(0.3),
       between_covar_scale(0.7) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("mean-diff-scale", &mean_diff_scale,
-                 "Scale with which to add to the total data variance, the outer "
-                 "product of the difference between the original mean and the "
-                 "adaptation-data mean");
-    po->Register("within-covar-scale", &within_covar_scale,
-                 "Scale that determines how much of excess variance in a "
-                 "particular direction gets attributed to within-class covar.");
-    po->Register("between-covar-scale", &between_covar_scale,
-                 "Scale that determines how much of excess variance in a "
-                 "particular direction gets attributed to between-class covar.");
+  void Register(OptionsItf *opts) {
+    opts->Register("mean-diff-scale", &mean_diff_scale,
+                   "Scale with which to add to the total data variance, the outer "
+                   "product of the difference between the original mean and the "
+                   "adaptation-data mean");
+    opts->Register("within-covar-scale", &within_covar_scale,
+                   "Scale that determines how much of excess variance in a "
+                   "particular direction gets attributed to within-class covar.");
+    opts->Register("between-covar-scale", &between_covar_scale,
+                   "Scale that determines how much of excess variance in a "
+                   "particular direction gets attributed to between-class covar.");
 
   }
 };
