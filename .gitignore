@@ -944,5 +944,7 @@
 /src/nnet3bin/nnet3-am-adjust-priors
 /src/nnet3bin/nnet3-am-init
 /src/nnet3bin/nnet3-am-train-transitions
+/src/nnet3bin/nnet3-am-copy
+
 
 

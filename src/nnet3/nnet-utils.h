@@ -96,6 +96,10 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
                               int32 *right_context);
 
 
+/// Sets the learning rate for all the components in the nnet to this value.
+void SetLearningRate(BaseFloat learning_rate,
+                     Nnet *nnet);
+
 } // namespace nnet3
 } // namespace kaldi
 

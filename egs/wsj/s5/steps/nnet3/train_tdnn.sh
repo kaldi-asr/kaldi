@@ -434,7 +434,7 @@ while [ $x -lt $num_iters ]; do
         nnet3-copy-egs --srand=JOB --frame=random $context_opts ark:$prev_egs_dir/egs.1.ark ark:- \| \
         nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
         nnet3-merge-egs ark:- ark:- \| \
-        nnet3-compute-from-egs --apply-exp "nnet3-to-raw $dir/$x.mdl -|" ark:- ark:- \| \
+        nnet3-compute-from-egs --apply-exp "nnet3-am-copy --raw=true $dir/$x.mdl -|" ark:- ark:- \| \
         matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
       sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
