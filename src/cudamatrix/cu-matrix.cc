@@ -39,6 +39,7 @@
 #include "cudamatrix/cu-sp-matrix.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-block-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 #include "cudamatrix/cublas-wrappers.h"
 
 namespace kaldi {
