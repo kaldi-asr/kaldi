@@ -256,27 +256,24 @@ void GenerateConfigSequenceLstm(
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 2));
 
   os << "input-node name=input dim=" << input_dim << std::endl;
-  // Parameter Definitions W*
-  os << "component name=W*x type=NaturalGradientAffineComponent input-dim="
+  // Parameter Definitions W*(* replaced by - to have valid names)
+  os << "component name=W-x type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << 4 * cell_dim << std::endl;
-  os << "component name=W*r type=NaturalGradientAffineComponent input-dim="
+  os << "component name=W-r type=NaturalGradientAffineComponent input-dim="
      << projection_dim << " output-dim=" << 4 * cell_dim << std::endl;
-  os << "component name=W*m type=NaturalGradientAffineComponent input-dim="
+  os << "component name=W-m type=NaturalGradientAffineComponent input-dim="
      << cell_dim << " output-dim=" << 2 * projection_dim  << std::endl;
   os << "component name=Wyr type=NaturalGradientAffineComponent input-dim="
      << projection_dim << " output-dim=" << cell_dim << std::endl;
   os << "component name=Wyp type=NaturalGradientAffineComponent input-dim="
      << projection_dim << " output-dim=" << cell_dim << std::endl;
   // Defining the diagonal matrices
-  os << "component name=Wic type=NaturalGradientDiagonalAffineComponent "
-     << " input-dim=" << cell_dim 
-     << " output-dim=" << cell_dim << std::endl;
-  os << "component name=Wfc type=NaturalGradientDiagonalAffineComponent "
-     << " input-dim=" << cell_dim 
-     << " output-dim=" << cell_dim << std::endl;
-  os << "component name=Woc type=NaturalGradientDiagonalAffineComponent "
-     << " input-dim=" << cell_dim 
-     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=Wic type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
+  os << "component name=Wfc type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
+  os << "component name=Woc type=PerElementScaleComponent "
+     << " dim=" << cell_dim << std::endl;
   // Defining the final affine transform 
   os << "component name=final_affine type=NaturalGradientAffineComponent " 
      << "input-dim=" << cell_dim << " output-dim=" << output_dim << std::endl;
@@ -284,6 +281,10 @@ void GenerateConfigSequenceLstm(
      << output_dim << std::endl;
 
   // Defining the non-linearities
+  //  declare a no-op component so that we can use a sum descriptor's output
+  //  multiple times, and to make the config more readable given the equations
+  os << "component name=c_t type=NoOpComponent dim="
+     << cell_dim << std::endl;
   os << "component name=i_t type=SigmoidComponent dim="
      << cell_dim << std::endl;
   os << "component name=f_t type=SigmoidComponent dim="
@@ -294,14 +295,19 @@ void GenerateConfigSequenceLstm(
      << cell_dim << std::endl;
   os << "component name=h type=TanhComponent dim="
      << cell_dim << std::endl;
-  os << "component name=f_t.*c_{t-1} type=ElementwiseMultiply dim="
-     << 2 * cell_dim << std::endl;
-  os << "component name=i_t.*g type=ElementwiseMultiply dim="
-     << 2 * cell_dim << std::endl;
+  os << "component name=f_t-c_tminus1 type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=i_t-g type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
+  os << "component name=m_t type=ElementwiseProductComponent "
+     << " input-dim=" << 2 * cell_dim 
+     << " output-dim=" << cell_dim << std::endl;
     
 
   // Defining the computations
-  os << "component-node name=W*x component=affine1 input=Append(";
+  os << "component-node name=W-x component=W-x input=Append(";
   for (size_t i = 0; i < splice_context.size(); i++) {
     int32 offset = splice_context[i];
     os << "Offset(input, " << offset << ")";
@@ -310,57 +316,58 @@ void GenerateConfigSequenceLstm(
   }
   os << ")\n";
 
-  os << "component-node name=W*r component=W*r input=Offset(r_t, -1)\n";
-  os << "component-node name=W*m component=W*m input=m_t \n";
-  os << "component-node name=Wic component=Wic input=Offset(c_t, -1)\n";
-  os << "component-node name=Wfc component=Wfc input=Offset(c_t, -1)\n";
+  os << "component-node name=W-r component=W-r input=IfDefined(Offset(r_t, -1))\n";
+  os << "component-node name=W-m component=W-m input=m_t \n";
+  os << "component-node name=Wic component=Wic input=IfDefined(Offset(c_t, -1))\n";
+  os << "component-node name=Wfc component=Wfc input=IfDefined(Offset(c_t, -1))\n";
   os << "component-node name=Woc component=Woc input=c_t\n";
 
   // Splitting the outputs of W*m node
-  os << "dim-range-node name=r_t input-node=W*m dim-offset=0 "
+  os << "dim-range-node name=r_t input-node=W-m dim-offset=0 "
      << "dim=" << projection_dim << std::endl;
-  os << "dim-range-node name=p_t input-node=W*m dim-offset=" << projection_dim
-     << "dim=" << projection_dim << std::endl;
+  os << "dim-range-node name=p_t input-node=W-m dim-offset=" << projection_dim
+     << " dim=" << projection_dim << std::endl;
   
   // Splitting outputs of W*x node
-  os << "dim-range-node name=W_{ix}*x_t input_node=W*x dim-offset=0 "
+  os << "dim-range-node name=W_ix-x_t input-node=W-x dim-offset=0 "
      << "dim=" << cell_dim << std::endl;
-  os << "dim-range-node name=W_{fx}*x_t input_node=W*x "
+  os << "dim-range-node name=W_fx-x_t input-node=W-x "
      << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
-  os << "dim-range-node name=W_{cx}*x_t input_node=W*x "
+  os << "dim-range-node name=W_cx-x_t input-node=W-x "
      << "dim-offset=" << 2 * cell_dim << " dim="<<cell_dim << std::endl;
-  os << "dim-range-node name=W_{ox}*x_t input_node=W*x "
+  os << "dim-range-node name=W_ox-x_t input-node=W-x "
      << "dim-offset=" << 3 * cell_dim << " dim="<<cell_dim << std::endl;
   
   // Splitting outputs of W*r node
-  os << "dim-range-node name=W_{ir}*r_{t-1} input_node=W*r dim-offset=0 "
+  os << "dim-range-node name=W_ir-r_tminus1 input-node=W-r dim-offset=0 "
      << "dim=" << cell_dim << std::endl;
-  os << "dim-range-node name=W_{fr}*r_{t-1} input_node=W*r "
+  os << "dim-range-node name=W_fr-r_tminus1 input-node=W-r "
      << "dim-offset=" << cell_dim << " dim="<<cell_dim << std::endl;
-  os << "dim-range-node name=W_{cr}*r_{t-1} input_node=W*r "
+  os << "dim-range-node name=W_cr-r_tminus1 input-node=W-r "
      << "dim-offset=" << 2 * cell_dim << " dim="<<cell_dim << std::endl;
-  os << "dim-range-node name=W_{or}*r_{t-1} input_node=W*r "
+  os << "dim-range-node name=W_or-r_tminus1 input-node=W-r "
      << "dim-offset=" << 3 * cell_dim << " dim="<<cell_dim << std::endl;
-  os << "c_t = Sum(f_t.*c_{t-1}, i_t.*g)\n";
 
   // Non-linear operations
-  os << "component-node name=i_t component=i_t input=Sum(W_{ix}*x_t, W_{ir}_*r_{t-1}, W_{ic}*c_{t-1})\n";
-  os << "component-node name=f_t component=f_t input=Sum(W_{fx}*x_t, W_{fr}_*r_{t-1}, W_{fc}*c_{t-1})\n";
-  os << "component-node name=o_t component=o_t input=Sum(W_{ox}*x_t, W_{or}_*r_{t-1}, W_{oc}*c_t)\n";
-  os << "component-node name=f_t.*c_{t-1} input=Append(f_t, Offset(c_t, -1))\n";
-  os << "component-node name=i_t.*g input=Append(i_t, g)\n";
-  
-  os << "component-node name=g component=g input=Sum(W_{cx}*x_t, W_{cr}_*r_{t-1})\n";
+  os << "component-node name=c_t component=c_t input=Sum(f_t-c_tminus1, i_t-g)\n";
   os << "component-node name=h component=h input=c_t\n";
+  os << "component-node name=i_t component=i_t input=Sum(W_ix-x_t, Sum(W_ir-r_tminus1, Wic))\n";
+  os << "component-node name=f_t component=f_t input=Sum(W_fx-x_t, Sum(W_fr-r_tminus1, Wfc))\n";
+  os << "component-node name=o_t component=o_t input=Sum(W_ox-x_t, Sum(W_or-r_tminus1, Woc))\n";
+  os << "component-node name=f_t-c_tminus1 component=f_t-c_tminus1 input=Append(f_t, Offset(c_t, -1))\n";
+  os << "component-node name=i_t-g component=i_t-g input=Append(i_t, g)\n";
+  os << "component-node name=m_t component=m_t input=Append(o_t, h)\n";
+  
+  os << "component-node name=g component=g input=Sum(W_cx-x_t, W_cr-r_tminus1)\n";
   
   // Final affine transform
-  os << "component-node name=Wyr input_node=r_t\n";
-  os << "component-node name=Wyp input_node=p_t\n";
+  os << "component-node name=Wyr component=Wyr input=r_t\n";
+  os << "component-node name=Wyp component=Wyp input=p_t\n";
 
   os << "component-node name=final_affine component=final_affine input=Sum(Wyr, Wyp)\n";
   
-  os << "component-node name=output_nonlin component=logsoftmax input=final_affine\n";
-  os << "output-node name=posteriors input=output_nonlin\n";
+  os << "component-node name=posteriors component=logsoftmax input=final_affine\n";
+  os << "output-node name=output input=posteriors\n";
   
   configs->push_back(os.str());
 }
