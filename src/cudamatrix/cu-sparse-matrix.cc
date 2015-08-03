@@ -63,6 +63,19 @@ Real CuSparseMatrix<Real>::Sum() const {
 }
 
 template <typename Real>
+Real CuSparseMatrix<Real>::FrobeniusNorm() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuVector<Real> element_vec(*this);
+    return element_vec.Norm(2);
+  } else
+#endif
+  {
+    return Mat().FrobeniusNorm();
+  }
+}
+
+template <typename Real>
 MatrixElement<Real>* CuSparseMatrix<Real>::Data() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
