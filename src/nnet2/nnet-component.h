@@ -1613,6 +1613,70 @@ class AdditiveNoiseComponent: public RandomComponent {
   BaseFloat stddev_;
 };
 
+class ConvolutionComponent: public UpdatableComponent {
+ public:
+  ConvolutionComponent();
+  // constructor using another component
+  ConvolutionComponent(const ConvolutionComponent &component);
+  // constructor using parameters
+  ConvolutionComponent(const CuMatrixBase<BaseFloat> &filter_params,
+                       const CuVectorBase<BaseFloat> &bias_params,
+                       BaseFloat learning_rate);
+
+  int32 InputDim() const;
+  int32 OutputDim() const;
+  void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
+            int32 patch_dim, int32 patch_step, int32 patch_stride,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(BaseFloat learning_rate, std::string matrix_filename);
+
+  // resize the component, setting the parameters to zero, while
+  // leaving any other configuration values the same
+  void Resize(int32 input_dim, int32 output_dim);
+  std::string Info() const;
+  void InitFromString(std::string args);
+  std::string Type() const { return "ConvolutionComponent"; }
+  bool BackpropNeedsInput() const { return true; }
+  bool BackpropNeedsOutput() const { return false; }
+  using Component::Propagate; // to avoid name hiding
+  void Propagate(const ChunkInfo &in_info,
+                 const ChunkInfo &out_info,
+                 const CuMatrixBase<BaseFloat> &in,
+                 CuMatrixBase<BaseFloat> *out) const;
+  void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void Backprop(const ChunkInfo &in_info,
+                        const ChunkInfo &out_info,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  void SetZero(bool treat_as_gradient);
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  Component* Copy() const;
+  void PerturbParams(BaseFloat stddev);
+  void SetParams(const VectorBase<BaseFloat> &bias,
+                 const MatrixBase<BaseFloat> &filter);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
+  int32 GetParameterDim() const;
+  void Update(const CuMatrixBase<BaseFloat> &in_value,
+              const CuMatrixBase<BaseFloat> &out_deriv);
+
+ private:
+  int32 patch_dim_;
+  int32 patch_step_;
+  int32 patch_stride_;
+
+  const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
+  CuMatrix<BaseFloat> filter_params_;
+  CuVector<BaseFloat> bias_params_;
+  bool is_gradient_;
+};
+
 
 /// Functions used in Init routines.  Suppose name=="foo", if "string" has a
 /// field like foo=12, this function will set "param" to 12 and remove that
