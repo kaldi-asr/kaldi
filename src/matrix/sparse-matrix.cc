@@ -310,6 +310,18 @@ Real SparseMatrix<Real>::Sum() const {
   return sum;
 }
 
+template<typename Real>
+Real SparseMatrix<Real>::FrobeniusNorm() const {
+  Real squared_sum = 0;
+  for (int32 i = 0; i < rows_.size(); ++i) {
+    const std::pair<MatrixIndexT, Real> *row_data = rows_[i].Data();
+    for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
+      squared_sum += row_data[j].second * row_data[j].second;
+    }
+  }
+  return std::sqrt(squared_sum);
+}
+
 template <typename Real>
 template <typename OtherReal>
 void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,

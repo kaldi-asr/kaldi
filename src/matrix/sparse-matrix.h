@@ -116,6 +116,8 @@ class SparseMatrix {
 
   Real Sum() const;
 
+  Real FrobeniusNorm() const;
+
   template <class OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
