@@ -62,6 +62,10 @@ class CuSparseMatrix {
 
   MatrixIndexT NumElements() const;
 
+  template <typename OtherReal>
+  void CopyToMat(CuMatrixBase<OtherReal> *dest,
+                 MatrixTransposeType trans = kNoTrans) const;
+  
   Real Sum() const;
 
   Real FrobeniusNorm() const;
@@ -89,7 +93,7 @@ class CuSparseMatrix {
   /// is necessary.
   template <typename OtherReal>
   void CopyToSmat(SparseMatrix<OtherReal> *smat) const;
-
+  
   /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);
 

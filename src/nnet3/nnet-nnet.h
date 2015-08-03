@@ -35,7 +35,25 @@
 namespace kaldi {
 namespace nnet3 {
 
+
+
+/// This enum is for a kind of annotation we associate with output nodes of the
+/// network; it's for the convenience of calling code so that if the objective
+/// is one of a few standard types, we can compute it directly and know how to
+/// interpret the supervision labels.  However, the core of the framework never
+/// makes use of the objective types, other than making them available to
+/// calling code which then supplies the derivatives.
+///    - Objective type kLinear is intended for Neural nets where the final
+///      component is a LogSoftmaxComponent, so the log-prob (negative
+///      cross-entropy) objective is just a linear function of the input.
+///    - Objective type kQuadratic is used to mean the objective function 
+///      f(x, y) = -0.5 (x-y).(x-y), which is to be maximized, as in the kLinear
+///      case.
+enum ObjectiveType { kLinear, kQuadratic };
+
+
 enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
+
 
 
 /// NetworkNode is used to represent, three types of thing: either an input of the
@@ -70,6 +88,13 @@ struct NetworkNode {
     // for kDimRange, the node-index of the input node, which must be of
     // type kComponent or kInput.
     int32 node_index;
+
+    // for nodes of type kDescriptor that are output nodes (i.e. not followed by
+    // a node of type kComponents), the objective function associated with the
+    // output.  The core parts of the nnet code just ignore; it is required only
+    // for the information of the calling code, which is perfectly free to
+    // ignore it.  View it as a kind of annotation.
+    ObjectiveType objective_type;
   } u;
   // for kInput, the dimension of the input feature.  For kDimRange, the dimension
   // of the output (i.e. the length of the range)

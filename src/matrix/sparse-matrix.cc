@@ -718,13 +718,14 @@ void GeneralMatrix::GetMatrix(Matrix<BaseFloat> *mat) const {
   }
 }
 
-void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat) const {
+void GeneralMatrix::CopyToMat(MatrixBase<BaseFloat> *mat,
+                              MatrixTransposeType trans) const {
   if (mat_.NumRows() !=0) {
-    mat->CopyFromMat(mat_);
+    mat->CopyFromMat(mat_, trans);
   } else if (cmat_.NumRows() != 0) {
-    cmat_.CopyToMat(mat);
+    cmat_.CopyToMat(mat, trans);
   } else if (smat_.NumRows() != 0) {
-    smat_.CopyToMat(mat);
+    smat_.CopyToMat(mat, trans);
   } else {
     KALDI_ASSERT(mat->NumRows() == 0);
   }
@@ -1000,6 +1001,68 @@ void FilterGeneralMatrixRows(const GeneralMatrix &in,
     default:
       KALDI_ERR << "Invalid general-matrix type.";
   }
+}
+
+void GeneralMatrix::AddToMat(BaseFloat alpha, MatrixBase<BaseFloat> *mat,
+                             MatrixTransposeType trans) const {
+  switch (this->Type()) {
+    case kFullMatrix: {
+      mat->AddMat(alpha, mat_, trans);
+      break;
+    }
+    case kSparseMatrix: {
+      smat_.AddToMat(alpha, mat, trans);
+      break;
+    }
+    case kCompressedMatrix: {
+      Matrix<BaseFloat> temp_mat(cmat_);
+      mat->AddMat(alpha, temp_mat, trans);
+      break;
+    }
+    default:
+      KALDI_ERR << "Invalid general-matrix type.";
+  }
+}
+
+template <class Real>
+Real SparseVector<Real>::Max(int32 *index_out) const {
+  KALDI_ASSERT(dim_ > 0 && pairs_.size() <= static_cast<size_t>(dim_));
+  Real ans = -std::numeric_limits<Real>::infinity();
+  int32 index = 0;
+  typename std::vector<std::pair<MatrixIndexT, Real> >::const_iterator
+      iter = pairs_.begin(), end = pairs_.end();
+  for (; iter != end; ++iter) {
+    if (iter->second > ans) {
+      ans = iter->second;
+      index = iter->first;
+    }
+  }
+  if (ans >= 0 || pairs_.size() == dim_) {
+    // ans >= 0 will be the normal case.
+    // if pairs_.size() == dim_ then we need to return
+    // even a negative answer as there are no spaces (hence no unlisted zeros).
+    *index_out = index;
+    return ans;
+  }
+  // all the stored elements are < 0, but there are unlisted
+  // elements -> pick the first unlisted element.
+  // Note that this class requires that the indexes are sorted
+  // and unique.
+  index = 0;  // "index" will always be the next index, that
+              // we haven't seen listed yet.
+  iter = pairs_.begin();
+  for (; iter != end; ++iter) {
+    if (iter->first > index) {  // index "index" is not listed.
+      *index_out = index;
+      return 0.0;
+    } else {
+      // index is the next potential gap in the indexes.
+      index = iter->first + 1;
+    }
+  }
+  KALDI_ERR << "Code error";  // you should not reach here, it would be a bug in
+                              // the code.
+  return 0;
 }
 
 

@@ -507,7 +507,8 @@ void Compiler::DoForwardComputationFromSubmatLocationsList(
   std::vector<std::vector<std::pair<int32, int32> > > split_lists;  
   SplitLocations(submat_lists, &split_lists);
   int32 size = split_lists.size();
-  KALDI_ASSERT(size > 0);
+  // note: size may be empty in unusual cases so don't assert that it's
+  // nonzero.
   for (int32 i = 0; i < size; i++)
     DoForwardComputationFromSubmatLocations(
         value_submatrix_index, (i == 0),

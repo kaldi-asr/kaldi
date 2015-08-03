@@ -67,6 +67,7 @@ struct NnetXentTrainerOptions {
 
 // This struct is used in multiple nnet training classes for keeping
 // track of objective function values.
+// Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
 
@@ -89,10 +90,11 @@ struct ObjectiveFunctionInfo {
                    int32 minibatch_counter,
                    BaseFloat this_minibatch_weight,
                    BaseFloat this_minibatch_tot_like);
+
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,
                               int32 minibatches_per_phase) const;
-  // Prints total stats, and returns true if it was nonzero.
+  // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };
 
@@ -133,11 +135,50 @@ class NnetXentTrainer {
   // So we store the objective functions per output layer.  
   int32 num_minibatches_processed_;
     
-  unordered_map<std::string, ObjectiveFunctionInfo> objf_info_;
-  
-
+  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };
 
+/**
+   This function computes the objective function, and if supply_deriv = true,
+   supplies its derivative to the NnetComputation object.
+   See also the function ComputeAccuracy(), declared in nnet-diagnostics.h.
+
+  @param [in]  supervision   A GeneralMatrix, typically derived from a NnetExample,
+                             containing the supervision posteriors or features.
+  @param [in] objective_type The objective function type: kLinear = output *
+                             supervision, or kQuadratic = -0.5 * (output -
+                             supervision)^2.  kLinear is used for softmax
+                             objectives; the network contains a LogSoftmax
+                             layer which correctly normalizes its output.
+  @param [in] output_name    The name of the output node (e.g. "output"), used to
+                             look up the output in the NnetComputer object.
+
+  @param [in] supply_deriv   If this is true, this function will compute the
+                             derivative of the objective function and supply it
+                             to the network using the function
+                             NnetComputer::AcceptOutputDeriv
+  @param [in,out] computer   The NnetComputer object, from which we get the
+                             output using GetOutput and to which we may supply
+                             the derivatives using AcceptOutputDeriv.
+  @param [out] tot_weight    The total weight of the training examples.  In the
+                             kLinear case, this is the sum of the supervision
+                             matrix; in the kQuadratic case, it is the number of
+                             rows of the supervision matrix.  In order to make
+                             it possible to weight samples with quadratic
+                             objective functions, we may at some point make it
+                             possible for the supervision matrix to have an
+                             extra column containing weights.  At the moment,
+                             this is not supported.
+  @param [out] tot_objf      The total objective function; divide this by the
+                             tot_weight to get the normalized objective function.
+*/
+void ComputeObjectiveFunction(const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf);
 
 
 

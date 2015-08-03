@@ -94,17 +94,23 @@ void NnetComputation::ComputeCudaIndexes() {
   }
 }
 
-int32 NnetComputation::NewSubMatrix(int32 base_matrix, int32 dim_offset,
+int32 NnetComputation::NewSubMatrix(int32 base_submatrix, int32 dim_offset,
                                     int32 dim) {
-  KALDI_ASSERT(static_cast<size_t>(base_matrix) < matrices.size());
-  int32 num_rows = matrices[base_matrix].num_rows,
-      num_cols = matrices[base_matrix].num_cols;
-  KALDI_ASSERT(dim_offset >= 0 && dim_offset + dim <= num_cols);
+  KALDI_ASSERT(base_submatrix > 0 &&
+               static_cast<size_t>(base_submatrix) < submatrices.size());
+  const SubMatrixInfo &base_info = submatrices[base_submatrix];
+  int32 base_matrix = base_info.matrix_index;
+  int32 row_offset = base_info.row_offset, num_rows = base_info.num_rows,
+      col_offset = base_info.col_offset + dim_offset,
+      num_cols = dim;
+  KALDI_ASSERT(base_matrix > 0 &&
+               static_cast<size_t>(base_matrix) < matrices.size());
+  KALDI_ASSERT(col_offset >= 0 &&
+               col_offset + num_cols <= matrices[base_matrix].num_cols);
   int32 ans = submatrices.size();
-  KALDI_ASSERT(ans >= matrices.size());
   submatrices.push_back(
-      NnetComputation::SubMatrixInfo(base_matrix, 0, num_rows,
-                                     dim_offset, dim));
+      NnetComputation::SubMatrixInfo(base_matrix, row_offset, num_rows,
+                                     col_offset, num_cols));
   return ans;
 }
   

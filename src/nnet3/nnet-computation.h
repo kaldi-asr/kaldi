@@ -301,8 +301,10 @@ struct NnetComputation {
   int32 NewMatrix(int32 num_rows, int32 num_cols);
 
   // Convenience function used when adding new sub-matrices.  Returns the new
-  // sub-matrix index.
-  int32 NewSubMatrix(int32 base_matrix, int32 dim_offset, int32 dim);
+  // sub-matrix index.  base_submatrix is the submatrix of which we want
+  // a column range.  dim_offset is the start column, and dim is the dimension
+  // of the desired matrix.
+  int32 NewSubMatrix(int32 base_submatrix, int32 dim_offset, int32 dim);
 
   // returns true if this submatrix corresponds to the whole of a matrix.
   // submatrix_index must be > 0.

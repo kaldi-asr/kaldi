@@ -74,10 +74,11 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix &operator = (const MatrixBase<Real> &mat); // assignment operator.
   
-  /// Copies contents to matrix.  Note: mat must have the correct size,
-  /// CopyToMat no longer attempts to resize it.
+  /// Copies contents to matrix.  Note: mat must have the correct size.
+  /// kNoTrans case uses a temporary.
   template<typename Real>
-  void CopyToMat(MatrixBase<Real> *mat) const;
+  void CopyToMat(MatrixBase<Real> *mat,
+                 MatrixTransposeType trans = kNoTrans) const;
 
   void Write(std::ostream &os, bool binary) const;
   

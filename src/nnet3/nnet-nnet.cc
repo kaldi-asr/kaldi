@@ -71,6 +71,8 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
       node.descriptor.WriteConfig(ans, node_names_);
       if (include_dim)
         ans << " dim=" << node.Dim(*this);
+      ans << " objective=" << (node.u.objective_type == kLinear ? "linear" :
+                               "quadratic");
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
@@ -368,6 +370,21 @@ void Nnet::ProcessOutputNodeConfigLine(
     if (!nodes_[node_index].descriptor.Parse(node_names_temp, &next_token))
       KALDI_ERR << "Error parsing descriptor (input=...) in config line "
                 << config->WholeLine();
+    std::string objective_type;
+    if (config->GetValue("objective", &objective_type)) {
+      if (objective_type == "linear") {
+        nodes_[node_index].u.objective_type = kLinear;
+      } else if (objective_type == "quadratic") {
+        nodes_[node_index].u.objective_type = kQuadratic;
+      } else {
+        KALDI_ERR << "Invalid objective type: " << objective_type;
+      }
+    } else {
+      // the default objective type is linear.  This is what we use
+      // for softmax objectives; the LogSoftmaxLayer is included as the
+      // last layer, in this case.
+      nodes_[node_index].u.objective_type = kLinear;
+    }
     if (config->HasUnusedValues())
       KALDI_ERR << "Unused values '" << config->UnusedValues()
                 << " in config line: " << config->WholeLine();

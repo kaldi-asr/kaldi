@@ -464,9 +464,9 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-compute-prob $dir/$x.mdl ark:$cur_egs_dir/valid_diagnostic.egs &
+      nnet3-compute-prob $dir/$x.mdl "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob $dir/$x.mdl ark:$cur_egs_dir/train_diagnostic.egs &
+      nnet3-compute-prob $dir/$x.mdl "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
@@ -546,7 +546,7 @@ while [ $x -lt $num_iters ]; do
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
         nnet3-average $nnets_list - \| \
-        nnet3-am-replace-model $dir/$x.mdl - $dir/$[$x+1].raw || exit 1;
+        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -556,7 +556,7 @@ while [ $x -lt $num_iters ]; do
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
-        nnet3-am-replace-model $dir/$x.mdl $dir/$[$x+1].n.raw $dir/$[$x+1].mdl || exit 1;
+        nnet3-am-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     fi
 
     rm $nnets_list
@@ -606,17 +606,17 @@ if [ $stage -le $num_iters ]; then
     --num-threads=$combine_num_threads --max-models-combine=$max_models_combine \
     --normalize-stddevs=true \
     --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=$mb $cur_egs_dir/combine.egs ark:-|" \
-    "|nnet3-am-replace-model $dir/$num_iters.mdl -  $dir/combined.mdl" || exit 1;
+    "|nnet3-am-copy --set-raw-nnet=- $dir/$num_iters.mdl $dir/combined.mdl" || exit 1;
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    ark:$cur_egs_dir/valid_diagnostic.egs &
+    "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    ark:$cur_egs_dir/train_diagnostic.egs &
+    "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then

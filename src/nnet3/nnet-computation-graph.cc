@@ -76,6 +76,9 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
   for (int32 c = 0; c < new_num_cindex_ids; c++) {
     int32 d = new2old[c];
     temp_graph.cindexes[c] = cindexes[d];
+    if (c == 2546 && cindexes[d].first == 33) { // temp
+      KALDI_LOG << "Here\n";
+    }
     temp_graph.is_input[c] = is_input[d];
     temp_graph.dependencies[c].reserve(dependencies[d].size());
     std::vector<int32>::const_iterator
@@ -231,8 +234,13 @@ bool ComputationGraphBuilder::AllOutputsAreComputable() {
 
 
 // this function limits the dependencies of cindex_id "cindex_id" to just those
-// which are actually used in computing it.
+// which are actually used in computing it.  It also clears the dependencies
+// of those cindexes that are not computable.
 void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
+  if (cindex_id == 2546 && graph_->cindexes[2546].first == 33) { // temp
+    KALDI_LOG << "Here[2]\n";
+  }
+  
   ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
   // by the time this is called, there should be no cindexes with unknown state.
   KALDI_ASSERT(c != kUnknown);
@@ -303,12 +311,12 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
     }
     case kDimRange:
       // there should be exactly one dependency and it is required, not
-      // optional, so leave it.
-      KALDI_ASSERT(dependencies.size() == 1);
-      break;
+      // optional, so there is nothing to do here.  Return.
+      return;
     case kInput:
       KALDI_ASSERT(dependencies.empty());
-      break;
+      // there is nothing to do; return.
+      return;
     default:
       KALDI_ERR << "Invalid node type";
   }
@@ -422,13 +430,14 @@ void ComputationGraphBuilder::Prune() {
   int32 num_cindex_ids = graph_->cindexes.size();
   // Prune the dependencies to just those that are used (to remove
   // optional dependencies that don't end up getting used).
+
   for (int32 cindex_id = 0; cindex_id < num_cindex_ids; cindex_id++)
     PruneDependencies(cindex_id);
   depend_on_this_.clear();  // not valid any more after pruning dependencies.
   std::vector<bool> required;
   ComputeRequiredArray(&required);
 
-  std::vector<bool> keep(num_cindex_ids);
+  std::vector<bool> keep(num_cindex_ids, false);
   for (int32 c = 0; c < num_cindex_ids; c++) {
     if (required[c] || graph_->is_input[c]) {
       KALDI_ASSERT(computable_info_[c] == kComputable &&

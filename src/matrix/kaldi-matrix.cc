@@ -1850,24 +1850,6 @@ Matrix<Real>::Matrix(const CompressedMatrix &M): MatrixBase<Real>() {
   M.CopyToMat(this);
 }
 
-template<class Real>
-template<class OtherReal>
-void MatrixBase<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &mat,
-                                    MatrixTransposeType trans) {
-  mat.CopyToMat(this, trans);
-}
-template
-void MatrixBase<float>::CopyFromSmat(const SparseMatrix<float> &mat,
-                                     MatrixTransposeType trans);
-template
-void MatrixBase<float>::CopyFromSmat(const SparseMatrix<double> &mat,
-                                     MatrixTransposeType trans);
-template
-void MatrixBase<double>::CopyFromSmat(const SparseMatrix<float> &mat,
-                                      MatrixTransposeType trans);
-template
-void MatrixBase<double>::CopyFromSmat(const SparseMatrix<double> &mat,
-                                      MatrixTransposeType trans);
 
 
 template<typename Real>

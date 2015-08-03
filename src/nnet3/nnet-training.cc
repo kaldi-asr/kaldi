@@ -60,51 +60,15 @@ void NnetXentTrainer::ProcessOutputs(const NnetExample &eg,
     int32 node_index = nnet_->GetNodeIndex(io.name);
     KALDI_ASSERT(node_index >= 0);
     if (nnet_->IsOutputNode(node_index)) {
-      const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
-      if (output.NumCols() != io.features.NumCols()) {
-        KALDI_ERR << "Nnet versus example output dimension (num-classes) "
-                  << "mismatch for '" << io.name << "': " << output.NumCols()
-                  << " (nnet) vs. " << io.features.NumCols() << " (egs)\n";
-      }
-      BaseFloat weight, tot_like;
-      switch (io.features.Type()) {
-        case kSparseMatrix: {
-          const SparseMatrix<BaseFloat> &post = io.features.GetSparseMatrix();
-          CuSparseMatrix<BaseFloat> cu_post(post);
-          // The cross-entropy objective is computed by a simple dot product,
-          // because after the LogSoftmaxLayer, the output is already in the form
-          // of log-likelihoods that are normalized to sum to one.
-          weight = cu_post.Sum();
-          tot_like = TraceMatSmat(output, cu_post, kTrans);
-          CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
-                                           kUndefined);
-          output_deriv.CopyFromSmat(cu_post);
-          computer->AcceptOutputDeriv(io.name, &output_deriv);
-          break;
-        }
-        case kFullMatrix: {
-          // there is a redundant matrix copy in here if we're not using a GPU
-          // but we don't anticipate this code branch being used in many cases.
-          CuMatrix<BaseFloat> cu_post(io.features.GetFullMatrix());
-          weight = cu_post.Sum();
-          tot_like = TraceMatMat(output, cu_post, kTrans);
-          computer->AcceptOutputDeriv(io.name, &cu_post);
-          break;
-        }
-        case kCompressedMatrix: {
-          Matrix<BaseFloat> post;
-          io.features.GetMatrix(&post);
-          CuMatrix<BaseFloat> cu_post;
-          cu_post.Swap(&post);
-          weight = cu_post.Sum();
-          tot_like = TraceMatMat(output, cu_post, kTrans);
-          computer->AcceptOutputDeriv(io.name, &cu_post);
-          break;
-        }
-      }
+      ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
+      BaseFloat tot_weight, tot_objf;
+      bool supply_deriv = true;
+      ComputeObjectiveFunction(io.features, obj_type, io.name,
+                               supply_deriv, computer,
+                               &tot_weight, &tot_objf);
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
-                                      weight, tot_like);
+                                      tot_weight, tot_objf);
     }
   }
 }
@@ -160,6 +124,84 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   return (tot_weight != 0.0);
 }
 
-      
+void ComputeObjectiveFunction(const GeneralMatrix &supervision,
+                              ObjectiveType objective_type,
+                              const std::string &output_name,
+                              bool supply_deriv,
+                              NnetComputer *computer,
+                              BaseFloat *tot_weight,
+                              BaseFloat *tot_objf) {
+  const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
+
+  if (output.NumCols() != supervision.NumCols())
+    KALDI_ERR << "Nnet versus example output dimension (num-classes) "
+              << "mismatch for '" << output_name << "': " << output.NumCols()
+              << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
+  
+  switch (objective_type) {
+    case kLinear: {
+      // objective is x * y.
+      switch (supervision.Type()) {
+        case kSparseMatrix: {
+          const SparseMatrix<BaseFloat> &post = supervision.GetSparseMatrix();
+          CuSparseMatrix<BaseFloat> cu_post(post);
+          // The cross-entropy objective is computed by a simple dot product,
+          // because after the LogSoftmaxLayer, the output is already in the form
+          // of log-likelihoods that are normalized to sum to one.
+          *tot_weight = cu_post.Sum();
+          *tot_objf = TraceMatSmat(output, cu_post, kTrans);
+          if (supply_deriv) {
+            CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
+                                             kUndefined);
+            cu_post.CopyToMat(&output_deriv);
+            computer->AcceptOutputDeriv(output_name, &output_deriv);
+          }
+          break;
+        }
+        case kFullMatrix: {
+          // there is a redundant matrix copy in here if we're not using a GPU
+          // but we don't anticipate this code branch being used in many cases.
+          CuMatrix<BaseFloat> cu_post(supervision.GetFullMatrix());
+          *tot_weight = cu_post.Sum();
+          *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          if (supply_deriv)
+            computer->AcceptOutputDeriv(output_name, &cu_post);
+          break;
+        }
+        case kCompressedMatrix: {
+          Matrix<BaseFloat> post;
+          supervision.GetMatrix(&post);
+          CuMatrix<BaseFloat> cu_post;
+          cu_post.Swap(&post);
+          *tot_weight = cu_post.Sum();
+          *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          if (supply_deriv)
+            computer->AcceptOutputDeriv(output_name, &cu_post);
+          break;
+        }
+      }
+      break;
+    }
+    case kQuadratic: {
+      // objective is -0.5 (x - y)^2
+      CuMatrix<BaseFloat> diff(supervision.NumRows(),
+                               supervision.NumCols(),
+                               kUndefined);
+      diff.CopyFromGeneralMat(supervision);
+      diff.AddMat(-1.0, output);
+      *tot_weight = diff.NumRows();
+      *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
+      if (supply_deriv)
+        computer->AcceptOutputDeriv(output_name, &diff);
+      break;
+    }
+    default:
+      KALDI_ERR << "Objective function type " << objective_type
+                << " not handled.";
+  }      
+}
+
+
+
 } // namespace nnet3
 } // namespace kaldi

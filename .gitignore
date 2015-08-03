@@ -945,6 +945,6 @@
 /src/nnet3bin/nnet3-am-init
 /src/nnet3bin/nnet3-am-train-transitions
 /src/nnet3bin/nnet3-am-copy
-
-
+/src/nnet3bin/nnet3-compute-prob
+/src/nnet3bin/nnet3-train
 

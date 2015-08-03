@@ -243,7 +243,7 @@ if [ $stage -le 2 ]; then
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
     nnet3-subset-egs --n=$num_valid_frames_combine ark:$dir/valid_all.egs \
-        ark:$dir/valid_combine.egs || touch $dir/.error &
+    ark:$dir/valid_combine.egs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
     nnet3-subset-egs --n=$num_frames_diagnostic ark:$dir/valid_all.egs \
     ark:$dir/valid_diagnostic.egs || touch $dir/.error &

@@ -78,17 +78,17 @@ class CuMatrixBase {
   friend class CuSparseMatrix<float>;
   friend class CuSparseMatrix<double>;
   friend class CuSparseMatrix<Real>;
-  friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
-                                     CuMatrixBase<Real> *grad, Real l1, Real lr);
-  friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
-                               const CuArray<int32> &frame_offsets,
-                               CuMatrixBase<Real> *tgt);
-  friend void cu::Copy<Real>(const CuMatrixBase<Real> &src,
-                             const CuArray<int32> &copy_from_indexes,
-                             CuMatrixBase<Real> *tgt);
-  friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
-                                  const CuArray<int32> &copy_from_idx,
-                                  CuMatrixBase<Real> *tgt);
+  //friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
+  //                                   CuMatrixBase<Real> *grad, Real l1, Real lr);
+  //friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
+  //                            const CuArray<int32> &frame_offsets,
+  //                            CuMatrixBase<Real> *tgt);
+  //friend void cu::Copy<Real>(const CuMatrixBase<Real> &src,
+  //                           const CuArray<int32> &copy_from_indexes,
+  //                           CuMatrixBase<Real> *tgt);
+  // friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
+  //                                const CuArray<int32> &copy_from_idx,
+  //                               CuMatrixBase<Real> *tgt);
 
   /// Copies column r from column indexes[r] of src.
   /// As a special case, if indexes[i] == -1, sets column i to zero
@@ -211,10 +211,6 @@ class CuMatrixBase {
   void CopyFromMat(const MatrixBase<Real> &src,
                    MatrixTransposeType trans = kNoTrans);
 
-  template <typename OtherReal>
-  void CopyFromSmat(const CuSparseMatrix<OtherReal> &src,
-                    MatrixTransposeType trans = kNoTrans);
-  
   void CopyFromSp(const CuSpMatrix<Real> &M);
   
   template<typename OtherReal>
@@ -527,10 +523,11 @@ class CuMatrixBase {
   /// Return data pointer.  Warning: may return a pointer to GPU memory.  Use at
   /// your own risk.
   inline Real *Data() { return data_; }
- protected:
+
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
-  // interpreted the same as a regular matrix.
+  // interpreted the same as a regular matrix.  Don't use these unless you know
+  // what you are doing!
   inline const MatrixBase<Real> &Mat() const {
     return *(reinterpret_cast<const MatrixBase<Real>* >(this));
   }
@@ -538,8 +535,7 @@ class CuMatrixBase {
     return *(reinterpret_cast<MatrixBase<Real>* >(this));
   }
   
-
-
+ protected:
   
   // The constructors are protected to prevent the user creating an instance of
   // this class.

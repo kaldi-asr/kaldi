@@ -483,7 +483,15 @@ void CompressedMatrix::Read(std::istream &is, bool binary) {
 }
 
 template<typename Real>
-void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
+void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat,
+                                 MatrixTransposeType trans) const {
+  if (trans == kTrans) {
+    Matrix<Real> temp(this->NumCols(), this->NumRows());
+    CopyToMat(&temp, kNoTrans);
+    mat->CopyFromMat(temp, kTrans);
+    return;
+  }
+  
   if (data_ == NULL) {
     KALDI_ASSERT(mat->NumRows() == 0);
     KALDI_ASSERT(mat->NumCols() == 0);
@@ -522,9 +530,11 @@ void CompressedMatrix::CopyToMat(MatrixBase<Real> *mat) const {
 
 // Instantiate the template for float and double.
 template
-void CompressedMatrix::CopyToMat(MatrixBase<float> *mat) const;
+void CompressedMatrix::CopyToMat(MatrixBase<float> *mat,
+                                 MatrixTransposeType trans) const;
 template
-void CompressedMatrix::CopyToMat(MatrixBase<double> *mat) const;
+void CompressedMatrix::CopyToMat(MatrixBase<double> *mat,
+                                 MatrixTransposeType trans) const;
 
 template<typename Real>
 void CompressedMatrix::CopyRowToVec(MatrixIndexT row,

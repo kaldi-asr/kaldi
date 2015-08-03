@@ -255,52 +255,6 @@ template
 void CuMatrixBase<double>::CopyFromMat<double>(const CuMatrixBase<double> &M,
                                                MatrixTransposeType Trans);
 
-template <typename Real>
-template <typename OtherReal>
-void CuMatrixBase<Real>::CopyFromSmat(const CuSparseMatrix<OtherReal> &M,
-                                      MatrixTransposeType trans) {
-  // Sanity check.
-  if (trans == kNoTrans) {
-    KALDI_ASSERT(M.NumRows() == num_rows_ && M.NumCols() == num_cols_);
-  } else {
-    KALDI_ASSERT(M.NumCols() == num_rows_ && M.NumRows() == num_cols_);
-  }
-#if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-    dim3 dimBlock(CU1DBLOCK, 1);
-    dim3 dimGrid(n_blocks(M.NumElements(), CU1DBLOCK), 1);
-    if (trans == kNoTrans) {
-      cuda_copy_from_smat(dimGrid, dimBlock, this->data_,
-                          M.Data(), this->Dim(), M.NumElements());
-    } else {
-      cuda_copy_from_smat_trans(dimGrid, dimBlock, this->data_,
-                                M.Data(), this->Dim(), M.NumElements());
-    }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
-  } else
-#endif
-  {
-    Mat().CopyFromSmat(M.Mat(), trans);
-  }
-}
-
-// Instantiate the template above.
-template
-void CuMatrixBase<float>::CopyFromSmat(const CuSparseMatrix<float> &M,
-                                      MatrixTransposeType trans);
-
-template
-void CuMatrixBase<float>::CopyFromSmat(const CuSparseMatrix<double> &M,
-                                       MatrixTransposeType trans);
-
-template
-void CuMatrixBase<double>::CopyFromSmat(const CuSparseMatrix<float> &M,
-                                        MatrixTransposeType trans);
-
-template
-void CuMatrixBase<double>::CopyFromSmat(const CuSparseMatrix<double> &M,
-                                        MatrixTransposeType trans);
 
 template<typename Real>
 template<typename OtherReal>
@@ -2306,11 +2260,11 @@ void CuMatrixBase<Real>::CopyFromGeneralMat(const GeneralMatrix &src,
         // only take this branch if we're actually using CUDA, or it would
         // entail a wasteful copy of the sparse matrix.
         CuSparseMatrix<BaseFloat> cu_smat(smat);
-        this->CopyFromSmat(cu_smat, trans);
+        cu_smat.CopyToMat(this, trans);
         return;
       }
 #endif
-      Mat().CopyFromSmat(smat, trans);
+      smat.CopyToMat(&(Mat()), trans);
       return;
     }
     default:

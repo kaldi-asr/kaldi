@@ -55,6 +55,15 @@ class SparseVector {
   SparseVector(const SparseVector<Real> &other) { *this = other; }
   
   void Swap(SparseVector<Real> *other);
+
+  // Returns the maximum value in this row and outputs the index associated with
+  // it.  This is not the index into the Data() pointer, it is the index into
+  // the vector it represents, i.e. the .first value in the pair.
+  // If this vector's Dim() is zero it is an error to call this function.
+  // If all the elements stored were negative and there underlying vector had
+  // zero indexes not listed in the elements, or if no elements are stored, it
+  // will return the first un-listed index, whose value (implicitly) is zero.
+  Real Max(int32 *index) const;
   
   /// Returns the number of nonzero elements.
   MatrixIndexT NumElements() const { return pairs_.size(); }
@@ -253,8 +262,23 @@ class GeneralMatrix {
 
   /// Copies contents, regardless of type, to "mat", which must be 
   /// correctly sized.
-  void CopyToMat(MatrixBase<BaseFloat> *mat) const;
+  void CopyToMat(MatrixBase<BaseFloat> *mat,
+                 MatrixTransposeType trans = kNoTrans) const;
 
+  /// Copies contents, regardless of type, to "cu_mat", which must be 
+  /// correctly sized.  Implemented in ../cudamatrix/cu-sparse-matrix.cc
+  void CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
+                 MatrixTransposeType trans = kNoTrans) const;
+
+  /// Adds alpha times *this to mat.
+  void AddToMat(BaseFloat alpha, MatrixBase<BaseFloat> *mat,
+                MatrixTransposeType trans = kNoTrans) const;
+
+  /// Adds alpha times *this to cu_mat.
+  /// Implemented in ../cudamatrix/cu-sparse-matrix.cc
+  void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
+                MatrixTransposeType trans = kNoTrans) const;
+  
   /// Assignment from regular matrix.
   GeneralMatrix &operator= (const MatrixBase<BaseFloat> &mat);
 

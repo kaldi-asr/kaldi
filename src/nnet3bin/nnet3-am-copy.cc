@@ -35,7 +35,9 @@ int main(int argc, char *argv[]) {
         "to raw model (--raw=true).\n"
         "Also supports multiplying all the learning rates by a factor\n"
         "(the --learning-rate-factor option) and setting them all to supplied\n"
-        "values (the --learning-rate and --learning-rates options)\n"
+        "values (the --learning-rate and --learning-rates options),\n"
+        "and supports replacing the raw nnet in the model (the Nnet)\n"
+        "with a provided raw nnet (the --set-raw-nnet option)\n"
         "\n"
         "Usage:  nnet3-am-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
@@ -45,14 +47,20 @@ int main(int argc, char *argv[]) {
     bool binary_write = true,
         raw = false;
     BaseFloat learning_rate = -1;
+    std::string set_raw_nnet = "";
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("raw", &raw, "If true, write only 'raw' neural net "
                 "without transition model and priors.");
+    po.Register("set-raw-nnet", &set_raw_nnet,
+                "Set the raw nnet inside the model to the one provided in "
+                "the option string (interpreted as an rxfilename).  Done "
+                "before the learning-rate is changed.");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 "are set to this value.");
+
 
     po.Read(argc, argv);
     
@@ -73,6 +81,12 @@ int main(int argc, char *argv[]) {
       am_nnet.Read(ki.Stream(), binary);
     }
 
+    if (!set_raw_nnet.empty()) {
+      Nnet nnet;
+      ReadKaldiObject(set_raw_nnet, &nnet);
+      am_nnet.SetNnet(nnet);
+    }
+    
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
 

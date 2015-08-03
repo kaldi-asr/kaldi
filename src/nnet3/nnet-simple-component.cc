@@ -121,7 +121,7 @@ void ElementwiseProductComponent::Propagate(
   int32 num_inputs = input_dim_ / output_dim_;
   for (int32 i = 0; i < num_inputs; i++)  {
     CuSubMatrix<BaseFloat> current_in(in, 0, in.NumRows(),
-                                      i * output_dim_, (i + 1) * output_dim_);
+                                      i * output_dim_, output_dim_);
     if (i == 0) {
       out->CopyFromMat(current_in);
     } else  {
@@ -142,7 +142,7 @@ void ElementwiseProductComponent::Backprop(const std::string &debug_info,
   for (int32 i = 0; i < num_inputs; i++)  {
     CuSubMatrix<BaseFloat> current_in_deriv(*in_deriv, 0, in_deriv->NumRows(),
                                             i * output_dim_,
-                                            (i + 1) * output_dim_);
+                                            output_dim_);
     current_in_deriv.CopyFromMat(out_deriv);
     for (int32 j = 0; j < num_inputs; j++)  {
       if (i == j)
@@ -150,7 +150,7 @@ void ElementwiseProductComponent::Backprop(const std::string &debug_info,
       CuSubMatrix<BaseFloat> in_value_partition(in_value, 0,
                                                 in_value.NumRows(),
                                                 j * output_dim_,
-                                                (j + 1) * output_dim_);
+                                                output_dim_);
       current_in_deriv.MulElements(in_value_partition);
     }
   }
@@ -834,12 +834,11 @@ void PerElementScaleComponent::Backprop(
   PerElementScaleComponent *to_update =
       dynamic_cast<PerElementScaleComponent*>(to_update_in);
 
-  // Propagate the derivative back to the input.
-  // add with coefficient 1.0 since property kBackpropAdds is true.
-  // If we wanted to add with coefficient 0.0 we'd need to zero the
-  // in_deriv, in case of infinities.
-  in_deriv->CopyFromMat(out_deriv);
-  in_deriv->MulColsVec(scales_);
+  if (in_deriv) {
+    // Propagate the derivative back to the input.
+    in_deriv->CopyFromMat(out_deriv);
+    in_deriv->MulColsVec(scales_);
+  }
 
   if (to_update != NULL) {
     // Next update the model (must do this 2nd so the derivatives we propagate

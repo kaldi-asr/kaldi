@@ -217,8 +217,6 @@ void GenerateConfigSequenceRnn(
 //      p(t) = Wpm * m(t)
 //      y(t) = Wyr * r(t) + Wyp * p(t) + by
 // where S : sigmoid
-//
-      
 // matrix with feed-forward connections
 // from the input x(t)
 // W*x = [Wix^T, Wfx^T, Wcx^T, Wox^T]^T 

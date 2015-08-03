@@ -188,6 +188,7 @@ class ComputationGraphBuilder {
   // graph_->dependencies-- it removes those cindexes that are not used in the
   // computation for the current cindex_id.  This will only do something
   // interesting in cases where there are optional dependencies.
+  // It also clears the dependencies of those cindexes that are not computable.
   void PruneDependencies(int32 cindex_id);
   
   // This function, called from Prune(), computes an array "required", with an
