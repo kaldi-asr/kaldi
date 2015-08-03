@@ -37,7 +37,6 @@ void UnitTestNnetContext() {
     // this test doesn't really test anything except that it runs;
     // we manually inspect the output.
     int32 left_context, right_context;
-
     ComputeSimpleNnetContext(nnet, &left_context, &right_context);
     KALDI_LOG << "Left,right-context= " << left_context << ","
               << right_context << " for config: " << configs[0];
