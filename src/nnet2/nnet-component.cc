@@ -104,6 +104,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new AdditiveNoiseComponent();
   } else if (component_type == "ConvolutionComponent") {
     ans = new ConvolutionComponent();
+  } else if (component_type == "MaxpoolingComponent") {
+    ans = new MaxpoolingComponent();
   }
   return ans;
 }
@@ -3905,12 +3907,12 @@ void ConvolutionComponent::Backprop(const ChunkInfo &in_info,
                                     const CuMatrixBase<BaseFloat> &out_deriv,
                                     Component *to_update_in,
                                     CuMatrix<BaseFloat> *in_deriv) const {
-  in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
+  in_deriv->Resize(out_deriv.NumRows(), InputDim());
   ConvolutionComponent *to_update = dynamic_cast<ConvolutionComponent*>(to_update_in);
   int32 num_splice = InputDim() / patch_stride_;
   int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
   int32 num_filters = filter_params_.NumRows();
-  int32 num_frames = in_value.NumRows();
+  int32 num_frames = out_deriv.NumRows();
   int32 filter_dim = filter_params_.NumCols();
 
   /** Buffer for backpropagation:
@@ -4110,6 +4112,139 @@ void ConvolutionComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
   //
   filter_params_.AddMat(learning_rate_, filters_grad);
   bias_params_.AddVec(learning_rate_, bias_grad);
+}
+
+void MaxpoolingComponent::Init(int32 input_dim, int32 output_dim,
+                               int32 pool_size, int32 pool_stride)  {
+  input_dim_ = input_dim;
+  output_dim_ = output_dim;
+  pool_size_ = pool_size;
+  pool_stride_ = pool_stride;
+
+  // sanity check
+  // number of patches
+  KALDI_ASSERT(input_dim_ % pool_stride_ == 0);
+  int32 num_patches = input_dim_ / pool_stride_;
+  // number of pools
+  KALDI_ASSERT(num_patches % pool_size_ == 0);
+  int32 num_pools = num_patches / pool_size_;
+  // check output dim
+  KALDI_ASSERT(output_dim_ == num_pools * pool_stride_);
+}
+
+void MaxpoolingComponent::InitFromString(std::string args) {
+  std::string orig_args(args);
+  int32 input_dim = 0;
+  int32 output_dim = 0;
+  int32 pool_size = -1, pool_stride = -1;
+  bool ok = true;
+
+  ok = ok && ParseFromString("input-dim", &args, &input_dim);
+  ok = ok && ParseFromString("output-dim", &args, &output_dim);
+  ok = ok && ParseFromString("pool-size", &args, &pool_size);
+  ok = ok && ParseFromString("pool-stride", &args, &pool_stride);
+
+  KALDI_LOG << output_dim << " " << input_dim << " " << ok;
+  KALDI_LOG << "Pool: " << pool_size << " "
+            << pool_stride << " " << ok;
+  if (!ok || !args.empty() || output_dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << orig_args << "\"";
+  Init(input_dim, output_dim, pool_size, pool_stride);
+}
+
+void MaxpoolingComponent::Propagate(const ChunkInfo &in_info,
+                                    const ChunkInfo &out_info,
+                                    const CuMatrixBase<BaseFloat> &in,
+                                    CuMatrixBase<BaseFloat> *out) const  {
+  in_info.CheckSize(in);
+  out_info.CheckSize(*out);
+  KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
+  int32 num_patches = input_dim_ / pool_stride_;
+  int32 num_pools = num_patches / pool_size_;
+
+  // do the max-pooling
+  for (int32 q = 0; q < num_pools; q++) {
+    // get output buffer of the pool
+    CuSubMatrix<BaseFloat> pool(out->ColRange(q * pool_stride_, pool_stride_));
+    pool.Set(-1e20); // reset a large negative value
+    for (int32 r = 0; r < pool_size_; r++) {
+      // col-by-col block comparison pool
+      int32 p = r + q * pool_size_;
+      pool.Max(in.ColRange(p * pool_stride_, pool_stride_));
+    }
+  }
+}
+
+void MaxpoolingComponent::Backprop(const ChunkInfo &, // in_info,
+                                   const ChunkInfo &, // out_info,
+                                   const CuMatrixBase<BaseFloat> &in_value,
+                                   const CuMatrixBase<BaseFloat> &out_value,
+                                   const CuMatrixBase<BaseFloat> &out_deriv,
+                                   Component *to_update,
+                                   CuMatrix<BaseFloat> *in_deriv) const {
+  int32 num_patches = input_dim_ / pool_stride_;
+  int32 num_pools = num_patches / pool_size_;
+  std::vector<int32> patch_summands(num_patches, 0);
+  in_deriv->Resize(in_value.NumRows(), in_value.NumCols(), kSetZero);
+
+  for(int32 q = 0; q < num_pools; q++) {
+    for(int32 r = 0; r < pool_size_; r++) {
+      int32 p = r + q * pool_size_;
+      CuSubMatrix<BaseFloat> in_p(in_value.ColRange(p * pool_stride_, pool_stride_));
+      CuSubMatrix<BaseFloat> out_q(out_value.ColRange(q * pool_stride_, pool_stride_));
+      CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p * pool_stride_, pool_stride_));
+      CuMatrix<BaseFloat> src(out_deriv.ColRange(q * pool_stride_, pool_stride_));
+      // zero-out mask
+      CuMatrix<BaseFloat> mask;
+      in_p.EqualElementMask(out_q, &mask);
+      src.MulElements(mask);
+      tgt.AddMat(1.0, src);
+      // summed deriv info
+      patch_summands[p] += 1;
+    }
+  }
+
+  // scale in_deriv of overlaped pools
+  for(int32 p = 0; p < num_patches; p++) {
+    CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p * pool_stride_, pool_stride_));
+    KALDI_ASSERT(patch_summands[p] > 0);
+    tgt.Scale(1.0 / patch_summands[p]);
+  }
+}
+
+void MaxpoolingComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<MaxpoolingComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<PoolSize>");
+  ReadBasicType(is, binary, &pool_size_);
+  ExpectToken(is, binary, "<PoolStride>");
+  ReadBasicType(is, binary, &pool_stride_);
+  ExpectToken(is, binary, "</MaxpoolingComponent>");
+}
+
+void MaxpoolingComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<MaxpoolingComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<PoolSize>");
+  WriteBasicType(os, binary, pool_size_);
+  WriteToken(os, binary, "<PoolStride>");
+  WriteBasicType(os, binary, pool_stride_);
+  WriteToken(os, binary, "</MaxpoolingComponent>");
+}
+
+std::string MaxpoolingComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim = " << input_dim_
+         << ", output-dim = " << output_dim_
+         << ", pool-size = " << pool_size_
+         << ", pool-stride = " << pool_stride_;
+  return stream.str();
 }
 
 } // namespace nnet2

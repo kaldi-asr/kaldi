@@ -307,6 +307,31 @@ void UnitTestPnormComponent() {
   }
 }
 
+void UnitTestMaxpoolingComponent() {
+  // works if it has an initializer from int,
+  // e.g. tanh, sigmoid.
+  // We're testing that the gradients are computed correctly:
+  // the input gradients and the model gradients.
+
+  for (int32 i = 0; i < 5; i++) {
+    int32 pool_stride = 5 + Rand() % 10,
+          pool_size = 2 + Rand() % 3,
+          num_pools = 1 + Rand() % 10;
+    int32 output_dim = num_pools * pool_stride;
+    int32 num_patches = num_pools * pool_size;
+    int32 input_dim = pool_stride * num_patches;
+
+    MaxpoolingComponent component(input_dim, output_dim,
+                                  pool_size, pool_stride);
+    UnitTestGenericComponentInternal(component);
+  }
+
+  {
+    MaxpoolingComponent component;
+    component.InitFromString("input-dim=192 output-dim=64 pool-size=3 pool-stride=16");
+    UnitTestGenericComponentInternal(component);
+  }
+}
 
 
 void UnitTestAffineComponent() {
@@ -850,6 +875,7 @@ int main() {
       UnitTestSpliceComponent();
       UnitTestMaxoutComponent(); 
       UnitTestPnormComponent(); 
+      UnitTestMaxpoolingComponent();
       UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();
       UnitTestAffineComponent();

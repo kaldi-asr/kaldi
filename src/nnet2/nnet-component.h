@@ -448,6 +448,59 @@ class MaxoutComponent: public Component {
   int32 output_dim_;
 };
 
+/**
+ * MaxPoolingComponent :
+ * The input/output matrices are split to submatrices with width 'pool_stride_'.
+ * The pooling is done over 3rd axis, of the set of 2d matrices.
+ * Our pooling does not supports overlaps, which simplifies the
+ * implementation (and was not helpful for Ossama).
+ */
+class MaxpoolingComponent: public Component {
+ public:
+  void Init(int32 input_dim, int32 output_dim,
+            int32 pool_size, int32 pool_stride);
+  explicit MaxpoolingComponent(int32 input_dim, int32 output_dim,
+                               int32 pool_size, int32 pool_stride) {
+    Init(input_dim, output_dim, pool_size, pool_stride);
+  }
+  MaxpoolingComponent(): input_dim_(0), output_dim_(0),
+    pool_size_(0), pool_stride_(0) { }
+  virtual std::string Type() const { return "MaxpoolingComponent"; }
+  virtual void InitFromString(std::string args);
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  using Component::Propagate; // to avoid name hiding
+  virtual void Propagate(const ChunkInfo &in_info,
+                         const ChunkInfo &out_info,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const ChunkInfo &in_info,
+                        const ChunkInfo &out_info,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &,  //out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update, // may be identical to "this".
+                        CuMatrix<BaseFloat> *in_deriv) const;
+  virtual bool BackpropNeedsInput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return true; }
+  virtual Component* Copy() const {
+    return new MaxpoolingComponent(input_dim_, output_dim_,
+                               pool_size_, pool_stride_); }
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
+ protected:
+  int32 input_dim_;
+  int32 output_dim_;
+  int32 pool_size_;
+  int32 pool_stride_;
+};
+
 class PnormComponent: public Component {
  public:
   void Init(int32 input_dim, int32 output_dim, BaseFloat p);
@@ -1613,6 +1666,36 @@ class AdditiveNoiseComponent: public RandomComponent {
   BaseFloat stddev_;
 };
 
+/**
+ * ConvolutionComponent implements convolution over frequency axis.
+ * We assume the input featrues are spliced, i.e. each frame is in
+ * fact a set of stacked frames, where we can form patches which span
+ * over several frequency bands and whole time axis. A patch is the
+ * instance of a filter on a group of frequency bands and whole time
+ * axis. Shifts of the filter generate patches.
+ *
+ * The convolution is done over whole axis with same filter
+ * coefficients, i.e. we don't use separate filters for different
+ * 'regions' of frequency axis.
+ *
+ * In order to have a fast implementations, the filters are
+ * represented in vectorized form, where each rectangular filter
+ * corresponds to a row in a matrix, where all the filters are
+ * stored. The features are then re-shaped to a set of matrices, where
+ * one matrix corresponds to single patch-position, where all the
+ * filters get applied.
+ * 
+ * The type of convolution is controled by hyperparameters:
+ * patch_dim_     ... frequency axis size of the patch
+ * patch_step_    ... size of shift in the convolution
+ * patch_stride_  ... shift for 2nd dim of a patch 
+ *                    (i.e. frame length before splicing)
+ *
+ * Due to convolution same weights are used repeateadly, 
+ * the final gradient is a sum of all position-specific 
+ * gradients (the sum was found better than averaging).
+ *
+ */
 class ConvolutionComponent: public UpdatableComponent {
  public:
   ConvolutionComponent();
@@ -1636,7 +1719,7 @@ class ConvolutionComponent: public UpdatableComponent {
   std::string Info() const;
   void InitFromString(std::string args);
   std::string Type() const { return "ConvolutionComponent"; }
-  bool BackpropNeedsInput() const { return true; }
+  bool BackpropNeedsInput() const { return false; }
   bool BackpropNeedsOutput() const { return false; }
   using Component::Propagate; // to avoid name hiding
   void Propagate(const ChunkInfo &in_info,
