@@ -234,6 +234,7 @@ if [ $stage -le 6 ]; then
 fi
 
 segmented_data_id=`basename $segmented_data_dir`
+diarized_data_id=`basename $diarized_data_dir`
 if [ $stage -le 7 ]; then
   echo "Extracting features for the segments"
   # extract the features/i-vectors once again so that they are indexed by utterance and not by recording
@@ -245,6 +246,17 @@ if [ $stage -le 7 ]; then
   steps/compute_cmvn_stats.sh data/${segmented_data_id}_hires exp/make_reverb_hires/${segmented_data_id} $mfccdir || exit 1;
   utils/fix_data_dir.sh data/${segmented_data_id}_hires
   utils/validate_data_dir.sh --no-text data/${segmented_data_id}_hires
+  
+  echo "Extracting features for the segments"
+  # extract the features/i-vectors once again so that they are indexed by utterance and not by recording
+  rm -rf data/${diarized_data_id}_hires
+  copy_data_dir.sh --validate-opts "--no-text " data/${diarized_data_id} data/${diarized_data_id}_hires || exit 1;
+  steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
+    --cmd "$train_cmd" data/${diarized_data_id}_hires \
+    exp/make_reverb_hires/${diarized_data_id} $mfccdir || exit 1;
+  steps/compute_cmvn_stats.sh data/${diarized_data_id}_hires exp/make_reverb_hires/${diarized_data_id} $mfccdir || exit 1;
+  utils/fix_data_dir.sh data/${diarized_data_id}_hires
+  utils/validate_data_dir.sh --no-text data/${diarized_data_id}_hires
 fi
 
 if [ ! -z $weights_file ]; then
@@ -293,7 +305,7 @@ else
     fi
   fi
 
-  cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/truncated_segments
+  cat $diarized_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${diarized_data_id}${ivector_affix}/truncated_segments
 
   x_th=0.8
   if [ $stage -le 9 ]; then
@@ -326,14 +338,15 @@ if [ $stage -le 10 ]; then
     --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
     data/${diarized_data_id}_hires $lang $ivector_dir/extractor \
     $ivector_extractor_input $ivector_dir/ivectors_reco${ivector_affix} || exit 1;
-
-  steps/online/nnet2/segment_recording_ivectors.sh $segmented_data_dir \
+fi
+if [ $stage -le 11 ]; then
+  steps/online/nnet2/segment_recording_ivectors.sh ${segmented_data_dir}_hires \
     $ivector_dir/ivectors_reco${ivector_affix} \
-    $ivector_dir/ivectors${segmented_data_id}${ivector_affix}
+    $ivector_dir/ivectors_${segmented_data_id}${ivector_affix}
 fi
 
 decode_dir=$dir/decode_${segmented_data_id}${affix}_pp
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   echo "Generating lattices, stage 2 with --acwt $acwt"
   local/multi_condition/decode.sh --nj $decode_num_jobs --cmd "$decode_cmd" --config conf/decode.config $pass2_decode_opts \
     --skip-scoring true --iter $iter --acwt $acwt --lattice-beam $lattice_beam \
@@ -342,7 +355,7 @@ if [ $stage -le 11 ]; then
     { echo "$0: Error decoding";  exit 1; }
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   echo "Rescoring lattices"
   steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
     --skip-scoring true \
@@ -398,7 +411,7 @@ EOF
 filter_ctm_command="python $decode_dir/scoring/filter_ctm.py "
 
 if  $tune_hyper ; then
-  if [ $stage -le 13 ]; then
+  if [ $stage -le 14 ]; then
     if [[ "$act_data_id" =~ "dev_aspire" ]]; then
       wip_string=$(echo $word_ins_penalties | sed 's/,/ /g')
       temp_wips=($wip_string)
@@ -460,14 +473,14 @@ wipfile.close()
 fi
 
 # lattice to ctm conversion and scoring.
-if [ $stage -le 14 ]; then
+if [ $stage -le 19 ]; then
   echo "Generating CTMs with LMWT $LMWT and word insertion penalty of $word_ins_penalty"
   local/multi_condition/get_ctm.sh --filter-ctm-command "$filter_ctm_command" \
     --beam $ctm_beam --decode-mbr $decode_mbr \
     $LMWT $word_ins_penalty $lang data/${segmented_data_id}_hires $model $decode_dir 2>$decode_dir/scoring/finalctm.LMWT$LMWT.WIP$word_ins_penalty.log || exit 1;
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 20 ]; then
   cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
   cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
   python local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names

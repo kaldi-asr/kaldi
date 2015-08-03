@@ -36,17 +36,12 @@ posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
                     # used when training the iVector extractor, but more important
                     # that this match the value used when you do real online decoding
                     # with the neural nets trained with these iVectors.
+sub_speaker_frames=0
 max_count=100       # Interpret this as a number of frames times posterior scale...
                     # this config ensures that once the count exceeds this (i.e.
                     # 1000 frames, or 10 seconds, by default), we start to scale
                     # down the stats, accentuating the prior term.   This seems quite
                     # important for some reason.
-sub_speaker_frames=0  # If >0, during iVector estimation we split each speaker
-                      # into possibly many 'sub-speakers', each with at least
-                      # this many frames of speech (evaluated after applying
-                      # silence_weight, so will typically exclude silence.
-                      # e.g. set this to 1000, and it will require at least 10 seconds
-                      # of speech per sub-speaker.
 
 compress=true       # If true, compress the iVectors stored on disk (it's lossy
                     # compression, as used for feature matrices).
@@ -153,6 +148,8 @@ if [ ! -z "$ali_or_decode_dir" ]; then
   fi
 fi
 
+echo $nj > $dir/num_jobs
+
 sdata=$data/split$nj;
 utils/split_data.sh --per-reco $data $nj || exit 1;
 
@@ -161,69 +158,7 @@ splice_opts=$(cat $srcdir/splice_opts)
 gmm_feats="ark,s,cs:apply-cmvn-online --spk2utt=ark:$sdata/JOB/spk2utt --config=$srcdir/online_cmvn.conf $srcdir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
 
-
-if [ $sub_speaker_frames -gt 0 ]; then
-  if [ $stage -le 1 ]; then
-  # We work out 'fake' spk2utt files that possibly split each speaker into multiple pieces.
-    if [ ! -z "$ali_or_decode_dir" ]; then
-      gunzip -c $dir/weights.gz | copy-vector ark:- ark,t:- | \
-        awk '{ sum=0; for (n=3;n<NF;n++) sum += $n; print $1, sum; }' > $dir/utt_counts || exit 1;
-    else
-      feat-to-len scp:$data/feats.scp ark,t:- > $dir/utt_counts || exit 1;
-    fi
-    if ! [ $(wc -l <$dir/utt_counts) -eq $(wc -l <$data/feats.scp) ]; then
-      echo "$0: error getting per-utterance counts. Number of lines in $dir/utt_counts differs from $data/feats.scp"
-      exit 1;
-    fi
-    cat $data/spk2utt | python -c "
-import sys
-utt_counts = {}
-trash = map(lambda x: utt_counts.update({x.split()[0]:float(x.split()[1])}), open('$dir/utt_counts').readlines())
-sub_speaker_frames = $sub_speaker_frames
-lines = sys.stdin.readlines()
-total_counts = {}
-for line in lines:
-  parts = line.split()
-  spk = parts[0]
-  total_counts[spk] = 0
-  for utt in parts[1:]:
-    total_counts[spk] += utt_counts[utt]
-
-for line_index in range(len(lines)):
-  line = lines[line_index]
-  parts = line.split()
-  spk = parts[0]
-
-  numeric_id=0
-  current_count = 0
-  covered_count = 0
-  current_utts = []
-  for utt in parts[1:]:
-    try:
-      current_count += utt_counts[utt]
-      covered_count += utt_counts[utt]
-    except KeyError:
-      raise Exception('No count found for the utterance {0}.'.format(utt))
-    current_utts.append(utt)
-    if ((current_count >= $sub_speaker_frames) and ((total_counts[spk] - covered_count) >= $sub_speaker_frames)) or (utt == parts[-1]):
-      spk_partial = '{0}-{1:06x}'.format(spk, numeric_id)
-      numeric_id += 1
-      print '{0} {1}'.format(spk_partial, ' '.join(current_utts))
-      current_utts = []
-      current_count = 0 
-"> $dir/spk2utt || exit 1;
-    mkdir -p $dir/split$nj
-    # create split versions of our spk2utt file.
-    for j in $(seq $nj); do
-      mkdir -p $dir/split$nj/$j
-      utils/filter_scp.pl -f 2 $sdata/$j/utt2spk <$dir/spk2utt >$dir/split$nj/$j/spk2utt || exit 1;
-      utils/spk2utt_to_utt2spk.pl <$dir/split$nj/$j/spk2utt >$dir/split$nj/$j/utt2spk || exit 1;
-    done
-  fi
-  this_sdata=$dir/split$nj
-else
-  this_sdata=$sdata
-fi
+this_sdata=$sdata
 
 if [ $stage -le 2 ]; then
   if [ ! -z "$ali_or_decode_dir" ]; then
@@ -248,12 +183,9 @@ fi
 if [ $stage -le 3 ]; then
   for j in $(seq $nj); do 
     utils/apply_map.pl -f 2 $dir/ivectors_spk.$j.ark <$this_sdata/$j/utt2spk >$dir/ivectors_utt.$j.ark || exit 1;
+    cut -d ' ' -f 1-2 $this_sdata/$j/segments | utils/utt2spk_to_spk2utt.pl > $this_sdata/$j/reco2utt || exit 1
   done
 fi
-
-run.pl JOB=1:$nj $dir/log/get_reco2utt.JOB.log \
-  awk '{print $1" "$2}' $this_sdata/JOB/segments \| \
-  utils/utt2spk_to_spk2utt.pl '>' $this_sdata/JOB/reco2utt || exit 1
 
 $cmd JOB=1:$nj $dir/log/combine_ivectors_for_reco.JOB.log \
   ivector-combine-to-recording ark:$this_sdata/JOB/reco2utt \

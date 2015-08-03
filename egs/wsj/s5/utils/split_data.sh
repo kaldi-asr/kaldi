@@ -24,6 +24,7 @@ if [ "$1" == "--per-utt" ]; then
 elif [ "$1" == "--per-reco" ]; then
   split_per_reco=true
   split_per_spk=false
+  shift
 fi
 
 if [ $# != 2 ]; then
@@ -90,7 +91,8 @@ if $split_per_spk; then
   utt2spk_opt="--utt2spk=$data/utt2spk"
 elif $split_per_reco; then
   if [ -f $data/segments ]; then
-    utt2spk_opt="--utt2spk=<(cut -d ' ' -f 1-2 $data/segments)"
+    awk '{print $1" "$2}' $data/segments > $data/reco2utt
+    utt2spk_opt="--utt2spk=$data/reco2utt"
   fi
 fi
 

@@ -17,6 +17,7 @@ struct Segment {
   int32 end_frame;
   ClassId class_id;
   Vector<BaseFloat> vector_value;
+  std::string string_value;
 
   inline int32 Label() const { return class_id; }
   inline void SetLabel(int32 label) { class_id = label; }
@@ -26,6 +27,19 @@ struct Segment {
     vector_value.Resize(vec.Dim());
     vector_value.CopyFromVec(vec);
   }
+  
+  Segment(int32 start, int32 end, int32 label, const Vector<BaseFloat>& vec, const std::string &str) : 
+    start_frame(start), end_frame(end), class_id(label) { 
+    vector_value.Resize(vec.Dim());
+    vector_value.CopyFromVec(vec);
+    string_value = str;
+  }
+  
+  Segment(int32 start, int32 end, int32 label, const std::string &str) : 
+    start_frame(start), end_frame(end), class_id(label) { 
+    string_value = str;
+  }
+
   Segment(int32 start, int32 end, int32 label) : 
     start_frame(start), end_frame(end), class_id(label) { }
   Segment() : start_frame(-1), end_frame(-1), class_id(-1) { }
@@ -38,6 +52,12 @@ struct Segment {
   }
 
   const Vector<BaseFloat>& VectorValue() const { return vector_value; }
+  const std::string& StringValue() const { return string_value; }
+
+  void SetVectorValue(const VectorBase<BaseFloat>& vec) {
+    vector_value.Resize(vec.Dim());
+    vector_value.CopyFromVec(vec);
+  }
 };
 
 struct HistogramEncoder {
@@ -197,12 +217,19 @@ class Segmentation {
     void IntersectSegments(const Segmentation &filter_segmentation,
                            int32 filter_label);
 
-    // Create subsegments of this segmentation and assign new labels to 
-    // the filtered regions. This is similar to "IntersectSegments" but 
-    // instead of keeping only the filtered subsegments, all the 
-    // subsegments are kept, while only changing the labels of the 
-    // filtered subsegment to "subsegment_label"
-    void CreateSubSegments(const Segmentation &filter_segmentation, 
+
+    // Create new segmentation by sub-segmentation this segmentation and 
+    // assign new labels to the filtered regions from secondary segmentation.
+    // This is similar to "IntersectSegments", but instead of keeping only 
+    // the filtered subsegments, all the subsegments are kept, while only 
+    // changing the labels of the filtered subsegment to "subsegment_label".
+    // Additionally this program adds the secondary segmentation's 
+    // vector_value along with this segmentation's string_value
+    void CreateSubSegments(const Segmentation &secondary_segmentation,
+                           int32 secondary_label, int32 subsegment_label,
+                           Segmentation *new_segmentation) const;
+
+    void CreateSubSegmentsOld(const Segmentation &filter_segmentation, 
                            int32 filter_label,
                            int32 subsegment_label);
 
@@ -241,6 +268,8 @@ class Segmentation {
 
     SegmentList::iterator Erase(SegmentList::iterator it);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const Vector<BaseFloat> &vec);
+    void Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const std::string &str);
+    void Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const Vector<BaseFloat> &vec, const std::string &str);
     void Emplace(int32 start_frame, int32 end_frame, ClassId class_id);
 
     void Check() const;
@@ -248,9 +277,9 @@ class Segmentation {
   
     inline int32 Dim() const { return segments_.size(); }
     SegmentList::iterator Begin() { return segments_.begin(); }
-    SegmentList::const_iterator Begin() const { return segments_.begin(); }
+    SegmentList::const_iterator Begin() const { return segments_.cbegin(); }
     SegmentList::iterator End() { return segments_.end(); }
-    SegmentList::const_iterator End() const { return segments_.end(); }
+    SegmentList::const_iterator End() const { return segments_.cend(); }
 
   private: 
     int32 dim_;

@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string segmentation_in_fn = po.GetArg(1),
-                filter_segmentation_in_fn = po.GetArg(2),
+                secondary_segmentation_in_fn = po.GetArg(2),
                 segmentation_out_fn = po.GetArg(3);
 
     // all these "fn"'s are either rspecifiers or filenames.
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
         (ClassifyRspecifier(segmentation_in_fn, NULL, NULL)
          != kNoRspecifier),
         filter_is_rspecifier = 
-        (ClassifyRspecifier(filter_segmentation_in_fn, NULL, NULL)
+        (ClassifyRspecifier(secondary_segmentation_in_fn, NULL, NULL)
          != kNoRspecifier),
         out_is_wspecifier =
         (ClassifyWspecifier(segmentation_out_fn, NULL, NULL, NULL)
@@ -83,13 +83,14 @@ int main(int argc, char *argv[]) {
         Input ki(segmentation_in_fn, &binary_in);
         seg.Read(ki.Stream(), binary_in);
       }
-      Segmentation filter_seg;
+      Segmentation secondary_seg;
       {
         bool binary_in;
-        Input ki(filter_segmentation_in_fn, &binary_in);
-        filter_seg.Read(ki.Stream(), binary_in);
+        Input ki(secondary_segmentation_in_fn, &binary_in);
+        secondary_seg.Read(ki.Stream(), binary_in);
       }
-      seg.CreateSubSegments(filter_seg, filter_label, subsegment_label);
+      Segmentation new_seg;
+      seg.CreateSubSegments(secondary_seg, filter_label, subsegment_label, &new_seg);
       Output ko(segmentation_out_fn, binary);
       seg.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
@@ -97,9 +98,9 @@ int main(int argc, char *argv[]) {
     } else {
       SegmentationWriter writer(segmentation_out_fn); 
       SequentialSegmentationReader reader(segmentation_in_fn);
-      RandomAccessSegmentationReader filter_reader(filter_segmentation_in_fn);
+      RandomAccessSegmentationReader filter_reader(secondary_segmentation_in_fn);
       for (; !reader.Done(); reader.Next(), num_done++) {
-        Segmentation seg(reader.Value());
+        const Segmentation &seg = reader.Value();
         std::string key = reader.Key();
         
         if (!filter_reader.HasKey(key)) {
@@ -110,11 +111,12 @@ int main(int argc, char *argv[]) {
             writer.Write(key, seg);
           continue;
         }
-        const Segmentation &filter_segmentation = filter_reader.Value(key);
+        const Segmentation &secondary_segmentation = filter_reader.Value(key);
         
-        seg.CreateSubSegments(filter_segmentation, filter_label, subsegment_label);
+        Segmentation new_seg;
+        seg.CreateSubSegments(secondary_segmentation, filter_label, subsegment_label, &new_seg);
 
-        writer.Write(key, seg);
+        writer.Write(key, new_seg);
       }
 
       KALDI_LOG << "Created subsegments for " << num_done << " segmentations; failed with "

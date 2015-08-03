@@ -417,6 +417,30 @@ void Segmentation::IntersectSegments(
 }
 
 void Segmentation::CreateSubSegments(
+    const Segmentation &secondary_segmentation,
+    int32 secondary_label, int32 subsegment_label,
+    Segmentation *out_segmentation) const {
+  out_segmentation->Clear();
+  SegmentList::const_iterator s_it = secondary_segmentation.Begin();
+  for (SegmentList::const_iterator p_it = Begin(); p_it != End(); ++p_it) {
+    if (s_it == secondary_segmentation.End()) --s_it;
+    while (s_it->start_frame > p_it->start_frame) --s_it;
+    while (s_it->end_frame < p_it->start_frame && s_it != secondary_segmentation.End()) ++s_it;
+    for (; s_it->start_frame <= p_it->end_frame && s_it != secondary_segmentation.End(); ++s_it) {
+      int32 new_label = -1;
+      if (s_it->Label() != secondary_label) {
+        new_label = s_it->Label();
+      } else 
+        new_label = subsegment_label;
+
+      out_segmentation->Emplace(std::max(s_it->start_frame, p_it->start_frame),
+          std::min(s_it->end_frame, p_it->end_frame), new_label,
+          s_it->VectorValue(), p_it->StringValue());
+    }
+  }
+}
+
+void Segmentation::CreateSubSegmentsOld(
     const Segmentation &filter_segmentation,
     int32 filter_label,
     int32 subsegment_label) {
@@ -624,7 +648,7 @@ int32 Segmentation::WriteRttm(std::ostream &os, std::string key, BaseFloat frame
 }
 
 bool Segmentation::ConvertToAlignment(std::vector<int32> *alignment,
-    int32 default_label, int32 length, int32 tolerance) const {
+    int32 default_label, int32 length, bool snip_edges) const {
   KALDI_ASSERT(alignment != NULL);
   alignment->clear();
 
@@ -637,7 +661,8 @@ bool Segmentation::ConvertToAlignment(std::vector<int32> *alignment,
   for (; it != segments_.end(); ++it) {
     if (length != -1 && it->end_frame >= length + tolerance) {
       KALDI_WARN << "End frame (" << it->end_frame << ") "
-                << ">= length + tolerance (" << length + tolerance << ").";
+                << ">= length + tolerance (" << length + tolerance << ")."
+                << "Conversion failed.";
       return false;
     }
 
@@ -706,6 +731,15 @@ void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id,
   segments_.emplace_back(start_frame, end_frame, class_id, vec);
 }
 
+void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const Vector<BaseFloat> &vec, const std::string &str) {
+  dim_++;
+  segments_.emplace_back(start_frame, end_frame, class_id, vec, str);
+}
+
+void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id, const std::string &str) {
+  dim_++;
+  segments_.emplace_back(start_frame, end_frame, class_id, str);
+}
 
 void Segmentation::Emplace(int32 start_frame, int32 end_frame, ClassId class_id) {
   dim_++;

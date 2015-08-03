@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
         ivector_out.CopyRowFromVec(it->VectorValue(), i);
       }
       ivector_writer.Write(reco, ivector_out);
+      num_success++;
     }
 
     KALDI_LOG << "Combined iVectors for " << num_success 
