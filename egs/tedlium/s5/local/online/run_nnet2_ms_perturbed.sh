@@ -9,7 +9,7 @@
 
 . ./cmd.sh
 set -e 
-stage=1
+stage=0
 train_stage=-10
 use_gpu=true
 splice_indexes="layer0/-2:-1:0:1:2 layer1/-1:2 layer3/-3:3 layer4/-7:2"

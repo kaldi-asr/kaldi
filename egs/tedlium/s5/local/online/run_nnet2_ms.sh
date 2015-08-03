@@ -8,7 +8,7 @@
 . cmd.sh
 
 
-stage=7
+stage=0
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
