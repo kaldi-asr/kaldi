@@ -47,8 +47,7 @@
   \section install_install Installing Kaldi
 
   The top-level installation instructions are in the file \c INSTALL.
-  For Windows, there are separate instructions (unfortunately, not actively
-  maintained and woefully out of date) in \c windows/INSTALL.
+  For Windows, there are separate instructions in \c windows/INSTALL.
   See also \ref build_setup which explains how the build process
   works internally.
 
