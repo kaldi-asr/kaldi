@@ -170,7 +170,7 @@ KaldiErrorMessage::KaldiErrorMessage(const char *func, const char *file,
                  << GetShortFileName(file) << ':' << line << ") ";
 }
 
-KaldiErrorMessage::~KaldiErrorMessage() NOEXCEPT(false) {
+KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
   // (1) Print the message to stderr.
   std::cerr << ss.str() << '\n';
   // (2) Throw an exception with the message, plus traceback info if available.
