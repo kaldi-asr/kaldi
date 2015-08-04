@@ -648,7 +648,7 @@ int32 Segmentation::WriteRttm(std::ostream &os, std::string key, BaseFloat frame
 }
 
 bool Segmentation::ConvertToAlignment(std::vector<int32> *alignment,
-    int32 default_label, int32 length, bool snip_edges) const {
+    int32 default_label, int32 length, int32 tolerance) const {
   KALDI_ASSERT(alignment != NULL);
   alignment->clear();
 

@@ -10,7 +10,8 @@ BINFILES = segmentation-copy segmentation-init-from-segments \
 					 gmm-est-segmentation segmentation-to-rttm segmentation-post-process \
 					 gmm-update-segmentation segmentation-to-ali \
 					 segmentation-create-subsegments segmentation-remove-segments \
-					 segmentation-init-from-diarization segmentation-to-segments
+					 segmentation-init-from-diarization segmentation-to-segments \
+					 segmentation-compute-class-ctm-conf
 
 OBJFILES =
 
