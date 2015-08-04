@@ -43,11 +43,11 @@
   Management (RM) CDs from the Linguistic Data Consortium (LDC), in the original form
   as distributed by the LDC.  That is, we assume this data is sitting on your system
   somewhere.  We obtained this as catalog number LDC93S3A.   It is
-  also available in two separate pieces.  Be careful because there was previously 
+  also available in two separate pieces.  Be careful because there was previously
   a different distribution of the RM data with a different layout.
 
   The system requirements are fairly basic.  We assume that you have tools
-  including wget, svn, awk, perl and so on, or that you know how to install them.
+  including wget, git, awk, perl and so on, or that you know how to install them.
   The most difficult part of the installation process relates to the math library
   ATLAS; if this is not already installed as a library on your system you will
   have to compile it, and this requires that CPU throttling be turned off, which
@@ -61,7 +61,7 @@
   to try to keep to the posted schedule, if necessary by skipping steps and avoiding
   following links to more information that we provide in the text.  This will help ensure
   that you get a balanced overview.  You can always review the material in more
-  detail later on.  If this tutorial is to be given in a classroom setting, it is 
+  detail later on.  If this tutorial is to be given in a classroom setting, it is
   important that someone run through the tutorial on the relevant system beforehand in order
   to verify that all the prerequisites are installed.
 

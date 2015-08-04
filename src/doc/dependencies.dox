@@ -33,7 +33,7 @@
     grid will have NVidia GPUs which you can use for neural net training,
     and you can reserve these on the queue by adding some extra option to qsub.
     See \ref queue for more information.
-  
+
     We have started a separate project called <a
     href=https://sourceforge.net/projects/kluster/> Kluster </a> that shows you
     how to create such a cluster on Amazon's EC2; MIT's <a
@@ -65,7 +65,7 @@
    will not work there, and we are not very actively maintaining the Windows
    compatibility of the code or the Windows build scripts (we fix problems when
    we are told about them though).
-   
+
    \section dependencies_packages Software packages required
 
 
@@ -73,9 +73,9 @@
    order to install Kaldi.  The full list is not important since the installation
    scripts will tell you what you are missing.
 
-    - Subversion (svn): this is needed to download Kaldi and other software that it depends on.
+    - Git: this is needed to download Kaldi and other software that it depends on.
     - wget is required for the installation of some non-Kaldi components described below
-    - The example scripts require standard UNIX utilities such as bash, 
+    - The example scripts require standard UNIX utilities such as bash,
       perl, awk, grep, and make.
 
    It can also be helpful if you have an ATLAS linear-algebra package installed
@@ -91,7 +91,7 @@
    non-exhaustive list).
 
     - OpenFst:  we compile against this and use it heavily.
-    - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but 
+    - IRSTLM: this a language modeling toolkit.  Some of the example scripts require it but
       it is not tightly integrated with Kaldi; we can convert any Arpa format
       language model to an FST.
       - The IRSTLM build process requires automake, aclocal, and libtoolize
@@ -102,9 +102,9 @@
       as wav.  It's needed for the example scripts that use LDC data.
     - sclite: this is for scoring and is not necessary as we have our own, simple
       scoring program (compute-wer.cc).
-    - ATLAS, the linear algebra library.  This is only needed for the headers; in 
+    - ATLAS, the linear algebra library.  This is only needed for the headers; in
       typical setups we expect that ATLAS will be on your system.  However, if it not
-      already on your system you can compile ATLAS as long as your machine does not 
+      already on your system you can compile ATLAS as long as your machine does not
       have CPU throttling enabled.
     - CLAPACK, the linear algebra library (we download the headers).
       This is useful only on systems where you don't have ATLAS and are

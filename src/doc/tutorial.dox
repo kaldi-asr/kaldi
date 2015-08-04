@@ -22,7 +22,7 @@
 
   - \subpage tutorial_prereqs "Prerequisites"
   - \subpage tutorial_setup "Getting started" (15 minutes)
-  - \subpage tutorial_svn "Version control with Subversion" (5 minutes)
+  - \subpage tutorial_git "Version control with Git" (5 minutes)
   - \subpage tutorial_looking "Overview of the distribution"  (25 minutes)
   - \subpage tutorial_running "Running the example scripts" (40 minutes)
   - \subpage tutorial_code "Reading and modifying the code" (30 minutes)
