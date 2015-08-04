@@ -58,6 +58,12 @@
 /tools/CLAPACK_include
 /tools/kaldi_lm
 /tools/env.sh
+/tools/g2p-r1668.tar.gz
+/tools/mpg123
+/tools/mpg123-1.21.0.tar.bz2
+/tools/mpg123-1.21.0
+/tools/sequitur
+/tools/srilm.tgz
 
 # /src/
 /src/doc/table/
