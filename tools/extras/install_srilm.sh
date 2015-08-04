@@ -24,3 +24,28 @@ cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {prin
 
 make
 
+cd ..
+(
+  [ ! -z ${SRILM} ] && \
+    echo >&2 "SRILM variable is aleady defined. Undefining..." && \
+    unset SRILM
+
+  [ -f ./env.sh ] && . ./env.sh
+
+  [ ! -z ${SRILM} ] && \
+    echo >&2 "SRILM config is already in env.sh" && exit
+
+  wd=`pwd`
+  wd=`readlink -f $wd`
+
+  echo "export SRILM=$wd/srilm"
+  dirs="\${PATH}"
+  for directory in $(cd srilm && find bin -type d ) ; do
+    dirs="$dirs:\${SRILM}/$directory"
+  done
+  echo "export PATH=$dirs"
+) >> env.sh
+
+echo >&2 "Installation of SRILM finished successfully"
+echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
+
