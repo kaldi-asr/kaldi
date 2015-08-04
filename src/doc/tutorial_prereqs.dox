@@ -47,7 +47,7 @@
   a different distribution of the RM data with a different layout.
 
   The system requirements are fairly basic.  We assume that you have tools
-  including wget, git, awk, perl and so on, or that you know how to install them.
+  including wget, git, svn, awk, perl and so on, or that you know how to install them.
   The most difficult part of the installation process relates to the math library
   ATLAS; if this is not already installed as a library on your system you will
   have to compile it, and this requires that CPU throttling be turned off, which

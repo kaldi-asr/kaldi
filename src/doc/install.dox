@@ -24,11 +24,7 @@
 
  \section install_download  Dowloading Kaldi
 
-  We have now transitioned to
- GitHub for all future development.  We still intend to maintain a
- read-only Subversion mirror of the GitHub parent, located at SourceForge and mirrored
- by us.
-
+  We have now transitioned to GitHub for all future development.
   You first need to install Git. The most current version of Kaldi,
   possibly including unfinished and experimental features, can
    be downloaded by typing into a shell:

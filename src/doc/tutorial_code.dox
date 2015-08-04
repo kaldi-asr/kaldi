@@ -169,25 +169,18 @@ If you need to debug a program that takes command-line arguments, you can do it 
 \endverbatim
 or you can invoke gdb without arguments and then type "r arg1 arg2..." at the prompt.
 
-\todo This paragraph is full of lies!
 When you are done, and it compiles, type
 \verbatim
-svn diff
+ git diff
 \endverbatim
-to see what changes you made.  If you are contributing to the Kaldi project and you
-are planning to commit code in the near future, you
-may want to revert the changes you made so you don't accidentally commit them.  The following
-commands will save the file you modified in case you need it later, and will revert to
-the original version:
-\verbatim
- cp matrix-lib-test.cc matrix-lib-test.cc.tmp
- svn revert matrix-lib-test.cc
-\endverbatim
-If you actually wanted to commit the changes, and you had an account on Sourceforge, you
-would have to ask us to add you to the Kaldi project, and you would type something like
-\verbatim
-svn commit --username=your_sourceforge_username -m "Added a unit-test in matrix/ directory."
-\endverbatim
+to see what changes you made.  If you are contributing to the Kaldi project and
+planning to send us code in the near future, you
+may want to commit them to a branch as described in the \tutorial_git, so that you
+can generate a clean <a href="https://help.github.com/articles/using-pull-requests/">
+GitHub pull request</a> later. We recommend that you familiarize
+yourself with Git branches even if you are not contributing your changes
+outright; Git is a powerful tool to maintain your local code changes as well as
+those you may contribute.
 
 \section tutorial_code_acoustic Acoustic modeling code
 
