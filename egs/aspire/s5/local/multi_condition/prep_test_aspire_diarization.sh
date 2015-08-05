@@ -432,6 +432,8 @@ if  $tune_hyper ; then
         ${lang} \
         ${decode_dir} || exit 1;
 
+      diarization/filter_ctm.sh $diarization_dir ${decode_dir}/score_10/penalty_0.5/ctm.filt $data_dir/reco2file_and_channel $diarizatoin_dir/ctm_filter || exit 1
+
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys"|utils/best_wer.sh 2>/dev/null
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys" | \
        utils/best_wer.sh 2>/dev/null | python -c "import sys, re

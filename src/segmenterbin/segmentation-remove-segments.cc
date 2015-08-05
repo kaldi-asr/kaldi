@@ -34,10 +34,12 @@ int main(int argc, char *argv[]) {
     
     bool binary = true;
     int32 remove_label = -1;
+    std::string remove_labels_rspecifier = "";
     ParseOptions po(usage);
     
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("remove-label", &remove_label, "Remove segments of this label");
+    po.Register("remove-labels-rspecifier", &remove_labels_rspecifier, "Specify colon separated list of labels for each recording");
 
     po.Read(argc, argv);
 
@@ -61,7 +63,7 @@ int main(int argc, char *argv[]) {
     if (in_is_rspecifier != out_is_wspecifier)
       KALDI_ERR << "Cannot mix regular files and archives";
     
-    int64  num_done = 0; 
+    int64  num_done = 0, num_missing = 0; 
     
     if (!in_is_rspecifier) {
       Segmentation seg;
@@ -78,17 +80,40 @@ int main(int argc, char *argv[]) {
     } else {
       SegmentationWriter writer(segmentation_out_fn); 
       SequentialSegmentationReader reader(segmentation_in_fn);
+
+      RandomAccessTokenReader remove_labels_reader(remove_labels_rspecifier);
+        
       for (; !reader.Done(); reader.Next(), num_done++) {
         Segmentation seg(reader.Value());
         std::string key = reader.Key();
         
+        if (remove_labels_rspecifier != "") {
+          if (!remove_labels_reader.HasKey(key)) {
+            KALDI_WARN << "No remove-labels found for recording " << key;
+            num_missing++;
+            writer.Write(key, seg);
+            continue;
+          }
+          std::vector<int32> merge_labels;
+          const std::string& remove_labels_str = remove_labels_reader.Value(key);
+
+          if (!SplitStringToIntegers(remove_labels_str, ":", false,
+                &merge_labels)) {
+            KALDI_ERR << "Bad CSL " << remove_labels_str;
+          }
+
+          remove_label = merge_labels[0];
+          seg.MergeLabels(merge_labels, remove_label);
+        }
+
         seg.RemoveSegments(remove_label);
 
         writer.Write(key, seg);
       }
 
-      KALDI_LOG << "Removed segments of label " << remove_label << " "
-                << "from " << num_done << " segmentations";
+      KALDI_LOG << "Removed segments "
+                << "from " << num_done << " segmentations; "
+                << "remove-labels missing for " << num_missing;
       return (num_done != 0 ? 0 : 1);
     }
   } catch(const std::exception &e) {

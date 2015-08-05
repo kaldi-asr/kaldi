@@ -126,11 +126,13 @@ fi
 
 if [ $stage -le 6 ]; then
   mkdir -p $dir/diarization/data_out
-  $train_cmd JOB=1:$nj $dir/diarization/log/convert_diarization_to_segments.JOB.log \
+  $train_cmd JOB=1:$nj $dir/diarization/log/convert_diarization_to_segmentation.JOB.log \
     segmentation-init-from-diarization --diarization-window-overlap=0.5 \
     ark,t:$dir/diarization/diarization_results.JOB.txt \
-    $segmented_data_dir/split$nj/JOB/segments ark:- \| \
-    segmentation-to-segments ark:- ark,t:$dir/diarization/data_out/utt2spk.JOB \
+    $segmented_data_dir/split$nj/JOB/segments \
+    ark,scp:$dir/diarization/diarization_segmentation.JOB.ark,$dir/diarization/diarization_segmentation.JOB.scp  || exit 1
+  $train_cmd JOB=1:$nj $dir/diarization/log/convert_diarization_segmentation_to_segments.JOB.log \
+    segmentation-to-segments ark:$dir/diarization/diarization_segmentation.JOB.ark ark,t:$dir/diarization/data_out/utt2spk.JOB \
     $dir/diarization/data_out/segments.JOB || exit 1
 fi
 

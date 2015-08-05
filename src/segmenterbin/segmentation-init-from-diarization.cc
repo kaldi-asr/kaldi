@@ -118,7 +118,9 @@ int main(int argc, char *argv[]) {
           
           // Fix the previous recording's last segment to remove any 
           // overlap-related adjustment
-          seg.End()->end_frame += std::round(overlap / 2 / frame_shift);
+          segmenter::SegmentList::iterator seg_it = seg.End();
+          --seg_it;
+          seg_it->end_frame += std::round(overlap / 2 / frame_shift);
           writer.Write(prev_recording, seg);
           num_segmentations++;
           seg.Clear();
@@ -149,7 +151,6 @@ int main(int argc, char *argv[]) {
       num_segmentations++;
     }
 
-
     KALDI_LOG << "Successfully processed " << num_success << " lines out of "
               << num_lines << " in the segments file; wrote "
               << num_segmentations << " segmentations; failed for "
@@ -160,7 +161,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
-
 

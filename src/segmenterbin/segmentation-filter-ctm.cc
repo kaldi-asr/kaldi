@@ -1,4 +1,4 @@
-// segmenterbin/segmentation-compute-class-ctm-conf.cc
+// segmenterbin/segmentation-filter-ctm.cc
 
 // Copyright 2015   Vimal Manohar (Johns Hopkins University)
 
@@ -22,6 +22,8 @@
 #include "segmenter/segmenter.h"
 #include "hmm/posterior.h"
 
+#include <regex>
+
 namespace kaldi {
 
 struct StringPairHasher {
@@ -41,19 +43,21 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Computes per-class confidences for different segmentation "
-        "(usually diarization) classes using word-confidences from a CTM file"
+        "Filter CTM based on the segmentation"
         "\n"
-        "Usage: segmentation-compute-class-ctm-conf [options] <segmentation-in-rspecifier> <ctm-rxfilename> <reco2file-and-channel-rxfilename> <post-rspecifier>"
-        " e.g.: segmentation-compute-class-ctm-conf ark:exp/nnet2_multicondition/diarization_dev/diarziation_results.txt ctm reco2file_and_channel ark:exp/nnet2_multicondition/diarization_dev/post.ark\n";
+        "Usage: segmentation-filter-ctm [options] <segmentation-in-rspecifier> <ctm-rxfilename> <reco2file-and-channel-rxfilename> <ctm-wxfilename>"
+        " e.g.: segmentation-filter-ctm ark:exp/nnet2_multicondition/diarization_dev/diarziation_results.txt ctm reco2file_and_channel ctm_out\n";
     
     bool binary = true;
     BaseFloat frame_shift = 0.01;
+    BaseFloat keep_word_threshold = 0.5;
 
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("frame-shift", &frame_shift, "Frame shift");
+    po.Register("keep-word-threshold", &keep_word_threshold,
+                "Keep word in CTM if at least this fraction of word is inside segment");
 
     po.Read(argc, argv);
 
@@ -65,11 +69,11 @@ int main(int argc, char *argv[]) {
     std::string segmentation_rspecifier = po.GetArg(1),
                 ctm_rxfilename = po.GetArg(2),
                 reco2file_and_channel_rxfilename = po.GetArg(3),
-                post_wspecifier = po.GetArg(4);
+                ctm_wxfilename = po.GetArg(4);
     
     RandomAccessSegmentationReader seg_reader(segmentation_rspecifier);
     Input ki(ctm_rxfilename);
-    PosteriorWriter conf_writer(post_wspecifier);
+    Output ko(ctm_wxfilename, false);
 
     long num_lines = 0, num_success = 0;
     int32 num_recos = 0;
@@ -101,6 +105,8 @@ int main(int argc, char *argv[]) {
     std::unordered_map<std::string, std::map<int32, std::pair<BaseFloat, BaseFloat> >*, StringHasher> confidences;
     std::set<std::string> reco_list;
     
+    std::regex special_regex(".*(<ALT_BEGIN>|<ALT>|<ALT_END>)>*");
+
     while (std::getline(ki.Stream(), line)) {
       num_lines++;
       std::vector<std::string> split_line;
@@ -112,13 +118,14 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Invalid line in ctm file: " << line;
       }
 
-      if (split_line.size() == 5) {
-        KALDI_VLOG(1) << "Line '" << line << "' does not have confidence. Skipping,";
+      if (split_line.size() == 5 || std::regex_match(line, special_regex)) {
+        KALDI_VLOG(2) << "Seen line that matches special regex " << line;
+        ko.Stream() << line << "\n";
         continue;
       }
 
       std::string start_str = split_line[2],
-        duration_str = split_line[3];
+                  duration_str = split_line[3];
 
       // Convert the start time and endtime to real from string. Segment is
       // ignored if start or end time cannot be converted to real.
@@ -142,8 +149,8 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      double conf; 
-      if (!ConvertStringToReal(split_line[5], &conf)) {
+      double conf = -1.0; 
+      if (split_line.size() == 6 && !ConvertStringToReal(split_line[5], &conf)) {
         KALDI_ERR << "Invalid line in ctm file [bad conf]: " << line;
       }
 
@@ -176,55 +183,30 @@ int main(int argc, char *argv[]) {
         while (seg_it != seg.Begin() && seg_it->start_frame * frame_shift > start) --seg_it;
 
         BaseFloat this_word_occ = 0;
-        std::vector<BaseFloat> occs;
         while (seg_it != seg.End() && seg_it->start_frame * frame_shift <= end) {
           double fraction = (std::min(static_cast<double>(seg_it->end_frame * frame_shift), end) - std::max(static_cast<double>(seg_it->start_frame * frame_shift), start) + frame_shift) / (end-start+frame_shift);
-          std::map<int32, std::pair<BaseFloat, BaseFloat> >::iterator it = conf_acc->find(seg_it->Label());
-          if (it == conf_acc->end()) {
-            (*conf_acc)[seg_it->Label()] = std::make_pair(conf * fraction, fraction);
-          } else {
-            (it->second).first += conf * fraction;
-            (it->second).second += fraction;
-          }
           this_word_occ += fraction;
-          occs.push_back(seg_it->start_frame * frame_shift);
-          occs.push_back(seg_it->end_frame * frame_shift);
-          occs.push_back(fraction);
           ++seg_it;
-        }
-        if (!kaldi::ApproxEqual(this_word_occ, 1.0)) {
-          KALDI_WARN << "This word from " << start << " - " << end 
-                    << "; computed occupancy is " << this_word_occ << "; (seg_start,seg_end,frac) = " << SubVector<BaseFloat>(&occs[0], occs.size());; 
+        } 
+
+        if (this_word_occ > keep_word_threshold) {
+          ko.Stream() << line << "\n";
         }
       } 
       
       prev_recording = recording;
       num_success++;
     }
-    
-    long double occ = 0;
-    for (std::set<std::string>::const_iterator it = reco_list.begin(); 
-          it != reco_list.end(); ++it) {
-      const std::map<int32, std::pair<BaseFloat, BaseFloat> > *conf_acc = confidences[*it];
-      Posterior post(2);
-      for (std::map<int32, std::pair<BaseFloat, BaseFloat> >::const_iterator c_it = conf_acc->begin();
-            c_it != conf_acc->end(); ++c_it) {
-        post[0].push_back(std::make_pair(c_it->first, (c_it->second).first / (c_it->second).second));
-        post[1].push_back(std::make_pair(c_it->first, (c_it->second).second));
-        occ += (c_it->second).second;
-      }
-      conf_writer.Write(*it, post);
-    }
 
     KALDI_LOG << "Successfully processed " << num_success << " lines out of "
               << num_lines << " in the ctm file; wrote "
-              << num_recos << " recordings; total word occupancy is " << occ;
-
+              << num_recos;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
   }
 }
+
 
 
 
