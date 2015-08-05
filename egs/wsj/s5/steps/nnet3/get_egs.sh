@@ -219,7 +219,7 @@ egs_opts="--left-context=$left_context --right-context=$right_context --compress
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
-num_pdfs=$(tree-info --print-args=false exp/tri4b_ali_si284/tree |grep num-pdfs|awk '{print $2}')
+num_pdfs=$(tree-info --print-args=false $alidir/tree | grep num-pdfs | awk '{print $2}')
 if [ $stage -le 2 ]; then
   echo "$0: Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null

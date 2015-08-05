@@ -268,14 +268,14 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
   
   std::vector<std::vector<int32> > graph;
   NnetToDirectedGraph(nnet, &graph);
-  KALDI_LOG << "graph is: " << PrintGraphToString(graph);
+  KALDI_VLOG(6) << "graph is: " << PrintGraphToString(graph);
 
   std::vector<std::vector<int32> > sccs;
   FindSccs(graph, &sccs);
 
   std::vector<std::vector<int32> > scc_graph;
   MakeSccGraph(graph, sccs, &scc_graph);
-  KALDI_LOG << "scc graph is: " << PrintGraphToString(scc_graph);
+  KALDI_VLOG(6) << "scc graph is: " << PrintGraphToString(scc_graph);
   
   std::vector<std::vector<int32> > scc_graph_transpose;
   // compute transpose because we actually want the reverse of the topological
@@ -284,11 +284,11 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
 
   std::vector<int32> scc_node_to_epoch;
   ComputeTopSortOrder(scc_graph, &scc_node_to_epoch);
-  {
+  if (GetVerboseLevel() >= 6) {
     std::ostringstream os;
     for (int32 i = 0; i < scc_node_to_epoch.size(); i++)
       os << scc_node_to_epoch[i] << ", ";
-    KALDI_LOG << "scc_node_to_epoch is: " << os.str();
+    KALDI_VLOG(6) << "scc_node_to_epoch is: " << os.str();
   }
   
   node_to_epoch->clear();

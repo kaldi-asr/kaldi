@@ -45,15 +45,21 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
-    int32 this_frames_per_eg = std::min(frames_per_eg,
-                                        feats.NumRows() - t);
 
-    int32 tot_frames = left_context + this_frames_per_eg + right_context;
+    // actual_frames_per_eg is the number of frames with nonzero
+    // posteriors.  At the end of the file we pad with zero posteriors
+    // so that all examples have the same structure (prevents the need
+    // for recompilations).
+    int32 actual_frames_per_eg = std::min(frames_per_eg,
+                                          feats.NumRows() - t);
+
+
+    int32 tot_frames = left_context + frames_per_eg + right_context;
 
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols());
     
     // Set up "input_frames".
-    for (int32 j = -left_context; j < this_frames_per_eg + right_context; j++) {
+    for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t2 = j + t;
       if (t2 < 0) t2 = 0;
       if (t2 >= feats.NumRows()) t2 = feats.NumRows() - 1;
@@ -65,14 +71,14 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     NnetExample eg;
     
     // call the regular input "input".
-    eg.io.push_back(NnetIo("input", t - left_context,
+    eg.io.push_back(NnetIo("input", - left_context,
                            input_frames));
 
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
       // try to get closest frame to middle of window to get
       // a representative iVector.
-      int32 closest_frame = t + (this_frames_per_eg / 2);
+      int32 closest_frame = t + (actual_frames_per_eg / 2);
       KALDI_ASSERT(ivector_feats->NumRows() > 0);
       if (closest_frame >= ivector_feats->NumRows())
         closest_frame = ivector_feats->NumRows() - 1;
@@ -82,10 +88,11 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     }
 
     // add the labels.
-    Posterior labels(this_frames_per_eg);
-    for (int32 i = 0; i < this_frames_per_eg; i++)
+    Posterior labels(frames_per_eg);
+    for (int32 i = 0; i < actual_frames_per_eg; i++)
       labels[i] = pdf_post[t + i];
-    eg.io.push_back(NnetIo("output", num_pdfs, t, labels));
+    // remaining posteriors for frames are empty.
+    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
     
     if (compress)
       eg.Compress();
@@ -95,7 +102,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     std::string key = os.str(); // key is <utt_id>-<frame_id>
 
-    *num_frames_written += this_frames_per_eg;
+    *num_frames_written += actual_frames_per_eg;
     *num_egs_written += 1;
 
     example_writer->Write(key, eg);

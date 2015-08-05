@@ -76,9 +76,6 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
   for (int32 c = 0; c < new_num_cindex_ids; c++) {
     int32 d = new2old[c];
     temp_graph.cindexes[c] = cindexes[d];
-    if (c == 2546 && cindexes[d].first == 33) { // temp
-      KALDI_LOG << "Here\n";
-    }
     temp_graph.is_input[c] = is_input[d];
     temp_graph.dependencies[c].reserve(dependencies[d].size());
     std::vector<int32>::const_iterator
@@ -99,6 +96,55 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
   for (int32 c = 0; c < new_num_cindex_ids; c++)
     cindex_to_cindex_id_[cindexes[c]] = c;
 }
+
+void ComputationGraphBuilder::PrintCindexId(std::ostream &os,
+                                            int32 cindex_id) const {
+  KALDI_ASSERT(static_cast<size_t>(cindex_id) < graph_->cindexes.size());
+  const Cindex &cindex = graph_->cindexes[cindex_id];
+  const std::string &node_name = nnet_.GetNodeName(cindex.first);
+  os << node_name << '(' << cindex.second.n << ", " << cindex.second.t
+     << ", " << cindex.second.x << ')';
+}
+
+void ComputationGraphBuilder::ExplainWhyNotComputable(
+    int32 first_cindex_id) const {
+  int32 max_lines_print = 100;
+  std::deque<int32> cindexes_to_explain;
+  cindexes_to_explain.push_back(first_cindex_id);
+  KALDI_ASSERT(graph_->cindexes.size() == graph_->dependencies.size());
+  std::ostringstream os;
+  os << "*** cindex ";
+  PrintCindexId(os, first_cindex_id);
+  os << " is not computable for the following reason: ***\n";
+  for (int32 num_lines_printed = 0;
+       num_lines_printed < max_lines_print && !cindexes_to_explain.empty();
+       num_lines_printed++) {
+    int32 cindex_id = cindexes_to_explain.front();
+    cindexes_to_explain.pop_front();
+    KALDI_ASSERT(static_cast<size_t>(cindex_id) < graph_->cindexes.size());          PrintCindexId(os, cindex_id);
+    os << " is " << static_cast<ComputableInfo>(
+        computable_info_[cindex_id]) << ", dependencies: ";
+    const std::vector<int32> dependencies = graph_->dependencies[cindex_id];
+    std::vector<int32>::const_iterator iter = dependencies.begin(),
+        end = dependencies.end();
+    for (; iter != end;) {
+      int32 dep_cindex_id = *iter;
+      PrintCindexId(os, dep_cindex_id);
+      ComputableInfo status = static_cast<ComputableInfo>(
+          computable_info_[cindex_id]);
+      if (status != kComputable) {
+        os << '[' << status << ']';
+        cindexes_to_explain.push_back(dep_cindex_id);
+      }
+      if (iter+2 != end)
+        os << ", ";
+    }
+    os << "\n";
+  }
+  os << "\n";
+  KALDI_LOG << os.str();
+}
+
 
 void ComputationGraph::Print(std::ostream &os,
                              const std::vector<std::string> &node_names) {
@@ -221,26 +267,70 @@ void ComputationGraphBuilder::AddOutputs() {
   current_queue_.swap(next_queue_);
 }
 
-bool ComputationGraphBuilder::AllOutputsAreComputable() {
-  std::vector<std::vector<bool> > computable;
-  GetComputableInfo(&computable);
-  // look for a "false" element in the computable arrays.
-  for (size_t i = 0; i < computable.size(); i++)
-    if (std::find(computable[i].begin(), computable[i].end(), false) !=
-        computable[i].end())
-      return false;
+bool ComputationGraphBuilder::AllOutputsAreComputable() const {
+  char is_computable_char = static_cast<char>(kComputable);
+  std::vector<char>::const_iterator iter = computable_info_.begin(),
+      end = computable_info_.end();
+  for (int32 cindex_id = 0; iter != end; ++iter, ++cindex_id) {
+    if (*iter != is_computable_char) {  // is not computable.
+      int32 network_node = graph_->cindexes[cindex_id].first;
+      if (nnet_.IsOutputNode(network_node))
+        return false;
+    }
+  }
   return true;
 }
+
+std::ostream& operator << (std::ostream &os,
+                           const ComputationGraphBuilder::ComputableInfo &info) {
+  switch (info) {
+    case ComputationGraphBuilder::kUnknown: os << "kUnknown";
+      break;
+    case ComputationGraphBuilder::kComputable: os << "kComputable";
+      break;
+    case ComputationGraphBuilder::kNotComputable: os << "kNotComputable";
+      break;
+    case ComputationGraphBuilder::kWillNotCompute: os << "kWillNotCompute";
+      break;
+    default: os << "[invalid enum value]"; break;
+  }
+  return os;
+}
+
+
+// Prints logging info to explain why all outputs are not computable.
+void ComputationGraphBuilder::ExplainWhyAllOutputsNotComputable() const {
+  std::vector<int32> outputs_not_computable;
+  int32 num_outputs_total = 0;
+  
+  std::vector<Cindex>::const_iterator iter = graph_->cindexes.begin(),
+      end = graph_->cindexes.end();
+  for (int32 cindex_id = 0; iter != end; ++iter,++cindex_id) {
+    int32 network_node = iter->first;
+    ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
+    if (!nnet_.IsOutputNode(network_node)) {
+      num_outputs_total++;
+      if (c != kComputable)
+        outputs_not_computable.push_back(cindex_id);
+    }
+  }
+  KALDI_ASSERT(!outputs_not_computable.empty() &&
+               "You called this function when everything was computable.");
+  int32 num_print = 10, num_not_computable = outputs_not_computable.size();
+  KALDI_LOG << num_not_computable << " output cindexes out of "
+            << num_outputs_total << " were not computable.";
+  if (num_not_computable > num_print)
+    KALDI_LOG << "Printing the reasons for " << num_print << " of these.";
+  for (int32 i = 0; i < num_not_computable && i < num_print; i++)
+    ExplainWhyNotComputable(outputs_not_computable[i]);
+}
+
 
 
 // this function limits the dependencies of cindex_id "cindex_id" to just those
 // which are actually used in computing it.  It also clears the dependencies
 // of those cindexes that are not computable.
 void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
-  if (cindex_id == 2546 && graph_->cindexes[2546].first == 33) { // temp
-    KALDI_LOG << "Here[2]\n";
-  }
-  
   ComputableInfo c = static_cast<ComputableInfo>(computable_info_[cindex_id]);
   // by the time this is called, there should be no cindexes with unknown state.
   KALDI_ASSERT(c != kUnknown);
@@ -344,7 +434,6 @@ void ComputationGraphBuilder::Compute() {
   if (current_distance_ == max_distance) 
     KALDI_ERR << "Loop detected while building computation graph (bad "
               << "network topology?)";
-  KALDI_LOG << "Current-distance = " << current_distance_;
   Check();
 }
 
@@ -911,7 +1000,7 @@ static void ComputeEpochInfo(
   {
     std::ostringstream os;
     PrintIntegerVector(os, node_to_epoch);
-    KALDI_LOG << "node_to_epoch: " << os.str();
+    KALDI_VLOG(6) << "node_to_epoch: " << os.str();
   }
   
   // Add one to the epoch numbering because we will be reserving

@@ -30,10 +30,14 @@ Compiler::Compiler(
 
 void Compiler::CreateComputation(const CompilerOptions &opts,
                                  NnetComputation *computation) {
+  computation->Clear();
   ComputationGraphBuilder builder(nnet_, request_, &graph_);
   builder.Compute();
+  if (!builder.AllOutputsAreComputable()) {
+    builder.ExplainWhyAllOutputsNotComputable();  // prints logging info
+    KALDI_ERR << "Not all outputs were computable, cannot create computation.";
+  }
   builder.Prune();
-
   // see function declaration's comment for meaning of "phases".
   std::vector<std::vector<int32> > phases;
   ComputeComputationPhases(nnet_, graph_, &phases);
@@ -147,11 +151,13 @@ void Compiler::ComputeDerivNeeded(
         (*deriv_needed)[step] = true;
     }
   }
-  { // TEMP
-    std::cerr << "deriv_needed = ";
+  if (GetVerboseLevel() >= 5) {
+    std::ostringstream os;
+    os << "deriv_needed = ";
     for (int32 i = 0; i < deriv_needed->size(); i++)
-      std::cerr << ((*deriv_needed)[i] ? "t" : "f");
-    std::cerr << "\n";
+      os << ((*deriv_needed)[i] ? "t" : "f");
+    os << "\n";
+    KALDI_VLOG(5) << os.str();
   }
 }
 

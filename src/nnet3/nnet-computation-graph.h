@@ -107,7 +107,11 @@ class ComputationGraphBuilder {
 
   // Returns true if all requested outputs are computable.  To be called after
   // Compute() but before Prune(().
-  bool AllOutputsAreComputable();
+  bool AllOutputsAreComputable() const;
+
+  // Prints logging info to explain why all outputs are not computable.
+  // To be called only if AllOutputsAreComputable() returned false.
+  void ExplainWhyAllOutputsNotComputable() const;
 
   // This function outputs to "computable" information about whether each
   // requested element of each output was computable.  "computable" will have
@@ -137,6 +141,15 @@ class ComputationGraphBuilder {
     kWillNotCompute = 3
   };
  private:
+  // This function, called from ExplainWhyNotComputable(), prints to "os"
+  // a human-readable form of a given cindex_id, that looks like
+  // some_network_node(n, t, x), e.g. "final_logsoftmax(0, -4, 0)".
+  void PrintCindexId(std::ostream &os, int32 cindex_id) const;
+  
+  // This function, typically to be called just before dying, prints logging
+  // information to explain why the given cindex_id is not computable.
+  void ExplainWhyNotComputable(int32 cindex_id) const;
+  
   // called at the start of Compute(), this populates the graph (and member
   // variables) for all the inputs specified in the computation request.
   void AddInputs();
@@ -244,6 +257,10 @@ class ComputationGraphBuilder {
   // output and have not yet had their dependencies processed.
   std::vector<int32> next_queue_;
 };
+
+/// This is to be used in logging only.
+std::ostream& operator << (std::ostream &os,
+                           const ComputationGraphBuilder::ComputableInfo &info);
 
 
 class CindexSet {

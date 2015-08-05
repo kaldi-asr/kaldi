@@ -330,6 +330,8 @@ struct NnetComputation {
   
   // destructor deletes pointers in component_precomputed_indexes.
   ~NnetComputation();
+  // removes all information from this struct, makes it as a newly constructed one.
+  void Clear() { *this = NnetComputation(); }
 };
 
 

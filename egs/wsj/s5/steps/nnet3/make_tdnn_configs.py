@@ -100,7 +100,7 @@ print('input-node name=input dim=' + str(args.feat_dim), file=f)
 list=[ ('Offset(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
 if args.ivector_dim > 0:
     print('input-node name=ivector dim=' + str(args.ivector_dim), file=f)
-    list.append('ivector')
+    list.append('ReplaceIndex(ivector, t, 0)')
 # example of next line:
 # output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ReplaceIndex(ivector, t, 0))"
 print('output-node name=output input=Append({0})'.format(", ".join(list)), file=f)
@@ -178,7 +178,7 @@ for l in range(1, num_hidden_layers + 1):
 # ##will look like this, if we have iVectors:
 # input-node name=input dim=13
 # input-node name=ivector dim=100
-# output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ivector)"
+# output-node name=output input="Append(Offset(input, -3), Offset(input, -2), Offset(input, -1), ... , Offset(input, 3), ReplaceIndex(ivector, t, 0))"
 
 # ## Write file $config_dir/layer1.config that adds the LDA matrix, assumed to be in the config directory as
 # ## lda.mat, the first hidden layer, and the output layer.

@@ -72,6 +72,8 @@ class CachingOptimizingCompiler {
 
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
+  /// It calls ComputeCudaIndexes() for you, because you wouldn't
+  /// be able to do this on a const object.
   const NnetComputation* Compile(const ComputationRequest  &request);
  private:
   const Nnet &nnet_;

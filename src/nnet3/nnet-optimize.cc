@@ -727,9 +727,12 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     
     int32 verbose_level = 4;
     if (GetVerboseLevel() >= verbose_level) {
-      std::ostringstream os;
-      computation_.Print(os, nnet_);
-      KALDI_LOG << "Generated computation is: " << os.str();
+      std::ostringstream os1;
+      request.Print(os1);
+      KALDI_LOG << "Computation request is " << os1.str();
+      std::ostringstream os2;      
+      computation_.Print(os2, nnet_);
+      KALDI_LOG << "Generated computation is: " << os2.str();
     }
     { // some checking.
       CheckComputationOptions check_config;
@@ -745,6 +748,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       ComputationChecker checker(check_config, nnet_, request_, computation_);
       checker.Check();
     }
+    computation_.ComputeCudaIndexes();
   }
   return &computation_;
 }

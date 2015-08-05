@@ -175,8 +175,7 @@ void GetComputationRequest(const Nnet &nnet,
     if (node_index == -1 &&
         !nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index))
       KALDI_ERR << "Nnet example has input or output named '" << name
-                << "', but no such input or output node is in the network."
-
+                << "', but no such input or output node is in the network.";
     std::vector<IoSpecification> &dest =
         nnet.IsInputNode(node_index) ? request->inputs : request->outputs;
     dest.resize(dest.size() + 1);
