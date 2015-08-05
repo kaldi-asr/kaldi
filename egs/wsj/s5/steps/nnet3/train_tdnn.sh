@@ -19,6 +19,7 @@ final_effective_lrate=0.001
 pnorm_input_dim=3000 
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
 
@@ -260,7 +261,6 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
 ( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
   ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
-fi
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -285,7 +285,7 @@ if [ $stage -le -3 ]; then
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
       nnet3-acc-lda-stats --rand-prune=$rand_prune \
-        $dir/init.raw $egs_dir/egs.JOB.ark $dir/JOB.lda_stats || exit 1;
+        $dir/init.raw "ark:$egs_dir/egs.JOB.ark" $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
   $cmd $dir/log/sum_transform_stats.log \

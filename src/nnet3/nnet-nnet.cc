@@ -440,8 +440,8 @@ void Nnet::ProcessDimRangeNodeConfigLine(
 
 int32 Nnet::GetNodeIndex(const std::string &node_name) const {
   size_t size = node_names_.size();
-  for (size_t i = 0; i < size; i++)
-    if (node_names_[i] == node_name)
+  for (size_t i = 0; i < size; i++) 
+    if (node_names_[i] == node_name) 
       return static_cast<int32>(i);
   return -1;
 }

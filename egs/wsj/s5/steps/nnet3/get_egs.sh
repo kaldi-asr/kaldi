@@ -219,6 +219,7 @@ egs_opts="--left-context=$left_context --right-context=$right_context --compress
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
+num_pdfs=$(tree-info --print-args=false exp/tri4b_ali_si284/tree |grep num-pdfs|awk '{print $2}')
 if [ $stage -le 2 ]; then
   echo "$0: Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
@@ -231,11 +232,11 @@ if [ $stage -le 2 ]; then
   set +o pipefail; # unset the pipefail option.
 
   $cmd $dir/log/create_valid_subset.log \
-    nnet3-get-egs $valid_ivector_opt $egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $egs_opts "$valid_feats" \
      "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    nnet3-get-egs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
      "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
@@ -277,12 +278,12 @@ if [ $stage -le 3 ]; then
   # The examples will go round-robin to egs_list. 
   if [ ! -z $post_dir ]; then
     $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
-      nnet3-get-egs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
+      nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
       scp:$post_dir/post.JOB.scp ark:- \| \
       nnet3-copy-egs ark:- $egs_list || exit 1;
   else 
     $cmd $io_opts JOB=1:$nj $dir/log/get_egs.JOB.log \
-      nnet3-get-egs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
+      nnet3-get-egs --num-pdfs=$num_pdfs $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
       "ark,s,cs:gunzip -c $alidir/ali.JOB.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" ark:- \| \
       nnet3-copy-egs ark:- $egs_list || exit 1;
   fi

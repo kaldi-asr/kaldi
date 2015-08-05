@@ -12,7 +12,7 @@
 
 stage=0
 train_stage=-10
-dir=exp/nnet3/nnet_ms_a
+dir=exp/nnet3/nnet_tdnn_a
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
