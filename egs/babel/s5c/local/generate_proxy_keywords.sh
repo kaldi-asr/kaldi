@@ -59,12 +59,12 @@ done
 
 # Gets phone symbols
 phone_start=2
-if [ $pron_probs ]; then
+if $pron_probs; then
   phone_start=3
 fi
 
 pron_probs_param="";
-if [ $pron_probs ]; then
+if $pron_probs; then
   pron_probs_param="--pron-probs";
 fi
 
