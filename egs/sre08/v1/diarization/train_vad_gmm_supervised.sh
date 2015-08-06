@@ -135,7 +135,7 @@ feats="${feats}add-deltas ark:- ark:- |"
 if [ $stage -le -2 ]; then
   $cmd JOB=1:$nj $dir/log/select_feats_init_speech.JOB.log \
     segmentation-init-from-ali scp:$dir/data/vad.JOB.scp ark:- \| \
-    select-feats-from-segmentation --select-label=1 --selection-padding=2 \
+    select-feats-from-segmentation --select-label=1 --selection-padding=10 \
       "$feats" ark:- \
       ark:$dir/init_feats_speech.JOB.ark || exit 1
   
