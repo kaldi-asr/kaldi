@@ -114,6 +114,8 @@ int main(int argc, char *argv[]) {
         num_written++;
         std::string output_key = ostr.str();
         example_writer.Write(output_key, merged_eg);
+        examples.clear();
+        cur_num_output_frames = 0;
       }
     }
     KALDI_LOG << "Merged " << num_read << " egs to " << num_written << '.';

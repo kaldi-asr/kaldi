@@ -209,7 +209,7 @@ if [ $stage -le -5 ]; then
   # we do this as it's a convenient way to get the stats for the 'lda-like'
   # transform.
   $cmd $dir/log/nnet_init.log \
-    nnet3-init $dir/configs/init.config $dir/init.raw || exit 1;
+    nnet3-init --srand=-2 $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 
 # sourcing the "vars" below sets
@@ -315,11 +315,11 @@ if [ $stage -le -2 ]; then
        vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
   rm $dir/pdf_counts.*
   
-  awk -v power=$presoftmax_prior_scale_power smooth=0.01 \
+  awk -v power=$presoftmax_prior_scale_power -v smooth=0.01 \
      '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
         num_pdfs=NF-2;  average_count = total/num_pdfs;
         for (i=0; i<num_pdfs; i++) stot += (scale[i] = (count[i] + smooth * average_count)^power)
-        printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]/stot); print "]" }' \
+        printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]*num_pdfs/stot); print "]" }' \
      $dir/pdf_counts > $dir/presoftmax_prior_scale.vec
   ln -sf ../presoftmax_prior_scale.vec $dir/configs/presoftmax_prior_scale.vec
 fi
@@ -328,12 +328,12 @@ if [ $stage -le -1 ]; then
   # Add the first layer; this will add in the lda.mat and
   # presoftmax_prior_scale.vec.
   $cmd $dir/log/add_first_layer.log \
-       nnet3-edit $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
+       nnet3-init --srand=-3 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 
   # Convert to .mdl, train the transitions, set the priors.
   $cmd $dir/log/init_mdl.log \
-    nnet3-am-init $alidir/tree $lang/topo $dir/0.raw - \| \
-    nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl
+    nnet3-am-init $alidir/final.mdl $dir/0.raw - \| \
+    nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl || exit 1;
 fi
 
 
@@ -355,8 +355,7 @@ finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
 if $gpu; then
-  parallel_suffix="-simple" # this enables us to use GPU code if
-                            # we have just one thread.
+  parallel_suffix=""
   train_queue_opt="--gpu 1"
   parallel_train_opts=
   if ! cuda-compiled; then
@@ -464,9 +463,11 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-compute-prob $dir/$x.mdl "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
+      nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
+            "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob $dir/$x.mdl "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
+      nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
+           "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
@@ -490,7 +491,7 @@ while [ $x -lt $num_iters ]; do
         inp=$[$inp-1]
       fi
       config=$dir/config/layer$[$cur_num_hidden_layers+1].config
-      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -| nnet3-edit --srand=$x - $config - |"
+      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -| nnet3-init --srand=$x - $config - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
@@ -527,7 +528,7 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix $parallel_train_opts --minibatch-size=$this_minibatch_size --srand=$x "$raw" \
+          nnet3-train$parallel_suffix $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done

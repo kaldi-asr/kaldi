@@ -142,7 +142,7 @@ void FilterExample(const NnetExample &eg,
       indexes_out.reserve(indexes_in.size());
       int32 num_indexes = indexes_in.size(), num_kept = 0;
       KALDI_ASSERT(io_in.features.NumRows() == num_indexes);
-      std::vector<bool> keep(num_indexes);
+      std::vector<bool> keep(num_indexes, false);
       std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
                                           end_in = indexes_in.end();
       std::vector<bool>::iterator iter_out = keep.begin();
@@ -150,8 +150,10 @@ void FilterExample(const NnetExample &eg,
         int32 t = iter_in->t;
         bool is_within_range = (t >= min_t && t <= max_t);
         *iter_out = is_within_range;
-        indexes_out.push_back(*iter_in);
-        num_kept++;
+        if (is_within_range) {
+          indexes_out.push_back(*iter_in);
+          num_kept++;
+        }
       }
       KALDI_ASSERT(iter_out == keep.end());
       if (num_kept == 0)

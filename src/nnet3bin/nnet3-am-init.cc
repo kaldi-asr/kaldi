@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
+#include "tree/context-dep.h"
 #include "nnet3/am-nnet-simple.h"
 
 int main(int argc, char *argv[]) {
@@ -34,9 +35,10 @@ int main(int argc, char *argv[]) {
         "Search for examples in scripts in /egs/wsj/s5/steps/nnet3/\n"
         "Set priors using nnet3-am-train-transitions or nnet3-am-adjust-priors\n"
         "\n"
-        "Usage:  nnet3-am-init [options] <input-transition-model> <input-raw-nnet> <output-am-nnet>\n"
+        "Usage:  nnet3-am-init [options] <tree-in> <topology-in> <input-raw-nnet> <output-am-nnet>\n"
+        "  or:  nnet3-am-init [options] <trans-model-in> <input-raw-nnet> <output-am-nnet>\n"
         "e.g.:\n"
-        " nnet3-am-init src/final.mdl 0.raw 0.mdl\n"
+        " nnet3-am-init tree topo 0.raw 0.mdl\n"
         "See also: nnet3-init, nnet3-am-copy, nnet3-am-info, nnet3-am-train-transitions,\n"
         " nnet3-am-adjust-priors\n";
     
@@ -47,18 +49,37 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string trans_model_rxfilename = po.GetArg(1),
-        raw_nnet_rxfilename = po.GetArg(2),
-        am_nnet_wxfilename = po.GetArg(3);
-
-
-    TransitionModel tmodel;
-    ReadKaldiObject(trans_model_rxfilename, &tmodel);
+    std::string raw_nnet_rxfilename,
+        am_nnet_wxfilename;
+    TransitionModel *trans_model = NULL;
+    
+    if (po.NumArgs() == 4) {
+      std::string tree_rxfilename = po.GetArg(1),
+          topo_rxfilename = po.GetArg(2);
+      raw_nnet_rxfilename = po.GetArg(3);
+      am_nnet_wxfilename = po.GetArg(4);
+    
+      ContextDependency ctx_dep;
+      ReadKaldiObject(tree_rxfilename, &ctx_dep);
+    
+      HmmTopology topo;
+      ReadKaldiObject(topo_rxfilename, &topo);
+      
+      // Construct the transition model from the tree and the topology file.
+      trans_model = new TransitionModel(ctx_dep, topo);
+    } else {
+      std::string trans_model_rxfilename =  po.GetArg(1);
+      raw_nnet_rxfilename = po.GetArg(3);
+      am_nnet_wxfilename = po.GetArg(4);
+      
+      trans_model = new TransitionModel();
+      ReadKaldiObject(trans_model_rxfilename, trans_model);
+    }
 
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
@@ -68,10 +89,10 @@ int main(int argc, char *argv[]) {
     
     {
       Output ko(am_nnet_wxfilename, binary_write);
-      tmodel.Write(ko.Stream(), binary_write);
+      trans_model->Write(ko.Stream(), binary_write);
       am_nnet.Write(ko.Stream(), binary_write);
     }
-    
+    delete trans_model;
     KALDI_LOG << "Initialized am-nnet (neural net acoustic model) and wrote to "
               << am_nnet_wxfilename;
     return 0;

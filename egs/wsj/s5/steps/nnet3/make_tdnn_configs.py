@@ -125,7 +125,7 @@ for l in range(1, num_hidden_layers + 1):
         print('# In nnet3 framework, p in P-norm is always 2.', file=f)
         print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
               format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
-    print('component name=renorm{0} type=RenormalizeComponent dim={1}'.format(
+    print('component name=renorm{0} type=NormalizeComponent dim={1}'.format(
          l, nonlin_output_dim), file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
@@ -136,7 +136,7 @@ for l in range(1, num_hidden_layers + 1):
     print('component name=final-fixed-scale type=FixedScaleComponent '
           'scales={0}/presoftmax_prior_scale.vec'.format(
           args.config_dir), file=f)
-    print('component name=final-log-softmax type=LogSoftmax dim={0}'.format(
+    print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
           args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     if l == 1:
@@ -169,9 +169,9 @@ for l in range(1, num_hidden_layers + 1):
     f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
-# component name=renorm1 type=RenormalizeComponent dim=$pnorm_output_dim
+# component name=renorm1 type=NormalizeComponent dim=$pnorm_output_dim
 # component name=final-affine type=NaturalGradientAffineComponent input-dim=$pnorm_output_dim output-dim=$num_leaves param-stddev=0 bias-stddev=0
-# component name=final-log-softmax type=LogSoftmax dim=$num_leaves
+# component name=final-log-softmax type=LogSoftmaxComponent dim=$num_leaves
     
         
 # ## Write file $config_dir/init.config to initialize the network, prior to computing the LDA matrix.
@@ -185,7 +185,7 @@ for l in range(1, num_hidden_layers + 1):
 # component name=lda type=FixedAffineComponent matrix=$config_dir/lda.mat 
 # component name=affine1 type=NaturalGradientAffineComponent input-dim=$lda_input_dim output-dim=$pnorm_input_dim bias-stddev=0
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
-# component name=renorm1 type=RenormalizeComponent dim=$pnorm_output_dim
+# component name=renorm1 type=NormalizeComponent dim=$pnorm_output_dim
 # component name=final-affine type=NaturalGradientAffineComponent input-dim=$pnorm_output_dim output-dim=$num_leaves param-stddev=0 bias-stddev=0
 # component name=final-log-softmax type=LogSoftmax dim=$num_leaves
 # # InputOf(output) says use the same Descriptor of the current "output" node.
@@ -201,7 +201,7 @@ for l in range(1, num_hidden_layers + 1):
 # ## Write file $config_dir/layer2.config that adds the second hidden layer.
 # component name=affine2 type=NaturalGradientAffineComponent input-dim=$lda_input_dim output-dim=$pnorm_input_dim bias-stddev=0
 # component name=nonlin2 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
-# component name=renorm2 type=RenormalizeComponent dim=$pnorm_output_dim
+# component name=renorm2 type=NormalizeComponent dim=$pnorm_output_dim
 # component name=final-affine type=NaturalGradientAffineComponent input-dim=$pnorm_output_dim output-dim=$num_leaves param-stddev=0 bias-stddev=0
 # component-node name=affine2 component=affine2 input=Append(Offset(renorm1, -2), Offset(renorm1, 2))
 # component-node name=nonlin2 component=nonlin2 input=affine2

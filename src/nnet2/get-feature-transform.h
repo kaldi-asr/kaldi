@@ -41,13 +41,14 @@ struct FeatureTransformEstimateOptions {
   int32 dim;
   BaseFloat within_class_factor;
   BaseFloat max_singular_value;
-  FeatureTransformEstimateOptions(): remove_offset(true), dim(200),
+  FeatureTransformEstimateOptions(): remove_offset(true), dim(-1),
                                      within_class_factor(0.001), max_singular_value(5.0) { }
   
   void Register(OptionsItf *po) {
     po->Register("remove-offset", &remove_offset, "If true, output an affine "
                  "transform that makes the projected data mean equal to zero.");
-    po->Register("dim", &dim, "Dimension to project to with LDA");
+    po->Register("dim", &dim, "Dimension to project to; if <= 0, "
+                 "will retain full dimension of input.");
     po->Register("within-class-factor", &within_class_factor, "If 1.0, do "
                  "conventional LDA where the within-class variance will be "
                  "unit in the projected space.  May be set to less than 1.0, "
