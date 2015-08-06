@@ -27,14 +27,13 @@
 namespace kaldi {
 namespace nnet3 {
 
-
-
-// This test runs the computation with and without optimization, and checks that
-// the outputs are the same.
-void UnitTestNnetOptimize() {
+// Run the test wothout optimizations and with optimizations specified by the
+// parameter. Only print warnings; we'll fail the whole test later.
+static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
+  srand(0);  // Every run must be deterministic.
   for (int32 n = 0; n < 20; n++) {
     struct NnetGenerationOptions gen_config;
-    
+
     std::vector<std::string> configs;
     GenerateConfigSequence(gen_config, &configs);
     Nnet nnet;
@@ -47,7 +46,7 @@ void UnitTestNnetOptimize() {
     ComputationRequest request;
     std::vector<Matrix<BaseFloat> > inputs;
     ComputeExampleComputationRequestSimple(nnet, &request, &inputs);
-    
+
     NnetComputation computation;
     Compiler compiler(request, nnet);
 
@@ -60,15 +59,13 @@ void UnitTestNnetOptimize() {
     }
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
-    check_config.check_rewrite = true;  
+    check_config.check_rewrite = true;
     ComputationChecker checker(check_config, nnet, request, computation);
     checker.Check();
 
-
     NnetComputation computation_opt(computation);
-    
+
     {
-      NnetOptimizeOptions opt_config;
       Optimize(opt_config, nnet, request, &computation_opt);
       std::ostringstream os;
       computation.Print(os, nnet);
@@ -78,9 +75,9 @@ void UnitTestNnetOptimize() {
     NnetComputeOptions compute_opts;
     if (RandInt(0, 1) == 0)
       compute_opts.debug = true;
-    
+
     computation.ComputeCudaIndexes();
-    computation_opt.ComputeCudaIndexes();    
+    computation_opt.ComputeCudaIndexes();
     NnetComputer computer(compute_opts,
                           computation,
                           nnet,
@@ -93,7 +90,7 @@ void UnitTestNnetOptimize() {
                               computation_opt,
                               nnet_opt,
                               &nnet_opt);
-    
+
     // provide the input to the computations.
     for (size_t i = 0; i < request.inputs.size(); i++) {
       CuMatrix<BaseFloat> temp(inputs[i]);
@@ -106,20 +103,21 @@ void UnitTestNnetOptimize() {
     computer.Forward();
     KALDI_LOG << "Running optimized forward computation";
     computer_opt.Forward();
-        
+
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
     KALDI_LOG << "Output sum (not optimized) is " << output.Sum();
     const CuMatrixBase<BaseFloat> &output_opt(computer_opt.GetOutput("output"));
     KALDI_LOG << "Output sum (optimized) is " << output_opt.Sum();
     if (!ApproxEqual(output, output_opt)) {
-      KALDI_ERR << "Non-optimized and optimized versions of the computation give "
-                << "different outputs.";
+      KALDI_WARN << "Non-optimized and optimized versions of the computation give "
+                 << "different outputs.";
+      return false;
     }
-    
+
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();
     CuMatrix<BaseFloat> output_deriv_opt(output_deriv);
-    
+
     if (request.outputs[0].has_deriv) {
       computer.AcceptOutputDeriv("output", &output_deriv);
       computer_opt.AcceptOutputDeriv("output", &output_deriv_opt);
@@ -140,17 +138,63 @@ void UnitTestNnetOptimize() {
         KALDI_LOG << "Input-deriv sum for input '" << request.inputs[i].name
                   << "' (optimized) is " << in_deriv_opt.Sum();
         if (!ApproxEqual(in_deriv, in_deriv_opt)) {
-          KALDI_ERR << "Non-optimized and optimized versions of the computation give "
-                    << "different input-derivs.";
+          KALDI_WARN << "Non-optimized and optimized versions of the "
+                     << "computation give different input-derivs.";
+          return false;
         }
       }
     }
 
     if (!NnetParametersAreIdentical(nnet, nnet_opt, 1.0e-05)) {
-      KALDI_ERR << "Neural networks differ after training, between optimized "
-                << "and non-optimized computation.";
-    }    
+      KALDI_WARN << "Neural networks differ after training, between "
+                 << "optimized and non-optimized computation.";
+      return false;
+    }
   }
+  return true;
+}
+
+
+// This test runs the computation with and without optimization, and checks that
+// the outputs are the same.
+static void UnitTestNnetOptimize() {
+  NnetOptimizeOptions optimize_all;
+  bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
+  if (success)
+    return;
+
+  // Test failed with full optimization. Slowly retry with various
+  // optimizations switched off.
+  NnetOptimizeOptions optimize = optimize_all;
+  optimize.propagate_in_place = false;
+  bool succ_no_propagate_in_place = UnitTestNnetOptimizeWithOptions(optimize);
+
+  optimize = optimize_all;
+  optimize.backprop_in_place = false;
+  bool succ_no_backprop_in_place = UnitTestNnetOptimizeWithOptions(optimize);
+
+  optimize = optimize_all;
+  optimize.remove_assignments = false;
+  bool succ_no_remove_assignments = UnitTestNnetOptimizeWithOptions(optimize);
+
+  optimize = optimize_all;
+  optimize.initialize_undefined = false;
+  bool succ_no_initialize_undefined = UnitTestNnetOptimizeWithOptions(optimize);
+
+  optimize = optimize_all;
+  optimize.move_sizing_commands = false;
+  bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(optimize);
+
+#define SUCCFAIL(b) ((b) ? "SUCCESS" : "FAILURE")
+  KALDI_ERR
+    << "Test failed with all optimizations enabled. Retried test with the "
+    << "following optimizations turned off:"
+    << "\n  propagate_in_place   ... " << SUCCFAIL(succ_no_propagate_in_place)
+    << "\n  backprop_in_place    ... " << SUCCFAIL(succ_no_backprop_in_place)
+    << "\n  remove_assignments   ... " << SUCCFAIL(succ_no_remove_assignments)
+    << "\n  initialize_undefined ... " << SUCCFAIL(succ_no_initialize_undefined)
+    << "\n  move_sizing_commands ... " << SUCCFAIL(succ_no_move_sizing_commands);
+#undef SUCCFAIL
 }
 
 } // namespace nnet3
@@ -161,19 +205,14 @@ int main() {
   using namespace kaldi::nnet3;
   //SetVerboseLevel(2);
 
-
-  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
-    if (loop == 0)
-      CuDevice::Instantiate().SelectGpuId("no");
-    else
-      CuDevice::Instantiate().SelectGpuId("yes");
+  CuDevice::Instantiate().SelectGpuId("no");
+  UnitTestNnetOptimize();
+  CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    UnitTestNnetOptimize();
-  }
+  UnitTestNnetOptimize();
 
   KALDI_LOG << "Nnet tests succeeded.";
 
   return 0;
 }
-
