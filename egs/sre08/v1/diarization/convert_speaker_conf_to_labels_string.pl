@@ -59,7 +59,9 @@ while (<>) {
     }
   }
 
-  if (($skip_empty_label_recos eq "true") && ( scalar @A == 0 )) {
+  if ((scalar @remove_labels > 0) || $skip_empty_label_recos ne "true") {
     print STDOUT $reco . " " . join(':', @remove_labels) . "\n";
+  } else {
+    print STDERR "Not printing remove-labels for " . $reco .  " " . join(':', @remove_labels) . "\n";
   }
 }

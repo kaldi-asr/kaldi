@@ -124,6 +124,8 @@ if [ $stage -le 5 ]; then
     ark,t:$dir/diarization/diarization_results.JOB.txt || exit 1
 fi
 
+echo $nj > $dir/diarization/num_jobs
+
 if [ $stage -le 6 ]; then
   mkdir -p $dir/diarization/data_out
   $train_cmd JOB=1:$nj $dir/diarization/log/convert_diarization_to_segmentation.JOB.log \

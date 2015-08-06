@@ -1,5 +1,8 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2015.  Apache 2.0.
+# Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2015.  
+# Copyright 2015  Vimal Manohar
+# Apache 2.0.
+              
 # This script generates the ctm files for dev_aspire, test_aspire and eval_aspire 
 # for scoring with ASpIRE scoring server.
 # It also provides the WER for dev_aspire data.
@@ -432,8 +435,6 @@ if  $tune_hyper ; then
         ${lang} \
         ${decode_dir} || exit 1;
 
-      diarization/filter_ctm.sh $diarization_dir ${decode_dir}/score_10/penalty_0.5/ctm.filt $data_dir/reco2file_and_channel $diarizatoin_dir/ctm_filter || exit 1
-
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys"|utils/best_wer.sh 2>/dev/null
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys" | \
        utils/best_wer.sh 2>/dev/null | python -c "import sys, re
@@ -483,10 +484,28 @@ if [ $stage -le 19 ]; then
 fi
 
 if [ $stage -le 20 ]; then
-  cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
+  diarization/filter_ctm.sh --cmd "$train_cmd" $diarization_dir/diarization ${decode_dir}/score_${LMWT}/penalty_${word_ins_penalty}/ctm.filt $data_dir/reco2file_and_channel $diarization_dir/ctm_filter || exit 1
+fi
+
+if [ $stage -le 21 ]; then
+
+  wip=$word_ins_penalty
+
+  glm=data/${act_data_id}/glm
+  stm=data/${act_data_id}/stm
+
+  if [ -f $stm ]; then
+    [ ! -f $glm ] && echo "Need glm file"
+    hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
+    [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
+    hubdir=`dirname $hubscr`
+    $hubscr -p $hubdir -V -l english -h hub5 -g $glm -r $stm $decode_dir/score_$LMWT/penalty_$wip/ctm.filt.nocrosstalk || exit 1;
+  fi
+
+  cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt.nocrosstalk | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
   cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
   python local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names
-  echo "Generated the ctm @ $out_file.submission from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
+  echo "Generated the ctm @ $out_file.submission from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt.nocrosstalk"
 fi
 
 
