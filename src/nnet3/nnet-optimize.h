@@ -96,8 +96,12 @@ class CachingOptimizingCompiler {
    Suppose also that:
      - m1 is not an output (or it's case (a))
      - m1 is not an input, or s2 is the whole of m2.
-     - after command C, s1 is never accessed [apart from deallocating its matrix]
-       (or it's case (a) and s1 is never written to after command C).
+     - if it's case (a), assignment, then:
+        - m1 is never written to after command C, and
+        - If s2 is written to after command C, then m1 is never accessed
+          to at time >= (the first time s2 is written to after command C)
+     - otherwise:
+      - after command C, s1 is never accessed [apart from deallocating its matrix]
      - before command C, s2 is never accessed, apart from initializing it and possibly
        zeroing it
      - m2 is not an input.

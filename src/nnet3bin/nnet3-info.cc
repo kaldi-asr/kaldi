@@ -36,12 +36,7 @@ int main(int argc, char *argv[]) {
         " nnet3-info 0.raw\n"
         "See also: nnet3-am-info\n";
     
-    bool binary_write = true;
-    int32 srand_seed = 0;
-    
     ParseOptions po(usage);
-    po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("srand", &srand_seed, "Seed for random number generator");
     
     po.Read(argc, argv);
     

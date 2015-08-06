@@ -464,10 +464,10 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-            "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
+            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-           "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
+           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
     if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \

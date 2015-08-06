@@ -1,6 +1,6 @@
 // nnet3bin/nnet3-am-info.cc
 
-// Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+// Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -19,69 +19,67 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "nnet3/am-nnet-simple.h"
 #include "hmm/transition-model.h"
-#include "nnet2/am-nnet.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    using namespace kaldi::nnet2;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Print human-readable information about the neural network\n"
-        "acoustic model to the standard output\n"
-        "Usage:  nnet3-am-info [options] <nnet-in>\n"
+        "Print some text information about an nnet3 neural network, to\n"
+        "standard output\n"
+        "\n"
+        "Usage:  nnet3-info [options] <nnet>\n"
         "e.g.:\n"
-        " nnet3-am-info 1.nnet\n";
-        
+        " nnet3-am-info 0.mdl\n"
+        "See also: nnet3-am-info\n";
+    
     ParseOptions po(usage);
-
-    bool print_learning_rates = false;
-
-    po.Register("print-learning-rates", &print_learning_rates,
-                "If true, instead of printing the normal info, print a "
-                "colon-separated list of the learning rates for each updatable "
-                "layer, suitable to give to nnet-am-copy as the argument to"
-                "--learning-rates.");
     
     po.Read(argc, argv);
-
+    
     if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string nnet_rxfilename = po.GetArg(1);
-    
+    std::string  nnet_rxfilename = po.GetArg(1);
+
     TransitionModel trans_model;
     AmNnetSimple am_nnet;
     {
-      bool binary_read;
-      Input ki(nnet_rxfilename, &binary_read);
-      trans_model.Read(ki.Stream(), binary_read);
-      am_nnet.Read(ki.Stream(), binary_read);
+      bool binary;
+      Input ki(nnet_rxfilename, &binary);
+      trans_model.Read(ki.Stream(), binary);
+      am_nnet.Read(ki.Stream(), binary);
     }
 
-    if (print_learning_rates) {
-      Vector<BaseFloat> learning_rates(am_nnet.GetNnet().NumUpdatableComponents());
-      am_nnet.GetNnet().GetLearningRates(&learning_rates);
-      int32 nc = learning_rates.Dim();
-      for (int32 i = 0; i < nc; i++)
-        std::cout << learning_rates(i) << (i < nc - 1 ? ":" : "");
-      std::cout << std::endl;
-      KALDI_LOG << "Printed learning-rate info for " << nnet_rxfilename;
-    } else {
-      std::cout << am_nnet.Info();
-      KALDI_LOG << "Printed info about " << nnet_rxfilename;
-    }
-    
+    std::cout << "num-pdfs=" << trans_model.NumPdfs() << "\n";
+    std::cout << am_nnet.Info();
+
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
 
+/*
+Test script:
 
-
-
+cat <<EOF | nnet3-init --binary=false - - | nnet3-info -
+component name=affine1 type=NaturalGradientAffineComponent input-dim=72 output-dim=59
+component name=relu1 type=RectifiedLinearComponent dim=59
+component name=final_affine type=NaturalGradientAffineComponent input-dim=59 output-dim=298
+component name=logsoftmax type=SoftmaxComponent dim=298
+input-node name=input dim=18
+component-node name=affine1_node component=affine1 input=Append(Offset(input, -4), Offset(input, -3), Offset(input, -2), Offset(input, 0))
+component-node name=nonlin1 component=relu1 input=affine1_node
+component-node name=final_affine component=final_affine input=nonlin1
+component-node name=output_nonlin component=logsoftmax input=final_affine
+output-node name=output input=output_nonlin  
+EOF
+*/

@@ -568,8 +568,20 @@ bool VariableMergingOptimizer::IsCandidate(int32 command_index,
     KALDI_ERR << "Matrices never accessed [confusing].";
 
   if (is_assignment) {
+    // check that:  m1 is never written to after command C, and
     if (MatrixIsWrittenToAfterCommand(matrix_accesses, m1, command_index))
-        return false;
+      return false;  // m1, or equivalently s1 (since it's all of m1) is written
+                     // to after command C
+    // check that:
+    //        - If s2 is written to after command C, then m1 is never read or written
+    //          to at time >= (the first time s2 is written to after command C)
+    int32 s2_write_index =
+        FirstTimeSubmatrixIsWrittenToAfterCommand(analyzer_, s2, command_index);
+    // the -1 in "s2_write_index - 1" is because we want to ensure that
+    // m1 is never written to a time ">=" (not ">") that command.
+    if (s2_write_index != -1 &&
+        MatrixIsAccessedAfterCommand(matrix_accesses, m1, s2_write_index - 1))
+      return false;
   } else {
     if (MatrixIsAccessedAfterCommand(matrix_accesses, m1, command_index))
       return false;

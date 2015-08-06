@@ -159,6 +159,8 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 // the outputs are the same.
 static void UnitTestNnetOptimize() {
   NnetOptimizeOptions optimize_all;
+  // this is useful for debugging as it removes nans:
+  optimize_all.initialize_undefined = false;
   bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
   if (success)
     return;
@@ -185,16 +187,16 @@ static void UnitTestNnetOptimize() {
   optimize.move_sizing_commands = false;
   bool succ_no_move_sizing_commands = UnitTestNnetOptimizeWithOptions(optimize);
 
-#define SUCCFAIL(b) ((b) ? "SUCCESS" : "FAILURE")
+#define KALDI_SUCCFAIL(b) ((b) ? "SUCCESS" : "FAILURE")
   KALDI_ERR
     << "Test failed with all optimizations enabled. Retried test with the "
     << "following optimizations turned off:"
-    << "\n  propagate_in_place   ... " << SUCCFAIL(succ_no_propagate_in_place)
-    << "\n  backprop_in_place    ... " << SUCCFAIL(succ_no_backprop_in_place)
-    << "\n  remove_assignments   ... " << SUCCFAIL(succ_no_remove_assignments)
-    << "\n  initialize_undefined ... " << SUCCFAIL(succ_no_initialize_undefined)
-    << "\n  move_sizing_commands ... " << SUCCFAIL(succ_no_move_sizing_commands);
-#undef SUCCFAIL
+    << "\n  propagate_in_place   ... " << KALDI_SUCCFAIL(succ_no_propagate_in_place)
+    << "\n  backprop_in_place    ... " << KALDI_SUCCFAIL(succ_no_backprop_in_place)
+    << "\n  remove_assignments   ... " << KALDI_SUCCFAIL(succ_no_remove_assignments)
+    << "\n  initialize_undefined ... " << KALDI_SUCCFAIL(succ_no_initialize_undefined)
+    << "\n  move_sizing_commands ... " << KALDI_SUCCFAIL(succ_no_move_sizing_commands);
+#undef KALDI_SUCCFAIL
 }
 
 } // namespace nnet3

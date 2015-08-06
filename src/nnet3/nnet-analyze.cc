@@ -183,10 +183,12 @@ void ComputationVariables::RecordAccessForSubmatrix(
       AppendVariablesForSubmatrix(submatrix_index,
                                   &(ca->variables_read));
       ca->matrices_read.push_back(matrix_index);
+      ca->submatrices_read.push_back(submatrix_index);
       break;
     case kWriteAccess:
       AppendVariablesForSubmatrix(submatrix_index,
                                   &(ca->variables_written));
+      ca->submatrices_written.push_back(submatrix_index);      
       ca->matrices_written.push_back(matrix_index);
       // if submatrix does not span the full row range of the matrix,
       // a write operation has to be considered a read/write operation
@@ -203,6 +205,8 @@ void ComputationVariables::RecordAccessForSubmatrix(
                                   &(ca->variables_written));
       AppendVariablesForSubmatrix(submatrix_index,
                                   &(ca->variables_read));
+      ca->submatrices_written.push_back(submatrix_index);
+      ca->submatrices_read.push_back(submatrix_index);
       ca->matrices_written.push_back(matrix_index);
       ca->matrices_read.push_back(matrix_index);
   }
@@ -231,6 +235,8 @@ static void IndexesMultiToSubmatrixIndexes(
   }
   SortAndUniq(submatrix_indexes);
 }
+
+
 
 
 void ComputeCommandAttributes(
@@ -346,6 +352,8 @@ void ComputeCommandAttributes(
     }
     SortAndUniq(&attr.variables_read);
     SortAndUniq(&attr.variables_written);
+    SortAndUniq(&attr.submatrices_read);
+    SortAndUniq(&attr.submatrices_written);
     SortAndUniq(&attr.matrices_read);
     SortAndUniq(&attr.matrices_written);
   }
@@ -976,6 +984,40 @@ bool MatrixIsWrittenToAfterCommand(
   }
   return false;           
 }
+
+int32 FirstTimeSubmatrixIsWrittenToAfterCommand(
+    const Analyzer &analyzer,
+    int32 submatrix_index,
+    int32 command_index) {
+  KALDI_ASSERT(static_cast<size_t>(command_index) <
+               analyzer.command_attributes.size());
+  std::vector<int32> variables;
+  analyzer.variables.AppendVariablesForSubmatrix(submatrix_index, &variables);
+  KALDI_ASSERT(IsSortedAndUniq(variables));
+  int32 ans = -1;
+  std::vector<int32>::const_iterator iter = variables.begin(),
+      end = variables.end();
+  for (; iter != end; ++iter) {
+    int32 variable = *iter;
+    KALDI_PARANOID_ASSERT(static_cast<size_t>(variable_) <
+                          analyzer.variables_accesses.size());
+    const std::vector<Access> &accesses = analyzer.variable_accesses[variable];
+    // iterate from latest to earlier command.
+    std::vector<Access>::const_reverse_iterator riter = accesses.rbegin(),
+        rend = accesses.rend();
+    for (; riter != rend; ++riter) {
+      const Access &access = *riter;
+      if (access.command_index <= command_index)
+        break;
+      if (access.access_type != kReadAccess) {
+        if (access.command_index < ans || ans == -1)
+          ans = access.command_index;
+      }
+    }
+  }
+  return ans;
+}
+
 
 void PrintMatrixAccesses(std::ostream &os,
                          const std::vector<MatrixAccesses> &matrix_accesses) {

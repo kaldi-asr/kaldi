@@ -100,6 +100,14 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet);
 
+/// Scales the nnet parameters and stats by this scale.
+void ScaleNnet(BaseFloat scale, Nnet *nnet);
+               
+/// Does *dest += alpha * src (affects nnet parameters and
+///  stored stats).
+void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
+
+
 } // namespace nnet3
 } // namespace kaldi
 

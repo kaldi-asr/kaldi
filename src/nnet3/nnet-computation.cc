@@ -130,17 +130,16 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
 // outputs a string explaining the meaning each sub-matrix in vaguely
 // matlab-like notation: for whole matrices, something like "m1", "m2";
 // and for parts of matrices, "m1(0:10, 20:40)".
-static void GetSubmatrixStrings(const Nnet &nnet,
-                                const NnetComputation &computation,
-                                std::vector<std::string> *submat_strings) {
-  int32 num_submatrices = computation.submatrices.size();
+void NnetComputation::GetSubmatrixStrings(
+    const Nnet &nnet, std::vector<std::string> *submat_strings) const {
+  int32 num_submatrices = this->submatrices.size();
   KALDI_ASSERT(num_submatrices > 0);
   submat_strings->resize(num_submatrices);
   (*submat_strings)[0] = "[]";  // the empty matrix
   for (int32 i = 1; i < num_submatrices; i++) {
-    const NnetComputation::SubMatrixInfo &submat = computation.submatrices[i];
+    const NnetComputation::SubMatrixInfo &submat = this->submatrices[i];
     std::ostringstream os;    
-    if (computation.IsWholeMatrix(i)) {
+    if (this->IsWholeMatrix(i)) {
       os << 'm' << submat.matrix_index;
     } else { // part of a range.
       os << 'm' << submat.matrix_index << '(' << submat.row_offset << ':'
@@ -245,7 +244,7 @@ static void PrintCommand(std::ostream &os,
     case NnetComputation::kAllocMatrixUndefined:
       os << "m" << c.arg1 << " = undefined("
          << computation.matrices[c.arg1].num_rows
-         << ',' << computation.matrices[c.arg1].num_rows << ")\n";
+         << ',' << computation.matrices[c.arg1].num_cols << ")\n";
       break;
     case NnetComputation::kDeallocMatrix:
       os << "m" << c.arg1 << " = []\n";
@@ -374,7 +373,7 @@ static void PrintComputationPreamble(
 void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
   std::vector<std::string> submatrix_strings, indexes_strings,
       indexes_multi_strings;
-  GetSubmatrixStrings(nnet, *this, &submatrix_strings);
+  this->GetSubmatrixStrings(nnet, &submatrix_strings);
   GetIndexesStrings(nnet, *this, &indexes_strings);
   GetIndexesMultiStrings(nnet, *this, &indexes_multi_strings);
   PrintComputationPreamble(os, *this, nnet, submatrix_strings,
@@ -392,7 +391,7 @@ void NnetComputation::GetCommandStrings(
     std::vector<std::string> *command_strings) const {
   std::vector<std::string> submatrix_strings, indexes_strings,
       indexes_multi_strings;
-  GetSubmatrixStrings(nnet, *this, &submatrix_strings);
+  this->GetSubmatrixStrings(nnet, &submatrix_strings);
   GetIndexesStrings(nnet, *this, &indexes_strings);
   GetIndexesMultiStrings(nnet, *this, &indexes_multi_strings);
   if (preamble != NULL) {

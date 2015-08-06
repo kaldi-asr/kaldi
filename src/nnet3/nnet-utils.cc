@@ -224,7 +224,53 @@ void SetLearningRate(BaseFloat learning_rate,
   }  
 }
 
+void ScaleNnet(BaseFloat scale, Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      uc->Scale(scale);
+    }
+    NonlinearComponent *nc = dynamic_cast<NonlinearComponent*>(comp);
+    if (nc != NULL)  // Scale the activation stats
+      nc->Scale(scale);
+  }
+}
 
+void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest) {
+  if (src.NumComponents() != dest->NumComponents())
+    KALDI_ERR << "Trying to add incompatible nnets.";
+  for (int32 c = 0; c < src.NumComponents(); c++) {
+    const Component *src_comp = src.GetComponent(c);
+    Component *dest_comp = dest->GetComponent(c);
+    if (src_comp->Properties() & kUpdatableComponent) {
+      const UpdatableComponent *src_uc =
+          dynamic_cast<const UpdatableComponent*>(src_comp);
+      UpdatableComponent *dest_uc =
+          dynamic_cast<UpdatableComponent*>(dest_comp);
+      if (src_uc == NULL || dest_uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.  Type = "
+                  << src_uc->Type();
+      dest_uc->Add(alpha, *src_uc);
+    }
+    {
+      const NonlinearComponent *src_nc =
+          dynamic_cast<const NonlinearComponent*>(src_comp);
+      NonlinearComponent *dest_nc =
+          dynamic_cast<NonlinearComponent*>(dest_comp);
+      if (src_nc != NULL) {
+        KALDI_ASSERT(dest_nc != NULL && "Trying to add incompatible nnets");
+        dest_nc->Add(alpha, *src_nc);
+      }
+    }
+  }    
+}
 
 } // namespace nnet3
 } // namespace kaldi

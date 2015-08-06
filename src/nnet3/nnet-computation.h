@@ -319,6 +319,14 @@ struct NnetComputation {
   // interpret the computation.
   void Print(std::ostream &os, const Nnet &nnet) const;
 
+
+  // This function outputs a vector of strings, one for each submatrix,
+  // that explains the meaning of each one: something like "m1", "m2";
+  // and for parts of matrices, "m1(0:10, 20:40)".
+  void GetSubmatrixStrings(const Nnet &nnet,
+                           std::vector<std::string> *submat_strings) const;
+
+  
   // This function outputs information similar to Print(), but outputs the
   // preamble as a string and a vector of strings, one per command (with no
   // newlines on these).   This is used in the debugging code in NnetComputer.

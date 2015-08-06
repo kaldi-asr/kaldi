@@ -74,8 +74,8 @@ int main(int argc, char *argv[]) {
       trans_model = new TransitionModel(ctx_dep, topo);
     } else {
       std::string trans_model_rxfilename =  po.GetArg(1);
-      raw_nnet_rxfilename = po.GetArg(3);
-      am_nnet_wxfilename = po.GetArg(4);
+      raw_nnet_rxfilename = po.GetArg(2);
+      am_nnet_wxfilename = po.GetArg(3);
       
       trans_model = new TransitionModel();
       ReadKaldiObject(trans_model_rxfilename, trans_model);

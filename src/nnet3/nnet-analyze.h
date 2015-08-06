@@ -43,10 +43,18 @@ namespace nnet3 {
 // exact analysis would have to define the variables on a more fine-grained
 // level).
 struct CommandAttributes {
+  // All of the vector variables below are made sorted and uniq by
+  // ComputeCommandAttributes.
+  
   // variables read 
   std::vector<int32> variables_read;
   // variables written
   std::vector<int32> variables_written;
+
+  // sub-matrices read (i.e. the submatrix appears in the command directly)
+  std::vector<int32> submatrices_read;
+  // sub-matrices written (i.e. the submatrix appears in the command directly)
+  std::vector<int32> submatrices_written;
 
   // matrices read 
   std::vector<int32> matrices_read;
@@ -125,17 +133,17 @@ class ComputationVariables {
       int32 matrix_index,
       std::vector<int32> *variable_indexes) const;
 
-  
+  // Appends to variable_indexes the list of variables corresponding to a
+  // submatrix index.
+  void AppendVariablesForSubmatrix(
+      int32 submatrix_index,
+      std::vector<int32> *variable_indexes) const;
+
   int32 NumVariables() const { return num_variables_; }
 
   int32 GetMatrixForVariable(int32 variable) const;
   
  private:
-  // Appends to variable_indexes the list of variables corresponding to a
-  // submatrix index.  We might need to make this public at some point.
-  void AppendVariablesForSubmatrix(
-      int32 submatrix_index,
-      std::vector<int32> *variable_indexes) const;
 
   
   // sets up split_points_ and matrix_to_variable_index_.  called from
@@ -261,6 +269,17 @@ struct Analyzer {
   std::vector<MatrixAccesses> matrix_accesses;
   void Init(const Nnet &nnet, const NnetComputation &computation);
 };
+
+/** Returns the command-index of the first command after `command_index` that
+    submatrix `submatrix_index` is written to, or -1 if there is no such
+    command.  Note that by "written to", we mean that any part of the submatrix
+    is written to, not that the submatrix appears explicitly in a command; the
+    analysis is in terms of variables.  */
+int32 FirstTimeSubmatrixIsWrittenToAfterCommand(
+    const Analyzer &analyer,
+    int32 submatrix_index,
+    int32 command_index);
+
 
 /// Returns true if the matrix "matrix_index" is written to (i.e.  accesses of
 /// type kWriteAccess or kReadWriteAccess) after the command numbered

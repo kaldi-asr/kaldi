@@ -353,6 +353,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
   } else {
     KALDI_ASSERT(M->NumRows() == NumCols() && M->NumCols() == NumRows());
   }
+  M->SetZero();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;

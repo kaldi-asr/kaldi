@@ -410,7 +410,7 @@ class NonlinearComponent: public Component {
   /// Write component to stream.
   virtual void Write(std::ostream &os, bool binary) const;
 
-  // relates to scaling activationstats, not parameters.
+  // relates to scaling activation stats, not parameters.
   void Scale(BaseFloat scale);
 
   // relates to adding stats  

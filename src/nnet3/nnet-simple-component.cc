@@ -439,7 +439,8 @@ std::string AffineComponent::Info() const {
          << ", output-dim=" << OutputDim()
          << ", linear-params-stddev=" << linear_stddev
          << ", bias-params-stddev=" << bias_stddev
-         << ", learning-rate=" << LearningRate();
+         << ", learning-rate=" << LearningRate()
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
   return stream.str();
 }
 
@@ -931,6 +932,8 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &alpha_);
   ExpectToken(is, binary, "<MaxChangePerSample>");
   ReadBasicType(is, binary, &max_change_per_sample_);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
   ExpectToken(is, binary, ostr_end.str());
   SetNaturalGradientConfigs();
 }
@@ -1011,6 +1014,7 @@ void NaturalGradientAffineComponent::Init(
   bias_params_.Resize(output_dim);
   linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
   bias_params_.CopyColFromMat(mat, input_dim);
+  is_gradient_ = false;  // not configurable; there's no reason you'd want this
 }
 
 void NaturalGradientAffineComponent::Init(
@@ -1037,6 +1041,7 @@ void NaturalGradientAffineComponent::Init(
   SetNaturalGradientConfigs();
   KALDI_ASSERT(max_change_per_sample >= 0.0);
   max_change_per_sample_ = max_change_per_sample;
+  is_gradient_ = false;  // not configurable; there's no reason you'd want this  
 }
 
 
@@ -1063,6 +1068,8 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, alpha_);
   WriteToken(os, binary, "<MaxChangePerSample>");
   WriteBasicType(os, binary, max_change_per_sample_);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
   WriteToken(os, binary, ostr_end.str());
 }
 

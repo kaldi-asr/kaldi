@@ -41,7 +41,8 @@ struct NnetComputeOptions {
   NnetComputeOptions(): debug(false) { }
   void Register(OptionsItf *opts) {
     opts->Register("debug", &debug, "If true, turn on "
-                   "debug for the neural net computation (very verbose!)");
+                   "debug for the neural net computation (very verbose!) "
+                   "Will be turned on regardless if --verbose >= 5");
   }
   
 };
@@ -108,9 +109,12 @@ class NnetComputer {
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
   bool forward_done_;
-  // command_attributes_ is only used if debug=true.
+  bool debug_;
+  // command_attributes_ is only used if debug_=true.
   std::vector<CommandAttributes> command_attributes_;
-  // command_strings_ is only used if debug=true.
+  // submatrix_strings_ is only used if debug_=true.
+  std::vector<std::string> submatrix_strings_;
+  // command_strings_ is only used if debug_=true.
   std::vector<std::string> command_strings_;
   
   // The matrices used in the computation.
@@ -141,11 +145,16 @@ class NnetComputer {
   struct CommandDebugInfo {
     // sums of all matrices that this command writes.
     std::vector<BaseFloat> matrices_written_sums;
+    // sums of all submatrices that this command writes (if they
+    // are not whole matrices).
+    std::vector<BaseFloat> submatrices_written_sums;
   };
+  // only non-const because of the way GetSubMatrix works.
   void DebugBeforeExecute(int32 command,
-                          CommandDebugInfo *info) const;
+                          CommandDebugInfo *info);
+  // only non-const because of the way GetSubMatrix works.  
   void DebugAfterExecute(int32 command,
-                         const CommandDebugInfo &info) const;
+                         const CommandDebugInfo &info);
 
   
 };

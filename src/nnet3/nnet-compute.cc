@@ -36,7 +36,8 @@ NnetComputer::NnetComputer(const NnetComputeOptions &options,
                "You must call NnetComputation::ComputeCudaIndexes() before "
                "executing the computation.");
   matrices_.resize(computation.matrices.size());
-  if (options_.debug) {
+  debug_ = (options_.debug || GetVerboseLevel() >= 5);
+  if (debug_) {
     ComputationVariables variables;
     variables.Init(computation);
     ComputeCommandAttributes(nnet, computation, variables,
@@ -44,35 +45,68 @@ NnetComputer::NnetComputer(const NnetComputeOptions &options,
     std::string preamble;
     computation.GetCommandStrings(nnet, &preamble, &command_strings_);
     KALDI_LOG << preamble;
+    computation.GetSubmatrixStrings(nnet, &submatrix_strings_);
   }
 }
 
 void NnetComputer::DebugBeforeExecute(int32 command,
-                                      CommandDebugInfo *info) const {
-  const std::vector<int32> &matrices_written =
-      command_attributes_[command].matrices_written;
-  size_t size = matrices_written.size();
-  info->matrices_written_sums.resize(size);
-  for (size_t i = 0; i < size; i++) {
-    int32 m = matrices_written[i];
-    info->matrices_written_sums[i] = matrices_[m].Sum();
+                                      CommandDebugInfo *info) {
+  {
+    const std::vector<int32> &matrices_written =
+        command_attributes_[command].matrices_written;
+    size_t size = matrices_written.size();
+    info->matrices_written_sums.resize(size);
+    for (size_t i = 0; i < size; i++) {
+      int32 m = matrices_written[i];
+      info->matrices_written_sums[i] = matrices_[m].Sum();
+    }
+  }
+  {
+    const std::vector<int32> &submatrices_written =
+        command_attributes_[command].submatrices_written;
+    size_t size = submatrices_written.size();
+    info->submatrices_written_sums.resize(size);
+    for (size_t i = 0; i < size; i++) {
+      int32 s = submatrices_written[i];
+      if (!computation_.IsWholeMatrix(s)) {
+        const CuSubMatrix<BaseFloat> submat(GetSubMatrix(s));
+        info->submatrices_written_sums[i] = submat.Sum();
+      }
+    }
   }
 }
 
 
 void NnetComputer::DebugAfterExecute(int32 command,
-                                     const CommandDebugInfo &info) const {
+                                     const CommandDebugInfo &info) {
   std::ostringstream os;
   os << command_strings_[command] << "\t|\t";
-  const std::vector<int32> &matrices_written =
-      command_attributes_[command].matrices_written;
-  size_t size = matrices_written.size();
-  KALDI_ASSERT(info.matrices_written_sums.size() == size);
-  for (size_t i = 0; i < size; i++) {
-    int32 m = matrices_written[i];
-    BaseFloat old_sum = info.matrices_written_sums[i],
-                  sum = matrices_[m].Sum();
-    os << 'm' << m << ": " << old_sum << "->" << sum << " ";
+  {
+    const std::vector<int32> &matrices_written =
+        command_attributes_[command].matrices_written;
+    size_t size = matrices_written.size();
+    KALDI_ASSERT(info.matrices_written_sums.size() == size);
+    for (size_t i = 0; i < size; i++) {
+      int32 m = matrices_written[i];
+      BaseFloat old_sum = info.matrices_written_sums[i],
+          sum = matrices_[m].Sum();
+      os << 'm' << m << ": " << old_sum << "->" << sum << " ";
+    }
+  }
+  {
+    const std::vector<int32> &submatrices_written =
+        command_attributes_[command].submatrices_written;
+    size_t size = submatrices_written.size();
+    KALDI_ASSERT(info.submatrices_written_sums.size() == size);
+    for (size_t i = 0; i < size; i++) {
+      int32 s = submatrices_written[i];
+      if (!computation_.IsWholeMatrix(s)) {
+        const CuSubMatrix<BaseFloat> submat(GetSubMatrix(s));
+        BaseFloat old_sum = info.submatrices_written_sums[i],
+            sum = submat.Sum();
+        os << submatrix_strings_[s] << ": " << old_sum << "->" << sum << " ";
+      }
+    }
   }
   KALDI_LOG << os.str();
 }
@@ -265,10 +299,10 @@ void NnetComputer::Forward() {
 
   for (; i < size && c[i].command_type != NnetComputation::kNoOperationMarker;
        i++) {
-    if (options_.debug)
+    if (debug_)
       DebugBeforeExecute(i, &info);
     ExecuteCommand(i);
-    if (options_.debug)
+    if (debug_)
       DebugAfterExecute(i, info);
   }
     
@@ -283,10 +317,10 @@ void NnetComputer::Backward() {
        i++);
   CommandDebugInfo info;
   for (; i < size; i++) {
-    if (options_.debug)
+    if (debug_)
       DebugBeforeExecute(i, &info);
     ExecuteCommand(i);
-    if (options_.debug)
+    if (debug_)
       DebugAfterExecute(i, info);
   }
 }
