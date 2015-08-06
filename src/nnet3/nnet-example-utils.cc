@@ -70,7 +70,7 @@ static void GetIoSizes(const std::vector<NnetExample> &src,
                   << dims[i] << " vs. " << this_dim << " for '"
                   << io.name << "'.";
       }
-      KALDI_ASSERT(io.features.NumRows() == io.indexes.size());      
+      KALDI_ASSERT(io.features.NumRows() == io.indexes.size());
       int32 this_size = io.indexes.size();
       (*sizes)[i] += this_size;
     }
@@ -99,7 +99,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
     io.name = names[f];
     io.indexes.resize(size);
   }
-  
+
   std::vector<std::string>::const_iterator names_begin = names.begin(),
                                              names_end = names.end();
   std::vector<NnetExample>::const_iterator iter = src.begin(), end = src.end();
@@ -176,6 +176,7 @@ void GetComputationRequest(const Nnet &nnet,
         !nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index))
       KALDI_ERR << "Nnet example has input or output named '" << name
                 << "', but no such input or output node is in the network.";
+
     std::vector<IoSpecification> &dest =
         nnet.IsInputNode(node_index) ? request->inputs : request->outputs;
     dest.resize(dest.size() + 1);
