@@ -9,6 +9,14 @@
 .[#]*
 *~
 
+# [ecg]tag files
+TAGS
+tags
+GTAGS
+GRTAGS
+GPATH
+GSYMS
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
