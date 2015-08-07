@@ -21,6 +21,9 @@
 #ifndef KALDI_MATRIX_SPARSE_MATRIX_H_
 #define KALDI_MATRIX_SPARSE_MATRIX_H_ 1
 
+#include <utility>
+#include <vector>
+
 #include "matrix/matrix-common.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/kaldi-vector.h"
@@ -50,10 +53,10 @@ class SparseVector {
   template <class OtherReal>
   void CopyFromSvec(const SparseVector<OtherReal> &other);
 
-  SparseVector<Real> &operator = (const SparseVector<Real> &other); 
-      
+  SparseVector<Real> &operator = (const SparseVector<Real> &other);
+
   SparseVector(const SparseVector<Real> &other) { *this = other; }
-  
+
   void Swap(SparseVector<Real> *other);
 
   // Returns the maximum value in this row and outputs the index associated with
@@ -64,7 +67,7 @@ class SparseVector {
   // zero indexes not listed in the elements, or if no elements are stored, it
   // will return the first un-listed index, whose value (implicitly) is zero.
   Real Max(int32 *index) const;
-  
+
   /// Returns the number of nonzero elements.
   MatrixIndexT NumElements() const { return pairs_.size(); }
 
@@ -83,10 +86,10 @@ class SparseVector {
   /// Sets elements to zero with probability zero_prob, else normally
   /// distributed.  Useful in testing.
   void SetRandn(BaseFloat zero_prob);
-  
+
   SparseVector(): dim_(0) { }
 
-  SparseVector(MatrixIndexT dim): dim_(dim) { KALDI_ASSERT(dim>=0); }
+  explicit SparseVector(MatrixIndexT dim): dim_(dim) { KALDI_ASSERT(dim >= 0); }
 
   // constructor from pairs; does not assume input pairs are sorted and uniq
   SparseVector(MatrixIndexT dim,
@@ -99,7 +102,7 @@ class SparseVector {
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
-  
+
  private:
   MatrixIndexT dim_;
   // pairs of (row-index, value).  Stored in sorted order with no duplicates.
@@ -144,9 +147,9 @@ class SparseMatrix {
   /// Does *other = *other + alpha * *this.
   void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
                 MatrixTransposeType t = kNoTrans) const;
-  
-  SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other); 
-      
+
+  SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other);
+
   SparseMatrix(const SparseMatrix<Real> &other) { *this = other; }
 
   void Swap(SparseMatrix<Real> *other);
@@ -158,17 +161,18 @@ class SparseMatrix {
   // const version
   const SparseVector<Real> *Data() const;
 
-  // initializer from the type that elsewhere in Kaldi is referred to as type Posterior.
-  // indexed first by row-index; the pairs are (column-index, value), and the constructor
-  // does not require them to be sorted and uniq.
-  SparseMatrix(int32 dim,
-               const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
+  // initializer from the type that elsewhere in Kaldi is referred to as type
+  // Posterior. indexed first by row-index; the pairs are (column-index, value),
+  // and the constructor does not require them to be sorted and uniq.
+  SparseMatrix(
+      int32 dim,
+      const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
 
   /// Sets up to a pseudo-randomly initialized matrix, with each element zero
   /// with probability zero_prob and else normally distributed- mostly for
   /// purposes of testing.
   void SetRandn(BaseFloat zero_prob);
-  
+
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &os, bool binary);
@@ -183,7 +187,7 @@ class SparseMatrix {
   /// that the inputs all have the same dimension (although some may be
   /// empty).
   void AppendSparseMatrixRows(std::vector<SparseMatrix<Real> > *inputs);
-  
+
   SparseMatrix() { }
 
   SparseMatrix(int32 num_rows, int32 num_cols) { Resize(num_rows, num_cols); }
@@ -192,10 +196,11 @@ class SparseMatrix {
   /// kUndefined behaves the same as kSetZero.
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
               MatrixResizeType resize_type = kSetZero);
-  
+
   // Use the Matrix::CopyFromSmat() function to copy from this to Matrix.  Also
-  // see Matrix::AddSmat().  There is not very extensive functionality for SparseMat just yet
-  // (e.g. no matrix multiply); we will add things as needed and as it seems necessary.
+  // see Matrix::AddSmat().  There is not very extensive functionality for
+  // SparseMat just yet (e.g. no matrix multiply); we will add things as needed
+  // and as it seems necessary.
  private:
   // vector of SparseVectors, all of same dime (use an stl vector for now; this
   // could change).
@@ -218,8 +223,8 @@ enum GeneralMatrixType {
 /// This class is a wrapper that enables you to store a matrix
 /// in one of three forms: either as a Matrix<BaseFloat>, or a CompressedMatrix,
 /// or a SparseMatrix<BaseFloat>.  It handles the I/O for you, i.e. you read
-/// and write a single object type.  It is useful for neural-net training targets
-/// which might be sparse or not, and might be compressed or not.
+/// and write a single object type.  It is useful for neural-net training
+/// targets which might be sparse or not, and might be compressed or not.
 class GeneralMatrix {
  public:
   GeneralMatrixType Type() const;
@@ -227,9 +232,9 @@ class GeneralMatrix {
   void Compress();  // If it was a full matrix, compresses, changing Type() to
                     // kCompressedMatrix; otherwise does nothing.
 
-  void Uncompress();  // If it was a compressed matrix, uncompresses, changing Type()
-                      // to kFullMatrix; otherwise does nothing.
-  
+  void Uncompress();  // If it was a compressed matrix, uncompresses, changing
+                      // Type() to kFullMatrix; otherwise does nothing.
+
   void Write(std::ostream &os, bool binary) const;
 
   /// Note: if you write a compressed matrix in text form, it will be read as
@@ -243,15 +248,16 @@ class GeneralMatrix {
   /// Swaps the with the given SparseMatrix.  This will only work if
   /// Type() returns kSparseMatrix, or NumRows() == 0.
   void SwapSparseMatrix(SparseMatrix<BaseFloat> *smat);
-  
+
   /// Returns the contents as a compressed matrix.  This will only work if
-  /// Type() returns kCompressedMatrix, or NumRows() == 0; otherwise it will crash.
+  /// Type() returns kCompressedMatrix, or NumRows() == 0; otherwise it will
+  /// crash.
   const CompressedMatrix &GetCompressedMatrix() const;
 
   /// Returns the contents as a Matrix<BaseFloat>.  This will only work if
   /// Type() returns kFullMatrix, or NumRows() == 0; otherwise it will crash.
   const Matrix<BaseFloat>& GetFullMatrix() const;
-  
+
   /// Outputs the contents as a matrix.  This will work regardless of
   /// Type().
   void GetMatrix(Matrix<BaseFloat> *mat) const;
@@ -260,12 +266,12 @@ class GeneralMatrix {
   /// Type() returns kFullMatrix, or NumRows() == 0.
   void SwapFullMatrix(Matrix<BaseFloat> *mat);
 
-  /// Copies contents, regardless of type, to "mat", which must be 
-  /// correctly sized.
+  /// Copies contents, regardless of type, to "mat", which must be correctly
+  /// sized.
   void CopyToMat(MatrixBase<BaseFloat> *mat,
                  MatrixTransposeType trans = kNoTrans) const;
 
-  /// Copies contents, regardless of type, to "cu_mat", which must be 
+  /// Copies contents, regardless of type, to "cu_mat", which must be
   /// correctly sized.  Implemented in ../cudamatrix/cu-sparse-matrix.cc
   void CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
                  MatrixTransposeType trans = kNoTrans) const;
@@ -278,7 +284,7 @@ class GeneralMatrix {
   /// Implemented in ../cudamatrix/cu-sparse-matrix.cc
   void AddToMat(BaseFloat alpha, CuMatrixBase<BaseFloat> *cu_mat,
                 MatrixTransposeType trans = kNoTrans) const;
-  
+
   /// Assignment from regular matrix.
   GeneralMatrix &operator= (const MatrixBase<BaseFloat> &mat);
 
@@ -292,11 +298,11 @@ class GeneralMatrix {
 
   MatrixIndexT NumCols() const;
 
-  GeneralMatrix(const MatrixBase<BaseFloat> &mat) { *this = mat; }
+  explicit GeneralMatrix(const MatrixBase<BaseFloat> &mat) { *this = mat; }
 
-  GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
+  explicit GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
 
-  GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
+  explicit GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
 
 
   GeneralMatrix() { }
@@ -305,7 +311,7 @@ class GeneralMatrix {
   // Copy constructor
   GeneralMatrix(const GeneralMatrix &other) { *this = other; }
   // Sets to the empty matrix.
-  void Clear(); 
+  void Clear();
  private:
   // We don't explicitly store the type of the matrix.  Rather, we make
   // sure that only one of the matrices is ever nonempty, and the Type()
@@ -325,8 +331,8 @@ void AppendGeneralMatrixRows(const std::vector<const GeneralMatrix *> &src,
 
 
 /// Outputs a SparseMatrix<Real> containing only the rows r of "in" such that
-/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows must contain
-/// at least one "true" element.
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows
+/// must contain at least one "true" element.
 template <typename Real>
 void FilterSparseMatrixRows(const SparseMatrix<Real> &in,
                             const std::vector<bool> &keep_rows,
@@ -341,21 +347,22 @@ void FilterMatrixRows(const Matrix<Real> &in,
                       Matrix<Real> *out);
 
 /// Outputs a Matrix<Real> containing only the rows r of "in" such that
-/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows must contain
-/// at least one "true" element.
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and rows
+/// must contain at least one "true" element.
 void FilterCompressedMatrixRows(const CompressedMatrix &in,
                                 const std::vector<bool> &keep_rows,
                                 Matrix<BaseFloat> *out);
 
 
 /// Outputs a GeneralMatrix containing only the rows r of "in" such that
-/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and keep_rows must contain
-/// at least one "true" element.  If in.Type() is kCompressedMatrix, the result
-/// will not be compressed; otherwise, the type is preserved.
+/// keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and
+/// keep_rows must contain at least one "true" element.  If in.Type() is
+/// kCompressedMatrix, the result will not be compressed; otherwise, the type
+/// is preserved.
 void FilterGeneralMatrixRows(const GeneralMatrix &in,
                              const std::vector<bool> &keep_rows,
                              GeneralMatrix *out);
-  
+
 
 
 /// @} end of \addtogroup matrix_group
@@ -363,4 +370,4 @@ void FilterGeneralMatrixRows(const GeneralMatrix &in,
 
 }  // namespace kaldi
 
-#endif  // KALDI_MATRIX_KALDI_MATRIX_H_
+#endif  // KALDI_MATRIX_SPARSE_MATRIX_H_

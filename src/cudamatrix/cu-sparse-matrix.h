@@ -24,6 +24,7 @@
 #define KALDI_CUDAMATRIX_CU_SPARSE_MATRIX_H_
 
 #include <sstream>
+#include <vector>
 
 #include "cudamatrix/cu-matrixdim.h"
 #include "cudamatrix/cu-common.h"
@@ -65,7 +66,7 @@ class CuSparseMatrix {
   template <typename OtherReal>
   void CopyToMat(CuMatrixBase<OtherReal> *dest,
                  MatrixTransposeType trans = kNoTrans) const;
-  
+
   Real Sum() const;
 
   Real FrobeniusNorm() const;
@@ -93,7 +94,7 @@ class CuSparseMatrix {
   /// is necessary.
   template <typename OtherReal>
   void CopyToSmat(SparseMatrix<OtherReal> *smat) const;
-  
+
   /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);
 
@@ -104,20 +105,22 @@ class CuSparseMatrix {
   /// with probability zero_prob and else normally distributed- mostly for
   /// purposes of testing.
   void SetRandn(BaseFloat zero_prob);
-  
+
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
 
   // Constructor from CPU-based sparse matrix.
-  CuSparseMatrix(const SparseMatrix<Real> &smat) { this->CopyFromSmat(smat); }
-  
+  explicit CuSparseMatrix(const SparseMatrix<Real> &smat) {
+    this->CopyFromSmat(smat);
+  }
+
   ~CuSparseMatrix() { }
 
   // Use the CuMatrix::CopyFromSmat() function to copy from this to
   // CuMatrix.
   // Also see CuMatrix::AddSmat().
-  
+
  protected:
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
@@ -147,4 +150,4 @@ class CuSparseMatrix {
 
 }  // namespace
 
-#endif
+#endif  // KALDI_CUDAMATRIX_CU_SPARSE_MATRIX_H_
