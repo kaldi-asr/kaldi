@@ -24,6 +24,9 @@
 #include <cublas.h>
 #endif
 
+#include <utility>
+#include <vector>
+
 #include "base/timer.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-vector.h"
@@ -351,7 +354,9 @@ void GeneralMatrix::CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
     return;
   } else
 #endif
-  CopyToMat(&(cu_mat->Mat()), trans);
+  {
+    CopyToMat(&(cu_mat->Mat()), trans);
+  }
 }
 
 
@@ -380,7 +385,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
       cuda_copy_from_smat_trans(dimGrid, dimBlock, M->Data(),
                                 this->Data(), M->Dim(), this->NumElements());
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());    
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -412,7 +417,7 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
                              MatrixTransposeType trans) const {
   switch (Type()) {
     case kFullMatrix: {
-#if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1
       if (CuDevice::Instantiate().Enabled()) {
         CuMatrix<BaseFloat> cu_copy(mat_);
         cu_mat->AddMat(alpha, cu_copy);
@@ -423,14 +428,16 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
       break;
     }
     case kSparseMatrix: {
-#if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1
       if (CuDevice::Instantiate().Enabled()) {
         // TODO: we could make this more efficient by
         // implementing an AddSmat function in class CuMatrixBase.
         CuSparseMatrix<BaseFloat> sparse_cu_mat(smat_);
         CuMatrix<BaseFloat> cu_temp(
-            trans == kNoTrans ? sparse_cu_mat.NumRows() : sparse_cu_mat.NumCols(),
-            trans == kNoTrans ? sparse_cu_mat.NumCols() : sparse_cu_mat.NumRows(),
+            trans == kNoTrans ? sparse_cu_mat.NumRows() :
+                                sparse_cu_mat.NumCols(),
+            trans == kNoTrans ? sparse_cu_mat.NumCols() :
+                                sparse_cu_mat.NumRows(),
             kUndefined);
         sparse_cu_mat.CopyToMat(&cu_temp, trans);
         cu_mat->AddMat(alpha, cu_temp, kNoTrans);
@@ -442,7 +449,7 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
     }
     case kCompressedMatrix: {
       Matrix<BaseFloat> mat(cmat_);
-#if HAVE_CUDA == 1 
+#if HAVE_CUDA == 1
       if (CuDevice::Instantiate().Enabled()) {
         CuMatrix<BaseFloat> cu_mat_copy(mat);
         cu_mat->AddMat(alpha, cu_mat_copy, trans);
@@ -459,4 +466,4 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
 
 
 
-} // namespace kaldi
+}  // namespace kaldi
