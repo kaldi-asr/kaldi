@@ -336,8 +336,7 @@ if [ $stage -le -1 ]; then
     nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl || exit 1;
 fi
 
-
-
+cur_num_hidden_layers=1
 
 # set num_iters so that as close as possible, we process the data $num_epochs
 # times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
@@ -468,12 +467,14 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
            "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
-    if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-      $cmd $dir/log/progress.$x.log \
-        nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
-        ark:$cur_egs_dir/train_diagnostic.egs '&&' \
-        nnet3-info $dir/$x.mdl &
-    fi
+
+    # nnet3-show-progress not implemented yet
+    #if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
+    #  $cmd $dir/log/progress.$x.log \
+    #    nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
+    #    ark:$cur_egs_dir/train_diagnostic.egs '&&' \
+    #    nnet3-info $dir/$x.mdl &
+    #fi
 
     echo "Training neural net (pass $x)"
 
@@ -482,16 +483,8 @@ while [ $x -lt $num_iters ]; do
       [ $[$x%$add_layers_period] -eq 0 ]; then
       do_average=false # if we've just mixed up, don't do averaging but take the
                        # best.
-      cur_num_hidden_layers=$[$x/$add_layers_period];
-      inp=`nnet3-info $dir/$x.mdl | grep 'Softmax' | awk '{print $2}'`
-
-      if [ "$presoftmax_prior_scale_power" != "0.0" ]; then
-        inp=$[$inp-2]
-      else
-        inp=$[$inp-1]
-      fi
-      config=$dir/config/layer$[$cur_num_hidden_layers+1].config
-      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -| nnet3-init --srand=$x - $config - |"
+      config=$dir/configs/layer$[$cur_num_hidden_layers+1].config
+      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
