@@ -867,17 +867,30 @@ void FilterCompressedMatrixRows(const CompressedMatrix &in,
     in.CopyToMat(out);
     return;
   }
-  out->Resize(num_kept_rows, in.NumCols(), kUndefined);
-  iter = keep_rows.begin();
-  int32 out_row = 0;
-  for (int32 in_row = 0; iter != end; ++iter,++in_row) {
-    if (*iter) {
-      SubVector<BaseFloat> dest(*out, out_row);
-      in.CopyRowToVec(in_row, &dest);
-      out_row++;
+  const BaseFloat heuristic = 0.33;
+  // should be > 0 and < 1.0.  represents the performance hit we get from
+  // iterating row-wise versus column-wise in compressed-matrix uncompression.
+  
+  if (num_kept_rows > heuristic * in.NumRows()) {
+    // if quite a few of the the rows are kept, it may be more efficient
+    // to uncompress the entire compressed matrix, since per-column operation
+    // is more efficient.
+    Matrix<BaseFloat> full_mat(in);
+    FilterMatrixRows(full_mat, keep_rows, out);
+  } else {
+    out->Resize(num_kept_rows, in.NumCols(), kUndefined);
+    
+    iter = keep_rows.begin();
+    int32 out_row = 0;
+    for (int32 in_row = 0; iter != end; ++iter,++in_row) {
+      if (*iter) {
+        SubVector<BaseFloat> dest(*out, out_row);
+        in.CopyRowToVec(in_row, &dest);
+        out_row++;
+      }
     }
+    KALDI_ASSERT(out_row == num_kept_rows);
   }
-  KALDI_ASSERT(out_row == num_kept_rows);
 }
 
 template <typename Real>

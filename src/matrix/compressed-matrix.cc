@@ -551,7 +551,7 @@ void CompressedMatrix::CopyRowToVec(MatrixIndexT row,
                                                                 h->num_cols);
     byte_data += row;  // point to first value we are interested in
     for (int32 i = 0; i < h->num_cols;
-         i++, per_col_header++, byte_data+=h->num_rows) {
+         i++, per_col_header++, byte_data += h->num_rows) {
       float p0 = Uint16ToFloat(*h, per_col_header->percentile_0),
           p25 = Uint16ToFloat(*h, per_col_header->percentile_25),
           p75 = Uint16ToFloat(*h, per_col_header->percentile_75),

@@ -545,8 +545,9 @@ void ComputationGraphBuilder::Prune() {
 
 // Add cindex_ids that this cindex_id depends on.
 void ComputationGraphBuilder::AddDependencies(int32 cindex_id) {
-  if (static_cast<int32>(graph_->dependencies.size()) <= cindex_id)
-    graph_->dependencies.resize(cindex_id + 1);
+  if (static_cast<int32>(graph_->dependencies.size()) <= cindex_id) {
+    graph_->dependencies.resize(2 * cindex_id + 1);
+  }
 
   Cindex cindex = graph_->cindexes[cindex_id];
   
@@ -595,8 +596,10 @@ void ComputationGraphBuilder::AddDependencies(int32 cindex_id) {
   // (the call to graph_->GetCindexId() could add up to
   // num_dependencies elements to the graph_->dependencies array
   // and we want to avoid allocation).
-  graph_->dependencies.reserve(graph_->dependencies.size() +
-                               num_dependencies);
+  // the RoundUpToNearestPowerOfTwo is for efficiency, to
+  // avoid too-frequent resizes.
+  graph_->dependencies.reserve(RoundUpToNearestPowerOfTwo(
+      graph_->dependencies.size() +  num_dependencies));
   std::vector<int32> &this_dep = graph_->dependencies[cindex_id];
 
   this_dep.resize(num_dependencies);
