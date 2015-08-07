@@ -11,6 +11,9 @@ class_frame_counts= # non-default location of PDF counts (optional)
 srcdir=             # non-default location of DNN-dir (decouples model dir from decode dir)
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
+blocksoftmax_dims=   # 'csl' with block-softmax dimensions: dim1,dim2,dim3,...
+blocksoftmax_active= # '1' for the 1st block, 
+
 stage=0 # stage=1 skips lattice generation
 nj=4
 cmd=run.pl
@@ -123,10 +126,25 @@ if [ -e $D/ivector_dim ]; then
   feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
 fi
 
+# select a block from blocksoftmax,
+if [ ! -z "$blocksoftmax_dims" ]; then
+  # blocksoftmax_active is a csl! dim1,dim2,dim3,...
+  [ -z "$blocksoftmax_active" ] && echo "$0 Missing option --blocksoftmax-active N" && exit 1
+  # getting dims,
+  dim_total=$(awk -F',' '{ for(i=1;i<=NF;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
+  dim_block=$(awk -F',' -v active=$blocksoftmax_active '{ print $active; }' <(echo $blocksoftmax_dims))
+  offset=$(awk -F',' -v active=$blocksoftmax_active '{ sum=0; for(i=1;i<active;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
+  # create components which select a block,
+  nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>"; 
+                    echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet 
+  # nnet is assembled on-the fly, <BlockSoftmax> is removed, while <Copy> + <Softmax> is added,
+  nnet="nnet-concat 'nnet-copy --remove-last-components=1 $nnet - |' $dir/copy_and_softmax.nnet - |"
+fi
+
 # Run the decoding in the queue,
 if [ $stage -le 0 ]; then
   $cmd --num-threads $((num_threads+1)) JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu "$nnet" "$feats" ark:- \| \
     latgen-faster-mapped$thread_string --min-active=$min_active --max-active=$max_active --max-mem=$max_mem --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
     $model $graphdir/HCLG.fst ark:- "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
