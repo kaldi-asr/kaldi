@@ -4,10 +4,14 @@
 #                2013  Xiaohui Zhang
 #                2013  Guoguo Chen
 #                2014  Vimal Manohar
-#                2015  Xingyu Na
 # Apache 2.0.
 
-# train_convnet_accel2.sh is modified from train_pnorm_accel2.sh
+# train_convnet_accel2.sh is modified from train_pnorm_accel2.sh. It propotypes
+# the training of a ConvNet. The ConvNet is composed of 4 layers. The first layer
+# is a Convolutional1d component plus a Maxpooling component. The second layer
+# is a single Convolutional1d component. The third and fourth layers are affine
+# components with ReLU nonlinearities. Due to non-squashing output, normalize
+# component is applied to all four layers.
 
 # train_pnorm_accel2.sh is a modified form of train_pnorm_simple2.sh (the "2"
 # suffix is because they both use the the "new" egs format, created by
@@ -61,8 +65,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # affect each others' gradients.
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
-num_hidden_layers=3
-stage=-4
+stage=-3
 
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 left_context= # if set, overrides splice-width
@@ -129,7 +132,6 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training,"
   echo "                                         # actual learning-rate is this time num-jobs."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
-  echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --mix-up <#pseudo-gaussians|0>                   # Can be used to have multiple targets in final output layer,"
   echo "                                                   # per context-dependent state.  Try a number several times #states."
@@ -148,7 +150,6 @@ if [ $# != 4 ]; then
   echo "                                                   # process."
   echo "  --splice-width <width|4>                         # Number of frames on each side to append for feature input"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
-  echo "  --lda-dim <dim|250>                              # Dimension to reduce spliced features to with LDA"
   echo "  --realign-epochs <list-of-epochs|\"\">           # A list of space-separated epoch indices the beginning of which"
   echo "                                                   # realignment is to be done"
   echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
@@ -156,6 +157,15 @@ if [ $# != 4 ]; then
   echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
+  echo "ConvNet configurations"
+  echo "  --num-filters1 <num-filters1|128>                # number of filters in the first convolutional layer."
+  echo "  --patch-step1 <patch-step1|1>                    # patch step of the first convolutional layer."
+  echo "  --patch-dim1 <patch-dim1|7>                      # dim of convolutional kernel in the first layer."
+  echo "                                                   # (note: (feat-dim - patch-dim1) % patch-step1 should be 0.)"
+  echo "  --pool-size <pool-size|3>                        # size of pooling after the first convolutional layer."
+  echo "                                                   # (note: (feat-dim - patch-dim1 + 1) % pool-size should be 0.)"
+  echo "  --num-filters2 <num-filters2|256>                # number of filters in the second convolutional layer."
+  echo "  --patch-dim2 <patch-dim2|4>                      # dim of convolutional kernel in the second layer."
 
   
   exit 1;
@@ -266,7 +276,7 @@ if [ $stage -le -2 ]; then
   stddev=`perl -e "print 1.0/sqrt($hidden_dim);"`
   cat >$dir/nnet.config <<EOF
 SpliceComponent input-dim=$delta_feat_dim left-context=$left_context right-context=$right_context
-ConvolutionComponent input-dim=$tot_input_dim output-dim=$conv_out_dim1 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim1 patch-step=$patch_step1 patch-stride=$feat_dim
+Convolutional1dComponent input-dim=$tot_input_dim output-dim=$conv_out_dim1 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim1 patch-step=$patch_step1 patch-stride=$feat_dim
 MaxpoolingComponent input-dim=$conv_out_dim1 output-dim=$pool_out_dim pool-size=$pool_size pool-stride=$num_filters1
 NormalizeComponent dim=$pool_out_dim
 AffineComponentPreconditionedOnline input-dim=$pool_out_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
@@ -274,7 +284,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
   
   cat >$dir/replace.1.config <<EOF
-ConvolutionComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2
+Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2
 NormalizeComponent dim=$conv_out_dim2
 AffineComponentPreconditionedOnline input-dim=$conv_out_dim2 output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
@@ -282,7 +292,8 @@ EOF
 
   cat >$dir/replace.2.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$conv_out_dim2 output-dim=$hidden_dim $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev
-SigmoidComponent dim=$hidden_dim
+RectifiedLinearComponent dim=$hidden_dim
+NormalizeComponent dim=$hidden_dim
 AffineComponentPreconditionedOnline input-dim=$hidden_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
 EOF
@@ -291,7 +302,8 @@ EOF
   # single hidden layer; we need this to add new layers. 
   cat >$dir/replace.3.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$hidden_dim output-dim=$hidden_dim $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev
-SigmoidComponent dim=$hidden_dim
+RectifiedLinearComponent dim=$hidden_dim
+NormalizeComponent dim=$hidden_dim
 AffineComponentPreconditionedOnline input-dim=$hidden_dim output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves
 EOF

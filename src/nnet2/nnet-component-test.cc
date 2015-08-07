@@ -362,7 +362,7 @@ void UnitTestAffineComponent() {
   }
 }
 
-void UnitTestConvolutionComponent() {
+void UnitTestConvolutional1dComponent() {
   BaseFloat learning_rate = 0.01,
             param_stddev = 0.1, bias_stddev = 1.0;
   int32 patch_stride = 10, patch_step = 1, patch_dim = 4;
@@ -372,7 +372,7 @@ void UnitTestConvolutionComponent() {
   int32 filter_dim = patch_dim * num_splice;
   int32 output_dim = num_patches * num_filters;
   {
-    ConvolutionComponent component;
+    Convolutional1dComponent component;
     if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      patch_dim, patch_step, patch_stride,
@@ -394,7 +394,7 @@ void UnitTestConvolutionComponent() {
   }
   {
     const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10";
-    ConvolutionComponent component;
+    Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
   }
@@ -890,7 +890,7 @@ int main() {
       UnitTestFixedBiasComponent();
       UnitTestAffineComponentPreconditioned();
       UnitTestAffineComponentPreconditionedOnline();
-      UnitTestConvolutionComponent();
+      UnitTestConvolutional1dComponent();
       UnitTestDropoutComponent();
       UnitTestAdditiveNoiseComponent();
       UnitTestParsing();

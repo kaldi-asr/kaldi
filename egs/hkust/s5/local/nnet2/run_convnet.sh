@@ -1,8 +1,18 @@
 #!/bin/bash
 
 # 2015 Xingyu Na
-# This runs on the full training set, using ConvNet setup with
-# Sigmoid affine layers, on top of fbank features, on GPU.
+# This script runs on the full training set, using ConvNet setup on top of
+# fbank features, on GPU. The ConvNet has four hidden layers, two convolutional
+# layers and two affine transform layers with ReLU nonlinearity.
+# Convolutional layer [1]:
+#   convolution1d, input feature dim is 36, filter dim is 7, output dim is
+#   30, 128 filters are used
+#   maxpooling, 3-to-1 maxpooling, input dim is 30, output dim is 10
+# Convolutional layer [2]:
+#   convolution1d, input feature dim is 10, filter dim is 4, output dim is
+#   7, 256 filters are used
+# Affine transform layers [3-4]:
+#   affine transform with ReLU nonlinearity.
 
 temp_dir=
 dir=exp/nnet2_convnet
@@ -16,7 +26,7 @@ train=data-fb/train
 . utils/parse_options.sh
 
 parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll
-                          # likely have to change it.
+                         # likely have to change it.
 
 # Make the FBANK features
 if [ $stage -le -5 ]; then
@@ -40,7 +50,7 @@ fi
       --mix-up 20000 --samples-per-iter 300000 \
       --num-epochs 15 --delta-order 2 \
       --initial-effective-lrate 0.0005 --final-effective-lrate 0.000025 \
-      --num-jobs-initial 3 --num-jobs-final 8 --num-hidden-layers 4 --splice-width 5 \
+      --num-jobs-initial 3 --num-jobs-final 8 --splice-width 5 \
       --hidden-dim 2000 --num-filters1 128 --patch-dim1 7 --pool-size 3 \
       --num-filters2 256 --patch-dim2 4 \
       $train data/lang exp/tri5a_ali $dir || exit 1;

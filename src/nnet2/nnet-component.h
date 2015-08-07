@@ -450,8 +450,18 @@ class MaxoutComponent: public Component {
 
 /**
  * MaxPoolingComponent :
+ * Maxpooling component was firstly used in ConvNet for selecting an representative
+ * activation in an area. It inspired Maxout nonlinearity.
+ *
  * The input/output matrices are split to submatrices with width 'pool_stride_'.
- * The pooling is done over 3rd axis, of the set of 2d matrices.
+ * For instance, a minibatch of 512 frames is propagated by a convolutional
+ * layer, resulting in a 512 x 3840 input matrix for MaxpoolingComponent,
+ * which is composed of 128 feature maps for each frame (128 x 30). If you want
+ * a 3-to-1 maxpooling on each feature map, set 'pool_stride_' and 'pool_size_'
+ * as 128 and 3 respectively. Maxpooling component would create an output
+ * matrix of 512 x 1280. The 30 input neurons are grouped by a group size of 3, and
+ * the maximum in a group is selected, creating a smaller feature map of 10.
+ * 
  * Our pooling does not supports overlaps, which simplifies the
  * implementation (and was not helpful for Ossama).
  */
@@ -1667,7 +1677,7 @@ class AdditiveNoiseComponent: public RandomComponent {
 };
 
 /**
- * ConvolutionComponent implements convolution over frequency axis.
+ * Convolutional1dComponent implements convolution over frequency axis.
  * We assume the input featrues are spliced, i.e. each frame is in
  * fact a set of stacked frames, where we can form patches which span
  * over several frequency bands and whole time axis. A patch is the
@@ -1676,7 +1686,10 @@ class AdditiveNoiseComponent: public RandomComponent {
  *
  * The convolution is done over whole axis with same filter
  * coefficients, i.e. we don't use separate filters for different
- * 'regions' of frequency axis.
+ * 'regions' of frequency axis. Due to convolution, same weights are
+ * used repeateadly, the final gradient is a sum of all
+ * position-specific gradients (the sum was found better than
+ * averaging).
  *
  * In order to have a fast implementations, the filters are
  * represented in vectorized form, where each rectangular filter
@@ -1690,21 +1703,34 @@ class AdditiveNoiseComponent: public RandomComponent {
  * patch_step_    ... size of shift in the convolution
  * patch_stride_  ... shift for 2nd dim of a patch 
  *                    (i.e. frame length before splicing)
- *
- * Due to convolution same weights are used repeateadly, 
- * the final gradient is a sum of all position-specific 
- * gradients (the sum was found better than averaging).
+ * For instance, for a convolutional component after raw input,
+ * if the input is 36-dim fbank feature with delta of order 2
+ * and spliced using +/- 5 frames of contexts, the convolutional
+ * component takes the input as a 36 x 33 image. The patch_stride_
+ * should be configured 36. If patch_step_ and patch_dim_ are
+ * configured 1 and 7, the Convolutional1dComponent creates a
+ * 2D filter of 7 x 33, such that the convolution is actually done
+ * only along the frequency axis. Specifically, the convolutional
+ * output along the frequency axis is (36 - 7) / 1 + 1 = 30, and
+ * the convolutional output along the temporal axis is 33 - 33 + 1 = 1,
+ * resulting in an output image of 30 x 1, which is called a feature map
+ * in ConvNet. Then if the output-dim is set 3840, the constructor
+ * would know there should be 3840 / 30 = 128 distinct filters,
+ * which will create 128 feature maps of 30 x 1 for one frame of
+ * input. The feature maps are vectorized as a 3840-dim row vector
+ * in the output matrix of this component. For details on progatation
+ * of Convolutional1dComponent, check the function definition.
  *
  */
-class ConvolutionComponent: public UpdatableComponent {
+class Convolutional1dComponent: public UpdatableComponent {
  public:
-  ConvolutionComponent();
+  Convolutional1dComponent();
   // constructor using another component
-  ConvolutionComponent(const ConvolutionComponent &component);
+  Convolutional1dComponent(const Convolutional1dComponent &component);
   // constructor using parameters
-  ConvolutionComponent(const CuMatrixBase<BaseFloat> &filter_params,
-                       const CuVectorBase<BaseFloat> &bias_params,
-                       BaseFloat learning_rate);
+  Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
+                           const CuVectorBase<BaseFloat> &bias_params,
+                           BaseFloat learning_rate);
 
   int32 InputDim() const;
   int32 OutputDim() const;
@@ -1718,7 +1744,7 @@ class ConvolutionComponent: public UpdatableComponent {
   void Resize(int32 input_dim, int32 output_dim);
   std::string Info() const;
   void InitFromString(std::string args);
-  std::string Type() const { return "ConvolutionComponent"; }
+  std::string Type() const { return "Convolutional1dComponent"; }
   bool BackpropNeedsInput() const { return false; }
   bool BackpropNeedsOutput() const { return false; }
   using Component::Propagate; // to avoid name hiding
@@ -1754,7 +1780,7 @@ class ConvolutionComponent: public UpdatableComponent {
   int32 patch_step_;
   int32 patch_stride_;
 
-  const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
+  const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
   CuMatrix<BaseFloat> filter_params_;
   CuVector<BaseFloat> bias_params_;
   bool is_gradient_;

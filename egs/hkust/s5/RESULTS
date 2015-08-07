@@ -7,3 +7,6 @@ exp/tri5a/decode/cer_13:%WER 49.67 [ 27891 / 56154, 2877 ins, 4538 del, 20476 su
 exp/tri5a_mce/decode/cer_11:%WER 44.74 [ 25125 / 56154, 2112 ins, 4108 del, 18905 sub ]
 exp/tri5a_mmi_b0.1/decode/cer_11:%WER 44.24 [ 24840 / 56154, 2060 ins, 4118 del, 18662 sub ]
 exp/tri5a_mpe/decode/cer_12:%WER 44.96 [ 25247 / 56154, 2233 ins, 4174 del, 18840 sub ]
+
+# ConvNet with 2 convolutional layers and 2 ReLU layers
+exp/nnet2_convnet/decode/cer_10:%WER 40.73 [ 22873 / 56154, 2609 ins, 3712 del, 16552 sub ]

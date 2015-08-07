@@ -102,8 +102,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutComponent();
   } else if (component_type == "AdditiveNoiseComponent") {
     ans = new AdditiveNoiseComponent();
-  } else if (component_type == "ConvolutionComponent") {
-    ans = new ConvolutionComponent();
+  } else if (component_type == "Convolutional1dComponent") {
+    ans = new Convolutional1dComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
   }
@@ -3676,19 +3676,19 @@ void AdditiveNoiseComponent::Propagate(const ChunkInfo &in_info,
   out->AddMat(stddev_, rand);
 }
 
-ConvolutionComponent::ConvolutionComponent():
+Convolutional1dComponent::Convolutional1dComponent():
     UpdatableComponent(),
     patch_dim_(0), patch_step_(0), patch_stride_(0), is_gradient_(false) {}
 
-ConvolutionComponent::ConvolutionComponent(const ConvolutionComponent &component):
+Convolutional1dComponent::Convolutional1dComponent(const Convolutional1dComponent &component):
     UpdatableComponent(component),
     filter_params_(component.filter_params_),
     bias_params_(component.bias_params_),
     is_gradient_(component.is_gradient_) {}
 
-ConvolutionComponent::ConvolutionComponent(const CuMatrixBase<BaseFloat> &filter_params,
-                                           const CuVectorBase<BaseFloat> &bias_params,
-                                           BaseFloat learning_rate):
+Convolutional1dComponent::Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
+                                                   const CuVectorBase<BaseFloat> &bias_params,
+                                                   BaseFloat learning_rate):
     UpdatableComponent(learning_rate),
     filter_params_(filter_params),
     bias_params_(bias_params) {
@@ -3698,24 +3698,24 @@ ConvolutionComponent::ConvolutionComponent(const CuMatrixBase<BaseFloat> &filter
 }
 
 // aquire input dim
-int32 ConvolutionComponent::InputDim() const {
+int32 Convolutional1dComponent::InputDim() const {
   int32 filter_dim = filter_params_.NumCols();
   int32 num_splice = filter_dim / patch_dim_;
   return patch_stride_ * num_splice;
 }
 
 // aquire output dim
-int32 ConvolutionComponent::OutputDim() const {
+int32 Convolutional1dComponent::OutputDim() const {
   int32 num_filters = filter_params_.NumRows();
   int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
   return num_patches * num_filters;
 }
 
 // initialize the component using hyperparameters
-void ConvolutionComponent::Init(BaseFloat learning_rate,
-                                int32 input_dim, int32 output_dim,
-                                int32 patch_dim, int32 patch_step, int32 patch_stride,
-                                BaseFloat param_stddev, BaseFloat bias_stddev) {
+void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    int32 input_dim, int32 output_dim,
+                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
+                                    BaseFloat param_stddev, BaseFloat bias_stddev) {
   UpdatableComponent::Init(learning_rate);
   patch_dim_ = patch_dim;
   patch_step_ = patch_step;
@@ -3738,8 +3738,8 @@ void ConvolutionComponent::Init(BaseFloat learning_rate,
 }
 
 // initialize the component using predefined matrix file
-void ConvolutionComponent::Init(BaseFloat learning_rate,
-                                std::string matrix_filename) {
+void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat);
@@ -3753,7 +3753,7 @@ void ConvolutionComponent::Init(BaseFloat learning_rate,
 
 // resize the component, setting the parameters to zero, while
 // leaving any other configuration values the same
-void ConvolutionComponent::Resize(int32 input_dim, int32 output_dim) {
+void Convolutional1dComponent::Resize(int32 input_dim, int32 output_dim) {
   KALDI_ASSERT(input_dim > 0 && output_dim > 0);
   int32 num_splice = input_dim / patch_stride_;
   int32 filter_dim = num_splice * patch_dim_;
@@ -3767,7 +3767,7 @@ void ConvolutionComponent::Resize(int32 input_dim, int32 output_dim) {
 }
 
 // display information about component
-std::string ConvolutionComponent::Info() const {
+std::string Convolutional1dComponent::Info() const {
   std::stringstream stream;
   BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows()) 
                                  * static_cast<BaseFloat>(filter_params_.NumCols());
@@ -3795,7 +3795,7 @@ std::string ConvolutionComponent::Info() const {
 }
 
 // initialize the component using configuration file
-void ConvolutionComponent::InitFromString(std::string args) {
+void Convolutional1dComponent::InitFromString(std::string args) {
   std::string orig_args(args);
   bool ok = true;
   BaseFloat learning_rate = learning_rate_;
@@ -3832,10 +3832,34 @@ void ConvolutionComponent::InitFromString(std::string args) {
 }
 
 // propagation function
-void ConvolutionComponent::Propagate(const ChunkInfo &in_info,
-                                     const ChunkInfo &out_info,
-                                     const CuMatrixBase<BaseFloat> &in,
-                                     CuMatrixBase<BaseFloat> *out) const {
+
+/* Convolutional propagation is explained:
+ - Recall the AffineComponent, input X is defined #frames x $input-dim,
+   linear matrix A is defined $output-dim x $input-dim, and bias
+   vector B is defined by length $output-dim. The propagation is
+   Y = X * A' + B                                     (1)
+   where "*" is row-by-row processing of X, executing vector-matrix
+   multiplication 
+   Y(t) = X(t) * A' + B                               (2)
+   which converts each row of input of dim $input-dim to a row of output of
+   dim $output-dim by A' (' defines transpose).
+ - In Convolution1dComponent, A is redefined $num-filters x $filter-dim,
+   and bias vector B is redefined by length $num-filters. The propatation is
+   Y = X o A' + B                                     (3)
+   where "o" is also row-by-row processing of X, but executing vector-matrix
+   convolution, which consists of a group of vector-vector convolutions.
+   For instance, the convolution of X(t) and the i-th filter A(i) is
+   Y(t,i) = X(t) o A'(i) + B(i)                       (4)
+   The convolution used here is valid convolution. Meaning that the
+   output of M o N is of dim |M| - |N| + 1, assuming M is not shorter then N.
+
+   Note that in all the equations, B is extended to proper dimensions
+   for legal addition.
+*/
+void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
+                                         const ChunkInfo &out_info,
+                                         const CuMatrixBase<BaseFloat> &in,
+                                         CuMatrixBase<BaseFloat> *out) const {
   in_info.CheckSize(in);
   out_info.CheckSize(*out);
   KALDI_ASSERT(in_info.NumChunks() == out_info.NumChunks());
@@ -3885,30 +3909,30 @@ void ConvolutionComponent::Propagate(const ChunkInfo &in_info,
 }
 
 // scale the parameters
-void ConvolutionComponent::Scale(BaseFloat scale) {
+void Convolutional1dComponent::Scale(BaseFloat scale) {
   filter_params_.Scale(scale);
   bias_params_.Scale(scale);
 }
 
 // add another convolution component
-void ConvolutionComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
-  const ConvolutionComponent *other =
-      dynamic_cast<const ConvolutionComponent*>(&other_in);
+void Convolutional1dComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+  const Convolutional1dComponent *other =
+      dynamic_cast<const Convolutional1dComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
   filter_params_.AddMat(alpha, other->filter_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
 // back propagation function
-void ConvolutionComponent::Backprop(const ChunkInfo &in_info,
-                                    const ChunkInfo &out_info,
-                                    const CuMatrixBase<BaseFloat> &in_value,
-                                    const CuMatrixBase<BaseFloat> &out_value,
-                                    const CuMatrixBase<BaseFloat> &out_deriv,
-                                    Component *to_update_in,
-                                    CuMatrix<BaseFloat> *in_deriv) const {
+void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
+                                        const ChunkInfo &out_info,
+                                        const CuMatrixBase<BaseFloat> &in_value,
+                                        const CuMatrixBase<BaseFloat> &out_value,
+                                        const CuMatrixBase<BaseFloat> &out_deriv,
+                                        Component *to_update_in,
+                                        CuMatrix<BaseFloat> *in_deriv) const {
   in_deriv->Resize(out_deriv.NumRows(), InputDim());
-  ConvolutionComponent *to_update = dynamic_cast<ConvolutionComponent*>(to_update_in);
+  Convolutional1dComponent *to_update = dynamic_cast<Convolutional1dComponent*>(to_update_in);
   int32 num_splice = InputDim() / patch_stride_;
   int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
   int32 num_filters = filter_params_.NumRows();
@@ -3952,7 +3976,7 @@ void ConvolutionComponent::Backprop(const ChunkInfo &in_info,
   }
 }
 
-void ConvolutionComponent::SetZero(bool treat_as_gradient) {
+void Convolutional1dComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
   }
@@ -3963,11 +3987,11 @@ void ConvolutionComponent::SetZero(bool treat_as_gradient) {
   }
 }
 
-void ConvolutionComponent::Read(std::istream &is, bool binary) {
+void Convolutional1dComponent::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<ConvolutionComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</ConvolutionComponent>"
-  // might not see the "<ConvolutionComponent>" part because
+  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
+  // might not see the "<Convolutional1dComponent>" part because
   // of how ReadNew() works.
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
@@ -3992,10 +4016,10 @@ void ConvolutionComponent::Read(std::istream &is, bool binary) {
   }
 }
 
-void ConvolutionComponent::Write(std::ostream &os, bool binary) const {
+void Convolutional1dComponent::Write(std::ostream &os, bool binary) const {
   std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<ConvolutionComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</ConvolutionComponent>"
+  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
   WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
@@ -4014,15 +4038,15 @@ void ConvolutionComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_end.str());
 }
 
-BaseFloat ConvolutionComponent::DotProduct(const UpdatableComponent &other_in) const {
-  const ConvolutionComponent *other =
-      dynamic_cast<const ConvolutionComponent*>(&other_in);
+BaseFloat Convolutional1dComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const Convolutional1dComponent *other =
+      dynamic_cast<const Convolutional1dComponent*>(&other_in);
   return TraceMatMat(filter_params_, other->filter_params_, kTrans)
          + VecVec(bias_params_, other->bias_params_);
 }
 
-Component* ConvolutionComponent::Copy() const {
-  ConvolutionComponent *ans = new ConvolutionComponent();
+Component* Convolutional1dComponent::Copy() const {
+  Convolutional1dComponent *ans = new Convolutional1dComponent();
   ans->learning_rate_ = learning_rate_;
   ans->patch_dim_ = patch_dim_;
   ans->patch_step_ = patch_step_;
@@ -4033,7 +4057,7 @@ Component* ConvolutionComponent::Copy() const {
   return ans;
 }
 
-void ConvolutionComponent::PerturbParams(BaseFloat stddev) {
+void Convolutional1dComponent::PerturbParams(BaseFloat stddev) {
   CuMatrix<BaseFloat> temp_filter_params(filter_params_);
   temp_filter_params.SetRandn();
   filter_params_.AddMat(stddev, temp_filter_params);
@@ -4043,20 +4067,20 @@ void ConvolutionComponent::PerturbParams(BaseFloat stddev) {
   bias_params_.AddVec(stddev, temp_bias_params);
 }
 
-void ConvolutionComponent::SetParams(const VectorBase<BaseFloat> &bias,
-                                     const MatrixBase<BaseFloat> &filter) {
+void Convolutional1dComponent::SetParams(const VectorBase<BaseFloat> &bias,
+                                         const MatrixBase<BaseFloat> &filter) {
   bias_params_ = bias;
   filter_params_ = filter;
   KALDI_ASSERT(bias_params_.Dim() == filter_params_.NumRows());
 }
 
-int32 ConvolutionComponent::GetParameterDim() const {
+int32 Convolutional1dComponent::GetParameterDim() const {
   return (filter_params_.NumCols() + 1) * filter_params_.NumRows();
 }
 
 // update parameters
-void ConvolutionComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
-                                  const CuMatrixBase<BaseFloat> &out_deriv) {
+void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
+                                      const CuMatrixBase<BaseFloat> &out_deriv) {
   // useful dims
   int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
   int32 num_filters = filter_params_.NumRows();
