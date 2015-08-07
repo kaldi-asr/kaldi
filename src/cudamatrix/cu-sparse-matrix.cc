@@ -148,8 +148,8 @@ void CuSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) {
       for (int32 j = 0; j < (smat.Data() + i)->NumElements(); ++j) {
         MatrixElement<Real> cpu_element;
         cpu_element.row = i;
-        cpu_element.column = (smat.Data() + i)->Data()->first;
-        cpu_element.weight = (smat.Data() + i)->Data()->second;
+        cpu_element.column = ((smat.Data() + i)->Data() + j)->first;
+        cpu_element.weight = ((smat.Data() + i)->Data() + j)->second;
         cpu_elements.push_back(cpu_element);
       }
     }
@@ -210,6 +210,8 @@ void CuSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {
   } else
 #endif
   {
+    num_rows_ = smat->NumRows();
+    num_cols_ = smat->NumCols();
     Mat().Swap(smat);
   }
 }
@@ -230,6 +232,12 @@ void CuSparseMatrix<Real>::Swap(CuSparseMatrix<Real> *smat) {
   } else
 #endif
   {
+    Real dim = num_rows_;
+    num_rows_ = smat->num_rows_;
+    smat->num_rows_ = dim;
+    dim = num_cols_;
+    num_cols_ = smat->num_cols_;
+    smat->num_cols_ = dim;
     Mat().Swap(&(smat->Mat()));
   }
 }
@@ -266,6 +274,9 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
                   MatrixTransposeType trans) {
   if (A.NumCols() == 0) {
     KALDI_ASSERT(B.NumCols() == 0);
+    return 0.0;
+  }
+  if (B.NumElements() == 0) {
     return 0.0;
   }
   Real result = 0;
@@ -354,6 +365,9 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
     KALDI_ASSERT(M->NumRows() == NumCols() && M->NumCols() == NumRows());
   }
   M->SetZero();
+  if (NumElements() == 0) {
+    return;
+  }
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;

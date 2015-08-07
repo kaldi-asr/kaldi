@@ -605,7 +605,7 @@ Real TraceMatSmat(const MatrixBase<Real> &A,
     const Real *A_col_data = A.Data();
     MatrixIndexT Astride = A.Stride(), Acols = A.NumCols(), Arows = A.NumRows();
     KALDI_ASSERT(Arows == B.NumCols() && Acols == B.NumRows());
-    Real sum = 0.0;
+    sum = 0.0;
     for (MatrixIndexT i = 0; i < Acols; i++,A_col_data++) {
       Real col_sum = 0.0;
       const SparseVector<Real> &svec = B.Row(i);
