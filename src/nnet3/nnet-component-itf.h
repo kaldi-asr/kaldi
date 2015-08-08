@@ -362,7 +362,7 @@ class UpdatableComponent: public Component {
   
   /// The following new virtual function returns the total dimension of
   /// the parameters in this class.
-  virtual int32 GetParameterDim() const { KALDI_ASSERT(0); return 0; }
+  virtual int32 NumParameters() const { KALDI_ASSERT(0); return 0; }
 
   /// Turns the parameters into vector form.  We put the vector form on the CPU,
   /// because in the kinds of situations where we do this, we'll tend to use

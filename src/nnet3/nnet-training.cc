@@ -23,8 +23,8 @@
 namespace kaldi {
 namespace nnet3 {
 
-NnetXentTrainer::NnetXentTrainer(const NnetXentTrainerOptions &config,
-                                 Nnet *nnet):
+NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
+                         Nnet *nnet):
     config_(config),
     nnet_(nnet),
     compiler_(*nnet),
@@ -34,7 +34,7 @@ NnetXentTrainer::NnetXentTrainer(const NnetXentTrainerOptions &config,
 }
 
 
-void NnetXentTrainer::Train(const NnetExample &eg) {
+void NnetTrainer::Train(const NnetExample &eg) {
   bool need_model_derivative = true;
   ComputationRequest request;
   GetComputationRequest(*nnet_, eg, need_model_derivative,
@@ -51,8 +51,8 @@ void NnetXentTrainer::Train(const NnetExample &eg) {
   computer.Backward();
 }
 
-void NnetXentTrainer::ProcessOutputs(const NnetExample &eg,
-                                     NnetComputer *computer) {
+void NnetTrainer::ProcessOutputs(const NnetExample &eg,
+                                 NnetComputer *computer) {
   std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
       end = eg.io.end();
   for (; iter != end; ++iter) {
@@ -73,7 +73,7 @@ void NnetXentTrainer::ProcessOutputs(const NnetExample &eg,
   }
 }
 
-bool NnetXentTrainer::PrintTotalStats() const {
+bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
@@ -91,19 +91,19 @@ void ObjectiveFunctionInfo::UpdateStats(
     int32 minibatches_per_phase,
     int32 minibatch_counter,
     BaseFloat this_minibatch_weight,
-    BaseFloat this_minibatch_tot_like) {
+    BaseFloat this_minibatch_tot_objf) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, minibatches_per_phase);
     current_phase = phase;
     tot_weight_this_phase = 0.0;
-    tot_like_this_phase = 0.0;
+    tot_objf_this_phase = 0.0;
   }
   tot_weight_this_phase += this_minibatch_weight;
-  tot_like_this_phase += this_minibatch_tot_like;
+  tot_objf_this_phase += this_minibatch_tot_objf;
   tot_weight += this_minibatch_weight;
-  tot_like += this_minibatch_tot_like;
+  tot_objf += this_minibatch_tot_objf;
 }
 
 void ObjectiveFunctionInfo::PrintStatsForThisPhase(
@@ -114,13 +114,13 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
   KALDI_LOG << "Average objective function for '" << output_name
             << "' for minibatches " << start_minibatch
             << '-' << end_minibatch << " is "
-            << (tot_like_this_phase / tot_weight_this_phase) << " over "
+            << (tot_objf_this_phase / tot_weight_this_phase) << " over "
             << tot_weight_this_phase << " frames.";
 }
 
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   KALDI_LOG << "Overall average objective function for '" << name << "'is "
-            << (tot_like / tot_weight) << " over " << tot_weight << " frames.";
+            << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   return (tot_weight != 0.0);
 }
 

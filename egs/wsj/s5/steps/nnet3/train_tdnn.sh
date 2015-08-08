@@ -62,9 +62,8 @@ io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one t
 randprune=4.0 # speeds up LDA.
 affine_opts=
 
-gpu=true    # if true, we run on GPU.
+use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
-combine_num_threads=8  # number of threads for the "combine" operation
 cleanup=true
 egs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
@@ -353,9 +352,10 @@ finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
-if $gpu; then
+if $use_gpu; then
   parallel_suffix=""
   train_queue_opt="--gpu 1"
+  combine_queue_opt="--gpu 1"
   parallel_train_opts=
   if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
@@ -368,6 +368,9 @@ else
     parallel_suffix="-parallel"
     parallel_train_opts="--num-threads=$num_threads"
     train_queue_opt="--num-threads $num_threads"
+    combine_queue_opt=""  # the combine stage will be quite slow if not using
+                          # GPU, as we didn't enable that program to use
+                          # multiple threads.
   else
     parallel_suffix=""
   fi
@@ -584,22 +587,10 @@ if [ $stage -le $num_iters ]; then
   # as if there are many models it can give out-of-memory error; and we set
   # num-threads to 8 to speed it up (this isn't ideal...)
 
-  num_egs=`nnet3-copy-egs ark:$cur_egs_dir/combine.egs ark:/dev/null 2>&1 | tail -n 1 | awk '{print $NF}'`
-  mb=$[($num_egs+$combine_num_threads-1)/$combine_num_threads]
-  [ $mb -gt 512 ] && mb=512
-  # Setting --initial-model to a large value makes it initialize the combination
-  # with the average of all the models.  It's important not to start with a
-  # single model, or, due to the invariance to scaling that these nonlinearities
-  # give us, we get zero diagonal entries in the fisher matrix that
-  # nnet3-combine-fast uses for scaling, which after flooring and inversion, has
-  # the effect that the initial model chosen gets much higher learning rates
-  # than the others.  This prevents the optimization from working well.
-
-  $cmd --num-threads $num_threads $dir/log/combine.log \
-    nnet3-combine-fast --initial-model=100000 --num-lbfgs-iters=40 --use-gpu=no \
-    --num-threads=$combine_num_threads --max-models-combine=$max_models_combine \
-    --normalize-stddevs=true \
-    --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=$mb $cur_egs_dir/combine.egs ark:-|" \
+  $cmd $combine_queue_opt $dir/log/combine.log \
+    nnet3-combine --num-iters=40 \
+       --enforce-sum-to-one=true --enforce-positive-weights=true \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
     "|nnet3-am-copy --set-raw-nnet=- $dir/$num_iters.mdl $dir/combined.mdl" || exit 1;
 
   # Compute the probability of the final, combined model with

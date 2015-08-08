@@ -947,4 +947,7 @@
 /src/nnet3bin/nnet3-am-copy
 /src/nnet3bin/nnet3-compute-prob
 /src/nnet3bin/nnet3-train
+/src/nnet3bin/nnet3-am-info
+/src/nnet3bin/nnet3-average
+/src/nnet3bin/nnet3-combine
 
