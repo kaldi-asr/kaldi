@@ -335,7 +335,6 @@ if [ $stage -le -1 ]; then
     nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl || exit 1;
 fi
 
-cur_num_hidden_layers=1
 
 # set num_iters so that as close as possible, we process the data $num_epochs
 # times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
@@ -486,7 +485,8 @@ while [ $x -lt $num_iters ]; do
       [ $[$x%$add_layers_period] -eq 0 ]; then
       do_average=false # if we've just mixed up, don't do averaging but take the
                        # best.
-      config=$dir/configs/layer$[$cur_num_hidden_layers+1].config
+      cur_num_hidden_layers=$[1+$x/$add_layers_period]
+      config=$dir/configs/layer$cur_num_hidden_layers.config
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
     else
       do_average=true
