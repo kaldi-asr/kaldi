@@ -29,6 +29,87 @@
 namespace kaldi {
 namespace nnet1 {
 
+
+/**
+ * SimpleSentenceAveragingComponent does not have nested network,
+ * it is intended to be used inside of a <ParallelComponent>.
+ * For training use 'nnet-train-perutt'.
+ *
+ * The sentence-averaging typically leads to small gradients, so we boost it 100x 
+ * by default (boost = multiply, it's equivalent to applying learning-rate factor).
+ */
+class SimpleSentenceAveragingComponent : public Component {
+ public:
+  SimpleSentenceAveragingComponent(int32 dim_in, int32 dim_out) 
+    : Component(dim_in, dim_out), gradient_boost_(100.0)
+  { }
+  ~SimpleSentenceAveragingComponent()
+  { }
+
+  Component* Copy() const { return new SimpleSentenceAveragingComponent(*this); }
+  ComponentType GetType() const { return kSimpleSentenceAveragingComponent; }
+
+  void InitData(std::istream &is) {
+    // parse config
+    std::string token; 
+    while (!is.eof()) {
+      ReadToken(is, false, &token);
+      if (token == "<GradientBoost>") ReadBasicType(is, false, &gradient_boost_);
+      else KALDI_ERR << "Unknown token " << token << ", a typo in config? (GradientBoost)";
+      is >> std::ws; // eat-up whitespace
+    }
+  }
+
+  void ReadData(std::istream &is, bool binary) {
+    ExpectToken(is, binary, "<GradientBoost>");
+    ReadBasicType(is, binary, &gradient_boost_);
+  }
+
+  void WriteData(std::ostream &os, bool binary) const {
+    WriteToken(os, binary, "<GradientBoost>");
+    WriteBasicType(os, binary, gradient_boost_);
+  }
+
+  std::string Info() const {
+    return std::string("\n  gradient-boost ") + ToString(gradient_boost_);
+  }
+  std::string InfoGradient() const {
+    return Info();
+  }
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+    // get the average row-vector,
+    average_row_.Resize(InputDim());
+    average_row_.AddRowSumMat(1.0/in.NumRows(), in, 0.0);
+    // copy it on the output,
+    out->AddVecToRows(1.0, average_row_, 0.0);
+  }
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+    // While averaging, a single frame from input influenced all frames on the output,
+    // hence the derivative w.r.t. single input frame is a sum of the output derivatives.
+    // (while scaling by averaging constant 1/Nframes).
+    //
+    // In fact all the input frames influenced all the output frames,
+    // so the derivarive is the same for all the input frames.
+    //
+    // getting the average output diff,
+    average_diff_.Resize(OutputDim());
+    average_diff_.AddRowSumMat(1.0/out_diff.NumRows(), out_diff, 0.0);
+    // copy the derivative into the input diff, (applying gradient-boost!!)
+    in_diff->AddVecToRows(gradient_boost_, average_diff_, 0.0);
+  }
+
+ private:
+  CuVector<BaseFloat> average_row_; ///< auxiliary buffer for forward propagation,
+  CuVector<BaseFloat> average_diff_; ///< auxiliary buffer for backpropagation,
+  BaseFloat gradient_boost_; ///< increase of gradient applied in backpropagation,
+};
+
+
+
+/** Deprecated, should leave it in as Katka Zmolikova was using it a lot in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
   SentenceAveragingComponent(int32 dim_in, int32 dim_out) 
@@ -136,6 +217,7 @@ class SentenceAveragingComponent : public UpdatableComponent {
   Nnet nnet_;
   float learn_rate_factor_;
 };
+/* Deprecated */
 
 } // namespace nnet1
 } // namespace kaldi

@@ -72,6 +72,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kMaxPoolingComponent, "<MaxPoolingComponent>"},
   { Component::kMaxPooling2DComponent, "<MaxPooling2DComponent>"},
   { Component::kSentenceAveragingComponent,"<SentenceAveragingComponent>"},
+  { Component::kSimpleSentenceAveragingComponent,"<SimpleSentenceAveragingComponent>"},
   { Component::kFramePoolingComponent, "<FramePoolingComponent>"},
   { Component::kParallelComponent, "<ParallelComponent>"},
 };
@@ -161,6 +162,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kSentenceAveragingComponent :
       ans = new SentenceAveragingComponent(input_dim, output_dim);
+      break;
+    case Component::kSimpleSentenceAveragingComponent :
+      ans = new SimpleSentenceAveragingComponent(input_dim, output_dim);
       break;
     case Component::kAveragePoolingComponent :
       ans = new AveragePoolingComponent(input_dim, output_dim);

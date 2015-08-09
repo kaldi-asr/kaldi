@@ -74,7 +74,8 @@ class Component {
     kRescale,
     
     kKlHmm = 0x0800,
-    kSentenceAveragingComponent,
+    kSentenceAveragingComponent, /* deprecated */
+    kSimpleSentenceAveragingComponent,
     kAveragePoolingComponent,
     kAveragePooling2DComponent,
     kMaxPoolingComponent,

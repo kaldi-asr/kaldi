@@ -70,6 +70,32 @@ namespace nnet1 {
     AssertEqual(check_length_is_one, ones);
   }
 
+  void UnitTestSimpleSentenceAveragingComponent() {
+    // make SimpleSentenceAveraging component,
+    Component* c = ReadComponentFromString("<SimpleSentenceAveragingComponent> 2 2 <GradientBoost> 10.0");
+    // prepare input,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 0 0.5 \n 1 1 \n 2 1.5 ] ", &mat_in);
+  
+    // propagate,
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in,&mat_out);
+    // check the output,
+    CuVector<BaseFloat> ones(2); ones.Set(1.0);
+    for (int32 i=0; i<mat_out.NumRows(); i++) {
+      AssertEqual(mat_out.Row(i), ones);
+    }
+  
+    // backpropagate,
+    CuMatrix<BaseFloat> dummy1(3,2), dummy2(3,2), diff_out(mat_in), diff_in;
+    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in); // output 1.0 boosted by 10.0,
+    // check the output,
+    CuVector<BaseFloat> tens(2); tens.Set(10); 
+    for (int32 i=0; i<diff_in.NumRows(); i++) {
+      AssertEqual(diff_in.Row(i), tens);
+    }
+  }
+
   void UnitTestConvolutionalComponentUnity() {
     // make 'identity' convolutional component,
     Component* c = ReadComponentFromString("<ConvolutionalComponent> 5 5 \
@@ -331,6 +357,7 @@ int main() {
 #endif
     // unit-tests :
     UnitTestLengthNorm();
+    UnitTestSimpleSentenceAveragingComponent();
     UnitTestConvolutionalComponentUnity();
     UnitTestConvolutionalComponent3x3();
     UnitTestMaxPoolingComponent();
