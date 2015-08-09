@@ -62,6 +62,7 @@ class Component {
     kSigmoid,
     kTanh,
     kDropout,
+    kLengthNormComponent,
 
     kTranform = 0x0400,
     kRbm,
