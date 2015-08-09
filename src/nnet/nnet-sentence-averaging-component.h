@@ -50,6 +50,7 @@ class SimpleSentenceAveragingComponent : public Component {
   ComponentType GetType() const { return kSimpleSentenceAveragingComponent; }
 
   void InitData(std::istream &is) {
+    is >> std::ws;
     // parse config
     std::string token; 
     while (!is.eof()) {
