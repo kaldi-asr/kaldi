@@ -116,7 +116,7 @@ void UnitTestMatrixRandomizer() {
   KALDI_ASSERT(!r.Done());
   for( ; !r.Done(); r.Next(), i++) {
     KALDI_LOG << i;
-    const CuMatrixBase<BaseFloat> &m3 = r.Value();
+    const CuMatrixBase<BaseFloat>& __attribute__((__unused__)) m3 = r.Value();
   }
   KALDI_ASSERT(i == 22); // 22 minibatches
 }
@@ -159,7 +159,7 @@ void UnitTestVectorRandomizer() {
   KALDI_ASSERT(!r.Done());
   for( ; !r.Done(); r.Next(), i++) {
     KALDI_LOG << i;
-    const VectorBase<BaseFloat> &v2 = r.Value();
+    const VectorBase<BaseFloat>& __attribute__((__unused__)) v2 = r.Value();
   }
   KALDI_ASSERT(i == 22); // 22 minibatches
 }
