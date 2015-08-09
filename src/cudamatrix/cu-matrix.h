@@ -635,8 +635,8 @@ bool ApproxEqual(const CuMatrixBase<Real> &A,
 }
 
 template<typename Real>
-inline void AssertEqual(CuMatrixBase<Real> &A, CuMatrixBase<Real> &B,
-                        float tol = 0.01) {
+inline void AssertEqual(const CuMatrixBase<Real> &A, 
+                        const CuMatrixBase<Real> &B, float tol = 0.01) {
   KALDI_ASSERT(A.ApproxEqual(B, tol));
 }
 
