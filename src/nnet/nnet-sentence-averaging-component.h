@@ -109,7 +109,7 @@ class SimpleSentenceAveragingComponent : public Component {
 
 
 
-/** Deprecated, should leave it in as Katka Zmolikova was using it a lot in JSALT 2015 */
+/** Deprecated, keeping it as Katka Zmolikova used it in JSALT 2015 */
 class SentenceAveragingComponent : public UpdatableComponent {
  public:
   SentenceAveragingComponent(int32 dim_in, int32 dim_out) 
