@@ -20,6 +20,8 @@ trials_female=data/sre10_test_female/trials
 trials_male=data/sre10_test_male/trials
 trials=data/sre10_test/trials
 nnet=exp/nnet2_online/nnet_ms_a/final.mdl
+
+# Use nnet-am-info to determine the size of the output layer.
 num_components=5297
 
 # Train a DNN on about 1800 hours of the english portion of Fisher.
@@ -105,6 +107,7 @@ utils/fix_data_dir.sh data/train_32k
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
 sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+  --num_components $num_components \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
