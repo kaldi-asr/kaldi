@@ -92,6 +92,8 @@ class Component {
   static const char* TypeToMarker(ComponentType t);
   /// Convert marker to component type (case insensitive)
   static ComponentType MarkerToType(const std::string &s);
+  /// during training of LSTM models.
+  virtual void SetSeqLengths(std::vector<int> &sequence_lengths) { }
  
  /// General interface of a component  
  public:

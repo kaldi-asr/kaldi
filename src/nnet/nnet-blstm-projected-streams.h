@@ -19,8 +19,8 @@
 
 
 
-#ifndef KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
-#define KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
+#ifndef KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
+#define KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -49,7 +49,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   BLstmProjectedStreams(int32 input_dim, int32 output_dim) :
     UpdatableComponent(input_dim, output_dim),
     ncell_(0),
-    nrecur_(output_dim),
+    nrecur_(int32(output_dim/2)),
     nstream_(0),
     clip_gradient_(0.0)
     //, dropout_rate_(0.0)
@@ -73,6 +73,11 @@ class BLstmProjectedStreams : public UpdatableComponent {
       tmp(i) = (RandUniform() - 0.5) * 2 * scale;
     }
     v = tmp;
+  }
+  
+  /// set the utterance length used for parallel training
+  void SetSeqLengths(std::vector<int> &sequence_lengths) {
+        sequence_lengths_ = sequence_lengths;
   }
 
   void InitData(std::istream &is) {
@@ -439,52 +444,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
       "\n  B_DR  " + MomentStatistics(B_DR);
   }
 
-
-  void ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
-    // allocate f_prev_nnet_state_, b_prev_nnet_state_ if not done yet,
-    if (nstream_ == 0) {
-      // Karel: we just got number of streams! (before the 1st batch comes)
-      nstream_ = stream_reset_flag.size();
-      // forward direction
-      f_prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
-      // backward direction
-      b_prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
-      KALDI_LOG << "Running training with " << nstream_ << " streams.";
-    }
-    // reset flag: 1 - reset stream network state
-    KALDI_ASSERT(f_prev_nnet_state_.NumRows() == stream_reset_flag.size());
-    KALDI_ASSERT(b_prev_nnet_state_.NumRows() == stream_reset_flag.size());
-    for (int s = 0; s < stream_reset_flag.size(); s++) {
-      if (stream_reset_flag[s] == 1) {
-        // forward direction
-        f_prev_nnet_state_.Row(s).SetZero();
-        // backward direction
-        b_prev_nnet_state_.Row(s).SetZero();
-      }
-    }
-  }
-
-
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
-    int DEBUG = 0;
-
-    static bool do_stream_reset = false;
-    if (nstream_ == 0) {
-      do_stream_reset = true;
-      nstream_ = 1; // Karel: we are in nnet-forward, so we will use 1 stream,
-      // forward direction
-      f_prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
-      // backward direction
-      b_prev_nnet_state_.Resize(nstream_, 7*ncell_ + 1*nrecur_, kSetZero);
-      KALDI_LOG << "Running nnet-forward with per-utterance BLSTM-state reset";
-    }
-    if (do_stream_reset) {
-      // resetting the forward and backward streams
-      f_prev_nnet_state_.SetZero();
-      b_prev_nnet_state_.SetZero();
-    }
-    KALDI_ASSERT(nstream_ > 0);
-
+    int DEBUG = 0;    
+    int32 nstream_ = sequence_lengths_.size();
     KALDI_ASSERT(in.NumRows() % nstream_ == 0);
     int32 T = in.NumRows() / nstream_;
     int32 S = nstream_;
@@ -492,13 +454,9 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // 0:forward pass history, [1, T]:current sequence, T+1:dummy
     // forward direction
     f_propagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
-    f_propagate_buf_.RowRange(0*S,S).CopyFromMat(f_prev_nnet_state_);
-
     // backward direction
     b_propagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
-    // for the backward direction, we initialize it at (T+1) frame
-    b_propagate_buf_.RowRange((T+1)*S,S).CopyFromMat(b_prev_nnet_state_);
-
+        
     // disassembling forward-pass forward-propagation buffer into different neurons,
     CuSubMatrix<BaseFloat> F_YG(f_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YI(f_propagate_buf_.ColRange(1*ncell_, ncell_));
@@ -532,6 +490,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     for (int t = 1; t <= T; t++) {
       // multistream buffers for current time-step
+      CuSubMatrix<BaseFloat> y_all(f_propagate_buf_.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_i(F_YI.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_f(F_YF.RowRange(t*S,S));
@@ -582,6 +541,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
       // m -> r
       y_r.AddMatMat(1.0, y_m, kNoTrans, f_w_r_m_, kTrans, 0.0);
+      
+      // set zeros
+      //for (int s = 0; s < S; s++) {
+      //  if (t > sequence_lengths_[s])
+      //          y_all.Row(s).SetZero();         
+      //} 
 
       if (DEBUG) {
         std::cerr << "forward direction forward-pass frame " << t << "\n";
@@ -615,6 +580,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward direction, from T to 1, t--
     for (int t = T; t >= 1; t--) {
       // multistream buffers for current time-step
+      CuSubMatrix<BaseFloat> y_all(b_propagate_buf_.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_i(B_YI.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> y_f(B_YF.RowRange(t*S,S));
@@ -665,7 +631,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
       // m -> r
       y_r.AddMatMat(1.0, y_m, kNoTrans, b_w_r_m_, kTrans, 0.0);
-
+      
+      for (int s = 0; s < S; s++) {
+         if (t > sequence_lengths_[s])
+              y_all.Row(s).SetZero();
+      }
+      
       if (DEBUG) {
         std::cerr << "backward direction forward-pass frame " << t << "\n";
         std::cerr << "activation of g: " << y_g;
@@ -679,18 +650,17 @@ class BLstmProjectedStreams : public UpdatableComponent {
       }
     }
 
-    // According to definition of BLSTM, for output YR of BLSTM, YR should be F_YR + B_YR
-    CuSubMatrix<BaseFloat> YR(F_YR.RowRange(1*S,T*S));
-    YR.AddMat(1.0,B_YR.RowRange(1*S,T*S));
-
+    /// final outputs now become the concatenation of the foward and backward activations
+    CuMatrix<BaseFloat> YR_FB;
+    YR_FB.Resize((T+2)*S, 2 * nrecur_, kSetZero);
+    // forward part
+    YR_FB.ColRange(0, nrecur_).CopyFromMat(f_propagate_buf_.ColRange(7*ncell_, nrecur_));
+    // backward part
+    YR_FB.ColRange(nrecur_, nrecur_).CopyFromMat(b_propagate_buf_.ColRange(7*ncell_, nrecur_));
     // recurrent projection layer is also feed-forward as BLSTM output
-    out->CopyFromMat(YR);
-
-    // now the last frame state becomes previous network state for next batch
-    f_prev_nnet_state_.CopyFromMat(f_propagate_buf_.RowRange(T*S,S));
-
-    // now the last frame (,that is the first frame) becomes previous netwok state for next batch
-    b_prev_nnet_state_.CopyFromMat(b_propagate_buf_.RowRange(1*S,S));
+    
+    out->CopyFromMat(YR_FB.RowRange(1*S,T*S));
+        
   }
 
 
@@ -698,7 +668,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
               const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
 
     int DEBUG = 0;
-
+    
+    int32 nstream_ = sequence_lengths_.size();  // the number of sequences to be processed in parallel
     int32 T = in.NumRows() / nstream_;
     int32 S = nstream_;
     // disassembling forward-pass forward-propagation buffer into different neurons,
@@ -727,7 +698,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     CuSubMatrix<BaseFloat> F_DGIFO(f_backpropagate_buf_.ColRange(0, 4*ncell_));
 
     // projection layer to BLSTM output is not recurrent, so backprop it all in once
-    F_DR.RowRange(1*S,T*S).CopyFromMat(out_diff);
+    F_DR.RowRange(1*S,T*S).CopyFromMat(out_diff.ColRange(0, nrecur_));
 
     for (int t = T; t >= 1; t--) {
       CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S,S));
@@ -747,7 +718,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       CuSubMatrix<BaseFloat> d_h(F_DH.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> d_m(F_DM.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> d_r(F_DR.RowRange(t*S,S));
-
+      CuSubMatrix<BaseFloat> d_all(f_backpropagate_buf_.RowRange(t*S, S));
       // r
       //   Version 1 (precise gradients):
       //   backprop error from g(t+1), i(t+1), f(t+1), o(t+1) to r(t)
@@ -842,7 +813,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     CuSubMatrix<BaseFloat> B_DGIFO(b_backpropagate_buf_.ColRange(0, 4*ncell_));
 
     // projection layer to BLSTM output is not recurrent, so backprop it all in once
-    B_DR.RowRange(1*S,T*S).CopyFromMat(out_diff);
+    B_DR.RowRange(1*S,T*S).CopyFromMat(out_diff.ColRange(nrecur_, nrecur_));
 
     for (int t = 1; t <= T; t++) {
       CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S,S));
@@ -862,6 +833,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       CuSubMatrix<BaseFloat> d_h(B_DH.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> d_m(B_DM.RowRange(t*S,S));
       CuSubMatrix<BaseFloat> d_r(B_DR.RowRange(t*S,S));
+       CuSubMatrix<BaseFloat> d_all(b_backpropagate_buf_.RowRange(t*S, S));
 
       // r
       //   Version 1 (precise gradients):
@@ -1083,9 +1055,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   int32 ncell_;   ///< the number of cell blocks
   int32 nrecur_;  ///< recurrent projection layer dim
   int32 nstream_;
-
-  CuMatrix<BaseFloat> f_prev_nnet_state_;
-  CuMatrix<BaseFloat> b_prev_nnet_state_;
+  std::vector<int> sequence_lengths_;
 
   // gradient-clipping value,
   BaseFloat clip_gradient_;

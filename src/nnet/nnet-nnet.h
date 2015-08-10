@@ -131,6 +131,12 @@ class Nnet {
   const NnetTrainOptions& GetTrainOptions() const {
     return opts_;
   }
+  /// Set lengths of utterances for LSTM parallel training
+  void SetSeqLengths(std::vector<int> &sequence_lengths) { 
+    for(int32 i=0; i < (int32)components_.size(); i++) {
+        components_[i]->SetSeqLengths(sequence_lengths);
+    }
+  }
 
  private:
   /// Vector which contains all the components composing the neural network,

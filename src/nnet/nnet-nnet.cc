@@ -356,11 +356,7 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
     if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
       LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
-    }
-    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
-      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
-      comp.ResetLstmStreams(stream_reset_flag);
-    }
+    }    
   }
 }
 
