@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# this is the standard "tdnn" system, built in nnet3; it's what we use to
-# call multi-splice.
+
+# This version of the TDNN system is being built to have a similar configuration
+# to the one in local/online/run_nnet2.sh, for better comparability.
 
 . cmd.sh
 
@@ -12,7 +13,7 @@
 
 stage=0
 train_stage=-10
-dir=exp/nnet3/nnet_tdnn_a
+dir=exp/nnet3/nnet_tdnn_c
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -34,9 +35,10 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
+
   steps/nnet3/train_tdnn.sh --stage $train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
-    --splice-indexes "-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0" \
+    --splice-indexes "-1,0,1  -2,1  -4,2 0" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \

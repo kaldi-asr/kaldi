@@ -27,7 +27,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
-prior_subset_size=10000 # 10k samples per job, for computing priors. 
+prior_subset_size=20000 # 20k samples per job, for computing priors. 
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
@@ -253,6 +253,9 @@ fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
+# copy any of the following that exist, to $dir.
+cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
+
 # confirm that the egs_dir has the necessary context (especially important if
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
@@ -273,7 +276,6 @@ num_archives_expanded=$[$num_archives*$frames_per_eg]
 
 [ $num_jobs_final -gt $num_archives_expanded ] && \
   echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
-
 
 
 if [ $stage -le -3 ]; then
@@ -355,6 +357,8 @@ if $use_gpu; then
   parallel_suffix=""
   train_queue_opt="--gpu 1"
   combine_queue_opt="--gpu 1"
+  prior_gpu_opt="--use-gpu=yes"
+  prior_queue_opt="--gpu 1"
   parallel_train_opts=
   if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
@@ -373,6 +377,8 @@ else
   else
     parallel_suffix=""
   fi
+  prior_gpu_opt="--use-gpu=no"
+  prior_queue_opt=""
 fi
 
 
@@ -434,7 +440,7 @@ while [ $x -lt $num_iters ]; do
         nnet3-copy-egs --srand=JOB --frame=random $context_opts ark:$prev_egs_dir/egs.1.ark ark:- \| \
         nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
         nnet3-merge-egs ark:- ark:- \| \
-        nnet3-compute-from-egs --apply-exp "nnet3-am-copy --raw=true $dir/$x.mdl -|" ark:- ark:- \| \
+        nnet3-compute-from-egs --apply-exp=true "nnet3-am-copy --raw=true $dir/$x.mdl -|" ark:- ark:- \| \
         matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
       sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
@@ -598,22 +604,22 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs $cur_egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs $cur_egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then
-  
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
-  $cmd JOB=1:$num_jobs_compute_prior $dir/log/get_post.$x.JOB.log \
+  $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs ark:- ark:- \| \
-    nnet3-compute-from-egs --apply-exp=true "nnet3-am-copy --raw=true $dir/final.mdl -|" ark:- ark:- \| \
+    nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
+      "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
 
   sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
@@ -625,7 +631,7 @@ if [ $stage -le $[$num_iters+1] ]; then
 
   echo "Re-adjusting priors based on computed posteriors"
   $cmd $dir/log/adjust_priors.final.log \
-    nnet3-am-adjust-priors $dir/final.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
+    nnet3-am-adjust-priors $dir/combined.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
 fi
 
 
@@ -653,4 +659,3 @@ if $cleanup; then
     fi
   done
 fi
-

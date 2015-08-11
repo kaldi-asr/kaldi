@@ -65,7 +65,8 @@ void Optimize(const NnetOptimizeOptions &config,
 class CachingOptimizingCompiler {
  public:
   CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
-  
+
+  /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config):
       nnet_(nnet), opt_config_(opt_config) { }

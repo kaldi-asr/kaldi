@@ -79,11 +79,14 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true,
         apply_exp = false;
+    std::string use_gpu = "yes";
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("apply-exp", &apply_exp, "If true, apply exp function to "
                 "output");
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
     
@@ -91,6 +94,10 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
     
     std::string nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2),
@@ -114,6 +121,9 @@ int main(int argc, char *argv[]) {
         output.ApplyExp();
       matrix_writer.Write(example_reader.Key(), output);
     }
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     KALDI_LOG << "Processed " << num_egs << " examples.";
     return 0;
   } catch(const std::exception &e) {

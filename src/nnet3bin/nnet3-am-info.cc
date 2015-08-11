@@ -56,8 +56,6 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
     }
-
-    std::cout << "num-pdfs=" << trans_model.NumPdfs() << "\n";
     std::cout << am_nnet.Info();
 
     return 0;

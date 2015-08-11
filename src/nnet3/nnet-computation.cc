@@ -463,6 +463,17 @@ bool IoSpecification::operator== (const IoSpecification &other) const {
           has_deriv == other.has_deriv);
 }
 
+IoSpecification::IoSpecification(const std::string &name,
+                                 int32 t_start, int32 t_end):
+    name(name), indexes(std::max<int32>(0, t_end - t_start)),
+    has_deriv(false) {
+  // the n and x values will already be 0 in "indexes" because
+  // the default constructor does that; so just set the t values.
+  std::vector<Index>::iterator iter = indexes.begin(), end = indexes.end();
+  for (int32 t = t_start; iter != end; ++iter, ++t)
+    iter->t = t;
+}
+
 bool ComputationRequest::operator== (const ComputationRequest &other) const {
   // rely on the std::vector's default implementation of ==, which in turn
   // relies on the == operator of class IoSpecification.

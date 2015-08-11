@@ -79,6 +79,9 @@ struct IoSpecification {
   IoSpecification(const std::string &name, const std::vector<Index> &indexes,
                   bool has_deriv = false):
       name(name), indexes(indexes), has_deriv(has_deriv) { }
+  // This constructor sets n = 0, x = 0 and t from t_start to t_end-1; and
+  // has_deriv to false.
+  IoSpecification(const std::string &name, int32 t_start, int32 t_end);  
 
   /// This function is for printing in a human-readable way, for debugging.
   /// Output ends in a newline.
