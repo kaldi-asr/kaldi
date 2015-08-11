@@ -29,14 +29,14 @@
 namespace kaldi {
 namespace nnet3 {
 
-struct NnetXentTrainerOptions {
+struct NnetTrainerOptions {
   bool zero_component_stats;
   bool store_component_stats;
   int32 print_interval;
   bool debug_computation;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
-  NnetXentTrainerOptions():
+  NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(false),
       print_interval(100),
@@ -72,15 +72,15 @@ struct ObjectiveFunctionInfo {
   int32 current_phase;
 
   double tot_weight;
-  double tot_like;
+  double tot_objf;
 
   double tot_weight_this_phase;
-  double tot_like_this_phase;
+  double tot_objf_this_phase;
 
   ObjectiveFunctionInfo():
       current_phase(0),
-      tot_weight(0.0), tot_like(0.0),
-      tot_weight_this_phase(0.0), tot_like_this_phase(0.0) { }
+      tot_weight(0.0), tot_objf(0.0),
+      tot_weight_this_phase(0.0), tot_objf_this_phase(0.0) { }
 
   // This function updates the stats and, if the phase has just changed,
   // prints a message indicating progress.  The phase equals
@@ -89,7 +89,7 @@ struct ObjectiveFunctionInfo {
                    int32 minibatches_per_phase,
                    int32 minibatch_counter,
                    BaseFloat this_minibatch_weight,
-                   BaseFloat this_minibatch_tot_like);
+                   BaseFloat this_minibatch_tot_objf);
 
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,
@@ -99,10 +99,9 @@ struct ObjectiveFunctionInfo {
 };
 
 
-/** This class is for single-threaded cross-entropy training of neural nets.
-    Note: because we put a "logsoftmax" component in the nnet, the actual
-    objective function becomes linear at the output, but the printed messages
-    reflect the fact that it's the cross-entropy objective.
+/** This class is for single-threaded training of neural nets using
+    standard objective functions such as cross-entropy (implemented with
+    logsoftmax nonlinearity and a linear objective function) and quadratic loss.
 
     Something that we should do in the future is to make it possible to have
     two different threads, one for the compilation, and one for the computation.
@@ -112,10 +111,10 @@ struct ObjectiveFunctionInfo {
     the CachingOptimizingCompiler notices this and uses the computation from
     last time).
  */
-class NnetXentTrainer {
+class NnetTrainer {
  public:
-  NnetXentTrainer(const NnetXentTrainerOptions &config,
-                  Nnet *nnet);
+  NnetTrainer(const NnetTrainerOptions &config,
+              Nnet *nnet);
 
   // train on one minibatch.
   void Train(const NnetExample &eg);
@@ -126,7 +125,7 @@ class NnetXentTrainer {
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
   
-  const NnetXentTrainerOptions config_;
+  const NnetTrainerOptions config_;
   Nnet *nnet_;
   CachingOptimizingCompiler compiler_;
 

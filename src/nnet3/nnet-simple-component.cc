@@ -402,11 +402,10 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
+    is_gradient_ = true;
   }
   linear_params_.SetZero();
   bias_params_.SetZero();
-  if (treat_as_gradient)
-    is_gradient_ = true;
 }
 
 void AffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
@@ -597,15 +596,17 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_end.str());
 }
 
-int32 AffineComponent::GetParameterDim() const {
+int32 AffineComponent::NumParameters() const {
   return (InputDim() + 1) * OutputDim();
 }
 void AffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
   params->Range(0, InputDim() * OutputDim()).CopyRowsFromMat(linear_params_);
   params->Range(InputDim() * OutputDim(),
                 OutputDim()).CopyFromVec(bias_params_);
 }
 void AffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
   linear_params_.CopyRowsFromVec(params.Range(0, InputDim() * OutputDim()));
   bias_params_.CopyFromVec(params.Range(InputDim() * OutputDim(),
                                         OutputDim()));
@@ -722,10 +723,9 @@ PerElementScaleComponent::PerElementScaleComponent(
 void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
+    is_gradient_ = true;
   }
   scales_.SetZero();
-  if (treat_as_gradient)
-    is_gradient_ = true;
 }
 
 void PerElementScaleComponent::SetParams(const VectorBase<BaseFloat> &scales) {
@@ -880,17 +880,17 @@ void PerElementScaleComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_end.str());
 }
 
-int32 PerElementScaleComponent::GetParameterDim() const {
+int32 PerElementScaleComponent::NumParameters() const {
   return InputDim();
 }
 
 void PerElementScaleComponent::Vectorize(VectorBase<BaseFloat> *params) const {
-  params->Range(0, OutputDim()).CopyFromVec(scales_);
+  params->CopyFromVec(scales_);
 }
 
 void PerElementScaleComponent::UnVectorize(
     const VectorBase<BaseFloat> &params) {
-  scales_.CopyFromVec(params.Range(0, OutputDim()));
+  scales_.CopyFromVec(params);
 }
 
 // virtual

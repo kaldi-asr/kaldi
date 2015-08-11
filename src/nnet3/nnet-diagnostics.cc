@@ -27,12 +27,28 @@ NnetComputeProb::NnetComputeProb(const NnetComputeProbOptions &config,
                                  const Nnet &nnet):
     config_(config),
     nnet_(nnet),
+    deriv_nnet_(NULL),
     compiler_(nnet),
-    num_minibatches_processed_(0) { }
+    num_minibatches_processed_(0) {
+  if (config_.compute_deriv) {
+    deriv_nnet_ = new Nnet(nnet_);
+    bool is_gradient = true;  // force simple update
+    SetZero(is_gradient, deriv_nnet_);
+  }
+}
 
+const Nnet &NnetComputeProb::GetDeriv() const {
+  if (deriv_nnet_ == NULL)
+    KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
+  return *deriv_nnet_;
+}
+
+NnetComputeProb::~NnetComputeProb() {
+  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
+}
 
 void NnetComputeProb::Compute(const NnetExample &eg) {
-  bool need_model_derivative = false,
+  bool need_model_derivative = config_.compute_deriv,
       store_component_stats = false;
   ComputationRequest request;
   GetComputationRequest(nnet_, eg, need_model_derivative,
@@ -40,11 +56,13 @@ void NnetComputeProb::Compute(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
   NnetComputer computer(config_.compute_config, *computation,
-                        nnet_, NULL);
+                        nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, eg);
   computer.Forward();
   this->ProcessOutputs(eg, &computer);
+  if (config_.compute_deriv)
+    computer.Backward();
 }
 
 void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
@@ -65,7 +83,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
       }
       {
         BaseFloat tot_weight, tot_objf;
-        bool supply_deriv = false;      
+        bool supply_deriv = config_.compute_deriv;
         ComputeObjectiveFunction(io.features, obj_type, io.name,
                                  supply_deriv, computer,
                                  &tot_weight, &tot_objf);
@@ -73,7 +91,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;
       }
-      if (obj_type == kLinear) {
+      if (obj_type == kLinear && config_.compute_accuracy) {
         BaseFloat tot_weight, tot_accuracy;
         ComputeAccuracy(io.features, output,
                         &tot_weight, &tot_accuracy);
@@ -195,6 +213,16 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
   *tot_weight_out = tot_weight;
   *tot_accuracy_out = tot_accuracy;
 }
-      
+
+const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
+    const std::string &output_name) const {
+  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+      iter = objf_info_.find(output_name);
+  if (iter != objf_info_.end())
+    return &(iter->second);
+  else
+    return NULL;
+}
+
 } // namespace nnet3
 } // namespace kaldi

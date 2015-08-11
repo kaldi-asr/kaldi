@@ -272,5 +272,78 @@ void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest) {
   }    
 }
 
+int32 NumParameters(const Nnet &src) {
+  int32 ans = 0;
+  for (int32 c = 0; c < src.NumComponents(); c++) {
+    const Component *comp = src.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      const UpdatableComponent *uc =
+          dynamic_cast<const UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      ans += uc->NumParameters();
+    }
+  }
+  return ans;
+}
+
+
+void VectorizeNnet(const Nnet &src,
+                   VectorBase<BaseFloat> *parameters) {
+  KALDI_ASSERT(parameters->Dim() == NumParameters(src));
+  int32 dim_offset = 0;
+  for (int32 c = 0; c < src.NumComponents(); c++) {
+    const Component *comp = src.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      const UpdatableComponent *uc =
+          dynamic_cast<const UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      int32 this_dim = uc->NumParameters();
+      SubVector<BaseFloat> this_part(*parameters, dim_offset, this_dim);
+      uc->Vectorize(&this_part);
+      dim_offset += this_dim;
+    }
+  }
+}
+
+
+void UnVectorizeNnet(const VectorBase<BaseFloat> &parameters,
+                     Nnet *dest) {
+  KALDI_ASSERT(parameters.Dim() == NumParameters(*dest));
+  int32 dim_offset = 0;
+  for (int32 c = 0; c < dest->NumComponents(); c++) {
+    Component *comp = dest->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      int32 this_dim = uc->NumParameters();
+      const SubVector<BaseFloat> this_part(parameters, dim_offset, this_dim);
+      uc->UnVectorize(this_part);
+      dim_offset += this_dim;
+    }
+  }
+}
+
+int32 NumUpdatableComponents(const Nnet &dest) {
+  int32 ans = 0;
+  for (int32 c = 0; c < dest.NumComponents(); c++) {
+      const Component *comp = dest.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent)
+      ans++;
+  }
+  return ans;
+}
+
 } // namespace nnet3
 } // namespace kaldi

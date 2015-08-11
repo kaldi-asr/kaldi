@@ -43,14 +43,14 @@ int main(int argc, char *argv[]) {
     
     bool binary_write = true;
     std::string use_gpu = "yes";
-    NnetXentTrainerOptions xent_train_config;
+    NnetTrainerOptions train_config;
     
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     
-    xent_train_config.Register(&po);
+    train_config.Register(&po);
 
     po.Read(argc, argv);
     
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    NnetXentTrainer trainer(xent_train_config, &nnet);
+    NnetTrainer trainer(train_config, &nnet);
     
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 

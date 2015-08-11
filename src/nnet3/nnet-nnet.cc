@@ -21,6 +21,7 @@
 #include <sstream>
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -219,7 +220,7 @@ void Nnet::ReadConfig(std::istream &config_is) {
   Check();
 }
 
-// called only on pass 0.
+// called only on pass 0 of ReadConfig.
 void Nnet::ProcessComponentConfigLine(
     int32 initial_num_components,
     ConfigLine *config) {
@@ -240,7 +241,7 @@ void Nnet::ProcessComponentConfigLine(
   // the next call will call KALDI_ERR or KALDI_ASSERT and die if something
   // went wrong.
   new_component->InitFromConfig(config);
-  int32 index = GetNodeIndex(name);
+  int32 index = GetComponentIndex(name);
   if (index != -1) {  // Replacing existing component.
     if (index >= initial_num_components) {
       // that index was something we added from this config.
@@ -313,7 +314,7 @@ void Nnet::ProcessComponentNodeConfigLine(
   }
 }
 
-// called only on pass 0.
+// called only on pass 0 of ReadConfig.
 void Nnet::ProcessInputNodeConfigLine(
     ConfigLine *config) {
   std::string name;
@@ -671,6 +672,7 @@ void Nnet::Check() const {
     num_input_nodes = 0,
     num_output_nodes = 0;
   KALDI_ASSERT(num_nodes != 0);
+  std::vector<bool> component_used(components_.size());
   for (int32 n = 0; n < num_nodes; n++) {
     const NetworkNode &node = nodes_[n];
     std::string node_name = node_names_[n];
@@ -701,6 +703,7 @@ void Nnet::Check() const {
         KALDI_ASSERT(n > 0 && nodes_[n-1].node_type == kDescriptor);
         const NetworkNode &src_node = nodes_[n-1];
         const Component *c = GetComponent(node.u.component_index);
+        component_used[node.u.component_index] = true;
         int32 src_dim = src_node.Dim(*this), input_dim = c->InputDim();
         if (src_dim != input_dim) {
           KALDI_ERR << "Dimension mismatch for network-node "
@@ -729,6 +732,16 @@ void Nnet::Check() const {
       default:
         KALDI_ERR << "Invalid node type for node " << node_name;
     }
+  }
+
+  int32 num_components = components_.size();
+  for (int32 c = 0; c < num_components; c++) {
+    const std::string &component_name = component_names_[c];
+    if (!component_used[c]) {
+      KALDI_WARN << "Orphan component " << component_name;
+    }
+    KALDI_ASSERT(GetComponentIndex(component_name) == c &&
+                 "Duplicate component names?");
   }
   KALDI_ASSERT(num_input_nodes > 0);
   KALDI_ASSERT(num_output_nodes > 0);
@@ -770,6 +783,7 @@ std::string Nnet::Info() const {
   for (size_t i = 0; i < components_.size(); i++)
     os << "component name=" << component_names_[i]
        << " type=" << components_[i]->Info() << "\n";
+  os << "num-parameters=" << NumParameters(*this);
   return os.str();
 }
 

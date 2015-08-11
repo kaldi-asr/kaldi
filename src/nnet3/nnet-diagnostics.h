@@ -43,14 +43,21 @@ struct SimpleObjectiveInfo {
 
 struct NnetComputeProbOptions {
   bool debug_computation;
+  bool compute_deriv;
+  bool compute_accuracy;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   NnetComputeProbOptions():
-      debug_computation(false) { }
+      debug_computation(false),
+      compute_deriv(false),
+      compute_accuracy(true) { }
   void Register(OptionsItf *opts) {
+    // compute_deriv is not included in the command line options
+    // because it's not relevant for nnet3-compute-prob.
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
-
+    opts->Register("compute-accuracy", &compute_accuracy, "If true, compute "
+                   "accuracy values as well as objective functions");
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
@@ -81,19 +88,31 @@ class NnetComputeProb {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+
+
+  // returns the objective-function info for this output name (e.g. "output"),
+  // or NULL if there is no such info.
+  const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
+
+  // if config.compute_deriv == true, returns a reference to the
+  // computed derivative.  Otherwise crashes.
+  const Nnet &GetDeriv() const;
+
+  ~NnetComputeProb();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
   
   const NnetComputeProbOptions config_;
   const Nnet &nnet_;
+
+  Nnet *deriv_nnet_;
   CachingOptimizingCompiler compiler_;
 
   // this is only for diagnostics.
   int32 num_minibatches_processed_;
     
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher> objf_info_;
-
 
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher> accuracy_info_;
 };

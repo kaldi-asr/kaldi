@@ -107,6 +107,25 @@ void ScaleNnet(BaseFloat scale, Nnet *nnet);
 ///  stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
+/// Returns the total of the number of parameters in the updatable components of
+/// the nnet.
+int32 NumParameters(const Nnet &src);
+
+/// Copies the nnet parameters to *params, whose dimension must
+/// be equal to NumParameters(src).
+void VectorizeNnet(const Nnet &src,
+                   VectorBase<BaseFloat> *params);
+
+
+/// Copies the parameters from params to *dest.  the dimension of params must
+/// be equal to NumParameters(*dest).
+void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
+                     Nnet *dest);
+
+/// Returns the number of updatable components in the nnet.
+int32 NumUpdatableComponents(const Nnet &dest);
+                     
+
 
 } // namespace nnet3
 } // namespace kaldi
