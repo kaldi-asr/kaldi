@@ -2,7 +2,7 @@
 
 # this RESULTS file was obtained by Haihua Xu in July 2013.
 
-for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
 exit 0
 
 # Use caution when comparing these results with other published results.
@@ -182,16 +182,13 @@ exit 0
 # not updated
 
 
-# DNN on fMLLR features (Karel's setup, updated recipe [5.3.2014]). 
+# DNN on fMLLR features (Karel's setup, [7.8.2015]). 
 # frame cross-entropy training
-%WER 6.74 [ 555 / 8234, 67 ins, 73 del, 415 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_10
-%WER 4.09 [ 231 / 5643, 33 ins, 15 del, 183 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_12
-# sMBR training (1 iteration)
-%WER 6.39 [ 526 / 8234, 56 ins, 77 del, 393 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_dev93_iter1/wer_11
-%WER 3.85 [ 217 / 5643, 23 ins, 16 del, 178 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_eval92_iter1/wer_14
-# sMBR training (1+4 iterations, lattices+alignment updated after 1st iteration)
-%WER 6.15 [ 506 / 8234, 55 ins, 70 del, 381 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_dev93_iter4/wer_11
-%WER 3.56 [ 201 / 5643, 24 ins, 9 del, 168 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_eval92_iter4/wer_13
+%WER 6.05 [ 498 / 8234, 59 ins, 67 del, 372 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 3.69 [ 208 / 5643, 19 ins, 19 del, 170 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_11_1.0
+# sMBR training (5 iteration, no lattice-regeneration),
+%WER 5.60 [ 461 / 8234, 58 ins, 62 del, 341 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_dev93_it4/wer_11_0.0
+%WER 3.35 [ 189 / 5643, 18 ins, 14 del, 157 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_eval92_it5/wer_13_1.0
 
 
 #DNN results  with cpu based setup
@@ -279,4 +276,5 @@ for x in exp/nnet2_online/nnet_ms_a_online/decode_*; do grep WER $x/wer_* | util
 %WER 6.57 [ 371 / 5643, 95 ins, 12 del, 264 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92/wer_11
 %WER 6.68 [ 377 / 5643, 102 ins, 13 del, 262 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt/wer_10
 %WER 6.56 [ 370 / 5643, 100 ins, 12 del, 258 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt_offline/wer_10
+
 
