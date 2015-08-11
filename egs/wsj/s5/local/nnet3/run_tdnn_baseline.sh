@@ -65,3 +65,16 @@ if [ $stage -le 9 ]; then
   done
 fi
 
+# The following results compare this nnet3 decode with the matched nnet2 baseline.
+#
+#b06:s5: cat exp/nnet3/nnet_tdnn_c/decode_*/scoring_kaldi/best_wer 
+#%WER 6.40 [ 527 / 8234, 59 ins, 71 del, 397 sub ] exp/nnet3/nnet_tdnn_c/decode_bd_tgpr_dev93/wer_10_0.0
+#%WER 3.54 [ 200 / 5643, 18 ins, 17 del, 165 sub ] exp/nnet3/nnet_tdnn_c/decode_bd_tgpr_eval92/wer_10_1.0
+#%WER 9.11 [ 750 / 8234, 140 ins, 83 del, 527 sub ] exp/nnet3/nnet_tdnn_c/decode_tgpr_dev93/wer_10_1.0
+#%WER 6.22 [ 351 / 5643, 85 ins, 15 del, 251 sub ] exp/nnet3/nnet_tdnn_c/decode_tgpr_eval92/wer_10_1.0
+#b06:s5: 
+#b06:s5: cat exp/nnet2_online/nnet_ms_a/decode_*/scoring_kaldi/best_wer 
+#%WER 6.62 [ 545 / 8234, 56 ins, 79 del, 410 sub ] exp/nnet2_online/nnet_ms_a/decode_bd_tgpr_dev93/wer_13_0.0
+#%WER 3.70 [ 209 / 5643, 25 ins, 18 del, 166 sub ] exp/nnet2_online/nnet_ms_a/decode_bd_tgpr_eval92/wer_13_0.5
+#%WER 9.33 [ 768 / 8234, 157 ins, 73 del, 538 sub ] exp/nnet2_online/nnet_ms_a/decode_tgpr_dev93/wer_11_0.5
+#%WER 6.11 [ 345 / 5643, 92 ins, 14 del, 239 sub ] exp/nnet2_online/nnet_ms_a/decode_tgpr_eval92/wer_10_1.0
