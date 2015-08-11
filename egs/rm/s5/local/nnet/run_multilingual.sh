@@ -39,9 +39,9 @@ num_langs=${#lang_code[@]}
 
 # Check if all the input directories exist,
 for i in $(seq 0 $[num_langs-1]); do
-    echo "lang = ${lang_code[$i]}, alidir = ${ali_dir[$i]}, datadir = ${data_dir[$i]}"
-    [ ! -d ${ali_dir[$i]} ] && echo  "Missing ${ali_dir[$i]}" && exit 1
-    [ ! -d ${data_dir[$i]} ] && echo "Missing ${data_dir[$i]}" && exit 1
+  echo "lang = ${lang_code[$i]}, alidir = ${ali_dir[$i]}, datadir = ${data_dir[$i]}"
+  [ ! -d ${ali_dir[$i]} ] && echo  "Missing ${ali_dir[$i]}" && exit 1
+  [ ! -d ${data_dir[$i]} ] && echo "Missing ${data_dir[$i]}" && exit 1
 done
 
 # Make the features,
@@ -88,7 +88,7 @@ objective_function="multitask$(echo ${ali_dim[@]} | tr ' ' '\n' | \
   awk -v w=$lang_weight_csl 'BEGIN{ split(w,w_arr,/[,:]/); } { printf(",xent,%d,%s", $1, w_arr[NR]); }')"
 echo "Multitask objective function: $objective_function"
 
-# DNN training will be in $dir, the alignments are prepared beforehead,
+# DNN training will be in $dir, the alignments are prepared beforehand,
 dir=exp/dnn4g-multilingual${num_langs}-$(echo $lang_code_csl | tr ',' '-') 
 [ ! -e $dir ] && mkdir -p $dir
 echo "$lang_code_csl" >$dir/lang_code_csl
