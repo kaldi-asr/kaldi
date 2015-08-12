@@ -204,6 +204,68 @@ void GenerateConfigSequenceRnn(
 }
 
 
+
+// This generates a config sequence for what I *think* is a clockwork RNN, in
+// that different parts operate at different speeds.  The output layer is
+// evaluated every frame, but the internal RNN layer is evaluated every 3
+// frames.
+void GenerateConfigSequenceRnnClockwork(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream os;
+
+  std::vector<int32> splice_context;
+  for (int32 i = -5; i < 4; i++)
+    if (Rand() % 3 == 0)
+      splice_context.push_back(i);
+  if (splice_context.empty())
+    splice_context.push_back(0);
+  
+  int32 input_dim = 10 + Rand() % 20,
+      spliced_dim = input_dim * splice_context.size(),
+      output_dim = 100 + Rand() % 200,
+      hidden_dim = 40 + Rand() % 50;
+  os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
+     << spliced_dim << " output-dim=" << hidden_dim << std::endl;
+  os << "component name=nonlin1 type=RectifiedLinearComponent dim="
+     << hidden_dim << std::endl;
+  os << "component name=recurrent_affine1 type=NaturalGradientAffineComponent input-dim="
+     << hidden_dim << " output-dim=" << hidden_dim << std::endl;
+  // the suffix _0, _1, _2 equals the index of the output-frame modulo 3; there
+  // are 3 versions of the final affine layer.  There was a paper by Vincent
+  // Vanhoucke about something like this.
+  os << "component name=final_affine_0 type=NaturalGradientAffineComponent input-dim="
+     << hidden_dim << " output-dim=" << output_dim << std::endl;
+  os << "component name=final_affine_1 type=NaturalGradientAffineComponent input-dim="
+     << hidden_dim << " output-dim=" << output_dim << std::endl;
+  os << "component name=final_affine_2 type=NaturalGradientAffineComponent input-dim="
+     << hidden_dim << " output-dim=" << output_dim << std::endl;
+  os << "component name=logsoftmax type=LogSoftmaxComponent dim="
+     << output_dim << std::endl;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  
+  os << "component-node name=affine1_node component=affine1 input=Append(";
+  for (size_t i = 0; i < splice_context.size(); i++) {
+    int32 offset = splice_context[i];
+    os << "Offset(input, " << offset << ")";
+    if (i + 1 < splice_context.size())
+      os << ", ";
+  }
+  os << ")\n";
+  os << "component-node name=recurrent_affine1 component=recurrent_affine1 "
+        "input=Offset(nonlin1, -1)\n";
+  os << "component-node name=nonlin1 component=nonlin1 "
+        "input=Sum(affine1_node, IfDefined(recurrent_affine1))\n";
+  os << "component-node name=final_affine_0 component=final_affine_0 input=nonlin1\n";
+  os << "component-node name=final_affine_1 component=final_affine_1 input=Offset(nonlin1, -1)\n";
+  os << "component-node name=final_affine_2 component=final_affine_1 input=Offset(nonlin1, 1)\n";
+  os << "component-node name=output_nonlin component=logsoftmax input=Switch(final_affine_0, final_affine_1, final_affine_2)\n";
+  os << "output-node name=output input=output_nonlin\n";
+  configs->push_back(os.str());
+}
+
+
+
 // This generates a single config corresponding to an LSTM.
 // based on the equations in 
 // Sak et. al. "LSTM based RNN architectures for LVCSR", 2014
@@ -532,7 +594,7 @@ void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 4);
+  int32 network_type = RandInt(0, 6);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -557,9 +619,15 @@ start:
       if (!opts.allow_recursion || !opts.allow_context ||
           !opts.allow_nonlinearity)
         goto start;
-      GenerateConfigSequenceLstm(opts, configs);
+      GenerateConfigSequenceRnnClockwork(opts, configs);
       break;
     case 5:
+      if (!opts.allow_recursion || !opts.allow_context ||
+          !opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceLstm(opts, configs);
+      break;
+    case 6:
       if (!opts.allow_recursion || !opts.allow_context ||
           !opts.allow_nonlinearity)
         goto start;
