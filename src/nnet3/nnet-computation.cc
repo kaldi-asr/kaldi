@@ -483,5 +483,47 @@ bool ComputationRequest::operator== (const ComputationRequest &other) const {
       misc_info == other.misc_info;
 }
 
+NnetComputation::NnetComputation(const NnetComputation &other):
+    matrices(other.matrices),
+    matrix_debug_info(other.matrix_debug_info),
+    submatrices(other.submatrices),
+    indexes(other.indexes),
+    indexes_multi(other.indexes_multi),
+    indexes_ranges(other.indexes_ranges),
+    input_output_info(other.input_output_info),
+    commands(other.commands),
+    need_model_derivative(other.need_model_derivative),
+    indexes_cuda(other.indexes_cuda),
+    indexes_ranges_cuda(other.indexes_ranges_cuda) {
+  for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
+      component_precomputed_indexes.push_back(
+          other.component_precomputed_indexes[i] == NULL ? NULL :
+          other.component_precomputed_indexes[i]->Copy());
+}
+
+
+NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
+    matrices = other.matrices;
+    matrix_debug_info = other.matrix_debug_info;
+    submatrices = other.submatrices;
+    indexes = other.indexes;
+    indexes_multi = other.indexes_multi;
+    indexes_ranges = other.indexes_ranges;
+    input_output_info = other.input_output_info;
+    commands = other.commands;
+    need_model_derivative = other.need_model_derivative;
+    indexes_cuda = other.indexes_cuda;
+    indexes_ranges_cuda = other.indexes_ranges_cuda;
+  
+    for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
+      delete component_precomputed_indexes[i];
+    component_precomputed_indexes.clear();
+    for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
+      component_precomputed_indexes.push_back(
+          other.component_precomputed_indexes[i] == NULL ? NULL :
+          other.component_precomputed_indexes[i]->Copy());
+    return *this;
+}
+
 } // namespace nnet3
 } // namespace kaldi

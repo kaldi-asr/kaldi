@@ -343,6 +343,13 @@ struct NnetComputation {
   ~NnetComputation();
   // removes all information from this struct, makes it as a newly constructed one.
   void Clear() { *this = NnetComputation(); }
+
+  // Copy constructor
+  NnetComputation(const NnetComputation &other);
+  // Assignment operator.
+  NnetComputation &operator = (const NnetComputation &other);
+  // Default constructor
+  NnetComputation(): need_model_derivative(false) { }
 };
 
 
