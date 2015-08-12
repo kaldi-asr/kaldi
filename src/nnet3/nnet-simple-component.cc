@@ -183,7 +183,8 @@ std::string ElementwiseProductComponent::Info() const {
 
 const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
-// root-mean-square equals 1.0.
+// root-mean-square equals 1.0.  It's important that its square root
+// be exactly representable in float.
 
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
@@ -564,12 +565,9 @@ void AffineComponent::Backprop(const std::string &debug_info,
 }
 
 void AffineComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
   // might not see the "<AffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, "</AffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -577,14 +575,11 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");  
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "</AffineComponent>");
 }
 
 void AffineComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
-  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<AffineComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
   WriteToken(os, binary, "<LinearParams>");
@@ -593,7 +588,7 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "</AffineComponent>");
 }
 
 int32 AffineComponent::NumParameters() const {
@@ -710,27 +705,12 @@ PerElementScaleComponent::PerElementScaleComponent(
     UpdatableComponent(component),
     scales_(component.scales_) { }
 
-PerElementScaleComponent::PerElementScaleComponent(
-    const CuVectorBase<BaseFloat> &scales,
-    BaseFloat learning_rate):
-    UpdatableComponent(learning_rate),
-    scales_(scales) {
-  KALDI_ASSERT(scales.Dim() != 0);
-}
-
-
-
 void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     SetLearningRate(1.0);
     is_gradient_ = true;
   }
   scales_.SetZero();
-}
-
-void PerElementScaleComponent::SetParams(const VectorBase<BaseFloat> &scales) {
-  scales_ = scales;
-  KALDI_ASSERT(scales_.Dim() > 0);
 }
 
 void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
@@ -765,13 +745,15 @@ BaseFloat PerElementScaleComponent::DotProduct(
   return VecVec(scales_, other->scales_);
 }
 
-void PerElementScaleComponent::Init(BaseFloat learning_rate, int32 dim,
-                                    BaseFloat param_stddev) {
+void PerElementScaleComponent::Init(
+    BaseFloat learning_rate, int32 dim,
+    BaseFloat param_mean, BaseFloat param_stddev) {
   UpdatableComponent::Init(learning_rate);
   scales_.Resize(dim);
   KALDI_ASSERT(dim > 0 && param_stddev >= 0.0);
   scales_.SetRandn();
   scales_.Scale(param_stddev);
+  scales_.Add(param_mean);
 }
 
 void PerElementScaleComponent::Init(BaseFloat learning_rate,
@@ -798,9 +780,10 @@ void PerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
                    "input-dim mismatch vs. matrix.");
   } else {
     ok = ok && cfl->GetValue("dim", &dim);
-    BaseFloat param_stddev = 1.0 / std::sqrt(dim);
+    BaseFloat param_mean = 1.0, param_stddev = 0.0;
+    cfl->GetValue("param-mean", &param_mean);
     cfl->GetValue("param-stddev", &param_stddev);
-    Init(learning_rate, dim, param_stddev);
+    Init(learning_rate, dim, param_mean, param_stddev);
   }
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -852,32 +835,25 @@ void PerElementScaleComponent::Backprop(
 }
 
 void PerElementScaleComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
-  // might not see the "<AffineComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  // might not see the begin marker part because of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "<PerElementScaleComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<Params>");
   scales_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");  
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "</PerElementScaleComponent>");
 }
 
 void PerElementScaleComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
-  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<PerElementScaleComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
   WriteToken(os, binary, "<Params>");
   scales_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "</PerElementScaleComponent>");
 }
 
 int32 PerElementScaleComponent::NumParameters() const {
@@ -909,12 +885,10 @@ void NaturalGradientAffineComponent::Resize(
 
 
 void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">";
   // might not see the "<NaturalGradientAffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, "<NaturalGradientAffineComponent>",
+                       "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -934,7 +908,7 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &max_change_per_sample_);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
   SetNaturalGradientConfigs();
 }
 void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
@@ -1046,10 +1020,7 @@ void NaturalGradientAffineComponent::Init(
 
 
 void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<AffineComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</AffineComponent>"
-  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
   WriteToken(os, binary, "<LinearParams>");
@@ -1070,7 +1041,7 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, max_change_per_sample_);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
@@ -1121,7 +1092,7 @@ BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
     const std::string &debug_info,    
     BaseFloat learning_rate_scale,
     CuVectorBase<BaseFloat> *out_products) {
-  static int scaling_factor_printed = 0;
+  static int scaling_factor_warnings_remaining = 10;
   int32 minibatch_size = in_products.Dim();
 
   out_products->MulElements(in_products);
@@ -1136,10 +1107,10 @@ BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
   if (tot_change_norm <= max_change_norm) return 1.0;
   else {
     BaseFloat factor = max_change_norm / tot_change_norm;
-    if (scaling_factor_printed < 10) {
+    if (scaling_factor_warnings_remaining > 0) {
+      scaling_factor_warnings_remaining--;
       KALDI_LOG << "Limiting step size using scaling factor "
                 << factor << ", for component " << debug_info;
-      scaling_factor_printed++;
     }
     return factor;
   }
@@ -1635,6 +1606,186 @@ void FixedBiasComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<FixedBiasComponent>", "<Bias>");
   bias_.Read(is, binary);
   ExpectToken(is, binary, "</FixedBiasComponent>");
+}
+
+
+void NaturalGradientPerElementScaleComponent::Read(
+    std::istream &is, bool binary) {
+  // might not see the begin marker part because of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "<NaturalGradientPerElementScaleComponent>",
+                       "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<Params>");
+  scales_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");  
+  ReadBasicType(is, binary, &is_gradient_);
+  int32 rank, update_period;
+  ExpectToken(is, binary, "<Rank>");
+  ReadBasicType(is, binary, &rank);
+  preconditioner_.SetRank(rank);
+  ExpectToken(is, binary, "<UpdatePeriod>");
+  ReadBasicType(is, binary, &update_period);
+  preconditioner_.SetUpdatePeriod(update_period);
+  BaseFloat num_samples_history, alpha;
+  ExpectToken(is, binary, "<NumSamplesHistory>");
+  ReadBasicType(is, binary, &num_samples_history);
+  preconditioner_.SetNumSamplesHistory(num_samples_history);
+  ExpectToken(is, binary, "<Alpha>");
+  ReadBasicType(is, binary, &alpha);
+  preconditioner_.SetAlpha(alpha);
+  ExpectToken(is, binary, "<MaxChangePerMinibatch>");
+  ReadBasicType(is, binary, &max_change_per_minibatch_);
+  ExpectToken(is, binary, "</NaturalGradientPerElementScaleComponent>");
+}
+
+void NaturalGradientPerElementScaleComponent::Write(std::ostream &os,
+                                                    bool binary) const {
+  WriteToken(os, binary, "<NaturalGradientPerElementScaleComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<Params>");
+  scales_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<Rank>");
+  WriteBasicType(os, binary, preconditioner_.GetRank());
+  WriteToken(os, binary, "<UpdatePeriod>");
+  WriteBasicType(os, binary, preconditioner_.GetUpdatePeriod());
+  WriteToken(os, binary, "<NumSamplesHistory>");
+  WriteBasicType(os, binary, preconditioner_.GetNumSamplesHistory());
+  WriteToken(os, binary, "<Alpha>");
+  WriteBasicType(os, binary, preconditioner_.GetAlpha());
+  WriteToken(os, binary, "<MaxChangePerMinibatch>");
+  WriteBasicType(os, binary, max_change_per_minibatch_);
+  WriteToken(os, binary, "</NaturalGradientPerElementScaleComponent>");
+}
+
+std::string NaturalGradientPerElementScaleComponent::Info() const {
+  std::stringstream stream;
+  stream << PerElementScaleComponent::Info()
+         << ", rank=" << preconditioner_.GetRank()
+         << ", update-period=" << preconditioner_.GetUpdatePeriod()
+         << ", num-samples-history=" << preconditioner_.GetNumSamplesHistory()
+         << ", alpha=" << preconditioner_.GetAlpha()
+         << ", max-change-per-minibatch=" << max_change_per_minibatch_;
+  return stream.str();
+}
+
+void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
+  // First set various configuration values that have defaults.
+  int32 rank = 8,  // Use a small rank because in this case the amount of memory
+                   // for the preconditioner actually exceeds the memory for the
+                   // parameters (by "rank").
+      update_period = 10;
+  // the max_change_per_minibatch is the maximum amount of parameter-change, in 2-norm,
+  // that we allow per minibatch; if change is greater than that, we scale down
+  // the parameter-change.  It has the same purpose as the max-change-per-sample in
+  // the NaturalGradientAffineComponent.
+  BaseFloat num_samples_history = 2000.0, alpha = 4.0,
+      max_change_per_minibatch = 0.5,
+      learning_rate = learning_rate_;  // default to value from constructor.
+  cfl->GetValue("rank", &rank);
+  cfl->GetValue("update-period", &update_period);
+  cfl->GetValue("num-samples-history", &num_samples_history);
+  cfl->GetValue("alpha", &alpha);
+  cfl->GetValue("max-change-per-minibatch", &max_change_per_minibatch);
+  cfl->GetValue("learning-rate", &learning_rate);
+
+  std::string filename;
+  // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
+  if (cfl->GetValue("scales", &filename)) {
+    if (cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    Init(learning_rate, filename, rank, update_period, num_samples_history,
+         alpha, max_change_per_minibatch);
+  } else {
+    int32 dim;
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+
+    BaseFloat param_mean = 1.0, param_stddev = 0.0;
+    cfl->GetValue("param-mean", &param_mean);
+    cfl->GetValue("param-stddev", &param_stddev);
+    Init(learning_rate, dim, param_mean, param_stddev, rank, update_period,
+         num_samples_history, alpha, max_change_per_minibatch);
+  }  
+}
+
+void NaturalGradientPerElementScaleComponent::Init(
+    BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+    BaseFloat param_stddev, int32 rank, int32 update_period,
+    BaseFloat num_samples_history, BaseFloat alpha,
+    BaseFloat max_change_per_minibatch) {
+  PerElementScaleComponent::Init(learning_rate, dim, param_mean,
+                                 param_stddev);
+  preconditioner_.SetRank(rank);
+  preconditioner_.SetUpdatePeriod(update_period);
+  preconditioner_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_.SetAlpha(alpha);
+  max_change_per_minibatch_ = max_change_per_minibatch;
+}
+
+void NaturalGradientPerElementScaleComponent::Init(
+    BaseFloat learning_rate, std::string vector_filename,
+    int32 rank, int32 update_period, BaseFloat num_samples_history,
+    BaseFloat alpha, BaseFloat max_change_per_minibatch) {
+  PerElementScaleComponent::Init(learning_rate, vector_filename);
+  preconditioner_.SetRank(rank);
+  preconditioner_.SetUpdatePeriod(update_period);
+  preconditioner_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_.SetAlpha(alpha);
+  max_change_per_minibatch_ = max_change_per_minibatch;  
+}
+
+
+NaturalGradientPerElementScaleComponent::NaturalGradientPerElementScaleComponent(
+    const NaturalGradientPerElementScaleComponent &other):
+    PerElementScaleComponent(other),
+    max_change_per_minibatch_(other.max_change_per_minibatch_),
+    preconditioner_(other.preconditioner_) { }
+
+
+
+
+Component* NaturalGradientPerElementScaleComponent::Copy() const {
+  return new NaturalGradientPerElementScaleComponent(*this);
+}
+
+void NaturalGradientPerElementScaleComponent::Update(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  
+  static int max_change_warnings_remaining = 10;
+  
+  CuMatrix<BaseFloat> derivs_per_frame(in_value);
+  derivs_per_frame.MulElements(out_deriv);
+  // the non-natural-gradient update would just do
+  // scales_.AddRowSumMat(learning_rate_, derivs_per_frame).
+
+  BaseFloat scale;
+  preconditioner_.PreconditionDirections(&derivs_per_frame, NULL, &scale);
+
+  CuVector<BaseFloat> delta_scales(scales_.Dim());
+  delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
+
+  BaseFloat max_change_scale = 1.0,
+      param_delta = delta_scales.Norm(2.0);
+  if (param_delta > max_change_per_minibatch_) {
+    max_change_scale = max_change_per_minibatch_ / param_delta;
+    if (max_change_warnings_remaining >= 0) {
+      max_change_warnings_remaining--;
+      KALDI_WARN << "Parameter change " << param_delta
+                 << " exceeds --max-change-per-minibatch="
+                 << max_change_per_minibatch_ << " for this minibatch, "
+                 << "for node " << debug_info << ", scaling by factor "
+                 << max_change_scale;
+    }
+  }
+  scales_.AddVec(max_change_scale, delta_scales);
 }
 
 

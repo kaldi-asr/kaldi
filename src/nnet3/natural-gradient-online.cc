@@ -68,13 +68,19 @@ OnlineNaturalGradient::OnlineNaturalGradient():
 
 void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   int32 D = R0.NumCols(), N = R0.NumRows();
-  KALDI_ASSERT(D > 1);
   if (rank_ >= D) {
     KALDI_WARN << "Rank " << rank_ << " of online preconditioner is >= dim " << D
                << ", setting it to "
                << (D - 1) << " (but this is probably still too high)";
     rank_ = D - 1;
   }
+  if (rank_ == 0) {
+    // Dimension of input data was 1, so the natural gradient preconditioner
+    // would always be the unit matrix.
+    // We'll handle this as a special case, for generality.
+    return;
+  }
+  
   KALDI_ASSERT(num_samples_history_ > 0.0 && num_samples_history_ <= 1.0e+6);
   KALDI_ASSERT(alpha_ >= 0.0);
   KALDI_ASSERT(rank_ > 0);
@@ -112,6 +118,16 @@ void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *R_t,
     CuVectorBase<BaseFloat> *row_prod,
     BaseFloat *scale) {
+  if (R_t->NumCols() == 1) {
+    // If the dimension of the space equals one then our natural gradient update
+    // with rescaling becomes a no-op, but the code wouldn't naturally handle it
+    // because rank would be zero.  Support this as a special case.
+    if (row_prod)
+      row_prod->AddDiagMat2(1.0, *R_t, kNoTrans, 0.0);      
+    *scale = 1.0;
+    return;
+  }
+  
   if (row_prod == NULL) {
     CuVector<BaseFloat> row_prod_tmp(R_t->NumRows());
     PreconditionDirections(R_t, &row_prod_tmp, scale);
@@ -121,6 +137,7 @@ void OnlineNaturalGradient::PreconditionDirections(
   read_write_mutex_.Lock();
   if (t_ == -1) // not initialized
     Init(*R_t);
+  
   // Now t_ >= 0.
   // We create local copies  of the class variables... this is intended for
   // multi-threaded safety so we can't read them in an inconsistent state,

@@ -666,11 +666,12 @@ class NoOpComponent: public NonlinearComponent {
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
-// PerElementScaleComponent.
+// PerElementScaleComponent scales each dimension of its input with a separate
+// trainable scale; it's like a linear component with a diagonal matrix.
 class PerElementScaleComponent: public UpdatableComponent {
  public:
-  int32 InputDim() const { return scales_.Dim(); }
-  int32 OutputDim() const { return scales_.Dim(); }
+  virtual int32 InputDim() const { return scales_.Dim(); }
+  virtual int32 OutputDim() const { return scales_.Dim(); }
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl); 
@@ -681,7 +682,6 @@ class PerElementScaleComponent: public UpdatableComponent {
     return kSimpleComponent|kUpdatableComponent|kLinearInInput|
         kLinearInParameters|kBackpropNeedsInput|kPropagateInPlace;
   }
-
   
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -711,19 +711,11 @@ class PerElementScaleComponent: public UpdatableComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
   // Some functions that are specific to this class.
-  
-  // This new function is used when mixing up:
-  virtual void SetParams(const VectorBase<BaseFloat> &scales);
-  const CuVector<BaseFloat> &Params() { return scales_; }
   explicit PerElementScaleComponent(const PerElementScaleComponent &other);
-  // The next constructor is used in converting from nnet1.
-  PerElementScaleComponent(const CuVectorBase<BaseFloat> &scales,
-                           BaseFloat learning_rate);
-  void Init(BaseFloat learning_rate,
-            int32 dim,
+
+  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev);
-  void Init(BaseFloat learning_rate,
-            std::string vector_filename);
+  void Init(BaseFloat learning_rate, std::string vector_filename);
 
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
@@ -749,6 +741,62 @@ class PerElementScaleComponent: public UpdatableComponent {
       = (const PerElementScaleComponent &other); // Disallow.
   CuVector<BaseFloat> scales_;
 
+};
+
+
+// NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
+// it uses a natural gradient update for the per-element scales, and enforces a
+// maximum amount of change per minibatch, for stability.
+class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
+ public:
+
+  virtual std::string Info() const;
+  
+  virtual void InitFromConfig(ConfigLine *cfl); 
+  
+  NaturalGradientPerElementScaleComponent() { } // use Init to really initialize.
+  virtual std::string Type() const {
+    return "NaturalGradientPerElementScaleComponent";
+  }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are specific to this class:
+  explicit NaturalGradientPerElementScaleComponent(
+      const NaturalGradientPerElementScaleComponent &other);
+
+  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+            BaseFloat param_stddev, int32 rank, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha,
+            BaseFloat max_change_per_minibatch);
+  void Init(BaseFloat learning_rate, std::string vector_filename,
+            int32 rank, int32 update_period, BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_minibatch);
+
+ private:
+  // configuration value for imposing max-change... 
+  BaseFloat max_change_per_minibatch_;
+
+  // unlike the NaturalGradientAffineComponent, there is only one dimension to
+  // consider as the parameters are a vector not a matrix, so we only need one
+  // preconditioner.
+  // The preconditioner stores its own configuration values; we write and read
+  // these, but not the preconditioner object itself.
+  OnlineNaturalGradient preconditioner_;
+  
+  // Override of the parent-class Update() function, called only
+  // if this->is_gradient_ = false; this implements the natural
+  // gradient update.
+  virtual void Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  const NaturalGradientPerElementScaleComponent &operator 
+      = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
 
 

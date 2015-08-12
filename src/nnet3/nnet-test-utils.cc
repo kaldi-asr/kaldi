@@ -629,7 +629,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 13);
+  int32 n = RandInt(0, 15);
   std::ostringstream os;
   switch(n) {
     case 0: {
@@ -711,6 +711,16 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 13: {
       *component_type = "FixedBiasComponent";
+      os << "dim=" << RandInt(1, 100);
+      break;
+    }
+    case 14: {
+      *component_type = "NaturalGradientPerElementScaleComponent";
+      os << "dim=" << RandInt(1, 100);
+      break;
+    }
+    case 15: {
+      *component_type = "PerElementScaleComponent";
       os << "dim=" << RandInt(1, 100);
       break;
     }

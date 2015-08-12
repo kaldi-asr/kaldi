@@ -69,6 +69,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NaturalGradientAffineComponent();
   } else if (component_type == "PerElementScaleComponent") {
     ans = new PerElementScaleComponent();
+  } else if (component_type == "NaturalGradientPerElementScaleComponent") {
+    ans = new NaturalGradientPerElementScaleComponent();
   } else if (component_type == "SumGroupComponent") {
     ans = new SumGroupComponent();
   } else if (component_type == "FixedAffineComponent") {
