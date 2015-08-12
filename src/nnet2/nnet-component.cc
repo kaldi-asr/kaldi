@@ -3872,39 +3872,33 @@ void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
   int32 filter_dim = filter_params_.NumCols();
 
   /** Buffer of reshaped inputs:
-   *  1row = vectorized rectangular feature patch,
+   *  1row = vectorized rectangular feature patches
    *  1col = dim over speech frames,
-   *  std::vector-dim = patch-position
    */
-  std::vector<CuMatrix<BaseFloat> > vectorized_feature_patches_;
-
-  // prepare the buffers
-  if (vectorized_feature_patches_.size() == 0) {
-    vectorized_feature_patches_.resize(num_patches);
-  }
+  patches_.Resize(num_frames, filter_dim * num_patches, kSetZero);
+  // column_map is indexed by the column-index of "patches",
+  // and the value is the corresponding column-index of "in". 
+  std::vector<int32> column_map;
 
   // vectorize the inputs
   for (int32 p = 0; p < num_patches; p++) {
-    vectorized_feature_patches_[p].Resize(num_frames, filter_dim, kSetZero);
-    // build-up a column selection mask:
-    std::vector<int32> column_mask;
+    // build-up a column selection map:
     for (int32 s = 0; s < num_splice; s++) {
       for (int32 d = 0; d < patch_dim_; d++) {
-        column_mask.push_back(p * patch_step_ + s * patch_stride_ + d);
+        column_map.push_back(p * patch_step_ + s * patch_stride_ + d);
       }
     }
-    KALDI_ASSERT(column_mask.size() == filter_dim);
-    // select the columns
-    vectorized_feature_patches_[p].CopyCols(in, column_mask);
   }
+  KALDI_ASSERT(column_map.size() == filter_dim * num_patches);
+  patches_.CopyCols(in, column_map);
 
   // compute filter activations
   for (int32 p = 0; p < num_patches; p++) {
     CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
+    CuSubMatrix<BaseFloat> patch(patches_.ColRange(p * filter_dim, filter_dim));
     tgt.AddVecToRows(1.0, bias_params_, 0.0); // add bias
     // apply all filters
-    tgt.AddMatMat(1.0, vectorized_feature_patches_[p], kNoTrans,
-                  filter_params_, kTrans, 1.0);
+    tgt.AddMatMat(1.0, patch, kNoTrans, filter_params_, kTrans, 1.0);
   }
 }
 
@@ -3940,33 +3934,36 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
   int32 filter_dim = filter_params_.NumCols();
 
   /** Buffer for backpropagation:
-   *  derivatives in the domain of 'vectorized_feature_patches_',
-   *  1row = vectorized rectangular feature patch,
+   *  derivatives in the domain of 'patches_',
+   *  1row = vectorized rectangular feature patches,
    *  1col = dim over speech frames,
-   *  std::vector-dim = patch-position
    */
-  std::vector<CuMatrix<BaseFloat> > feature_patch_diffs_;
-  feature_patch_diffs_.resize(num_patches);
+  CuMatrix<BaseFloat> patches_deriv;
+  patches_deriv.Resize(num_frames, filter_dim * num_patches, kSetZero);
 
   // backpropagate to vector of matrices
   // (corresponding to position of a filter)
   for (int32 p = 0; p < num_patches; p++) {
-    feature_patch_diffs_[p].Resize(num_frames, filter_dim, kSetZero); // reset
+    CuSubMatrix<BaseFloat> patch_deriv(patches_deriv.ColRange(p * filter_dim, filter_dim));
     CuSubMatrix<BaseFloat> out_deriv_patch(out_deriv.ColRange(p * num_filters,
                                                               num_filters));
-    feature_patch_diffs_[p].AddMatMat(1.0, out_deriv_patch, kNoTrans,
-                                      filter_params_, kNoTrans, 0.0);
+    patch_deriv.AddMatMat(1.0, out_deriv_patch, kNoTrans,
+                          filter_params_, kNoTrans, 0.0);
   }
 
   // sum the derivatives into in_deriv, we will compensate #summands
   for (int32 p = 0; p < num_patches; p++) {
+    // rearranged_column_map is indexed by the column-index c of "in",
+    // and contains either some column-index d of "patches" such that
+    // column_map[d] = c, or -1.
+    std::vector<int32> rearranged_column_map(InputDim(), -1);
     for (int32 s = 0; s < num_splice; s++) {
-      CuSubMatrix<BaseFloat> src(feature_patch_diffs_[p].ColRange(s * patch_dim_,
-                                                                  patch_dim_));
-      CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p * patch_step_ + s * patch_stride_,
-                                                    patch_dim_));
-      tgt.AddMat(1.0, src); // sum
+      for (int32 d = 0; d < patch_dim_; d++) {
+	rearranged_column_map[p * patch_step_ + s * patch_stride_ + d] =
+	  p * filter_dim + s * patch_dim_ + d;
+      }
     }
+    in_deriv->AddCols(patches_deriv, rearranged_column_map);
   }
 
   if (to_update != NULL) {
@@ -4090,32 +4087,22 @@ void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
   CuMatrix<BaseFloat> filters_grad;
   CuVector<BaseFloat> bias_grad;
 
-  /** Buffer of reshaped inputs:
-   *  1row = vectorized rectangular feature patch,
-   *  1col = dim over speech frames,
-   *  std::vector-dim = patch-position
-   */
-  std::vector<CuMatrix<BaseFloat> > vectorized_feature_patches_;
-
-  // prepare the buffers
-  if (vectorized_feature_patches_.size() == 0) {
-    vectorized_feature_patches_.resize(num_patches);
-  }
-
-  // vectorize the inputs
-  for (int32 p = 0; p < num_patches; p++) {
-    vectorized_feature_patches_[p].Resize(num_frames, filter_dim, kSetZero);
-    // build-up a column selection mask:
-    std::vector<int32> column_mask;
-    for (int32 s = 0; s < num_splice; s++) {
-      for (int32 d = 0; d < patch_dim_; d++) {
-        column_mask.push_back(p * patch_step_ + s * patch_stride_ + d);
+  // prepare the buffers if necessary
+  // (necessary to pass the component test)
+  if (patches_.NumRows() == 0) {
+    std::vector<int32> column_map;
+    patches_.Resize(num_frames, filter_dim * num_patches, kSetZero);
+    for (int32 p = 0; p < num_patches; p++) {
+      for (int32 s = 0; s < num_splice; s++) {
+        for (int32 d = 0; d < patch_dim_; d++) {
+          column_map.push_back(p * patch_step_ + s * patch_stride_ + d);
+        }
       }
     }
-    KALDI_ASSERT(column_mask.size() == filter_dim);
-    // select the columns
-    vectorized_feature_patches_[p].CopyCols(in_value, column_mask);
+    KALDI_ASSERT(column_map.size() == filter_dim * num_patches);
+    patches_.CopyCols(in_value, column_map);
   }
+  KALDI_ASSERT(patches_.NumCols() == filter_dim * num_patches);
 
   //
   // calculate the gradient
@@ -4126,8 +4113,8 @@ void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
   for (int32 p = 0; p < num_patches; p++) { // sum
     CuSubMatrix<BaseFloat> diff_patch(out_deriv.ColRange(p * num_filters,
                                                          num_filters));
-    filters_grad.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p],
-                           kNoTrans, 1.0);
+    CuSubMatrix<BaseFloat> patch(patches_.ColRange(p * filter_dim, filter_dim));
+    filters_grad.AddMatMat(1.0, diff_patch, kTrans, patch, kNoTrans, 1.0);
     bias_grad.AddRowSumMat(1.0, diff_patch, 1.0);
   }
 

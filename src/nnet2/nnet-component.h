@@ -1783,6 +1783,7 @@ class Convolutional1dComponent: public UpdatableComponent {
   const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
   CuMatrix<BaseFloat> filter_params_;
   CuVector<BaseFloat> bias_params_;
+  mutable CuMatrix<BaseFloat> patches_;
   bool is_gradient_;
 };
 
