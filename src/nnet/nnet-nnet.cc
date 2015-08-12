@@ -360,6 +360,14 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
   }
 }
 
+void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
+  for (int32 c=0; c < NumComponents(); c++) {
+    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
+      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
+      comp.SetSeqLengths(sequence_lengths);
+    }
+  }
+}
 
 void Nnet::Init(const std::string &file) {
   Input in(file);

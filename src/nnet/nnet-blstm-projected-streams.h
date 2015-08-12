@@ -76,7 +76,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   }
   
   /// set the utterance length used for parallel training
-  void SetSeqLengths(std::vector<int> &sequence_lengths) {
+  void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
         sequence_lengths_ = sequence_lengths;
   }
 
@@ -1055,7 +1055,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   int32 ncell_;   ///< the number of cell blocks
   int32 nrecur_;  ///< recurrent projection layer dim
   int32 nstream_;
-  std::vector<int> sequence_lengths_;
+  std::vector<int32> sequence_lengths_;
 
   // gradient-clipping value,
   BaseFloat clip_gradient_;

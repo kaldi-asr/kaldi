@@ -101,6 +101,9 @@ class Nnet {
   /// Reset streams in LSTM multi-stream training,
   void ResetLstmStreams(const std::vector<int32> &stream_reset_flag);
 
+  /// set sequence length in LSTM multi-stream training
+  void SetSeqLengths(const std::vector<int32> &sequence_lengths);
+
   /// Initialize MLP from config
   void Init(const std::string &config_file);
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
@@ -130,13 +133,7 @@ class Nnet {
   /// Get training hyper-parameters from the network
   const NnetTrainOptions& GetTrainOptions() const {
     return opts_;
-  }
-  /// Set lengths of utterances for LSTM parallel training
-  void SetSeqLengths(std::vector<int> &sequence_lengths) { 
-    for(int32 i=0; i < (int32)components_.size(); i++) {
-        components_[i]->SetSeqLengths(sequence_lengths);
-    }
-  }
+  }  
 
  private:
   /// Vector which contains all the components composing the neural network,
