@@ -86,7 +86,7 @@ if ($aligned_ctm_filename ne "") {
 }
 # Prints the current segment to file.
 sub PrintSegment {
-  my ($aligned_ctm, $wav_id, $min_sil_length,
+  my ($aligned_ctm, $wav_id, $min_sil_length, $min_seg_length,
       $seg_start_index, $seg_end_index, $seg_count, $SO, $TO) = @_;
 
   if ($seg_start_index > $seg_end_index) {
@@ -115,7 +115,7 @@ sub PrintSegment {
       }
       $num_errors += $aligned_ctm->[$i]->[3];
     }
-    if ($num_errors / $num_words > $wer_cutoff) {
+    if ($num_errors / $num_words > $wer_cutoff || $num_words < 1) {
       return -1;
     }
   }
@@ -161,6 +161,9 @@ sub PrintSegment {
   my $seg_start = $aligned_ctm->[$seg_start_index]->[1] - $pad_start_sil;
   my $seg_end = $aligned_ctm->[$seg_end_index]->[1] +
                 $aligned_ctm->[$seg_end_index]->[2] + $pad_end_sil;
+  if ($seg_end - $seg_start < $min_seg_length) {
+      return -1;
+  }
 
   $seg_start = sprintf("%.2f", $seg_start);
   $seg_end = sprintf("%.2f", $seg_end);
@@ -229,7 +232,7 @@ sub SplitLongSegment {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);
     my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
-                           $current_seg_index, $split_point,
+                           $min_seg_length, $current_seg_index, $split_point,
                            $current_seg_count, $SO, $TO);
     $current_seg_count += 1 if ($ans != -1);
     $current_seg_index = $split_point + 1;
@@ -243,7 +246,7 @@ sub SplitLongSegment {
                                     $seg_end_index,
                                     $current_seg_length / 2.0 + 0.01);
     my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
-                           $current_seg_index, $split_point,
+                           $min_seg_length, $current_seg_index, $split_point,
                            $current_seg_count, $SO, $TO);
     $current_seg_count += 1 if ($ans != -1);
     $current_seg_index = $split_point + 1;
@@ -252,7 +255,7 @@ sub SplitLongSegment {
   my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                   $seg_end_index, $max_seg_length + 0.01);
   my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
-                         $current_seg_index, $split_point,
+                         $min_seg_length, $current_seg_index, $split_point,
                          $current_seg_count, $SO, $TO);
   $current_seg_count += 1 if ($ans != -1);
   $current_seg_index = $split_point + 1;
@@ -348,7 +351,7 @@ sub ProcessWav {
       if ($current_seg_length <= $max_seg_length &&
           $current_seg_length >= $min_seg_length) {
         my $ans = PrintSegment(\@aligned_ctm, $wav_id, $min_sil_length,
-                               $current_seg_index, $x,
+                               $min_seg_length, $current_seg_index, $x,
                                $current_seg_count, $SO, $TO);
         $current_seg_count += 1 if ($ans != -1);
         $current_seg_index = $x + 1;
