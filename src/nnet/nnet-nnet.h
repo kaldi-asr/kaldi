@@ -133,7 +133,7 @@ class Nnet {
   /// Get training hyper-parameters from the network
   const NnetTrainOptions& GetTrainOptions() const {
     return opts_;
-  }  
+  }
 
  private:
   /// Vector which contains all the components composing the neural network,
