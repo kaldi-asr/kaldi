@@ -20,6 +20,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
+#include "fstext/kaldi-fst-io.h"
 #include "fstext/fstext-utils.h"
 
 int main(int argc, char *argv[]) {

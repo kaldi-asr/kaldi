@@ -472,6 +472,7 @@
 /src/matrix/.depend.mk
 /src/matrix/Matrix.vcxproj
 /src/matrix/matrix-lib-test
+/src/matrix/sparse-matrix-test
 /src/matrix/kaldi-gpsr-test
 /src/matrix/tmpf
 
@@ -825,6 +826,7 @@
 /src/cudamatrix/cu-tp-matrix-test
 /src/cudamatrix/cu-vector-speed-test
 /src/cudamatrix/cu-vector-test
+/src/cudamatrix/cu-sparse-matrix-test
 /src/feat/feature-functions-test
 /src/feat/feature-sdc-test
 /src/feat/pitch-functions-test

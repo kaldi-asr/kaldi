@@ -319,10 +319,8 @@ void UnitTestNativeFilename() {
 }  // end namespace kaldi.
 
 #if defined(_MSC_VER) && !defined(KALDI_CYGWIN_COMPAT)
-//         /\_/\   Windows has no cat!
-//    ____/ o o \
-//  /~____  =%= /  There is probably no suitable tool to test popen I/O
-// (______)__m_m)  on Windows, so we emulate a lame version of cat(1).
+// Windows has no cat!  There is probably no suitable tool to test popen I/O on
+// Windows, so we emulate a lame version of cat(1).
 static int TinyCat(int argc, const char** argv) {
   const char* name_in = argc > 0 && strcmp(argv[0], "-") ? argv[0] : NULL;
   int fd_in = name_in ? _open(name_in, _O_RDONLY) : _fileno(stdin);

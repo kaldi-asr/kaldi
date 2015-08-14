@@ -24,7 +24,7 @@
 #include "util/common-utils.h"
 #include "tree/context-dep.h"
 #include "hmm/transition-model.h"
-#include "fstext/fstext-lib.h"
+#include "fstext/kaldi-fst-io.h"
 #include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"

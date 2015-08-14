@@ -116,6 +116,9 @@ class ContextFstImpl : public CacheImpl<Arc> {
 
   ~ContextFstImpl() { }
 
+  // See \ref tree_ilabel
+  // "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel" for more
+  // information about the ilabel_info.
   const vector<vector<LabelT> > &ILabelInfo() { return ilabel_info_; }
 
   StateId Start();
