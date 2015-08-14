@@ -80,7 +80,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
         sequence_lengths_ = sequence_lengths;
   }
 
-  void InitData(const std::istream &is) {
+  void InitData(std::istream &is) {
     // define options
     float param_scale = 0.02;
     // parse config
