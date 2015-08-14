@@ -120,7 +120,7 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       ans = new LstmProjectedStreams(input_dim, output_dim);
       break;
     case Component::kBLstmProjectedStreams :
-      ans = new BLstmProjectedStreams(input_dim, output_dim);  
+      ans = new BLstmProjectedStreams(input_dim, output_dim);
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);
