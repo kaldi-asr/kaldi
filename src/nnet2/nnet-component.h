@@ -1745,7 +1745,7 @@ class Convolutional1dComponent: public UpdatableComponent {
   std::string Info() const;
   void InitFromString(std::string args);
   std::string Type() const { return "Convolutional1dComponent"; }
-  bool BackpropNeedsInput() const { return false; }
+  bool BackpropNeedsInput() const { return true; }
   bool BackpropNeedsOutput() const { return false; }
   using Component::Propagate; // to avoid name hiding
   void Propagate(const ChunkInfo &in_info,
@@ -1780,10 +1780,15 @@ class Convolutional1dComponent: public UpdatableComponent {
   int32 patch_step_;
   int32 patch_stride_;
 
+  static void ReverseIndexes(const std::vector<int32> &forward_indexes,
+                             int32 input_dim,
+                             std::vector<std::vector<int32> > *backward_indexes);
+  static void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
+                               std::vector<std::vector<int32> > *out);
+    
   const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
   CuMatrix<BaseFloat> filter_params_;
   CuVector<BaseFloat> bias_params_;
-  mutable CuMatrix<BaseFloat> patches_;
   bool is_gradient_;
 };
 
