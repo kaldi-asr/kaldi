@@ -1,4 +1,4 @@
-// nnet/nnet-lstm-projected-streams.h
+// nnet/nnet-blstm-projected-streams.h
 
 // Copyright 2014  Jiayu DU (Jerry), Wei Li
 // Copyright 2015  Chongjia Ni
@@ -19,8 +19,8 @@
 
 
 
-#ifndef KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
-#define KALDI_NNET_BLSTM_PROJECTED_STREAMS_H_
+#ifndef KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
+#define KALDI_NNET_NNET_BLSTM_PROJECTED_STREAMS_H_
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -49,7 +49,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   BLstmProjectedStreams(int32 input_dim, int32 output_dim) :
     UpdatableComponent(input_dim, output_dim),
     ncell_(0),
-    nrecur_(int32(output_dim/2)),
+    nrecur_(static_cast<int32>(output_dim/2)),
     nstream_(0),
     clip_gradient_(0.0)
     //, dropout_rate_(0.0)
@@ -74,13 +74,13 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
     v = tmp;
   }
-  
+
   /// set the utterance length used for parallel training
   void SetSeqLengths(const std::vector<int32> &sequence_lengths) {
         sequence_lengths_ = sequence_lengths;
   }
 
-  void InitData(std::istream &is) {
+  void InitData(const std::istream &is) {
     // define options
     float param_scale = 0.02;
     // parse config
@@ -91,7 +91,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
         ReadBasicType(is, false, &ncell_);
       else if (token == "<ClipGradient>")
         ReadBasicType(is, false, &clip_gradient_);
-      //else if (token == "<DropoutRate>")
+      // else if (token == "<DropoutRate>")
       //  ReadBasicType(is, false, &dropout_rate_);
       else if (token == "<ParamScale>")
         ReadBasicType(is, false, &param_scale);
@@ -126,7 +126,6 @@ class BLstmProjectedStreams : public UpdatableComponent {
     InitVecParam(f_bias_, param_scale);
     InitVecParam(b_bias_, param_scale);
 
-    // This is for input gate, forgot gate and output gate connected with the previous cell
     // forward direction
     f_peephole_i_c_.Resize(ncell_, kUndefined);
     f_peephole_f_c_.Resize(ncell_, kUndefined);
@@ -179,8 +178,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
     ReadBasicType(is, binary, &ncell_);
     ExpectToken(is, binary, "<ClipGradient>");
     ReadBasicType(is, binary, &clip_gradient_);
-    //ExpectToken(is, binary, "<DropoutRate>");
-    //ReadBasicType(is, binary, &dropout_rate_);
+    // ExpectToken(is, binary, "<DropoutRate>");
+    // ReadBasicType(is, binary, &dropout_rate_);
 
     // reading parameters corresponding to forward direction
     f_w_gifo_x_.Read(is, binary);
@@ -445,7 +444,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
-    int DEBUG = 0;    
+    int DEBUG = 0;
     int32 nstream_ = sequence_lengths_.size();
     KALDI_ASSERT(in.NumRows() % nstream_ == 0);
     int32 T = in.NumRows() / nstream_;
@@ -456,7 +455,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
     f_propagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
     // backward direction
     b_propagate_buf_.Resize((T+2)*S, 7 * ncell_ + nrecur_, kSetZero);
-        
+
     // disassembling forward-pass forward-propagation buffer into different neurons,
     CuSubMatrix<BaseFloat> F_YG(f_propagate_buf_.ColRange(0*ncell_, ncell_));
     CuSubMatrix<BaseFloat> F_YI(f_propagate_buf_.ColRange(1*ncell_, ncell_));
@@ -483,33 +482,33 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     // forward direction
     // x -> g, i, f, o, not recurrent, do it all in once
-    F_YGIFO.RowRange(1*S,T*S).AddMatMat(1.0, in, kNoTrans, f_w_gifo_x_, kTrans, 0.0);
+    F_YGIFO.RowRange(1*S, T*S).AddMatMat(1.0, in, kNoTrans, f_w_gifo_x_, kTrans, 0.0);
 
     // bias -> g, i, f, o
-    F_YGIFO.RowRange(1*S,T*S).AddVecToRows(1.0, f_bias_);
+    F_YGIFO.RowRange(1*S, T*S).AddVecToRows(1.0, f_bias_);
 
     for (int t = 1; t <= T; t++) {
       // multistream buffers for current time-step
-      CuSubMatrix<BaseFloat> y_all(f_propagate_buf_.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_i(F_YI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_f(F_YF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_o(F_YO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_c(F_YC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_h(F_YH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_m(F_YM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_r(F_YR.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> y_all(f_propagate_buf_.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_i(F_YI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_f(F_YF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_o(F_YO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_c(F_YC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_h(F_YH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_m(F_YM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_r(F_YR.RowRange(t*S, S));
 
-      CuSubMatrix<BaseFloat> y_gifo(F_YGIFO.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> y_gifo(F_YGIFO.RowRange(t*S, S));
 
       // r(t-1) -> g, i, f, o
-      y_gifo.AddMatMat(1.0, F_YR.RowRange((t-1)*S,S), kNoTrans, f_w_gifo_r_, kTrans,  1.0);
+      y_gifo.AddMatMat(1.0, F_YR.RowRange((t-1)*S, S), kNoTrans, f_w_gifo_r_, kTrans, 1.0);
 
       // c(t-1) -> i(t) via peephole
-      y_i.AddMatDiagVec(1.0, F_YC.RowRange((t-1)*S,S), kNoTrans, f_peephole_i_c_, 1.0);
+      y_i.AddMatDiagVec(1.0, F_YC.RowRange((t-1)*S, S), kNoTrans, f_peephole_i_c_, 1.0);
 
       // c(t-1) -> f(t) via peephole
-      y_f.AddMatDiagVec(1.0, F_YC.RowRange((t-1)*S,S), kNoTrans, f_peephole_f_c_, 1.0);
+      y_f.AddMatDiagVec(1.0, F_YC.RowRange((t-1)*S, S), kNoTrans, f_peephole_f_c_, 1.0);
 
       // i, f sigmoid squashing
       y_i.Sigmoid(y_i);
@@ -522,7 +521,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       y_c.AddMatMatElements(1.0, y_g, y_i, 0.0);
 
       // c(t-1) -> c(t) via forget-gate
-      y_c.AddMatMatElements(1.0, F_YC.RowRange((t-1)*S,S), y_f, 1.0);
+      y_c.AddMatMatElements(1.0, F_YC.RowRange((t-1)*S, S), y_f, 1.0);
 
       y_c.ApplyFloor(-50);   // optional clipping of cell activation
       y_c.ApplyCeiling(50);  // google paper Interspeech2014: LSTM for LVCSR
@@ -541,12 +540,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
       // m -> r
       y_r.AddMatMat(1.0, y_m, kNoTrans, f_w_r_m_, kTrans, 0.0);
-      
+
       // set zeros
-      //for (int s = 0; s < S; s++) {
-      //  if (t > sequence_lengths_[s])
-      //          y_all.Row(s).SetZero();         
-      //} 
+      // for (int s = 0; s < S; s++) {
+      //   if (t > sequence_lengths_[s])
+      //     y_all.Row(s).SetZero();
+      // }
 
       if (DEBUG) {
         std::cerr << "forward direction forward-pass frame " << t << "\n";
@@ -562,44 +561,43 @@ class BLstmProjectedStreams : public UpdatableComponent {
     }
 
     // backward direction
-    B_YGIFO.RowRange(1*S,T*S).AddMatMat(1.0, in, kNoTrans, b_w_gifo_x_, kTrans, 0.0);
+    B_YGIFO.RowRange(1*S, T*S).AddMatMat(1.0, in, kNoTrans, b_w_gifo_x_, kTrans, 0.0);
     //// LSTM forward dropout
     //// Google paper 2014: Recurrent Neural Network Regularization
     //// by Wojciech Zaremba, Ilya Sutskever, Oriol Vinyals
-    //if (dropout_rate_ != 0.0) {
+    // if (dropout_rate_ != 0.0) {
     //  dropout_mask_.Resize(in.NumRows(), 4*ncell_, kUndefined);
     //  dropout_mask_.SetRandUniform();   // [0,1]
     //  dropout_mask_.Add(-dropout_rate_);  // [-dropout_rate, 1-dropout_rate_],
     //  dropout_mask_.ApplyHeaviside();   // -tive -> 0.0, +tive -> 1.0
     //  YGIFO.RowRange(1*S,T*S).MulElements(dropout_mask_);
-    //}
+    // }
 
     // bias -> g, i, f, o
-    B_YGIFO.RowRange(1*S,T*S).AddVecToRows(1.0, b_bias_);
+    B_YGIFO.RowRange(1*S, T*S).AddVecToRows(1.0, b_bias_);
 
     // backward direction, from T to 1, t--
     for (int t = T; t >= 1; t--) {
       // multistream buffers for current time-step
-      CuSubMatrix<BaseFloat> y_all(b_propagate_buf_.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_i(B_YI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_f(B_YF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_o(B_YO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_c(B_YC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_h(B_YH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_m(B_YM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_r(B_YR.RowRange(t*S,S));
-
-      CuSubMatrix<BaseFloat> y_gifo(B_YGIFO.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> y_all(b_propagate_buf_.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_i(B_YI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_f(B_YF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_o(B_YO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_c(B_YC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_h(B_YH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_m(B_YM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_r(B_YR.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_gifo(B_YGIFO.RowRange(t*S, S));
 
       // r(t+1) -> g, i, f, o
-      y_gifo.AddMatMat(1.0, B_YR.RowRange((t+1)*S,S), kNoTrans, b_w_gifo_r_, kTrans,  1.0);
+      y_gifo.AddMatMat(1.0, B_YR.RowRange((t+1)*S, S), kNoTrans, b_w_gifo_r_, kTrans, 1.0);
 
       // c(t+1) -> i(t) via peephole
-      y_i.AddMatDiagVec(1.0, B_YC.RowRange((t+1)*S,S), kNoTrans, b_peephole_i_c_, 1.0);
+      y_i.AddMatDiagVec(1.0, B_YC.RowRange((t+1)*S, S), kNoTrans, b_peephole_i_c_, 1.0);
 
       // c(t+1) -> f(t) via peephole
-      y_f.AddMatDiagVec(1.0, B_YC.RowRange((t+1)*S,S), kNoTrans, b_peephole_f_c_, 1.0);
+      y_f.AddMatDiagVec(1.0, B_YC.RowRange((t+1)*S, S), kNoTrans, b_peephole_f_c_, 1.0);
 
       // i, f sigmoid squashing
       y_i.Sigmoid(y_i);
@@ -612,7 +610,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
       y_c.AddMatMatElements(1.0, y_g, y_i, 0.0);
 
       // c(t+1) -> c(t) via forget-gate
-      y_c.AddMatMatElements(1.0, B_YC.RowRange((t+1)*S,S), y_f, 1.0);
+      y_c.AddMatMatElements(1.0, B_YC.RowRange((t+1)*S, S), y_f, 1.0);
 
       y_c.ApplyFloor(-50);   // optional clipping of cell activation
       y_c.ApplyCeiling(50);  // google paper Interspeech2014: LSTM for LVCSR
@@ -631,12 +629,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
       // m -> r
       y_r.AddMatMat(1.0, y_m, kNoTrans, b_w_r_m_, kTrans, 0.0);
-      
+
       for (int s = 0; s < S; s++) {
          if (t > sequence_lengths_[s])
-              y_all.Row(s).SetZero();
+            y_all.Row(s).SetZero();
       }
-      
+
       if (DEBUG) {
         std::cerr << "backward direction forward-pass frame " << t << "\n";
         std::cerr << "activation of g: " << y_g;
@@ -650,7 +648,6 @@ class BLstmProjectedStreams : public UpdatableComponent {
       }
     }
 
-    /// final outputs now become the concatenation of the foward and backward activations
     CuMatrix<BaseFloat> YR_FB;
     YR_FB.Resize((T+2)*S, 2 * nrecur_, kSetZero);
     // forward part
@@ -658,18 +655,14 @@ class BLstmProjectedStreams : public UpdatableComponent {
     // backward part
     YR_FB.ColRange(nrecur_, nrecur_).CopyFromMat(b_propagate_buf_.ColRange(7*ncell_, nrecur_));
     // recurrent projection layer is also feed-forward as BLSTM output
-    
-    out->CopyFromMat(YR_FB.RowRange(1*S,T*S));
-        
+    out->CopyFromMat(YR_FB.RowRange(1*S, T*S));
   }
-
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
               const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
-
     int DEBUG = 0;
-    
-    int32 nstream_ = sequence_lengths_.size();  // the number of sequences to be processed in parallel
+    // the number of sequences to be processed in parallel
+    int32 nstream_ = sequence_lengths_.size();
     int32 T = in.NumRows() / nstream_;
     int32 S = nstream_;
     // disassembling forward-pass forward-propagation buffer into different neurons,
@@ -698,31 +691,31 @@ class BLstmProjectedStreams : public UpdatableComponent {
     CuSubMatrix<BaseFloat> F_DGIFO(f_backpropagate_buf_.ColRange(0, 4*ncell_));
 
     // projection layer to BLSTM output is not recurrent, so backprop it all in once
-    F_DR.RowRange(1*S,T*S).CopyFromMat(out_diff.ColRange(0, nrecur_));
+    F_DR.RowRange(1*S, T*S).CopyFromMat(out_diff.ColRange(0, nrecur_));
 
     for (int t = T; t >= 1; t--) {
-      CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_i(F_YI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_f(F_YF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_o(F_YO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_c(F_YC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_h(F_YH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_m(F_YM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_r(F_YR.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> y_g(F_YG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_i(F_YI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_f(F_YF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_o(F_YO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_c(F_YC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_h(F_YH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_m(F_YM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_r(F_YR.RowRange(t*S, S));
 
-      CuSubMatrix<BaseFloat> d_g(F_DG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_i(F_DI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_f(F_DF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_o(F_DO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_c(F_DC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_h(F_DH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_m(F_DM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_r(F_DR.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> d_g(F_DG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_i(F_DI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_f(F_DF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_o(F_DO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_c(F_DC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_h(F_DH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_m(F_DM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_r(F_DR.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> d_all(f_backpropagate_buf_.RowRange(t*S, S));
       // r
       //   Version 1 (precise gradients):
       //   backprop error from g(t+1), i(t+1), f(t+1), o(t+1) to r(t)
-      d_r.AddMatMat(1.0, F_DGIFO.RowRange((t+1)*S,S), kNoTrans, f_w_gifo_r_, kNoTrans, 1.0);
+      d_r.AddMatMat(1.0, F_DGIFO.RowRange((t+1)*S, S), kNoTrans, f_w_gifo_r_, kNoTrans, 1.0);
 
       /*
       //   Version 2 (Alex Graves' PhD dissertation):
@@ -756,13 +749,13 @@ class BLstmProjectedStreams : public UpdatableComponent {
       // 4. diff from f(t+1) (via peephole)
       // 5. diff from o(t)   (via peephole, not recurrent)
       d_c.AddMat(1.0, d_h);
-      d_c.AddMatMatElements(1.0, F_DC.RowRange((t+1)*S,S), F_YF.RowRange((t+1)*S,S), 1.0);
-      d_c.AddMatDiagVec(1.0, F_DI.RowRange((t+1)*S,S), kNoTrans, f_peephole_i_c_, 1.0);
-      d_c.AddMatDiagVec(1.0, F_DF.RowRange((t+1)*S,S), kNoTrans, f_peephole_f_c_, 1.0);
+      d_c.AddMatMatElements(1.0, F_DC.RowRange((t+1)*S, S), F_YF.RowRange((t+1)*S, S), 1.0);
+      d_c.AddMatDiagVec(1.0, F_DI.RowRange((t+1)*S, S), kNoTrans, f_peephole_i_c_, 1.0);
+      d_c.AddMatDiagVec(1.0, F_DF.RowRange((t+1)*S, S), kNoTrans, f_peephole_f_c_, 1.0);
       d_c.AddMatDiagVec(1.0, d_o           , kNoTrans, f_peephole_o_c_, 1.0);
 
       // f
-      d_f.AddMatMatElements(1.0, d_c, F_YC.RowRange((t-1)*S,S), 0.0);
+      d_f.AddMatMatElements(1.0, d_c, F_YC.RowRange((t-1)*S, S), 0.0);
       d_f.DiffSigmoid(y_f, d_f);
 
       // i
@@ -809,36 +802,35 @@ class BLstmProjectedStreams : public UpdatableComponent {
     CuSubMatrix<BaseFloat> B_DH(b_backpropagate_buf_.ColRange(5*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DM(b_backpropagate_buf_.ColRange(6*ncell_, ncell_));
     CuSubMatrix<BaseFloat> B_DR(b_backpropagate_buf_.ColRange(7*ncell_, nrecur_));
-
     CuSubMatrix<BaseFloat> B_DGIFO(b_backpropagate_buf_.ColRange(0, 4*ncell_));
 
     // projection layer to BLSTM output is not recurrent, so backprop it all in once
-    B_DR.RowRange(1*S,T*S).CopyFromMat(out_diff.ColRange(nrecur_, nrecur_));
+    B_DR.RowRange(1*S, T*S).CopyFromMat(out_diff.ColRange(nrecur_, nrecur_));
 
     for (int t = 1; t <= T; t++) {
-      CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_i(B_YI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_f(B_YF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_o(B_YO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_c(B_YC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_h(B_YH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_m(B_YM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> y_r(B_YR.RowRange(t*S,S));
+      CuSubMatrix<BaseFloat> y_g(B_YG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_i(B_YI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_f(B_YF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_o(B_YO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_c(B_YC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_h(B_YH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_m(B_YM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> y_r(B_YR.RowRange(t*S, S));
 
-      CuSubMatrix<BaseFloat> d_g(B_DG.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_i(B_DI.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_f(B_DF.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_o(B_DO.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_c(B_DC.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_h(B_DH.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_m(B_DM.RowRange(t*S,S));
-      CuSubMatrix<BaseFloat> d_r(B_DR.RowRange(t*S,S));
-       CuSubMatrix<BaseFloat> d_all(b_backpropagate_buf_.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_g(B_DG.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_i(B_DI.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_f(B_DF.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_o(B_DO.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_c(B_DC.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_h(B_DH.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_m(B_DM.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_r(B_DR.RowRange(t*S, S));
+      CuSubMatrix<BaseFloat> d_all(b_backpropagate_buf_.RowRange(t*S, S));
 
       // r
       //   Version 1 (precise gradients):
       //   backprop error from g(t-1), i(t-1), f(t-1), o(t-1) to r(t)
-      d_r.AddMatMat(1.0, B_DGIFO.RowRange((t-1)*S,S), kNoTrans, b_w_gifo_r_, kNoTrans, 1.0);
+      d_r.AddMatMat(1.0, B_DGIFO.RowRange((t-1)*S, S), kNoTrans, b_w_gifo_r_, kNoTrans, 1.0);
 
       /*
       //   Version 2 (Alex Graves' PhD dissertation):
@@ -871,13 +863,13 @@ class BLstmProjectedStreams : public UpdatableComponent {
       // 4. diff from f(t+1) (via peephole)
       // 5. diff from o(t)   (via peephole, not recurrent)
       d_c.AddMat(1.0, d_h);
-      d_c.AddMatMatElements(1.0, B_DC.RowRange((t-1)*S,S), B_YF.RowRange((t-1)*S,S), 1.0);
-      d_c.AddMatDiagVec(1.0, B_DI.RowRange((t-1)*S,S), kNoTrans, b_peephole_i_c_, 1.0);
-      d_c.AddMatDiagVec(1.0, B_DF.RowRange((t-1)*S,S), kNoTrans, b_peephole_f_c_, 1.0);
+      d_c.AddMatMatElements(1.0, B_DC.RowRange((t-1)*S, S), B_YF.RowRange((t-1)*S, S), 1.0);
+      d_c.AddMatDiagVec(1.0, B_DI.RowRange((t-1)*S, S), kNoTrans, b_peephole_i_c_, 1.0);
+      d_c.AddMatDiagVec(1.0, B_DF.RowRange((t-1)*S, S), kNoTrans, b_peephole_f_c_, 1.0);
       d_c.AddMatDiagVec(1.0, d_o                     , kNoTrans, b_peephole_o_c_, 1.0);
 
       // f
-      d_f.AddMatMatElements(1.0, d_c, B_YC.RowRange((t-1)*S,S), 0.0);
+      d_f.AddMatMatElements(1.0, d_c, B_YC.RowRange((t-1)*S, S), 0.0);
       d_f.DiffSigmoid(y_f, d_f);
 
       // i
@@ -904,13 +896,12 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     // g,i,f,o -> x, do it all in once
     // forward direction difference
-    in_diff->AddMatMat(1.0, F_DGIFO.RowRange(1*S,T*S), kNoTrans, f_w_gifo_x_, kNoTrans, 0.0);
+    in_diff->AddMatMat(1.0, F_DGIFO.RowRange(1*S, T*S), kNoTrans, f_w_gifo_x_, kNoTrans, 0.0);
     // backward direction difference
-    in_diff->AddMatMat(1.0, B_DGIFO.RowRange(1*S,T*S), kNoTrans, b_w_gifo_x_, kNoTrans, 1.0);
-
+    in_diff->AddMatMat(1.0, B_DGIFO.RowRange(1*S, T*S), kNoTrans, b_w_gifo_x_, kNoTrans, 1.0);
 
     // backward pass dropout
-    //if (dropout_rate_ != 0.0) {
+    // if (dropout_rate_ != 0.0) {
     //  in_diff->MulElements(dropout_mask_);
     //}
 
@@ -919,26 +910,26 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     // forward direction
     // weight x -> g, i, f, o
-    f_w_gifo_x_corr_.AddMatMat(1.0, F_DGIFO.RowRange(1*S,T*S), kTrans, 
+    f_w_gifo_x_corr_.AddMatMat(1.0, F_DGIFO.RowRange(1*S, T*S), kTrans,
                                     in,                        kNoTrans, mmt);
     // recurrent weight r -> g, i, f, o
-    f_w_gifo_r_corr_.AddMatMat(1.0, F_DGIFO.RowRange(1*S,T*S), kTrans, 
-                                    F_YR.RowRange(0*S,T*S),    kNoTrans, mmt);
+    f_w_gifo_r_corr_.AddMatMat(1.0, F_DGIFO.RowRange(1*S, T*S), kTrans,
+                                    F_YR.RowRange(0*S, T*S),    kNoTrans, mmt);
     // bias of g, i, f, o
-    f_bias_corr_.AddRowSumMat(1.0, F_DGIFO.RowRange(1*S,T*S), mmt);
+    f_bias_corr_.AddRowSumMat(1.0, F_DGIFO.RowRange(1*S, T*S), mmt);
 
     // recurrent peephole c -> i
-    f_peephole_i_c_corr_.AddDiagMatMat(1.0, F_DI.RowRange(1*S,T*S), kTrans,
-                                            F_YC.RowRange(0*S,T*S), kNoTrans, mmt);
+    f_peephole_i_c_corr_.AddDiagMatMat(1.0, F_DI.RowRange(1*S, T*S), kTrans,
+                                            F_YC.RowRange(0*S, T*S), kNoTrans, mmt);
     // recurrent peephole c -> f
-    f_peephole_f_c_corr_.AddDiagMatMat(1.0, F_DF.RowRange(1*S,T*S), kTrans,
-                                            F_YC.RowRange(0*S,T*S), kNoTrans, mmt);
+    f_peephole_f_c_corr_.AddDiagMatMat(1.0, F_DF.RowRange(1*S, T*S), kTrans,
+                                            F_YC.RowRange(0*S, T*S), kNoTrans, mmt);
     // peephole c -> o
-    f_peephole_o_c_corr_.AddDiagMatMat(1.0, F_DO.RowRange(1*S,T*S), kTrans,
-                                            F_YC.RowRange(1*S,T*S), kNoTrans, mmt);
+    f_peephole_o_c_corr_.AddDiagMatMat(1.0, F_DO.RowRange(1*S, T*S), kTrans,
+                                            F_YC.RowRange(1*S, T*S), kNoTrans, mmt);
 
-    f_w_r_m_corr_.AddMatMat(1.0, F_DR.RowRange(1*S,T*S), kTrans,
-                                 F_YM.RowRange(1*S,T*S), kNoTrans, mmt);
+    f_w_r_m_corr_.AddMatMat(1.0, F_DR.RowRange(1*S, T*S), kTrans,
+                                 F_YM.RowRange(1*S, T*S), kNoTrans, mmt);
 
     // apply the gradient clipping for forwardpass gradients
     if (clip_gradient_ > 0.0) {
@@ -960,25 +951,25 @@ class BLstmProjectedStreams : public UpdatableComponent {
 
     // backward direction backpropagate
     // weight x -> g, i, f, o
-    b_w_gifo_x_corr_.AddMatMat(1.0, B_DGIFO.RowRange(1*S,T*S), kTrans, in, kNoTrans, mmt);
+    b_w_gifo_x_corr_.AddMatMat(1.0, B_DGIFO.RowRange(1*S, T*S), kTrans, in, kNoTrans, mmt);
     // recurrent weight r -> g, i, f, o
-    b_w_gifo_r_corr_.AddMatMat(1.0, B_DGIFO.RowRange(1*S,T*S), kTrans,
-                                    B_YR.RowRange(0*S,T*S)   , kNoTrans, mmt);
+    b_w_gifo_r_corr_.AddMatMat(1.0, B_DGIFO.RowRange(1*S, T*S), kTrans,
+                                    B_YR.RowRange(0*S, T*S)   , kNoTrans, mmt);
     // bias of g, i, f, o
-    b_bias_corr_.AddRowSumMat(1.0, B_DGIFO.RowRange(1*S,T*S), mmt);
+    b_bias_corr_.AddRowSumMat(1.0, B_DGIFO.RowRange(1*S, T*S), mmt);
 
-    // recurrent peephole c -> i, c(t+1) --> i ##commented by chongjia
-    b_peephole_i_c_corr_.AddDiagMatMat(1.0, B_DI.RowRange(1*S,T*S), kTrans,
-                                            B_YC.RowRange(2*S,T*S), kNoTrans, mmt);
-    // recurrent peephole c -> f, c(t+1) --> f ###commented by chongjia
-    b_peephole_f_c_corr_.AddDiagMatMat(1.0, B_DF.RowRange(1*S,T*S), kTrans,
-                                            B_YC.RowRange(2*S,T*S), kNoTrans, mmt);
+    // recurrent peephole c -> i, c(t+1) --> i
+    b_peephole_i_c_corr_.AddDiagMatMat(1.0, B_DI.RowRange(1*S, T*S), kTrans,
+                                            B_YC.RowRange(2*S, T*S), kNoTrans, mmt);
+    // recurrent peephole c -> f, c(t+1) --> f
+    b_peephole_f_c_corr_.AddDiagMatMat(1.0, B_DF.RowRange(1*S, T*S), kTrans,
+                                            B_YC.RowRange(2*S, T*S), kNoTrans, mmt);
     // peephole c -> o
-    b_peephole_o_c_corr_.AddDiagMatMat(1.0, B_DO.RowRange(1*S,T*S), kTrans,
-                                            B_YC.RowRange(1*S,T*S), kNoTrans, mmt);
+    b_peephole_o_c_corr_.AddDiagMatMat(1.0, B_DO.RowRange(1*S, T*S), kTrans,
+                                            B_YC.RowRange(1*S, T*S), kNoTrans, mmt);
 
-    b_w_r_m_corr_.AddMatMat(1.0, B_DR.RowRange(1*S,T*S), kTrans,
-                                 B_YM.RowRange(1*S,T*S), kNoTrans, mmt);
+    b_w_r_m_corr_.AddMatMat(1.0, B_DR.RowRange(1*S, T*S), kTrans,
+                                 B_YM.RowRange(1*S, T*S), kNoTrans, mmt);
 
     // apply the gradient clipping for backwardpass gradients
     if (clip_gradient_ > 0.0) {
@@ -1061,8 +1052,8 @@ class BLstmProjectedStreams : public UpdatableComponent {
   BaseFloat clip_gradient_;
 
   // non-recurrent dropout
-  //BaseFloat dropout_rate_;
-  //CuMatrix<BaseFloat> dropout_mask_;
+  // BaseFloat dropout_rate_;
+  // CuMatrix<BaseFloat> dropout_mask_;
 
   // feed-forward connections: from x to [g, i, f, o]
   // forward direction
@@ -1130,7 +1121,7 @@ class BLstmProjectedStreams : public UpdatableComponent {
   CuMatrix<BaseFloat> b_backpropagate_buf_;
 
 };
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif

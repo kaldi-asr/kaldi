@@ -36,23 +36,23 @@ namespace nnet1 {
 class Nnet {
  public:
   Nnet() {}
-  Nnet(const Nnet& other); // Copy constructor.
+  Nnet(const Nnet& other);  // Copy constructor.
   Nnet &operator = (const Nnet& other); // Assignment operator.
 
-  ~Nnet(); 
+  ~Nnet();
 
  public:
   /// Perform forward pass through the network
-  void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
+  void Propagate(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
   /// Perform backward pass through the network
   void Backpropagate(const CuMatrixBase<BaseFloat> &out_diff, CuMatrix<BaseFloat> *in_diff);
   /// Perform forward pass through the network, don't keep buffers (use it when not training)
-  void Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out); 
+  void Feedforward(const CuMatrixBase<BaseFloat> &in, CuMatrix<BaseFloat> *out);
 
   /// Dimensionality on network input (input feature dim.)
-  int32 InputDim() const; 
+  int32 InputDim() const;
   /// Dimensionality of network outputs (posteriors | bn-features | etc.)
-  int32 OutputDim() const; 
+  int32 OutputDim() const;
 
   /// Returns number of components-- think of this as similar to # of layers, but
   /// e.g. the nonlinearity and the linear part count as separate components,
@@ -65,7 +65,7 @@ class Nnet {
   /// Sets the c'th component to "component", taking ownership of the pointer
   /// and deleting the corresponding one that we own.
   void SetComponent(int32 c, Component *component);
- 
+
   /// Appends this component to the components already in the neural net.
   /// Takes ownership of the pointer
   void AppendComponent(Component *dynamically_allocated_comp);
@@ -77,12 +77,12 @@ class Nnet {
   void RemoveLastComponent() { RemoveComponent(NumComponents()-1); }
 
   /// Access to forward pass buffers
-  const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const { 
-    return propagate_buf_; 
+  const std::vector<CuMatrix<BaseFloat> >& PropagateBuffer() const {
+    return propagate_buf_;
   }
   /// Access to backward pass buffers
-  const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const { 
-    return backpropagate_buf_; 
+  const std::vector<CuMatrix<BaseFloat> >& BackpropagateBuffer() const {
+    return backpropagate_buf_;
   }
 
   /// Get the number of parameters in the network
@@ -96,7 +96,7 @@ class Nnet {
   /// Get the gradient stored in the network
   void GetGradient(Vector<BaseFloat>* grad_copy) const;
 
-  /// Set the dropout rate 
+  /// Set the dropout rate
   void SetDropoutRetention(BaseFloat r);
   /// Reset streams in LSTM multi-stream training,
   void ResetLstmStreams(const std::vector<int32> &stream_reset_flag);
@@ -107,14 +107,14 @@ class Nnet {
   /// Initialize MLP from config
   void Init(const std::string &config_file);
   /// Read the MLP from file (can add layers to exisiting instance of Nnet)
-  void Read(const std::string &file);  
+  void Read(const std::string &file);
   /// Read the MLP from stream (can add layers to exisiting instance of Nnet)
-  void Read(std::istream &in, bool binary);  
+  void Read(std::istream &in, bool binary);
   /// Write MLP to file
   void Write(const std::string &file, bool binary) const;
-  /// Write MLP to stream 
-  void Write(std::ostream &out, bool binary) const;   
-  
+  /// Write MLP to stream
+  void Write(std::ostream &out, bool binary) const;
+
   /// Create string with human readable description of the nnet
   std::string Info() const;
   /// Create string with per-component gradient statistics
@@ -138,18 +138,17 @@ class Nnet {
  private:
   /// Vector which contains all the components composing the neural network,
   /// the components are for example: AffineTransform, Sigmoid, Softmax
-  std::vector<Component*> components_; 
+  std::vector<Component*> components_;
 
-  std::vector<CuMatrix<BaseFloat> > propagate_buf_; ///< buffers for forward pass
-  std::vector<CuMatrix<BaseFloat> > backpropagate_buf_; ///< buffers for backward pass
+  std::vector<CuMatrix<BaseFloat> > propagate_buf_;  ///< buffers for forward pass
+  std::vector<CuMatrix<BaseFloat> > backpropagate_buf_;  ///< buffers for backward pass
 
   /// Option class with hyper-parameters passed to UpdatableComponent(s)
   NnetTrainOptions opts_;
 };
-  
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
 #endif  // KALDI_NNET_NNET_NNET_H_
 

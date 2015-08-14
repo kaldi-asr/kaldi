@@ -1,12 +1,12 @@
 // nnetbin/nnet-train-blstm-parallel.cc
 
-// Copyright 2015   Chongjia Ni
+// Copyright 2015 Chongjia Ni
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//  http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
@@ -27,8 +27,8 @@
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   using namespace kaldi::nnet1;
-  typedef kaldi::int32 int32;  
-  
+  typedef kaldi::int32 int32;
+
   try {
     const char *usage =
         "Perform one iteration of senones training by SGD.\n"
@@ -39,11 +39,11 @@ int main(int argc, char *argv[]) {
         " nnet-train-blstm-streams scp:feature.scp ark:labels.ark nnet.init nnet.iter1\n";
 
     ParseOptions po(usage);
+    // training options
+    NnetTrainOptions trn_opts;
+    trn_opts.Register(&po);
 
-    NnetTrainOptions trn_opts;  // training options
-    trn_opts.Register(&po); 
-
-    bool binary = true, 
+    bool binary = true,
          crossvalidate = false;
     po.Register("binary", &binary, "Write model  in binary mode");
     po.Register("cross-validate", &crossvalidate, "Perform cross-validation (no backpropagation)");
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance, "Allowed length difference of features/targets (frames)");
-    
+
     std::string frame_weights;
     po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
 
@@ -66,11 +66,11 @@ int main(int argc, char *argv[]) {
     double frame_limit = 100000;
     po.Register("frame-limit", &frame_limit, "Max number of frames to be processed");
 
-    int32 report_step=100;
+    int32 report_step = 100;
     po.Register("report-step", &report_step, "Step (number of sequences) for status reporting");
 
-    std::string use_gpu="yes";
-//    po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA"); 
+    std::string use_gpu = "yes";
+    // po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
 
     po.Read(argc, argv);
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
     std::string feature_rspecifier = po.GetArg(1),
       targets_rspecifier = po.GetArg(2),
       model_filename = po.GetArg(3);
-        
+
     std::string target_model_filename;
     if (!crossvalidate) {
       target_model_filename = po.GetArg(4);
@@ -92,13 +92,13 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
     Vector<BaseFloat> weights;
-    //Select the GPU
-#if HAVE_CUDA==1
+    // Select the GPU
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
     Nnet nnet_transf;
-    if(feature_transform != "") {
+    if ( feature_transform != "" ) {
       nnet_transf.Read(feature_transform);
     }
 
@@ -115,17 +115,18 @@ int main(int argc, char *argv[]) {
     if (frame_weights != "") {
       weights_reader.Open(frame_weights);
     }
-        
+
     Xent xent;
-    Mse mse;   
-    
+    Mse mse;
+
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
     Timer time;
     KALDI_LOG << (crossvalidate?"CROSS-VALIDATION":"TRAINING") << " STARTED";
-
-    std::vector< Matrix<BaseFloat> > feats_utt(num_streams);  // Feature matrix of every utterance
-    std::vector< Posterior > labels_utt(num_streams);  // Label vector of every utterance
+    // Feature matrix of every utterance
+    std::vector< Matrix<BaseFloat> > feats_utt(num_streams);
+    // Label vector of every utterance
+    std::vector< Posterior > labels_utt(num_streams);
     std::vector< Vector<BaseFloat> > weights_utt(num_streams);
 
     int32 feat_dim = nnet.InputDim();
@@ -134,7 +135,7 @@ int main(int argc, char *argv[]) {
     while (1) {
 
       std::vector<int32> frame_num_utt;
-      int32 sequence_index = 0, max_frame_num = 0; 
+      int32 sequence_index = 0, max_frame_num = 0;
 
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
@@ -150,7 +151,7 @@ int main(int argc, char *argv[]) {
 
         if (frame_weights != "") {
           weights = weights_reader.Value(utt);
-        } else { // all per-frame weights are 1.0
+        } else {  // all per-frame weights are 1.0
           weights.Resize(mat.NumRows());
           weights.Set(1.0);
         }
@@ -162,13 +163,13 @@ int main(int argc, char *argv[]) {
           lenght.push_back(targets.size());
           lenght.push_back(weights.Dim());
           // find min, max
-          int32 min = *std::min_element(lenght.begin(),lenght.end());
-          int32 max = *std::max_element(lenght.begin(),lenght.end());
+          int32 min = *std::min_element(lenght.begin(), lenght.end());
+          int32 max = *std::max_element(lenght.begin(), lenght.end());
           // fix or drop ?
           if (max - min < length_tolerance) {
-            if(mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
-            if(targets.size() != min) targets.resize(min);
-            if(weights.Dim() != min) weights.Resize(min, kCopyData);
+            if (mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
+            if (targets.size() != min) targets.resize(min);
+            if (weights.Dim() != min) weights.Resize(min, kCopyData);
           } else {
             KALDI_WARN << utt << ", length mismatch of targets " << targets.size()
                        << " and features " << mat.NumRows();
@@ -191,7 +192,7 @@ int main(int argc, char *argv[]) {
         }
       }
       int32 cur_sequence_num = frame_num_utt.size();
-      
+
       // Create the final feature matrix. Every utterance is padded to the max length within this group of utterances
       Matrix<BaseFloat> feat_mat_host(cur_sequence_num * max_frame_num, feat_dim, kSetZero);
       Posterior target_host;
@@ -200,26 +201,25 @@ int main(int argc, char *argv[]) {
       target_host.resize(cur_sequence_num * max_frame_num);
       weight_host.Resize(cur_sequence_num * max_frame_num, kSetZero);
 
-      ///
       for (int s = 0; s < cur_sequence_num; s++) {
         Matrix<BaseFloat> mat_tmp = feats_utt[s];
         for (int r = 0; r < frame_num_utt[s]; r++) {
           feat_mat_host.Row(r*cur_sequence_num + s).CopyFromVec(mat_tmp.Row(r));
         }
       }
-      ///
+
       for (int s = 0; s < cur_sequence_num; s++) {
         Posterior target_tmp = labels_utt[s];
         for (int r = 0; r < frame_num_utt[s]; r++) {
-          target_host[r*cur_sequence_num+s] = target_tmp[r];          
+          target_host[r*cur_sequence_num+s] = target_tmp[r];
         }
         Vector<BaseFloat> weight_tmp = weights_utt[s];
         for (int r = 0; r < frame_num_utt[s]; r++) {
           weight_host(r*cur_sequence_num+s) = weight_tmp(r);
         }
       }
-      
-      ////create 
+
+      // transform feature
       nnet_transf.Feedforward(CuMatrix<BaseFloat>(feat_mat_host), &feats_transf);
 
       // Set the original lengths of utterances before padding
@@ -230,21 +230,21 @@ int main(int argc, char *argv[]) {
 
       if (objective_function == "xent") {
           // gradients re-scaled by weights in Eval,
-          xent.Eval(weight_host, nnet_out, target_host, &obj_diff); 
+          xent.Eval(weight_host, nnet_out, target_host, &obj_diff);
       } else if (objective_function == "mse") {
           // gradients re-scaled by weights in Eval,
           mse.Eval(weight_host, nnet_out, target_host, &obj_diff);
       } else {
           KALDI_ERR << "Unknown objective function code : " << objective_function;
-      }     
-       
+      }
+
       // Backward pass
       if (!crossvalidate) {
         nnet.Backpropagate(obj_diff, NULL);
       }
-      
-      // 1st minibatch : show what happens in network 
-      if (kaldi::g_kaldi_verbose_level >= 2 && total_frames == 0) { // vlog-1
+
+      // 1st minibatch : show what happens in network
+      if (kaldi::g_kaldi_verbose_level >= 2 && total_frames == 0) {  // vlog-1
         KALDI_VLOG(1) << "### After " << total_frames << " frames,";
         KALDI_VLOG(1) << nnet.InfoPropagate();
         if (!crossvalidate) {
@@ -252,15 +252,15 @@ int main(int argc, char *argv[]) {
           KALDI_VLOG(1) << nnet.InfoGradient();
         }
       }
-      
+
       num_done += cur_sequence_num;
       total_frames += feats_transf.NumRows();
 
-      if (feature_reader.Done()) break; // end loop of while(1)
+      if (feature_reader.Done()) break;  // end loop of while(1)
     }
-     
-    // Check network parameters and gradients when training finishes 
-    if (kaldi::g_kaldi_verbose_level >= 1) { // vlog-1
+
+    // Check network parameters and gradients when training finishes
+    if (kaldi::g_kaldi_verbose_level >= 1) {  // vlog-1
       KALDI_VLOG(1) << "### After " << total_frames << " frames,";
       KALDI_VLOG(1) << nnet.InfoPropagate();
       if (!crossvalidate) {
@@ -278,10 +278,10 @@ int main(int argc, char *argv[]) {
               << " with other errors. "
               << "[" << (crossvalidate?"CROSS-VALIDATION":"TRAINING")
               << ", " << time.Elapsed()/60 << " min, fps" << total_frames/time.Elapsed()
-              << "]";  
+              << "]";
     KALDI_LOG << xent.Report();
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
 

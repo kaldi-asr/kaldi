@@ -32,7 +32,7 @@ namespace nnet1 {
 
 Nnet::Nnet(const Nnet& other) {
   // copy the components
-  for(int32 i=0; i<other.NumComponents(); i++) {
+  for(int32 i = 0; i < other.NumComponents(); i++) {
     components_.push_back(other.GetComponent(i).Copy());
   }
   // create empty buffers
@@ -40,13 +40,13 @@ Nnet::Nnet(const Nnet& other) {
   backpropagate_buf_.resize(NumComponents()+1);
   // copy train opts
   SetTrainOptions(other.opts_);
-  Check(); 
+  Check();
 }
 
 Nnet & Nnet::operator = (const Nnet& other) {
   Destroy();
   // copy the components
-  for(int32 i=0; i<other.NumComponents(); i++) {
+  for(int32 i = 0; i < other.NumComponents(); i++) {
     components_.push_back(other.GetComponent(i).Copy());
   }
   // create empty buffers
