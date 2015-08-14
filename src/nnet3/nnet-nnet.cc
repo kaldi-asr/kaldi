@@ -774,6 +774,7 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 
 std::string Nnet::Info() const {
   std::ostringstream os;
+  os << "num-parameters: " << NumParameters(*this) << "\n";
   std::vector<std::string> config_lines;
   bool include_dim = true;
   GetConfigLines(include_dim, &config_lines);
@@ -783,7 +784,6 @@ std::string Nnet::Info() const {
   for (size_t i = 0; i < components_.size(); i++)
     os << "component name=" << component_names_[i]
        << " type=" << components_[i]->Info() << "\n";
-  os << "num-parameters=" << NumParameters(*this);
   return os.str();
 }
 

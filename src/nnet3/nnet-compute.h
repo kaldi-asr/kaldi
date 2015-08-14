@@ -89,6 +89,12 @@ class NnetComputer {
   // e.g. GetOutput ("output").  Will crash if no such output.
   const CuMatrixBase<BaseFloat> &GetOutput(const std::string &output_name) const;
 
+  // Version of GetOutput that calls Swap(), destroying the output stored inside
+  // this object.  You should probably not use this if you plan to call
+  // Backward() on the same NnetComputer object, it may lead to a crash.
+  void GetOutputDestructive(const std::string &output_name,
+                            CuMatrix<BaseFloat> *output);
+
   /// e.g. AcceptOutputDeriv("output", &output_deriv_mat).
   void AcceptOutputDeriv(const std::string &output_name,
                          CuMatrix<BaseFloat> *output_deriv);
@@ -123,10 +129,12 @@ class NnetComputer {
   // executes the command in computation_.commands[command].
   void ExecuteCommand(int32 command);
 
-  // Consolidate some code for getting input and output node locations (and
-  // deriv locations, with error checking.
+  // Returns the matrix index where the input or output matrix index for
+  // "node_name" is stored (or its corresponding derivative, if is_deriv==true).
+  // "is_output" tells the code that this is an output node, as opposed to an
+  // input node; it's used only for checking.
   int32 GetMatrixIndex(const std::string &node_name,
-                       bool expect_output, bool is_deriv) const;
+                       bool is_output, bool is_deriv) const;
 
   CuSubMatrix<BaseFloat> GetSubMatrix(int32 submatrix_index);
 

@@ -430,11 +430,11 @@ class OnlineNaturalGradient {
   BaseFloat GetNumSamplesHistory() const { return num_samples_history_; }
   BaseFloat GetAlpha() const { return alpha_; }
   int32 GetRank() const { return rank_; }
-  
-  
+  int32 GetUpdatePeriod() const { return update_period_; }
+
   // The "R" pointer is both the input (R in the comment) and the output (P in
   // the comment; equal to the preconditioned directions before scaling by
-  // gamma).  If the pointer "rprod" is supplied, it's set to the inner product
+  // gamma).  If the pointer "row_prod" is supplied, it's set to the inner product
   // of each row of the preconditioned directions P, at output, with itself.
   // You would need to apply "scale" to R and "scale * scale" to row_prod, to
   // get the preconditioned directions; we don't do this ourselves, in order to

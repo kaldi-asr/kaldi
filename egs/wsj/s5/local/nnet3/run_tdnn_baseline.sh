@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# this is the standard "tdnn" system, built in nnet3; it's what we use to
-# call multi-splice.
+
+# This version of the TDNN system is being built to have a similar configuration
+# to the one in local/online/run_nnet2.sh, for better comparability.
 
 . cmd.sh
 
@@ -12,7 +13,7 @@
 
 stage=0
 train_stage=-10
-dir=exp/nnet3/nnet_tdnn_a
+dir=exp/nnet3/nnet_tdnn_c
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
@@ -34,9 +35,10 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
+
   steps/nnet3/train_tdnn.sh --stage $train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
-    --splice-indexes "-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0" \
+    --splice-indexes "-1,0,1  -2,1  -4,2 0" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -63,3 +65,16 @@ if [ $stage -le 9 ]; then
   done
 fi
 
+# The following results compare this nnet3 decode with the matched nnet2 baseline.
+#
+#b06:s5: cat exp/nnet3/nnet_tdnn_c/decode_*/scoring_kaldi/best_wer 
+#%WER 6.40 [ 527 / 8234, 59 ins, 71 del, 397 sub ] exp/nnet3/nnet_tdnn_c/decode_bd_tgpr_dev93/wer_10_0.0
+#%WER 3.54 [ 200 / 5643, 18 ins, 17 del, 165 sub ] exp/nnet3/nnet_tdnn_c/decode_bd_tgpr_eval92/wer_10_1.0
+#%WER 9.11 [ 750 / 8234, 140 ins, 83 del, 527 sub ] exp/nnet3/nnet_tdnn_c/decode_tgpr_dev93/wer_10_1.0
+#%WER 6.22 [ 351 / 5643, 85 ins, 15 del, 251 sub ] exp/nnet3/nnet_tdnn_c/decode_tgpr_eval92/wer_10_1.0
+#b06:s5: 
+#b06:s5: cat exp/nnet2_online/nnet_ms_a/decode_*/scoring_kaldi/best_wer 
+#%WER 6.62 [ 545 / 8234, 56 ins, 79 del, 410 sub ] exp/nnet2_online/nnet_ms_a/decode_bd_tgpr_dev93/wer_13_0.0
+#%WER 3.70 [ 209 / 5643, 25 ins, 18 del, 166 sub ] exp/nnet2_online/nnet_ms_a/decode_bd_tgpr_eval92/wer_13_0.5
+#%WER 9.33 [ 768 / 8234, 157 ins, 73 del, 538 sub ] exp/nnet2_online/nnet_ms_a/decode_tgpr_dev93/wer_11_0.5
+#%WER 6.11 [ 345 / 5643, 92 ins, 14 del, 239 sub ] exp/nnet2_online/nnet_ms_a/decode_tgpr_eval92/wer_10_1.0

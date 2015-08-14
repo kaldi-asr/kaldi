@@ -364,6 +364,18 @@ const CuMatrixBase<BaseFloat> &NnetComputer::GetOutput(
   return matrices_[matrix_index];
 }
 
+void NnetComputer::GetOutputDestructive(
+    const std::string &output_name,
+    CuMatrix<BaseFloat> *output) {
+  bool is_output = true, is_deriv = false;
+  int32 matrix_index = GetMatrixIndex(output_name, is_output, is_deriv);
+  if (matrices_[matrix_index].NumRows() == 0)
+    KALDI_ERR << "GetOutput called when output not ready (before Forward()?)";
+  output->Resize(0, 0);
+  matrices_[matrix_index].Swap(output);
+}
+
+
 void NnetComputer::AcceptOutputDeriv(const std::string &output_name,
                                      CuMatrix<BaseFloat> *output_deriv) {
   bool is_output = true, is_deriv = true;
@@ -384,11 +396,11 @@ void NnetComputer::AcceptOutputDeriv(const std::string &output_name,
 }
 
 int32 NnetComputer::GetMatrixIndex(
-    const std::string &node_name, bool expect_output, bool is_deriv) const {
+    const std::string &node_name, bool is_output, bool is_deriv) const {
   int32 node_index = nnet_.GetNodeIndex(node_name);
   if (node_index == -1)
     KALDI_ERR << "No node named '" << node_name << "'in network.";
-  if (expect_output) {
+  if (is_output) {
     if (!nnet_.IsOutputNode(node_index))
       KALDI_ERR << "Expecting output node; node named '"
                 << node_name  << "' is not output node.";

@@ -52,6 +52,33 @@ namespace nnet3 {
    from different inputs.  Unlike the other descriptors, a ForwardingDescriptor
    is in general a bit like a parse tree, in that it can in general contain
    other ForwardingDescriptors.
+
+
+    The following gives an overview of the expressions that can appear in
+     descriptors.  Caution; this is a simplification that overgenerates
+     descriptors.
+\verbatim
+<descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
+<descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
+<descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
+<descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
+<descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
+<descriptor>  ::=   Offset(<descriptor>, <t-offset> [, <x-offset> ] ) ;; offsets are integers
+;; Switch(...) is intended to be used in clockwork RNNs or similar schemes.  It chooses
+;; one argument based on the value of t (in the requested Index) modulo the number of
+;; arguments
+<descriptor>  ::=   Switch(<descriptor>, <descriptor> [, <descriptor> ...])
+;; For use in clockwork RNNs or similar, Round() rounds the time-index t of the
+;; requested Index to the next-lowest multiple of the integer <t-modulus>
+;; and evaluates the input argument for the resulting Index.
+<descriptor>  ::=   Round(<descriptor>, <t-modulus>)  ;; <t-modulus> is an integer
+;; ReplaceIndex replaces some <variable-name> (t or x) in the requested Index
+;; with a fixed integer <value>.  E.g. might be useful when incorporating
+;; iVectors; iVector would always have time-index t=0.
+<descriptor>  ::=   ReplaceIndex(<descriptor>, <variable-name>, <value>)
+\endverbatim
+   
  */
 
 

@@ -463,6 +463,17 @@ bool IoSpecification::operator== (const IoSpecification &other) const {
           has_deriv == other.has_deriv);
 }
 
+IoSpecification::IoSpecification(const std::string &name,
+                                 int32 t_start, int32 t_end):
+    name(name), indexes(std::max<int32>(0, t_end - t_start)),
+    has_deriv(false) {
+  // the n and x values will already be 0 in "indexes" because
+  // the default constructor does that; so just set the t values.
+  std::vector<Index>::iterator iter = indexes.begin(), end = indexes.end();
+  for (int32 t = t_start; iter != end; ++iter, ++t)
+    iter->t = t;
+}
+
 bool ComputationRequest::operator== (const ComputationRequest &other) const {
   // rely on the std::vector's default implementation of ==, which in turn
   // relies on the == operator of class IoSpecification.
@@ -470,6 +481,48 @@ bool ComputationRequest::operator== (const ComputationRequest &other) const {
       need_model_derivative == other.need_model_derivative &&
       store_component_stats == other.store_component_stats &&
       misc_info == other.misc_info;
+}
+
+NnetComputation::NnetComputation(const NnetComputation &other):
+    matrices(other.matrices),
+    matrix_debug_info(other.matrix_debug_info),
+    submatrices(other.submatrices),
+    indexes(other.indexes),
+    indexes_multi(other.indexes_multi),
+    indexes_ranges(other.indexes_ranges),
+    input_output_info(other.input_output_info),
+    commands(other.commands),
+    need_model_derivative(other.need_model_derivative),
+    indexes_cuda(other.indexes_cuda),
+    indexes_ranges_cuda(other.indexes_ranges_cuda) {
+  for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
+      component_precomputed_indexes.push_back(
+          other.component_precomputed_indexes[i] == NULL ? NULL :
+          other.component_precomputed_indexes[i]->Copy());
+}
+
+
+NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
+    matrices = other.matrices;
+    matrix_debug_info = other.matrix_debug_info;
+    submatrices = other.submatrices;
+    indexes = other.indexes;
+    indexes_multi = other.indexes_multi;
+    indexes_ranges = other.indexes_ranges;
+    input_output_info = other.input_output_info;
+    commands = other.commands;
+    need_model_derivative = other.need_model_derivative;
+    indexes_cuda = other.indexes_cuda;
+    indexes_ranges_cuda = other.indexes_ranges_cuda;
+  
+    for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
+      delete component_precomputed_indexes[i];
+    component_precomputed_indexes.clear();
+    for (size_t i = 0; i < other.component_precomputed_indexes.size(); i++)
+      component_precomputed_indexes.push_back(
+          other.component_precomputed_indexes[i] == NULL ? NULL :
+          other.component_precomputed_indexes[i]->Copy());
+    return *this;
 }
 
 } // namespace nnet3

@@ -85,6 +85,7 @@ enum ComponentProperties {
 // can store any indexes that they need.
 class ComponentPrecomputedIndexes {
  public:
+  virtual ComponentPrecomputedIndexes *Copy() const = 0;
   virtual ~ComponentPrecomputedIndexes();
 };
 
