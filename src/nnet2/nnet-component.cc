@@ -3927,9 +3927,9 @@ void Convolutional1dComponent::Add(BaseFloat alpha, const UpdatableComponent &ot
             of lists, The list at (backward_indexes[i]) is a list
             of all indexes j such that forward_indexes[j] = i.
 */
-void ConvolutionComponent::ReverseIndexes(const std::vector<int32> &forward_indexes,
-                                          int32 input_dim,
-                                          std::vector<std::vector<int32> > *backward_indexes) {
+void Convolutional1dComponent::ReverseIndexes(const std::vector<int32> &forward_indexes,
+                                              int32 input_dim,
+                                              std::vector<std::vector<int32> > *backward_indexes) {
   int32 i;
   backward_indexes->resize(input_dim);
   for (int32 j = 0; j < forward_indexes.size(); j++) {
@@ -3950,8 +3950,8 @@ void ConvolutionComponent::ReverseIndexes(const std::vector<int32> &forward_inde
             out[k][j] = i. The output vectors are padded with -1
             where necessary if not all the input lists have the same side.
 */
-void ConvolutionComponent::RearrangeIndexes(const std::vector<std::vector<int32> > &in,
-                                            std::vector<std::vector<int32> > *out) {
+void Convolutional1dComponent::RearrangeIndexes(const std::vector<std::vector<int32> > &in,
+                                                std::vector<std::vector<int32> > *out) {
   int32 D = in.size();
   int32 L = 0;
   for (int32 i = 0; i < D; i++)
