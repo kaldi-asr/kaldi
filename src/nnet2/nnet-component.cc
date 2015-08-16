@@ -3930,8 +3930,13 @@ void Convolutional1dComponent::Add(BaseFloat alpha, const UpdatableComponent &ot
 void Convolutional1dComponent::ReverseIndexes(const std::vector<int32> &forward_indexes,
                                               int32 input_dim,
                                               std::vector<std::vector<int32> > *backward_indexes) {
-  int32 i;
+  int32 i, size = forward_indexes.size();
+  int32 reserve_size = 2 + size / input_dim;
   backward_indexes->resize(input_dim);
+  std::vector<std::vector<int32> >::iterator iter = backward_indexes->begin(),
+    end = backward_indexes->end();
+  for (; iter != end; ++iter)
+    iter->reserve(reserve_size);
   for (int32 j = 0; j < forward_indexes.size(); j++) {
     i = forward_indexes[j];
     KALDI_ASSERT(i < input_dim);
