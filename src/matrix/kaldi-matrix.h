@@ -284,6 +284,14 @@ class MatrixBase {
   void CopyRows(const MatrixBase<Real> &src,
                 const std::vector<MatrixIndexT> &indices);
   
+  /// Add column indices[r] of src to column r.
+  /// As a special case, if indexes[i] == -1, skip column i
+  /// indices.size() must equal this->NumCols(),
+  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
+  /// and src.NumRows() must equal this.NumRows()
+  void AddCols(const MatrixBase<Real> &src,
+               const std::vector<MatrixIndexT> &indices);
+
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 

@@ -1261,6 +1261,25 @@ static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
 
 template<typename Real>
 __global__
+static void _add_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
+  // as it will be going forward.
+
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int index = reorder[j],
+        dst_index = i * dst_dim.stride + j;
+    if (index >= 0) {
+      int src_index = i * src_stride + reorder[j];
+      Real val = src[src_index]; 
+      dst[dst_index] += val;
+    }
+  } 
+}
+
+template<typename Real>
+__global__
 static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
   // as it will be going forward.
@@ -2024,6 +2043,10 @@ void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const Matri
   _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
+void cudaF_add_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
 void cudaF_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
@@ -2443,6 +2466,10 @@ void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 
 void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_add_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
