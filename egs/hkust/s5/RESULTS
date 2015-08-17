@@ -7,6 +7,17 @@ exp/tri5a/decode/cer_13:%WER 49.67 [ 27891 / 56154, 2877 ins, 4538 del, 20476 su
 exp/tri5a_mce/decode/cer_11:%WER 44.74 [ 25125 / 56154, 2112 ins, 4108 del, 18905 sub ]
 exp/tri5a_mmi_b0.1/decode/cer_11:%WER 44.24 [ 24840 / 56154, 2060 ins, 4118 del, 18662 sub ]
 exp/tri5a_mpe/decode/cer_12:%WER 44.96 [ 25247 / 56154, 2233 ins, 4174 del, 18840 sub ]
+exp/sgmm2_5a/decode/cer_11:%WER 43.44 [ 24391 / 56154, 2646 ins, 4066 del, 17679 sub ]
 
+# nnet1 results
+exp/dnn5b_pretrain-dbn_dnn/decode/cer_10:%WER 39.42 [ 22134 / 56154, 2507 ins, 3730 del, 15897 sub ]
+exp/dnn5b_pretrain-dbn_dnn_smbr/decode/cer_11:%WER 36.50 [ 20499 / 56154, 1915 ins, 3312 del, 15272 sub ]
+exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode/cer_12:%WER 35.93 [ 20177 / 56154, 1949 ins, 3188 del, 15040 sub ]
+exp/cnn5c/decode/cer_10:%WER 40.13 [ 22536 / 56154, 2329 ins, 3962 del, 16245 sub ]
+exp/cnn5c_pretrain-dbn_dnn/decode/cer_10:%WER 38.80 [ 21790 / 56154, 2470 ins, 3582 del, 15738 sub ]
+exp/lstm5e/decode/cer_10:%WER 37.61 [ 21121 / 56154, 1829 ins, 3941 del, 15351 sub ]
+
+# nnet2 results
+exp/nnet2_5d/decode/cer_10:%WER 38.59 [ 21669 / 56154, 2498 ins, 3581 del, 15590 sub ]
 # ConvNet with 2 convolutional layers and 2 ReLU layers
 exp/nnet2_convnet/decode/cer_10:%WER 40.73 [ 22873 / 56154, 2609 ins, 3712 del, 16552 sub ]
