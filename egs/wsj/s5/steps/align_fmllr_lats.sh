@@ -142,7 +142,7 @@ if [ $stage -le 3 ]; then
   #   words (including alternatives regarding optional silences).
   #  --lattice-beam=$beam keeps all the alternatives that were within the beam,
   #    it means we do no pruning of the lattice (lattices from a training transcription
-  #    will be samll anyway).
+  #    will be small anyway).
   echo "$0: generating lattices containing alternate pronunciations."
   $cmd JOB=1:$nj $dir/log/generate_lattices.JOB.log \
     gmm-latgen-faster --acoustic-scale=$acoustic_scale --beam=$final_beam \
