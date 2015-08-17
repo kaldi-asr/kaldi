@@ -239,9 +239,9 @@ class ConvolutionalComponent : public UpdatableComponent {
     int32 filter_dim = filters_.NumCols();
 
     // we will need the buffers 
-    if (vectorized_feature_patches_.size() == 0) {
-      vectorized_feature_patches_.resize(num_patches);
-      feature_patch_diffs_.resize(num_patches);
+    if (vectorized_feature_patches_.NumRows() == 0) {
+      vectorized_feature_patches_.Resize(num_frames, filter_dim * num_patches, kUndefined);
+      feature_patch_diffs_.Resize(num_frames, filter_dim * num_patches, kSetZero);
     }
 
     /* Prepare feature patches, the layout is:
@@ -256,29 +256,84 @@ class ConvolutionalComponent : public UpdatableComponent {
      *   xxx-xxx-xxx-xxx : filter dim
      *  
      */
-    for (int32 p=0; p<num_patches; p++) {
-      vectorized_feature_patches_[p].Resize(num_frames, filter_dim, kSetZero);
-      // build-up a column selection mask:
-      std::vector<int32> column_mask;
+    // build-up a column selection map:
+    column_map_.resize(filter_dim * num_patches);
+    for (int32 p=0, index=0; p<num_patches; p++) {
       for (int32 s=0; s<num_splice; s++) {
-        for (int32 d=0; d<patch_dim_; d++) {
-          column_mask.push_back(p * patch_step_ + s * patch_stride_ + d);
+          for (int32 d=0; d<patch_dim_; d++, index++) {
+          column_map_[index] = p * patch_step_ + s * patch_stride_ + d;
         }
       }
-      KALDI_ASSERT(column_mask.size() == filter_dim);
-      // select the columns
-      vectorized_feature_patches_[p].CopyCols(in, column_mask);
     }
+    // select the columns
+    vectorized_feature_patches_.CopyCols(in, column_map_);
 
     // compute filter activations
     for (int32 p=0; p<num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
+      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(p * filter_dim, filter_dim));
       tgt.AddVecToRows(1.0, bias_, 0.0); // add bias
       // apply all filters
-      tgt.AddMatMat(1.0, vectorized_feature_patches_[p], kNoTrans, filters_, kTrans, 1.0);
+      tgt.AddMatMat(1.0, patch, kNoTrans, filters_, kTrans, 1.0);
     }
   }
 
+  /*
+   This function does an operation similar to reversing a map,
+   except it handles maps that are not one-to-one by outputting
+   the reversed map as a vector of lists.
+   @param[in] forward_indexes is a vector of int32, each of whose
+              elements is between 0 and input_dim - 1.
+   @param[in] input_dim. See definitions of forward_indexes and
+              backward_indexes.
+   @param[out] backward_indexes is a vector of dimension input_dim
+              of lists, The list at (backward_indexes[i]) is a list
+              of all indexes j such that forward_indexes[j] = i.
+  */
+  void ReverseIndexes(const std::vector<int32> &forward_indexes,
+                      std::vector<std::vector<int32> > *backward_indexes) {
+    int32 i;
+    int32 size = forward_indexes.size();
+    backward_indexes->resize(input_dim_);
+    int32 reserve_size = 2+ forward_indexes.size() / input_dim_;
+    std::vector<std::vector<int32> >::iterator iter = backward_indexes->begin(),
+      end = backward_indexes->end();
+    for (; iter != end; ++iter)
+      iter->reserve(reserve_size);
+    for (int32 j = 0; j < size; j++) {
+      i = forward_indexes[j];
+      KALDI_ASSERT(i < input_dim_);
+      (*backward_indexes)[i].push_back(j);
+    }
+  }
+
+  /*
+   This function transforms a vector of lists into a list of vectors,
+   padded with -1.
+   @param[in] The input vector of lists. Let in.size() be D, and let
+              the longest list length (i.e. the max of in[i].size()) be L.
+   @param[out] The output list of vectors. The length of the list will
+              be L, each vector-dimension will be D (i.e. out[i].size() == D),
+              and if in[i] == j, then for some k we will have that
+              out[k][j] = i. The output vectors are padded with -1
+              where necessary if not all the input lists have the same side.
+  */
+  void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
+                        std::vector<std::vector<int32> > *out) {
+    int32 D = in.size();
+    int32 L = 0;
+    for (int32 i = 0; i < D; i++)
+      if (in[i].size() > L)
+        L = in[i].size();
+    out->resize(L);
+    for (int32 i = 0; i < L; i++)
+      (*out)[i].resize(D, -1);
+    for (int32 i = 0; i < D; i++) {
+      for (int32 j = 0; j < in[i].size(); j++) {
+        (*out)[j][i] = in[i][j];
+      }
+    }
+  }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
@@ -291,18 +346,18 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // backpropagate to vector of matrices (corresponding to position of a filter)
     for (int32 p=0; p<num_patches; p++) {
-      feature_patch_diffs_[p].Resize(num_frames, filter_dim, kSetZero); // reset
+      CuSubMatrix<BaseFloat> patch_diff(feature_patch_diffs_.ColRange(p * filter_dim, filter_dim));
       CuSubMatrix<BaseFloat> out_diff_patch(out_diff.ColRange(p * num_filters, num_filters));
-      feature_patch_diffs_[p].AddMatMat(1.0, out_diff_patch, kNoTrans, filters_, kNoTrans, 0.0);
+      patch_diff.AddMatMat(1.0, out_diff_patch, kNoTrans, filters_, kNoTrans, 0.0);
     }
 
     // sum the derivatives into in_diff, we will compensate #summands
-    for (int32 p=0; p<num_patches; p++) {
-      for (int32 s=0; s<num_splice; s++) {
-        CuSubMatrix<BaseFloat> src(feature_patch_diffs_[p].ColRange(s * patch_dim_, patch_dim_));
-        CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p * patch_step_ + s * patch_stride_, patch_dim_));
-        tgt.AddMat(1.0, src); // sum
-      }
+    std::vector<std::vector<int32> > reversed_column_map;
+    ReverseIndexes(column_map_, &reversed_column_map);
+    std::vector<std::vector<int32> > rearranged_column_map;
+    RearrangeIndexes(reversed_column_map, &rearranged_column_map);
+    for (int32 p = 0; p < rearranged_column_map.size(); p++) {
+      in_diff->AddCols(feature_patch_diffs_, rearranged_column_map[p]);
     }
   }
 
@@ -324,7 +379,8 @@ class ConvolutionalComponent : public UpdatableComponent {
     // use all the patches
     for (int32 p=0; p<num_patches; p++) { // sum
       CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
-      filters_grad_.AddMatMat(1.0, diff_patch, kTrans, vectorized_feature_patches_[p], kNoTrans, 1.0);
+      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(p * filter_dim, filter_dim));
+      filters_grad_.AddMatMat(1.0, diff_patch, kTrans, patch, kNoTrans, 1.0);
       bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
     }
 
@@ -367,19 +423,20 @@ class ConvolutionalComponent : public UpdatableComponent {
   BaseFloat max_norm_; ///< limit L2 norm of a neuron weights to positive value
 
   /** Buffer of reshaped inputs:
-   *  1row = vectorized rectangular feature patch,
-   *  1col = dim over speech frames,
+   *  1row = vectorized rectangular feature patches,
+   *  1col = dim over speech frames
+   *  Map of input features:
    *  std::vector-dim = patch-position
    */
-  std::vector<CuMatrix<BaseFloat> > vectorized_feature_patches_; 
+  CuMatrix<BaseFloat> vectorized_feature_patches_;
+  std::vector<int32> column_map_;
 
   /** Buffer for backpropagation:
    *  derivatives in the domain of 'vectorized_feature_patches_',
-   *  1row = vectorized rectangular feature patch,
+   *  1row = vectorized rectangular feature patches,
    *  1col = dim over speech frames,
-   *  std::vector-dim = patch-position
    */
-  std::vector<CuMatrix<BaseFloat> > feature_patch_diffs_;
+  CuMatrix<BaseFloat> feature_patch_diffs_;
 };
 
 } // namespace nnet1
