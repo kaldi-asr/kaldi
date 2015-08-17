@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
+#           2015  Tom Ko
 # script to generate multicondition training data / dev data / test data
 import argparse, glob, math, os, random, scipy.io.wavfile, sys
 
@@ -23,18 +24,9 @@ def return_nonempty_lines(lines):
 
   return new_lines
 
-def exists_wavfile(file_name):
-  return os.path.isfile(file_name)
-  try:
-    scipy.io.wavfile.read(file_name)
-    return True
-  except IOError:
-    return False
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--snrs', type=str, default = '20:10:0', help='snrs to be used for corruption')
-  parser.add_argument('--num-files-per-job', type=int, default = None, help='number of commands to be stored in each file')
   parser.add_argument('--check-output-exists', type = str, default = 'True', help = 'process file only if output file does not exist', choices = ['True', 'true', 'False', 'false'])
   parser.add_argument('--random-seed', type = int, default = 0, help = 'seed to be used in the randomization of impulses')
   parser.add_argument('wav_file_list', type=str, help='wav.scp file to corrupt')
@@ -75,49 +67,32 @@ if __name__ == "__main__":
         raise Exception('Unknown format of ' + file)
       impulse_noise_index.append([impulses_set, noises_list])
 
-  
-  if params.num_files_per_job is None:
-    lines_per_file = len(wav_files)
-  else:
-    lines_per_file = params.num_files_per_job
-  num_parts = int(math.ceil(len(wav_files)/ float(lines_per_file)))
-  indices_per_file = map(lambda x: xrange(lines_per_file * (x-1), lines_per_file * x), range(1, num_parts))
-  indices_per_file.append(xrange(lines_per_file * (num_parts-1), len(wav_files)))
- 
-  part_counter = 1
-  commands_file_base, ext = os.path.splitext(params.output_command_file)
-  for indices in indices_per_file:
-    command_list = []
-    for i in indices:
-      wav_file = " ".join(wav_files[i].split()[1:])
-      output_wav_file = wav_out_files[i]
-      impulse_file = impulses.next()
-      noise_file = ''
-      snr = ''
-      found_impulse = False
-      if add_noise:
-        for i in xrange(len(impulse_noise_index)):
-          if impulse_file in impulse_noise_index[i][0]:
-            noise_file = impulse_noise_index[i][1].next()
-            snr = snrs.next()
-            assert(len(wav_file.strip()) > 0)
-            assert(len(impulse_file.strip()) > 0)
-            assert(len(noise_file.strip()) > 0)
-            assert(len(snr.strip()) > 0)
-            assert(len(output_wav_file.strip()) > 0)
-            command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} - {4} \n".format(wav_file, impulse_file, noise_file, snr, output_wav_file))
-            found_impulse = True
-            break
-      if not found_impulse:
-        assert(len(wav_file.strip()) > 0)
-        assert(len(impulse_file.strip()) > 0)
-        assert(len(output_wav_file.strip()) > 0)
-        command_list.append("{0} --rir-file {1} - {2} \n".format(wav_file, impulse_file, output_wav_file))
-      if exists_wavfile(output_wav_file):
-        # we perform the check at this point to ensure replication of (wavfile, impulse, noise, snr) tuples across runs.
-        command_list.pop()  
-    file_handle = open("{0}.{1}{2}".format(commands_file_base, part_counter, ext), 'w')
-    part_counter += 1
-    file_handle.write("".join(command_list))
-    file_handle.close()
-  print num_parts
+  command_list = []
+  for i in range(len(wav_files)):
+    wav_file = " ".join(wav_files[i].split()[1:])
+    output_wav_file = wav_out_files[i]
+    impulse_file = impulses.next()
+    noise_file = ''
+    snr = ''
+    found_impulse = False
+    if add_noise:
+      for i in xrange(len(impulse_noise_index)):
+        if impulse_file in impulse_noise_index[i][0]:
+          noise_file = impulse_noise_index[i][1].next()
+          snr = snrs.next()
+          assert(len(wav_file.strip()) > 0)
+          assert(len(impulse_file.strip()) > 0)
+          assert(len(noise_file.strip()) > 0)
+          assert(len(snr.strip()) > 0)
+          assert(len(output_wav_file.strip()) > 0)
+          command_list.append("{4} {0} wav-reverberate --noise-file={2} --snr-db={3} - {1} - |\n".format(wav_file, impulse_file, noise_file, snr, output_wav_file))
+          found_impulse = True
+          break
+    if not found_impulse:
+      assert(len(wav_file.strip()) > 0)
+      assert(len(impulse_file.strip()) > 0)
+      assert(len(output_wav_file.strip()) > 0)
+      command_list.append("{2} {0} wav-reverberate - {1} - |\n".format(wav_file, impulse_file, output_wav_file))
+  file_handle = open(params.output_command_file, 'w')
+  file_handle.write("".join(command_list))
+  file_handle.close()
