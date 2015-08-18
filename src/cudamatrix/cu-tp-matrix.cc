@@ -125,6 +125,14 @@ void TpMatrix<Real>::CopyFromMat(const CuTpMatrix<Real> &other) {
 template void TpMatrix<float>::CopyFromMat(const CuTpMatrix<float> &other);
 template void TpMatrix<double>::CopyFromMat(const CuTpMatrix<double> &other);
 
+template <class Real>
+CuTpMatrix<Real>& CuTpMatrix<Real>::operator = (const CuTpMatrix<Real> &in) {
+  this->Resize(in.NumRows(), kUndefined);
+  this->CopyFromPacked(in);
+  return *this;
+}
+
+
 template class CuTpMatrix<float>;
 template class CuTpMatrix<double>;
 
