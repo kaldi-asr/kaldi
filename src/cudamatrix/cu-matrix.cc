@@ -1015,7 +1015,7 @@ void CuMatrixBase<Real>::SymAddMat2(
 
 template<typename Real>
 void CuMatrixBase<Real>::AddDiagVecMat(
-    const Real alpha, CuVectorBase<Real> &v,
+    const Real alpha, const CuVectorBase<Real> &v,
     const CuMatrixBase<Real> &M, MatrixTransposeType transM,
     Real beta) {
 #if HAVE_CUDA == 1

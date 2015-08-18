@@ -516,7 +516,7 @@ class MatrixBase {
 
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).
-  void AddDiagVecMat(const Real alpha, VectorBase<Real> &v,
+  void AddDiagVecMat(const Real alpha, const VectorBase<Real> &v,
                      const MatrixBase<Real> &M, MatrixTransposeType transM, 
                      Real beta = 1.0);
  

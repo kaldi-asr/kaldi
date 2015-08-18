@@ -420,7 +420,7 @@ void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 
 template<typename Real>
 void MatrixBase<Real>::AddDiagVecMat(
-    const Real alpha, VectorBase<Real> &v,
+    const Real alpha, const VectorBase<Real> &v,
     const MatrixBase<Real> &M,
     MatrixTransposeType transM, 
     Real beta) {
