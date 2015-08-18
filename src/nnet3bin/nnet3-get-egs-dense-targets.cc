@@ -90,7 +90,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     // add the labels.
     Matrix<BaseFloat> target_dest(frames_per_eg, targets.NumCols());
     for (int32 i = 0; i < actual_frames_per_eg; i++) {
-      SubVector<BaseFloat> this_target_desc(target_dest, i);
+      SubVector<BaseFloat> this_target_dest(target_dest, i);
       SubVector<BaseFloat> this_target_src(targets, t+i);
       this_target_dest.CopyFromVec(this_target_src);
     }

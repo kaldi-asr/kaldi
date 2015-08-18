@@ -22,6 +22,7 @@ utt_prefix=
 spk_suffix=
 utt_suffix=
 validate_opts=   # should rarely be needed.
+extra_files= # specify addtional files in 'src-data-dir' to copy, ex. "file1 file2 ..."
 # end configuration section
 
 . utils/parse_options.sh
@@ -88,7 +89,7 @@ fi
 if [ -f $srcdir/cmvn.scp ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/cmvn.scp >$destdir/cmvn.scp
 fi
-for f in stm glm ctm; do
+for f in stm glm ctm $extra_files; do
   if [ -f $srcdir/$f ]; then
     cp $srcdir/$f $destdir
   fi
