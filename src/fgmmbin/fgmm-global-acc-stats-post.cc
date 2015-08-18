@@ -77,7 +77,14 @@ int main(int argc, char *argv[]) {
       std::string key = feature_reader.Key();
       const Matrix<BaseFloat> &mat = feature_reader.Value();
       int32 file_frames = mat.NumRows();
-      
+      if (!post_reader.HasKey(key)) {
+        KALDI_WARN << "No posteriors available for utterance "
+                   << key;
+        num_err++;
+        continue;
+      }
+
+      Posterior post = post_reader.Value(key);     
       // Initialize the FGMM accs before processing the first utt.
       if (num_done == 0) {
         fgmm_accs.Resize(num_components, mat.NumCols(), 
@@ -104,7 +111,6 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      Posterior post = post_reader.Value(key);
       if (post.size() != static_cast<size_t>(file_frames)) {
         KALDI_WARN << "posterior information for utterance " << key
                   << " has wrong size " << post.size() << " vs. "
