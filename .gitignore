@@ -23,6 +23,9 @@
 *.a
 *.lib
 
+# Test log files
+*.testlog
+
 # emacs saves
 [#]*[#]
 .[#]*

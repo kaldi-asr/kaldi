@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/kaldi-asr/kaldi.svg?branch=master)]
+(https://travis-ci.org/kaldi-asr/kaldi)
+
 *README*
 
 To build the toolkit: see ./INSTALL.  These instructions are valid for UNIX
@@ -20,7 +23,7 @@ Documentation of Kaldi: http://kaldi-asr.org/doc/
 - info about the project, description of techniques, tutorial for C++ coding
 - Doxygen reference of the C++ code
 
-Kaldi forum, mailing-lists: http://kaldi-asr.org/forums.html 
+Kaldi forum, mailing-lists: http://kaldi-asr.org/forums.html
 - User list : https://groups.google.com/forum/#!forum/kaldi-help (kaldi-help@googlegroups.com).
 - Developer list : https://groups.google.com/forum/#!forum/kaldi-developers (kaldi-developers@googlegroups.com)
 - also try luck and search in SourceForge archives: https://sourceforge.net/p/kaldi/discussion/
@@ -28,9 +31,9 @@ Kaldi forum, mailing-lists: http://kaldi-asr.org/forums.html
 Development pattern for contributors:
 A) create a personal fork of the kaldi-asr/kaldi repository in github,
 B) make your changes in a named branch different from "master", e.g. you create
-   a branch "my-awesome-feature". 
+   a branch "my-awesome-feature".
 C) generate a pull request through the web interface of github
-D) as a general rule, please follow Google C++ Style Guide. There are a few 
+D) as a general rule, please follow Google C++ Style Guide. There are a few
    exceptions in Kaldi -- please consult http://kaldi-asr.org/doc/style.html
    You can use the Google's cpplint.py to verify that your code is free
-   of some basic mistakes. 
+   of some basic mistakes.
