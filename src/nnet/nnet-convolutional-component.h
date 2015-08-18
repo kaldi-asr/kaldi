@@ -240,7 +240,8 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // we will need the buffers 
     if (vectorized_feature_patches_.NumRows() == 0) {
-      vectorized_feature_patches_.Resize(num_frames, filter_dim * num_patches, kUndefined);
+      vectorized_feature_patches_.Resize(num_frames,
+                                         filter_dim * num_patches, kUndefined);
       feature_patch_diffs_.Resize(num_frames, filter_dim * num_patches, kSetZero);
     }
 
@@ -271,7 +272,8 @@ class ConvolutionalComponent : public UpdatableComponent {
     // compute filter activations
     for (int32 p=0; p<num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
-      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(p * filter_dim, filter_dim));
+      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
+                                   p * filter_dim, filter_dim));
       tgt.AddVecToRows(1.0, bias_, 0.0); // add bias
       // apply all filters
       tgt.AddMatMat(1.0, patch, kNoTrans, filters_, kTrans, 1.0);
@@ -346,9 +348,12 @@ class ConvolutionalComponent : public UpdatableComponent {
 
     // backpropagate to vector of matrices (corresponding to position of a filter)
     for (int32 p=0; p<num_patches; p++) {
-      CuSubMatrix<BaseFloat> patch_diff(feature_patch_diffs_.ColRange(p * filter_dim, filter_dim));
-      CuSubMatrix<BaseFloat> out_diff_patch(out_diff.ColRange(p * num_filters, num_filters));
-      patch_diff.AddMatMat(1.0, out_diff_patch, kNoTrans, filters_, kNoTrans, 0.0);
+      CuSubMatrix<BaseFloat> patch_diff(feature_patch_diffs_.ColRange(
+                                        p * filter_dim, filter_dim));
+      CuSubMatrix<BaseFloat> out_diff_patch(out_diff.ColRange(
+                                            p * num_filters, num_filters));
+      patch_diff.AddMatMat(1.0, out_diff_patch, kNoTrans,
+                           filters_, kNoTrans, 0.0);
     }
 
     // sum the derivatives into in_diff, we will compensate #summands
@@ -379,7 +384,8 @@ class ConvolutionalComponent : public UpdatableComponent {
     // use all the patches
     for (int32 p=0; p<num_patches; p++) { // sum
       CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
-      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(p * filter_dim, filter_dim));
+      CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
+                                   p * filter_dim, filter_dim));
       filters_grad_.AddMatMat(1.0, diff_patch, kTrans, patch, kNoTrans, 1.0);
       bias_grad_.AddRowSumMat(1.0, diff_patch, 1.0);
     }
