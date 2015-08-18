@@ -1,6 +1,6 @@
 // fstext/push-special.h
 
-// Copyright 2012-2015  Johns Hopkins Universithy (author: Daniel Povey)
+// Copyright 2012-2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

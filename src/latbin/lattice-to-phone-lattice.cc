@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     bool replace_words = true;
     po.Register("replace-words", &replace_words,
-                "If true, replace words with phones; otherwise replace transition-ids with phones.");
+                "If true, replace words with phones; otherwise replace "
+                "transition-ids with phones.");
     
     po.Read(argc, argv);
 

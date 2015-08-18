@@ -309,3 +309,4 @@ void ComposeCompactLatticeDeterministic(
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
+
