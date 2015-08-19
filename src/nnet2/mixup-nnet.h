@@ -37,17 +37,17 @@ struct NnetMixupConfig {
   NnetMixupConfig(): power(0.25), min_count(1000.0),
                      num_mixtures(-1), perturb_stddev(0.01) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("power", &power, "Scaling factor used in determining the "
-                 "number of mixture components to use for each HMM state "
-                 "(or group of HMM states)");
-    po->Register("min-count", &min_count, "Minimum count for a quasi-Gaussian, "
-                 "enforced while allocating mixtures (obscure parameter).");
-    po->Register("num-mixtures", &num_mixtures, "If specified, total number of "
-                 "mixture components to mix up to (should be at least the "
-                 "#leaves in the system");
-    po->Register("perturb-stddev", &perturb_stddev, "Standard deviation used "
-                 "when perturbing parameters during mixing up");
+  void Register(OptionsItf *opts) {
+    opts->Register("power", &power, "Scaling factor used in determining the "
+                   "number of mixture components to use for each HMM state "
+                   "(or group of HMM states)");
+    opts->Register("min-count", &min_count, "Minimum count for a quasi-Gaussian, "
+                   "enforced while allocating mixtures (obscure parameter).");
+    opts->Register("num-mixtures", &num_mixtures, "If specified, total number of "
+                   "mixture components to mix up to (should be at least the "
+                   "#leaves in the system");
+    opts->Register("perturb-stddev", &perturb_stddev, "Standard deviation used "
+                   "when perturbing parameters during mixing up");
   }  
 };
 

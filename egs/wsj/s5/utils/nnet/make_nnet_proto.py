@@ -17,7 +17,7 @@
 
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
-import math, random, sys
+import math, random, sys, re
 
 ###
 ### Parse options
@@ -79,7 +79,7 @@ assert(num_leaves > 0)
 assert(num_hid_layers >= 0)
 assert(num_hid_neurons > 0)
 if o.block_softmax_dims:
-  assert(sum(map(int, o.block_softmax_dims.split(':'))) == num_leaves)
+  assert(sum(map(int, re.split("[,:]", o.block_softmax_dims))) == num_leaves) # posible separators : ',' ':'
 
 # Optionaly scale
 def Glorot(dim1, dim2):

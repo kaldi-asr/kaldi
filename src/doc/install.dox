@@ -22,54 +22,35 @@
  \page install Downloading and installing Kaldi
 
 
-  \section install_transition  Transition to github
+ \section install_download  Dowloading Kaldi
 
-  Due to the long recent sourceforge outage, we have now transitioned to
- github for all future development.  We still intend to maintain a
- read-only subversion mirror of the github parent, located at sourceforge and mirrored
- by us; however, we won't be able to set that up until Sourceforge comes back up.
-
-  While sourceforge is still down, the easiest way to access Kaldi as follows:
-\verbatim
-  git clone https://github.com/kaldi-asr/kaldi.git
-\endverbatim
- You can then keep it up-to-date using "git pull".
-  When sourceforge comes back up, you will be free to access it either through github
-  or through the subversion commands below.
-
- If you may want to contribute to Kaldi, this will mostly be done using pull requests.
- You would first log in to github and go to https://github.com/kaldi-asr/kaldi and click on
- "fork" to fork the repository.  Then, in your local fork of the repository you would
- do your work in a differently named branch, and generate a pull request through the
- online interface of github.  We will soon provide more detailed instructions on this.
-
- \section install_download  Dowloading Kaldi (old instructions)
-
-  You first need to install Subversion (SVN).  The most current version of Kaldi,
+  We have now transitioned to GitHub for all future development.
+  You first need to install Git. The most current version of Kaldi,
   possibly including unfinished and experimental features, can
    be downloaded by typing into a shell:
   \verbatim
-    svn co https://svn.code.sf.net/p/kaldi/code/trunk kaldi-trunk
+    git clone https://github.com/kaldi-asr/kaldi.git kaldi-trunk --origin golden
+    cd kaldi-trunk
   \endverbatim
  If you want to get updates and bug fixes you can go to some checked-out
  directory, and type
   \verbatim
-    svn update
+    git pull
   \endverbatim
- If "svn update" prints out scary looking messages about conflicts (caused by
- you changing parts of files that were later modified centrally),
- you may have to resolve the conflicts; for that, we recommend that you
- read about how svn works.
+ If "git pull" prints out a message telling it cannot pull the remote
+ changes because you have changed files locally,
+ you may have to commit locally and merge your changes, or stash them temporarily
+ and then apply back the stash; for that, we recommend that you
+ read about how Git works, possibly starting with the \ref tutorial_git.
 
 
   \section install_install Installing Kaldi
-   
-  The top-level installation instructions are in the file INSTALL. 
-  For Windows, there are separate instructions (unfortunately, not actively maintained and woefully out of date)
-   in windows/INSTALL.
+
+  The top-level installation instructions are in the file \c INSTALL.
+  For Windows, there are separate instructions in \c windows/INSTALL.
   See also \ref build_setup which explains how the build process
   works internally.
 
-  The example scripts are in egs/
+  The example scripts are in \c egs/
 
 */

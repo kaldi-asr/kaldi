@@ -63,25 +63,25 @@ struct SgmmFmllrConfig {
     bases_occ_scale = 0.2;
   }
 
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
-inline void SgmmFmllrConfig::Register(OptionsItf *po) {
+inline void SgmmFmllrConfig::Register(OptionsItf *opts) {
   std::string module = "SgmmFmllrConfig: ";
-  po->Register("fmllr-iters", &fmllr_iters, module+
-               "Number of iterations in FMLLR estimation.");
-  po->Register("fmllr-step-iters", &step_iters, module+
-               "Number of iterations to find optimal FMLLR step size.");
-  po->Register("fmllr-min-count-bases", &fmllr_min_count_basis, module+
-               "Minimum occupancy count to estimate FMLLR using basis matrices.");
-  po->Register("fmllr-min-count", &fmllr_min_count, module+
-               "Minimum occupancy count to estimate FMLLR (without bases).");
-  po->Register("fmllr-min-count-full", &fmllr_min_count_full, module+
-      "Minimum occupancy count to stop using basis matrices for FMLLR.");
-  po->Register("fmllr-num-bases", &num_fmllr_bases, module+
-               "Number of FMLLR basis matrices.");
-  po->Register("fmllr-bases-occ-scale", &bases_occ_scale, module+
-               "Scale per-speaker count to determine number of CMLLR bases.");
+  opts->Register("fmllr-iters", &fmllr_iters, module+
+                 "Number of iterations in FMLLR estimation.");
+  opts->Register("fmllr-step-iters", &step_iters, module+
+                 "Number of iterations to find optimal FMLLR step size.");
+  opts->Register("fmllr-min-count-bases", &fmllr_min_count_basis, module+
+                 "Minimum occupancy count to estimate FMLLR using basis matrices.");
+  opts->Register("fmllr-min-count", &fmllr_min_count, module+
+                 "Minimum occupancy count to estimate FMLLR (without bases).");
+  opts->Register("fmllr-min-count-full", &fmllr_min_count_full, module+
+                 "Minimum occupancy count to stop using basis matrices for FMLLR.");
+  opts->Register("fmllr-num-bases", &num_fmllr_bases, module+
+                 "Number of FMLLR basis matrices.");
+  opts->Register("fmllr-bases-occ-scale", &bases_occ_scale, module+
+                 "Scale per-speaker count to determine number of CMLLR bases.");
 }
 
 

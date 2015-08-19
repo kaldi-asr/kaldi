@@ -191,17 +191,17 @@ struct NnetPerturbedTrainerConfig {
                                 tune_d_power(0.5),
                                 max_d_factor(2.0){ }
   
-  void Register (OptionsItf *po) {
-    po->Register("minibatch-size", &minibatch_size,
-                 "Number of samples per minibatch of training data.");
-    po->Register("minibatches-per-phase", &minibatches_per_phase,
-                 "Number of minibatches to wait before printing training-set "
-                 "objective.");
-    po->Register("target-objf-change", &target_objf_change, "Target objective "
-                 "function change from feature perturbation, used to set "
-                 "feature distance parameter D");
-    po->Register("initial-d", &initial_d, "Initial value of parameter D "
-                 "It will ultimately be set according to --target-objf-change");
+  void Register (OptionsItf *opts) {
+    opts->Register("minibatch-size", &minibatch_size,
+                   "Number of samples per minibatch of training data.");
+    opts->Register("minibatches-per-phase", &minibatches_per_phase,
+                   "Number of minibatches to wait before printing training-set "
+                   "objective.");
+    opts->Register("target-objf-change", &target_objf_change, "Target objective "
+                   "function change from feature perturbation, used to set "
+                   "feature distance parameter D");
+    opts->Register("initial-d", &initial_d, "Initial value of parameter D "
+                   "It will ultimately be set according to --target-objf-change");
   }  
 };
 

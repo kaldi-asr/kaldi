@@ -58,17 +58,17 @@ print "<NnetProto>"
 # normally we won't use more than 2 layers of LSTM
 if o.num_layers == 1:
     print "<BLstmProjectedStreams> <InputDim> %d <OutputDim> %d <CellDim> %s <ParamScale> %f <ClipGradient> %f" % \
-        (feat_dim, o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
+        (feat_dim, 2*o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
 elif o.num_layers == 2:
     print "<BLstmProjectedStreams> <InputDim> %d <OutputDim> %d <CellDim> %s <ParamScale> %f <ClipGradient> %f" % \
-        (feat_dim, o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
+        (feat_dim, 2*o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
     print "<BLstmProjectedStreams> <InputDim> %d <OutputDim> %d <CellDim> %s <ParamScale> %f <ClipGradient> %f" % \
-        (o.num_recurrent, o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
+        (2*o.num_recurrent, 2*o.num_recurrent, o.num_cells, o.lstm_stddev_factor, o.clip_gradient)
 else:
     sys.stderr.write("make_lstm_proto.py ERROR: more than 2 layers of LSTM, not supported yet.\n")
     sys.exit(1)
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0 <ParamStddev> %f" % \
-    (o.num_recurrent, num_leaves, o.param_stddev_factor)
+    (2*o.num_recurrent, num_leaves, o.param_stddev_factor)
 print "<Softmax> <InputDim> %d <OutputDim> %d" % \
     (num_leaves, num_leaves)
 print "</NnetProto>"

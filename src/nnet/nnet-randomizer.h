@@ -39,10 +39,10 @@ struct NnetDataRandomizerOptions {
    : randomizer_size(32768), randomizer_seed(777), minibatch_size(256) 
   { }
 
-  void Register(OptionsItf *po) {
-    po->Register("randomizer-size", &randomizer_size, "Capacity of randomizer, length of concatenated utterances which are used for frame-level shuffling (in frames, affects memory consumption, max 8000000).");
-    po->Register("randomizer-seed", &randomizer_seed, "Seed value for srand, sets fixed order of frame-level shuffling");
-    po->Register("minibatch-size", &minibatch_size, "Size of a minibatch.");
+  void Register(OptionsItf *opts) {
+    opts->Register("randomizer-size", &randomizer_size, "Capacity of randomizer, length of concatenated utterances which are used for frame-level shuffling (in frames, affects memory consumption, max 8000000).");
+    opts->Register("randomizer-seed", &randomizer_seed, "Seed value for srand, sets fixed order of frame-level shuffling");
+    opts->Register("minibatch-size", &minibatch_size, "Size of a minibatch.");
   }
 };
 ///

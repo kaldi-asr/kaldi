@@ -51,16 +51,16 @@ struct BasisFmllrOptions {
   BaseFloat min_count;
   int32 step_size_iters;
   BasisFmllrOptions(): num_iters(10), size_scale(0.2), min_count(50.0), step_size_iters(3) { }
-  void Register(OptionsItf *po) {
-    po->Register("num-iters", &num_iters,
-                 "Number of iterations in basis fMLLR update during testing");
-    po->Register("size-scale", &size_scale,
-                 "Scale (< 1.0) on speaker occupancy that gives number of "
-                 "basis elements.");
-    po->Register("fmllr-min-count", &min_count,
-                 "Minimum count required to update fMLLR");
-    po->Register("step-size-iters", &step_size_iters,
-                 "Number of iterations in computing step size");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-iters", &num_iters,
+                   "Number of iterations in basis fMLLR update during testing");
+    opts->Register("size-scale", &size_scale,
+                   "Scale (< 1.0) on speaker occupancy that gives number of "
+                   "basis elements.");
+    opts->Register("fmllr-min-count", &min_count,
+                   "Minimum count required to update fMLLR");
+    opts->Register("step-size-iters", &step_size_iters,
+                   "Number of iterations in computing step size");
   }
 };
 

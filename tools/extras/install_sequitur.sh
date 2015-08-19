@@ -51,9 +51,25 @@ python setup.py install --prefix `pwd`
 cd ../
 
 (
-set -x
-echo "export G2P=`pwd`/sequitur"
-echo "export PATH=\$PATH:\${G2P}/bin"
-echo "_site_packages=\`readlink -f \${G2P}/lib/python*/site-packages\`"
-echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
+  set +u
+  [ ! -z ${SEQUITUR} ] && \
+    echo >&2 "SEQUITUR variable is aleady defined. Undefining..." && \
+    unset SEQUITUR
+
+  [ -f ./env.sh ] && . ./env.sh
+
+  [ ! -z ${SEQUITUR} ] && \
+    echo >&2 "SEQUITUR config is already in env.sh" && exit
+
+  wd=`pwd`
+  wd=`readlink -f $wd`
+
+  echo "export SEQUITUR=$wd/sequitur"
+  echo "export PATH=\$PATH:\${SEQUITUR}/bin"
+  echo "_site_packages=\`readlink -f \${SEQUITUR}/lib/python*/site-packages\`"
+  echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
 ) >> env.sh
+
+echo >&2 "Installation of SEQUITUR finished successfully"
+echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
+

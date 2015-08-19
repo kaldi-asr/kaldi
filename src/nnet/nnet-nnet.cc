@@ -32,7 +32,7 @@ namespace nnet1 {
 
 Nnet::Nnet(const Nnet& other) {
   // copy the components
-  for(int32 i=0; i<other.NumComponents(); i++) {
+  for(int32 i = 0; i < other.NumComponents(); i++) {
     components_.push_back(other.GetComponent(i).Copy());
   }
   // create empty buffers
@@ -40,13 +40,13 @@ Nnet::Nnet(const Nnet& other) {
   backpropagate_buf_.resize(NumComponents()+1);
   // copy train opts
   SetTrainOptions(other.opts_);
-  Check(); 
+  Check();
 }
 
 Nnet & Nnet::operator = (const Nnet& other) {
   Destroy();
   // copy the components
-  for(int32 i=0; i<other.NumComponents(); i++) {
+  for(int32 i = 0; i < other.NumComponents(); i++) {
     components_.push_back(other.GetComponent(i).Copy());
   }
   // create empty buffers
@@ -356,14 +356,18 @@ void Nnet::ResetLstmStreams(const std::vector<int32> &stream_reset_flag) {
     if (GetComponent(c).GetType() == Component::kLstmProjectedStreams) {
       LstmProjectedStreams& comp = dynamic_cast<LstmProjectedStreams&>(GetComponent(c));
       comp.ResetLstmStreams(stream_reset_flag);
-    }
-    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
-      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
-      comp.ResetLstmStreams(stream_reset_flag);
-    }
+    }    
   }
 }
 
+void Nnet::SetSeqLengths(const std::vector<int32> &sequence_lengths) {
+  for (int32 c=0; c < NumComponents(); c++) {
+    if (GetComponent(c).GetType() == Component::kBLstmProjectedStreams) {
+      BLstmProjectedStreams& comp = dynamic_cast<BLstmProjectedStreams&>(GetComponent(c));
+      comp.SetSeqLengths(sequence_lengths);
+    }
+  }
+}
 
 void Nnet::Init(const std::string &file) {
   Input in(file);

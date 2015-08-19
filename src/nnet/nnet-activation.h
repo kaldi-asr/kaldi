@@ -82,7 +82,7 @@ class BlockSoftmax : public Component {
       is >> std::ws; // eat-up whitespace
     }
     // parse dims,
-    if (!kaldi::SplitStringToIntegers(dims_str, ":", false, &block_dims))
+    if (!kaldi::SplitStringToIntegers(dims_str, ",:", false, &block_dims))
       KALDI_ERR << "Invalid block-dims " << dims_str;
     // sanity check
     int32 sum = 0;

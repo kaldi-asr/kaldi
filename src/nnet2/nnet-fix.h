@@ -51,18 +51,18 @@ struct NnetFixConfig {
 
   NnetFixConfig(): min_average_deriv(0.1), max_average_deriv(0.75),
                    parameter_factor(2.0), relu_bias_change(1.0) { }
-  void Register(OptionsItf *po) {
-    po->Register("min-average-deriv", &min_average_deriv, "Miniumum derivative, "
-                 "averaged over the training data, that we allow for a nonlinearity,"
-                 "expressed relative to the maximum derivative of the nonlinearity,"
-                 "i.e. 1.0 for tanh or 0.25 for sigmoid, 1.0 for rectified linear.");
-    po->Register("max-average-deriv", &max_average_deriv, "Maximum derivative, "
-                 "averaged over the training data, that we allow for the nonlinearity "
-                 "associated with one neuron.");
-    po->Register("parameter-factor", &parameter_factor, "Maximum factor by which we change "
-                 "the set of parameters associated with a neuron.");
-    po->Register("relu-bias-change", &relu_bias_change, "For ReLUs, change in bias when "
-                 "we identify a component that's too frequently on or off.");
+  void Register(OptionsItf *opts) {
+    opts->Register("min-average-deriv", &min_average_deriv, "Miniumum derivative, "
+                   "averaged over the training data, that we allow for a nonlinearity,"
+                   "expressed relative to the maximum derivative of the nonlinearity,"
+                   "i.e. 1.0 for tanh or 0.25 for sigmoid, 1.0 for rectified linear.");
+    opts->Register("max-average-deriv", &max_average_deriv, "Maximum derivative, "
+                   "averaged over the training data, that we allow for the nonlinearity "
+                   "associated with one neuron.");
+    opts->Register("parameter-factor", &parameter_factor, "Maximum factor by which we change "
+                   "the set of parameters associated with a neuron.");
+    opts->Register("relu-bias-change", &relu_bias_change, "For ReLUs, change in bias when "
+                   "we identify a component that's too frequently on or off.");
   }
 };
 

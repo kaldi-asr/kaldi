@@ -35,17 +35,17 @@ struct LogisticRegressionConfig {
          power;
   LogisticRegressionConfig(): max_steps(20), mix_up(0), 
                               normalizer(0.0025), power(0.15){ }
-  void Register(OptionsItf *po) {
-    po->Register("max-steps", &max_steps,
-                 "Maximum steps in L-BFGS.");
-    po->Register("normalizer", &normalizer,
-                 "Coefficient for L2 regularization.");
-    po->Register("mix-up", &mix_up,
-                 "Target number of mixture components to create, "
-                 "if supplied.");
-    po->Register("power", &power,
-                 "Power rule for determining the number of mixtures "
-                 "to create.");
+  void Register(OptionsItf *opts) {
+    opts->Register("max-steps", &max_steps,
+                   "Maximum steps in L-BFGS.");
+    opts->Register("normalizer", &normalizer,
+                   "Coefficient for L2 regularization.");
+    opts->Register("mix-up", &mix_up,
+                   "Target number of mixture components to create, "
+                   "if supplied.");
+    opts->Register("power", &power,
+                   "Power rule for determining the number of mixtures "
+                   "to create.");
   }
 };
 

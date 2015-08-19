@@ -18,4 +18,59 @@ exp/mdm8/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:P
 exp/mdm8/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   61.9%   (55738)
 exp/mdm8/tri3a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.dtl:Percent Total Error       =   59.3%   (53370)
 
+#--------------------------------------------------------------------------------------------------------------------------------------------
+#TDNN-online system
+mic=mdm8
+for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done
+  #Cross Entropy system
+    #Dev
+    %WER 42.1 | 14950 94513 | 64.9 24.6 10.5 7.0 42.1 67.1 | -24.484 | exp/mdm8/nnet2_online/nnet_ms_sp_online/decode_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+    %WER 41.8 | 15199 94337 | 65.0 24.3 10.6 6.9 41.8 65.8 | -24.588 | exp/mdm8/nnet2_online/nnet_ms_sp_online/decode_dev_utt_offline/ascore_12/dev_hires_o4.ctm.filt.sys
+
+    #Eval
+    %WER 45.4 | 13992 89799 | 60.1 26.4 13.5 5.5 45.4 67.3 | -23.969 | exp/mdm8/nnet2_online/nnet_ms_sp_online/decode_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
+    %WER 45.1 | 13893 89804 | 60.3 25.9 13.9 5.4 45.1 67.9 | -24.110 | exp/mdm8/nnet2_online/nnet_ms_sp_online/decode_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+
+  #sMBR best epoch
+  #dev
+    %WER 40.9 | 15965 94490 | 64.6 19.9 15.5 5.5 40.9 61.9 | -26.104 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+    %WER 40.7 | 13961 94495 | 64.4 18.8 16.8 5.0 40.7 70.4 | -26.622 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
+  #eval  
+    %WER 44.2 | 13577 89767 | 61.1 22.3 16.6 5.3 44.2 68.9 | -25.003 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
+    %WER 44.0 | 13448 89769 | 60.8 21.4 17.8 4.9 44.0 69.6 | -25.331 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+
+  #sMBR system (all epochs)
+  #dev
+    # epoch 0
+    %WER 42.1 | 14950 94513 | 64.9 24.6 10.5 7.0 42.1 67.1 | -24.484 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+    %WER 41.8 | 15199 94337 | 65.0 24.3 10.6 6.9 41.8 65.8 | -24.588 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_dev_utt_offline/ascore_12/dev_hires_o4.ctm.filt.sys
+    # epoch 1
+    %WER 41.1 | 13976 94499 | 64.5 20.5 14.9 5.7 41.1 70.9 | -25.812 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_dev_utt/ascore_10/dev_hires_o4.ctm.filt.sys
+    %WER 41.1 | 15165 94496 | 64.6 20.1 15.3 5.7 41.1 65.4 | -25.951 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_dev_utt_offline/ascore_10/dev_hires_o4.ctm.filt.sys
+    # epoch 2
+    %WER 40.9 | 14091 94495 | 64.6 19.9 15.5 5.5 40.9 70.2 | -26.077 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_dev_utt/ascore_11/dev_hires_o4.ctm.filt.sys
+    %WER 40.9 | 15001 94501 | 64.6 19.6 15.9 5.5 40.9 66.0 | -26.208 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_dev_utt_offline/ascore_11/dev_hires_o4.ctm.filt.sys
+    # epoch 3
+    %WER 40.9 | 13946 94496 | 64.9 20.4 14.7 5.8 40.9 70.9 | -25.872 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_dev_utt/ascore_11/dev_hires_o4.ctm.filt.sys
+    %WER 40.8 | 15030 94499 | 64.5 19.1 16.4 5.2 40.8 65.6 | -26.440 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_dev_utt_offline/ascore_12/dev_hires_o4.ctm.filt.sys
+    # epoch 4
+    %WER 40.9 | 15965 94490 | 64.6 19.9 15.5 5.5 40.9 61.9 | -26.104 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+    %WER 40.7 | 13961 94495 | 64.4 18.8 16.8 5.0 40.7 70.4 | -26.622 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
+
+  #eval 
+    # epoch 0 
+    %WER 45.4 | 13992 89799 | 60.1 26.4 13.5 5.5 45.4 67.3 | -23.969 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
+    %WER 45.1 | 13893 89804 | 60.3 25.9 13.9 5.4 45.1 67.9 | -24.110 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+    # epoch 1
+    %WER 44.6 | 14310 89769 | 60.3 21.9 17.8 4.9 44.6 65.3 | -25.122 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_eval_utt/ascore_10/eval_hires_o4.ctm.filt.sys
+    %WER 44.5 | 13801 89771 | 60.3 21.8 17.9 4.9 44.5 67.9 | -25.164 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_eval_utt_offline/ascore_10/eval_hires_o4.ctm.filt.sys
+    # epoch 2
+    %WER 44.2 | 13390 89771 | 60.6 21.2 18.2 4.8 44.2 69.6 | -25.372 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
+    %WER 44.1 | 14322 89766 | 60.6 21.2 18.2 4.8 44.1 65.3 | -25.388 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_eval_utt_offline/ascore_11/eval_hires_o4.ctm.filt.sys
+    # epoch 3
+    %WER 44.2 | 13803 89768 | 60.9 21.8 17.3 5.1 44.2 67.7 | -25.160 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
+    %WER 44.0 | 13892 89766 | 60.6 20.9 18.5 4.6 44.0 67.3 | -25.515 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+    # epoch 4
+    %WER 44.2 | 13577 89767 | 61.1 22.3 16.6 5.3 44.2 68.9 | -25.003 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
+    %WER 44.0 | 13448 89769 | 60.8 21.4 17.8 4.9 44.0 69.6 | -25.331 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
 

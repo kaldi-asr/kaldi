@@ -93,42 +93,42 @@ struct GpsrConfig {
     max_iters_debias = 50;
   }
 
-  void Register(OptionsItf *po);
+  void Register(OptionsItf *opts);
 };
 
-inline void GpsrConfig::Register(OptionsItf *po) {
+inline void GpsrConfig::Register(OptionsItf *opts) {
   std::string module = "GpsrConfig: ";
-  po->Register("use-gpsr-bb", &use_gpsr_bb, module+
-               "Use the Barzilai-Borwein gradient projection method.");
+  opts->Register("use-gpsr-bb", &use_gpsr_bb, module+
+                 "Use the Barzilai-Borwein gradient projection method.");
 
-  po->Register("stop-thresh", &stop_thresh, module+
-               "Stopping threshold for GPSR.");
-  po->Register("max-iters", &max_iters, module+
-               "Maximum number of iterations of GPSR.");
-  po->Register("gpsr-tau", &gpsr_tau, module+
-               "Regularization scale for GPSR.");
-  po->Register("alpha-min", &alpha_min, module+
-               "Minimum step size in feasible direction.");
-  po->Register("alpha-max", &alpha_max, module+
-               "Maximum step size in feasible direction.");
-  po->Register("max-sparsity", &max_sparsity, module+
-               "Maximum percentage of dimensions set to 0.");
-  po->Register("tau-reduction", &tau_reduction, module+
-               "Multiply tau by this if maximum sparsity is reached.");
+  opts->Register("stop-thresh", &stop_thresh, module+
+                 "Stopping threshold for GPSR.");
+  opts->Register("max-iters", &max_iters, module+
+                 "Maximum number of iterations of GPSR.");
+  opts->Register("gpsr-tau", &gpsr_tau, module+
+                 "Regularization scale for GPSR.");
+  opts->Register("alpha-min", &alpha_min, module+
+                 "Minimum step size in feasible direction.");
+  opts->Register("alpha-max", &alpha_max, module+
+                 "Maximum step size in feasible direction.");
+  opts->Register("max-sparsity", &max_sparsity, module+
+                 "Maximum percentage of dimensions set to 0.");
+  opts->Register("tau-reduction", &tau_reduction, module+
+                 "Multiply tau by this if maximum sparsity is reached.");
 
-  po->Register("gpsr-beta", &gpsr_beta, module+
-               "Step size reduction factor in backtracking line search (0<beta<1).");
-  po->Register("gpsr-mu", &gpsr_mu, module+
-               "Improvement factor in backtracking line search (0<mu<1).");
-  po->Register("max-iters-backtrack", &max_iters_backtrak, module+
-               "Maximum number of iterations of backtracking line search.");
+  opts->Register("gpsr-beta", &gpsr_beta, module+
+                 "Step size reduction factor in backtracking line search (0<beta<1).");
+  opts->Register("gpsr-mu", &gpsr_mu, module+
+                 "Improvement factor in backtracking line search (0<mu<1).");
+  opts->Register("max-iters-backtrack", &max_iters_backtrak, module+
+                 "Maximum number of iterations of backtracking line search.");
 
-  po->Register("debias", &debias, module+
-               "Do final debiasing step.");
-  po->Register("stop-thresh-debias", &stop_thresh_debias, module+
-               "Stopping threshold for debiaisng step.");
-  po->Register("max-iters-debias", &max_iters_debias, module+
-               "Maximum number of iterations of debiasing.");
+  opts->Register("debias", &debias, module+
+                 "Do final debiasing step.");
+  opts->Register("stop-thresh-debias", &stop_thresh_debias, module+
+                 "Stopping threshold for debiaisng step.");
+  opts->Register("max-iters-debias", &max_iters_debias, module+
+                 "Maximum number of iterations of debiasing.");
 }
 
 /// Solves a quadratic program in \f$ x \f$, with L_1 regularization:

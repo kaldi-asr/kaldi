@@ -66,29 +66,29 @@ struct PlpOptions {
                  cepstral_scale(1.0),
                  htk_compat(false) {}
 
-  void Register(OptionsItf *po) {
-    frame_opts.Register(po);
-    mel_opts.Register(po);
-    po->Register("lpc-order", &lpc_order,
-                 "Order of LPC analysis in PLP computation");
-    po->Register("num-ceps", &num_ceps,
-                 "Number of cepstra in PLP computation (including C0)");
-    po->Register("use-energy", &use_energy,
-                 "Use energy (not C0) for zeroth PLP feature");
-    po->Register("energy-floor", &energy_floor,
-                 "Floor on energy (absolute, not relative) in PLP computation");
-    po->Register("raw-energy", &raw_energy,
-                 "If true, compute energy before preemphasis and windowing");
-    po->Register("compress-factor", &compress_factor,
-                 "Compression factor in PLP computation");
-    po->Register("cepstral-lifter", &cepstral_lifter,
-                 "Constant that controls scaling of PLPs");
-    po->Register("cepstral-scale", &cepstral_scale,
-                 "Scaling constant in PLP computation");
-    po->Register("htk-compat", &htk_compat,
-                 "If true, put energy or C0 last and put factor of sqrt(2) on "
-                 "C0.  Warning: not sufficient to get HTK compatible features "
-                 "(need to change other parameters).");
+  void Register(OptionsItf *opts) {
+    frame_opts.Register(opts);
+    mel_opts.Register(opts);
+    opts->Register("lpc-order", &lpc_order,
+                   "Order of LPC analysis in PLP computation");
+    opts->Register("num-ceps", &num_ceps,
+                   "Number of cepstra in PLP computation (including C0)");
+    opts->Register("use-energy", &use_energy,
+                   "Use energy (not C0) for zeroth PLP feature");
+    opts->Register("energy-floor", &energy_floor,
+                   "Floor on energy (absolute, not relative) in PLP computation");
+    opts->Register("raw-energy", &raw_energy,
+                   "If true, compute energy before preemphasis and windowing");
+    opts->Register("compress-factor", &compress_factor,
+                   "Compression factor in PLP computation");
+    opts->Register("cepstral-lifter", &cepstral_lifter,
+                   "Constant that controls scaling of PLPs");
+    opts->Register("cepstral-scale", &cepstral_scale,
+                   "Scaling constant in PLP computation");
+    opts->Register("htk-compat", &htk_compat,
+                   "If true, put energy or C0 last and put factor of sqrt(2) on "
+                   "C0.  Warning: not sufficient to get HTK compatible features "
+                   "(need to change other parameters).");
   }
 };
 

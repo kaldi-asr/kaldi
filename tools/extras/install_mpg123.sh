@@ -34,7 +34,7 @@ if [ ! -e mpg123-1.21.0.tar.bz2 ]; then
 
    wget -T 10 -t 3 -c 'http://downloads.sourceforge.net/project/mpg123/mpg123/1.21.0/mpg123-1.21.0.tar.bz2'
 
-   if [ ! -e mpg123-1.21.0.tar.bz2]; then
+   if [ ! -e mpg123-1.21.0.tar.bz2 ]; then
         errcho "Download of mpg123-1.21.0.tar.bz2 failed!"
         errcho "You can also just download mpg123-1.21.0.tar.bz2 from"
         errcho "http://www.mpg123.org/download.shtml)"
@@ -54,13 +54,23 @@ ln -s mpg123-1.21.0  mpg123
 )
 
 (
-. ./env.sh
-[ ! -z ${MPG123} ] && exit
+  set +u
+  [ ! -z ${MPG123} ] && \
+    echo >&2 "MPG123 variable is aleady defined. Undefining..." && \
+    unset MPG123
 
-wd=`pwd`
-wd=`readlink -f $wd`
+  [ -f ./env.sh ] && . ./env.sh
 
-echo "export MPG123=$wd/mpg123"
-echo "export PATH=\${PATH}:\${MPG123}/bin"
+  [ ! -z ${MPG123} ] && \
+    echo >&2 "MPG123 config is already in env.sh" && exit
+
+  wd=`pwd`
+  wd=`readlink -f $wd`
+
+  echo "export MPG123=$wd/mpg123"
+  echo "export PATH=\${PATH}:\${MPG123}/bin"
 ) >> env.sh
+
+echo >&2 "Installation of MPG123 finished successfully"
+echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
 

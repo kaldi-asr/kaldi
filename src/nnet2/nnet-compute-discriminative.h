@@ -48,20 +48,20 @@ struct NnetDiscriminativeUpdateOptions {
                                      one_silence_class(false),
                                      boost(0.0) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr', "
-                 "determines the objective function to use.  Should match "
-                 "option used when we created the examples.");
-    po->Register("acoustic-scale", &acoustic_scale, "Weighting factor to "
-                 "apply to acoustic likelihoods.");
-    po->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
-                 "with no overlap of num and den frames");
-    po->Register("boost", &boost, "Boosting factor for boosted MMI (e.g. 0.1)");
-    po->Register("one-silence-class", &one_silence_class, "If true, newer "
-                 "behavior which will tend to reduce insertions.");
-    po->Register("silence-phones", &silence_phones_str,
-                 "For MPFE or SMBR, colon-separated list of integer ids of "
-                 "silence phones, e.g. 1:2:3");
+  void Register(OptionsItf *opts) {
+    opts->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr', "
+                   "determines the objective function to use.  Should match "
+                   "option used when we created the examples.");
+    opts->Register("acoustic-scale", &acoustic_scale, "Weighting factor to "
+                   "apply to acoustic likelihoods.");
+    opts->Register("drop-frames", &drop_frames, "For MMI, if true we drop frames "
+                   "with no overlap of num and den frames");
+    opts->Register("boost", &boost, "Boosting factor for boosted MMI (e.g. 0.1)");
+    opts->Register("one-silence-class", &one_silence_class, "If true, newer "
+                   "behavior which will tend to reduce insertions.");
+    opts->Register("silence-phones", &silence_phones_str,
+                   "For MPFE or SMBR, colon-separated list of integer ids of "
+                   "silence phones, e.g. 1:2:3");
     
   }
 };

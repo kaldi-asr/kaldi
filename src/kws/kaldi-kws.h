@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_LAT_KALDI_KWS_H_
-#define KALDI_LAT_KALDI_KWS_H_
+#ifndef KALDI_KWS_KALDI_KWS_H_
+#define KALDI_KWS_KALDI_KWS_H_
 
 #include "fst/fstlib.h"
 #include "lat/arctic-weight.h"
@@ -50,4 +50,4 @@ typedef fst::VectorFst<KwsProductArc> KwsProductFst;
 
 
 }  // namespace kaldi
-#endif  // KALDI_LAT_KALDI_KWS_H_
+#endif  // KALDI_KWS_KALDI_KWS_H_

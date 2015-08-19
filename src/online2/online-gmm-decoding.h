@@ -64,19 +64,19 @@ struct OnlineGmmDecodingAdaptationPolicyConfig {
       adaptation_delay(5.0),
       adaptation_ratio(2.0) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("adaptation-first-utt-delay", &adaptation_first_utt_delay,
-                 "Delay before first basis-fMLLR adaptation for first utterance "
-                 "of each speaker");
-    po->Register("adaptation-first-utt-ratio", &adaptation_first_utt_ratio,
-                 "Ratio that controls frequency of fMLLR adaptation for first "
-                 "utterance of each speaker");
-    po->Register("adaptation-delay", &adaptation_first_utt_delay,
-                 "Delay before first basis-fMLLR adaptation for not-first "
-                 "utterances of each speaker");
-    po->Register("adaptation-ratio", &adaptation_first_utt_ratio,
-                 "Ratio that controls frequency of fMLLR adaptation for "
-                 "not-first utterances of each speaker");
+  void Register(OptionsItf *opts) {
+    opts->Register("adaptation-first-utt-delay", &adaptation_first_utt_delay,
+                   "Delay before first basis-fMLLR adaptation for first utterance "
+                   "of each speaker");
+    opts->Register("adaptation-first-utt-ratio", &adaptation_first_utt_ratio,
+                   "Ratio that controls frequency of fMLLR adaptation for first "
+                   "utterance of each speaker");
+    opts->Register("adaptation-delay", &adaptation_first_utt_delay,
+                   "Delay before first basis-fMLLR adaptation for not-first "
+                   "utterances of each speaker");
+    opts->Register("adaptation-ratio", &adaptation_first_utt_ratio,
+                   "Ratio that controls frequency of fMLLR adaptation for "
+                   "not-first utterances of each speaker");
   }
   
   /// Check that configuration values make sense.
@@ -122,35 +122,35 @@ struct OnlineGmmDecodingConfig {
   OnlineGmmDecodingConfig():  fmllr_lattice_beam(3.0), acoustic_scale(0.1),
                               silence_weight(0.1) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     { // register basis_opts with prefix, there are getting to be too many
       // options.
-      ParseOptions basis_po("basis", po);
+      ParseOptions basis_po("basis", opts);
       basis_opts.Register(&basis_po);
     }
-    adaptation_policy_opts.Register(po);
-    faster_decoder_opts.Register(po);
-    po->Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
-    po->Register("silence-phones", &silence_phones,
-                 "Colon-separated list of integer ids of silence phones, e.g. "
-                 "1:2:3 (affects adaptation).");
-    po->Register("silence-weight", &silence_weight,
-                 "Weight applied to silence frames for fMLLR estimation (if "
-                 "--silence-phones option is supplied)");
-    po->Register("fmllr-lattice-beam", &fmllr_lattice_beam, "Beam used in "
-                 "pruning lattices for fMLLR estimation");
-    po->Register("online-alignment-model", &online_alimdl_rxfilename,
-                 "(Extended) filename for model trained with online CMN "
-                 "features, e.g. from apply-cmvn-online.");
-    po->Register("model", &model_rxfilename, "(Extended) filename for model, "
-                 "typically the one used for fMLLR computation.  Required option.");
-    po->Register("rescore-model", &rescore_model_rxfilename, "(Extended) filename "
-                 "for model to rescore lattices with, e.g. discriminatively trained"
-                 "model, if it differs from that supplied to --model option.  Must"
-                 "have the same tree.");
-    po->Register("fmllr-basis", &fmllr_basis_rxfilename, "(Extended) filename "
-                 "of fMLLR basis object, as output by gmm-basis-fmllr-training");
+    adaptation_policy_opts.Register(opts);
+    faster_decoder_opts.Register(opts);
+    opts->Register("acoustic-scale", &acoustic_scale,
+                   "Scaling factor for acoustic likelihoods");
+    opts->Register("silence-phones", &silence_phones,
+                   "Colon-separated list of integer ids of silence phones, e.g. "
+                   "1:2:3 (affects adaptation).");
+    opts->Register("silence-weight", &silence_weight,
+                   "Weight applied to silence frames for fMLLR estimation (if "
+                   "--silence-phones option is supplied)");
+    opts->Register("fmllr-lattice-beam", &fmllr_lattice_beam, "Beam used in "
+                   "pruning lattices for fMLLR estimation");
+    opts->Register("online-alignment-model", &online_alimdl_rxfilename,
+                   "(Extended) filename for model trained with online CMN "
+                   "features, e.g. from apply-cmvn-online.");
+    opts->Register("model", &model_rxfilename, "(Extended) filename for model, "
+                   "typically the one used for fMLLR computation.  Required option.");
+    opts->Register("rescore-model", &rescore_model_rxfilename, "(Extended) filename "
+                   "for model to rescore lattices with, e.g. discriminatively trained"
+                   "model, if it differs from that supplied to --model option.  Must"
+                   "have the same tree.");
+    opts->Register("fmllr-basis", &fmllr_basis_rxfilename, "(Extended) filename "
+                   "of fMLLR basis object, as output by gmm-basis-fmllr-training");
   }
 };
 

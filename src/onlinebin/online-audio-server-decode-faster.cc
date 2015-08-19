@@ -81,7 +81,7 @@ int32 main(int argc, char *argv[]) {
     const char *usage =
         "Starts a TCP server that receives RAW audio and outputs aligned words.\n"
             "A sample client can be found in: onlinebin/online-audio-client\n\n"
-            "Usage: ./online-audio-server-decode-faster [options] model-in "
+            "Usage: online-audio-server-decode-faster [options] model-in "
             "fst-in word-symbol-table silence-phones word_boundary_file tcp-port [lda-matrix-in]\n\n"
             "example: online-audio-server-decode-faster --verbose=1 --rt-min=0.5 --rt-max=3.0 --max-active=6000\n"
             "--beam=72.0 --acoustic-scale=0.0769 final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5'\n"

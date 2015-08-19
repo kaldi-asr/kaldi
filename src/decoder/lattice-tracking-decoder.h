@@ -54,23 +54,23 @@ struct LatticeTrackingDecoderConfig {
                                 hash_ratio(2.0),
                                 extra_beam(4.0),
                                 max_beam(40.0) { }
-  void Register(OptionsItf *po) {
-    det_opts.Register(po);
-    po->Register("beam", &beam, "Decoding beam.");
-    po->Register("max-active", &max_active, "Decoder max active states.");
-    po->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
-    po->Register("prune-interval", &prune_interval, "Interval (in frames) at "
-                 "which to prune tokens");
-    po->Register("determinize-lattice", &determinize_lattice, "If true, "
-                 "determinize the lattice (in a special sense, keeping only "
-                 "best pdf-sequence for each word-sequence).");
-    po->Register("beam-delta", &beam_delta, "Increment used in decoding");
-    po->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
-                 " hash behavior");
-    po->Register("extra-beam", &extra_beam, "Increment used in decoding (added "
-                 "to worst tracked token from first pass)");
-    po->Register("max-beam", &max_beam, "Maximum beam (in case tracked tokens "
-                 "go too far from beam)");
+  void Register(OptionsItf *opts) {
+    det_opts.Register(opts);
+    opts->Register("beam", &beam, "Decoding beam.");
+    opts->Register("max-active", &max_active, "Decoder max active states.");
+    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
+    opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
+                   "which to prune tokens");
+    opts->Register("determinize-lattice", &determinize_lattice, "If true, "
+                   "determinize the lattice (in a special sense, keeping only "
+                   "best pdf-sequence for each word-sequence).");
+    opts->Register("beam-delta", &beam_delta, "Increment used in decoding");
+    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
+                   " hash behavior");
+    opts->Register("extra-beam", &extra_beam, "Increment used in decoding (added "
+                   "to worst tracked token from first pass)");
+    opts->Register("max-beam", &max_beam, "Maximum beam (in case tracked tokens "
+                   "go too far from beam)");
 
   }
   void Check() const {

@@ -74,8 +74,7 @@ int main(int argc, char *argv[]) {
       "Note: this program was mainly intended to validate the lattice generation\n"
       "algorithm and is not very useful; in general, processing the\n"
       "lattices into n-best lists will be more efficient.\n"
-      "Usage:\n"
-      " gmm-decode-nbest [options] <model-in> <fst-in> <features-rspecifier> "
+      "Usage: gmm-decode-nbest [options] <model-in> <fst-in> <features-rspecifier> "
         "<nbest-lattice-wspecifier> <words-wspecifier> [<alignments-wspecifier>]\n";
     ParseOptions po(usage);
     bool allow_partial = true;

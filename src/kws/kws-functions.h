@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_LAT_KWS_FUNCTIONS_H_
-#define KALDI_LAT_KWS_FUNCTIONS_H_
+#ifndef KALDI_KWS_KWS_FUNCTIONS_H_
+#define KALDI_KWS_KWS_FUNCTIONS_H_
 
 #include "lat/kaldi-lattice.h"
 #include "kws/kaldi-kws.h"
@@ -112,4 +112,4 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer);
 } // namespace kaldi
 
 
-#endif  // KALDI_LAT_KWS_FUNCTIONS_H_
+#endif  // KALDI_KWS_KWS_FUNCTIONS_H_
