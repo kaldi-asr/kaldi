@@ -120,9 +120,13 @@ void ReadBasicType<double>(std::istream &is, bool binary, double *d) {
 }
 
 void CheckToken(const char *token) {
-  KALDI_ASSERT(*token != '\0');  // check it's nonempty.
+  if (*token == '\0')
+    KALDI_ERR << "Token is empty (not a valid token)";
+  const char *orig_token = token;
   while (*token != '\0') {
-    KALDI_ASSERT(!::isspace(*token));
+    if (::isspace(*token))
+      KALDI_ERR << "Token is not a valid token (contains space): '"
+                << orig_token << "'";
     token++;
   }
 }

@@ -28,6 +28,7 @@
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sp-matrix.h"
+#include "matrix/sparse-matrix.h"
 
 namespace kaldi {
 
@@ -241,6 +242,17 @@ template void VectorBase<float>::CopyFromPacked(const PackedMatrix<double> &othe
 template void VectorBase<float>::CopyFromPacked(const PackedMatrix<float> &other);
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<double> &other);
 template void VectorBase<double>::CopyFromPacked(const PackedMatrix<float> &other);
+
+template<typename Real>
+template<typename OtherReal>
+void VectorBase<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &M) {
+  KALDI_ASSERT(dim_ == M.NumElements());
+  M.CopyToVec(this);
+}
+template void VectorBase<float>::CopyFromSmat(const SparseMatrix<float> &M);
+template void VectorBase<float>::CopyFromSmat(const SparseMatrix<double> &M);
+template void VectorBase<double>::CopyFromSmat(const SparseMatrix<float> &M);
+template void VectorBase<double>::CopyFromSmat(const SparseMatrix<double> &M);
 
 
 /// Load data into the vector

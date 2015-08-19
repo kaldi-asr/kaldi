@@ -25,6 +25,7 @@
 #include "fst/fstlib.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/push-special.h"
+#include "fstext/kaldi-fst-io.h"
 
 int main(int argc, char *argv[]) {
   try {

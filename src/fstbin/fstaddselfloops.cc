@@ -23,7 +23,7 @@
 #include "fst/fstlib.h"
 #include "fstext/determinize-star.h"
 #include "fstext/fstext-utils.h"
-
+#include "fstext/kaldi-fst-io.h"
 
 /* some test examples:
   pushd ~/tmpdir

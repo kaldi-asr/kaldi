@@ -120,12 +120,12 @@ class BackoffDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 };
 
 /**
- The class UnweightedNgramFst is a DeterministicOnDemandFst whose states 
- encode an n-gram history. Conceptually, for n-gram order n and k labels, 
- the FST has k^(n-1) states. However, the FST is created on demand and doesn't
- need the label vocabulary; GetArc matches on any input label. This class is 
- primarily used by ComposeDeterministicOnDemand to expand the n-gram
- history of lattices.
+ The class UnweightedNgramFst is a DeterministicOnDemandFst whose states encode
+ an n-gram history. Conceptually, for n-gram order n and k labels, the FST is an
+ unweighted acceptor with about k^(n-1) states (ignoring end effects). However,
+ the FST is created on demand and doesn't need the label vocabulary; GetArc
+ matches on any input label. This class is primarily used by
+ ComposeDeterministicOnDemand to expand the n-gram history of lattices.
  */
 template<class Arc>
 class UnweightedNgramFst: public DeterministicOnDemandFst<Arc> {

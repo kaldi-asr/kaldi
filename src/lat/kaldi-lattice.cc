@@ -396,7 +396,7 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     fst::FstWriteOptions opts;
     // Leave all the options default.  Normally these lattices wouldn't have any
     // osymbols/isymbols so no point directing it not to write them (who knows what
-    // we'd want to if we had them).
+    // we'd want to do if we had them).
     return t.Write(os, opts);
   } else {
     // Text-mode output.  Note: we expect that t.InputSymbols() and

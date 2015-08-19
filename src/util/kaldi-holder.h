@@ -107,6 +107,9 @@ template<class SomeType> class GenericHolder {
   /// not assume the object was newly constructed).
   ///
   /// Returns true on success.
+  ///
+  /// If Read() returns false, the contents of this object and hence the value
+  /// returned by Value() may be undefined.
   bool Read(std::istream &is);
 
   /// IsReadInBinary() will return true if the object wants the file to be

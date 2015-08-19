@@ -1,0 +1,49 @@
+// doc/dnn3.dox
+
+
+// Copyright 2015   Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+  \page dnn3 The "nnet3" setup
+
+  \section dnn3_intro Introduction
+
+  This documentation covers the latest, "nnet3", DNN setup in Kaldi.
+  For an overview of all deep neural network code in Kaldi, explaining
+  Karel's version, see \ref dnn.
+
+  The nnet3 setup is intended to support more general kinds of networks
+  than simple feedforward networks (e.g. things like RNNs and LSTMs)
+  in a natural way that should not require any actual coding.  Like the
+  nnet2 setup, it supports parallel training across GPUs on multiple
+  machines (using an approach based on natural gradient-stabilized SGD
+  with model averaging, see <a href=http://arxiv.org/abs/1410.7455> this paper </a>.
+
+  The documentation has been broken up into multiple pages: see
+    - \subpage dnn3_code_data_types
+    - \subpage dnn3_code_compilation
+    - \subpage dnn3_code_optimization
+    - [documentation on scripts to come]
+
+
+*/
+
+
+}

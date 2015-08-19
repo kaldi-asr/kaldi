@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "hmm/posterior.h"
+#include "base/kaldi-math.h"
 
 namespace kaldi {
 
@@ -50,12 +51,44 @@ void TestVectorToPosteriorEntry() {
   KALDI_ASSERT(ans >= max_val);
 }
 
+void TestPosteriorIo() {
+  int32 post_size = RandInt(0, 5);
+  post_size = post_size * post_size;
+  Posterior post(post_size);
+  for (int32 i = 0; i < post.size(); i++) {
+    int32 s = RandInt(0, 3);
+    for (int32 j = 0; j < s; j++)
+      post[i].push_back(std::pair<int32,BaseFloat>(
+          RandInt(-10, 100), RandUniform()));
+  }
+  bool binary = (RandInt(0, 1) == 0);
+  std::ostringstream os;
+  WritePosterior(os, binary, post);
+  Posterior post2;
+  if (RandInt(0, 1) == 0)
+    post2 = post;
+  std::istringstream is(os.str());
+  ReadPosterior(is, binary, &post2);
+  if (binary) {
+    KALDI_ASSERT(post == post2);
+  } else {
+    KALDI_ASSERT(post.size() == post2.size());
+    for (int32 i = 0; i < post.size(); i++) {
+      KALDI_ASSERT(post[i].size() == post2[i].size());
+      for (int32 j = 0; j < post[i].size(); j++) {
+        KALDI_ASSERT(post[i][j].first == post2[i][j].first &&
+                     fabs(post[i][j].second - post2[i][j].second < 0.01));
+      }
+    }
+  }
+}
 }
 
 int main() {
   // repeat the test ten times
   for (int i = 0; i < 10; i++) {
     kaldi::TestVectorToPosteriorEntry();
+    kaldi::TestPosteriorIo();
   }
   std::cout << "Test OK.\n";
 }

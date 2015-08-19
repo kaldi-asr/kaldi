@@ -72,7 +72,7 @@ class DecodableAmNnet: public DecodableInterface {
     log_probs_.Swap(&log_probs);
   }
 
-  // Note, frames are numbered from zero.  But state_index is numbered
+  // Note, frames are numbered from zero.  But transition_id is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id) {
     return log_probs_(frame,

@@ -25,6 +25,7 @@
 #include "fstext/rand-fst.h"
 #include "time.h"
 #include "fstext/fstext-utils.h"
+#include "fstext/kaldi-fst-io.h"
 
 int main(int argc, char *argv[]) {
   try {
