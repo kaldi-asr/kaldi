@@ -14,7 +14,7 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
     output_dim = 0
     components.append('input-node name=input dim=' + str(feat_dim))
     list = [('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_indexes]
-    output_dim += len(splice_indexes[0]) * feat_dim
+    output_dim += len(splice_indexes) * feat_dim
     if args.ivector_dim > 0:
         components.append('input-node name=ivector dim=' + str(ivector_dim))
         list.append('ReplaceIndex(ivector, t, 0)')
@@ -24,6 +24,15 @@ def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
     return {'descriptor': splice_descriptor,
             'dimension': output_dim}
 
+def AddLdaLayer(config_lines, name, input, lda_file):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append('component name={0}_lda type=FixedAffineComponent matrix={1}'.format(name, lda_file))
+    component_nodes.append('component-node name={0}_lda component={0}_lda input={1}'.format(name, input['descriptor']))
+
+    return {'descriptor':  '{0}_lda'.format(name),
+            'dimension': input['dimension']}
 
 def AddAffineLayer(config_lines, name, input, output_dim):
     components = config_lines['components']
@@ -35,13 +44,29 @@ def AddAffineLayer(config_lines, name, input, output_dim):
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
+def AddAffRelNormLayer(config_lines, name, input, output_dim):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(name, input['dimension'], output_dim))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1}".format(name, output_dim))
+
+    component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    return {'descriptor':  '{0}_renorm'.format(name),
+            'dimension': output_dim}
+
+
 
 def AddSoftmaxLayer(config_lines, name, input):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
     components.append("component name={0}_log_softmax type=LogSoftmaxComponent dim={1}".format(name, input['dimension']))
-    components.append("component-node name={0}_log_softmax component={0}_log_softmax input={1}".format(name, input['descriptor']))
+    component_nodes.append("component-node name={0}_log_softmax component={0}_log_softmax input={1}".format(name, input['descriptor']))
 
     return {'descriptor':  '{0}_log_softmax'.format(name),
             'dimension': input['dimension']}
@@ -189,7 +214,8 @@ def AddLstmLayer(config_lines,
 
 def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
-    f.write("\n".join(config_lines['components']))
+    f.write("\n".join(config_lines['components'])+"\n")
+    f.write("\n#Component nodes\n")
     f.write("\n".join(config_lines['component-nodes']))
     f.close()
 
@@ -249,6 +275,8 @@ if __name__ == "__main__":
                         help="dimension of recurrent projection")
     parser.add_argument("--non-recurrent-projection-dim", type=int,
                         help="dimension of non-recurrent projection")
+    parser.add_argument("--hidden-dim", type=int,
+                        help="dimension of fully-connected layers")
     parser.add_argument("--bptt-truncation-width", type=int,
                         help="number of time steps through which gradient is backpropagated", default=20)
     parser.add_argument("--context-sensitive-chunk-width", type=int,
@@ -286,7 +314,7 @@ if __name__ == "__main__":
     right_context = parsed_splice_output['right_context']
     num_layers = parsed_splice_output['num_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
-    print(splice_indexes)
+
     left_context = left_context + args.bptt_truncation_width + args.context_sensitive_chunk_width
     right_context = right_context
 
@@ -297,16 +325,19 @@ if __name__ == "__main__":
     # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
     f.close()
 
-    f = open(args.config_dir + "/init.config", "w")
-    print('# Config file for initializing neural network prior to', file=f)
-    print('# preconditioning matrix computation', file=f)
     config_lines = {'components':[], 'component-nodes':[]}
 
     config_files={}
-    prev_layer_output = AddInputLayer(config_lines, args.feat_dim, splice_indexes, args.ivector_dim)
+    prev_layer_output = AddInputLayer(config_lines, args.feat_dim, splice_indexes[0], args.ivector_dim)
+
+    # Add the init config lines for estimating the preconditioning matrices
     init_config_lines = copy.deepcopy(config_lines)
+    init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
+    init_config_lines['components'].insert(0, '# preconditioning matrix computation')
     AddOutputNode(init_config_lines, prev_layer_output)
     config_files[args.config_dir + '/init.config'] = init_config_lines
+
+    prev_layer_output = AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
 
     for i in range(args.num_lstm_layers):
         prev_layer_output = AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim, args.recurrent_projection_dim, args.non_recurrent_projection_dim)
@@ -316,6 +347,13 @@ if __name__ == "__main__":
         AddFinalLayer(current_config_lines, prev_layer_output, args.num_targets)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = current_config_lines
 
+    for i in range(args.num_lstm_layers, num_layers):
+        prev_layer_output = AddAffRelNormLayer(config_lines, "L{0}".format(i+1), prev_layer_output, args.hidden_dim)
+        # make the intermediate config file for layerwise discriminative
+        # training
+        current_config_lines = copy.deepcopy(config_lines)
+        AddFinalLayer(current_config_lines, prev_layer_output, args.num_targets)
+        config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = current_config_lines
 
     # printing out the configs
     # init.config used to train lda-mllt train
