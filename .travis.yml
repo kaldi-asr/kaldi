@@ -11,6 +11,7 @@ addons:
     sources:
       - ubuntu-toolchain-r-test
     packages:
+      - gdb
       - gcc-4.9
       - g++-4.9
       - gfortran-4.9
@@ -23,6 +24,7 @@ branches:
     - master
 
 before_install:
+  - cat /proc/sys/kernel/core_pattern
   - export XROOT=~/xroot
   - tools/extras/travis_install_bindeps.sh $XROOT
 

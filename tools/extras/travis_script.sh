@@ -50,4 +50,4 @@ make_kaldi() {
 #make_kaldi matrix/test
 
 make_kaldi all -j$MAXPAR
-make_kaldi test
+make_kaldi test -k
