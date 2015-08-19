@@ -23,8 +23,17 @@ parser.add_argument("--relu-dim", type=int,
                     help="dimension of ReLU nonlinearities")
 parser.add_argument("--num-targets", type=int,
                     help="number of network targets (e.g. num-pdf-ids/num-leaves)")
-parser.add_argument("--add-final-softmax", type=bool,
-                    help="add final softmax layer")
+parser.add_argument("--skip-final-softmax", dest='add_final_softmax', action='store_false', default=True,
+                    help="skip final softmax layer and per-element scale layer")
+parser.add_argument("--add-final-softmax", dest='add_final_softmax', action='store_true', default=True,
+                    help="add final softmax layer and per-element scale layer")
+parser.add_argument("--skip-lda", action='store_false', dest='add_lda', default=True,
+                    help="skip addition of lda matrix")
+parser.add_argument("--add-lda", action='store_true', dest='add_lda', default=True,
+                    help="add lda matrix")
+parser.add_argument("--objective-type", type=str, default="linear",
+                    choices = ["linear", "quadratic"],
+                    help = "the type of objective; i.e. quadratic or linear");
 parser.add_argument("config_dir",
                     help="Directory to write config files and variables");
 
@@ -111,7 +120,7 @@ f.close()
 for l in range(1, num_hidden_layers + 1):
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
-    if l == 1:
+    if l == 1 and args.add_lda:
         print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
     cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
@@ -148,9 +157,12 @@ for l in range(1, num_hidden_layers + 1):
         if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
-        print('component-node name=lda component=lda input={0}'.format(orig_input),
-              file=f)
-        cur_input='lda'
+        if args.add_lda:
+          print('component-node name=lda component=lda input={0}'.format(orig_input),
+                file=f)
+          cur_input='lda'
+        else:
+          cur_input = orig_input
     else:
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
         splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
@@ -170,9 +182,9 @@ for l in range(1, num_hidden_layers + 1):
             file=f)
       print('component-node name=final-log-softmax component=final-log-softmax '
             'input=final-fixed-scale', file=f)
-      print('output-node name=output input=final-log-softmax', file=f)
+      print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
     else:
-      print('output-node name=output input=final-affine', file=f)
+      print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
     f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim

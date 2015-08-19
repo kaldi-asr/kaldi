@@ -64,6 +64,7 @@ use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
 egs_dir=
+skip_lda=true
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
@@ -73,6 +74,7 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
 feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
+objective_type=linear
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -168,11 +170,17 @@ if [ $stage -le -5 ]; then
     dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
   fi
   
+  objective_opts="--objective-type linear"
+  if [ "$objective_type" == "quadratic" ]; then
+    objective_opts="--objective-type quadratic"
+  fi
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_raw_configs.py  \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
+    --skip-final-softmax --skip-lda \
+    $objective_opts \
      $dim_opts \
     --num-targets $num_targets  \
    $dir/configs || exit 1;
@@ -249,7 +257,7 @@ num_archives_expanded=$[$num_archives*$frames_per_eg]
   echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
 
 
-if [ $stage -le -3 ]; then
+if ! $skip_lda && [ $stage -le -3 ]; then
   echo "$0: getting preconditioning matrix for input features."
   num_lda_jobs=$num_archives
   [ $num_lda_jobs -gt $max_lda_jobs ] && num_lda_jobs=$max_lda_jobs
@@ -369,10 +377,10 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-compute-prob $dir/$x.nnet \
+      nnet3-compute-prob --compute-accuracy=false $dir/$x.raw \
             "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob $dir/$x.nnet \
+      nnet3-compute-prob --compute-accuracy=false $dir/$x.raw \
            "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 
     # nnet3-show-progress not implemented yet
@@ -392,11 +400,11 @@ while [ $x -lt $num_iters ]; do
                        # best.
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
-      raw="nnet3-copy --learning-rate=$this_learning_rate $dir/$x.nnet - | nnet3-init --srand=$x - $config - |"
+      raw="nnet3-copy --learning-rate=$this_learning_rate $dir/$x.raw - | nnet3-init --srand=$x - $config - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      raw="nnet3-copy --learning-rate=$this_learning_rate $dir/$x.nnet -|"
+      raw="nnet3-copy --learning-rate=$this_learning_rate $dir/$x.raw -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -447,8 +455,7 @@ while [ $x -lt $num_iters ]; do
     if $do_average; then
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
-        nnet3-average $nnets_list - \| \
-        nnet3-copy --set-raw-nnet=- $dir/$x.nnet $dir/$[$x+1].nnet || exit 1;
+        nnet3-average $nnets_list $dir/$[$x+1].raw || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -458,14 +465,14 @@ while [ $x -lt $num_iters ]; do
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
-        nnet3-copy $dir/$[$x+1].$n.nnet $dir/$[$x+1].nnet || exit 1;
+        nnet3-copy $dir/$[$x+1].$n.raw $dir/$[$x+1].raw || exit 1;
     fi
 
     rm $nnets_list
-    [ ! -f $dir/$[$x+1].nnet ] && exit 1;
-    if [ -f $dir/$[$x-1].nnet ] && $cleanup && \
+    [ ! -f $dir/$[$x+1].raw ] && exit 1;
+    if [ -f $dir/$[$x-1].raw ] && $cleanup && \
        [ $[($x-1)%100] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
-      rm $dir/$[$x-1].nnet
+      rm $dir/$[$x-1].raw
     fi
   fi
   x=$[$x+1]
@@ -474,7 +481,7 @@ done
 
 
 if [ $stage -le $num_iters ]; then
-  echo "Doing final combination to produce final.nnet"
+  echo "Doing final combination to produce final.raw"
 
   # Now do combination.  In the nnet3 setup, the logic
   # for doing averaging of subsets of the models in the case where
@@ -483,7 +490,7 @@ if [ $stage -le $num_iters ]; then
   nnets_list=()
   for n in $(seq 0 $[num_iters_combine-1]); do
     iter=$[$first_model_combine+$n]
-    nnet=$dir/$iter.nnet
+    nnet=$dir/$iter.raw
     [ ! -f $nnet ] && echo "Expected $nnet to exist" && exit 1;
     nnets_list[$n]=$nnet
   done
@@ -496,21 +503,21 @@ if [ $stage -le $num_iters ]; then
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
-    $dir/combined.nnet || exit 1;
+    $dir/combined.raw || exit 1;
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-compute-prob $dir/combined.nnet \
+    nnet3-compute-prob --compute-accuracy=false $dir/combined.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-compute-prob $dir/combined.nnet \
+    nnet3-compute-prob --compute-accuracy=false $dir/combined.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
-if [ ! -f $dir/final.nnet ]; then
-  echo "$0: $dir/final.nnet does not exist."
+if [ ! -f $dir/final.raw ]; then
+  echo "$0: $dir/final.raw does not exist."
   # we don't want to clean up if the training didn't succeed.
   exit 1;
 fi
@@ -527,9 +534,9 @@ if $cleanup; then
 
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.nnet ]; then
+    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.raw ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
-      rm $dir/$x.nnet
+      rm $dir/$x.raw
     fi
   done
 fi
