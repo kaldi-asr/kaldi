@@ -529,7 +529,9 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
 }
 
 
-/**
+/*
+   See declaration in header for how the interface of this function is defined.
+   
    I'm not very satisfied with the implementation of this function, but a
    careful GPU-oriented version would take a while to do correctly, mainly due
    to the necessity to implement orthogonalization of a matrix where the matrix

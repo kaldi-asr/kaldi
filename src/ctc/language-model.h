@@ -86,7 +86,26 @@ struct LanguageModelOptions {
   }
 };
 
+/**
+   This LanguageModel class implements a slight variant of a Kneser-Ney smoothed
+   language model "with addition" (i.e. we add the backoff prob to the direct
+   prob; in "A Bit of Progress in Language Modeling" this was found to be better).
+   The variation is that do it with continuous counts instead of counts-of-counts,
+   so instead of incrementing a count-of-counts for the lower order, we add the
+   discounted amount, so we always deal with "real counts" (albeit the counts are
+   fractional).  Because this makes the method of estimating the discounting
+   constants impractical, we just use fixed values for them.  [Also, the Kneser-Ney
+   discounting process is extended to the zero-gram case, which we define as
+   distributing the probability mass equally to all vocabulary items; we assume
+   the vocab size is known in advance.].  We use index 0 for both BOS and EOS;
+   since they can never validly appear in the same context, this leads to no
+   confusion and actually simplifies the code as we don't have to test for
+   symbols appearing where they are disallowed.
 
+   This language model (like the ARPA format) ensures that if "a b c" is a valid
+   history-state, then "a b -> c" must exist as an n-gram (hence "a b" must be a
+   valid history-state).  This ends up mattering in the CTC code.
+ */
 class LanguageModel {
  public:
   LanguageModel(): vocab_size_(0), ngram_order_(0) { }
@@ -137,7 +156,10 @@ BaseFloat ComputePerplexity(const LanguageModel &lm,
                             std::vector<std::vector<int32> > &sentences);
 
 // This class allows you to map a language model history to an integer id which,
-// with the predicted word, is sufficient to work out the probability.  It's
+// with the predicted word, is sufficient to work out the probability; it
+// also provides a way to work out whether a language model history is a prefix
+// of a longer language model history.
+// It's
 // useful in the CCTC code.  Because this isn't something that would normally
 // appear in the interface of a language model, we make it a separate class.  Lm
 // stands for "language model".  Because the term lm_history_state is used a lot
@@ -156,7 +178,13 @@ class LmHistoryStateMap {
                     int32 predicted_word) const;
   
   // Maps a history to an integer lm-history-state. 
-  int32 GetLmHistoryState(std::vector<int32> &hist) const;
+  int32 GetLmHistoryState(const std::vector<int32> &hist) const;
+
+  // Returns true if this history is an LM history state (equivalent to
+  // checking that  GetLmHistoryState(hist) == hist
+  bool IsLmHistoryState(const std::vector<int32> &hist) const {
+    return GetHistoryForState(GetLmHistoryState(hist)) == hist;
+  }
   
   // Initialize the history states.
   void Init(const LanguageModel &lm);

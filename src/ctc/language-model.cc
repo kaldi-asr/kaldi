@@ -155,7 +155,6 @@ void LmHistoryStateMap::Init(const LanguageModel &lm) {
   history_to_state_.clear();
   for (size_t i = 0; i < lm_history_states_.size(); i++)
     history_to_state_[lm_history_states_[i]] = static_cast<int32>(i);
-   
 }
 
 const std::vector<int32>& LmHistoryStateMap::GetHistoryForState(
@@ -172,7 +171,7 @@ BaseFloat LmHistoryStateMap::GetProb(const LanguageModel &lm,
   return lm.GetProb(vec);
 }
 
-int32 LmHistoryStateMap::GetLmHistoryState(std::vector<int32> &hist) const {
+int32 LmHistoryStateMap::GetLmHistoryState(const std::vector<int32> &hist) const {
   IntMapType::const_iterator iter = history_to_state_.find(hist);
   if (iter != history_to_state_.end())
     return iter->second;

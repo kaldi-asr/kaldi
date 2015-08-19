@@ -563,7 +563,7 @@ class OnlineNaturalGradient {
 };
 
 
-/*
+/**
   This function finds the approximate top eigenvectors and eigenvalues of S = beta M
   M^T (if trans == kNoTrans) or S = beta M^T M (if trans == kTrans).
   Each row p of P will be set to an approximate
