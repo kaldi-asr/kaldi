@@ -163,6 +163,18 @@ if [ $stage -le 13 ]; then
     --stage 7 \
     --use-sat-alignments false
 fi
+
+#LSTM training
+if [ $stage -le 14 ]; then
+  local/nnet3/run_lstm.sh \
+    --mic $mic \
+    --train-stage -6 \
+    --speed-perturb true \
+    --stage 7 \
+    --use-sat-alignments false
+fi
+
+
 echo "Done."
 
 

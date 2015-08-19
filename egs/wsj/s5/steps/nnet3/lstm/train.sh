@@ -52,10 +52,19 @@ stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
+splice_indexes="-4,-3,-2,-1,0,1,2,3,4 0 0 0 0 0"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
+# LSTM parameters
+num_lstm_layers=3
+lstm_cell_dim=1024  # dimension of the LSTM cell
+hidden_dim=1024  # the dimension of the fully connected hidden layer outputs
+recurrent_projection_dim=256  
+non_recurrent_projection_dim=256
+bptt_truncation_width=20  # number of BPTT steps 
+context_sensitive_chunk_width=20 # number of steps used in the estimation of the first LSTM state 
+                                 # see Chen 2015, "Training Deep Bidirectional LSTM Acoustic Model for LVCSR by a Context-Sensitive-Chunk BPTT Approach"
 
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
@@ -118,11 +127,19 @@ if [ $# != 4 ]; then
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
-  echo "  --splice-indexes <string|layer0/-4:-3:-2:-1:0:1:2:3:4> "
+  echo "  --splice-indexes <string|\"-4,-3,-2,-1,0,1,2,3,4 0 0\"> "
   echo "                                                   # Frame indices used for each splice layer."
-  echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
+  echo "                                                   # Format : <frame_indices> .... <frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
+  echo " ################### LSTM options ###################### "
+  echo "  --num-lstm-layers <int|3>                        # number of LSTM layers"
+  echo "  --lstm-cell-dim   <int|1024>                     # dimension of the LSTM cell"
+  echo "  --hidden-dim      <int|1024>                     # the dimension of the fully connected hidden layer outputs"
+  echo "  --recurrent-projection-dim  <int|256>            # the output dimension of the recurrent-projection-matrix"
+  echo "  --non-recurrent-projection-dim  <int|256>        # the output dimension of the non-recurrent-projection-matrix"
+  echo "  --bptt-truncation-width <int|20>                 # number of BPTT steps" 
+  echo "  --context-sensitive-chunk-width <int|20>         # number of steps used in the estimation of the first LSTM state" 
   echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
   echo "                                                   # realignment is to be done"
   echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
@@ -195,12 +212,19 @@ if [ $stage -le -5 ]; then
   fi
   
   # create the config files for nnet initialization
-  python steps/nnet3/make_tdnn_configs.py  \
-    --splice-indexes "$splice_indexes"  \
+  python steps/nnet3/lstm/make_configs.py  \
+    --splice-indexes "$splice_indexes" \
+    --num-lstm-layers 3 \
     --feat-dim $feat_dim \
-    --ivector-dim $ivector_dim  \
-     $dim_opts \
-    --num-targets  $num_leaves  \
+    --ivector-dim $ivector_dim \
+      $dim_opts \
+    --cell-dim $cell_dim \
+    --hidden-dim $hidden_dim \
+    --recurrent-projection-dim $recurrent_projection_dim \
+    --non-recurrent-projection-dim $non_recurrent_projection_dim \
+    --bptt-truncation-width $bptt_truncation_width \
+    --context-sensitive-chunk-width $context_sensitive_chunk_width \
+    --num-targets $num_leaves \
    $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
