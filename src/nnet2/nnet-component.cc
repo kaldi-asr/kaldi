@@ -3878,7 +3878,7 @@ void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
   CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
   // column_map is indexed by the column-index of "patches",
   // and the value is the corresponding column-index of "in". 
-  std::vector<int32> column_map;
+  std::vector<int32> column_map(filter_dim * num_patches);
 
   // build-up a column selection map
   for (int32 p = 0, index = 0; p < num_patches; p++) {
