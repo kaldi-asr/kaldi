@@ -13,7 +13,7 @@
 # ./configure --shared  ## shared libraries.
 # ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
-# ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
+# ./configure --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.

@@ -41,7 +41,7 @@ struct FeatureTransformEstimateOptions {
   int32 dim;
   BaseFloat within_class_factor;
   BaseFloat max_singular_value;
-  FeatureTransformEstimateOptions(): remove_offset(true), dim(200),
+  FeatureTransformEstimateOptions(): remove_offset(true), dim(-1),
                                      within_class_factor(0.001), max_singular_value(5.0) { }
   
   void Register(OptionsItf *opts) {

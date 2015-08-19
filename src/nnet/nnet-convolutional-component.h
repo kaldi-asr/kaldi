@@ -267,7 +267,8 @@ class ConvolutionalComponent : public UpdatableComponent {
       }
       KALDI_ASSERT(column_mask.size() == filter_dim);
       // select the columns
-      vectorized_feature_patches_[p].CopyCols(in, column_mask);
+      CuArray<int32> cu_column_mask(column_mask);
+      vectorized_feature_patches_[p].CopyCols(in, cu_column_mask);
     }
 
     // compute filter activations

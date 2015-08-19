@@ -80,6 +80,13 @@ class PosteriorHolder {
 };
 
 
+/// stand-alone function for writing a Posterior.
+void WritePosterior(std::ostream &os, bool binary, const Posterior &post);
+
+/// stand-alone function for reading a Posterior.
+void ReadPosterior(std::istream &os, bool binary, Posterior *post);
+
+
 // GaussPostHolder is a holder for GaussPost, which is
 // std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > >
 // This is used for storing posteriors of transition id's for an

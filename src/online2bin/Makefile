@@ -21,6 +21,7 @@ ADDLIBS = ../online2/kaldi-online2.a ../ivector/kaldi-ivector.a \
           ../decoder/kaldi-decoder.a  ../cudamatrix/kaldi-cudamatrix.a \
           ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../thread/kaldi-thread.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
-          ../matrix/kaldi-matrix.a ../util/kaldi-util.a ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../fstext/kaldi-fstext.a \
+          ../util/kaldi-util.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

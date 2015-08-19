@@ -43,7 +43,8 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(weight->NumCols(), CU2DBLOCK), n_blocks(weight->NumRows(), CU2DBLOCK));
 
-    cuda_regularize_l1(dimGrid, dimBlock, weight->data_, grad->data_, l1, lr, weight->Dim(), grad->Stride());
+    cuda_regularize_l1(dimGrid, dimBlock, weight->Data(), grad->Data(), l1, lr,
+                       weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -107,7 +108,8 @@ void Randomize(const CuMatrixBase<Real> &src,
     MatrixDim dimsrc = src.Dim(); dimsrc.rows=copy_from_idx.Dim();
     MatrixDim dimtgt = tgt->Dim(); dimtgt.rows=copy_from_idx.Dim();
 
-    cuda_randomize(dimGrid, dimBlock, tgt->data_, src.data_, copy_from_idx.Data(), dimtgt, dimsrc);
+    cuda_randomize(dimGrid, dimBlock, tgt->Data(), src.Data(),
+                   copy_from_idx.Data(), dimtgt, dimsrc);
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -140,7 +142,8 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
     
-    cuda_splice(dimGrid, dimBlock, tgt->data_, src.data_, frame_offsets.Data(), tgt->Dim(), src.Dim());
+    cuda_splice(dimGrid, dimBlock, tgt->Data(), src.Data(),
+                frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -180,7 +183,8 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
     
-    cuda_copy(dimGrid, dimBlock, tgt->data_, src.data_, copy_from_indices.Data(), tgt->Dim(), src.Dim());
+    cuda_copy(dimGrid, dimBlock, tgt->Data(), src.Data(),
+              copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
     
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());

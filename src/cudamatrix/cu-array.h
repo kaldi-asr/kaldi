@@ -50,7 +50,9 @@ class CuArray {
   explicit CuArray<T>(const std::vector<T> &src):
     dim_(0), data_(NULL) { CopyFromVec(src); }
 
-  explicit CuArray<T>(const CuArray<T> &src):
+  /// Copy constructor.  We don't make this explicit because we want to be able
+  /// to create a std::vector<CuArray>.
+  CuArray<T>(const CuArray<T> &src):
    dim_(0), data_(NULL) { CopyFromArray(src); }
 
   /// Destructor

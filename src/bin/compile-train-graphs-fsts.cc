@@ -1,7 +1,7 @@
 // bin/compile-train-graphs-fsts.cc
 
 // Copyright 2009-2012  Microsoft Corporation
-//           2012-2013  Johns Hopkins University (Author: Daniel Povey)
+//           2012-2015  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -81,13 +81,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
     TransitionModel trans_model;
-    {
-      bool binary;
-      Input ki(model_rxfilename, &binary);
-      trans_model.Read(ki.Stream(), binary);
-      // AmDiagGmm am_gmm;
-      // am_gmm.Read(ki.Stream(), binary);
-    }
+    ReadKaldiObject(model_rxfilename, &trans_model);f
 
     // need VectorFst because we will change it by adding subseq symbol.
     // ownership will be taken by gc.
