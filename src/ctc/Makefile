@@ -3,9 +3,10 @@ all:
 
 include ../kaldi.mk
 
-EXTRA_CXXFLAGS += -Wno-sign-compare
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = language-model-test
+TESTFILES = language-model-test cctc-transition-model-test
 
 OBJFILES = language-model.o cctc-transition-model.o # ctc-functions.o
 

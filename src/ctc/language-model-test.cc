@@ -22,16 +22,16 @@
 namespace kaldi {
 namespace ctc {
 
-void GetTestingData(int32 *vocab_size,
-                    std::vector<std::vector<int32> > *data,
-                    std::vector<std::vector<int32> > *validation_data) {
+static void GetTestingData(int32 *vocab_size,
+                           std::vector<std::vector<int32> > *data,
+                           std::vector<std::vector<int32> > *validation_data) {
   // read the code of a C++ file as training data.
   bool binary;
   Input input("language-model.cc", &binary);
   KALDI_ASSERT(!binary);
   std::istream &is = input.Stream();
   std::string line;
-  *vocab_size = 255;
+  *vocab_size = 127;
   int32 line_count = 0;
   for (; getline(is, line); line_count++) {
     std::vector<int32> int_line(line.size());
@@ -41,7 +41,7 @@ void GetTestingData(int32 *vocab_size,
         this_char = 1;  // should never happen, but just make sure, as 0 is
                         // treated as BOS/EOS in the language modeling code.
       }
-      int_line[i] = this_char;
+      int_line[i] = std::min<int32>(127, this_char);
     }
     if (line_count % 10 != 0)
       data->push_back(int_line);

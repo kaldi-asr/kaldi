@@ -39,6 +39,27 @@ int32 CctcTransitionModel::GraphLabelToHistoryState(int32 graph_label) const {
   return history;
 }
 
+int32 CctcTransitionModel::GetNextHistoryState(int32 history_state,
+                                               int32 phone) const {
+  KALDI_ASSERT(static_cast<size_t>(history_state) < history_state_info_.size() &&
+               phone >= 0 && phone <= num_phones_);
+  return history_state_info_[history_state].next_history_state[phone];
+}
+
+BaseFloat CctcTransitionModel::GetLmProb(int32 history_state,
+                                         int32 phone) const {
+  KALDI_ASSERT(static_cast<size_t>(history_state) < history_state_info_.size() &&
+               phone >= 0 && phone <= num_phones_);
+  return history_state_info_[history_state].phone_lm_prob(phone);
+}
+
+int32 CctcTransitionModel::GetOutputIndex(int32 history_state,
+                                          int32 phone) const {
+  KALDI_ASSERT(static_cast<size_t>(history_state) < history_state_info_.size() &&
+               phone >= 0 && phone <= num_phones_);
+  return history_state_info_[history_state].output_index[phone];
+}
+
 int32 CctcTransitionModel::GraphLabelToNextHistoryState(
     int32 graph_label) const {
   int32 history = graph_label / (num_phones_ + 1),
@@ -79,7 +100,7 @@ void CctcTransitionModel::Check() const {
     const HistoryStateInfo &info = history_state_info_[h];
     // see blank should not change the history state.
     KALDI_ASSERT(info.next_history_state[0] == h);
-    for (int32 p = 1; p < num_phones; p++) {
+    for (int32 p = 1; p <= num_phones; p++) {
       int32 next_h = info.next_history_state[p];
       KALDI_ASSERT(next_h >= 0 && next_h < num_histories);
     }
@@ -87,7 +108,7 @@ void CctcTransitionModel::Check() const {
     // non-blank indexes.
     KALDI_ASSERT(info.output_index[0] >= num_non_blank_indexes_);
     output_index_seen[info.output_index[0]] = true;
-    for (int32 p = 1; p < num_phones; p++) {
+    for (int32 p = 1; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
       KALDI_ASSERT(output_index < num_non_blank_indexes_);
       output_index_seen[output_index] = true;
@@ -177,6 +198,8 @@ void CctcTransitionModel::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NumHistoryStates>");
   int32 num_history_states = history_state_info_.size();
   ReadBasicType(is, binary, &num_history_states);
+  KALDI_ASSERT(num_history_states > 0 && num_history_states < 10000000);
+  history_state_info_.resize(num_history_states);
   ExpectToken(is, binary, "<HistoryStates>");
   for (int32 h = 0; h < num_history_states; h++) {
     HistoryStateInfo &info = history_state_info_[h];
@@ -199,7 +222,7 @@ void CctcTransitionModel::ComputeWeights() {
   for (int32 h = 0; h < num_history_states; h++) {
     const HistoryStateInfo &info = history_state_info_[h];
     SubVector<BaseFloat> row(weights, h);
-    for (int32 p = 0; p < num_phones; p++) {
+    for (int32 p = 0; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
       BaseFloat lm_prob = info.phone_lm_prob(p);
       row(output_index) += lm_prob;
@@ -208,10 +231,20 @@ void CctcTransitionModel::ComputeWeights() {
   weights_.Swap(&weights);
 }
 
+CctcTransitionModelCreator::CctcTransitionModelCreator(
+    const ContextDependency &ctx_dep,
+    const LanguageModel &phone_lang_model):
+    ctx_dep_(ctx_dep),
+    phone_lang_model_(phone_lang_model) { }
+
+
 void CctcTransitionModelCreator::InitCctcTransitionModel(
     CctcTransitionModel *model) {
   lm_hist_state_map_.Init(phone_lang_model_);
-    
+  KALDI_LOG << "Phone language model has "
+            << lm_hist_state_map_.NumLmHistoryStates() << " history states.";
+  KALDI_LOG << "Decision tree has " << (ctx_dep_.ContextWidth() - 1)
+            << " phones of left context.";
   num_tree_leaves_ = ctx_dep_.NumPdfs();
   num_output_indexes_ = num_tree_leaves_ + lm_hist_state_map_.NumLmHistoryStates();
   KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
@@ -350,16 +383,19 @@ void CctcTransitionModelCreator::GetInitialHistoryStates() {
   {
     // Work out the index of the initial history-state that appears
     // at the beginning of the sentence.  This is the one whose
-    // vector is [ 0 0 ] (zeros repeated up to the left-context of
-    // the decision tree).
-    int32 tree_left_context = ctx_dep_.ContextWidth() - 1;  
-    std::vector<int32> sentence_start_hist(tree_left_context, 0);
+    // vector is [ 0 0 ], i.e. zeros repeated up to the
+    // the left-context of the decision tree, but at least one zero
+    // if the phone LM is not a 1-gram (because this is how it
+    // represents the beginning-of-sentence history).
+    int32 tree_left_context = ctx_dep_.ContextWidth() - 1,
+        start_state_left_context = std::max<int32>(
+            tree_left_context, phone_lang_model_.NgramOrder() > 1 ? 1 : 0);
+    std::vector<int32> sentence_start_hist(start_state_left_context, 0);
     MapType::iterator iter;
     if ((iter = hist_to_state.find(sentence_start_hist)) == hist_to_state.end())
       KALDI_ERR << "Cannot find history state for beginning of sentence.";
     initial_history_state_ = iter->second;
   }
-  
 }
 
 void CctcTransitionModelCreator::CreateHistoryInfo(
@@ -377,6 +413,7 @@ void CctcTransitionModelCreator::CreateHistoryInfo(
     state.lm_history_state = lm_hist_state_map_.GetLmHistoryState(hist);
     state.output_index.resize(num_phones + 1);
     state.next_history_state.resize(num_phones + 1);
+    state.history = hist;  // this member only needed for ease of debugging.
     KALDI_ASSERT(hist.size() >= static_cast<size_t>(tree_left_context));
     for (int32 phone = 0; phone <= num_phones; phone++)
       state.output_index[phone] = GetOutputIndex(hist, phone);
