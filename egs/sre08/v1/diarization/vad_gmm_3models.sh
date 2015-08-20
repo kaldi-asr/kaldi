@@ -536,7 +536,7 @@ while IFS=$'\n' read line; do
     speech_num_gauss=$speech_num_gauss_init_phase3
     sil_num_gauss=$sil_num_gauss_init_phase3
 
-    $cmd $phase3_dir/log/$utt_id.gmm_compute_likes.$x.log \
+    $cmd $phase3_dir/log/$utt_id.gmm_compute_likes.init.log \
       gmm-compute-likes $dir/init_2class.mdl "$feats" \
       ark:$phase3_dir/$utt_id.likes.0.ark &
 
@@ -637,7 +637,7 @@ while IFS=$'\n' read line; do
     fi
 
     if ! $skip_phase4; then
-      $cmd $phase3_dir/log/$utt_id.init_gmm.log \
+      $cmd $phase3_dir/log/$utt_id.init_gmm.$[x+1].log \
         gmm-init-pdf-from-global $phase3_dir/$utt_id.$x.mdl 1 \
         $phase3_dir/$utt_id.speech.$x.mdl $phase3_dir/$utt_id.$[x+1].mdl || exit 1
       x=$[x+1]
