@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # we're using python 3.x style print but want it to work in python 2.x,
-from __future__ import print_function 
+from __future__ import print_function
 import re, os, argparse, sys, math, warnings
 
 
@@ -59,7 +59,7 @@ splice_array = []
 left_context = 0
 right_context = 0
 split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
-if len(split1) < 1: 
+if len(split1) < 1:
     sys.exit("invalid --splice-indexes argument, too short: "
              + args.splice_indexes)
 try:
@@ -83,7 +83,7 @@ left_context = max(0, left_context)
 right_context = max(0, right_context)
 num_hidden_layers = len(splice_array)
 input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
-    
+
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
 print('right_context=' + str(right_context), file=f)
@@ -141,7 +141,7 @@ for l in range(1, num_hidden_layers + 1):
     print('# Now for the network structure', file=f)
     if l == 1:
         splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
-        if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)') 
+        if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
         print('component-node name=lda component=lda input={0}'.format(orig_input),
@@ -172,8 +172,8 @@ for l in range(1, num_hidden_layers + 1):
 # component name=renorm1 type=NormalizeComponent dim=$pnorm_output_dim
 # component name=final-affine type=NaturalGradientAffineComponent input-dim=$pnorm_output_dim output-dim=$num_leaves param-stddev=0 bias-stddev=0
 # component name=final-log-softmax type=LogSoftmaxComponent dim=$num_leaves
-    
-        
+
+
 # ## Write file $config_dir/init.config to initialize the network, prior to computing the LDA matrix.
 # ##will look like this, if we have iVectors:
 # input-node name=input dim=13
@@ -182,7 +182,7 @@ for l in range(1, num_hidden_layers + 1):
 
 # ## Write file $config_dir/layer1.config that adds the LDA matrix, assumed to be in the config directory as
 # ## lda.mat, the first hidden layer, and the output layer.
-# component name=lda type=FixedAffineComponent matrix=$config_dir/lda.mat 
+# component name=lda type=FixedAffineComponent matrix=$config_dir/lda.mat
 # component name=affine1 type=NaturalGradientAffineComponent input-dim=$lda_input_dim output-dim=$pnorm_input_dim bias-stddev=0
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
 # component name=renorm1 type=NormalizeComponent dim=$pnorm_output_dim
@@ -196,8 +196,8 @@ for l in range(1, num_hidden_layers + 1):
 # component-node name=final-affine component=final-affine input=renorm1
 # component-node name=final-log-softmax component=final-log-softmax input=final-affine
 # output-node name=output input=final-log-softmax
-    
-        
+
+
 # ## Write file $config_dir/layer2.config that adds the second hidden layer.
 # component name=affine2 type=NaturalGradientAffineComponent input-dim=$lda_input_dim output-dim=$pnorm_input_dim bias-stddev=0
 # component name=nonlin2 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
