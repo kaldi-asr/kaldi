@@ -145,6 +145,26 @@ steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   --transform-dir exp/tri5a/decode \
   exp/tri5a/graph data/dev exp/tri5a_mpe/decode || exit 1 ;
 
+# SGMM system [sgmm5a]
+steps/train_ubm.sh --cmd "$train_cmd" \
+  900 data/train data/lang exp/tri5a_ali exp/ubm5a || exit 1;
+
+steps/train_sgmm2.sh --cmd "$train_cmd" \
+  14000 35000 data/train data/lang exp/tri5a_ali \
+  exp/ubm5a/final.ubm exp/sgmm2_5a || exit 1;
+
+utils/mkgraph.sh data/lang_test exp/sgmm2_5a exp/sgmm2_5a/graph || exit 1;
+steps/decode_sgmm2.sh --nj 10 --cmd "$decode_cmd" --config conf/decode.config \
+  --transform-dir exp/tri5a/decode \
+  exp/sgmm2_5a/graph data/dev exp/sgmm2_5a/decode || exit 1;
+
+# nnet1 dnn
+local/nnet/run_dnn.sh
+
+# nnet2
+local/nnet2/run_5d.sh
+local/nnet2/run_convnet.sh
+
 # getting results (see RESULTS file)
 for x in exp/*/decode; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null
 for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done 2>/dev/null

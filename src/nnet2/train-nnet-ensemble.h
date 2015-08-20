@@ -38,15 +38,15 @@ struct NnetEnsembleTrainerConfig {
                              minibatches_per_phase(50),
                              beta(0.5) { }
   
-  void Register (OptionsItf *po) {
-    po->Register("minibatch-size", &minibatch_size,
-                 "Number of samples per minibatch of training data.");
-    po->Register("minibatches-per-phase", &minibatches_per_phase,
-                 "Number of minibatches to wait before printing training-set "
-                 "objective.");
-    po->Register("beta", &beta, 
-                 "weight of the second term in the objf, which is the cross-entropy "
-                 "between the output posteriors and the averaged posteriors from other nets.");
+  void Register (OptionsItf *opts) {
+    opts->Register("minibatch-size", &minibatch_size,
+                   "Number of samples per minibatch of training data.");
+    opts->Register("minibatches-per-phase", &minibatches_per_phase,
+                   "Number of minibatches to wait before printing training-set "
+                   "objective.");
+    opts->Register("beta", &beta, 
+                   "weight of the second term in the objf, which is the cross-entropy "
+                   "between the output posteriors and the averaged posteriors from other nets.");
   }  
 };
 

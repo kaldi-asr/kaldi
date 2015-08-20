@@ -27,10 +27,13 @@
 #include <sstream>
 #include <cstdio>
 
-#if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus > 199711L) || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#define NOEXCEPT(Predicate) noexcept((Predicate))
+#if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus >= 201103L)
+#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
+#elif defined(__GXX_EXPERIMENTAL_CXX0X__) && \
+  (__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
+#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
 #else
-#define NOEXCEPT(Predicate)
+#define KALDI_NOEXCEPT(Predicate)
 #endif
 
 #include "base/kaldi-types.h"
@@ -103,7 +106,7 @@ class KaldiErrorMessage {
  public:
   KaldiErrorMessage(const char *func, const char *file, int32 line);
   inline std::ostream &stream() { return ss; }
-  ~KaldiErrorMessage() NOEXCEPT(false);  // defined in kaldi-error.cc
+  ~KaldiErrorMessage() KALDI_NOEXCEPT(false);  // defined in kaldi-error.cc
  private:
   std::ostringstream ss;
 };
@@ -124,7 +127,7 @@ class KaldiErrorMessage {
 // prediction (best practice is to have the if branch be the commonly
 // taken one).
 // Therefore, we decided to move the call into the else{} branch.
-// A single block {} around if /else  does not work, because it causes 
+// A single block {} around if /else  does not work, because it causes
 // syntax error (unmatched else block) in the following code:
 //
 // if (condition)
@@ -152,8 +155,8 @@ class KaldiErrorMessage {
 #endif
 
 
-#define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream() 
-#define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream() 
+#define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream()
+#define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream()
 #define KALDI_LOG kaldi::KaldiLogMessage(__func__, __FILE__, __LINE__).stream()
 
 #define KALDI_VLOG(v) if (v <= kaldi::g_kaldi_verbose_level)     \

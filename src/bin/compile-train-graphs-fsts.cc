@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_rxfilename, &ctx_dep);
 
     TransitionModel trans_model;
-    ReadKaldiObject(model_rxfilename, &trans_model);f
+    ReadKaldiObject(model_rxfilename, &trans_model);
 
     // need VectorFst because we will change it by adding subseq symbol.
     // ownership will be taken by gc.

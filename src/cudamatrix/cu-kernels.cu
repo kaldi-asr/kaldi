@@ -528,6 +528,24 @@ static void _calc_pnorm_deriv(Real *deriv, const Real *vec, const Real *norm,
   }
 }
 
+/// deriv is the derivative we will output; vec is the input we're computing
+/// the group max on, "maxv" is the previously computed group max.
+template<typename Real>
+__global__
+static void _calc_group_max_deriv(Real *deriv, const Real *vec, const Real *maxv,
+        MatrixDim d, int src_stride, int group_size) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (j < d.rows  && i < d.cols ) {
+    int dst_index = i + j * d.stride,
+        src_index = i / group_size + j * src_stride;
+    Real vec_element = vec[dst_index], // this is the element of the original vector.
+         max_element = maxv[src_index]; // this is the max value
+    Real ans = (max_element == vec_element ? 1.0 : 0.0);
+    deriv[dst_index] = ans;
+  }
+}
+
 /// Set each element to y = (x == orig ? changed : x).
 template<typename Real>
 __global__
@@ -1297,6 +1315,25 @@ static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
 
 template<typename Real>
 __global__
+static void _add_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
+  // as it will be going forward.
+
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (i < dst_dim.rows && j < dst_dim.cols) {
+    int index = reorder[j],
+        dst_index = i * dst_dim.stride + j;
+    if (index >= 0) {
+      int src_index = i * src_stride + reorder[j];
+      Real val = src[src_index]; 
+      dst[dst_index] += val;
+    }
+  } 
+}
+
+template<typename Real>
+__global__
 static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
   // as it will be going forward.
@@ -1659,6 +1696,27 @@ static void _group_pnorm(Real *y, const Real *x, MatrixDim d, int src_stride,
     }
   }
 }
+
+template<typename Real>
+__global__
+static void _group_max(Real *y, const Real *x, MatrixDim d, int src_stride,
+                       int group_size) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  if (j < d.rows  && i < d.cols) {
+    int dst_index = i + j * d.stride;
+    int src_begin_index = i * group_size + j * src_stride;
+    Real max_value = -1e20;
+    int src_end_index = src_begin_index + group_size;
+    for (int src_index = src_begin_index; src_index < src_end_index;
+         src_index ++) {
+      if (!isnan(x[src_index]) && x[src_index] > max_value)
+        max_value = x[src_index];
+    }
+    y[dst_index] = max_value;
+  }
+}
+
 /*
  * cu::
  */
@@ -2123,6 +2181,10 @@ void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const Matri
   _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
+void cudaF_add_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
 void cudaF_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
@@ -2220,6 +2282,12 @@ void cudaF_calc_pnorm_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1,
 			    const float *x2, MatrixDim d, int src_stride,
 			    int group_size, float power) {
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
+}
+
+void cudaF_calc_group_max_deriv(dim3 Gr, dim3 Bl, float *y, const float *x1, 
+			        const float *x2, MatrixDim d, int src_stride,
+			        int group_size) {
+  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size);
 }
 
 void cudaF_div_rows_vec(dim3 Gr, dim3 Bl, float* mat, const float* vec_div, MatrixDim d) {
@@ -2396,6 +2464,10 @@ void cudaF_group_pnorm(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, 
   _group_pnorm<<<Gr,Bl>>>(y, x, d, src_stride, group_size, power);
 }
 
+void cudaF_group_max(dim3 Gr, dim3 Bl, float *y, const float *x, MatrixDim d, int src_stride, int group_size) {
+  _group_max<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
+}
+
 void cudaF_sigmoid (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
   _sigmoid<<<Gr,Bl>>>(y, x, d, src_stride); 
 }
@@ -2564,6 +2636,10 @@ void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const Mat
   _copy_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
+void cudaD_add_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
+  _add_cols<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
 void cudaD_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   _copy_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
@@ -2661,6 +2737,12 @@ void cudaD_calc_pnorm_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1,
 			    const double* x2, MatrixDim d, int src_stride, 
 			    int group_size, double power) {
   _calc_pnorm_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size, power);
+}
+
+void cudaD_calc_group_max_deriv(dim3 Gr, dim3 Bl, double*y, const double* x1, 
+			        const double* x2, MatrixDim d, int src_stride, 
+			        int group_size) {
+  _calc_group_max_deriv<<<Gr,Bl>>>(y, x1, x2, d, src_stride, group_size);
 }
 
 void cudaD_div_rows_vec(dim3 Gr, dim3 Bl, double* mat, const double* vec_div, MatrixDim d) {
@@ -2835,6 +2917,11 @@ void cudaD_soft_hinge (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d
 void cudaD_group_pnorm(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, 
 		       int src_stride, int group_size, double power) {
   _group_pnorm<<<Gr,Bl>>>(y, x, d, src_stride, group_size, power);
+}
+
+void cudaD_group_max(dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, 
+		     int src_stride, int group_size) {
+  _group_max<<<Gr,Bl>>>(y, x, d, src_stride, group_size);
 }
 
 void cudaD_sigmoid (dim3 Gr, dim3 Bl, double* y, const double* x, MatrixDim d, int src_stride) {

@@ -42,14 +42,14 @@ struct TrainingGraphCompilerOptions {
       rm_eps(false),
       reorder(b) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("transition-scale", &transition_scale, "Scale of transition "
-                 "probabilities (excluding self-loops)");
-    po->Register("self-loop-scale", &self_loop_scale, "Scale of self-loop vs. "
-                 "non-self-loop probability mass ");
-    po->Register("reorder", &reorder, "Reorder transition ids for greater decoding efficiency.");
-    po->Register("rm-eps", &rm_eps,  "Remove [most] epsilons before minimization (only applicable "
-                 "if disambig symbols present)");
+  void Register(OptionsItf *opts) {
+    opts->Register("transition-scale", &transition_scale, "Scale of transition "
+                   "probabilities (excluding self-loops)");
+    opts->Register("self-loop-scale", &self_loop_scale, "Scale of self-loop vs. "
+                   "non-self-loop probability mass ");
+    opts->Register("reorder", &reorder, "Reorder transition ids for greater decoding efficiency.");
+    opts->Register("rm-eps", &rm_eps,  "Remove [most] epsilons before minimization (only applicable "
+                   "if disambig symbols present)");
   }
 };
 

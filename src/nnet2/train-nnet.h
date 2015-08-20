@@ -35,12 +35,12 @@ struct NnetSimpleTrainerConfig {
   NnetSimpleTrainerConfig(): minibatch_size(500),
                              minibatches_per_phase(50) { }
   
-  void Register (OptionsItf *po) {
-    po->Register("minibatch-size", &minibatch_size,
-                 "Number of samples per minibatch of training data.");
-    po->Register("minibatches-per-phase", &minibatches_per_phase,
-                 "Number of minibatches to wait before printing training-set "
-                 "objective.");
+  void Register (OptionsItf *opts) {
+    opts->Register("minibatch-size", &minibatch_size,
+                   "Number of samples per minibatch of training data.");
+    opts->Register("minibatches-per-phase", &minibatches_per_phase,
+                   "Number of minibatches to wait before printing training-set "
+                   "objective.");
   }  
 };
 

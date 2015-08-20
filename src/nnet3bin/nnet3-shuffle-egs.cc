@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
         "This program will keep all of the examples in memory at once, unless you\n"
         "use the --buffer-size option\n"
         "\n"
-        "Usage:  nnet-shuffle-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
+        "Usage:  nnet3-shuffle-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
-        "nnet-shuffle-egs --srand=1 ark:train.egs ark:shuffled.egs\n";
+        "nnet3-shuffle-egs --srand=1 ark:train.egs ark:shuffled.egs\n";
     
     int32 srand_seed = 0;
     int32 buffer_size = 0;

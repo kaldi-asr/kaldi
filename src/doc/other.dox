@@ -23,18 +23,15 @@
  \page other Other Kaldi-related resources (and how to get help)
 
  The main places where Kaldi knowledge can be found are this website,
- and in the code repository (which we are currently in the process of moving
-from subversion to git; see \ref install for instructions).
+ and in the code repository (see \ref install for instructions).
  The repository contains the Kaldi code; the installation scripts;
  and example scripts for a number of different datasets, which are located
- in the sub-directory egs/).  
-  
+ in the sub-directory \c egs/).
 
- Kaldi's <a href=http://sourceforge.net/projects/kaldi/>project page on Sourceforge</a> contains
- a number of useful resources, but after the recent extended outage we are migrating away from
- Sourceforge.  <a href=http://kaldi-asr.org/>kaldi-asr.org/</a> is now the top-level
- location you should go to; see in particular information about help forums and email
- lists at <a href=http://kaldi-asr.org/forums.html>kaldi-asr.org/forums.html</a>.
+
+ Kaldi's <a href="http://kaldi-asr.org/">project page</a> contains
+ a number of useful resources; see in particular information about help forums and email
+ lists at <a href="http://kaldi-asr.org/forums.html">kaldi-asr.org/forums.html</a>.
 
 
 

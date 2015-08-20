@@ -92,8 +92,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program initializes a single diagonal GMM and does multiple iterations of\n"
         "training from features stored in memory.\n"
-        "Usage:  gmm-global-init-feats [options] <feature-rspecifier> <model-out>\n"
-        "e.g.: gmm-global-init-feats scp:train.scp 1.mdl\n";
+        "Usage:  gmm-global-init-from-feats [options] <feature-rspecifier> <model-out>\n"
+        "e.g.: gmm-global-init-from-feats scp:train.scp 1.mdl\n";
 
     ParseOptions po(usage);
     MleDiagGmmOptions gmm_opts;

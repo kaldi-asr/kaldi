@@ -53,17 +53,17 @@ struct MleFullGmmOptions {
     max_condition          = 1.0e+04;
     remove_low_count_gaussians = true;
   }
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
     std::string module = "MleFullGmmOptions: ";
-    po->Register("min-gaussian-weight", &min_gaussian_weight,
+    opts->Register("min-gaussian-weight", &min_gaussian_weight,
                  module+"Min Gaussian weight before we remove it.");
-    po->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
+    opts->Register("min-gaussian-occupancy", &min_gaussian_occupancy,
                  module+"Minimum count before we remove a Gaussian.");
-    po->Register("variance-floor", &variance_floor,
+    opts->Register("variance-floor", &variance_floor,
                  module+"Minimum eigenvalue of covariance matrix.");
-    po->Register("max-condition", &max_condition,
+    opts->Register("max-condition", &max_condition,
                  module+"Maximum condition number of covariance matrix (use it to floor).");
-    po->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
+    opts->Register("remove-low-count-gaussians", &remove_low_count_gaussians,
                  module+"If true, remove Gaussians that fall below the floors.");
   }
 };

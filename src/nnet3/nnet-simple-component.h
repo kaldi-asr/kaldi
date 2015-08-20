@@ -21,8 +21,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_COMPONENT_H_
-#define KALDI_NNET3_NNET_COMPONENT_H_
+#ifndef KALDI_NNET3_NNET_SIMPLE_COMPONENT_H_
+#define KALDI_NNET3_NNET_SIMPLE_COMPONENT_H_
 
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-component-itf.h"

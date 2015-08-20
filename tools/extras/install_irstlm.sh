@@ -46,8 +46,13 @@ fi
 }
 
 (
-  . ./env.sh
-  [ ! -z ${IRSTLM} ] && exit
+  [ ! -z ${IRSTLM} ] && \
+    echo >&2 "IRSTLM variable is aleady defined. Undefining..." && \
+    unset IRSTLM
+
+  [ -f ./env.sh ] && . ./env.sh
+  [ ! -z ${IRSTLM} ] && \
+    echo >&2 "IRSTLM config is already in env.sh" && exit
 
   wd=`pwd`
   wd=`readlink -f $wd`
@@ -57,3 +62,4 @@ fi
 ) >> env.sh
 
 errcho "***() Installation of IRSTLM finished successfully"
+errcho "***() Please source the tools/env.sh in your path.sh to enable it"

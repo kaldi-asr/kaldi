@@ -21,12 +21,12 @@
  \page tutorial_looking Kaldi tutorial: Overview of the distribution (20 minutes)
 
    \ref tutorial "Up: Kaldi tutorial" <BR>
-   \ref tutorial_svn "Previous: Version control with Subversion" <BR>
+   \ref tutorial_git "Previous: Version control with Git" <BR>
    \ref tutorial_running "Next: Running the example scripts" <BR>
 
  Before we jump into the example scripts, let us take a few minutes to look at what
  else is included in the Kaldi distribution.  Go to the kaldi-1 directory and list it.
- There are a few files and subdirectories.  
+ There are a few files and subdirectories.
  The important subdirectories are "tools/", "src/", and "egs/" which we will
  look at in the next section.
  We will give an overview of "tools/" and "src/".
@@ -53,7 +53,7 @@
  of an abstract FST type.  You can see that there are a lot of templates involved.
  If templates are not your thing, you will probably have trouble understanding this code.
 
- Change directory to bin/, or add it to your path.  
+ Change directory to bin/, or add it to your path.
  We will be executing some simple example instructions from
  <a href=http://www.openfst.org/twiki/bin/view/FST/FstQuickTour#CreatingFsts>here</a>.
 
@@ -63,7 +63,7 @@
 # arc format: src dest ilabel olabel [weight]
 # final state format: state [weight]
 # lines may occur in any order except initial state must be first line
-# unspecified weights default to 0.0 (for the library-default Weight type) 
+# unspecified weights default to 0.0 (for the library-default Weight type)
 cat >text.fst <<EOF
 0 1 a x .5
 0 1 b y 1.5
@@ -118,7 +118,7 @@ rm *.fst *.txt
  \section tutorial_looking_src The src/ directory (10 minutes)
 
  Change directory back up to the top level (kaldi-1) and into src/.
- List the directory.  You will see a few files and a large number of 
+ List the directory.  You will see a few files and a large number of
  subdirectories.  Look at the Makefile.  At the top it sets the variable
  SUBDIRS.  This is a list of the subdirectories containing code.
  Notice that some of them end in "bin".  These are the ones that contain
@@ -129,16 +129,16 @@ rm *.fst *.txt
  Type "make test".  This command goes into the various subdirectories and
  runs test programs in there.  All the tests should succeed.  If you are
  feeling lucky you can also type "make valgrind".  This runs the same
- tests with a memory checker, and takes longer, but will find more 
+ tests with a memory checker, and takes longer, but will find more
  errors.  If this doesn't work, forget about it; it's not important
  for now.  If it is taking too long, stop it with ctrl-c.
- 
+
  Change directory to base/.  Look at the Makefile.  Notice the line
 \verbatim
 include ../kaldi.mk
 \endverbatim
  This lines includes the file ../kaldi.mk verbatim whenever a Makefile in a
- subdirectory is invoked (just like a C \#include directive).  
+ subdirectory is invoked (just like a C \#include directive).
  Look at the file ../kaldi.mk.  It will contain
  some rules related to valgrind (for memory debugging), and then some
  system-specific configuration in the form of variables such as CXXFLAGS.
@@ -153,10 +153,10 @@ include ../kaldi.mk
  it.  Several other targets are defined, starting with "clean".  Look for
  them in the Makefile.  To make "clean" you would type "make clean".
  The target .valgrind is not something you would invoke from the command line;
- you would type "make valgrind" (the target is defined in kaldi.mk).  
+ you would type "make valgrind" (the target is defined in kaldi.mk).
  Invoke all of these targets, i.e. type "make clean" and the same for the others,
  and notice what commands are issued when you do this.
- 
+
  In the Makefile in the base/ directory: choose one of the binaries
 listed in TESTFILES, and run it.  Then briefly view the corresponding .cc file.
 The math one is a good example (note: this excludes the majority of math functions
@@ -182,12 +182,12 @@ code, cd to ../util, and view text-utils.h.  Notice that the inputs of these
 functions are always first, and are generally const references, while the
 outputs (or inputs that are modified) are always last, and are pointer arguments.  Non-const references
 as function arguments are not allowed.  You can read more about the Kaldi-specific
-elements of the coding style \ref style "here" later if you are interested.  
+elements of the coding style \ref style "here" later if you are interested.
 For now, just be aware that there is a coding style with quite specific rules.
 
 Change directory to ../gmmbin and type
 \verbatim
-./gmm-init-model 
+./gmm-init-model
 \endverbatim
 It prints out the usage, which should give you a generic idea of how Kaldi programs
 are called.  Note that while there is a --config option that can be used to
@@ -195,7 +195,7 @@ pass a configuration file, in general Kaldi is not as config-driven as HTK and t
 files are not widely used.  You will see a --binary option.  In general, Kaldi file
 formats come in both binary and test forms, and the --binary option controls how
 they are written.  However, this only controls how single objects (e.g. acoustic models)
-are written.  For whole collections of objects (e.g. collections of feature files), 
+are written.  For whole collections of objects (e.g. collections of feature files),
 there is a different mechanism that we will come to later.
 Type
 \verbatim
@@ -205,7 +205,7 @@ What do you see, and what does this tell you about what Kaldi does with logging-
 output?  The place that the usage message goes is the same place that all error and
 logging messages go, and there is a reason for this, which should become apparent
 when you start looking at the scripts.
- 
+
 To get a little insight into the build process,  cd to ../matrix, and type
 \verbatim
 rm *.o
@@ -234,7 +234,7 @@ a build process, one solution is to try modifying kaldi.mk by hand.  In order to
 probably understand how Kaldi makes use of external math libraries (see \ref matrixwrap).
 
    \ref tutorial "Up: Kaldi tutorial" <BR>
-   \ref tutorial_svn "Previous: Version control with Subversion" <BR>
+   \ref tutorial_git "Previous: Version control with Git" <BR>
    \ref tutorial_running "Next: Running the example scripts" <BR>
 <P>
 */

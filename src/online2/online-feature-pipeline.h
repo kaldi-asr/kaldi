@@ -66,38 +66,38 @@ struct OnlineFeaturePipelineCommandLineConfig {
     feature_type("mfcc"), add_pitch(false), add_deltas(false),
     splice_feats(false) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("feature-type", &feature_type,
-                 "Base feature type [mfcc, plp, fbank]");
-    po->Register("mfcc-config", &mfcc_config, "Configuration file for "
-                 "MFCC features (e.g. conf/mfcc.conf)");
-    po->Register("plp-config", &plp_config, "Configuration file for "
-                 "PLP features (e.g. conf/plp.conf)");
-    po->Register("fbank-config", &fbank_config, "Configuration file for "
-                 "filterbank features (e.g. conf/fbank.conf)");
-    po->Register("add-pitch", &add_pitch, "Append pitch features to raw "
-                 "MFCC/PLP features.");
-    po->Register("pitch-config", &pitch_config, "Configuration file for "
-                 "pitch features (e.g. conf/pitch.conf)");
-    po->Register("pitch-process-config", &pitch_process_config,
-                 "Configuration file for post-processing pitch features "
-                 "(e.g. conf/pitch_process.conf)");
-    po->Register("cmvn-config", &cmvn_config, "Configuration class "
-                 "file for online CMVN features (e.g. conf/online_cmvn.conf)");
-    po->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
-                 "(Extended) filename for global CMVN stats, e.g. obtained "
-                 "from 'matrix-sum scp:data/train/cmvn.scp -'");
-    po->Register("add-deltas", &add_deltas,
-                 "Append delta features.");
-    po->Register("delta-config", &delta_config, "Configuration file for "
-                 "delta feature computation (if not supplied, will not apply "
-                 "delta features; supply empty config to use defaults.)");
-    po->Register("splice-feats", &splice_feats, "Splice features with left and "
-                 "right context.");
-    po->Register("splice-config", &splice_config, "Configuration file "
-                 "for frame splicing, if done (e.g. prior to LDA)");
-    po->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if "
-                 "using LDA), e.g. exp/foo/final.mat");
+  void Register(OptionsItf *opts) {
+    opts->Register("feature-type", &feature_type,
+                   "Base feature type [mfcc, plp, fbank]");
+    opts->Register("mfcc-config", &mfcc_config, "Configuration file for "
+                   "MFCC features (e.g. conf/mfcc.conf)");
+    opts->Register("plp-config", &plp_config, "Configuration file for "
+                   "PLP features (e.g. conf/plp.conf)");
+    opts->Register("fbank-config", &fbank_config, "Configuration file for "
+                   "filterbank features (e.g. conf/fbank.conf)");
+    opts->Register("add-pitch", &add_pitch, "Append pitch features to raw "
+                   "MFCC/PLP features.");
+    opts->Register("pitch-config", &pitch_config, "Configuration file for "
+                   "pitch features (e.g. conf/pitch.conf)");
+    opts->Register("pitch-process-config", &pitch_process_config,
+                   "Configuration file for post-processing pitch features "
+                   "(e.g. conf/pitch_process.conf)");
+    opts->Register("cmvn-config", &cmvn_config, "Configuration class "
+                   "file for online CMVN features (e.g. conf/online_cmvn.conf)");
+    opts->Register("global-cmvn-stats", &global_cmvn_stats_rxfilename,
+                   "(Extended) filename for global CMVN stats, e.g. obtained "
+                   "from 'matrix-sum scp:data/train/cmvn.scp -'");
+    opts->Register("add-deltas", &add_deltas,
+                   "Append delta features.");
+    opts->Register("delta-config", &delta_config, "Configuration file for "
+                   "delta feature computation (if not supplied, will not apply "
+                   "delta features; supply empty config to use defaults.)");
+    opts->Register("splice-feats", &splice_feats, "Splice features with left and "
+                   "right context.");
+    opts->Register("splice-config", &splice_config, "Configuration file "
+                   "for frame splicing, if done (e.g. prior to LDA)");
+    opts->Register("lda-matrix", &lda_rxfilename, "Filename of LDA matrix (if "
+                   "using LDA), e.g. exp/foo/final.mat");
   }
 };
 

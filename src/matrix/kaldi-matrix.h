@@ -282,6 +282,14 @@ class MatrixBase {
   void CopyRows(const MatrixBase<Real> &src,
                 const MatrixIndexT *indices);
   
+  /// Add column indices[r] of src to column r.
+  /// As a special case, if indexes[i] == -1, skip column i
+  /// indices.size() must equal this->NumCols(),
+  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
+  /// and src.NumRows() must equal this.NumRows()
+  void AddCols(const MatrixBase<Real> &src,
+               const std::vector<MatrixIndexT> &indices);
+
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r]. If any src[r] is NULL then this.Row(r) will be set to zero.
   /// Note: we are using "pointer to const pointer to const object" for "src",
@@ -455,7 +463,6 @@ class MatrixBase {
   /// Requires src.NumRows() == this->NumRows() and  src.NumCols() % this->NumCols() == 0.
   void GroupPnorm(const MatrixBase<Real> &src, Real power);
 
-
   /// Calculate derivatives for the GroupPnorm function above...
   /// if "input" is the input to the GroupPnorm function above (i.e. the "src" variable),
   /// and "output" is the result of the computation (i.e. the "this" of that function
@@ -465,6 +472,18 @@ class MatrixBase {
   void GroupPnormDeriv(const MatrixBase<Real> &input, const MatrixBase<Real> &output,
                        Real power);
 
+  /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
+  /// Requires src.NumRows() == this->NumRows() and  src.NumCols() % this->NumCols() == 0.
+  void GroupMax(const MatrixBase<Real> &src);
+
+  /// Calculate derivatives for the GroupMax function above, where
+  /// "input" is the input to the GroupMax function above (i.e. the "src" variable),
+  /// and "output" is the result of the computation (i.e. the "this" of that function
+  /// call), and *this must have the same dimension as "input". Each element
+  /// of *this will be set to 1 if the corresponding input equals the output of
+  /// the group, and 0 otherwise. The equals the function derivative where it is
+  /// defined (it's not defined where multiple inputs in the group are equal to the output).
+  void GroupMaxDeriv(const MatrixBase<Real> &input, const MatrixBase<Real> &output);
 
   /// Set each element to the tanh of the corresponding element of "src".
   void Tanh(const MatrixBase<Real> &src);
@@ -526,7 +545,7 @@ class MatrixBase {
 
   /// *this = beta * *this + alpha * diag(v) * M [or M^T].
   /// The same as adding M but scaling each row M_i by v(i).
-  void AddDiagVecMat(const Real alpha, VectorBase<Real> &v,
+  void AddDiagVecMat(const Real alpha, const VectorBase<Real> &v,
                      const MatrixBase<Real> &M, MatrixTransposeType transM, 
                      Real beta = 1.0);
  

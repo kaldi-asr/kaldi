@@ -49,26 +49,26 @@ struct NnetCombineAconfig {
                         max_learning_rate_factor(2.0),
                         min_learning_rate(0.0001) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
-                 "evaluations for BFGS to use when optimizing combination weights");
-    po->Register("initial-step", &initial_step, "Parameter in the optimization, "
-                 "used to set the initial step length; the default value should be "
-                 "suitable.");
-    po->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
-                 "evaluations for BFGS to use when optimizing combination weights");
-    po->Register("valid-impr-thresh", &valid_impr_thresh, "Threshold of improvement "
-                 "in validation-set objective function for one iteratin; below this, "
-                 "we start using the \"overshoot\" mechanism to keep learning rates high.");
-    po->Register("overshoot", &overshoot, "Factor by which we overshoot the step "
-                 "size obtained by BFGS; only applies when validation set impr is less "
-                 "than valid-impr-thresh.");
-    po->Register("max-learning-rate-factor", &max_learning_rate_factor,
-                 "Maximum factor by which to increase the learning rate for any layer.");
-    po->Register("min-learning-rate-factor", &min_learning_rate_factor,
-                 "Minimum factor by which to increase the learning rate for any layer.");
-    po->Register("min-learning-rate", &min_learning_rate,
-                 "Floor on the automatically updated learning rates");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
+                   "evaluations for BFGS to use when optimizing combination weights");
+    opts->Register("initial-step", &initial_step, "Parameter in the optimization, "
+                   "used to set the initial step length; the default value should be "
+                   "suitable.");
+    opts->Register("num-bfgs-iters", &num_bfgs_iters, "Maximum number of function "
+                   "evaluations for BFGS to use when optimizing combination weights");
+    opts->Register("valid-impr-thresh", &valid_impr_thresh, "Threshold of improvement "
+                   "in validation-set objective function for one iteratin; below this, "
+                   "we start using the \"overshoot\" mechanism to keep learning rates high.");
+    opts->Register("overshoot", &overshoot, "Factor by which we overshoot the step "
+                   "size obtained by BFGS; only applies when validation set impr is less "
+                   "than valid-impr-thresh.");
+    opts->Register("max-learning-rate-factor", &max_learning_rate_factor,
+                   "Maximum factor by which to increase the learning rate for any layer.");
+    opts->Register("min-learning-rate-factor", &min_learning_rate_factor,
+                   "Minimum factor by which to increase the learning rate for any layer.");
+    opts->Register("min-learning-rate", &min_learning_rate,
+                   "Floor on the automatically updated learning rates");
   }  
 };
 

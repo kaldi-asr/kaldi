@@ -124,21 +124,21 @@ struct DeterminizeLatticePrunedOptions {
                                      max_states(-1),
                                      max_arcs(-1),
                                      retry_cutoff(0.5) { }
-  void Register (kaldi::OptionsItf *po) {
-    po->Register("delta", &delta, "Tolerance used in determinization");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
-                "determinization (real usage might be many times this)");
-    po->Register("max-arcs", &max_arcs, "Maximum number of arcs in "
-                "output FST (total, not per state");
-    po->Register("max-states", &max_states, "Maximum number of arcs in output "
-                "FST (total, not per state");
-    po->Register("max-loop", &max_loop, "Option used to detect a particular "
-                "type of determinization failure, typically due to invalid input "
-                "(e.g., negative-cost loops)");
-    po->Register("retry-cutoff", &retry_cutoff, "Controls pruning un-determinized "
-                 "lattice and retrying determinization: if effective-beam < "
-                 "retry-cutoff * beam, we prune the raw lattice and retry.  Avoids "
-                 "ever getting empty output for long segments.");
+  void Register (kaldi::OptionsItf *opts) {
+    opts->Register("delta", &delta, "Tolerance used in determinization");
+    opts->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
+                   "determinization (real usage might be many times this)");
+    opts->Register("max-arcs", &max_arcs, "Maximum number of arcs in "
+                   "output FST (total, not per state");
+    opts->Register("max-states", &max_states, "Maximum number of arcs in output "
+                   "FST (total, not per state");
+    opts->Register("max-loop", &max_loop, "Option used to detect a particular "
+                   "type of determinization failure, typically due to invalid input "
+                   "(e.g., negative-cost loops)");
+    opts->Register("retry-cutoff", &retry_cutoff, "Controls pruning un-determinized "
+                   "lattice and retrying determinization: if effective-beam < "
+                   "retry-cutoff * beam, we prune the raw lattice and retry.  Avoids "
+                   "ever getting empty output for long segments.");
   }
 };
 
@@ -160,18 +160,18 @@ struct DeterminizeLatticePhonePrunedOptions {
                                           phone_determinize(true),
                                           word_determinize(true),
                                           minimize(false) {}
-  void Register (kaldi::OptionsItf *po) {
-    po->Register("delta", &delta, "Tolerance used in determinization");
-    po->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
-                "determinization (real usage might be many times this).");
-    po->Register("phone-determinize", &phone_determinize, "If true, do an "
-                 "initial pass of determinization on both phones and words (see"
-                 " also --word-determinize)");
-    po->Register("word-determinize", &word_determinize, "If true, do a second "
-                 "pass of determinization on words only (see also "
-                 "--phone-determinize)");
-    po->Register("minimize", &minimize, "If true, push and minimize after "
-                 "determinization.");
+  void Register (kaldi::OptionsItf *opts) {
+    opts->Register("delta", &delta, "Tolerance used in determinization");
+    opts->Register("max-mem", &max_mem, "Maximum approximate memory usage in "
+                   "determinization (real usage might be many times this).");
+    opts->Register("phone-determinize", &phone_determinize, "If true, do an "
+                   "initial pass of determinization on both phones and words (see"
+                   " also --word-determinize)");
+    opts->Register("word-determinize", &word_determinize, "If true, do a second "
+                   "pass of determinization on words only (see also "
+                   "--phone-determinize)");
+    opts->Register("minimize", &minimize, "If true, push and minimize after "
+                   "determinization.");
   }
 };
 

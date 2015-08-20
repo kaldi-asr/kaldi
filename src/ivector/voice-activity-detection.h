@@ -49,21 +49,21 @@ struct VadEnergyOptions {
                       vad_energy_mean_scale(0.5),
                       vad_frames_context(5),
                       vad_proportion_threshold(0.6) { }
-  void Register(OptionsItf *po) {
-    po->Register("vad-energy-threshold", &vad_energy_threshold,
-                 "Constant term in energy threshold for MFCC0 for VAD (also see "
-                 "--vad-energy-mean-scale)");
-    po->Register("vad-energy-mean-scale", &vad_energy_mean_scale,
-                 "If this is set to s, to get the actual threshold we "
-                 "let m be the mean log-energy of the file, and use "
-                 "s*m + vad-energy-threshold");
-    po->Register("vad-frames-context", &vad_frames_context,
-                 "Number of frames of context on each side of central frame, "
-                 "in window for which energy is monitored");
-    po->Register("vad-proportion-threshold", &vad_proportion_threshold,
-                 "Parameter controlling the proportion of frames within "
-                 "the window that need to have more energy than the "
-                 "threshold");
+  void Register(OptionsItf *opts) {
+    opts->Register("vad-energy-threshold", &vad_energy_threshold,
+                   "Constant term in energy threshold for MFCC0 for VAD (also see "
+                   "--vad-energy-mean-scale)");
+    opts->Register("vad-energy-mean-scale", &vad_energy_mean_scale,
+                   "If this is set to s, to get the actual threshold we "
+                   "let m be the mean log-energy of the file, and use "
+                   "s*m + vad-energy-threshold");
+    opts->Register("vad-frames-context", &vad_frames_context,
+                   "Number of frames of context on each side of central frame, "
+                   "in window for which energy is monitored");
+    opts->Register("vad-proportion-threshold", &vad_proportion_threshold,
+                   "Parameter controlling the proportion of frames within "
+                   "the window that need to have more energy than the "
+                   "threshold");
   }
 };
 

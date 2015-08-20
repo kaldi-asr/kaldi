@@ -38,13 +38,13 @@ struct AlignConfig {
 
   AlignConfig(): beam(200.0), retry_beam(0.0), careful(false) { }
 
-  void Register(OptionsItf *po) {
-    po->Register("beam", &beam, "Decoding beam used in alignment");
-    po->Register("retry-beam", &retry_beam,
-                 "Decoding beam for second try at alignment");
-    po->Register("careful", &careful,
-                 "If true, do 'careful' alignment, which is better at detecting "
-                 "alignment failure (involves loop to start of decoding graph).");
+  void Register(OptionsItf *opts) {
+    opts->Register("beam", &beam, "Decoding beam used in alignment");
+    opts->Register("retry-beam", &retry_beam,
+                   "Decoding beam for second try at alignment");
+    opts->Register("careful", &careful,
+                   "If true, do 'careful' alignment, which is better at detecting "
+                   "alignment failure (involves loop to start of decoding graph).");
   }
 };
 

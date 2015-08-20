@@ -34,8 +34,7 @@ int main(int argc, char *argv[]) {
         " For each frame, gives a list of the n best Gaussian indices,\n"
         " sorted from best to worst.\n"
         "See also: gmm-gselect, copy-gselect, fgmm-gselect-to-post\n"
-        "Usage: \n"
-        " fgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
+        "Usage: fgmm-gselect [options] <model-in> <feature-rspecifier> <gselect-wspecifier>\n"
         "The --gselect option (which takes an rspecifier) limits selection to a subset\n"
         "of indices:\n"
         "e.g.: fgmm-gselect \"--gselect=ark:gunzip -c bigger.gselect.gz|\" --n=20 1.gmm \"ark:feature-command |\" \"ark,t:|gzip -c >1.gselect.gz\"\n";

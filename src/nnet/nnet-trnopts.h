@@ -40,11 +40,11 @@ struct NnetTrainOptions {
                        l1_penalty(0.0) 
                        { }
   // register options
-  void Register(OptionsItf *po) {
-    po->Register("learn-rate", &learn_rate, "Learning rate");
-    po->Register("momentum", &momentum, "Momentum");
-    po->Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
-    po->Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
+  void Register(OptionsItf *opts) {
+    opts->Register("learn-rate", &learn_rate, "Learning rate");
+    opts->Register("momentum", &momentum, "Momentum");
+    opts->Register("l2-penalty", &l2_penalty, "L2 penalty (weight decay)");
+    opts->Register("l1-penalty", &l1_penalty, "L1 penalty (promote sparsity)");
   }
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const NnetTrainOptions& opts) {
@@ -76,18 +76,18 @@ struct RbmTrainOptions {
                       l2_penalty(0.0002)
                       { }
   // register options
-  void Register(OptionsItf *po) {
-    po->Register("learn-rate", &learn_rate, "Learning rate");
+  void Register(OptionsItf *opts) {
+    opts->Register("learn-rate", &learn_rate, "Learning rate");
 
-    po->Register("momentum", &momentum, "Initial momentum for linear scheduling");
-    po->Register("momentum-max", &momentum_max, "Final momentum for linear scheduling");
-    po->Register("momentum-steps", &momentum_steps, 
-                 "Number of steps of linear momentum scheduling");
-    po->Register("momentum-step-period", &momentum_step_period, 
-                 "Number of datapoints per single momentum increase step");
+    opts->Register("momentum", &momentum, "Initial momentum for linear scheduling");
+    opts->Register("momentum-max", &momentum_max, "Final momentum for linear scheduling");
+    opts->Register("momentum-steps", &momentum_steps, 
+                   "Number of steps of linear momentum scheduling");
+    opts->Register("momentum-step-period", &momentum_step_period, 
+                   "Number of datapoints per single momentum increase step");
 
-    po->Register("l2-penalty", &l2_penalty, 
-                 "L2 penalty (weight decay, increases mixing-rate)");
+    opts->Register("l2-penalty", &l2_penalty, 
+                   "L2 penalty (weight decay, increases mixing-rate)");
   }
   // print for debug purposes
   friend std::ostream& operator<<(std::ostream& os, const RbmTrainOptions& opts) {

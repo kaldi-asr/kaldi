@@ -307,6 +307,31 @@ void UnitTestPnormComponent() {
   }
 }
 
+void UnitTestMaxpoolingComponent() {
+  // works if it has an initializer from int,
+  // e.g. tanh, sigmoid.
+  // We're testing that the gradients are computed correctly:
+  // the input gradients and the model gradients.
+
+  for (int32 i = 0; i < 5; i++) {
+    int32 pool_stride = 5 + Rand() % 10,
+          pool_size = 2 + Rand() % 3,
+          num_pools = 1 + Rand() % 10;
+    int32 output_dim = num_pools * pool_stride;
+    int32 num_patches = num_pools * pool_size;
+    int32 input_dim = pool_stride * num_patches;
+
+    MaxpoolingComponent component(input_dim, output_dim,
+                                  pool_size, pool_stride);
+    UnitTestGenericComponentInternal(component);
+  }
+
+  {
+    MaxpoolingComponent component;
+    component.InitFromString("input-dim=192 output-dim=64 pool-size=3 pool-stride=16");
+    UnitTestGenericComponentInternal(component);
+  }
+}
 
 
 void UnitTestAffineComponent() {
@@ -332,6 +357,44 @@ void UnitTestAffineComponent() {
   {
     const char *str = "learning-rate=0.01 input-dim=10 output-dim=15 param-stddev=0.1";
     AffineComponent component;
+    component.InitFromString(str);
+    UnitTestGenericComponentInternal(component);
+  }
+}
+
+void UnitTestConvolutional1dComponent() {
+  BaseFloat learning_rate = 0.01,
+            param_stddev = 0.1, bias_stddev = 1.0;
+  int32 patch_stride = 10, patch_step = 1, patch_dim = 4;
+  int32 num_patches = 1 + (patch_stride - patch_dim) / patch_step;
+  int32 num_splice = 5 + Rand() % 10, num_filters = 5 + Rand() % 10;
+  int32 input_dim = patch_stride * num_splice;
+  int32 filter_dim = patch_dim * num_splice;
+  int32 output_dim = num_patches * num_filters;
+  {
+    Convolutional1dComponent component;
+    if (Rand() % 2 == 0) {
+      component.Init(learning_rate, input_dim, output_dim,
+                     patch_dim, patch_step, patch_stride,
+                     param_stddev, bias_stddev);
+    } else {
+      // initialize the hyper-parameters
+      component.Init(learning_rate, input_dim, output_dim,
+                     patch_dim, patch_step, patch_stride,
+                     param_stddev, bias_stddev);
+      Matrix<BaseFloat> mat(num_filters, filter_dim + 1);
+      mat.SetRandn();
+      mat.Scale(param_stddev);
+      WriteKaldiObject(mat, "tmpf", true);
+      Sleep(0.5);
+      component.Init(learning_rate, "tmpf");
+      unlink("tmpf");
+    }
+    UnitTestGenericComponentInternal(component);
+  }
+  {
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10";
+    Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
   }
@@ -812,6 +875,7 @@ int main() {
       UnitTestSpliceComponent();
       UnitTestMaxoutComponent(); 
       UnitTestPnormComponent(); 
+      UnitTestMaxpoolingComponent();
       UnitTestGenericComponent<NormalizeComponent>();
       UnitTestSigmoidComponent();
       UnitTestAffineComponent();
@@ -826,6 +890,7 @@ int main() {
       UnitTestFixedBiasComponent();
       UnitTestAffineComponentPreconditioned();
       UnitTestAffineComponentPreconditionedOnline();
+      UnitTestConvolutional1dComponent();
       UnitTestDropoutComponent();
       UnitTestAdditiveNoiseComponent();
       UnitTestParsing();

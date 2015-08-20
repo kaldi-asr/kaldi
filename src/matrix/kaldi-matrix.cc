@@ -421,7 +421,7 @@ void MatrixBase<double>::AddSp(const double alpha, const SpMatrix<float> &S);
 
 template<typename Real>
 void MatrixBase<Real>::AddDiagVecMat(
-    const Real alpha, VectorBase<Real> &v,
+    const Real alpha, const VectorBase<Real> &v,
     const MatrixBase<Real> &M,
     MatrixTransposeType transM, 
     Real beta) {
@@ -1113,6 +1113,26 @@ void MatrixBase<Real>::GroupPnormDeriv(const MatrixBase<Real> &input,
             (*this)(i, j) = pow(std::abs(input_val), power - 1) * 
               pow(output_val, 1 - power) * (input_val >= 0 ? 1 : -1) ;
       }
+    }
+  }
+}
+
+template<typename Real>
+void MatrixBase<Real>::GroupMaxDeriv(const MatrixBase<Real> &input,
+                                     const MatrixBase<Real> &output) {
+  KALDI_ASSERT(input.NumCols() == this->NumCols() &&
+              input.NumRows() == this->NumRows());
+  KALDI_ASSERT(this->NumCols() % output.NumCols() == 0 &&
+               this->NumRows() == output.NumRows());
+
+  int group_size = this->NumCols() / output.NumCols(),
+      num_rows = this->NumRows(), num_cols = this->NumCols();
+
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    for (MatrixIndexT j = 0; j < num_cols; j++) {
+      Real input_val = input(i, j);
+      Real output_val = output(i, j / group_size);
+      (*this)(i, j) = (input_val == output_val ? 1 : 0);
     }
   }
 }
@@ -2518,6 +2538,26 @@ void MatrixBase<Real>::GroupPnorm(const MatrixBase<Real> &src, Real power) {
 }
 
 template<typename Real>
+void MatrixBase<Real>::GroupMax(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(src.NumCols() % this->NumCols() == 0 &&
+               src.NumRows() == this->NumRows());
+  int group_size = src.NumCols() / this->NumCols(),
+      num_rows = this->NumRows(), num_cols = this->NumCols();
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    const Real *src_row_data = src.RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++) {
+      Real max_val = -1e20;
+      for (MatrixIndexT k = 0; k < group_size; k++) {
+        Real src_data = src_row_data[j * group_size + k];
+        if (src_data > max_val)
+          max_val = src_data;
+      }
+      (*this)(i, j) = max_val;
+    }
+  }
+}
+
+template<typename Real>
 void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
                                 const MatrixIndexT *indices) {
   KALDI_ASSERT(NumRows() == src.NumRows());
@@ -2538,6 +2578,34 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
     for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
       if (*index_ptr < 0) this_data[c] = 0;
       else this_data[c] = src_data[*index_ptr];
+    }
+  }
+}
+
+
+template<typename Real>
+void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
+                               const std::vector<MatrixIndexT> &indices) {
+  KALDI_ASSERT(NumRows() == src.NumRows());
+  KALDI_ASSERT(NumCols() == static_cast<MatrixIndexT>(indices.size()));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
+      this_stride = stride_, src_stride = src.stride_;
+  Real *this_data = this->data_;
+  const Real *src_data = src.data_;
+#ifdef KALDI_PARANOID
+  MatrixIndexT src_cols = src.NumCols();
+  for (std::vector<MatrixIndexT>::const_iterator iter = indices.begin();
+       iter != indices.end(); ++iter)
+    KALDI_ASSERT(*iter >= -1 && *iter < src_cols);
+#endif                
+  
+  // For the sake of memory locality we do this row by row, rather
+  // than doing it column-wise using cublas_Xcopy
+  for (MatrixIndexT r = 0; r < num_rows; r++, this_data += this_stride, src_data += src_stride) {
+    const MatrixIndexT *index_ptr = &(indices[0]);
+    for (MatrixIndexT c = 0; c < num_cols; c++, index_ptr++) {
+      if (*index_ptr >= 0)
+	this_data[c] += src_data[*index_ptr];
     }
   }
 }

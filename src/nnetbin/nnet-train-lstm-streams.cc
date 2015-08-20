@@ -40,9 +40,9 @@ int main(int argc, char *argv[]) {
         "This version use pdf-posterior as targets, prepared typically by ali-to-post.\n"
         "The updates are done per-utterance, shuffling options are dummy for compatibility reason.\n"
         "\n"
-        "Usage:  bd-nnet-train-lstm-streams [options] <feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
+        "Usage: nnet-train-lstm-streams [options] <feature-rspecifier> <targets-rspecifier> <model-in> [<model-out>]\n"
         "e.g.: \n"
-        " bd-nnet-train-lstm-streams scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
+        " nnet-train-lstm-streams scp:feature.scp ark:posterior.ark nnet.init nnet.iter1\n";
 
     ParseOptions po(usage);
 

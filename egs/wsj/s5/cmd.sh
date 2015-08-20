@@ -12,19 +12,19 @@ export mkgraph_cmd="queue.pl -l arch=*64 --mem 4G"
 export big_memory_cmd="queue.pl -l arch=*64 --mem 8G"
 export cuda_cmd="queue.pl -l gpu=1"
 
-
-
-#b) BUT cluster options
-#export train_cmd="queue.pl -q all.q@@blade -l ram_free=1200M,mem_free=1200M"
-#export decode_cmd="queue.pl -q all.q@@blade -l ram_free=1700M,mem_free=1700M"
-#export decodebig_cmd="queue.pl -q all.q@@blade -l ram_free=4G,mem_free=4G"
-
-#export cuda_cmd="queue.pl -q long.q@@pco203 -l gpu=1"
-#export cuda_cmd="queue.pl -q long.q@pcspeech-gpu"
-#export mkgraph_cmd="queue.pl -q all.q@@servers -l ram_free=4G,mem_free=4G"
-
-#c) run it locally...
+#b) run it locally...
 #export train_cmd=run.pl
 #export decode_cmd=run.pl
 #export cuda_cmd=run.pl
 #export mkgraph_cmd=run.pl
+
+#c) BUT cluster:
+if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
+  queue="all.q@@blade,all.q@@speech"
+  gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"
+  storage="matylda5"
+  export train_cmd="queue.pl -q $queue -l ram_free=1500M,mem_free=1500M,${storage}=1"
+  export decode_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,${storage}=0.5"
+  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1" 
+fi
+
