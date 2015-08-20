@@ -33,10 +33,10 @@ int main(int argc, char *argv[]) {
         "Creates a random subset of the input examples, of a specified size.\n"
         "Uses no more memory than the size of the subset.\n"
         "\n"
-        "Usage:  nnet-subset-egs [options] <egs-rspecifier> [<egs-wspecifier2> ...]\n"
+        "Usage:  nnet3-subset-egs [options] <egs-rspecifier> [<egs-wspecifier2> ...]\n"
         "\n"
         "e.g.\n"
-        "nnet-subset-egs [args] ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
+        "nnet3-subset-egs [args] ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
     
     int32 srand_seed = 0;
     int32 n = 1000;

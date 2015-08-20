@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Print some text information about an nnet3 neural network, to\n"
         "standard output\n"
         "\n"
-        "Usage:  nnet3-info [options] <nnet>\n"
+        "Usage:  nnet3-am-info [options] <nnet>\n"
         "e.g.:\n"
         " nnet3-am-info 0.mdl\n"
         "See also: nnet3-am-info\n";
