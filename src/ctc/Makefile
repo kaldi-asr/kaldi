@@ -7,7 +7,7 @@ EXTRA_CXXFLAGS += -Wno-sign-compare
 
 TESTFILES = language-model-test
 
-OBJFILES = language-model.o # ctc-functions.o
+OBJFILES = language-model.o cctc-transition-model.o # ctc-functions.o
 
 LIBNAME = kaldi-ctc
 

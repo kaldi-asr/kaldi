@@ -28,7 +28,10 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "tree/context-dep.h"
 #include "lat/kaldi-lattice.h"
+#include "cudamatrix/cu-matrix.h"
+#include "ctc/language-model.h"
 
 namespace kaldi {
 namespace ctc {
@@ -189,7 +192,7 @@ class CctcTransitionModel {
   int32 NumNonBlankIndexes() const { return num_non_blank_indexes_; }
 
   // return the number of history-states the model contains.
-  int32 NumHistoryStates() { return history_state_info_.size(); }
+  int32 NumHistoryStates() const { return history_state_info_.size(); }
 
   // return the number of phones.  Phones are one-based, so NumPhones() is the
   // index of the largest phone, but phone 0 is used to mean the blank symbol.
@@ -241,6 +244,10 @@ class CctcTransitionModel {
   // which will be used to look up (in the nnet output) the numerator of the
   // expression for the likelihood of this phone (or blank).
   int32 GraphLabelToOutputIndex(int32 graph_label) const;
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
 
  protected:
   // Check that the contents of this object make sense (does not check
@@ -325,7 +332,9 @@ class CctcTransitionModelCreator {
   void GetInitialHistories(SetType *hist_set) const;
 
   // called from GetInitialHistoryStates().  Writes to history_state_info_.
-  void CreateHistoryInfo(const std::vector<int32> &hist_vec,
+  // Input is a vector of histories represented as phone left-context
+  // histories, each of length at least equal to the decision-tree left context.
+  void CreateHistoryInfo(const std::vector<std::vector<int32> > &hist_vec,
                          const MapType &hist_to_state);
   
   // writes to history_state_info_ the initial history states, pre-merging.
@@ -373,27 +382,26 @@ class CctcTransitionModelCreator {
     // merging.
     std::vector<int32> next_history_state;
 
+    bool operator == (const HistoryState &other) const {
+      return lm_history_state == other.lm_history_state &&
+          output_index == other.output_index &&
+          next_history_state == other.next_history_state;
+    }
   };
 
   // hashing object that hashes struct HistoryState (from a pointer).
   struct HistoryStateHasher {
-    size_t operator () (const HistoryState *const hist_info) {
-      VectorHasher vec_hasher;
-      int32 p1 = 31; 
+    size_t operator () (const HistoryState *const hist_info) const {
+      VectorHasher<int32> vec_hasher;
+      size_t p1 = 31; 
       return p1 * hist_info->lm_history_state +
           vec_hasher(hist_info->output_index) +
           vec_hasher(hist_info->next_history_state);
     }
   };
-  struct HistoryStateEqual {
-    size_t operator () (const HistoryState *const hist_info1,
-                        const HistoryState *const hist_info2) {
-      return *hist_info1 == *hist_info2;
-    }
-  };
 
   typedef unordered_map<const HistoryState*, int32,
-                        HistoryStateHasher, HistoryStateEqual> HistoryMapType;
+                        HistoryStateHasher> HistoryMapType;
   
 
   const ContextDependency &ctx_dep_;
@@ -411,8 +419,6 @@ class CctcTransitionModelCreator {
   int32 initial_history_state_;
   
   std::vector<HistoryState> history_states_;
-  
-  
 };
 
 
