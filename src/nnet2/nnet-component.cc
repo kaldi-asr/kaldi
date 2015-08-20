@@ -3043,7 +3043,7 @@ void SpliceMaxComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<Context>");
   WriteIntegerVector(os, binary, context_);
-  WriteToken(os, binary, "</SpliceComponent>");
+  WriteToken(os, binary, "</SpliceMaxComponent>");
 }
 
 std::string DctComponent::Info() const {

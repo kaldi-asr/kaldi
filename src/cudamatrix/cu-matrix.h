@@ -78,17 +78,6 @@ class CuMatrixBase {
   friend class CuSparseMatrix<float>;
   friend class CuSparseMatrix<double>;
   friend class CuSparseMatrix<Real>;
-  //friend void cu::RegularizeL1<Real>(CuMatrixBase<Real> *weight,
-  //                                   CuMatrixBase<Real> *grad, Real l1, Real lr);
-  //friend void cu::Splice<Real>(const CuMatrixBase<Real> &src,
-  //                            const CuArray<int32> &frame_offsets,
-  //                            CuMatrixBase<Real> *tgt);
-  //friend void cu::Copy<Real>(const CuMatrixBase<Real> &src,
-  //                           const CuArray<int32> &copy_from_indexes,
-  //                           CuMatrixBase<Real> *tgt);
-  // friend void cu::Randomize<Real>(const CuMatrixBase<Real> &src,
-  //                                const CuArray<int32> &copy_from_idx,
-  //                               CuMatrixBase<Real> *tgt);
 
   /// Copies column r from column indexes[r] of src.
   /// As a special case, if indexes[i] == -1, sets column i to zero
@@ -566,9 +555,8 @@ class CuMatrixBase {
  protected:
   
   // The constructors are protected to prevent the user creating an instance of
-  // this class.
+  // this class (you should create a child class CuMatrix or CuSubMatrix.
   
-  /// Default constructor
   CuMatrixBase(): data_(NULL), num_cols_(0), num_rows_(0), stride_(0) { }
   
   /// This constructor takes the #rows, #cols and stride; it's called from

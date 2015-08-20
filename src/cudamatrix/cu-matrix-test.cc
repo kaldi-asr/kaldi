@@ -350,7 +350,7 @@ static void UnitTestCuMatrixApplyPowAbs() {
 
 template<typename Real>
 static void UnitTestCuMatrixCopyRowsFromVec() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     int32 num_rows = 100 + Rand() % 255, num_cols;
     if (p <= 2) num_cols = 128;
     else if (p <= 4) num_cols = 256;
@@ -377,7 +377,7 @@ static void UnitTestCuMatrixCopyRowsFromVec() {
 
 template<typename Real>
 static void UnitTestCuMatrixCopyRows() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
         num_rows2 = 10 + Rand() % 10,
         num_cols = 10 + Rand() % 10;
@@ -413,7 +413,7 @@ static void UnitTestCuMatrixCopyRows() {
 
 template<typename Real>
 static void UnitTestCuMatrixCopyToRows() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
         num_rows2 = 10 + Rand() % 10,
         num_cols = 10 + Rand() % 10;
@@ -447,7 +447,7 @@ static void UnitTestCuMatrixCopyToRows() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddRows() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
         num_rows2 = 10 + Rand() % 10,
         num_cols = 10 + Rand() % 10;
@@ -488,7 +488,7 @@ static void UnitTestCuMatrixAddRows() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddToRows() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
         num_rows2 = 10 + Rand() % 10,
         num_cols = 10 + Rand() % 10;
@@ -562,14 +562,14 @@ template<typename Real> void UnitTestCuMatrixCopyCross2() {
 
 template<typename Real>
 static void UnitTestCuMatrixSumColumnRanges() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_cols1 = 10 + Rand() % 10,
         num_cols2 = 10 + Rand() % 10,
         num_rows = 10 + Rand() % 10;
     Matrix<Real> src(num_rows, num_cols1);
     Matrix<Real> dst(num_rows, num_cols2);
     std::vector<Int32Pair> indices(num_cols2);
-    for (MatrixIndexT i = 0; i < num_cols2; i++) {
+    for (int32 i = 0; i < num_cols2; i++) {
       indices[i].first = Rand() % num_cols1;
       int32 headroom = num_cols1 - indices[i].first,
         size = (Rand() % headroom) + 1;
@@ -602,7 +602,7 @@ static void UnitTestCuMatrixSumColumnRanges() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddRowRanges() {
-  for (MatrixIndexT p = 0; p < 10; p++) {
+  for (int32 p = 0; p < 10; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
         num_rows2 = 10 + Rand() % 10,
         num_cols = 10 + Rand() % 10;
@@ -643,7 +643,7 @@ static void UnitTestCuMatrixAddRowRanges() {
   
 template<typename Real>
 static void UnitTestCuMatrixCopyCols() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_cols1 = 10 + Rand() % 10,
         num_cols2 = 10 + Rand() % 10,
         num_rows = 10 + Rand() % 10;
@@ -669,7 +669,7 @@ static void UnitTestCuMatrixCopyCols() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddCols() {
-  for (MatrixIndexT p = 0; p < 2; p++) {
+  for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_cols1 = 10 + Rand() % 10,
         num_cols2 = 10 + Rand() % 10,
         num_rows = 10 + Rand() % 10;
@@ -1309,7 +1309,7 @@ static void UnitTestCuMatrixAdd2() {
 
 template<typename Real>
 static void UnitTestCuMatrixCopyFromMat() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
@@ -1324,7 +1324,7 @@ static void UnitTestCuMatrixCopyFromMat() {
 
 template<typename Real>
 static void UnitTestCuMatrixCopyFromTp() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
     TpMatrix<Real> A(dim);
     A.SetRandn();
@@ -1340,7 +1340,7 @@ static void UnitTestCuMatrixCopyFromTp() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddMatTp() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
@@ -1364,7 +1364,7 @@ static void UnitTestCuMatrixAddMatTp() {
 
 template<typename Real>
 static void UnitTestCuMatrixTranspose() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dimM = 5 * i + Rand() % 10,
         dimN = dimM;
     if (i % 2 == 0) dimN += 5;
@@ -1379,7 +1379,7 @@ static void UnitTestCuMatrixTranspose() {
 
 template<typename Real>
 static void UnitTestCuMatrixAddTpMat() {
-  for (MatrixIndexT i = 1; i < 10; i++) {
+  for (int32 i = 1; i < 10; i++) {
     MatrixIndexT dim = 5 * i + Rand() % 10;
     
     Matrix<Real> A(dim, dim);
@@ -2021,12 +2021,12 @@ static void UnitTestCuMatrixSetRandn() {
     AssertEqual(M, N);
   }
     
-  for (MatrixIndexT i = 0; i < 5; i++) {
+  for (int32 i = 0; i < 5; i++) {
     MatrixIndexT rows = 100 + Rand() % 50, cols = 100 + Rand() % 50;
     CuMatrix<Real> M(rows, cols);
     M.SetRandn();
 
-    for (MatrixIndexT pow = 1; pow < 5; pow++) {
+    for (int32 pow = 1; pow < 5; pow++) {
       // test moments 1 through 4 of
       // the distribution.
       CuMatrix<Real> Mpow(M);
@@ -2053,7 +2053,7 @@ static void UnitTestCuMatrixSetRandn() {
 
 template <typename Real>
 static void UnitTestCuMatrixSetRandUniform() {
-  for (MatrixIndexT i = 0; i < 2; i++) {
+  for (int32 i = 0; i < 2; i++) {
     MatrixIndexT rows = 180 + Rand() % 200, cols = 200 + Rand() % 200;
     CuMatrix<Real> M(rows, cols);
     M.SetRandUniform();
@@ -2068,7 +2068,7 @@ static void UnitTestCuMatrixSetRandUniform() {
     central_moments(3) = 0.0;
     central_moments(4) = 1.0 / 80; // times (b - a)^4, which equals 1.
 
-    for (MatrixIndexT pow = 1; pow < central_moments.Dim(); pow++) {
+    for (int32 pow = 1; pow < central_moments.Dim(); pow++) {
       CuMatrix<Real> Mpow(M);
       Mpow.ApplyPow(pow);
       Real observed_moment = Mpow.Sum() / (rows * cols);
