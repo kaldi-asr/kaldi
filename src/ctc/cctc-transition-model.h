@@ -202,7 +202,7 @@ class CctcTransitionModel {
   // probabilities: row index is history-state index from 0 to
   // NumHistoryStates() - 1, column index is neural-net output index, from 0 to
   // NumOutputIndexes() - 1.
-  const CuMatrix<BaseFloat> &Weights() const { return weights_; }
+  const CuMatrix<BaseFloat> &GetWeights() const { return weights_; }
   
   // A graph-label is a similar concept to a transition-id in HMM-based models;
   // it's a one-based index that appears on the input side of a decoding graph

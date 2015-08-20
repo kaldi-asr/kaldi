@@ -258,6 +258,27 @@ void CctcTransitionModelTest() {
   LmHistoryStateMap history_state_map;
   history_state_map.Init(lm);
   TestCctcTransitionModelIndexes(trans_model, *dep, history_state_map);
+  // each row sum of the weights should be 2 (1 for element 0, 1 for
+  // the sum of the rest).
+  AssertEqual(trans_model.GetWeights().Sum(),
+              2.0 * trans_model.NumHistoryStates());
+
+  KALDI_ASSERT(trans_model.NumGraphLabels() ==
+               trans_model.NumHistoryStates() * (trans_model.NumPhones() + 1));
+  for (int32 g = 0; g < trans_model.NumGraphLabels(); g++) {
+    int32 p = trans_model.GraphLabelToPhone(g),
+        h = trans_model.GraphLabelToHistoryState(g);
+    KALDI_ASSERT(trans_model.PairToGraphLabel(h, p) == g);
+
+    int32 next_p = RandInt(1, trans_model.NumPhones());
+    KALDI_ASSERT(trans_model.GraphLabelToNextHistoryState(g) ==
+                 trans_model.GetNextHistoryState(h, p));
+    KALDI_ASSERT(trans_model.GetLmProb(h, p) ==
+                 trans_model.GraphLabelToLmProb(g));
+    KALDI_ASSERT(trans_model.GetOutputIndex(h, p) ==
+                 trans_model.GraphLabelToOutputIndex(g));
+  }
+  
   delete dep;
 }
 
