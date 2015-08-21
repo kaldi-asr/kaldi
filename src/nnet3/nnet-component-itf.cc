@@ -202,19 +202,28 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   std::string tok; // TODO: remove back-compatibility code.
   ReadToken(is, binary, &tok);
   if (tok == "<ValueSum>") {
+    // this branch is for back compatibility.  TODO: delete it
+    // after Dec 2015.
     value_sum_.Read(is, binary);
     ExpectToken(is, binary, "<DerivSum>");
     deriv_sum_.Read(is, binary);
     ExpectToken(is, binary, "<Count>");
     ReadBasicType(is, binary, &count_);
     ExpectToken(is, binary, ostr_end.str());
-  } else if (tok == "<Counts>") { // Back-compat code for SoftmaxComponent.
-    value_sum_.Read(is, binary); // Set both value_sum_ and deriv_sum_ to the same value,
-    // and count_ to its sum.
-    count_ = value_sum_.Sum();
-    ExpectToken(is, binary, ostr_end.str());
   } else {
-    KALDI_ASSERT(tok == ostr_end.str());
+    // The new format is more readable as we write values that are normalized by
+    // the count.
+    KALDI_ASSERT(tok == "<ValueAvg>");
+    value_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<DerivAvg>");
+    deriv_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    ReadBasicType(is, binary, &count_);
+    if (count_ != 0.0) {
+      value_sum_.Scale(1.0 / count_);
+      deriv_sum_.Scale(1.0 / count_);
+    }
+    ExpectToken(is, binary, ostr_end.str());
   }
 }
 
@@ -225,10 +234,17 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
-  WriteToken(os, binary, "<ValueSum>");
-  value_sum_.Write(os, binary);
-  WriteToken(os, binary, "<DerivSum>");
-  deriv_sum_.Write(os, binary);
+  // Write the values and derivatives in a count-normalized way, for
+  // greater readability in text form.
+  WriteToken(os, binary, "<ValueAvg>");
+  Vector<BaseFloat> temp(value_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<DerivAvg>");
+  temp.Resize(deriv_sum_.Dim());
+  temp.CopyFromVec(deriv_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
   WriteToken(os, binary, ostr_end.str());

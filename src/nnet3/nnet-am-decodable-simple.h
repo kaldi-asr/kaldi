@@ -80,7 +80,7 @@ class DecodableAmNnetSimple: public DecodableInterface {
                         const MatrixBase<BaseFloat> &feats,
                         const VectorBase<BaseFloat> *ivector = NULL,
                         const MatrixBase<BaseFloat> *online_ivectors = NULL,
-                        int32 online_ivector_period = NULL);
+                        int32 online_ivector_period = 1);
 
   /// Constructor that also accepts iVectors estimated online;
   /// online_ivector_period is the time spacing between rows of the matrix.
