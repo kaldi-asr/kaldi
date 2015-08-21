@@ -1,4 +1,4 @@
-// lat/ctc-supervision.h
+// ctc/cctc-graph.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CTC_SUPERVISION_H_
-#define KALDI_CTC_CTC_SUPERVISION_H_
+#ifndef KALDI_CTC_CCTC_GRAPH_H_
+#define KALDI_CTC_CCTC_GRAPH_H_
 
 #include <vector>
 #include <map>
@@ -33,76 +33,6 @@
 
 namespace kaldi {
 
-// CTC means Connectionist Temporal Classification, see the paper by Graves et
-// al.
-//
-// What we are implementing here is some things relating to computation of the
-// CTC objective function.  The normal information required to compute the
-// objective function is the reference phone sequence, and the computation is a
-// forward-backward computation.  We plan to make possible both forward-backward
-// and Viterbi versions of this.  However, we want to be able to train on parts
-// of utterances e.g. a few seconds, instead of whole utterances.  For this we
-// need a sensible way of splitting utterances, and for this we need the time
-// information (obtained from a baseline system or frmo another CTC system).
-// The framework for using the time information is that we will limit, in the
-// forward-backward or Viterbi, each instance of a phone to be within the reference
-// interval of the phone, extended by a provided left and right margin.  (this is
-// something that Andrew Senior et al. did to reduce latency, in a paper they
-// published).  This leads to a natural way to split utterances.
-//
-// The labels that we keep track of in CTC will be phone labels, but during the
-// processing of the CTC "decoding-graph" there will be a stage where we add a
-// specified phonetic context (using a specifiable context-width N and
-// central-position P, as for the decoding-graph creation code).  This makes it
-// possible to have available during the CTC alignment, a specifiable amount of
-// phonetic context.  (When we add blanks, the user will also be able to control
-// how much context the blank symbol gets; this may be useful for an extension I
-// have in mind).
-
-// Using a special namespace for this CTC stuff.
-
-namespace ctc {
-
-
-struct CtcSupervisionOptions {
-  std::string silence_phones;
-  int32 optional_silence_cutoff;
-  int32 left_tolerance;
-  int32 right_tolerance;
-  int32 frame_subsampling_factor;
-
-  CtcSupervisionOptions(): optional_silence_cutoff(15),
-                           context_width(1),
-                           central_position(0),
-                           left_tolerance(10),
-                           right_tolerance(20),
-                           frame_subsampling_factor(1) { }
-
-  void Register(OptionsItf *opts) {
-    opts->Register("silence-phones", &silence_phones, "Colon or comma-separated "
-                   "list of integer ids of silence phones (relates to "
-                   "--optional-silence-cutoff)");
-    opts->Register("optional-silence-cutoff", &optional_silence_cutoff, "Duration "
-                   "in frames such that --silence-phones shorter than this will be "
-                   "made optional.");
-    opts->Register("context-width", &context_width, "The width of the context "
-                   "window stored with the CTC supervision information (e.g. 3 "
-                   "for triphone");
-    opts->Register("central-position", &central_position, "The position in "
-                   "the context window of the phone we are modeling "
-                   "(zero-based); e.g. for a triphone system you'd have "
-                   "--context-width=3, --central-position=1.");
-    opts->Register("left-tolerance", &left_tolerance, "The furthest to the "
-                   "left (in the original frame rate) that a label can appear "
-                   "relative to the phone start in the alignment.");
-    opts->Register("right-tolerance", &right_tolerance, "The furthest to the "
-                   "right (in the original frame rate) that a label can appear "
-                   "relative to the phone end in the alignment.");
-    opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                   "if the frame-rate in CTC will be less than the frame-rate "
-                   "of the original alignment");
-  }
-}
 
 
 // struct PhoneInstance is an instance of a phone in a graph of phones used for
@@ -350,4 +280,4 @@ class CtcSupervisionSplitter {
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CTC_SUPERVISION_H_
+#endif  // KALDI_CTC_CCTC_GRAPH_H_
