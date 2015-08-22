@@ -25,8 +25,8 @@ namespace ctc {
 
 
 BaseFloat CctcTransitionModel::GraphLabelToLmProb(int32 graph_label) const {
-  int32 history = graph_label / (num_phones_ + 1),
-      phone = graph_label % (num_phones_ + 1);
+  int32 history = (graph_label - 1) / (num_phones_ + 1),
+      phone = (graph_label - 1) % (num_phones_ + 1);
   // if graph_label is out of range, we'll get a segmentation fault or
   // an assertion in the operator () of Vector.
   // note: phone might be zero for blank, in which case we'd return 1.0.
@@ -34,7 +34,7 @@ BaseFloat CctcTransitionModel::GraphLabelToLmProb(int32 graph_label) const {
 }
 
 int32 CctcTransitionModel::GraphLabelToHistoryState(int32 graph_label) const {
-  int32 history = graph_label / (num_phones_ + 1);
+  int32 history = (graph_label - 1) / (num_phones_ + 1);
   KALDI_ASSERT(static_cast<size_t>(history) < history_state_info_.size());
   return history;
 }
@@ -62,8 +62,8 @@ int32 CctcTransitionModel::GetOutputIndex(int32 history_state,
 
 int32 CctcTransitionModel::GraphLabelToNextHistoryState(
     int32 graph_label) const {
-  int32 history = graph_label / (num_phones_ + 1),
-      phone = graph_label % (num_phones_ + 1);
+  int32 history = (graph_label - 1) / (num_phones_ + 1),
+      phone = (graph_label - 1) % (num_phones_ + 1);
   KALDI_ASSERT(static_cast<size_t>(history) < history_state_info_.size());
   return history_state_info_[history].next_history_state[phone];
 }
@@ -72,16 +72,16 @@ int32 CctcTransitionModel::InitialHistoryState() const {
   return initial_history_state_;
 }
 
-int32 CctcTransitionModel::PairToGraphLabel(int32 history_state,
-                                            int32 phone) const {
+int32 CctcTransitionModel::GetGraphLabel(int32 history_state,
+                                         int32 phone) const {
   KALDI_ASSERT(static_cast<size_t>(phone) <= static_cast<size_t>(num_phones_) &&
                static_cast<size_t>(history_state) < history_state_info_.size());
-  return history_state * (num_phones_ + 1)  +  phone;
+  return history_state * (num_phones_ + 1)  + phone + 1;
 }
 
 int32 CctcTransitionModel::GraphLabelToOutputIndex(int32 graph_label) const {
-  int32 history = graph_label / (num_phones_ + 1),
-      phone = graph_label % (num_phones_ + 1);
+  int32 history = (graph_label - 1) / (num_phones_ + 1),
+      phone = (graph_label - 1) % (num_phones_ + 1);
   return history_state_info_[history].output_index[phone];
 }
 

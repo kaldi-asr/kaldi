@@ -251,14 +251,33 @@ class LmExampleDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 };
 
 
-// Compose a left hand FST or lattice with a right hand
-// DeterministicOnDemandFst and store the result in fst_composed.
-// This is mainly used for expanding lattice n-gram histories, where
-// fst1 is a lattice and fst2 is an UnweightedNgramFst.
+// Compose an FST (which may be a lattice) with a DeterministicOnDemandFst and
+// store the result in fst_composed.  This is mainly used for expanding lattice
+// n-gram histories, where fst1 is a lattice and fst2 is an UnweightedNgramFst.
 template<class Arc>
 void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
                                   DeterministicOnDemandFst<Arc> *fst2,
                                   MutableFst<Arc> *fst_composed);
+
+
+/**
+   This function does
+   '*fst_composed = Compose(Inverse(*fst2), fst1)'
+   Note that the arguments are reversed; this is unfortunate but it's
+   because the fst2 argument needs to be non-const and non-const arguments
+   must follow const ones.
+   This is the counterpart to ComposeDeterministicOnDemand, used for
+   the case where the DeterministicOnDemandFst is on the left.  The
+   reason why we need to make the left-hand argument to compose the
+   inverse of 'fst2' (i.e. with the input and output symbols swapped),
+   is that the DeterministicOnDemandFst interface only supports lookup
+   by ilabel (see its function GetArc).  
+*/
+template<class Arc>
+void ComposeDeterministicOnDemandInverse(const Fst<Arc> &fst1,
+                                         DeterministicOnDemandFst<Arc> *fst2,
+                                         MutableFst<Arc> *fst_composed);
+
 
 
 

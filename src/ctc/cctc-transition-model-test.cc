@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include "ctc/cctc-transition-model.h"
+#include "ctc/cctc-graph.h"
 #include "ctc/language-model.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
@@ -174,7 +175,6 @@ int32 GetOutputIndex(int32 num_non_blank_indexes,
 void TestCctcTransitionModelIndexes(const CctcTransitionModel &trans_model,
                                     const ContextDependency &ctx_dep,
                                     const LmHistoryStateMap &history_state_map) {
-  
   int32 num_phones = trans_model.NumPhones(),
       left_context = trans_model.PhoneLeftContext(),
       sequence_length = RandInt(1, 20),
@@ -206,6 +206,98 @@ void TestCctcTransitionModelIndexes(const CctcTransitionModel &trans_model,
   }
 }
 
+
+void TestCctcTransitionModelGraph(const CctcTransitionModel &trans_model) {
+  int32 num_phones = trans_model.NumPhones(),
+      sequence_length = RandInt(1, 20);
+
+  std::vector<int32> phones;
+  std::vector<int32> phones_plus_blanks;
+  for (int32 i = 0; i < sequence_length; i++) {
+    while (RandInt(0, 1) == 0)
+      phones_plus_blanks.push_back(0);
+    int32 phone = RandInt(1, num_phones);
+    phones.push_back(phone);
+    phones_plus_blanks.push_back(phone);
+  }
+  while (RandInt(0, 1) == 0)
+    phones_plus_blanks.push_back(0);
+
+  // get the sequence of GraphIds that corresponds to the randomly chosen
+  // phones_plus_blanks sequence.
+  std::vector<int32> graph_ids;
+
+  int32 current_history_state = trans_model.InitialHistoryState();
+  BaseFloat tot_log_prob = 0.0;
+  for (size_t i = 0; i < phones_plus_blanks.size(); i++) {
+    int32 phone_or_blank = phones_plus_blanks[i];
+    graph_ids.push_back(trans_model.GetGraphLabel(current_history_state,
+                                                  phone_or_blank));
+    tot_log_prob += log(trans_model.GetLmProb(current_history_state,
+                                              phone_or_blank));
+    current_history_state =
+        trans_model.GetNextHistoryState(current_history_state,
+                                        phone_or_blank);
+  }
+
+  typedef fst::VectorFst<fst::StdArc> Fst;
+  Fst phone_acceptor;
+  MakeLinearAcceptor(phones, &phone_acceptor);
+  // adds one to just the input side of phone_acceptor, and
+  // then adds self-loops with the blank-plus-one (=1) on
+  // the input side and eps on the output side.
+  ShiftPhonesAndAddBlanks(&phone_acceptor);
+  BaseFloat phone_language_model_weight = RandUniform();
+  
+  Fst ctc_fst;
+  CreateCctcDecodingFst(trans_model, phone_language_model_weight,
+                        phone_acceptor,
+                        &ctc_fst);
+  /*
+  for the following to work, need to #include "fst/script/print-impl.h"
+
+    {
+#ifdef HAVE_OPENFST_GE_10400
+    fst::FstPrinter<fst::StdArc> fstprinter(ctc_fst, NULL, NULL, NULL,
+                                            false, true, "\t");
+#else
+    fst::FstPrinter<fst::StdArc> fstprinter(ctc_fst, NULL, NULL, NULL,
+                                            false, true);
+#endif
+    fstprinter.Print(&std::cout, "standard output");
+    } */
+  // make linear acceptor with the symbols we generated manually
+  // from the transition-model, corresponding to the phone-seq
+  // with random blanks.  We'll be checking that this sequence
+  // appears in the generated FST.
+  Fst graph_id_acceptor;
+  MakeLinearAcceptor(graph_ids, &graph_id_acceptor);
+
+  // WriteIntegerVector(std::cerr, false, graph_ids);
+  
+  Fst composed_fst;
+  // note: ctc_fst has the graph-labels on its input side.
+  Compose(graph_id_acceptor, ctc_fst, &composed_fst);
+
+  if (composed_fst.NumStates() == 0)  // empty FST
+    KALDI_ERR << "Did not find the expected symbol sequence in CCTC graph.";
+  
+  // we expect that the output FST will have a linear structure.
+  std::vector<int32> input_seq, output_seq;
+  fst::StdArc::Weight tot_weight;
+  bool is_linear = GetLinearSymbolSequence(composed_fst,
+                                           &input_seq, &output_seq,
+                                           &tot_weight);
+  if (!is_linear)
+    KALDI_ERR << "Expected composed FST to have linear structure.";
+  KALDI_ASSERT(input_seq == graph_ids);
+  KALDI_ASSERT(output_seq == phones);
+
+  BaseFloat tot_cost = tot_weight.Value(),
+      expected_tot_cost = -tot_log_prob * phone_language_model_weight;
+  if (!ApproxEqual(tot_cost, expected_tot_cost))
+    KALDI_ERR << "Total cost of FST is not what we expected";
+}  
 
 
 void CctcTransitionModelTest() {
@@ -258,6 +350,7 @@ void CctcTransitionModelTest() {
   LmHistoryStateMap history_state_map;
   history_state_map.Init(lm);
   TestCctcTransitionModelIndexes(trans_model, *dep, history_state_map);
+  TestCctcTransitionModelGraph(trans_model);
   // each row sum of the weights should be 2 (1 for element 0, 1 for
   // the sum of the rest).
   AssertEqual(trans_model.GetWeights().Sum(),
@@ -265,12 +358,11 @@ void CctcTransitionModelTest() {
 
   KALDI_ASSERT(trans_model.NumGraphLabels() ==
                trans_model.NumHistoryStates() * (trans_model.NumPhones() + 1));
-  for (int32 g = 0; g < trans_model.NumGraphLabels(); g++) {
+  for (int32 g = 1; g <= trans_model.NumGraphLabels(); g++) {
     int32 p = trans_model.GraphLabelToPhone(g),
         h = trans_model.GraphLabelToHistoryState(g);
-    KALDI_ASSERT(trans_model.PairToGraphLabel(h, p) == g);
+    KALDI_ASSERT(trans_model.GetGraphLabel(h, p) == g);
 
-    int32 next_p = RandInt(1, trans_model.NumPhones());
     KALDI_ASSERT(trans_model.GraphLabelToNextHistoryState(g) ==
                  trans_model.GetNextHistoryState(h, p));
     KALDI_ASSERT(trans_model.GetLmProb(h, p) ==

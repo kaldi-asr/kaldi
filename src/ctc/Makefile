@@ -8,7 +8,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = language-model-test cctc-transition-model-test
 
-OBJFILES = language-model.o cctc-transition-model.o # ctc-functions.o
+OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o # ctc-functions.o
 
 LIBNAME = kaldi-ctc
 

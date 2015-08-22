@@ -28,160 +28,73 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "lat/kaldi-lattice.h"
-#include "cctc/cctc-transition-model.h"
+#include "ctc/cctc-transition-model.h"
 #include "fstext/deterministic-fst.h"
 
 namespace kaldi {
+namespace ctc {
 
-
-
-// struct PhoneInstance is an instance of a phone in a graph of phones used for
-// the CTC supervision.  We require the time information from a reference
-// alignment; we don't intend to enforce it exactly (we will allow a margin),
-// but it's necessary to enable CTC training on split-up parts of utterances.
-struct PhoneInstance {
-  // the phone: 0 < phone <= num-phones.
-  int32 phone;
-  // begin time of the phone (e.g. based on an alignment., but we later
-  // make this earlier by left_tolerance).
-  int32 begin_frame;
-  // last-frame-plus-one in the phone (e.g. based on the alignment, but we later
-  // increase it by right_tolerance).
-  int32 end_frame;
-};
-
-struct PhoneInstanceHasher {
-  size_t operator() (const PhoneInstance &pinst) const {
-    int32 p1 = 673, p2 = 1747, p3 = 2377;
-    return phone * p1 + p2 * start_time + p3 * end_time;
-  }
-};
-
-// This is the form of the supervision information for CTC that it takes before
-// we compile it.  Caution: several different stages of compilation use this object,
-// don't mix them up.
-//  The normal compilation sequence is:
-// (AlignmentToProtoSupervision or PhoneLatticeToProtoSupervision)
-// MakeSilencesOptional
-// ModifyProtoSupervisionTimes
-// AddProtoSupervisionContext
-// AddBlanksToProtoSupervision [calls MakeProtoSupervisionConvertor]
-
-struct CtcProtoSupervision {
-  // the total number of frames in the utterance (will equal the sum of the
-  // phone durations if this is directly derived from a simple alignment.
-  int32 num_frames;
   
-  // The FST of phone instances (may or may not be a linear sequence).
-  // It's an acceptor; the nonzero labels are indexes into phone_instances.
-  Fst<StdArc> fst;
+/**  This function adds one to all the phones to the FST and adds self-loops
+     for the the optional blank symbols to all of its states.
 
-  // The vector of phone instances; the zeroth element is not used.
-  std::vector<PhoneInstance> phone_instances;
-};
+     @param [in,out]          The FST we modify.  At entry, the symbols on its input side
+                              must be phones in the range [1, num_phones]
+                              the output-side symbols will be left as they are.
+                              If this represents a decoding graph you'll probably
+                              want to have determinized this with disambiguation symbols
+                              in place, then removed the disambiguation symbols and minimized
+                              it.
 
-// Creates an CtcProtoSupervision from a vector of phones and their durations,
-// such as might be derived from a training-data alignment.  The phone_instances
-// will at this point be monophone, with no context.
-// Note: this probably isn't the normal way you'll do it, it's better to
-// start with a phone-aligned lattice so you can capture the alternative pronunciations;
-// see PhoneLatticeToProtoSupervision().
-void AlignmentToProtoSupervision(const std::vector<int32> &phones,
-                                 const std::vector<int32> &durations,
-                                 CtcProtoSupervision *proto_supervision);
+                              What this function does is to add 1 to all nonzero
+                              input symbols on arcs (to convert phones to
+                              phones-plus-one), then at each state of the
+                              modified FST, add a self-loop with a 1
+                              (blank-plus-one) on the input and 0 (epsilon) on
+                              the output.
+*/
+void ShiftPhonesAndAddBlanks(fst::VectorFst<fst::StdArc> *fst);
 
+/**  This function creates an FST that we can use for decoding with CTC.
+     Internally it composes on the left with an object of type
+     CctcDeterministicOnDemandFst.
 
-// This function creates a proto-supervision from a phone-aligned lattice.  The
-// normal path would be to generate a lattice containing multiple pronunciations
-// of the transcript by using steps/align_fmllr_lats.sh or a similar script,
-// followed by lattice-align-phones --replace-output-symbols=true.
-void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
-                                    CtcProtoSupervision *proto_supervision);
+     @param [in] trans_model  The CCTC transition model that defines the graph
+                              labels.
+     @param [in] phone_language_model_weight   This parameter should usually be set
+                              to zero, but if you set it to nonzero then to each
+                              real-phone arc in the output FST, a cost equal to
+                              phone_language_model_weight times the corresponding
+                              -log(phone-language-model-prob) will be added to the
+                              arc.  In decoding we won't be adding in any phone LM probs because
+                              the spirit of the framework is to use them only in training;
+                              and in testing, use the proper language model instead; but
+                              if you want to add them with a small weight (e.g. 0.1 or 0.2)
+                              you can set this parameter accordingly.
+     @param [in] phone_and_blank_fst   The input FST, with (phones and blanks) plus one
+                              its input side, and anything you want (e.g. words) on its
+                              output side.  This might be the output of AddBlanksToFst().
 
-// Modifies the FST by making all silence phones that you specify that have
-// duration shorter than opts.optional_silence_cutoff, optional.
-void MakeSilencesOptional(const CtcSupervisionOptions &opts,
-                          CtcProtoSupervision *proto_supervision);
+     @param [out] decoding_fst The output FST (will be larger than the input FST
+                              due to the effects of left context).  The symbols
+                              on the input side are (one-based) graph-labels, as
+                              defined by class CctcTransitionModel.  The symbols
+                              on the output side will be whatever they were
+                              before, e.g. words.
+*/
+void CreateCctcDecodingFst(const CctcTransitionModel &trans_model,
+                           BaseFloat phone_language_model_weight,
+                           const fst::VectorFst<fst::StdArc> &phone_and_blank_fst,
+                           fst::VectorFst<fst::StdArc> *decoding_fst);
 
-
-/** Modifies the duration information (start_time and end_time) of each phone
-    instance by the left_tolerance and right_tolerance (being careful not to go
-    over the edges of the utterance) and then applies frame-rate subsampling by
-    dividing each frame index in start_times and end_times by
-    frame_subsampling_factor (and likewise num_frames).  */
-void ModifyProtoSupervisionTimes(const CtcSupervisionOptions &options
-                                 CtcProtoSupervision *proto_supervion);
-
-
-/**  This function adds the optional blanks.  This is done by composing on the
-     left with a special FST a bit like 'H' in the regular speech-recognition
-     pipeline.  See the docs below for MakeProtoSupervisionConvertor() for
-     details on this.  */
-void AddBlanksToProtoSupervision(const CtcSupervisionOptions &options,
-                                 CtcProtoSupervision *proto_supervion);
-
-/** Called from AddBlanksToProtoSupervision, this function creates the FST,
-   similar in spirit to the H FST that it used in speech recognition recipes
-   (search for hbka.pdf), that is used by AddBlanksToProtoSupervision to add the
-   optional blanks and (if options.allow_symbol_repeats) the optional repeats of
-   phones.
-
-     What we want for each real phone symbol is,
-
-      - Exactly one copy of that phone symbol. 
-
-      - Respectively (before and after) each real phone symbol mentioned above,
-        optional repeats of the blank symbol (symbol 0).  The time information for these
-        instances of the blank symbol will be the same as the phone symbol we
-        generated it from.
-         
-     This fst will have a state 0 which is both initial and final.  Let's
-     suppose we have a phone-in-context a.  first an arc from state 0 to a new
-     state (say, state 1), with <eps> on the input and a on the output.  Then a
-     loop on state 1 with an instance of symbol 0 (blank) on the input (note it
-     won't be a literal zero in the FST, it will be an index into the
-     phone-instances vector); and epsilon on the output.  Then a transition to a
-     new state (say, state 2) with the phone symbol a on the output.  Then a
-     loop on state 2 with the same instance of symbol 0 (blank) on the input and
-     <eps> on the output.  Then an <eps>/<eps> transition from state 2 back to
-     state 0.
-
-     Below, the "proto_supervision" argument is both an input and output,
-     because aside from reading it we may need to add (blank) symbols to its
-     'phone_instances' member.  We will compose with the 'convertor_fst' on the
-     left, and then project on the input.  */
-void MakeProtoSupervisionConvertor(
-    const CtcSupervisionOptions &options,
-    CtcProtoSupervision *proto_supervision,
-    VectorFst<StdArc> *convertor_fst);
 
 /**
-   This function creates an FST that we will use to enforce the time constraints
-   in the PhoneInstance arguments.  We'll compose with 'enforcer_fst' on the
-   left and the phone-plus-blanks-graph FST (the output of
-   AddBlanksToProtoSupervision) on the right.
-   
-   Suppose the number of frames is T, then there are T+1 states in this,
-   numbered from 0 to T+1, where state 0 is initial and state T+1 is final.
-   Suppose our proto_supervision contains a label, say a.  For states
-   t = 10 through 19 of convertor_fst [note: 20 is interpreted as
-   last-frame-plus one], we will have an arc from state t to t+1 with a+1 on
-   the input and a[10:20] on the output.  The input symbols are phones-plus-one
-   (this is so that we don't have to use 0 for the blank phone, phone 0);
-  and the output indexes are indexes into proto_supervision.phone_insetances.
-   
-   This function is called by MakeCtcSupervision.
- */
-void MakeProtoSupervisionTimeEnforcer(
-    const CtcProtoSupervision &proto_supervision,
-    VectorFst<StdArc> *enforcer_fst);
-
-/**
-   This class wraps a CctcTransitionModel as a DeterministicOnDemandFst.
-   Note, DeterministicOnDemandFst does not inherit from class Fst.
-   You compose with this to convert a graph labeled with phones-plus-one
-   (the plus-one is so that the blank symbol is not mapped to epsilon),
-   to a graph with cctc "graph-labels" on it.
+   This class wraps a CctcTransitionModel as a DeterministicOnDemandFst;
+   it is used by function CreateCctcDecodingFst to create a decoding-graph
+   suitable for use with a CCTC model.
+   You compose with this (actually with the inverse of this, on the left;
+   see function ComposeDeterministicOnDemandInverse()) to convert a graph labeled with
+   phones-plus-one on its input to a graph with cctc "graph-labels" on its input.
  */
 class CctcDeterministicOnDemandFst:
       public fst::DeterministicOnDemandFst<fst::StdArc> {
@@ -190,90 +103,30 @@ class CctcDeterministicOnDemandFst:
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  CctcDeterministicOnDemandFst(const CctcTransitionModel &trans_model);
-
-  // We cannot use "const" because the pure virtual function in the interface is
-  // not const.
-  virtual StateId Start() { return start_state_; }
-
-  // We cannot use "const" because the pure virtual function in the interface is
-  // not const.
-  virtual Weight Final(StateId s);
-
-  virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
-
- private:
-  typedef unordered_map<std::vector<Label>,
-                        StateId, VectorHasher<Label> > MapType;
-  StateId start_state_;
-  MapType wseq_to_state_;
-  std::vector<std::vector<Label> > state_to_wseq_;
-  const ConstArpaLm& lm_;
-};
-
-
-
-
-// This function creates a CtcSupervision from a fully processed
-// CtcProtoSupervision object (after calling AddBlanksToProtoSupervision).
-// Internally it calls MakeProtoSupevisionTimeEnforcer and composes.
-// the 'opts' is only needed for the context_width and central_position.
-// Normally the weight will be 1.0.
-void MakeCtcSupervision(
-    const CtcSupervisionOptions &opts,
-    const CtcProtoSupervision &proto_supervision,
-    BaseFloat weight,
-    CtcSupervision *supervision);
-
-// struct CtcSupervision is the fully-processed CTC supervision information for
-// a whole utterance or (after splitting) part of an utterance.  It contains the
-// time limits on phones encoded into the FST.
-struct CtcSupervision {
-  // The weight of this example (will usually be 1.0).
-  BaseFloat weight;
-
-  int32 num_frames;
-
-  // This is an epsilon-free unweighted acceptor that is topologically sorted;
-  // the labels are indexes into the "phones" vector (zero is reserved for
-  // <eps>, and thus should not appear as a label because it's epsilon free).
-  // Each successful path in 'fst' has exactly 'num_frames' arcs on it; this
-  // topology is less compact but is useful to enforce that phones appear within
-  // a specified temporal window.
-  Fst<StdArc> fst;
-
-  // context_width is the width of context window, i.e. the length of the
-  // vectors in phones_in_context.
-  int32 context_width;
-  // 0 <= central_position < context_width is the position of the central phone
-  // in the context window.  In the experimental mode, this will equal
-  // context_width - 1 as it supports only left-context.
-  int32 central_position;
+  // Initialize this object.  phone_language_model_weight may be configurable on
+  // the command line.  It's a weight on the phone-language-model log-probs, and
+  // its range would normally be between zero and one, but the default value
+  // should be zero.
+  CctcDeterministicOnDemandFst(const CctcTransitionModel &trans_model,
+                               BaseFloat phone_language_model_weight);
   
-  // vector of phones-in-context; index zero is not used (it's reserved for <eps>)
-  // Each element is a phone in context.  However, blank symbols with context also
-  // appear here (this is needed for an extension of CTC).
-  std::vector<std::vector<int32> > phones_in_context;
+  // We cannot use "const" because the pure virtual function in the interface is
+  // not const.
+  virtual StateId Start() { return trans_model_.InitialHistoryState(); }
 
-  void Write(std::ostream &os, bool binary) const;
-  void Read(std::istream &is, bool binary);  
-};
-
-// This class is used for splitting something of type CtcSupervision into
-// multiple pieces corresponding to different frame-ranges.
-class CtcSupervisionSplitter {
- public:
-  CtcSupervisionSplitter(const CtcSupervision &supervision);
-  // Extracts a frame range of the supervision into "supervision".
-  void GetFrameRange(int32 start_frame, int32 num_frames,
-                     CtcSupervision *supervision);
+  // Note: in the CCTC framework we don't really model final-probs in any non-trivial
+  // way, since the probabibility of the end of the phone sequence is one if we saw
+  // the end of the acoustic sequence, and zero otherwise.
+  virtual Weight Final(StateId s) { return Weight::One(); }
+  
+  // The ilabel is a (phone-or-blank) plus one.  The state-id is the
+  // history-state in the trans_model_.  The interface of GetArc requires ilabel
+  // to be nonzero (not epsilon).
+  virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
+  
  private:
-  const CtcSupervision &supervision_;
-  // Indexed by the state-index of 'supervision_.fst', this is the frame-index,
-  // which ranges from 0 to supervision_.num_frames - 1.  This will be
-  // monotonically increasing (note that supervision_.fst is topologically
-  // sorted).
-  std::vector<int32> frame_;  
+  const CctcTransitionModel &trans_model_;
+  BaseFloat phone_language_model_weight_;
 };
 
 

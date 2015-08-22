@@ -216,7 +216,7 @@ class CctcTransitionModel {
   int32 NumGraphLabels() const { return NumHistoryStates() * (num_phones_+1); }
   
   // Maps graph-label to phone (i.e. the predicted phone, or 0 for blank).
-  int32 GraphLabelToPhone(int32 g) const { return g % (num_phones_ + 1); }
+  int32 GraphLabelToPhone(int32 g) const { return (g - 1) % (num_phones_ + 1); }
 
   // Maps graph-label to the corresponding language model probability
   // (will be 1.0 if this is for a blank).
@@ -238,7 +238,7 @@ class CctcTransitionModel {
   
   // Given a history-state and a phone (or 0 for blank), gives the
   // corresponding graph label.
-  int32 PairToGraphLabel(int32 history_state, int32 phone) const;
+  int32 GetGraphLabel(int32 history_state, int32 phone) const;
 
   // Given a history-state and a phone (or 0 for blank), gives the
   // next history state.
