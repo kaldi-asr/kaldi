@@ -19,7 +19,6 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
 #include "nnet2/am-nnet.h"
 #include "hmm/transition-model.h"
 #include "tree/context-dep.h"
@@ -80,7 +79,7 @@ int main(int argc, char *argv[]) {
         "circumstances than using the priors of the class labels in the training data\n"
         "\n"
         "Typical usage of this program will involve computation of an average pdf-level\n"
-        "posterior with nnet-compute or nnet-compute-from-egs, piped into nnet-sum-rows\n"
+        "posterior with nnet-compute or nnet-compute-from-egs, piped into matrix-sum-rows\n"
         "and then vector-sum, to compute the average posterior\n"
         "\n"
         "Usage: nnet-adjust-priors [options] <nnet-in> <summed-posterior-vector-in> <nnet-out>\n"

@@ -1,5 +1,7 @@
 // cudamatrix/cu-tp-matrix.h
-// Copyright 2013  Ehsan Variani
+
+// Copyright      2013  Ehsan Variani
+//                2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,10 +48,14 @@ class CuTpMatrix : public CuPackedMatrix<Real> {
   CuTpMatrix() : CuPackedMatrix<Real>() {}
   explicit CuTpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
       : CuPackedMatrix<Real>(r, resize_type) {}
+  
   explicit CuTpMatrix<Real>(const TpMatrix<Real> &orig)
       : CuPackedMatrix<Real>(orig) {}
-  explicit CuTpMatrix<Real>(const CuTpMatrix<Real> &orig)
+  // This constructor lacks the "explicit" keyword so that
+  // we can include this class in std::vector.
+  CuTpMatrix<Real>(const CuTpMatrix<Real> &orig)
       : CuPackedMatrix<Real>(orig) {}
+  
   explicit CuTpMatrix<Real>(const CuMatrixBase<Real> &orig,
                             MatrixTransposeType trans = kNoTrans);
 
@@ -68,6 +74,8 @@ class CuTpMatrix : public CuPackedMatrix<Real> {
   void Cholesky(const CuSpMatrix<Real>& Orig);
   void Invert();
 
+  CuTpMatrix<Real> &operator = (const CuTpMatrix<Real> &in);
+  
  protected:
   inline const TpMatrix<Real> &Mat() const {
     return *(reinterpret_cast<const TpMatrix<Real>* >(this));

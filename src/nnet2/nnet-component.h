@@ -560,7 +560,7 @@ class NormalizeComponent: public NonlinearComponent {
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
   virtual bool BackpropNeedsInput() const { return true; }
-  virtual bool BackpropNeedsOutput() const { return true; }
+  virtual bool BackpropNeedsOutput() const { return false; }
   using Component::Propagate; // to avoid name hiding
   virtual void Propagate(const ChunkInfo &in_info,
                          const ChunkInfo &out_info,
@@ -838,7 +838,7 @@ class FixedAffineComponent;
 
 // Affine means a linear function plus an offset.
 // Note: although this class can be instantiated, it also
-// function as a base-class for more specialized versions of
+// functions as a base-class for more specialized versions of
 // AffineComponent.
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
@@ -994,13 +994,6 @@ class AffineComponentPreconditioned: public AffineComponent {
 /// AffineComponentPreconditionedOnline is, like AffineComponentPreconditioned,
 /// a version of AffineComponent that has a non-(multiple of unit) learning-rate
 /// matrix.  See nnet-precondition-online.h for a description of the technique.
-/// This method maintains an orthogonal matrix N with a small number of rows,
-/// actually two (for input and output dims) which gets modified each time;
-/// we maintain a mutex for access to this (we just use it to copy it when
-/// we need it and write to it when we change it).  For multi-threaded use,
-/// the parallelization method is to lock a mutex whenever we want to
-/// read N or change it, but just quickly make a copy and release the mutex;
-/// this is to ensure operations on N are atomic.
 class AffineComponentPreconditionedOnline: public AffineComponent {
  public:
   virtual std::string Type() const {

@@ -17,7 +17,7 @@ TESTFILES = determinize-star-test \
       determinize-lattice-test lattice-utils-test deterministic-fst-test \
       push-special-test epsilon-property-test prune-special-test
 
-OBJFILES = push-special.o
+OBJFILES = push-special.o kaldi-fst-io.o
 
 
 LIBNAME = kaldi-fstext

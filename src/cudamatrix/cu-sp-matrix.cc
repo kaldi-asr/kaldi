@@ -223,6 +223,12 @@ bool CuSpMatrix<Real>::IsUnit(Real tol) const {
           tol * this->NumRows());
 }
 
+template <class Real>
+CuSpMatrix<Real>& CuSpMatrix<Real>::operator = (const CuSpMatrix<Real> &in) {
+  this->Resize(in.NumRows(), kUndefined);
+  this->CopyFromPacked(in);
+  return *this;
+}
 
 template class CuSpMatrix<float>;
 template class CuSpMatrix<double>;

@@ -46,7 +46,7 @@ class CompressedMatrix {
  public:
   CompressedMatrix(): data_(NULL) { }
 
-  ~CompressedMatrix() { Destroy(); }
+  ~CompressedMatrix() { Clear(); }
   
   template<typename Real>
   CompressedMatrix(const MatrixBase<Real> &mat): data_(NULL) { CopyFromMat(mat); }
@@ -74,10 +74,11 @@ class CompressedMatrix {
   template<typename Real>
   CompressedMatrix &operator = (const MatrixBase<Real> &mat); // assignment operator.
   
-  /// Copies contents to matrix.  Note: mat must have the correct size,
-  /// CopyToMat no longer attempts to resize it.
+  /// Copies contents to matrix.  Note: mat must have the correct size.
+  /// kNoTrans case uses a temporary.
   template<typename Real>
-  void CopyToMat(MatrixBase<Real> *mat) const;
+  void CopyToMat(MatrixBase<Real> *mat,
+                 MatrixTransposeType trans = kNoTrans) const;
 
   void Write(std::ostream &os, bool binary) const;
   
@@ -110,6 +111,8 @@ class CompressedMatrix {
                  MatrixBase<Real> *dest) const;
 
   void Swap(CompressedMatrix *other) { std::swap(data_, other->data_); }
+
+  void Clear();
   
   friend class Matrix<float>;
   friend class Matrix<double>;
@@ -161,14 +164,11 @@ class CompressedMatrix {
                                   float p75, float p100,
                                   unsigned char value);
   
-  void Destroy();
-  
   void *data_; // first GlobalHeader, then PerColHeader (repeated), then
   // the byte data for each column (repeated).  Note: don't intersperse
   // the byte data with the PerColHeaders, because of alignment issues.
 
 };
-
 
 /// @} end of \addtogroup matrix_group
 

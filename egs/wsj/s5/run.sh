@@ -108,7 +108,6 @@ for x in test_eval92 test_eval93 test_dev93 train_si284; do
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
 done
 
-
 utils/subset_data_dir.sh --first data/train_si284 7138 data/train_si84 || exit 1
 
 # Now make subset with the shortest 2k utterances from si-84.
