@@ -219,10 +219,8 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
     deriv_sum_.Read(is, binary);
     ExpectToken(is, binary, "<Count>");
     ReadBasicType(is, binary, &count_);
-    if (count_ != 0.0) {
-      value_sum_.Scale(1.0 / count_);
-      deriv_sum_.Scale(1.0 / count_);
-    }
+    value_sum_.Scale(count_);
+    deriv_sum_.Scale(count_);
     ExpectToken(is, binary, ostr_end.str());
   }
 }
@@ -241,7 +239,7 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
   WriteToken(os, binary, "<DerivAvg>");
-  temp.Resize(deriv_sum_.Dim());
+  temp.Resize(deriv_sum_.Dim(), kUndefined);
   temp.CopyFromVec(deriv_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
