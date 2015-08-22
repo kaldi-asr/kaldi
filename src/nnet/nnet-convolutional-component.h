@@ -267,7 +267,7 @@ class ConvolutionalComponent : public UpdatableComponent {
       }
     }
     // select the columns
-    CuArray<int32> cu_column_map<column_map_>;
+    CuArray<int32> cu_column_map(column_map_);
     vectorized_feature_patches_.CopyCols(in, cu_column_map);
 
     // compute filter activations
