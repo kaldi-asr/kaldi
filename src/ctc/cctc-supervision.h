@@ -1,4 +1,4 @@
-// lat/ctc-supervision.h
+// lat/cctc-supervision.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -34,7 +34,9 @@
 namespace kaldi {
 
 // CTC means Connectionist Temporal Classification, see the paper by Graves et
-// al.
+// al.  CCTC means context-dependent CTC, which
+//
+
 //
 // What we are implementing here is some things relating to computation of the
 // CTC objective function.  The normal information required to compute the
@@ -201,9 +203,9 @@ void AddBlanksToProtoSupervision(const CtcSupervisionOptions &options,
       - Exactly one copy of that phone symbol. 
 
       - Respectively (before and after) each real phone symbol mentioned above,
-        optional repeats of the blank symbol (symbol 0).  The time information for these
-        instances of the blank symbol will be the same as the phone symbol we
-        generated it from.
+        optional repeats of the blank symbol (symbol 0).  The time information
+        for these instances of the blank symbol will be the same as the phone
+        symbol we generated it from.
          
      This fst will have a state 0 which is both initial and final.  Let's
      suppose we have a phone-in-context a.  first an arc from state 0 to a new

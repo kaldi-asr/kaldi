@@ -1,0 +1,51 @@
+// doc/ctc.dox
+
+
+// Copyright 2015   Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+  \page ctc  Connectionist Temporal Classifiction
+
+  \section Introduction
+
+  This page describes the support for Connectionist Temporal Classifiction (CTC)
+  in Kaldi.  At the current time CTC is only supported in the nnet3 setup, but
+  the non-neural-net parts of the CTC code are designed to be independent of the
+  neural net implementation so porting it to other setups such as nnet1 and nnet2
+  should be possible.
+
+  The original CTC paper is "Connectionist temporal classification: labelling
+  unsegmented sequence data with recurrent neural networks" by Alex Graves et al.
+  The core of CTC is somewhat indepenent of of the exact network topology
+  Originally the idea of CTC was to have the network output words directly, but
+  more recent work by Google, e.g.
+  "Fast and Accurate Recurrent Neural Network Acoustic Models for Speech
+  Recognition" by Hasim Sak, Andrew Senior et al.
+
+ Todo: finish this intro.
+
+
+
+
+
+*/
+
+
+}
