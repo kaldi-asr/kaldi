@@ -19,9 +19,9 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-general-component.o nnet-parse.o natural-gradient-online.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
-  nnet-example.o nnet-nnet.o nnet-compile-utils.o nnet-nnet.o \
+  nnet-example.o nnet-nnet.o nnet-compile-utils.o \
   nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
-  nnet-compute.o nnet-example-utils.o nnet-training.o \
+  nnet-example-utils.o nnet-training.o \
   nnet-diagnostics.o nnet-combine.o nnet-am-decodable-simple.o
 
 LIBNAME = kaldi-nnet3
