@@ -54,7 +54,7 @@ namespace kaldi {
 
 /// For historical reasons, we scale waveforms to the range
 /// (2^15-1)*[-1, 1], not the usual default DSP range [-1, 1].
-const BaseFloat kWave0dBSampleValue = 32768.0;
+const BaseFloat kWaveSampleMax = 32768.0;
 
 /// This class's purpose is to read in Wave files.
 class WaveData {
