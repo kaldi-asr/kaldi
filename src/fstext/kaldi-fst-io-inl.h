@@ -89,6 +89,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
       KALDI_ERR << "Error reading FST from stream.";
     }
     *fst = *ans;  // shallow copy.
+    delete ans;
   } else {
     // Consume the \r on Windows, the \n that the text-form FST format starts
     // with, and any extra spaces that might have got in there somehow.

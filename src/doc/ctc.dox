@@ -42,6 +42,10 @@ namespace kaldi {
  Todo: finish this intro.
 
 
+  \section Context-dependent CTC
+
+ What we are actually implementing here is an extension to the original CTC
+ idea that we are calling context-dependent CTC (CCTC).  I
 
 
 

@@ -129,7 +129,6 @@ void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
 /// the total weight as "tot_weight". The total weight will be Weight::Zero()
 /// if the FST is empty.  If any of the output pointers are NULL, it does not
 /// create that output.
-
 template<class Arc, class I>
 bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *isymbols_out,

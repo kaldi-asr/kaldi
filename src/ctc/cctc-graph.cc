@@ -38,8 +38,6 @@ bool CctcDeterministicOnDemandFst::GetArc(StateId s, Label ilabel, fst::StdArc* 
                                                      phone_or_blank);
   oarc->ilabel = ilabel;
   oarc->olabel = trans_model_.GetGraphLabel(history_state, phone_or_blank);
-  KALDI_LOG << "Ilabel is " << ilabel << ", olabel is "
-            << oarc->olabel;
   if (phone_language_model_weight_ == 0.0) {
     oarc->weight = Weight::One();
   } else {
@@ -53,8 +51,8 @@ bool CctcDeterministicOnDemandFst::GetArc(StateId s, Label ilabel, fst::StdArc* 
   return true;
 }
 
-void ShiftPhonesAndAddBlanks(fst::VectorFst<fst::StdArc> *fst) {
-  typedef fst::MutableArcIterator<fst::VectorFst<fst::StdArc> > IterType;
+void ShiftPhonesAndAddBlanks(fst::StdVectorFst *fst) {
+  typedef fst::MutableArcIterator<fst::StdVectorFst > IterType;
 
   fst::StdArc self_loop_arc;
   self_loop_arc.ilabel = 1;  // blank plus one.
@@ -78,8 +76,8 @@ void ShiftPhonesAndAddBlanks(fst::VectorFst<fst::StdArc> *fst) {
 void CreateCctcDecodingFst(
     const CctcTransitionModel &trans_model,
     BaseFloat phone_language_model_weight,
-    const fst::VectorFst<fst::StdArc> &phone_and_blank_fst,
-    fst::VectorFst<fst::StdArc> *decoding_fst) {
+    const fst::StdVectorFst &phone_and_blank_fst,
+    fst::StdVectorFst *decoding_fst) {
   CctcDeterministicOnDemandFst cctc_fst(trans_model,
                                         phone_language_model_weight);
   // the next line does:

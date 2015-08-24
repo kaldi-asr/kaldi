@@ -53,7 +53,7 @@ namespace ctc {
                               (blank-plus-one) on the input and 0 (epsilon) on
                               the output.
 */
-void ShiftPhonesAndAddBlanks(fst::VectorFst<fst::StdArc> *fst);
+void ShiftPhonesAndAddBlanks(fst::StdVectorFst *fst);
 
 /**  This function creates an FST that we can use for decoding with CTC.
      Internally it composes on the left with an object of type
@@ -84,8 +84,8 @@ void ShiftPhonesAndAddBlanks(fst::VectorFst<fst::StdArc> *fst);
 */
 void CreateCctcDecodingFst(const CctcTransitionModel &trans_model,
                            BaseFloat phone_language_model_weight,
-                           const fst::VectorFst<fst::StdArc> &phone_and_blank_fst,
-                           fst::VectorFst<fst::StdArc> *decoding_fst);
+                           const fst::StdVectorFst &phone_and_blank_fst,
+                           fst::StdVectorFst *decoding_fst);
 
 
 /**

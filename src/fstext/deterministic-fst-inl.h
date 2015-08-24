@@ -369,8 +369,8 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
         next_state2 = q2;
       } else {
         bool match = fst2->GetArc(q2, arc1.olabel, &arc2);
-        // This should always find a match.
-        KALDI_ASSERT(match == true);
+        if (!match)  // There is no matching arc -> nothing to do.
+          continue;
         next_state2 = arc2.nextstate;
       }
       next_pair = StatePair(next_state1, next_state2);
@@ -460,13 +460,13 @@ void ComposeDeterministicOnDemandInverse(const Fst<Arc> &right,
         next_state_left = q_left;
       } else {
         bool match = left->GetArc(q_left, arc_right.ilabel, &arc_left);
+        if (!match)  // There is no matching arc -> nothing to do.
+          continue;
         // the next 'swap' is because we are composing with the inverse of
         // *left.  Just removing the swap statement wouldn't let us compose
         // with non-inverted *left though, because the GetArc function call
         // above interprets the second argument as an ilabel not an olabel.
         std::swap(arc_left.ilabel, arc_left.olabel);
-        // This should always find a match.
-        KALDI_ASSERT(match == true);
         next_state_left = arc_left.nextstate;
       }
       next_pair = StatePair(next_state_left, next_state_right);

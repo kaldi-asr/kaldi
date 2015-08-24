@@ -254,11 +254,11 @@ class LmExampleDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 // Compose an FST (which may be a lattice) with a DeterministicOnDemandFst and
 // store the result in fst_composed.  This is mainly used for expanding lattice
 // n-gram histories, where fst1 is a lattice and fst2 is an UnweightedNgramFst.
+// This does not call Connect.
 template<class Arc>
 void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
                                   DeterministicOnDemandFst<Arc> *fst2,
                                   MutableFst<Arc> *fst_composed);
-
 
 /**
    This function does
@@ -271,7 +271,8 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
    reason why we need to make the left-hand argument to compose the
    inverse of 'fst2' (i.e. with the input and output symbols swapped),
    is that the DeterministicOnDemandFst interface only supports lookup
-   by ilabel (see its function GetArc).  
+   by ilabel (see its function GetArc).
+   This does not call Connect.   
 */
 template<class Arc>
 void ComposeDeterministicOnDemandInverse(const Fst<Arc> &fst1,

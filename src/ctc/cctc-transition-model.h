@@ -40,134 +40,8 @@ namespace ctc {
 // al.  CCTC means context-dependent CTC, it's an extension of the original model.
 //
 
-// This is the 'experimental' version of the CTC model.. it's not exactly the same as
-// the original CTC formulation, unless you run with zero left context (and even
-// then it's not really the same due to the existence of the language model)..  This
-// class contains everything you need except the actual neural net.  The idea is
-// to make it independent of the type of the neural net.  Note: there is no
-// transition model in this framework; this class is the closest thing we have
-// to a transition model and we may later have to figure out how to do things
-// like lattice time alignment with it.
-//
-// Now, the decision tree doesn't let us predict blanks... how do we decide how
-// many different pdf-ids to give blank (i.e. as a function of the context)?
-// One way would be just to have as many blank labels as there are distinct
-// language model states... in a bigram model this will be as many as there
-// are phones so this will be fairly manageable.
-//
-// Mappings for (H,p)
-//
-//         H -> history_id.   The history_id is an integer that we define, that is sufficient to identify the language-model
-//                            state and also together with p and the acoustic
-//                            probs gives us all the required info for the
-//                            denominator of (1).  So we can tabulate the
-//                            denominator of (1) by history_id.  The mechanism of
-//                            computing the mapping consists of working out
-//                            the lm_history_state and history_weight_vector separately
-//                            for each H, and then assigning the same history_id to
-//                            sets of histories that map to the same values.
-//
-//  (history_id,p) -> model_id.  We ensure that the history_id contains
-//                            sufficient context that this map can be computed.  In fact it's
-//                            *almost* implicit in the above definition, and together with
-//                            the history_id->lm_history_state map is sufficient to define
-//                            the history_id.
-//
-//  (history_id,p) -> next history_id.  We may need to split the history_ids slightly in order
-//                            to ensure that this mapping can always be computed.  But it will
-//                            make graph compilation easier.
-//
-//
-// HERE.
-//   How to compute history_ids?  First make all language model states history_ids.
-//   Then for each history_id that is shorter than the decision tree left-context (e.g. 1 or 2),
-//   make sure that for each p, the extended sequence (p, H) is a history_id.
-//
-//   At this point we compute the maps
-//           history_id,p -> model_id.  [compute this is a vector<int32>].  hash this somehow?
-//           history_id,p -> next_history_id.  [can make this a vector too.]
-//   ... after each time we get a candidate pair to merge based on the model_id map, we can
-//       compare the next_history_id thing, because this will almost always succeed.
-//
-//   Now we 
-//
-//
-//   First assign each distinct H up to the context of the
-//        decision tree a unique history_id.  For each of these, ask: do we need to
-//        make it more specific as a language-model history state?  
-//       [IsLmHistoryStateSuffix()].  If so, figure out the
-//  
-//
-//
-//
-//   Then compute the maps:
-//        history_id,p -> model_id  [some kind of hashable object here?  could do it with
-//                                   approximate hashing function to save memory.]
-//
-//       
-//
-//
-//
-//
-//
-//      (H,p) -> model_id.    A model_id corresponds to a column of the output of
-//                            the neural net.  There is a distinct model_id for each state of the
-//                            decision tree, plus for each LM history state (i.e. each
-//                            lm_history_state) there is a model_id for (lm_history_state,blank).
-//                            [note: the decision to have a blank per LM-state was made for
-//                            convenience, we could have had as many or as few as we wanted].
-//
-// 
-// history_id -> lm_history_state.  This maps directly to the language model state
-//                               of the phone-level language model.
-// history_id -> example phonetic context.
-// (lm_history_state,p)  -> lm_prob ==  p_{lm}(p | H)..  define this as 1 if p == blank.
-//                            
-// history_id -> history_weight_vector.   A history-weight vector is what we
-//                              have to dot with the output acoustic probs to get
-//                              the denominator \sum_q p_{lm}(q | H) * p_{ac}(H,q)
-//                              We get it by starting with the zero vector vec = [0...], and then
-//                              for each phone q, compute model_id as a function of (H,q),
-//                              and do vec[model_id] += p_{lm}(q | H).  Define p_{lm}(blank | H)
-//                              as 1 for these purposes.
-//
-//      (H,p) -> pair_id.     This is an index sufficient to compute the history_id and model_id, i.e.
-//    pair_id -> history_id
-//    pair_id -> model_id
-//
-// we can tabulate the mapping from H to history_id- this will be manageable up to
-// two phones of left context.
-//
-// Prior to training or testing:  we compute the matrix of history-weight-vectors,so we 
-//                   can compute them all at once.
-//
-// During training:  - our fst has (H,p) pairs as labels, where p is sometimes blank.
-//                     We pre-compute the mapping from (H,p) to
-//                     (history_id, model_id, log(lm_prob)).  The log-like is just
-//                     a difference of logs.  The log(lm_prob) is only needed for
-//                     diagnostic purposes, it doesn't affect the training.
-//
-// During testing -   initially our fst has (H,p) pairs as labels (like
-//                    ilabel indexes).  To make it more determinizable and minimizable
-//                    we can modify it by mapping the ilabel indexes to pair_ids;
-//                    we can just discard the lm_probs at this point, or if for
-//                    interpolation purposes we want to add them with a small weight,
-//                    we can add them to the transition costs.
-//
-// let p be a phone or blank.
-// How do we go from (H, p) to a graph-label?  - Map the H to a history_id
-// using a table-based approach where we ensure that some truncation of the history
-// always has an element in the table.
-//  Map the (H, p) to a model-id using the decision tree or (for blanks) the LM
-//  history-state map.
-// Map the triple (history_id, model_id, phone) to a graph-label using a hash.
-// We need to ensure that a (history_id, phone) always maps to another
-// 
-//
-//
-//
-//
-//
+
+
 // Cctc corresponds to context-dependent connectionist temporal classification;
 // it's an extension to the original model in which we make the output
 // probabilities dependent on the previously emitted symbols.
@@ -438,9 +312,9 @@ class CctcTransitionModelCreator {
 
   // num_tree_leaves equals ctx_dep_.NumPdfs() (cached because the function is slow).
   int32 num_tree_leaves_;
-  // equals num_tree_leaves_ + lm_hist_state_map_.NumLmHistoryStates().
-  // the first num_tree_leaves_ indexes are for non-blank phones.
-  // the reset are for blanks in the respective phone-language-model contexts.
+  // equals num_tree_leaves_ + lm_hist_state_map_.NumLmHistoryStates().  the
+  // first num_tree_leaves_ indexes are for non-blank phones.  the rest are for
+  // blanks in the respective phone-language-model contexts.
   int32 num_output_indexes_;
 
   // the history state that corresponds to the start of a sentence.
@@ -450,71 +324,6 @@ class CctcTransitionModelCreator {
 };
 
 
-
-// ... regarding computing the CTC objective and its derivative from
-//  .. a block of frames.
-// ... Firstly, how do we interpret the output layer of the CTC model
-//     during training?
-//
-//   - A 'conventional mode', where there is a decision tree used for non-blank
-//     symbols that map them to a context-dependent phone index (in which we include blank).
-//     Could get this from a decision tree with a shared pdf-index.  The
-//     matrix-row will be like a kind of pdf-id.
-//     in this mode the normalizer is just the sum of all the output log-probs,
-//     and we can use the log-softmax and just look up the probs.  Here, we
-//     ignore the context of the blank symbol.
-//     
-//   - An 'experimental mode', where only left-context is supported (i.e. the
-//     misnamed 'central-phone' must be the right-most phone), and any decoding
-//     graph has to specify this left-context for all symbols including blank.
-//
-//     We should probably at least max-normalize and then do exp on the GPU
-//     card, to avoid exp's and logs happening on the CPU and slowing things
-//     down.
-//
-//     Symbols in this setup are specified as sets of phones, e.g. suppose the
-//     left-context is 2, the set could be written something like
-//     [aeiou][nr][k].  The numerator of this prob will be the sum of the probs
-//     of all symbols that match the precise phone sequence e.g. 'irk', and the
-//     denominator will be the sum of the probs of all symbols that match the
-//     left part.
-//
-//     Obviously the
-//
-//     For each left-context e.g. 'an' that has been seen, we can cache
-//   
-// 
-//     The probability of the central phone is the prob. of the symbol that
-//     matches
-//
-//     e.g. 'ab' (assuming a is the left context and b is the phone) divided by
-//     the sum of probs 'a*' for all phones plus blank.
-// 
-//  We don't want the model to spend energy learning the LM-probs.  So train
-//  with LM-probs as part of the baseline model, assuming a certain number of
-//  phones to the left are known, and let it focus on the residual prediction
-//  problem.
-//
-//  We want the residual probability of, given the LM-probs and given what LM
-//  state we're in, what is the factor we need to multiply each phone's prob by?
-//  View this as MMI on a model with a phone-ngram LM.
-//
-//  - Next- compute a left-context decision tree (probably biphone) that
-//    determines a mapping from (history,phone) = (H,p) to a phone-id.
-//
-//  - Compute a suitable phone-ngram LM; express it as a table [?]
-//
-//  - Given a particular left-context phonetic history H, we'll be modeling the probability of the
-//    next phone [or blank] p as:
-//
-//     p(p | H) = { p_{lm}(p | H) * p_{ac}(H,p)) } / { \sum_q p_{lm}(q | H) * p_{ac}(H,p) }    (1)
-//
-//    Each H,p maps to a pdf-id.
-//
-//    The denominator sum... how do we do this?  Assume we can enumerate all histories.
-//    Compute it as a vector for each history, and then work out the unique vectors.
-//    Each one will become a history-state
-//
 //    During decoding we'll already have the phone probabilities being modeled
 //    by a more accurate language model based on words, so we'll divide out the
 //    above by the phone-level LM-prob to give:
