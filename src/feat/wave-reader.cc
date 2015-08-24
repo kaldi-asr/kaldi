@@ -20,6 +20,7 @@
 // limitations under the License.
 
 #include <cstdio>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -157,10 +158,10 @@ void WaveData::Read(std::istream &is) {
     fmt_chunk_read = 40;
 
     // Support only KSDATAFORMAT_SUBTYPE_PCM for now. Interesting formats:
-    //("00000001-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_PCM)
-    //("00000003-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
-    //("00000006-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_ALAW)
-    //("00000007-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_MULAW)
+    // ("00000001-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_PCM)
+    // ("00000003-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)
+    // ("00000006-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_ALAW)
+    // ("00000007-0000-0010-8000-00aa00389b71", KSDATAFORMAT_SUBTYPE_MULAW)
     if (guid1 != 0x00000001 || guid2 != 0x00100000 ||
         guid3 != 0xAA000080 || guid4 != 0x719B3800) {
       KALDI_ERR << "WaveData: unknown/unsupported WAVE_FORMAT_EXTENSIBLE format.";
@@ -221,8 +222,8 @@ void WaveData::Read(std::istream &is) {
   riff_chunk_read += 4;
 
   if (std::abs(static_cast<int64>(riff_chunk_read) +
-	       static_cast<int64>(data_chunk_size) -
-	       static_cast<int64>(riff_chunk_size)) > 1) {
+               static_cast<int64>(data_chunk_size) -
+               static_cast<int64>(riff_chunk_size)) > 1) {
     // we allow the size to be off by one, because there is a weirdness in the
     // format of RIFF files that means that the input may sometimes be padded
     // with 1 unused byte to make the total size even.
@@ -340,12 +341,18 @@ void WaveData::Write(std::ostream &os) const {
   const BaseFloat *data_ptr = data_.Data();
   int32 stride = data_.Stride();
 
+  int num_clipped = 0;
   for (int32 i = 0; i < num_samp; i++) {
     for (int32 j = 0; j < num_chan; j++) {
-      int32 elem = static_cast<int32>(data_ptr[j*stride + i]);
-      int16 elem_16(elem);
-      if (static_cast<int32>(elem_16) != elem)
-        KALDI_ERR << "Wave file is out of range for 16-bit.";
+      int32 elem = static_cast<int32>(trunc(data_ptr[j * stride + i]));
+      int16 elem_16 = static_cast<int16>(elem);
+      if (elem < std::numeric_limits<int16>::min()) {
+        elem_16 = std::numeric_limits<int16>::min();
+        ++num_clipped;
+      } else if (elem > std::numeric_limits<int16>::max()) {
+        elem_16 = std::numeric_limits<int16>::max();
+        ++num_clipped;
+      }
 #ifdef __BIG_ENDIAN__
       KALDI_SWAP2(elem_16);
 #endif
@@ -354,6 +361,10 @@ void WaveData::Write(std::ostream &os) const {
   }
   if (os.fail())
     KALDI_ERR << "Error writing wave data to stream.";
+  if (num_clipped > 0)
+    KALDI_WARN << "WARNING: clipped " << num_clipped
+               << " samples out of total " << num_chan * num_samp
+               << ". Reduce volume.";
 }
 
 
