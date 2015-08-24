@@ -364,7 +364,7 @@ void WaveData::Write(std::ostream &os) const {
   if (num_clipped > 0)
     KALDI_WARN << "WARNING: clipped " << num_clipped
                << " samples out of total " << num_chan * num_samp
-               << ". Reduce volume.";
+               << ". Reduce volume?";
 }
 
 
