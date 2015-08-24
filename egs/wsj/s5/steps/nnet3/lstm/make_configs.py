@@ -110,17 +110,17 @@ def AddLstmLayer(config_lines,
     components.append("# Input gate control : W_i* matrices")
     components.append("component name={0}_W_i-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(name, input_dim + recurrent_projection_dim, cell_dim))
     components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_ic type=PerElementScaleComponent  dim={1}".format(name, cell_dim))
+    components.append("component name={0}_w_ic type=NaturalGradientPerElementScaleComponent  dim={1}".format(name, cell_dim))
 
     components.append("# Forget gate control : W_f* matrices")
     components.append("component name={0}_W_f-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(name, input_dim + recurrent_projection_dim, cell_dim))
     components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_fc type=PerElementScaleComponent  dim={1}".format(name, cell_dim))
+    components.append("component name={0}_w_fc type=NaturalGradientPerElementScaleComponent  dim={1}".format(name, cell_dim))
 
     components.append("#  Output gate control : W_o* matrices")
     components.append("component name={0}_W_o-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(name, input_dim + recurrent_projection_dim, cell_dim))
     components.append("# note : the cell outputs pass through a diagonal matrix")
-    components.append("component name={0}_w_oc type=PerElementScaleComponent  dim={1}".format(name, cell_dim))
+    components.append("component name={0}_w_oc type=NaturalGradientPerElementScaleComponent  dim={1}".format(name, cell_dim))
 
     components.append("# Cell input matrices : W_c* matrices")
     components.append("component name={0}_W_c-xr type=NaturalGradientAffineComponent input-dim={1} output-dim={2}".format(name, input_dim + recurrent_projection_dim, cell_dim))
@@ -155,19 +155,19 @@ def AddLstmLayer(config_lines,
 
     component_nodes.append("# f_t")
     component_nodes.append("component-node name={0}_f1 component={0}_W_f-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_f2 component={0}_W_fc  input={1}".format(name, c_tminus1_descriptor))
+    component_nodes.append("component-node name={0}_f2 component={0}_w_fc  input={1}".format(name, c_tminus1_descriptor))
     component_nodes.append("component-node name={0}_f_t component={0}_f input=Sum({0}_f1,{0}_f2)".format(name))
 
     component_nodes.append("# o_t")
     component_nodes.append("component-node name={0}_o1 component={0}_W_o-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
-    component_nodes.append("component-node name={0}_o2 component={0}_W_oc input=Sum({0}_c1_t, {0}_c2_t)".format(name))
+    component_nodes.append("component-node name={0}_o2 component={0}_w_oc input=Sum({0}_c1_t, {0}_c2_t)".format(name))
     component_nodes.append("component-node name={0}_o_t component={0}_o input=Sum({0}_o1, {0}_o2)".format(name))
 
     component_nodes.append("# h_t")
     component_nodes.append("component-node name={0}_h_t component={0}_h input=Sum({0}_c1_t, {0}_c2_t)".format(name))
 
     component_nodes.append("# g_t")
-    component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, IfDefined(Offset({2}, -1)))".format(name, input_descriptor, recurrent_connection))
+    component_nodes.append("component-node name={0}_g1 component={0}_W_c-xr input=Append({1}, IfDefined(Offset({0}_{2}, -1)))".format(name, input_descriptor, recurrent_connection))
     component_nodes.append("component-node name={0}_g_t component={0}_g input={0}_g1".format(name))
 
     component_nodes.append("# parts of c_t")

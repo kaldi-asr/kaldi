@@ -15,6 +15,7 @@ use_sat_alignments=true
 affix=
 speed_perturb=true
 splice_indexes="-2,-1,0,1,2 0"
+common_egs_dir=
 
 . cmd.sh
 . ./path.sh
@@ -28,7 +29,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-dir=exp/$mic/nnet2_online/nnet_lstm${speed_perturb:+_sp}${affix:+_$affix}
+dir=exp/$mic/nnet3/lstm${speed_perturb:+_sp}${affix:+_$affix}
 if [ "$use_sat_alignments" == "true" ] ; then
   gmm_dir=exp/$mic/tri4a
 else
@@ -66,13 +67,14 @@ if [ $stage -le 7 ]; then
     --io-opts "-tc 12" \
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
-    --num-lstm-layers 3 \
+    --num-lstm-layers 1 \
     --cell-dim 1024 \
     --hidden-dim 1024 \
     --recurrent-projection-dim 256 \
     --non-recurrent-projection-dim 256 \
     --bptt-truncation-width 20 \
     --context-sensitive-chunk-width 20 \
+    --egs-dir "$common_egs_dir" \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
 exit;

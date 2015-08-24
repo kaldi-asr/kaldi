@@ -168,9 +168,10 @@ fi
 if [ $stage -le 14 ]; then
   local/nnet3/run_lstm.sh \
     --mic $mic \
-    --train-stage -6 \
+    --train-stage -5 \
     --speed-perturb true \
     --stage 7 \
+    --common-egs-dir exp/sdm1/nnet3/lstm_sp/egs \
     --use-sat-alignments false
 fi
 

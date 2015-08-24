@@ -15,9 +15,6 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-pnorm_input_dim=3000 
-pnorm_output_dim=300
-relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -57,7 +54,7 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4 0 0 0 0 0"
 # so hidden layer indexing is different from component count
 # LSTM parameters
 num_lstm_layers=3
-lstm_cell_dim=1024  # dimension of the LSTM cell
+cell_dim=1024  # dimension of the LSTM cell
 hidden_dim=1024  # the dimension of the fully connected hidden layer outputs
 recurrent_projection_dim=256  
 non_recurrent_projection_dim=256
@@ -204,19 +201,12 @@ fi
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
-  else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
-  fi
-  
   # create the config files for nnet initialization
   python steps/nnet3/lstm/make_configs.py  \
     --splice-indexes "$splice_indexes" \
-    --num-lstm-layers 3 \
+    --num-lstm-layers $num_lstm_layers \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim \
-      $dim_opts \
     --cell-dim $cell_dim \
     --hidden-dim $hidden_dim \
     --recurrent-projection-dim $recurrent_projection_dim \
@@ -225,7 +215,6 @@ if [ $stage -le -5 ]; then
     --context-sensitive-chunk-width $context_sensitive_chunk_width \
     --num-targets $num_leaves \
    $dir/configs || exit 1;
-
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
   # we do this as it's a convenient way to get the stats for the 'lda-like'
