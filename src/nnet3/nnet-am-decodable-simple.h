@@ -20,46 +20,28 @@
 #ifndef KALDI_NNET3_NNET_AM_DECODABLE_SIMPLE_H_
 #define KALDI_NNET3_NNET_AM_DECODABLE_SIMPLE_H_
 
-#include <vector>
 #include "base/kaldi-common.h"
 #include "gmm/am-diag-gmm.h"
 #include "hmm/transition-model.h"
 #include "itf/decodable-itf.h"
-#include "nnet3/nnet-optimize.h"
-#include "nnet3/nnet-compute.h"
-#include "nnet3/am-nnet-simple.h"
+#include "nnet3/nnet-simple-computer.h"
 
 namespace kaldi {
 namespace nnet3 {
 
 
-struct DecodableAmNnetSimpleOptions {
-  int32 frames_per_chunk;
+struct DecodableAmNnetSimpleOptions : public NnetSimpleComputerOptions {
   BaseFloat acoustic_scale;
-  bool debug_computation;
-  NnetOptimizeOptions optimize_config;
-  NnetComputeOptions compute_config;
+  NnetSimpleComputerOptions simple_computer_opts;
 
   DecodableAmNnetSimpleOptions():
-      frames_per_chunk(50),
       acoustic_scale(0.1) { }
 
   void Register(OptionsItf *opts) {
-    opts->Register("frames-per-chunk", &frames_per_chunk,
-                   "Number of frames in each chunk that is separately evaluated "
-                   "by the neural net.");
-    opts->Register("acoustic-scale", &acoustic_scale,
-                   "Scaling factor for acoustic log-likelihoods");
-    opts->Register("debug-computation", &debug_computation, "If true, turn on "
-                   "debug for the actual computation (very verbose!)");
-
-    // register the optimization options with the prefix "optimization".
-    ParseOptions optimization_opts("optimization", opts);
-    optimize_config.Register(&optimization_opts);
-
-    // register the compute options with the prefix "computation".
-    ParseOptions compute_opts("computation", opts);
-    compute_config.Register(&compute_opts);
+   opts->Register("acoustic-scale", &acoustic_scale,
+     "Scaling factor for acoustic log-likelihoods");
+   
+   simple_computer_opts.Register(opts);
   }
 };
 
@@ -67,7 +49,7 @@ struct DecodableAmNnetSimpleOptions {
    acoustic model of type AmNnetSimple.  It can accept just input features, or
    input features plus iVectors.
 */
-class DecodableAmNnetSimple: public DecodableInterface {
+class DecodableAmNnetSimple: public DecodableInterface, public NnetSimpleComputer {
  public:
   /// Constructor that just takes the features as input, but can also optionally
   /// take batch-mode or online iVectors.  Note: it stores references to all
@@ -98,7 +80,6 @@ class DecodableAmNnetSimple: public DecodableInterface {
                         const MatrixBase<BaseFloat> &feats,
                         const VectorBase<BaseFloat> &ivector);
 
-  
   // Note, frames are numbered from zero.  But transition_id is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
@@ -113,62 +94,21 @@ class DecodableAmNnetSimple: public DecodableInterface {
     return (frame == NumFramesReady() - 1);
   }
 
+ private: 
 
-  
- private:
-  // This call is made to ensure that we have the log-probs for this frame
-  // cached in current_log_post_.
-  void EnsureFrameIsComputed(int32 frame);
-
-  // This function does the actual nnet computation; it is called from
-  // EnsureFrameIsComputed.  Any padding at file start/end is done by
-  // the caller of this function (so the input should exceed the output
-  // by a suitable amount of context).  It puts its output in current_log_post_.
   void DoNnetComputation(int32 input_t_start,
-                         const MatrixBase<BaseFloat> &input_feats,
-                         const VectorBase<BaseFloat> &ivector,
-                         int32 output_t_start,
-                         int32 num_output_frames);
-
-  // Gets the iVector that will be used for this chunk of frames, if
-  // we are using iVectors (else does nothing).
-  void GetCurrentIvector(int32 output_t_start, int32 num_output_frames,
-                         Vector<BaseFloat> *ivector);
-
-  void PossiblyWarnForFramesPerChunk() const;
-
-  // returns dimension of the provided iVectors if supplied, or 0 otherwise.
-  int32 GetIvectorDim() const;
+    const MatrixBase<BaseFloat> &input_feats,
+    const VectorBase<BaseFloat> &ivector,
+    int32 output_t_start,
+    int32 num_output_frames);
 
   const DecodableAmNnetSimpleOptions &opts_;
   const TransitionModel &trans_model_;
   const AmNnetSimple &am_nnet_;
   CuVector<BaseFloat> priors_;
-  const MatrixBase<BaseFloat> &feats_;
-
-  // ivector_ is the iVector if we're using iVectors that are estimated in batch
-  // mode.
-  const VectorBase<BaseFloat> *ivector_;
-
-  // online_ivector_feats_ is the iVectors if we're using online-estimated ones.
-  const MatrixBase<BaseFloat> *online_ivector_feats_;
-  // online_ivector_period_ helps us interpret online_ivector_feats_; it's the
-  // number of frames the rows of ivector_feats are separated by.
-  int32 online_ivector_period_;
-  
-  CachingOptimizingCompiler compiler_;
-
-
-  // The current log-posteriors that we got from the last time we
-  // ran the computation.
-  Matrix<BaseFloat> current_log_post_;
-  // The time-offset of the current log-posteriors. 
-  int32 current_log_post_offset_;
-  
-
 };
 
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_NNET2_DECODABLE_AM_NNET_H_
+#endif  // KALDI_NNET3_NNET_AM_DECODABLE_SIMPLE_H_
