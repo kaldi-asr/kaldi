@@ -1,4 +1,4 @@
-// lat/cctc-transition-model.h
+// ctc/cctc-transition-model.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -30,7 +30,7 @@
 #include "fstext/fstext-lib.h"
 #include "tree/context-dep.h"
 #include "lat/kaldi-lattice.h"
-#include "cudamatrix/cu-matrix.h"
+#include "matrix/kaldi-matrix.h"
 #include "ctc/language-model.h"
 
 namespace kaldi {
@@ -76,7 +76,7 @@ class CctcTransitionModel {
   // probabilities: row index is history-state index from 0 to
   // NumHistoryStates() - 1, column index is neural-net output index, from 0 to
   // NumOutputIndexes() - 1.
-  const CuMatrix<BaseFloat> &GetWeights() const { return weights_; }
+  const Matrix<BaseFloat> &GetWeights() const { return weights_; }
   
   // A graph-label is a similar concept to a transition-id in HMM-based models;
   // it's a one-based index that appears on the input side of a decoding graph
@@ -195,7 +195,7 @@ class CctcTransitionModel {
   // and its column dimension is the output dimension of the neural net.
   // A row of this will be dotted with the output of the neural net to
   // get the denominator of the probability value.
-  CuMatrix<BaseFloat> weights_;
+  Matrix<BaseFloat> weights_;
   
   friend class CctcTransitionModelCreator;
 };

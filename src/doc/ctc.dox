@@ -39,7 +39,15 @@ namespace kaldi {
   "Fast and Accurate Recurrent Neural Network Acoustic Models for Speech
   Recognition" by Hasim Sak, Andrew Senior et al.
 
- Todo: finish this intro.
+ What we are implementing is something we are calling Context-dependent CTC (CCTC),
+  which is an extension of the original CTC model whereby the next symbol is dependent not only on the acoustic history, but
+ also on the phonetic history.  And we train against a phone-level language model
+ in order to force the model to address only the acoustic side of things.
+ We also don't allow repeats of non-blank symbols.   The phonetic history is not
+ given as an input to the neural net; it all has to do with what sets of symbols
+ we normalize the probabilities over, which is phone-history dependent.
+ We'll have to create a more extensive introduction.
+
 
 
   \section Context-dependent CTC
