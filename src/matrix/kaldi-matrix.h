@@ -288,7 +288,7 @@ class MatrixBase {
   /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const MatrixBase<Real> &src,
-               const std::vector<MatrixIndexT> &indices);
+               const MatrixIndexT *indices);
 
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r]. If any src[r] is NULL then this.Row(r) will be set to zero.

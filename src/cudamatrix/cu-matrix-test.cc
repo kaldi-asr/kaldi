@@ -681,12 +681,8 @@ static void UnitTestCuMatrixAddCols() {
     for (int32 i = 0; i < num_cols2; i++)
       reorder[i] = -1 + (Rand() % (num_cols1 + 1));
 
-    if (Rand() % 2 == 0) {
-      N.AddCols(M, reorder);
-    } else {
-      CuArray<int32> cuda_reorder(reorder);
-      N.AddCols(M, cuda_reorder);
-    }
+    CuArray<int32> reorder_gpu(reorder);
+    N.AddCols(M, reorder_gpu);
     
     for (int32 i = 0; i < num_rows; i++)
       for (int32 j = 0; j < num_cols2; j++)

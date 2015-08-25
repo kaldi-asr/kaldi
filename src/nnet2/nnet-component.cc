@@ -4024,7 +4024,8 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
   std::vector<std::vector<int32> > rearranged_column_map;
   RearrangeIndexes(reversed_column_map, &rearranged_column_map);
   for (int32 p = 0; p < rearranged_column_map.size(); p++) {
-    in_deriv->AddCols(patches_deriv, rearranged_column_map[p]);
+    CuArray<int32> cu_cols(rearranged_column_map[p]);
+    in_deriv->AddCols(patches_deriv, cu_cols);
   }
 
   if (to_update != NULL) {
