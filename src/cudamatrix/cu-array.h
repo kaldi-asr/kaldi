@@ -87,6 +87,7 @@ class CuArray {
   /// is done via memcpy.  So be very careful calling this function if your
   /// objects are more than plain structs.
   void CopyToVec(std::vector<T> *dst) const;
+  void CopyToVec(T *dst) const;
 
   /// Sets the memory for the object to zero, via memset.  You should verify
   /// that this makes sense for type T.

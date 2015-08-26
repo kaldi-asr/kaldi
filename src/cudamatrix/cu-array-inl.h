@@ -130,6 +130,25 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
 
 
 template<typename T>
+void CuArray<T>::CopyToVec(T *dst) const {
+  if (dst == NULL) {
+    dst = (T *)malloc(dim_);
+  }
+  if (dim_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) { 
+    Timer tim;
+    CU_SAFE_CALL(cudaMemcpy(dst, Data(), dim_*sizeof(T), cudaMemcpyDeviceToHost));
+    CuDevice::Instantiate().AccuProfile("CuArray::CopyToVecD2H", tim.Elapsed());
+  } else
+#endif
+  {
+    memcpy(dst, data_, dim_*sizeof(T));
+  }
+}
+
+ 
+template<typename T>
 void CuArray<T>::SetZero() {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
