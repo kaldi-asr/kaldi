@@ -30,6 +30,7 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
                   # note: the script may reduce this if reduce_frames_per_eg is true.
 left_context=4    # amount of left-context per eg
 right_context=4   # amount of right-context per eg
+delta_order=      # delta feature order
 
 reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
                            # if there is only one archive and even with the
@@ -138,6 +139,12 @@ case $feat_type in
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
+    if [ ! -z "$delta_order" ]; then
+      feats="$feats add-deltas --delta-order=$delta_order ark:- ark:- |"
+      valid_feats="$valid_feats add-deltas --delta-order=$delta_order ark:- ark:- |"
+      train_subset_feats="$train_subset_feats add-deltas --delta-order=$delta_order ark:- ark:- |"
+      echo $delta_order >$dir/delta_order
+    fi
    ;;
   lda) 
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
