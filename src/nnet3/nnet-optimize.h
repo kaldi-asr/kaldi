@@ -44,7 +44,20 @@ struct NnetOptimizeOptions {
                          initialize_undefined(true),
                          move_sizing_commands(true) { }
   
-  void Register(OptionsItf *po) {
+  void Register(OptionsItf *opts) {
+    opts->Register("optimize", &optimize, "Set this to false to turn off all "
+                 "optimizations");
+    opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
+                   "disable optimization that allows in-place propagation");
+    opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
+                   "disable optimization that allows in-place backprop");
+    opts->Register("remove-assignments", &remove_assignments, "Set to false to "
+                   "disable optimization that removes redundant assignments");
+    opts->Register("initialize-undefined", &initialize_undefined, "Set to false "
+                   "to disable optimization that avoids redundant zeroing");
+    opts->Register("move-sizing-commands", &move_sizing_commands, "Set to false "
+                   "to disable optimization that moves matrix allocation and "
+                   "deallocation commands to conserve memory.");
   }
 };
 

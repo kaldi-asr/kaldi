@@ -51,8 +51,6 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
-    opts->Register("debug-computation", &debug_computation, "If true, turn on "
-                   "debug for the actual computation (very verbose!)");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
