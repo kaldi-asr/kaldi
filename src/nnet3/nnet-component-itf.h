@@ -304,6 +304,19 @@ class Component {
   ///     although most components will have much more info.
   virtual std::string Info() const;
 
+  /// This virtual function when called by
+  //    -- an UpdatableComponent scales the parameters
+  ///      by "scale" when called by an UpdatableComponent.
+  //    -- a NonLinear component it relates to scaling activation stats, not parameters.
+  virtual void Scale(BaseFloat scale) = 0;
+
+  /// This virtual function when called by
+  //    -- an UpdatableComponent adds the parameters of
+  ///      another updatable component, times some constant, to the current
+  ///      parameters.
+  //    -- a NonlinearComponent it relates to adding stats  
+  virtual void Add(BaseFloat alpha, const Component &other) = 0;
+
   Component() { }
 
   virtual ~Component() { }
@@ -345,16 +358,6 @@ class UpdatableComponent: public Component {
   /// This function is to be used in testing.  It adds unit noise times "stddev"
   /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
-
-  /// This virtual function (not in base-class Component) scales the parameters
-  /// by "scale".
-  virtual void Scale(BaseFloat scale) = 0;
-
-  /// This virtual function (not in base-class Component) adds the parameters of
-  /// another updatable component, times some constant, to the current
-  /// parameters.
-  virtual void Add(BaseFloat alpha, const UpdatableComponent &other) = 0;
-
   /// Sets the learning rate of gradient descent
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
 
@@ -413,11 +416,8 @@ class NonlinearComponent: public Component {
   /// Write component to stream.
   virtual void Write(std::ostream &os, bool binary) const;
 
-  // relates to scaling activation stats, not parameters.
-  void Scale(BaseFloat scale);
-
-  // relates to adding stats
-  void Add(BaseFloat alpha, const NonlinearComponent &other);
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
 
   // The following functions are unique to NonlinearComponent.
   // They mostly relate to diagnostics.

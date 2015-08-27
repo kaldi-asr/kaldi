@@ -344,22 +344,27 @@ MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
 }
 
 template<typename Real>
-void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
+MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
+  MatrixIndexT num_ceiled = 0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return;
+    if (dim_ == 0) return 0;
     Timer tim;
-    dim3 dimBlock(CU1DBLOCK, 1);
-    dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK), 1);
-    MatrixDim pseudo_matrix_dim = { 1, Dim(), Dim() }; // vector is a matix with 1 row,
-    cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, pseudo_matrix_dim);
+    int dimBlock(CU1DBLOCK);
+    int dimGrid(n_blocks(dim_,CU1DBLOCK));
+
+    CuVector<float> count_vec(dim_, kUndefined);
+    
+    cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
     CU_SAFE_CALL(cudaGetLastError());    
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim.Elapsed());
+    num_ceiled = count_vec.Sum();
+    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim.Elapsed());
   } else
 #endif
   {
-    Vec().ApplyCeiling(ceiling_val);
+    num_ceiled = Vec().ApplyCeiling(ceiling_val);
   }
+  return num_ceiled;
 }
 
 template<typename Real>

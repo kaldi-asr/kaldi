@@ -8,6 +8,9 @@
 #           2014-2015  Vijayaditya Peddinti
 # Apache 2.0.
 
+# Terminology:
+# sample - one input-output tuple, which is an input sequence and output sequence for LSTM
+# frame  - one output label and the input context used to compute it
 
 # Begin configuration section.
 cmd=run.pl
@@ -16,11 +19,12 @@ num_epochs=15      # Number of epochs of training;
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 rand_prune=4.0 # Relates to a speedup we do for LDA.
-minibatch_size=512  # This default is suitable for GPU-based training.
-                    # Set it to 128 for multi-threaded CPU-based training.
+num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
-samples_per_iter=400000 # each iteration of training, see this many samples
-                        # per job.  This option is passed to get_egs.sh
+samples_per_iter=40000 # each iteration of training, see this many samples
+                       # per job.  This option is passed to get_egs.sh
+                       # this is substantially smaller than of that used for FF-DNN
+                       # as multiple output labels are processed in each sample
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors. 
@@ -48,25 +52,33 @@ stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4 0 0 0 0 0"
+splice_indexes="-4,-3,-2,-1,0,1,2,3,4 "
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
+# Natural gradient options
+ng_per_element_scale_options=""
+ng_affine_options=""
+
 # LSTM parameters
-num_lstm_layers=3
+num_lstm_layers=1
 cell_dim=1024  # dimension of the LSTM cell
 hidden_dim=1024  # the dimension of the fully connected hidden layer outputs
 recurrent_projection_dim=256  
 non_recurrent_projection_dim=256
-bptt_truncation_width=20  # number of BPTT steps 
-context_sensitive_chunk_width=20 # number of steps used in the estimation of the first LSTM state 
-                                 # see Chen 2015, "Training Deep Bidirectional LSTM Acoustic Model for LVCSR by a Context-Sensitive-Chunk BPTT Approach"
+norm_based_clipping=false
+clipping_threshold=1
+chunk_width=20 # number of output labels in the sequence used to train an LSTM
+chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label 
+                      ## see Chen 2015, "Training Deep Bidirectional LSTM Acoustic Model for LVCSR by a Context-Sensitive-Chunk BPTT Approach"
 
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
 affine_opts=
 
+# nnet3-train options
+update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processedi
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
@@ -86,7 +98,7 @@ realign_times=          # List of times on which we realign.  Each time is
                         # number.
 num_jobs_align=30       # Number of jobs for realignment
 # End configuration section.
-frames_per_eg=8 # to be passed on to get_egs.sh
+
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -119,23 +131,22 @@ if [ $# != 4 ]; then
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
   echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
-  echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
-  echo "                                                   # should not get too large, e.g. >2k)."
-  echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
+  echo "  --num-seq-per-minibatch <minibatch-size|25>      # Number of sequences to be processed in parallel in a minibatch"
+  echo "  --samples-per-iter <#samples|4000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
   echo "  --splice-indexes <string|\"-4,-3,-2,-1,0,1,2,3,4 0 0\"> "
   echo "                                                   # Frame indices used for each splice layer."
   echo "                                                   # Format : <frame_indices> .... <frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
+
   echo " ################### LSTM options ###################### "
   echo "  --num-lstm-layers <int|3>                        # number of LSTM layers"
   echo "  --lstm-cell-dim   <int|1024>                     # dimension of the LSTM cell"
   echo "  --hidden-dim      <int|1024>                     # the dimension of the fully connected hidden layer outputs"
   echo "  --recurrent-projection-dim  <int|256>            # the output dimension of the recurrent-projection-matrix"
   echo "  --non-recurrent-projection-dim  <int|256>        # the output dimension of the non-recurrent-projection-matrix"
-  echo "  --bptt-truncation-width <int|20>                 # number of BPTT steps" 
-  echo "  --context-sensitive-chunk-width <int|20>         # number of steps used in the estimation of the first LSTM state" 
+  echo "  --chunk-left-context <int|20>                    # number of time-steps used in the estimation of the first LSTM state" 
   echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
   echo "                                                   # realignment is to be done"
   echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
@@ -147,7 +158,7 @@ if [ $# != 4 ]; then
   
   exit 1;
 fi
-
+#set -x
 data=$1
 lang=$2
 alidir=$3
@@ -202,8 +213,11 @@ if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
   # create the config files for nnet initialization
-  python steps/nnet3/lstm/make_configs.py  \
-    --splice-indexes "$splice_indexes" \
+  # note an additional space is added to splice_indexes to 
+  # avoid issues with the python ArgParser which can have
+  # issues with negative arguments (due to minus sign)
+  steps/nnet3/lstm/make_configs.py  \
+    --splice-indexes "$splice_indexes " \
     --num-lstm-layers $num_lstm_layers \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim \
@@ -211,8 +225,11 @@ if [ $stage -le -5 ]; then
     --hidden-dim $hidden_dim \
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
-    --bptt-truncation-width $bptt_truncation_width \
-    --context-sensitive-chunk-width $context_sensitive_chunk_width \
+    --chunk-left-context $chunk_left_context \
+    --norm-based-clipping $norm_based_clipping \
+    --clipping-threshold $clipping_threshold \
+    --ng-per-element-scale-options "$ng_per_element_scale_options" \
+    --ng-affine-options "$ng_affine_options" \
     --num-targets $num_leaves \
    $dir/configs || exit 1;
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
@@ -222,7 +239,6 @@ if [ $stage -le -5 ]; then
   $cmd $dir/log/nnet_init.log \
     nnet3-init --srand=-2 $dir/configs/init.config $dir/init.raw || exit 1;
 fi
-
 # sourcing the "vars" below sets
 # left_context=(something)
 # right_context=(something)
@@ -237,6 +253,7 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
 
+frames_per_eg=$chunk_width
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
@@ -245,25 +262,28 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
+  
+  # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
   steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
-      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
+      --stage $get_egs_stage \
+      --samples-per-iter $samples_per_iter \
       --frames-per-eg $frames_per_eg \
       $data $alidir $dir/egs || exit 1;
 fi
 
-if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $dir/egs/info/feat_dim)";
-  exit 1;
-fi
-if [ "$ivector_dim" != "$(cat $dir/egs/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $dir/egs/info/ivector_dim)";
-  exit 1;
-fi
-
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
+  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  exit 1;
+fi
+if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
+  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
 
 # copy any of the following that exist, to $dir.
 cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
@@ -279,9 +299,10 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 
-# num_archives_expanded considers each separate label-position from
-# 0..frames_per_eg-1 to be a separate archive.
-num_archives_expanded=$[$num_archives*$frames_per_eg]
+# in FF-DNN architectures 
+# num_archives_expanded=$[$num_archives*$frames_per_eg]
+# in RNN architectures all the frames in a sample are processed together
+num_archives_expanded=$[$num_archives]
 
 [ $num_jobs_initial -gt $num_jobs_final ] && \
   echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
@@ -511,14 +532,14 @@ while [ $x -lt $num_iters ]; do
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
-      this_minibatch_size=$minibatch_size
+      this_num_chunk_per_minibatch=$num_chunk_per_minibatch
     else
       # on iteration zero or when we just added a layer, use a smaller minibatch
       # size (and we will later choose the output of just one of the jobs): the
       # model-averaging isn't always helpful when the model is changing too fast
       # (i.e. it can worsen the objective function), and the smaller minibatch
       # size will help to keep the update stable.
-      this_minibatch_size=$[$minibatch_size/2];
+      this_num_chunk_per_minibatch=$[$num_chunk_per_minibatch/2];
     fi
 
     rm $dir/.error 2>/dev/null
@@ -528,21 +549,19 @@ while [ $x -lt $num_iters ]; do
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
       
-      # We can't easily use a single parallel SGE job to do the main training,
+      # We cannot easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
+      # this is no longer true for RNNs as we use do not use the --frame option
+      # but we use the same script for consistency with FF-DNN code
+
       for n in $(seq $this_num_jobs); do
-        k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
+        k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we will derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        frame=$[(($k/$num_archives)%$frames_per_eg)]; # work out the 0-based frame
-        # index; this increases more slowly than the archive index because the
-        # same archive with different frame indexes will give similar gradients,
-        # so we want to separate them in time.
-
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix $parallel_train_opts "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          nnet3-train$parallel_suffix --print-interval=1 --update-per-minibatch=$update_per_minibatch $parallel_train_opts "$raw" \
+          "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -603,11 +622,11 @@ if [ $stage -le $num_iters ]; then
   # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
   # as if there are many models it can give out-of-memory error; and we set
   # num-threads to 8 to speed it up (this isn't ideal...)
-
+  combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($frames_per_eg))")
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size=$combine_num_chunk_per_minibatch ark:$cur_egs_dir/combine.egs ark:-|" \
     "|nnet3-am-copy --set-raw-nnet=- $dir/$num_iters.mdl $dir/combined.mdl" || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -628,7 +647,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs ark:- ark:- \| \
+    nnet3-merge-egs  ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
       "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

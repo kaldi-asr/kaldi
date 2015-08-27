@@ -507,6 +507,27 @@ template<typename Real> void CuVectorUnitTestApplyFloor() {
   }
 }
 
+template<typename Real> void CuVectorUnitTestApplyCeiling() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + Rand() % 700;
+    CuVector<Real> cu_vector(dim);
+    cu_vector.SetRandn();
+
+    Vector<Real> vector(cu_vector);
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
+    int32 i = cu_vector.ApplyCeiling(floor);
+    int32 j = vector.ApplyCeiling(floor);
+  
+    CuVector<Real> cu2(vector);
+
+    AssertEqual(cu2, cu_vector);
+    if (i != j) {
+      KALDI_WARN << "ApplyCeiling return code broken...";
+    }
+    KALDI_ASSERT(i==j);
+  }
+}
+
 template<typename Real> void CuVectorUnitTestApplyPow() {
   for (int32 l = 0; l < 10; l++) {
     int32 dim = 100 + Rand() % 700;
@@ -692,6 +713,7 @@ template<typename Real> void CuVectorUnitTest() {
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();
+  CuVectorUnitTestApplyCeiling<Real>();
   CuVectorUnitTestApplyPow<Real>();
   CuVectorUnitTestAddMatVec<Real>();
   CuVectorUnitTestAddSpVec<Real>();

@@ -1215,6 +1215,20 @@ static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
   }
 }
 
+template<typename Real>
+__global__
+static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count, int dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  
+  if ( i < dim) {
+    if ( v[i] > ceiling_val) {
+      v[i] = ceiling_val;
+      count[i] = 1;
+    } else {
+      count[i] = 0;
+    }
+  }
+}
 
 // Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
 // this is for no reason, really, I just happened to prefer this
@@ -2432,6 +2446,10 @@ void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float *cou
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
 }
 
+void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v, ceiling_val,count,dim);
+}
+
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
   _vec_apply_exp<<<Gr,Bl>>>(v,dim);
 }
@@ -2890,6 +2908,10 @@ void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *
 
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float *count, int dim) {
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
+}
+
+void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v,ceiling_val,count,dim);
 }
 
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {
