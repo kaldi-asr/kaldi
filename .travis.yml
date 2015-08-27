@@ -16,8 +16,6 @@ addons:
       - g++-4.9
       - gfortran-4.9
       - liblapack-dev
-#      - libopenblas-dev
-#      - libblas-dev
 
 branches:
   only:
@@ -38,4 +36,3 @@ script:
 
 after_failure:
   - tools/extras/travis_show_failures.sh
-  - ldd -v src/matrix/matrix-lib-test
