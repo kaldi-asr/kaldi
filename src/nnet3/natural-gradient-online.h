@@ -472,7 +472,7 @@ class OnlineNaturalGradient {
                  const VectorBase<BaseFloat> &inv_sqrt_e_t,
                  const MatrixBase<BaseFloat> &K_t,
                  const MatrixBase<BaseFloat> &L_t,
-                 SpMatrix<BaseFloat> *Z_t) const;
+                 SpMatrix<double> *Z_t) const;
   // Computes W_{t+1}.  Overwrites J_t.
   void ComputeWt1(int32 N,
                   const VectorBase<BaseFloat> &d_t,

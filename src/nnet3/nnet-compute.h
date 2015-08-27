@@ -120,7 +120,7 @@ class NnetComputer {
   std::vector<CommandAttributes> command_attributes_;
   // submatrix_strings_ is only used if debug_=true.
   std::vector<std::string> submatrix_strings_;
-  // command_strings_ is only used if debug_=true.
+  // command_strings_ is only used if debug_=true, or in case of error.
   std::vector<std::string> command_strings_;
   
   // The matrices used in the computation.
@@ -151,12 +151,24 @@ class NnetComputer {
 
 
   struct CommandDebugInfo {
-    // sums of all matrices that this command writes.
-    std::vector<BaseFloat> matrices_written_sums;
-    // sums of all submatrices that this command writes (if they
-    // are not whole matrices).
-    std::vector<BaseFloat> submatrices_written_sums;
+    // Uncentered standard deviations of elements of all matrices that this
+    // command writes.  Dimension is the same as
+    // command_attributes_[c].matrices_written
+    std::vector<BaseFloat> matrices_written_stddevs;
+    // Uncentered standard deviations of elements of all submatrices that this
+    // command writes (if they are not whole matrices).  Dimension is the same
+    // as command_attributes_[c].submatrices_written
+    std::vector<BaseFloat> submatrices_written_stddevs;
+
+    // Uncentered standard deviation of parameters of the component (if any)
+    // that is updated by this command.
+    BaseFloat components_parameter_stddev;
   };
+  // Used in debugging code
+  static BaseFloat MatrixStddev(const CuMatrixBase<BaseFloat> &m);
+  // Used in debugging code
+  static BaseFloat ParameterStddev(const Component &c);
+  
   // only non-const because of the way GetSubMatrix works.
   void DebugBeforeExecute(int32 command,
                           CommandDebugInfo *info);

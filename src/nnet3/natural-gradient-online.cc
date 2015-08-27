@@ -315,15 +315,21 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   Vector<BaseFloat> e_t(R), sqrt_e_t(R), inv_sqrt_e_t(R);
   ComputeEt(d_t, beta_t, &e_t, &sqrt_e_t, &inv_sqrt_e_t);
   KALDI_VLOG(5) << "e_t = " << e_t;
-  
-  SpMatrix<BaseFloat> Z_t(R);
-  ComputeZt(N, rho_t, d_t, inv_sqrt_e_t, K_t_cpu, L_t_cpu, &Z_t);
+
+  // The double-precision Z_t here, and the scaling, is to avoid potential
+  // overflow, because Z_t is proportional to the fourth power of data.
+  SpMatrix<double> Z_t_double(R);
+  ComputeZt(N, rho_t, d_t, inv_sqrt_e_t, K_t_cpu, L_t_cpu, &Z_t_double);
+  BaseFloat z_t_scale = std::max<double>(1.0, Z_t_double.Trace());
+  Z_t_double.Scale(1.0 / z_t_scale);
+  SpMatrix<BaseFloat> Z_t_scaled(Z_t_double);
 
   Matrix<BaseFloat> U_t(R, R);
   Vector<BaseFloat> c_t(R);
   // do the symmetric eigenvalue decomposition Z_t = U_t C_t U_t^T.
-  Z_t.Eig(&c_t, &U_t);
+  Z_t_scaled.Eig(&c_t, &U_t);
   SortSvd(&c_t, &U_t);
+  c_t.Scale(z_t_scale);
 
   const BaseFloat condition_threshold = 1.0e+06;
   // must_reorthogonalize will be true if the last diagonal element of c_t is
@@ -480,18 +486,20 @@ void OnlineNaturalGradient::ComputeZt(int32 N,
                                      const VectorBase<BaseFloat> &inv_sqrt_e_t,
                                      const MatrixBase<BaseFloat> &K_t,
                                      const MatrixBase<BaseFloat> &L_t,
-                                     SpMatrix<BaseFloat> *Z_t) const {
+                                     SpMatrix<double> *Z_t) const {
+  // Use doubles because the range of quantities in Z_t can get large (fourth
+  // power of data), and we want to avoid overflow.  This routine is fast.
   BaseFloat eta = Eta(N);
   Vector<BaseFloat> d_t_rho_t(d_t);
   d_t_rho_t.Add(rho_t);  // now d_t_rho_t is diag(D_t + \rho_t I).
-  BaseFloat etaN = eta / N, eta1 = 1.0 - eta,
+  double etaN = eta / N, eta1 = 1.0 - eta,
       etaN_sq = etaN * etaN, eta1_sq = eta1 * eta1,
       etaN_eta1 = etaN * eta1;
   int32 R = d_t.Dim();
   for (int32 i = 0; i < R; i++) {
-    BaseFloat inv_sqrt_e_t_i = inv_sqrt_e_t(i), d_t_rho_t_i = d_t_rho_t(i);
+    double inv_sqrt_e_t_i = inv_sqrt_e_t(i), d_t_rho_t_i = d_t_rho_t(i);
     for (int32 j = 0; j <= i; j++) {
-      BaseFloat inv_sqrt_e_t_j = inv_sqrt_e_t(j), d_t_rho_t_j = d_t_rho_t(j),
+      double inv_sqrt_e_t_j = inv_sqrt_e_t(j), d_t_rho_t_j = d_t_rho_t(j),
           L_t_i_j = 0.5 * (L_t(i, j) + L_t(j, i)),
           K_t_i_j = 0.5 * (K_t(i, j) + K_t(j, i));
       // See (eqn:Zt) in header.
