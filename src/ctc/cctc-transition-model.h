@@ -76,8 +76,11 @@ class CctcTransitionModel {
   // probabilities: row index is history-state index from 0 to
   // NumHistoryStates() - 1, column index is neural-net output index, from 0 to
   // NumOutputIndexes() - 1.
-  const Matrix<BaseFloat> &GetWeights() const { return weights_; }
-  
+  void ComputeWeights(Matrix<BaseFloat> *mat) const;
+
+  // CUDA version of the above.
+  void ComputeWeights(CuMatrix<BaseFloat> *cu_mat) const;
+
   // A graph-label is a similar concept to a transition-id in HMM-based models;
   // it's a one-based index that appears on the input side of a decoding graph
   // or training graph.  A graph label can be mapped to the phone (which may be
@@ -140,9 +143,6 @@ class CctcTransitionModel {
   // Check that the contents of this object make sense (does not check
   // weights_, which is a derived variable).
   void Check() const;
-  
-  // This function computes weights_.
-  void ComputeWeights();
   
   struct HistoryStateInfo {
     // The next history-state we'd get to after appending the phone p>0 is
@@ -351,4 +351,3 @@ class CctcTransitionModelCreator {
 }  // namespace kaldi
 
 #endif  // KALDI_CTC_CCTC_TRANSITION_MODEL_H_
-

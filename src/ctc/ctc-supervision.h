@@ -248,8 +248,9 @@ struct CtcSupervision {
   int32 num_frames;
 
   // the maximum possible value of the labels in 'fst' (which go from 1 to
-  // output_label_dim).  This should equal the NumGraphLabels() in
-  // the CctcTransitionModel object.
+  // output_label_dim).  This should equal the NumGraphLabels() in the
+  // CctcTransitionModel object.  (Note: we don't mean the actual largest value
+  // encountered in this example).
   int32 label_dim;
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing order of

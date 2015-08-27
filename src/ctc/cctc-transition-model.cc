@@ -19,6 +19,7 @@
 
 
 #include "ctc/cctc-transition-model.h"
+#include "cudamatrix/cu-matrix.h"
 
 namespace kaldi {
 namespace ctc {
@@ -209,25 +210,31 @@ void CctcTransitionModel::Read(std::istream &is, bool binary) {
   }
   ExpectToken(is, binary, "</CctcTransitionModel>");
   Check();
-  ComputeWeights();
 }
 
 
-void CctcTransitionModel::ComputeWeights() {
+void CctcTransitionModel::ComputeWeights(Matrix<BaseFloat> *weights) const {
   int32 num_history_states = history_state_info_.size(),
       num_output_indexes = num_output_indexes_,
       num_phones = num_phones_;
-  weights_.Resize(num_history_states,
+  weights->Resize(num_history_states,
                   num_output_indexes);
   for (int32 h = 0; h < num_history_states; h++) {
     const HistoryStateInfo &info = history_state_info_[h];
-    SubVector<BaseFloat> row(weights_, h);
+    SubVector<BaseFloat> row(*weights, h);
     for (int32 p = 0; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
       BaseFloat lm_prob = info.phone_lm_prob(p);
       row(output_index) += lm_prob;
     }
   }
+}
+
+void CctcTransitionModel::ComputeWeights(CuMatrix<BaseFloat> *cu_weights) const {
+  Matrix<BaseFloat> weights;
+  ComputeWeights(&weights);
+  cu_weights->Resize(0, 0);
+  cu_weights->Swap(&weights);
 }
 
 CctcTransitionModelCreator::CctcTransitionModelCreator(
@@ -254,8 +261,6 @@ void CctcTransitionModelCreator::InitCctcTransitionModel(
   while (MergeHistoryStatesOnePass());
   OutputToTransitionModel(model);
   model->Check();
-  // Compute the model weights_, just in case they might be needed.
-  model->ComputeWeights();
 }
 
 
