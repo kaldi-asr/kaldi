@@ -211,16 +211,18 @@ function linux_configure_mkl_libraries {
     for file in $threaded_libs; do
       local libfile=$mkllibdir/lib$file.so
       check_exists $libfile
-    done 
-    #echo  "-L$mkllibdir -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
-    linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir  -lmkl_intel_lp64 -lmkl_core -lmkl_tbb_thread -ltbb -lstdc++ -lpthr$
+    done
+    if [ ! -f $mkllibdir/libmkl_tbb_thread.* ]; then
+      linkline "-L$mkllibdir -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lpthread -lm"
+    else
+      linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir  -lmkl_intel_lp64 -lmkl_core -lmkl_tbb_thread -ltbb -lstdc++ -lpthread -lm"
+    fi
     echo $linkline
   elif  ! $static && ! $threaded ; then
     for file in $sequential_libs; do
       local libfile=$mkllibdir/lib$file.so
       check_exists $libfile
-    done  
-    #echo "-L$mkllibdir  -Wl,-rpath=$mkllibdir -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm"
+    done
     linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir  -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm"
     echo $linkline
   elif  $static && $threaded ; then
@@ -231,9 +233,12 @@ function linux_configure_mkl_libraries {
       local libfile=$mkllibdir/lib$file.a
       check_exists $libfile
       linkline="$linkline $libfile"
-    done  
-    #linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
-    linkline="$linkline -Wl,--end-group  "
+    done
+    if [ ! -f $mkllibdir/libmkl_tbb_thread.* ]; then
+      linkline="$linkline -Wl,--end-group  -liomp5 -ldl -lpthread -lm"
+    else
+      linkline="$linkline $mkllibdir/libmkl_tbb_thread.a -Wl,--end-group -ltbb -lstdc++ -lpthread -lm"
+    fi
     echo $linkline
   elif  $static && ! $threaded ; then
     local linkline=""
@@ -243,9 +248,8 @@ function linux_configure_mkl_libraries {
       local libfile=$mkllibdir/lib$file.a
       check_exists $libfile
       linkline="$linkline $libfile"
-    done  
-    #linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
-    linkline="$linkline -Wl,--end-group  "
+    done
+    linkline="$linkline -Wl,--end-group -liomp5 -lpthread -lm "
     echo $linkline
   else
     return 1;
@@ -283,9 +287,9 @@ function linux_configure_omplibdir {
   for libext in $libexts; do
     echo "Testing $libext from [$libexts] " >&2
 
-    check_library $mkllibdir "libiomp5" $libext || check_library $mkllibdir "libmkl_tbb_thread" $libext  \
-    && echo `readlink -f $mkllibdir` && return
-    
+    check_library $mkllibdir "libiomp5" $libext  && echo `readlink -f $mkllibdir` && return
+    check_library $mkllibdir "libmkl_tbb_thread" $libext && echo `readlink -f $mkllibdir` && return
+ 
     local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)`
     test -d $testdir && check_library $testdir "libiomp5" $libext && echo `readlink -f $testdir` && return;
     local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)`
