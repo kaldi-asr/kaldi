@@ -94,7 +94,7 @@ inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,
 #ifdef HAVE_EXECINFO_H
 std::string KaldiGetStackTrace() {
 #define KALDI_MAX_TRACE_SIZE 50
-#define KALDI_MAX_TRACE_PRINT 10  // must be even.
+#define KALDI_MAX_TRACE_PRINT 20  // must be even.
   std::string ans;
   void *array[KALDI_MAX_TRACE_SIZE];
   size_t size = backtrace(array, KALDI_MAX_TRACE_SIZE);
