@@ -378,23 +378,13 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
-  std::string tok; // TODO: remove back-compatibility code.
-  ReadToken(is, binary, &tok);
-  if (tok == "<ValueSum>") {
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivSum>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    ExpectToken(is, binary, ostr_end.str());
-  } else if (tok == "<Counts>") { // Back-compat code for SoftmaxComponent.
-    value_sum_.Read(is, binary); // Set both value_sum_ and deriv_sum_ to the same value,
-    // and count_ to its sum.
-    count_ = value_sum_.Sum();
-    ExpectToken(is, binary, ostr_end.str());
-  } else {
-    KALDI_ASSERT(tok == ostr_end.str());
-  }
+  ExpectToken(is, binary, "<ValueSum>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivSum>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  ExpectToken(is, binary, ostr_end.str());
 }
 
 void NonlinearComponent::Write(std::ostream &os, bool binary) const {
@@ -3043,7 +3033,7 @@ void SpliceMaxComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<Context>");
   WriteIntegerVector(os, binary, context_);
-  WriteToken(os, binary, "</SpliceComponent>");
+  WriteToken(os, binary, "</SpliceMaxComponent>");
 }
 
 std::string DctComponent::Info() const {
@@ -4034,7 +4024,8 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
   std::vector<std::vector<int32> > rearranged_column_map;
   RearrangeIndexes(reversed_column_map, &rearranged_column_map);
   for (int32 p = 0; p < rearranged_column_map.size(); p++) {
-    in_deriv->AddCols(patches_deriv, rearranged_column_map[p]);
+    CuArray<int32> cu_cols(rearranged_column_map[p]);
+    in_deriv->AddCols(patches_deriv, cu_cols);
   }
 
   if (to_update != NULL) {

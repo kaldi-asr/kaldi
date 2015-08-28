@@ -18,6 +18,7 @@
 // limitations under the License.
 
 #include <vector>
+#include <algorithm>
 #include <cstdlib>
 
 #include "base/kaldi-common.h"

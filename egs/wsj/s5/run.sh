@@ -476,3 +476,7 @@ local/nnet/run_dnn.sh
 # # forward-backward decoding example [way to speed up decoding by decoding forward
 # # and backward in time] 
 # local/run_fwdbwd.sh
+
+# # A couple of nnet3 recipes:
+# local/nnet3/run_tdnn_baseline.sh  # designed for exact comparison with nnet2 recipe
+# local/nnet3/run_tdnn.sh  # better absolute results

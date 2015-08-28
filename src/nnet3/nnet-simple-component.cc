@@ -176,8 +176,8 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
 
 std::string ElementwiseProductComponent::Info() const {
   std::stringstream stream;
-  stream << Type() << ", input-dim = " << input_dim_
-         << ", output-dim = " << output_dim_;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", output-dim=" << output_dim_;
   return stream.str();
 }
 

@@ -70,7 +70,7 @@ template <class W>
 inline bool StrToWeight(const std::string &s, bool allow_zero, W *w) {
   std::istringstream strm(s);
   strm >> *w;
-  if (!strm || (!allow_zero && *w == W::Zero())) {
+  if (strm.fail() || (!allow_zero && *w == W::Zero())) {
     return false;
   }
   return true;
@@ -84,12 +84,11 @@ void ReadFstKaldi(std::istream &is, bool binary,
   if (binary) {
     // We don't have access to the filename here, so write [unknown].
     VectorFst<Arc> *ans =
-        VectorFst<Arc>::Read(is, fst::FstReadOptions((std::string)"[unknown]"));
+        VectorFst<Arc>::Read(is, fst::FstReadOptions(std::string("[unknown]")));
     if (ans == NULL) {
       KALDI_ERR << "Error reading FST from stream.";
-    } else {
-      *fst = *ans;  // shallow copy.
     }
+    *fst = *ans;  // shallow copy.
   } else {
     // Consume the \r on Windows, the \n that the text-form FST format starts
     // with, and any extra spaces that might have got in there somehow.
@@ -130,7 +129,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
       Weight w;
       StateId d = s;
       switch (col.size()) {
-        case 1 :
+        case 1:
           fst->SetFinal(s, Weight::One());
           break;
         case 2:
@@ -163,11 +162,9 @@ void ReadFstKaldi(std::istream &is, bool binary,
         default:
           ok = false;
       }
-      while (d >= fst->NumStates())
-        fst->AddState();
-      if (!ok) {
+      while (d >= fst->NumStates()) fst->AddState();
+      if (!ok)
         KALDI_ERR << "Bad line in FST: " << line;
-      }
     }
   }
 }  

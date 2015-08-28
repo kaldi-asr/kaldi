@@ -156,17 +156,26 @@ fi
 
 # TDNN training.
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
+  local/nnet3/run_tdnn.sh \
     --mic $mic \
     --hidden-dim 850 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+    --speed-perturb true \
+    --stage 7 \
     --use-sat-alignments false
-  
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri3a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
+
+#LSTM training
+if [ $stage -le 14 ]; then
+  local/nnet3/run_lstm.sh \
+    --mic $mic \
+    --train-stage -5 \
+    --speed-perturb true \
+    --stage 7 \
+    --common-egs-dir exp/sdm1/nnet3/lstm_sp/egs \
+    --use-sat-alignments false
+fi
+
+
 echo "Done."
 
 

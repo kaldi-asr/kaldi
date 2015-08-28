@@ -158,8 +158,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
 // if test_derivative == false then the test only tests that the update
 // direction is downhill.  if true, then we measure the actual model-derivative
 // and check that it's accurate.
-// when called with test_derivative=false, will crash on failure; when called
-// with test_derivative=true, will return false for error.
+// returns true on success, false on test failure.
 bool TestSimpleComponentModelDerivative(const Component &c,
                                         BaseFloat perturb_delta,
                                         bool test_derivative) {
@@ -204,11 +203,13 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     c_copy->Propagate(NULL, input_data, &new_output_data);
 
     BaseFloat new_objf = TraceMatMat(output_deriv, new_output_data, kTrans);
-    if (new_objf <= original_objf)
-      KALDI_ERR << "After update, new objf is not better than the original objf: "
-                << new_objf << " <= " << original_objf;
+    bool ans = (new_objf > original_objf);
+    if (!ans) {
+      KALDI_WARN << "After update, new objf is not better than the original objf: "
+                 << new_objf << " <= " << original_objf;
+    }
     delete c_copy;
-    return true;
+    return ans;
   } else {
     // check that the model derivative is accurate.
     int32 test_dim = 3;
@@ -257,7 +258,11 @@ void UnitTestNnetComponent() {
         !TestSimpleComponentDataDerivative(*c, 1.0e-06))
       KALDI_ERR << "Component data-derivative test failed";
 
-    TestSimpleComponentModelDerivative(*c, 1.0e-04, false);
+    if (!TestSimpleComponentModelDerivative(*c, 1.0e-04, false) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-03, false) &&
+        !TestSimpleComponentModelDerivative(*c, 1.0e-06, false))
+      KALDI_ERR << "Component downhill-update test failed";
+    
     if (!TestSimpleComponentModelDerivative(*c, 1.0e-04, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-03, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&

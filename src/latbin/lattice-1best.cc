@@ -45,8 +45,10 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
     
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
-    po.Register("lm-scale", &lm_scale, "Scaling factor for language model scores.");
+    po.Register("acoustic-scale", &acoustic_scale,
+                "Scaling factor for acoustic likelihoods");
+    po.Register("lm-scale", &lm_scale,
+                "Scaling factor for language model scores.");
     
     po.Read(argc, argv);
 

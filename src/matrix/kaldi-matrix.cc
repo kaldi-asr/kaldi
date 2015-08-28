@@ -2585,18 +2585,16 @@ void MatrixBase<Real>::CopyCols(const MatrixBase<Real> &src,
 
 template<typename Real>
 void MatrixBase<Real>::AddCols(const MatrixBase<Real> &src,
-                               const std::vector<MatrixIndexT> &indices) {
+                               const MatrixIndexT *indices) {
   KALDI_ASSERT(NumRows() == src.NumRows());
-  KALDI_ASSERT(NumCols() == static_cast<MatrixIndexT>(indices.size()));
   MatrixIndexT num_rows = num_rows_, num_cols = num_cols_,
       this_stride = stride_, src_stride = src.stride_;
   Real *this_data = this->data_;
   const Real *src_data = src.data_;
 #ifdef KALDI_PARANOID
   MatrixIndexT src_cols = src.NumCols();
-  for (std::vector<MatrixIndexT>::const_iterator iter = indices.begin();
-       iter != indices.end(); ++iter)
-    KALDI_ASSERT(*iter >= -1 && *iter < src_cols);
+  for (MatrixIndexT i = 0; i < num_cols; i++)
+    KALDI_ASSERT(indices[i] >= -1 && indices[i] < src_cols);
 #endif                
   
   // For the sake of memory locality we do this row by row, rather

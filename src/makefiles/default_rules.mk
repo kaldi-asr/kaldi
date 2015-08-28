@@ -65,22 +65,37 @@ $(BINFILES): $(LIBFILE) $(XDEPENDS)
 	$(MAKE) -C ${@D} ${@F}
 
 clean:
-	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) $(TESTOUTPUTS) tmp* *.tmp
+	-rm -f *.o *.a *.so $(TESTFILES) $(BINFILES) $(TESTOUTPUTS) tmp* *.tmp *.testlog
 
 $(TESTFILES): $(LIBFILE) $(XDEPENDS)
 
 test_compile: $(TESTFILES)
-  
+
 test: test_compile
-	@result=0; for x in $(TESTFILES); do printf "Running $$x ..."; ./$$x >/dev/null 2>&1; if [ $$? -ne 0 ]; then echo "... FAIL $$x"; result=1; else echo "... SUCCESS";  fi;  done; exit $$result
+	@{ result=0;			\
+	for x in $(TESTFILES); do	\
+	  printf "Running $$x ...";	\
+	  ./$$x >$$x.testlog 2>&1;	\
+	  if [ $$? -ne 0 ]; then	\
+	    echo "... FAIL $$x";	\
+	    result=1;			\
+	    if [ -n "$TRAVIS" ] && [ -f core ] && command -v gdb >/dev/null 2>&1; then	\
+	      gdb $$x core -ex "thread apply all bt" -batch >>$$x.testlog 2>&1;		\
+	      rm -rf core;		\
+	    fi;				\
+	  else				\
+	    echo "... SUCCESS";		\
+	    rm -f $$x.testlog;		\
+	  fi;				\
+	done;				\
+	exit $$result; }
 
 .valgrind: $(BINFILES) $(TESTFILES)
 
 
 depend:
-	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk  
+	-$(CXX) -M $(CXXFLAGS) *.cc > .depend.mk
 
 # removing automatic making of "depend" as it's quite slow.
 #.depend.mk: depend
 -include .depend.mk
-

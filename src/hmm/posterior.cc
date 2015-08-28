@@ -35,9 +35,8 @@ void WritePosterior(std::ostream &os, bool binary, const Posterior &post) {
     for (Posterior::const_iterator iter = post.begin(); iter != post.end(); ++iter) {
       int32 sz2 = iter->size();
       WriteBasicType(os, binary, sz2);
-      for (std::vector<std::pair<int32, BaseFloat> >::const_iterator iter2=iter->begin();
-           iter2 != iter->end();
-           iter2++) {
+      for (std::vector<std::pair<int32, BaseFloat> >::const_iterator
+               iter2 = iter->begin(); iter2 != iter->end(); ++iter2) {
         WriteBasicType(os, binary, iter2->first);
         WriteBasicType(os, binary, iter2->second);
       }

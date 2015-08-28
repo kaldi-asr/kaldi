@@ -52,10 +52,13 @@
 
 namespace kaldi {
 
+/// For historical reasons, we scale waveforms to the range
+/// (2^15-1)*[-1, 1], not the usual default DSP range [-1, 1].
+const BaseFloat kWaveSampleMax = 32768.0;
+
 /// This class's purpose is to read in Wave files.
 class WaveData {
  public:
-
   WaveData(BaseFloat samp_freq, const MatrixBase<BaseFloat> &data)
       : data_(data), samp_freq_(samp_freq) {}
 
@@ -75,9 +78,9 @@ class WaveData {
   const Matrix<BaseFloat> &Data() const { return data_; }
 
   BaseFloat SampFreq() const { return samp_freq_; }
-  
+
   // Returns the duration in seconds
-  BaseFloat Duration() const { return data_.NumCols()/samp_freq_; }
+  BaseFloat Duration() const { return data_.NumCols() / samp_freq_; }
 
   void CopyFrom(const WaveData &other) {
     samp_freq_ = other.samp_freq_;
@@ -90,7 +93,7 @@ class WaveData {
   }
 
  private:
-  static const uint32 kBlockSize = 1048576;  // 1024 * 1024, use 1M bytes
+  static const uint32 kBlockSize = 1024 * 1024;  // Use 1M bytes.
   Matrix<BaseFloat> data_;
   BaseFloat samp_freq_;
   static void Expect4ByteTag(std::istream &is, const char *expected);
@@ -103,8 +106,6 @@ class WaveData {
 };
 
 
-
-
 // Holder class for .wav files that enables us to read (but not write)
 // .wav files. c.f. util/kaldi-holder.h
 class WaveHolder {
@@ -113,12 +114,12 @@ class WaveHolder {
 
   static bool Write(std::ostream &os, bool binary, const T &t) {
     // We don't write the binary-mode header here [always binary].
-    KALDI_ASSERT(binary == true
-                 && "Wave data can only be written in binary mode.");
+    if (!binary)
+      KALDI_ERR << "Wave data can only be written in binary mode.";
     try {
       t.Write(os);  // throws exception on failure.
       return true;
-    } catch(const std::exception &e) {
+    } catch (const std::exception &e) {
       KALDI_WARN << "Exception caught in WaveHolder object (writing).";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // write failure.
@@ -145,12 +146,13 @@ class WaveHolder {
     try {
       t_.Read(is);  // throws exception on failure.
       return true;
-    } catch(const std::exception &e) {
+    } catch (const std::exception &e) {
       KALDI_WARN << "Exception caught in WaveHolder object (reading).";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // write failure.
     }
   }
+
  private:
   T t_;
 };

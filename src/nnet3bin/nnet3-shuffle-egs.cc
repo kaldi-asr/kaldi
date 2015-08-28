@@ -36,9 +36,9 @@ int main(int argc, char *argv[]) {
         "This program will keep all of the examples in memory at once, unless you\n"
         "use the --buffer-size option\n"
         "\n"
-        "Usage:  nnet-shuffle-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
+        "Usage:  nnet3-shuffle-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
-        "nnet-shuffle-egs --srand=1 ark:train.egs ark:shuffled.egs\n";
+        "nnet3-shuffle-egs --srand=1 ark:train.egs ark:shuffled.egs\n";
     
     int32 srand_seed = 0;
     int32 buffer_size = 0;
@@ -77,7 +77,8 @@ int main(int argc, char *argv[]) {
       std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
-      egs.resize(buffer_size, std::pair<std::string, NnetExample*>("", NULL));
+      egs.resize(buffer_size, std::make_pair(std::string(""), 
+                                             static_cast<NnetExample*>(NULL)));
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
         if (egs[index].second == NULL) {
