@@ -120,7 +120,7 @@ class CctcComputation {
   
   // numerator_indexes is a list of indexes that we need to look up in
   // exp_nnet_output_ for the forward-backward computation.  The order is not
-  // important. indexes into this vector appear in .first members in
+  // important, but indexes into this vector appear in .first members in
   // fst_indexes.
   std::vector<Int32Pair> numerator_indexes_;
   // the numerator of the probability.  in the forward computation,
@@ -130,9 +130,9 @@ class CctcComputation {
   Vector<BaseFloat> numerator_probs_;
     
 
-  // numerator_indexes is a list of indexes that we need to look up in
+  // denominator_indexes is a list of indexes that we need to look up in
   // normalizers_ for the forward-backward computation.  The order is not
-  // important. indexes into this vector appear in .second members in
+  // important, but indexes into this vector appear in .second members in
   // fst_indexes.
   std::vector<Int32Pair> denominator_indexes_;
   // the denominator of the probability.  denominator_probs_[i] equals

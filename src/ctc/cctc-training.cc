@@ -96,9 +96,10 @@ bool CctcTraining::ComputeDerivatives(
   // denominator_probs_ itself as the derivative.
   denominator_deriv_.DivElements(denominator_probs_);
 
-  // We reuse the normalizers_ array to be the derivatives
+  // We will reuse the normalizers_ array to be the derivatives
   // w.r.t. the normalizers.
   normalizers_.SetZero();
+  
   
 
 }
