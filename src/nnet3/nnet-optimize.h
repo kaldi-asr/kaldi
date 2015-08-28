@@ -49,7 +49,7 @@ struct NnetOptimizeOptions {
                  "optimizations");
     opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
                    "disable optimization that allows in-place propagation");
-    opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
+    opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
     opts->Register("remove-assignments", &remove_assignments, "Set to false to "
                    "disable optimization that removes redundant assignments");

@@ -34,13 +34,15 @@ struct NnetTrainerOptions {
   bool store_component_stats;
   int32 print_interval;
   bool debug_computation;
+  bool update_per_minibatch;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(false),
       print_interval(100),
-      debug_computation(false) { }
+      debug_computation(false),
+      update_per_minibatch(false) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
@@ -51,6 +53,10 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
+    opts->Register("update-per-minibatch", &update_per_minibatch, "If true, "
+                   "wait to apply model changes until the whole minibatch has "
+                   "been processed (requires copying the model on each "
+                   "minibatch ");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);

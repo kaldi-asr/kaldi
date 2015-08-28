@@ -41,14 +41,21 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         config_.store_component_stats,
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
+
+  const Nnet *const_nnet = (config_.update_per_minibatch ?
+                            static_cast<const Nnet*>(nnet_->Copy()) :
+                            nnet_);
   NnetComputer computer(config_.compute_config, *computation,
-                        *nnet_, nnet_);
+                        *const_nnet, nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg);
   computer.Forward();
 
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
+  
+  if (config_.update_per_minibatch)
+    delete const_nnet;
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
