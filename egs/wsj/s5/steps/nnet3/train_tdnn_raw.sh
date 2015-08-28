@@ -35,7 +35,6 @@ remove_egs=true  # set to false to disable removing egs after training is done.
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
   # iteration-number ranges.
-
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
                 # randomization, but this would both consume memory and cause spikes in
@@ -62,7 +61,7 @@ affine_opts=
 
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
-cleanup=true
+cleanup=false
 egs_dir=
 skip_lda=true
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
@@ -75,6 +74,7 @@ feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
 objective_type=linear
+max_change_per_sample=0.075
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -181,7 +181,7 @@ if [ $stage -le -5 ]; then
     --ivector-dim $ivector_dim  \
     --skip-final-softmax --skip-lda \
     $objective_opts \
-     $dim_opts \
+    $dim_opts --max-change-per-sample $max_change_per_sample \
     --num-targets $num_targets  \
    $dir/configs || exit 1;
 
@@ -221,16 +221,16 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       $data $targets_scp $dir/egs || exit 1;
 fi
 
-if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $dir/egs/info/feat_dim)";
-  exit 1;
-fi
-if [ "$ivector_dim" != "$(cat $dir/egs/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $dir/egs/info/ivector_dim)";
-  exit 1;
-fi
-
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
+  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  exit 1;
+fi
+if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
+  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
 
 # copy any of the following that exist, to $dir.
 cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
@@ -503,18 +503,20 @@ if [ $stage -le $num_iters ]; then
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
-    $dir/combined.raw || exit 1;
+    $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-compute-prob --compute-accuracy=false $dir/combined.raw \
+    nnet3-compute-prob --compute-accuracy=false $dir/final.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-compute-prob --compute-accuracy=false $dir/combined.raw \
+    nnet3-compute-prob --compute-accuracy=false $dir/final.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
+
+sleep 10
 
 if [ ! -f $dir/final.raw ]; then
   echo "$0: $dir/final.raw does not exist."

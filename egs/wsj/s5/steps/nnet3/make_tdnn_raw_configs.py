@@ -33,9 +33,11 @@ parser.add_argument("--add-lda", action='store_true', dest='add_lda', default=Tr
                     help="add lda matrix")
 parser.add_argument("--objective-type", type=str, default="linear",
                     choices = ["linear", "quadratic"],
-                    help = "the type of objective; i.e. quadratic or linear");
+                    help = "the type of objective; i.e. quadratic or linear")
+parser.add_argument("--max-change-per-sample", type=float, default=0.075,
+                    help = "the maximum a paramter is allowed to change")
 parser.add_argument("config_dir",
-                    help="Directory to write config files and variables");
+                    help="Directory to write config files and variables")
 
 print(' '.join(sys.argv))
 
@@ -127,8 +129,8 @@ for l in range(1, num_hidden_layers + 1):
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
     print('component name=affine{0} type=NaturalGradientAffineComponent '
-          'input-dim={1} output-dim={2} bias-stddev=0'.
-        format(l, cur_dim, nonlin_input_dim), file=f)
+          'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}'.
+        format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample), file=f)
     if args.relu_dim is not None:
         print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
               format(l, args.relu_dim), file=f)
@@ -139,8 +141,8 @@ for l in range(1, num_hidden_layers + 1):
     print('component name=renorm{0} type=NormalizeComponent dim={1}'.format(
          l, nonlin_output_dim), file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
-          nonlin_output_dim, args.num_targets), file=f)
+          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
+          nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
 
     if args.add_final_softmax:
       # printing out the next two, and their component-nodes, for l > 1 is not

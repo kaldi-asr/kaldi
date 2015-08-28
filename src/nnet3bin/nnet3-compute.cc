@@ -36,9 +36,8 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Generate lattices using nnet3 neural net model.\n"
-        "Usage: nnet3-latgen-faster [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
-        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
+        "Propagate through neural network model\n"
+        "Usage: nnet3-compute [options] <nnet-in> <features-rspecifier> <matrix-wspecifier>\n";
     ParseOptions po(usage);
     Timer timer;
     
