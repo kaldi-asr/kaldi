@@ -13,6 +13,8 @@
 # ./configure --shared  ## shared libraries.
 # ./configure --mkl-root=/opt/intel/mkl
 # ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
+# ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes --mkl-threading=tbb
+#        This is for MKL 11.3 -- which does not seem  to provide Intel OMP libs
 # ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
 #        # this, cd to ../tools and type "make openblas".  Note:
 #        # this is not working correctly on all platforms, do "make test"
