@@ -2530,25 +2530,27 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 template<typename Real>
 void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
 				     const Real *input) {
+  KALDI_ASSERT(input != NULL);
   // Checks the dimension.
   MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+  std::vector<Int32Pair> cpu_indexes;
+  indexes.CopyToVec(&cpu_indexes);
   for (int32 i = 0; i < indexes.Dim(); ++i) {
-    Int32Pair index = *(indexes.Data() + i);
-    KALDI_ASSERT(index.first < num_rows && index.first >= 0 &&
-                 index.second < num_cols && index.second >= 0);
+    KALDI_ASSERT(cpu_indexes[i].first < num_rows && cpu_indexes[i].first >= 0 &&
+                 cpu_indexes[i].second < num_cols && cpu_indexes[i].second >= 0);
   }
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    void *addr = CuDevice::Instantiate().Malloc(indexes.Dim() * sizeof(MatrixElement<Real>));
-    CU_SAFE_CALL(cudaMemcpy(addr, input,
-                        indexes.Dim() * sizeof(MatrixElement<Real>),
+    void *addr = CuDevice::Instantiate().Malloc(indexes.Dim() * sizeof(Real));
+    CU_SAFE_CALL(cudaMemcpy(addr, input, indexes.Dim() * sizeof(Real),
                             cudaMemcpyHostToDevice));
 
     Timer tim;
     int dimBlock(CU1DBLOCK);
-    int dimGrid = 1;
-    cuda_matrix_add_elements(dimGrid, dimBlock, this->data_, this->Dim(),
-                             alpha, (MatrixElement<Real>*)addr, indexes.Dim());
+    int dimGrid = n_blocks(indexes.Dim(), CU1DBLOCK);
+    cuda_matrix_add_indexed_values(dimGrid, dimBlock, this->data_, this->Dim(),
+                                   alpha, indexes.Data(), (Real*)addr, indexes.Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().Free(addr);
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -2556,12 +2558,12 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &index
 #endif
   {
     for (int32 i = 0; i < indexes.Dim(); i++) {
-      Int32Pair index = *(indexes.Data() + i);
+      Int32Pair index = cpu_indexes[i];
       (*this)(index.first, index.second) += alpha * input[i];
     }
   }
 }
-  
+
 template<typename Real>
 void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
                                 Real *output) const {
@@ -2575,37 +2577,52 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
   // Checks the pointer.
   KALDI_ASSERT(output != NULL);
 
-  // Resizes the output vector.
-  output = (Real *)malloc(indices.size());
-
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) {
-    CuArray<Int32Pair> cuda_indices(indices);
-    Timer tim;
-    Lookup(cuda_indices, output);
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  } else
-#endif
-  {
-    for (int32 i = 0; i < indices.size(); i++) {
-      output[i] = (*this)(indices[i].first, indices[i].second);
-    }
+  CuArray<Int32Pair> cuda_indices(indices);
+  Lookup(cuda_indices, output);
+#else
+  for (int32 i = 0; i < indices.size(); i++) {
+    output[i] = (*this)(indices[i].first, indices[i].second);
   }
+#endif
 }
 
 template<typename Real>
 void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
 				Real *output) const {
   int32 num_elements = indices.Dim();
-  CuArray<Real> cuda_output(num_elements);
-  dim3 dimBlock(CU1DBLOCK, 1);
-  dim3 dimGrid(n_blocks(num_elements, CU1DBLOCK), 1);
+  // Checks the dimension.
+  MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+  std::vector<Int32Pair> cpu_indices;
+  indices.CopyToVec(&cpu_indices);
+  for (int32 i = 0; i < num_elements; ++i) {
+    KALDI_ASSERT(cpu_indices[i].first < num_rows && cpu_indices[i].first >= 0 &&
+                 cpu_indices[i].second < num_cols && cpu_indices[i].second >= 0);
+  }
+  
+  // Checks the pointer.
+  KALDI_ASSERT(output != NULL);
 
-  cuda_matrix_lookup(dimGrid, dimBlock, this->data_, this->Dim(),
-                     indices.Data(), num_elements, cuda_output.Data());
-  CU_SAFE_CALL(cudaGetLastError());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuArray<Real> cuda_output(num_elements);
+    Timer tim;
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(num_elements, CU1DBLOCK), 1);
 
-  cuda_output.CopyToVec(output);
+    cuda_matrix_lookup(dimGrid, dimBlock, this->data_, this->Dim(),
+                       indices.Data(), num_elements, cuda_output.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    
+    cuda_output.CopyToVec(output);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 i = 0; i < num_elements; i++) {
+      output[i] = (*this)(cpu_indices[i].first, cpu_indices[i].second);
+    }
+  }
 }    
   
 

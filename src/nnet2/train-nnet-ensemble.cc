@@ -70,6 +70,7 @@ void NnetEnsembleTrainer::TrainOneMinibatch() {
   // collect the indices of the original supervision labels for later use (calc. objf.).
   std::vector<MatrixElement<BaseFloat> > sv_labels;
   std::vector<Int32Pair > sv_labels_ind;
+  BaseFloat* sv_labels_val = new BaseFloat[buffer_.size()];
   sv_labels.reserve(buffer_.size()); // We must have at least this many labels.
   sv_labels_ind.reserve(buffer_.size()); // We must have at least this many labels.
   for (int32 m = 0; m < buffer_.size(); m++) {
@@ -81,18 +82,24 @@ void NnetEnsembleTrainer::TrainOneMinibatch() {
           tmp = {m, labels[i].first, labels[i].second};
       sv_labels.push_back(tmp);
       sv_labels_ind.push_back(MakePair(m, labels[i].first));
+      sv_labels_val[m] = labels[i].second;
     }
   }
   post_avg.Scale(1.0 / nnet_ensemble_.size());
   post_avg.Scale(beta_);
-  post_avg.AddElements(1.0, sv_labels);
+  //post_avg.AddElements(1.0, sv_labels);
+  post_avg.AddElements(1.0, (CuArray<Int32Pair>)sv_labels_ind, sv_labels_val);
 
   // calculate the deriv, do backprop, and calculate the objf.
   for (int32 i = 0; i < nnet_ensemble_.size(); i++) {  
     CuMatrix<BaseFloat> tmp_deriv(post_mat[i]);
     post_mat[i].ApplyLog();
     std::vector<BaseFloat> log_post_correct;
-    post_mat[i].Lookup(sv_labels_ind, &log_post_correct);
+    BaseFloat *p_log_post_correct = new BaseFloat[sv_labels_ind.size()];
+    post_mat[i].Lookup(sv_labels_ind, p_log_post_correct);
+    for (int32 j = 0; j < sv_labels_ind.size(); j++)
+      log_post_correct.push_back(p_log_post_correct[j]);
+    delete[] p_log_post_correct;
     BaseFloat log_prob_this_net = std::accumulate(log_post_correct.begin(),
                                                   log_post_correct.end(),
                                                   static_cast<BaseFloat>(0));

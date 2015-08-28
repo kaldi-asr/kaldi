@@ -490,9 +490,10 @@ void TestCuMatrixLookup(int32 dim) {
   H.SetRandn();
   std::vector<Int32Pair> indices;
   std::vector<Real> reference;
-  std::vector<Real> output;
+  //std::vector<Real> output;
   // Generates the indices and the reference.
   int32 num_index = dim * dim;
+  Real *output = new Real[num_index];
   for (int32 j = 0; j < num_index; j++) {
     MatrixIndexT r = Rand() % dimM;
     MatrixIndexT c = Rand() % dimN;
@@ -506,12 +507,13 @@ void TestCuMatrixLookup(int32 dim) {
   Timer tim;
   int32 iter = 0;
   for (; tim.Elapsed()< time_in_secs; iter++)
-    H.Lookup(indices, &output);
+    H.Lookup(indices, output);
 
   BaseFloat fdim = dim;    
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::Lookup" << NameOf<Real>() << ", for dim = " 
-            << dim << ", speed was " << gflops << " gigaflops.";  
+            << dim << ", speed was " << gflops << " gigaflops.";
+  delete[] output;
 }
 
 template<typename Real> void TestCuMatrixCopyRows1(int32 dim) {

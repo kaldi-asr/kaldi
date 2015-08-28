@@ -131,9 +131,7 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
 
 template<typename T>
 void CuArray<T>::CopyToVec(T *dst) const {
-  if (dst == NULL) {
-    dst = (T *)malloc(dim_);
-  }
+  if (dst == NULL) return;
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 

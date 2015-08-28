@@ -2199,20 +2199,33 @@ static void UnitTestCuMatrixAddElements() {
    // int32 dimM = 256, dimN = 256;
     CuMatrix<Real> H(dimM, dimN);
     H.SetRandn();
+    CuMatrix<Real> H_copy(H);
     CuMatrix<Real> M(H);
+    int32 num_elements = 100 + Rand() % 10;
     std::vector<MatrixElement<Real> > input;
+    std::vector<Int32Pair> input_index;
+    Real *input_value = new Real[num_elements];
     BaseFloat scale = -1 + (0.33 * (Rand() % 5));
-    for (int32 j = 0; j < 100 + Rand() % 10; j++) {
+    for (int32 j = 0; j < num_elements; j++) {
       MatrixIndexT r = Rand() % dimM;
       MatrixIndexT c = Rand() % dimN;
+      Int32Pair tmp_pair;
+      tmp_pair.first = r;
+      tmp_pair.second = c;
       Real offset = -1 + (0.33 * (Rand() % 5));
       M(r, c) += scale * offset;
       MatrixElement<Real> t = {r, c, offset};
       input.push_back(t);
+      input_index.push_back(tmp_pair);
+      input_value[j] = offset;
     }
     H.AddElements(scale, input);
+    CuArray<Int32Pair> cu_input_index(input_index);
+    H_copy.AddElements(scale, cu_input_index, input_value);
+    delete[] input_value;
 
     AssertEqual(H, M);
+    AssertEqual(H_copy, M);
   }
 }
 
@@ -2223,12 +2236,14 @@ static void UnitTestCuMatrixLookup() {
     CuMatrix<Real> H(dimM, dimN);
     H.SetRandn();
 
+    int32 num_elements = 10 + Rand() % 10;
     std::vector<Int32Pair> indices;
     std::vector<Real> reference;
-    std::vector<Real> output;
+    //std::vector<Real> output;
+    Real *output = new Real[num_elements];
 
     // Generates the indices and the reference.
-    for (int32 j = 0; j < 10 + Rand() % 10; j++) {
+    for (int32 j = 0; j < num_elements; j++) {
       MatrixIndexT r = Rand() % dimM;
       MatrixIndexT c = Rand() % dimN;
 
@@ -2239,9 +2254,11 @@ static void UnitTestCuMatrixLookup() {
       reference.push_back(H(r, c));
     }
 
-    H.Lookup(indices, &output);
+    H.Lookup(indices, output);
 
-    KALDI_ASSERT(reference == output);
+    for (int32 j = 0; j < num_elements; j++) {
+      KALDI_ASSERT(reference[j] == output[j]);
+    }
   }
 }
 

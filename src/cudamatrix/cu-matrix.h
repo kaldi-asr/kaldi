@@ -519,9 +519,10 @@ class CuMatrixBase {
   // to indexes.Dim().
   void AddElements(Real alpha, const CuArray<Int32Pair> &indexes, const Real *input);
 
-  // This function resizes the output to indexes.size(), and for each element of
-  // "indexes" it interprets it as a (row, column) index into *this, and puts
-  // (*this)(row, column) into the corresponding element of "output".
+  // This function implies the output is allocated and the size is equal to
+  // indexes.size(), and for each element of "indexes" it interprets it as
+  // a (row, column) index into *this, and puts (*this)(row, column) into
+  // the corresponding element of "output".
   void Lookup(const std::vector<Int32Pair> &indexes,
               Real *output) const;
 
