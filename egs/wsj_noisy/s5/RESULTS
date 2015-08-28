@@ -1,0 +1,282 @@
+#!/bin/bash
+
+# this RESULTS file was obtained by Haihua Xu in July 2013.
+
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# Use caution when comparing these results with other published results.
+# We use the "20k open" test condition, also known as the "60k vocabulary"
+# test condition, in which test utterances are not excluded even if they
+# contain words not in the language model.  This is the hardest test condition,
+# and most published results are in the easier 5k and 20k-closed conditions,
+# in which we only test on utterances that are in either a 5k or 20k subset
+# of the vocabulary.
+
+# The following results are updated with LDA+MLLT to use 7, not 9 frames of context,
+# and also increased the learning rate for the "indirect" fMMI.
+
+# monophone, deltas, trained on the 2k shortest utterances from the si84 data.
+%WER 35.39 [ 2914 / 8234, 284 ins, 467 del, 2163 sub ] exp/mono0a/decode_tgpr_dev93/wer_10
+%WER 25.78 [ 1455 / 5643, 142 ins, 184 del, 1129 sub ] exp/mono0a/decode_tgpr_eval92/wer_9
+
+# first triphone build.  Built on half of SI-84.
+%WER 20.00 [ 1647 / 8234, 257 ins, 197 del, 1193 sub ] exp/tri1/decode_tgpr_dev93/wer_17
+%WER 13.04 [ 736 / 5643, 137 ins, 61 del, 538 sub ] exp/tri1/decode_tgpr_eval92/wer_14
+
+# the same, rescored with full trigram model [not pruned.]  Note: the tg{1,2,3,4} are
+# different rescoring methods.  They all give about the same results.  Note: 3 and 4 give
+# the "correct" LM scores.
+%WER 18.87 [ 1554 / 8234, 295 ins, 136 del, 1123 sub ] exp/tri1/decode_tgpr_dev93_tg1/wer_14
+%WER 18.87 [ 1554 / 8234, 295 ins, 136 del, 1123 sub ] exp/tri1/decode_tgpr_dev93_tg2/wer_14
+%WER 18.75 [ 1544 / 8234, 266 ins, 152 del, 1126 sub ] exp/tri1/decode_tgpr_dev93_tg3/wer_15
+%WER 18.76 [ 1545 / 8234, 266 ins, 152 del, 1127 sub ] exp/tri1/decode_tgpr_dev93_tg4/wer_15
+
+# tri2a is delta+delta-delta features.
+%WER 17.93 [ 1476 / 8234, 256 ins, 161 del, 1059 sub ] exp/tri2a/decode_tgpr_dev93/wer_16
+%WER 12.42 [ 701 / 5643, 132 ins, 64 del, 505 sub ] exp/tri2a/decode_tgpr_eval92/wer_15
+# just demonstrates how to do decoding constrained by lattices.
+%WER 16.76 [ 1380 / 8234, 275 ins, 132 del, 973 sub ] exp/tri2a/decode_tgpr_dev93_fromlats/wer_16
+
+# This is an LDA+MLLT system. 
+%WER 16.43 [ 1353 / 8234, 241 ins, 162 del, 950 sub ] exp/tri2b/decode_tgpr_dev93/wer_16
+%WER 10.69 [ 603 / 5643, 154 ins, 47 del, 402 sub ] exp/tri2b/decode_tgpr_eval92/wer_14
+
+# rescoring the lattices with trigram.
+%WER 15.29 [ 1252 / 8191, 219 ins, 153 del, 880 sub ] [PARTIAL] exp/tri2b/decode_tgpr_dev93_tg/wer_18
+# using the "biglm" decoding method to avoid the lattice rescoring step [not faster though.]
+%WER 15.31 [ 1261 / 8234, 227 ins, 158 del, 876 sub ] exp/tri2b/decode_tgpr_dev93_tg_biglm/wer_18
+# using a Minimum Bayes Risk decoding method on top of the _tg lattices.
+%WER 15.15 [ 1241 / 8191, 221 ins, 155 del, 865 sub ] [PARTIAL] exp/tri2b/decode_tgpr_dev93_tg_mbr/wer_18
+
+# fMMI, default learning rate (0.001)
+
+%WER 15.19 [ 1251 / 8234, 213 ins, 148 del, 890 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it3/wer_15
+%WER 15.14 [ 1247 / 8234, 228 ins, 138 del, 881 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it4/wer_14
+%WER 15.06 [ 1240 / 8234, 211 ins, 152 del, 877 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it5/wer_15
+%WER 15.01 [ 1236 / 8234, 206 ins, 154 del, 876 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it6/wer_15
+%WER 14.99 [ 1234 / 8234, 210 ins, 159 del, 865 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it7/wer_15
+%WER 15.23 [ 1254 / 8234, 200 ins, 184 del, 870 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it8/wer_16
+
+%WER 15.55 [ 1280 / 8234, 234 ins, 151 del, 895 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it3/wer_15
+%WER 15.63 [ 1287 / 8234, 242 ins, 150 del, 895 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it4/wer_15
+%WER 15.30 [ 1260 / 8234, 224 ins, 143 del, 893 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it5/wer_15
+%WER 15.34 [ 1263 / 8234, 216 ins, 156 del, 891 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it6/wer_16
+%WER 15.34 [ 1263 / 8234, 242 ins, 139 del, 882 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it7/wer_14
+%WER 15.30 [ 1260 / 8234, 245 ins, 134 del, 881 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it8/wer_13
+
+%WER 15.21 [ 1252 / 8234, 218 ins, 148 del, 886 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it3/wer_15
+%WER 15.16 [ 1248 / 8234, 205 ins, 159 del, 884 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it4/wer_16
+%WER 15.22 [ 1253 / 8234, 229 ins, 147 del, 877 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it5/wer_15
+%WER 14.90 [ 1227 / 8234, 203 ins, 150 del, 874 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it6/wer_15
+%WER 14.95 [ 1231 / 8234, 202 ins, 152 del, 877 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it7/wer_15
+%WER 15.18 [ 1250 / 8234, 184 ins, 172 del, 894 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it8/wer_16
+
+%WER 15.70 [ 1293 / 8234, 218 ins, 163 del, 912 sub ] exp/tri2b_mmi/decode_tgpr_dev93_it3/wer_16
+%WER 15.61 [ 1285 / 8234, 217 ins, 163 del, 905 sub ] exp/tri2b_mmi/decode_tgpr_dev93_it4/wer_16
+%WER 10.46 [ 590 / 5643, 125 ins, 51 del, 414 sub ] exp/tri2b_mmi/decode_tgpr_eval92_it3/wer_15
+%WER 10.40 [ 587 / 5643, 124 ins, 52 del, 411 sub ] exp/tri2b_mmi/decode_tgpr_eval92_it4/wer_16
+
+%WER 15.56 [ 1281 / 8234, 224 ins, 152 del, 905 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_dev93_it3/wer_15
+%WER 15.44 [ 1271 / 8234, 220 ins, 165 del, 886 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_dev93_it4/wer_16
+%WER 10.33 [ 583 / 5643, 125 ins, 51 del, 407 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_eval92_it3/wer_15
+%WER 10.33 [ 583 / 5643, 125 ins, 47 del, 411 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_eval92_it4/wer_15
+
+%WER 11.43 [ 941 / 8234, 113 ins, 144 del, 684 sub ] exp/tri3b/decode_bd_tgpr_dev93/wer_19
+%WER 16.09 [ 1325 / 8234, 193 ins, 185 del, 947 sub ] exp/tri3b/decode_bd_tgpr_dev93.si/wer_16
+%WER 6.79 [ 383 / 5643, 51 ins, 49 del, 283 sub ] exp/tri3b/decode_bd_tgpr_eval92/wer_18
+%WER 10.61 [ 599 / 5643, 91 ins, 74 del, 434 sub ] exp/tri3b/decode_bd_tgpr_eval92.si/wer_15
+%WER 5.74 [ 324 / 5643, 46 ins, 41 del, 237 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg/wer_19
+%WER 5.90 [ 333 / 5643, 46 ins, 39 del, 248 sub ] exp/tri3b/decode_bd_tgpr_eval92_tg/wer_18
+
+# this section demonstrates RNNLM-HS rescoring (commented out by default)
+# the exact results might differ insignificantly due to hogwild in RNNLM-HS training that introduces indeterminism
+%WER 5.92 [ 334 / 5643, 58 ins, 32 del, 244 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg/wer_14 # baseline (no rescoring)
+%WER 5.26 [ 297 / 5643, 47 ins, 29 del, 221 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs100_0.3/wer_15
+%WER 5.17 [ 292 / 5643, 46 ins, 30 del, 216 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs300_0.3/wer_16
+%WER 5.64 [ 318 / 5643, 50 ins, 34 del, 234 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs30_0.15/wer_16
+%WER 5.55 [ 313 / 5643, 51 ins, 32 del, 230 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15/wer_16
+%WER 5.55 [ 313 / 5643, 51 ins, 32 del, 230 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.15_N1000/wer_16
+%WER 5.39 [ 304 / 5643, 50 ins, 30 del, 224 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3/wer_15
+%WER 5.42 [ 306 / 5643, 50 ins, 30 del, 226 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N10/wer_15
+%WER 5.39 [ 304 / 5643, 50 ins, 30 del, 224 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.3_N1000/wer_15
+%WER 5.37 [ 303 / 5643, 49 ins, 29 del, 225 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4/wer_14
+%WER 5.37 [ 303 / 5643, 49 ins, 29 del, 225 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.4_N1000/wer_14
+%WER 5.26 [ 297 / 5643, 45 ins, 32 del, 220 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.5_N1000/wer_15
+%WER 5.14 [ 290 / 5643, 43 ins, 32 del, 215 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg_rnnlm-hs400_0.75_N1000/wer_18
+
+%WER 14.17 [ 1167 / 8234, 222 ins, 123 del, 822 sub ] exp/tri3b/decode_tgpr_dev93/wer_17
+%WER 19.37 [ 1595 / 8234, 315 ins, 153 del, 1127 sub ] exp/tri3b/decode_tgpr_dev93.si/wer_15
+
+%WER 12.98 [ 1069 / 8234, 209 ins, 116 del, 744 sub ] exp/tri3b/decode_tgpr_dev93_tg/wer_19
+%WER 9.30 [ 525 / 5643, 120 ins, 37 del, 368 sub ] exp/tri3b/decode_tgpr_eval92/wer_18
+%WER 12.95 [ 731 / 5643, 167 ins, 46 del, 518 sub ] exp/tri3b/decode_tgpr_eval92.si/wer_14
+%WER 8.54 [ 482 / 5643, 113 ins, 29 del, 340 sub ] exp/tri3b/decode_tgpr_eval92_tg/wer_17
+
+%WER 12.12 [ 998 / 8234, 209 ins, 88 del, 701 sub ] exp/tri4a/decode_tgpr_dev93/wer_17
+%WER 15.98 [ 1316 / 8234, 275 ins, 119 del, 922 sub ] exp/tri4a/decode_tgpr_dev93.si/wer_15
+%WER 7.83 [ 442 / 5643, 107 ins, 23 del, 312 sub ] exp/tri4a/decode_tgpr_eval92/wer_16
+%WER 10.90 [ 615 / 5643, 148 ins, 30 del, 437 sub ] exp/tri4a/decode_tgpr_eval92.si/wer_13
+
+%WER 9.15 [ 753 / 8234, 90 ins, 113 del, 550 sub ] exp/tri4b/decode_bd_pp_tgpr_dev93/wer_16
+%WER 12.64 [ 1041 / 8234, 137 ins, 145 del, 759 sub ] exp/tri4b/decode_bd_pp_tgpr_dev93.si/wer_16
+%WER 5.74 [ 324 / 5643, 47 ins, 35 del, 242 sub ] exp/tri4b/decode_bd_pp_tgpr_eval92/wer_19
+%WER 7.92 [ 447 / 5643, 64 ins, 46 del, 337 sub ] exp/tri4b/decode_bd_pp_tgpr_eval92.si/wer_15
+%WER 9.38 [ 772 / 8234, 90 ins, 118 del, 564 sub ] exp/tri4b/decode_bd_tgpr_dev93/wer_18
+%WER 13.07 [ 1076 / 8234, 148 ins, 143 del, 785 sub ] exp/tri4b/decode_bd_tgpr_dev93.si/wer_17
+%WER 6.03 [ 340 / 5643, 66 ins, 26 del, 248 sub ] exp/tri4b/decode_bd_tgpr_eval92/wer_13
+%WER 8.19 [ 462 / 5643, 74 ins, 42 del, 346 sub ] exp/tri4b/decode_bd_tgpr_eval92.si/wer_15
+%WER 12.16 [ 1001 / 8234, 197 ins, 98 del, 706 sub ] exp/tri4b/decode_tgpr_dev93/wer_17
+%WER 15.47 [ 1274 / 8234, 235 ins, 120 del, 919 sub ] exp/tri4b/decode_tgpr_dev93.si/wer_17
+%WER 8.08 [ 456 / 5643, 125 ins, 16 del, 315 sub ] exp/tri4b/decode_tgpr_eval92/wer_13
+%WER 10.49 [ 592 / 5643, 147 ins, 27 del, 418 sub ] exp/tri4b/decode_tgpr_eval92.si/wer_12
+%WER 7.99 [ 658 / 8234, 72 ins, 95 del, 491 sub ] exp/tri4b_fmmi_a/decode_bd_tgpr_dev93_it8/wer_12
+%WER 11.15 [ 918 / 8234, 180 ins, 81 del, 657 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it3/wer_15
+%WER 11.23 [ 925 / 8234, 201 ins, 77 del, 647 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it4/wer_12
+%WER 10.64 [ 876 / 8234, 180 ins, 80 del, 616 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it5/wer_13
+%WER 10.43 [ 859 / 8234, 174 ins, 76 del, 609 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it6/wer_12
+%WER 10.42 [ 858 / 8234, 178 ins, 70 del, 610 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it7/wer_11
+%WER 10.41 [ 857 / 8234, 179 ins, 66 del, 612 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it8/wer_10
+%WER 4.09 [ 231 / 5643, 40 ins, 12 del, 179 sub ] exp/tri4b_fmmi_a/decode_tgpr_eval92_it8/wer_11
+%WER 10.61 [ 874 / 8234, 188 ins, 75 del, 611 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it3/wer_13
+%WER 10.44 [ 860 / 8234, 183 ins, 79 del, 598 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it4/wer_13
+%WER 10.27 [ 846 / 8234, 180 ins, 73 del, 593 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it5/wer_12
+%WER 10.27 [ 846 / 8234, 174 ins, 72 del, 600 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it6/wer_12
+%WER 10.06 [ 828 / 8234, 162 ins, 80 del, 586 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it7/wer_13
+%WER 10.08 [ 830 / 8234, 158 ins, 84 del, 588 sub ] exp/tri4b_fmmi_indirect/decode_tgpr_dev93_it8/wer_13
+%WER 10.77 [ 887 / 8234, 194 ins, 72 del, 621 sub ] exp/tri4b_mmi_b0.1/decode_tgpr_dev93/wer_12
+
+%WER 12.27 [ 1010 / 8234, 188 ins, 104 del, 718 sub ] exp/sgmm2_5a/decode_tgpr_dev93/wer_14
+%WER 11.87 [ 977 / 8234, 201 ins, 75 del, 701 sub ] exp/sgmm2_5a_mmi_b0.1/decode_tgpr_dev93_it1/wer_11
+%WER 11.84 [ 975 / 8234, 195 ins, 81 del, 699 sub ] exp/sgmm2_5a_mmi_b0.1/decode_tgpr_dev93_it2/wer_13
+%WER 11.67 [ 961 / 8234, 196 ins, 77 del, 688 sub ] exp/sgmm2_5a_mmi_b0.1/decode_tgpr_dev93_it3/wer_13
+%WER 11.78 [ 970 / 8234, 190 ins, 82 del, 698 sub ] exp/sgmm2_5a_mmi_b0.1/decode_tgpr_dev93_it4/wer_14
+%WER 11.87 [ 977 / 8234, 201 ins, 75 del, 701 sub ] exp/sgmm2_5a_mmi_b0.1_m0.9/decode_tgpr_dev93_it1/wer_11
+%WER 11.85 [ 976 / 8234, 195 ins, 81 del, 700 sub ] exp/sgmm2_5a_mmi_b0.1_m0.9/decode_tgpr_dev93_it2/wer_13
+%WER 11.67 [ 961 / 8234, 196 ins, 77 del, 688 sub ] exp/sgmm2_5a_mmi_b0.1_m0.9/decode_tgpr_dev93_it3/wer_13
+%WER 11.78 [ 970 / 8234, 190 ins, 82 del, 698 sub ] exp/sgmm2_5a_mmi_b0.1_m0.9/decode_tgpr_dev93_it4/wer_14
+
+%WER 8.23 [ 678 / 8234, 87 ins, 103 del, 488 sub ] exp/sgmm2_5b/decode_bd_tgpr_dev93/wer_12
+%WER 4.29 [ 242 / 5643, 37 ins, 18 del, 187 sub ] exp/sgmm2_5b/decode_bd_tgpr_eval92/wer_12
+%WER 10.88 [ 896 / 8234, 195 ins, 82 del, 619 sub ] exp/sgmm2_5b/decode_tgpr_dev93/wer_12
+%WER 6.86 [ 387 / 5643, 97 ins, 18 del, 272 sub ] exp/sgmm2_5b/decode_tgpr_eval92/wer_13
+
+%WER 3.93 [ 222 / 5643, 36 ins, 14 del, 172 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it1/wer_11
+%WER 3.77 [ 213 / 5643, 33 ins, 12 del, 168 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it2/wer_12
+%WER 3.62 [ 204 / 5643, 35 ins, 10 del, 159 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3/wer_10
+%WER 3.69 [ 208 / 5643, 33 ins, 11 del, 164 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it3.mbr/wer_11
+%WER 3.51 [ 198 / 5643, 34 ins, 9 del, 155 sub ] exp/sgmm2_5b_mmi_b0.1/decode_bd_tgpr_eval92_it4/wer_10
+%WER 7.83 [ 645 / 8234, 83 ins, 95 del, 467 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_dev93_it1/wer_12
+%WER 7.63 [ 628 / 8234, 76 ins, 99 del, 453 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_dev93_it2/wer_14
+%WER 7.52 [ 619 / 8234, 86 ins, 88 del, 445 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_dev93_it3/wer_11
+%WER 7.41 [ 610 / 8234, 76 ins, 93 del, 441 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_dev93_it4/wer_13
+%WER 3.92 [ 221 / 5643, 36 ins, 14 del, 171 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_eval92_it1/wer_11
+%WER 3.72 [ 210 / 5643, 32 ins, 12 del, 166 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_eval92_it2/wer_13
+%WER 3.67 [ 207 / 5643, 33 ins, 10 del, 164 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_eval92_it3/wer_12
+%WER 3.60 [ 203 / 5643, 35 ins, 10 del, 158 sub ] exp/sgmm2_5b_mmi_b0.1_z/decode_bd_tgpr_eval92_it4/wer_11
+
+# regular SGMM (only ran the basic one, not discriminatively trained, although the
+# scripts are there.)
+
+# Rescored with quinphone.
+# not updated
+
+
+# DNN on fMLLR features (Karel's setup, updated recipe [5.3.2014]). 
+# frame cross-entropy training
+%WER 6.74 [ 555 / 8234, 67 ins, 73 del, 415 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_10
+%WER 4.09 [ 231 / 5643, 33 ins, 15 del, 183 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_12
+# sMBR training (1 iteration)
+%WER 6.39 [ 526 / 8234, 56 ins, 77 del, 393 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_dev93_iter1/wer_11
+%WER 3.85 [ 217 / 5643, 23 ins, 16 del, 178 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_bd_tgpr_eval92_iter1/wer_14
+# sMBR training (1+4 iterations, lattices+alignment updated after 1st iteration)
+%WER 6.15 [ 506 / 8234, 55 ins, 70 del, 381 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_dev93_iter4/wer_11
+%WER 3.56 [ 201 / 5643, 24 ins, 9 del, 168 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_bd_tgpr_eval92_iter4/wer_13
+
+
+#DNN results  with cpu based setup
+%WER 7.21 [ 594 / 8234, 64 ins, 98 del, 432 sub ] exp/nnet5c1/decode_bd_tgpr_dev93/wer_14
+
+
+#==== Below are some DNN results from an older version of the RESULTS file,
+
+# Dan's cpu-based neural net recipe.  Note: the best number for dev93 is 7.10, an SGMM+MMI system,
+# and for eval92 is 3.79, the same system.  (On this setup, discriminative training helped a lot,
+# which seems to be the reason we can't beat the SGMM+MMI numbers here.)
+
+
+exp/nnet5c1/decode_bd_tgpr_dev93/wer_14:%WER 7.32 [ 603 / 8234, 61 ins, 101 del, 441 sub ]
+exp/nnet5c1/decode_bd_tgpr_eval92/wer_14:%WER 4.39 [ 248 / 5643, 32 ins, 17 del, 199 sub ]
+# Note: my 4.39% result is worse than Karel's 3.56%.
+
+
+# some GPU-based neural network training results...
+
+# Below is the recipe with multiple VTLN warps and mel-filterbank inputs..
+%WER 7.24 [ 596 / 8234, 62 ins, 98 del, 436 sub ] exp/nnet5b_gpu/decode_bd_tgpr_dev93/wer_15
+%WER 3.95 [ 223 / 5643, 30 ins, 18 del, 175 sub ] exp/nnet5b_gpu/decode_bd_tgpr_eval92/wer_16
+
+# 5c is GPU tanh recipe
+%WER 7.08 [ 583 / 8234, 64 ins, 94 del, 425 sub ] exp/nnet5c/decode_bd_tgpr_dev93/wer_14
+%WER 4.02 [ 227 / 5643, 32 ins, 16 del, 179 sub ] exp/nnet5c/decode_bd_tgpr_eval92/wer_13
+
+# 5c_gpu (the same, run on GPU)
+# note, for 5c and 5c_gpu, we could get better results by using only 4
+# GPU jobs and half the learning rate, but of course it would take twice longer.
+%WER 7.29 [ 600 / 8234, 60 ins, 99 del, 441 sub ] exp/nnet5c_gpu/decode_bd_tgpr_dev93/wer_14
+%WER 4.08 [ 230 / 5643, 34 ins, 15 del, 181 sub ] exp/nnet5c_gpu/decode_bd_tgpr_eval92/wer_13
+
+
+# 5d is the pnorm recipe, with 4 jobs; compare with nnet5c.
+%WER 6.97 [ 574 / 8234, 72 ins, 84 del, 418 sub ] exp/nnet5d/decode_bd_tgpr_dev93/wer_12
+%WER 3.86 [ 218 / 5643, 27 ins, 12 del, 179 sub ] exp/nnet5d/decode_bd_tgpr_eval92/wer_13
+ (the same without the big dictionary)
+ %WER 9.40 [ 774 / 8234, 164 ins, 71 del, 539 sub ] exp/nnet5d/decode_tgpr_dev93/wer_12
+ %WER 6.45 [ 364 / 5643, 81 ins, 19 del, 264 sub ] exp/nnet5d/decode_tgpr_eval92/wer_14
+
+# 5d_gpu is the pnorm recipe with GPU;
+%WER 7.07 [ 582 / 8234, 62 ins, 94 del, 426 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 4.06 [ 229 / 5643, 31 ins, 13 del, 185 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_12
+ (the same without the big dictionary)_13
+%WER 9.35 [ 770 / 8234, 161 ins, 78 del, 531 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_12
+%WER 6.59 [ 372 / 5643, 91 ins, 15 del, 266 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_12
+
+
+%WER 7.13 [ 587 / 8234, 72 ins, 93 del, 422 sub ] exp/nnet5d_gpu/decode_bd_tgpr_dev93/wer_13
+%WER 4.06 [ 229 / 5643, 31 ins, 16 del, 182 sub ] exp/nnet5d_gpu/decode_bd_tgpr_eval92/wer_14
+
+# 5e is GPU version of ensemble training of pnorm nnets recipe, with 4 jobs; compare with nnet5d.
+%WER 7.19 [ 592 / 8234, 72 ins, 89 del, 431 sub ] exp/nnet5e_gpu/decode_bd_tgpr_dev93/wer_10
+%WER 3.97 [ 224 / 5643, 25 ins, 16 del, 183 sub ] exp/nnet5e_gpu/decode_bd_tgpr_eval92/wer_14
+
+ # decoded with tgpr LM.
+ %WER 9.55 [ 786 / 8234, 163 ins, 83 del, 540 sub ] exp/nnet5d_gpu/decode_tgpr_dev93/wer_13
+ %WER 6.50 [ 367 / 5643, 95 ins, 16 del, 256 sub ] exp/nnet5d_gpu/decode_tgpr_eval92/wer_14
+
+# for results with VTLN, see for example local/run_vtln2.sh, they are at the end.
+
+
+# Online-nnet2 results:
+
+for x in exp/nnet2_online/nnet_ms_a_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 7.02 [ 578 / 8234, 85 ins, 88 del, 405 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93/wer_10
+%WER 6.56 [ 540 / 8234, 86 ins, 79 del, 375 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch1/wer_11
+%WER 6.51 [ 536 / 8234, 84 ins, 77 del, 375 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch2/wer_12
+%WER 6.42 [ 529 / 8234, 90 ins, 72 del, 367 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch3/wer_12
+%WER 6.40 [ 527 / 8234, 91 ins, 71 del, 365 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_smbr_epoch4/wer_12 **
+%WER 7.23 [ 595 / 8234, 77 ins, 96 del, 422 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_utt/wer_10
+%WER 6.95 [ 572 / 8234, 70 ins, 90 del, 412 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_dev93_utt_offline/wer_11
+%WER 3.93 [ 222 / 5643, 32 ins, 12 del, 178 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92/wer_10
+%WER 3.76 [ 212 / 5643, 27 ins, 11 del, 174 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch1/wer_11
+%WER 3.60 [ 203 / 5643, 27 ins, 9 del, 167 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch2/wer_11  **
+%WER 3.62 [ 204 / 5643, 28 ins, 7 del, 169 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch3/wer_11
+%WER 3.72 [ 210 / 5643, 32 ins, 7 del, 171 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_smbr_epoch4/wer_11
+%WER 4.02 [ 227 / 5643, 32 ins, 14 del, 181 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_utt/wer_9
+%WER 3.99 [ 225 / 5643, 29 ins, 13 del, 183 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_utt_offline/wer_10
+%WER 9.45 [ 778 / 8234, 180 ins, 73 del, 525 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93/wer_10
+%WER 9.39 [ 773 / 8234, 163 ins, 79 del, 531 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_utt/wer_11
+%WER 9.25 [ 762 / 8234, 174 ins, 69 del, 519 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_utt_offline/wer_10
+%WER 6.57 [ 371 / 5643, 95 ins, 12 del, 264 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92/wer_11
+%WER 6.68 [ 377 / 5643, 102 ins, 13 del, 262 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt/wer_10
+%WER 6.56 [ 370 / 5643, 100 ins, 12 del, 258 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_utt_offline/wer_10
+
