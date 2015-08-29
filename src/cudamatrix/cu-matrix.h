@@ -515,14 +515,14 @@ class CuMatrixBase {
 
   // For each i, with indexes[i] = (j, k), does (*this)(j, k) += input[i].
   // Requires, but does not check, that the vector of indexes does not contrain
-  // repeated elements, 'input' is the start of an array of length equal
+  // repeated elements, 'input' is the start of a host array of length equal
   // to indexes.Dim().
   void AddElements(Real alpha, const CuArray<Int32Pair> &indexes, const Real *input);
 
-  // This function implies the output is allocated and the size is equal to
-  // indexes.size(), and for each element of "indexes" it interprets it as
+  // This function requires that 'output' is a host array and is allocated with size
+  // of indexes.size(), and for each element of 'indexes' it interprets it as
   // a (row, column) index into *this, and puts (*this)(row, column) into
-  // the corresponding element of "output".
+  // the corresponding element of 'output'.
   void Lookup(const std::vector<Int32Pair> &indexes,
               Real *output) const;
 
