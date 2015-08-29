@@ -2239,8 +2239,8 @@ static void UnitTestCuMatrixLookup() {
     int32 num_elements = 10 + Rand() % 10;
     std::vector<Int32Pair> indices;
     std::vector<Real> reference;
-    //std::vector<Real> output;
-    Real *output = new Real[num_elements];
+    std::vector<Real> output;
+    output.resize(num_elements);
 
     // Generates the indices and the reference.
     for (int32 j = 0; j < num_elements; j++) {
@@ -2254,11 +2254,9 @@ static void UnitTestCuMatrixLookup() {
       reference.push_back(H(r, c));
     }
 
-    H.Lookup(indices, output);
+    H.Lookup(indices, &(output[0]));
 
-    for (int32 j = 0; j < num_elements; j++) {
-      KALDI_ASSERT(reference[j] == output[j]);
-    }
+    KALDI_ASSERT(reference == output);
   }
 }
 
