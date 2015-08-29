@@ -57,7 +57,8 @@ fi
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
     compute-frame-snrs ark:$dir/snr_pred.JOB.ark \
-    scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
+    scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp ark:- \| \
+    vector-apply-log ark:- \
     ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
 fi
 
