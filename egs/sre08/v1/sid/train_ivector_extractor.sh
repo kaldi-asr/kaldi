@@ -162,4 +162,4 @@ while [ $x -lt $num_iters ]; do
   x=$[$x+1]
 done
 
-ln -s $x.ie $dir/final.ie
+ln -sf $x.ie $dir/final.ie

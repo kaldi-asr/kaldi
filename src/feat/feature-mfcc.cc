@@ -134,6 +134,9 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
   std::vector<BaseFloat> temp_buffer;  // used by srfft.
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index..
     BaseFloat log_energy;
+
+    // If opts_.raw_energy and opts_.use_energy are both true, then
+    // log_energy is computed before windowing and stored in log_energy
     ExtractWindow(wave, r, opts_.frame_opts, feature_window_function_, &window,
                   (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
 

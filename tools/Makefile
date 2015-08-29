@@ -3,9 +3,9 @@
 CXX = g++
 # CXX = clang++  # Uncomment this line to build with Clang.
 
-OPENFST_VERSION = 1.3.4
+# OPENFST_VERSION = 1.3.4
 # Uncomment the next line to build with OpenFst-1.4.1.
-# OPENFST_VERSION = 1.4.1
+OPENFST_VERSION = 1.4.1
 # Note: OpenFst >= 1.4 requires C++11 support, hence you will need to use a
 # relatively recent C++ compiler, e.g. gcc >= 4.6, clang >= 3.0.
 

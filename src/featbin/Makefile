@@ -14,8 +14,9 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     apply-cmvn-sliding compute-cmvn-stats-two-channel compute-kaldi-pitch-feats \
     process-kaldi-pitch-feats compare-feats wav-to-duration add-deltas-sdc \
     compute-and-process-kaldi-pitch-feats modify-cmvn-stats wav-copy \
-    append-vector-to-feats detect-sinusoids compute-snr-targets \
-		compute-frame-snrs vector-to-feat
+    append-vector-to-feats detect-sinusoids extract-column \
+		compute-zero-crossings extract-vector-segments combine-vector-segments \
+		compute-snr-targets compute-frame-snrs vector-to-feat
 
 OBJFILES = 
 
@@ -23,7 +24,7 @@ TESTFILES =
 
 ADDLIBS = ../feat/kaldi-feat.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
          ../thread/kaldi-thread.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a \
-         ../util/kaldi-util.a ../base/kaldi-base.a
+         ../util/kaldi-util.a ../base/kaldi-base.a ../segmenter/kaldi-segmenter.a
 
 include ../makefiles/default_rules.mk
 
