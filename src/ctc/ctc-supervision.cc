@@ -528,6 +528,41 @@ void CtcSupervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "</CtcSupervision>");    
 }
 
+int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
+                           std::vector<int32> *state_times) {
+  if (fst.Start() != 0)  // this is implied by our properties.
+    KALDI_ERR << "Expecting input FST start state to be zero";
+  int32 num_states = fst.NumStates();
+  int32 total_length = -1;
+  state_times->clear();
+  state_times->resize(num_states, -1);
+  (*state_times)[0] = 0;
+  for (int32 state = 0; state < num_states; state++) {
+    int32 next_state_time = (*state_times)[state] + 1;
+    if (next_state_time <= 0)  // i.e. (*state_times)[state] < 0
+      KALDI_ERR << "Input FST does not have required properties.";
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const fst::StdArc &arc = aiter.Value();
+      KALDI_ASSERT(arc.ilabel != 0);
+      int32 &next_state_ref = (*state_times)[arc.nextstate];
+      if (next_state_ref == -1)
+        next_state_ref = next_state_time;
+      else if (next_state_ref != next_state_time)
+        KALDI_ERR << "Input FST does not have required properties.";
+    }
+    if (fst.Final(state) != fst::TropicalWeight::Zero()) {
+      if (total_length == -1)
+        total_length = next_state_time - 1;
+      else if (total_length != next_state_time - 1)
+        KALDI_ERR << "Input FST does not have required properties.";
+    }
+  }
+  if (total_length < 0)
+    KALDI_ERR << "Input FST does not have required properties.";
+  return total_length;
+}
+
 
 }  // namespace ctc
 }  // namespace kaldi

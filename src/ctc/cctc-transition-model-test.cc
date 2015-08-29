@@ -423,12 +423,23 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   // ShortestPath effectively chooses an arbitrary path, because all paths have
   // unit weight / zero cost.
   ShortestPath(supervision.fst, &one_path);
+
+  
   std::vector<int32> graph_label_seq_in, graph_label_seq_out;
   fst::TropicalWeight tot_weight;
   GetLinearSymbolSequence(one_path, &graph_label_seq_in,
                           &graph_label_seq_out, &tot_weight);
   KALDI_ASSERT(tot_weight == fst::TropicalWeight::One() &&
                graph_label_seq_in == graph_label_seq_out);
+
+  { // basic testing of ComputeFstStateTimes (it has a lot of asserts).
+    std::vector<int32> state_times;
+    int32 length = ComputeFstStateTimes(supervision.fst, &state_times);
+    KALDI_ASSERT(static_cast<size_t>(length) == graph_label_seq_out.size());
+    for (size_t i = 0; i + 1 < state_times.size(); i++)
+      KALDI_ASSERT(state_times[i] <= state_times[i+1]);
+  }
+  
 
   std::vector<int32> phones_from_graph;
   for (size_t i = 0; i < graph_label_seq_in.size(); i++) {

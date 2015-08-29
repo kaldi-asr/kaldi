@@ -32,6 +32,10 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "ctc/language-model.h"
+#include "ctc/cctc-transition-model.h"
+#include "ctc/ctc-supervision.h"
+#include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-array.h"
 
 namespace kaldi {
 namespace ctc {
@@ -75,9 +79,9 @@ class CctcComputation {
   // Does the forward computation.  Returns the total log-prob.
   BaseFloat Forward();
                     
-  // Does the backward computation and adds the derivative w.r.t. the neural
-  // network output to 'nnet_output_deriv' (so you should probably set it to
-  // zero beforehand).
+  // Does the backward computation and writes the derivative w.r.t. the neural
+  // network output to 'nnet_output_deriv' (which does not have to be initialized
+  // beforehand).
   // Returns true if everything was OK (which it should be, normally), and
   // false if some kind of NaN or inf was discovered, in which case you
   // shouldn't use the derivatives.  We're concerned about this because
@@ -91,10 +95,9 @@ class CctcComputation {
   const CctcTransitionModel &trans_model_;
   // CUDA copy of trans_model_.Weights().  Dimension is
   // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
-  const CuMatrix<BaseFloat> &weights_;
-
+  const CuMatrix<BaseFloat> &cu_weights_;
+  // The supervision object  
   const CtcSupervision &supervision_;
-  
   // The neural net output
   const CuMatrixBase<BaseFloat> &nnet_output_;
   // the exp of the neural net output.
@@ -122,7 +125,7 @@ class CctcComputation {
   // exp_nnet_output_ for the forward-backward computation.  The order is not
   // important, but indexes into this vector appear in .first members in
   // fst_indexes.
-  std::vector<Int32Pair> numerator_indexes_;
+  CuArray<Int32Pair> numerator_indexes_;
   // the numerator of the probability.  in the forward computation,
   // numerator_probs_[i] equals exp_nnet_output_(row,column), where (row,column)
   // is the i'th member of numerator_indexes.  In the backward computation,
@@ -134,7 +137,7 @@ class CctcComputation {
   // normalizers_ for the forward-backward computation.  The order is not
   // important, but indexes into this vector appear in .second members in
   // fst_indexes.
-  std::vector<Int32Pair> denominator_indexes_;
+  CuArray<Int32Pair> denominator_indexes_;
   // the denominator of the probability.  denominator_probs_[i] equals
   // exp_nnet_output_(row,column), where (row,column) is the i'th member of
   // denominator_indexes.
@@ -163,7 +166,7 @@ class CctcComputation {
   //  numerator_indexes_ and denominator_indexes_.
   void ComputeLookupIndexes();
 
-  // This function, called from Forward(), computes denomator_probs_ and
+  // This function, called from Forward(), computes denominator_probs_ and
   // numerator_probs_ via batch lookup operations in exp_nnet_output_ and
   // normalizers_, and then computes arc_probs_.
   void LookUpLikelihoods();

@@ -10,7 +10,6 @@ TESTFILES = language-model-test cctc-transition-model-test
 
 OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o \
            ctc-supervision.o cctc-training.o
-# ctc-functions.o
 
 LIBNAME = kaldi-ctc
 

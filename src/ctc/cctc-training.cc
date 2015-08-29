@@ -23,35 +23,155 @@
 namespace kaldi {
 namespace ctc {
 
-void CctcTrainer::CheckDims() const {
-  KALDI_ASSERT(weights_.NumRows() == trans_model_.NumHistoryStates() &&
-               weights_.NumCols() == trans_model_.NumIndexes());
-  KALDI_ASSERT(nnet_output_.NumRows() == supervision_.num_frames &&
-               nnet_output_.NumCols() == trans_model_.NumIndexes());
-  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumIndexes());
+
+CctcComputation::CctcComputation(
+    const CctcTrainingOptions &opts,
+    const CctcTransitionModel &trans_model,
+    const CuMatrix<BaseFloat> &cu_weights,
+    const CtcSupervision &supervision,
+    const CuMatrixBase<BaseFloat> &nnet_output):
+    opts_(opts), trans_model_(trans_model), cu_weights_(cu_weights),
+    supervision_(supervision), nnet_output_(nnet_output) {
+  CheckDims();
 }
 
-void CctcTraining::Forward() {
-  CheckDims();
+
+void CctcComputation::CheckDims() const {
+  KALDI_ASSERT(cu_weights_.NumRows() == trans_model_.NumHistoryStates() &&
+               cu_weights_.NumCols() == trans_model_.NumOutputIndexes());
+  KALDI_ASSERT(nnet_output_.NumRows() == supervision_.num_frames &&
+               nnet_output_.NumCols() == trans_model_.NumOutputIndexes());
+  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumOutputIndexes());
+}
+
+void CctcComputation::ComputeLookupIndexes() {
+  std::vector<int32> fst_state_times;
+  ComputeFstStateTimes(supervision_.fst, &fst_state_times);
+  int32 num_states = supervision_.fst.NumStates();
+  int32 num_arcs_guess = num_states * 2;
+  // arc_probs_temp will store the language-model probabilities for each arc.
+  std::vector<BaseFloat> arc_probs_temp;
+  fst_indexes_.reserve(num_arcs_guess);
+  arc_probs_temp.reserve(num_arcs_guess);
+  int32 cur_time = 0;
+
+  // the following are CPU versions of numerator_indexes_ and
+  // denominator_indexes_.  numerator_indexes_cpu is a list of pairs (t,
+  // output-index) and denominator_indexes_cpu is a list of pairs (c,
+  // history-state-index).
+  std::vector<Int32Pair> numerator_indexes_cpu, denominator_indexes_cpu;
+  // numerator_index_map_this_frame is a map, only valid for t == cur_time,
+  // from the output-index to the index into numerator_indexes_cpu for the
+  // p air (cur_time, output-index).
+  unordered_map<int32,int32> numerator_index_map_this_frame;
+  // denoninator_index_map_this_frame is a map, only valid for t == cur_time,
+  // from the output-index to the index into numerator_indexes_cpu for the
+  // p air (cur_time, output-index).
+  unordered_map<int32,int32> denominator_index_map_this_frame;
+
+  typedef unordered_map<int32,int32>::iterator IterType;
+  
+  for (int32 state = 0; state < num_states; state++) {
+    int32 t = fst_state_times[state];
+    if (t != cur_time) {
+      KALDI_ASSERT(t == cur_time + 1);
+      numerator_index_map_this_frame.clear();
+      denominator_index_map_this_frame.clear();
+      cur_time = t;
+    }
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision_.fst, state);
+         !aiter.Done(); aiter.Next()) {
+      int32 graph_label = aiter.Value().ilabel,
+          output_index = trans_model_.GraphLabelToOutputIndex(graph_label),
+          history_state = trans_model_.GraphLabelToHistoryState(graph_label);
+
+      int32 numerator_index = numerator_indexes_cpu.size(),
+          denominator_index = denominator_indexes_cpu.size();
+      Int32Pair num_pair, den_pair;  // can't use constructors as declared in C.
+      num_pair.first = t;
+      num_pair.second = output_index;
+      den_pair.first = t;
+      den_pair.second = history_state;
+      // the next few lines are a more efficient way of doing the following:
+      // if (numerator_index_map_this_frame.count(output_index) == 0) {
+      //   numerator_index_map_this_frame[output_index] = numerator_index;
+      // else
+      //   numerator_index = numerator_index_map_this_frame[output_index];
+      std::pair<IterType,bool> p = numerator_index_map_this_frame.insert(
+              std::pair<const int32, int32>(output_index, numerator_index));
+      if (p.second) {  // Was inserted -> map had no key 'output_index'
+        numerator_indexes_cpu.push_back(num_pair);
+      } else {  // was not inserted -> set numerator_index to the existing index.
+        numerator_index = p.first->second;
+        KALDI_PARANOID_ASSERT(numerator_indexes_cpu[numerator_index] ==
+                              num_pair);
+      }
+      // the next few lines are a more efficient way of doing the following:
+      // if (denominator_index_map_this_frame.count(history_state) == 0) {
+      //   denominator_index_map_this_frame[history_state] = denominator_index;
+      // else
+      //   denominator_index = denominator_index_map_this_frame[history_state];
+      p = denominator_index_map_this_frame.insert(
+          std::pair<const int32, int32>(history_state, denominator_index));
+      if (p.second) {  // Was inserted -> map had no key 'history_state'
+        denominator_indexes_cpu.push_back(den_pair);
+      } else {  // was not inserted -> set denominator_index to the existing index.
+        denominator_index = p.first->second;
+        KALDI_PARANOID_ASSERT(denominator_indexes_cpu[denominator_index] ==
+                               den_pair);
+      }
+      fst_indexes_.push_back(std::pair<int32,int32>(numerator_index,
+                                                    denominator_index));
+      arc_probs_temp.push_back(trans_model_.GraphLabelToLmProb(graph_label));
+    }
+  }
+  numerator_indexes_ = numerator_indexes_cpu;
+  denominator_indexes_ = denominator_indexes_cpu;
+  int32 num_arcs = fst_indexes_.size();
+  KALDI_ASSERT(num_arcs > 0);
+  arc_probs_.Resize(num_arcs);
+  memcpy(static_cast<void*>(arc_probs_.Data()),
+         static_cast<void*>(&(arc_probs_temp[0])),
+         num_arcs * sizeof(BaseFloat));
+}
+
+BaseFloat CctcComputation::Forward() {
   ComputeLookupIndexes();
   exp_nnet_output_ = nnet_output_;
   exp_nnet_output_.ApplyExp();
   normalizers_.Resize(exp_nnet_output_.NumRows(),
                       trans_model_.NumHistoryStates());
-  normalizers_.AddMatMat(1.0, exp_nnet_output_, kNoTrans, weights_, kTrans);
+  normalizers_.AddMatMat(1.0, exp_nnet_output_, kNoTrans, cu_weights_, kTrans,
+                         0.0);
   LookUpLikelihoods();
-  ComputeAlphas();
+  ComputeAlpha();
+  return tot_log_prob_;
 }
 
+void CctcComputation::LookUpLikelihoods() {
+  numerator_probs_.Resize(numerator_indexes_.Dim(), kUndefined);
+  exp_nnet_output_.Lookup(numerator_indexes_, numerator_probs_.Data());
+  denominator_probs_.Resize(denominator_indexes_.Dim(), kUndefined);
+  normalizers_.Lookup(denominator_indexes_, denominator_probs_.Data());
+  // Note: at this point, arc_probs_ contains the phone language model
+  // probabilities.
+  BaseFloat *arc_prob_data = arc_probs_.Data();
+  const BaseFloat *numerator_prob_data = numerator_probs_.Data(),
+      *denominator_prob_data = denominator_probs_.Data();
+  std::vector<std::pair<int32,int32> >::const_iterator
+      iter = fst_indexes_.begin(), end = fst_indexes_.end();
+  for (; iter != end; ++iter, ++arc_prob_data)
+    *arc_prob_data *= numerator_prob_data[iter->first] /
+                     denominator_prob_data[iter->second];
+}
 
-
-bool CctcTraining::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   ComputeBeta();
   return ComputeDerivatives(nnet_output_deriv);
 }
   
 
-bool CctcTraining::ComputeDerivatives(
+bool CctcComputation::ComputeDerivatives(
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   // we assume nnet_output_deriv is already zeroed; we add to it.
   int32 num_states = supervision_.fst.NumStates();
@@ -65,13 +185,13 @@ bool CctcTraining::ComputeDerivatives(
   numerator_probs_.SetZero();  // we'll use this to store derivatives w.r.t. the
                                // numerator log-prob; these derivatives are just
                                // sums of occupation counts.
-  BaseFloat numerator_deriv_data = numerator_probs_.Data();
+  BaseFloat *numerator_deriv_data = numerator_probs_.Data();
 
   // size and zero denominator_deriv_.  It will contain the sum of negated
   // occupancies that map to each element of the denominator_indexes_ and
   // denominator_prob_ vectors.
   denominator_deriv_.Resize(denominator_probs_.Dim());
-  BaseFloat denominator_deriv_data = denominator_deriv_.Data();
+  BaseFloat *denominator_deriv_data = denominator_deriv_.Data();
   
   const BaseFloat *arc_prob_data = arc_probs_.Data();
   for (int32 state = 0; state < num_states; state++) {
@@ -81,8 +201,8 @@ bool CctcTraining::ComputeDerivatives(
       int32 nextstate = arc.nextstate;
       double arc_posterior =
           exp(alpha_data[state] + beta_data[nextstate] - tot_log_prob_) *
-          arc_probs_[arc_index];
-      KALDI_ASSERT(arc_prob >= 0.0 && arc_prob < 1.1);
+          arc_prob_data[arc_index];
+      KALDI_ASSERT(arc_posterior >= 0.0 && arc_posterior < 1.1);
       int32 numerator_index = fst_indexes_iter->first,
           denominator_index = fst_indexes_iter->second;
       // interpret this as d(objf)/d(log of numerator)
@@ -99,9 +219,32 @@ bool CctcTraining::ComputeDerivatives(
   // We will reuse the normalizers_ array to be the derivatives
   // w.r.t. the normalizers.
   normalizers_.SetZero();
-  
-  
 
+  normalizers_.AddElements(1.0, denominator_indexes_,
+                           denominator_deriv_data);
+
+  // Even though the next statement adds it with zero coefficient, we need
+  // to set it to zero to guard against inf's or NaN's.
+  nnet_output_deriv->SetZero();
+  
+  // After the following statement, 'nnet_output_deriv' contains the derivative
+  // with respect to 'exp_nnet_output_', considering only the denominator term.
+  nnet_output_deriv->AddMatMat(1.0, normalizers_, kNoTrans,
+                               cu_weights_, kNoTrans, 0.0);
+  // After the following statement, 'nnet_output_deriv' contains the derivative with
+  // respect to 'nnet_output_', considering only the denominator term.
+  // we use that y/d(exp x) = exp(x) dy/dx.
+  nnet_output_deriv->MulElements(exp_nnet_output_);
+
+  // After the following statement, 'nnet_output_deriv' should contain the
+  // entire derivative, also including the numerator term.  Note: at this point,
+  // numerator_probs_ contains summed posteriors, which equal the derivative of
+  // the likelihood w.r.t. the nnet log output (considering only the numerator
+  // term).
+  nnet_output_deriv->AddElements(1.0, numerator_indexes_, numerator_probs_.Data());
+
+  BaseFloat sum = nnet_output_deriv->Sum();
+  return (sum == sum && sum - sum == 0);  // check for NaN/inf.
 }
 
 
@@ -137,8 +280,6 @@ bool CctcTraining::ComputeDerivatives(
   
   // lm_prob * num / den.
   
-}
-
 
 }  // namespace ctc
 }  // namespace kaldi

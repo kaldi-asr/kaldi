@@ -330,6 +330,31 @@ class CtcSupervisionSplitter {
   std::vector<int32> frame_;  
 };
 
+/// Assuming the 'fst' is epsilon-free, connected, and has the property that all
+/// paths from the start-state are of the same length, output a vector
+/// containing that length (from the start-state to the current state) to
+/// 'state_times'.  The member 'fst' of struct CtcSupervision has this property.
+/// Returns the total number of frames.  This function is similar to
+/// LatticeStateTimes() and CompactLatticeStateTimes() declared in
+/// lat/lattice-functions.h (except that unlike LatticeStateTimes(), we don't
+/// allow epsilons, not because they are hard to handle but because in this
+/// context we don't expect them.  This function also expects that the input fst
+/// will have the property that the state times are in nondecreasing order (as
+/// SortBreadthFirstSearch() does for FSTs satsifying the other properties we
+/// mentioned).  This just happens to be something we enforce while creating
+/// these FSTs.
+///
+/// @param fst[in] The input fst: should be epsilon-free; connected; nonempty;
+///                should have the property that all paths to a given state (or
+///                to a nonzero final-prob) should have the same number of arcs;
+///                and its states should be sorted on this path length (e.g.
+///                SortBreadthFirst will do this).
+/// @param state_times[out]  The state times that we output; will be set to
+///                a vector with the dimension fst.NumStates()
+/// @return  Returns the path length
+int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
+                           std::vector<int32> *state_times);
+
 
 }  // namespace ctc
 }  // namespace kaldi
