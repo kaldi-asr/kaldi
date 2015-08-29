@@ -2535,11 +2535,11 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &index
   
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
     CuVector<Real> tmp_vec(indexes.Dim(), kUndefined);
     CU_SAFE_CALL(cudaMemcpy(tmp_vec.Data(), input, indexes.Dim() * sizeof(Real),
                             cudaMemcpyHostToDevice));
 
-    Timer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid = n_blocks(indexes.Dim(), CU1DBLOCK);
     cuda_matrix_add_indexed_values(dimGrid, dimBlock, this->Dim(), alpha,
@@ -2550,11 +2550,11 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &index
 #endif
   {
     MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+    const Int32Pair *index = indexes.Data();
     for (int32 i = 0; i < indexes.Dim(); i++) {
-      Int32Pair index = indexes.Data()[i];
-      KALDI_ASSERT(index.first < num_rows && index.first >= 0 &&
-                   index.second < num_cols && index.second >= 0);
-      (*this)(index.first, index.second) += alpha * input[i];
+      KALDI_ASSERT(index[i].first < num_rows && index[i].first >= 0 &&
+                   index[i].second < num_cols && index[i].second >= 0);
+      (*this)(index[i].first, index[i].second) += alpha * input[i];
     }
   }
 }
@@ -2568,8 +2568,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
     KALDI_ASSERT(indices[i].first < num_rows && indices[i].first >= 0 &&
                  indices[i].second < num_cols && indices[i].second >= 0);
   }
-  
-  // Checks the pointer.
+  if (indices.size() == 0) return;  
   KALDI_ASSERT(output != NULL);
 
 #if HAVE_CUDA == 1
@@ -2590,7 +2589,6 @@ void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
 				Real *output) const {
   int32 num_elements = indices.Dim();
   if (num_elements == 0) return;
-  // Checks the pointer.
   KALDI_ASSERT(output != NULL);
 
 #if HAVE_CUDA == 1
@@ -2610,11 +2608,11 @@ void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
 #endif
   {
     MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+    const Int32Pair *index = indices.Data();
     for (int32 i = 0; i < num_elements; i++) {
-      Int32Pair index = indices.Data()[i];
-      KALDI_ASSERT(index.first < num_rows && index.first >= 0 &&
-                   index.second < num_cols && index.second >= 0);    
-      output[i] = (*this)(index.first, index.second);
+      KALDI_ASSERT(index[i].first < num_rows && index[i].first >= 0 &&
+                   index[i].second < num_cols && index[i].second >= 0);    
+      output[i] = (*this)(index[i].first, index[i].second);
     }
   }
 }    

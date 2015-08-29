@@ -131,8 +131,8 @@ void CuArray<T>::CopyToVec(std::vector<T> *dst) const {
 
 template<typename T>
 void CuArray<T>::CopyToHost(T *dst) const {
-  if (dst == NULL) return;
   if (dim_ == 0) return;
+  KALDI_ASSERT(dst != NULL);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) { 
     Timer tim;
