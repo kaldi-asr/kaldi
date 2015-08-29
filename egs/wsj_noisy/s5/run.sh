@@ -409,7 +409,7 @@ done
 # Train and test MMI, and boosted MMI, on tri4b (LDA+MLLT+SAT on
 # all the data).  Use 30 jobs.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_si284 data/lang exp/tri4b exp/tri4b_ali_si284 || exit 1;
+  data/train_si284 data/lang_nosp exp/tri4b exp/tri4b_ali_si284 || exit 1;
 
 # These demonstrate how to build a sytem usable for online-decoding with the nnet2 setup.
 # (see local/run_nnet2.sh for other, non-online nnet2 setups).
