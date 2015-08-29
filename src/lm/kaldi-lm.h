@@ -72,7 +72,7 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
     : pfst_(lm.pfst_ ? new fst::VectorFst<fst::StdArc>(*(lm.pfst_)) : 0) {}
 
   ~LangModelFst() {
-    if (pfst_) delete pfst_;
+    delete pfst_;
   }
 
   /// Reads a language model from an input stream.
