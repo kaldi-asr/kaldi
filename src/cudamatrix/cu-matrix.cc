@@ -2529,7 +2529,7 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
-				     const Real *input) {
+                                     const Real *input) {
   if (indexes.Dim() == 0) return;
   KALDI_ASSERT(input != NULL);
   
@@ -2586,7 +2586,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 
 template<typename Real>
 void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
-				Real *output) const {
+                                Real *output) const {
   int32 num_elements = indices.Dim();
   if (num_elements == 0) return;
   KALDI_ASSERT(output != NULL);

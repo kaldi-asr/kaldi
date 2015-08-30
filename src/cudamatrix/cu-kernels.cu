@@ -1116,7 +1116,7 @@ template<typename Real>
 __global__
 static void _cuda_matrix_add_indexed_values(MatrixDim dim, Real alpha,
                                             const Int32Pair* indices, const Real* x,
-					    int s, Real* data) {
+                                            int s, Real* data) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   if (i >= s)
     return;

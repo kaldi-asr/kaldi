@@ -75,6 +75,7 @@ static void UnitTestCuArray() {
       cu_vec.CopyToVec(&vec2);
       T *vec22 = new T[vec.size()];
       cu_vec.CopyToHost(vec22);
+      delete[] vec22;
     }
 
     { // test assignment operator from CuArray.
