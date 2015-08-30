@@ -77,7 +77,7 @@ static void UnitTestCuSparseMatrixSum() {
 
     Real sum1 = cu_smat.Sum();
     Real sum2 = mat.Sum();
-    AssertEqual(sum1, sum2, 0.00001);
+    KALDI_ASSERT(fabs(sum1 - sum2) < 1.0e-05);
   }
 }
 
