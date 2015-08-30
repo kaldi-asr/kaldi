@@ -44,15 +44,82 @@ void CctcComputation::CheckDims() const {
   KALDI_ASSERT(supervision_.label_dim == trans_model_.NumOutputIndexes());
 }
 
+// This function, called from Forward(), does the actual forward-computation on
+// the FST, setting alpha_ and tot_log_prob_.
+// Note: the FST is unweighted.
+void CctcComputation::ComputeAlpha() {
+  const fst::StdVectorFst &fst = supervision_.fst;
+  KALDI_ASSERT(fst.Start() == 0);
+  int32 num_states = fst.NumStates();
+  log_alpha_.Resize(num_states, kUndefined);
+  log_alpha_.Set(-std::numeric_limits<double>::infinity());
+  tot_log_prob_ = -std::numeric_limits<double>::infinity();
+
+  log_alpha_(0) = 0.0;  // it's in log space.
+  int32 arc_index = 0;  // arc_index will index fst_indexes_.
+  const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
+
+  for (int32 state = 0; state < num_states; state++) {
+    double this_alpha = log_alpha_(state);
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
+         aiter.Next(), arc_index++) {
+      int32 nextstate = aiter.Value().nextstate;
+      double arc_logprob = arc_logprob_data[arc_index];
+      double &next_alpha = log_alpha_(nextstate);
+      next_alpha = LogAdd(next_alpha, arc_logprob + this_alpha);
+    }
+    if (fst.Final(state) != fst::TropicalWeight::Zero())
+      tot_log_prob_ = LogAdd(tot_log_prob_, this_alpha);
+  }
+  KALDI_ASSERT(arc_index == static_cast<int32>(arc_logprobs_.size()));
+}
+
+void CctcComputation::ComputeBeta() {
+  const fst::StdVectorFst &fst = supervision_.fst;
+  int32 num_states = fst.NumStates();
+  log_beta_.Resize(num_states, kUndefined);
+
+  // we'll be counting backwards and moving the 'arc_logprob_iter' pointer back.
+  const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]),
+      *arc_logprob_iter = arc_logprob_data + arc_logprobs_.size();
+
+  for (int32 state = num_states - 1; state >= 0; state--) {
+    int32 this_num_arcs  = fst.NumArcs(state);
+    // on the backward pass we access the arc_logprobs_ vector in a zigzag
+    // pattern.
+
+    arc_logprob_iter -= this_num_arcs;
+    const BaseFloat *this_arc_logprob_iter = arc_logprob_iter;
+    double this_beta = (fst.Final(state) == fst::TropicalWeight::Zero() ?
+                        -std::numeric_limits<double>::infinity() : 0.0);
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
+         aiter.Next(), this_arc_logprob_iter++) {
+      double arc_logprob = *this_arc_logprob_iter;
+      double next_beta = arc_logprob_data[aiter.Value().nextstate];
+      this_beta = LogAdd(this_beta, arc_logprob + next_beta);
+
+    }
+    KALDI_PARANOID_ASSERT(this_beta != -std::numeric_limits<double>::infinity());
+    log_beta_(state) = this_beta;
+  }    
+  KALDI_ASSERT(arc_logprob_iter == arc_logprob_data);
+
+  int32 start_state = 0;  // We alredy checked this.
+  double tot_log_prob_backward = log_beta_(start_state);
+  if (!ApproxEqual(tot_log_prob_backward, tot_log_prob_))
+    KALDI_WARN << "Disagreement in forward/backward log-probs: "
+               << tot_log_prob_backward << " vs. " << tot_log_prob_;
+  
+}
+
+
 void CctcComputation::ComputeLookupIndexes() {
   std::vector<int32> fst_state_times;
   ComputeFstStateTimes(supervision_.fst, &fst_state_times);
   int32 num_states = supervision_.fst.NumStates();
   int32 num_arcs_guess = num_states * 2;
-  // arc_probs_temp will store the language-model probabilities for each arc.
-  std::vector<BaseFloat> arc_probs_temp;
   fst_indexes_.reserve(num_arcs_guess);
-  arc_probs_temp.reserve(num_arcs_guess);
+  arc_logprobs_.reserve(num_arcs_guess);
   int32 cur_time = 0;
 
   // the following are CPU versions of numerator_indexes_ and
@@ -122,17 +189,12 @@ void CctcComputation::ComputeLookupIndexes() {
       }
       fst_indexes_.push_back(std::pair<int32,int32>(numerator_index,
                                                     denominator_index));
-      arc_probs_temp.push_back(trans_model_.GraphLabelToLmProb(graph_label));
+      arc_logprobs_.push_back(trans_model_.GraphLabelToLmProb(graph_label));
     }
   }
   numerator_indexes_ = numerator_indexes_cpu;
   denominator_indexes_ = denominator_indexes_cpu;
-  int32 num_arcs = fst_indexes_.size();
-  KALDI_ASSERT(num_arcs > 0);
-  arc_probs_.Resize(num_arcs);
-  memcpy(static_cast<void*>(arc_probs_.Data()),
-         static_cast<void*>(&(arc_probs_temp[0])),
-         num_arcs * sizeof(BaseFloat));
+  KALDI_ASSERT(!fst_indexes_.empty());
 }
 
 BaseFloat CctcComputation::Forward() {
@@ -153,16 +215,17 @@ void CctcComputation::LookUpLikelihoods() {
   exp_nnet_output_.Lookup(numerator_indexes_, numerator_probs_.Data());
   denominator_probs_.Resize(denominator_indexes_.Dim(), kUndefined);
   normalizers_.Lookup(denominator_indexes_, denominator_probs_.Data());
-  // Note: at this point, arc_probs_ contains the phone language model
+  // Note: at this point, arc_logprobs_ contains the phone language model
   // probabilities.
-  BaseFloat *arc_prob_data = arc_probs_.Data();
+  BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
   const BaseFloat *numerator_prob_data = numerator_probs_.Data(),
       *denominator_prob_data = denominator_probs_.Data();
   std::vector<std::pair<int32,int32> >::const_iterator
       iter = fst_indexes_.begin(), end = fst_indexes_.end();
-  for (; iter != end; ++iter, ++arc_prob_data)
-    *arc_prob_data *= numerator_prob_data[iter->first] /
-                     denominator_prob_data[iter->second];
+  for (; iter != end; ++iter, ++arc_logprob_data)
+    *arc_logprob_data = Log(*arc_logprob_data) *
+        numerator_prob_data[iter->first] /
+        denominator_prob_data[iter->second];
 }
 
 bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
@@ -176,8 +239,8 @@ bool CctcComputation::ComputeDerivatives(
   // we assume nnet_output_deriv is already zeroed; we add to it.
   int32 num_states = supervision_.fst.NumStates();
   int32 arc_index = 0;  // Index of arc in global tables of arcs.
-  const double *alpha_data = alpha_.Data(),
-      *beta_data =  beta_.Data();
+  const double *log_alpha_data = log_alpha_.Data(),
+      *log_beta_data =  log_beta_.Data();
 
   std::vector<std::pair<int32,int32> >::const_iterator fst_indexes_iter =
       fst_indexes_.begin();
@@ -193,15 +256,15 @@ bool CctcComputation::ComputeDerivatives(
   denominator_deriv_.Resize(denominator_probs_.Dim());
   BaseFloat *denominator_deriv_data = denominator_deriv_.Data();
   
-  const BaseFloat *arc_prob_data = arc_probs_.Data();
+  const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
   for (int32 state = 0; state < num_states; state++) {
     for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision_.fst, state);
          !aiter.Done(); aiter.Next(), ++arc_index, ++fst_indexes_iter) {
       const fst::StdArc &arc = aiter.Value();
       int32 nextstate = arc.nextstate;
       double arc_posterior =
-          exp(alpha_data[state] + beta_data[nextstate] - tot_log_prob_) *
-          arc_prob_data[arc_index];
+          exp(log_alpha_data[state] + log_beta_data[nextstate] - tot_log_prob_) *
+          arc_logprob_data[arc_index];
       KALDI_ASSERT(arc_posterior >= 0.0 && arc_posterior < 1.1);
       int32 numerator_index = fst_indexes_iter->first,
           denominator_index = fst_indexes_iter->second;

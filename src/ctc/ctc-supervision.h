@@ -356,6 +356,8 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
                            std::vector<int32> *state_times);
 
 
+/// TODO: a function to combine (append) multiple examples.
+
 }  // namespace ctc
 }  // namespace kaldi
 

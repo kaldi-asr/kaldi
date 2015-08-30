@@ -533,7 +533,7 @@ class CuMatrixBase {
   // For each i, with indexes[i] = (j, k), does (*this)(j, k) += input[i].
   // Requires, but does not check, that the vector of indexes does not contrain
   // repeated elements, 'input' is the start of an array of length equal
-  // to indexes.Dim(), located on the host (CPU) memory. 
+  // to indexes.Dim().
   void AddElements(Real alpha, const CuArray<Int32Pair> &indexes, const Real *input);
 
   // This function requires that 'output' is a host array and is allocated with size

@@ -117,9 +117,9 @@ class CctcComputation {
   std::vector<std::pair<int32,int32> > fst_indexes_;
   // This has the same number of elements as fst_indexes_; it's used to store
   // the probabilities on each arc of the FST (these are of the form
-  // numerator-prob * lm_prob / denominator-prob), where lm_prob is the
+  // log(numerator-prob * lm_prob / denominator-prob)), where lm_prob is the
   // phone-language-model probability, taken from the transition model.
-  Vector<BaseFloat> arc_probs_;
+  std::vector<BaseFloat> arc_logprobs_;
   
   // numerator_indexes is a list of indexes that we need to look up in
   // exp_nnet_output_ for the forward-backward computation.  The order is not
@@ -149,14 +149,14 @@ class CctcComputation {
   Vector<BaseFloat> denominator_deriv_;
 
   // The log-alpha value (forward probability) for each state in the lattice
-  Vector<double> alpha_;
+  Vector<double> log_alpha_;
 
   // The total log-probability of the supervision (you can interpret this as
   // the posterior of this phone-sequence).
   double tot_log_prob_;
 
   // The log-beta value (backward probability) for each state in the lattice  
-  Vector<double> beta_;
+  Vector<double> log_beta_;
 
  private:
   // This function, called from the constructor, checks various dimensions.

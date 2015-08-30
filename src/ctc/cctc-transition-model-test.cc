@@ -21,9 +21,12 @@
 #include "ctc/cctc-graph.h"
 #include "ctc/language-model.h"
 #include "ctc/ctc-supervision.h"
+#include "ctc/cctc-training.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
 
+// This test program tests things declared in ctc-supervision.h and cctc-graph.h
+// and cctc-training.h, as well as cctc-transition-model.h.
 
 namespace kaldi {
 namespace ctc {
@@ -352,6 +355,44 @@ void ExcludeRangeFromVector(const std::vector<int32> &in,
   }
 }
 
+void TestCtcSupervisionTraining(const CctcTransitionModel &trans_model,
+                                const CtcSupervision &supervision) {
+  BaseFloat delta = 1.0e-04;
+  int32 num_frames = supervision.num_frames,
+      nnet_output_dim = supervision.label_dim;
+  CuMatrix<BaseFloat> nnet_output(num_frames, nnet_output_dim);
+  nnet_output.SetRandn();
+  CuMatrix<BaseFloat> cu_weights;
+  trans_model.ComputeWeights(&cu_weights);
+  CctcTrainingOptions opts;
+  CctcComputation computation(opts, trans_model, cu_weights,
+                              supervision, nnet_output);
+  BaseFloat log_like = computation.Forward();
+  KALDI_LOG << "log-like of CCTC computation is " << log_like;
+
+  CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim);
+  computation.Backward(&nnet_output_deriv);
+  int32 num_offsets = 3;
+  Vector<BaseFloat> predicted_objf_changes(num_offsets),
+      measured_objf_changes(num_offsets);
+  for (int32 i = 0; i < num_offsets; i++) {
+    CuMatrix<BaseFloat> modified_output(num_frames, nnet_output_dim);
+    modified_output.SetRandn();
+    modified_output.Scale(delta);
+    predicted_objf_changes(i) = TraceMatMat(modified_output,
+                                            nnet_output_deriv, kTrans);
+    modified_output.AddMat(1.0, nnet_output);
+    CctcComputation computation(opts, trans_model, cu_weights,
+                                supervision, modified_output);
+    BaseFloat modified_log_like = computation.Forward();
+    // no need to do backward.
+    measured_objf_changes(i) = modified_log_like - log_like;
+  }
+  KALDI_LOG << "predicted_objf_changes = " << predicted_objf_changes;
+  KALDI_LOG << "measured_objf_changes = " << measured_objf_changes;
+  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
+}
+
 void TestCtcSupervisionIo(const CtcSupervision &supervision) {
   bool binary = (RandInt(0, 1) == 0);
   std::ostringstream os;
@@ -456,6 +497,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
                          last_silence_phone, &phones_from_graph_nosil);
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
   TestCtcSupervisionIo(supervision);
+  TestCtcSupervisionTraining(trans_model, supervision);
 }
 
 void CctcTransitionModelTest() {
