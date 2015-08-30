@@ -41,7 +41,7 @@ void CctcComputation::CheckDims() const {
                cu_weights_.NumCols() == trans_model_.NumOutputIndexes());
   KALDI_ASSERT(nnet_output_.NumRows() == supervision_.num_frames &&
                nnet_output_.NumCols() == trans_model_.NumOutputIndexes());
-  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumOutputIndexes());
+  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumGraphLabels());
 }
 
 // This function, called from Forward(), does the actual forward-computation on
@@ -55,23 +55,23 @@ void CctcComputation::ComputeAlpha() {
   log_alpha_.Set(-std::numeric_limits<double>::infinity());
   tot_log_prob_ = -std::numeric_limits<double>::infinity();
 
-  log_alpha_(0) = 0.0;  // it's in log space.
-  int32 arc_index = 0;  // arc_index will index fst_indexes_.
-  const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
+  log_alpha_(0) = 0.0;  // note, state zero is the start state, we checked above
+  const BaseFloat *arc_logprob_iter = &(arc_logprobs_[0]);
+  double *log_alpha_data = log_alpha_.Data();
 
   for (int32 state = 0; state < num_states; state++) {
-    double this_alpha = log_alpha_(state);
+    double this_alpha = log_alpha_data[state];
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
-         aiter.Next(), arc_index++) {
+         aiter.Next(), ++arc_logprob_iter) {
       int32 nextstate = aiter.Value().nextstate;
-      double arc_logprob = arc_logprob_data[arc_index];
-      double &next_alpha = log_alpha_(nextstate);
+      double arc_logprob = *arc_logprob_iter;
+      double &next_alpha = log_alpha_data[nextstate];
       next_alpha = LogAdd(next_alpha, arc_logprob + this_alpha);
     }
     if (fst.Final(state) != fst::TropicalWeight::Zero())
       tot_log_prob_ = LogAdd(tot_log_prob_, this_alpha);
   }
-  KALDI_ASSERT(arc_index == static_cast<int32>(arc_logprobs_.size()));
+  KALDI_ASSERT(arc_logprob_iter == &(arc_logprobs_[0]) + arc_logprobs_.size());
 }
 
 void CctcComputation::ComputeBeta() {
@@ -82,6 +82,7 @@ void CctcComputation::ComputeBeta() {
   // we'll be counting backwards and moving the 'arc_logprob_iter' pointer back.
   const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]),
       *arc_logprob_iter = arc_logprob_data + arc_logprobs_.size();
+  double *log_beta_data = log_beta_.Data();
 
   for (int32 state = num_states - 1; state >= 0; state--) {
     int32 this_num_arcs  = fst.NumArcs(state);
@@ -95,12 +96,11 @@ void CctcComputation::ComputeBeta() {
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
          aiter.Next(), this_arc_logprob_iter++) {
       double arc_logprob = *this_arc_logprob_iter;
-      double next_beta = arc_logprob_data[aiter.Value().nextstate];
+      double next_beta = log_beta_data[aiter.Value().nextstate];
       this_beta = LogAdd(this_beta, arc_logprob + next_beta);
-
     }
     KALDI_PARANOID_ASSERT(this_beta != -std::numeric_limits<double>::infinity());
-    log_beta_(state) = this_beta;
+    log_beta_data[state] = this_beta;
   }    
   KALDI_ASSERT(arc_logprob_iter == arc_logprob_data);
 
@@ -223,9 +223,9 @@ void CctcComputation::LookUpLikelihoods() {
   std::vector<std::pair<int32,int32> >::const_iterator
       iter = fst_indexes_.begin(), end = fst_indexes_.end();
   for (; iter != end; ++iter, ++arc_logprob_data)
-    *arc_logprob_data = Log(*arc_logprob_data) *
-        numerator_prob_data[iter->first] /
-        denominator_prob_data[iter->second];
+    *arc_logprob_data = Log(*arc_logprob_data *
+                            numerator_prob_data[iter->first] /
+                            denominator_prob_data[iter->second]);
 }
 
 bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
@@ -263,8 +263,8 @@ bool CctcComputation::ComputeDerivatives(
       const fst::StdArc &arc = aiter.Value();
       int32 nextstate = arc.nextstate;
       double arc_posterior =
-          exp(log_alpha_data[state] + log_beta_data[nextstate] - tot_log_prob_) *
-          arc_logprob_data[arc_index];
+          exp(log_alpha_data[state] + log_beta_data[nextstate] - tot_log_prob_ +
+              arc_logprob_data[arc_index]);
       KALDI_ASSERT(arc_posterior >= 0.0 && arc_posterior < 1.1);
       int32 numerator_index = fst_indexes_iter->first,
           denominator_index = fst_indexes_iter->second;

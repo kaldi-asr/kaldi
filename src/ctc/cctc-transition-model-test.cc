@@ -359,7 +359,7 @@ void TestCtcSupervisionTraining(const CctcTransitionModel &trans_model,
                                 const CtcSupervision &supervision) {
   BaseFloat delta = 1.0e-04;
   int32 num_frames = supervision.num_frames,
-      nnet_output_dim = supervision.label_dim;
+      nnet_output_dim = trans_model.NumOutputIndexes();
   CuMatrix<BaseFloat> nnet_output(num_frames, nnet_output_dim);
   nnet_output.SetRandn();
   CuMatrix<BaseFloat> cu_weights;
