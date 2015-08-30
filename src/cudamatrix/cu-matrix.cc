@@ -2528,45 +2528,95 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
+                                     const Real *input) {
+  if (indexes.Dim() == 0) return;
+  KALDI_ASSERT(input != NULL);
+  
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    CuVector<Real> tmp_vec(indexes.Dim(), kUndefined);
+    CU_SAFE_CALL(cudaMemcpy(tmp_vec.Data(), input, indexes.Dim() * sizeof(Real),
+                            cudaMemcpyHostToDevice));
+
+    int dimBlock(CU1DBLOCK);
+    int dimGrid = n_blocks(indexes.Dim(), CU1DBLOCK);
+    cuda_matrix_add_indexed_values(dimGrid, dimBlock, this->Dim(), alpha,
+                                   indexes.Data(), tmp_vec.Data(), indexes.Dim(), this->data_);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+    const Int32Pair *index = indexes.Data();
+    for (int32 i = 0; i < indexes.Dim(); i++) {
+      KALDI_ASSERT(index[i].first < num_rows && index[i].first >= 0 &&
+                   index[i].second < num_cols && index[i].second >= 0);
+      (*this)(index[i].first, index[i].second) += alpha * input[i];
+    }
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
-                                std::vector<Real> *output) const {
+                                Real *output) const {
   // Checks the dimension.
   MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
   for (int32 i = 0; i < indices.size(); ++i) {
     KALDI_ASSERT(indices[i].first < num_rows && indices[i].first >= 0 &&
                  indices[i].second < num_cols && indices[i].second >= 0);
   }
-  
-  // Checks the pointer.
+  if (indices.size() == 0) return;  
   KALDI_ASSERT(output != NULL);
-
-  // Resizes the output vector.
-  output->resize(indices.size());
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuArray<Int32Pair> cuda_indices(indices);
-    CuArray<Real> cuda_output(output->size());
-
-    Timer tim;
-    dim3 dimBlock(CU1DBLOCK, 1);
-    dim3 dimGrid(n_blocks(indices.size(), CU1DBLOCK), 1);
-    
-    cuda_matrix_lookup(dimGrid, dimBlock, this->data_, this->Dim(),
-                       cuda_indices.Data(), indices.size(), cuda_output.Data());
-    CU_SAFE_CALL(cudaGetLastError());
-
-    cuda_output.CopyToVec(output);
-    
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    Lookup(cuda_indices, output);
   } else
 #endif
   {
     for (int32 i = 0; i < indices.size(); i++) {
-      (*output)[i] = (*this)(indices[i].first, indices[i].second);
+      output[i] = (*this)(indices[i].first, indices[i].second);
     }
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
+                                Real *output) const {
+  int32 num_elements = indices.Dim();
+  if (num_elements == 0) return;
+  KALDI_ASSERT(output != NULL);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuArray<Real> cuda_output(num_elements);
+    Timer tim;
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(num_elements, CU1DBLOCK), 1);
+
+    cuda_matrix_lookup(dimGrid, dimBlock, this->data_, this->Dim(),
+                       indices.Data(), num_elements, cuda_output.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    
+    cuda_output.CopyToHost(output);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    MatrixIndexT num_rows = this->num_rows_, num_cols = this->num_cols_;
+    const Int32Pair *index = indices.Data();
+    for (int32 i = 0; i < num_elements; i++) {
+      KALDI_ASSERT(index[i].first < num_rows && index[i].first >= 0 &&
+                   index[i].second < num_cols && index[i].second >= 0);    
+      output[i] = (*this)(index[i].first, index[i].second);
+    }
+  }
+}    
+  
 
 template<typename Real>
 void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatrix<Real> *mask) const {
