@@ -1781,7 +1781,7 @@ void NaturalGradientPerElementScaleComponent::Update(
       KALDI_WARN << "Parameter change " << param_delta
                  << " exceeds --max-change-per-minibatch="
                  << max_change_per_minibatch_ << " for this minibatch, "
-                 << "for node " << debug_info << ", scaling by factor "
+                 << "for " << debug_info << ", scaling by factor "
                  << max_change_scale;
     }
   }
