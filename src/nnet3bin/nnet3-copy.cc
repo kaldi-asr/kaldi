@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-copy.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
+//           2015  Xingyu Na
 
 // See ../../COPYING for clarification regarding multiple authors
 //
