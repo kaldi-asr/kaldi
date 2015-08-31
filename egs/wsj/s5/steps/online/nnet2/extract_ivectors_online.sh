@@ -44,7 +44,7 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
 
 # End configuration section.
 
-echo "$0 $@"  # Print the command line for loggdir
+echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
