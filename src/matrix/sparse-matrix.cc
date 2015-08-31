@@ -1086,9 +1086,14 @@ Real SparseVector<Real>::Max(int32 *index_out) const {
       index = iter->first + 1;
     }
   }
-  KALDI_ERR << "Code error";  // you should not reach here, it would be a bug in
-                              // the code.
-  return 0;
+  // we can reach here if either pairs_.empty(), or
+  // pairs_ is nonempty but contains a sequence (0, 1, 2,...).
+  if (!pairs_.empty())
+    index = pairs_.back().first + 1;
+  // else leave index at zero
+  KALDI_ASSERT(index < dim_);
+  *index_out = index;
+  return 0.0;
 }
 
 template class SparseVector<float>;
