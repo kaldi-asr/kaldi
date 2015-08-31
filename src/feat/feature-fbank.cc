@@ -43,7 +43,6 @@ Fbank::~Fbank() {
       iter != mel_banks_.end();
       ++iter)
     delete iter->second;
-  if (srfft_ != NULL)
     delete srfft_;
 }
 

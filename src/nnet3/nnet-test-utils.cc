@@ -697,7 +697,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 15);
+  int32 n = RandInt(0, 16);
   std::ostringstream os;
   switch(n) {
     case 0: {
@@ -790,6 +790,13 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     case 15: {
       *component_type = "PerElementScaleComponent";
       os << "dim=" << RandInt(1, 100);
+      break;
+    }
+    case 16: {
+      *component_type = "ElementwiseProductComponent";
+      int32 output_dim = RandInt(1, 100), multiple = RandInt(2, 4),
+          input_dim = output_dim * multiple;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
       break;
     }
     default:

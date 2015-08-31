@@ -380,7 +380,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("optional"); // -2 .. automatic selection
 #endif
-    for (int32 i = 0; i < 30; i++) {
+    for (int32 i = 0; i < 10; i++) {
       UnitTestPreconditionDirectionsOnline();
       UnitTestApproxEigsOfProduct();
     }

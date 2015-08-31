@@ -239,6 +239,7 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
   WriteToken(os, binary, "<DerivAvg>");
+
   temp.Resize(deriv_sum_.Dim(), kUndefined);
   temp.CopyFromVec(deriv_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);

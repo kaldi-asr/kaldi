@@ -49,30 +49,51 @@ NnetComputer::NnetComputer(const NnetComputeOptions &options,
   }
 }
 
+//static
+BaseFloat NnetComputer::MatrixStddev(const CuMatrixBase<BaseFloat> &m) {
+  if (m.NumRows() == 0)
+    return 0.0;
+  return std::sqrt(TraceMatMat(m, m, kTrans) / (m.NumRows() * m.NumCols()));
+}
+
+//static
+BaseFloat NnetComputer::ParameterStddev(const Component &c) {
+  const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(&c);
+  KALDI_ASSERT(uc != NULL &&
+               "Attempting to get parameter stddev of non-updatable component");
+  return std::sqrt(uc->DotProduct(*uc) / uc->NumParameters());
+}
+
 void NnetComputer::DebugBeforeExecute(int32 command,
                                       CommandDebugInfo *info) {
   {
     const std::vector<int32> &matrices_written =
         command_attributes_[command].matrices_written;
     size_t size = matrices_written.size();
-    info->matrices_written_sums.resize(size);
+    info->matrices_written_stddevs.resize(size);
     for (size_t i = 0; i < size; i++) {
       int32 m = matrices_written[i];
-      info->matrices_written_sums[i] = matrices_[m].Sum();
+      info->matrices_written_stddevs[i] = MatrixStddev(matrices_[m]);
     }
   }
   {
     const std::vector<int32> &submatrices_written =
         command_attributes_[command].submatrices_written;
     size_t size = submatrices_written.size();
-    info->submatrices_written_sums.resize(size);
+    info->submatrices_written_stddevs.resize(size);
     for (size_t i = 0; i < size; i++) {
       int32 s = submatrices_written[i];
       if (!computation_.IsWholeMatrix(s)) {
         const CuSubMatrix<BaseFloat> submat(GetSubMatrix(s));
-        info->submatrices_written_sums[i] = submat.Sum();
+        info->submatrices_written_stddevs[i] = MatrixStddev(submat);
       }
     }
+  }
+  const NnetComputation::Command &c = computation_.commands[command];
+  if (c.command_type == NnetComputation::kBackprop) {
+    const Component *component = nnet_.GetComponentForNode(c.arg1);
+    if (component->Properties() & kUpdatableComponent)
+      info->components_parameter_stddev = ParameterStddev(*component);
   }
 }
 
@@ -85,27 +106,38 @@ void NnetComputer::DebugAfterExecute(int32 command,
     const std::vector<int32> &matrices_written =
         command_attributes_[command].matrices_written;
     size_t size = matrices_written.size();
-    KALDI_ASSERT(info.matrices_written_sums.size() == size);
+    KALDI_ASSERT(info.matrices_written_stddevs.size() == size);
     for (size_t i = 0; i < size; i++) {
       int32 m = matrices_written[i];
-      BaseFloat old_sum = info.matrices_written_sums[i],
-          sum = matrices_[m].Sum();
-      os << 'm' << m << ": " << old_sum << "->" << sum << " ";
+      BaseFloat old_stddev = info.matrices_written_stddevs[i],
+          stddev = MatrixStddev(matrices_[m]);
+      os << 'm' << m << ": " << old_stddev << "->" << stddev << " ";
     }
   }
   {
     const std::vector<int32> &submatrices_written =
         command_attributes_[command].submatrices_written;
     size_t size = submatrices_written.size();
-    KALDI_ASSERT(info.submatrices_written_sums.size() == size);
+    KALDI_ASSERT(info.submatrices_written_stddevs.size() == size);
     for (size_t i = 0; i < size; i++) {
       int32 s = submatrices_written[i];
       if (!computation_.IsWholeMatrix(s)) {
         const CuSubMatrix<BaseFloat> submat(GetSubMatrix(s));
-        BaseFloat old_sum = info.submatrices_written_sums[i],
-            sum = submat.Sum();
-        os << submatrix_strings_[s] << ": " << old_sum << "->" << sum << " ";
+        BaseFloat old_stddev = info.submatrices_written_stddevs[i],
+            stddev = MatrixStddev(submat);
+        os << submatrix_strings_[s] << ": " << old_stddev << "->"
+           << stddev << " ";
       }
+    }
+  }
+  const NnetComputation::Command &c = computation_.commands[command];
+  if (c.command_type == NnetComputation::kBackprop) {
+    const Component *component = nnet_.GetComponentForNode(c.arg1);
+    if (component->Properties() & kUpdatableComponent) {
+      const std::string &component_name = nnet_.GetComponentName(
+          nnet_.GetNode(c.arg1).u.component_index);
+      os << component_name << ": " << info.components_parameter_stddev
+         << "->" << ParameterStddev(*component) << " ";
     }
   }
   KALDI_LOG << os.str();
@@ -114,124 +146,138 @@ void NnetComputer::DebugAfterExecute(int32 command,
 
 void NnetComputer::ExecuteCommand(int32 command) {
   const NnetComputation::Command &c = computation_.commands[command];
-  switch (c.command_type) {
-    case NnetComputation::kAllocMatrixZeroed:
-      matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
-                               computation_.matrices[c.arg1].num_cols,
-                               kSetZero);
-      break;
-    case NnetComputation::kAllocMatrixUndefined:
-      matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
-                               computation_.matrices[c.arg1].num_cols,
-                               kUndefined);
-      break;
-    case NnetComputation::kDeallocMatrix:
-      matrices_[c.arg1].Resize(0, 0);
-      break;
-    case NnetComputation::kPropagate: {
-      const Component *component = nnet_.GetComponent(c.arg1);
-      ComponentPrecomputedIndexes *indexes =
-          computation_.component_precomputed_indexes[c.arg2];
-      const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
-      CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
-      component->Propagate(indexes, input, &output);
-      break;
+  try {
+    switch (c.command_type) {
+      case NnetComputation::kAllocMatrixZeroed:
+        matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
+                                 computation_.matrices[c.arg1].num_cols,
+                                 kSetZero);
+        break;
+      case NnetComputation::kAllocMatrixUndefined:
+        matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
+                                 computation_.matrices[c.arg1].num_cols,
+                                 kUndefined);
+        break;
+      case NnetComputation::kDeallocMatrix:
+        matrices_[c.arg1].Resize(0, 0);
+        break;
+      case NnetComputation::kPropagate: {
+        const Component *component = nnet_.GetComponent(c.arg1);
+        ComponentPrecomputedIndexes *indexes =
+            computation_.component_precomputed_indexes[c.arg2];
+        const CuSubMatrix<BaseFloat> input(GetSubMatrix(c.arg3));
+        CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg4));
+        component->Propagate(indexes, input, &output);
+        break;
+      }
+      case NnetComputation::kStoreStats: {
+        KALDI_ASSERT(nnet_to_update_ != NULL);
+        Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
+        CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg2));
+        upd_component->StoreStats(output);
+        break;
+      }
+      case NnetComputation::kBackprop: {
+        int32 node_index = c.arg1;
+        std::ostringstream debug_str;
+        KALDI_ASSERT(nnet_to_update_ != NULL);      
+        debug_str << "node " << node_index << '['
+                  << nnet_.GetNodeNames()[node_index] << ']';
+        const Component *component = nnet_.GetComponentForNode(c.arg1);
+        KALDI_ASSERT(!(computation_.need_model_derivative && !nnet_to_update_));
+        Component *upd_component = (nnet_to_update_ &&
+                                    computation_.need_model_derivative ?
+                                    nnet_to_update_->GetComponentForNode(c.arg1) :
+                                    NULL);
+        ComponentPrecomputedIndexes *indexes =
+            computation_.component_precomputed_indexes[c.arg2];
+        const CuSubMatrix<BaseFloat> in_value(GetSubMatrix(c.arg3));
+        const CuSubMatrix<BaseFloat> out_value(GetSubMatrix(c.arg4));
+        const CuSubMatrix<BaseFloat> out_deriv(GetSubMatrix(c.arg5));
+        CuSubMatrix<BaseFloat> in_deriv(GetSubMatrix(c.arg6));
+        component->Backprop(debug_str.str(), indexes,
+                            in_value, out_value, out_deriv, upd_component,
+                            c.arg6 == 0 ? NULL : &in_deriv);
+        break;
+      }
+      case NnetComputation::kMatrixCopy: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));      
+        const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
+        dest.CopyFromMat(src);
+        break;
+      }
+      case NnetComputation::kMatrixAdd: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
+        dest.AddMat(1.0, src);
+        break;
+      }
+      case NnetComputation::kAddRows: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
+        const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
+        dest.AddRows(1.0, src, indexes);
+        break;
+      }
+      case NnetComputation::kCopyRows: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
+        const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
+        dest.CopyRows(src, indexes);
+        break;
+      }
+      case NnetComputation::kCopyRowsMulti: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        CuArray<const BaseFloat*> pointers;
+        GetPointers(c.arg2, dest.NumCols(), &pointers);
+        dest.CopyRows(pointers);
+        break;
+      }
+      case NnetComputation::kCopyToRowsMulti: {
+        CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
+        CuArray<BaseFloat*> pointers;
+        GetPointers(c.arg2, src.NumCols(), &pointers);
+        src.CopyToRows(pointers);
+        break;
+      }
+      case NnetComputation::kAddRowsMulti: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        CuArray<const BaseFloat*> pointers;
+        GetPointers(c.arg2, dest.NumCols(), &pointers);
+        dest.AddRows(1.0, pointers);
+        break;
+      }
+      case NnetComputation::kAddToRowsMulti: {
+        CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
+        CuArray<BaseFloat*> pointers;
+        GetPointers(c.arg2, src.NumCols(), &pointers);
+        src.AddToRows(1.0, pointers);
+        break;
+      }
+      case NnetComputation::kAddRowRanges: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
+        const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
+        const CuArray<Int32Pair> &pairs = computation_.indexes_ranges_cuda[c.arg3];
+        dest.AddRowRanges(src, pairs);
+        break;
+      }
+      case NnetComputation::kNoOperation: case NnetComputation::kNoOperationMarker:
+        break;
+      default:
+        KALDI_ERR << "Invalid command in computation";
     }
-    case NnetComputation::kStoreStats: {
-      KALDI_ASSERT(nnet_to_update_ != NULL);
-      Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
-      CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg2));
-      upd_component->StoreStats(output);
-      break;
+  } catch (...) {
+    if (!debug_) {
+      std::string preamble;
+      computation_.GetCommandStrings(nnet_, &preamble, &command_strings_);
+      KALDI_WARN << "Printing some background info since error was detected";
+      KALDI_LOG << preamble;
+      for (int32 prev_c = 0; prev_c < command; prev_c++)
+        KALDI_LOG << command_strings_[prev_c];
     }
-    case NnetComputation::kBackprop: {
-      int32 node_index = c.arg1;
-      std::ostringstream debug_str;
-      KALDI_ASSERT(nnet_to_update_ != NULL);      
-      debug_str << "node " << node_index << '['
-                << nnet_.GetNodeNames()[node_index] << ']';
-      const Component *component = nnet_.GetComponentForNode(c.arg1);
-      KALDI_ASSERT(!(computation_.need_model_derivative && !nnet_to_update_));
-      Component *upd_component = (nnet_to_update_ &&
-                                  computation_.need_model_derivative ?
-                                  nnet_to_update_->GetComponentForNode(c.arg1) :
-                                  NULL);
-      ComponentPrecomputedIndexes *indexes =
-          computation_.component_precomputed_indexes[c.arg2];
-      const CuSubMatrix<BaseFloat> in_value(GetSubMatrix(c.arg3));
-      const CuSubMatrix<BaseFloat> out_value(GetSubMatrix(c.arg4));
-      const CuSubMatrix<BaseFloat> out_deriv(GetSubMatrix(c.arg5));
-      CuSubMatrix<BaseFloat> in_deriv(GetSubMatrix(c.arg6));
-      component->Backprop(debug_str.str(), indexes,
-                          in_value, out_value, out_deriv, upd_component,
-                          c.arg6 == 0 ? NULL : &in_deriv);
-      break;
-    }
-    case NnetComputation::kMatrixCopy: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));      
-      const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-      dest.CopyFromMat(src);
-      break;
-    }
-    case NnetComputation::kMatrixAdd: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-      dest.AddMat(1.0, src);
-      break;
-    }
-    case NnetComputation::kAddRows: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-      const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
-      dest.AddRows(1.0, src, indexes);
-      break;
-    }
-    case NnetComputation::kCopyRows: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-      const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
-      dest.CopyRows(src, indexes);
-      break;
-    }
-    case NnetComputation::kCopyRowsMulti: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      CuArray<const BaseFloat*> pointers;
-      GetPointers(c.arg2, dest.NumCols(), &pointers);
-      dest.CopyRows(pointers);
-      break;
-    }
-    case NnetComputation::kCopyToRowsMulti: {
-      CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
-      CuArray<BaseFloat*> pointers;
-      GetPointers(c.arg2, src.NumCols(), &pointers);
-      src.CopyToRows(pointers);
-      break;
-    }
-    case NnetComputation::kAddRowsMulti: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      CuArray<const BaseFloat*> pointers;
-      GetPointers(c.arg2, dest.NumCols(), &pointers);
-      dest.AddRows(1.0, pointers);
-      break;
-    }
-    case NnetComputation::kAddToRowsMulti: {
-      CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
-      CuArray<BaseFloat*> pointers;
-      GetPointers(c.arg2, src.NumCols(), &pointers);
-      src.AddToRows(1.0, pointers);
-      break;
-    }
-    case NnetComputation::kAddRowRanges: {
-      CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
-      const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
-      const CuArray<Int32Pair> &pairs = computation_.indexes_ranges_cuda[c.arg3];
-      dest.AddRowRanges(src, pairs);
-      break;
-    }
-    case NnetComputation::kNoOperation: case NnetComputation::kNoOperationMarker:
-      break;
-    default:
-      KALDI_ERR << "Invalid command in computation";
+    // the following will re-throw the error, but now we've printed more info
+    // about what went wrong.
+    KALDI_ERR << "Error running command " << command_strings_[command];
   }
 }
 

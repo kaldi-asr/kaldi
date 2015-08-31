@@ -109,7 +109,7 @@ StdVectorFst* CreateResultFst() {
 }
 
 void DeleteTestFst(StdVectorFst *fst) {
-  if (fst) delete fst;
+  delete fst;
 }
 
 // Follow paths from an input fst representing a string

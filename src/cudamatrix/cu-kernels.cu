@@ -1114,6 +1114,19 @@ static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha, Mat
 
 template<typename Real>
 __global__
+static void _cuda_matrix_add_indexed_values(MatrixDim dim, Real alpha,
+                                            const Int32Pair* indices, const Real* x,
+                                            int s, Real* data) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= s)
+    return;
+  int data_i = indices[i].first * dim.stride + indices[i].second;
+  data[data_i] += alpha * x[i];
+}
+
+
+template<typename Real>
+__global__
 static void _matrix_lookup(const Real *data, MatrixDim dim,
                            const Int32Pair *indices,
                            int indices_size, Real *output) {
@@ -2399,6 +2412,10 @@ void cudaF_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, flo
   _cuda_matrix_add_elements<<<Gr, Bl>>>(data, dim, alpha, x, s); 
 }
 
+void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, float alpha, const Int32Pair* indices, const float* x, int s, float* data) { 
+  _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data); 
+}
+
 void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
   _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
@@ -2861,6 +2878,10 @@ void cudaD_pvec_sum(int Gr, int Bl, double* v, double* pvec_sum, int dim, int si
 
 void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, MatrixElement<double>* x, int s) { 
   _cuda_matrix_add_elements<<<Gr, Bl>>>(data, dim, alpha, x, s); 
+}
+
+void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, double alpha, const Int32Pair* indices, const double* x, int s, double* data) { 
+  _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data); 
 }
 
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim) {
