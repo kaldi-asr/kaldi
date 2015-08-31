@@ -488,13 +488,12 @@ while [ $x -lt $num_iters ]; do
       nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
            "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 
-    # nnet3-show-progress not implemented yet
-    #if [ $x -gt 0 ] && [ ! -f $dir/log/mix_up.$[$x-1].log ]; then
-    #  $cmd $dir/log/progress.$x.log \
-    #    nnet3-show-progress --use-gpu=no $dir/$[$x-1].mdl $dir/$x.mdl \
-    #    ark:$cur_egs_dir/train_diagnostic.egs '&&' \
-    #    nnet3-info $dir/$x.mdl &
-    #fi
+    if [ $x -gt 0 ]; then
+      $cmd $dir/log/progress.$x.log \
+        nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
+        ark:$cur_egs_dir/train_diagnostic.egs '&&' \
+        nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" &
+    fi
 
     echo "Training neural net (pass $x)"
 
