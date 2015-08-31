@@ -20,7 +20,7 @@ cuda-compiled.o: ../kaldi.mk
 
 TESTFILES =
 
-ADDLIBS = ../nnet3/kaldi-nnet3.a ../nnet/kaldi-nnet.a ../gmm/kaldi-gmm.a \
+ADDLIBS = ../nnet3/kaldi-nnet3.a ../gmm/kaldi-gmm.a \
          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a  \
          ../transform/kaldi-transform.a ../tree/kaldi-tree.a \
          ../thread/kaldi-thread.a ../cudamatrix/kaldi-cudamatrix.a \
