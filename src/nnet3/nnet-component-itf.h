@@ -134,7 +134,7 @@ class Component {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update, // may be NULL; may be identical
                                               // to "this" or different.
@@ -151,10 +151,12 @@ class Component {
 
   /// \brief Components that provide an implementation of StoreStats should also
   ///        provide an implementation of ZeroStats(), to set those stats to
-  ///        zero.
+  ///        zero.  Other components that store other types of statistics
+  ///        (e.g. regarding gradient clipping) are free to implement ZeroStats()
+  ///        also.
   virtual void ZeroStats() { }
-  
-  
+
+
 
   /// \brief  This function only does something interesting for non-simple Components.
   ///   For a given index at the output of the component, tells us what indexes
@@ -209,7 +211,7 @@ class Component {
                             const Index &output_index,
                             const IndexSet &input_index_set,
                             std::vector<Index> *used_inputs) const;
-  
+
   /// \brief This function only does something interesting for non-simple
   ///  Components.  It provides an opportunity for a Component to reorder the
   ///  indexes at its input and output.  This might be useful, for instance, if
@@ -222,9 +224,9 @@ class Component {
   ///  \param [in,out]  Indexes at the output of the Component
   virtual void ReorderIndexes(std::vector<Index> *input_indexes,
                               std::vector<Index> *output_indexes) const {}
-  
 
-  
+
+
   /// \brief This function only returns non-NULL for non-simple Components (and
   ///     may still return NULL for non-simple Compoennts).  Returns a pointer
   ///     to a class that may contain some precomputed component-specific and
@@ -260,17 +262,17 @@ class Component {
 
   /// \brief Returns a string such as "SigmoidComponent", describing
   ///        the type of the object.
-  virtual std::string Type() const = 0; 
+  virtual std::string Type() const = 0;
 
   /// \brief  Initialize, from a ConfigLine object.
   /// \param [in] cfl  A ConfigLine containing any parameters that
-  ///            are needed for initialization. For example: 
+  ///            are needed for initialization. For example:
   ///            "dim=100 param-stddev=0.1"
   virtual void InitFromConfig(ConfigLine *cfl) = 0;
-  
+
   /// \brief Returns input-dimension of this component.
   virtual int32 InputDim() const = 0;
-  
+
   /// \brief Returns output-dimension of this component.
   virtual int32 OutputDim() const = 0;
 
@@ -283,17 +285,17 @@ class Component {
   static Component* ReadNew(std::istream &is, bool binary);
 
   /// \brief Copies component (deep copy).
-  virtual Component* Copy() const = 0;  
+  virtual Component* Copy() const = 0;
 
   /// \brief Returns a new Component of the given type e.g. "SoftmaxComponent",
-  ///   or NULL if no such component type exists. 
+  ///   or NULL if no such component type exists.
   static Component *NewComponentOfType(const std::string &type);
 
   /// \brief Read function (used after we know the type of the Component);
   ///   accepts input that is missing the token that describes the component
   ///   type, in case it has already been consumed.
-  virtual void Read(std::istream &is, bool binary) = 0; 
-  
+  virtual void Read(std::istream &is, bool binary) = 0;
+
   /// \brief Write component to stream
   virtual void Write(std::ostream &os, bool binary) const = 0;
 
@@ -303,10 +305,10 @@ class Component {
   virtual std::string Info() const;
 
   Component() { }
-  
+
   virtual ~Component() { }
 
- private:  
+ private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(Component);
 };
 
@@ -322,7 +324,7 @@ class UpdatableComponent: public Component {
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
       is_gradient_(other.is_gradient_) { }
-  
+
   void Init(BaseFloat lr, bool is_gradient = false);
 
   UpdatableComponent(BaseFloat learning_rate) {  Init(learning_rate); }
@@ -330,20 +332,20 @@ class UpdatableComponent: public Component {
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
   ///    sets is_gradient_ to true and the learning rate to 1.
   virtual void SetZero(bool treat_as_gradient) = 0;
-  
+
   UpdatableComponent(): learning_rate_(0.001) { }
-  
+
   virtual ~UpdatableComponent() { }
 
   /// \brief Computes dot-product between parameters of two instances of a
   ///  Component.  Can be used for computing parameter-norm of an
   ///  UpdatableComponent.
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const = 0;
-  
+
   /// This function is to be used in testing.  It adds unit noise times "stddev"
   /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
-  
+
   /// This virtual function (not in base-class Component) scales the parameters
   /// by "scale".
   virtual void Scale(BaseFloat scale) = 0;
@@ -352,7 +354,7 @@ class UpdatableComponent: public Component {
   /// another updatable component, times some constant, to the current
   /// parameters.
   virtual void Add(BaseFloat alpha, const UpdatableComponent &other) = 0;
-  
+
   /// Sets the learning rate of gradient descent
   void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
 
@@ -360,7 +362,7 @@ class UpdatableComponent: public Component {
   BaseFloat LearningRate() const { return learning_rate_; }
 
   virtual std::string Info() const;
-  
+
   /// The following new virtual function returns the total dimension of
   /// the parameters in this class.
   virtual int32 NumParameters() const { KALDI_ASSERT(0); return 0; }
@@ -373,8 +375,8 @@ class UpdatableComponent: public Component {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params) {
     KALDI_ASSERT(0);
   }
-  
- protected: 
+
+ protected:
   BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
@@ -394,34 +396,34 @@ class NonlinearComponent: public Component {
   explicit NonlinearComponent(int32 dim) { Init(dim); }
   NonlinearComponent(): dim_(0) { } // e.g. prior to Read().
   explicit NonlinearComponent(const NonlinearComponent &other);
-  
+
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
-  
+
   /// We implement InitFromConfig at this level.
   virtual void InitFromConfig(ConfigLine *cfl);
-  
+
   /// We implement Read at this level as it just needs the Type().
   virtual void Read(std::istream &is, bool binary);
 
   virtual void ZeroStats();
-  
+
   virtual std::string Info() const;
-  
+
   /// Write component to stream.
   virtual void Write(std::ostream &os, bool binary) const;
 
   // relates to scaling activation stats, not parameters.
   void Scale(BaseFloat scale);
 
-  // relates to adding stats  
+  // relates to adding stats
   void Add(BaseFloat alpha, const NonlinearComponent &other);
 
   // The following functions are unique to NonlinearComponent.
   // They mostly relate to diagnostics.
   const CuVector<double> &ValueSum() const { return value_sum_; }
   const CuVector<double> &DerivSum() const { return deriv_sum_; }
-  
+
   double Count() const { return count_; }
 
  protected:
@@ -431,14 +433,14 @@ class NonlinearComponent: public Component {
   friend class SoftmaxComponent;
   friend class LogSoftmaxComponent;
   friend class RectifiedLinearComponent;
-  
+
   // This function updates the stats "value_sum_", "deriv_sum_", and
   // count_. (If deriv == NULL, it won't update "deriv_sum_").
   // It will be called from the Backprop function of child classes.
   void StoreStatsInternal(const CuMatrixBase<BaseFloat> &out_value,
                           const CuMatrixBase<BaseFloat> *deriv = NULL);
 
-  
+
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
   int32 dim_;
   CuVector<double> value_sum_; // stats at the output.

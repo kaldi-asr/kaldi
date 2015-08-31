@@ -2,7 +2,7 @@
 
 // Copyright 2011-2013  Karel Vesely
 //           2012-2015  Johns Hopkins University (author: Daniel Povey)
-//                2013  Xiaohui Zhang    
+//                2013  Xiaohui Zhang
 //           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
 
@@ -50,7 +50,7 @@ class PnormComponent: public Component {
   }
   PnormComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "PnormComponent"; }
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -59,16 +59,16 @@ class PnormComponent: public Component {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new PnormComponent(input_dim_,
                                                               output_dim_); }
-  
+
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
-  
+
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -89,7 +89,7 @@ class ElementwiseProductComponent: public Component {
   }
   ElementwiseProductComponent(): input_dim_(0), output_dim_(0) { }
   virtual std::string Type() const { return "ElementwiseProductComponent"; }
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -98,16 +98,16 @@ class ElementwiseProductComponent: public Component {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new ElementwiseProductComponent(input_dim_,
                                                               output_dim_); }
-  
+
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
-  
+
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -152,7 +152,7 @@ class NormalizeComponent: public NonlinearComponent {
 class SigmoidComponent: public NonlinearComponent {
  public:
   explicit SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
-  explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }    
+  explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
   virtual int32 Properties() const {
@@ -194,7 +194,7 @@ class TanhComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);  
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
  private:
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
@@ -221,7 +221,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);  
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
  private:
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
@@ -237,13 +237,13 @@ class PerElementScaleComponent;
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-  
+
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl); 
-  
+  virtual void InitFromConfig(ConfigLine *cfl);
+
   AffineComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "AffineComponent"; }
   virtual int32 Properties() const {
@@ -251,7 +251,7 @@ class AffineComponent: public UpdatableComponent {
         kBackpropNeedsInput|kBackpropAdds;
   }
 
-  
+
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -274,13 +274,13 @@ class AffineComponent: public UpdatableComponent {
   virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;  
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
   // Some functions that are specific to this class.
-  
+
   // This new function is used when mixing up:
   virtual void SetParams(const VectorBase<BaseFloat> &bias,
                          const MatrixBase<BaseFloat> &linear);
@@ -325,7 +325,7 @@ class AffineComponent: public UpdatableComponent {
   // this if needed, but typically won't need to.
   virtual void UpdateSimple(
       const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);  
+      const CuMatrixBase<BaseFloat> &out_deriv);
 
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
@@ -337,7 +337,7 @@ class SoftmaxComponent: public NonlinearComponent {
  public:
   explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
   explicit SoftmaxComponent(const SoftmaxComponent &other):
-      NonlinearComponent(other) { } 
+      NonlinearComponent(other) { }
   SoftmaxComponent() { }
   virtual std::string Type() const { return "SoftmaxComponent"; }
   virtual int32 Properties() const {
@@ -349,12 +349,12 @@ class SoftmaxComponent: public NonlinearComponent {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);    
-  
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+
   virtual Component* Copy() const { return new SoftmaxComponent(*this); }
  private:
   SoftmaxComponent &operator = (const SoftmaxComponent &other); // Disallow.
@@ -413,7 +413,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
             std::string matrix_filename);
 
   virtual void Resize(int32 input_dim, int32 output_dim);
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
   NaturalGradientAffineComponent(): max_change_per_sample_(0.0) { }
@@ -428,7 +428,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
   int32 update_period_;
   BaseFloat num_samples_history_;
   BaseFloat alpha_;
-  
+
   OnlineNaturalGradient preconditioner_in_;
 
   OnlineNaturalGradient preconditioner_out_;
@@ -472,16 +472,16 @@ class NaturalGradientAffineComponent: public AffineComponent {
 /// at network initialization time and is not trainable.
 class FixedAffineComponent: public Component {
  public:
-  FixedAffineComponent() { } 
+  FixedAffineComponent() { }
   virtual std::string Type() const { return "FixedAffineComponent"; }
   virtual std::string Info() const;
 
   /// matrix should be of size input-dim+1 to output-dim, last col is offset
-  void Init(const CuMatrixBase<BaseFloat> &matrix); 
+  void Init(const CuMatrixBase<BaseFloat> &matrix);
 
   // The ConfigLine cfl contains just the option matrix=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
 
   virtual int32 Properties() const { return kSimpleComponent|kBackpropAdds; }
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
@@ -509,7 +509,7 @@ class FixedAffineComponent: public Component {
   friend class AffineComponent;
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
-  
+
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
 };
 
@@ -518,7 +518,7 @@ class FixedAffineComponent: public Component {
 // idea into neural nets.  This is basically a degenerate case of
 // MixtureProbComponent; we had to implement it separately to
 // be efficient for CUDA (we can use this one regardless whether
-// we have CUDA or not; it's the normal case we want anyway). 
+// we have CUDA or not; it's the normal case we want anyway).
 class SumGroupComponent: public Component {
 public:
   virtual int32 InputDim() const { return input_dim_; }
@@ -528,7 +528,7 @@ public:
   void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
                                                   // each output-dim, how many
                                                   // inputs were summed over.
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
   SumGroupComponent() { }
   virtual std::string Type() const { return "SumGroupComponent"; }
   virtual int32 Properties() const { return kSimpleComponent|kLinearInInput; }
@@ -554,7 +554,7 @@ private:
                                // index.
   CuArray<int32> reverse_indexes_; // for each input index, the output index.
   int32 input_dim_;
-  int32 output_dim_;  
+  int32 output_dim_;
 };
 
 
@@ -563,19 +563,19 @@ private:
 /// model conversion).
 class FixedScaleComponent: public Component {
  public:
-  FixedScaleComponent() { } 
+  FixedScaleComponent() { }
   virtual std::string Type() const { return "FixedScaleComponent"; }
   virtual std::string Info() const;
   virtual int32 Properties() const {
     return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
   }
-  
+
   void Init(const CuVectorBase<BaseFloat> &scales);
 
   // The ConfigLine cfl contains only the option scales=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
   virtual void InitFromConfig(ConfigLine *cfl);
-  
+
   virtual int32 InputDim() const { return scales_.Dim(); }
   virtual int32 OutputDim() const { return scales_.Dim(); }
 
@@ -595,7 +595,7 @@ class FixedScaleComponent: public Component {
 
  protected:
   friend class AffineComponent;  // necessary for collapse
-  CuVector<BaseFloat> scales_;  
+  CuVector<BaseFloat> scales_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedScaleComponent);
 };
 
@@ -605,16 +605,16 @@ class FixedScaleComponent: public Component {
 /// model conversion.
 class FixedBiasComponent: public Component {
  public:
-  FixedBiasComponent() { } 
+  FixedBiasComponent() { }
   virtual std::string Type() const { return "FixedBiasComponent"; }
   virtual std::string Info() const;
 
   virtual int32 Properties() const {
     return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
   }
-  
-  void Init(const CuVectorBase<BaseFloat> &scales); 
-  
+
+  void Init(const CuVectorBase<BaseFloat> &scales);
+
   // The ConfigLine cfl contains only the option bias=<string>,
   // where the string is the filename of a Kaldi-format matrix to read.
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -636,7 +636,7 @@ class FixedBiasComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
 
  protected:
-  CuVector<BaseFloat> bias_;  
+  CuVector<BaseFloat> bias_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
@@ -645,7 +645,7 @@ class FixedBiasComponent: public Component {
 class NoOpComponent: public NonlinearComponent {
  public:
   explicit NoOpComponent(int32 dim): NonlinearComponent(dim) { }
-  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }    
+  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
@@ -674,15 +674,15 @@ class PerElementScaleComponent: public UpdatableComponent {
   virtual int32 OutputDim() const { return scales_.Dim(); }
 
   virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl); 
-  
+  virtual void InitFromConfig(ConfigLine *cfl);
+
   PerElementScaleComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "PerElementScaleComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInInput|
         kLinearInParameters|kBackpropNeedsInput|kPropagateInPlace;
   }
-  
+
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -705,7 +705,7 @@ class PerElementScaleComponent: public UpdatableComponent {
   virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;  
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
@@ -735,9 +735,9 @@ class PerElementScaleComponent: public UpdatableComponent {
   // this if needed, but typically won't need to.
   virtual void UpdateSimple(
       const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);  
+      const CuMatrixBase<BaseFloat> &out_deriv);
 
-  const PerElementScaleComponent &operator 
+  const PerElementScaleComponent &operator
       = (const PerElementScaleComponent &other); // Disallow.
   CuVector<BaseFloat> scales_;
 
@@ -751,9 +751,9 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
  public:
 
   virtual std::string Info() const;
-  
-  virtual void InitFromConfig(ConfigLine *cfl); 
-  
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
   NaturalGradientPerElementScaleComponent() { } // use Init to really initialize.
   virtual std::string Type() const {
     return "NaturalGradientPerElementScaleComponent";
@@ -777,7 +777,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
             BaseFloat alpha, BaseFloat max_change_per_minibatch);
 
  private:
-  // configuration value for imposing max-change... 
+  // configuration value for imposing max-change...
   BaseFloat max_change_per_minibatch_;
 
   // unlike the NaturalGradientAffineComponent, there is only one dimension to
@@ -786,7 +786,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   // The preconditioner stores its own configuration values; we write and read
   // these, but not the preconditioner object itself.
   OnlineNaturalGradient preconditioner_;
-  
+
   // Override of the parent-class Update() function, called only
   // if this->is_gradient_ = false; this implements the natural
   // gradient update.
@@ -795,7 +795,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
 
-  const NaturalGradientPerElementScaleComponent &operator 
+  const NaturalGradientPerElementScaleComponent &operator
       = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
 

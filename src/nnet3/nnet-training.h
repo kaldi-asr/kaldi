@@ -39,7 +39,7 @@ struct NnetTrainerOptions {
   NnetComputeOptions compute_config;
   NnetTrainerOptions():
       zero_component_stats(true),
-      store_component_stats(false),
+      store_component_stats(true),
       print_interval(100),
       debug_computation(false),
       update_per_minibatch(false) { }
@@ -128,16 +128,16 @@ class NnetTrainer {
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
-  
+
   const NnetTrainerOptions config_;
   Nnet *nnet_;
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the
   // normal case there will be just one output layer named "output".
-  // So we store the objective functions per output layer.  
+  // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
-    
+
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 };
 

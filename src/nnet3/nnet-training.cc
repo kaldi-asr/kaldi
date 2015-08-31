@@ -29,7 +29,7 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     nnet_(nnet),
     compiler_(*nnet, config_.optimize_config),
     num_minibatches_processed_(0) {
-  if (config.store_component_stats && config.zero_component_stats)
+  if (config.zero_component_stats)
     ZeroComponentStats(nnet);
 }
 

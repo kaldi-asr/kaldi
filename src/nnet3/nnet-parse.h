@@ -21,6 +21,7 @@
 #define KALDI_NNET3_NNET_PARSE_H_
 
 #include "util/text-utils.h"
+#include "matrix/kaldi-vector.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -38,7 +39,7 @@ namespace nnet3 {
    expected), so that
       x=  y=bar
    is allowed, and assigns "" to key x.  Key values may contain -_a-zA-Z0-9, but
-   must begin with a-zA-Z_.  
+   must begin with a-zA-Z_.
  */
 class ConfigLine {
  public:
@@ -58,7 +59,7 @@ class ConfigLine {
   // Values may be separated by ":" or by ",".
   bool GetValue(const std::string &key, std::vector<int32> *value);
   bool GetValue(const std::string &key, bool *value);
-  
+
   bool HasUnusedValues() const;
   /// returns e.g. foo=bar xxx=yyy if foo and xxx were not consumed by one
   /// of the GetValue() functions.
@@ -70,9 +71,9 @@ class ConfigLine {
   std::string whole_line_;
   // data_ maps from key to (value, is-this-value-consumed?).
   std::map<std::string, std::pair<std::string, bool> > data_;
-  
+
 };
-             
+
 // Note: the ParseFromString functions are to be removed after we switch over to
 // using the ConfigLine mechanism.
 
@@ -156,6 +157,11 @@ void ReadConfigFile(std::istream &is,
 std::string ErrorContext(std::istream &is);
 
 std::string ErrorContext(const std::string &str);
+
+// Returns a string that summarizes a vector fairly succintly, for
+// printing stats in info lines.
+std::string SummarizeVector(const Vector<BaseFloat> &vec);
+
 
 } // namespace nnet3
 } // namespace kaldi
