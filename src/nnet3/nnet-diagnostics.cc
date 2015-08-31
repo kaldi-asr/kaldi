@@ -87,7 +87,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
         ComputeObjectiveFunction(io.features, obj_type, io.name,
                                  supply_deriv, computer,
                                  &tot_weight, &tot_objf);
-        SimpleObjectiveInfo &totals = objf_info_[io.name];       
+        SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;
       }
@@ -108,7 +108,7 @@ bool NnetComputeProb::PrintTotalStats() const {
   bool ans = false;
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
       iter, end;
-  { // First print regular objectives  
+  { // First print regular objectives
     iter = objf_info_.begin();
     end = objf_info_.end();
     for (; iter != end; ++iter) {
@@ -132,7 +132,7 @@ bool NnetComputeProb::PrintTotalStats() const {
     for (; iter != end; ++iter) {
       const std::string &name = iter->first;
       const SimpleObjectiveInfo &info = iter->second;
-      KALDI_LOG << "Overall accuracy for '" << name << "'is "
+      KALDI_LOG << "Overall accuracy for '" << name << "' is "
                 << (info.tot_objective / info.tot_weight) << " per frame"
                 << ", over " << info.tot_weight << " frames.";
       // don't bother changing ans; the loop over the regular objective should
@@ -178,7 +178,7 @@ void ComputeAccuracy(const GeneralMatrix &supervision,
           tot_accuracy += row_sum;
       }
       break;
-      
+
     }
     case kFullMatrix: {
       const Matrix<BaseFloat> &mat = supervision.GetFullMatrix();

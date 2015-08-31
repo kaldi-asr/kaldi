@@ -53,7 +53,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
 
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
-  
+
   if (config_.update_per_minibatch)
     delete const_nnet;
 }
@@ -126,7 +126,7 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
 }
 
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
-  KALDI_LOG << "Overall average objective function for '" << name << "'is "
+  KALDI_LOG << "Overall average objective function for '" << name << "' is "
             << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   return (tot_weight != 0.0);
 }
@@ -144,7 +144,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
               << "mismatch for '" << output_name << "': " << output.NumCols()
               << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
-  
+
   switch (objective_type) {
     case kLinear: {
       // objective is x * y.
@@ -205,7 +205,7 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
     default:
       KALDI_ERR << "Objective function type " << objective_type
                 << " not handled.";
-  }      
+  }
 }
 
 
