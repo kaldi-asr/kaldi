@@ -70,6 +70,12 @@ void PerturbParams(BaseFloat stddev,
 BaseFloat DotProduct(const Nnet &nnet1,
                      const Nnet &nnet2);
 
+/// Returns dot products between two networks of the same structure (calls the
+/// DotProduct functions of the Updatable components and fill in the output
+/// vector).
+void ComponentDotProducts(const Nnet &nnet1,
+                          const Nnet &nnet2,
+                          VectorBase<BaseFloat> *dot_prod);
 
 /// This function returns true if the nnet has the following properties:
 ///  It has one output, called "output".
