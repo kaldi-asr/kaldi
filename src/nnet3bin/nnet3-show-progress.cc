@@ -77,8 +77,6 @@ int main(int argc, char *argv[]) {
       exit(0);
     }
 
-    int32 ret = 0;
-
     if (!examples_rspecifier.empty()) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
@@ -86,6 +84,9 @@ int main(int argc, char *argv[]) {
         examples.push_back(example_reader.Value());
 
       int32 num_examples = examples.size();
+
+      if (num_examples == 0)
+        KALDI_ERR << "No examples read.";
 
       int32 num_updatable = NumUpdatableComponents(nnet1);
       Vector<BaseFloat> diff(num_updatable);
@@ -114,8 +115,8 @@ int main(int argc, char *argv[]) {
         Vector<BaseFloat> old_dotprod(num_updatable), new_dotprod(num_updatable);
         ComponentDotProducts(nnet_gradient, nnet1, &old_dotprod);
         ComponentDotProducts(nnet_gradient, nnet2, &new_dotprod);
-        old_dotprod.Scale(1.0 / num_examples);
-        new_dotprod.Scale(1.0 / num_examples);
+        old_dotprod.Scale(1.0 / objf_info->tot_weight);
+        new_dotprod.Scale(1.0 / objf_info->tot_weight);
         diff.AddVec(1.0/ num_segments, new_dotprod);
         diff.AddVec(-1.0 / num_segments, old_dotprod);
         KALDI_VLOG(1) << "By segment " << s << ", objf change is "
@@ -123,7 +124,6 @@ int main(int argc, char *argv[]) {
       }
       KALDI_LOG << "Total objf change per component is "
                 << PrintVectorPerUpdatableComponent(nnet1, diff);
-      if (num_examples == 0) ret = 1;
     }
 
     { // Get info about magnitude of parameter change.
@@ -143,8 +143,7 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Relative parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
     }
-
-    return ret;
+    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
