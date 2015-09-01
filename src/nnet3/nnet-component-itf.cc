@@ -82,6 +82,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedBiasComponent();
   } else if (component_type == "NoOpComponent") {
     ans = new NoOpComponent();
+  } else if (component_type == "ClipGradientComponent") {
+    ans = new ClipGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
   }
@@ -195,16 +197,19 @@ void NonlinearComponent::Scale(BaseFloat scale) {
   count_ *= scale;
 }
 
-void NonlinearComponent::Add(BaseFloat alpha, const NonlinearComponent &other) {
-  if (value_sum_.Dim() == 0 && other.value_sum_.Dim() != 0)
-    value_sum_.Resize(other.value_sum_.Dim());
-  if (deriv_sum_.Dim() == 0 && other.deriv_sum_.Dim() != 0)
-    deriv_sum_.Resize(other.deriv_sum_.Dim());
-  if (other.value_sum_.Dim() != 0)
-    value_sum_.AddVec(alpha, other.value_sum_);
-  if (other.deriv_sum_.Dim() != 0)
-    deriv_sum_.AddVec(alpha, other.deriv_sum_);
-  count_ += alpha * other.count_;
+void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const NonlinearComponent *other =
+      dynamic_cast<const NonlinearComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  if (value_sum_.Dim() == 0 && other->value_sum_.Dim() != 0)
+    value_sum_.Resize(other->value_sum_.Dim());
+  if (deriv_sum_.Dim() == 0 && other->deriv_sum_.Dim() != 0)
+    deriv_sum_.Resize(other->deriv_sum_.Dim());
+  if (other->value_sum_.Dim() != 0)
+    value_sum_.AddVec(alpha, other->value_sum_);
+  if (other->deriv_sum_.Dim() != 0)
+    deriv_sum_.AddVec(alpha, other->deriv_sum_);
+  count_ += alpha * other->count_;
 }
 
 void NonlinearComponent::Read(std::istream &is, bool binary) {

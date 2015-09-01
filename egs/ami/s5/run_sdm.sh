@@ -167,6 +167,19 @@ if [ $stage -le 13 ]; then
     --gmm-dir exp/$mic/tri3a \
     --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
+
+#LSTM training   
+if [ $stage -le 14 ]; then   
+  local/nnet3/run_lstm.sh \
+    --mic $mic \
+    --train-stage -5 \
+    --stage 7 \
+    --speed-perturb true \
+    --norm-based-clipping true \
+    --clipping-threshold 1 \
+    --use-sat-alignments false
+fi   
+
 echo "Done."
 
 

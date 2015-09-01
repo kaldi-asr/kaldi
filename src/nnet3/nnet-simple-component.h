@@ -65,7 +65,11 @@ class PnormComponent: public Component {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new PnormComponent(input_dim_,
                                                               output_dim_); }
+  
 
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
+  
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -104,7 +108,9 @@ class ElementwiseProductComponent: public Component {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new ElementwiseProductComponent(input_dim_,
                                                               output_dim_); }
-
+  
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -271,7 +277,7 @@ class AffineComponent: public UpdatableComponent {
 
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void Add(BaseFloat alpha, const Component &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
@@ -500,6 +506,8 @@ class FixedAffineComponent: public Component {
 
 
   virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -543,6 +551,8 @@ public:
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -590,6 +600,8 @@ class FixedScaleComponent: public Component {
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -632,6 +644,8 @@ class FixedBiasComponent: public Component {
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale) {};
+  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -665,6 +679,79 @@ class NoOpComponent: public NonlinearComponent {
  private:
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
+
+// ClipGradientComponent just duplicates its input, but clips gradients 
+// during backpropagation if they cross a predetermined threshold.
+// This component will be used to prevent gradient explosion problem in
+// recurrent neural networks
+class ClipGradientComponent: public Component {
+ public:
+  ClipGradientComponent(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping) {
+    Init(dim, clipping_threshold, norm_based_clipping);
+  }
+  ClipGradientComponent(): dim_(0), clipping_threshold_(-1), norm_based_clipping_(false) { }
+  
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromConfig(ConfigLine *cfl); 
+  void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping);
+  
+  virtual std::string Type() const { return "ClipGradientComponent"; }
+  
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+  }
+
+  virtual void ZeroStats();
+  
+  virtual Component* Copy() const { return new ClipGradientComponent(dim_,
+                                                                        clipping_threshold_,
+                                                                        norm_based_clipping_);}
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  
+  virtual void Scale(BaseFloat scale); 
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+ private:
+  int32 dim_;  // input/output dimension
+  BaseFloat clipping_threshold_;  // threshold to be used for clipping
+                                  // could correspond to max-row-norm (if
+                                  // norm_based_clipping_ == true) or
+                                  // max-absolute-value (otherwise)
+  bool norm_based_clipping_;  // if true the max-row-norm will be clipped
+                              // else element-wise absolute value clipping is
+                              // done
+
+  
+  ClipGradientComponent &operator =
+      (const ClipGradientComponent &other); // Disallow.
+
+ protected:
+  // variables to store stats
+  // An element corresponds to rows of derivative matrix, when
+  // norm_based_clipping_ is true,
+  // else it corresponds to each element of the derivative matrix
+  // Note: no stats are stored when norm_based_clipping_ is false
+  int32 num_clipped_;  // number of elements which were clipped
+  int32 count_;  // number of elements which were processed
+
+};
+
+
 
 // PerElementScaleComponent scales each dimension of its input with a separate
 // trainable scale; it's like a linear component with a diagonal matrix.
@@ -702,7 +789,7 @@ class PerElementScaleComponent: public UpdatableComponent {
 
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const UpdatableComponent &other);
+  virtual void Add(BaseFloat alpha, const Component &other);
   virtual void SetZero(bool treat_as_gradient);
   virtual void PerturbParams(BaseFloat stddev);
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;

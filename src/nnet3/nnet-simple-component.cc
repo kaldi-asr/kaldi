@@ -87,8 +87,8 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
 
 std::string PnormComponent::Info() const {
   std::stringstream stream;
-  stream << Type() << ", input-dim = " << input_dim_
-         << ", output-dim = " << output_dim_;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", output-dim=" << output_dim_;
   return stream.str();
 }
 
@@ -295,6 +295,139 @@ void NoOpComponent::Backprop(const std::string &debug_info,
   in_deriv->CopyFromMat(out_deriv);
 }
 
+void ClipGradientComponent::Read(std::istream &is, bool binary) {
+  // might not see the "<NaturalGradientAffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "<ClipGradientComponent>",
+                       "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<ClippingThreshold>");
+  ReadBasicType(is, binary, &clipping_threshold_);
+  ExpectToken(is, binary, "<NormBasedClipping>");
+  ReadBasicType(is, binary, &norm_based_clipping_);
+  ExpectToken(is, binary, "</ClipGradientComponent>");
+}
+
+void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ClipGradientComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<ClippingThreshold>");
+  WriteBasicType(os, binary, clipping_threshold_);
+  WriteToken(os, binary, "<NormBasedClipping>");
+  WriteBasicType(os, binary, norm_based_clipping_);
+  WriteToken(os, binary, "</ClipGradientComponent>");
+}
+
+std::string ClipGradientComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", dim=" << dim_
+         << ", norm-based-clipping="
+         << (norm_based_clipping_ ? "true" : "false")
+         << ", clipping-threshold=" << clipping_threshold_;
+  return stream.str();
+}
+
+void ClipGradientComponent::Init(int32 dim, 
+                                    BaseFloat clipping_threshold,
+                                    bool norm_based_clipping)  {
+  KALDI_ASSERT(clipping_threshold >= 0 && dim > 0);
+  dim_ = dim;
+  norm_based_clipping_ = norm_based_clipping;
+  clipping_threshold_ = clipping_threshold;
+  num_clipped_ = 0.0;
+  count_ = 0.0;
+}
+
+void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 dim = 0;
+  bool ok = cfl->GetValue("dim", &dim);
+  bool norm_based_clipping = false;
+  BaseFloat clipping_threshold = 15.0;
+  cfl->GetValue("clipping-threshold", &clipping_threshold);
+  cfl->GetValue("norm-based-clipping", &norm_based_clipping);
+  if (!ok || cfl->HasUnusedValues() ||
+      clipping_threshold < 0 || dim <= 0)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(dim, clipping_threshold, norm_based_clipping);
+}
+
+void ClipGradientComponent::Propagate(
+                                 const ComponentPrecomputedIndexes *indexes,
+                                 const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);
+}
+
+
+void ClipGradientComponent::Backprop(const std::string &debug_info,
+                             const ComponentPrecomputedIndexes *indexes,
+                             const CuMatrixBase<BaseFloat> &,
+                             const CuMatrixBase<BaseFloat> &,
+                             const CuMatrixBase<BaseFloat> &out_deriv,
+                             Component *to_update_in, // may be NULL; may be identical
+                             // to "this" or different.
+                             CuMatrixBase<BaseFloat> *in_deriv) const {
+  // the following statement will do nothing if in_deriv and out_deriv have same
+  // memory.
+  in_deriv->CopyFromMat(out_deriv);
+
+  ClipGradientComponent *to_update =
+      dynamic_cast<ClipGradientComponent*>(to_update_in);
+  KALDI_ASSERT(to_update != NULL);
+  int32 num_clipped = 0,
+        count = 0;
+
+  if (clipping_threshold_ > 0) {
+    if (norm_based_clipping_) {
+      // each row in the derivative matrix, which corresponds to one sample in
+      // the mini-batch, is scaled to have a max-norm of clipping_threshold_
+      CuVector<BaseFloat> clipping_scales(in_deriv->NumRows());
+      clipping_scales.AddDiagMat2(pow(clipping_threshold_, -2), *in_deriv,
+                                  kNoTrans, 0.0);
+     // now clipping_scales contains the squared (norm of each row divided by
+     //  clipping_threshold)
+      int32 num_not_scaled = clipping_scales.ApplyFloor(1.0);
+     // now clipping_scales contains min(1,
+     //    squared-(norm/clipping_threshold))
+      if (num_not_scaled != clipping_scales.Dim()) {
+        clipping_scales.ApplyPow(-0.5);
+        // now clipping_scales contains max(1,
+        //       clipping_threshold/vector_norm)
+        in_deriv->MulRowsVec(clipping_scales);
+        num_clipped += (clipping_scales.Dim() - num_not_scaled);
+       }
+      count += clipping_scales.Dim();
+    } else {
+      // each element of the derivative matrix, is clipped to be below the
+      // clipping_threshold_
+      in_deriv->ApplyCeiling(clipping_threshold_);
+      in_deriv->ApplyFloor(-1 * clipping_threshold_);
+    }
+    to_update->num_clipped_ += num_clipped;
+    to_update->count_ += count;
+  }
+}
+
+void ClipGradientComponent::ZeroStats()  {
+  count_ = 0.0;
+  num_clipped_ = 0.0;
+}
+
+void ClipGradientComponent::Scale(BaseFloat scale) {
+  count_ *= scale;
+  num_clipped_ *= scale;
+}
+
+void ClipGradientComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const ClipGradientComponent *other =
+      dynamic_cast<const ClipGradientComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  count_ += alpha * other->count_;
+  num_clipped_ += alpha * other->num_clipped_;
+}
+
 void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                               const CuMatrixBase<BaseFloat> &in,
                               CuMatrixBase<BaseFloat> *out) const {
@@ -375,7 +508,7 @@ void AffineComponent::Resize(int32 input_dim, int32 output_dim) {
   linear_params_.Resize(output_dim, input_dim);
 }
 
-void AffineComponent::Add(BaseFloat alpha, const UpdatableComponent &other_in) {
+void AffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   const AffineComponent *other =
       dynamic_cast<const AffineComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
@@ -693,7 +826,7 @@ void PerElementScaleComponent::Resize(int32 dim) {
 }
 
 void PerElementScaleComponent::Add(BaseFloat alpha,
-                                   const UpdatableComponent &other_in) {
+                                   const Component &other_in) {
   const PerElementScaleComponent *other =
       dynamic_cast<const PerElementScaleComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
@@ -1700,15 +1833,16 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
     Init(learning_rate, filename, rank, update_period, num_samples_history,
          alpha, max_change_per_minibatch);
   } else {
+    BaseFloat param_mean = 1.0, param_stddev = 0.0;
+    cfl->GetValue("param-mean", &param_mean);
+    cfl->GetValue("param-stddev", &param_stddev);
+    
     int32 dim;
     if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
     KALDI_ASSERT(dim > 0);
 
-    BaseFloat param_mean = 1.0, param_stddev = 0.0;
-    cfl->GetValue("param-mean", &param_mean);
-    cfl->GetValue("param-stddev", &param_stddev);
     Init(learning_rate, dim, param_mean, param_stddev, rank, update_period,
          num_samples_history, alpha, max_change_per_minibatch);
   }

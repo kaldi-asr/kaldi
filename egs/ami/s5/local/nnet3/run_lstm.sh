@@ -14,8 +14,28 @@ mic=ihm
 use_sat_alignments=true
 affix=
 speed_perturb=true
-splice_indexes="-2,-1,0,1,2 0"
 common_egs_dir=
+
+# lstm options
+splice_indexes="-2,-1,0,1,2"
+num_lstm_layers=1
+cell_dim=1024
+hidden_dim=1024
+recurrent_projection_dim=256
+non_recurrent_projection_dim=256
+chunk_width=20
+chunk_left_context=20
+norm_based_clipping=false
+clipping_threshold=15
+
+# natural gradient options
+ng_per_element_scale_options=""
+ng_affine_options=""
+
+# training options
+initial_effective_lrate=0.0003
+final_effective_lrate=0.00003
+num_chunk_per_minibatch=100
 
 . cmd.sh
 . ./path.sh
@@ -60,21 +80,26 @@ if [ $stage -le 7 ]; then
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --num-epochs 3 --num-jobs-initial 2 --num-jobs-final 12 \
+    --egs-dir "$common_egs_dir" \
+    --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --io-opts "-tc 12" \
-    --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
+    --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" \
-    --num-lstm-layers 1 \
-    --cell-dim 1024 \
-    --hidden-dim 1024 \
-    --recurrent-projection-dim 256 \
-    --non-recurrent-projection-dim 256 \
-    --bptt-truncation-width 20 \
-    --context-sensitive-chunk-width 20 \
-    --egs-dir "$common_egs_dir" \
+    --num-lstm-layers $num_lstm_layers \
+    --cell-dim $cell_dim \
+    --hidden-dim $hidden_dim \
+    --recurrent-projection-dim $recurrent_projection_dim \
+    --non-recurrent-projection-dim $non_recurrent_projection_dim \
+    --chunk-width $chunk_width \
+    --chunk-left-context $chunk_left_context \
+    --norm-based-clipping $norm_based_clipping \
+    --clipping-threshold $clipping_threshold \
+    --ng-per-element-scale-options "$ng_per_element_scale_options" \
+    --ng-affine-options "$ng_affine_options" \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
 exit;

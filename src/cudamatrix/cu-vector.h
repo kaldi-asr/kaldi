@@ -125,7 +125,7 @@ class CuVectorBase {
   void ApplyExp();
   void ApplyLog();
   MatrixIndexT ApplyFloor(Real floor_val);
-  void ApplyCeiling(Real ceiling_val);
+  MatrixIndexT ApplyCeiling(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
   void SetRandn();
