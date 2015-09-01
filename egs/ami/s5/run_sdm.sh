@@ -173,10 +173,9 @@ if [ $stage -le 14 ]; then
   local/nnet3/run_lstm.sh \
     --mic $mic \
     --train-stage -5 \
-    --stage 7 \
     --speed-perturb true \
     --norm-based-clipping true \
-    --clipping-threshold 1 \
+    --clipping-threshold 15 \
     --use-sat-alignments false
 fi   
 

@@ -29,13 +29,14 @@ norm_based_clipping=false
 clipping_threshold=15
 
 # natural gradient options
-ng_per_element_scale_options=""
-ng_affine_options=""
+ng_per_element_scale_options=
+ng_affine_options=
 
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_chunk_per_minibatch=100
+samples_per_iter=20000
 
 . cmd.sh
 . ./path.sh
@@ -82,11 +83,11 @@ if [ $stage -le 7 ]; then
     --num-epochs 3 --num-jobs-initial 2 --num-jobs-final 12 \
     --egs-dir "$common_egs_dir" \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
+    --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "-tc 12" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \

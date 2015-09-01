@@ -305,6 +305,10 @@ void ClipGradientComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &clipping_threshold_);
   ExpectToken(is, binary, "<NormBasedClipping>");
   ReadBasicType(is, binary, &norm_based_clipping_);
+  ExpectToken(is, binary, "<NumElementsClipped>");
+  ReadBasicType(is, binary, &num_clipped_);
+  ExpectToken(is, binary, "<NumElementsProcessed>");
+  ReadBasicType(is, binary, &count_);
   ExpectToken(is, binary, "</ClipGradientComponent>");
 }
 
@@ -316,6 +320,10 @@ void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, clipping_threshold_);
   WriteToken(os, binary, "<NormBasedClipping>");
   WriteBasicType(os, binary, norm_based_clipping_);
+  WriteToken(os, binary, "<NumElementsClipped>");
+  WriteBasicType(os, binary, num_clipped_);
+  WriteToken(os, binary, "<NumElementsProcessed>");
+  WriteBasicType(os, binary, count_);
   WriteToken(os, binary, "</ClipGradientComponent>");
 }
 
@@ -324,19 +332,23 @@ std::string ClipGradientComponent::Info() const {
   stream << Type() << ", dim=" << dim_
          << ", norm-based-clipping="
          << (norm_based_clipping_ ? "true" : "false")
-         << ", clipping-threshold=" << clipping_threshold_;
+         << ", clipping-threshold=" << clipping_threshold_
+         << ", clipped-proportion=" 
+         << (count_ > 0 ? static_cast<BaseFloat>(num_clipped_)/count_ : 0);
   return stream.str();
 }
 
 void ClipGradientComponent::Init(int32 dim, 
-                                    BaseFloat clipping_threshold,
-                                    bool norm_based_clipping)  {
+                                 BaseFloat clipping_threshold,
+                                 bool norm_based_clipping,
+                                 int32 num_clipped,
+                                 int32 count)  {
   KALDI_ASSERT(clipping_threshold >= 0 && dim > 0);
   dim_ = dim;
   norm_based_clipping_ = norm_based_clipping;
   clipping_threshold_ = clipping_threshold;
-  num_clipped_ = 0.0;
-  count_ = 0.0;
+  num_clipped_ = num_clipped;
+  count_ = count;
 }
 
 void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
@@ -350,7 +362,7 @@ void ClipGradientComponent::InitFromConfig(ConfigLine *cfl) {
       clipping_threshold < 0 || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, clipping_threshold, norm_based_clipping);
+  Init(dim, clipping_threshold, norm_based_clipping, 0, 0);
 }
 
 void ClipGradientComponent::Propagate(
@@ -376,9 +388,7 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
   ClipGradientComponent *to_update =
       dynamic_cast<ClipGradientComponent*>(to_update_in);
   KALDI_ASSERT(to_update != NULL);
-  int32 num_clipped = 0,
-        count = 0;
-
+  
   if (clipping_threshold_ > 0) {
     if (norm_based_clipping_) {
       // each row in the derivative matrix, which corresponds to one sample in
@@ -396,17 +406,15 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
         // now clipping_scales contains max(1,
         //       clipping_threshold/vector_norm)
         in_deriv->MulRowsVec(clipping_scales);
-        num_clipped += (clipping_scales.Dim() - num_not_scaled);
+        to_update->num_clipped_ += (clipping_scales.Dim() - num_not_scaled);
        }
-      count += clipping_scales.Dim();
+      to_update->count_ += clipping_scales.Dim();
     } else {
       // each element of the derivative matrix, is clipped to be below the
       // clipping_threshold_
       in_deriv->ApplyCeiling(clipping_threshold_);
       in_deriv->ApplyFloor(-1 * clipping_threshold_);
     }
-    to_update->num_clipped_ += num_clipped;
-    to_update->count_ += count;
   }
 }
 

@@ -279,8 +279,6 @@ if __name__ == "__main__":
                         help="dimension of non-recurrent projection")
     parser.add_argument("--hidden-dim", type=int,
                         help="dimension of fully-connected layers")
-    parser.add_argument("--chunk-left-context", type=int,
-                        help="number of frames used to estimate the state of the first frame in truncated BPTT ", default=20)
 
     # Natural gradient options
     parser.add_argument("--ng-per-element-scale-options", type=str,
@@ -315,8 +313,6 @@ if __name__ == "__main__":
         sys.exit("--feat-dim argument is required")
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
-    if (args.chunk_left_context < 0):
-        sys.exit("--chunk-left-context has to be a non-negative integer")
     if (args.clipping_threshold < 0):
         sys.exit("--clipping-threshold has to be a non-negative")
 
@@ -331,13 +327,10 @@ if __name__ == "__main__":
     if (num_hidden_layers < args.num_lstm_layers):
         sys.exit("--num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
 
-    left_context = left_context + args.chunk_left_context
-    right_context = right_context
-
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(args.config_dir + "/vars", "w")
-    print('left_context=' + str(left_context), file=f)
-    print('right_context=' + str(right_context), file=f)
+    print('model_left_context=' + str(left_context), file=f)
+    print('model_right_context=' + str(right_context), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
     # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
     f.close()

@@ -686,15 +686,19 @@ class NoOpComponent: public NonlinearComponent {
 // recurrent neural networks
 class ClipGradientComponent: public Component {
  public:
-  ClipGradientComponent(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping) {
-    Init(dim, clipping_threshold, norm_based_clipping);
-  }
-  ClipGradientComponent(): dim_(0), clipping_threshold_(-1), norm_based_clipping_(false) { }
+  ClipGradientComponent(int32 dim, BaseFloat clipping_threshold,
+                        bool norm_based_clipping, int32 num_clipped,
+                        int32 count) {
+    Init(dim, clipping_threshold, norm_based_clipping, num_clipped, count);}
+
+  ClipGradientComponent(): dim_(0), clipping_threshold_(-1),
+    norm_based_clipping_(false), num_clipped_(0), count_(0) { }
   
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
   virtual void InitFromConfig(ConfigLine *cfl); 
-  void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping);
+  void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping,
+            int32 num_clipped, int32 count);
   
   virtual std::string Type() const { return "ClipGradientComponent"; }
   
@@ -704,9 +708,12 @@ class ClipGradientComponent: public Component {
 
   virtual void ZeroStats();
   
-  virtual Component* Copy() const { return new ClipGradientComponent(dim_,
-                                                                        clipping_threshold_,
-                                                                        norm_based_clipping_);}
+  virtual Component* Copy() const { 
+    return new ClipGradientComponent(dim_,
+                                     clipping_threshold_,
+                                     norm_based_clipping_,
+                                     num_clipped_,
+                                     count_);}
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,

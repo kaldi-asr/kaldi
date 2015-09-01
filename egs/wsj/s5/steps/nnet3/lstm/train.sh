@@ -130,7 +130,6 @@ if [ $# != 4 ]; then
   echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --num-seq-per-minibatch <minibatch-size|25>      # Number of sequences to be processed in parallel in a minibatch"
   echo "  --samples-per-iter <#samples|4000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
@@ -225,7 +224,6 @@ if [ $stage -le -5 ]; then
     --hidden-dim $hidden_dim \
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
-    --chunk-left-context $chunk_left_context \
     --norm-based-clipping $norm_based_clipping \
     --clipping-threshold $clipping_threshold \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
@@ -240,11 +238,12 @@ if [ $stage -le -5 ]; then
     nnet3-init --srand=-2 $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 # sourcing the "vars" below sets
-# left_context=(something)
-# right_context=(something)
+# model_left_context=(something)
+# model_right_context=(something)
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
-
+left_context=$((chunk_left_context + model_left_context))
+right_context=$model_right_context
 context_opts="--left-context=$left_context --right-context=$right_context"
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
@@ -266,7 +265,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
   steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
-      --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
       --stage $get_egs_stage \
       --samples-per-iter $samples_per_iter \
@@ -511,9 +509,9 @@ while [ $x -lt $num_iters ]; do
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
+        nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" '&&' \
         nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" '&&' \
-        nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" &
+        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" &
     fi
 
     echo "Training neural net (pass $x)"
@@ -560,7 +558,7 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix --print-interval=1 --update-per-minibatch=$update_per_minibatch $parallel_train_opts "$raw" \
+          nnet3-train$parallel_suffix --print-interval=10 --update-per-minibatch=$update_per_minibatch $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
@@ -597,6 +595,7 @@ while [ $x -lt $num_iters ]; do
     if [ -f $dir/$[$x-1].mdl ] && $cleanup && \
        [ $[($x-1)%100] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
       rm $dir/$[$x-1].mdl
+       echo "didn't delete models"
     fi
   fi
   x=$[$x+1]
@@ -686,6 +685,7 @@ if $cleanup; then
     if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.mdl ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.mdl
+      echo "didnt load model"
     fi
   done
 fi
