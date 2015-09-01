@@ -42,24 +42,24 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-show-progress [options] <old-net-in> <new-net-in>"
         " [<training-examples-in>]\n"
         "e.g.: nnet3-show-progress 1.nnet 2.nnet ark:valid.egs\n";
-    
+
     ParseOptions po(usage);
 
     int32 num_segments = 1;
     std::string use_gpu = "optional";
-    
+
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
     }
 
     int32 ret = 0;
-    
+
     if (!examples_rspecifier.empty()) {
       std::vector<NnetExample> examples;
       SequentialNnetExampleReader example_reader(examples_rspecifier);
@@ -86,10 +86,10 @@ int main(int argc, char *argv[]) {
         examples.push_back(example_reader.Value());
 
       int32 num_examples = examples.size();
-    
+
       int32 num_updatable = NumUpdatableComponents(nnet1);
       Vector<BaseFloat> diff(num_updatable);
-    
+
       for (int32 s = 0; s < num_segments; s++) {
         // start and end segments of the line between 0 and 1
         BaseFloat start = (s + 0.0) / num_segments,
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
           prob_computer.Compute(*eg_iter);
         const SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
         double objf_per_frame = objf_info->tot_objective / objf_info->tot_weight;
-        Nnet nnet_gradient = prob_computer.GetDeriv();
+        const Nnet &nnet_gradient = prob_computer.GetDeriv();
         KALDI_LOG << "At position " << middle
                   << ", objf per frame is " << objf_per_frame;
 
@@ -118,12 +118,14 @@ int main(int argc, char *argv[]) {
         new_dotprod.Scale(1.0 / num_examples);
         diff.AddVec(1.0/ num_segments, new_dotprod);
         diff.AddVec(-1.0 / num_segments, old_dotprod);
-        KALDI_VLOG(1) << "By segment " << s << ", objf change is " << diff;
+        KALDI_VLOG(1) << "By segment " << s << ", objf change is "
+                      << PrintVectorPerUpdatableComponent(nnet1, diff);
       }
-      KALDI_LOG << "Total objf change per component is " << diff;
+      KALDI_LOG << "Total objf change per component is "
+                << PrintVectorPerUpdatableComponent(nnet1, diff);
       if (num_examples == 0) ret = 1;
     }
-   
+
     { // Get info about magnitude of parameter change.
       Nnet diff_nnet(nnet1);
       AddNnet(nnet2, -1.0, &diff_nnet);
@@ -132,14 +134,14 @@ int main(int argc, char *argv[]) {
       ComponentDotProducts(diff_nnet, diff_nnet, &dot_prod);
       dot_prod.ApplyPow(0.5); // take sqrt to get l2 norm of diff
       KALDI_LOG << "Parameter differences per layer are "
-                << dot_prod;
+                << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
 
       Vector<BaseFloat> baseline_prod(num_updatable);
       ComponentDotProducts(nnet1, nnet1, &baseline_prod);
       baseline_prod.ApplyPow(0.5);
       dot_prod.DivElements(baseline_prod);
       KALDI_LOG << "Relative parameter differences per layer are "
-                << dot_prod;
+                << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
     }
 
     return ret;

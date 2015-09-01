@@ -110,7 +110,7 @@ static void ComputeSimpleNnetContextForShift(
     request.inputs.push_back(ivector);
   std::vector<std::vector<bool> > computable;
   EvaluateComputationRequest(nnet, request, &computable);
-  
+
   KALDI_ASSERT(computable.size() == 1);
   std::vector<bool> &output_ok = computable[0];
   std::vector<bool>::iterator iter =
@@ -134,7 +134,7 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
   // are a multiple of this number.  We need to test all shifts modulo
   // this number in case the left and right context vary at all within
   // this range.
-  
+
   std::vector<int32> left_contexts(modulus + 1);
   std::vector<int32> right_contexts(modulus + 1);
 
@@ -185,7 +185,8 @@ void ComponentDotProducts(const Nnet &nnet1,
                           const Nnet &nnet2,
                           VectorBase<BaseFloat> *dot_prod) {
   KALDI_ASSERT(nnet1.NumComponents() == nnet2.NumComponents());
-  for (int32 c = 0, c_id = 0; c < nnet1.NumComponents(); c++) {
+  int32 updatable_c = 0;
+  for (int32 c = 0; c < nnet1.NumComponents(); c++) {
     const Component *comp1 = nnet1.GetComponent(c),
                     *comp2 = nnet2.GetComponent(c);
     if (comp1->Properties() & kUpdatableComponent) {
@@ -193,10 +194,30 @@ void ComponentDotProducts(const Nnet &nnet1,
           *u_comp1 = dynamic_cast<const UpdatableComponent*>(comp1),
           *u_comp2 = dynamic_cast<const UpdatableComponent*>(comp2);
       KALDI_ASSERT(u_comp1 != NULL && u_comp2 != NULL);
-      dot_prod->Data()[c_id] = u_comp1->DotProduct(*u_comp2);
-      c_id++;
+      dot_prod->Data()[updatable_c] = u_comp1->DotProduct(*u_comp2);
+      updatable_c++;
     }
   }
+  KALDI_ASSERT(updatable_c == dot_prod->Dim());
+}
+
+std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
+                                             const VectorBase<BaseFloat> &vec) {
+  std::ostringstream os;
+  os << "[ ";
+  KALDI_ASSERT(NumUpdatableComponents(nnet) == vec.Dim());
+  int32 updatable_c = 0;
+  for (int32 c = 0; c < nnet.NumComponents(); c++) {
+    const Component *comp = nnet.GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      const std::string &component_name = nnet.GetComponentName(c);
+      os << component_name << ':' << vec(updatable_c) << ' ';
+      updatable_c++;
+    }
+  }
+  KALDI_ASSERT(updatable_c == vec.Dim());
+  os << ']';
+  return os.str();
 }
 
 BaseFloat DotProduct(const Nnet &nnet1,
@@ -238,7 +259,7 @@ void SetLearningRate(BaseFloat learning_rate,
             "UpdatableComponent; change this code.";
       uc->SetLearningRate(learning_rate);
     }
-  }  
+  }
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
@@ -255,7 +276,7 @@ void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest) {
     const Component *src_comp = src.GetComponent(c);
     Component *dest_comp = dest->GetComponent(c);
     dest_comp->Add(alpha, *src_comp);
-  }    
+  }
 }
 
 int32 NumParameters(const Nnet &src) {

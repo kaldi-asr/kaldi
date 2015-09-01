@@ -77,6 +77,13 @@ void ComponentDotProducts(const Nnet &nnet1,
                           const Nnet &nnet2,
                           VectorBase<BaseFloat> *dot_prod);
 
+/// This function is for printing, to a string, a vector with one element per
+/// updatable component of the nnet (e.g. the output of ComponentDotProducts),
+/// in a human readable way, as [ component-name1:number1
+/// component-name2:number2 ... ].
+std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
+                                             const VectorBase<BaseFloat> &vec);
+
 /// This function returns true if the nnet has the following properties:
 ///  It has one output, called "output".
 ///  It has an input called "input", and possibly an extra input called
@@ -108,7 +115,7 @@ void SetLearningRate(BaseFloat learning_rate,
 
 /// Scales the nnet parameters and stats by this scale.
 void ScaleNnet(BaseFloat scale, Nnet *nnet);
-               
+
 /// Does *dest += alpha * src (affects nnet parameters and
 ///  stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
@@ -130,7 +137,7 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
-                     
+
 
 
 } // namespace nnet3
