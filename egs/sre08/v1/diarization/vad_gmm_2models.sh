@@ -103,6 +103,7 @@ mkdir -p $phase3_dir
 init_model_dir=`dirname $init_speech_model`
 ignore_energy_opts=`cat $init_model_dir/ignore_energy_opts` || exit 1
 add_zero_crossing_feats=`cat $init_model_dir/add_zero_crossing_feats` || exit 1
+add_frame_snrs=`cat $dir/add_frame_snrs` || exit 1
 
 zc_opts=
 [ -f conf/zc_vad.conf ] && zc_opts="--config=conf/zc_vad.conf"
@@ -215,12 +216,21 @@ while IFS=$'\n' read line; do
       ark:$dir/$utt_id.log_energies.ark || exit 1
   fi
 
+  if $add_frame_snrs; then
+    [ -z "$frame_snrs_scp" ] && echo "$0: add-frame-snrs is true but frame-snrs-scp is not supplied" && exit 1
+    utils/filter_scp.pl $data/utt2spk $frame_snrs_scp > $dir/frame_snrs.scp
+  fi
+
   sil_num_gauss=$sil_num_gauss_init
   sound_num_gauss=$sound_num_gauss_init
   speech_num_gauss=$speech_num_gauss_init
   
   if $add_zero_crossing_feats; then
-    feats="${feats} paste-feats ark:- ark:$dir/$utt_id.zero_crossings.ark ark:- |" 
+    feats="${feats}paste-feats ark:- ark:$dir/$utt_id.zero_crossings.ark ark:- |" 
+  fi
+
+  if $add_frame_snrs; then
+    feats="${feats}paste-feats ark:- \"ark:vector-to-feat scp:$dir/frame_snrs.scp ark:- |\" ark:- |"
   fi
 
   feats="${feats} add-deltas ark:- ark:- |"

@@ -120,7 +120,7 @@ if [ $stage -le -3 ]; then
   fi
 
   if $add_frame_snrs; then
-    [ -z "$frame_snrs_scp" ] && echo "$0: add-frame-snrs is true by frame-snrs-scp is not supplied" && exit 1
+    [ -z "$frame_snrs_scp" ] && echo "$0: add-frame-snrs is true but frame-snrs-scp is not supplied" && exit 1
     for n in `seq $nj`; do
       utils/filter_scp.pl $dir/data/split$nj/$n/utt2spk $frame_snrs_scp > $dir/data/frame_snrs.$n.scp  
     done
