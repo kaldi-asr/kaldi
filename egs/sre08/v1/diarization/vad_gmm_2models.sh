@@ -229,6 +229,10 @@ while IFS=$'\n' read line; do
     copy-feats "$feats" ark:$dir/$utt_id.feat.ark
   fi
 
+  $cmd $dir/log/$utt_id.gmm_compute_likes.bootstrap.log \
+    gmm-compute-likes $dir/init_2class.mdl "$feats" \
+    ark:$tmpdir/$utt_id.likes.bootstrap.ark &
+ 
   # Get VAD: 0 for silence, 1 for speech
   $cmd $dir/log/$utt_id.get_vad.bootstrap.log \
     gmm-decode-simple --allow-partial=$allow_partial \
@@ -237,7 +241,13 @@ while IFS=$'\n' read line; do
     "$feats" ark:/dev/null ark:- \| ali-to-pdf $dir/init_2class.mdl ark:- ark:- \| \
     segmentation-init-from-ali ark:- \
     ark:$tmpdir/$utt_id.vad.bootstrap.ark || exit 1
- 
+
+  if $use_bootstrap_vad; then
+    segmentation-copy ark:$tmpdir/$utt_id.vad.bootstrap.ark \
+      ark,scp:$dir/$utt_id.vad.final.ark,$dir/$utt_id.vad.final.scp || exit 1
+    continue
+  fi
+
   cp $tmpdir/$utt_id.vad.bootstrap.ark $tmpdir/$utt_id.seg.0.ark 
 
   x=0
@@ -315,6 +325,10 @@ while IFS=$'\n' read line; do
         $tmpdir/$utt_id.$[x+1].mdl || exit 1
     fi
     
+    $cmd $tmpdir/log/$utt_id.gmm_compute_likes.$x.log \
+      gmm-compute-likes $tmpdir/$utt_id.$x.mdl "$feats" \
+      ark:$tmpdir/$utt_id.likes.$x.ark &
+
     $cmd $tmpdir/log/$utt_id.get_seg.$[x+1].log \
       gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/graph/words.txt \
@@ -382,6 +396,10 @@ while IFS=$'\n' read line; do
         speech_num_gauss=$[speech_num_gauss + speech_gauss_incr_phase2]
       fi
 
+      $cmd $phase2_dir/log/$utt_id.gmm_compute_likes.$x.log \
+        gmm-compute-likes $phase2_dir/$utt_id.$x.mdl "$feats" \
+        ark:$phase2_dir/$utt_id.likes.$x.ark &
+      
       $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
         gmm-decode-simple --allow-partial=$allow_partial \
         --word-symbol-table=$dir/graph/words.txt \
@@ -390,7 +408,7 @@ while IFS=$'\n' read line; do
         ali-to-pdf $phase2_dir/$utt_id.$x.mdl ark:- ark:- \| \
         segmentation-init-from-ali ark:- \
         ark:$phase2_dir/$utt_id.seg.$x.ark || exit 1
-      
+    
       #$cmd $phase2_dir/log/$utt_id.gmm_update.$[x+1].log \
       #  gmm-est-segmentation \
       #  --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\n2 $sound_num_gauss\" |" \
@@ -409,6 +427,10 @@ while IFS=$'\n' read line; do
     cp $phase2_dir/$utt_id.$x.mdl $dir/$utt_id.final.mdl
     rm -f $dir/$utt_id.graph_final
     ln -s graph_test_${speech_to_sil_ratio}x $dir/$utt_id.graph_final
+
+    $cmd $phase2_dir/log/$utt_id.gmm_compute_likes.$x.log \
+      gmm-compute-likes $phase2_dir/$utt_id.$x.mdl "$feats" \
+      ark:$phase2_dir/$utt_id.likes.$x.ark &
 
     $cmd $phase2_dir/log/$utt_id.get_seg.$x.log \
       gmm-decode-simple --allow-partial=$allow_partial \
@@ -504,6 +526,10 @@ while IFS=$'\n' read line; do
     speech_num_gauss=$speech_num_gauss_init_phase3
     sil_num_gauss=$sil_num_gauss_init_phase3
 
+    $cmd $phase3_dir/log/$utt_id.gmm_compute_likes.init.log \
+      gmm-compute-likes $dir/init_2class.mdl "$feats" \
+      ark:$phase3_dir/$utt_id.likes.0.ark &
+
     $cmd $phase3_dir/log/$utt_id.get_vad.bootstrap.log \
       gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/graph_2class/words.txt \
@@ -560,6 +586,10 @@ while IFS=$'\n' read line; do
           $phase3_dir/$utt_id.$[x+1].mdl || exit 1
       fi
     
+      $cmd $phase3_dir/log/$utt_id.gmm_compute_likes.$x.log \
+        gmm-compute-likes $phase3_dir/$utt_id.$x.mdl "$feats" \
+        ark:$phase3_dir/$utt_id.likes.$x.ark &
+
       $cmd $phase3_dir/log/$utt_id.get_seg.$[x+1].log \
         gmm-decode-simple --allow-partial=$allow_partial \
         --word-symbol-table=$dir/graph_2class/words.txt \
@@ -597,7 +627,7 @@ while IFS=$'\n' read line; do
     fi
 
     if ! $skip_phase4; then
-      $cmd $phase3_dir/log/$utt_id.init_gmm.log \
+      $cmd $phase3_dir/log/$utt_id.init_gmm.$[x+1].log \
         gmm-init-pdf-from-global $phase3_dir/$utt_id.$x.mdl 1 \
         $phase3_dir/$utt_id.speech.$x.mdl $phase3_dir/$utt_id.$[x+1].mdl || exit 1
       x=$[x+1]
@@ -610,6 +640,10 @@ while IFS=$'\n' read line; do
         if [ $speech_num_gauss -lt $speech_max_gauss_phase4 ]; then
           speech_num_gauss=$[speech_num_gauss + speech_gauss_incr_phase4]
         fi
+
+        $cmd $phase3_dir/log/$utt_id.gmm_compute_likes.$x.log \
+          gmm-compute-likes $phase3_dir/$utt_id.$x.mdl "$feats" \
+          ark:$phase3_dir/$utt_id.likes.$x.ark &
 
         $cmd $phase3_dir/log/$utt_id.get_seg.$x.log \
           gmm-decode-simple --allow-partial=$allow_partial \
@@ -647,6 +681,10 @@ while IFS=$'\n' read line; do
       segmentation-init-from-ali ark:- \
       ark,scp:$dir/$utt_id.vad.final.ark,$dir/$utt_id.vad.final.scp || exit 1
   else
+    $cmd $dir/log/$utt_id.gmm_compute_likes.final.log \
+      gmm-compute-likes $dir/$utt_id.final.mdl "$feats" \
+      ark:$dir/$utt_id.likes.final.ark &
+
     $cmd $dir/log/$utt_id.get_seg.final.log \
       gmm-decode-simple --allow-partial=$allow_partial \
       --word-symbol-table=$dir/$utt_id.graph_final/words.txt \

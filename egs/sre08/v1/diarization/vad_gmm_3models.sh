@@ -347,7 +347,7 @@ while IFS=$'\n' read line; do
       ali-to-pdf $tmpdir/$utt_id.$[x+1].mdl ark:- ark:- \| \
       segmentation-init-from-ali ark:- \
       ark:$tmpdir/$utt_id.seg.$[x+1].ark || exit 1
-  
+
     if [ $sil_num_gauss -lt $sil_max_gauss ]; then
       sil_num_gauss=$[sil_num_gauss + sil_gauss_incr]
     fi
@@ -608,7 +608,7 @@ while IFS=$'\n' read line; do
         ali-to-pdf $phase3_dir/$utt_id.$[x+1].mdl ark:- ark:- \| \
         segmentation-init-from-ali ark:- \
         ark:$phase3_dir/$utt_id.vad.$[x+1].ark || exit 1
-    
+
       if [ $sil_num_gauss -lt $sil_max_gauss ]; then
         sil_num_gauss=$[sil_num_gauss + sil_gauss_incr]
       fi
@@ -663,7 +663,7 @@ while IFS=$'\n' read line; do
           ali-to-pdf $phase3_dir/$utt_id.$x.mdl ark:- ark:- \| \
           segmentation-init-from-ali ark:- \
           ark:$phase3_dir/$utt_id.vad.$x.ark || exit 1
-  
+
         $cmd $phase3_dir/log/$utt_id.gmm_update.$[x+1].log \
           gmm-update-segmentation \
           --mix-up-rxfilename="echo -e \"0 $sil_num_gauss\n1 $speech_num_gauss\" |" \

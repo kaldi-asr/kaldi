@@ -21,7 +21,9 @@ top_frames_threshold=1.0
 bottom_frames_threshold=1.0
 ignore_energy=true
 add_zero_crossing_feats=true
+add_frame_snrs=false
 zero_crossings_scp=
+frame_snrs_scp=
 io_opts="--max-jobs-run 10"
 nj=4
 # End configuration section.
@@ -56,6 +58,7 @@ fi
 
 echo "$ignore_energy_opts" > $dir/ignore_energy_opts
 echo "$add_zero_crossing_feats" > $dir/add_zero_crossing_feats
+echo "$add_frame_snrs" > $dir/add_frame_snrs
 
 for f in $data/feats.scp $data/utt2spk; do
   [ ! -s $f ] && echo "$0: could not find $f or $f is empty" && exit 1
@@ -115,6 +118,14 @@ if [ $stage -le -3 ]; then
 
     cat $dir/data/zero_crossings.{?,??}.scp > $dir/data/zero_crossings.scp || exit 1
   fi
+
+  if $add_frame_snrs; then
+    [ -z "$frame_snrs_scp" ] && echo "$0: add-frame-snrs is true by frame-snrs-scp is not supplied" && exit 1
+    for n in `seq $nj`; do
+      utils/filter_scp.pl $dir/data/split$nj/$n/utt2spk $frame_snrs_scp > $dir/data/frame_snrs.$n.scp  
+    done
+  fi
+
 fi
 
 ###########################################################################
@@ -128,6 +139,10 @@ feats="ark:apply-cmvn-sliding scp:$dir/data/split$nj/JOB/feats.scp ark:- |${igno
 
 if $add_zero_crossing_feats; then
   feats="${feats}paste-feats ark:- scp:$dir/data/zero_crossings.JOB.scp ark:- |"
+fi
+
+if $add_frame_snrs; then
+  feats="${feats}paste-feats ark:- \"ark:vector-to-feat scp:$dir/data/frame_snrs.JOB.scp ark:- |\" ark:- |"
 fi
 
 feats="${feats}add-deltas ark:- ark:- |"
