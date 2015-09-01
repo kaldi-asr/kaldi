@@ -2,7 +2,7 @@
 
 # note, TDNN is the same as what we used to call multisplice.
 
-# Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
@@ -16,7 +16,7 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
@@ -27,7 +27,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
-prior_subset_size=20000 # 20k samples per job, for computing priors. 
+prior_subset_size=20000 # 20k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
@@ -70,12 +70,12 @@ max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
 transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_times=          # List of times on which we realign.  Each time is 
+realign_times=          # List of times on which we realign.  Each time is
                         # floating point number strictly between 0 and 1, which
                         # will be multiplied by the num-iters to get an iteration
                         # number.
@@ -131,7 +131,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -193,7 +193,7 @@ if [ $stage -le -5 ]; then
   else
     dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
   fi
-  
+
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -308,14 +308,14 @@ if [ $stage -le -2 ]; then
   echo "$0: preparing initial vector for FixedScaleComponent before softmax"
   echo "  ... using priors^$presoftmax_prior_scale_power and rescaling to average 1"
 
-  # obtains raw pdf count    
+  # obtains raw pdf count
   $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
      ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
      post-to-tacc --per-pdf=true  $alidir/final.mdl ark:- $dir/pdf_counts.JOB || exit 1;
   $cmd $dir/log/sum_pdf_counts.log \
        vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
   rm $dir/pdf_counts.*
-  
+
   awk -v power=$presoftmax_prior_scale_power -v smooth=0.01 \
      '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
         num_pdfs=NF-2;  average_count = total/num_pdfs;
@@ -420,7 +420,7 @@ while [ $x -lt $num_iters ]; do
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
 
-  echo "On iteration $x, learning rate is $this_learning_rate."    
+  echo "On iteration $x, learning rate is $this_learning_rate."
 
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
@@ -466,7 +466,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet3/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -479,7 +479,7 @@ while [ $x -lt $num_iters ]; do
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-        ark:$cur_egs_dir/train_diagnostic.egs '&&' \
+        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" '&&' \
         nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" &
     fi
 
@@ -515,7 +515,7 @@ while [ $x -lt $num_iters ]; do
     ( # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
-      
+
       # We can't easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
       # to use for each job is a little complex, so we spawn each one separately.
@@ -554,7 +554,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
