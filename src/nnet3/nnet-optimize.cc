@@ -669,18 +669,6 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
 }
 
 
-static void RemoveNoOpCommands(NnetComputation *computation) {
-  std::vector<NnetComputation::Command> commands;
-  commands.reserve(computation->commands.size());
-  std::vector<NnetComputation::Command>::iterator
-      iter = computation->commands.begin(),
-      end = computation->commands.end();
-  for (; iter != end; ++iter)
-    if (iter->command_type != NnetComputation::kNoOperation)
-      commands.push_back(*iter);
-  computation->commands.swap(commands);
-}
-
 // This command replaces commands of type kAllocMatrixZeroed with commands of
 // type kAllocMatrixUndefined, where possible.
 void RemoveUnnecessaryZeroing(const Nnet &nnet,
@@ -726,7 +714,6 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
           NnetComputation::kAllocMatrixUndefined;
     }
   }
-  RemoveNoOpCommands(computation);
 }
 
 
@@ -831,6 +818,7 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
       alloc_command.command_type =
           NnetComputation::kAllocMatrixFromOtherZeroed;
   }
+  RemoveNoOps(computation);
 }
 
 void Optimize(const NnetOptimizeOptions &config,

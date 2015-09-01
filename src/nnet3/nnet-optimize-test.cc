@@ -68,7 +68,7 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     {
       Optimize(opt_config, nnet, request, &computation_opt);
       std::ostringstream os;
-      computation.Print(os, nnet);
+      computation_opt.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
     }
 
