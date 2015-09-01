@@ -160,7 +160,7 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 static void UnitTestNnetOptimize() {
   NnetOptimizeOptions optimize_all;
   // this is useful for debugging as it removes nans:
-  optimize_all.initialize_undefined = false;
+  // optimize_all.initialize_undefined = false;
   bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
   if (success)
     return;
