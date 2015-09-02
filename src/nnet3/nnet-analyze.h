@@ -45,8 +45,8 @@ namespace nnet3 {
 struct CommandAttributes {
   // All of the vector variables below are made sorted and uniq by
   // ComputeCommandAttributes.
-  
-  // variables read 
+
+  // variables read
   std::vector<int32> variables_read;
   // variables written
   std::vector<int32> variables_written;
@@ -56,7 +56,7 @@ struct CommandAttributes {
   // sub-matrices written (i.e. the submatrix appears in the command directly)
   std::vector<int32> submatrices_written;
 
-  // matrices read 
+  // matrices read
   std::vector<int32> matrices_read;
   // matrices written
   std::vector<int32> matrices_written;
@@ -139,13 +139,14 @@ class ComputationVariables {
       int32 submatrix_index,
       std::vector<int32> *variable_indexes) const;
 
+  // note: variables are zero-indexed.
   int32 NumVariables() const { return num_variables_; }
 
   int32 GetMatrixForVariable(int32 variable) const;
-  
+
  private:
 
-  
+
   // sets up split_points_ and matrix_to_variable_index_.  called from
   // constructor.
   void ComputeSplitPoints(const NnetComputation &computation);
@@ -156,7 +157,7 @@ class ComputationVariables {
   // sets up submatrix_to_matrix_ and submatrix_is_whole_matrix.
   // called from constructor.
   void ComputeSubmatrixInfo(const NnetComputation &computation);
-  
+
   // Indexed first by matrix-index and then a list, this gives us all the split
   // points at which column ranges start and end.  For instance, if the 3'rd
   // matrix has 20 columns and is split into ranges 0:9 and 10:19,
@@ -177,7 +178,7 @@ class ComputationVariables {
   std::vector<int32> variable_to_matrix_;
 
   int32 num_variables_;
-  
+
   // maps each submatrix index to the start and end of the corresponding range
   // of variable indexes (note: the actual variable indexes spanned by
   // this submatrix can be expressed as start, start+1 ... end-1, i.e. they
@@ -237,7 +238,7 @@ struct MatrixAccesses {
   std::vector<Access> accesses;
   /// true if this matrix is an input to the computation.
   bool is_input;
-  /// true if this matrix is an output of the computation.  
+  /// true if this matrix is an output of the computation.
   bool is_output;
   MatrixAccesses(): allocate_command(-1), deallocate_command(-1),
                     is_input(false), is_output(false) { }
@@ -265,42 +266,57 @@ void PrintMatrixAccesses(std::ostream &os,
 struct Analyzer {
   ComputationVariables variables;
   std::vector<CommandAttributes> command_attributes;
-  std::vector<std::vector<Access> > variable_accesses;  
+  std::vector<std::vector<Access> > variable_accesses;
   std::vector<MatrixAccesses> matrix_accesses;
   void Init(const Nnet &nnet, const NnetComputation &computation);
 };
 
-/** Returns the command-index of the first command after `command_index` that
-    submatrix `submatrix_index` is written to, or -1 if there is no such
-    command.  Note that by "written to", we mean that any part of the submatrix
-    is written to, not that the submatrix appears explicitly in a command; the
-    analysis is in terms of variables.  */
-int32 FirstTimeSubmatrixIsWrittenToAfterCommand(
-    const Analyzer &analyer,
-    int32 submatrix_index,
-    int32 command_index);
 
+/// This class performs various kinds of specific analysis on top of what class
+/// Analyzer gives you immediately.  It mostly contains special-purpose things
+/// what were needed by class VariableMergingOptimizer (see nnet-optimize.h, and
+/// the extended comment above class VariableMergingOptimizer).
+class ComputationAnalysis {
+ public:
+  /// This class stores the const references provided to its constructor ->
+  /// be careful about changing them or deallocating them during the
+  /// lifetime of this object.
+  ComputationAnalysis(const NnetComputation &computation,
+                      const Analyzer &analyzer): computation_(computation),
+                                                 analyzer_(analyzer) { }
 
-/// Returns true if the matrix "matrix_index" is written to (i.e.  accesses of
-/// type kWriteAccess or kReadWriteAccess) after the command numbered
-/// "command_index" (not counting deallocation as an access).
-bool MatrixIsWrittenToAfterCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,
-    int32 matrix_index, int32 command_index);
-  
-/// Returns true if the matrix "matrix_index" is accessed at all after the
-/// command numbered "command_index" (not counting deallocation as an access).
-bool MatrixIsAccessedAfterCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,    
-    int32 matrix_index, int32 command_index);
+  /// If the matrix underlying submatrix 's' is an input then this returns -1;
+  /// otherwise is returns the first command (read or write) that is not an
+  /// allocation command, that accesses any part of 's' [note: deallocation does
+  /// not count as a read or write operation].  If there is no such command, it
+  /// returns num_commands.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 FirstAccess(int32 s) const;
 
-/// Returns true if the matrix "matrix_index" is accessed at all before the
-/// command numbered "command_index" (but not counting zeroing in initialization
-/// as access).
-bool MatrixIsAccessedBeforeCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,
-    int32 matrix_index, int32 command_index);
+  /// If the matrix underlying submatrix 's' is an output then this returns
+  /// num-commands; otherwise it returns the last non-deallocation command
+  /// that accesses any part of submatrix 's'; if there is no such command it
+  /// returns -1.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 LastAccess(int32 s) const;
 
+  /// Returns the last command-index that accesses any part of submatrix 's' as
+  /// a write operation, or -1 if there is no such operation.  Not: deallocation
+  /// does not count as a write operation.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 LastWriteAccess(int32 s) const;
+
+  /// Returns (the first command-index after 'c' that any part of submatrix 's'
+  /// is written to); or if there is no such command, then (the
+  /// command-index of the command that deallocates the matrix underlying s);
+  /// or if there is no such command, then the total number of commands.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 DataInvalidatedCommand(int32 c, int32 s) const;
+
+ private:
+  const NnetComputation &computation_;
+  const Analyzer &analyzer_;
+};
 
 
 /// This function computes a vector "submat_lists", indexed
@@ -365,9 +381,9 @@ class ComputationChecker {
 };
 
 
-                      
 
-  
+
+
 
 
 

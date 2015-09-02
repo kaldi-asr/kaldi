@@ -31,17 +31,23 @@ namespace nnet3 {
 // detected, we can work out which optimization was responsible for the error.
 struct NnetOptimizeOptions {
   bool optimize;  // setting this false disallow all optimization.
+  bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
   bool remove_assignments;
+  bool allow_left_merge;
+  bool allow_right_merge;
   bool initialize_undefined;
   bool move_sizing_commands;
   bool allocate_from_other;
 
   NnetOptimizeOptions(): optimize(true),
+                         consolidate_model_update(false),
                          propagate_in_place(true),
                          backprop_in_place(true),
                          remove_assignments(true),
+                         allow_left_merge(true),
+                         allow_right_merge(true),
                          initialize_undefined(true),
                          move_sizing_commands(true),
                          allocate_from_other(true) { }
@@ -49,12 +55,20 @@ struct NnetOptimizeOptions {
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
                  "optimizations");
+    opts->Register("consolidate-model-update", &consolidate_model_update,
+                   "Set to false to disable optimization that consolidates "
+                   "the model-update phase of backprop (e.g. for recurrent "
+                   "architectures");
     opts->Register("propagate-in-place", &propagate_in_place, "Set to false to "
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
     opts->Register("remove-assignments", &remove_assignments, "Set to false to "
                    "disable optimization that removes redundant assignments");
+    opts->Register("allow-left-merge", &allow_left_merge, "Set to false to "
+                   "disable left-merging of variables (obscure option)");
+    opts->Register("allow-right-merge", &allow_right_merge, "Set to false to "
+                   "disable right-merging of variables (obscure option)");
     opts->Register("initialize-undefined", &initialize_undefined, "Set to false "
                    "to disable optimization that avoids redundant zeroing");
     opts->Register("move-sizing-commands", &move_sizing_commands, "Set to false "
@@ -103,41 +117,99 @@ class CachingOptimizingCompiler {
 
 
 /**
-   This class is responsible for merging matrices.  Suppose there are m1 and s1
-   on the one hand, where s1 is a submatrix consisting of the whole of m1, and
-   s2 which is a submatrix of m2 on the other hand, and somewhere in the
-   computation we have a command C, which is one of:
+   This class is responsible for merging matrices, although you probably want to
+   access it via the the function VariableMergingOptimization().
+
+   We identify pairs of submatrices which can potentially be merged into a single
+   submatrix.
+
+   Suppose there are two different submatrices s1 != s2 that are submatrices of
+   different respective matrices m1 != m2, and somewhere in the computation we
+   have a command C, which is one of:
       (a) the assignment command  "s2 = s1", or
       (b) a propagate command with s1 as input and s2 as output, with a component
           that supports propagate in place, or
       (c) a backprop command with s1 as output-deriv and s2 as input-deriv, with
           a component that supports backprop in place.
-   Suppose also that:
-     - m1 is not an output (or it's case (a))
-     - m1 is not an input, or s2 is the whole of m2.
-     - if it's case (a), assignment, then:
-        - m1 is never written to after command C, and
-        - If s2 is written to after command C, then m1 is never accessed
-          to at time >= (the first time s2 is written to after command C)
-     - otherwise:
-      - after command C, s1 is never accessed [apart from deallocating its matrix]
-     - before command C, s2 is never accessed, apart from initializing it and possibly
-       zeroing it
-     - m2 is not an input.
-   Of course the matrices will have the same size.
 
-   We merge the variables as follows:
+   Then the triple (C, s1, s2) is a candidate for merging.  We support two types
+   of merging: 'right merging', in which we delete s1 and use s2 instead; and
+   'left merging' in which we delete s2 and use s1 instead.  The two types of
+   merging may seem to be the same thing, but remember that in general s1 and s2
+   may be sub-matrices of larger matrices.
+
+   Note: the following
+     - Define last-access(submatrix) as:
+       If matrix-of(submatrix) is an output, then num-commands, otherwise the
+       last command that accesses that submatrix for either read or write.  [note:
+       deallocation does not count as a read or write operation].
+     - Define first-access(submatrix) as:
+       If matrix-of(submatrix) is an input, then -1, otherwise the first command
+       that is *not* an allocation command that accessed that submatrix for either
+       read or write.
+     - Define last-write-access(submatrix) as the last command-index that accessed
+       the submatrix in a write operation, or -1 if there is no such command (this
+       could happen for inputs).
+     - Define data-invalidated-command(c, submatrix) as the first
+       command-index after 'c' that 'submatrix' is written to; or if there is
+       no such command, then the command index of the deallocation command
+       for 'submatrix'; or if this does not exist, then num-commands.
+
+   The conditions that must be satisfied for both left and right merges:
+     - It cannot be the case that m1 and m2 are both inputs, or that they are
+       both outputs.  [condition c1]
+     - If either m1 or m2 is an input or an output, then s1 must be the entirety
+       of m1 and s2 must be the entirety of m2 (this is because inputs and outputs
+       must be whole matrices). [condition c2]
+     - If we are left-merging (deleting s2,m2), then s2 must be the entirety of m2.
+       [condition c3]
+     - If we are right-merging (deleting s1,m1), then s1 must be the entirety of m1.
+       [condition c4]
+     - None of the the variables underlying s1 and s2 may be marked as 'dirty'
+       (implying that they were the subjects of a previous merge during the lifetime of
+       this class) [condition c5]
+
+   If the command C is case (a), i.e. an assignment operation, then the following
+   conditions must apply:
+     - first-access(s2) == C
+     - last-write-access(s1) < C
+     - last-access(s1) < data-invalidated-command(C, s2)
+   Otherwise (cases (b) and (c), in-place propagate or backprop), we insist that:
+     - first-access(s2) == C
+     - last-access(s1) == C
+
+
+   The sequence of things we have to do for a right-merge (in which we delete
+   s1,m1) is as follows:
      - All submatrices that reference m1, make them reference m2 instead.
        [later we'll renumber so that there are no duplicates.]
-     - If m1 was an input, replace it as an input with m2.
-     - If it was case (a), replace the assignment command with a no-op.
+     - If m1 was an input, replace it as an input with m2 and remove the
+       command that allocated m2.
+     - If it was an assignment [case (a)], replace the assignment command with a
+       no-op.
      - If both m1 and m2 have commands that deallocate them, keep only the
        later of the two and make it refer to m2 (otherwise delete any
-       deallocation command).
+       deallocation command, because m2 must be an output).
+     - Remove the command that allocated m1, if it exists.
 
-    At the end when we call RemoveOrphanMatrices(), renumbering code will
-    automatically detect that there are duplicate submatrices, and will merge
-    them, as well as removing the now-unused matrix indexes.
+   The sequence of things we have to do for a right-merge (in which we delete
+   s1,m1) is as follows:
+     - All submatrices that reference m2, make them reference m1 instead.
+       [later we'll renumber so that there are no duplicates.]
+     - If m2 was an output, replace it as an output with m1 and remove the
+       command that deallocated m1.
+     - If it was an assignment [case (a)], replace the assignment command with a
+       no-op.
+     - If both m1 and m2 have commands that allocate them, keep only the
+       earlier of the two and make it refer to m1 (otherwise delete any
+       allocation command, because m1 must be an input).
+     - Remove the command that deallocated m2, if it exists.
+
+   At the end when we call RemoveOrphanMatrices(), the renumbering code will
+   automatically detect that there are duplicate submatrices, and will merge
+   them, as well as removing the now-unused matrix indexes.  After merging, we
+   will mark the variables (i.e. row-ranges) underlying s1 and s2 as being
+   "dirty" so they can no longer be merged during the lifetime of this class.
  */
 class VariableMergingOptimizer {
  public:
@@ -151,33 +223,33 @@ class VariableMergingOptimizer {
   bool MergeVariables();
 
  private:
-  // this function, called while testing whether the pair (s1,s2) is a candidate
-  // for optimization, returns true if all the following conditions hold:
-  //   - s1 != s2
-  //   - s1 and s2 correspond to the whole of their corresponding matrices m1 and m2.
-  //   - neither matrix_already_optimized_[m1] nor matrix_already_optimized_[m2] is true
-  //   - m1 is not an output of the computation (or command command_index is an
-  //     assignment).
-  //   - m2 is not an input of the computation
-  //   - after command "command_index", no part of m1 is ever accessed [apart
-  //     from deallocating it] (or command "command_index" is an assignment and
-  //     no part of m1 is written to after command "command_index"
-  //   - before command C, no part of m2 is never accessed, apart from
-  //     initializing it and possibly zeroing it.
-  bool IsCandidate(int32 command_index, int32 s1, int32 s2) const;
+  /// @brief This function returns a pair of bools saying whether we can do a
+  ///   (left and/or right) merge respectively, based on the conditions defined
+  ///   in the header.
+  ///
+  /// Note: if one of the variables underlying s1 or s2 is marked as 'dirty' due
+  /// to a previous merge, this function will return (false,false).  The terms
+  /// left-merge and right-merge are defined in the extended comment above this
+  /// class.  Note: left_merge will always be false if config.allow_left_merge
+  /// == false, and the same respectively for right_merge.
+  ///
+  ///  @param command  [in] The command-index that assigns s2 := s1
+  ///                        or does a forward or backprop with s1 as the
+  ///                        input and s2 as the output
+  ///  @param s1   [in]     A submatrix-index s1 > 0.
+  ///  @param s2   [in]     A submatrix-index s2 > 0
+  std::pair<bool,bool> MayBeMerged(int32 command, int32 s1, int32 s2) const;
 
-  // performs the merge.
-  // compute m1,m2 from s1,s2.
-  //  - All submatrices that reference m2, make them reference m1 instead.
-  //   [later we'll renumber so that there are no duplicates.]
-  //  - If m1 was an input, replace it as an input with m2 and remove
-  //    the command that initializes m2.
-  //  - If it was case (a), replace the assignment command with a no-op.
-  //  - If both m2 and m1 have commands that deallocate them, keep only the
-  //    later of the two and make it refer to m1 (otherwise delete any
-  //    deallocation command).
-  //  - Remove the original command that allocated m1, if it exists.
-  void DoMerge(int32 command_index, int32 s1, int32 s2);
+  // performs the left merge.  Search for left-merge in the comment
+  // above the class declaration for details.
+  void DoLeftMerge(int32 command_index, int32 s1, int32 s2);
+
+  // performs the right merge.  Search for right-merge in the comment
+  // above the class declaration for details.
+  void DoRightMerge(int32 command_index, int32 s1, int32 s2);
+
+  /// Marks the variables underlying submatrix 's' as dirty
+  void MarkAsDirty(int32 s);
 
   void Initialize();
 
@@ -191,11 +263,24 @@ class VariableMergingOptimizer {
   // lists of submatrices that correspond to each matrix.
   std::vector<std::vector<int32> > submatrix_lists_;
 
-  // true for each matrix that has already been part of
-  // an optimization (either as m1 or m2), so we can
-  // void potential
-  std::vector<bool> matrix_already_optimized_;
+  // for each variable (as defined by analyzer_.variables), true if
+  // we have already performed a merge on it.
+  std::vector<bool> variable_dirty_;
+
+  bool already_called_merge_variables_;
 };
+
+/// This wraps class VariableMergingOptimizer in a simplified interface.
+void VariableMergingOptimization(const NnetOptimizeOptions &config,
+                                 const Nnet &nnet,
+                                 const ComputationRequest &request,
+                                 NnetComputation *computation);
+
+/// This consolidates the model-update parts of the backprop into larger
+/// operations (applicable mostly to recurrent setups).  Will fail if called a
+/// second time.
+void ConsolidateModelUpdate(const Nnet &nnet, const ComputationRequest &request,
+                            NnetComputation *computation);
 
 /// This optimization function changes, where possible, matrix initializations
 /// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
@@ -225,8 +310,14 @@ void RemoveNoOps(NnetComputation *computation);
 /// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
 /// Returns true if it did replace it.
 bool ReplaceInInput(
-    const Nnet &nnet,
-    int32 orig_matrix_index, int32 new_matrix_index,
+    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
+    NnetComputation *computation);
+
+/// Wherever matrix orig_matrix_index appears in the output of the network
+/// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
+/// Returns true if it did replace it.
+bool ReplaceInOutput(
+    const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
     NnetComputation *computation);
 
 /// This function outputs to "submatrix_args" the addresses of a subset of

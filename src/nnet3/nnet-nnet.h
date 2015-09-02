@@ -46,7 +46,7 @@ namespace nnet3 {
 ///    - Objective type kLinear is intended for Neural nets where the final
 ///      component is a LogSoftmaxComponent, so the log-prob (negative
 ///      cross-entropy) objective is just a linear function of the input.
-///    - Objective type kQuadratic is used to mean the objective function 
+///    - Objective type kQuadratic is used to mean the objective function
 ///      f(x, y) = -0.5 (x-y).(x-y), which is to be maximized, as in the kLinear
 ///      case.
 enum ObjectiveType { kLinear, kQuadratic };
@@ -78,7 +78,7 @@ enum NodeType { kInput, kDescriptor, kComponent, kDimRange, kNone };
 /// component and output.  output maps to kDescriptor, but the nodes of type
 /// kDescriptor that represent the input to a component, are described in the
 /// same config-file line as the Component itself.
-struct NetworkNode {  
+struct NetworkNode {
   NodeType node_type;
   // "descriptor" is relevant only for nodes of type kDescriptor.
   Descriptor descriptor;
@@ -101,7 +101,7 @@ struct NetworkNode {
   int32 dim;
   // for kDimRange, the dimension of the offset into the input component's feature.
   int32 dim_offset;
-  
+
   int32 Dim(const Nnet &nnet) const;  // Dimension that this node outputs.
 
   NetworkNode(NodeType nt = kNone):
@@ -118,25 +118,17 @@ class Nnet {
   // file, or to add to an existing Nnet, possibly replacing certain parts of
   // it.  It will die with error if something went wrong.
   void ReadConfig(std::istream &config_file);
-  
+
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
-  
+
   /// return component indexed c.  not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
   /// return component indexed c (const version).  not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
-
-
-  /// return the component corresponding to the node indexed n, which must
-  /// be of type kComponent.  Convenience function.  Result is not a copy and
-  /// not owned by the caller.
-  Component *GetComponentForNode(int32 n);
-  /// Const version of GetComponentForNode().
-  const Component *GetComponentForNode(int32 n) const;
 
 
   /// returns const reference to a particular numbered network node.
@@ -152,7 +144,7 @@ class Nnet {
   /// Returns true if this is a dim-range node, meaning that it is of type
   /// kDimRange.
   bool IsDimRangeNode(int32 node) const;
-  
+
   /// Returns true if this is an output node, meaning that it is of type
   /// kInput.
   bool IsInputNode(int32 node) const;
@@ -161,14 +153,14 @@ class Nnet {
   /// kDescriptor.  Exactly one of IsOutput or IsComponentInput will also
   /// apply.
   bool IsDescriptorNode(int32 node) const;
-  
+
   /// Returns true if this is an output node, meaning that it is of type kDescriptor
   /// and is not directly followed by a node of type kComponent.
   bool IsOutputNode(int32 node) const;
 
   /// Returns true if this is component-input node, i.e. a node of type kDescriptor
   /// that immediately precedes a node of type kComponent.
-  bool IsComponentInputNode(int32 node) const;  
+  bool IsComponentInputNode(int32 node) const;
 
   /// returns vector of node names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetNodeNames() const;
@@ -181,7 +173,7 @@ class Nnet {
 
   /// returns individual component name.
   const std::string &GetComponentName(int32 component_index) const;
-  
+
   /// returns index associated with this node name, or -1 if no such index.
   int32 GetNodeIndex(const std::string &node_name) const;
 
@@ -197,7 +189,7 @@ class Nnet {
   // name "input_name" (e.g. output_name="input"), or -1 if there is
   // no such input.
   int32 OutputDim(const std::string &output_name) const;
-  
+
   void Read(std::istream &istream, bool binary);
 
   void Write(std::ostream &ostream, bool binary) const;
@@ -233,9 +225,9 @@ class Nnet {
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
  private:
-  
+
   void Destroy();
-  
+
   // This function returns as a string the contents of a line of a config-file
   // corresponding to the node indexed "node_index", which must not be of type
   // kComponentInput.  If include_dim=false, it appears in the same format as it
@@ -267,7 +259,7 @@ class Nnet {
   static void RemoveRedundantConfigLines(int32 num_lines_initial,
                                          std::vector<std::string> *first_tokens,
                                          std::vector<ConfigLine> *configs);
-  
+
   void ProcessComponentConfigLine(int32 initial_num_components,
                                   ConfigLine *config);
   void ProcessComponentNodeConfigLine(int32 pass,
@@ -285,17 +277,17 @@ class Nnet {
   // they are not allowed.
   void GetSomeNodeNames(std::vector<std::string> *modified_node_names) const;
 
-  
+
   // the names of the components of the network.  Note, these may be distinct
   // from the network node names below (and live in a different namespace); the
   // same component may be used in multiple network nodes, to define parameter
   // sharing.
   std::vector<std::string> component_names_;
-  
+
   // the components of the nnet, in arbitrary order.  The network topology is
   // defined separately, below; a given Component may appear more than once in
   // the network if necessary for parameter tying.
-  std::vector<Component*> components_;  
+  std::vector<Component*> components_;
 
   // names of network nodes, i.e. inputs, components and outputs, used only in
   // reading and writing code.  Indexed by network-node index.  Note,
@@ -305,7 +297,7 @@ class Nnet {
 
   // the network nodes of the network.
   std::vector<NetworkNode> nodes_;
-  
+
 };
 
 

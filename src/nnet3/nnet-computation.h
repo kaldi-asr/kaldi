@@ -142,10 +142,71 @@ struct ComputationRequest {
 
 
 
+/**
+   CommandType is an enum that describes the category of the command used in
+   the NnetComputation.  We declare it outside that class because it's so
+   frequently used and we got tired of typing NnetComputation:: everywhere.
+   We document the commands here:
+   - kAllocMatrixUndefined: Allocate a matrix.  arg1 = index of matrix.
+   - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = index of matrix.
+   - kDeallocMatrix: Deallocate a matrix.  arg1 = index of matrix.
+   - kAllocMatrixFromOther: initialize matrix indexed arg1 using memory
+   from matrix indexed arg2 (using shallow swap).
+   - kAllocMatrixFromOtherZeroed: initialize matrix indexed arg1 using memory
+   from matrix indexed arg2 (using shallow swap), then zero the matrix
+   we just allocated.
+   - kPropagate: Forward computation of neural net, see Component::Propagate()
+   - arg1 is is component-index in neural net
+   - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
+   for simple Components)
+   - arg3 is sub-matrix index of input
+   - arg4 is sub-matrix index of output
+   - kStoreStats: Call Component::StoreStats() (used for computing diagnostics
+   such as average activations; called after Propagate).
+   - arg1 is component-index in neural net
+   - arg2 is sub-matrix index of the output of the Propagate function
+   - kBackprop: Do the back-propagation operation, see Component::Backprop()
+   - arg1 is index of component in neural net
+   - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
+   for simple Components)
+   - arg3 is submatrix-index of input value (input to Propagate())
+   - arg4 is submatrix-index of output value (output of Propagate())
+   - arg5 is submatrix-index of output derivative
+   - arg6 is submatrix-index of input derivative
+   - kBackpropNoModelUpdate: as kBackprop, but does not set the
+   'to_update' argument to the Backprop call, even if the model
+   - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
+   - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
+   - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
+   with sub-matrix arg2 and indexes[arg3] as arguments.
+   - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
+   with sub-matrix arg2 and indexes[arg3] as arguments.
+   - kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti:
+   Call the corresponding function in class CuMatrix.
+   - arg1 is sub-matrix index of *this matrix in operation
+   - arg2 is index into "indexes_multi", of which each pair is
+   (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
+   is turned into a vector of BaseFloat* (pointers to matrix rows)
+   before being given as the argument to the function.
+   - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
+   on sub-matrix arg1, with arg2 as source matrix, and indexes given
+   indexes_ranges[arg3].
+   - kNoOperation: does nothing (sometimes useful during optimization)
+   - kNoOperationMarker: does nothing, but used to mark end of forward commands
+   (sometimes useful during optimization).
+*/
+enum CommandType {
+  kAllocMatrixUndefined, kAllocMatrixZeroed,
+  kDeallocMatrix, kAllocMatrixFromOther, kAllocMatrixFromOtherZeroed,
+  kPropagate, kStoreStats, kBackprop, kBackpropNoModelUpdate,
+  kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
+  kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
+  kAddRowRanges, kNoOperation, kNoOperationMarker };
+
+
 // struct NnetComputation defines the specific steps of a neural-net
 // computation.  View this as a compiled program; given the Nnet and the
 // ComputationRequest, we compile to struct NnetComputation.
-
 struct NnetComputation {
   struct MatrixInfo {
     int32 num_rows;
@@ -173,63 +234,6 @@ struct NnetComputation {
         col_offset(col_offset), num_cols(num_cols) {}
     bool operator== (const SubMatrixInfo &other) const;
   };
-  /**
-    CommandType is an enum that describes the category of the command.  We
-    document the commands here:
-      - kAllocMatrixUndefined: Allocate a matrix.  arg1 = index of matrix.
-      - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = index of matrix.
-      - kDeallocMatrix: Deallocate a matrix.  arg1 = index of matrix.
-      - kAllocMatrixFromOther: initialize matrix indexed arg1 using memory
-           from matrix indexed arg2 (using shallow swap).
-      - kAllocMatrixFromOtherZeroed: initialize matrix indexed arg1 using memory
-           from matrix indexed arg2 (using shallow swap), then zero the matrix
-           we just allocated.
-      - kPropagate: Forward computation of neural net, see Component::Propagate()
-          - arg1 is is component-index in neural net
-          - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
-            for simple Components)
-          - arg3 is sub-matrix index of input
-          - arg4 is sub-matrix index of output
-      - kStoreStats: Call Component::StoreStats() (used for computing diagnostics
-         such as average activations; called after Propagate).
-          - arg1 is component-index in neural net
-          - arg2 is sub-matrix index of the output of the Propagate function
-      - kBackprop: Do the back-propagation operation, see Component::Backprop()
-          - arg1 is index of NetworkNode in neural net (component-index is worked
-            out from this)
-          - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
-            for simple Components)
-          - arg3 is submatrix-index of input value (input to Propagate())
-          - arg4 is submatrix-index of output value (output of Propagate())
-          - arg5 is submatrix-index of output derivative
-          - arg6 is submatrix-index of input derivative
-      - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
-      - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
-      - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
-           with sub-matrix arg2 and indexes[arg3] as arguments.
-      - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
-           with sub-matrix arg2 and indexes[arg3] as arguments.
-      - kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti:
-          Call the corresponding function in class CuMatrix.
-            - arg1 is sub-matrix index of *this matrix in operation
-            - arg2 is index into "indexes_multi", of which each pair is
-               (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
-               is turned into a vector of BaseFloat* (pointers to matrix rows)
-               before being given as the argument to the function.
-      - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
-         on sub-matrix arg1, with arg2 as source matrix, and indexes given
-         indexes_ranges[arg3].
-      - kNoOperation: does nothing (sometimes useful during optimization)
-      - kNoOperationMarker: does nothing, but used to mark end of forward commands
-          (sometimes useful during optimization).
-   */
-  enum CommandType {
-    kAllocMatrixUndefined, kAllocMatrixZeroed,
-    kDeallocMatrix, kAllocMatrixFromOther, kAllocMatrixFromOtherZeroed,
-    kPropagate, kStoreStats, kBackprop,
-    kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
-    kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
-    kAddRowRanges, kNoOperation, kNoOperationMarker };
   struct Command {
     CommandType command_type;
     int32 arg1;
