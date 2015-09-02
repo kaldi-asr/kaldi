@@ -278,6 +278,7 @@ inline void cuda_take_lower(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDi
 inline void cuda_take_upper(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) { cudaF_take_upper(Gr,Bl,x,y,d_in); }
 inline void cuda_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in) { cudaF_take_mean(Gr,Bl,x,y,d_in); }
 inline void cuda_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, MatrixElement<float>* x, int s) { cudaF_matrix_add_elements(Gr, Bl, data, dim, alpha, x, s); }
+inline void cuda_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, float alpha, const Int32Pair* indices, const float* x, int s, float* data) { cudaF_matrix_add_indexed_values(Gr, Bl, dim, alpha, indices, x, s, data); }
 inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int32 size, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {cudaF_comp_obj_deriv(Gr,Bl,x,size,z,d,z2,d2,t); }
 inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
                                    const float *src_data, MatrixDim src_dim,
@@ -455,6 +456,7 @@ inline void cuda_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, Matrix
 inline void cuda_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) { cudaD_take_upper(Gr,Bl,x,y,d_in); }
 inline void cuda_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in) { cudaD_take_mean(Gr,Bl,x,y,d_in); }
 inline void cuda_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, MatrixElement<double>* x, int s) { cudaD_matrix_add_elements(Gr, Bl, data, dim, alpha, x, s); }
+inline void cuda_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, double alpha, const Int32Pair* indices, const double* x, int s, double* data) { cudaD_matrix_add_indexed_values(Gr, Bl, dim, alpha, indices, x, s, data); }
 inline void cuda_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<double>* x, int32 size, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t) {cudaD_comp_obj_deriv(Gr,Bl,x,size,z,d,z2,d2,t); }
 inline void cuda_sum_column_ranges(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
                                    const double *src_data, MatrixDim src_dim, const Int32Pair *indices) {
@@ -477,17 +479,17 @@ inline void cuda_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1, const 
 }
 
 // Also include some template-friendly wrappers of cublas functions:
-inline void cuda_axpy(int n, float alpha, const float *x, int incx, float *y, int incy) {
-  cublasSaxpy(n, alpha, x, incx, y, incy);
+inline cublasStatus_t cuda_axpy(cublasHandle_t handle, int n, float alpha, const float *x, int incx, float *y, int incy) {
+  return cublasSaxpy_v2(handle, n, &alpha, x, incx, y, incy);
 }
-inline void cuda_axpy(int n, double alpha, const double *x, int incx, double *y, int incy) {
-  cublasDaxpy(n, alpha, x, incx, y, incy);
+inline cublasStatus_t cuda_axpy(cublasHandle_t handle, int n, double alpha, const double *x, int incx, double *y, int incy) {
+  return cublasDaxpy_v2(handle, n, &alpha, x, incx, y, incy);
 }
-inline void cuda_scal(int n, float alpha, float *x, int incx) {
-  cublasSscal(n, alpha, x, incx);
+inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, float alpha, float *x, int incx) {
+  return cublasSscal_v2(handle, n, &alpha, x, incx);
 }
-inline void cuda_scal(int n, double alpha, double *x, int incx) {
-  cublasDscal(n, alpha, x, incx);
+inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, double alpha, double *x, int incx) {
+  return cublasDscal_v2(handle, n, &alpha, x, incx);
 }
 
 

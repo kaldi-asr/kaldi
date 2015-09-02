@@ -20,6 +20,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
@@ -172,6 +173,19 @@ std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   KALDI_ASSERT(InputDim() == OutputDim());  // always the case
   stream << Type() << ", dim=" << InputDim();
+
+  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+    stream << ", count=" << std::setprecision(3) << count_
+           << std::setprecision(6);
+    Vector<double> value_avg_dbl(value_sum_);
+    Vector<BaseFloat> value_avg(value_avg_dbl);
+    value_avg.Scale(1.0 / count_);
+    stream << ", value-avg=" << SummarizeVector(value_avg);
+    Vector<double> deriv_avg_dbl(deriv_sum_);
+    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+    deriv_avg.Scale(1.0 / count_);
+    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+  }
   return stream.str();
 }
 

@@ -36,14 +36,16 @@ struct NnetOptimizeOptions {
   bool remove_assignments;
   bool initialize_undefined;
   bool move_sizing_commands;
+  bool allocate_from_other;
 
   NnetOptimizeOptions(): optimize(true),
                          propagate_in_place(true),
                          backprop_in_place(true),
                          remove_assignments(true),
                          initialize_undefined(true),
-                         move_sizing_commands(true) { }
-  
+                         move_sizing_commands(true),
+                         allocate_from_other(true) { }
+
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
                  "optimizations");
@@ -58,6 +60,9 @@ struct NnetOptimizeOptions {
     opts->Register("move-sizing-commands", &move_sizing_commands, "Set to false "
                    "to disable optimization that moves matrix allocation and "
                    "deallocation commands to conserve memory.");
+    opts->Register("allocate-from-other", &allocate_from_other, "Instead of "
+                   "deleting a matrix of a given size and then allocating "
+                   "a matrix of the same size, allow re-use of that memory");
   }
 };
 
@@ -160,7 +165,7 @@ class VariableMergingOptimizer {
   //   - before command C, no part of m2 is never accessed, apart from
   //     initializing it and possibly zeroing it.
   bool IsCandidate(int32 command_index, int32 s1, int32 s2) const;
-  
+
   // performs the merge.
   // compute m1,m2 from s1,s2.
   //  - All submatrices that reference m2, make them reference m1 instead.
@@ -182,14 +187,14 @@ class VariableMergingOptimizer {
   NnetComputation *computation_;
 
   Analyzer analyzer_;
-  
+
   // lists of submatrices that correspond to each matrix.
   std::vector<std::vector<int32> > submatrix_lists_;
 
   // true for each matrix that has already been part of
   // an optimization (either as m1 or m2), so we can
   // void potential
-  std::vector<bool> matrix_already_optimized_;  
+  std::vector<bool> matrix_already_optimized_;
 };
 
 /// This optimization function changes, where possible, matrix initializations
@@ -200,6 +205,12 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet, NnetComputation *computation);
 /// This optimization moves commands that initialize matrices to as late as
 /// possible, and commands that empty matrices to as early as possible.
 void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
+
+/// This optimization detects cases where we deallocate a matrix, and then
+/// later allocate another matrix of the same size; and replaces them
+/// with commands of type kAllocFromOther or kAllocFromOtherZeroed.
+void RemoveUnnecessaryAllocation(const Nnet &nnet,
+                                 NnetComputation *computation);
 
 /// This function detects matrices that have no submatrices corresponding to
 /// them (due, to changes made in other optimization code), and removes them
@@ -235,18 +246,18 @@ void IdentifyMatrixArgs(NnetComputation::Command *command,
 
 
 
-  
+
 /*
   Things we can do to optimize a computation...
 
   (1) replacing un-needed inputs to Backprop functions (if used)
       with the empty matrix
-  
+
   (2) sharing of matrices that would otherwise just be copied.
 
     If the only input to a submatrix A (apart from zeroing) is copying or adding
     from another sub-matrix B, then
-    
+
       - if A is a whole matrix we can remove submatrix A and let all references
         to it point to B instead, and remove the copy/add commands.  Otherwise,
       - if B is a whole matrix we can remove submatrix B and let all references
@@ -256,7 +267,7 @@ void IdentifyMatrixArgs(NnetComputation::Command *command,
      or Backprop functions that support in-place computation.
      If there are submatrices A and B that are also whole matrices,
      then
-     
+
        - If there is a Propagate operation for which A is the input and B is the
          output, and the component supports in-place propagate, and there is no
          operation after that Propagate that reads A, and there is no operation

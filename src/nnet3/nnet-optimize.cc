@@ -27,10 +27,12 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
                            std::vector<int32*> *submatrix_args) {
   submatrix_args->clear();
   switch (c->command_type) {
-      case NnetComputation::kAllocMatrixZeroed:
-      case NnetComputation::kAllocMatrixUndefined:
-      case NnetComputation::kDeallocMatrix:
-        break;
+    case NnetComputation::kAllocMatrixZeroed:
+    case NnetComputation::kAllocMatrixUndefined:
+    case NnetComputation::kDeallocMatrix:
+    case NnetComputation::kAllocMatrixFromOther:
+    case NnetComputation::kAllocMatrixFromOtherZeroed:
+      break;
     case NnetComputation::kPropagate:
       submatrix_args->push_back(&c->arg3);
       submatrix_args->push_back(&c->arg4);
@@ -42,7 +44,7 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
       submatrix_args->push_back(&c->arg3);
       submatrix_args->push_back(&c->arg4);
       submatrix_args->push_back(&c->arg5);
-      submatrix_args->push_back(&c->arg6);      
+      submatrix_args->push_back(&c->arg6);
       break;
     case NnetComputation::kMatrixCopy:
     case NnetComputation::kMatrixAdd:
@@ -65,7 +67,7 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
       KALDI_ERR << "Unknown command type.";
   }
 }
-    
+
 void IdentifyMatrixArgs(NnetComputation::Command *c,
                         std::vector<int32*> *matrix_args) {
   matrix_args->clear();
@@ -74,6 +76,11 @@ void IdentifyMatrixArgs(NnetComputation::Command *c,
     case NnetComputation::kAllocMatrixUndefined:
     case NnetComputation::kDeallocMatrix:
       matrix_args->push_back(&c->arg1);
+      break;
+    case NnetComputation::kAllocMatrixFromOther:
+    case NnetComputation::kAllocMatrixFromOtherZeroed:
+      matrix_args->push_back(&c->arg1);
+      matrix_args->push_back(&c->arg2);
       break;
     default:
       break;
@@ -87,7 +94,7 @@ class ComputationRenumberer {
  public:
   ComputationRenumberer(NnetComputation *computation):
       computation_(computation) { }
-  
+
   void Renumber() {
     SetUpMappings();
     RenumberCommands();
@@ -117,7 +124,7 @@ class ComputationRenumberer {
           56527 * submat.num_cols;
     }
   };
-  
+
   /// creates a renumbering that removes the elements in "to_remove",
   /// e.g. if old_num_elements = 3 and to_remove = [1], would output
   /// the vector [ 0, -1, 1 ].
@@ -171,8 +178,8 @@ void ComputationRenumberer::SetUpMappings() {
   num_matrices_orig_ = computation_->matrices.size();
   num_submatrices_orig_ = computation_->submatrices.size();
 
-  // list of submats per matrix.  
-  std::vector<std::vector<int32> > submatrix_lists; 
+  // list of submats per matrix.
+  std::vector<std::vector<int32> > submatrix_lists;
   ComputeSubmatLists(*computation_, &submatrix_lists);
 
   for (int32 m = 1; m < num_matrices_orig_; m++)
@@ -184,7 +191,7 @@ void ComputationRenumberer::SetUpMappings() {
 
   num_matrices_new_ = num_matrices_orig_ -
       static_cast<int32>(matrices_to_remove_.size());
-  
+
   unordered_map<NnetComputation::SubMatrixInfo, int32,
                 SubMatrixHasher> submat_map;
   int32 cur_index = 1;
@@ -198,7 +205,7 @@ void ComputationRenumberer::SetUpMappings() {
       old_to_new_submatrix_[s] = submat_map[info];
     else
       old_to_new_submatrix_[s] = (submat_map[info] = cur_index++);
-  }        
+  }
   num_submatrices_new_ = cur_index;
 }
 
@@ -283,7 +290,7 @@ void ComputationRenumberer::RenumberIndexesMulti() {
         submatrix_index = old_to_new_submatrix_[submatrix_index];
       }
     }
-  }    
+  }
 }
 
 void ComputationRenumberer::RenumberDebugInfo() {
@@ -485,7 +492,7 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
     }
   }
   const std::vector<MatrixAccesses> &matrix_accesses = analyzer_.matrix_accesses;
-  // - If m1 was an input, replace it as an input with m2  
+  // - If m1 was an input, replace it as an input with m2
   bool replaced = ReplaceInInput(nnet_, m1, m2, computation_);
   KALDI_ASSERT(replaced == matrix_accesses[m1].is_input);
   if (replaced) {  // Remove the command that initializes m2.
@@ -493,9 +500,9 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
     KALDI_ASSERT(alloc_command != -1);
     computation_->commands[alloc_command].command_type =
         NnetComputation::kNoOperation;
-                          
+
   }
-  //  - If it was case (a), replace the assignment command with a no-op.  
+  //  - If it was case (a), replace the assignment command with a no-op.
   if (c.command_type == NnetComputation::kMatrixCopy) {
     // remove the command.
     c.command_type = NnetComputation::kNoOperation;
@@ -505,7 +512,7 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
   //   - If both m2 and m1 have commands that deallocate them, keep only the
   //    later of the two and make it refer to m2 (otherwise delete any
   //     deallocation command).
-  
+
   int32 dealloc1 = matrix_accesses[m1].deallocate_command,
       dealloc2 = matrix_accesses[m2].deallocate_command;
   if (dealloc1 != -1 && dealloc2 != -1) {
@@ -524,7 +531,7 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
       computation_->commands[dealloc2].command_type =
           NnetComputation::kNoOperation;
   }
-  
+
   // Remove the original command that allocated m1, if it exists.
   if (matrix_accesses[m1].allocate_command != -1) {
     NnetComputation::Command &allocate_command = computation_->commands[
@@ -540,7 +547,7 @@ void VariableMergingOptimizer::DoMerge(int32 command_index,
   // try again in a later round of optimization, with a new
   // instance of this class).
   matrix_already_optimized_[m1] = true;
-  matrix_already_optimized_[m2] = true;  
+  matrix_already_optimized_[m2] = true;
 }
 
 // see comment by declaration of this function in nnet-optimize.h.
@@ -588,7 +595,7 @@ bool VariableMergingOptimizer::IsCandidate(int32 command_index,
   }
   if (MatrixIsAccessedBeforeCommand(matrix_accesses, m2, command_index))
     return false;
-  
+
   return true;
 }
 
@@ -661,13 +668,26 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation) {
   computation->commands = reordered_commands;
 }
 
+
+static void RemoveNoOpCommands(NnetComputation *computation) {
+  std::vector<NnetComputation::Command> commands;
+  commands.reserve(computation->commands.size());
+  std::vector<NnetComputation::Command>::iterator
+      iter = computation->commands.begin(),
+      end = computation->commands.end();
+  for (; iter != end; ++iter)
+    if (iter->command_type != NnetComputation::kNoOperation)
+      commands.push_back(*iter);
+  computation->commands.swap(commands);
+}
+
 // This command replaces commands of type kAllocMatrixZeroed with commands of
 // type kAllocMatrixUndefined, where possible.
 void RemoveUnnecessaryZeroing(const Nnet &nnet,
                               NnetComputation *computation) {
   Analyzer a;
   a.Init(nnet, *computation);
-  
+
   // OK, now we'll work out which matrices have all their pieces (i.e. all the
   // variables belonging to that matrix) written to as the first instruction
   // apart from the initial zeroing.  These matrices can have the initial
@@ -704,7 +724,112 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
       // Here is where the change actually happens.
       computation->commands[allocate_command].command_type =
           NnetComputation::kAllocMatrixUndefined;
-    }      
+    }
+  }
+  RemoveNoOpCommands(computation);
+}
+
+
+/*
+  This function is called from RemoveUnnecessaryAllocation.  The input is two
+  sorted, unique lists, of (deallocation-commands, allocation-commands)
+  e.g. (d1, d2, d3.. ), (a1, a2, a3..); and to the output is *appended* a list
+  of pairs (d, a).  Each output pair must satisfy the property that d < a, and
+  no member of the input lists may appear more than once in the output pairs
+  (although it's OK for input a and d values not to appear in any output pairs).
+
+  The goal of the implementation is to output as many pairs as possible, and
+  secondarily for the pairs to be as close as possible to each other (to avoid
+  wasting too much memory).  I'm not sure if this implementation achieves that.
+*/
+static void ComputeCommandPairs(
+    const std::pair<std::vector<int32>, std::vector<int32> > &lists,
+    std::vector<std::pair<int32,int32> > *pairs) {
+  std::vector<int32> d_list = lists.first;
+
+  std::set<int32> a_set;
+  CopyVectorToSet(lists.second, &a_set);
+
+  std::vector<int32>::reverse_iterator iter = d_list.rbegin(),
+      end = d_list.rend();
+
+  // from the latest to the earliest deallocation command...
+  for (; iter != end; ++iter) {
+    int32 d = *iter;
+    std::set<int32>::iterator a_iter = a_set.upper_bound(d);
+    // a_iter is an iterator to the first element a of the set 'a_set' such
+    // that a > d, or a_set.end() if no such element exists.
+    if (a_iter == a_set.end())
+      continue;  // we will output no pair for this d.
+    int32 a = *a_iter;
+    KALDI_PARANOID_ASSERT(a > d);  // or code error
+    a_set.erase(a_iter);  // remove this a from 'a_set' so it doesn't get used
+                          // twice
+    pairs->push_back(std::pair<int32,int32>(d, a));
+  }
+}
+
+void RemoveUnnecessaryAllocation(const Nnet &nnet,
+                                 NnetComputation *computation) {
+  // For each size of matrix (i.e. each pair<int32,int32>), we
+  // accumulate a list of indexes of deallocation commands that
+  // are for that size, and a list of indexes of allocation commands
+  // for that size.
+  // For each distinct matrix size, we then call ComputeCommandPairs on those
+  // two lists, to get pairs of (deallocation, allocation) command-indexes that
+  // we can optimize out to a single command.
+
+  // The map is from a (num-rows,num-columns) to two lists, of
+  // (deallocation-commands, allocation-commands).  The order may seem
+  // backwards, but that's the order of the pairs we are looking for.
+  typedef unordered_map<std::pair<int32,int32>,
+      std::pair<std::vector<int32>,std::vector<int32> >,
+      PairHasher<int32> > MapType;
+  MapType pair_map;
+  int32 num_commands = computation->commands.size();
+  for (int32 command_index = 0; command_index < num_commands; command_index++) {
+    NnetComputation::Command &command = computation->commands[command_index];
+    if (command.command_type == NnetComputation::kAllocMatrixZeroed ||
+        command.command_type == NnetComputation::kAllocMatrixUndefined ||
+        command.command_type == NnetComputation::kDeallocMatrix) {
+      int32 m = command.arg1, num_rows = computation->matrices[m].num_rows,
+          num_cols = computation->matrices[m].num_cols;
+      std::pair<int32,int32> p(num_rows, num_cols);
+      std::pair<std::vector<int32>,std::vector<int32> > &lists = pair_map[p];
+      if (command.command_type == NnetComputation::kDeallocMatrix)
+        lists.first.push_back(command_index);
+      else
+        lists.second.push_back(command_index);
+    }
+  }
+
+  MapType::const_iterator iter = pair_map.begin(), end = pair_map.end();
+  std::vector<std::pair<int32,int32> > command_pairs;
+  for (; iter != end; ++iter)
+    ComputeCommandPairs(iter->second, &command_pairs);
+
+  for (size_t i = 0; i < command_pairs.size(); i++) {
+    int32 dealloc_index = command_pairs[i].first,
+        alloc_index = command_pairs[i].second;
+    NnetComputation::Command
+        &dealloc_command = computation->commands[dealloc_index],
+        &alloc_command = computation->commands[alloc_index];
+    KALDI_ASSERT(dealloc_command.command_type ==
+                 NnetComputation::kDeallocMatrix);
+    KALDI_ASSERT(alloc_command.command_type ==
+                 NnetComputation::kAllocMatrixUndefined ||
+                 alloc_command.command_type==
+                 NnetComputation::kAllocMatrixZeroed);
+    // remove the deallocation command.
+    dealloc_command.command_type =  NnetComputation::kNoOperation;
+    alloc_command.arg2 = dealloc_command.arg1;
+    if (alloc_command.command_type ==
+        NnetComputation::kAllocMatrixUndefined)
+      alloc_command.command_type =
+          NnetComputation::kAllocMatrixFromOther;
+    else
+      alloc_command.command_type =
+          NnetComputation::kAllocMatrixFromOtherZeroed;
   }
 }
 
@@ -726,6 +851,10 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (config.move_sizing_commands)
     MoveSizingCommands(nnet, computation);
+
+  if (config.allocate_from_other)
+    RemoveUnnecessaryAllocation(nnet, computation);
+
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
@@ -736,20 +865,20 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     CompilerOptions opts;
 
     compiler.CreateComputation(opts, &computation_);
-    
+
     int32 verbose_level = 4;
     if (GetVerboseLevel() >= verbose_level) {
       std::ostringstream os1;
       request.Print(os1);
       KALDI_LOG << "Computation request is " << os1.str();
-      std::ostringstream os2;      
+      std::ostringstream os2;
       computation_.Print(os2, nnet_);
       KALDI_LOG << "Generated computation is: " << os2.str();
     }
     { // some checking.
       CheckComputationOptions check_config;
       // we can do the rewrite check since it's before optimization.
-      check_config.check_rewrite = true;  
+      check_config.check_rewrite = true;
       ComputationChecker checker(check_config, nnet_, request_,
                                  computation_);
       checker.Check();

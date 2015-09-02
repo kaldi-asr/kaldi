@@ -181,6 +181,23 @@ void PerturbParams(BaseFloat stddev,
   }
 }
 
+void ComponentDotProducts(const Nnet &nnet1,
+                          const Nnet &nnet2,
+                          VectorBase<BaseFloat> *dot_prod) {
+  KALDI_ASSERT(nnet1.NumComponents() == nnet2.NumComponents());
+  for (int32 c = 0, c_id = 0; c < nnet1.NumComponents(); c++) {
+    const Component *comp1 = nnet1.GetComponent(c),
+                    *comp2 = nnet2.GetComponent(c);
+    if (comp1->Properties() & kUpdatableComponent) {
+      const UpdatableComponent
+          *u_comp1 = dynamic_cast<const UpdatableComponent*>(comp1),
+          *u_comp2 = dynamic_cast<const UpdatableComponent*>(comp2);
+      KALDI_ASSERT(u_comp1 != NULL && u_comp2 != NULL);
+      dot_prod->Data()[c_id] = u_comp1->DotProduct(*u_comp2);
+      c_id++;
+    }
+  }
+}
 
 BaseFloat DotProduct(const Nnet &nnet1,
                      const Nnet &nnet2) {

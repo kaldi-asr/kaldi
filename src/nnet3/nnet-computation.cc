@@ -113,7 +113,7 @@ int32 NnetComputation::NewSubMatrix(int32 base_submatrix, int32 dim_offset,
                                      col_offset, num_cols));
   return ans;
 }
-  
+
 int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
   KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
@@ -138,7 +138,7 @@ void NnetComputation::GetSubmatrixStrings(
   (*submat_strings)[0] = "[]";  // the empty matrix
   for (int32 i = 1; i < num_submatrices; i++) {
     const NnetComputation::SubMatrixInfo &submat = this->submatrices[i];
-    std::ostringstream os;    
+    std::ostringstream os;
     if (this->IsWholeMatrix(i)) {
       os << 'm' << submat.matrix_index;
     } else { // part of a range.
@@ -147,8 +147,8 @@ void NnetComputation::GetSubmatrixStrings(
          << submat.col_offset << ':' << (submat.col_offset + submat.num_cols - 1)
          << ')';
     }
-    (*submat_strings)[i] = os.str();    
-  }  
+    (*submat_strings)[i] = os.str();
+  }
 }
 
 // outputs a string containing a text form of each of the elements of the
@@ -189,7 +189,7 @@ static void GetIndexesMultiStrings(
   for (int32 c = 0; c < computation.commands.size(); c++)
     if (computation.commands[c].command_type == NnetComputation::kAddRowRanges)
       is_row_range[computation.commands[c].arg3] = true;
-  
+
   for (int32 i = 0; i < indexes_multi_size; i++) {
     bool row_range = is_row_range[i];
     std::ostringstream os;
@@ -226,7 +226,7 @@ static void GetIndexesMultiStrings(
 
 // writes to "os" the statement for this command.
 static void PrintCommand(std::ostream &os,
-                         const Nnet &nnet,                         
+                         const Nnet &nnet,
                          const NnetComputation &computation,
                          int32 command_index,
                          const std::vector<std::string> &submatrix_strings,
@@ -248,7 +248,18 @@ static void PrintCommand(std::ostream &os,
       break;
     case NnetComputation::kDeallocMatrix:
       os << "m" << c.arg1 << " = []\n";
-      break;      
+      break;
+    case NnetComputation::kAllocMatrixFromOther:
+      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
+         << computation.matrices[c.arg1].num_rows << " x "
+         << computation.matrices[c.arg1].num_cols << "]\n";
+      break;
+    case NnetComputation::kAllocMatrixFromOtherZeroed:
+      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
+         << computation.matrices[c.arg1].num_rows << " x "
+         << computation.matrices[c.arg1].num_cols << "]; m"
+         << c.arg1 << ".zero();\n";
+      break;
     case NnetComputation::kPropagate:
       os << nnet.GetComponentName(c.arg1) << ".Propagate(";
       if (c.arg2 == 0) os << "NULL, ";
@@ -325,7 +336,7 @@ static void PrintComputationPreamble(
     const std::vector<std::string> &submatrix_strings,
     const std::vector<std::string> &indexes_strings,
     const std::vector<std::string> &indexes_multi_strings) {
-  
+
   // First print info about the matrices.
   os << "matrix ";
   for (int32 i = 1; i < c.matrices.size(); i++) {
@@ -347,7 +358,7 @@ static void PrintComputationPreamble(
     if (deriv_matrix_index != 0) {
       os << nnet.GetNodeName(node_index) << ".deriv -> m"
          << deriv_matrix_index << "\n";
-    }    
+    }
   }
   if (!c.matrix_debug_info.empty()) {
     os << "# The following show how matrices correspond to network-nodes and\n"
@@ -383,7 +394,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
     PrintCommand(os, nnet, *this, c, submatrix_strings,
                  indexes_strings, indexes_multi_strings);
   }
-}  
+}
 
 void NnetComputation::GetCommandStrings(
     const Nnet &nnet,
@@ -412,7 +423,7 @@ void NnetComputation::GetCommandStrings(
       if (!str.empty())
         str.resize(str.size() - 1);
     }
-  }  
+  }
 }
 
 
@@ -514,7 +525,7 @@ NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
     need_model_derivative = other.need_model_derivative;
     indexes_cuda = other.indexes_cuda;
     indexes_ranges_cuda = other.indexes_ranges_cuda;
-  
+
     for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
       delete component_precomputed_indexes[i];
     component_precomputed_indexes.clear();

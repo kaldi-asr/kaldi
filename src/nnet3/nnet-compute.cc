@@ -161,6 +161,13 @@ void NnetComputer::ExecuteCommand(int32 command) {
       case NnetComputation::kDeallocMatrix:
         matrices_[c.arg1].Resize(0, 0);
         break;
+      case NnetComputation::kAllocMatrixFromOther:
+        matrices_[c.arg1].Swap(&(matrices_[c.arg2]));
+        break;
+      case NnetComputation::kAllocMatrixFromOtherZeroed:
+        matrices_[c.arg1].Swap(&(matrices_[c.arg2]));
+        matrices_[c.arg1].SetZero();
+        break;
       case NnetComputation::kPropagate: {
         const Component *component = nnet_.GetComponent(c.arg1);
         ComponentPrecomputedIndexes *indexes =
@@ -180,7 +187,7 @@ void NnetComputer::ExecuteCommand(int32 command) {
       case NnetComputation::kBackprop: {
         int32 node_index = c.arg1;
         std::ostringstream debug_str;
-        KALDI_ASSERT(nnet_to_update_ != NULL);      
+        KALDI_ASSERT(nnet_to_update_ != NULL);
         debug_str << "node " << node_index << '['
                   << nnet_.GetNodeNames()[node_index] << ']';
         const Component *component = nnet_.GetComponentForNode(c.arg1);
@@ -201,7 +208,7 @@ void NnetComputer::ExecuteCommand(int32 command) {
         break;
       }
       case NnetComputation::kMatrixCopy: {
-        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));      
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         dest.CopyFromMat(src);
         break;
@@ -304,7 +311,7 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
   // the map "lookup" maps from submatrix index to the Data()
   // pointer of that submatrix, and the corresponding Stride().
   unordered_map<int32, std::pair<BaseFloat*, int32> > lookup;
-  
+
   for (int32 i = 0; i < size; i++) {
     int32 submatrix_index = pairs[i].first, row = pairs[i].second;
     unordered_map<int32, std::pair<BaseFloat*, int32> >::iterator
@@ -326,7 +333,7 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
     CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
     KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
   }
-#endif  
+#endif
   pointers->CopyFromVec(vec);
 }
 
@@ -351,7 +358,7 @@ void NnetComputer::Forward() {
     if (debug_)
       DebugAfterExecute(i, info);
   }
-    
+
 }
 
 

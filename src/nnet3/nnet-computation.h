@@ -81,7 +81,7 @@ struct IoSpecification {
       name(name), indexes(indexes), has_deriv(has_deriv) { }
   // This constructor sets n = 0, x = 0 and t from t_start to t_end-1; and
   // has_deriv to false.
-  IoSpecification(const std::string &name, int32 t_start, int32 t_end);  
+  IoSpecification(const std::string &name, int32 t_start, int32 t_end);
 
   /// This function is for printing in a human-readable way, for debugging.
   /// Output ends in a newline.
@@ -162,12 +162,12 @@ struct NnetComputation {
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
-    int32 row_offset;    
+    int32 row_offset;
     int32 num_rows;
-    int32 col_offset;    
+    int32 col_offset;
     int32 num_cols;
     SubMatrixInfo() { }
-    SubMatrixInfo(int32 matrix_index, int32 row_offset, int32 num_rows, 
+    SubMatrixInfo(int32 matrix_index, int32 row_offset, int32 num_rows,
                   int32 col_offset, int32 num_cols):
         matrix_index(matrix_index), row_offset(row_offset), num_rows(num_rows),
         col_offset(col_offset), num_cols(num_cols) {}
@@ -179,6 +179,11 @@ struct NnetComputation {
       - kAllocMatrixUndefined: Allocate a matrix.  arg1 = index of matrix.
       - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = index of matrix.
       - kDeallocMatrix: Deallocate a matrix.  arg1 = index of matrix.
+      - kAllocMatrixFromOther: initialize matrix indexed arg1 using memory
+           from matrix indexed arg2 (using shallow swap).
+      - kAllocMatrixFromOtherZeroed: initialize matrix indexed arg1 using memory
+           from matrix indexed arg2 (using shallow swap), then zero the matrix
+           we just allocated.
       - kPropagate: Forward computation of neural net, see Component::Propagate()
           - arg1 is is component-index in neural net
           - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
@@ -199,7 +204,7 @@ struct NnetComputation {
           - arg5 is submatrix-index of output derivative
           - arg6 is submatrix-index of input derivative
       - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
-      - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1      
+      - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
       - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
            with sub-matrix arg2 and indexes[arg3] as arguments.
       - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
@@ -219,8 +224,9 @@ struct NnetComputation {
           (sometimes useful during optimization).
    */
   enum CommandType {
-    kAllocMatrixUndefined, kAllocMatrixZeroed, 
-    kDeallocMatrix, kPropagate, kStoreStats, kBackprop,
+    kAllocMatrixUndefined, kAllocMatrixZeroed,
+    kDeallocMatrix, kAllocMatrixFromOther, kAllocMatrixFromOtherZeroed,
+    kPropagate, kStoreStats, kBackprop,
     kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
     kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
     kAddRowRanges, kNoOperation, kNoOperationMarker };
@@ -238,7 +244,7 @@ struct NnetComputation {
         command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
   };
-  
+
   // "matrices" describes the sizes of the matrices that we use as variables in
   // the computation [note: index zero is reserved for an empty matrix].  Most
   // commands refer to submatrices below (note: each matrix will have its own
@@ -248,7 +254,7 @@ struct NnetComputation {
   // debug information for each of the matrices (indexed by matrix-index), only
   // computed if requested in the compiler options.
   std::vector<MatrixDebugInfo> matrix_debug_info;
-  
+
 
   // Because some parts of the computation may involve parts of matrix, we
   // declare sub-matrices.  Some of these sub-matrices correspond to entire
@@ -258,7 +264,7 @@ struct NnetComputation {
   // Note: there is no rule against having identical submatrices.  These
   // will be removed by class ComputationRenumberer in nnet-optimize.cc.
   std::vector<SubMatrixInfo> submatrices;
-  
+
   // For Components that require precomputed indexes for their Propagate and
   // Backprop operations.  The index into this vector is referred to in
   // kPropagate and kBackprop operations.  Index 0 in the vector is reserved for
@@ -269,7 +275,7 @@ struct NnetComputation {
 
   // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
   std::vector<std::vector<int32> > indexes;
-  
+
   // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
   // contains pairs (sub-matrix index, row index)- or (-1,-1) meaning don't
   // do anything for this row.
@@ -285,13 +291,13 @@ struct NnetComputation {
   // the nodes_ array in the Nnet), each pair is (value_matrix_index,
   // deriv_matrix_index), with 0 for derivatives that are not present.
   unordered_map<int32, std::pair<int32, int32> > input_output_info;
-  
+
   // The sequence of commands.
   std::vector<Command> commands;
 
   // This is a copy of "need_model_derivative" from the ComputationRequest.
   bool need_model_derivative;
-  
+
   // computed from "indexes" by ComputeCudaIndexes().
   std::vector<CuArray<int32> > indexes_cuda;
 
@@ -318,7 +324,7 @@ struct NnetComputation {
   // the indexes.
   void ComputeCudaIndexes();
 
-  // This function produces pretty-print ouput intended to allow a human to 
+  // This function produces pretty-print ouput intended to allow a human to
   // interpret the computation.
   void Print(std::ostream &os, const Nnet &nnet) const;
 
@@ -329,7 +335,7 @@ struct NnetComputation {
   void GetSubmatrixStrings(const Nnet &nnet,
                            std::vector<std::string> *submat_strings) const;
 
-  
+
   // This function outputs information similar to Print(), but outputs the
   // preamble as a string and a vector of strings, one per command (with no
   // newlines on these).   This is used in the debugging code in NnetComputer.
@@ -337,8 +343,8 @@ struct NnetComputation {
   void GetCommandStrings(const Nnet &nnet,
                          std::string *preamble,
                          std::vector<std::string> *command_strings) const;
-                         
-  
+
+
   // destructor deletes pointers in component_precomputed_indexes.
   ~NnetComputation();
   // removes all information from this struct, makes it as a newly constructed one.

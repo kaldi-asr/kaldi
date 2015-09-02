@@ -248,7 +248,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 400; n++) {
+  for (int32 n = 0; n < 100; n++) {
     Component *c = GenerateRandomSimpleComponent();
     TestNnetComponentIo(c);
     TestSimpleComponentPropagateProperties(*c);
