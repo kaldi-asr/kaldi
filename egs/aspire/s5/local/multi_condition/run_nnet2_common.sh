@@ -50,7 +50,7 @@ if [ $stage -le 1 ]; then
         data/${data_dir}  data/impulses_noises $cur_dest_dir
       reverb_data_dirs+=" $cur_dest_dir" 
     done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb_hires $reverb_data_dirs
+    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
     rm -rf $reverb_data_dirs
   done
 
@@ -63,7 +63,7 @@ if [ $stage -le 1 ]; then
     local/multi_condition/copy_ali_dir.sh --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
-  local/multi_condition/combine_ali_dirs.sh --ref-data-dir data/train_rvb_hires \
+  local/multi_condition/combine_ali_dirs.sh --ref-data-dir data/train_rvb \
     exp/tri5a_rvb_ali $ali_dirs || exit 1;
    
   # copy the alignments for training the 100k system (from tri4a)
