@@ -1114,6 +1114,19 @@ static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha, Mat
 
 template<typename Real>
 __global__
+static void _cuda_matrix_add_indexed_values(MatrixDim dim, Real alpha,
+                                            const Int32Pair* indices, const Real* x,
+                                            int s, Real* data) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= s)
+    return;
+  int data_i = indices[i].first * dim.stride + indices[i].second;
+  data[data_i] += alpha * x[i];
+}
+
+
+template<typename Real>
+__global__
 static void _matrix_lookup(const Real *data, MatrixDim dim,
                            const Int32Pair *indices,
                            int indices_size, Real *output) {
@@ -1202,6 +1215,20 @@ static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
   }
 }
 
+template<typename Real>
+__global__
+static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count, int dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  
+  if ( i < dim) {
+    if ( v[i] > ceiling_val) {
+      v[i] = ceiling_val;
+      count[i] = 1;
+    } else {
+      count[i] = 0;
+    }
+  }
+}
 
 // Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
 // this is for no reason, really, I just happened to prefer this
@@ -2399,6 +2426,10 @@ void cudaF_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, flo
   _cuda_matrix_add_elements<<<Gr, Bl>>>(data, dim, alpha, x, s); 
 }
 
+void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, float alpha, const Int32Pair* indices, const float* x, int s, float* data) { 
+  _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data); 
+}
+
 void cudaF_comp_obj_deriv(dim3 Gr, dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t) {
   _cuda_comp_obj_deriv<<<Gr,Bl>>>(x,s,z,d,z2,d2,t);
 }
@@ -2413,6 +2444,10 @@ void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *sr
 
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float *count, int dim) {
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
+}
+
+void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v, ceiling_val,count,dim);
 }
 
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
@@ -2863,12 +2898,20 @@ void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, do
   _cuda_matrix_add_elements<<<Gr, Bl>>>(data, dim, alpha, x, s); 
 }
 
+void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, double alpha, const Int32Pair* indices, const double* x, int s, double* data) { 
+  _cuda_matrix_add_indexed_values<<<Gr, Bl>>>(dim, alpha, indices, x, s, data); 
+}
+
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim) {
   _vec_copy_diag_from_packed<<<Gr,Bl>>>(dst,src,dim);
 }
 
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float *count, int dim) {
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
+}
+
+void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v,ceiling_val,count,dim);
 }
 
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {

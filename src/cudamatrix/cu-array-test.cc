@@ -73,6 +73,9 @@ static void UnitTestCuArray() {
       CuArray<T> cu_vec(vec);
       std::vector<T> vec2;
       cu_vec.CopyToVec(&vec2);
+      T *vec22 = new T[vec.size()];
+      cu_vec.CopyToHost(vec22);
+      delete[] vec22;
     }
 
     { // test assignment operator from CuArray.

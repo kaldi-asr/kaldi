@@ -46,7 +46,6 @@ max_remembered_frames=1000
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
-
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
@@ -107,6 +106,7 @@ echo "--max-remembered-frames=$max_remembered_frames" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
 echo "--ivector-period=$ivector_period" >> $ieconf
 
+absdir=$(readlink -f $dir)
 
 for n in $(seq $nj); do
   # This will do nothing unless the directory $dir/storage exists;
@@ -119,7 +119,7 @@ if [ $stage -le 0 ]; then
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
      ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
-      ark,scp:$dir/ivector_online.JOB.ark,$dir/ivector_online.JOB.scp || exit 1;
+      ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then

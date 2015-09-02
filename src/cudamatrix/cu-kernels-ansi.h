@@ -119,6 +119,7 @@ void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
 void cudaF_pvec_sum(int Gr, int Bl, float* vec, float* pvec_sum, int dim, int size);
 void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *src, int dim);
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float* num, int dim);
+void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val, float* num, int dim);
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim);
 void cudaF_vec_apply_log(int Gr, int Bl, float* v, float* flag, int dim);
 void cudaF_trace(int Gr, int Bl, float* mat, float* value, int dim);
@@ -159,6 +160,7 @@ void cudaF_take_lower(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in
 void cudaF_take_upper(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in);
 void cudaF_take_mean(dim3 Gr, dim3 Bl, const float* x, float* y, MatrixDim d_in);
 void cudaF_matrix_add_elements(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, MatrixElement<float>* x, int s);
+void cudaF_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, float alpha, const Int32Pair* indices, const float* x, int s, float* data);
 void cudaF_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<float>* x, int s, const float* z, MatrixDim d, float* z2, MatrixDim d2, float* t);
 void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);  
 void cudaF_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim,
@@ -258,6 +260,7 @@ void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
 void cudaD_pvec_sum(int Gr, int Bl, double* vec, double* pvec_sum, int dim, int size);
 void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *src, int dim);
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float* num, int dim);
+void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val, float* num, int dim);
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim);
 void cudaD_vec_apply_log(int Gr, int Bl, double* v, double* flag, int dim);
 void cudaD_trace(int Gr, int Bl, double* mat, double* value, int dim);
@@ -331,6 +334,7 @@ void cudaD_trace_mat_smat(dim3 Gr, dim3 Bl, const double* mat_in, const MatrixEl
 void cudaD_trace_mat_smat_trans(dim3 Gr, dim3 Bl, const double* mat_in, const MatrixElement<double>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, double* trace_vec_out);
 
 void cudaD_matrix_add_elements(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, MatrixElement<double>* x, int s);
+void cudaD_matrix_add_indexed_values(dim3 Gr, dim3 Bl, MatrixDim dim, double alpha, const Int32Pair* indices, const double* x, int s, double* data);
 void cudaD_comp_obj_deriv(dim3 Gr,dim3 Bl, MatrixElement<double>* x, int s, const double* z, MatrixDim d, double* z2, MatrixDim d2, double* t);
 
 void cudaD_transpose_matrix(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);

@@ -88,6 +88,11 @@ class CuArray {
   /// objects are more than plain structs.
   void CopyToVec(std::vector<T> *dst) const;
 
+  /// Version of the above function that copies contents to a host array.
+  /// This function requires *dst to be allocated before calling. The allocated
+  /// size should be dim_ * sizeof(T)
+  void CopyToHost(T *dst) const;
+
   /// Sets the memory for the object to zero, via memset.  You should verify
   /// that this makes sense for type T.
   void SetZero();

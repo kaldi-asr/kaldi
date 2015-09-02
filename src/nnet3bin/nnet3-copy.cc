@@ -1,7 +1,7 @@
 // nnet3bin/nnet3-copy.cc
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
-//           2015  Vimal Manohar
+//           2015  Xingyu Na
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,14 +32,13 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy nnet3 raw neural-net file\n"
-        "Also supports multiplying all the learning rates by a factor\n"
-        "(the --learning-rate-factor option) and setting them all to supplied\n"
-        "values (the --learning-rate and --learning-rates options),\n"
+        "Copy 'raw' nnet3 neural network to standard output\n"
+        "Also supports setting all the learning rates to a value\n"
+        "(the --learning-rate option)\n"
         "\n"
         "Usage:  nnet3-copy [options] <nnet-in> <nnet-out>\n"
         "e.g.:\n"
-        " nnet-am-copy --binary=false 1.raw text.raw\n";
+        " nnet3-copy --binary=false 0.raw text.raw\n";
 
     bool binary_write = true;
     BaseFloat learning_rate = -1;
@@ -50,7 +49,6 @@ int main(int argc, char *argv[]) {
                 "If supplied, all the learning rates of updatable components"
                 "are set to this value.");
 
-
     po.Read(argc, argv);
     
     if (po.NumArgs() != 2) {
@@ -58,23 +56,22 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string nnet_rxfilename = po.GetArg(1),
-        nnet_wxfilename = po.GetArg(2);
-
+    std::string raw_nnet_rxfilename = po.GetArg(1),
+                raw_nnet_wxfilename = po.GetArg(2);
+    
     Nnet nnet;
-    ReadKaldiObject(nnet_rxfilename, &nnet);
+    ReadKaldiObject(raw_nnet_rxfilename, &nnet);
     
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
 
-    WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
-    KALDI_LOG << "Copied neural net from " << nnet_rxfilename
-              << " to " << nnet_wxfilename;
-      
+    WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
+    KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename
+              << " to " << raw_nnet_wxfilename;
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-

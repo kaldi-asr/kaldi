@@ -17,6 +17,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <iomanip>
 #include "nnet3/nnet-parse.h"
 
 namespace kaldi {
@@ -24,7 +25,7 @@ namespace nnet3 {
 
 bool ConfigLine::ParseLine(const std::string &line) {
   if (line.size() == 0) return false;   // Empty line
-  
+
   // Line ends or begins with space -> remove it and recurse.
   if (isspace(line[line.size()-1]) || isspace(line[0])) {
     size_t initial_pos = line.find_first_not_of(" \t\r\n"),
@@ -34,12 +35,12 @@ bool ConfigLine::ParseLine(const std::string &line) {
     std::string processed_line(line, initial_pos, final_pos - initial_pos + 1);
     return ParseLine(processed_line);
   }
-  
+
   size_t pos = 0;
   size_t found_eq = line.find_first_of("=", pos + 1);
   if (found_eq == std::string::npos) return false; // Could not find '='
 
-  
+
   while (found_eq < line.size()) {
     std::string key(line, pos, found_eq - pos);
     if (!IsValidName(key)) return false;
@@ -52,8 +53,8 @@ bool ConfigLine::ParseLine(const std::string &line) {
         break; // Done reading
       found_eq = line.find_first_of("=", pos + 1);
       continue;
-    } 
- 
+    }
+
     // See if there is next key
     size_t found = line.find_first_of("=", found_eq + 1);
     size_t value_end = std::string::npos;
@@ -67,7 +68,7 @@ bool ConfigLine::ParseLine(const std::string &line) {
     } else {
       value_end = line.find_last_not_of(" \t", found);
     }
-    
+
     KALDI_ASSERT(value_end > found_eq);
 
     std::string value(line, found_eq + 1, value_end - found_eq);
@@ -139,7 +140,7 @@ bool ConfigLine::GetValue(const std::string &key, std::vector<int32> *value) {
   }
   return false;
 }
-  
+
 bool ConfigLine::GetValue(const std::string &key, bool *value) {
   KALDI_ASSERT(value != NULL);
   std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
@@ -155,7 +156,7 @@ bool ConfigLine::GetValue(const std::string &key, bool *value) {
         case 't':
           *value = true;
           break;
-        default: 
+        default:
           return false;
       }
       (it->second).second = true;
@@ -180,7 +181,7 @@ std::string ConfigLine::UnusedValues() const {
     if (!(it->second).second) {
       if (unused_str == "")
         unused_str = it->first + "=" + (it->second).first;
-      else 
+      else
         unused_str += " " + it->first + "=" + (it->second).first;
     }
   }
@@ -403,7 +404,7 @@ bool IsValidName(const std::string &name) {
   return true;
 }
 
-void ReadConfigFile(std::istream &is, 
+void ReadConfigFile(std::istream &is,
                     std::vector<std::string> *lines) {
   KALDI_ASSERT(lines != NULL);
   std::string line;
@@ -424,7 +425,7 @@ std::string ErrorContext(std::istream &is) {
   is.read(buf, 21);
   if (is) {
     return (std::string(buf, 20) + "...");
-  } 
+  }
   return std::string(buf, is.gcount());
 }
 
@@ -433,6 +434,51 @@ std::string ErrorContext(const std::string &str) {
   if (str.size() <= 20) return str;
   return std::string(str, 0, 20) + "...";
 }
+
+static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
+  if (fabs(f) < 10000.0 && fabs(f) >= 10.0) {
+    os  << std::fixed << std::setprecision(0) << f;
+  } else if (fabs(f) >= 1.0) {
+    os  << std::fixed << std::setprecision(1) << f;
+  } else if (fabs(f) >= 0.01) {
+    os  << std::fixed << std::setprecision(2) << f;
+  } else {
+    os << std::setprecision(1) << f;
+  }
+  os.unsetf(std::ios_base::floatfield);
+  os << std::setprecision(6);  // Restore the default.
+
+}
+
+
+// Returns a string that summarizes a vector fairly succintly, for
+// printing stats in info lines.
+std::string SummarizeVector(const Vector<BaseFloat> &vec) {
+  std::ostringstream os;
+  if (vec.Dim() < 10) {
+    os << "[ ";
+    for (int32 i = 0; i < vec.Dim(); i++) {
+      PrintFloatSuccinctly(os, vec(i));
+      os << ' ';
+    }
+    os << "]";
+  } else {
+    // print out mean and standard deviation, and some selected values.
+    BaseFloat mean = vec.Sum() / vec.Dim(),
+        stddev = sqrt(VecVec(vec, vec) / vec.Dim() - mean * mean);
+    os << "[ " << std::setprecision(2);
+    for (int32 i = 0; i < 8; i++) {
+      PrintFloatSuccinctly(os, vec(i));
+      os << ' ';
+    }
+    os << "... ";
+    os << std::setprecision(3);
+    os << "(mean=" << mean << ", stddev=" << stddev << ")]";
+  }
+  return os.str();
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

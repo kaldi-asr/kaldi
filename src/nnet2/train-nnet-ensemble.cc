@@ -92,7 +92,8 @@ void NnetEnsembleTrainer::TrainOneMinibatch() {
     CuMatrix<BaseFloat> tmp_deriv(post_mat[i]);
     post_mat[i].ApplyLog();
     std::vector<BaseFloat> log_post_correct;
-    post_mat[i].Lookup(sv_labels_ind, &log_post_correct);
+    log_post_correct.resize(sv_labels_ind.size());
+    post_mat[i].Lookup(sv_labels_ind, &(log_post_correct[0]));
     BaseFloat log_prob_this_net = std::accumulate(log_post_correct.begin(),
                                                   log_post_correct.end(),
                                                   static_cast<BaseFloat>(0));
