@@ -24,6 +24,7 @@
 
 #if HAVE_CUDA == 1
 
+#include <cublas_v2.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -44,7 +45,8 @@ class CuDevice {
   ~CuDevice();
   static inline CuDevice& Instantiate() { return global_device_; }
 
-  // We provide functions Malloc, MallocPitch and Free which replace cudaMalloc,
+  inline cublasHandle_t GetHandle() { return handle_; }
+  
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
   // previous allocations to avoid the very large overhead that CUDA's
   // allocation seems to give for some setups.
@@ -100,14 +102,15 @@ class CuDevice {
   /// will always be a multiple of n (from properties_.textureAlignment).
   /// Otherwise, return 16, which is the stride used for CPU matrices.
   int32 GetMatrixAlignment() const;
-  
+
  private:
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
   CuDevice &operator=(CuDevice&);  // Disallow.
 
+
   static CuDevice global_device_;
-  
+  cublasHandle_t handle_;
   /// Check if the GPU run in compute exclusive mode Returns true if it is
   /// running in compute exclusive mode and we have a GPU.  Returns false
   /// otherwise.  Sets error to true if there was some error, such as that we
@@ -147,6 +150,9 @@ class CuDevice {
   
 }; // class CuDevice
 
+// This function is declared as a more convenient way to get the CUDA device handle for use
+// in the CUBLAS v2 API, since we so frequently need to access it.
+inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetHandle(); }
 
 
 }  // namespace

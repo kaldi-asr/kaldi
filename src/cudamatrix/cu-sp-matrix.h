@@ -135,7 +135,6 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   inline SpMatrix<Real> &Mat() {
     return *(reinterpret_cast<SpMatrix<Real>* >(this));
   }
-
 };
 
 template<typename Real>

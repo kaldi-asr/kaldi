@@ -215,6 +215,7 @@ class CuVectorBase {
   Real *data_; ///< GPU data pointer (or regular data pointer
                ///< if CUDA is not compiled in or we have no GPU).
   MatrixIndexT dim_; ///< dimension of the vector
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(CuVectorBase);
 };

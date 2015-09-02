@@ -24,7 +24,7 @@
 
 #if HAVE_CUDA == 1
 
-#include <cublas.h>
+#include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -62,14 +62,13 @@ static bool GetCudaContext(int32 num_gpus) {
   for (int32 device = 0; device < num_gpus; device++) {
     cudaSetDevice(device);
     e = cudaDeviceSynchronize(); // << CUDA context gets created here.
-    cudaGetLastError(); // reset the error state     
+    CU_SAFE_CALL(e);
     if (e == cudaSuccess) {
       return true;
     }
   }
   return false;
 }
-
 
 /**
  * SelectGpuId(use_gpu)
@@ -207,7 +206,7 @@ void CuDevice::FinalizeActiveGpu() {
     // Remember the id of active GPU
     active_gpu_id_ = act_gpu_id; // CuDevice::Enabled() is true from now on
     // Initialize the CUBLAS
-    CU_SAFE_CALL(cublasInit());
+    CU_SAFE_CALL(cublasCreate(&handle_));
 
     // Notify user which GPU is finally used
     char name[128];
@@ -428,7 +427,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
 // WARNING! the CUDA API is inconsistent accross versions!
 #ifdef _MSC_VER
 	size_t mem_free, mem_total;
-	cuMemGetInfo_v2(&mem_free, &mem_total);
+	cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
 #else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
@@ -442,7 +441,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     // pre-fill ``safe'' values that will not cause problems
     mem_free = 1; mem_total = 1;
 #ifdef _MSC_VER
-    cuMemGetInfo_v2(&mem_free, &mem_total);
+    cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
 #else
     // open libcuda.so
     void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
@@ -559,20 +558,18 @@ void* CuDevice::Malloc(size_t size) {
   return ret_ptr;
 }
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true)
-  { }
+CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true) {}
 
 
 CuDevice::~CuDevice() {
   if (Enabled()) {
-    cublasShutdown();
+    //cublasShutdown();
+    cublasDestroy(handle_);
   }
 }
 
 // The instance of the static singleton
 CuDevice CuDevice::global_device_;
-
-
 }
 
 

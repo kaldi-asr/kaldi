@@ -20,7 +20,7 @@
 
 #if HAVE_CUDA==1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include "base/timer.h"
@@ -74,9 +74,8 @@ void CuTpMatrix<Real>::Invert() {
     CU_SAFE_CALL(cudaGetLastError());        
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
-    cublas_trsm(dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
-      tmp.Data(), tmp.Dim().stride);
-    CU_SAFE_CALL(cudaGetLastError());        
+    CU_SAFE_CALL(cublas_trsm(GetCublasHandle(), dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
+      tmp.Data(), tmp.Dim().stride));
     this->CopyFromMat(tmp, kNoTrans);
   } else
 #endif

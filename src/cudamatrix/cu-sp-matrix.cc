@@ -20,7 +20,7 @@
 
 #if HAVE_CUDA == 1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include "base/timer.h"
@@ -115,9 +115,9 @@ void CuSpMatrix<Real>::AddVec2(const Real alpha, const CuVectorBase<Real> &v) {
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(nr, CU2DBLOCK), n_blocks(nr, CU2DBLOCK));
 
-    cublas_spr('U', this->num_rows_, alpha, v.Data(),
-               1, this->Data());
-    CU_SAFE_CALL(cudaGetLastError());
+    CU_SAFE_CALL(cublas_spr(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, this->num_rows_, alpha, v.Data(),
+               1, this->Data()));
+    
     CuDevice::Instantiate().AccuProfile("CuSpMatrix::AddVec2", tim.Elapsed());
   } else
 #endif
@@ -145,10 +145,10 @@ void CuSpMatrix<Real>::AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
       return;
     }
 
-    char trans = (transM == kTrans ? 'N' : 'T');
+    cublasOperation_t trans = (transM == kTrans ? CUBLAS_OP_N : CUBLAS_OP_T);
 
     CuMatrix<Real> tmp_mat(*this);
-    cublas_syrk('U', trans, this_dim, m_other_dim, alpha, M.Data(),
+    cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, trans, this_dim, m_other_dim, alpha, M.Data(),
                 M.Stride(), beta, tmp_mat.Data(), tmp_mat.Stride());
     this->CopyFromMat(tmp_mat, kTakeLower);
     
@@ -218,7 +218,6 @@ bool CuSpMatrix<Real>::IsUnit(Real tol) const {
   // Note: we could do this more efficiently still, by slightly changing the
   // definition of IsUnit and getting rid of the extra stuff inside TraceSpSp
   // that corrects for the diagonal being counted twice.
-  
   return (TraceSpSp(*this, *this) + this->NumRows() - 2.0 * this->Trace() <=
           tol * this->NumRows());
 }

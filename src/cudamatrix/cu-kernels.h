@@ -481,17 +481,17 @@ inline void cuda_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1, const 
 }
 
 // Also include some template-friendly wrappers of cublas functions:
-inline void cuda_axpy(int n, float alpha, const float *x, int incx, float *y, int incy) {
-  cublasSaxpy(n, alpha, x, incx, y, incy);
+inline cublasStatus_t cuda_axpy(cublasHandle_t handle, int n, float alpha, const float *x, int incx, float *y, int incy) {
+  return cublasSaxpy_v2(handle, n, &alpha, x, incx, y, incy);
 }
-inline void cuda_axpy(int n, double alpha, const double *x, int incx, double *y, int incy) {
-  cublasDaxpy(n, alpha, x, incx, y, incy);
+inline cublasStatus_t cuda_axpy(cublasHandle_t handle, int n, double alpha, const double *x, int incx, double *y, int incy) {
+  return cublasDaxpy_v2(handle, n, &alpha, x, incx, y, incy);
 }
-inline void cuda_scal(int n, float alpha, float *x, int incx) {
-  cublasSscal(n, alpha, x, incx);
+inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, float alpha, float *x, int incx) {
+  return cublasSscal_v2(handle, n, &alpha, x, incx);
 }
-inline void cuda_scal(int n, double alpha, double *x, int incx) {
-  cublasDscal(n, alpha, x, incx);
+inline cublasStatus_t cuda_scal(cublasHandle_t handle, int n, double alpha, double *x, int incx) {
+  return cublasDscal_v2(handle, n, &alpha, x, incx);
 }
 
 

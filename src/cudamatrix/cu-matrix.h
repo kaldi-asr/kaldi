@@ -585,6 +585,7 @@ class CuMatrixBase {
   MatrixIndexT num_cols_;
   MatrixIndexT num_rows_;
   MatrixIndexT stride_;
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(CuMatrixBase);
 }; // class CuMatrixBase

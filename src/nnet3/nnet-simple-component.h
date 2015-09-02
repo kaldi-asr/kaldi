@@ -336,7 +336,6 @@ class AffineComponent: public UpdatableComponent {
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
-
 };
 
 class SoftmaxComponent: public NonlinearComponent {
@@ -834,7 +833,6 @@ class PerElementScaleComponent: public UpdatableComponent {
   const PerElementScaleComponent &operator
       = (const PerElementScaleComponent &other); // Disallow.
   CuVector<BaseFloat> scales_;
-
 };
 
 
