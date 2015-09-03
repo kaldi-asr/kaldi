@@ -1,0 +1,27 @@
+# This script is not being maintained and is not guaranteed to work.
+# Its inputs are specific to the BUT system.
+
+
+mkdir -p feats
+dir=`pwd`
+cat /mnt/matylda5/jhu09/setup/CH1/English/lists/evltest.plp.v0.scp | perl -ane 'm/(.+)=(.+)/ || die;  print "$1=$2 '$dir'/feats/$1\n";' > hcopy.scp
+cat hcopy.scp | perl -ane ' m:.+ (.+)/(.+).plp: || die; print "$2 $1/$2.plp\n";' > htk_feats.kaldi_scp
+
+HCopy -C  ../../../trunk/erest/lib/config.evltest.en.hd -S hcopy.scp
+
+../../src/bin/copy-feats --htk-in scp:htk_feats.kaldi_scp ark,scp:kaldi.ark,kaldi_feats.scp
+
+
+time ../../src/gmmbin/gmm-decode-faster --word-symbol-table=../htk_graph_creation_example/convert_factored/words.txt  --acoustic-scale=0.08333 --beam=16.0 --max-active=16000 ../htk_graph_creation_example/convert_factored/kaldi.mdl  ../htk_graph_creation_example/convert_factored/HCLG.fst 'scp:head -4 kaldi_feats.scp|' ark:words.tra 
+
+time ../../src/gmmbin/gmm-decode-faster --beam-delta=0.25 --word-symbol-table=../htk_graph_creation_example/convert_factored/words.txt  --acoustic-scale=0.08333 --beam=16.0 --max-active=16000 ../htk_graph_creation_example/convert_factored/kaldi.mdl  ../htk_graph_creation_example/convert_factored/HCLG.fst 'scp:head -3 kaldi_feats.scp|' ark:words.tra 
+
+time ../../src/gmmbin/gmm-decode-faster --beam-delta=0.75 --word-symbol-table=../htk_graph_creation_example/convert_factored/words.txt  --acoustic-scale=0.08333 --beam=16.0 --max-active=16000 ../htk_graph_creation_example/convert_factored/kaldi.mdl  ../htk_graph_creation_example/convert_factored/HCLG.fst 'scp:head -3 kaldi_feats.scp|' ark:words.tra 
+
+nohup ../../src/gmmbin/gmm-decode-faster --word-symbol-table=../htk_graph_creation_example/convert_factored/words.txt  --acoustic-scale=0.1 --beam=16.0 --max-active=16000 ../htk_graph_creation_example/convert_factored/kaldi.mdl  ../htk_graph_creation_example/convert_factored/HCLG.fst scp:kaldi_feats.scp ark:words.tra > decode.out.lmwt10 &
+
+
+
+
+
+

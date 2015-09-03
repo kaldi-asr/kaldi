@@ -1,0 +1,102 @@
+
+Compilation instructions for ATLAS with cygwin under Windows 7
+
+First make sure you have the cygwin packages gcc-g77 and 
+gcc4-fortran installed.
+
+[ notes in Windows 7 issues ]
+
+ - There are some commands relating to a "manifest" below.  This is a patch to
+   the build process for Win7.  The issue is that Windows 7 automatically tries
+   to elevate the privelege of anything with "install" or "update" in its title,
+   but this does not work from Cygwin. The manifest tells Win7 not to do the
+   heuristic privelege elevation.  This has been fixed in the 3.9 versions of
+   ATLAS, by renaming the program in question.  These instructions are for 3.8.
+
+ - If you get "vfork: resource temporarily 
+   unavailable" at some point during the build, you may have to rerun
+   make.  It may have to do with reaching cygwin's maximum number of
+   processes.
+
+
+[end notes on Windows 7 issues]
+
+# get the last stable version of ATLAS library (3.8.3)
+cd ../tools
+wget http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz/download
+tar -xvzf atlas3.8.3.tar.gz
+
+# build the library
+cd ATLAS
+mkdir cygwin_build
+cd cygwin_build
+
+../configure -b 32 --prefix=`pwd`
+
+[note: you may get some errors about "no rule to make target IRunArchInfo_winnt"
+ or something like that.  These appear not to be fatal.  I'm not sure if they
+ mean that the resulting configure process failed.  If you get errors about
+ cannot find g77 or f77 or gfortran, make sure the packages gcc-g77 and
+ gcc4-fortran are installed].
+
+
+# The following is a patch for an interaction with Windows 7.
+# It won't hurt if you're not on Windows 7.
+mkdir bin
+cd bin
+cat > xatlas_install.exe.manifest <<EOF
+<?xml version="1.0" encoding="utf-8"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+      <security>
+         <requestedPrivileges>
+            <requestedExecutionLevel level="asInvoker" />
+         </requestedPrivileges>
+      </security>
+   </trustInfo>
+</assembly>
+EOF
+cd ..
+# end patch.
+
+make
+
+# optionally check and benchmark the built library
+make check
+make time
+
+# create .dll file
+mkdir install
+# in the next command, got some errors like: 
+# cannot access `/home/dpovey/UBM-ASR/branches/v1.0/tools/ATLAS/cygwin_build/install/lib/libptf77blas.a': No such file or directory
+# ignoring these for now.
+make install DESTDIR=`pwd`/install
+cd install
+cd lib
+
+echo "EXPORTS" > lib_atlas.def
+cat ../include/cblas.h ../include/clapack.h |  \
+  perl -ane 'm:(catlas_|cblas_|clapack_)\w+: && print "$&=$&\n";' \
+ | sort | uniq >> lib_atlas.def
+
+#gcc-3 -mno-cygwin -shared -o lib_atlas.dll -Wl,--out-implib=lib_atlas.lib \
+#    lib_atlas.def \
+#    liblapack.a libcblas.a libf77blas.a libatlas.a \
+#    -Wl,--enable-auto-import 
+
+gcc-3 -mno-cygwin -shared -o lib_atlas.dll \
+    lib_atlas.def \
+    liblapack.a libcblas.a libf77blas.a libatlas.a \
+    -Wl,--enable-auto-import 
+
+# we have to use VS's lib.exe tool, not gcc, to make lib_atlas.lib,
+# or it won't work in release mode.
+# see http://groups.google.com/group/gnu.gcc.help/browse_thread/thread/c6840ea01e4d163a?pli=1
+# If your path or VS version is not as below, you will have to change the
+# command.
+"/cygdrive/c/Program Files/Microsoft Visual Studio 10.0/VC/bin/lib.exe" \
+  /DEF:lib_atlas.def /MACHINE:ix86 /OUT:lib_atlas.lib
+
+
+#The output of this process that you will need for Windows are the files
+#  [somewhere]/ATLAS/cygwin_build/install/lib/lib_atlas.{lib,dll}

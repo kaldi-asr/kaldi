@@ -1,0 +1,56 @@
+// doc/install.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page install Downloading and installing Kaldi
+
+
+ \section install_download  Dowloading Kaldi
+
+  We have now transitioned to GitHub for all future development.
+  You first need to install Git. The most current version of Kaldi,
+  possibly including unfinished and experimental features, can
+   be downloaded by typing into a shell:
+  \verbatim
+    git clone https://github.com/kaldi-asr/kaldi.git kaldi-trunk --origin golden
+    cd kaldi-trunk
+  \endverbatim
+ If you want to get updates and bug fixes you can go to some checked-out
+ directory, and type
+  \verbatim
+    git pull
+  \endverbatim
+ If "git pull" prints out a message telling it cannot pull the remote
+ changes because you have changed files locally,
+ you may have to commit locally and merge your changes, or stash them temporarily
+ and then apply back the stash; for that, we recommend that you
+ read about how Git works, possibly starting with the \ref tutorial_git.
+
+
+  \section install_install Installing Kaldi
+
+  The top-level installation instructions are in the file \c INSTALL.
+  For Windows, there are separate instructions in \c windows/INSTALL.
+  See also \ref build_setup which explains how the build process
+  works internally.
+
+  The example scripts are in \c egs/
+
+*/

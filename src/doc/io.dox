@@ -1,0 +1,636 @@
+// doc/io.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+namespace kaldi {
+/** \page io Kaldi I/O mechanisms
+
+ This page gives an overview of input-output mechanisms in Kaldi.
+ This section of the documentation is oriented towards the code-level mechanisms
+ for I/O; for documentation more oriented towards the command-line, see \ref io_tut.
+
+ \section io_sec_style The input/output style of Kaldi classes
+
+  Classes defined in Kaldi have a uniform interface for
+  I/O.  The standard interface is illustrated here:
+ \code
+  class SomeKaldiClass {
+   public:
+     void Read(std::istream &is, bool binary);
+     void Write(std::ostream &os, bool binary) const;
+  };
+ \endcode
+ Notice that these return void; errors are indicated via exceptions
+ (see \ref error).  The boolean "binary" argument indicates whether the
+ object should be written (or read) as binary data or text data.  The calling
+ code must know whether we want the object to be written or read
+ in binary or text form (see \ref io_sec_files for how it knows this in the
+ case of reading).  Note that this "binary" variable is not necessarily the
+ same as the binary or text mode the file is opened with (on Windows);
+ see \ref io_sec_windows for more explanation.
+
+ The Read and Write functions may have additional optional arguments.
+ A common case is to have a Read function of the form:
+ \code
+  class SomeKaldiClass {
+   public:
+    void Read(std::istream &is, bool binary, bool add = false);
+  };
+ \endcode
+ If add==true, the Read function would add whatever is on disk (e.g. statistics)
+ to the current class's contents, if the class is not currently empty.
+  
+ \section io_sec_basic Input/output mechanisms for fundamental types and STL types
+
+   See \ref io_funcs_basic for a list of functions involved in this.  We have
+ provided thse functions to make it easier to read and write fundamental types;
+ they are mostly called from the Read and Write functions of Kaldi classes.
+ The Kaldi classes are under no obligation to use
+ these functions, as long as they ensure that their Read function can read the
+ data that their Write function produces.
+
+ The most important functions in this category are ReadBasicType() and WriteBasicType();
+ these are templates that cover bool, float, double, and integer types.  An example of using these
+ in Read and Write functions is:
+\code
+  // we suppose that class_member_ is of type int32.
+  void SomeKaldiClass::Read(std::istream &is, bool binary) {
+    ReadBasicType(binary, &class_member_);
+  }
+  void SomeKaldiClass::Write(std::ostream &is, bool binary) const {
+    WriteBasicType(binary, class_member_); 
+  }
+\endcode
+  We have assumed that \c class_member_ is of type int32, which is a type of known
+  size.  Using types like int with these functions is not safe.  In binary mode,
+  these functions actually write a character that encodes the
+  size and signedness of integer types, and the read will fail if it doesn't match.  We
+  could have decided to attempt to convert them automatically, but we didn't;
+  currently, you have to use integer types of known size in I/O (int32 is recommended for
+  "normal" use).  Floating-point types, on the other hand, are automatically
+  converted.  This is for ease of debugging, so you can compile with 
+  \c -DKALDI_DOUBLE_PRECISION and still read your binary files that were written without
+  that option.  Our I/O routines have no byte swapping; if this is a problem for you,
+  use the text formats.
+
+  There are also the WriteIntegerVector() and ReadIntegerVector() templated functions.
+  These are in the same style as the WriteBasicType() and ReadBasicType() functions, but 
+  work for \c std::vector<I>, where I is some integer type (again, its size should
+  be known at compile time, e.g. int32). 
+
+  Some other important low-level I/O functions are;
+ \code
+  void ReadToken(std::istream &is, bool binary, std::string *token);
+  void WriteToken(std::ostream &os, bool binary, const std::string & token);
+ \endcode
+  A token must be a nonempty string with no spaces, typically in practice an XML-looking
+  string like "<SomeKaldiClass>" or "<SomeClassMemberName>" or "</SomeKaldiClass>".  
+  These functions do what they look like they would do.  For convenience, we also
+  provide ExpectToken(), which is like ReadToken() except you give it the string
+  you expect (and it will throw an exception if it doesn't get it).  Typical lines
+  of code invoking these are:
+\code
+   // in writing code:
+   WriteToken(os, binary, "<MyClassName>");
+   // in reading code:
+   ExpectToken(is, binary, "<MyClassName>");
+   // or, if a class has multiple forms:
+   std::string token;
+   ReadToken(is, binary, &token);
+   if(token == "<OptionA>") { ... }
+   else if(token == "<OptionB>") { ... }
+   ...
+\endcode
+  There are also the WritePretty() and ExpectPretty() functions.
+  These are less frequently used, and they behave like the corresponding Token
+  functions except that they only actually read and write in text mode, and they
+  accept arbitrary strings (i.e. they allow spaces); the ReadPretty function also
+  accepts input that has differs in whitespace versus what was expected.
+  The Read functions in Kaldi classes never check for end of file, but are expected
+  to read until the end of where the Write function wrote to (in text mode, 
+  leaving some whitespace unread doesn't matter).  This is so
+  that multiple Kaldi objects can be put in the same file, and also allows
+  the archive concept (see \ref io_sec_archive) to work.
+
+ \section io_sec_files How Kaldi objects are stored in files
+
+ As we have seen above, the Kaldi reading code needs to know whether it is
+ reading in text or binary mode, and we don't want the user to have to keep
+ track of whether a given file is text or binary.  For this reason,
+ files that contain Kaldi objects need to announce whether they contain
+ binary or text data.  A binary Kaldi file will start with the string
+ "\0B"; since text files can't contain "\0", they don't need a header.  
+ If you opened a file using standard C++ mechanisms (and you won't normally
+ be doing this, see \ref io_sec_opening), you would have to take care of
+ this header before doing anything.  You could do this with
+ the functions InitKaldiOutputStream()
+ (this also sets the stream precision), and InitKaldiInputStream().
+
+ \section io_sec_opening How to open files in Kaldi
+ 
+ Suppose you want to load or save a Kaldi object from/to disk,
+ and suppose it is something like speech model (but not something
+ that you need many of, like speech features; for that, see \ref io_sec_tables).
+ You will typically use the Input and Output classes.  An example is:
+ \code
+   { // input.
+     bool binary_in;
+     Input ki(some_rxfilename, &binary_in);
+     my_object.Read(ki.Stream(), binary_in);
+     // you can have more than one object in a file:
+     my_other_object.Read(ki.Stream(), binary_in);
+   }
+   // output.  note, "binary" is probably a command-line option.
+   {
+     Output ko(some_wxfilename, binary);
+     my_object.Write(ko.Stream(), binary); 
+   }
+  \endcode
+  The purpose of the braces is to make the Input and Output objects go out of scope
+  as soon as we're done, so the file gets closed immediately.  This might seem
+  a bit pointless (why not use a normal C++ stream?).  The reason is so we can
+  support various extended types of filename.  It also makes handling errors 
+  a bit easier (the Input and Output classes will print an informative
+  error message and throw an exception on error).  Notice the filenames have "rxfilename"
+  and "wxfilename" in them.  We use these types of names a lot, and they are supposed
+  to remind the coder that these are extended filenames.  We describe these entities
+  in the next section.
+  
+  The Input and Output classes have a slightly richer interface than used in the
+  example code above.  You can open them with Open(), and you can call Close()
+  rather than just letting them go out of scope.  These functions return boolean
+  status values rather than throwing exceptions on error the way the constructors
+  and destructors will.  The Open() functions (and the constructors) can also be
+  called in such a way that they don't handle the Kaldi binary header, in case
+  you need to read or write non-Kaldi objects.  You probably won't need any of
+  this extra functionality.
+
+  See \ref io_group for classes and functions related to Input and Output,
+  and to rxfilenames and wxfilenames (next section).
+  
+ \section io_sec_xfilename Extended filenames: rxfilenames and wxfilenames
+
+ The words "rxfilename" and "wxfilename" are not classes; they are descriptors that usually
+ appear in variable names, and they indicate the following:
+    - an rxfilename is a string that is to be interpreted by the Input class
+      as an extended filename for reading
+    - a wxfilename is a string that is to be interpreted by the Output class
+      as an extended filename for writing
+      
+ The types of rxfilename are as follows:
+ 
+    - "-" or "" means the standard input
+    - "some command |" means an input piped command, i.e. we strip off the "|" and give the
+          rest of the string to the shell via popen(). 
+    - "/some/filename:12345" means an offset into a file, i.e. we open the file and 
+       seek to position 12345.
+    - "/some/filename" ... anything not matching the patterns above is treated as a normal filename 
+       (however, some obviously wrong things will be recognized as errors before attempting
+        to open them).
+
+ You can find out what type an rxfilename is using ClassifyRxfilename(), but this typically
+  won't be necessary.
+
+ The types of wxfilename are as follows:
+    - "-" or "" means the standard input
+    - "| some command" means an output piped command, i.e. we strip off the "|" and give the
+          rest of the string to the shell via popen(). 
+    - "/some/filename" ... anything not matching the patterns above is treated as a normal 
+       filename (again, barring obvious errors).
+
+  Again, ClassifyWxfilename() tells you the type of a filename.
+
+ \section io_sec_tables The Table concept
+ 
+  A Table is a concept rather than actual C++ class.  It consists of a collection of
+  objects of some known type, indexed by strings.  These strings must be
+  tokens (a token is defined as a non-empty string without whitespaces).  Typical examples
+  of Tables include: 
+
+    - A collection of feature files (represented as Matrix<float>) indexed by utterance id
+    - A collection of transcriptions (represented as std::vector<int32>), indexed
+       by utterance id
+    - A collection of Constrained MLLR transforms (represented as Matrix<float>), indexed
+       by speaker id.
+
+  We will deal with these types of tables in more detail on the page
+  \subpage table_examples; here we just explain the general principles and the
+  internal mechanisms.  
+  A Table can exist on disk (or indeed, in a pipe) in two possible formats: a script
+  file, or an archive (see below, \ref io_sec_scp and \ref io_sec_archive).
+  For a list of classes and types that relate to Tables, see \ref table_group.
+
+  A Table can be accessed in three ways: using a TableWriter, a
+   SequentialTableReader, and a RandomAccessTableReader (there is also
+  RandomAccessTableReaderMapped, which is a special case we will introduce later).  
+  These are all templates; they are templated not on the
+  object in the table, but on a Holder type (see below, \ref io_sec_holders) that
+  tells the Table code how to read and write that type of object.  To open
+  a Table type, you must provide a string called a wspecifier or rspecifier (see below, \ref
+  io_sec_specifiers) that tells the Table code how the table is stored on
+  disk and gives it various other directives.  We illustrate this with some example code. 
+  This code reads features, linearly transforms them and writes them out.
+\code
+  std::string feature_rspecifier = "scp:/tmp/my_orig_features.scp",
+     transform_rspecifier = "ark:/tmp/transforms.ark",
+     feature_wspecifier = "ark,t:/tmp/new_features.ark";
+  // there are actually more convenient typedefs for the types below,
+  // e.g. BaseFloatMatrixWriter, SequentialBaseFloatMatrixReader, etc.
+  TableWriter<BaseFloatMatrixHolder> feature_writer(feature_wspecifier);
+  SequentialTableReader<BaseFloatMatrixHolder> feature_reader(feature_rspecifier);
+  RandomAccessTableReader<BaseFloatMatrixHolder> transform_reader(transform_rspecifier);
+  for(; !feature_reader.Done(); feature_reader.Next()) {
+     std::string utt = feature_reader.Key();
+     if(transform_reader.HasKey(utt)) {
+        Matrix<BaseFloat> new_feats(feature_reader.Value());
+        ApplyFmllrTransform(new_feats, transform_reader.Value(utt));
+        feature_writer.Write(utt, new_feats);
+     }
+  }
+\endcode
+  The nice thing about this setup is that the code that accesses the tables
+  can treat them as generic maps or lists.  The format of the data and
+  other aspects of the reading process (e.g., its error tolerance) can be
+  controlled by options in the rspecifiers and wspecifiers and does not
+  have to be handled by the calling code; in the example above,
+  the option ",t" tells it to write the data in text form.
+
+  The Platonic ideal of a Table would probably be a map from a string to the object.
+  However, as long as we're not doing random access on a particular table, the
+  code will not complain if it contains duplicate entries for a particular string
+  (i.e. for writing and sequential access, it behaves more like a list of pairs).
+
+  For a list of typedefs corresponding to Table types to read and write
+  specific types, see \ref table_types.
+
+  \section io_sec_scp The Kaldi script-file format
+
+  A script file (perhaps slightly misnamed) is a text file where each line
+  will typically contain something like:
+ \verbatim
+  some_string_identifier /some/filename
+ \endverbatim
+  Another valid line in a script file would be:
+ \verbatim
+  utt_id_01002 gunzip -c /usr/data/file_010001.wav.gz |
+ \endverbatim
+  When reading a line of script file, Kaldi will trim off leading and trailing whitespace,
+  and then split the line on the first region of whitespace.  The first part
+   becomes the key into the table (e.g. the utterance id, in this case "utt_id_01001"), 
+  and the second part becomes the xfilename (by which we mean an wxfilename or rxfilename, in
+  this case "gunzip -c /usr/data/file_010001.wav.gz |").
+  An empty line or an empty xfilename is not allowed.  A script file may be
+  valid for reading or writing or both, depending whether the xfilenames are
+  valid rxfilenames, or wxfilenames, or both.  
+
+  Suppose a script file is valid for reading and contains objects that
+  correspond to some Kaldi class.  It will generally be possible to take 
+  the xfilename on a line of a script 
+  file, and open it in using an Input object (se \ref io_sec_opening).  If
+  binary, the stream will contain the binary-mode header
+  "\0B" (even if it's actually in the middle of a file such as an archive).  
+  
+ \section io_sec_archive The Kaldi archive format
+
+  The Kaldi archive format is quite simple.  First recall that a token is defined
+  as a whitespace-free string.  The archive format could be described as:
+  \verbatim
+     token1 [something]token2 [something]token3 [something] ....
+  \endverbatim
+  We can describe this as zero or more repetitions of: (a token; then a
+  space character; then the result of calling the Write function of the Holder).
+  Recall that the Holder is an object that tells the Table code how to read or 
+  write something.
+
+  When writing Kaldi objects, the [something] written by the Holder will constist
+  of the binary-mode header (if binary), and then the result of calling the Write
+  function of the object.  When writing non-Kaldi objects that are simple (like
+  int32 or float or vector<int32>), the Holder classes that we write generally
+  ensure that in the text format, the [something] is a newline-terminated string.
+  That way, the archive has a nice one-line-per-entry format that looks
+  superfically like a script file, for instance:
+  \verbatim
+    utt_id_1 5
+    utt_id_2 7
+    ...
+  \endverbatim
+  is the text archive format we use for storing integers.
+
+  The archive format is such that you can concatenate archives together and they
+  will still be a valid archive (assuming they hold the same type of object).  The
+  format has been designed to be pipe-friendly, i.e. you can put an archive in a pipe
+  and the program reading it won't have to wait till the end of the pipe before
+  it can process the data.  For efficient random access into archives it's possible
+  to simultaneously write an archive to disk together with a script file that contains
+  offsets into the archive.  For this, see the next section.
+
+
+ \section io_sec_specifiers Specifying Table formats: wspecifiers and rspecifiers 
+
+ The Table classes require a string that is passed to the constructor or to the
+ Open method.  This string is called a wspecifier if passed to the TableWriter
+ class, or a rspecifier if passed to the RandomAccessTableReader or SequentialTableReader
+ classes.  Examples of valid rspecifiers and wspecifiers include:
+ \code
+  std::string rspecifier1 = "scp:data/train.scp"; // script file.
+  std::string rspecifier2 = "ark:-"; // archive read from stdin.
+  // write to a gzipped text archive.
+  std::string wspecifier1 = "ark,t:| gzip -c > /some/dir/foo.ark.gz";
+  std::string wspecifier2 = "ark,scp:data/my.ark,data/my.ark";
+ \endcode
+
+ Usually, an rspecifier or wspecifier consists of a comma-separated, unordered
+ list of one or two-letter options and one of the strings "ark" and "scp",
+ followed by a colon, followed by an rxfilename or wxfilename respectively.
+ The order of options before the colon doesn't matter.
+
+ \subsection io_sec_specifiers_both Writing an archive and a script file simultaneously
+  
+ There is a special case available for wspecifiers: they can "ark,scp" before the
+ colon, and after the colon, a wxfilename for writing the archive, then a comma,
+ then a wxfilename (for the script file).  For example, 
+ \verbatim
+  "ark,scp:/some/dir/foo.ark,/some/dir/foo.scp"  
+ \endverbatim
+ This will write an archive, and a
+ script file with lines like "utt_id /somedir/foo.ark:1234" that specify offsets into the
+ archive for more efficient random access.  You can then do what you like which
+ the script file, including breaking it up into segments, and it will behave like
+ any other script file.  Note that although the order of options before the colon
+ doesn't generally matter, in this particular case the "ark" must come before
+ the "scp"; this is in order to prevent confusion about the order of the
+ two wxfilenames after the colon (the archive always comes first).  The wxfilename
+ that specifies the archive should be a normal filename or otherwise the script file that gets
+ written won't be directly readable by Kaldi, but the code doesn't enforce this.
+
+  \subsection io_sec_wspecifiers Valid options for wspecifiers
+
+   The allowable wspecifier options are:
+     - "b" (binary) means write in binary mode (currently unnecessary as it's always the default).
+     - "t" (text) means write in text mode.
+     - "f" (flush) means flush the stream after each write operation.
+     - "nf" (no-flush) means don't flush the stream after each write operation (would currently
+        be pointless, but calling code can change the default).
+     - "p" means permissive mode, which affects "scp:" wspecifiers where the scp
+        file is missing some entries: the "p" option will cause it to silently
+        not write anything for these files, and report no error.
+
+    Examples of wspecifiers using a lot of options are
+    \verbatim
+       "ark,t,f:data/my.ark"
+       "ark,scp,t,f:data/my.ark,|gzip -c > data/my.scp.gz"
+   \endverbatim    
+   
+
+  \subsection io_sec_rspecifiers Valid options for rspecifiers
+
+   When reading the options below, bear in mind the code that reads archives can
+   never seek in the archive, in case the archive is actually a pipe (and it very
+   often is).  If a RandomAccessTableReader is reading an archive, the reading
+   code may have to store many objects in memory just in case they are requested
+   again later, or it may have to seek to the end of an archive while looking for
+   a key that was not actually present in the archive.  Some of the options below
+   represent ways to prevent this.
+
+   The important rspecifier options are:
+      - "o" (once) is the user's way of asserting to the RandomAccessTableReader code
+         that each key will be queried only once.  This stops it
+         from having to keep already-read objects in memory just in case they are needed again.
+      - "p" (permissive) instructs the code to ignore errors and just provide what
+         data it can; invalid data is treated as not existing.  In scp files,
+         this means that a query to HasKey() forces the load of the corresponding file,
+         so the code can know to return false if the file is corrupt. In archives, 
+         this option
+         stops exceptions from being raised if the archive is corrupted or truncated
+         (it will just stop reading at that point).
+      - "s" (sorted) instructs the code that the keys in an archive being read are in
+         sorted string order.  For RandomAccessTableReader, this means that when HasKey() is
+         called for some key not in the archive, it can return false as soon as it
+         encounters a "higher" key; it won't have to read till the end.
+      - "cs" (called-sorted) instructs the code that the calls to HasKey() and Value()
+         will be in sorted string order.  Thus, if one of these functions is called for
+         some string, the reading code can discard the objects for lower-numbered keys.
+         This saves memory.  In effect, "cs" represents the user's assertion that some other
+         archive that the program may be iterating over, is itself sorted.
+
+    If the user provides any of these options wrongly, e.g. provides the "s" option for
+    an archive that is not actually sorted, the RandomAccessTableReader code will make
+    a best-effort attempt to detect this error and crash.
+        
+    The following options are included for symmetry and convenience but are
+    not very useful at the moment.
+      - "no" (not-once) is the opposite of "o" (in current code,
+             this would never have any effect).
+      - "np" (not-permissive) is the opposite of "p" (in current code,
+             this would never have any effect).
+      - "ns" (not-sorted) is the opposite of "s" (in current code,
+             this would never have any effect).
+      - "ncs" (not-called-sorted) is the opposite of "cs" (in current code,
+             this would never have any effect).
+      - "b" (binary) does nothing but is allowed for scripting convenience.
+      - "t" (text) does nothing but is allowed for scripting convenience.
+
+   Typical examples of rspecifiers using a lot of options are:
+   \verbatim
+     "ark:o,s,cs:-"
+     "scp,p:data/my.scp"
+   \endverbatim
+   
+ \section io_sec_holders Holders as helpers to Table classes
+
+  As mentioned before, the Table classes i.e. TableWriter, RandomAccessTableReader
+  and SequentialTableReader, are templated on a Holder class.  Holder is not an actual
+  class or base class but describes a category of classes, and these have been given names ending in Holder,
+  e.g. TokenHolder or KaldiObjectHolder.  (KaldiObjectHolder is a generic Holder that
+  may be templated on any class satisfying that Kaldi I/O style described
+  in \ref io_sec_style).  We have written the template class GenericHolder, which is not intended
+  to be used, in order to document the properties that the Holder classes must satisfy.
+
+  The type of the class "held" by the Holder class is a typedef Holder::T  (where Holder is
+  the name of the actual Holder class in question).  
+  A list of the available holder types may be found in \ref holders.
+  
+ \section io_sec_windows How the binary/text mode relates to the file open mode
+
+ This section is only relevant on the Windows platform.  The general rule is
+ that when writing, the file mode will always match the "binary" argument to the
+ Write function; when reading binary data, the file mode will always be
+ binary, but when reading text data, the file mode may be binary or text (thus
+ the text-mode reading functions must always accept the extra '\\r' characters
+ that Windows inserts).  This is because we don't always know until we open a
+ file, whether its contents are binary or text and so when unsure, we open
+ in binary mode.
+
+ \section io_sec_bloat Avoiding memory bloat when reading archives in random-access mode
+
+ When large archives are read in random access mode by the Table code, there is a
+ potential for memory bloat.  This potentially occurs whenever an object of type
+ RandomAccessTableReader<SomeHolder> reads in an archive.  The Table code is
+ written so as to first and foremost ensure correctness, so when reading an
+ archive in random access mode, unless you give the Table code some additional
+ information (which we will discuss below), it can never throw away any object it
+ has read in case you ask for it again.  An obvious questions here is: why
+ doens't the Table code simply keep track of the position in the file at which
+ each object starts, and fseek() to that location when needed?  We have not
+ implemented this, and the reason is as follows: the only situation that you can
+ fseek() is when the archive being read is an actual file (i.e. not a piped
+ command or the standard input).  If the archive was an actual file on disk, you
+ could have written it out with an attached scp file containing offsets into the
+ file (using the "ark,scp:" prefix, see \ref io_sec_specifiers_both), and then
+ provided that scp file to the program that needs to read the archive.  This
+ would be almost as time-efficient as reading the archive directly, since the
+ code that reads in scp files is smart enough to avoid reopening files when not
+ needed and calling fseek() unnecessarily.  So treating file archives as a
+ special case and caching offsets into the file would not solve any problems.
+
+ There are two separate problems that can happen when you read an archive in random
+ access mode; these can both happen if you use just the "ark:" prefix with no
+ additional options.
+    - If you ask for a key that is not present in the archive, the reading code
+      is forced to read till the end of the archive to make sure it is not there.
+    - Every time the code reads an object, it is forced to keep it in memory in case
+      you ask for it later.
+
+ With regard to the first problem (having to read till the end of the file), 
+ the way you can avoid this is to assert that the archive is sorted on key (using
+ the normal string sorted order that "C" uses, and that the program "sort" uses
+ if you do "export LC_ALL=C").  You can do this using the "s" option when reading
+ archives: for example, the rspecifier "ark,s:-" instructs the code to read the
+ standard input as an archive and expect it to be in sorted order.  The Table code
+ checks that what you have asserted is actually true, and will crash if not.
+ Of course, you have to set up your scripts in such a way that the archives are
+ actually sorted on key (usually this will be done in the initial feature-extraction
+ stage).
+
+ With regard to the second problem (being forced to keep things in memory in 
+ case needed later), there are two solutions.  
+
+  - The first solution, which is
+    a rather brittle solution, is to provide the "once" option;
+    for example, the rspecifier "ark,o:-" reads in from the standard input and asserts
+    that you will only ask for each object once.  To be able to assert this you would
+    have to know something about how the program in question works and you would probably 
+    have to know that some other Table provided to the program does not contain any 
+    repeated keys (yes, Tables can have repeated keys as long as they are only accessed
+    in sequential mode).
+
+    If you provide the "o" option the Table can deallocate objects after they have been
+    accessed.  However, this only works well if your archives are perfectly synchronized with
+    no gaps or missing elements.  For example, suppose you execute the command:
+\verbatim
+ some-program ark:somedir/some.ark "ark,o:some command|"
+\endverbatim
+    The program "some-program" will first iterate sequentially over the archive "somedir/some.ark"
+    and then for each key it encounters, access the second archive via random access.
+    Note that the order of command-line arguments is not arbitrary: we have tried to
+    adopt the convention that rspecifiers that will be accessed sequentially appear
+    before those that will be accessed via random access.
+
+    Suppose the two archives are mostly synchronized but may have gaps (i.e. missing keys,
+    e.g. due to failures in feature extraction, data alignment, and so on).  
+    Any time there
+    is a gap in the first archive, the program will have to cache the associated object
+    from the second archive because it doesn't know that it won't be called for later
+    (it can only throw away an object once you have read it).  Gaps in the second
+    archive are more serious, because if there is a gap of even one element, when 
+    the program asks for that key it will have to read right till the end of the
+    second archive to look for it, and will have to cache all objects along the way.
+
+  - The second solution, which is more robust, is to use the "called-sorted" (cs) option.
+    This asserts that the objects will be requested in sorted order, and again this
+    requires knowledge of how the program works, plus that any sequentially accessed
+    archives are in sorted order.  The "cs" option is normally most useful in conjunction
+    with the "s" option.  Suppose we execute the following command:
+\verbatim
+ some-program ark:somedir/some.ark "ark,s,cs:some command|"
+\endverbatim
+    We assume that both archives are in sorted order, and the the program does
+    sequential access on the first archive and random access on the second.  
+    This is now robust to gaps
+    in the archives.  First imagine there is a gap in the first archive (e.g., its keys
+    are 001, 002, 003, 081, 082, ...).  When the second archive is searched for key 081 right 
+    after key 003, the code that reads the
+    second archive will encounter keys 004, 005, and so on, but it can discard the associated
+    objects because it knows that no key before 081 will be asked for again (thanks to the "cs" option).  
+    If there is a gap in the second archive, it can use the fact that the second archive is sorted
+    to avoid searching till the end of the file (this is the job of the "s" option).
+
+ \subsection io_sec_mapped
+
+  In order to condense a particular code pattern that was recurring in many programs, we have introduced the template type 
+ RandomAccessTableReaderMapped.  Unlike RandomAccessTableReader, this takes two initializer arguments, for instance:
+\verbatim
+   std::string rspecifier, utt2spk_map_rspecifier; // get these from somewhere.
+   RandomAccessTableReaderMapped<BaseFloatMatrixHolder> transform_reader(rspecifier,
+                                                                         utt2spk_map_rspecifier);
+\endverbatim
+  If utt2spk_map_rspecifier is the empty string, this will behave just like a
+  regular RandomAccessTableReader.  If it is nonempty, e.g. ark:data/train/utt2spk,
+  it will read an utterance-to-speaker map from that location and whenever a particular
+  string e.g. utt1 is queried, it will use that map to convert the utterance-id
+  to a speaker-id (e.g. spk1) and use that as the key to query the table being
+  read from rspecifier.  The utterance-to-speaker map is also an archive
+  because it happens that the Table code is the easiest way to read in such maps.
+
+
+*/
+
+/**
+  \defgroup io_funcs_basic "Low-level I/O functions"
+
+ These functions are provided to write fundamental types, strings, and a few STL types
+ to and from C++ streams; see \ref io_sec_basic for how this fits into the bigger picture
+ of Kaldi-style I/O.  
+
+ \defgroup holders "Holder types"
+
+  Holder types are types that are used as template arguments to the Table types
+  (see \ref table_group), and which help the Table types to read and write the object of type SomeHolder::T;
+  see \ref io_sec_holders for more information.
+ 
+  \defgroup table_group "Table types and related functions"
+
+ This group is for classes and functions relatied to Tables; see also
+ \ref table_impl_types and \ref table_types, and for a description
+ of the Table concept see \ref io_sec_tables.
+
+ \defgroup table_impl_types "Implementation classes for Table types"
+
+ This group is for classes that implement specific ways of reading and
+ writing Tables; see also \ref table_group, \ref table_types, \ref
+ table_types, and for a description of the Table concept see \ref io_sec_tables.
+
+ \defgroup table_types "Specific Table types"
+
+ This group is for typedefs that define specific instantiations of
+ Table types, for various kinds of access to collections of various
+ kinds of types, indexed by strings;
+ for a description of the Table concept see \ref io_sec_tables.
+
+ \defgroup io_group "Classes for opening streams"
+
+ This group contains the Input and Output classes, which are provided
+ to open streams for reading and writing in Kaldi code; for an explanation
+ of how this fits into the bigger picture of Kaldi I/O, see \ref io_sec_opening.
+ 
+*/
+
+}

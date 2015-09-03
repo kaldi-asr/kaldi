@@ -1,0 +1,110 @@
+--------------------------------------------------------------------------------------
+Triphone with mono alignment (small)
+--------------------------------------------------------------------------------------
+exp/tri1/decode_dev/wer_10:%WER 49.84 [ 20523 / 41177, 3211 ins, 4691 del, 12621 sub ]
+exp/tri1/decode_dev/wer_11:%WER 48.93 [ 20149 / 41177, 2904 ins, 4959 del, 12286 sub ]
+exp/tri1/decode_dev/wer_12:%WER 48.21 [ 19853 / 41177, 2656 ins, 5223 del, 11974 sub ]
+exp/tri1/decode_dev/wer_13:%WER 47.83 [ 19696 / 41177, 2444 ins, 5526 del, 11726 sub ]
+exp/tri1/decode_dev/wer_2:%WER 66.74 [ 27480 / 41177, 7162 ins, 3094 del, 17224 sub ]
+exp/tri1/decode_dev/wer_3:%WER 64.89 [ 26718 / 41177, 6683 ins, 3204 del, 16831 sub ]
+exp/tri1/decode_dev/wer_4:%WER 62.68 [ 25810 / 41177, 6168 ins, 3333 del, 16309 sub ]
+exp/tri1/decode_dev/wer_5:%WER 60.47 [ 24900 / 41177, 5641 ins, 3510 del, 15749 sub ]
+exp/tri1/decode_dev/wer_6:%WER 57.84 [ 23815 / 41177, 5073 ins, 3714 del, 15028 sub ]
+exp/tri1/decode_dev/wer_7:%WER 55.45 [ 22833 / 41177, 4502 ins, 3934 del, 14397 sub ]
+exp/tri1/decode_dev/wer_8:%WER 53.17 [ 21894 / 41177, 4012 ins, 4203 del, 13679 sub ]
+exp/tri1/decode_dev/wer_9:%WER 51.36 [ 21150 / 41177, 3593 ins, 4467 del, 13090 sub ]
+
+--------------------------------------------------------------------------------------
+Triphone with tri alignments
+--------------------------------------------------------------------------------------
+exp/tri2/decode_dev/wer_10:%WER 49.60 [ 20425 / 41177, 3302 ins, 4503 del, 12620 sub ]
+exp/tri2/decode_dev/wer_11:%WER 48.50 [ 19971 / 41177, 2948 ins, 4797 del, 12226 sub ]
+exp/tri2/decode_dev/wer_12:%WER 47.68 [ 19634 / 41177, 2668 ins, 5082 del, 11884 sub ]
+exp/tri2/decode_dev/wer_13:%WER 47.35 [ 19498 / 41177, 2492 ins, 5412 del, 11594 sub ]
+exp/tri2/decode_dev/wer_2:%WER 66.93 [ 27559 / 41177, 7310 ins, 2919 del, 17330 sub ]
+exp/tri2/decode_dev/wer_3:%WER 64.98 [ 26758 / 41177, 6870 ins, 3008 del, 16880 sub ]
+exp/tri2/decode_dev/wer_4:%WER 62.84 [ 25875 / 41177, 6349 ins, 3146 del, 16380 sub ]
+exp/tri2/decode_dev/wer_5:%WER 60.51 [ 24917 / 41177, 5827 ins, 3319 del, 15771 sub ]
+exp/tri2/decode_dev/wer_6:%WER 58.05 [ 23903 / 41177, 5208 ins, 3496 del, 15199 sub ]
+exp/tri2/decode_dev/wer_7:%WER 55.29 [ 22767 / 41177, 4652 ins, 3696 del, 14419 sub ]
+exp/tri2/decode_dev/wer_8:%WER 52.85 [ 21764 / 41177, 4112 ins, 3899 del, 13753 sub ]
+exp/tri2/decode_dev/wer_9:%WER 50.89 [ 20953 / 41177, 3650 ins, 4197 del, 13106 sub ]
+--------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------
+Triphone + LDA + MLLT
+--------------------------------------------------------------------------------------
+exp/tri3a/decode_dev/wer_10:%WER 43.99 [ 18112 / 41177, 3333 ins, 3942 del, 10837 sub ]
+exp/tri3a/decode_dev/wer_11:%WER 43.06 [ 17729 / 41177, 3036 ins, 4164 del, 10529 sub ]
+exp/tri3a/decode_dev/wer_12:%WER 42.46 [ 17483 / 41177, 2769 ins, 4473 del, 10241 sub ]
+exp/tri3a/decode_dev/wer_13:%WER 42.07 [ 17324 / 41177, 2513 ins, 4816 del, 9995 sub ]
+exp/tri3a/decode_dev/wer_2:%WER 60.04 [ 24722 / 41177, 7058 ins, 2662 del, 15002 sub ]
+exp/tri3a/decode_dev/wer_3:%WER 58.07 [ 23911 / 41177, 6593 ins, 2741 del, 14577 sub ]
+exp/tri3a/decode_dev/wer_4:%WER 56.07 [ 23088 / 41177, 6129 ins, 2877 del, 14082 sub ]
+exp/tri3a/decode_dev/wer_5:%WER 53.77 [ 22141 / 41177, 5594 ins, 3024 del, 13523 sub ]
+exp/tri3a/decode_dev/wer_6:%WER 51.55 [ 21226 / 41177, 5101 ins, 3178 del, 12947 sub ]
+exp/tri3a/decode_dev/wer_7:%WER 48.98 [ 20169 / 41177, 4571 ins, 3353 del, 12245 sub ]
+exp/tri3a/decode_dev/wer_8:%WER 47.08 [ 19385 / 41177, 4122 ins, 3556 del, 11707 sub ]
+exp/tri3a/decode_dev/wer_9:%WER 45.35 [ 18674 / 41177, 3699 ins, 3742 del, 11233 sub ]
+--------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------
++ SAT + fMLLR
+--------------------------------------------------------------------------------------
+exp/tri4a/decode_dev/wer_10:%WER 39.80 [ 16389 / 41177, 3478 ins, 3328 del, 9583 sub ]
+exp/tri4a/decode_dev/wer_11:%WER 38.91 [ 16021 / 41177, 3198 ins, 3528 del, 9295 sub ]
+exp/tri4a/decode_dev/wer_12:%WER 38.19 [ 15727 / 41177, 2931 ins, 3734 del, 9062 sub ]
+exp/tri4a/decode_dev/wer_13:%WER 37.56 [ 15468 / 41177, 2691 ins, 3951 del, 8826 sub ]
+exp/tri4a/decode_dev/wer_2:%WER 55.44 [ 22827 / 41177, 7045 ins, 2317 del, 13465 sub ]
+exp/tri4a/decode_dev/wer_3:%WER 53.59 [ 22068 / 41177, 6631 ins, 2388 del, 13049 sub ]
+exp/tri4a/decode_dev/wer_4:%WER 51.44 [ 21183 / 41177, 6111 ins, 2500 del, 12572 sub ]
+exp/tri4a/decode_dev/wer_5:%WER 49.14 [ 20236 / 41177, 5606 ins, 2562 del, 12068 sub ]
+exp/tri4a/decode_dev/wer_6:%WER 46.90 [ 19314 / 41177, 5104 ins, 2698 del, 11512 sub ]
+exp/tri4a/decode_dev/wer_7:%WER 44.49 [ 18318 / 41177, 4610 ins, 2834 del, 10874 sub ]
+exp/tri4a/decode_dev/wer_8:%WER 42.57 [ 17529 / 41177, 4158 ins, 2999 del, 10372 sub ]
+exp/tri4a/decode_dev/wer_9:%WER 41.08 [ 16917 / 41177, 3785 ins, 3145 del, 9987 sub ]
+--------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------
++ More leaves and gaussians
+--------------------------------------------------------------------------------------
+exp/tri5a/decode_dev/wer_10:%WER 37.46 [ 15423 / 41177, 3405 ins, 3125 del, 8893 sub ]
+exp/tri5a/decode_dev/wer_11:%WER 36.59 [ 15067 / 41177, 3111 ins, 3351 del, 8605 sub ]
+exp/tri5a/decode_dev/wer_12:%WER 35.90 [ 14783 / 41177, 2833 ins, 3527 del, 8423 sub ]
+exp/tri5a/decode_dev/wer_13:%WER 35.42 [ 14583 / 41177, 2612 ins, 3766 del, 8205 sub ]
+exp/tri5a/decode_dev/wer_2:%WER 53.13 [ 21877 / 41177, 7202 ins, 2109 del, 12566 sub ]
+exp/tri5a/decode_dev/wer_3:%WER 51.17 [ 21072 / 41177, 6676 ins, 2206 del, 12190 sub ]
+exp/tri5a/decode_dev/wer_4:%WER 48.96 [ 20159 / 41177, 6151 ins, 2287 del, 11721 sub ]
+exp/tri5a/decode_dev/wer_5:%WER 46.62 [ 19195 / 41177, 5598 ins, 2395 del, 11202 sub ]
+exp/tri5a/decode_dev/wer_6:%WER 44.38 [ 18276 / 41177, 5070 ins, 2501 del, 10705 sub ]
+exp/tri5a/decode_dev/wer_7:%WER 42.14 [ 17351 / 41177, 4570 ins, 2641 del, 10140 sub ]
+exp/tri5a/decode_dev/wer_8:%WER 40.17 [ 16542 / 41177, 4121 ins, 2781 del, 9640 sub ]
+exp/tri5a/decode_dev/wer_9:%WER 38.56 [ 15878 / 41177, 3695 ins, 2941 del, 9242 sub ]
+--------------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------------
++ bMMI + SGMM
+--------------------------------------------------------------------------------------
+exp/sgmm5/decode_dev/wer_10:%WER 32.81 [ 13510 / 41177, 2552 ins, 3502 del, 7456 sub ]
+exp/sgmm5/decode_dev/wer_11:%WER 32.73 [ 13478 / 41177, 2319 ins, 3794 del, 7365 sub ]
+exp/sgmm5/decode_dev/wer_12:%WER 32.77 [ 13492 / 41177, 2127 ins, 4117 del, 7248 sub ]
+exp/sgmm5/decode_dev/wer_13:%WER 32.93 [ 13561 / 41177, 1954 ins, 4388 del, 7219 sub ]
+exp/sgmm5/decode_dev/wer_14:%WER 33.26 [ 13695 / 41177, 1809 ins, 4681 del, 7205 sub ]
+exp/sgmm5/decode_dev/wer_15:%WER 33.71 [ 13880 / 41177, 1709 ins, 4962 del, 7209 sub ]
+exp/sgmm5/decode_dev/wer_16:%WER 34.09 [ 14037 / 41177, 1602 ins, 5226 del, 7209 sub ]
+exp/sgmm5/decode_dev/wer_8:%WER 34.04 [ 14016 / 41177, 3118 ins, 3059 del, 7839 sub ]
+exp/sgmm5/decode_dev/wer_9:%WER 33.20 [ 13671 / 41177, 2807 ins, 3267 del, 7597 sub ]
+
+--------------------------------------------------------------------------------------
+pNorm-Ensemble DNN
+--------------------------------------------------------------------------------------
+exp/tri6a_dnn/decode_dev/wer_10:%WER 31.02 [ 12774 / 41177, 2762 ins, 3042 del, 6970 sub ]
+exp/tri6a_dnn/decode_dev/wer_11:%WER 30.49 [ 12556 / 41177, 2573 ins, 3236 del, 6747 sub ]
+exp/tri6a_dnn/decode_dev/wer_12:%WER 30.15 [ 12414 / 41177, 2384 ins, 3414 del, 6616 sub ]
+exp/tri6a_dnn/decode_dev/wer_13:%WER 29.93 [ 12324 / 41177, 2237 ins, 3593 del, 6494 sub ]
+exp/tri6a_dnn/decode_dev/wer_14:%WER 29.87 [ 12298 / 41177, 2093 ins, 3794 del, 6411 sub ]
+exp/tri6a_dnn/decode_dev/wer_15:%WER 29.80 [ 12269 / 41177, 1946 ins, 3967 del, 6356 sub ]
+exp/tri6a_dnn/decode_dev/wer_16:%WER 29.96 [ 12336 / 41177, 1869 ins, 4165 del, 6302 sub ]
+exp/tri6a_dnn/decode_dev/wer_8:%WER 32.81 [ 13511 / 41177, 3317 ins, 2733 del, 7461 sub ]
+exp/tri6a_dnn/decode_dev/wer_9:%WER 31.74 [ 13068 / 41177, 3017 ins, 2889 del, 7162 sub ]
+--------------------------------------------------------------------------------------

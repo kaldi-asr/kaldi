@@ -1,0 +1,201 @@
+
+- To Matrix and CuMatrix, add a function 
+
+
+(Z)
+ Need to improve the efficiency of CudaMalloc.  I would suggest
+ to have some kind of CPU-hosted map from size (or x,y size for CudaMallocPitch),
+ to the address, that when we free stuff we just keep the pointer..
+
+
+(A)
+  Need to improve the efficiency of
+  (i)     TraceMatMat (for CuMatrix)
+  (ii)    CuMatrix::AddDiagMatMat
+  (iii)   CuVector::Sum();
+
+(B)
+  
+  // Make a matrix symmetric by either copying the lower to upper triangle
+  // copying upper to lower, taking the mean, or taking the mean and checking
+  // it was already almost symmetric.  You can test it by making sure that
+  // it behaves the same as the SpMatrix CopyFromMat function, e.g. first
+  // calling Symmetrize with a particular argument "t" and then creating an SpMatrix
+  // from the matrix with kTakeMeanAndCheck, should give the same result as
+  // initializing the SpMatrix with the original matrix and "t".  kTakeMeanAndCheck
+  // means set to the mean, but check they were approximately equal; see the SpMatrix
+  // code for how to implement it (in fact, the code can be based on the same code
+  // in SpMatrix::CopyFrommat).
+  void Symmetrize(SpCopyType symmetrize_type);
+
+  // This function should call dsymm (it can, arbitrarily, add to the lower triangle),
+  // and then Symmetrize(kTakeLower).  Before calling dsymm we should check that
+  // the original matrix is approximately symmetric: we can do #ifdef KALDI_PARANOID,
+  // Symmetrize(kTakeMeanAndCheck). #endif.
+  void SymmetricAddMatMat(Real alpha, const Matrix<Real> &A, MatrixTransposeType transA,
+                          const Matrix<Real> &B, MatrixTransposeType transB, Real beta);
+                   
+
+
+
+(C)
+The functions in CuMath.h that say "this needs documentation" need documentation
+(i.e.  comments saying what the functions do).  Someone would need to look at
+the code and figure out what the functions do (it's not my code).  Please look
+at cu-matrix.h, for the similar functions CopyRows() and CopyCols(), for what I
+consider to be adequate documentation.  Also these functions would need testing
+code, if it doesn't already exist.
+
+
+
+-
+ Help needed:
+  - Proofread documentation and make suggestions for 
+    changes/clarification.
+  - Try to run the scripts and compile on various platforms, and
+    report problems.
+
+  - eventually convert the refs to numeric_limits in fstext/lattice-weight.h
+    and lat/arctic-weight.h, back to fst::FloatLimits
+=====
+dan's TODO:
+
+ remove the weighting in my neural net setup-- not helpful
+
+ put informative text in local/score.sh RE how to see results.
+
+ change on-disk formats to make memory mapping easier?
+ address roundoff issues RE lattice generation?
+ suggestions from Sanjeev: modify decoding scripts to adjust num-jobs;
+   improve MMI training stuff or at least its docs, RE sub-split?
+ remove reverse stuff from gmm-latgen-faster
+  
+ fix SGMM w/ resizing spk vecs. [not sure if done]
+
+minor:
+ Add something in training tools, to verify that spk-id is prefix of utt-id.
+ Refactor UBM-building code "ClusterGaussiansToUbm"
+ add combination scripts for wsj/s3
+ look into why results not reproducible?   check if reproducible?
+ change UBM-building in WSJ to match RM, and test the effect of this.
+ Maybe test SGMMs, with Gaussian alignments fixed to UBM for first few iters.
+ add void Check(); function to most config classes.
+ Put 'using namespace kaldi;' in all main()'s and remove kaldi::
+ Consider adding "see also" line to "usage" messages.
+ make fstbin/ programs "proper" Kaldi programs, e.g. change
+   cerr to KALDI_ERR.  Consider doing same in fstext/
+ Modify reading-in function for vectors, matrices, etc., so they
+   successfully read in -inf and -nan.
+ normalize binaries so they never take summed accs (unless sum-accs program)?
+ remove mix-up, mix-down options from gmm-est (have separate program)
+ possibly remove gmm-align (modifiy scripts accordingly).
+ make questions on disk be in text form (use sym2int.pl etc.)... same
+   for transcripts while decoding.
+ at kaldi-matrix.cc:1198, make it read in -nan and -inf
+ maybe move UBM clustering somewhere else [from am-diag-gmm]?
+ document the --cmd options in wsj/s3 scripts
+ change sgmm code so gselect is no longer optional [only in discrim/?]
+ Make sure scripts don't depend on . being on PATH
+
+
+lattice-rand-path [not started]  Eventually have a version that computes a random path weighted by probability?  Not sure how useful.
+
+
+
+=============
+COMPLETED, MAY REQUIRE ADDITIONAL FEATURES
+
+gmm-latgen-simple   [finished]  Create lattices.  Write either state-level traceback or word-level lattice-determinized output, depending on options.
+
+lattice-lmrescore [not started] Given an FST representing an LM, and a scale with which to add the LM score (typically 1 or -1): composes it (on the right) with the lattice (in Lattice format), and then lattice-determinizes it to make there be only one path per word-seq.  Note: if the LM scale (to add) is negative, we would have to negate the weights before lattice-determinizing, and then negate again after.
+
+lm-rescore-lattice-{fst,arpa} [for Gilles; not started]  Replace (or add) graph scores on a lattice with newly computed LM scores.  Normal usage: lm-rescore-lattice <LM FST/arpa> <lattice-in-archive> <lattice-out-archive>.
+  Options would include --lm-scale [default = 1]; set to -1 for removing old LM scores; and --old-graph-scale [default = 0] to keep the old graph scores with some scale [e.g. useful if we previously added transition probabilities].
+
+lattice-to-post [not started]  Does forward-backward on the lattice, using its current weights, and converts it to state-level (transition-id-level) posteriors.   Would include --acoustic-scale option for convenience.
+   Normal usage: lattice-to-post --acoustic-scale=$acwt <in-archive> <out-archive>.  Another option would be --rand-prune, which would do randomized pruning of state-level posteriors if they are below a threshold, as I already do in some programs that create Gaussian-level posteriors. [the randomization is there to preserve expectations].
+
+lattice-scale [not started] Applies scaling to lattices' scores [ScaleLattice function].... would probably be called normally as lattice-scale --acoustic-scale=0.1 <in-archive> <out-archive>, but
+also with options --graph-scale, --acoustic2graph-scale, --graph2acoustic-scale, corresponding to a 2x2 scaling matrix.
+
+gmm-rescore-lattice [not started]  Replace acoustic scores on a lattice with newly computed acoustic scores.  Normal usage: gmm-rescore-lattice model <lattice-in-archive> <feats-in-archive> <lattice-out-archive>.  
+  Would have option --old-acoustic-scale [default = 0] to keep the old acoustics with some scale.
+  Might add options to add in the transition probabilities to either the acoustic part or the graph part of the weights-- or might create a separate program for this.
+
+
+
+=============
+OLDER TODOS
+=====
+
+ TODO items (Arnab):
+  Check the clapack configuration in the configure script... not clear
+     what the purpose of CLAPACK_ROOT is.  I think the configure script
+     should create a Makefile that doesn't depend on external variables (Dan)
+  Add separate min-count at root of tree for regression-tree fMLLR/MLLR
+  Add fMLLR scripts for SGMM.
+  Add documentation for regression-tree fMLLR (etc.) and possibly expand
+   documentation for acoustic modeling code.
+
+ TODO items (Dan):
+  Harmonize output style of decoders (e.g. same type of lattices).
+  Check kaldi-decoder and add example scripts.
+  Look into how better to estimate vectors in training time
+    (I think WERs degraded when I fixed a script bug that
+    was having the effect of re-estimating spk-vecs from
+    zero each time).
+  Remove non-Kaldi code from decoder/
+  Rename to branches/kaldi-1.0
+
+  Add code to average over multiple models while aligning ...
+
+ documentation:
+  add something on dir structure
+  add something on doxygen
+
+  -restore table_examples to mainpage.dox when done.
+  -Include some examples of advanced usage of tables.
+
+  [? + make sub-directories for different language-models/lexicons in scripts]
+
+   - See if I can still do the reversed decoding if possible, and
+     maybe rationalize the graph creation.
+
+   - Implement lattice generation 
+
+--
+Minor:
+
+ RE reversing FSTs:  need to reverse Arpa.  
+   programs to: convert Arpa->exclusive counts;
+   exclusive counts-> inclusive counts; reverse inclusive counts;
+   inclusive counts-> exclusive counts; exclusive counts->Arpa.
+
+
+in future (maybe)
+ make sure calls like fopen, strtoll, strtod (check for more) use reentrancy 
+ structures.  (also rand_r, snprintf vs spritnf...?) (?)
+
+ Make sure, when we get the SGMM stuff working, that results are fully
+  reproducible (last year's code does not
+  seem to have been reproducible, due I imagine to rand() issues.) 
+ 
+ Add the stuff RE symmetric SGMMS, from the old to the new  SGMM code. [?]
+
+
+--------
+
+# I believe these were the commands I used to use the new style of reading
+# and writing Kaldi objects.
+for x in */*.cc; do perl -e '$/ = "}"; while(<>){  if ( m:\n(\s+){\s+Output (\w+)\(([\w\d]+), (\w+)\);\s+([\w\d]+)\.Write\((\w+)\.Stream\(\), (\w+)\);\s+}:) {
+     $indent = $1; $output_name = $2; $filename = $3; $binary_name = $4; $object_name = $5; $output_name2 = $6; $binary_name2 = $7;
+     if ($output_name ne $output_name2) { print STDERR "Warning: $ARGV[0]: $output_name ne $output_name2\n"; }
+     if ($binary_name ne $binary_name2) { print STDERR "Warning: $ARGV[0]: $binary_name ne $binary_name2\n"; }
+     print "$`\n${indent}WriteKaldiObject($object_name, $filename, $binary_name);";
+   } else { print; }} ' $x > tmp; mv tmp $x; done
+
+for x in */*.cc; do echo $x; perl -e '$/ = "}"; while(<>){  if ( m:\n(\s+){\s+bool binary(|_in);\s+Input (\w+)\(([\w\d]+), &binary(|_in)\);\s+([\w\d]+)\.Read\((\w+)\.Stream\(\), binary(|_in)\);\s+}:) {
+     $indent = $1; $input_name = $3; $filename = $4; $obj_name = $6; $input_name2 = $7;
+     if ($input_name ne $input_name2) { print STDERR "Warning: $ARGV[0]: $input_name ne $input_name2\n"; }
+     print "$`\n${indent}ReadKaldiObject($filename, &$obj_name);";
+   } else { print; }} ' $x > tmp; mv tmp $x; done

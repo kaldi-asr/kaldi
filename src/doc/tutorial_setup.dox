@@ -1,0 +1,59 @@
+// doc/tutorial_setup.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_setup Kaldi tutorial: Getting started (15 minutes)
+
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_prereqs "Previous: Prerequisites" <BR>
+    \ref tutorial_git "Next: Version control with Git" <BR>
+
+  The first step is to download and install Kaldi.  We will be using version 1 of
+  the toolkit, so that this tutorial does not get out of date.  However, be aware
+ that the code and scripts in the "trunk" (which is always up to date) is easier to
+ install and is generally better.  If you use the "trunk" code you can also try to
+ use the most recent scripts, which are in directory "egs/rm/s5", rather than the
+ "s3" scripts mentioned in this tutorial.  But be aware that if you do that some
+ aspects of the tutorial may be out of date.
+
+  Assuming Git is installed, to get the latest code you can type
+  \verbatim
+    git clone https://github.com/kaldi-asr/kaldi.git kaldi-trunk --origin golden
+  \endverbatim
+  Then cd to kaldi-trunk.  Look at the INSTALL file and follow the instructions
+  (it points you to two subdirectories).  Look carefully at the output of the
+  installation scripts, as they try to guide you what to do.  Some installation
+  errors are non-fatal, and the installation scripts will tell you so (i.e. there
+  are some things it installs which are nice to have but are not really needed).
+  The "best-case" scenario is that you do:
+ \verbatim
+   cd kaldi-trunk/tools/; make; cd ../src; ./configure; make
+ \endverbatim
+ and everything will just work; however, if this does not happen there are
+ fallback plans (e.g. you may have to install some package on your machine, or run
+ install_atlas.sh in tools/, or run some steps in tools/INSTALL manually,
+ or provide options to the configure script in src/).  If there are problems,
+ there may be some information in \ref build_setup that will help you; otherwise,
+ feel free to contact the maintainers (\ref other) and we will be happy to help.
+
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_prereqs "Previous: Prerequisites" <BR>
+    \ref tutorial_git "Next: Version control with Git" <BR>
+<P>
+*/

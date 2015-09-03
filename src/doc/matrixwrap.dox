@@ -1,0 +1,260 @@
+// doc/matrixwrap.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation  Arnab Ghoshal
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/** \page matrixwrap External matrix libraries
+
+  Here we describe how our \ref matrix "matrix library" makes use of 
+  external libraries.
+
+  \section matrixwrap_summary Overview
+ 
+  The matrix code in Kaldi is mostly a wrapper on top of the
+  linear-algebra libraries BLAS and LAPACK.  The code has been designed to be as flexible
+  as possible in terms of what libraries it can use.  Currently it supports four options:
+    -  ATLAS, which is an implementation of BLAS plus a subset of LAPACK (with a different interface)
+    -  Some implementation of BLAS plus CLAPACK (note: this has not been tested recently).
+    -  Intel's MKL, which provides both BLAS and LAPACK
+    -  OpenBLAS, which provides BLAS and LAPACK
+
+  The code has to "know" which of these four options is being used, because although in principle
+  BLAS and LAPACK are standardized, there are some differences in the interfaces.
+  The Kaldi code requires exactly one
+  of the three strings HAVE_ATLAS, HAVE_CLAPACK, HAVE_OPENBLAS or HAVE_MKL to be defined 
+  (e.g. using -DHAVE_ATLAS as an option to the compiler).  It must then be 
+  linked with the appropriate libraries.  The code that deals most directly
+  with including the external libraries and setting up the appropriate
+  typedef's and defines, is in \ref kaldi-blas.h.   However, the rest of
+  the matrix code is not completely insulated from these issues because the ATLAS
+  and CLAPACK versions of higher-level routines are called differently (so
+  we have a lot of "#ifdef HAVE_ATLAS" directives and the like).  Additionally, some routines
+  are not even available in ATLAS so we have had to implement them ourselves.
+
+  The "configure" script in the "src" directory is responsible for setting up Kaldi to use the libraries.
+  It does this by creating the file "kaldi.mk" in the "src" directory, which gives appropriate flags
+  to the compiler.   If called with no arguments it will use any ATLAS installation it can find in "normal" places
+  in your system, but it is quite configurable.  See the script itself for usage.
+
+ \section matrixwrap_blas Basic Linear Algebra Subroutines (BLAS)
+
+   Because we refer a lot to BLAS in this section, we briefly explain what it is. 
+   BLAS is a set of subroutine declarations that correspond to low-level
+   matrix-vector operations.  There is Level 1 Blas (vector-vector), Level 2
+   (vector-matrix) and Level 3 (matrix-matrix).  They have names like daxpy (for
+   double-precision a*x plus y), and dgemm (for double general matrix-matrix
+   multiply).  BLAS has various actual implementations.  The "reference BLAS",
+   supplied I believe by Netlib (the folks who also brought us the most common version
+   of LAPACK), is one.  ATLAS is another one (but it also implements some functions
+   from LAPACK).
+
+ \section matrixwrap_lapack Linear Algebra PACKage (LAPACK)
+
+   Lapack is a set of linear-algebra routines, originally written in Fortran.  It includes
+   higher-level routines than BLAS, such as matrix inversion, SVD, etc.  
+   Netlib has implemented this (this is the "normal" LAPACK).  LAPACK requires
+   BLAS.  It is possible to mix-and-match LAPACK and BLAS implementations 
+   (e.g. Netlib's LAPACK with ATLAS's BLAS).
+ 
+  CLAPACK is a version of LAPACK that has been converted from Fortan to C automatically
+  using the f2c utility.  When we talk about using LAPACK, we are actually
+  talking about using CLAPACK.  Because CLAPACK has been converted to C using the
+  f2c utility, when we link against it we need to include the f2c library (e.g. -lf2c,
+  or -lg2c if using recent versions of gcc), otherwise we will get linking errors.
+
+
+  \section matrixwrap_atlas Automatically Tuned Linear Algebra Software (ATLAS) 
+
+  ATLAS is a well known implementation of BLAS plus a subset of LAPACK.  The
+  general idea of ATLAS is to tune to the particular processor setup, so the
+  compilation process is quite complex and can take a while.  For this reason,
+  it can be quite tricky to compile ATLAS.  On UNIX-based systems, you can't even do it unless you 
+  are root or are friendly with your system administrator, because to compile
+  it you need to turn off CPU throttling; and on Windows, ATLAS does not compile
+  "natively", only in Cygwin.  Sometimes it can be a better bet to find libraries that
+  have been compiled by someone else for your particular platform, but we can't offer
+  much advice on how to do this.  ATLAS generally performs better 
+  than the "reference BLAS" available from Netlib.   ATLAS only includes
+  a few LAPACK routines.  These include matrix inversion and Cholesky factorization,
+  but not SVD.  For this reason we have implemented a couple more of the LAPACK
+  routines (SVD and eigenvalue decomposition); see 
+  the next section.
+  
+  ATLAS conforms to the BLAS interface, but its interface for the subset of
+  LAPACK routines that it provides is not the same as Netlib's (it's more
+  C-like and less FORTRAN-ish).  For this reason, there are quite a number of #ifdef's in our code
+  to switch between the calling styles, depending whether we are
+  linking with ATLAS or CLAPACK.
+  
+  \subsection matrixwrap_atlas_install_windows Installing ATLAS (on Windows)
+
+  For instructions on how to install ATLAS on Windows (and note that these
+  instructions require Cygwin), see the file windows/INSTALL.atlas
+  in our source distribution.  Note that our Windows setup is not being
+  actvely maintained at the moment and we don't anticipate that it will work
+  very cleanly.
+
+  \subsection matrixwrap_atlas_install_linux Installing ATLAS (on Linux)
+
+  If your system does not have ATLAS installed, or there are no pre-built binaries
+  available, you will need to install ATLAS from source.  Even if your system has
+  pre-built binaries available, they may not be the best binaries possible for your
+  architecture so it is probably a better idea to compile from source.
+  The easiest way to do this
+  is to cd from "src" to "../tools" and to run ./install_atlas.sh.  
+  If this does not work, the detailed installation
+  instructions can be found at: http://math-atlas.sourceforge.net/atlas_install/. 
+	
+  One useful note is that before installing ATLAS you should turn off CPU
+ throttling using "cpufreq-selector -g performance" (cpufreq-selector may be in
+ sbin), if it is enabled (see the ATLAS install page).  You can first try running the 
+ "install_atlas.sh" script before doing this, to see whether it works-- if CPU
+  throttling is enabled, the ATLAS installation scripts will die with an error.
+	
+	\section matrixwrap_mkl Intel Math Kernel Library (MKL)
+	Intel MKL also provides C-language interface to the BLAS and LAPACK routines,
+	and can be used with Kaldi by using the -DHAVE_MKL compiler flag. The linker
+	flags for MKL tend to be quite different depending on the OS, architecture, 
+	compiler, etc. used. We have tested Kaldi on 32-bit Windows and x86_64 (or EMT64) Linux.
+	Flags for other platforms can be obtained from:
+  http://software.intel.com/en-us/articles/intel-mkl-link-line-advisor/
+
+  \section matrixwrap_openblas OpenBLAS
+
+    Kaldi now supports linking against the OpenBLAS library, which  is an implementation
+  of BLAS and parts of LAPACK.  OpenBLAS also automatically compiles Netlib's implementation of LAPACK,
+  so that it can explort LAPACK in its entirety.
+  OpenBLAS is a fork of the GotoBLAS project (an assembler-heavy implementation of BLAS) which is no longer being
+  maintained.  In order to use GotoBLAS you can cd from "src" to "../tools", type
+  "make openblas", then cd to "../src" and give the correct option to the "configure" script
+  to use OpenBLAS (look at the comments at the top of the configure script to find this option).
+  Thanks to Sola Aina for suggesting this and helping us to get this to work.
+  
+  \section matrixwrap_jama Java Matrix Package (JAMA)
+
+  JAMA is an implementation of linear-algebra routines for Java, written
+  in collaboration between NIST and MathWorks and put into the public domain 
+  (see math.nist.gov/javanumerics/jama).  We used some of this code to fill
+  in a couple of holes in ATLAS-- specifically, if we're compiling with
+ -DHAVE_ATLAS, we don't have the CLAPACK routines for SVD and eigenvalue
+  decomposition available, so we use code from JAMA that we translated into
+  C++.  See the EigenvalueDecomposition class, and the function MatrixBase::JamaSvd.
+  The user of the matrix library should never have to interact with this code
+  directly.
+
+  \section matrixwrap_linking_errors Linking errors you might encounter
+
+   To make sure the matrix library is compiling correctly, type "make" in the matrix/
+  directory and see if it succeeds.  A lot of compilation issues will manifest themselves
+  as linking errors.  In this section we give a summary of some of the more common
+  linking errors (at least, those that relate specifically to the matrix library).
+ 
+   Depending on the compilation option (-DHAVE_CLAPACK, -DHAVE_LAPACK or -DHAVE_MKL),
+  the code will be expecting to link with different things.  When debugging linking
+  errors, bear in mind that the problem could be a mismatch between the compilation
+  options and the libraries that you actually linked.
+
+  \subsection matrix_err_f2c f2c or g2c errors
+
+  The f2c library is often required if you link with CLAPACK, because it
+  was created with f2c and that tool requires you to link with its own library.
+  Not that with recent versions of gcc you have to link with -lg2c not -lf2c.
+
+  The symbols that will be missing if this is the problem, include:
+
+   s_cat, pow_dd, r_sign, pow_ri, pow_di, s_copy, s_cmp, d_sign
+
+  \subsection matrix_err_clapack CLAPACK linking errors
+    
+   You will get these errors if you compiled with -DHAVE_CLAPACK but did
+   not provide the CLAPACK library.  The symbols you will be missing are:
+
+  sgetrf_, sgetri_, dgesvd_, ssptrf_, ssptri_, dsptrf_, dsptri_, stptri_, dtptri_
+
+  This will usually be called something like liblapack.a or if using a
+  dynamic library, you would
+  type -llapack.  Be careful-- this has the same name as the ATLAS-supplied
+  library "lapack" (see section \ref matrix_err_clapack),
+  but it supplies different symbols.   The native CLAPACK version of liblapack
+  has symbols like those above (e.g. sgesvd_, sgetrf_), but the ATLAS version
+  has symbols like clapack_sgetrf and also ones like ATL_sgetrf.
+  
+  \subsection matrix_err_blas BLAS linking errors
+  
+   You will get these errors if you failed to link against an implementation
+   of BLAS.  These errors can also occur if libraries are linked in the wrong
+   order.  CLAPACK requires BLAS, so you have to link BLAS after CLAPACK.
+   
+   The symbols you will see if you failed to link with BLAS include:
+  
+   cblas_sger, cblas_saxpy, cblas_dapy, cblas_ddot, cblas_sdot, cblas_sgemm, cblas_dgemm
+
+   To fix these, link with a static library like libcblas.a, or do -lcblas (assuming
+   such a library is on your LD_LIBRARY_PATH).  This library may come from ATLAS (which
+   is preferable), or from Netlib (the "reference BLAS").  To the best of my current
+   knowledge they have the same interface.
+
+  \subsection matrix_err_cblaswrap cblaswrap linking errors
+
+  CLAPACK seems to rely on symbols like f2c_sgemm that are some kind of wrapping
+  of symbols like cblas_sgemm and so on.  I'm not sure exactly what is being
+  wrapped, and why.  Anyway, the effect is that you may need to include a library
+  named libcblaswr.a or dynamically using -lcblaswr, if you are using Netlib's
+  CLAPACK.  The cblaswrap library should be invoked before the cblas one.  If you
+  are missing cblaswrap, you will see errors about symbols like:
+
+  f2c_sgemm, f2c_strsm, f2c_sswap, f2c_scopy, f2c_sspmv, f2c_sdot, f2c_sgemv 
+
+  and so on (there are a lot of these symbols).
+
+  \subsection matrix_err_atl_blas Missing the ATLAS implementation of BLAS
+
+  If you linked with an ATLAS implementation of BLAS but only did -lcblas (or compiled
+  with libcblas.a), but did not do -latlas (or compile with libatlas.a), you will have
+  a problem because ATLAS's BLAS routines like cblas_sger internally call things that are
+  in libatlas.  If you have this problem you will have undefined references like:
+
+  ATL_dgemm, ATL_dsyrk, ATL_dsymm, ATL_daxpy, ATL_ddot, ATL_saxpy, ATL_dgemv, ATL_sgemv
+
+  \subsection matrix_err_atl_clapack Missing the ATLAS implementation of (parts of) CLAPACK
+
+  These errors can only occur if you compiled wiht the -DHAVE_ATLAS option.
+  Atlas's name for the CLAPACK routines are different from clapack's own (they
+  have clapack_ prepended to indicate the origin, which can be quite confusing).
+
+  If you have undefined references to the following symbols:
+  
+   clapack_sgetrf, clapack_sgetri, clapack_dgetrf, clapack_dgetri
+
+  then it means you failed to link with an ATLAS library containing these symbols.  
+  This may be variously called liblapack.a, libclapack.a or liblapack_atlas.a,
+  but you can tell that it is the right one if it defines a symbol called ATL_cgetrf
+  (type "nm <library-name> | grep ATL_cgetrf" to see).  You may be able to link
+  dynamically with this library using -llapack or some similar option.
+  Watch out, because a library called liblapack.a or liblapack.so could
+  be CLAPACK or it could be ATLAS's version of CLAPACK, and as noted in section
+  \ref matrix_err_f2c, they supply different symbols.  The only way to find
+  out is to look inside it using "nm" or "strings".
+
+
+
+*/
+
+}

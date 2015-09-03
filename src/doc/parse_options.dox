@@ -1,0 +1,137 @@
+// doc/parse_options.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/**
+   \page parse_options Parsing command-line options
+
+   \section parse_options_introduction Introduction
+   
+   The class ParseOptions handles the parsing of command-line options given
+   to %main() via argc and argv.  First we give an example of how we invoke
+   a typical Kaldi program from the command-line:
+   \verbatim
+   gmm-align --transition-scale=10.0 --beam=75 \
+       exp/mono/tree exp/mono/30.mdl data/L.fst \
+       'ark:add-deltas --print-args=false scp:data/train.scp ark:- |' \
+        ark:data/train.tra ark:exp/tri/0.ali
+   \endverbatim
+   The command-line options, which only have a long form (there are no one-letter
+   options), must appear before the positional arguments.  In this case there are
+   six positional arguments, starting from \c "exp/mono/tree"; notice that the
+   one starting with \c "ark:add-deltas" is a single string with spaces in it;
+   the single-quotes get interpreted by the shell; this argument gets invoked
+   as a pipe.
+
+  \section parse_options_example Example of parsing command-line options
+
+   We will illustrate how these options get handled at the C++ level by
+   introducing some of the code from gmm-align.cc (we have modified
+   it slightly to make it clearer):
+\code
+int main(int argc, char *argv[])
+{
+  try { // try-catch block is standard and relates to handling of errors.
+    using namespace kaldi;
+
+    const char *usage =
+        "Align features given [GMM-based] models.\n" 
+        "Usage: align-gmm [options] tree-in model-in lexicon-fst-in feature-rspecifier "
+        "transcriptions-rspecifier alignments-wspecifier\n";
+
+    // Initialize the ParseOptions object with the usage string.
+    ParseOptions po(usage);
+
+    // Declare options and set default values.
+    bool binary = false;
+    BaseFloat beam = 200.0;
+    // Below is a structure containing options; its initializer sets defaults.
+    TrainingGraphCompilerOptions gopts;
+
+    // Register the options with the ParseOptions object.
+    po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("beam", &beam, "Decoding beam");
+    gopts.Register(&po);
+
+    // The command-line options get parsed here.
+    po.Read(argc, argv);
+
+    // Check that there are a valid number of positional arguments.
+    if(po.NumArgs() != 6) {
+      po.PrintUsage();
+      exit(1);
+    }
+
+    // The positional arguments get read here (they can only be obtained
+    // from ParseOptions as strings).
+    std::string tree_in_filename = po.GetArg(1);
+    ...
+    std::string alignment_wspecifier = po.GetArg(6);
+
+    ...   
+  } catch(const std::exception& e) {
+    std::cerr << e.what();
+    return -1;
+  }
+}
+\endcode    
+The code above is mostly self-explanatory.  In a normal Kaldi program, the sequence
+ is as follows:
+  - You initialize the ParseOptions object with the usage string.
+  - You declare, and set default values for, the optional arguments (and options
+    structures).
+  - You register the command-line options with the ParseOptions object
+     (options structures have their own Register functions that do the same
+     for all the variables they contain).
+  - You do "po.Read(argc, argv);" [This will exit the program if invalid options were given]
+  - You check that the number of positional options \c po.NumArgs() is in
+    the valid range for your program.
+  - You obtain the positional arguments with \c po.GetArg(1) and so on; for
+    optional positional arguments that may be out of range, the convenience
+    function \c po.GetOptArg(n) returns the n'th argument, or the empty
+    string if n was out of range.
+  
+Typically when writing a new command-line Kaldi program, it will be easiest
+to copy an existing one and modify it.
+    
+ \section parse_options_implicit Implicit command-line arguments
+
+Certain command-line options are automatically registered by the ParseOptions
+object itself.  These include the following:
+   -  \c --config  This option loads command-line options from a config file.
+        E.g. if we do --config=configs/my.conf, the file \c my.conf might
+       contain:
+\verbatim
+      --first-option=15  # This is the first option
+      --second-option=false # This is the second option
+\endverbatim
+   - \c --print-args  This boolean option controls whether the program prints the
+      command-line arguments to the standard error (default is true); 
+      \c --print-args=false will turn this off.
+   - \c --help This boolean argument, if true will cause the program to print out a usage
+        message (like other boolean arguments, just \c --help counts as true).  You 
+        can usually get the usage message just by omitting all command-line arguments, because most
+        programs require positional arguments.
+   - \c --verbose This controls the verbose level, so that messages logged with KALDI_VLOG
+        will get printed out.  More is higher (e.g. --verbose=2 is typical).
+   
+*/
+
+}

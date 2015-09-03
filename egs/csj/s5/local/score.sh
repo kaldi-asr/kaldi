@@ -1,0 +1,1 @@
+link ../steps/score_kaldi.sh

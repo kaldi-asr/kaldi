@@ -1,0 +1,306 @@
+local/summarize_results.pl tri2a
+#### RESULTS FOR dt ##### 
+
+exp/tri2a/decode_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	89.00
+RealData_dt_for_1ch_near_room1_A	90.39
+SimData_dt_for_1ch_far_room1_A	22.35
+SimData_dt_for_1ch_far_room2_A	88.37
+SimData_dt_for_1ch_far_room3_A	90.85
+SimData_dt_for_1ch_near_room1_A	12.29
+SimData_dt_for_1ch_near_room2_A	42.86
+SimData_dt_for_1ch_near_room3_A	50.17
+Avg_Sim(6)	51.15
+Avg_Real(2)	89.69
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2a/decode_bg_5k_REVERB_et*
+LMW = 15
+Avg_Sim(0)	0.00
+Avg_Real(0)	0.00
+
+
+local/summarize_results.pl tri2a_mc
+#### RESULTS FOR dt ##### 
+
+exp/tri2a_mc/decode_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	51.88
+RealData_dt_for_1ch_near_room1_A	56.14
+SimData_dt_for_1ch_far_room1_A	17.45
+SimData_dt_for_1ch_far_room2_A	44.02
+SimData_dt_for_1ch_far_room3_A	49.90
+SimData_dt_for_1ch_near_room1_A	15.29
+SimData_dt_for_1ch_near_room2_A	22.11
+SimData_dt_for_1ch_near_room3_A	26.34
+Avg_Sim(6)	29.18
+Avg_Real(2)	54.01
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2a_mc/decode_bg_5k_REVERB_et*
+LMW = 15
+Avg_Sim(0)	0.00
+Avg_Real(0)	0.00
+
+
+local/summarize_results.pl tri2a_mc basis_fmllr
+#### RESULTS FOR dt ##### 
+
+exp/tri2a_mc/decode_basis_fmllr_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	43.95
+RealData_dt_for_1ch_near_room1_A	48.91
+SimData_dt_for_1ch_far_room1_A	16.37
+SimData_dt_for_1ch_far_room2_A	35.67
+SimData_dt_for_1ch_far_room3_A	39.59
+SimData_dt_for_1ch_near_room1_A	13.03
+SimData_dt_for_1ch_near_room2_A	17.08
+SimData_dt_for_1ch_near_room3_A	20.00
+Avg_Sim(6)	23.62
+Avg_Real(2)	46.43
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2a_mc/decode_basis_fmllr_bg_5k_REVERB_et*
+LMW = 15
+Avg_Sim(0)	0.00
+Avg_Real(0)	0.00
+
+
+local/summarize_results.pl tri2b
+#### RESULTS FOR dt ##### 
+
+exp/tri2b/decode_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	91.66
+RealData_dt_for_1ch_near_room1_A	91.33
+SimData_dt_for_1ch_far_room1_A	26.94
+SimData_dt_for_1ch_far_room2_A	85.63
+SimData_dt_for_1ch_far_room3_A	91.99
+SimData_dt_for_1ch_near_room1_A	11.95
+SimData_dt_for_1ch_near_room2_A	34.51
+SimData_dt_for_1ch_near_room3_A	44.81
+Avg_Sim(6)	49.30
+Avg_Real(2)	91.50
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b/decode_bg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	91.29
+RealData_et_for_1ch_near_room1_A	92.05
+SimData_et_for_1ch_far_room1_A	24.16
+SimData_et_for_1ch_far_room2_A	78.57
+SimData_et_for_1ch_far_room3_A	91.01
+SimData_et_for_1ch_near_room1_A	13.76
+SimData_et_for_1ch_near_room2_A	32.94
+SimData_et_for_1ch_near_room3_A	48.24
+Avg_Sim(6)	48.11
+Avg_Real(2)	91.67
+
+
+local/summarize_results.pl tri2b_mc
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc/decode_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	45.18
+RealData_dt_for_1ch_near_room1_A	49.91
+SimData_dt_for_1ch_far_room1_A	15.78
+SimData_dt_for_1ch_far_room2_A	34.75
+SimData_dt_for_1ch_far_room3_A	37.56
+SimData_dt_for_1ch_near_room1_A	13.45
+SimData_dt_for_1ch_near_room2_A	17.57
+SimData_dt_for_1ch_near_room3_A	19.49
+Avg_Sim(6)	23.10
+Avg_Real(2)	47.55
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc/decode_bg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	47.67
+RealData_et_for_1ch_near_room1_A	50.65
+SimData_et_for_1ch_far_room1_A	16.69
+SimData_et_for_1ch_far_room2_A	30.36
+SimData_et_for_1ch_far_room3_A	38.08
+SimData_et_for_1ch_near_room1_A	15.67
+SimData_et_for_1ch_near_room2_A	17.71
+SimData_et_for_1ch_near_room3_A	20.10
+Avg_Sim(6)	23.10
+Avg_Real(2)	49.16
+
+
+local/summarize_results.pl tri2b_mc basis_fmllr
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc/decode_basis_fmllr_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	39.37
+RealData_dt_for_1ch_near_room1_A	42.48
+SimData_dt_for_1ch_far_room1_A	14.11
+SimData_dt_for_1ch_far_room2_A	28.81
+SimData_dt_for_1ch_far_room3_A	31.53
+SimData_dt_for_1ch_near_room1_A	11.18
+SimData_dt_for_1ch_near_room2_A	15.01
+SimData_dt_for_1ch_near_room3_A	15.48
+Avg_Sim(6)	19.35
+Avg_Real(2)	40.92
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc/decode_basis_fmllr_bg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	42.03
+RealData_et_for_1ch_near_room1_A	43.53
+SimData_et_for_1ch_far_room1_A	13.87
+SimData_et_for_1ch_far_room2_A	26.02
+SimData_et_for_1ch_far_room3_A	32.80
+SimData_et_for_1ch_near_room1_A	12.42
+SimData_et_for_1ch_near_room2_A	14.82
+SimData_et_for_1ch_near_room3_A	17.02
+Avg_Sim(6)	19.49
+Avg_Real(2)	42.78
+
+
+local/summarize_results.pl tri2b_mc_mmi_b0.1
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	43.06
+RealData_dt_for_1ch_near_room1_A	46.04
+SimData_dt_for_1ch_far_room1_A	13.59
+SimData_dt_for_1ch_far_room2_A	29.55
+SimData_dt_for_1ch_far_room3_A	32.52
+SimData_dt_for_1ch_near_room1_A	11.21
+SimData_dt_for_1ch_near_room2_A	15.23
+SimData_dt_for_1ch_near_room3_A	16.42
+Avg_Sim(6)	19.75
+Avg_Real(2)	44.55
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_bg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	43.45
+RealData_et_for_1ch_near_room1_A	46.89
+SimData_et_for_1ch_far_room1_A	13.37
+SimData_et_for_1ch_far_room2_A	25.96
+SimData_et_for_1ch_far_room3_A	31.73
+SimData_et_for_1ch_near_room1_A	11.89
+SimData_et_for_1ch_near_room2_A	14.64
+SimData_et_for_1ch_near_room3_A	17.26
+Avg_Sim(6)	19.14
+Avg_Real(2)	45.17
+
+
+local/summarize_results.pl tri2b_mc_mmi_b0.1 basis_fmllr
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_basis_fmllr_bg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	36.98
+RealData_dt_for_1ch_near_room1_A	39.68
+SimData_dt_for_1ch_far_room1_A	11.43
+SimData_dt_for_1ch_far_room2_A	25.24
+SimData_dt_for_1ch_far_room3_A	27.77
+SimData_dt_for_1ch_near_room1_A	9.19
+SimData_dt_for_1ch_near_room2_A	12.77
+SimData_dt_for_1ch_near_room3_A	13.30
+Avg_Sim(6)	16.62
+Avg_Real(2)	38.33
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_basis_fmllr_bg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	38.93
+RealData_et_for_1ch_near_room1_A	39.51
+SimData_et_for_1ch_far_room1_A	11.32
+SimData_et_for_1ch_far_room2_A	22.31
+SimData_et_for_1ch_far_room3_A	28.40
+SimData_et_for_1ch_near_room1_A	9.69
+SimData_et_for_1ch_near_room2_A	12.36
+SimData_et_for_1ch_near_room3_A	14.77
+Avg_Sim(6)	16.47
+Avg_Real(2)	39.22
+
+
+local/summarize_results.pl tri2b_mc_mmi_b0.1 basis_fmllr
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_basis_fmllr_tg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	31.58
+RealData_dt_for_1ch_near_room1_A	32.00
+SimData_dt_for_1ch_far_room1_A	8.51
+SimData_dt_for_1ch_far_room2_A	18.36
+SimData_dt_for_1ch_far_room3_A	20.40
+SimData_dt_for_1ch_near_room1_A	6.47
+SimData_dt_for_1ch_near_room2_A	9.61
+SimData_dt_for_1ch_near_room3_A	9.59
+Avg_Sim(6)	12.16
+Avg_Real(2)	31.79
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_basis_fmllr_tg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	30.32
+RealData_et_for_1ch_near_room1_A	32.45
+SimData_et_for_1ch_far_room1_A	7.74
+SimData_et_for_1ch_far_room2_A	17.01
+SimData_et_for_1ch_far_room3_A	21.05
+SimData_et_for_1ch_near_room1_A	7.01
+SimData_et_for_1ch_near_room2_A	9.52
+SimData_et_for_1ch_near_room3_A	11.29
+Avg_Sim(6)	12.27
+Avg_Real(2)	31.39
+
+
+local/summarize_results.pl tri2b_mc_mmi_b0.1 mbr_basis_fmllr
+#### RESULTS FOR dt ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_mbr_basis_fmllr_tg_5k_REVERB_dt*
+LMW = 15
+RealData_dt_for_1ch_far_room1_A	30.96
+RealData_dt_for_1ch_near_room1_A	30.88
+SimData_dt_for_1ch_far_room1_A	8.33
+SimData_dt_for_1ch_far_room2_A	18.14
+SimData_dt_for_1ch_far_room3_A	20.15
+SimData_dt_for_1ch_near_room1_A	6.24
+SimData_dt_for_1ch_near_room2_A	9.47
+SimData_dt_for_1ch_near_room3_A	9.62
+Avg_Sim(6)	11.99
+Avg_Real(2)	30.92
+
+
+#### RESULTS FOR et ##### 
+
+exp/tri2b_mc_mmi_b0.1/decode_mbr_basis_fmllr_tg_5k_REVERB_et*
+LMW = 15
+RealData_et_for_1ch_far_room1_A	29.37
+RealData_et_for_1ch_near_room1_A	31.84
+SimData_et_for_1ch_far_room1_A	7.64
+SimData_et_for_1ch_far_room2_A	16.86
+SimData_et_for_1ch_far_room3_A	20.59
+SimData_et_for_1ch_near_room1_A	6.93
+SimData_et_for_1ch_near_room2_A	9.48
+SimData_et_for_1ch_near_room3_A	11.19
+Avg_Sim(6)	12.11
+Avg_Real(2)	30.61
+
+

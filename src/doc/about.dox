@@ -1,0 +1,161 @@
+// doc/about.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+//           2013-2014 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+/**
+ \page about About the Kaldi project
+
+ @section about_what What is Kaldi?
+
+  Kaldi is a toolkit for speech recognition written in C++ and licensed under
+  the  Apache License v2.0.  Kaldi is intended for use by speech
+  recognition researchers.  For more detailed history and list of contributors see
+  \ref history.
+
+  @section about_name The name Kaldi
+
+  According to legend, Kaldi was the Ethiopian goatherder who discovered the
+  coffee plant.
+
+  @section about_compare Kaldi's versus other toolkits
+
+  Kaldi is similar in aims and scope to HTK.  The goal is to have modern and
+  flexible code, written in C++, that is easy to modify and extend.
+  Important features include:
+    - Code-level integration with Finite State Transducers (FSTs)
+       - We compile against the OpenFst toolkit (using it as a library).
+    - Extensive linear algebra support
+       - We include a \ref matrix "matrix library" that wraps standard
+         BLAS and LAPACK routines.
+    - Extensible design
+       - As far as possible, we provide our algorithms in the most generic
+         form possible.  For instance, our decoders are templated on an
+         object that provides a score indexed by a (frame, fst-input-symbol)
+         tuple.  This means the decoder could work from any suitable source
+         of scores, such as a neural net.
+    - Open license
+       - The code is licensed under Apache 2.0, which is one of the least
+         restrictive licenses available.
+    - Complete recipes
+       - Our goal is to make available complete recipes for building
+         speech recognition systems, that work from widely available
+         databases such as those provided by the Linguistic Data
+         Consortium (LDC).
+
+   The goal of releasing complete recipes is an important aspect of Kaldi.
+   Since the code is publicly available under a license that permits
+   modifications and re-release, we would like to encourage people to release
+   their code, along with their script directories, in a similar format to
+   Kaldi's own example script.
+
+   We have tried to make Kaldi's documentation as complete as possible given time
+   constraints, but in the short term we cannot hope to generate documentation
+   that is as thorough as HTK's.  In particular there is a lot of introductory
+   material in the HTKBook, explaining statistical speech recognition for the
+   uninitiated, that will probably never appear in Kaldi's documentation.  Much of
+   Kaldi's documentation is written in such a way that it will only be accessible
+   to an expert.  In the future we hope to make it somewhat more accessible,
+   bearing in mind that our intended audience is speech recognition researchers or
+   researchers-in-training.  In general, Kaldi is not a speech recognition
+   toolkit "for dummies."  It will allow you to do many kinds of operations that
+   don't make sense.
+
+   @section about_flavor The flavor of Kaldi
+
+   In this section we attempt to summarize some of the more generic qualities
+   of the Kaldi toolkit.  To some extent this describes the goals of the current
+   developers, as much as it descibes the current status of the project.  It is
+   not meant to exclude contributions from researchers whose work has a different
+   flavor.
+
+   - We emphasize generic algorithms and universal recipes
+      - By "generic algorithms" we mean things like linear
+        transforms, rather than those that are specific to speech
+        in some way.  But we don't intend to be too dogmatic about this,
+        if more specific algorithms are useful.
+      - We would like recipes that can be run on any data-set, rather than
+        those that have to be customized.
+   - We prefer provably correct algorithms
+      - The recipes have been designed in such a way that in principle they
+        should never fail in a catastophic way.  There has been an effort to avoid recipes and
+        algorithms that could possibly fail, even if they don't fail in the
+        "normal case" (one example: FST weight-pushing, which normally helps but
+        can crash or make things much worse in certain cases).
+   - Kaldi code is thoroughly tested.
+      - The goal is for all or nearly all the code to have corresponding
+        test routines.
+   - We try to keep the simple cases simple.
+      - There is a danger when building a large speech toolkit that the
+        code can become a forest of rarely used alternatives.  We are trying to avoid
+        this by structuring the toolkit in the following way.  Each command-line
+        program generally works for a limited set of cases (e.g. a decoder
+        might just work for GMMs).  Thus, when you add a new type of model, you create
+        a new command-line decoder (that calls the same underlying templated code).
+   - Kaldi code is easy to understand.
+      - Even though the Kaldi toolkit as a whole may get very large, we aim
+        for each individual part of it to be understandable without too much
+        effort.  We will accept some code duplication if it improves the
+        understandability of individual pieces.
+   - Kaldi code is easy to reuse and refactor.
+      - We aim for the toolkit to as loosely coupled as possible.
+        In general this means that any given header should need to \#include as
+        few other header files as possible.  The matrix library, in particular,
+        only depends on code in one other subdirectory so it can be used independently
+        of almost all the rest of Kaldi.
+
+  @section about_status Status of the project
+
+ Currently, we have code and scripts for most standard techniques, including all standard
+ linear transforms, MMI, boosted MMI and MCE discriminative training, and also feature-space
+ discriminative training (like fMPE, but based on boosted MMI).
+  We have working recipes for Wall Street Journal
+ and Resource Management, and also for Switchboard.   The Switchboard recipe is not yet
+ giving state-of-the-art results, due to vocabulary and language model issues-- we
+ don't use any external data sources for this.
+
+ Note: after an early phase in which we intended to use version numbers for
+ major releases of Kaldi ("v1" and so on), we realized that these type of
+ releases do not mesh well with the natural style of development, which is very
+ continuous.  Currently we maintain only the "master" development branch, and
+ this is the version you should use. Also,
+ frequently do "git pull" to keep it up to date; see \ref install for more details.
+
+  @section about_reference Referencing Kaldi in papers
+
+You can use the following reference if you want to cite Kaldi in papers.
+\verbatim
+@INPROCEEDINGS{
+         Povey_ASRU2011,
+         author = {Povey, Daniel and Ghoshal, Arnab and Boulianne, Gilles and Burget, Lukas and Glembek, Ondrej and Goel, Nagendra and Hannemann, Mirko and Motlicek, Petr and Qian, Yanmin and Schwarz, Petr and Silovsky, Jan and Stemmer, Georg and Vesely, Karel},
+       keywords = {ASR, Automatic Speech Recognition, GMM, HTK, SGMM},
+          month = dec,
+          title = {The Kaldi Speech Recognition Toolkit},
+      booktitle = {IEEE 2011 Workshop on Automatic Speech Recognition and Understanding},
+           year = {2011},
+      publisher = {IEEE Signal Processing Society},
+       location = {Hilton Waikoloa Village, Big Island, Hawaii, US},
+           note = {IEEE Catalog No.: CFP11SRW-USB},
+}
+\endverbatim
+
+The paper can be found <a href=http://publications.idiap.ch/downloads/papers/2012/Povey_ASRU2011_2011.pdf> here </a>.
+
+*/

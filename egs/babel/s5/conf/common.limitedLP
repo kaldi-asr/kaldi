@@ -1,0 +1,47 @@
+# DNN hybrid system training parameters
+dnn_mixup=5000
+dnn_num_jobs=8
+dnn_initial_learning_rate=0.015
+dnn_final_learning_rate=0.002
+dnn_num_parameters=1500000
+dnn_num_hidden_layers=2
+dnn_mem_reqs="mem_free=1.0G,ram_free=1.0G"
+dnn_extra_opts="--num_epochs 20 --num-epochs-extra 10 --add-layers-period 1 --shrink-interval 3"
+
+bnf_every_nth_frame=1 # take all frames.
+babel_type=limited
+
+use_pitch=false
+
+lmwt_plp_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+lmwt_bnf_extra_opts=( --min-lmwt 13 --max-lmwt 18 )
+lmwt_dnn_extra_opts=( --min-lmwt 8 --max-lmwt 12 )
+
+icu_opt=(--use-icu true --icu-transform Any-Lower)
+
+if [[ `hostname` == *.tacc.utexas.edu ]] ; then
+  dnn_train_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6" --num-jobs-nnet 16 --stage 0)
+  decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
+  sgmm_train_extra_opts=( )
+  sgmm_group_extra_opts=( ) 
+  sgmm_denlats_extra_opts=( --num-threads 1 )
+else
+  dnn_train_extra_opts=(--num-threads 8 --parallel-opts "-pe smp 7" --cmd "queue.pl -l arch=*64,mem_free=4.0G,ram_free=4.0G" )
+  decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=4.0G")
+  sgmm_train_extra_opts=( --num-iters 25 )
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=7.0G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
+  sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2.0G")
+  sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=1.5G,ram_free=1.5G")
+fi
+ 
+icu_transform="Any-Lower"
+case_insensitive=true
+
+
+max_states=150000
+wip=0.5
+
+use_pitch=false
+use_ffv=false
+
+phoneme_mapping=

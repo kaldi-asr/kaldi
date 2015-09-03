@@ -1,0 +1,40 @@
+
+= Kaldi Gstreamer plugin =
+
+Plugin for GStreamer 1.0 framework, using the OnlineGmmDecodeFaster 
+decoder. Accepts 16000 kHz 16 bit audio and decodes it on the fly,
+decoder words are "pushed" out using a callback.
+
+
+== Requirements ==
+
+Following packages are needed for the GStreamer plugin:
+
+  * libgstreamer1.0-dev
+  * gstreamer1.0-plugins-good
+  * gstreamer1.0-tools
+  * gstreamer1.0-pulseaudio (only required for the demos in egs/voxforge/gst_demo)
+  
+On Debian Wheezy, the GStreamer 1.0 packages are available from the backports repository (http://backports.debian.org/).
+
+On Ubuntu, you might need to use this PPA: https://launchpad.net/~gstreamer-developers/+archive/ppa
+ 
+== Install ==
+
+Compile rest of the Kaldi using the 'shared' flavour. To do this,
+invoke 'configure' with the `--shared` switch.
+
+Also, make the online extensions  (make ext)
+
+Now, run:
+
+make depend
+make
+
+This should result in libgstkaldi.so which contains the GStreamer plugin
+
+== Usage ==
+
+See egs/voxforge/gst_demo
+
+

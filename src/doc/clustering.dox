@@ -1,0 +1,124 @@
+// doc/clustering.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/**
+  \page clustering Clustering mechanisms in Kaldi
+
+  This page explains the generic clustering mechanisms and interfaces
+  used in Kaldi.  See \ref clustering_group for a list of classes
+  and functions involved in this.  This page does not cover phonetic 
+  decision-tree clustering (see \ref tree_internals and \ref tree_externals), although
+  classes and functions introduced in this page are used in lower levels
+ of the phonetic clustering code.
+
+  \section clustering_sec_intro The Clusterable interface
+
+  The Clusterable class is a pure virtual class from which the class
+  GaussClusterable inherits (GaussClusterable represents Gaussian statistics).
+  In future we will add other types of clusterable object that inherit from
+  Clusterable.  The reason for the Clusterable class is to allow us to use
+  generic clustering algorithms.
+
+  The central notion of the Clusterable interface is that of
+  adding statistics together, and measuring the objective function.  The notion
+  of distance between two Clusterable objects is derived from measuring the
+  objective function of the two objects separately, then adding them together
+  and measuring the objective function; the negative of the decrease in objective
+  function gives the notion of distance.  
+
+  Examples of Clusterable classes that we intend to add at some point include
+  mixture-of-Gaussian statistics derived from posteriors of a fixed, shared, 
+  mixture-of-Gaussians model, and also collections of counts
+  of discrete observations (the objective function would be equivalent to the 
+  negated entropy of the distribution, times the number of counts).
+
+  An example of getting a pointer of type Clusterable* (which is actually
+  of the GaussClusterable type) is as follows:
+ \code
+  Vector<BaseFloat> x_stats(10), x2_stats(10);
+  BaseFloat count = 100.0, var_floor = 0.01;
+  // initialize x_stats and x2_stats e.g. as
+  // x_stats = 100 * mu_i, x2_stats = 100 * (mu_i*mu_i + sigma^2_i)
+  Clusterable *cl = new GaussClusterable(x_stats, x2_stats, var_floor, count);
+ \endcode
+
+  \section clustering_sec_algo Clustering algorithms
+  
+  We have implemented a number of generic clustering algorithms.  
+  These are listed in \ref clustering_group_algo.  A data-structure that
+  is used heavily in these algorithms is a vector of pointers to the 
+  Clusterable interface class:
+  \code
+   std::vector<Clusterable*> to_be_clustered;
+  \endcode
+  The index into the vector is the index of the "point" to be
+  clustered.  
+
+  \subsection clustering_sec_kmeans K-means and algorithms with similar interfaces
+
+   A typical example of calling clustering code is as follows:
+  \code
+   std::vector<Clusterable*> to_be_clustered;
+   // initialize "to_be_clustered" somehow ...
+   std::vector<Clusterable*> clusters;
+   int32 num_clust = 10; // requesting 10 clusters
+   ClusterKMeansOptions opts; // all default.
+   std::vector<int32> assignments;
+   ClusterKMeans(to_be_clustered, num_clust, &clusters, &assignments, opts);
+  \endcode
+  After the clustering code is called, "assignments" will tell you for each
+  item in "to_be_clustered", which cluster it is assigned to.  The
+  ClusterKMeans() algorithm is fairly efficient even for large number of points;
+  click the function name for more details.
+
+  There are two more algorithms that have a similar interface to ClusterKMeans():
+  namely, ClusterBottomUp() and ClusterTopDown().  Probably the more useful one
+  is ClusterTopDown(), which should be more efficient than ClusterKMeans() if the
+  number of clusters is large (it does a binary split, and then does a binary
+  split on the leaves, and so on).  Internally it calls TreeCluster(), see below.
+
+  \subsection clustering_sec_tree_cluster Tree clustering algorithm
+
+  The function TreeCluster() clusters points into a binary tree (the leaves
+  won't necessarily have just one point each, you can specify a maximum
+  number of leaves).  This function is useful, for instance, when building 
+  regression trees for adaptation.  See that function's
+  documentation for a detailed explanation of its output format.  The quick
+  overview is that it numbers leaf and non-leaf nodes in topological order
+  with the leaves first and the root last, and outputs a vector that tells you
+  for each node what its parent is.
+ 
+*/
+
+/**
+ \defgroup clustering_group Classes and functions related to clustering
+    See \ref clustering for context.
+
+ \defgroup clustering_group_simple Some simple functions used in clustering algorithms
+    See \ref clustering for context.
+ \ingroup clustering_group
+
+ \defgroup clustering_group_algo Algorithms for clustering
+    See \ref clustering for context.
+ \ingroup clustering_group
+
+*/
+}

@@ -1,0 +1,20 @@
+$ for L in $GP_LANGUAGES; do grep WER exp/$L/mono/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh ; doneexp/CZ/mono/decode_dev_tgpr_sri/wer_9:%WER 35.13 [ 5820 / 16568, 486 ins, 1116 del, 4218 sub ]
+exp/FR/mono/decode_dev_tgpr_sri/wer_9:%WER 45.69 [ 10192 / 22306, 533 ins, 2323 del, 7336 sub ]
+exp/GE/mono/decode_dev_tgpr_sri/wer_11:%WER 27.48 [ 4228 / 15387, 278 ins, 974 del, 2976 sub ]
+exp/PL/mono/decode_dev_tgpr_sri/wer_9:%WER 36.45 [ 6437 / 17660, 607 ins, 1228 del, 4602 sub ]
+exp/PO/mono/decode_dev_tgpr_sri/wer_11:%WER 44.63 [ 5815 / 13030, 283 ins, 1861 del, 3671 sub ]
+exp/RU/mono/decode_dev_tgpr_sri/wer_9:%WER 51.89 [ 9840 / 18962, 427 ins, 2457 del, 6956 sub ]
+exp/SP/mono/decode_dev_tgpr_sri/wer_9:%WER 43.56 [ 8320 / 19098, 379 ins, 2581 del, 5360 sub ]
+qghoshal@merlin:[~/globalphone/a1.1]
+
+$ for L in $GP_LANGUAGES; do grep WER exp/$L/tri1/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh ; done
+exp/CZ/tri1/decode_dev_tgpr_sri/wer_16:%WER 20.68 [ 3427 / 16568, 606 ins, 521 del, 2300 sub ]
+exp/FR/tri1/decode_dev_tgpr_sri/wer_14:%WER 28.61 [ 6381 / 22306, 744 ins, 779 del, 4858 sub ]
+exp/GE/tri1/decode_dev_tgpr_sri/wer_17:%WER 15.08 [ 2321 / 15387, 273 ins, 440 del, 1608 sub ]
+exp/PL/tri1/decode_dev_tgpr_sri/wer_17:%WER 21.34 [ 3768 / 17660, 548 ins, 646 del, 2574 sub ]
+exp/PO/tri1/decode_dev_tgpr_sri/wer_14:%WER 26.56 [ 3461 / 13030, 477 ins, 795 del, 2189 sub ]
+exp/RU/tri1/decode_dev_tgpr_sri/wer_14:%WER 33.89 [ 6427 / 18962, 575 ins, 1612 del, 4240 sub ]
+exp/SP/tri1/decode_dev_tgpr_sri/wer_16:%WER 26.73 [ 5105 / 19098, 551 ins, 1313 del, 3241 sub ]
+qghoshal@merlin:[~/globalphone/a1.1]
+
+

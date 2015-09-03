@@ -1,0 +1,342 @@
+// doc/online_programs.dox
+
+
+// Copyright 2013 Polish-Japanese Institute of Information Technology (author: Danijel Korzinek)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+
+\page online_programs Online Recognizers
+
+Warning, this page is deprecated as it refers to the older online-decoding setup.
+The page for the new setup is \ref online_decoding.
+
+There are several programs in the Kaldi toolkit that can be used for online recognition. 
+They are all located in the src/onlinebin folder and require the files from
+the src/online folder to be compiled as well (you can currently compile these with
+"make ext"). Many of these programs will also require the
+Portaudio library present in the tools folder, which can be downloaded using the appropriate
+script found there. The programs are as follows:
+  - online-gmm-decode-faster - records audio from the microphone and outputs the result on stdout 
+  - online-wav-gmm-decode-faster - reads a list of WAV files and outputs the result into special output format
+  - online-server-gmm-decode-faster - reads vectors of MFCC features from a UDP socket and prints the result to stdout
+  - online-net-client - records audio from the microphone, converts it to vectors of features and sends them over UDP to online-server-gmm-decode-faster   
+  - online-audio-server-decode-faster - reads RAW audio data from a TCP socket and outputs aligned words to the same socket
+  - online-audio-client - reads a list of WAV files, sends their audio over TCP to online-audio-server-decode-faster, reads the output and saves the result to the chosen file format
+
+There is also a Java equivalent of the online-audio-client which contains slightly more features and has a GUI.
+
+In addition, there is a GStreamer 1.0 compatible plugin that acts as a filter, taking raw audio as input and producing 
+recognized word as output. The plugin is based on  \ref OnlineFasterDecoder, as other online recognition programs.   
+
+\section audio_server Online Audio Server
+
+The main difference between the online-server-gmm-decode-faster and
+online-audio-server-decode-faster programs is the input: the former accepts
+feature vectors, while the latter accepts RAW audio.  The advantage of the
+latter is that it can be deployed directly as a back-end for any client: whether
+it is another computer on the Internet or a mobile device.  Main thing here is
+that the client doesn't need to know anything about the feature set used to
+train the models and provided it can record standard audio at the predetermined
+sampling frequency and bit-depth, it will always be compatible with the
+server. An advantage of the server that accepts feature vectors, instead of
+audio, is a lower cost of data transfer between the client and the server, but
+this can be easily outperformed by simply using a state-of-the-art codec for
+audio (which is something that may be done in the future).
+
+The communication between the online-audio-client and
+online-audio-server-decode-faster consists of two phases: first the client sends
+packets of raw audio to the server, second the server replies with the output of
+the recognition. The two phases may happen asynchronously, meaning that the
+decoder can output results online, as fast as it is certain of their outcome and
+not wait for the end of the data to arrive. This opens up more possibilities for
+creating applications in the future.
+
+\subsection audio_data Audio Data
+
+The audio data format is currently hardcoded to be RAW 16 kHz, 16-bit, signed, little-endian (server native), linear PCM. The protocol works by splitting data into 
+chunks and prepending each chunk with a 4-byte code containing its exact size. The size is also (server native) little-endian and can contain any value as long as it is positive
+and even (because of 16-bit sampling). The last packet of size 0 is treated as the end of stream and forces the decoder to dump the rest of its results and finish the recognition process.
+
+\subsection results Recognition Results
+
+ There are two types of packets sent by the server. Time-aligned results and partial results. Partial results are sent as fast as the decoder recognizes each word and time-alignment is performed
+every time the decoder recognizes the end of an utterance (which may or may not correspond to silences and/or sentance boundaries).
+
+ Each partial result packet is prepended by the characters "PARTIAL:" follwed by exactly one word. Each word is sent in a different partial packet.
+
+ Time-aligned results are prepended by a header starting with the characters "RESULT:".  Following that is a comma separated list of key=value parameters containing some useful information:
+  - NUM - number of words to follow
+  - FORMAT - the format of the result to follow; currently only WSEC (word-start-end-confidence), but it will allow modification in the future
+  - RECO-DUR - time it took to recognize the sequence (as a floating point value in seconds)
+  - INPUT-DUR - length of the input audio sequence (as a floating point value in seconds)
+
+ You can divide INPUT-DUR by RECO-DUR to get real-time recognition speed of the decoder.  
+
+ The header "RESULT:DONE" is sent when there are no more results that can be returned by the server. In this case, the server simply waits for either more data by the client, or for a disconnect.
+  
+ The data underneath the header consists of exactly NUM lines of words formatted in the way determined by the FORMAT parameter. In the case of WSE format, this is simply a comma separated list
+containing 4 tokens: the word (as present in the dictionary), start time and end time (as floating point values in seconds). Beware that the words 
+are going to be encoded exactly as they are in the dictionary provided to the server and therefore, the client must make sure to perform the appropriate character conversion if necessary. The 
+online-audio-client, for example, doesn't perform any character conversion while generating WebVTT files (which require UTF8), so you need to convert the resulting files to UTF8 using iconv (or 
+a similar program).
+ 
+ An example of the results of the server is as follows:
+ \verbatim
+ RESULT:NUM=3,FORMAT=WSE,RECO_DUR=1.7,INPUT_DUR=3.22
+ one,0.4,1.2
+ two,1.4,1.9
+ three,2.2,3.4
+ RESULT:DONE 
+\endverbatim
+
+\subsection usage Example Usage
+
+Command line to start the server:
+\verbatim
+online-audio-server-decode-faster --verbose=1 --rt-min=0.5 --rt-max=3.0 --max-active=6000 --beam=72.0 --acoustic-scale=0.0769 
+final.mdl graph/HCLG.fst graph/words.txt '1:2:3:4:5' graph/word_boundary.int 5010 final.mat
+\endverbatim
+
+Arguments are as follow:
+  - final.mdl - the acoustic model
+  - HCLG.fst - the complete FST
+  - words.txt - word dictionary (mapping word ids to their textual representation)
+  - '1:2:3:4:5' - list of silence phoneme ids
+  - 5010 - port the server is listening on
+  - word_boundary.int - a list of phoneme boundary information required for word alignemnt
+  - final.mat - feature LDA matrix
+  
+ Command line to start the client:
+ \verbatim
+ online-audio-client --htk --vtt localhost 5010 scp:test.scp
+ \endverbatim
+
+Arguments are as follow:
+  - --htk - save results as an HTK label file
+  - --vtt - save results as a WebVTT file
+  - localhost - server to connect to
+  - 5010 - port to connect to
+  - scp:test.scp - list of WAV files to send
+  
+Command line to start the Java client:
+\verbatim
+java -jar online-audio-client.jar
+\endverbatim
+
+Or simply double-click the JAR file in the graphical interface.
+
+\section gst_plugin GStreamer plugin
+
+Kaldi toolkit comes with a plugin for the <a href="http://gstreamer.freedesktop.org/">GStreamer</a> media streaming framework (version 1.0 or compatible).
+The plugin acts as a filter that accepts raw audio as input and produces recognized words as output.
+
+The main benefit of the plugin is the fact that it makes Kaldi's online speech recognition functionality available to all
+programming languages that support GStreamer 1.0 (that includes Python, Ruby, Java, Vala and many more). It also simplifies the integration
+of the Kaldi online decoder in applications since communicating with the decoder follows GStreamer standards. 
+
+\subsection gst_plugin_installation Installation
+
+The source of the GStreamer plugin is located in the `src/gst-plugin` directory. To compile the plugin, rest of the Kaldi
+toolkit has to be compiled to use the shared libraries. To do this, invoke `configure` with the `--shared` flag.
+Also compile the online extensions (`make ext`). 
+ 
+Make sure the package that provides  GStreamer 1.0 development headers is installed on your system. On Debian Jessie (current 'testing' 
+distribution), the needed package is called `libgstreamer1.0-dev`. On Debian Wheezy (current stable), GStreamer 1.0 is available from the backports
+repository (http://backports.debian.org). Install the 'good' GStreamer plugins (package gstreamer1.0-plugins-good)
+and GStreamer 1.0 tools (package `gstreamer1.0-tools`). A demo program also requires the PulseAudio Gstreamer plugins 
+(package gstreamer1.0-pulseaudio).
+
+Finally, run `make depend` and `make` in the `src/gst-plugin` directory. This should result in a file `src/gst-plugin/libgstkaldi.so`
+which contains the GStreamer plugin.
+
+To make GStreamer able to find the Kaldi plugin, you have to add the `src/gst-plugin` directory to its plugin search path. To do this,
+add the directory to the GST_PLUGIN_PATH environment variable:
+\verbatim
+export GST_PLUGIN_PATH=$KALDI_ROOT/src/gst-plugin
+\endverbatim
+Of course, replace `$KALDI_ROOT` with the actual location of the Kaldi root folder on your file system. 
+
+Now, running `gst-inspect-1.0 onlinegmmdecodefaster` should provide info about the plugin:
+\verbatim
+# gst-inspect-1.0 onlinegmmdecodefaster
+Factory Details:
+  Rank:     none (0)
+  Long-name:        OnlineGmmDecodeFaster
+  Klass:            Speech/Audio
+  Description:      Convert speech to text
+  Author:           Tanel Alumae <tanel.alumae@phon.ioc.ee>
+[..]
+Element Properties:
+  name                : The name of the object
+                        flags: readable, writable
+                        String. Default: "onlinegmmdecodefaster0"
+  parent              : The parent of the object
+                        flags: readable, writable
+                        Object of type "GstObject"
+  silent              : Determines whether incoming audio is sent to the decoder or not
+                        flags: readable, writable
+                        Boolean. Default: false
+  model               : Filename of the acoustic model
+                        flags: readable, writable
+                        String. Default: "final.mdl"
+  fst                 : Filename of the HCLG FST
+                        flags: readable, writable
+                        String. Default: "HCLG.fst"
+[..]
+  min-cmn-window      : Minumum CMN window used at start of decoding (adds latency only at start)
+                        flags: readable, writable
+                        Integer. Range: -2147483648 - 2147483647 Default: 100 
+
+Element Signals:
+  "hyp-word" :  void user_function (GstElement* object,
+                                    gchararray arg0,
+                                    gpointer user_data);
+\endverbatim
+
+\subsection usage_cli Usage through the command-line
+
+The most simple way to use the GStreamer plugin is via the command line. You have to specify the model files used for decoding
+when lauching the plugin. To do this, set the `model`, `fst`, `word-syms`, `silence-phones` and optionally the `lda-mat`
+plugin properties (similarly to Kaldi's command-line online decoders). The decoder accepts only 16KHz 16-bit mono audio. Any audio stream can be automatically  converted to the
+required format using GStreamer's `audioresample` and `audioconvert` plugins.  
+
+For example, to decode the file `test1.wav` using a model files in `tri2b_mmi`, and have the recognized stream of words printed to stdout, execute:
+\verbatim
+gst-launch-1.0 -q filesrc location=test1.wav \
+    ! decodebin ! audioconvert ! audioresample \
+    ! onlinegmmdecodefaster model=tri2b_mmi/model fst=tri2b_mmi/HCLG.fst \
+                            word-syms=tri2b_mmi/words.txt silence-phones="1:2:3:4:5" lda-mat=tri2b_mmi/matrix \
+    ! filesink location=/dev/stdout buffer-mode=2
+\endverbatim
+Note that the audio stream is segmented on the fly, with "<#s>" denoting silence.
+
+You can easily try live decoding of microphone input by replacing `filesrc location=test1.wav` with `pulsesrc` (given that
+your OS uses the PulseAudio framework).
+
+An example stript that uses the plugin via the command-line to process a buch of audio files is located in `egs/voxforge/gst_demo/run-simulated.sh`.
+
+\subsection usage_gst Usage through GStreamer bindings
+
+An example of a Python GUI program that uses the plugin via the GStreamer bindings is located in `egs/voxforge/gst_demo/run-live.py`.
+
+The program constructs in the `init_gst(self)` method a similar pipeline of GStreamer elements as in the command-line example.
+The model files and some decoding parameters are communicated to the `onlinegmmdecodefaster` element through the standard `set_property()`
+method. More interesting is this part of the code:
+\verbatim
+        self.asr.connect('hyp-word', self._on_word)
+\endverbatim
+This expression orders our decoding plugin to call the GUI's `_on_word` method whenever it produces a new recognized word. 
+The `_on_word()` method looks like this:
+\verbatim
+    def _on_word(self, asr, word):
+        Gdk.threads_enter()
+        if word == "<#s>":
+          self.textbuf.insert_at_cursor("\n")
+        else:
+          self.textbuf.insert_at_cursor(word)
+        self.textbuf.insert_at_cursor(" ")
+        Gdk.threads_leave()
+\endverbatim
+What it does (apart from some GUI-related chemistry), is that it inserts the recognized word into the text buffer that is connected
+to the GUI's main text box. If a segmentation symbol is recognized, it inserts a line break instead.
+
+Recognition start and stop are controlled by setting the `silent` property of the decoder plugin to `False` or `True`. Setting the
+property to `False` orders the plugin not to process any incoming audio (although the audio that is already being processed might
+produce some new recognized words).
+ 
+
+\subsection code_structure Overview of the online decoders' code
+
+The main components used in the implemention of the online decoders are as follows:
+    - \ref OnlineAudioSource - represents a source of raw audio samples. There are different 
+      implementations of this "interface", that can for example acquire samples from microphone
+      (e.g. \ref OnlinePaSource, using PortAudio), or read them from existing \ref Vector
+      (\ref OnlineVectorSource). Technically OnlineAudioSource is currently not a C++ interface, using 
+      virtual methods - instead the classes "implementing" it are passed as template parameters
+      to their users.
+    - \ref OnlineFeatInputItf - used to read feature vectors that are computed in some manner.
+      The computation in this case can mean feature extraction(\ref OnlineFeInput), cepstral mean
+      normalization (\ref OnlineCmnInput), calculation of higher order features
+      (\ref OnlineDeltaInput) and so on.
+    - \ref OnlineDecodableDiagGmmScaled - an implementation of \ref DecodableInterface, reading
+      its input features from an implementation of OnlineFeatInputItf(through OnlineFeatureMatrix proxy).
+    - \ref OnlineFasterDecoder - extends \ref FasterDecoder (described in the \ref decoders section),
+      to make it work with real time input.
+
+The process of feature extraction and transformation is implemented by forming a pipeline of several
+objects, each of which pulling data from the previous object in the pipeline, performing a specific type 
+of computation and passing the result to the next one. Usually, at the start of the pipeline there is an
+OnlineAudioSource object, which is used to acquire the raw audio in some way. Then comes a component
+of type \ref OnlineFeInput, that reads the raw samples and extracts features. OnlineFeInput can be used to produce 
+either MFCC or PLP features, by passing reference to the object doing the actual job(\ref Mfcc or \ref Plp) as
+parameter to its constructor. After that the pipeline continues with other OnlineFeatInputItf objects. For
+example if we want the decoder to receive audio from a microphone using PortAudio and to use a vector of 
+MFCC, delta and delta-delta features the pipeline looks like:
+
+\verbatim
+OnlinePaSource -> OnlineFeInput<OnlinePaSource, Mfcc> -> OnlineCmnInput -> OnlineDeltaInput
+\endverbatim 
+
+<B>NOTE:</B> The pipeline shown above has nothing to do with GStreamer pipeline described in the previous
+sections - the both structures are completely orthogonal to each other. The GStreamer plug-in makes it 
+possible to grab audio samples from GStreamer's pipeline, by implementing a new OnlineAudioSource 
+(\ref GstBufferSource), and feed them into Kaldi online decoder's pipeline.
+
+\ref OnlineFasterDecoder itself is completely oblivious to the details of feature computation. As is the case with
+the other Kaldi decoders, the decoder only "knows" that it can get scores for a given feature frame using a Decodable 
+object. The actual type of this object, for the currently implemented example programs, is OnlineDecodableDiagGmmScaled. 
+OnlineDecodableDiagGmmScaled doesn't directly access the final OnlineFeatInputItf either. 
+Instead, the responsibility for bookkeeping and requesting batches of features from the pipeline, as well as
+coping with potential timeouts is delegated to an object of type \ref OnlineFeatureMatrix.
+
+The chain of function calls, that results in pulling new features along the pipeline, looks like the following:
+
+-# in \ref OnlineFasterDecoder::ProcessEmitting(), the decoder invokes 
+   \ref OnlineDecodableDiagGmmScaled::LogLikelihood()
+-# this triggers a call to \ref OnlineFeatureMatrix::IsValidFrame(). If the requested feature frame is not
+   already available inside the cache maintained by OnlineFeatureMatrix, a new batch of features is requested,
+   by calling the \ref OnlineFeatInputItf::Compute() method of the last object in the pipeline.
+-# the Compute() method of the last object (e.g. OnlineDeltaInput in the example above) then calls the Compute()
+   method of the previous object in the pipeline and so on to the first OnlineFeatInputItf object, which invokes
+   OnlineAudioSource::Read().
+
+OnlineFasterDecoder inherits most of its implementation from FasterDecoder, but its Decode() method processes the 
+feature vectors in batches of configurable size and returns a code corresponding to the current decoder state.
+There are three different codes: 
+
+- <I>kEndFeats</I> means there are no more features left in the pipeline
+- <I>kEndUtt</I> signals end of the current utterance, which can be used for example to separate the utterances by
+  new line characters, as in our demos, or other application-dependent feadback. An utterance is considered 
+  to be finished when sufficiently long silence is detected in the traceback. The number of the silence frames 
+  that are interpreted as utterance delimiter is controlled by \ref OnlineDecoderOpts::inter_utt_sil.
+- <I>kEndBatch</I> - nothing extraordinary has happened - the decoder just finished processing the current batch of
+  feature vectors. 
+
+OnlineFasterDecoder makes it possible to get recognition results as soon as possible, by implementing partial traceback.
+The back-pointers of all active \ref FasterDecoder::Token objects are followed until a point is reached, back in time,
+where there is only one active token. That means that this (immortal) token is a common ancestor of all currently 
+active tokens. Moreover by keeping track of the previous such token(for the previously processed batches), 
+the decoder can produce a partial result, by taking the output symbols along the traceback from the current immortal
+token to the previous one.
+
+*/
+
+
+}

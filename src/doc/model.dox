@@ -1,0 +1,131 @@
+// doc/model.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+  \page model Acoustic modeling code
+
+  \section model_intro Introduction
+
+  We will start with a few words about the general philosophy of our modeling
+  code, and why we chose this path.  Our aim is for Kaldi to support conventional
+  models (i.e. diagonal GMMs) and Subspace Gaussian Mixture Models (SGMMs), but
+  also to be easily extensible to new kinds of model.  In a previous iteration of
+  designing this software, we used a virtual base class that both the GMM and
+  SGMM classes inherited from, and wrote command-line tools that handled both types of
+  model.  Our experience was that a base class is not as useful as one might
+  think, because there are too many differences in the models (e.g. they support
+  different types of adaptation), and we were forced to constantly expand the
+  base-class so that our supposedly "generic" code could access functionality
+  specific to one model or the other.  Eventually our command-line tools reached
+  a state where they were almost impossible to modify.
+
+  When redesigning the code, we decided on a more "modern" software engineering
+  approach that focused less on using class hierarchies to capture commonalities,
+  and more on creating simple, reusable components.  For example, our decoder
+  code (see \ref decoders) is generic because its requirements are very limited;
+  it only requires that we create an object inheriting from the simple base-class
+  DecodableInterface, that behaves a lot like a matrix of acoustic likelihoods for
+  an utterance.  Individual command-line tools generally have simple and
+  limited functionalities (e.g. gmm-align produces state-level alignments of 
+  utterances given a diagonal GMM).  The idea is that implementing a new
+  technique will generally involve creating a new command-line program, rather
+  than increasing the complexity of any of the existing command-line programs.
+
+ \section model_diag Diagonal GMMs
+
+
+  The class DiagGmm represents a single diagonal-covariance Gaussian Mixture Model.
+  An acoustic model based on a collection of objects of type DiagGmm, indexed by
+  zero-based "pdf-ids", is implemented as class AmDiagGmm.  You can think of
+  AmDiagGmm as a vector of type DiagGmm, although it has a slightly richer interface
+  than that.  Representing an acoustic model as a collection of individual models, one for
+  each p.d.f., is not the way we imagine all models would be represented; for example,
+  SGMMs cannot be represented that way, and if we implemented GMMs with tying of
+  Gaussians among states we would not be able to represent the pdfs separately.
+
+ \subsection model_diag_gmm Individual GMMs
+
+  Class DiagGmm is, conceptually, a fairly simple and passive object that stores the
+  parameters of a Gaussian Mixture Model and has member functions that compute
+  likelihoods.  It does not "know anything" about how it will be used; it just
+  provides access to its members.  It does not handle accumulation or update;
+  for that, see below, or class MlEstimateDiagGmm.  The class DiagGmm stores
+  its parameters as: inverse variances, and (means times inverse variances).  
+  This means that likelihoods can be computed with simple dot products.  
+  The "gconsts" (i.e. the precomputed constant terms in the likelihood) are
+  different from, say, HTK's gconsts because they depend on the mean also. 
+
+  Since it is quite complicated to modify the Gaussian parameters in this form,
+  we also provide a class DiagGmmNormal, which contains the parameters in
+  a more simple and obvious form, and we provide functions to convert back and
+  forth between DiagGmm and DiagGmmNormal representations.  Most of the update
+  code works with the DiagGmmNormal representation.
+
+  \subsection model_diag_am GMM-based acoustic model
+
+ Class AmDiagGmm represents a collection of DiagGmm objects, indexed by \ref pdf_id "pdf-id".
+ This class does not represent a HMM-GMM, just a collection of GMMs.  Putting it 
+ together with the HMM structure is the responsibility of other code, principally
+ the topology and transition-modeling code and the code responsible for compiling
+ decoding graphs (see \ref hmm).  We mention at this point that 
+ we never write an object of AmDiagGmm to disk on its own; instead
+ we write an object of type TransitionModel and then an object of type AmDiagGmm.
+ This is simply a convenience to avoid having to write too many separate files to disk,
+ since normally we update the Gaussians and the transitions at the same time.
+ The idea is that with other model types we would create a file with
+ a TransitionModel and then [an object some other model type].  This way, programs that need
+ to read only the transition model (e.g. for graph creation) can read the
+ file without needing to know the type of the model.
+
+ Class AmDiagGmm is a fairly simple object and does not take the responsibility
+ for such things as model estimation (e.g. see AccumAmDiagGmm), or transform
+ estimation (there are various pieces of code that do this; see \ref transform.
+
+ \subsection model_full_gmm Full-covariance GMMs
+
+ We have a class \ref FullGmm for full-covariance GMMs, which has similar functionality
+ to the \ref DiagGmm class but with full covariances.  This is mainly of use for training
+ full-covariance Universal Background  Models (UBMs) in the SGMM recipe (see below).
+ The only command-line tools available for full GMMs are used to train global mixture models
+ (i.e. UBMs); we have not
+ implemented a full covariance version of the AmDiagGmm class or the corresponding command
+ line tools, although doing so would be fairly easy.
+
+ \section model_sgmm Subspace Gaussian Mixture Models (SGMMs)
+
+ Subspace Gaussian Mixture Models (SGMMs) are implemented by class
+ AmSgmm.  This class essentially implements the approach described in
+ ``The Subspace Gaussian Mixture Model -- a Structured Model for Speech 
+ Recognition'', by D. Povey, Lukas Burget et. al, Computer Speech and Language, 
+ 2011.
+ The class AmSgmm represents a whole collection of pdf's; there
+ is no class that represents a single pdf of the SGMM (as there is for
+ GMMs).  Estimation of SGMMs is handled (at the C++ level) by the classes
+ \ref MleAmSgmmAccs and MleAmSgmmUpdater.  
+
+ For example scripts that demonstrate how to
+ build an SGMM based system, see egs/rm/s1/steps/train_ubma.sh,
+ egs/rm/s1/steps/train_sgmma.sh, and egs/rm/s1/steps/decode_sgmma.sh.
+
+
+*/
+}

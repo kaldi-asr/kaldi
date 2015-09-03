@@ -1,0 +1,29 @@
+
+This is an example of a HTK conversion script that converts HTK models
+to Kaldi format models.  It's not being actively maintained.  This
+script is not very general-- since HTK's MMF format can contain almost
+anything, it's hard to create a general solution.
+
+# HTK conversion script:
+
+# This example for the conversion was kindly provided Yanqing Sun.  However, we
+# are not sure that it has been correctly converted.  We are providing it as an
+# example anyway-- perhaps someone can debug it.  It has been our experience
+# when converting HTK models that whenever we get the conversion script working,
+# some other HTK model comes along and breaks the script.  In general this
+# conversion is something that we don't aim to put a lot of effort into
+# supporting-- our attitude is, if you like HTK, then use HTK.
+
+wget --no-check-certificate https://sourceforge.net/projects/kaldi/files/wsj_ascii.tar.gz
+tar -xvzf wsj_ascii.tar.gz
+./convert_htk.sh --no-cleanup ../.. ascii/hmmdefs trees kaldi
+
+# on BUT system:
+#./convert_htk.sh ../.. /mnt/matylda5/jhu09/setup/CH1/English/exp/xwrd.R0_800_TB500/hmm84/MMF /mnt/matylda5/jhu09/setup/CH1/English/exp/xwrd.R0_800_TB500/hmm10_800_500/cluster.trees convert_dir
+
+
+
+# can add optional args --no-cleanup and --linear-topology
+
+
+

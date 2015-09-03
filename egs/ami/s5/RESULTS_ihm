@@ -1,0 +1,31 @@
+#!/bin/bash
+# kaldi:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# sclite / asclite:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+
+exit 0
+
+dev
+exp/ihm/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   38.0%   (35925)
+exp/ihm/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev.ctm.filt.dtl:Percent Total Error       =   35.3%   (33329)
+exp/ihm/tri4a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   32.1%   (30364)
+exp/ihm/tri4a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_12/dev.ctm.filt.dtl:Percent Total Error       =   29.9%   (28220)
+
+eval
+exp/ihm/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval.ctm.filt.dtl:Percent Total Error       =   43.7%   (39330)
+exp/ihm/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.dtl:Percent Total Error       =   40.4%   (36385)
+exp/ihm/tri4a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   35.0%   (31463)
+exp/ihm/tri4a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.dtl:Percent Total Error       =   31.7%   (28518)
+
+
+# TDNN results
+for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done
+#dev
+%WER 25.0 | 13098 94483 | 78.3 12.0 9.6 3.4 25.0 57.7 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev/ascore_13/dev_hires.ctm.filt.sys
+%WER 25.3 | 13098 94468 | 78.5 12.7 8.8 3.8 25.3 57.9 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev_utt/ascore_12/dev_hires.ctm.filt.sys
+%WER 25.0 | 13098 94476 | 78.5 12.4 9.1 3.6 25.0 58.0 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev_utt_offline/ascore_13/dev_hires.ctm.filt.sys
+#eval
+%WER 25.9 | 12643 89971 | 77.2 14.2 8.6 3.2 25.9 56.4 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval/ascore_12/eval_hires.ctm.filt.sys
+%WER 26.0 | 12643 89976 | 77.1 14.7 8.2 3.2 26.0 55.7 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt/ascore_12/eval_hires.ctm.filt.sys
+%WER 25.8 | 12643 89978 | 77.6 14.6 7.8 3.4 25.8 55.8 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt_offline/ascore_11/eval_hires.ctm.filt.sys

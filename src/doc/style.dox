@@ -1,0 +1,78 @@
+// doc/style.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+
+  \page style The Kaldi coding style
+
+   When starting to code the final version of the Kaldi toolkit, we had decided
+   to use OpenFst as a C++ library.  For consistency with OpenFst, we decided to use
+   the same coding style in most respects. 
+
+   Many aspects of the Kaldi coding style will be obvious from viewing the code.  Key points
+   include:
+
+    - Rules on naming of tokens, e.g. MyTypeName, MyFunction, my_class_member_var_,
+      my_struct_member, KALDI_MY_DEFINE, kGlobalConstant, kEnumMember,
+      g_my_global_variable, my_namespace, my-file.h, my-file.cc, 
+      my-implementation-inl.h
+    - Rules governing function arguments: no non-const references; inputs
+      precede outputs.
+    - Rules governing whitespace and formatting: 80 characters per line max
+      (except where necessary), open-brace on same line as function; see code
+      for other whitespace conventions. 
+    - I/O: we use C++ style I/O, with specific conventions on I/O routines
+      for objects (see \ref io).
+    - Function arguments: we don't allow reference arguments to be non-const (use
+      pointers), with an exception for iostreams.  Inputs must precede outputs
+      in a function parameter list.
+    - Error status is mostly indicated by exceptions (see \ref error for specific
+      mechanisms).
+    - For "normal" integers, we try to use int32.  This is because Kaldi's
+      binary I/O mechanisms (\ref io) are easiest to use when the binary size of integer
+      types is known.
+    - For "normal" floating-point values, we use BaseFloat which is a typedef
+      (if you compile with KALDI_DOUBLEPRECISION=1 it's double, otherwise float).  This
+      makes it easier to test algorithms in double precision and check for differences.
+      However, we always use double for accumulators.
+    - We prepend all our \#defines with KALDI_, to avoid possible future conflicts
+      with other codebases (since \#defines are not protected by namespaces).  All the
+      kaldi code is in namespace kaldi, except for OpenFst extensions which are in
+      namespace fst.
+    - Class constructors taking one argument must use the "explicit" keyword (this prevents
+      unwanted type conversions).
+    - We generally avoid copy constructors and assignment operators (there is a
+      KALDI_DISALLOW_COPY_AND_ASSIGN that disables the "default" ones that C++ provides).
+    - We avoid operator overloading, except where required by STL algorithms.
+    - We generally avoid function overloading, preferring distinct names.
+    - We use C++-style casts like static_cast<int>, rather than C-style ones like (int)
+    - We use const wherever possible.
+    
+  Exceptions to the Google C++ style guide include:
+    - We make use of iostreams, and we allow non-const references to iostreams to be
+      passed to functions (this violates the no-non-const-references rule).
+    - For get/set methods, suppose the class member is called x_, the Google-style
+      get and set methods would be x() and set_x().  However, following the OpenFst
+      coding style we call them X() and SetX(): for example, Mean() and SetMean().
+      This particular rule is new; in the past we had an inconsistent approach, and
+      we will be changing the code to conform.
+
+
+*/

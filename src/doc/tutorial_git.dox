@@ -1,0 +1,259 @@
+// doc/tutorial_git.dox
+
+// Copyright 2015 Smart Action Company LLC
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_git Kaldi Tutorial: Version control with Git (5 minutes)
+
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_setup "Previous: Getting started" <BR>
+    \ref tutorial_looking "Next: Overview of the distribution" <BR>
+
+Git is a distributed version control system.  This means that, unlike
+Subversion, there are multiple copies of the repository, and the changes are
+transferred between these copies in multiple different ways explicitly, but most
+of the time one's work is backed by a single copy of the repository.  Because of
+this multiplicity of copies, there are multiple possible \em workflows that you
+may want to follow.  Here's one we think best suits you if you just want to
+<i>compile and use</i> Kaldi at first, but then at some point optionally decide
+to \em contribute your work back to the project.
+
+\section tutorial_git_git_setup First-time Git setup
+
+If you have never used Git before,
+<a href="https://git-scm.com/book/en/v2/Getting-Started-First-Time-Git-Setup">
+perform some minimal configuration first</a>.  At the very least, set up your
+name and e-mail address:
+
+\verbatim
+$ git config --global user.name "John Doe"
+$ git config --global user.email johndoe@example.com
+\endverbatim
+
+Also, set short names for the most useful git commands you type most often.
+
+\verbatim
+$ git config --global alias.co checkout
+$ git config --global alias.br branch
+$ git config --global alias.st status
+\endverbatim
+
+Another very useful utility comes with <tt>git-prompts.sh</tt>,
+a bash prompt extension utility for Git (if you do not have it,
+search the internet how to install it on your system).
+When installed, it provides a shell function \c __git_ps1 that,
+when added to the prompt,
+expands into the current branch name and pending commit markers,
+so you do not forget where you are.
+You may modify your \c PS1 shell variable so that it includes literally
+<tt>$(__git_ps1 "[%s]")</tt>.
+I have this in my \c ~/.bashrc:
+
+\code{.sh}
+PS1='\[\033[00;32m\]\u@\h\[\033[0m\]:\[\033[00;33m\]\w\[\033[01;36m\]$(__git_ps1 "[%s]")\[\033[01;33m\]\$\[\033[00m\] '
+export GIT_PS1_SHOWDIRTYSTATE=true GIT_PS1_SHOWSTASHSTATE=true
+# fake __git_ps1 when git-prompts.sh not installed
+if [ "$(type -t __git_ps1)" == "" ]; then
+  function __git_ps1() { :; }
+fi
+\endcode
+
+\section tutorial_git_workflow The User Workflow
+
+Set up your repository and the working directory with this command:
+
+\verbatim
+kkm@yupana:~$ git clone https://github.com/kaldi-asr/kaldi.git --branch master --single-branch --origin golden
+Cloning into 'kaldi'...
+remote: Counting objects: 51770, done.
+remote: Compressing objects: 100% (8/8), done.
+remote: Total 51770 (delta 2), reused 0 (delta 0), pack-reused 51762
+Receiving objects: 100% (51770/51770), 67.72 MiB | 6.52 MiB/s, done.
+Resolving deltas: 100% (41117/41117), done.
+Checking connectivity... done.
+kkm@yupana:~$ cd kaldi/
+kkm@yupana:~/kaldi[master]$
+\endverbatim
+
+Now, you are ready to configure and compile Kaldi and work with it.
+Once in a while you want the latest changes in your local branch.
+This is akin to what you usually did with <tt>svn update</tt>.
+
+But please first let's agree to one thing:
+you do not commit any files on the master branch.
+We'll get to that below.
+So far, you are only using the code.
+It will be hard to untangle if you do not follow the rule,
+and Git is so amazingly easy at branching,
+that you always want to do your work on a branch.
+
+\verbatim
+kkm@yupana:~/kaldi[master]$ git pull golden
+remote: Counting objects: 148, done.
+remote: Compressing objects: 100% (55/55), done.
+remote: Total 148 (delta 111), reused 130 (delta 93), pack-reused 0
+Receiving objects: 100% (148/148), 18.39 KiB | 0 bytes/s, done.
+Resolving deltas: 100% (111/111), completed with 63 local objects.
+From https://github.com/kaldi-asr/kaldi
+   658e1b4..827a5d6  master     -> golden/master
+\endverbatim
+
+The command you use is <tt>git pull</tt>,
+and \c golden is the alias we used to designate the main replica of the Kaldi
+repository before.
+
+\section tutorial_git_contributor From User To Contributor
+
+At some point you decided to change Kaldi code,
+be it scripts or source. Maybe you made a simple bug fix.
+Maybe you are contributing a whole recipe. In any case,
+your always do your work on a branch.
+Even if you have uncommitted changes, Git handles that.
+For example, you just realized that the \c fisher_english recipe does not
+actually make use of \c hubscr.pl for scoring, but checks it exists and
+fails.
+You quickly fixed that in your work tree and want to share this change
+with the project.
+
+\subsection tutorial_git_branch Work locally on a branch
+
+\verbatim
+kkm@yupana:~/kaldi[master *]$ git fetch golden
+kkm@yupana:~/kaldi[master *]$ git co golden/master -b fishfix --no-track
+M       fisher_english/s5/local/score.sh
+Branch fishfix set up to track remote branch master from golden.
+Switched to a new branch 'fishfix'
+kkm@yupana:~/kaldi[myfix *]$
+\endverbatim
+
+So what we did here, we first \em fetched the current changes to the golden
+repository to your machine.
+This did not update your master
+(in fact, you cannot pull if you have local worktree changes),
+but did update the remote reference \c golden/master.
+In the second command, we forked off a branch in your local repository,
+called \c fishfix.
+Was it more logical to branch off \c master? Not at all!
+First, this is one operation more. You do not *need* to update the master, so
+why would you?  Second, we agreed (remember?) that master will have no changes,
+and you had some. Third, and believe me, this happens, you might have committed
+something to your master by mistake, and you do not want to bring this feral
+change into your new branch.
+
+Now you examine your changes, and, since they are good, you commit them:
+
+\code{.diff}
+kkm@yupana:~/kaldi[fishfix *]$ git diff
+diff --git a/egs/fisher_english/s5/local/score.sh b/egs/fisher_english/s5/local/score.sh
+index 60e4706..552fada 100755
+--- a/egs/fisher_english/s5/local/score.sh
++++ b/egs/fisher_english/s5/local/score.sh
+@@ -27,10 +27,6 @@ dir=$3
+
+ model=$dir/../final.mdl # assume model one level up from decoding dir.
+
+-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
+-[ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
+-hubdir=`dirname $hubscr`
+-
+ for f in $data/text $lang/words.txt $dir/lat.1.gz; do
+   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
+ done
+kkm@yupana:~/kaldi[fishfix *]$ git commit -am 'fisher_english scoring does not really need hubscr.pl from sctk.'
+[fishfix d7d76fe] fisher_english scoring does not really need hubscr.pl from sctk.
+ 1 file changed, 4 deletions(-)
+kkm@yupana:~/kaldi[fishfix]$
+\endcode
+
+Note that the \c -a switch to <tt>git commit</tt> makes it commit all modified
+files (we had only one changed, so why not?). If you want to separate file
+modifications into multiple features to submit separately, <tt>git add</tt>
+specific files followed by <tt>git commit</tt> without the \c -a switch, and
+then start another branch off the same point as the first one for the next fix:
+<tt>git co golden/master -b another-fix --no-track</tt>, where you could add and
+commit other changed files. With Git, it is not uncommon to have a dozen
+branches going. Remember that it is extremely easy to combine multiple feature
+branches into one, but splitting one large changeset into many smaller features
+involves more work.
+
+Now you need to create a pull request to the maintaners of Kaldi, so that they
+can pull the change from your repository. For that, <i>your repository</i> needs
+to be available online to them. And for that, you need a GitHub account.
+
+\subsection tutorial_git_github_setup One-time GitHub setup
+
+\li Go to <a href="https://github.com/kaldi-asr/kaldi">main Kaldi repository
+page</a> and click on the Fork button. If you do not have an account, GitHub
+will lead you through necessary steps.
+\li <a href="https://help.github.com/articles/generating-ssh-keys/">Generate and
+register an SSH key</a> with GitHub so that GitHub can identify you. Everyone
+can read everything on GitHub, but only you can write to your forked repository!
+
+\subsection pull_request Creating a pull request
+
+Make sure your fork is registered under the name \c origin (the alias is
+arbitrary, this is what we'll use here). If not, add it. The URL is listed on
+your repository page under "SSH clone URL", and looks like
+<tt>git@github.com:YOUR_USER_NAME/kaldi.git</tt>.
+
+\verbatim
+kkm@yupana:~/kaldi[fishfix]$ git remote -v
+golden  https://github.com/kaldi-asr/kaldi.git (fetch)
+golden  https://github.com/kaldi-asr/kaldi.git (push)
+kkm@yupana:~/kaldi[fishfix]$ git remote add origin git@github.com:kkm000/kaldi.git
+kkm@yupana:~/kaldi[fishfix]$ git remote -v
+golden  https://github.com/kaldi-asr/kaldi.git (fetch)
+golden  https://github.com/kaldi-asr/kaldi.git (push)
+origin  git@github.com:kkm000/kaldi.git (fetch)
+origin  git@github.com:kkm000/kaldi.git (push)
+\endverbatim
+
+Now push the branch into your fork of Kaldi:
+
+\verbatim
+kkm@yupana:~/kaldi[fishfix]$ git push origin HEAD -u
+Counting objects: 632, done.
+Delta compression using up to 12 threads.
+Compressing objects: 100% (153/153), done.
+Writing objects: 100% (415/415), 94.45 KiB | 0 bytes/s, done.
+Total 415 (delta 324), reused 326 (delta 262)
+To git@github.com:kkm000/kaldi.git
+ * [new branch]      HEAD -> fishfix
+Branch fishfix set up to track remote branch fishfix from origin.
+\endverbatim
+
+\c HEAD in <tt>git push</tt> tells Git "create branch in the remote repo with
+the same name as the current branch", and \c -u remembers the connection between
+your local branch \c fishfix and \c origin/fishfix in your repository.
+
+Now go to your repository page and
+<a href="https://help.github.com/articles/creating-a-pull-request/">create a
+pull request</a>.
+<a href="https://github.com/kaldi-asr/kaldi/pull/31">Examine your changes</a>,
+and submit the request if everything looks good. The maintainers will receive
+the request and either accept it or comment on it.
+Follow the comments, commit fixes on your branch, push to \c origin again, and
+GitHub will automatically update the pull request web page.
+Then reply e. g. "Done" under the comments that you received, so that they know
+you followed up on their comments.
+
+    \ref tutorial "Up: Kaldi tutorial" <BR>
+    \ref tutorial_setup "Previous: Getting started" <BR>
+    \ref tutorial_looking "Next: Overview of the distribution" <BR>
+<P>
+*/

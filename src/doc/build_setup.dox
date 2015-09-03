@@ -1,0 +1,150 @@
+// doc/build_setup.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+//                2013 Johns Hopkins University
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+
+  \page build_setup The build process (how Kaldi is compiled)
+
+ This page describes in general terms how the Kaldi build process works.
+ See also \ref matrixwrap for an explanation of how the matrix code uses
+ external libraries and the linking errors that can arise from this; 
+ \ref install may also be of interest.
+
+ \section build_setup_windows Build process on Windows
+
+ The build process for Windows is separate from the build process for
+ UNIX-like systems, and is described in windows/INSTALL (tested some time ago with
+ Windows 7 and Microsoft Visual Studio 10.0).  We use scripts to
+ create the Visual Studio 10.0 solution file.  There are two options for
+ the math library on Windows: either you can use Cygwin to compile ATLAS, or you
+ can use the Intel MKL library.  Detailed instructions are provided.  However, note
+ that the Windows setup is becoming out of date and is not regularly tested,
+ and not all the code currently compiles on it.
+
+ \section build_setup_configure How our configure script works (for UNIX variants)
+
+ The "configure" script, located in src/, should be run by
+ typing ./configure.   This script takes various options.  For instance, you can run
+\verbatim
+   ./configure --shared
+\endverbatim
+ if you want to build the setup with shared libraries instead of static libraries
+ (this can make the binaries smaller), and it also takes various options to enable
+ you to specify different mat libraries, for instance to use OpenBlas.  Look at the
+ top of the script to see some example command lines.
+ The configure script currently supports are Cygwin, Darwin (which is Apple's version of BSD UNIX),
+ and Linux.  The configure script produces a file called kaldi.mk.  This file will be
+ textually included by the Makefiles in the subdirectores (see below). 
+
+ \section build_setup_editing Editing kaldi.mk
+
+  Changes that you might want to make to kaldi.mk after running "configure" are the following:
+    - Changing the debug level:
+      - The default (which creates the easiest-to-debug binaries) is enabled by the options "-g -O0 -DKALDI_PARANOID".
+      - For faster, but still debuggable, binaries, you can change -O0 to -O1
+      - If you won't need to debug the binaries, you can remove the "-g -O0 -DKALDI_PARANOID" options, which 
+        will make it even faster.
+      - For maximum speed and no checking, you can replace the "-g -O0 -DKALDI_PARANOID" options with
+        "-O2 -DNDEBUG" or "-O3 -DNDEBUG"
+    - Changing the default precision
+      - To test algorithms in double precision (e.g. if you suspect that roundoff is affecting
+        your results), you can change 0 to 1 in the option -DKALDI_DOUBLEPRECISION=0.
+    - Suppressing warnings
+      - To suppress warnings caused by signed-unsigned comparisons in OpenFst code, you 
+        can add -Wno-sign-compare to CXXFLAGS 
+
+  It is also possible to modify kaldi.mk to use different math libraries (e.g. to
+  use CLAPACK instead of ATLAS versions of LAPACK functions) and to link to math
+  libraries dynamically instead of statically, but this is quite complicated and
+  we can't give any generic instructions that will enable you to do this (see
+  \ref matrixwrap to understand the compilation process for our math code).  It will probably
+  be easier to work with the options to configure script instead.
+
+ \section build_setup_targets Targets defined by the Makefiles
+
+ The targets defined by the Makefiles are:
+    - "make depend" will rebuild the dependencies.   It's a good idea to
+      run this before building the toolkit.  If the .depend files gets out of date
+     (because you haven't run "make depend"), you may get errors that look like this:
+\verbatim
+make[1]: *** No rule to make target `/usr/include/foo/bar', needed by `baz.o'.  Stop.
+\endverbatim
+    - "make all" (or just "make") will compile all the code, including
+       testing code.
+    - "make test" will run the testing code (useful for making sure the
+      build worked on your system, and that you have not introduced bugs)
+    - "make clean" will remove all compiled binaries, .o (object) files and
+      .a (archive) files.
+    - "make valgrind" will run the test programs under valgrind to check
+      for memory leaks.
+    - "make cudavalgrind" will run the test program (in cudamatrix) to 
+      check for memory leaks for machine with GPU card which support NVIDIA 
+      CUDA and OS with CUDA installation.
+
+ \section build_setup_output Where do the compiled binaries go?
+
+ Currently, the Makefiles do not put the compiled binaries in a special place; 
+ they just leave them in the directories where the corresponding code is.  
+ Currently, binaries exist in the directories "bin/", "gmmbin/", featbin/",
+ "fstbin/", and "lm/", all of which are subdirectories of "src/".  In the future we may
+ designate a single place to put all the binaries. 
+
+ \section build_setup_make How our Makefiles work
+
+ Currently the file src/Makefile just invokes the Makefiles in all the
+ source sub-directories (src/base, src/matrix and so on).  These directories have their own Makefiles, 
+ all of which share a common structure.  They all include the line:
+\verbatim
+include ../kaldi.mk
+\endverbatim
+  This is like an \#include line in C (it includes the text of kaldi.mk). 
+  When reading kaldi.mk, bear in mind that it
+  is to be invoked from one directory below where it is actually located (it is located in src/).
+  An example of what the kaldi.mk file looks like is as follows.  This is for
+  a Linux system; we have removed some rules relating to valgrind that are not
+  very important.
+\verbatim
+ATLASLIBS = /usr/local/lib/liblapack.a /usr/local/lib/libcblas.a \
+          /usr/local/lib/libatlas.a /usr/local/lib/libf77blas.a
+CXXFLAGS = -msse -Wall -I.. \
+      -DKALDI_DOUBLEPRECISION=0 -msse2 -DHAVE_POSIX_MEMALIGN \
+     -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
+      -DHAVE_ATLAS -I ../../tools/ATLAS/include \
+       -I ../../tools/openfst/include \
+      -g -O0 -DKALDI_PARANOID
+LDFLAGS = -rdynamic
+LDLIBS = ../../tools/openfst/lib/libfst.a -ldl $(ATLASLIBS) -lm
+CC = g++
+CXX = g++
+AR = ar
+AS = as
+RANLIB = ranlib
+\endverbatim
+So kaldi.mk is responsible for setting up include paths, defining
+preprocessor variables, setting compile options, linking with libraries, and so on.
+
+\section build_setup_platforms Which platforms has Kaldi been compiled on?
+
+We have compiled Kaldi on Windows, Cygwin, various flavors of Linux (including
+Ubuntu, CentOS, Debian, Red Hat and SUSE), and Darwin. We recommend you use g++ version
+4.4 or above, although other compilers such as llvm and Intel's icc are also known to work.
+
+*/

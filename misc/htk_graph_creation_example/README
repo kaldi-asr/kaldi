@@ -1,0 +1,25 @@
+This script is not being maintained and is not guaranteed to work.
+Its inputs are specific to the BUT system.
+
+
+
+This directory contains some scripts that convert HTK models into Kaldi format
+and build decoding graphs.  They take as input a CallHome English setup that's
+already on the BUT system.  There are a couple of different recipes: a "basic"
+one, and a "factored" one that removes the unusual transitions from the
+transition-model for silence, which enables it to use a more efficient
+implementation.  It produces the output in two parts which would have to be composed
+to decode (possibly in the decoder, but this isn't implemented yet).
+
+To run this, do: 
+run_basic.sh  
+test_basic.sh
+
+run_factored.sh    
+test_factored.sh
+
+
+
+
+
+

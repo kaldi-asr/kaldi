@@ -1,0 +1,226 @@
+To install the prerequisites for Kaldi:
+
+  make
+
+If you have multiple CPUs and want to speed things up, you can do a parallel
+build by supplying the "-j" option to make, e.g. to use 4 CPUs:
+
+  make -j 4
+
+By default, Kaldi builds against OpenFst-1.3.4. If you want to build against
+OpenFst-1.4, edit the Makefile in this folder. Note that this change requires
+a relatively new compiler with C++11 support, e.g. gcc >= 4.6, clang >= 3.0.
+
+Note:
+./install_atlas.sh is a backup plan in case you don't have ATLAS installed
+on your system. Ignore it unless you get errors from ../src/configure.
+
+**** IGNORE THE REST OF THIS FILE!  ****
+
+The rest of this file contains the old, manual instructions, which
+we keep around in case they are useful for someone, but they are
+basically deprecated.
+
+
+See below install instructions for:
+(1) sph2pipe (needed to run the example scripts but not for compilation)
+(2) openfst (needed)
+(3) dot (optional; only used by doxygen and for FST debugging).
+(4) IRSTLM (optional; only needed if you want to build LMs and
+  don't already have a setup).
+(5) sclite (optional; useful for detailed scoring output but the
+   default scripts don't use it).
+(6) ATLAS (needed only for headers, if already on system, but for
+  native Windows compilation without Intel MKL you have to compile this)
+(7) CLAPACK headers (required if you have the library available but
+ no headers in a directory accessed by default; this is the case on Cygwin)
+(8) libportaudio (needed for the online recognition binaries)
+
+
+####
+
+(1)
+Install instructions for sph2pipe_v2.5.tar.gz
+#Note: you may need to try other sites, where the archive is available
+#For example:
+#	http://merlin.fit.vutbr.cz/kaldi/sph2pipe_v2.5.tar.gz
+
+
+wget ftp://ftp.ldc.upenn.edu/pub/ldc/misc_sw/sph2pipe_v2.5.tar.gz
+tar -xovzf sph2pipe_v2.5.tar.gz 
+cd sph2pipe_v2.5
+gcc -o sph2pipe *.c -lm 
+cd ..
+
+# These instructions are not valid for native Windows;
+# see the readme, 0readme.1st, in sph2pipe_v2.5
+
+####
+(2)
+Install instructions for OpenFst
+
+Note that this should be compiled with g++-4.x
+You may have to install this and give the option CXX=<g++-4-binary-name>
+to configure, if it's not already the default (g++ -v will tell you).
+(on cygwin you may have to install the g++-4.0 package and give the options CXX=g++-4.exe CC=gcc-4.exe to configure).
+
+
+wget http://openfst.cs.nyu.edu/twiki/pub/FST/FstDownload/openfst-1.3.2.tar.gz
+tar -xovzf openfst-1.3.2.tar.gz   
+for dir in openfst-1.3.2/{src/,}include/fst; do
+    ( [ -d $dir ] && cd $dir && patch -p0 -N <../../../../openfst.patch ) 
+done 
+rm openfst 2>/dev/null # Remove any existing link
+ln -s openfst-1.3.2 openfst
+ 
+cd openfst-1.3.2
+# Choose the correct configure statement:
+
+Linux or Darwin:
+  ./configure --prefix=`pwd` --enable-static --disable-shared 
+
+Linux, cross-compile (64-bit) [you probably don't want this]:
+ # Configure for linux, cross-compile to 64-bit
+ # Note that this refers to 64-bit compilation, which
+ # on the BUT machines it not the default even though the machines
+ # are 64bit [you would have to compile with OPT=64bit].  
+  ./configure --host=x86_64-linux --prefix=`pwd` --enable-static --disable-shared 
+
+Cygwin:
+  ./configure --prefix=`pwd` CXX=g++-4.exe CC=gcc-4.exe --enable-static --disable-shared  
+
+# make install is equivalent to "make; make install"
+make install
+
+####
+
+(3) dot
+
+This is used by doxygen to automatically generate documentation for the source, and
+is also useful for debugging FSTs (in conjunction with fstdraw).
+
+We provide here instructions for installing dot on cygwin.
+On most native UNIX systems, dot is likely to be installed already.
+If not, once you work out how to install it please put the instructions here.
+
+Get the Windows version of dot from
+http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.26.3.msi
+follow the default installation setup.
+in your .bashrc file, add the line
+export PATH=$PATH:/cygdrive/c/Program\ Files/Graphviz2.26.3/bin/
+[you might want to first make sure that that's where you installed it.
+If your shell is not bash, this may have to be changed a bit].
+
+####
+
+(4)
+The following are instructions to install IRSTLM.
+This is not needed for the basic system builds (RM has its own
+non-ARPA LM, and WSJ comes with LMs).  So installing this may be
+left till later, if you are in a hurry.
+
+svn co -r 618 https://svn.code.sf.net/p/irstlm/code/trunk irstlm
+cd irstlm
+[
+if your aclocal and automake are too old, you may want to 
+adjust the settings for the variables ACLOCAL and AUTOMAKE
+in ./regenerate-makefiles.sh.  For example, on cygwin you have
+to install the package automake-1.9, and the two lines in
+regenerate-makefiles.sh become:
+ACLOCAL=/bin/aclocal-1.9
+AUTOMAKE=/bin/automake-1.9 
+... however, the defaults may work.
+]
+./regenerate-makefiles.sh  
+./regenerate-makefiles.sh  # run this twice; it seems to be necessary.
+./configure --prefix=`pwd`
+#or for 64 bit cross-compilation (tested on BUT machines)
+#./configure --prefix=`pwd` CC="x86_64-linux-gcc" CXX="x86_64-linux-g++" AR="x86_64-linux-ar" AS="x86_64-linux-as" RANLIB="x86_64-linux-ranlib"
+[ you may have to install zlib before typing make ]
+make
+make install
+
+####
+
+(5) sclite [OPTIONAL!]  This can be helpful helpful for scoring but the default
+scoring scripts do not use it (they use our own Kaldi-based scorer). 
+
+If you get a bug about strncasecmp, you have to modify the file 'sctk-2.4.0/src/rfilter1/makefile'.
+There is a comment in there about setting OPTIONS to be empty.  Do that and it
+should compile. [Do this after "make config" but before "make install"].
+
+Install instructions for sclite/sctk.
+This was obtained as follows:
+
+ (a) download it.
+ If the following command fails with e.g. a proxy error:
+   wget ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.0-20091110-0958.tar.bz2
+ then try this:  
+  ftp jaguar.ncsl.nist.gov 
+  use username="anonymous" and an empty password
+  cd pub
+  get sctk-2.4.0-20091110-0958.tar.bz2
+ 
+ (b) unpack, patch and compile
+tar -xovjf sctk-2.4.0-20091110-0958.tar.bz2 
+cd sctk-2.4.0
+for x in src/asclite/core/recording.{h,cpp}; do # Fix a compilation error that can occur with newer compiler versions.
+  sed 's/Filter::Filter/::Filter/' $x > tmpf; mv tmpf $x;
+done
+make config
+make all
+make check
+make install
+make doc
+
+####
+
+(6) Atlas
+wget http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz
+tar -xovzf atlas3.8.3.tar.gz ATLAS/include
+# don't do any more installation at this point, we just need this for headers
+# (except for native Windows compilation, for which see ../windows/INSTALL.atlas)
+
+#####
+
+(7) CLAPACK headers (in case needed, if CLAPACK is installed on the machine...
+   we don't go to the trouble of installing CLAPACK if the libraries are not
+   already there).
+mkdir CLAPACK_include
+cd CLAPACK_include
+for x in  clapack.h f2c.h ; do 
+  wget http://www.netlib.org/clapack/$x; 
+done
+cd ..
+cp ATLAS/include/cblas.h CLAPACK_include
+ 
+####
+
+(8) Install instructions for libportaudio.
+
+libportaudio is only needed for the online recognition binaries. It enables audio
+capture from the sound card. Unfortunately, the installer for libportaudio may not 
+work on all version of Linux or Mac OS. However, for most people it will be 
+sufficient to simply run the script
+
+./install_portaudio.sh
+
+We tested this installation script on various versions of Suse Linux and Red Hat as
+well as on Mac OS (Darwin). Please note that the installation script patches up the 
+default Makefile of portaudio when installing on Mac (for details, please have a look
+at the installation script itself). 
+
+!!IMPORTANT!! UNDER MAC OS, YOU MAY NEED TO COPY THE libportaudio.dylib TO
+/usr/local/lib SO THAT THE BINARIES CAN FIND THE LIBRARY. AFTER COMPILING 
+LIPPORTAUDIO, YOU CAN FIND THE DYLIB FILE(S) IN portaudio/install/lib
+
+The best bet for support on compiling libportaudio, should you face any problems, 
+would be the portaudio documentation:
+
+http://portaudio.com/docs/v19-doxydocs/tutorial_start.html
+
+We know of at least one instance were libportaudio  compiled fine, but only 
+produced garbage audio samples. This happened on a Linux system  that only had 
+Open Sound System (OSS) installed. We therefore recommend to install ALSA. This 
+is also reflected in our Makefile for the binaries in /src/onlinebin where we 
+include -lasound.

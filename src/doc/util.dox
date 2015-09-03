@@ -1,0 +1,83 @@
+// doc/util.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page util Other Kaldi utilities
+
+  This page gives an overview of various categories of utility functions that
+  we use in Kaldi code.  This excludes important utilities that have been
+ dealt with in their own sections, including the \ref matrix "matrix library",
+ \ref io "I/O", \ref error "logging and error-reporting",
+ and \ref parse_options "command-line parsing".
+
+  \section util_sec_text Text utilities
+
+  In \ref text-utils.h are various functions for manipulating strings, mostly
+  used in parsing.  Important ones include the templated function
+ ConvertStringToInteger(),  and the overloaded ConvertStringToReal() functions which are
+ defined for float and double.  There is also the SplitStringToIntegers() template whose
+ output is a vector of integers, and SplitStringToVector() which splits a string into
+  a vector of strings. 
+
+  \section util_sec_stl STL utilities
+
+  In \ref stl-utils.h are templated functions for manipulating STL types.  A commonly used
+  one is SortAndUniq(), which sorts and removes duplicates from a vector (of an arbitrary type).
+  The function CopySetToVector() copies the elements of a set into a vector, and is part
+  of a larger category of similar functions that move data between sets, vectors and maps 
+ (see a list in \ref stl-utils.h).
+  There are also the hashing-function types VectorHasher (for vectors of integers) and
+  StringHasher (for strings); these are for use with the STL unordered_map and unordered_set 
+  templates.  Another commonly used function is DeletePointers(), which deletes pointers
+  in a std::vector of pointers, and sets them to NULL.
+
+  \section util_sec_math Math utilities
+
+  In \ref kaldi-math.h, apart from a number of standard \#defines which are provided in case they
+  are not in the system header math.h, there are some math utility functions.  These include
+  most importantly:
+    - Functions for random number generation: RandInt(), RandGauss(), RandPoisson().
+    - LogAdd() and LogSub() functions
+    - Functions for testing and asserting approximate math (in)equalities, i.e. ApproxEqual(), AssertEqual(), 
+      AssertGeq() and AssertLeq().
+
+  \section util_sec_other Other utilities
+
+  In \ref const-integer-set.h is a class ConstIntegerSet that stores a set of
+  integers in an efficient way and allows fast querying.  The caveat is that
+  the set cannot be changed after initializing the object.  This is used e.g.
+  in decision-tree code.  Depending on the value of the integers in the set, it may store them internally
+  as vector<bool> or as a sorted vector of integers.
+  
+  A class Timer for timing programs in a platform-independent way is in \ref timer.h.
+
+  Other utility-type functions and classes are in \ref simple-io-funcs.h and
+  \ref hash-list.h, but these have more specialized uses.  Some additional utility functions
+ and macros, mostly quite specialized, that the \ref matrix "matrix" code depends on, are in
+ \ref kaldi-utils.h; these include things like byte swapping, memory alignment, 
+ and mechanisms for compile-time assertions (useful in templates).
+
+
+*/ 
+
+
+}

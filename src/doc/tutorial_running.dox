@@ -1,0 +1,521 @@
+// doc/tutorial_running.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_running Running the example scripts (40 minutes)
+
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_looking "Previous: Overview of the distribution" <BR>
+  \ref tutorial_code "Next: Reading and modifying the code" <BR>
+
+
+\section tutorial_running_start Getting started, and prerequisites.
+
+The next stage of the tutorial is to start running the example scripts for
+Resource Management. Change directory to the top level (we called it kaldi-1),
+and then to egs/. Look at the README.txt file in that directory, and
+specifically look at the Resource Management section. It mentions the LDC
+catalog number corresponding to the corpus. This may help you in obtaining the
+data from the LDC. If you cannot get the data for some reason, just continue
+reading this tutorial and doing the steps that you can do without the data, and
+you may still obtain some value from it. The best case is that there is some
+directory on your system, say /export/corpora5/LDC/LDC93S3A/rm_comp, that
+contains three subdirectories; call them rm1_audio1, rm1_audio2 and
+rm2_audio. These would correspond to the three original disks in the data
+distribution from the LDC. These instructions assume that your shell is bash. If
+you have a different shell, these commands will not work or should be modified
+(just type "bash" to get into bash, and everything should work).
+
+Now change directory to rm/, glance at the file README.txt to see what the overall structure is, and cd to s5/. This is the basic sequence of experiments that corresponds to the main functionality in version 5 of the toolkit.
+
+In s5/, list the directory and glance at the RESULTS file so you have some idea
+what is in there (later on, you should verify that the results you get are
+similar to what is in there). The main file we will be looking at is
+run.sh. Note: run.sh is not intended to be run directly from the shell; the idea
+is that you run the commands in it one by one, by hand.
+
+\section tutorial_running_data_prep Data preparation
+
+We will first need to configure whether the jobs need to run locally or on the
+Oracle GridEngine. Instructions on how to do this are in cmd.sh.
+
+If you do not have GridEngine installed, or if you are running experiments on
+smaller datasets, execute the following command on your shell.
+
+\verbatim
+train_cmd="run.pl"
+decode_cmd="run.pl"
+\endverbatim
+
+If you do have GridEngine installed, you should use the queue.pl file with
+arguments specifying where the GridEngine resides. In this case, you would
+execute the following commands (The argument -q is an example and you would want
+to replace it with your GridEngine details)
+
+\verbatim
+train_cmd="queue.pl -q all.q@a*.clsp.jhu.edu"
+decode_cmd="queue.pl -q all.q@[ah]*.clsp.jhu.edu"
+\endverbatim
+
+The next step is to create the test and training sets from the RM corpora. To do
+this, run the following command on your shell (Assuming your data is in
+/export/corpora5/LDC/LDC93S3A/rm_comp):
+
+\verbatim
+local/rm_data_prep.sh /export/corpora5/LDC/LDC93S3A/rm_comp 
+\endverbatim
+If this works, it should say : "RM_data_prep succeeded". If not, you will have to work out where the script failed and what the problem was.
+
+Now list the contents of the current directory and you should see that a new
+directory called "data" was created. Go into the newly created data directory
+and list the contents. You should see three main types of folders :
+
+- local : Contains the dictionary for the current data. 
+- train : The data segmented from the corpora for training purposes. 
+- test_* : The data segmented from the corpora for testing purposes.
+
+Let's spend a while actually looking at the data files that were created. This should give you a good insight of how Kaldi expects input data to be. (Also for more details refer : \ref data_prep "Detailed data preparation guide")
+
+The Local Directory : 
+Assuming that you are in the data directory, execute the following commands : 
+
+\verbatim
+cd local/dict
+head lexicon.txt
+head nonsilence_phones.txt
+head silence_phones.txt
+\endverbatim
+
+These will give you some idea of what the outputs of a generic data preparation
+process would look like. Something you should appreciate is that not all of
+these files are "native" Kaldi formats, i.e. not all of them could be read by
+Kaldi's C++ programs and need to be processed using OpenFST tools before Kaldi
+can use them.
+
+- lexicon.txt : This is the lexicon.
+- *silence*.txt : These files contain information about which phones are silent and which are not. 
+
+Now go back to the data directory and change directory to /train. Then execute the following commands to look at the output of the files in this directory :
+
+\verbatim
+head text
+head spk2gender.map
+head spk2utt
+head utt2spk
+head wav.scp
+\endverbatim
+
+- text - This file contains mappings between utterances and utterance ids which will be used by Kaldi. This file will be turned into an integer format-- still a text file, but with the words replaced with integers.
+- spk2gender.map - This file contains mappings between speakers and their gender. This also acts as a list of unique users involved in training. 
+- spk2utt - This is a mapping between the speaker identifiers and all the utterance identifiers associated with the speaker. 
+- utt2spk - This is a one-to-one mapping between utterance ids and the corresponding speaker identifiers. 
+- wav.scp - This file is actually read directly by Kaldi programs when doing feature extraction. Look at the file again. It is parsed as a set of key-value pairs, where the key is the first string on each line. The value is a kind of "extended filename", and you can guess how it works. Since it is for reading we will refer to this type of string as an "rxfilename" (for writing we use the term wxfilename). See \ref io_sec_xfilename if you are curious. Note that although we use the extension .scp, this is not a script file in the HTK sense (i.e. it is not viewed as an extension to the command-line arguments).
+
+The structure of the train folder and the test_* folders is the same. However the size of the train data is significantly larger than the test data. You can verify this by going back into the data directory and executing the following command which will give word counts for training and test sets:
+
+\verbatim
+wc train/text test_feb89/text
+\endverbatim
+
+The next step is to create the raw language files that Kaldi uses. In most cases, these will be text files in integer formats. Make sure that you are back in the s5 directory and execute the following command:
+
+\verbatim
+utils/prepare_lang.sh data/local/dict '!SIL' data/local/lang data/lang 
+\endverbatim
+
+This will create a new folder called lang within the local folder which will contain an FST describing the language in question. Look at the script. It transforms some of the files created in data/ to a more normalized form that is read by Kaldi. This script creates its output in the data/lang/ directory. The files we mention below will be in that directory.
+
+The first two files this script creates are called words.txt and phones.txt (both in the directory data/lang/). These are OpenFst format symbol tables, and represent a mapping from strings to integers and back. Look at these files; since they are important and will be frequently used so you need to understand what is in them. They have the same format as the symbol table format we encountered previously in \ref tutorial_looking "Overview of the distribution".
+
+Look at the files with suffix .csl (in data/lang/phones). These are colon-separated lists of the integer id's of non-silence, and silence, phones respectively. They are sometimes needed as options on program command lines (e.g. to specify lists of silence phones), and for other purposes.
+
+Look at phones.txt (in data/lang/).  This file is a phone symbol table that also 
+handles the "disambiguation symbols" used in the standard FST recipe.
+These symbols are conventionally called \#1, \#2 and so on;
+ see the paper <a href=www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
+with Weighted Finite State Transducers" </a>.  We also add a symbol \#0
+which replaces epsilon transitions in the language model; see
+\ref graph_disambig for more information.  How many disambiguation symbols
+are there?  In some recipes the number of disambiguation symbols is the same
+as the maximum number of words that share the same pronunciation.  In our recipe
+there are a few more; you can find more explanation \ref graph_disambig "here".
+
+The file L.fst is the compiled lexicon in FST format. To see what kind of information is in it, you can (from s5/), do:
+
+\verbatim
+ fstprint --isymbols=data/lang/phones.txt --osymbols=data/lang/words.txt data/lang/L.fst | head
+\endverbatim
+
+If the bash cannot find command fstprint, you need to add OpenFST's installation path to the PATH environment varible. Simply run the script path.sh will do this:
+
+\verbatim
+. ./path.sh
+\endverbatim
+
+The next step is to use the files created in the previous step to create an FST describing the grammar for the language. To do this, go back to the directory s5 and execute the following command : 
+
+\verbatim
+ local/rm_prepare_grammar.sh
+\endverbatim
+If successful, this should return with the message "Succeeded preparing grammar for RM." A new file would be created in /data/lang called G.fst.
+
+\section tutorial_running_feats Feature extraction
+
+The next step is to extract the training features. Search for "mfcc" in run.sh and run the corresponding three lines of script (you have to decide where you want to put the features first and modify the example accordingly). Make sure the that directory you decide to put the features has a lot of space. Suppose we decide to put the features on /my/disk/rm_mfccdir, we would do something like:
+
+\verbatim
+export featdir=/my/disk/rm_mfccdir
+# make sure featdir exists and is somewhere you can write.
+# can be local if you want.
+mkdir $featdir
+for x in test_mar87 test_oct87 test_feb89 test_oct89 test_feb91 test_sep92 train; do \
+  steps/make_mfcc.sh --nj 8 --cmd "run.pl" data/$x exp/make_mfcc/$x $featdir; \
+  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $featdir; \
+done
+\endverbatim
+
+Run these jobs. They use several CPUs in parallel and should be done in around two minutes on a fast machine. You may change the --nj option(which specifies the number of jobs to run) according to the number of CPUs of your machine. Look at the file exp/make_mfcc/train/make_mfcc.1.log to see the logging output of the program that creates the MFCCs. At the top of it you will see the command line (Kaldi programs will always echo the command line unless you specify --print-args=false). 
+
+In the script steps/make_mfcc.sh, look at the line that invokes split_scp.pl. You can probably guess what this does.
+
+By typing
+\verbatim
+wc $featdir/raw_mfcc_train.1.scp 
+wc data/train/wav.scp
+\endverbatim
+you can confirm it.
+
+Next look at the line that invokes compute-mfcc-feats. The options should be fairly self-explanatory. The option that involves the config file is a mechanism that can be used in Kaldi to pass configuration options, like a HTK config file, but it is actually quite rarely used. The positional arguments (the ones that begin with "scp" and "ark,scp" require a little more explanation.
+
+Before we explain this, have a look at the command line in the script again and examine
+the inputs and outputs using:
+\verbatim
+head data/train/wav.scp
+head $featdir/raw_mfcc_train.1.scp
+less $featdir/raw_mfcc_train.1.ark
+\endverbatim
+Be careful-- the .ark file contains binary data (you may have to type "reset" if your terminal doesn't work right after looking at it).
+
+By listing the files you can see that the .ark files are quite big (because they contain the actual data). You can view one of these archive files more conveniently by typing (Assuming you are in the s5 directory and have run script path.sh):
+
+\verbatim
+copy-feats ark:$featdir/raw_mfcc_train.1.ark ark,t:- | head
+\endverbatim
+
+You can remove the ",t" modifier from this command and try it again if you like-- but it might be a good to pipe it into "less" because the data will be binary. An alternative way to view the same data is to do:
+
+\verbatim
+copy-feats scp:$featdir/raw_mfcc_train.1.scp ark,t:- | head
+\endverbatim
+
+This is because these archive and script files both represent the same data (well, technically
+the archive only represents one eighth of it because we split it into eight pieces).  Notice
+the "scp:" and "ark:" prefixes in these commands.  Kaldi doesn't attempt to work
+out whether something is a script file or archive format from the data itself,
+and in fact Kaldi never attempts to work things out from file suffixes.  This is
+for general philosophical reasons, and also to forestall bad interaction with
+pipes (because pipes don't normally have a name).
+
+Now type the following command:
+\verbatim
+head -10 $featdir/raw_mfcc_train.1.scp | tail -1 | copy-feats scp:- ark,t:- | head
+\endverbatim
+
+This prints out some data from the tenth training file.  Notice that in
+"scp:-", the "-" tells it to read from the standard input, while "scp" tells
+it to interpret the input as a script file.
+
+Next we will describe what script and archive files actually are.
+The first point we want to make is that the code sees both of them
+in the same way.  For a particularly simple example of the user-level
+calling code, type the following command:
+
+\verbatim
+tail -30 ../../../src/featbin/copy-feats.cc
+\endverbatim
+
+You can see that the part of this program that actually does the work is just
+three lines of code (actually there are two branches, each with three lines
+of code).  If you are familiar with the StateIterator type in OpenFst you will 
+notice that the way we iterate is in the same style (we have tried to be
+as style-compatible as OpenFst as possible).
+
+Underlying scripts and archives is the concept of a Table.  A Table is basically
+an ordered set of items (e.g. feature files), indexed by unique strings
+(e.g. utterance identifiers).  A Table is not really a C++ object, because we have
+separate C++ objects to access the data depending whether we are writing,
+iterating, or doing random access.  An example of these types where the object
+in question is a matrix of floats (Matrix<BaseFloat>), is:
+\verbatim
+BaseFloatMatrixWriter
+RandomAccessBaseFloatMatrixReader
+SequentialBaseFloatMatrixReader
+\endverbatim
+These types are all typedefs that are actually templated classes.  We won't go
+into further detail here.
+A script (.scp) file or an archive (.ark) file
+are both viewed as Tables of data.  The formats are as follows:
+
+ - The .scp format is a text-only format has lines with a key, and then an "extended filename" 
+   that tells Kaldi where to find the data.  
+ - The archive format may be text or binary (you can write in text mode
+   with the ",t" modifier; binary is default).  The format is: the key (e.g. utterance id), then a
+   space, then the object data.  
+
+A few generic points about scripts and archives:
+ - A string that specifies how to read a Table (archive or script) is called an rspecifier;
+   for example "ark:gunzip -c my/dir/foo.ark.gz|".
+ - A string that specifies how to write a Table (archive or script) is called a wspecifier;
+   for example "ark,t:foo.ark".
+ - Archives can be concatenated together and still be valid archives (there is no
+  "central index" in them). 
+ - The code can read both scripts and archives either sequentially or via random access.
+   The user-level code only knows whether it's iterating or doing lookup; it doesn't
+   know whether it's accessing a script or an archive.
+ - Kaldi doesn't attempt to represent the object type in
+   the archive; you have to know the object type in advance 
+ - Archives and script files can't contain mixtures of types. 
+ - Reading archives via random access can be memory-inefficient as the code may have
+   to cache the objects in memory.
+ - For efficient random access to an archive, you can write out a corresponding 
+   script file using the "ark,scp" writing mechanism (e.g., used in writing the mfcc
+   features to disk).  You would then access it via the scp file.
+ - Another way to avoid the code having to cache a bunch of stuff in memory when doing
+   random access on archives is
+   to tell the code that the archive is sorted and will be called in sorted 
+   order (e.g. "ark,s,cs:-").
+ - Types that read and write archives are templated on a Holder type, which is a type
+   that "knows how" to read and write the object in question.
+
+ Here we have just given a very quick overview that will probably raise more questions
+ than it provides answers; it is just intended to make you aware of the kinds of
+ issues involved.  For more details, see \ref io.
+
+To give you some idea how archives and script files can be used within pipes,
+type the following command and try to understand what is going on:
+\verbatim
+head -1 $featdir/raw_mfcc_train.1.scp | copy-feats scp:- ark:- | copy-feats ark:- ark,t:- | head
+\endverbatim
+
+It might help to run these commands in sequence and observe what happens. With copy-feats, remember to pipe the output to head because you might be listing a lot of content (which could possibly be binary in the case of ark files). 
+
+Finally, let us merge all the test data into one directory for the sake of convenience. We will do all our testing on this averaged step. The following commands will also merge speakers, taking care of duplicating and regenerating stats for these speakers so that our tools don't complain. Do this by running the following commands (From the s5 directory). 
+
+\verbatim
+utils/combine_data.sh data/test data/test_{mar87,oct87,feb89,oct89,feb91,sep92}
+steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test $featdir
+\endverbatim
+
+Let's also create a subset of the training data (train.1k) which will retain only a 1000 utterances per speaker. We will use use for training. Do this by executing the following command : 
+
+\verbatim
+utils/subset_data_dir.sh data/train 1000 data/train.1k 
+\endverbatim
+
+\section tutorial_running_monophone Monophone training
+
+The next step is to train monophone models.  If the disk where you installed
+Kaldi is not big, you might want to make exp/ a soft link to a directory somewhere
+on a big disk (if you run all the experiments and don't clean up, it can get up 
+to a few gigabytes).  Type
+\verbatim
+nohup steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono &
+\endverbatim
+You can view the most recent output of this by typing
+\verbatim
+tail nohup.out
+\endverbatim
+You can run longer jobs this way so they can finish running even if we get disconnected,
+although a better idea is to run your shell from "screen" so it won't get killed.
+There is actually very little output that goes to the standard out and error of this
+script; most of it goes to log files in exp/mono/.
+
+While it is running, look at the file data/lang/topo.  This file is created immediately.
+One of the phones has a different topology from the others.  Look at data/phones.txt
+in order to figure out from the numeric id which phone it is.  Notice that each entry in
+the topology file has a final state with no transitions out of it.  The convention in
+the topology files is that the first state is initial (with probability one) and the
+last state is final (with probability one).
+
+Type 
+\verbatim
+gmm-copy --binary=false exp/mono/0.mdl - | less
+\endverbatim
+and look at the model file.  You will see that it contains the information in 
+topology file at the top of it, and then some other things, before the model parameters.
+The convention is that the .mdl file contains two objects: one object of type TransitionModel,
+which contains the topology information as a member variable of type HmmTopology, 
+and one object of the relevant model type (in this case, type AmGmm).  
+By "contains two objects", what we mean is that the objects have Write and Read
+functions in a standard form, and we call these functions to write the objects
+to the file.  For objects such as this, that are not part of a Table (i.e. there
+is no "ark:" or "scp:" involved), writing is in binary or text mode and can be
+controlled by the standard command-line options --binary=true or --binary=false
+(different programs have different defaults).  For Tables (i.e. archives and scripts),
+binary or text model is controlled by the ",t" option in the specifier.
+
+Glance through the model file to see what kind of information it contains.  At
+this point we won't go into more detail on how models are represented in Kaldi;
+see \ref hmm to find out more.
+
+We will mention one important point, though: p.d.f.'s in Kaldi are represented by
+numeric id's, starting from zero (we call these pdf-ids).  They do not have
+"names", as in HTK.  The .mdl file does not have sufficient information to map
+between context-dependent phones and pdf-ids.  For that information, see the tree file:
+do
+\verbatim
+copy-tree --binary=false exp/mono/tree - | less
+\endverbatim
+Note that this is a monophone "tree" so it is very trivial-- it
+does not have any "splits".  Although this tree format was not indended to be
+very human-readable, we have received a number of queries about the tree format so we
+will explain it.  The rest of this paragraph can be skipped over by the casual reader.
+After "ToPdf", the tree file contains an object of the
+polymorphic type EventMap, which can be thought of as storing a mapping from a
+set of integer (key,value) pairs representing the phone-in-context and HMM state,
+to a numeric p.d.f. id.  Derived from EventMap are the types ConstantEventMap
+(representing the leaves of the tree), TableEventMap (representing some kind of
+lookup table) and SplitEventMap (representing a tree split).  In this file
+exp/mono/tree, "CE" is a marker for ConstantEventMap (and corresponds to the
+leaves of the tree), and "TE" is a marker for TableEventMap (there is no "SE", or
+SplitEventMap, because this is the monophone case).  "TE 0 49" is the start of a
+TableEventMap that "splits" on key zero (representing the zeroth phone position
+in a phone-context vector of length one, for the monophone case).  It is
+followed, in parentheses, by 49 objects of type EventMap.  The first one is NULL,
+representing a zero pointer to EventMap, because the phone-id zero is reserved
+for "epsilon".  An example non-NULL object is the string "TE -1 3 ( CE 33 CE 34
+CE 35 )", which represents a TableEventMap splitting on key -1.  This key represents
+the PdfClass specified in the topology file, which in our example
+is identical to the HMM-state index.  This phone has 3 HMM states, so the value
+assigned to this key can take the values 0, 1 or 2.
+Inside the parentheses are three objects of type ConstantEventMap, each representing 
+a leaf of the tree.
+
+Now look at the file exp/mono/ali.1.gz (it should exist if the training has progressed
+far enough):
+\verbatim
+ copy-int-vector "ark:gunzip -c exp/mono/ali.1.gz|" ark,t:- | head -n 2
+\endverbatim
+This is the Viterbi alignment of the training data; it has one line
+for each training file.  Now look again at exp/mono/tree (as described above) and look for the highest-numbered
+p.d.f. id (which is the last number in the file).  Compare this with the numbers in
+exp/mono/ali.1.gz.  Does something seem wrong?  The alignments have numbers in them
+that are too large.  The reason is that the alignment file
+does not contain p.d.f. id's.  It contains a slightly more fine-grained identifier
+that we call a "transition-id".  This also encodes the phone and the transition within
+the prototype topology of the phone.  This is useful for a number of reasons.
+If you want an explanation of what a particular transition-id is (e.g. you are looking
+at an alignment in cur.ali and you see one repeated a lot and you wonder why),
+you can use the program "show-transitions" to show you some information about the transition-ids.
+Type
+\verbatim
+  show-transitions data/lang/phones.txt exp/mono/0.mdl
+\endverbatim
+If you have a file with occupation counts in it (a file named *.occs), you can give this as
+a second argument and it will show you some more information.
+
+To view the alignments in a more human-friendly form, try the following:
+\verbatim
+ show-alignments data/lang/phones.txt exp/mono/0.mdl "ark:gunzip -c exp/mono/ali.1.gz |" | less
+\endverbatim
+For more details on things like HMM topologies, transition-ids,
+transition modeling and so on, see \ref hmm.
+
+Next let's look at how training is progressing (this step assumes your shell is bash).
+Type
+\verbatim
+grep Overall exp/mono/log/acc.{?,??}.{?,??}.log
+\endverbatim
+You can see the acoustic likelihods on each iteration.  Next look at one of the files
+exp/mono/log/update.*.log to see what kind of information is in the update log.
+
+When the monophone training is finished, we can test the monophone decoding. Before decoding, we have to creat the decode graph. Type:
+\verbatim
+utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+\endverbatim
+
+Look at the programs that utils/mkgraph.sh calls. The names of many of them start with "fst" (e.g. fsttablecompose), most of these programs are not actually from the OpenFst distribution. We created some of our own FST-manipulating programs. You can find out where these programs are located as follows. Take an arbitrary program that is invoked in utils/mkgraph.sh (say, fstdeterminizestar). Then type:
+\verbatim
+which fstdeterminizestar
+\endverbatim
+
+The reason why we have different versions of the programs is mostly because we
+have a slightly different (less AT&T-ish) way of using FSTs in speech recognition.
+For example, "fstdeterminizestar" corresponds to "classical" determinization in which
+we remove epsilon arcs.  See \ref graph for more information. After graph creation process, we can start the monophone decoding with:
+
+\verbatim
+steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
+  exp/mono/graph data/test exp/mono/decode
+\endverbatim
+
+To see some of the decoded output
+\verbatim
+less exp/mono/decode/log/decode.2.log 
+\endverbatim
+You can see that it puts the transcript on the screen.  The text form of the
+transcript only appears in the logging information: the actual output of this
+program appears in the file exp/mono/decode/scoring/2.tra. The number in those 
+tra files represent the language model(LM) scale used the decoding process.
+Here we use LM scale equals from 2 to 13 by default(see local/score.sh for details). 
+To view the actual decoded word sequence from a tra file(take 2.tra as an example), type:
+\verbatim
+utils/int2sym.pl -f 2- data/lang/words.txt exp/mono/decode/scoring/2.tra
+\endverbatim
+There is a corresponding script called sym2int.pl.  You can convert it back
+to integer form by typing:
+\verbatim
+utils/int2sym.pl -f 2- data/lang/words.txt exp/mono/decode/scoring/2.tra | \
+ utils/sym2int.pl -f 2- data/lang/words.txt 
+\endverbatim
+The <DFN>-f 2-</DFN> option is so that it doesn't try to convert the utterance
+id to an integer.
+Next, try doing
+\verbatim
+tail exp/mono/decode/log/decode.2.log 
+\endverbatim
+It will print out some useful summary information at the end, including the
+real-time factor and the average log-likelihood per frame.  The real-time factor
+will typically be about 0.2 to 0.3 (i.e. faster than real time).  This depends
+on your CPU, how many jobs were on the machine and other factors.  This script
+runs 20 jobs in parallel, so if your machine has fewer than 20 cores it may be
+much slower.  Note that we use a fairly wide beam (20), for accurate results; in a
+typical LVCSR setup, the beam would be much smaller (e.g. around 13).
+
+Look at the top of the log file again, and focus on the command line.  The optional
+arguments are before the positional arguments (this is mandatory).  Type
+\verbatim
+gmm-decode-faster
+\endverbatim
+to see the usage message, and match up the arguments with what you see in the log file.
+Recall that "rspecifier" is one of those strings that specifies how to read a table,
+and "wspecifier" specifies how to write one.  Look carefuly at these arguments and try
+to figure out what they mean.  Look at the rspecifier that corresponds to the features, and
+try to understand it (this one has spaces inside, so Kaldi prints it out with single quotes
+around it so that you could paste it into the shell and the program would run as intended).
+
+The moniphone system is now finished and we will do triphone training and decoding in the 
+next step of tutorial.
+
+  \ref tutorial "Up: Kaldi tutorial" <BR>
+  \ref tutorial_looking "Previous: Overview of the distribution" <BR>
+  \ref tutorial_code "Next: Reading and modifying the code" <BR>
+<P>
+
+*/

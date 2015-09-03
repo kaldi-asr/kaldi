@@ -1,0 +1,314 @@
+// doc/matrix.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/**
+  \page matrix The Kaldi Matrix library
+
+   The Kaldi matrix library is mostly a C++ wrapper for standard BLAS and LAPACK
+   linear algebra routines.   This documentation page provides an overview of
+   how to use the library.  See \ref matrix_group for code-level documentation, 
+   and see \ref matrixwrap for an explanation of how the matrix code makes use 
+   of external libraries.
+
+   \section matrix_sec_types Matrix and vector types
+
+   The most important types defined by the matrix library are Matrix and Vector.
+   We can illustrate their use with an example:
+ \code
+   Vector<float> v(10), w(9);
+   for(int i=0; i < 9; i++) {
+      v(i) = i; 
+      w(i) = i+1;
+   }
+   Matrix<float> M(10,9);
+   M.AddVecVec(1.0, v, w);
+ \endcode
+  The code above first sets up v and w as vectors of size 10 and
+  9 respectively (the last element of v will be zero as the constructor
+  sets the data to zero).
+  The parenthesis operator indexes the vectors; a matrix would be indexed
+  as M(i,j).
+  M is initialized to a 10 x 9 matrix.  The last line of the code
+  adds the outer product \f$ v w^T \f$ to M.  The naming scheme for the
+  function is based on writing the operation as an equation, in this case:
+ \f[  M \leftarrow M + \alpha v w^T \f]
+  The "+" becomes "Add" in the name, and the types of the non-scalar arguments
+  become parts of the name too, in this case "Vec" for v and "Vec" for w
+  (so AddVecVec).  The type of M doesn't appear here as the function is its class member.
+
+  Also notice that we correctly sized M before adding the outer product (we could
+  have done this without using the constructor by calling \ref Matrix::Resize "Resize").  
+  The matrix library never tries to "guess" what size you want something to be, it will
+  just crash if something is the wrong size.
+  The only things that will resize a matrix are the constructor, 
+  \ref Matrix::Resize "Resize", and \ref Matrix::Read "Read" (and the assignment
+  operator, which is mainly included so that we can declare std::vector<Matrix<double> >
+  and the like).
+  
+  To provide another example, if A, B and C are matrices and alpha
+  and beta are scalars, to execute
+    \f[ A = \alpha B C^T + \beta A \f]
+  we would use the line of code
+  \code
+    A.AddMatMat(alpha, B, kNoTrans, C, kTrans, beta);
+  \endcode
+  Here, kNoTrans and kTrans are enumeration values that indicate whether or
+  not the matrix argument is transposed.  An examples that illustrates this 
+  and some other issues is:
+ \code
+   Matrix<float> M(5, 10), N(5, 10), P(5, 5);
+   // initialize M and N somehow...
+   // next line: P := 1.0 * M * N^T + 0.0 * P.
+   P.AddMatMat(1.0, M, kNoTrans, N, kTrans, 0.0);
+   // tr(M N^T)
+   float f = TraceMatMat(M, N, kTrans),
+         g = P.Trace();
+   KALDI_ASSERT(f == g);  // we use this macro for asserts in Kaldi 
+   // code (prints stack trace and throws exception).
+ \endcode
+
+
+  Note that in the BLAS tradition, there is no operation that does just, say,
+  \f$ A =  B C \f$; you have to use a special case of the example we just
+  gave (e.g. with alpha=1 and beta=0).
+
+  To get an idea of what mathematical member functions are available in the Matrix
+  and Vector classes, see the documentation for MatrixBase and VectorBase.
+
+  \section matrix_sec_sym Symmetric and triangular matrices
+
+  There are special types for symmetric matrices (\ref SpMatrix) 
+  and triangular matrices (\ref TpMatrix).  These are both represented
+  in memory as a "packed" lower-triangular matrix and both inherit
+  from \ref PackedMatrix.  Of these, SpMatrix is the most useful
+  (TpMatrix is mostly just used to compute Cholesky factors).
+  A typical example of using these types is below.  Notice the
+  "AddMat2" function.  This illustrates a new feature of our naming
+  scheme: when a quantity appears twice in an expression we add "2"
+  to the corresponding part of the function name.  
+  \code
+    Matrix<float> feats(1000, 39);
+    // ... initialize feats somehow ...
+    SpMatrix<float> scatter(39);
+    // next line does scatter = 0.001 * feats' * feats.
+    scatter.AddMat2(1.0/1000, feats, kTrans, 0.0);
+    TpMatrix<float> cholesky(39);
+    cholesky.Cholesky(scatter);
+    cholesky.Invert();
+    Matrix<float> whitened_feats(1000, 39);
+    // If scatter = C C^T, next line does:
+    //  whitened_feats = feats * C^{-T}
+    whitened_feats.AddMatTp(1.0, feats, kNoTrans, cholesky, kTrans, 0.0);
+  \endcode
+  This code would crash (cholesky.Invert() would throw an exception) if we did not
+  initialize the features somehow where indicated.
+
+  \section matrix_sec_sub Sub-vectors and sub-matrices.
+
+  For matrix operations that involve only part of a vector or matrix,
+  the \ref SubVector and \ref SubMatrix classes are provided.  Like
+  \ref Vector and \ref Matrix, these inherit from \ref VectorBase
+  and \ref MatrixBase respectively, so the implementation of operations
+  that don't involve resizing is shared (you can never resize
+  a SubVector or SubMatrix because it's treated as a pointer into
+  the underlying Vector or Matrix). 
+
+  An example of using these classes is here:
+  \code
+  Vector<float> v(10), w(10);
+  Matrix<float> M(10, 10);
+  SubVector<float> vs(v, 1, 9), ws(w, 1, 9);
+  SubMatrix<float> Ms(M, 1, 9, 1, 9);
+  // next line would be v(2:10) += M(2:10,2:10)*w(2:10) in some
+  // math scripting languages.
+  vs.AddMatVec(1.0, Ms, kNoTrans, ws);
+  \endcode
+  There are other ways to obtain these types.  If M is a matrix, M.Row(3) will
+  return row 3 of M, as a SubVector.  There is a corresponding constructor,
+  for example:
+  \code
+  SubVector row_of_m(M, 0); // get zeroth row of M.
+  \endcode
+  The same doesn't work for columns.  This is because our vector types are
+  contiguous in memory; we don't currently have a "stride" class-member (even though
+  the underlying BLAS supports this).
+  Another way to obtain these types is by using the Range functions of
+  Vector and Matrix.  For instance:
+ \code
+  // get a sub-vector of length 5 starting from position 0; zero it.
+  v.Range(0, 5).SetZero();
+  // get a sub-matrix of size 2x2 starting from position (5,5); zero it.
+  M.Range(5, 2, 5, 2).SetZero(); 
+ \endcode
+  You have to be a little careful with SubVector and SubMatrix types.  For
+  instance, if you create a SubVector and then destroy or resize the underlying
+  Vector or Matrix, the SubVector will be pointing to freed memory.  Also, 
+  SubVector and SubMatrix do not respect const-ness the way they ideally
+  should, so it is possible to modify a const Vector by creating a SubVector.
+  Fixing these issues would have made the library a lot more complex.
+
+  \section matrix_sec_calling Calling conventions for vectors and matrices
+
+  In general, when a function requires a vector or matrix type, for greater
+  flexibility we pass an argument of type e.g. VectorBase<BaseFloat> or MatrixBase<BaseFloat>
+  rather than Vector<BaseFloat> or Matrix<BaseFloat>.  That way the code is still
+  callable if we are really passing a sub-matrix or sub-vector.  The exception is
+  where the code needs to resize the vector or matrix in question, in which case
+  it would take a pointer of type e.g. Vector<BaseFloat>* or Matrix<BaseFloat>*;
+  it cannot take a reference because resizing is non-const, and as per the style
+  guide, functions cannot take non-const reference arguments.
+  
+
+  \section matrix_sec_copy Copying matrix and vector types
+
+  There are different ways to copy vectors and matrices.  The simplest ones are
+  the CopyFrom functions, for instance Matrix::CopyFromMat, Vector::CopyFromVec,
+  SpMatrix::CopyFromSp and so on.  These will work even between float and double,
+  unlike most of the mathematical operations.  However, they will not resize
+  the matrix for you and will crash if the sizes are wrong (you have to resize
+  yourself using Vector::Resize, Matrix::Resize and so on).  The same types of functions are
+  available to copy between different matrix types, where this makes sense: for
+  example, Matrix::CopyFromTp, SpMatrix::CopyFromMat, TpMatrix::CopyFromMat and so
+  on.  See the documentation of those functions for their exact behavior.
+
+  Wherever the above functions exist, corresponding constructors exist.  These
+  will do the copying but also resize, for instance:
+\code
+   Matrix<double> M(10, 10);
+   ... initialize M ...
+   // next line copies M to Mf.
+   Matrix<float> Mf(M);
+\endcode
+  There are also more special-purpose copying functions.  You can copy the
+  concatenated rows of a matrix to a vector (Vector::CopyRowsFromMat), the same
+  for the columns (Vector::CopyColsFromMat), and do the reverse too 
+  (Matrix::CopyRowsFromVec and Matrix::CopyColsFromVec).  The same functions
+  exist for copying an individual row or column from a matrix to a vector
+  and vice versa: see Vector::CopyRowFromMat, Vector::CopyColFromMat,
+  Matrix::CopyRowFromVec and Matrix::CopyColFromVec.  The row versions of these
+  operations are only provided for symmetry, because you could do the same
+  using SubVector in the row case (see \ref matrix_sec_sub).
+
+
+  \section matrix_sec_scalar Scalar products
+
+  Various functions that return scalars (and do not modify their parameters) are
+  defined not as class members but as functions.  
+  See \ref matrix_funcs_scalar for a list of these.
+  Typical examples are:
+  \code
+     float f = VecVec(v, w), // v' * w
+           g = VecMatVec(v, M, w),  // v' * M * w
+           h = TraceMatMat(M, N, kNoTrans); // tr(M * N)
+  \endcode
+   
+  \section matric_sec_resizing Resizing
+  
+   All matrix and vector types (except for SubMatrix and SubVector) may be resized.
+   Examples of this are below:
+   \code
+     Vector<float> v;
+     Matrix<float> M;
+     SpMatrix<float> S;
+     v.Resize(10);
+     M.Resize(5, 10);
+     S.Resize(10);
+   \endcode
+   The Resize functions will set the new data to zero unless you provide an optional
+   argument of type \ref MatrixResizeType.  The possible values are:
+    - \ref kSetZero (the default): sets the data to zero
+    - \ref kUndefined : leaves the data undefined
+    - \ref kCopyData : Copies any old data that shared the same index as the new 
+         data, leaving new indices at zero.
+
+  Thus, the code 
+  \code 
+    v.Resize(v.Dim() + 1, kCopyData);
+  \endcode
+  will append a zero to v.  This is not a particularly efficient way to append
+  something to a list, though (it will newly allocate the whole array).
+
+  Constructors that take dimension arguments also optionally take
+  a ResizeType argument (the default is kSetZero), so constructors behave
+  in the same way as the Resize functions.
+
+  \section matrix_sec_io Matrix I/O
+  
+  %Matrix I/O is done in the same style as other Kaldi code (see \ref io).  A typical example
+  of reading and writing these types is:
+  \code
+    bool binary = false;
+    std::ofstream os( ... );
+    Vector<float> v;
+    v.Write(os, binary);
+    ...
+    std::ifstream is( ... );
+    Vector<float> v;
+    v.Read(is, binary);
+  \endcode
+  There also stream operators << and >> that do the same thing (in text mode only, not
+  binary), but these are mainly intended for debugging.  The text format of these
+  objects looks like (for a vector):
+   \code
+    [ 2.77914 1.50866 1.01017 0.263783 ] 
+   \endcode
+  and for a matrix:
+   \code
+   [ -0.825915 -0.899772 0.158694 -0.731197 
+    0.141949 0.827187 0.62493 -0.67114 
+   -0.814922 -0.367702 -0.155766 -0.135577 
+    0.286447 0.648148 -0.643773 0.724163 
+   ] 
+  \endcode
+
+  \section matrix_sec_other Other matrix library functions
+
+  This page is only a brief introduction to the matrix library.
+  Most mathematical operations are members of the classes MatrixBase, VectorBase,
+  SpMatrix and TpMatrix, and can be discovered there.  Functions returning
+  scalars are listed \ref matrix_funcs_scalar "here".  Some miscellaneous functions,
+  including fourier transforms and the matrix exponential, are implemented as
+  separate functions and classes and may be found \ref matrix_funcs_misc "here".
+  We note that not all parts of the library have been optimized as fully as they could
+  be.  Our approach has been to quickly implement functionality that we need,
+  and only optimize those parts that are taking a substantial amount of time
+  in some scenario.
+
+  \defgroup matrix_funcs_io I/O related functions and classes
+  \ingroup matrix
+  Various namespace-scope functions for I/O.   Note that the << and >> operators
+  are not recommended for normal use in Kaldi-style I/O (for that, use the Read 
+  and Write methods).  The operators are mainly useful for logging and error output.
+
+*/
+ 
+/**
+  \defgroup matrix_group %Matrix and vector classes
+   For an overview of the matrix library, see \ref matrix.
+  
+  \defgroup matrix_funcs_scalar Matrix-vector functions returning scalars
+  \ingroup matrix_group
+
+  \defgroup matrix_funcs_misc Miscellaneous matrix/vector library functions and classes
+  \ingroup matrix_group
+
+*/
+}

@@ -1,0 +1,57 @@
+diff -rupN BeamformIt-3.51/CMakeLists.txt BeamformIt-3.51.new/CMakeLists.txt
+--- BeamformIt-3.51/CMakeLists.txt	2014-06-25 16:30:13.000000000 +0200
++++ BeamformIt-3.51.new/CMakeLists.txt	2015-04-22 02:02:28.209121734 +0200
+@@ -20,7 +20,7 @@ set (CMAKE_C_FLAGS_RELEASE         "-D_R
+ set (CMAKE_CXX_FLAGS_RELEASE       "-DLINUX -Wall -W -O3 -DNDEBUG -Wno-unknown-pragmas -Wno-unused-result -Wno-unused-variable")
+ 
+ ##find libraries installed in the system
+-FIND_LIBRARY(LIBSNDFILE sndfile)
++FIND_LIBRARY(LIBSNDFILE sndfile ../libsndfile-1.0.25/lib/)
+ 
+ ##set particular settings for each architecture
+ set (FFTREAL_HDRS ${CMAKE_CURRENT_SOURCE_DIR}/external/FFTReal-2.11)
+@@ -37,7 +37,7 @@ endif()
+ ##set some generic link directories
+ LINK_DIRECTORIES(${os_link_libs})
+ set (CMAKE_INCLUDE_SYSTEM_FLAG_CXX "-isystem") #needed for the SYSTEM link directories to work on osx
+-INCLUDE_DIRECTORIES(SYSTEM ${os_include_libs})
++INCLUDE_DIRECTORIES(SYSTEM ${os_include_libs} ../libsndfile-1.0.25/include/)
+ INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/includes)
+ 
+ #gather project files (note that when adding a new file cmake needs to be rerun)
+diff -rupN BeamformIt-3.51/src/delaysum.cc BeamformIt-3.51.new/src/delaysum.cc
+--- BeamformIt-3.51/src/delaysum.cc	2014-06-25 18:35:44.000000000 +0200
++++ BeamformIt-3.51.new/src/delaysum.cc	2015-04-22 02:02:28.213121734 +0200
+@@ -12,7 +12,7 @@
+ #include <iostream>
+ #include <cstring>
+ 
+-#include "samplerate.h"
++//#include "samplerate.h"
+ #include "sndfile.h"
+ #include "global.h"
+ #include "delaysum.h"
+diff -rupN BeamformIt-3.51/src/fileinout.cc BeamformIt-3.51.new/src/fileinout.cc
+--- BeamformIt-3.51/src/fileinout.cc	2014-06-25 15:27:05.000000000 +0200
++++ BeamformIt-3.51.new/src/fileinout.cc	2015-04-22 02:02:28.217121735 +0200
+@@ -1,7 +1,7 @@
+ #include <stdlib.h>
+ #include <cstring>
+ #include "fileinout.h"
+-#include "samplerate.h" 
++//#include "samplerate.h" 
+ 
+ //char tmp_string[1024];
+ 
+diff -rupN BeamformIt-3.51/src/tdoa.cc BeamformIt-3.51.new/src/tdoa.cc
+--- BeamformIt-3.51/src/tdoa.cc	2014-06-25 16:55:40.000000000 +0200
++++ BeamformIt-3.51.new/src/tdoa.cc	2015-04-22 02:03:03.081579456 +0200
+@@ -10,7 +10,7 @@
+ #include "tdoa.h"
+ #include "fileinout.h"
+ #include "global.h"
+-#include "fftw3.h"
++//#include "fftw3.h"
+ 
+ //char tmp_string[1024];
+ 

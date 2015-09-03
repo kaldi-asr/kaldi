@@ -1,0 +1,188 @@
+// doc/fst_algo.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page fst_algo Finite State Transducer algorithms
+
+ Here we describe the FST algorithms in the Kaldi toolkit that are new or
+ different than the the ones in OpenFst (we use the OpenFst code itself
+ for many algorithms).  These algorithms are 
+ in the directory fstext/, and the corresponding command-line programs,
+ where they exist, are in fstbin/.  This code uses the OpenFst library.
+ We will only describe here the algorithms that are actually used 
+ in our current recipes.
+ 
+  \section fst_algo_det Determinization
+
+ We use a different determinization algorithm from the one in OpenFst.  We
+ distinguish this with the name DeterminizeStar(); the corresponding command-line
+ program is named fstdeterminizestar.  Our determinization algorithm is actually
+ closer to the standard FST determinization algorithm than the one in OpenFst,
+ in that it does epsilon removal along with determinization (thus, like
+ many other FST algorithms, we do not consider epsilon to be a "real symbol".
+  
+ Our determinization algorithm has a different way of handling what happens 
+ when a transition in the initial determinized output has more than one output
+ symbol on it.  The OpenFst determinization algorithm uses a
+ function called FactorWeights that moves around the output symbols (encoded
+ as weights) around while maintaining equivalence, in order to ensure that
+ no arc has more than one (encoded) output symbol; it does not introduce new states with epsilon
+ symbols on their input, which is the most "obvious" thing to do.  However, the
+ FactorWeights algorithm can fail for the output of DeterminizeStar, because
+ there can be cycles with more outputs than states on the cycle (this is not
+ possible for the output of the normal Determinize algorithm, because it does not do
+ epsilon removal).  Instead, whenever we encounter a link with more than one
+ output symbols, we create a chain with a sufficient number of intermediate
+ states to accommodate all the output symbols.  The weight and input symbol
+ go on the first link of this chain.  The output of our DeterminizeStar 
+ algorithm is deterministic according to the definitions OpenFst uses,
+ i.e. treating epsilons as a normal symbols.  Its output does have epsilons
+ on the input side, which is against the normal definition of
+ determinism, but this is to be viewed as an encoding mechanism for allowing
+ more than one output symbol on a link, and in any case it only happens
+ in quite specific circumstances (an epsilon arc is always the only
+ arc out of a state).
+
+ One other difference is that our program fstdeterminizestar does not require
+ the input FST to have its output symbols encoded as weights.
+ 
+ \subsection fst_algo_det_debug Debugging determinization
+
+ In general debugging determinization is quite hard, because when a process
+ takes a long time it's hard to tell whether ever terminate.  The program
+ fstdeterminizestar has the feature that if you send it a signal with
+ "kill -SIGUSR1 \<its processid\>", it will stop and print out some
+ information that can be useful for debugging the determinization.
+
+  \subsection fst_algo_det_log Determinization in the log semiring
+
+ We supply a function DeterminizeInLog() which casts an Fst in the
+ normal (tropical) semiring to the log semiring before determinizing, and
+ then converts back.  This is the form of determinization used in our
+ algorithms, as it preserves stochasticity (see \ref fst_algo_stochastic).
+
+ \section fst_algo_eps Removing epsilons
+
+ We supply an epsilon-removal algorithm called RemoveEpsLocal() that is
+ guaranteed to never blow up the FST, but on the other hand is not guaranteed
+ to remove all epsilons.  Essentially it removes whatever epsilons it
+ can easily remove without making the graph larger.  There is no optimality
+ guaranteed here, as this is a hard problem.  The RemoveEpsLocal() function
+ has slightly different behaviour from OpenFst's RemoveEps() function, because
+ it will combine two arcs if one has an input epsilon and one an output epsilon.
+ The function RemoveEpsLocal() preserves FST equivalence.
+
+ There is also a function RemoveEpsLocalSpecial() that preserves equivalence
+ in the tropical semiring while preserving stochasticity in the log semiring
+ (for more on stochasticity see next section).  This appears to be a case
+ where the usefulness of the semiring formalism breaks down a little bit, as
+ we have to consider two semirings simultaneously.  
+
+ 
+ \section fst_algo_stochastic Preserving stochasticity and testing it
+
+ We define a stochastic FST as an FST in which, in the FST's semiring the sum of
+ the weights of the arcs out of any given state (plus the final-weight) equals
+ one (in the semiring).  This concept is most useful and natural in the log
+ semiring; essentially, a stochastic FST is one where the sum of the weights out
+ of a given arc is one (e.g. a properly normalized HMM would correspond to 
+ a stochastic FST).  
+
+ The function IsStochasticFst() tests stochasticity.  Optionally it can output
+ minimum and maximum weights, to inform the user of the extent to which the
+ FST fails to be stochastic.  The command-line version of this is fstisstochastic.
+ We aim for most of the FST algorithms we use to preserve stochasticity, in the
+ sense that they will produce stochastic outputs given stochastic inputs.  For
+ non-stochastic inputs, we aim that the minimum and maximum range of the weights
+ will not get larger.  By default the program isstochasticfst will test stochasticity
+ after casting to the log semiring, as this is the most useful case (you can stop this
+ by supplying the option --test-in-log=false).
+
+ In order to preserve stochasticity, the FSTs that we compose with have to have
+ certain properties.  These should apply to L, C and H.  Consider L, for example.
+ We require that for any linear FST corresponding to a path through G, call this
+ FST F, the product L o F must be stochastic.  This basically means that L
+ have properly normalized pronunciation probabilities.  The actual property formally
+ required may be a little stronger than this (this relates to ensuring that
+ the probabilities appear at the "right time").  In practice we verify stochasticity
+ by running the program isstochasticfst for each stage of graph creation.
+
+ \section fst_algo_minimization Minimization
+
+ We use the minimization algorithm supplied by OpenFst, but we apply a patch
+ before compiling OpenFst so that minimization can be applied to non-deterministic
+ FSTs.  The reason for this is so that we can remove disambiguation symbols before
+ minimizing, which is more optimal (it allows minimization to combine more states).
+ The patch fixes data-structure related issues; fundamentally, OpenFst's minimization
+ algorithm is applicable to non-deterministic FSTs.  We supply a command-line program called
+ fstminimizeencoded that minimizes FSTs after encoding weights and output symbols
+ as part of the input symbols (so the FST becomes an acceptor).  This is the same
+ thing the fstminimize program does except that it does not do weight pushing.  This
+ is desirable for us because the way we ensure stochasticity entails avoiding any
+ weight pushing.  
+ 
+ \section fst_algo_composition  Composition
+
+ For the most part we use OpenFst's own composition algorithms, but we do
+ make use of a function TableCompose(), and a corresponding command-line program
+ fsttablecompose, which is a more efficient composition algorithm for certain
+ common cases.  It uses the "Matcher" concept of OpenFst; a Matcher is a kind
+ of helper class used during composition that performs lookup on the arcs out of
+ a state to find any arcs with a particular input or output symbol.  The normal
+ matcher that OpenFst uses is SortedMatcher, which relies on arcs being sorted
+ on the relevant label, and does a binary search.  TableMatcher detects 
+ cases where it would be efficient to build a table indexed by label, and for
+ those states it avoids the overhead of binary search.  This leads to a
+ speedup when composing with things like lexicons that have a very high
+ out-degree.
+
+ \section fst_algo_disambig Adding and removing disambiguation symbols
+
+ Our FST recipes (like other transducer-based recipes) rely on 
+ disambiguation symbols.  In the normal recipes, these
+ are added to the input side of the lexicon FST (L) to make it determizable.
+ We also add disambiguation symbols to G and C (see \ref graph_disambig).
+ Whenever we do a composition and the FST on the right has disambiguation
+ symbols on its input, we (in theory) add to each state in the left-hand
+ FST a self-loop for each of the disambiguation symbols, which has that
+ symbol on both its input and output.  Note that the actual integer symbols
+ id's for the disambiguation symbols on the left and right may not be the same.  
+ For instance, we have a special symbol \#0 in G (where epsilon would normally
+ be).  The symbol-id for this would generally be the highest-numbered word
+ plus one.  But when we want to pass this symbol through L, we need a symbol
+ in L's input symbol table (which mainly contains phones), to represent \#0.
+ We have a function AddSelfLoops() that takes a mutable FST and 
+ two vectors of labels (a label is an integer id for a symbol).  The vectors 
+ are the same size, and represent corresponding input and output labels for
+ the disambiguation symbols.  This function adds self-loops to each final
+ state and each state with non-epsilon output symbols on at least one arc
+ out of it.
+ 
+ We remove disambiguation symbols with the function DeleteISymbols(), accessible
+ on the command line with the program fstrmsymbols.
+
+
+
+*/
+
+
+}

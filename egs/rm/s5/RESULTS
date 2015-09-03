@@ -1,0 +1,263 @@
+for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+exit 0
+
+# Monophone, MFCC+delta+accel
+%WER 8.74 [ 1095 / 12533, 143 ins, 226 del, 726 sub ] exp/mono/decode/wer_2
+
+# MFCC+delta+accel
+%WER 3.26 [ 408 / 12533, 53 ins, 94 del, 261 sub ] exp/tri1/decode/wer_7
+
+# MFCC+delta+accel (on top of better alignments)
+%WER 3.44 [ 431 / 12533, 74 ins, 82 del, 275 sub ] exp/tri2a/decode/wer_5
+
+# LDA+MLLT
+%WER 2.98 [ 373 / 12533, 56 ins, 66 del, 251 sub ] exp/tri2b/decode/wer_5
+
+# Some MMI/MPE experiments (MMI, boosted MMI, MPE) on top of the LDA+MLLT system.
+%WER 2.77 [ 347 / 12533, 54 ins, 54 del, 239 sub ] exp/tri2b_mmi/decode_it3/wer_6
+%WER 2.91 [ 365 / 12533, 66 ins, 47 del, 252 sub ] exp/tri2b_mmi/decode_it4/wer_5
+%WER 2.74 [ 343 / 12533, 54 ins, 55 del, 234 sub ] exp/tri2b_mmi_b0.05/decode_it3/wer_6
+%WER 2.92 [ 366 / 12533, 68 ins, 44 del, 254 sub ] exp/tri2b_mmi_b0.05/decode_it4/wer_5
+%WER 2.86 [ 358 / 12533, 54 ins, 66 del, 238 sub ] exp/tri2b_mpe/decode_it3/wer_6
+%WER 2.84 [ 356 / 12533, 55 ins, 64 del, 237 sub ] exp/tri2b_mpe/decode_it4/wer_6
+
+# LDA+MLLT+SAT
+%WER 2.07 [ 260 / 12533, 39 ins, 48 del, 173 sub ] exp/tri3b/decode/wer_4
+%WER 3.38 [ 423 / 12533, 54 ins, 96 del, 273 sub ] exp/tri3b/decode.si/wer_6
+
+# Decoding tri3b with unigram language model, which has higher WER.
+%WER 10.38 [ 1301 / 12533, 131 ins, 200 del, 970 sub ] exp/tri3b/decode_ug/wer_13
+%WER 13.69 [ 1716 / 12533, 163 ins, 273 del, 1280 sub ] exp/tri3b/decode_ug.si/wer_13
+
+
+# LDA+MLLT+SAT+MMI (MMI on top of the SAT system)
+%WER 1.94 [ 243 / 12533, 36 ins, 43 del, 164 sub ] exp/tri3b_mmi/decode/wer_4
+%WER 3.38 [ 423 / 12533, 54 ins, 96 del, 273 sub ] exp/tri3b_mmi/decode.si/wer_6
+%WER 1.77 [ 222 / 12533, 34 ins, 33 del, 155 sub ] exp/tri3b_mmi/decode2/wer_4
+
+
+# LDA+MLLT+SAT+fMMI (fMMI+MMI on top of this SAT system) Various configurations.  
+# Note: it doesn't really help here.  Probably not enough data.
+%WER 1.87 [ 234 / 12533, 35 ins, 42 del, 157 sub ] exp/tri3b_fmmi_b/decode_it3/wer_4
+%WER 1.85 [ 232 / 12533, 38 ins, 39 del, 155 sub ] exp/tri3b_fmmi_b/decode_it4/wer_4
+%WER 1.76 [ 221 / 12533, 38 ins, 32 del, 151 sub ] exp/tri3b_fmmi_b/decode_it5/wer_3
+%WER 1.76 [ 221 / 12533, 37 ins, 30 del, 154 sub ] exp/tri3b_fmmi_b/decode_it6/wer_3
+%WER 1.77 [ 222 / 12533, 34 ins, 36 del, 152 sub ] exp/tri3b_fmmi_b/decode_it7/wer_5
+%WER 1.75 [ 219 / 12533, 34 ins, 34 del, 151 sub ] exp/tri3b_fmmi_b/decode_it8/wer_5
+
+%WER 1.97 [ 247 / 12533, 34 ins, 45 del, 168 sub ] exp/tri3b_fmmi_c/decode_it3/wer_4
+%WER 2.03 [ 255 / 12533, 40 ins, 45 del, 170 sub ] exp/tri3b_fmmi_c/decode_it4/wer_4
+%WER 1.84 [ 231 / 12533, 40 ins, 31 del, 160 sub ] exp/tri3b_fmmi_c/decode_it5/wer_2
+%WER 1.76 [ 220 / 12533, 30 ins, 36 del, 154 sub ] exp/tri3b_fmmi_c/decode_it6/wer_4
+%WER 1.72 [ 215 / 12533, 31 ins, 32 del, 152 sub ] exp/tri3b_fmmi_c/decode_it7/wer_4
+%WER 1.71 [ 214 / 12533, 30 ins, 34 del, 150 sub ] exp/tri3b_fmmi_c/decode_it8/wer_5
+
+%WER 1.91 [ 239 / 12533, 22 ins, 61 del, 156 sub ] exp/tri3b_fmmi_d/decode_it3/wer_8
+%WER 1.91 [ 240 / 12533, 24 ins, 59 del, 157 sub ] exp/tri3b_fmmi_d/decode_it4/wer_8
+%WER 1.96 [ 246 / 12533, 40 ins, 41 del, 165 sub ] exp/tri3b_fmmi_d/decode_it5/wer_5
+%WER 1.91 [ 239 / 12533, 36 ins, 39 del, 164 sub ] exp/tri3b_fmmi_d/decode_it6/wer_5
+%WER 1.92 [ 241 / 12533, 26 ins, 52 del, 163 sub ] exp/tri3b_fmmi_d/decode_it7/wer_7
+%WER 1.92 [ 241 / 12533, 32 ins, 43 del, 166 sub ] exp/tri3b_fmmi_d/decode_it8/wer_6
+
+# These are some experiments with "raw-fMLLR": fMLLR on the raw MFCCs, but
+# computed with the LDA+MLLT model (it's complicated).  Compare with 3b.  Results
+# are pretty similar.  Main anticipated use is prior to neural net training.
+%WER 2.11 [ 265 / 12533, 21 ins, 74 del, 170 sub ] exp/tri3c/decode/wer_9
+%WER 2.07 [ 260 / 12533, 35 ins, 58 del, 167 sub ] exp/tri3c/decode_2fmllr/wer_5
+%WER 10.60 [ 1329 / 12533, 152 ins, 198 del, 979 sub ] exp/tri3c/decode_2fmllr_ug/wer_12
+%WER 10.68 [ 1338 / 12533, 142 ins, 223 del, 973 sub ] exp/tri3c/decode_ug/wer_13
+
+
+
+# Some "SGMM2" experiments.  SGMM2 is a new version of the code that
+# has tying of the substates a bit like "state-clustered tied mixture" systems;
+# and which has speaker-dependent mixture weights.
+# we don't any longer show the old SGMM results, although the script is still
+# there, commented out.
+%WER 1.45 [ 182 / 12533, 19 ins, 39 del, 124 sub ] exp/sgmm2_4a/decode/wer_5
+%WER 1.46 [ 183 / 12533, 23 ins, 31 del, 129 sub ] exp/sgmm2_4a/decode_fmllr/wer_4
+
+%WER 1.36 [ 170 / 12533, 19 ins, 30 del, 121 sub ] exp/sgmm2_4a_mmi_b0.2/decode_it1/wer_5
+%WER 1.36 [ 170 / 12533, 19 ins, 30 del, 121 sub ] exp/sgmm2_4a_mmi_b0.2/decode_it2/wer_5
+%WER 1.38 [ 173 / 12533, 24 ins, 29 del, 120 sub ] exp/sgmm2_4a_mmi_b0.2/decode_it3/wer_4
+%WER 1.39 [ 174 / 12533, 27 ins, 28 del, 119 sub ] exp/sgmm2_4a_mmi_b0.2/decode_it4/wer_3
+# This is testing an option "--zero-if-disjoint true" to MMI-- no clear difference here.
+%WER 1.36 [ 171 / 12533, 17 ins, 35 del, 119 sub ] exp/sgmm2_4a_mmi_b0.2_x/decode_it1/wer_6
+%WER 1.36 [ 170 / 12533, 22 ins, 29 del, 119 sub ] exp/sgmm2_4a_mmi_b0.2_x/decode_it2/wer_4
+%WER 1.35 [ 169 / 12533, 22 ins, 29 del, 118 sub ] exp/sgmm2_4a_mmi_b0.2_x/decode_it3/wer_4
+%WER 1.36 [ 170 / 12533, 22 ins, 29 del, 119 sub ] exp/sgmm2_4a_mmi_b0.2_x/decode_it4/wer_4
+
+# sgmm2_4c is as 4a but starting from the raw-fMLLR features.  No clear difference.
+%WER 1.56 [ 195 / 12533, 18 ins, 46 del, 131 sub ] exp/sgmm2_4c/decode/wer_6
+%WER 1.56 [ 195 / 12533, 33 ins, 31 del, 131 sub ] exp/sgmm2_4c/decode_fmllr/wer_2
+%WER 8.03 [ 1007 / 12533, 95 ins, 167 del, 745 sub ] exp/sgmm2_4c/decode_ug/wer_10
+
+## HERE
+
+# Deep neural net -- various types of hybrid system.
+%WER 2.02 [ 253 / 12533, 27 ins, 64 del, 162 sub ] exp/nnet4a/decode/wer_4
+%WER 9.77 [ 1224 / 12533, 95 ins, 251 del, 878 sub ] exp/nnet4a/decode_ug/wer_9
+%WER 1.68 [ 211 / 12533, 20 ins, 53 del, 138 sub ] exp/nnet4b/decode/wer_5
+%WER 8.96 [ 1123 / 12533, 97 ins, 166 del, 860 sub ] exp/nnet4b/decode_ug/wer_8
+
+
+%WER 1.91 [ 240 / 12533, 20 ins, 59 del, 161 sub ] exp/nnet4b_gpu/decode/wer_7
+%WER 8.41 [ 1054 / 12533, 80 ins, 166 del, 808 sub ] exp/nnet4b_gpu/decode_ug/wer_10
+ # when I ran this before I got this:
+ # prob. just random.
+ # %WER 1.72 [ 216 / 12533, 25 ins, 38 del, 153 sub ] exp/nnet4b_gpu/decode/wer_4
+ # %WER 8.34 [ 1045 / 12533, 94 ins, 146 del, 805 sub ] exp/nnet4b_gpu/decode_ug/wer_10
+
+# this another unadapted setup:
+%WER 1.93 [ 242 / 12533, 40 ins, 44 del, 158 sub ] exp/nnet4b2_gpu/decode/wer_3
+%WER 9.08 [ 1138 / 12533, 89 ins, 182 del, 867 sub ] exp/nnet4b2_gpu/decode_ug/wer_9
+
+
+%WER 1.80 [ 226 / 12533, 29 ins, 44 del, 153 sub ] exp/nnet4c/decode/wer_4
+%WER 8.49 [ 1064 / 12533, 80 ins, 175 del, 809 sub ] exp/nnet4c/decode_ug/wer_11
+
+%WER 1.70 [ 213 / 12533, 28 ins, 44 del, 141 sub ] exp/nnet4d3/decode/wer_4
+%WER 8.51 [ 1066 / 12533, 97 ins, 176 del, 793 sub ] exp/nnet4d3/decode_ug/wer_9
+
+%WER 1.74 [ 218 / 12533, 25 ins, 48 del, 145 sub ] exp/nnet4d_gpu/decode/wer_6
+%WER 8.39 [ 1051 / 12533, 106 ins, 149 del, 796 sub ] exp/nnet4d_gpu/decode_ug/wer_10
+
+%WER 1.53 [ 192 / 12533, 22 ins, 42 del, 128 sub ] exp/nnet4d2/decode/wer_3
+%WER 8.06 [ 1010 / 12533, 79 ins, 152 del, 779 sub ] exp/nnet4d2/decode_ug/wer_8
+
+%WER 1.51 [ 189 / 12533, 25 ins, 34 del, 130 sub ] exp/nnet4d2_gpu/decode/wer_3
+%WER 7.97 [ 999 / 12533, 78 ins, 152 del, 769 sub ] exp/nnet4d2_gpu/decode_ug/wer_8
+
+%WER 1.37 [ 172 / 12533, 14 ins, 36 del, 122 sub ] exp/nnet4e_gpu/decode/wer_3
+%WER 8.03 [ 1006 / 12533, 61 ins, 179 del, 766 sub ] exp/nnet4e_gpu/decode_ug/wer_8
+ 
+# Discriminatively trained system (using SMBR, on CPU)
+%WER 1.70 [ 213 / 12533, 21 ins, 52 del, 140 sub ] exp/nnet5c_mpe/decode_epoch1/wer_4
+%WER 1.71 [ 214 / 12533, 21 ins, 50 del, 143 sub ] exp/nnet5c_mpe/decode_epoch2/wer_4
+%WER 1.66 [ 208 / 12533, 29 ins, 36 del, 143 sub ] exp/nnet5c_mpe/decode_epoch3/wer_3
+%WER 1.75 [ 219 / 12533, 32 ins, 46 del, 141 sub ] exp/nnet5c_mpe/decode_epoch4/wer_4
+%WER 8.50 [ 1065 / 12533, 82 ins, 181 del, 802 sub ] exp/nnet5c_mpe/decode_ug_epoch1/wer_9
+%WER 8.39 [ 1052 / 12533, 71 ins, 189 del, 792 sub ] exp/nnet5c_mpe/decode_ug_epoch2/wer_10
+%WER 8.31 [ 1042 / 12533, 73 ins, 183 del, 786 sub ] exp/nnet5c_mpe/decode_ug_epoch3/wer_10
+%WER 8.33 [ 1044 / 12533, 75 ins, 178 del, 791 sub ] exp/nnet5c_mpe/decode_ug_epoch4/wer_10
+
+
+# Discriminatively trained system (using SMBR, on GPU)
+%WER 1.73 [ 217 / 12533, 17 ins, 55 del, 145 sub ] exp/nnet5c_mpe_gpu/decode_epoch1/wer_6
+%WER 1.76 [ 221 / 12533, 20 ins, 52 del, 149 sub ] exp/nnet5c_mpe_gpu/decode_epoch2/wer_6
+%WER 1.72 [ 215 / 12533, 18 ins, 52 del, 145 sub ] exp/nnet5c_mpe_gpu/decode_epoch3/wer_6
+%WER 1.67 [ 209 / 12533, 14 ins, 53 del, 142 sub ] exp/nnet5c_mpe_gpu/decode_epoch4/wer_7
+%WER 8.58 [ 1075 / 12533, 100 ins, 157 del, 818 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch1/wer_10
+%WER 8.43 [ 1056 / 12533, 97 ins, 153 del, 806 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch2/wer_10
+%WER 8.43 [ 1057 / 12533, 100 ins, 153 del, 804 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch3/wer_10
+%WER 8.36 [ 1048 / 12533, 89 ins, 158 del, 801 sub ] exp/nnet5c_mpe_gpu/decode_ug_epoch4/wer_11
+
+
+# Discriminatively trained system (using p-norm rather than tanh nonlinearities, using SMBR, on GPU)
+%WER 1.74 [ 218 / 12533, 25 ins, 48 del, 145 sub ] exp/nnet5d_mpe_gpu/decode_epoch1/wer_6
+%WER 8.40 [ 1053 / 12533, 108 ins, 148 del, 797 sub ] exp/nnet5d_mpe_gpu/decode_ug_epoch1/wer_10
+
+# Discriminatively trained system on top of ensemble trained p-norm network (using SMBR, on GPU)
+%WER 1.36 [ 170 / 12533, 15 ins, 34 del, 121 sub ] exp/nnet5e_mpe_gpu/decode_epoch2/wer_3
+%WER 7.73 [ 969 / 12533, 74 ins, 157 del, 738 sub ] exp/nnet5e_mpe_gpu/decode_ug_epoch4/wer_9
+
+
+
+# Some system combination experiments.
+%WER 3.18 [ 398 / 12533, 60 ins, 75 del, 263 sub ] exp/combine_1_2a/decode/wer_4
+%WER 1.56 [ 196 / 12533, 27 ins, 32 del, 137 sub ] exp/combine_sgmm2_4a_3b/decode/wer_2
+%WER 1.53 [ 192 / 12533, 23 ins, 30 del, 139 sub ] exp/combine_sgmm2_4a_3b_fmmic5/decode/wer_4
+%WER 1.47 [ 184 / 12533, 23 ins, 27 del, 134 sub ] exp/combine_sgmm2_4a_mmi_3b_fmmic5/decode/wer_4
+
+
+# Some things relating to nnet2 online decoding.
+
+for x in exp/nnet2_online/nnet*/decode*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 2.75 [ 345 / 12533, 43 ins, 81 del, 221 sub ] exp/nnet2_online/nnet/decode/wer_7
+%WER 10.94 [ 1371 / 12533, 133 ins, 220 del, 1018 sub ] exp/nnet2_online/nnet/decode_ug/wer_11
+ # script is not checked in for this, it's pnorm with 800/160 instead of 1000/200.
+ %WER 2.58 [ 323 / 12533, 38 ins, 81 del, 204 sub ] exp/nnet2_online/nnet2b/decode/wer_6
+ %WER 10.72 [ 1344 / 12533, 124 ins, 234 del, 986 sub ] exp/nnet2_online/nnet2b/decode_ug/wer_10
+# This is the baseline for the nnet+ivector decoding, with no iVector.  This is 
+# better than with the iVector, i.e. the iVector is not working.  I assume this
+# is due to overtraining.  I plan to try this on a larger setup.
+%WER 2.30 [ 288 / 12533, 44 ins, 51 del, 193 sub ] exp/nnet2_online/nnet_baseline/decode/wer_4
+%WER 10.70 [ 1341 / 12533, 122 ins, 221 del, 998 sub ] exp/nnet2_online/nnet_baseline/decode_ug/wer_10
+
+
+# normal recipe:
+%WER 2.27 [ 285 / 12533, 42 ins, 62 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode/wer_5
+%WER 2.28 [ 286 / 12533, 66 ins, 39 del, 181 sub ] exp/nnet2_online/nnet_a_online/decode_per_utt/wer_2
+%WER 10.26 [ 1286 / 12533, 140 ins, 188 del, 958 sub ] exp/nnet2_online/nnet_a_online/decode_ug/wer_10
+%WER 10.45 [ 1310 / 12533, 106 ins, 241 del, 963 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_12
+
+# multi-splice recipe:
+%WER 2.29 [ 287 / 12533, 32 ins, 70 del, 185 sub ] exp/nnet2_online/nnet_ms_a/decode/wer_9_0.0
+%WER 9.30 [ 1166 / 12533, 94 ins, 219 del, 853 sub ] exp/nnet2_online/nnet_ms_a/decode_ug/wer_15_0.0
+%WER 2.30 [ 288 / 12533, 32 ins, 68 del, 188 sub ] exp/nnet2_online/nnet_ms_a_online/decode/wer_9_0.0
+%WER 2.34 [ 293 / 12533, 33 ins, 72 del, 188 sub ] exp/nnet2_online/nnet_ms_a_online/decode_per_utt/wer_9_0.0
+%WER 9.17 [ 1149 / 12533, 87 ins, 224 del, 838 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug/wer_14_0.5
+%WER 9.37 [ 1174 / 12533, 121 ins, 192 del, 861 sub ] exp/nnet2_online/nnet_ms_a_online/decode_ug_per_utt/wer_13_0.0
+# baseline with multi-splice script
+# provided for reference, modify splice-indexes in local/online/run_nnet2_multisplice.sh
+# to "layer0/-7:-6:-5:-4:-3:-2:-1:0:1:2:3:4:5:6:7" to reproduce these results
+%WER 2.31 [ 290 / 12533, 26 ins, 91 del, 173 sub ] exp/nnet2_online/nnet_a/decode/wer_9_0.0
+%WER 9.90 [ 1241 / 12533, 103 ins, 208 del, 930 sub ] exp/nnet2_online/nnet_a/decode_ug/wer_11_0.5
+%WER 2.27 [ 284 / 12533, 25 ins, 88 del, 171 sub ] exp/nnet2_online/nnet_a_online/decode/wer_9_0.0
+%WER 2.30 [ 288 / 12533, 20 ins, 85 del, 183 sub ] exp/nnet2_online/nnet_a_online/decode_per_utt/wer_9_0.0
+%WER 9.97 [ 1250 / 12533, 104 ins, 208 del, 938 sub ] exp/nnet2_online/nnet_a_online/decode_ug/wer_10_1.0
+%WER 10.18 [ 1276 / 12533, 129 ins, 193 del, 954 sub ] exp/nnet2_online/nnet_a_online/decode_ug_per_utt/wer_11_0.0
+
+# Joint training with WSJ data (call this recipe "multilingual" because it doesn't use
+# a shared phone set).'
+# Note, I didn't tune the settings of this at all, it was just the first try.
+#for x in exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 1.56 [ 196 / 12533, 30 ins, 36 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode/wer_5
+%WER 7.51 [ 941 / 12533, 90 ins, 162 del, 689 sub ] exp/nnet2_online_wsj/nnet_ms_a_rm_online/decode_ug/wer_12
+
+# Discriminative training on top of the previous system (the joint system, with WSJ)... we don't get
+# too much from it on this particular setup.
+for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/wer* | utils/best_wer.sh ; done
+%WER 1.56 [ 196 / 12533, 30 ins, 36 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch0/wer_5
+%WER 1.57 [ 197 / 12533, 29 ins, 35 del, 133 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch1/wer_6
+%WER 1.55 [ 194 / 12533, 29 ins, 35 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch2/wer_6
+%WER 1.53 [ 192 / 12533, 32 ins, 30 del, 130 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch3/wer_5
+%WER 1.51 [ 189 / 12533, 33 ins, 28 del, 128 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_epoch4/wer_5
+%WER 7.51 [ 941 / 12533, 90 ins, 162 del, 689 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch0/wer_12
+%WER 7.49 [ 939 / 12533, 89 ins, 150 del, 700 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch1/wer_12
+%WER 7.37 [ 924 / 12533, 80 ins, 156 del, 688 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch2/wer_13
+%WER 7.33 [ 919 / 12533, 80 ins, 153 del, 686 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch3/wer_13
+%WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
+
+
+### nnet1 results ###
+# DNN systems (Karel - 25.9.2014)
+# Per-frame cross-entropy training
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn/decode/wer_3
+%WER 7.77 [ 974 / 12533, 81 ins, 158 del, 735 sub ] exp/dnn4b_pretrain-dbn_dnn/decode_ug/wer_7
+# Sequence-based sMBR training
+%WER 1.61 [ 202 / 12533, 32 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it1/wer_3
+%WER 1.62 [ 203 / 12533, 33 ins, 42 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it2/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 42 del, 130 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it3/wer_3
+%WER 1.64 [ 206 / 12533, 32 ins, 42 del, 132 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it4/wer_3
+%WER 1.63 [ 204 / 12533, 32 ins, 41 del, 131 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it5/wer_3
+%WER 1.64 [ 206 / 12533, 20 ins, 58 del, 128 sub ] exp/dnn4b_pretrain-dbn_dnn_smbr/decode_it6/wer_5
+
+# CNN systems (Karel - 25.9.2014)
+%WER 1.89 [ 237 / 12533, 30 ins, 47 del, 160 sub ] exp/cnn4c/decode/wer_3 # per-frame training
+# 2D-CNN system (from Harish Mallidi, run by Karel - 22.6.2015)
+%WER 2.07 [ 260 / 12533, 32 ins, 60 del, 168 sub ] exp/cnn2d4c/decode/wer_4_0.0 # per-frame training
+
+# Joint training with WSJ data, FBANK+pitch features. 2 softmax layers, multitask training,
+# (Karel - 10.7.2015)
+%WER 1.52 [ 191 / 12533, 17 ins, 52 del, 122 sub ] exp/dnn4e-fbank_blocksoftmax/decode/wer_4_0.5
+%WER 7.86 [ 985 / 12533, 84 ins, 160 del, 741 sub ] exp/dnn4e-fbank_blocksoftmax/decode_ug/wer_8_0.0
+
+# LSTM result
+for x in exp/lstm4f/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+%WER 2.04 [ 256 / 12533, 18 ins, 60 del, 178 sub ] exp/lstm4f_c512_r200_c512_r200_lr0.0001_mmt0.9_clip50/decode/wer_4_0.5
+# BLSTM result
+%WER 2.09 [ 262 / 12533, 25 ins, 69 del, 168 sub ] exp/blstm4g/decode/wer_4_0.0
+
+### nnet1 results, the end ###

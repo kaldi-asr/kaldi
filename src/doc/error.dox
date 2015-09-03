@@ -1,0 +1,141 @@
+// doc/error.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+/** \page error Kaldi logging and error-reporting
+
+  \section error_overview Overview
+
+  All output that consists of logging messages, warnings or errors is
+  directed to the standard error in Kaldi programs.  This is so that our
+  programs can be used in of pipes without such messages becoming
+  "mixed up" with the program's output.  The most common way to produce logging,
+  warning or error output is through the macros KALDI_LOG, KALDI_WARN and
+  KALDI_ERR.  Invoking the KALDI_ERR macro will normally terminate the program
+  (unless the exception is caught).  An example code fragment that illustrates
+  all three of these is as follows:
+  \code
+
+  KALDI_LOG << "On iteration " << iter
+            << ", objective function change was " << delta;
+  if (delta < 0.0) {
+    KALDI_WARN << "Negative objf change " << delta;
+    if (delta < -0.1) 
+      KALDI_ERR << "Convergence failure in EM";
+  }
+  \endcode
+  Notice that these examples don't include a newline character (this gets added
+  automatically).  A typical example of the messages that get produced by this is:
+ \verbatim
+  WARNING (copy-feats:Next():util/kaldi-table-inl.h:381) Invalid archive file format
+\endverbatim
+  For log messages that are not quite important enough (or are too verbose) to appear in
+ normal logs, you can use KALDI_VLOG: for example,
+ \code
+  KALDI_VLOG(2) << "This message is not important enough to use KALDI_LOG for.";
+ \endcode
+ This will get printed if the argument to the \c --verbose option is greater than
+ or equal to the number in parentheses, e.g. the message above would get printed
+ if the user called a program with \c --verbose=2 or greater.  See \ref parse_options_implicit
+ for more context on this.
+
+ Some parts of the code print logging messages to the standard error directly; this
+ is discouraged.
+
+ \section error_assertions Assertions in Kaldi
+
+ Assertions should ideally be done using the macro KALDI_ASSERT.  This prints more informative
+ output than a normal assertion using assert(); KALDI_ASSERT prints a stack trace.  
+ KALDI_ASSERT is also more reconfigurable.
+
+ A typical assertion is: 
+\code
+ KALDI_ASSERT(i < M.NumRows());
+\endcode
+ A trick that we sometimes to get more informative assert-failure message is
+ to follow the assert condition with "&& [some string]", for example:
+\code
+ KALDI_ASSERT(ApproxEqual(delta, objf_change) && "Probable coding error in optimization");
+\endcode
+
+ If compiled normally asserts will get checked, but not if compiled with NDEBUG defined.
+ For inner-loop assertions that use a lot of CPU,
+ we use the following pattern:
+\code
+#ifdef KALDI_PARANOID
+  KALDI_ASSERT(i>=0);
+#endif
+\endcode
+ The macro KALDI_PARANOID is on by default in the current build setup.  
+  
+ \section error_exceptions Exceptions thrown by KALDI_ERR
+
+ When the KALDI_ERR macro is invoked, it prints
+ the error message to the standard error, and then  throws an exception of type std::runtime_error. 
+ The string held by this exception contains the error message, and also a stack trace 
+ (if supported by the OS).  The normal behavior of current Kaldi programs is to catch the exception
+ in a try...catch block in main(), which prints the exception's string to the standard error, and exits.
+ This typically results in the error message being printed twice. 
+
+ In some cases, the error message will be caught by Kaldi code and not re-thrown.
+ This occurs in Holder code (see \ref io_sec_holders) that is called by
+ Table code (see \ref io_sec_tables).  Here, exceptions thrown by Read
+ functions of Kaldi objects are caught and get propagated to the Table code as
+ a boolean return value (e.g. see KaldiObjectHolder::Read() ).  Depending
+ on the \ref io_sec_rspecifiers "options", such as the "p" (permissive) option to the Table code,
+ and depending how the Table code is called, this may or may not result in another 
+ exception.
+
+ The only other type of error other than std::runtime_error that should get
+ thrown in Kaldi code under normal circumstances is probably std::alloc_error.  
+
+ Some parts of Kaldi code currently throw std::runtime_error directly, or call assert() directly,
+ but this is to be changed to the more standard KALDI_ERR and KALDI_ASSERT macros.
+
+ \section error_compile_time_assertions Compile-time assertions in Kaldi
+
+ It is also possible to make assertions that are checked at compile time (they
+ will produce a compilation error if they fail).  This is enabled by some macros
+ defined in kaldi-utils.h.  It is especially useful to make sure that templates
+ have been instantiated with the right kind of types.  Examples of compile-time
+ assertions are:
+\code
+  KALDI_COMPILE_TIME_ASSERT(kSomeConstant < 0);
+  ...
+  template<class T> class foo {
+     foo() { KALDI_ASSERT_IS_INTEGER_TYPE(T);
+  };
+  ...
+  template<class T> class bar {
+     bar() { KALDI_ASSERT_IS_FLOATING_TYPE(T);
+  }
+\endcode
+
+
+
+*/
+
+/**
+ \defgroup error_group "Functions relating to logging and error reporting"
+
+ See \ref error_overview for an overview of how logging and errors are handled in Kaldi.
+
+*/
+}

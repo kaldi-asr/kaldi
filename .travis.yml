@@ -1,0 +1,38 @@
+notifications:
+  email: false
+
+language: cpp
+
+os:
+  - linux
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gdb
+      - gcc-4.9
+      - g++-4.9
+      - gfortran-4.9
+      - liblapack-dev
+
+branches:
+  only:
+    - master
+
+before_install:
+  - cat /proc/sys/kernel/core_pattern
+  - export XROOT=~/xroot
+  - tools/extras/travis_install_bindeps.sh $XROOT
+
+script:
+  - CXX=g++-4.9
+    CFLAGS="-march=native"
+    LDFLAGS="-llapack"
+    INCDIRS="$XROOT/usr/include"
+    LIBDIRS="$XROOT/usr/lib"
+      tools/extras/travis_script.sh
+
+after_failure:
+  - tools/extras/travis_show_failures.sh

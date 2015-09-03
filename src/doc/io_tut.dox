@@ -1,0 +1,202 @@
+// doc/io_tut.dox
+
+// Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+namespace kaldi {
+/** \page io_tut  Kaldi I/O from a command-line perspective.
+
+ This page describes the I/O mechanisms in Kaldi from the perspective of
+ a user of the command line tools.  See \ref io for a more code-level overview.
+
+ \section Overview
+
+ \subsection io_tut_nontable Non-table I/O
+
+ We first describe "non-table" I/O.  This refers to files or streams containing just
+ one or two objects (e.g. acoustic model files; transformation matrices), rather than a
+ collection of objects indexed by strings.  
+
+   - Kaldi file formats are binary by default but programs will output non-binary
+     if you supply the flag --binary=false. 
+   - Many objects have corresponding "copy" programs, e.g. copy-matrix or gmm-copy,
+      which can be used with the --binary=false flag to convert to text form, e.g.
+     "copy-matrix --binary=false foo.mat -".
+   - There is typically a one-to-one correspondence between an file on disk and a C++ object
+     in memory, e.g. a matrix of floats, although some files contain more than one object
+     (Case in point: for acoustic model files, typically a TransitionModel object and then
+      an acoustic model).
+   - Kaldi programs typically know which type of object they are expecting to read, rather
+     than working it out from the stream.
+   - Similarly to perl, a filename can be replaced with - (for standard input/output) or
+     a string such as "|gzip -c >foo.gz" or "gunzip -c foo.gz|"
+   - For reading files, we also support things like foo:1045, meaning character-offset
+     1045 within file foo.
+   - In order to refer to our concept of an extended filename, we generally use the special terms 'rxfilename' for
+     a string describing a stream to be read (i.e. a file, stream or the standard input),
+     and 'wxfilename' for a string describing an output stream.  See \ref io_sec_xfilename for more details.
+
+ To illustrate the concepts above, make sure $KALDI_ROOT/src/bin is on your path,
+  where $KALDI_ROOT is the top of the repository, and type the following:
+\verbatim
+  echo '[ 0 1 ]' | copy-matrix - -
+\endverbatim
+It will print out a log message and some binary data corresponding to that matrix.  Now try:
+\verbatim
+  echo '[ 0 1 ]' | copy-matrix --binary=false - -
+\endverbatim
+The output will look like this:
+\verbatim
+# copy-matrix --binary=false - - 
+copy-matrix --binary=false - - 
+ [
+  0 1 ]
+LOG (copy-matrix:main():copy-matrix.cc:68) Copied matrix to -
+\endverbatim
+Although it looks like the matrix and log messages are mixed up, the log messages
+are on the standard error and would not be passed into a pipe; to avoid seeing
+the log messages you could redirect stderr to /dev/null by adding 2>/dev/null to the
+command line.
+
+Kaldi programs may be connected using pipes or by using the
+stream-as-a-file mechanism of Kaldi I/O.  Here is a pipe example:
+\verbatim
+ echo '[ 0 1 ]' | copy-matrix - - | copy-matrix --binary=false - -
+\endverbatim
+This outputs the matrix in text form (the first copy-matrix command converts
+to binary form and the second to text form, which is of course pointless).
+You could accomplish the same thing in a more convoluted way by doing this:
+\verbatim
+  copy-matrix 'echo [ 0 1 ]|' '|copy-matrix --binary=false - -'
+\endverbatim
+There is no reason to do this here, but it can sometimes be useful when
+programs have multiple inputs or outputs so the stdin or stdout is
+already being used.  It is particularly useful with tables (see next section).
+
+
+ \subsection io_tut_table Table I/O
+ 
+ Kaldi has special I/O mechanisms for dealing with collections of objects
+ indexed by strings.  Examples of this are feature matrices indexed by 
+ utterance-ids, or speaker-adaptation transformation matrices indexed
+ by speaker-ids.  The strings that index the collection must be nonempty
+ and whitespace free.   See \ref io_sec_tables for a more in-depth
+ discussion.
+
+ A Table may exist in two forms: an "archive" or a "script file".  The
+ difference is that the archive actually contains the data, while
+ a script file points to the location of the data.
+
+ Programs that read from Tables expect a string we call an "rspecifier" that
+ says how to read the indexed data, and programs that write to Tables expect
+ a string we call a "wspecifier" to write it.  These are strings that specify
+ whether to expect script file or an archive, and the file location, along
+ with various options.  Common types of
+ rspecifiers include "ark:-", meaning read the data as an archive
+ from the standard input, or "scp:foo.scp", meaning the script file
+ foo.scp says where to read the data from.  Points to bear in
+ mind are:
+
+   - The part after the colon is interpreted as a wxfilename or rxfilename (as
+     in \ref io_tut_nontable), meaning that things like pipes and standard 
+     input/output are supported.
+   - A Table always contains just one type of object (e.g., a matrix of floats).
+   - You may see options on rspecifiers and wspecifiers, principally:
+      - In rspecifiers, ark,s,cs:- means that when we read (from the standard input in this case)
+        we expect the keys to be in sorted order (,s) and we assert that they will be accessed
+        in sorted order (,cs) meaning that we know the program will
+        access them in sorted order (the program will crash if these conditions do not hold).
+        This allows Kaldi to emulate random access without using up a lot of memory. 
+      - For data that isn't too large and for which it's inconvenient to ensure sorted order
+        (e.g. transforms for speaker adaptation), there is little harm in omitting the ,s,cs.
+      - Typically programs that take multiple rspecifiers will iterate over the objects in the
+        first one (sequential access) and do random access on the later ones, so ",s,cs" is
+        generally not needed for the first rspecifier.
+      - In scp,p:foo.scp, the ,p means we should not crash if some of the
+        referenced files do not exist (for archives, ,p will prevent a crash if
+        the archive is corrupted or truncated.)
+      - For writing, the option ,t means text mode, e.g. in ark,t:-.  
+        The --binary command-line option has no effect for archives.
+   - The script-file format is, on each line, "<key> <rspecifier|wspecifier>", e.g.
+      "utt1 /foo/bar/utt1.mat".  It is OK for the rspecifier or wspecifier to contain
+      spaces, e.g. "utt1 gunzip -c /foo/bar/utt1.mat.gz|".
+   - The archive format is: <key1> <object1> <newline> <key2> <object2> <newline> ...
+   - Archives may be concatenated and they will still be valid archives, but be careful about
+     the order of concatenation, e.g. avoid "cat a/b/*.ark"
+     if you need the sorted order.
+   - Although not often used, script files may be used for output, e.g. if we write to
+     the wspecifier scp:foo.scp, and the program tries to write to key utt1,
+     it looks for a line like "utt1 some_file" in foo.scp, and will write to "some_file".  It will crash
+     if there is no such line.
+   - It is possible to write to both an archive and script at the same time,
+     e.g. ark,scp:foo.ark,foo.scp.  The script file will be written to, with lines
+     like "utt1 foo.ark:1016" (i.e. it points to byte offsets in the archive). This is useful when data is to be accessed in random order
+     or in parts, but you don't want to produce lots of small files.
+   - It is possible to trick the archive mechanism into operating on single files.  For instance,
+\verbatim
+     echo '[ 0 1 ]' | copy-matrix 'scp:echo foo -|' 'scp,t:echo foo -|'
+\endverbatim
+     This deserves a little explanation.  Firstly, the rspecifier "scp:echo foo -|" is equivalent
+     to scp:bar.scp if the file bar.scp contained just the line "foo -".  This
+     tells it to read the object indexed by "foo" from the standard input.  Similarly, for
+     the wspecifier "scp,t:echo foo -|", it writes the data for "foo" to the standard
+     output.  This trick should not be overused.  In this particular case, it is unnecessary
+     because we have made the copy-matrix program support non-table I/O directly,
+     so you could have written just "copy-matrix - -".  If you have to use
+     this trick too much, it's better to modify the program concerned.
+   - If you want to extract just one member from an archive, you can use the ",p" option for the "scp:" wspecifier to
+     cause it to write out just that element, and ignore the other missing elements in the scp file.
+     Suppose the key you want is "foo_bar" and an archive named some_archive.ark contains matrices, then
+     you could extract that element as follows:
+\verbatim
+     copy-matrix 'ark:some_archive.ark' 'scp,t,p:echo foo_bar -|'
+\endverbatim
+   - In certain cases the archive-reading code allows for limited type conversion, e.g.
+     between float and double for matrices, or Lattice and CompactLattice for lattices.
+
+  \subsection io_tut_maps Utterance-to-speaker and speaker-to-utterance maps.
+
+  Many Kaldi programs take utterance-to-speaker and speaker-to-utterances maps-- files 
+  called "utt2spk" or "spk2utt".  These are generally specified by command-line options
+   --utt2spk and --spk2utt.  The utt2spk map has the format
+\verbatim
+utt1 spk_of_utt1
+utt2 spk_of_utt2
+...
+\endverbatim
+   and the spk2utt map has the format
+\verbatim
+spk1 utt1_of_spk1 utt2_of_spk1 utt3_of_spk1
+spk2 utt1_of_spk2 utt2_of_spk2
+...
+\endverbatim
+ These files are used for speaker adaptation, e.g. for finding which speaker corresponds
+ to an utterance, or to iterate over speakers.
+ For reasons that relate mostly to the way the Kaldi example scripts are set up
+ and the way we split data up into multiple pieces, it's important to ensure
+ that the speakers in the utterance-to-speaker map are in sorted order (see \ref data_prep).
+ Anyway, these files are actually treated as archives, and for this reason
+ you will see command-line options like --utt2spk=ark:data/train/utt2spk.  
+ You will see that these files fit the generic archive format of: "<key1> <data> <newline> <key2> <data> <newline>",
+ where in this case the data is in text form.
+ At the code level, the utt2spk file is treated as a table containing a string, and the spk2utt
+ file is treated as a table containing a list of strings.
+
+ 
+*/
+}

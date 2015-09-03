@@ -1,0 +1,149 @@
+// doc/feat.dox
+
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+   \page feat Feature extraction
+
+  \section feat_intro Introduction
+
+  Our feature extraction and waveform-reading code aims to create standard MFCC
+  and PLP features, setting reasonable defaults but leaving available the options
+  that people are most likely to want to tweak (for example, the number of mel
+  bins, minimum and maximum frequency cutoffs, and so on).  This code only reads
+  from .wav files containing pcm data.  These files commonly have the suffix .wav
+  or .pcm (although sometimes the .pcm suffix is applied to sphere files; in this
+  case the file would have to be converted).  If the source data is not a wave
+  file then it is up to the user to find a command-line tool to convert it, but
+  to cover a common case, we do provide installation instructions for sph2pipe.
+
+  The command-line tools compute-mfcc-feats and compute-plp-feats compute the
+  features; as with other Kaldi tools, running them without arguments will give a
+  list of options.  The example scripts demonstrate the usage of these tools.
+  
+  \section feat_mfcc Computing MFCC features
+
+  Here we describe how MFCC features are computed by the command-line tool
+  compute-mfcc-feats.  This program requires two command-line
+  arguments: an rspecifier to read the .wav data (indexed by utterance) and a
+  wspecifier to write the features (indexed by utterance); see \ref
+  io_sec_tables and \ref io_sec_specifiers for more explanation of these terms.  
+  In typical usage, we will write the
+  data to one big "archive" file but also write out an "scp" file for easy
+  random access; see \ref io_sec_specifiers_both for explanation.  The program
+  does not add delta features (for that, see add-deltas).  It accepts an option --channel
+  to select the channel (e.g. --channel=0, --channel=1), which is useful when
+  reading stereo data.  
+
+  The computation of MFCC features is done by an object of type Mfcc, which has
+  a function \ref Mfcc::Compute() "Compute()" to compute the features
+  from the waveform.
+
+  The overall MFCC computation is as follows:
+    - Work out the number of frames in the file (typically 25 ms frames shifted
+      by 10ms each time).
+    - For each frame:
+      - Extract the data, do optional dithering, preemphasis and dc offset removal,
+        and multiply it by a windowing function (various options are supported here, e.g. Hamming)
+      - Work out the energy at this point (if using log-energy not C0).
+      - Do FFT and compute the power spectrum
+      - Compute the energy in each mel bin; these are e.g. 23 triangular overlapping bins 
+        whose centers are equally spaced in the mel-frequency domain.
+      - Compute the log of the energies and take the cosine transform, keeping
+        as many coefficients as specified (e.g. 13)
+      - Optionally do cepstral liftering; this is just a scaling of the
+        coefficients, which ensures they have a reasonable range.
+     
+  The lower and upper cutoff of the frequency range covered by the triangular mel bins
+  are controlled by the options --low-freq and --high-freq, which are usually set close
+  to zero and the Nyquist frequency respectively, e.g. --low-freq=20 and --high-freq=7800
+  for 16kHz sampled speech.
+
+  The features differ from HTK features in a number of ways, but almost all of
+  these relate to having different defaults.  With the option --htk-compat=true,
+  and setting parameters correctly, it is possible to get very close to HTK
+  features.  One possibly important option that we do not support is energy
+  max-normalization.  This is because we prefer normalization methods that can
+  be applied in a stateless way, and would like to keep the feature computation
+  such that it could in principle be done frame by frame and still give the same
+  results.  The program compute-mfcc-feats does, however, have an option
+  --subtract-mean to subtract the mean of the features.  This is done per
+  utterance; there are different ways to do it per speaker (e.g. search for
+  "cmvn", meaning cepstral mean and variance normalization, in the scripts).
+
+  \section feat_plp Computing PLP features
+
+  The algorithm to compute PLP features is similar to the MFCC one in the early
+  stages.  We may add more to this section later, but for now see "Perceptual
+  linear predictive (PLP) analysis of speech" by Hynek Hermansky, Journal of the
+  Acoustical Society of America, vol. 87, no. 4, pages 1738--1752 (1990).
+  
+
+  \section feat_vtln Feature-level Vocal Tract Length Normalization (VTLN).
+
+  The programs compute-mfcc-feats and compute-plp-feats accept a VTLN warp factor
+  option.  In current scripts this is only used as a means of initializing linear
+  transforms for linear versions of VTLN.  VTLN acts by moving the locations of
+  the center frequencies of the triangular frequency bins.  The warping function
+  that moves the frequency bins around is a piecewise linear function in
+  frequency space.  To understand it, bear in mind the following quantities:
+
+    0 <= low-freq <= vtln-low < vtln-high < high-freq  <= nyquist
+
+  Here, low-freq and high-freq are the lowest and highest frequencies that
+  are used in the standard MFCC or PLP computation (lower and higher frequencies
+  are discarded).  vtln-low and vtln-high are frequency cutoffs used in VTLN,
+  and their function is to ensure that all the mel bins get a reasonable width.
+
+  The VTLN warping function we implement is a piecewise linear function with
+  three segments that maps the interval [low-freq, high-freq] to [low-freq,
+  high-freq].  Let the warping function be W(f), where f is the frequency.  The
+  central segment maps f to f/scale, where "scale" is the VTLN warp factor
+  (typically in the range 0.8 to 1.2).  The point on the x-axis at which the
+  lower segment joins the middle segment is the point f defined so that min(f,
+  W(f)) = vtln-low.  The point on the x-axis at which the middle segment joins
+  the upper segment is the point f defined so that max(f, W(f)) = vtln-high.  The
+  slope and offsets of the lower and upper segments are dictated by continuity
+  and by the requirement that W(low-freq)=low-freq and W(high-freq)=high-freq.
+  This warping function differs from HTK's; in the HTK version, the "vtln-low"
+  and "vtln-high" quantities are interpreted as the points on the x-axis at which
+  the discontinuity happens, and this means that the "vtln-high" variable has to
+  be selected quite carefully based on knowledge of the possible range of warp
+  factors (otherwise mel bins with empty size can occur).
+
+  A reasonable setup is the following (for 16kHz sampled speech); note that this is
+  a reflection of our understanding of the reasonable values, and is not
+  the product of any very careful tuning experiments.
+
+<table border="1">
+<tr>
+<td>low-freq</td> <td>vtln-low</td> <td>vtln-high</td> <td>high-freq</td> <td>nyquist</td>
+</tr>
+<tr>
+<td> 40      </td> <td> 60    </td> <td> 7200    </td> <td>7800     </td> <td> 8000  </td>    
+</tr>
+</table>
+
+
+*/
+
+
+}

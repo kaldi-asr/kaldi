@@ -1,0 +1,71 @@
+// doc/tutorial_prereqs.dox
+
+// Copyright 2009-2011 Microsoft Corporation
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page tutorial_prereqs Kaldi tutorial: Prerequisites
+
+   \ref tutorial "Up: Kaldi tutorial" <BR>
+   \ref tutorial_setup "Next: Getting started" <BR>
+
+  This tutorial assumes that you know the basics of speech recognition using the
+  HMM-GMM approach.  One brief introduction that is available online
+  is: M. Gales and S. Young (2007). ``The Application of Hidden Markov
+  Models in Speech Recognition." Foundations and Trends in Signal Processing
+  1(3): 195-304.  The HTK Book is also a good resource.  However, unless you
+  have a strong mathematical background and are extremely dedicated, we
+  discourage trying to learn about speech recognition outside an institutional
+  setting.  The intended audience for this tutorial is either speech recognition
+  researchers, or graduates or advanced undergraduates who are studying this
+  area anyway.
+
+  We assume that you know C++, and have at least some familiarity with shell
+  scripting, preferably using bash or a similar shell.  This tutorial assumes you
+  are using a UNIX-like environment or Cygwin (although Kaldi will not
+  necessarily compile and run in all such environments).
+
+  Also, importantly, the tutorial assumes you have access to the data on the Resource
+  Management (RM) CDs from the Linguistic Data Consortium (LDC), in the original form
+  as distributed by the LDC.  That is, we assume this data is sitting on your system
+  somewhere.  We obtained this as catalog number LDC93S3A.   It is
+  also available in two separate pieces.  Be careful because there was previously
+  a different distribution of the RM data with a different layout.
+
+  The system requirements are fairly basic.  We assume that you have tools
+  including wget, git, svn, awk, perl and so on, or that you know how to install them.
+  The most difficult part of the installation process relates to the math library
+  ATLAS; if this is not already installed as a library on your system you will
+  have to compile it, and this requires that CPU throttling be turned off, which
+  may require root priveleges.  We provide scripts and detailed instructions for
+  all installation steps.  When scripts fail, read the output carefully because
+  it tries to provide guidance as to how to fix problems.  Please inform us if there
+  are problems at any point, however minor; see \ref other.
+
+  We try to provide some idea how long it should take to execute each step of the tutorial.
+  If there is a limited amount of time available to complete the tutorial, we recommend
+  to try to keep to the posted schedule, if necessary by skipping steps and avoiding
+  following links to more information that we provide in the text.  This will help ensure
+  that you get a balanced overview.  You can always review the material in more
+  detail later on.  If this tutorial is to be given in a classroom setting, it is
+  important that someone run through the tutorial on the relevant system beforehand in order
+  to verify that all the prerequisites are installed.
+
+   \ref tutorial "Up: Kaldi tutorial" <BR>
+   \ref tutorial_setup "Next: Getting started" <BR>
+<P>
+*/

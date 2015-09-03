@@ -1,0 +1,27 @@
+
+These are the install instructions for Intel MKL.  Intel MKL is not free (last
+time I checked); a developer license costs several hundred dollars (however, you
+may be able to redistribute the programs you create with it, for free).  Once you
+buy Intel MKL and follow its own install instructions, there are two things you
+have to do:
+
+Firstly, edit the file ../kaldiwin_mkl.props to replace
+c:\Program Files\Intel\MKL\10.2.5.035
+with whatever directory you actually installed MKL in.
+
+Next, you have to make sure the Intel directory where the math dlls are is on the
+path, when you run the programs created.  The way I did this is to go to start ->
+computer [right-click] -> properties -> advanced system settings [Advanced
+tab]->Environment Variables-> in the System Variables box, locate the Path
+variable, double-click to edit, and append ";C:\Program
+Files\Intel\MKL\10.2.5.035\ia32\bin" to the string.  Of course, this will depend
+on where you actually installed MKL.  If you want to use the 64-bit version, you
+would change this to ia64 and change 32 to 64 in the file kaldiwin_mkl.props
+(note: kaldiwin_mkl.props just gets copied to kaldiwin.props which is the one
+that is actually used, so be sure to copy it after you edit it).
+
+to get these compiled programs to run from cygwin, you would do something
+like:
+export PATH=$PATH:/cygdrive/c/Program\ Files/Intel/MKL/10.2.5.035/ia32/bin/
+
+

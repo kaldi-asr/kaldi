@@ -1,0 +1,139 @@
+// doc/legal.dox
+
+// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page legal  Legal stuff
+
+ This is not a legal document; see the COPYING file in the distribution
+ for that.  In this page we explain what the legal stuff means (as we
+ understand it).
+
+ The code and other content (e.g. scripts, documentation) in
+ Kaldi is released under the Apache license, version 2.0.  The Apache
+ license is a popular "BSD-like" license.  This means you can use
+ Kaldi for free and redistribute it, even for commercial purposes,
+ although you can't take off the license headers (and under some
+ circumstances you may have to distribute a license document).  Apache is
+ not a ``viral'' license like the GPL, which forces you to release
+ your modifications to the source code.  Also note that this project has no
+ connection to the Apache Foundation, other than that we use the same
+ license terms.
+
+ From a legal and copyright point of view, none of the participants in the Kaldi
+ project have a special status.  It is a community project, which means
+ decisions are not made by any one person, and there is no "legal owner" of the
+ Kaldi project.  In a sense this doesn't matter, because the whole project is
+ "forkable": that is, if you don't agree with the way the project is being run,
+ you can copy the code and create your own Kaldi community, giving it a
+ different name if you wish.  If you want you can even claim that you are the
+ true carriers of the Kaldi torch, and that the original authors have somehow
+ deviated from the true path.  The name itself is not copyrighted by us.
+
+ Some fraction of open source projects operate through "copyright assignment".
+ That means that when you give your code to the project you assign your
+ ownership of the copyright to a third party, who then releases it to the world.
+ Kaldi is not set up that way.  If you, Joe Schmo, want to add something to
+ Kaldi, the files you contribute are licensed under the Apache terms directly
+ from you to the user of Kaldi.  The files that you write will have an Apache
+ header on them that says something like:
+\verbatim
+  // Copyright 2012  Joe M. Schmo
+  //
+// See ../../COPYING for clarification regarding multiple authors
+//
+  // Licensed under the Apache License, Version 2.0 (the "License");
+  // etc.
+\endverbatim
+ However, if Joe Schmo works for Acme Corporation and releases code
+ as part of his work, then (depending what country Joe lives in) the header
+ would probably look something like this:
+\verbatim
+  // Copyright 2012  Acme Corporation
+  //
+// See ../../COPYING for clarification regarding multiple authors
+//
+  // Licensed under the Apache License, Version 2.0 (the "License");
+  // etc.
+\endverbatim
+ This would be the case under some circumstances even if he did it
+ in his spare time.  For example: the terms of Joe's employment with
+ Acme Corporation might dictate that anything he does while working for them
+ is owned by them from a copyright point of view ("work for hire"), and
+ Acme Corporation might have agreed that he can contribute to the project, but
+ that he should put their name as the owner of the copyright.
+
+ If Joe Schmo jointly worked with Jane Doe on this, but did so
+ while he was working with Acme Corporation, then the header would
+ look something like this:
+\verbatim
+  // Copyright 2012  Acme Corporation  Jane Doe
+  //
+// See ../../COPYING for clarification regarding multiple authors
+//
+  // Licensed under the Apache License, Version 2.0 (the "License");
+  // etc.
+\endverbatim
+ In this case Acme Corporation and Jane Doe (and we're assuming that they
+ agreed to this), jointly own the copyright on the code that they wrote.
+ The order of names has no legal meaning.
+ Joint ownership means that if either party chooses (and they don't have to
+ both agree), they can release the code themselves under a different
+ license.  However, for Apache-licensed projects, there is
+ typically no point in doing this, since Apache already
+ allows for commercial use.
+
+ There are other cases that work like this: Joe Schmo (working for Acme
+ Corporation) creates a file, and releases it under Apache.  Later Jane Doe
+ finds a bug and fixes it, or adds new functionality to that file.  Jane Doe
+ can't claim "joint ownership" of the copyright on the code, not without getting
+ an agreement from Acme Corporation.  This is obvious from common sense, because
+ that would allow her to re-release the entire project under a different and
+ possibly incompatible license, simply by making a trivial change to each file.
+ The way this is normally handled is, Jane Doe
+ should add a new Apache header at the top of the file, above the one
+ mentioning Acme Corporation, and she should say something to the
+ effect that the work is  derived from the original file from Acme
+ Corporation, and the whole modified file is being released under Apache.
+ We haven't done it this way, because the project is very
+ collaborative, and if we did it like this we would have extremely long copyright
+ headers.  Instead we use the convention that if Jane makes a change,
+ she simply adds her name to the list of authors in the copyright
+ header.  We are treating this as
+ a kind of shorthand for the whole multiple-header thing (this is
+ explained in the COPYING file).  The way you can disambiguate
+ between joint copyright ownership and derivative work, is to
+ go back in the version history in Git, and see what the original
+ release contained.  We guess that most people won't care about
+ this distinction, which is why we have not bothered to disambiguate it.
+ For shell and perl scripts and other non-C++ content
+ (e.g. README files, Makefiles) we have not always been very
+ careful to ensure the Apache header is there.  Our intention
+ is that everything is being released under Apache.
+
+ Note that the use of Kaldi does not protect you against patent claims by any
+ third parties.  It doesn't even protect you from patent lawsuits by
+ contributors to Kaldi code, as long as the part they are suing you about was
+ not contributed by them.  Patent law is completely separate from copyright law.
+
+ Also, some of the example scripts download tools from the Web that may have
+ a different license from Kaldi itself.  You may want to check the licenses
+ on those tools as they aren't always the same as Kaldi (although we try to
+ use only tools that have similarly unrestrictive licenses).
+
+*/
