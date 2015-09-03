@@ -44,17 +44,15 @@ fi
 
 # Assume that final.nnet is in nnetdir
 bnf_nnet=$nnetdir/final.raw
-for file in $bnf_nnet; do
-  if [ ! -f $file ] ; then
-    echo "No such file $file";
-    exit 1;
-  fi
-done
+if [ ! -f $bnf_nnet ] ; then
+  echo "No such file $bnf_nnet";
+  exit 1;
+fi
 
 if [ "$feat_type" == "lda" ]; then
   nnet_lda=$nnetdir/final.mat
   if [ ! -f $nnet_lda ] ; then 
-    echo "No such file $file"; 
+    echo "No such file $nnet_lda"; 
     exit 1;
   fi
 fi
