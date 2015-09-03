@@ -45,7 +45,6 @@ namespace ctc {
 // in which the next phone is dependent on the phone history (actually, a truncation
 // thereof) in addition to the acoustic history.
 
-
 struct CctcTrainingOptions {
   BaseFloat normalizing_weight;
   BaseFloat min_post;

@@ -265,6 +265,15 @@ struct CtcSupervision {
   void Read(std::istream &is, bool binary);
 };
 
+
+/// This function appends a list of CTC-supervision objects to create a single
+/// such object.  The normal use-case for this is when you are combining
+/// neural-net examples for CTC training.
+void AppendCtcSupervision(const std::vector<CtcSupervision> &input_supervision,
+                          CtcSupervision *output_supervision);
+  
+
+
 /** This function creates a CtcSupervision object with phones-or-blank-plus one
     as the labels (you should then further process it using
     AddContextToCtcSupervision).  You should give it a fully processed
@@ -336,13 +345,13 @@ class CtcSupervisionSplitter {
 /// 'state_times'.  The member 'fst' of struct CtcSupervision has this property.
 /// Returns the total number of frames.  This function is similar to
 /// LatticeStateTimes() and CompactLatticeStateTimes() declared in
-/// lat/lattice-functions.h (except that unlike LatticeStateTimes(), we don't
-/// allow epsilons, not because they are hard to handle but because in this
+/// lat/lattice-functions.h, except that unlike LatticeStateTimes(), we don't
+/// allow epsilons-- not because they are hard to handle but because in this
 /// context we don't expect them.  This function also expects that the input fst
 /// will have the property that the state times are in nondecreasing order (as
-/// SortBreadthFirstSearch() does for FSTs satsifying the other properties we
-/// mentioned).  This just happens to be something we enforce while creating
-/// these FSTs.
+/// SortBreadthFirstSearch() will accomplish for FSTs satsifying the other
+/// properties we mentioned).  This just happens to be something we enforce
+/// while creating these FSTs.
 ///
 /// @param fst[in] The input fst: should be epsilon-free; connected; nonempty;
 ///                should have the property that all paths to a given state (or
