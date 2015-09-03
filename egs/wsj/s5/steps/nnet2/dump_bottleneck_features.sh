@@ -36,18 +36,26 @@ nnetdir=$3
 archivedir=$4
 dir=$5
 
-# because we [cat trans.*], no need to keep nj consistent with [# of trans]
-nj=`cat $transform_dir/num_jobs` || exit 1;
+if [ ! -z "$transform_dir" ]; then
+  # because we [cat trans.*], we need to keep nj consistent with [# of trans]
+  nj=`cat $transform_dir/num_jobs` || exit 1;
+  echo "Set number of parallel jobs to $nj to be consistent with  $transform_dir/num_jobs"
+fi
 
-# Assume that final.mat and final.nnet are at nnetdir
-nnet_lda=$nnetdir/final.mat
+# Assume that final.nnet is in nnetdir
 bnf_nnet=$nnetdir/final.raw
-for file in $nnet_lda $bnf_nnet; do
-  if [ ! -f $file ] ; then
-    echo "No such file $file";
+if [ ! -f $bnf_nnet ] ; then
+  echo "No such file $bnf_nnet";
+  exit 1;
+fi
+
+if [ "$feat_type" == "lda" ]; then
+  nnet_lda=$nnetdir/final.mat
+  if [ ! -f $nnet_lda ] ; then 
+    echo "No such file $nnet_lda"; 
     exit 1;
   fi
-done
+fi
 
 name=`basename $data`
 sdata=$data/split$nj
@@ -68,7 +76,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
   delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnetdir/final.mat ark:- ark:- |"
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnet_lda ark:- ark:- |"
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
