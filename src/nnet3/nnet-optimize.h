@@ -23,6 +23,8 @@
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
 
+#include <list>
+
 namespace kaldi {
 namespace nnet3 {
 
@@ -66,7 +68,6 @@ struct NnetOptimizeOptions {
   }
 };
 
-
 /// This is the top-level function for optimizing a computation.
 /// The rest of this file contains various things that are
 /// called from this, and which you probably won't need to call
@@ -76,29 +77,50 @@ void Optimize(const NnetOptimizeOptions &config,
               const ComputationRequest &request,
               NnetComputation *computation);
 
-
+struct ComputationRequestHasher {
+  size_t operator()(const ComputationRequest *cr) const {
+    size_t ans = 0;
+    ans = cr->inputs.size() * kPrime + cr->outputs.size();
+    ans += (size_t)cr;
+    return ans;
+  }
+ private:
+  static const int kPrime = 7853;
+};
+ 
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
-  CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
+  CachingOptimizingCompiler(const Nnet &nnet,
+                            const int32 capacity = 20):
+      nnet_(nnet), capacity_(capacity) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const NnetOptimizeOptions &opt_config):
-      nnet_(nnet), opt_config_(opt_config) { }
+                            const NnetOptimizeOptions &opt_config,
+                            const int32 capacity = 20):
+      nnet_(nnet), opt_config_(opt_config), capacity_(capacity) { }
 
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
   const NnetComputation* Compile(const ComputationRequest  &request);
+  void UpdateCache();
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;
   ComputationRequest request_;
   NnetComputation computation_;
+
+  typedef std::list<ComputationRequest*> aq_type;
+  typedef unordered_map<ComputationRequest*, std::pair<NnetComputation*,
+    typename aq_type::iterator>, ComputationRequestHasher> cache_type;
+  aq_type access_queue_;
+  cache_type computation_cache_;
+  int32 capacity_;
 };
 
 

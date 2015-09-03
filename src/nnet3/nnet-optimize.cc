@@ -845,6 +845,30 @@ void Optimize(const NnetOptimizeOptions &config,
 
 }
 
+void CachingOptimizingCompiler::UpdateCache() {
+  typename cache_type::iterator cit = computation_cache_.find(&request_);
+  if (cit == computation_cache_.end()) {
+    // not exist, insert
+    if (computation_cache_.size() == capacity_) {
+      // full, locate the least-recently-accessed request
+      const typename cache_type::iterator it
+         = computation_cache_.find(access_queue_.front());
+      KALDI_ASSERT(it != computation_cache_.end());
+      // purge the least-recently-accessed request
+      computation_cache_.erase(it);
+      access_queue_.pop_front();
+    }
+    typename aq_type::iterator ait
+      = access_queue_.insert(access_queue_.end(), &request_);
+    computation_cache_.insert(std::make_pair(&request_,
+                              std::make_pair(&computation_, ait)));
+  } else {
+    // exist, update access record by moving the accessed
+    // request to the end of the access queue
+    access_queue_.splice(access_queue_.end(), access_queue_, (*cit).second.second);
+  }
+}
+
 const NnetComputation* CachingOptimizingCompiler::Compile(
     const ComputationRequest  &request) {
   if (!(request == request_)) {
@@ -879,6 +903,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     }
     computation_.ComputeCudaIndexes();
   }
+  UpdateCache();
   return &computation_;
 }
 
