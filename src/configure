@@ -41,7 +41,7 @@ function read_dirname {
 
 function is_set {
   local myvar=${1:-notset}
-  if [ "$myvar" == "notset" ]; then 
+  if [ "$myvar" == "notset" ]; then
     return 1
   else
     return 0
@@ -69,9 +69,9 @@ unset OPENBLASROOT
 unset MKLLIBDIR
 
 function usage {
-  echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT] 
+  echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
   [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
-  [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS] 
+  [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
   [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
 }
 
@@ -88,90 +88,90 @@ cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
 while [ $# -gt 0 ];
 do
   case "$1" in
-  --help) 
+  --help)
     usage; exit 0 ;;
-  --version) 
+  --version)
     echo $CONFIGURE_VERSION; exit 0 ;;
   --static)
     dynamic_kaldi=false;
     static_math=true;
     static_fst=true;
-    shift ;;  
+    shift ;;
   --shared)
     dynamic_kaldi=true;
     static_math=false;
     static_fst=false;
-    shift ;;  
+    shift ;;
   --atlas-root=*)
-    ATLASROOT=`read_dirname $1`; 
+    ATLASROOT=`read_dirname $1`;
     shift ;;
   --threaded-atlas=yes)
-    threaded_atlas=true; 
+    threaded_atlas=true;
     shift ;;
   --threaded-atlas=no)
-    threaded_atlas=false; 
+    threaded_atlas=false;
     shift ;;
   --threaded-math=yes)
-    threaded_atlas=true; 
-    threaded_math=true; 
+    threaded_atlas=true;
+    threaded_math=true;
     mkl_threading=iomp
     shift ;;
   --threaded-math=no)
-    threaded_atlas=false; 
+    threaded_atlas=false;
     threaded_math=false;
     mkl_threading=sequential
     shift ;;
   --use-cuda=yes)
-    use_cuda=true; 
+    use_cuda=true;
     shift ;;
   --use-cuda=no)
-    use_cuda=false; 
+    use_cuda=false;
     shift ;;
   --static-math=yes)
-    static_math=true; 
+    static_math=true;
     shift ;;
   --static-math=no)
-    static_math=false; 
+    static_math=false;
     shift ;;
   --static-fst=yes)
-    static_fst=true; 
+    static_fst=true;
     shift ;;
   --static-fst=no)
-    static_fst=false; 
+    static_fst=false;
     shift ;;
   --mkl-threading=sequential)
-    threaded_atlas=false; 
-    threaded_math=false; 
+    threaded_atlas=false;
+    threaded_math=false;
     mkl_threading=sequential;
     shift ;;
   --mkl-threading=*)
-    mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`; 
-    threaded_atlas=true; 
-    threaded_math=true; 
+    mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`;
+    threaded_atlas=true;
+    threaded_math=true;
     shift ;;
   --fst-root=*)
-    FSTROOT=`read_dirname $1`; 
+    FSTROOT=`read_dirname $1`;
     shift ;;
   --clapack-root=*)
-    CLAPACKROOT=`read_dirname $1`; 
+    CLAPACKROOT=`read_dirname $1`;
     shift ;;
   --openblas-root=*)
-    OPENBLASROOT=`read_dirname $1`; 
+    OPENBLASROOT=`read_dirname $1`;
     shift ;;
   --mkl-root=*)
-    MKLROOT=`read_dirname $1`; 
+    MKLROOT=`read_dirname $1`;
     shift ;;
   --mkl-libdir=*)
-    MKLLIBDIR=`read_dirname $1`; 
+    MKLLIBDIR=`read_dirname $1`;
     shift ;;
   --omp-libdir=*)
-    OMPLIBDIR=`read_dirname $1`; 
+    OMPLIBDIR=`read_dirname $1`;
     shift ;;
   --mathlib=*)
-    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`; 
+    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`;
     shift ;;
   --cudatk-dir=*)
-    CUDATKDIR=`read_dirname $1`; 
+    CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
@@ -269,7 +269,7 @@ function linux_configure_mkl_libraries {
   local static=$2
   local threaded=$3
   local mplib=$4
-  
+
   declare -A mkl_libs
   mkl_libs=(
     [sequential]="mkl_intel_lp64 mkl_core mkl_sequential"
@@ -277,12 +277,12 @@ function linux_configure_mkl_libraries {
     [iomp]="mkl_intel_lp64 mkl_core mkl_intel_thread "
     [tbb]="mkl_intel_lp64 mkl_core mkl_tbb_thread "
   )
- 
+
   if [ -z "${mkl_libs[$threaded]}" ]; then
     echo >&2 "Unknown threading mode: $threaded"
     return 1;
   fi
-  
+
   local linkline=""
   if  ! $static ; then
     linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir"
@@ -290,7 +290,7 @@ function linux_configure_mkl_libraries {
       local libfile=$mkllibdir/lib$file.so
       check_exists $libfile
       linkline+=" -l$file "
-    done 
+    done
   else
     if [ $threaded == "sequential" ] ; then
       test -f "$mkllibdir/libmkl_solver_lp64.a" && \
@@ -304,7 +304,7 @@ function linux_configure_mkl_libraries {
       local libfile=$mkllibdir/lib${file}.a
       check_exists $libfile
       linkline="$linkline $libfile"
-    done  
+    done
     linkline="$linkline -Wl,--end-group "
   fi
   echo "$linkline"
@@ -313,7 +313,7 @@ function linux_configure_mkl_libraries {
 function linux_configure_mkl_extra {
   local static=$1
   local threaded=$2
-  
+
   declare -A extra_libs
   extra_libs=(
     [sequential]="-lpthread -lm"
@@ -329,19 +329,19 @@ function linux_configure_threadinglibdir {
   local mklroot=$2
   local mkllibdir=$3
   local libexts=$4
-  
+
   ##First we try to use the library in the same directory
   ##where the mkl libraries reside
   ##Afterwards, just try some possibilities for different MKL layouts
   for libext in $libexts; do
     check_library $mkllibdir "lib$library" $libext \
     && echo `readlink -f $mkllibdir` && return 0
-    
+
     local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)`
     test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
     local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)`
     test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-    
+
     local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)`
     test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
     local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)`
@@ -443,7 +443,7 @@ function linux_configure_speex {
   if [ "foo"$static_speex == "foo" ]; then
     static_speex=false
   fi
-  
+
   if $static_speex; then
     spx_type=a
   else
@@ -453,18 +453,18 @@ function linux_configure_speex {
     echo "Static=[$static_speex] Speex library not found: You can still build Kaldi without Speex."
     return
   fi
-  
+
   if [ -f $SPEEXROOT/include/speex/speex.h ]; then
     echo >> kaldi.mk
     echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXROOT}/include >> kaldi.mk
-    
+
     if $static_speex; then
       echo LDLIBS += $SPEEXROOT/lib/libspeex.a
     else
       echo LDLIBS += -L${SPEEXROOT}/lib -lspeex >> kaldi.mk
       echo LDFLAGS += -Wl,-rpath=${SPEEXROOT}/lib >> kaldi.mk
     fi
-    
+
     echo "Successfully configured with Speex at $SPEEXROOT, (static=[$static_speex])"
   else
     echo "Speex will not be used. If you want to use it, run tools/extras/install_speex.sh first."
@@ -523,11 +523,11 @@ function linux_check_static {
 function linux_configure_debian_ubuntu {
   m=$1
   ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
-  for f in $ATLASLIBS; do 
+  for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
     exit 1;
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
@@ -542,11 +542,11 @@ function linux_configure_debian_ubuntu {
 
 function linux_configure_debian_ubuntu3 {
   ATLASLIBS="/usr/lib/libatlas.so.3  /usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3  /usr/lib/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do 
+  for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
     exit 1;
   fi
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
@@ -561,18 +561,18 @@ function linux_configure_debian_ubuntu3 {
 
 function linux_configure_debian7 {
   ATLASLIBS="/usr/lib/atlas-base/libatlas.so.3.0 /usr/lib/atlas-base/libf77blas.so.3.0 /usr/lib/atlas-base/libcblas.so.3 /usr/lib/atlas-base/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do 
+  for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then 
+  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
     exit 1;
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo 
+  echo
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
@@ -584,14 +584,14 @@ function linux_configure_debian7 {
 function linux_configure_redhat {
   m=$1  # 64 or empty.
   ATLASLIBS="/usr/lib$m/atlas/libatlas.so.3 /usr/lib$m/atlas/libf77blas.so.3 /usr/lib$m/atlas/libcblas.so.3 /usr/lib$m/atlas/libclapack.so.3"
-  for f in $ATLASLIBS; do 
+  for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo 
+  echo
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
@@ -605,14 +605,14 @@ function linux_configure_redhat_fat {
   # See http://stackoverflow.com/questions/13439296/build-shared-libraries-in-atlas.
   m=$1  # 64 or empty.
   ATLASLIBS="/usr/lib$m/atlas/libsatlas.so.3 /usr/lib$m/atlas/libtatlas.so.3"
-  for f in $ATLASLIBS; do 
+  for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
   [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat_fat" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo 
+  echo
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
@@ -650,18 +650,18 @@ function linux_configure_static {
       fi
     fi
   done
-  if [ "$ATLASLIBS" == "" ]; then  
+  if [ "$ATLASLIBS" == "" ]; then
     echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
     return ;
   fi
-   
+
   for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do
     if [ ! -f $ATLASLIBDIR/$x ]; then
       echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
-  done    
+  done
   if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
@@ -732,7 +732,7 @@ function linux_configure_dynamic {
       echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
       return 1;
     fi
-  
+
     for x in ${pt}cblas atlas ${pt}f77blas; do
       if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
         echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
@@ -836,7 +836,7 @@ if [ "`uname`" == "Darwin"  ]; then
   elif [ "$osx_ver" == "10.10" ]; then
     check_exists makefiles/darwin_10_10.mk
     cat makefiles/darwin_10_10.mk >> kaldi.mk
-  else 
+  else
     failure "OS X version '$osx_ver' not supported"
   fi
   echo "Configuration succeeded for platform Darwin."
@@ -877,7 +877,7 @@ if [ "`uname`" == "Linux" ]; then
       failure "Could not find required header files cblas.h or clapack.h in ATLAS dir '$ATLASROOT/include'"
     fi
     echo "Using ATLAS as the linear algebra library."
-    
+
     # Finding out where the libraries are located:
     # First we look for the static libraries and then look for dynamic ones.
     # We're looking for four libraries, all in the same directory, named
@@ -922,7 +922,7 @@ if [ "`uname`" == "Linux" ]; then
       failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64).
       See makefiles/linux_64_mkl.mk to manually configure for other platforms."
     fi
-    
+
     if  is_set "$MKLROOT" -a ! is_set "$MKLLIBDIR"; then
       echo -n "Configuring MKL library directory: "
       MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
@@ -939,13 +939,13 @@ if [ "`uname`" == "Linux" ]; then
     MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"` || exit 1
     echo "MKL include directory configured as: $MKL_COMPILE_LINE"
     MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
-   
+
     THREADING_LINE=`linux_configure_mkl_threading $MKLROOT $MKLLIBDIR $static_math $mkl_threading` || exit 1
     EXTRA_LIBS=`linux_configure_mkl_extra $static_math $mkl_threading` || exit 1
     if [ ! -z "$THREADING_LINE" ] || [ ! -z "$EXTRA_LIBS" ]; then
       echo "MKL threading libraries configured as $THREADING_LINE $EXTRA_LIBS"
     fi
- 
+
     echo "Using Intel MKL as the linear algebra library."
     (
       cd probe; rm -f mkl-test;
@@ -956,7 +956,7 @@ if [ "`uname`" == "Linux" ]; then
     ) || failure "Cannot validate the MKL switches"
 
     echo MKLROOT = $MKLROOT >> kaldi.mk
-    if [ ! -z $MKLLIBDIR ]; then 
+    if [ ! -z $MKLLIBDIR ]; then
       echo MKLLIB = $MKLLIBDIR >> kaldi.mk
     fi
     check_exists makefiles/linux_x86_64_mkl.mk
@@ -996,7 +996,7 @@ if [ "`uname`" == "Linux" ]; then
     if [ -z "$OPENBLASROOT" ]; then
       failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
     fi
-    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then 
+    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
     fi
     echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
@@ -1015,7 +1015,7 @@ if [ "`uname`" == "Linux" ]; then
     linux_configure_speex
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."
     exit_success;
-  else 
+  else
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi
 fi
