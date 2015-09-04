@@ -111,9 +111,9 @@ if which zypper >&/dev/null; then
     printed=true 
     status=1
   fi
-  if ! dpkg -1 | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
+  if ! zypper search -i | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
     echo "You should probably do: "
-    echo "sudo zypper install libatlas-devel"
+    echo "sudo zypper install libatlas3-devel"
     printed=true
   fi
 fi
