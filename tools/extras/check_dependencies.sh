@@ -12,6 +12,16 @@ function add_packages {
   opensuse_packages="$opensuse_packages $3";
 }
 
+if ! which make >&/dev/null; then
+  echo "$0: make is not installed."
+  add_packages make
+fi
+
+if ! which gcc >&/dev/null; then
+  echo "$0: gcc is not installed."
+  add_packages gcc
+fi
+
 if ! which g++ >&/dev/null; then
   echo "$0: g++ is not installed."
   add_packages gcc-c++ g++ gcc-c++
