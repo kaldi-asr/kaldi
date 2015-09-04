@@ -56,15 +56,17 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Training RNNLM. It will probably take several hours."
-  cd $KALDI_ROOT/tools
-  if [ -f $rnnlm_ver/rnnlm ]; then
-      echo "$0: Not installing the rnnlm toolkit since it is already there."
-  elif [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
-      extras/install_rnnlm_hs.sh
-  elif [ $rnnlm_ver == "faster-rnnlm" ]; then
-      extras/install_faster_rnnlm.sh
+  rnnlm_path="$(readlink -f $KALDI_ROOT)/tools/$rnnlm_ver/rnnlm"
+  if [ -f "$rnnlm_path" ]; then
+      echo "$0: Using binary $rnnlm_path"
   else
-      echo "$0: ERROR Cannot find $rnnlm_ver"
+      if [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
+          echo "$0: ERROR RNNLM-HS is not installed. Use extras/install_rnnlm_hs.sh to install it"
+      elif [ $rnnlm_ver == "faster-rnnlm" ]; then
+          echo "$0: ERROR Faster RNNLM is not installed. Use extras/install_faster_rnnlm.sh to install it"
+      else
+          echo "$0: ERROR Cannot find $rnnlm_path"
+      fi
       exit 1
   fi
   cd $s5_dir
@@ -74,7 +76,6 @@ if [ $stage -le 2 ]; then
       echo "$0: SKIP file '$modeldir/rnnlm' already exists"
   else
       rm -f $modeldir/rnnlm.tmp
-      rnnlm_path="$(readlink -f "$KALDI_ROOT/tools/$rnnlm_ver/rnnlm")"
       rnnlm_cmd="$rnnlm_path"
       if type taskset >/dev/null 2>&1 ; then
           # HogWild works much faster if all threads are binded to the same phisical cpu
