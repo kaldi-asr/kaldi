@@ -52,6 +52,9 @@ export PATH=$KALDI_ROOT/tools/$rnnlm_ver:$PATH
  else
    if [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
        extras/install_rnnlm_hs.sh
+   elif [ $rnnlm_ver == "faster-rnnlm" ]; then
+       echo "ERROR Faster RNNLM is not installed. Use extras/install_faster_rnnlm.sh to install it"
+       exit 1
    else
        echo Downloading and installing the rnnlm tools
        # http://www.fit.vutbr.cz/~imikolov/rnnlm/$rnnlm_ver.tgz
