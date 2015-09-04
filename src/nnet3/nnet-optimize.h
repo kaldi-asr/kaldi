@@ -39,6 +39,7 @@ struct NnetOptimizeOptions {
   bool initialize_undefined;
   bool move_sizing_commands;
   bool allocate_from_other;
+  int32 num_computations_cached;
 
   NnetOptimizeOptions(): optimize(true),
                          propagate_in_place(true),
@@ -46,7 +47,8 @@ struct NnetOptimizeOptions {
                          remove_assignments(true),
                          initialize_undefined(true),
                          move_sizing_commands(true),
-                         allocate_from_other(true) { }
+                         allocate_from_other(true),
+                         num_computations_cached(20) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
@@ -65,6 +67,8 @@ struct NnetOptimizeOptions {
     opts->Register("allocate-from-other", &allocate_from_other, "Instead of "
                    "deleting a matrix of a given size and then allocating "
                    "a matrix of the same size, allow re-use of that memory");
+    opts->Register("num-computations-cached", &num_computations_cached, "Set"
+                   "the capacity of computation cache");
   }
 };
 
@@ -77,15 +81,51 @@ void Optimize(const NnetOptimizeOptions &config,
               const ComputationRequest &request,
               NnetComputation *computation);
 
+// Hash function for ComputationRequest. It converts
+// ComputationRequest to hash code by looking at input
+// and output IoSpecifications vectors.
 struct ComputationRequestHasher {
   size_t operator()(const ComputationRequest *cr) const {
     size_t ans = 0;
-    ans = cr->inputs.size() * kPrime + cr->outputs.size();
-    ans += (size_t)cr;
+    std::vector<IoSpecification>::const_iterator itr = cr->inputs.begin(),
+                                                 end = cr->inputs.end();
+    for (; itr != end; ++itr) {
+      ans += IoSpecificationToInt(*itr);
+    }
+    itr = cr->outputs.begin();
+    end = cr->outputs.end();
+    for (; itr != end; ++itr) {
+      ans += IoSpecificationToInt(*itr);
+    }
     return ans;
   }
  private:
+  size_t IoSpecificationToInt(const IoSpecification& spec) const {
+    size_t ans, slen = spec.name.length();
+    const char *c = spec.name.c_str(), *send = c + slen;
+    for (; c != send; c++) {
+      ans *= kPrime;
+      ans += *c;
+    }
+    std::vector<Index>::const_iterator itr = spec.indexes.begin(),
+                                       end = spec.indexes.end();
+    for (; itr != end; ++itr) {
+      ans += (*itr).n * 1619;
+      ans += (*itr).t * 15649;
+      ans += (*itr).x * 89809;
+    }
+    return ans;
+  }
   static const int kPrime = 7853;
+};
+
+// Equality function for ComputationRequest pointer
+struct ComputationRequestPtrEqual {
+ public:
+  bool operator() (const ComputationRequest* cr1,
+                   const ComputationRequest* cr2) const {
+    return (*cr1) == (*cr2);
+  }
 };
  
 /// This class enables you to do the compilation and optimization in one call,
@@ -93,32 +133,46 @@ struct ComputationRequestHasher {
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
-  CachingOptimizingCompiler(const Nnet &nnet,
-                            const int32 capacity = 20):
-      nnet_(nnet), capacity_(capacity) { }
+  CachingOptimizingCompiler(const Nnet &nnet):
+      nnet_(nnet), capacity_(20) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const NnetOptimizeOptions &opt_config,
-                            const int32 capacity = 20):
-      nnet_(nnet), opt_config_(opt_config), capacity_(capacity) { }
+                            const NnetOptimizeOptions &opt_config):
+      nnet_(nnet), opt_config_(opt_config) {
+    capacity_ = opt_config.num_computations_cached;
+  }
 
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
   const NnetComputation* Compile(const ComputationRequest  &request);
-  void UpdateCache();
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;
   ComputationRequest request_;
   NnetComputation computation_;
 
+  // This function updates the computation cache. It is called within
+  // Compile() before returning computation. If the request is found in
+  // the cache, update the recently-accessed queue. Otherwise, insert
+  // the request to the end of the queue, and purge the least-recently-accessed
+  // request from the queue and the cache if the capacity is reached.
+  void UpdateCache();
+
+  // The access queue for keeping track of the freshness of computation.
+  // Most-recently-accessed computation is at the end, and
+  // least-recently-accessed computaiton is at the beginning.
   typedef std::list<ComputationRequest*> aq_type;
-  typedef unordered_map<ComputationRequest*, std::pair<NnetComputation*,
-    typename aq_type::iterator>, ComputationRequestHasher> cache_type;
   aq_type access_queue_;
+  
+  // Hash table for fast accssing a computation. Key is a pointer to
+  // ComputationRequest, and value is a pair of pointers to the Computation
+  // and its position in the access queue.
+  typedef unordered_map<ComputationRequest*, std::pair<NnetComputation*,
+    typename aq_type::iterator>, ComputationRequestHasher,
+    ComputationRequestPtrEqual> cache_type;
   cache_type computation_cache_;
   int32 capacity_;
 };
