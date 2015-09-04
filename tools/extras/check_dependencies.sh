@@ -4,11 +4,23 @@
 # script.
 redhat_packages=
 debian_packages=
+opensuse_packages=
 
 function add_packages {
   redhat_packages="$redhat_packages $1";
   debian_packages="$debian_packages $2";
+  opensuse_packages="$opensuse_packages $3";
 }
+
+if ! which make >&/dev/null; then
+  echo "$0: make is not installed."
+  add_packages make
+fi
+
+if ! which gcc >&/dev/null; then
+  echo "$0: gcc is not installed."
+  add_packages gcc
+fi
 
 if ! which g++ >&/dev/null; then
   echo "$0: g++ is not installed."
@@ -88,6 +100,20 @@ if which yum >&/dev/null; then
   if ! rpm -qa|  grep atlas >/dev/null; then
     echo "You should probably do something like: "
     echo "sudo yum install atlas.x86_64"
+    printed=true
+  fi
+fi
+
+if which zypper >&/dev/null; then
+  if [ ! -z "$opensuse_packages" ]; then 
+    echo "$0: we recommend that you run (our best guess):"
+    echo " sudo zypper install $opensuse_packages"
+    printed=true 
+    status=1
+  fi
+  if ! dpkg -1 | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
+    echo "You should probably do: "
+    echo "sudo zypper install libatlas-devel"
     printed=true
   fi
 fi
