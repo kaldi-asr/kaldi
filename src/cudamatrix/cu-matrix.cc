@@ -25,7 +25,7 @@
 
 #if HAVE_CUDA == 1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include "base/timer.h"
@@ -1001,12 +1001,11 @@ void CuMatrixBase<Real>::AddMatMat(
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
-    cublas_gemm((transB==kTrans?'T':'N'), (transA==kTrans?'T':'N'), m, n, k, 
-                alpha, B.data_, B.Stride(), A.data_, A.Stride(), 
-                beta, data_, Stride());
-
-    CU_SAFE_CALL(cublasGetError());
+    CU_SAFE_CALL(cublas_gemm(GetCublasHandle(),
+			    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+			    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N), 
+			    m, n, k, alpha, B.data_, B.Stride(), 
+			    A.data_, A.Stride(), beta, data_, Stride()));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -1031,13 +1030,11 @@ void CuMatrixBase<Real>::SymAddMat2(
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    char trans = (transA == kTrans ? 'N' : 'T');
+    cublasOperation_t trans = (transA == kTrans ? CUBLAS_OP_N : CUBLAS_OP_T);
     MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
-    
-    cublas_syrk('U', trans, num_rows_, A_other_dim, alpha, A.Data(),
-                A.Stride(), beta, this->data_, this->stride_);
-
-    CU_SAFE_CALL(cublasGetError());
+    CU_SAFE_CALL(cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, trans,
+			    num_rows_, A_other_dim, alpha, A.Data(),
+			    A.Stride(), beta, this->data_, this->stride_));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

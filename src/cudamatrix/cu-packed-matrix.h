@@ -157,9 +157,8 @@ class CuPackedMatrix {
 
   Real *data_;
   MatrixIndexT num_rows_;
-
   void AddPacked(const Real alpha, const CuPackedMatrix<Real> &M);
-  
+
  private:
   // Disallow assignment.
   PackedMatrix<Real> & operator=(const PackedMatrix<Real> &other);

@@ -30,7 +30,7 @@
 #include "matrix/matrix-common.h"
 
 #if HAVE_CUDA == 1
-#include <cublas.h>
+#include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 
 
@@ -41,7 +41,7 @@
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
-  cudaThreadSynchronize(); \
+  cudaDeviceSynchronize(); \
 } 
 
 #define KALDI_CUDA_ERR(ret, msg) \
@@ -49,7 +49,7 @@
   if (ret != 0) { \
     KALDI_ERR << msg << ", diagnostics: cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\", in " << __FILE__ << ":" << __LINE__; \
   } \
-  cudaThreadSynchronize(); \
+  cudaDeviceSynchronize(); \
 } 
 
 namespace kaldi {

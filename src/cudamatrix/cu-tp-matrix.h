@@ -83,7 +83,6 @@ class CuTpMatrix : public CuPackedMatrix<Real> {
   inline TpMatrix<Real> &Mat() {
     return *(reinterpret_cast<TpMatrix<Real>* >(this));
   }
-  
 };
 
 } // namespace
