@@ -845,33 +845,69 @@ void Optimize(const NnetOptimizeOptions &config,
 
 }
 
-void CachingOptimizingCompiler::UpdateCache() {
-  typename cache_type::iterator cit = computation_cache_.find(&request_);
-  if (cit == computation_cache_.end()) {
+// ComputationRequests are distinguished by the names and indexes
+// of inputs and outputs
+size_t ComputationRequestHasher::operator() (const ComputationRequest *cr) const {
+  size_t ans = 0;
+  std::vector<IoSpecification>::const_iterator itr = cr->inputs.begin(),
+                                               end = cr->inputs.end();
+  for (; itr != end; ++itr) {
+    ans += IoSpecificationToInt(*itr);
+  }
+  itr = cr->outputs.begin();
+  end = cr->outputs.end();
+  for (; itr != end; ++itr) {
+    ans += IoSpecificationToInt(*itr);
+  }
+  return ans;
+}
+
+size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spec) const {
+  size_t ans;
+  StringHasher string_hasher;
+  ans = string_hasher(spec.name);
+  std::vector<Index>::const_iterator itr = spec.indexes.begin(),
+                                     end = spec.indexes.end();
+  for (; itr != end; ++itr) {
+    ans += (*itr).n * 1619;
+    ans += (*itr).t * 15649;
+    ans += (*itr).x * 89809;
+  }
+  return ans;
+}
+
+void CachingOptimizingCompiler::UpdateCache(bool insert_new_computation) {
+  if (insert_new_computation) {
     // not exist, insert
     if (computation_cache_.size() == capacity_) {
       // full, locate the least-recently-accessed request
-      const typename cache_type::iterator it
+      const typename CacheType::iterator it
          = computation_cache_.find(access_queue_.front());
       KALDI_ASSERT(it != computation_cache_.end());
       // purge the least-recently-accessed request
       computation_cache_.erase(it);
       access_queue_.pop_front();
     }
-    typename aq_type::iterator ait
+    typename AqType::iterator ait
       = access_queue_.insert(access_queue_.end(), &request_);
     computation_cache_.insert(std::make_pair(&request_,
                               std::make_pair(&computation_, ait)));
   } else {
     // exist, update access record by moving the accessed
     // request to the end of the access queue
-    access_queue_.splice(access_queue_.end(), access_queue_, (*cit).second.second);
+    typename CacheType::iterator cit = computation_cache_.find(&request_);
+    KALDI_ASSERT(cit != computation_cache_.end());
+    access_queue_.splice(access_queue_.end(), access_queue_,
+                         cit->second.second);
   }
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
     const ComputationRequest  &request) {
-  if (!(request == request_)) {
+  // find computation in the cache
+  typename CacheType::iterator cit = computation_cache_.find(&request_);
+  if (cit == computation_cache_.end()) {
+    // if not found, compile and update cache
     request_ = request;
     Compiler compiler(request_, nnet_);
     CompilerOptions opts;
@@ -902,8 +938,13 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       checker.Check();
     }
     computation_.ComputeCudaIndexes();
+    UpdateCache(true);
+  } else {
+    // if found, get computation and update access queue
+    request_ = *(cit->first);
+    computation_ = *(cit->second.first);
+    UpdateCache(false);
   }
-  UpdateCache();
   return &computation_;
 }
 
