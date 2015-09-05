@@ -39,7 +39,6 @@ struct NnetOptimizeOptions {
   bool initialize_undefined;
   bool move_sizing_commands;
   bool allocate_from_other;
-  int32 num_computations_cached;
 
   NnetOptimizeOptions(): optimize(true),
                          propagate_in_place(true),
@@ -116,33 +115,33 @@ class CachingOptimizingCompiler {
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
-  const NnetComputation* Compile(const ComputationRequest  &request);
+  const NnetComputation* Compile(const ComputationRequest &request);
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;
-  ComputationRequest request_;
-  NnetComputation computation_;
 
   // The access queue for keeping track of the freshness of computation.
   // Most-recently-accessed computation is at the end, and
   // least-recently-accessed computaiton is at the beginning.
-  typedef std::list<ComputationRequest*> AqType;
+  typedef std::list<const ComputationRequest*> AqType;
   AqType access_queue_;
 
   // Hash table for fast accssing a computation. Key is a pointer to
   // ComputationRequest, and value is a pair of pointers to the Computation
   // and its position in the access queue.
-  typedef unordered_map<ComputationRequest*, std::pair<NnetComputation*,
+  typedef unordered_map<const ComputationRequest*, std::pair<NnetComputation*,
     typename AqType::iterator>, ComputationRequestHasher,
     ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
   // This function updates the computation cache. It is called within
-  // Compile(). If 'insert_new_computation' is false, update the
-  // recently-accessed queue. Otherwise, insert the request to the end
-  // of the queue, and purge the least-recently-accessed
-  // request from the queue and the cache if the capacity is reached.
-  void UpdateCache(bool insert_new_computation);
+  // Compile(). It insert the request to the end of the queue, and purge
+  // the least-recently-accessed request from the queue and the cache
+  // if the capacity is reached.
+  void UpdateCache(const ComputationRequest &request,
+                   NnetComputation &computation);
+  // This function updates the recently accessed queue.
+  void UpdateAccessQueue(typename CacheType::iterator &cit);
   int32 capacity_;
 };
 
