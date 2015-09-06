@@ -28,27 +28,34 @@ void ComputationVariables::ComputeSplitPoints(
   // matrix/submatrix as a matrix.
   int32 num_matrices = computation.matrices.size(),
       num_submatrices = computation.submatrices.size();
-  split_points_.resize(num_matrices);
+  row_split_points_.resize(num_matrices);
+  column_split_points_.resize(num_matrices);
   KALDI_ASSERT(computation.submatrices[0].num_rows == 0);
   for (int32 submatrix_index = 1;
        submatrix_index < num_submatrices;
        submatrix_index++) {
     const NnetComputation::SubMatrixInfo &s =
         computation.submatrices[submatrix_index];
-    split_points_[s.matrix_index].push_back(s.col_offset);
-    split_points_[s.matrix_index].push_back(s.col_offset + s.num_cols);
+    row_split_points_[s.matrix_index].push_back(s.row_offset);
+    row_split_points_[s.matrix_index].push_back(s.row_offset + s.num_rows);
+    column_split_points_[s.matrix_index].push_back(s.col_offset);
+    column_split_points_[s.matrix_index].push_back(s.col_offset + s.num_cols);
   }
   for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
-    SortAndUniq(&(split_points_[matrix_index]));
+    SortAndUniq(&(column_split_points_[matrix_index]));
+    SortAndUniq(&(row_split_points_[matrix_index]));
     // should have at least 0 and num_rows included, so size >= 2.
-    KALDI_ASSERT(split_points_[matrix_index].size() >= 2);
+    KALDI_ASSERT(column_split_points_[matrix_index].size() >= 2 &&
+                 row_split_points_[matrix_index].size() >= 2);
   }
   // note: the last split point of each matrix doesn't get its own variable index.
   matrix_to_variable_index_.resize(num_matrices + 1);
   matrix_to_variable_index_[0] = 0;
   matrix_to_variable_index_[1] = 0;
   for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
-    int32 num_variables = split_points_[matrix_index].size() - 1;
+    int32 num_row_variables = row_split_points_[matrix_index].size() - 1,
+        num_column_variables = column_split_points_[matrix_index].size() - 1,
+        num_variables = num_row_variables * num_column_variables;
     KALDI_ASSERT(num_variables >= 1);
     matrix_to_variable_index_[matrix_index+1] =
         matrix_to_variable_index_[matrix_index] + num_variables;
@@ -56,16 +63,26 @@ void ComputationVariables::ComputeSplitPoints(
   num_variables_ = matrix_to_variable_index_.back();
 }
 
-void ComputationVariables::ComputeVariableRanges(
+//static
+int32 ComputationVariables::FindIndexOf(const std::vector<int32> &vec, int32 i) {
+  // std::lower_bound does a binary search -> faster than std::find.
+  std::vector<int32>::const_iterator iter = std::lower_bound(
+      vec.begin(), vec.end(), i);
+  KALDI_ASSERT(*iter == i);
+  return iter - vec.begin();
+}
+
+void ComputationVariables::ComputeVariablesForSubmatrix(
     const NnetComputation &computation) {
   // note, these numbers are only valid if you include the empty zero-indexed
   // matrix/submatrix as a matrix.
   int32 num_submatrices = computation.submatrices.size();
 
-  variable_ranges_.resize(num_submatrices);
-  variable_ranges_[0] = std::pair<int32,int32>(0, 0);
+  variables_for_submatrix_.resize(num_submatrices);
 
-  full_column_range_.resize(num_submatrices);
+  submatrix_is_whole_matrix_.resize(num_submatrices, false);
+  submatrix_to_matrix_.resize(num_submatrices);
+  submatrix_to_matrix_[0] = 0;
 
   for (int32 submatrix_index = 1;
        submatrix_index < num_submatrices;
@@ -73,72 +90,46 @@ void ComputationVariables::ComputeVariableRanges(
     const NnetComputation::SubMatrixInfo &s =
         computation.submatrices[submatrix_index];
     int32 matrix_index = s.matrix_index;
-    int32 start_dim = s.col_offset, end_dim = start_dim + s.num_cols;
-    const std::vector<int32> &split = split_points_[matrix_index];
-    // std::lower_bound does a binary search -> faster than std::find.
-    std::vector<int32>::const_iterator iter = std::lower_bound(
-        split.begin(), split.end(), start_dim);
-    KALDI_ASSERT(*iter == start_dim);  // or code error.
-    int32 start_split_point_index = iter - split.begin();
-    iter = std::lower_bound(iter, split.end(), end_dim);
-    KALDI_ASSERT(*iter == end_dim);  // or code error.
-    int32 end_split_point_index = iter - split.begin();
-    int32 matrix_offset = matrix_to_variable_index_[matrix_index];
-    int32 start_variable_index = matrix_offset + start_split_point_index,
-        end_variable_index = matrix_offset + end_split_point_index;
-    KALDI_ASSERT(end_variable_index > start_variable_index);
-    variable_ranges_[submatrix_index].first = start_variable_index;
-    variable_ranges_[submatrix_index].second = end_variable_index;
-    full_column_range_[submatrix_index] =
-        (s.row_offset == 0 && s.num_rows ==
-         computation.matrices[matrix_index].num_rows);
+    submatrix_to_matrix_[submatrix_index] = matrix_index;
+    int32 start_col = s.col_offset, end_col = start_col + s.num_cols,
+        start_row = s.row_offset, end_row = start_row + s.num_rows;
+    int32 row_start = FindIndexOf(row_split_points_[matrix_index], start_row),
+        row_end = FindIndexOf(row_split_points_[matrix_index], end_row),
+        col_start = FindIndexOf(column_split_points_[matrix_index], start_col),
+        col_end = FindIndexOf(column_split_points_[matrix_index], end_col),
+        num_column_variables = column_split_points_[matrix_index].size() - 1,
+        num_row_variables = row_split_points_[matrix_index].size() - 1,
+        matrix_start_variable = matrix_to_variable_index_[matrix_index];
+    KALDI_ASSERT(row_end > row_start && col_end > col_start &&
+                 col_end <= num_column_variables);
+    std::vector<int32> &variables = variables_for_submatrix_[submatrix_index];
+    for (int32 r = row_start; r < row_end; r++)
+      for (int32 c = col_start; c < col_end; c++)
+        variables.push_back(matrix_start_variable + r*num_column_variables + c);
+    if (row_start == 0 && row_end == num_row_variables &&
+        col_start == 0 && col_end == num_column_variables)
+      submatrix_is_whole_matrix_[submatrix_index] = true;
   }
 }
 
-void ComputationVariables::ComputeSubmatrixInfo(
-    const NnetComputation &computation) {
-  int32 num_submatrices = computation.submatrices.size();
-  submatrix_to_matrix_.resize(num_submatrices, 0);
-  submatrix_is_whole_matrix_.resize(num_submatrices, false);
-  for (int32 s = 1; s < num_submatrices; s++) {
-    submatrix_to_matrix_[s] = computation.submatrices[s].matrix_index;
-    submatrix_is_whole_matrix_[s] = computation.IsWholeMatrix(s);
-  }
-}
-
-void ComputationVariables::ComputeVariableToMatrix(
-    const NnetComputation &computation) {
+void ComputationVariables::ComputeVariableToMatrix() {
   variable_to_matrix_.clear();
-  variable_to_matrix_.resize(NumVariables(), -1);
-  int32 num_submatrices = variable_ranges_.size();
-  for (int32 submatrix_index = 1;
-       submatrix_index < num_submatrices;
-       submatrix_index++) {
-    int32 matrix_index = computation.submatrices[submatrix_index].matrix_index;
-    int32 variable_start = variable_ranges_[submatrix_index].first,
-        variable_end = variable_ranges_[submatrix_index].second;
-    for (int32 variable_index = variable_start;
-         variable_index < variable_end;
-         variable_index++) {
-      if (variable_to_matrix_[variable_index] == -1) {
-        variable_to_matrix_[variable_index] = matrix_index;
-      } else {
-        KALDI_ASSERT(variable_to_matrix_[variable_index] == matrix_index);
-      }
-    }
+  variable_to_matrix_.resize(NumVariables());
+  int32 num_matrices = matrix_to_variable_index_.size() - 1;
+  for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
+    int32 start_variable = matrix_to_variable_index_[matrix_index],
+        end_variable = matrix_to_variable_index_[matrix_index + 1];
+    for (int32 i = start_variable; i < end_variable; i++)
+      variable_to_matrix_[i] = matrix_index;
   }
-  // make sure we covered all variables.
-  KALDI_ASSERT(std::count(variable_to_matrix_.begin(),
-                          variable_to_matrix_.end(), -1) == 0);
 }
 
 void ComputationVariables::Init(const NnetComputation &computation) {
-  // don't call this twice on the same objct..
-  KALDI_ASSERT(split_points_.empty());
+  // don't call this twice on the same object..
+  KALDI_ASSERT(row_split_points_.empty());
   ComputeSplitPoints(computation);
-  ComputeVariableRanges(computation);
-  ComputeVariableToMatrix(computation);
-  ComputeSubmatrixInfo(computation);
+  ComputeVariablesForSubmatrix(computation);
+  ComputeVariableToMatrix();
 }
 
 int32 ComputationVariables::GetMatrixForVariable(int32 variable) const {
@@ -149,11 +140,11 @@ int32 ComputationVariables::GetMatrixForVariable(int32 variable) const {
 void ComputationVariables::AppendVariablesForSubmatrix(
     int32 submatrix_index,
     std::vector<int32> *variable_indexes) const {
-  KALDI_ASSERT(static_cast<size_t>(submatrix_index) < variable_ranges_.size());
-  int32 start = variable_ranges_[submatrix_index].first,
-      end = variable_ranges_[submatrix_index].second;
-  for (int32 variable_index = start; variable_index < end; variable_index++)
-    variable_indexes->push_back(variable_index);
+  KALDI_ASSERT(static_cast<size_t>(submatrix_index) <
+               variables_for_submatrix_.size());
+  variable_indexes->insert(variable_indexes->end(),
+                           variables_for_submatrix_[submatrix_index].begin(),
+                           variables_for_submatrix_[submatrix_index].end());
 }
 
 void ComputationVariables::AppendVariablesForMatrix(
@@ -163,7 +154,7 @@ void ComputationVariables::AppendVariablesForMatrix(
                matrix_to_variable_index_.size());
   int32 start = matrix_to_variable_index_[matrix_index],
       end = matrix_to_variable_index_[matrix_index + 1];
-
+  variable_indexes->reserve(variable_indexes->size() + end - start);
   for (int32 variable_index = start; variable_index < end; variable_index++)
     variable_indexes->push_back(variable_index);
 }
@@ -193,7 +184,7 @@ void ComputationVariables::RecordAccessForSubmatrix(
       // if submatrix does not span the full row range of the matrix,
       // a write operation has to be considered a read/write operation
       // on the underlying variable.
-      if (!full_column_range_[submatrix_index])
+      if (!submatrix_is_whole_matrix_[submatrix_index])
         AppendVariablesForSubmatrix(submatrix_index,
                                     &(ca->variables_read));
       // similar logic applies to the matrix accesses.
