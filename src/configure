@@ -488,15 +488,18 @@ function linux_atlas_failure { # function we use when we couldn't find
    fix_cxx_flag
    echo "** $* ***"
    echo "**  ERROR   **"
-   echo "**Configure cannot proceed automatically, but by editing kaldi.mk"
-   echo "** you may be able to proceed (replace [somewhere] with a directory);"
-   echo "** or install the ATLAS package on your machine (if you are system "
-   echo "   administrator, you can do it easily by searching the atlas packages "
-   echo "   with commands like 'apt-cache search libatlas' or 'yum search atlas',"
-   echo "   and install the packages with commands 'apt-get install' or 'yum install') "
-   echo "   e.g. 'apt-get install libatlas-dev libatlas-base-dev';"
-   echo "** or try going to ../tools and running install_atlas.sh, and running"
-   echo "   this script (configure) again."
+   echo "** Configure cannot proceed automatically."
+   echo "**  If you know that you have ATLAS installed somewhere on your machine, you"
+   echo "** may be able to proceed by replacing [somewhere] in kaldi.mk with a directory."
+   echo "**  If you have sudo (root) access you could install the ATLAS package on your"
+   echo "** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or"
+   echo "** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel',"
+   echo "** or on cygwin, install atlas from the installer GUI; and then run ./configure"
+   echo "** again."
+   echo "**"
+   echo "**  Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS"
+   echo "** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,"
+   echo "** and type './configure  --openblas-root=../tools/OpenBLAS/install'"
    exit 1;
 }
 
