@@ -78,18 +78,30 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 
     computation.ComputeCudaIndexes();
     computation_opt.ComputeCudaIndexes();
+    Nnet nnet_to_update(nnet);  // copy of the nnet that we update...  needed to
+                                // test the consolidation of backprop commands,
+                                // otherwise the optimized and non-optimized
+                                // comptuations differ.
+    bool is_gradient = true;  // with natural gradient, the consolidation would
+                              // affect the final model params -> test just the
+                              // gradient.
+    SetZero(is_gradient, &nnet_to_update);
+
     NnetComputer computer(compute_opts,
                           computation,
                           nnet,
-                          &nnet);
+                          &nnet_to_update);
+
     Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
                           // necessary in case backprop changes parameters.
+    Nnet nnet_opt_to_update(nnet_opt);
+    SetZero(is_gradient, &nnet_opt_to_update);
 
     // NnetComputer for the optimized version of the computation.
     NnetComputer computer_opt(compute_opts,
                               computation_opt,
                               nnet_opt,
-                              &nnet_opt);
+                              &nnet_opt_to_update);
 
     // provide the input to the computations.
     for (size_t i = 0; i < request.inputs.size(); i++) {
@@ -145,7 +157,8 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
       }
     }
 
-    if (!NnetParametersAreIdentical(nnet, nnet_opt, 1.0e-05)) {
+    if (!NnetParametersAreIdentical(nnet_to_update,
+                                    nnet_opt_to_update, 1.0e-05)) {
       KALDI_WARN << "Neural networks differ after training, between "
                  << "optimized and non-optimized computation.";
       return false;

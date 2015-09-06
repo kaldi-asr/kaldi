@@ -548,7 +548,6 @@ void VariableMergingOptimizer::DoRightMerge(int32 command_index,
   MarkAsDirty(s1);
   MarkAsDirty(s2);
 
-  NnetComputation::Command &c = computation_->commands[command_index];
   int32 m1 = computation_->submatrices[s1].matrix_index,
       m2 = computation_->submatrices[s2].matrix_index;
   KALDI_ASSERT(m1 != m2 && m1 > 0 && m2 > 0);
@@ -573,6 +572,17 @@ void VariableMergingOptimizer::DoRightMerge(int32 command_index,
     computation_->commands[alloc_command].command_type =
         kNoOperation;
   }
+  // we keep matrix m2 (so m2 is m_to_keep, m1 is m_to_discard).
+  DoMergeCommon(command_index, m2, m1);
+}
+
+void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
+                                             int32 m_to_keep,
+                                             int32 m_to_discard) {
+  NnetComputation::Command &c = computation_->commands[command_index];
+  const std::vector<MatrixAccesses> &matrix_accesses =
+      analyzer_.matrix_accesses;
+
   //  - If it was case (a), replace the assignment command with a no-op.
   if (c.command_type == kMatrixCopy) {
     // remove the command.
@@ -580,11 +590,12 @@ void VariableMergingOptimizer::DoRightMerge(int32 command_index,
     c.arg1 = -1;
     c.arg2 = -1;
   }
-  //   - If both m1 and m2 have commands that deallocate them, keep only the
-  //    later of the two and make it refer to m2 (otherwise delete any
+
+  //   - If both m_to_keep and m_to_discard have commands that deallocate them, keep only the
+  //    later of the two and make it refer to m_to_keep (otherwise delete any
   //     deallocation command).
-  int32 dealloc1 = matrix_accesses[m1].deallocate_command,
-      dealloc2 = matrix_accesses[m2].deallocate_command;
+  int32 dealloc1 = matrix_accesses[m_to_keep].deallocate_command,
+      dealloc2 = matrix_accesses[m_to_discard].deallocate_command;
   if (dealloc1 != -1 && dealloc2 != -1) {
     int32 earlier_index = std::min(dealloc1, dealloc2),
             later_index = std::max(dealloc1, dealloc2);
@@ -592,9 +603,8 @@ void VariableMergingOptimizer::DoRightMerge(int32 command_index,
         &earlier_command = computation_->commands[earlier_index],
         &later_command = computation_->commands[later_index];
     earlier_command.command_type = kNoOperation;
-    later_command.arg1 = m2;
+    later_command.arg1 = m_to_keep;
   } else {
-    KALDI_ASSERT(matrix_accesses[m2].is_output);
     if (dealloc1 != -1)
       computation_->commands[dealloc1].command_type =
           kNoOperation;
@@ -603,16 +613,34 @@ void VariableMergingOptimizer::DoRightMerge(int32 command_index,
           kNoOperation;
   }
 
-  // Remove the original command that allocated m1, if it exists.
-  if (matrix_accesses[m1].allocate_command != -1) {
-    NnetComputation::Command &allocate_command = computation_->commands[
-        matrix_accesses[m1].allocate_command];
-    KALDI_ASSERT((allocate_command.command_type ==
-                  kAllocMatrixZeroed ||
-                  allocate_command.command_type ==
-                  kAllocMatrixUndefined) &&
-                 allocate_command.arg1 == m1);
-    allocate_command.command_type = kNoOperation;
+  //   - If both m_to_keep and m_to_discard have commands that allocate them,
+  //     keep only the earlier of the two and make it refer to m_to_keep
+  //     (otherwise delete any allocation command).
+  int32 alloc1 = matrix_accesses[m_to_keep].allocate_command,
+      alloc2 = matrix_accesses[m_to_discard].allocate_command;
+  if (alloc1 != -1 && alloc2 != -1) {
+    int32 earlier_index = std::min(alloc1, alloc2),
+        later_index = std::max(alloc1, alloc2);
+    NnetComputation::Command
+        &earlier_command = computation_->commands[earlier_index],
+        &later_command = computation_->commands[later_index];
+    later_command.command_type = kNoOperation;
+    earlier_command.arg1 = m_to_keep;
+    // Make sure we don't initialize as undefined- checking that
+    // that is correct would require some analysis.  We'll deal with
+    // that in a later optimization pass.
+    if (earlier_command.command_type == kAllocMatrixUndefined) {
+      earlier_command.command_type = kAllocMatrixZeroed;
+    } else if (earlier_command.command_type == kAllocMatrixFromOther) {
+      earlier_command.command_type = kAllocMatrixFromOtherZeroed;
+    }
+  } else {
+    if (alloc1 != -1)
+      computation_->commands[alloc1].command_type =
+          kNoOperation;
+    if (alloc2 != -1)
+      computation_->commands[alloc2].command_type =
+          kNoOperation;
   }
 }
 
@@ -624,7 +652,6 @@ void VariableMergingOptimizer::DoLeftMerge(int32 command_index,
   MarkAsDirty(s1);
   MarkAsDirty(s2);
 
-  NnetComputation::Command &c = computation_->commands[command_index];
   int32 m1 = computation_->submatrices[s1].matrix_index,
       m2 = computation_->submatrices[s2].matrix_index;
   KALDI_ASSERT(m1 != m2 && m1 > 0 && m2 > 0);
@@ -649,43 +676,8 @@ void VariableMergingOptimizer::DoLeftMerge(int32 command_index,
     computation_->commands[dealloc_command].command_type =
         kNoOperation;
   }
-  //  - If it was case (a), replace the assignment command with a no-op.
-  if (c.command_type == kMatrixCopy) {
-    // remove the command.
-    c.command_type = kNoOperation;
-    c.arg1 = -1;
-    c.arg2 = -1;
-  }
-  //   - If both m1 and m2 have commands that allocate them, keep only the
-  //     earlier of the two and make it refer to m1 (otherwise delete any
-  //     allocation command).
-  int32 alloc1 = matrix_accesses[m1].allocate_command,
-      alloc2 = matrix_accesses[m2].allocate_command;
-  if (alloc1 != -1 && alloc2 != -1) {
-    int32 earlier_index = std::min(alloc1, alloc2),
-        later_index = std::max(alloc1, alloc2);
-    NnetComputation::Command
-        &earlier_command = computation_->commands[earlier_index],
-        &later_command = computation_->commands[later_index];
-    earlier_command.command_type = kNoOperation;
-    later_command.arg1 = m1;
-  } else {
-    KALDI_ASSERT(matrix_accesses[m1].is_input);
-    if (alloc1 != -1)
-      computation_->commands[alloc1].command_type =
-          kNoOperation;
-    if (alloc2 != -1)
-      computation_->commands[alloc2].command_type =
-          kNoOperation;
-  }
-
-  // Remove the original command that deallocated m2, if it exists.
-  if (matrix_accesses[m2].deallocate_command != -1) {
-    NnetComputation::Command &deallocate_command = computation_->commands[
-        matrix_accesses[m2].deallocate_command];
-    KALDI_ASSERT(deallocate_command.command_type == kDeallocMatrix);
-    deallocate_command.command_type = kNoOperation;
-  }
+  // we keep matrix m1 (so m1 is m_to_keep, m2 is m_to_discard).
+  DoMergeCommon(command_index, m1, m2);
 }
 
 
@@ -976,28 +968,217 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
   }
 }
 
+void ModelUpdateConsolidator::AppendDebugInfoForSubmatrix(
+    int32 submatrix_index,
+    NnetComputation::MatrixDebugInfo *debug_info) const {
+  KALDI_ASSERT(!computation_->matrix_debug_info.empty());
+  KALDI_ASSERT(static_cast<size_t>(submatrix_index) <
+               computation_->submatrices.size());
+  NnetComputation::SubMatrixInfo submatrix_info =
+      computation_->submatrices[submatrix_index];
+  int32 matrix_index = submatrix_info.matrix_index;
+  KALDI_ASSERT(matrix_index > 0 && static_cast<size_t>(matrix_index) <
+               computation_->matrix_debug_info.size());
+  const NnetComputation::MatrixDebugInfo &src_info =
+      computation_->matrix_debug_info[matrix_index];
+  debug_info->is_deriv = src_info.is_deriv;
+  if (debug_info->node_index == -1) {
+    debug_info->node_index = src_info.node_index;
+  } else if (debug_info->node_index != src_info.node_index) {
+    // I'd make this an error, but if we end up calling this optimization
+    // after other optimizations such as variable-merging optimizations,
+    // it's possible the debug info could get mixed up.
+    KALDI_WARN << "Unexpected node-index mismatch in debug info: "
+               << nnet_.GetNodeName(debug_info->node_index) << " vs. "
+               << nnet_.GetNodeName(src_info.node_index);
+  }
+  KALDI_ASSERT(src_info.indexes.size() ==
+               computation_->matrices[matrix_index].num_rows);
+  int32 row_begin = submatrix_info.row_offset,
+      row_end = row_begin + submatrix_info.num_rows;
+  debug_info->indexes.insert(debug_info->indexes.end(),
+                             src_info.indexes.begin() + row_begin,
+                             src_info.indexes.begin() + row_end);
+}
+
+
+int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
+    const std::vector<int32> &commands,
+    const std::vector<int32> &submatrices) {
+  int32 num_submatrices = submatrices.size();
+  KALDI_ASSERT(num_submatrices > 1 && commands.size() == submatrices.size());
+  int32 first_submatrix = submatrices[0];
+  int32 num_cols = computation_->submatrices[first_submatrix].num_cols,
+      num_rows = 0;
+  NnetComputation::MatrixDebugInfo debug_info;
+  for (int32 i = 0; i < num_submatrices; i++) {
+    int32 submatrix = submatrices[i];
+    num_rows += computation_->submatrices[submatrix].num_rows;
+    KALDI_ASSERT(computation_->submatrices[submatrix].num_cols == num_cols);
+    if (!computation_->matrix_debug_info.empty())
+      AppendDebugInfoForSubmatrix(submatrix, &debug_info);
+  }
+  // new_whole_submatrix is a new submatrix index corresponding to the whole
+  // of a new matrix that we are creating.
+  int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols);
+  // Add a command at the very start, to initialize this new matrix.
+  int32 new_matrix_index =
+      computation_->submatrices[new_whole_submatrix].matrix_index;
+  extra_commands_[0].push_back(
+      NnetComputation::Command(kAllocMatrixUndefined, new_matrix_index));
+  final_deallocate_commands_.push_back(
+      NnetComputation::Command(kDeallocMatrix, new_matrix_index));
+  if (!computation_->matrix_debug_info.empty())
+    computation_->matrix_debug_info[new_matrix_index].Swap(&debug_info);
+
+  int32 row_offset = 0;
+  for (int32 i = 0; i < num_submatrices; i++) {
+    int32 submatrix_index = submatrices[i];
+    int32 this_num_rows = computation_->submatrices[submatrix_index].num_rows;
+    // submatrix corresponding to the part of the new matrix corresponding
+    // to 'submatrices[i]'.
+    int32 new_submatrix = computation_->NewSubMatrix(new_whole_submatrix,
+                                                     row_offset, this_num_rows,
+                                                     0, num_cols);
+    // Just before command 'commands[i]', add a command that assigns to the
+    // submatrix numbered 'new_submatrix' the contents of the submatrix numbered
+    // 'submatrices[i]'.  Note: we hope that a later pass of optimization
+    // (VariableMergingOptimization) will remove this redundant copy by
+    // having the operation that created it right directly to the location
+    // we want it to be.
+    NnetComputation::Command c(kMatrixCopy, new_submatrix, submatrices[i]);
+    extra_commands_[commands[i]].push_back(c);
+    row_offset += this_num_rows;
+  }
+  KALDI_ASSERT(row_offset == num_rows);
+  return new_whole_submatrix;
+}
+
+void ModelUpdateConsolidator::AddCommandsToComputation() {
+  KALDI_ASSERT(computation_->commands.size() == extra_commands_.size());
+  int32 old_num_commands = computation_->commands.size(),
+      new_num_commands = old_num_commands +
+      static_cast<int32>(final_commands_.size() +
+                         final_deallocate_commands_.size());
+  for (size_t i = 0; i < extra_commands_.size(); i++)
+    new_num_commands += static_cast<int32>(extra_commands_[i].size());
+  std::vector<NnetComputation::Command> new_commands;
+  new_commands.reserve(new_num_commands);
+  for (int32 c = 0; c < old_num_commands; c++) {
+    new_commands.insert(new_commands.end(),
+                        extra_commands_[c].begin(), extra_commands_[c].end());
+    new_commands.push_back(computation_->commands[c]);
+  }
+  new_commands.insert(new_commands.end(),
+                      final_commands_.begin(), final_commands_.end());
+  new_commands.insert(new_commands.end(),
+                      final_deallocate_commands_.begin(),
+                      final_deallocate_commands_.end());
+  computation_->commands.swap(new_commands);
+}
+
+/** This function, called from ConsolidateModelUpdate, is passed a list of
+    commands that are all backprops for the same component, and it consolidates
+    them into a single model-update command. */
+void ModelUpdateConsolidator::ConsolidateUpdateForComponent(
+    int32 component_index,
+    const std::vector<int32> &backprop_commands) {
+  const Component *component = nnet_.GetComponent(component_index);
+  int32 num_backprop_commands = backprop_commands.size();
+
+  bool need_input = (component->Properties() & kBackpropNeedsInput) != 0,
+      need_output = (component->Properties() & kBackpropNeedsOutput) != 0;
+
+  std::vector<int32>  input_submatrices(num_backprop_commands),
+      output_submatrices(num_backprop_commands),
+      output_deriv_submatrices(num_backprop_commands);
+
+  for (int32 i = 0; i < num_backprop_commands; i++) {
+    int32 command_index = backprop_commands[i];
+    NnetComputation::Command &command =
+        computation_->commands[command_index];
+    // arg2 must be 0 because simple components don't use precomputed indexes.
+    KALDI_ASSERT(command.command_type == kBackprop && command.arg2 == 0);
+    command.command_type = kBackpropNoModelUpdate;
+    int32 input_submatrix = command.arg3,
+        output_submatrix = command.arg4,
+        output_deriv_submatrix = command.arg5;
+    KALDI_ASSERT((input_submatrix != 0) == need_input &&
+                 (output_submatrix != 0) == need_output);
+    input_submatrices[i] = input_submatrix;
+    output_submatrices[i] = output_submatrix;
+    output_deriv_submatrices[i] = output_deriv_submatrix;
+  }
+  // Get the sub-matrix indexes of whichever of the consolidated matrices we
+  // need (will usually be input_submatrix and output_deriv_submatrix).
+  int32 input_submatrix = (need_input ?
+                           ConsolidateSubmatrices(backprop_commands,
+                                                  input_submatrices) : 0),
+      output_submatrix = (need_output ?
+                         ConsolidateSubmatrices(backprop_commands,
+                                                output_submatrices) : 0),
+      output_deriv_submatrix = ConsolidateSubmatrices(backprop_commands,
+                                                      output_deriv_submatrices);
+  int32 precomputed_indexes_index = 0,  // unused since simple component
+      input_deriv_submatrix = 0;  // we don't need the input-deriv, so this is
+                                  // zero.
+  NnetComputation::Command c(kBackprop, component_index, precomputed_indexes_index,
+                             input_submatrix, output_submatrix,
+                             output_deriv_submatrix, input_deriv_submatrix);
+  final_commands_.push_back(c);
+}
+
+ModelUpdateConsolidator::ModelUpdateConsolidator(
+    const Nnet &nnet,
+    NnetComputation *computation):
+    nnet_(nnet), computation_(computation),
+    extra_commands_(computation->commands.size()) { }
+
+void ModelUpdateConsolidator::ConsolidateModelUpdate() {
+  int32 num_components = nnet_.NumComponents(),
+      num_commands = computation_->commands.size();
+  // 'backprop_commands' is a list, for each component (but nonempty only for
+  // updatable components), of the command indexes for the backprop commands.
+  std::vector<std::vector<int32> > backprop_commands(num_components);
+  std::vector<NnetComputation::Command>::const_iterator iter =
+      computation_->commands.begin(), end = computation_->commands.end();
+  for (int32 command_index = 0;
+       command_index < num_commands; command_index++) {
+    const NnetComputation::Command &c = computation_->commands[command_index];
+    if (c.command_type == kBackprop) {
+      int32 component_index = c.arg1;
+      const Component *component = nnet_.GetComponent(component_index);
+      if (component->Properties() & kUpdatableComponent)
+        backprop_commands[component_index].push_back(command_index);
+    }
+  }
+  bool consolidated = false;
+  for (int32 component = 0; component < num_components; component++) {
+    if (backprop_commands[component].size() > 1) {
+      ConsolidateUpdateForComponent(component,
+                                    backprop_commands[component]);
+      consolidated = true;
+    }
+  }
+  if (!consolidated)  // This is an optimization to avoid redundant computation
+    return;           // if there is nothing to do.
+  // the following function call commits all the commands we stored in member
+  // variables, to computation_->commands.
+  AddCommandsToComputation();
+}
+
+
+// This is a simplified top-level interface to the model-update consolidation
+// code from class ModelUpdateConsolidator.
 void ConsolidateModelUpdate(const Nnet &nnet,
                             const ComputationRequest &request,
                             NnetComputation *computation) {
   if (!request.need_model_derivative)
     return;   // An optimization; there would be nothing to do in this case.
-  int32 num_components = nnet.NumComponents();
-  // 'backprop_commands' is a list, for each component (but nonempty only for
-  // updatable components), of the command indexes for the backprop commands.
-  std::vector<std::vector<int32> > backprop_commands(num_components);
-  std::vector<NnetComputation::Command>::const_iterator iter =
-      computation->commands.begin(), end = computation->commands.end();
-  for (int32 c = 0; c < static_cast<int32>(computation->commands.size()); c++) {
-    const NnetComputation::Command &command = computation->commands[c];
-    if (command.command_type == kBackprop) {
-      int32 component_index = command.arg1;
-      const Component *component = nnet.GetComponent(component_index);
-      if (component->Properties() & kUpdatableComponent)
-        backprop_commands[component_index].push_back(c);
-    }
-  }
-  // TODO.
+  ModelUpdateConsolidator consolidator(nnet, computation);
+  consolidator.ConsolidateModelUpdate();
 }
+
 
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,

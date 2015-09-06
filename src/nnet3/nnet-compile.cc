@@ -202,9 +202,11 @@ void Compiler::CreateStepInfo(
       KALDI_PARANOID_ASSERT(this_info.output_indexes ==
                             steps_[input_step].output_indexes);
       this_info.value = computation->NewSubMatrix(steps_[input_step].value,
+                                                  0, -1,
                                                   node.dim_offset, node.dim);
       if (deriv_needed[step])
         this_info.deriv = computation->NewSubMatrix(steps_[input_step].deriv,
+                                                    0, -1,
                                                     node.dim_offset, node.dim);
     }
     if (node.node_type == kDescriptor) {
@@ -235,10 +237,12 @@ void Compiler::CreateStepInfo(
           int32 this_dim = this_part.Dim(nnet_);
           this_info.value_parts[p] =
               computation->NewSubMatrix(this_info.value,
+                                        0, -1,
                                         cur_dim_offset, this_dim);
           if (deriv_needed[step])
             this_info.deriv_parts[p] =
                 computation->NewSubMatrix(this_info.deriv,
+                                          0, -1,
                                           cur_dim_offset, this_dim);
           cur_dim_offset += this_dim;
         }

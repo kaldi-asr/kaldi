@@ -94,23 +94,29 @@ void NnetComputation::ComputeCudaIndexes() {
   }
 }
 
-int32 NnetComputation::NewSubMatrix(int32 base_submatrix, int32 dim_offset,
-                                    int32 dim) {
+int32 NnetComputation::NewSubMatrix(int32 base_submatrix,
+                                    int32 row_offset, int32 num_rows,
+                                    int32 col_offset, int32 num_cols) {
   KALDI_ASSERT(base_submatrix > 0 &&
                static_cast<size_t>(base_submatrix) < submatrices.size());
   const SubMatrixInfo &base_info = submatrices[base_submatrix];
   int32 base_matrix = base_info.matrix_index;
-  int32 row_offset = base_info.row_offset, num_rows = base_info.num_rows,
-      col_offset = base_info.col_offset + dim_offset,
-      num_cols = dim;
   KALDI_ASSERT(base_matrix > 0 &&
                static_cast<size_t>(base_matrix) < matrices.size());
-  KALDI_ASSERT(col_offset >= 0 &&
-               col_offset + num_cols <= matrices[base_matrix].num_cols);
+  if (num_rows == -1) // we interpret this to mean 'as many as possible'.
+    num_rows = base_info.num_rows - row_offset;
+  if (num_cols == -1) // we interpret this to mean 'as many as possible'.
+    num_cols = base_info.num_cols - col_offset;
+  KALDI_ASSERT(row_offset + num_rows <= base_info.num_rows &&
+               col_offset + num_cols <= base_info.num_cols &&
+               row_offset >= 0 && col_offset >= 0 &&
+               num_rows > 0 && num_cols > 0);
+  int32 matrix_row_offset = base_info.row_offset + row_offset,
+      matrix_col_offset = base_info.col_offset + col_offset;
   int32 ans = submatrices.size();
   submatrices.push_back(
-      NnetComputation::SubMatrixInfo(base_matrix, row_offset, num_rows,
-                                     col_offset, num_cols));
+      NnetComputation::SubMatrixInfo(base_matrix, matrix_row_offset, num_rows,
+                                     matrix_col_offset, num_cols));
   return ans;
 }
 
@@ -123,8 +129,17 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
   int32 matrix_index = matrices.size(),
       submatrix_index = submatrices.size();
   matrices.push_back(MatrixInfo(num_rows, num_cols));
+  if (!matrix_debug_info.empty())
+    matrix_debug_info.push_back(MatrixDebugInfo());
   submatrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
   return submatrix_index;
+}
+
+void NnetComputation::MatrixDebugInfo::Swap(
+    NnetComputation::MatrixDebugInfo *other) {
+  std::swap(is_deriv, other->is_deriv);
+  std::swap(node_index, other->node_index);
+  indexes.swap(other->indexes);
 }
 
 // outputs a string explaining the meaning each sub-matrix in vaguely

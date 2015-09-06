@@ -146,15 +146,16 @@ struct ComputationRequest {
    CommandType is an enum that describes the category of the command used in
    the NnetComputation.  We declare it outside that class because it's so
    frequently used and we got tired of typing NnetComputation:: everywhere.
-   We document the commands here:
+   We document the commands here.
+
    - kAllocMatrixUndefined: Allocate a matrix.  arg1 = index of matrix.
    - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = index of matrix.
    - kDeallocMatrix: Deallocate a matrix.  arg1 = index of matrix.
    - kAllocMatrixFromOther: initialize matrix indexed arg1 using memory
    from matrix indexed arg2 (using shallow swap).
    - kAllocMatrixFromOtherZeroed: initialize matrix indexed arg1 using memory
-   from matrix indexed arg2 (using shallow swap), then zero the matrix
-   we just allocated.
+     from matrix indexed arg2 (using shallow swap), then zero the matrix
+     we just allocated.
    - kPropagate: Forward computation of neural net, see Component::Propagate()
    - arg1 is is component-index in neural net
    - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
@@ -169,12 +170,13 @@ struct ComputationRequest {
    - arg1 is index of component in neural net
    - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
    for simple Components)
-   - arg3 is submatrix-index of input value (input to Propagate())
-   - arg4 is submatrix-index of output value (output of Propagate())
+   - arg3 is submatrix-index of input value (input to Propagate()); 0 if unused
+   - arg4 is submatrix-index of output value (output of Propagate()); 0 if unused
    - arg5 is submatrix-index of output derivative
-   - arg6 is submatrix-index of input derivative
+   - arg6 is submatrix-index of input derivative; 0 if unused.
    - kBackpropNoModelUpdate: as kBackprop, but does not set the
-   'to_update' argument to the Backprop call, even if the model
+    'to_update' argument to the Backprop call, even if the model  is updatable,
+     so it skips the model-update phase of backprop.
    - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
    - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
    - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
@@ -220,6 +222,7 @@ struct NnetComputation {
     int32 node_index;  // network-node index.
     std::vector<Index> indexes;
     MatrixDebugInfo(): is_deriv(false), node_index(-1) {}
+    void Swap(MatrixDebugInfo *other);  // Shallow swap
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
@@ -309,15 +312,20 @@ struct NnetComputation {
   std::vector<CuArray<Int32Pair> > indexes_ranges_cuda;
 
 
-  // Convenience function used when adding new matrices.  Returns the corresponding
-  // sub-matrix index, which may or not equal the actual matrix index.
+  /// Convenience function used when adding new matrices.  Writes to
+  /// 'this->matrices' and 'this->submatrices'; and if 'this->matrix_debug_info'
+  /// is nonempty, also increases its size by one.  Returns the *sub-matrix*
+  /// index corresponding to the newly added matrix.
   int32 NewMatrix(int32 num_rows, int32 num_cols);
 
-  // Convenience function used when adding new sub-matrices.  Returns the new
-  // sub-matrix index.  base_submatrix is the submatrix of which we want
-  // a column range.  dim_offset is the start column, and dim is the dimension
-  // of the desired matrix.
-  int32 NewSubMatrix(int32 base_submatrix, int32 dim_offset, int32 dim);
+  /// Convenience function used when adding new sub-matrices.  base_submatrix is
+  /// the submatrix of which we want a column and/or row range.  As a
+  /// convenience, -1 for the 'num_rows' or the 'num_cols' will be interpreted
+  /// as 'as much as possible'.  Returns the new sub-matrix index.  Writes to
+  /// 'this->submatrices'.
+  int32 NewSubMatrix(int32 base_submatrix,
+                     int32 row_offset, int32 num_rows,
+                     int32 col_offset, int32 num_cols);
 
   // returns true if this submatrix corresponds to the whole of a matrix.
   // submatrix_index must be > 0.

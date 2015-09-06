@@ -42,7 +42,7 @@ struct NnetOptimizeOptions {
   bool allocate_from_other;
 
   NnetOptimizeOptions(): optimize(true),
-                         consolidate_model_update(false),
+                         consolidate_model_update(true),
                          propagate_in_place(true),
                          backprop_in_place(true),
                          remove_assignments(true),
@@ -187,10 +187,15 @@ class CachingOptimizingCompiler {
        command that allocated m2.
      - If it was an assignment [case (a)], replace the assignment command with a
        no-op.
+     - If both m1 and m2 have commands that allocate them, keep only the
+       earlier of the two and make it refer to m1 (otherwise delete any
+       allocation command, because m1 must be an input); and make sure
+       it zeroes the new data (later we can change it to undefined
+       initialization, if possible).
      - If both m1 and m2 have commands that deallocate them, keep only the
        later of the two and make it refer to m2 (otherwise delete any
        deallocation command, because m2 must be an output).
-     - Remove the command that allocated m1, if it exists.
+
 
    The sequence of things we have to do for a right-merge (in which we delete
    s1,m1) is as follows:
@@ -198,12 +203,9 @@ class CachingOptimizingCompiler {
        [later we'll renumber so that there are no duplicates.]
      - If m2 was an output, replace it as an output with m1 and remove the
        command that deallocated m1.
-     - If it was an assignment [case (a)], replace the assignment command with a
-       no-op.
-     - If both m1 and m2 have commands that allocate them, keep only the
-       earlier of the two and make it refer to m1 (otherwise delete any
-       allocation command, because m1 must be an input).
-     - Remove the command that deallocated m2, if it exists.
+    ... the last three bullet-points, regarding removing the assignment
+        command, and allocation and deallocation, are the same as for a
+        left-merge.
 
    At the end when we call RemoveOrphanMatrices(), the renumbering code will
    automatically detect that there are duplicate submatrices, and will merge
@@ -248,6 +250,13 @@ class VariableMergingOptimizer {
   // above the class declaration for details.
   void DoRightMerge(int32 command_index, int32 s1, int32 s2);
 
+  // Performs the actions common to both left and right merges, regarding
+  // removing the assignment command, and allocation and deallocation (called
+  // from DoLeftMerge and DoRightMerge).  The m_to_keep and m_to_discard
+  // are the matrix-indexes we will keep and discard respectively.
+  void DoMergeCommon(int32 command_index, int32 m_to_keep,
+                     int32 m_to_discard);
+
   /// Marks the variables underlying submatrix 's' as dirty
   void MarkAsDirty(int32 s);
 
@@ -276,15 +285,89 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
                                  const ComputationRequest &request,
                                  NnetComputation *computation);
 
+
+/** This class is responsible for consolidating the model-update part of
+    backprop commands, for components in (e.g.) recurrent networks that need to
+    have many separate backprop commands, into more efficient single commands
+    operating on consolidated data in larger matrices.  This is useful for
+    recurrent networks.  */
+class ModelUpdateConsolidator {
+ public:
+  ModelUpdateConsolidator(const Nnet &nnet,
+                          NnetComputation *computation);
+  void ConsolidateModelUpdate();
+ private:
+  void ConsolidateUpdateForComponent(
+      int32 component,
+      const std::vector<int32> &backprop_commands);
+
+  /// This function, called at the end of ConsolidateModelUpdate(), takes the
+  /// commands that we have put in extra_commands_, final_commands_ and
+  /// final_deallocate_commands_, and puts them in the appropriate place in
+  /// computation->commands_.
+  void AddCommandsToComputation();
+
+  /// You call this function when you want to consolidate the values of a list
+  /// of submatrices taken just prior particular commands.  The input 'commands'
+  /// and 'submatrices' lists must be the same size, and size must be > 1.  This
+  /// function will create a new matrix that is the row-wise concatentation of
+  /// all these submatrices, with values taken just prior to the respective
+  /// command indexes.  This function will will add to extra_commands_ the
+  /// commands to do the copying at the appropriate places (at the supplied
+  /// command indexes; they will be inserted just before).  The return value is
+  /// the submatrix index of a submatrix that represents the whole of the
+  /// consolidated matrix.  This command will insert, at the beginning of
+  /// the computation (in extra_commands_[0]), a command to initialize the matrix;
+  /// and will append to final_deallocate_commands_ the commands to deallocate
+  /// the matrix.
+  /// If computation_->matrix_debug_info is nonempty, this function will
+  /// also update computation_->matrix_debug_info with suitable values
+  /// for the newly added matrix
+  int32 ConsolidateSubmatrices(
+      const std::vector<int32> &commands,
+      const std::vector<int32> &submatrices);
+
+  /// This function, called from ConsolidateSubmatrices, will
+  /// update 'debug_info' by appending the corresponding 'indexes' from
+  /// the existing debug info for this submatrix.  It will also set
+  /// the 'is_deriv' of '*debug_info' to the same value as the
+  /// debug info for 'submatrix_index', and set the 'node_index' to the
+  /// 'node_index' in the debug info for that submatrix-index.
+  /// It requires that computation_->matrix_debug_info be nonempty.
+  void AppendDebugInfoForSubmatrix(
+      int32 submatrix_index,
+      NnetComputation::MatrixDebugInfo *debug_info) const;
+
+  const Nnet &nnet_;
+  NnetComputation *computation_;
+
+  // Indexed by the original command index in *computation_ (and sized to the
+  // original number of commands in *computation_ before we added anything),
+  // extra_commands_[c] contains a list of commands that need to be inserted
+  // just before command c in the previously existing computation.
+  std::vector<std::vector<NnetComputation::Command> > extra_commands_;
+
+  // This is as list of kBackprop commands that will be placed after the
+  // commands in 'computation_->commands' and 'extra_commands_', but before
+  // the 'final_deallocate_commands_'.
+  std::vector<NnetComputation::Command> final_commands_;
+  // This is a list of commands to deallocate our 'consolidated' matrices; the
+  // commands will be placed after the commands in 'final_commands_'.
+  std::vector<NnetComputation::Command> final_deallocate_commands_;
+};
+
 /// This consolidates the model-update parts of the backprop into larger
-/// operations (applicable mostly to recurrent setups).  Will fail if called a
+/// operations (applicable mostly to recurrent setups)-- internally it uses
+/// class ModelUpdateConsolidator.  Will fail if called a
 /// second time.
-void ConsolidateModelUpdate(const Nnet &nnet, const ComputationRequest &request,
+void ConsolidateModelUpdate(const Nnet &nnet,
+                            const ComputationRequest &request,
                             NnetComputation *computation);
 
 /// This optimization function changes, where possible, matrix initializations
 /// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
 void RemoveUnnecessaryZeroing(const Nnet &nnet, NnetComputation *computation);
+
 
 
 /// This optimization moves commands that initialize matrices to as late as
@@ -298,7 +381,7 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation);
 
 /// This function detects matrices that have no submatrices corresponding to
-/// them (due, to changes made in other optimization code), and removes them
+/// them (due to changes made in other optimization code), and removes them
 /// from the computation.  It also renumbers the submatrix indexes to remove
 /// duplicates.
 void RemoveOrphanMatrices(NnetComputation *computation);
@@ -313,6 +396,7 @@ bool ReplaceInInput(
     const Nnet &nnet, int32 orig_matrix_index, int32 new_matrix_index,
     NnetComputation *computation);
 
+/// A helper function used in some optimization functions.
 /// Wherever matrix orig_matrix_index appears in the output of the network
 /// (i.e. in computation->input_output_info), replaces it with new_matrix_index.
 /// Returns true if it did replace it.
@@ -321,8 +405,8 @@ bool ReplaceInOutput(
     NnetComputation *computation);
 
 /// This function outputs to "submatrix_args" the addresses of a subset of
-/// arguments arg1 through arg6 in "command", that correspond to the indexes
-/// of submatrices.  This is useful in renumbering code.
+/// arguments arg1 through arg6 in "command", that correspond to the indexes of
+/// submatrices.  This is useful in renumbering code.
 void IdentifySubmatrixArgs(NnetComputation::Command *command,
                            std::vector<int32*> *submatrix_args);
 
