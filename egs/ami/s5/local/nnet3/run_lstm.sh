@@ -3,8 +3,7 @@
 # this is a basic lstm script
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call lstm/train.sh with --gpu false,
-# --num-threads 16 and --minibatch-size 128.
+# If you want to run without GPU you'd have to call lstm/train.sh with --gpu false
 set -e
 
 stage=0
@@ -36,6 +35,7 @@ initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_chunk_per_minibatch=100
 samples_per_iter=20000
+remove_egs=true
 
 . cmd.sh
 . ./path.sh
@@ -72,6 +72,7 @@ LM=$final_lm.pr1-7
 graph_dir=$gmm_dir/graph_${LM}
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --mic $mic \
   --use-sat-alignments $use_sat_alignments \
   --speed-perturb $speed_perturb || exit 1;
 
@@ -80,9 +81,6 @@ if [ $stage -le 7 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
-
-  #--online-ivector-dir exp/$mic/nnet3/ivectors_train_hires_sp2 \
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
@@ -107,9 +105,12 @@ if [ $stage -le 7 ]; then
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
     --egs-dir "$common_egs_dir" \
+    --remove-egs $remove_egs \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
-exit;
+
+echo "decode commands not yet written " && exit;
+
 if [ $stage -le 8 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp
   # to the script below.

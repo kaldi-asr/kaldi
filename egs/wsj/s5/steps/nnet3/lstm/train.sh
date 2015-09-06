@@ -14,14 +14,14 @@
 
 # Begin configuration section.
 cmd=run.pl
-num_epochs=15      # Number of epochs of training;
+num_epochs=5      # Number of epochs of training;
                    # the number of iterations is worked out from this.
-initial_effective_lrate=0.01
-final_effective_lrate=0.001
+initial_effective_lrate=0.0003
+final_effective_lrate=0.00003
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
-samples_per_iter=40000 # each iteration of training, see this many samples
+samples_per_iter=20000 # each iteration of training, see this many samples
                        # per job.  This option is passed to get_egs.sh
                        # this is substantially smaller than of that used for FF-DNN
                        # as multiple output labels are processed in each sample
@@ -52,34 +52,31 @@ stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4 "
+splice_indexes="-2,-1,0,1,2 0 0"
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 # Natural gradient options
-ng_per_element_scale_options=""
-ng_affine_options=""
+ng_per_element_scale_options=
+ng_affine_options=
 
 # LSTM parameters
-num_lstm_layers=1
+num_lstm_layers=3
 cell_dim=1024  # dimension of the LSTM cell
 hidden_dim=1024  # the dimension of the fully connected hidden layer outputs
 recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 norm_based_clipping=true
-clipping_threshold=1
-chunk_width=10 # number of output labels in the sequence used to train an LSTM
-chunk_left_context=10 # number of steps used in the estimation of LSTM state before prediction of the first label
-                      ## see Chen 2015, "Training Deep Bidirectional LSTM Acoustic Model for LVCSR by a Context-Sensitive-Chunk BPTT Approach"
-
-
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
-randprune=4.0 # speeds up LDA.
-affine_opts=
+clipping_threshold=10
+chunk_width=20 # number of output labels in the sequence used to train an LSTM
+chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5
 
+randprune=4.0 # speeds up LDA.
+affine_opts=
+
 # nnet3-train options
-update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processedi
+update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processed
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
