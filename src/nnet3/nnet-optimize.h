@@ -111,6 +111,7 @@ class CachingOptimizingCompiler {
                             const int32 capacity = 20):
       nnet_(nnet), opt_config_(opt_config), capacity_(capacity) { }
 
+  ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
@@ -138,8 +139,8 @@ class CachingOptimizingCompiler {
   // Compile(). It insert the request to the end of the queue, and purge
   // the least-recently-accessed request from the queue and the cache
   // if the capacity is reached.
-  void UpdateCache(const ComputationRequest &request,
-                   NnetComputation &computation);
+  void UpdateCache(const ComputationRequest *request,
+                   NnetComputation *computation);
   // This function updates the recently accessed queue.
   void UpdateAccessQueue(typename CacheType::iterator &cit);
   int32 capacity_;
