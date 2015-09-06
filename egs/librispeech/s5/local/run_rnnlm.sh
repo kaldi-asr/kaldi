@@ -56,19 +56,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Training RNNLM. It will probably take several hours."
+  $KALDI_ROOT/tools/extras/check_for_rnnlm.sh "$rnnlm_ver" || exit 1
   rnnlm_path="$(readlink -f $KALDI_ROOT)/tools/$rnnlm_ver/rnnlm"
-  if [ -f "$rnnlm_path" ]; then
-      echo "$0: Using binary $rnnlm_path"
-  else
-      if [ $rnnlm_ver == "rnnlm-hs-0.1b" ]; then
-          echo "$0: ERROR RNNLM-HS is not installed. Use extras/install_rnnlm_hs.sh to install it"
-      elif [ $rnnlm_ver == "faster-rnnlm" ]; then
-          echo "$0: ERROR Faster RNNLM is not installed. Use extras/install_faster_rnnlm.sh to install it"
-      else
-          echo "$0: ERROR Cannot find $rnnlm_path"
-      fi
-      exit 1
-  fi
   cd $s5_dir
   mkdir -p $modeldir
   echo "$0: Model file: $modeldir/rnnlm"

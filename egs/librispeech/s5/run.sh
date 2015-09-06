@@ -330,16 +330,8 @@ steps/train_quick.sh --cmd "$train_cmd" \
 # steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
 #    data/lang exp/tri6b data/local/dict/lexicon.txt exp/debug_lexicon_100h
 
-# #Perform rescoring of tri6b be means of rnnlm-hs
-# #Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
-# wait && local/run_rnnlm.sh \
-#     --rnnlm-ver "rnnlm-hs-0.1b" \
-#     --rnnlm-options "-hidden 150 -direct 1000 -direct-order 5" \
-#     --rnnlm_tag "h150-me5-1000" $data data/local/lm
-
 # #Perform rescoring of tri6b be means of faster-rnnlm
-# #Results are identical to results obtained by rnnlm-hs (or better)
-# #Hovewer, faster-rnnlm training is several times faster
+# #Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
 # wait && local/run_rnnlm.sh \
 #     --rnnlm-ver "faster-rnnlm" \
 #     --rnnlm-options "-hidden 150 -direct 1000 -direct-order 5" \
