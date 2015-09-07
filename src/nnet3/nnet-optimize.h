@@ -101,15 +101,15 @@ struct ComputationRequestPtrEqual {
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
- CachingOptimizingCompiler(const Nnet &nnet,
+  CachingOptimizingCompiler(const Nnet &nnet,
                            const int32 capacity = 20):
-      nnet_(nnet), capacity_(capacity) { }
+      nnet_(nnet), cache_capacity_(capacity) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
                             const NnetOptimizeOptions &opt_config,
                             const int32 capacity = 20):
-      nnet_(nnet), opt_config_(opt_config), capacity_(capacity) { }
+      nnet_(nnet), opt_config_(opt_config), cache_capacity_(capacity) { }
 
   ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
@@ -124,12 +124,15 @@ class CachingOptimizingCompiler {
   // The access queue for keeping track of the freshness of computation.
   // Most-recently-accessed computation is at the end, and
   // least-recently-accessed computaiton is at the beginning.
+  // Together with computation_cache_, this forms a most-recently-used (MRU)
+  // cache for Computations, indexed by ComputationRequest. Pointers
+  // are owned in computation_cache_.
   typedef std::list<const ComputationRequest*> AqType;
   AqType access_queue_;
 
-  // Hash table for fast accssing a computation. Key is a pointer to
-  // ComputationRequest, and value is a pair of pointers to the Computation
-  // and its position in the access queue.
+  // Map from computation-request to pair of (computation, and position in
+  // access_queue_). Used for fast lookup of previously compiled computations.
+  // All pointers are owned here.
   typedef unordered_map<const ComputationRequest*, std::pair<NnetComputation*,
     typename AqType::iterator>, ComputationRequestHasher,
     ComputationRequestPtrEqual> CacheType;
@@ -143,7 +146,9 @@ class CachingOptimizingCompiler {
                    NnetComputation *computation);
   // This function updates the recently accessed queue.
   void UpdateAccessQueue(typename CacheType::iterator &cit);
-  int32 capacity_;
+  // This configuration value determines how many unique Computations
+  // to cache in our most-recently-used cache. 
+  int32 cache_capacity_;
 };
 
 

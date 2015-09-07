@@ -878,7 +878,7 @@ size_t ComputationRequestHasher::IoSpecificationToInt(const IoSpecification& spe
 
 void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
                                             NnetComputation *computation) {
-  if (computation_cache_.size() == capacity_) {
+  if (computation_cache_.size() == cache_capacity_) {
     // full, locate the least-recently-accessed request
     const typename CacheType::iterator it
        = computation_cache_.find(access_queue_.front());
@@ -910,8 +910,6 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
     delete itr->first;
     delete itr->second.first;
   }
-  access_queue_.clear();
-  computation_cache_.clear();
 }
 
 const NnetComputation* CachingOptimizingCompiler::Compile(
