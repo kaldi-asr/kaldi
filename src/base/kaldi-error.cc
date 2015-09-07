@@ -59,7 +59,7 @@ const char *GetShortFileName(const char *filename) {
 
 #if defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
 // The function name looks like a macro: it's a macro if we don't have ccxxabi.h
-inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,  
+inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,
                                                    const char *to_append) {
   // at input the string "to_append" looks like:
   //   ./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d]
@@ -150,11 +150,25 @@ KaldiWarnMessage::KaldiWarnMessage(const char *func, const char *file,
                  << GetShortFileName(file) << ':' << line << ") ";
 }
 
+KaldiWarnMessage::~KaldiWarnMessage() {
+  std::string str = ss_.str();
+  while (!str.empty() && str[str.length() - 1] == '\n')
+    str.resize(str.length() - 1);
+  fprintf(stderr, "%s\n", str.c_str());
+}
+
 
 KaldiLogMessage::KaldiLogMessage(const char *func, const char *file,
                                  int32 line) {
   this->stream() << "LOG (" << GetProgramName() << func << "():"
                  << GetShortFileName(file) << ':' << line << ") ";
+}
+
+KaldiLogMessage::~KaldiLogMessage() {
+  std::string str = ss_.str();
+  while (!str.empty() && str[str.length() - 1] == '\n')
+    str.resize(str.length() - 1);
+  fprintf(stderr, "%s\n", str.c_str());
 }
 
 
@@ -171,15 +185,20 @@ KaldiErrorMessage::KaldiErrorMessage(const char *func, const char *file,
 }
 
 KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
+  std::string str = ss_.str();
+  int32 length = str.length();
+  while (!str.empty() && str[str.length() - 1] == '\n')
+    str.resize(str.length() - 1);
+
   // (1) Print the message to stderr.
-  std::cerr << ss.str() << '\n';
+  fprintf(stderr, "%s\n", str.c_str());
   // (2) Throw an exception with the message, plus traceback info if available.
   if (!std::uncaught_exception()) {
 #ifdef HAVE_EXECINFO_H
-    throw std::runtime_error(ss.str() + "\n\n[stack trace: ]\n" +
+    throw std::runtime_error(str + "\n\n[stack trace: ]\n" +
                              KaldiGetStackTrace() + "\n");
 #else
-    throw std::runtime_error(ss.str());
+    throw std::runtime_error(str);
 #endif
   } else {
     abort(); // This may be temporary...

@@ -45,8 +45,8 @@ namespace nnet3 {
 struct CommandAttributes {
   // All of the vector variables below are made sorted and uniq by
   // ComputeCommandAttributes.
-  
-  // variables read 
+
+  // variables read
   std::vector<int32> variables_read;
   // variables written
   std::vector<int32> variables_written;
@@ -56,7 +56,7 @@ struct CommandAttributes {
   // sub-matrices written (i.e. the submatrix appears in the command directly)
   std::vector<int32> submatrices_written;
 
-  // matrices read 
+  // matrices read
   std::vector<int32> matrices_read;
   // matrices written
   std::vector<int32> matrices_written;
@@ -90,22 +90,34 @@ enum AccessType {
     would cause the resulting analysis to be inaccurate.
 
     What we do instead, which is accurate enough in the cases we envisage, is to
-    make the variables correspond to the most specific column ranges in the
+    make the variables correspond to the most specific row column ranges in the
     matrices that we ever access.  We do this as follows: for each matrix in the
-    computation we get a list of all the "split points" at which column ranges
-    ever start and end, and define a split_point_index as the index into the
-    array.  The variable could be defined as the pair (matrix_index,
-    split_point_index), but we map it to a single integer index called variable_index,
-    which we compute from the pair using the expression
-    (matrix_to_variable_index_[matrix_index] + split_point_index).
-    Each sub-matrix in the computation will now correspond to a list of variables,
-    and because these lists are always a contiguous range we can just store the
-    start and end points.  In addition we note, for each submatrix, whether
-    it spans the entire row range of the underlying matrix or just a part of
-    the row range.  The reason we need to know this is that a write operation
-    to just part of the row-range would have to be classed as a read-write
-    operation because the final contents after the operation would in that
-    case depend on the original contents.
+    computation we get a list of all the "split points" at which the row column
+    ranges respectively ever start and end, and define a split_point_index as
+    the index into the array.  The variable could be defined as the triple
+    (matrix_index, row_split_point_index, column_split_point_index), but we map
+    it to a single integer index called variable_index.  This is a zero-based
+    index formed by listing all the existing variables iterating first over the
+    matrix index, then the row split-point-index, then the column split-point-index.
+    In the end, if we know the matrix-index, the row-split-point-index and the
+    column-split-point-index, we can compute the variable-index using the
+    expression
+      variable-index = matrix_to_variable_index_[matrix-index] +
+                      row-split-point-index * num-column-variables-for-this-matrix +
+                      column-split-point-index
+    where in code, num-column-variables-for-this-matrix equals
+    column_split_points_[matrix-index].size()-1.  The array
+    matrix_to_variable_index_ is a precomputed array telling us at which variable
+    index the variables for any given matrix begin.
+
+    Each sub-matrix in the computation will now correspond to a list of
+    variables, and because these lists are always a contiguous range we can just
+    store the row and column split-points corresponding to the start and end of
+    the submatrix.  In addition we note, for each submatrix, whether it spans
+    the entirety of the underlying matrix.  The reason we need to know this is
+    that a write operation to just part of a matrix would have to be classed as
+    a read-write operation on the underlying matrix because the final contents
+    after the operation would in that case depend on the original contents.
  */
 class ComputationVariables {
  public:
@@ -139,55 +151,62 @@ class ComputationVariables {
       int32 submatrix_index,
       std::vector<int32> *variable_indexes) const;
 
+  // note: variables are zero-indexed.
   int32 NumVariables() const { return num_variables_; }
 
   int32 GetMatrixForVariable(int32 variable) const;
-  
- private:
 
-  
-  // sets up split_points_ and matrix_to_variable_index_.  called from
-  // constructor.
-  void ComputeSplitPoints(const NnetComputation &computation);
-  // sets up variable_ranges_ and full_column_range_.  called from constructor.
-  void ComputeVariableRanges(const NnetComputation &computation);
-  // sets up variable_to_matrix_.  called from constructor.
-  void ComputeVariableToMatrix(const NnetComputation &computation);
-  // sets up submatrix_to_matrix_ and submatrix_is_whole_matrix.
+ private:
+  // sets up split_points_, matrix_to_variable_index_, and num_variables_.
   // called from constructor.
-  void ComputeSubmatrixInfo(const NnetComputation &computation);
-  
+  void ComputeSplitPoints(const NnetComputation &computation);
+  // sets up variables_for_submatrix_, is_full_matrix_, and submatrix_to_matrix_.  called
+  // from constructor.
+  void ComputeVariablesForSubmatrix(const NnetComputation &computation);
+  // sets up variable_to_matrix_.  called from constructor.
+  void ComputeVariableToMatrix();
+
+  // This function assumes that 'sorted_vec' is sorted and unique, and that
+  // 'i' is an element of 'sorted_vec'; it returns the index of 'i' in vec,
+  // i.e. the k such that sorted_vec[k] == i.
+  static int32 FindIndexOf(const std::vector<int32> &sorted_vec, int32 i);
+
+
   // Indexed first by matrix-index and then a list, this gives us all the split
   // points at which column ranges start and end.  For instance, if the 3'rd
   // matrix has 20 columns and is split into ranges 0:9 and 10:19,
-  // split_points_[3] would equal [0, 10, 20].  zeroth one will be empty because
-  // matrix-index zero is reserved for the empty matrix.
-  std::vector<std::vector<int32> > split_points_;
+  // split_points_[3] would equal [0, 10, 20].  column_split_points_[0] will
+  // always be empty because matrix-index zero is reserved for the empty matrix.
+  std::vector<std::vector<int32> > column_split_points_;
+  // This is as column_split_points_, except for row indexes instead of column
+  // indexes.
+  std::vector<std::vector<int32> > row_split_points_;
 
-  // maps from the matrix-index (note, zero is invalid as it corresponds to the
+  // Maps from the matrix-index (note, zero is invalid as it corresponds to the
   // empty matrix) to the variable-index for its first split point.  for coding
   // convenience there is one extra element at the end, which is equal to the
   // total number of variables.
+  // For each matrix m, the matrix has num-row-variables * num-column-variables
+  // variables in total, where num-row-variables = row_split_points_[m].size() - 1, and
+  // num-column-variables = column_split_points_[m].size() - 1.
   std::vector<int32> matrix_to_variable_index_;
 
   std::vector<int32> submatrix_to_matrix_;
+  // indexed by submatrix index, this is true if the submatrix spans the full
+  // row and column range of the underlying matrix.  Affects whether write operations
+  // should be classed as write operations or as read-write operations.
   std::vector<bool> submatrix_is_whole_matrix_;
+
 
   // records the matrix index underlying each variable.
   std::vector<int32> variable_to_matrix_;
 
   int32 num_variables_;
-  
-  // maps each submatrix index to the start and end of the corresponding range
-  // of variable indexes (note: the actual variable indexes spanned by
-  // this submatrix can be expressed as start, start+1 ... end-1, i.e. they
-  // don't include the end of the range.
-  std::vector<std::pair<int32, int32> > variable_ranges_;
 
-  // indexed by submatrix index, this is true if the submatrix spans the full
-  // row range of the underlying matrix.  Affects whether write operations
-  // should be classed as write operations or as read-write operations.
-  std::vector<bool> full_column_range_;
+
+  // For each submatrix, a list of the variables underlying it.
+  std::vector<std::vector<int32> > variables_for_submatrix_;
+
 
 };
 
@@ -237,7 +256,7 @@ struct MatrixAccesses {
   std::vector<Access> accesses;
   /// true if this matrix is an input to the computation.
   bool is_input;
-  /// true if this matrix is an output of the computation.  
+  /// true if this matrix is an output of the computation.
   bool is_output;
   MatrixAccesses(): allocate_command(-1), deallocate_command(-1),
                     is_input(false), is_output(false) { }
@@ -265,42 +284,57 @@ void PrintMatrixAccesses(std::ostream &os,
 struct Analyzer {
   ComputationVariables variables;
   std::vector<CommandAttributes> command_attributes;
-  std::vector<std::vector<Access> > variable_accesses;  
+  std::vector<std::vector<Access> > variable_accesses;
   std::vector<MatrixAccesses> matrix_accesses;
   void Init(const Nnet &nnet, const NnetComputation &computation);
 };
 
-/** Returns the command-index of the first command after `command_index` that
-    submatrix `submatrix_index` is written to, or -1 if there is no such
-    command.  Note that by "written to", we mean that any part of the submatrix
-    is written to, not that the submatrix appears explicitly in a command; the
-    analysis is in terms of variables.  */
-int32 FirstTimeSubmatrixIsWrittenToAfterCommand(
-    const Analyzer &analyer,
-    int32 submatrix_index,
-    int32 command_index);
 
+/// This class performs various kinds of specific analysis on top of what class
+/// Analyzer gives you immediately.  It mostly contains special-purpose things
+/// what were needed by class VariableMergingOptimizer (see nnet-optimize.h, and
+/// the extended comment above class VariableMergingOptimizer).
+class ComputationAnalysis {
+ public:
+  /// This class stores the const references provided to its constructor ->
+  /// be careful about changing them or deallocating them during the
+  /// lifetime of this object.
+  ComputationAnalysis(const NnetComputation &computation,
+                      const Analyzer &analyzer): computation_(computation),
+                                                 analyzer_(analyzer) { }
 
-/// Returns true if the matrix "matrix_index" is written to (i.e.  accesses of
-/// type kWriteAccess or kReadWriteAccess) after the command numbered
-/// "command_index" (not counting deallocation as an access).
-bool MatrixIsWrittenToAfterCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,
-    int32 matrix_index, int32 command_index);
-  
-/// Returns true if the matrix "matrix_index" is accessed at all after the
-/// command numbered "command_index" (not counting deallocation as an access).
-bool MatrixIsAccessedAfterCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,    
-    int32 matrix_index, int32 command_index);
+  /// If the matrix underlying submatrix 's' is an input then this returns -1;
+  /// otherwise is returns the first command (read or write) that is not an
+  /// allocation command, that accesses any part of 's' [note: deallocation does
+  /// not count as a read or write operation].  If there is no such command, it
+  /// returns num_commands.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 FirstAccess(int32 s) const;
 
-/// Returns true if the matrix "matrix_index" is accessed at all before the
-/// command numbered "command_index" (but not counting zeroing in initialization
-/// as access).
-bool MatrixIsAccessedBeforeCommand(
-    const std::vector<MatrixAccesses> &matrix_accesses,
-    int32 matrix_index, int32 command_index);
+  /// If the matrix underlying submatrix 's' is an output then this returns
+  /// num-commands; otherwise it returns the last non-deallocation command
+  /// that accesses any part of submatrix 's'; if there is no such command it
+  /// returns -1.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 LastAccess(int32 s) const;
 
+  /// Returns the last command-index that accesses any part of submatrix 's' as
+  /// a write operation, or -1 if there is no such operation.  Not: deallocation
+  /// does not count as a write operation.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 LastWriteAccess(int32 s) const;
+
+  /// Returns (the first command-index after 'c' that any part of submatrix 's'
+  /// is written to); or if there is no such command, then (the
+  /// command-index of the command that deallocates the matrix underlying s);
+  /// or if there is no such command, then the total number of commands.
+  /// s must be >0 (i.e. not the empty submatrix).
+  int32 DataInvalidatedCommand(int32 c, int32 s) const;
+
+ private:
+  const NnetComputation &computation_;
+  const Analyzer &analyzer_;
+};
 
 
 /// This function computes a vector "submat_lists", indexed
@@ -365,9 +399,9 @@ class ComputationChecker {
 };
 
 
-                      
 
-  
+
+
 
 
 

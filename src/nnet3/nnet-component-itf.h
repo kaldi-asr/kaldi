@@ -110,10 +110,12 @@ class Component {
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const = 0;
 
-  /// \brief Backprop function.
-  ///   \param [in] debug_info  Some kind of component name and/or index in
-  ///     the network, to be printed out in any warning messages so we can
-  ///     identify which layer the message pertains so.
+  /// \brief Backprop function; depending on which of the arguments 'to_update'
+  ///     and 'in_deriv' are non-NULL, this can compute input-data derivatives
+  ///     and/or perform model update.
+  ///
+  ///   \param [in] debug_info  The component name, to be printed out in any
+  ///       warning messages.
   ///   \param [in] indexes     A pointer to some information output by this
   ///      class's PrecomputeIndexes function (will be NULL for simple
   ///      components, i.e. those that don't do things like splicing).
@@ -314,7 +316,7 @@ class Component {
   //    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  //    -- a NonlinearComponent it relates to adding stats  
+  //    -- a NonlinearComponent it relates to adding stats
   virtual void Add(BaseFloat alpha, const Component &other) = 0;
 
   Component() { }
