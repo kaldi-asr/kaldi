@@ -58,6 +58,38 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCount) {
+  std::vector<CuMatrix<Real>* > a(batchCount), b(batchCount), c(batchCount);
+  std::vector<CuSubMatrix<Real>* > A, B, C;
+  
+  for (int32 i = 0; i < batchCount; i++) {
+    // first create a Matrix intance and then creat a SubMatrix instance from that
+    a[i] = new CuMatrix<Real>(dim, dim);
+    b[i] = new CuMatrix<Real>(dim, dim);
+    c[i] = new CuMatrix<Real>(dim, dim);
+    a[i]->SetRandn();
+    b[i]->SetRandn();
+    A.push_back(new CuSubMatrix<Real>(*(a[i]),0,a[i]->NumRows(),0,a[i]->NumCols()));
+    B.push_back(new CuSubMatrix<Real>(*(b[i]),0,b[i]->NumRows(),0,b[i]->NumCols()));
+    C.push_back(new CuSubMatrix<Real>(*(c[i]),0,c[i]->NumRows(),0,c[i]->NumCols()));
+  }
+  BaseFloat time_in_secs = 0.025;
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans, static_cast<Real>(0.0));
+  }
+  for (int32 i = 0; i< batchCount; i++) {
+    delete a[i]; delete b[i]; delete c[i];
+    delete A[i]; delete B[i]; delete C[i];
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * fdim * iter * batchCount) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddMatMatBatched" << NameOf<Real>() << ", for dim = " << dim 
+	    << ", batchSize = " << batchCount << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixAddDiagVecMat(int32 dim, MatrixTransposeType trans) {
   BaseFloat time_in_secs = 0.015;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
@@ -696,6 +728,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMatMatBatched<Real>(sizes[s],10);
   for (int32 s = 0; s < ns; s++) {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kTrans);

@@ -1700,6 +1700,96 @@ double TraceMatMat(const CuMatrixBase<double> &A,
                    const CuMatrixBase<double> &B,
                    MatrixTransposeType trans);
 
+template<typename Real>
+void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
+		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
+		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
+		const Real beta) {
+    // the batch counts should be the same	
+    int32 batchCountA = static_cast<int32>(A.size()), batchCountB = static_cast<int32>(B.size()), batchCountC = static_cast<int32>(C.size());
+    KALDI_ASSERT((batchCountA == batchCountB) && (batchCountB == batchCountC));
+    int32 batchCount = batchCountA;
+
+    if (batchCount == 0) return;
+    
+    // all elements must have the same num-rows, num-cols and stride
+    for (int32 i = 0; i < batchCount-1; i++) {
+      KALDI_ASSERT(A[i]->NumRows() == A[i+1]->NumRows());
+      KALDI_ASSERT(A[i]->NumCols() == A[i+1]->NumCols());
+      KALDI_ASSERT(A[i]->Stride() == A[i+1]->Stride());
+      KALDI_ASSERT(B[i]->NumRows() == B[i+1]->NumRows());
+      KALDI_ASSERT(B[i]->NumCols() == B[i+1]->NumCols());
+      KALDI_ASSERT(B[i]->Stride() == B[i+1]->Stride());
+      KALDI_ASSERT(C[i]->NumRows() == C[i+1]->NumRows());
+      KALDI_ASSERT(C[i]->NumCols() == C[i+1]->NumCols());
+      KALDI_ASSERT(C[i]->Stride() == C[i+1]->Stride());
+    }
+    // CUBLAS is col-major, cudamatrix is row-major, how to do the mapping?
+    // keep trans..., just swap A&B matrices: A->B B->A
+    MatrixIndexT m = ((transB==kTrans)? B[0]->NumRows() : B[0]->NumCols()); 
+    MatrixIndexT n = ((transA==kTrans)? A[0]->NumCols() : A[0]->NumRows());
+    MatrixIndexT k = ((transB==kTrans)? B[0]->NumCols() : B[0]->NumRows());
+    MatrixIndexT k1 = ((transA==kTrans)? A[0]->NumRows() : A[0]->NumCols());
+
+    KALDI_ASSERT(m == C[0]->NumCols());
+    KALDI_ASSERT(n == C[0]->NumRows());
+    KALDI_ASSERT(k == k1);
+
+    if (m == 0) return;
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    // place all data (A[batchCount], B[batchCount], C[batchCount]) in memory together
+    // in order to make only one call of cudaMemcpy 	  
+    Real **device_abc_array = (Real**)CuDevice::Instantiate().Malloc(3*batchCount*sizeof(Real*));
+    const Real **device_a_array = const_cast<const Real**>(device_abc_array); 
+    const Real **device_b_array = const_cast<const Real**>(device_abc_array) + batchCount;
+    Real **device_c_array = device_abc_array + 2 * batchCount;
+    const Real **host_abc_array = new const Real*[3*batchCount];
+    const Real **host_a_array = host_abc_array; 
+    const Real **host_b_array = host_abc_array + batchCount; 
+    const Real **host_c_array = host_abc_array + 2 * batchCount; 
+    
+    for (int32 i = 0; i < batchCount; i++) {
+      host_a_array[i] = A[i]->data_;
+      host_b_array[i] = B[i]->data_;
+      host_c_array[i] = C[i]->data_;
+    }
+
+    CU_SAFE_CALL(cudaMemcpy(device_abc_array, host_abc_array, 3*batchCount*sizeof(Real*), cudaMemcpyHostToDevice));
+
+    Timer tim;
+    CU_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
+			    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+			    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N), 
+			    m, n, k, alpha, device_b_array, B[0]->Stride(), 
+			    device_a_array, A[0]->Stride(),beta, 
+			    device_c_array,C[0]->Stride(), batchCount));
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+
+    CuDevice::Instantiate().Free(device_abc_array);
+    delete[] host_abc_array;
+  } else
+#endif
+  {
+    for (int32 i = 0; i< batchCount; i++) {
+      C[i]->Mat().AddMatMat(alpha, A[i]->Mat(), transA, B[i]->Mat(), transB, beta);
+    }
+  }
+}
+
+template
+void AddMatMatBatched(const float alpha, std::vector<CuSubMatrix<float>* > &C,
+		const std::vector<CuSubMatrix<float>* > &A, MatrixTransposeType transA,
+		const std::vector<CuSubMatrix<float>* > &B, MatrixTransposeType transB,
+		const float beta);
+
+template
+void AddMatMatBatched(const double alpha, std::vector<CuSubMatrix<double>* > &C,
+		const std::vector<CuSubMatrix<double>* > &A, MatrixTransposeType transA,
+		const std::vector<CuSubMatrix<double>* > &B, MatrixTransposeType transB,
+		const double beta);
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
