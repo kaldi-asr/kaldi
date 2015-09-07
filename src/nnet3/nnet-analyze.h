@@ -337,12 +337,12 @@ class ComputationAnalysis {
 };
 
 
-/// This function computes a vector "submat_lists", indexed
-/// by matrix index, such that (*submat_lists)[m] is a list of
+/// This function computes a vector 'mat_to_submat', indexed
+/// by matrix index, such that (*mat_to_submat)[m] is a list of
 /// all the submatrix indexes that refer to matrix m.  Note,
-/// (*submat_lists)[0] will be the empty vector.
-void ComputeSubmatLists(const NnetComputation &computation,
-                        std::vector<std::vector<int32> > *submat_lists);
+/// (*mat_to_submat)[0] will be the empty vector.
+void ComputeMatrixToSubmatrix(const NnetComputation &computation,
+                              std::vector<std::vector<int32> > *mat_to_submat);
 
 
 /**

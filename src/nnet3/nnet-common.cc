@@ -222,6 +222,33 @@ void PrintIndexes(std::ostream &os,
   os << "]";
 }
 
+void PrintCindexes(std::ostream &ostream,
+                   const std::vector<Cindex> &cindexes,
+                   const std::vector<std::string> &node_names) {
+  int32 num_cindexes = cindexes.size();
+  if (num_cindexes == 0) {
+    ostream << "[ ]";
+    return;
+  }
+  int32 cur_offset = 0;
+  std::vector<Index> indexes;
+  indexes.reserve(cindexes.size());
+  while (cur_offset < num_cindexes) {
+    int32 cur_node_index = cindexes[cur_offset].first;
+    while (cur_offset < num_cindexes &&
+           cindexes[cur_offset].first == cur_node_index) {
+      indexes.push_back(cindexes[cur_offset].second);
+      cur_offset++;
+    }
+    KALDI_ASSERT(static_cast<size_t>(cur_node_index) < node_names.size());
+    const std::string &node_name = node_names[cur_node_index];
+    ostream << node_name;
+    PrintIndexes(ostream, indexes);
+    indexes.clear();
+  }
+}
+
+
 void PrintIntegerVector(std::ostream &os,
                         const std::vector<int32> &ints) {
   if (ints.empty()) {

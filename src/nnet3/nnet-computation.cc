@@ -138,8 +138,7 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
 void NnetComputation::MatrixDebugInfo::Swap(
     NnetComputation::MatrixDebugInfo *other) {
   std::swap(is_deriv, other->is_deriv);
-  std::swap(node_index, other->node_index);
-  indexes.swap(other->indexes);
+  cindexes.swap(other->cindexes);
 }
 
 // outputs a string explaining the meaning each sub-matrix in vaguely
@@ -387,13 +386,8 @@ static void PrintComputationPreamble(
     for (int32 i = 1; i < c.matrices.size(); i++) {
       const NnetComputation::MatrixDebugInfo &debug_info =
           c.matrix_debug_info[i];
-      if (debug_info.node_index == -1)  // was not set up for some reason.
-        continue;
-      KALDI_ASSERT(static_cast<size_t>(debug_info.node_index) < nnet.NumNodes());
-      os << "m" << i << " = " << nnet.GetNodeName(debug_info.node_index)
-         << "." << (debug_info.is_deriv ? "deriv" : "value");
-      // PrintIndexes will print the indexes inside [ ] brackets.
-      PrintIndexes(os, debug_info.indexes);
+      os << "m" << i << " == " << (debug_info.is_deriv ? "deriv: " : "value: ");
+      PrintCindexes(os, debug_info.cindexes, nnet.GetNodeNames());
       os << "\n";
     }
   }

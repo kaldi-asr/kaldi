@@ -70,9 +70,11 @@ struct PairIsEqualComparator  :
 };
 
 // this comparator will be used to sort pairs initially by second element in
-// descending order and then by first element in descending order
-bool SecondElementComparator(const std::pair<int32, int32>& first_pair,
-                             const std::pair<int32, int32>& second_pair) {
+// descending order and then by first element in descending order.
+// note, std::sort accepts an actual function as an alternative to a
+// function object.
+bool  SecondElementComparator(const std::pair<int32, int32>& first_pair,
+                              const std::pair<int32, int32>& second_pair) {
   if (first_pair.second == second_pair.second)
     return first_pair.first > second_pair.first;
   return first_pair.second > second_pair.second;
@@ -217,7 +219,7 @@ void ExtractGivenPairsFromSubmatLists(
 
 // Function to extract the last pairs from a vector of list of pairs
 // a dummy is added when the list is empty
-void ExtractLastPairFromSubmatLists(
+static void ExtractLastPairFromSubmatLists(
     std::vector<std::vector<std::pair<int32, int32> > > *sorted_submat_lists,
     std::vector<std::pair<int32, int32> > *list_of_pairs) {
   list_of_pairs->reserve(sorted_submat_lists->size());
@@ -236,7 +238,7 @@ void ExtractLastPairFromSubmatLists(
 // Function which does the actual splitting of submat_lists. But it operates on
 // sorted submat_lists and uses submat_histogram_vector. 
 // See SplitLocations, below for the algorithm
-void SplitLocationsUsingSubmatHistogram(
+static void SplitLocationsUsingSubmatHistogram(
     // maximum size of the lists in the sorted_submat_lists
     int32 max_submat_list_size,
     // a vector of list of pairs where each list is expected to be sorted
@@ -252,7 +254,7 @@ void SplitLocationsUsingSubmatHistogram(
   // in descending order then first element of pair in descending order
   std::sort(submat_histogram_vector->begin(),
             submat_histogram_vector->end(), SecondElementComparator);
-
+  
   int32 prev_max_remaining_submat_list_size = max_submat_list_size;
   std::vector<std::pair<int32, int32> >::iterator iter;
   for (iter = submat_histogram_vector->begin();
@@ -336,7 +338,7 @@ void SplitLocations(
 
   // a histogram of the submat_indexes in the submat_lists
   // each occurence in a given submat_list is considered unique so we maintain
-  // a vector to count each occurrence seperately.
+  // a vector to count each occurrence separately.
   // The i'th element in the vector corresponds to the count of 
   // the (i+1)'th occurrence of a submat_index in a submat_list
   unordered_map<int32, std::vector<int32> > submat_histogram;
