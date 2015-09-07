@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 set -e
 
@@ -19,7 +19,7 @@ else
     if [ $rnnlm_ver == "faster-rnnlm" ]; then
         echo "$scriptname: ERROR Faster RNNLM is not installed. Use extras/install_faster_rnnlm.sh to install it"
     elif [ $rnnlm_ver == "rnnlm-0.??" ]; then
-        echo "$scriptname: ERROR Class based RNNLM is not installed. Use extras/install_class_rnnlm.sh to install it"
+        echo "$scriptname: ERROR Class based RNNLM is not installed. Use extras/install_mikolov_rnnlm.sh to install it"
     else
         echo "$scriptname: ERROR Cannot find $rnnlm_path. Neither know how to install it"
     fi
