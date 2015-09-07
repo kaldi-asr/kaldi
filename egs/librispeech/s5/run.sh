@@ -330,9 +330,23 @@ steps/train_quick.sh --cmd "$train_cmd" \
 # steps/cleanup/debug_lexicon.sh --remove-stress true  --nj 200 --cmd "$train_cmd" data/train_clean_100 \
 #    data/lang exp/tri6b data/local/dict/lexicon.txt exp/debug_lexicon_100h
 
-# #Perform RNNLM rescoring of tri6b
+# #Perform rescoring of tri6b be means of faster-rnnlm
 # #Attention: with default settings requires 4 GB of memory per rescoring job, so commenting this out by default
-# local/run_rnnlm.sh $data data/local/lm
+# wait && local/run_rnnlm.sh \
+#     --rnnlm-ver "faster-rnnlm" \
+#     --rnnlm-options "-hidden 150 -direct 1000 -direct-order 5" \
+#     --rnnlm-tag "h150-me5-1000" $data data/local/lm
+
+# #Perform rescoring of tri6b be means of faster-rnnlm using Noise contrastive estimation
+# #Note, that could be extremely slow without CUDA
+# #We use smaller direct layer size so that it could be stored in GPU memory (~2Gb)
+# #Suprisingly, bottleneck here is validation rather then learning
+# #Therefore you can use smaller validation dataset to speed up training
+# wait && local/run_rnnlm.sh \
+#     --rnnlm-ver "faster-rnnlm" \
+#     --rnnlm-options "-hidden 150 -direct 400 -direct-order 3 --nce 20" \
+#     --rnnlm-tag "h150-me3-400-nce20" $data data/local/lm
+
 
 # train NN models on the entire dataset
 local/nnet2/run_7a_960.sh || exit 1
