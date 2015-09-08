@@ -219,9 +219,8 @@ struct NnetComputation {
   };
   struct MatrixDebugInfo {
     bool is_deriv;  // true if this represents a derivative, not a value.
-    int32 node_index;  // network-node index.
-    std::vector<Index> indexes;
-    MatrixDebugInfo(): is_deriv(false), node_index(-1) {}
+    std::vector<Cindex> cindexes;
+    MatrixDebugInfo(): is_deriv(false) { }
     void Swap(MatrixDebugInfo *other);  // Shallow swap
   };
   struct SubMatrixInfo {

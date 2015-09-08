@@ -929,18 +929,19 @@ void ComputationChecker::CheckComputationOrder() const {
   }
 }
 
-void ComputeSubmatLists(const NnetComputation &computation,
-                        std::vector<std::vector<int32> > *submat_lists) {
+void ComputeMatrixToSubmatrix(
+    const NnetComputation &computation,
+    std::vector<std::vector<int32> > *mat_to_submat) {
   int32 num_matrices = computation.matrices.size(),
       num_submatrices = computation.submatrices.size();
-  submat_lists->clear();
-  submat_lists->resize(num_matrices);
+  mat_to_submat->clear();
+  mat_to_submat->resize(num_matrices);
   for (int32 submatrix_index = 1;
        submatrix_index < num_submatrices;
        submatrix_index++) {
     int32 matrix_index = computation.submatrices[submatrix_index].matrix_index;
     KALDI_ASSERT(matrix_index > 0 && matrix_index < num_matrices);
-    (*submat_lists)[matrix_index].push_back(submatrix_index);
+    (*mat_to_submat)[matrix_index].push_back(submatrix_index);
   }
 }
 

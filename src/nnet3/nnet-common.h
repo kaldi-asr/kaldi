@@ -102,6 +102,22 @@ void PrintCindex(std::ostream &ostream, const Cindex &cindex,
 void PrintIndexes(std::ostream &ostream,
                   const std::vector<Index> &indexes);
 
+/// this will only be used for pretty-printing.  It prints a vector of Cindexes
+/// in a compact, human-readable way with compression of ranges.  If the values
+/// of the node indexes are the same for the entire vector, it will just be
+/// node-name followed by the output of PrintIndexes, e.g.  some_node[ (1,1,0)
+/// ].  Otherwise it will divide the vector into ranges that each have all the
+/// same node name, and will print out each range in the way we just mentioned.
+/// 'node_names' will usually come from a call like nnet.GetNodeNames().
+void PrintCindexes(std::ostream &ostream,
+                   const std::vector<Cindex> &cindexes,
+                   const std::vector<std::string> &node_names);
+
+/// Appends to 'out' the pairs (node, indexes[0]), (node, indexes[1]), ...
+void AppendCindexes(int32 node, const std::vector<Index> &indexes,
+                    std::vector<Cindex> *out);
+
+
 // this function prints a vector of integers in a human-readable
 // way, for pretty-printing; it outputs ranges and repeats in
 // a compact form e.g. [ -1x10, 1:20, 25:40 ]

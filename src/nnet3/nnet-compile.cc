@@ -989,17 +989,26 @@ void Compiler::OutputDebugInfo(NnetComputation *computation) const {
     NnetComputation::MatrixDebugInfo &debug_info =
         computation->matrix_debug_info[value_matrix];
     debug_info.is_deriv = false;
-    debug_info.node_index = step_info.node_index;
-    debug_info.indexes = step_info.output_indexes;
+    AppendCindexes(step_info.node_index, step_info.output_indexes,
+                   &debug_info.cindexes);
     if (deriv_matrix != 0) {
       NnetComputation::MatrixDebugInfo &deriv_debug_info =
           computation->matrix_debug_info[deriv_matrix];
       deriv_debug_info.is_deriv = true;
-      deriv_debug_info.node_index = step_info.node_index;
-      deriv_debug_info.indexes = step_info.output_indexes;
+      deriv_debug_info.cindexes = debug_info.cindexes;
     }
   }
 }
+
+void AppendCindexes(int32 node, const std::vector<Index> &indexes,
+                    std::vector<Cindex> *out) {
+  size_t indexes_size = indexes.size();
+  if (indexes_size > out->size())
+    out->reserve(out->size() + indexes_size);
+  for (size_t i = 0; i < indexes_size; i++)
+    out->push_back(Cindex(node, indexes[i]));
+}
+
 
 } // namespace nnet3
 } // namespace kaldi
