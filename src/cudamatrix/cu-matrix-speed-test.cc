@@ -69,15 +69,19 @@ template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCou
     c[i] = new CuMatrix<Real>(dim, dim);
     a[i]->SetRandn();
     b[i]->SetRandn();
-    A.push_back(new CuSubMatrix<Real>(*(a[i]),0,a[i]->NumRows(),0,a[i]->NumCols()));
-    B.push_back(new CuSubMatrix<Real>(*(b[i]),0,b[i]->NumRows(),0,b[i]->NumCols()));
-    C.push_back(new CuSubMatrix<Real>(*(c[i]),0,c[i]->NumRows(),0,c[i]->NumCols()));
+    A.push_back(new CuSubMatrix<Real>(*(a[i]), 0, a[i]->NumRows(), 0, 
+			    a[i]->NumCols()));
+    B.push_back(new CuSubMatrix<Real>(*(b[i]), 0, b[i]->NumRows(), 0, 
+			    b[i]->NumCols()));
+    C.push_back(new CuSubMatrix<Real>(*(c[i]), 0, c[i]->NumRows(), 0, 
+			    c[i]->NumCols()));
   }
   BaseFloat time_in_secs = 0.025;
   Timer tim;
   int32 iter = 0;
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans, static_cast<Real>(0.0));
+    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans, 
+		    static_cast<Real>(0.0));
   }
   for (int32 i = 0; i< batchCount; i++) {
     delete a[i]; delete b[i]; delete c[i];

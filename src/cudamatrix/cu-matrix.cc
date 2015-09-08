@@ -1739,8 +1739,10 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+
     // place all data (A[batchCount], B[batchCount], C[batchCount]) in memory together
-    // in order to make only one call of cudaMemcpy 	  
+    // in order to make only one call of cudaMemcpy
     Real **device_abc_array = (Real**)CuDevice::Instantiate().Malloc(3*batchCount*sizeof(Real*));
     const Real **device_a_array = const_cast<const Real**>(device_abc_array); 
     const Real **device_b_array = const_cast<const Real**>(device_abc_array) + batchCount;
@@ -1758,18 +1760,17 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 
     CU_SAFE_CALL(cudaMemcpy(device_abc_array, host_abc_array, 3*batchCount*sizeof(Real*), cudaMemcpyHostToDevice));
 
-    Timer tim;
     CU_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
 			    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
 			    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N), 
 			    m, n, k, alpha, device_b_array, B[0]->Stride(), 
-			    device_a_array, A[0]->Stride(),beta, 
-			    device_c_array,C[0]->Stride(), batchCount));
-
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+			    device_a_array, A[0]->Stride(), beta, 
+			    device_c_array, C[0]->Stride(), batchCount));
 
     CuDevice::Instantiate().Free(device_abc_array);
     delete[] host_abc_array;
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
