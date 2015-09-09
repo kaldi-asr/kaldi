@@ -23,6 +23,8 @@
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
 
+#include <list>
+
 namespace kaldi {
 namespace nnet3 {
 
@@ -80,36 +82,84 @@ struct NnetOptimizeOptions {
   }
 };
 
-
 /// This is the top-level function for optimizing a computation.
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               const ComputationRequest &request,
               NnetComputation *computation);
 
+// Hash function for ComputationRequest. It converts
+// ComputationRequest to hash code by looking at input
+// and output IoSpecifications vectors.
+struct ComputationRequestHasher {
+  size_t operator()(const ComputationRequest *cr) const;
+ private:
+  size_t IoSpecificationToInt(const IoSpecification& spec) const;
+  static const int kPrime = 7853;
+};
 
+// Equality function for ComputationRequest pointer
+struct ComputationRequestPtrEqual {
+ public:
+  bool operator() (const ComputationRequest* cr1,
+                   const ComputationRequest* cr2) const {
+    return (*cr1) == (*cr2);
+  }
+};
+ 
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
 class CachingOptimizingCompiler {
  public:
-  CachingOptimizingCompiler(const Nnet &nnet): nnet_(nnet) { }
+  CachingOptimizingCompiler(const Nnet &nnet,
+                           const int32 capacity = 20):
+      nnet_(nnet), cache_capacity_(capacity) { }
 
   /// Note: nnet is retained as a const reference but opt_config is copied.
   CachingOptimizingCompiler(const Nnet &nnet,
-                            const NnetOptimizeOptions &opt_config):
-      nnet_(nnet), opt_config_(opt_config) { }
+                            const NnetOptimizeOptions &opt_config,
+                            const int32 capacity = 20):
+      nnet_(nnet), opt_config_(opt_config), cache_capacity_(capacity) { }
 
+  ~CachingOptimizingCompiler();
   /// Does the compilation and returns a const pointer to
   /// the result, which is owned by this class, not the caller.
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
-  const NnetComputation* Compile(const ComputationRequest  &request);
+  const NnetComputation* Compile(const ComputationRequest &request);
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;
-  ComputationRequest request_;
-  NnetComputation computation_;
+
+  // The access queue for keeping track of the freshness of computation.
+  // Most-recently-accessed computation is at the end, and
+  // least-recently-accessed computaiton is at the beginning.
+  // Together with computation_cache_, this forms a most-recently-used (MRU)
+  // cache for Computations, indexed by ComputationRequest. Pointers
+  // are owned in computation_cache_.
+  typedef std::list<const ComputationRequest*> AqType;
+  AqType access_queue_;
+
+  // Map from computation-request to pair of (computation, and position in
+  // access_queue_). Used for fast lookup of previously compiled computations.
+  // All pointers are owned here.
+  typedef unordered_map<const ComputationRequest*, std::pair<NnetComputation*,
+    typename AqType::iterator>, ComputationRequestHasher,
+    ComputationRequestPtrEqual> CacheType;
+  CacheType computation_cache_;
+
+  // This function updates the computation cache. It is called within
+  // Compile(). It insert the request to the end of the queue, and purge
+  // the least-recently-accessed request from the queue and the cache
+  // if the capacity is reached.
+  void UpdateCache(const ComputationRequest *request,
+                   NnetComputation *computation);
+  // This function updates the recently accessed queue.
+  void UpdateAccessQueue(typename CacheType::iterator &cit);
+  // This configuration value determines how many unique Computations
+  // to cache in our most-recently-used cache. 
+  int32 cache_capacity_;
 };
 
 
