@@ -27,6 +27,7 @@
 #define KALDI_CUDAMATRIX_CU_MATRIX_H_
 
 #include <sstream>
+#include <vector>
 
 #include "cudamatrix/cu-matrixdim.h"
 #include "cudamatrix/cu-common.h"
@@ -43,6 +44,13 @@ namespace kaldi {
 template<typename Real>
 Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
                  MatrixTransposeType trans = kNoTrans);
+
+template<typename Real>
+void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
+		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
+		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
+		const Real beta);
+
 /**
  * Matrix for CUDA computing.
  * Does the computation on the CUDA card when CUDA is compiled in and
@@ -170,6 +178,11 @@ class CuMatrixBase {
   friend Real TraceMatSmat<Real>(const CuMatrixBase<Real> &A,
                                  const CuSparseMatrix<Real> &B,
                                  MatrixTransposeType trans);
+
+  friend void AddMatMatBatched<Real>(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
+		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
+		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
+		const Real beta);
 
   /// Adds "value" to the diagonal elements of the matrix.  The matrix
   /// *this does not have to be square.

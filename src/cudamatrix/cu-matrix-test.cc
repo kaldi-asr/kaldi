@@ -1274,6 +1274,73 @@ static void UnitTestCuMatrixAddMatMat() {
 }
 
 
+template<typename Real>
+static void UnitTestCuMatrixAddMatMatBatched() {
+  const int32 batchCount = 10;
+  std::vector<Matrix<Real>* > Ha(batchCount), Hb(batchCount), Hc1(batchCount), Hc2(batchCount);
+  std::vector<CuMatrix<Real>* > Da(batchCount), Db(batchCount), Dc1(batchCount), Dc2(batchCount);
+  std::vector<SubMatrix<Real>* > HA, HB, HC1, HC2;
+  std::vector<CuSubMatrix<Real>* > DA, DB, DC1, DC2;
+  
+  for (int32 i = 0; i < batchCount; i++) {
+    // first create a Matrix intance and then creat a SubMatrix instance from that
+    Ha[i] = new Matrix<Real>(200, 100);
+    Hb[i] = new Matrix<Real>(100, 200);
+    Hc1[i] = new Matrix<Real>(200, 200);
+    Hc2[i] = new Matrix<Real>(100, 100);
+    Ha[i]->SetRandn();
+    Hb[i]->SetRandn();
+    HA.push_back(new SubMatrix<Real>(*(Ha[i]), 0, Ha[i]->NumRows(), 0, 
+			    Ha[i]->NumCols()));
+    HB.push_back(new SubMatrix<Real>(*(Hb[i]), 0, Hb[i]->NumRows(), 0, 
+			    Hb[i]->NumCols()));
+    HC1.push_back(new SubMatrix<Real>(*(Hc1[i]), 0, Hc1[i]->NumRows(), 0, 
+			    Hc1[i]->NumCols()));
+    HC2.push_back(new SubMatrix<Real>(*(Hc2[i]), 0, Hc2[i]->NumRows(), 0, 
+			    Hc2[i]->NumCols()));
+
+    // first create a CuMatrix intance and then creat a CuSubMatrix instance from that
+    Da[i] = new CuMatrix<Real>(200, 100);
+    Db[i] = new CuMatrix<Real>(100, 200);
+    Dc1[i] = new CuMatrix<Real>(200, 200);
+    Dc2[i] = new CuMatrix<Real>(100, 100);
+    Da[i]->CopyFromMat(*(Ha[i]));
+    Db[i]->CopyFromMat(*(Hb[i]));
+    DA.push_back(new CuSubMatrix<Real>(*(Da[i]), 0, Da[i]->NumRows(), 0, 
+			    Da[i]->NumCols()));
+    DB.push_back(new CuSubMatrix<Real>(*(Db[i]), 0, Db[i]->NumRows(), 0, 
+			    Db[i]->NumCols()));
+    DC1.push_back(new CuSubMatrix<Real>(*(Dc1[i]), 0, Dc1[i]->NumRows(), 0, 
+			    Dc1[i]->NumCols()));
+    DC2.push_back(new CuSubMatrix<Real>(*(Dc2[i]), 0, Dc2[i]->NumRows(), 0, 
+			    Dc2[i]->NumCols()));
+  }
+
+  AddMatMatBatched(static_cast<Real>(0.5f), DC1, DA, kNoTrans, DB, kNoTrans, 
+		  static_cast<Real>(0.0f));
+  AddMatMatBatched(static_cast<Real>(0.5f), DC2, DA, kTrans, DB, kTrans, 
+		  static_cast<Real>(0.0f));
+
+  // used to store results from DC1 and DC2 for equality check
+  Matrix<Real> Hca1(200,200);
+  Matrix<Real> Hca2(100,100);
+
+  // equality check
+  for (int32 i = 0; i< batchCount; i++) {
+    (*HC1[i]).AddMatMat(0.5f, *(HA[i]), kNoTrans, *(HB[i]), kNoTrans, 0.0f);
+    (*HC2[i]).AddMatMat(0.5f, *(HA[i]), kTrans, *(HB[i]), kTrans, 0.0f);
+    DC1[i]->CopyToMat(&Hca1);
+    DC2[i]->CopyToMat(&Hca2);
+    AssertEqual(*(HC1[i]), Hca1);
+    AssertEqual(*(HC2[i]), Hca2);
+    delete Ha[i]; delete Hb[i]; delete Hc1[i]; delete Hc2[i];
+    delete HA[i]; delete HB[i]; delete HC1[i]; delete HC2[i];
+    delete Da[i]; delete Db[i]; delete Dc1[i]; delete Dc2[i];
+    delete DA[i]; delete DB[i]; delete DC1[i]; delete DC2[i];
+  }
+}
+
+
 template<typename Real> 
 static void UnitTestCuMatrixAddToDiag() {
   for (int32 i = 0; i < 10; i++) {
@@ -2313,6 +2380,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();
   UnitTestCuMatrixSymAddMat2<Real>();
+  UnitTestCuMatrixAddMatMatBatched<Real>();
   UnitTestCuMatrixSymInvertPosDef<Real>();
   UnitTestCuMatrixCopyFromMat<Real>();
   UnitTestCuMatrixCopyFromTp<Real>();

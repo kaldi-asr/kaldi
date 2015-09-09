@@ -27,15 +27,27 @@ namespace kaldi {
 
 inline cublasStatus_t cublas_gemm(cublasHandle_t handle, cublasOperation_t transa, 
 		cublasOperation_t transb, int m, int n,int k, float alpha, 
-		const float *A, int lda,const float *B, int ldb, float beta, 
+		const float *A, int lda, const float *B, int ldb, float beta, 
 		float *C, int ldc) {
   return cublasSgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
 }
 inline cublasStatus_t cublas_gemm(cublasHandle_t handle, cublasOperation_t transa,
 	       	cublasOperation_t transb, int m, int n,int k, double alpha, 
-		const double *A, int lda,const double *B, int ldb, double beta, 
+		const double *A, int lda, const double *B, int ldb, double beta, 
 		double *C, int ldc) {
   return cublasDgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
+}
+inline cublasStatus_t cublas_gemmBatched(cublasHandle_t handle, cublasOperation_t transa,
+	       	cublasOperation_t transb, int m, int n, int k, float alpha,
+		const float *A[], int lda, const float *B[], int ldb, float beta,
+		float *C[], int ldc, int batchCount) {
+  return cublasSgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount); 
+}
+inline cublasStatus_t cublas_gemmBatched(cublasHandle_t handle, cublasOperation_t transa,
+	       	cublasOperation_t transb, int m, int n, int k, double alpha,
+		const double *A[], int lda, const double *B[], int ldb, double beta,
+		double *C[], int ldc, int batchCount) {
+  return cublasDgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount); 
 }
 inline cublasStatus_t cublas_trsm(cublasHandle_t handle, int m, int n, float alpha,
 	       	const float* A, int lda, float* B, int ldb) {
