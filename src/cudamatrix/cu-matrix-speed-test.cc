@@ -469,6 +469,19 @@ template<typename Real> void TestCuMatrixCopyUpperToLower(int32 dim) {
 }
 
 
+template<typename Real> void TestCuMatrixResize(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    CuMatrix<Real>M(dim, dim, kUndefined);  // we are testing the allocation and deallocation time.
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TestCuMatrixResize" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixSetZeroAboveDiag(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim);
@@ -482,6 +495,7 @@ template<typename Real> void TestCuMatrixSetZeroAboveDiag(int32 dim) {
   KALDI_LOG << "For CuMatrix::SetZeroAboveDiag" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
+
 template<typename Real>
 void TestCuMatrixLookup(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -694,6 +708,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
   sizes.push_back(512);
   sizes.push_back(1024);
   int32 ns = sizes.size();
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixResize<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++) {

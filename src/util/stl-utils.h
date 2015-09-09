@@ -247,7 +247,7 @@ struct VectorHasher {  // hashing function for vector<Int>.
 
 /// A hashing function-object for pairs of ints
 template<typename Int>
-struct PairHasher { // hashing function for pair<int>
+struct PairHasher {  // hashing function for pair<int>
   size_t operator()(const std::pair<Int,Int> &x) const {
     return x.first + x.second * kPrime;
   }
@@ -303,7 +303,7 @@ template<typename I, typename F>
 inline void MergePairVectorSumming(std::vector<std::pair<I, F> > *vec) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   CompareFirstMemberOfPair<I, F> c;
-  std::sort(vec->begin(), vec->end(), c); // sort on 1st element. 
+  std::sort(vec->begin(), vec->end(), c); // sort on 1st element.
   typename std::vector<std::pair<I, F> >::iterator out = vec->begin(),
       in = vec->begin(), end = vec->end();
   // special case: while there is nothing to be changed, skip over

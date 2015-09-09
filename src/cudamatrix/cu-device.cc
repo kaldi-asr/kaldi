@@ -2,7 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Lucas Ondel
-//                2013  Johns Hopkins University (author: Daniel Povey)
+//           2013-2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -43,7 +43,6 @@
 #include "util/common-utils.h"
 
 namespace kaldi {
-
 
 /**
    This function was added by Dan in July 2015 after upgrading on the CLSP
@@ -385,9 +384,11 @@ void CuDevice::AccuProfile(const std::string &key, double time) {
 
 void CuDevice::PrintMemoryUsage() const {
   if (Enabled()) {
+    allocator_.PrintMemoryUsage();
     int64 free_memory_now;
     GetFreeMemory(&free_memory_now, NULL);
-    KALDI_LOG << "Memory used: " << (free_memory_at_startup_ - free_memory_now) << " bytes.";
+    KALDI_LOG << "Memory used (according to the device): "
+              << (free_memory_at_startup_ - free_memory_now) << " bytes.";
   }
 }
 
@@ -395,7 +396,7 @@ void CuDevice::PrintProfile() {
   if (verbose_ && Enabled()) {
     std::ostringstream os;
     os << "-----\n[cudevice profile]\n";
-    std::map<std::string, double>::iterator it;
+    unordered_map<std::string, double, StringHasher>::iterator it;
     std::vector<std::pair<double, std::string> > pairs;
     double total_time = 0.0;
     for(it = profile_map_.begin(); it != profile_map_.end(); ++it) {
@@ -526,34 +527,37 @@ void CuDevice::CheckGpuHealth() {
 }
 
 
+/*
 void CuDevice::Free(void *ptr) {
   CU_SAFE_CALL(cudaFree(ptr));
 }
 
 void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-  void *ret_ptr = NULL;
-  cudaError_t e = cudaMallocPitch(&ret_ptr, pitch, row_bytes, num_rows);
+  void *ans = NULL;
+  cudaError_t e = cudaMallocPitch(&ans, pitch, row_bytes, num_rows);
   if (e != cudaSuccess) {
     PrintMemoryUsage();
     KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory ("
       << row_bytes << " x " << num_rows << " = "
       << row_bytes * num_rows << " bytes )";
   }
-  return ret_ptr;
+  return ans;
 }
 
 void* CuDevice::Malloc(size_t size) {
-  void *ret_ptr = NULL;
-  cudaError_t e = cudaMalloc(&ret_ptr, size);
+  void *ans = NULL;
+  cudaError_t e = cudaMalloc(&ans, size);
   if (e != cudaSuccess) {
     PrintMemoryUsage();
     KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
       << " (" << size << " bytes )";
   }
-  return ret_ptr;
+  return ans;
 }
+*/
 
-CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true) { }
+CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
+                      allocator_(CuAllocatorOptions()) { }
 
 
 CuDevice::~CuDevice() {
