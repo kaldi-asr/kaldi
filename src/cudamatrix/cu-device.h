@@ -1,6 +1,7 @@
 // cudamatrix/cu-device.h
 
 // Copyright 2009-2012  Karel Vesely
+//           2012-2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,12 +32,12 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include "base/kaldi-common.h"
+#include "cudamatrix/cu-allocator.h"
 
 namespace kaldi {
 
-
 /**
- * Singleton object which represents CUDA device
+ * Singleton object which represents the CUDA device
  * responsible for CUBLAS initilalisation, collects profiling info
  */
 class CuDevice {
@@ -51,11 +52,12 @@ class CuDevice {
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
   // previous allocations to avoid the very large overhead that CUDA's
   // allocation seems to give for some setups.
-  void* Malloc(size_t size);
+  inline void* Malloc(size_t size) { return allocator_.Malloc(size); }
 
-  void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
-
-  void Free(void *ptr);
+  inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
+    return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+  }
+  inline void Free(void *ptr) { allocator_.Free(ptr); }
 
   /// Select a GPU for computation, the 'use_gpu' modes are:
   ///  "yes"      -- Select GPU automatically and die if this fails.
@@ -134,7 +136,7 @@ class CuDevice {
   /// Should only be called if Enabled() == true.
   int32 MinorDeviceVersion();
 
-  std::map<std::string, double> profile_map_;
+  unordered_map<std::string, double, StringHasher> profile_map_;
 
   /// active_gpu_id_ values:
   /// -3 default (default, the SelectGpuId was not called, we did not want to use GPU)
@@ -149,6 +151,7 @@ class CuDevice {
 
   bool verbose_;
 
+  CuMemoryAllocator allocator_;
 
 }; // class CuDevice
 
