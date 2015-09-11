@@ -3895,13 +3895,38 @@ void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
   CuArray<int32> cu_cols(column_map);
   patches.CopyCols(in, cu_cols);
 
+  //
   // compute filter activations
+  //
+
+  std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch, filter_params_batch;
+
+  CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
+		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_.NumCols());
+  
+  // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    CuSubMatrix<BaseFloat> tgt(out->ColRange(p * num_filters, num_filters));
-    CuSubMatrix<BaseFloat> patch(patches.ColRange(p * filter_dim, filter_dim));
-    tgt.AddVecToRows(1.0, bias_params_, 0.0); // add bias
-    // apply all filters
-    tgt.AddMatMat(1.0, patch, kNoTrans, filter_params_, kTrans, 1.0);
+    // form batch in vector container. for filter_params_batch, all elements 
+    // point to the same copy filter_params_elem
+    tgt_batch.push_back(new CuSubMatrix<BaseFloat>(out->ColRange(p * num_filters,
+				    num_filters)));
+    patch_batch.push_back(new CuSubMatrix<BaseFloat>(patches.ColRange(p * filter_dim,
+				    filter_dim)));
+    filter_params_batch.push_back(filter_params_elem);
+
+    tgt_batch[p]->AddVecToRows(1.0, bias_params_, 0.0); // add bias
+  }
+  
+  // apply all filters
+  AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
+		  kTrans, 1.0f);
+
+  // release memory
+  delete filter_params_elem;
+  for (int32 p = 0; p < num_patches; p++) {
+    delete tgt_batch[p];
+    delete patch_batch[p];
   }
 }
 
@@ -4000,14 +4025,35 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
    */
   CuMatrix<BaseFloat> patches_deriv(num_frames, filter_dim * num_patches, kSetZero);
 
+  //
   // backpropagate to vector of matrices
   // (corresponding to position of a filter)
+  //
+  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch, 
+	  filter_params_batch;
+
+  CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
+		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_.NumCols());
+
+  // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    CuSubMatrix<BaseFloat> patch_deriv(patches_deriv.ColRange(p * filter_dim, filter_dim));
-    CuSubMatrix<BaseFloat> out_deriv_patch(out_deriv.ColRange(p * num_filters,
-                                                              num_filters));
-    patch_deriv.AddMatMat(1.0, out_deriv_patch, kNoTrans,
-                          filter_params_, kNoTrans, 0.0);
+    // form batch in vector container. for filter_params_batch, all elements 
+    // point to the same copy filter_params_elem
+    patch_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(patches_deriv.ColRange(
+				    p * filter_dim, filter_dim)));
+    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+				    p * num_filters, num_filters)));
+    filter_params_batch.push_back(filter_params_elem);  
+  }
+  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
+		  filter_params_batch, kNoTrans, 0.0f);
+
+  // release memory
+  delete filter_params_elem;
+  for (int32 p = 0; p < num_patches; p++) {
+    delete patch_deriv_batch[p];
+    delete out_deriv_batch[p];
   }
 
   // sum the derivatives into in_deriv
@@ -4170,13 +4216,49 @@ void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
   //
   filters_grad.Resize(num_filters, filter_dim, kSetZero); // reset
   bias_grad.Resize(num_filters, kSetZero); // reset
+
+  //
   // use all the patches
-  for (int32 p = 0; p < num_patches; p++) { // sum
-    CuSubMatrix<BaseFloat> diff_patch(out_deriv.ColRange(p * num_filters,
-                                                         num_filters));
-    CuSubMatrix<BaseFloat> patch(patches.ColRange(p * filter_dim, filter_dim));
-    filters_grad.AddMatMat(1.0, diff_patch, kTrans, patch, kNoTrans, 1.0);
-    bias_grad.AddRowSumMat(1.0, diff_patch, 1.0);
+  //
+
+  // create a single large matrix holding the smaller matrices 
+  // from the vector container filters_grad_batch along the rows
+  CuMatrix<BaseFloat> filters_grad_blocks_batch(
+		  num_patches * filters_grad.NumRows(), filters_grad.NumCols());
+
+  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch, 
+	  patch_batch;
+  for (int32 p = 0; p < num_patches; p++) {
+    // form batch in vector container
+    filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
+			    filters_grad_blocks_batch.RowRange(
+				    p * filters_grad.NumRows(), 
+				    filters_grad.NumRows())));
+    diff_patch_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+				    p * num_filters, num_filters)));
+    patch_batch.push_back(new CuSubMatrix<BaseFloat>(patches.ColRange(
+				    p * filter_dim, filter_dim)));
+  }
+
+  AddMatMatBatched(1.0f, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
+		  kNoTrans, 1.0f);
+
+  // add the row blocks together to filters_grad
+  filters_grad.AddMatBlocks(1.0, filters_grad_blocks_batch);
+
+  // create a matrix holding the col blocks sum of out_deriv
+  CuMatrix<BaseFloat> out_deriv_col_blocks_sum(out_deriv.NumRows(), num_filters);
+
+  // add the col blocks together to out_deriv_col_blocks_sum
+  out_deriv_col_blocks_sum.AddMatBlocks(1.0, out_deriv);
+
+  bias_grad.AddRowSumMat(1.0, out_deriv_col_blocks_sum, 1.0);
+
+  // release memory
+  for (int32 p = 0; p < num_patches; p++) {
+    delete filters_grad_batch[p];
+    delete diff_patch_batch[p];
+    delete patch_batch[p];    
   }
 
   //
