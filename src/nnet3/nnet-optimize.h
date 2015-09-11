@@ -42,6 +42,8 @@ struct NnetOptimizeOptions {
   bool initialize_undefined;
   bool move_sizing_commands;
   bool allocate_from_other;
+  int32 min_deriv_time;
+  int32 max_deriv_time;
 
   NnetOptimizeOptions(): optimize(true),
                          consolidate_model_update(true),
@@ -52,7 +54,9 @@ struct NnetOptimizeOptions {
                          allow_right_merge(true),
                          initialize_undefined(true),
                          move_sizing_commands(true),
-                         allocate_from_other(true) { }
+                         allocate_from_other(true),
+                         min_deriv_time(std::numeric_limits<int32>::min()),
+                         max_deriv_time(std::numeric_limits<int32>::max()) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("optimize", &optimize, "Set this to false to turn off all "
@@ -79,6 +83,14 @@ struct NnetOptimizeOptions {
     opts->Register("allocate-from-other", &allocate_from_other, "Instead of "
                    "deleting a matrix of a given size and then allocating "
                    "a matrix of the same size, allow re-use of that memory");
+    opts->Register("min-deriv-time", &min_deriv_time, "You can set this to "
+                   "the minimum t value that you want derivatives to be computed "
+                   "at when updating the model.  This is an optimization that "
+                   "saves time in the backprop phase for recurrent frameworks");
+    opts->Register("max-deriv-time", &max_deriv_time, "You can set this to "
+                   "the maximum t value that you want derivatives to be computed "
+                   "at when updating the model.  This is an optimization that "
+                   "saves time in the backprop phase for recurrent frameworks");
   }
 };
 
@@ -163,12 +175,40 @@ class CachingOptimizingCompiler {
 };
 
 
-/// This wraps class VariableMergingOptimizer in a simplified interface.
-void VariableMergingOptimization(const NnetOptimizeOptions &config,
-                                 const Nnet &nnet,
-                                 const ComputationRequest &request,
-                                 NnetComputation *computation);
-
+/// This optimization, which has no effect unless you set --min-deriv-time or
+/// --max-deriv-time, modifies the backprop operations for efficiency based on
+/// the assumption that derivatives for any Cindex with t < min_deriv_time or t
+/// > max_deriv_time are zero.  (this is based on the fact that derivatives in
+/// recurrent setups will either decay to zero over time, or will explode and
+/// anyway become meaningless).  This is only applied if you are not comoputing
+/// any input-derivatives).  The assumption, for simple Components, is that
+/// backprop operations are no-ops as long as the input was zeroed, because the
+/// back-propagated derivatives would be zero and the model would not be
+/// updated.
+///
+/// The most important effect of this operation is to modify some operations of
+/// type kBackprop and kBackpropNoModelUpdate for simple Components, to either
+/// make them operate on row ranges of their original input (which in general
+/// will be newly created submatrices), or to remove them altogether if they do
+/// not operate on any 't' values within the correct range.
+///
+/// We assert as a requirement of this optimization that all allocation commands
+/// must zero their matrices (this effectively means that you cannot apply this
+/// optimization after RemoveUnnecessaryZeroing()).  This means that we don't
+/// have to worry about leaving things undefined after removing backprop
+/// operations.  We also assert that backprop commands that set instead of
+/// adding to their input, must not be outputting to things that were
+/// previously set to nonzero values.   (this shouldn't ever be a problem, but
+/// we do check.
+///
+/// Note: after this optimization it will likely be beneficial to call
+/// RemoveUnnecessaryOperations to remove operations not of type kBackprop that have
+/// now become unnecessary-- e.g. operations that do the backprop through
+/// Descriptors.
+void LimitDerivativeTimes(const Nnet &nnet,
+                          const ComputationRequest &request,
+                          const NnetOptimizeOptions &opts,
+                          NnetComputation *computation);
 
 /// This consolidates the model-update parts of the backprop into larger
 /// operations (applicable mostly to recurrent setups)-- internally it uses
@@ -177,6 +217,14 @@ void VariableMergingOptimization(const NnetOptimizeOptions &config,
 void ConsolidateModelUpdate(const Nnet &nnet,
                             const ComputationRequest &request,
                             NnetComputation *computation);
+
+
+/// This wraps class VariableMergingOptimizer in a simplified interface.
+void VariableMergingOptimization(const NnetOptimizeOptions &config,
+                                 const Nnet &nnet,
+                                 const ComputationRequest &request,
+                                 NnetComputation *computation);
+
 
 /// This optimization function changes, where possible, matrix initializations
 /// of type kAllocMatrixZeroed to kAllocMatrixUndefined.
@@ -192,6 +240,7 @@ void MoveSizingCommands(const Nnet &nnet, NnetComputation *computation);
 /// with commands of type kAllocFromOther or kAllocFromOtherZeroed.
 void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation);
+
 
 
 

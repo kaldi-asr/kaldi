@@ -254,9 +254,11 @@ struct MatrixAccesses {
   /// (i.e. a submatrix that isn't the whole thing) will be recorded as an
   /// access of type read/write.
   std::vector<Access> accesses;
-  /// true if this matrix is an input to the computation.
+  /// true if this matrix is an input to the computation (i.e. either an
+  /// input-value or an output-deriv).
   bool is_input;
-  /// true if this matrix is an output of the computation.
+  /// true if this matrix is an output of the computation (i.e. either an
+  /// output-value or an input-deriv).
   bool is_output;
   MatrixAccesses(): allocate_command(-1), deallocate_command(-1),
                     is_input(false), is_output(false) { }

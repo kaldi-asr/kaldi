@@ -70,6 +70,69 @@ void IdentifySubmatrixArgs(NnetComputation::Command *c,
   }
 }
 
+void IdentifySubmatrixArgs(std::vector<NnetComputation::Command> *commands,
+                           std::vector<int32*> *submatrix_args) {
+  submatrix_args->clear();
+  std::vector<NnetComputation::Command>::iterator iter = commands->begin(),
+      end = commands->end();
+  std::vector<int32*> this_submatrix_args;
+  for (; iter != end; ++iter) {
+    IdentifySubmatrixArgs(&(*iter), &this_submatrix_args);
+    submatrix_args->insert(submatrix_args->end(),
+                           this_submatrix_args.begin(),
+                           this_submatrix_args.end());
+  }
+}
+
+
+void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *commands,
+                        std::vector<int32*> *matrix_args) {
+  matrix_args->clear();
+  std::vector<NnetComputation::Command>::iterator iter = commands->begin(),
+      end = commands->end();
+  std::vector<int32*> this_matrix_args;
+  for (; iter != end; ++iter) {
+    IdentifyMatrixArgs(&(*iter), &this_matrix_args);
+    matrix_args->insert(matrix_args->end(),
+                        this_matrix_args.begin(),
+                        this_matrix_args.end());
+  }
+}
+
+
+void IdentifyMatrixArgsInComputation(NnetComputation *computation,
+                                     std::vector<int32*> *matrix_args) {
+  IdentifyMatrixArg(&(computation->commands), matrix_args);
+  int32 num_submatrices = computation->submatrices.size();
+  matrix_args->reserve(matrix_args->size() + computation->submatrices.size() +
+                       2 * computation->input_output_info.size());
+  for (int32 s = 1; s < num_submatrices; s++)
+    matrix_args->push_back(&(computation->submatrices[s].matrix_index));
+  unordered_map<int32, std::pair<int32, int32> >::iterator
+      iter = computation->input_output_info.begin(),
+      end = computation->input_output_info.end();
+  for (; iter != end; ++iter) {
+    matrix_args->push_back(&(iter->second.first));
+    matrix_args->push_back(&(iter->second.second));
+  }
+}
+
+
+void IdentifyIndexesMultiArgs(std::vector<NnetComputation::Command> *commands,
+                              std::vector<int32*> *indexes_multi_args) {
+  indexes_multi_args->clear();
+  std::vector<NnetComputation::Command>::iterator iter = commands->begin(),
+      end = commands->end();
+  for (; iter != end; ++iter)
+    NnetComputation::Command &command = *iter;
+    if (command.command_type == kAddRowsMulti ||
+        command.command_type == kAddToRowsMulti ||
+        command.command_type == kCopyRowsMulti ||
+        command.command_type == kCopyToRowsMulti)
+      indexes_multi_args->push_back(&(command.arg2));
+}
+
+
 void IdentifyMatrixArgs(NnetComputation::Command *c,
                         std::vector<int32*> *matrix_args) {
   matrix_args->clear();
@@ -89,66 +152,21 @@ void IdentifyMatrixArgs(NnetComputation::Command *c,
   }
 }
 
-// We declare this class in the .cc file, we don't need to export it.
-// It's used inside RemoveOrphanMatrices. 
-class ComputationRenumberer {
- public:
-  ComputationRenumberer(NnetComputation *computation):
-      computation_(computation) { }
-
-  void Renumber() {
-    SetUpMappings();
-    RenumberCommands();
-    RenumberMatrices();
-    RenumberSubmatrices();
-    RenumberIndexesMulti();
-    RenumberDebugInfo();
-    RenumberIo();
+// static
+void ComputationRenumberer::CreateRenumbering(const std::vector<bool> &used,
+                                              std::vector<int32> *renumbering) {
+  renumbering->clear();
+  renumbering->reserve(used.size());
+  std::vector<bool>::const_iterator iter = used.begin(), end = used.end();
+  int32 cur_index = 0;
+  for (; iter != end; ++iter) {
+    if (*iter) renumbering->push_back(cur_index++);
+    else renumbering->push_back(-1);
   }
- private:
-  void SetUpMappings();
-  void RenumberCommands();
-  void RenumberMatrices();
-  void RenumberSubmatrices();
-  void RenumberIndexesMulti();
-  void RenumberDebugInfo();
-  void RenumberIo();
+  return cur_index;
+}
 
-  struct SubMatrixHasher {
-    SubMatrixHasher() { }
-    size_t operator () (const NnetComputation::SubMatrixInfo &submat) const {
-      // these numbers are arbitrarily chosen primes.
-      return submat.matrix_index +
-          19553 * submat.row_offset +
-          29297 * submat.num_rows +
-          42209 * submat.col_offset +
-          56527 * submat.num_cols;
-    }
-  };
-
-  /// creates a renumbering that removes the elements in "to_remove",
-  /// e.g. if old_num_elements = 3 and to_remove = [1], would output
-  /// the vector [ 0, -1, 1 ].
-  static void CreateRenumbering(int32 old_num_elements,
-                                const std::vector<int32> &to_remove,
-                                std::vector<int32> *renumbering);
-
-  std::vector<int32> matrices_to_remove_;
-  NnetComputation *computation_;
-  int32 num_matrices_orig_;
-  int32 num_submatrices_orig_;
-  int32 num_matrices_new_;
-  int32 num_submatrices_new_;
-  std::vector<int32> old_to_new_matrix_; // numbered by orig-matrix-index, gives
-                                         // new-matrix-index.  -1 for removed
-                                         // ones.
-  std::vector<int32> old_to_new_submatrix_; // numbered by orig-submatrix-index,
-                                            // gives new-submatrix-index.  -1
-                                            // for removed ones.
-
-};
-
-//static
+// static
 void ComputationRenumberer::CreateRenumbering(
     int32 old_num_elements,
     const std::vector<int32> &to_remove,
@@ -174,92 +192,210 @@ void ComputationRenumberer::CreateRenumbering(
 }
 
 
+void IdentifySubmatrixArgsInComputation(NnetComputation *computation,
+                                        std::vector<int32*> *submatrix_args) {
+  IdentifySubmatrixArgs(&(computation->commands), submatrix_args);
+
+  size_t extra_size = 0;
+  for (size_t i = 0; i < computation->indexes_multi.size(); i++)
+    extra_size += computation->indexes_multi[i].size();
+  submatrix_args->reserve(submatrix_args->size() + extra_size);
+  
+  for (size_t i = 0; i < computation->indexes_multi.size(); i++) {
+    std::vector<std::pair<int32, int32> > &indexes_multi =
+        computation_->indexes_multi[i];
+    std::vector<std::pair<int32, int32> >::iterator
+        iter = indexes_multi.begin(), end = indexes_multi.end();
+    for (; iter != end; ++iter)
+      if (iter->first != -1)
+        submatrix_args->push_back(&(iter->first));
+  }
+}
+
+
+void ComputationRenumberer::ComputeSubmatrixIsUsed() {
+  int32 num_submatrices = computation_->submatrices.size();
+  submatrix_is_used_.clear();
+  submatrix_is_used_.resize(num_submatrices, false);
+  submatrix_is_used_[0] = true;
+  // the zeroth element of the array is 'special', it refers to the
+  // zero submatrix, and we don't want to renumber it.
+  std::vector<int32*> submatrix_args;
+  IdentifySubmatrixArgsInComputation(&computation_, &submatrix_args);
+  std::vector<int32*>::iterator iter = submatrix_args.begin(),
+      end = submatrix_args.end();
+  int32 cur_submatrix_index = -1;  // an optimization to avoid too many
+                                   // indexings of the bool vector
+                                   // submatrix_is_used_.
+  for (; iter != end; ++iter) {
+    int32 submatrix_index = **iter;
+    int32 submatrix_index = iter->first;
+    if (submatrix_index > 0 && submatrix_index != cur_submatrix_index) {
+      cur_submatrix_index = submatrix_index;
+      KALDI_ASSERT(submatrix_index < num_submatrices);
+      submatrix_is_used_[submatrix_index] = true;
+    }
+  }
+}
+
+void ComputationRenumberer::ComputeMatrixIsUsed() {
+  matrix_is_used_.clear();
+  matrix_is_used_.resize(computation->matrices.size(), false);
+  matrix_is_used_[0] = true;
+  
+  std::vector<int32*> matrix_args;
+  IdentifyMatrixArgsInComputation(&computation_, &matrix_args);
+  for (; iter != end; ++iter) {
+    int32 matrix_index = **iter;
+    if (matrix_index > 0)
+      matrix_is_used_[matrix_index] = true;
+  }
+  // We also need to take into account when matrices are used indirectly via
+  // submatrices (which is actually the main way they are accessed).
+  int32 num_submatrices_orig = computation_->submatrices.size();
+  for (int32 s = 1; s < num_submatrices_orig; s++) {
+    int32 matrix_index = computation_->submatrices[s].matrix_index;
+    if (submatrix_is_used_[s])
+      matrix_is_used_[matrix_index] = true;
+  }
+}
+
+
+
 void ComputationRenumberer::SetUpMappings() {
-  KALDI_ASSERT(matrices_to_remove_.empty());
-  num_matrices_orig_ = computation_->matrices.size();
-  num_submatrices_orig_ = computation_->submatrices.size();
-
-  // list of submats per matrix.
-  std::vector<std::vector<int32> > submatrix_lists;
-  ComputeMatrixToSubmatrix(*computation_, &submatrix_lists);
-
-  for (int32 m = 1; m < num_matrices_orig_; m++)
-    if (submatrix_lists[m].empty())
-      matrices_to_remove_.push_back(m);
-
-  CreateRenumbering(num_matrices_orig_, matrices_to_remove_,
-                    &old_to_new_matrix_);
-
-  num_matrices_new_ = num_matrices_orig_ -
-      static_cast<int32>(matrices_to_remove_.size());
+  num_matrices_new_ = CreateRenumbering(matrix_is_used_, &old_to_new_matrix_);
 
   unordered_map<NnetComputation::SubMatrixInfo, int32,
                 SubMatrixHasher> submat_map;
   int32 cur_index = 1;
   // the old_to_new_submatrix_ map will remove duplicates.
-  old_to_new_submatrix_.resize(num_submatrices_orig_);
+  // -1's will appear wherever a particular submatrix was never used.
+  submatrix_is_kept_ = submatrix_is_used_;
+  old_to_new_submatrix_.resize(num_submatrices_orig_, -1);
   old_to_new_submatrix_[0] = 0;
-  for (int32 s = 1; s < num_submatrices_orig_; s++) {
-    const NnetComputation::SubMatrixInfo &info =
-        computation_->submatrices[s];
-    if (submat_map.count(info) > 0)
-      old_to_new_submatrix_[s] = submat_map[info];
-    else
-      old_to_new_submatrix_[s] = (submat_map[info] = cur_index++);
+  int32 num_submatrices_orig = computation_->submatrices.size();
+  for (int32 s = 1; s < num_submatrices_orig; s++) {
+    if (submatrix_is_used_[s]) {
+      const NnetComputation::SubMatrixInfo &info =
+          computation_->submatrices[s];
+      if (submat_map.count(info) > 0) {  // a duplicate...
+        old_to_new_submatrix_[s] = submat_map[info];
+        submatrix_is_kept_[s] = false;
+      } else {
+        old_to_new_submatrix_[s] = (submat_map[info] = cur_index++);
+      }
+    }
   }
   num_submatrices_new_ = cur_index;
 }
 
-void ComputationRenumberer::RenumberCommands() {
-  // renumbers matrices and submatrices in commands.
-  const int32 num_matrices_old = num_matrices_orig_,
-      num_submatrices_old = num_submatrices_orig_;
-  int32 num_commands = computation_->commands.size();
-  for (int32 command_index = 0; command_index < num_commands; command_index++) {
-    NnetComputation::Command &c = computation_->commands[command_index];
-    {
-      std::vector<int32*> submatrix_args;
-      IdentifySubmatrixArgs(&c, &submatrix_args);
-      std::vector<int32*>::const_iterator iter = submatrix_args.begin(),
-          end = submatrix_args.end();
-      for (; iter != end; ++iter) {
-        int32 *submatrix_arg = *iter;
-        int32 submatrix_index = *submatrix_arg,
-            new_submatrix_index = old_to_new_submatrix_[submatrix_index];
-        KALDI_ASSERT(submatrix_index >= 0 &&
-                     submatrix_index < num_submatrices_old);
-        // renumber the argument of the command.
-        *submatrix_arg = new_submatrix_index;
-      }
-    }
-    {
-      std::vector<int32*> matrix_args;
-      IdentifyMatrixArgs(&c, &matrix_args);
-      std::vector<int32*>::const_iterator iter = matrix_args.begin(),
-          end = matrix_args.end();
-      for (; iter != end; ++iter) {
-        int32 *matrix_arg = *iter;
-        int32 matrix_index = *matrix_arg,
-            new_matrix_index = old_to_new_matrix_[matrix_index];
-        KALDI_ASSERT(matrix_index >= 0 && matrix_index < num_matrices_old &&
-                     new_matrix_index >= 0);
-        // renumber the argument of the command.
-        *matrix_arg = new_matrix_index;
-      }
+void ComputationRenumberer::RenumberSubmatrices() {
+  std::vector<int32*> submatrix_args;
+  IdentifySubmatrixArgsInComputation(computation_, &submatrix_args);
+  std::vector<int32*>::iterator iter = submatrix_args.begin(),
+      end = submatrix_args.end();
+  for (; iter != end; ++iter) {
+    if (**iter > 0) {
+      int32 new_submatrix_index = old_to_new_submatrix_[**iter];
+      // old_to_new_submatrix_[s] for s > 0 is only <= 0 (actually, -1) for
+      // submatrices that are never accessed, and these should never appear
+      // in this list.
+      KALDI_ASSERT(new_submatrix_index > 0);
+      **iter = new_submatrix_index;
     }
   }
+  std::vector<NnetComputation::SubmatrixInfo> new_submatrices;
+  int32 num_submatrices_old = computation_->submatrices.size();
+  new_submatrices.reserve(num_submatrices_old);
+  for (int32 s = 0; s < num_submatrices_old; s++)
+    if (submatrix_is_kept_[s])
+      new_submatrices.push_back(computation_->submatrices[s]);
+  computation_->submatrices.swap(new_submatrices);
+  // We'll map the matrix indexes in computation_->submatrices
+  // when we call RenumberMatrices().
 }
 
 void ComputationRenumberer::RenumberMatrices() {
-  std::vector<NnetComputation::MatrixInfo> new_matrices(num_matrices_new_);
-  for (int32 m = 0; m < num_matrices_orig_; m++) {
-    int32 m_new = old_to_new_matrix_[m];
-    if (m_new != -1)
-      new_matrices[m_new] = computation_->matrices[m];
+  std::vector<int32*> matrix_args;
+  IdentifyMatrixArgsInComputation(computation_, &matrix_args);
+  std::vector<int32*>::iterator iter = matrix_args.begin(),
+      end = matrix_args.end();
+  for (; iter != end; ++iter) {
+    if (**iter > 0) {
+      int32 new_matrix_index = old_to_new_matrix_[**iter];
+      // old_to_new_matrix_[s] for s > 0 is only <= 0 (actually, -1) for
+      // submatrices that are never accessed, and these should never appear
+      // in this list.
+      KALDI_ASSERT(new_matrix_index > 0);
+      **iter = new_matrix_index;
+    }
   }
-  computation_->matrices = new_matrices;
+
+  std::vector<NnetComputation::MatrixInfo> new_matrices;
+  int32 num_matrices_old = computation_->matrices.size();
+  new_matrices.reserve(num_matrices_old);
+  for (int32 m = 0; m < num_matrices_old; m++)
+    if (matrix_is_kept_[m])
+      new_matrices.push_back(computation_->matrices[m]);
+  computation_->matrices.swap(new_matrices);
+
+  std::vector<NnetComputation::MatrixDebugInfo> new_debug_info;
+  int32 debug_info_size = computation_->debug_info.size();
+  KALDI_ASSERT(debug_info_size == 0 || debug_info_size == num_matrices_old);
+  new_debug_info.reserve(debug_info_size);
+  for (int32 m = 0; m < debug_info_size; m++) {
+    if (matrix_is_kept_[m]) {
+      new_debug_info.push_back(NnetComputation::MatrixDebugInfo());
+      new_debug_info.back().Swap(&(computation_->debug_info[m]));
+    }
+  }
+  computation_->matrix_debug_info.swap(new_debug_info);
 }
 
+  
+void ComputationRenumberer::Renumber() {
+  RemoveUnusedIndexesMulti();
+  ComputeSubmatrixIsUsed();
+  ComputeMatrixIsUsed();
+  SetUpMappings();
+  RenumberSubmatrices();
+  RenumberMatrices();
+  RemoveDuplicateIndexesMulti();
+}
+
+void ComputationRenumberer::RemoveUnusedIndexesMulti() {
+  int32 num_indexes_multi = computation_->indexes_multi.size();
+  if (num_indexes_multi == 0)
+    return;  // Nothing to do.  An optimization.
+  std::vector<bool> indexes_multi_used(num_indexes_multi, false);
+  std::vector<int32*> indexes_multi_args;
+  IdentifyIndexesMultiArgs(&(computation_->commands), &indexes_multi_args);
+  std::vector<int32*>::iterator iter = indexes_multi_args.begin(),
+      end = indexes_multi_args.end();
+  for (; iter != end; ++iter) {
+    int32 indexes_multi_index = *iter;
+    KALDI_ASSERT(indexes_multi_index >= 0 &&
+                 indexes_multi_index < num_indexes_multi);
+    indexes_multi_used[indexes_multi_index] = 1;
+  }
+  // old->new mapping for the indexes_multi arrays.  will remain -1 for
+  // ones that are unused.
+  std::vector<int32> old_to_new(num_indexes_multi, -1);
+  int32 new_num_indexes_multi = CreateRenumbering(indexes_multi_used,
+                                                  &old_to_new);
+  if (new_num_indexes_multi == num_indexes_multi)
+    return;  // Nothing to do.  An optimization.
+  std::vector<std::vector<std::pair<int32, int32> > >
+      new_indexes_multi(new_num_indexes_multi);
+  for (int32 i = 0; i < num_indexes_multi; i++) {
+    if (old_to_new[i] != -1)
+      new_indexes_multi[old_to_new[i]].swap(computation_->indexes_multi[i]);
+  }
+  computation_->indexes_multi.swap(new_indexes_multi);
+  // renumber within the commands.
+  for (iter = indexes_multi_args.begin(); iter != end; ++iter)
+    *iter = old_to_new[*iter];
+}
 
 
 void ComputationRenumberer::RenumberSubmatrices() {
@@ -277,7 +413,8 @@ void ComputationRenumberer::RenumberSubmatrices() {
   computation_->submatrices = new_submatrices;
 }
 
-void ComputationRenumberer::RenumberIndexesMulti() {
+// renumbers submatrix indexes within indexes_multi.
+void ComputationRenumberer::RenumberWithinIndexesMulti() {
   std::vector<std::vector<std::pair<int32,int32> > >::iterator
       iter = computation_->indexes_multi.begin(),
       end = computation_->indexes_multi.end();
@@ -294,50 +431,74 @@ void ComputationRenumberer::RenumberIndexesMulti() {
   }
 }
 
-void ComputationRenumberer::RenumberDebugInfo() {
-  if (computation_->matrix_debug_info.empty())
-    return;
-  KALDI_ASSERT(static_cast<int32>(computation_->matrix_debug_info.size()) ==
-               num_matrices_orig_);
-  // we arbitrarily keep the matrix debug info from the earliest numbered matrix
-  // when constructing the new debug info.  The info may sometimes differ and
-  // we'll just choose to identify the matrix with one or other of the nodes.
-  // this information is only consumed by human readers anyway, while debugging.
-  std::vector<NnetComputation::MatrixDebugInfo> matrix_debug_info(
-      num_matrices_new_);
-  for (int32 m = 0; m < num_matrices_orig_; m++) {
-    int32 m_new = old_to_new_matrix_[m];
-    if (m_new != -1 && matrix_debug_info[m_new].cindexes.empty())
-      matrix_debug_info[m_new] = computation_->matrix_debug_info[m];
-  }
-  computation_->matrix_debug_info = matrix_debug_info;
-}
 
-void ComputationRenumberer::RenumberIo() {
-  unordered_map<int32, std::pair<int32, int32> >::iterator
-      iter = computation_->input_output_info.begin(),
-      end = computation_->input_output_info.end();
+void ComputationRenumberer::RenumberIndexesMulti() {
+  int32 num_indexes_multi = computation_->indexes_multi.size();
+  if (num_indexes_multi == 0)
+    return;  // Nothing to do.
+  // the following identifies whether each of the old (pre-renumbering)
+  // indexes_multi arrays was used.
+  std::vector<bool> indexes_is_used(computation_->indexes_multi.size());
+  
+  // old->new mapping for the indexes_multi arrays.  will remain -1 for
+  // ones that are unused.
+  std::vector<int32> old_to_new(num_indexes_multi, -1);
+  
+  std::vector<std::vector<std::pair<int32,int32> > >::iterator
+      iter = computation_->indexes_multi.begin(),
+      end = computation_->indexes_multi.end();
   for (; iter != end; ++iter) {
-    int32 &value_matrix_index = iter->second.first,
-        &deriv_matrix_index = iter->second.second;
-    KALDI_ASSERT(value_matrix_index > 0 && value_matrix_index <
-                 num_matrices_orig_);
-    value_matrix_index = old_to_new_matrix_[value_matrix_index];
-    KALDI_ASSERT(value_matrix_index != -1);
-    if (deriv_matrix_index != 0) {
-      KALDI_ASSERT(deriv_matrix_index > 0 && deriv_matrix_index <
-                   num_matrices_orig_);
-      deriv_matrix_index = old_to_new_matrix_[deriv_matrix_index];
-      KALDI_ASSERT(deriv_matrix_index > 0);
+    std::vector<std::pair<int32,int32> >::iterator
+        iter2 = iter->begin(), end2 = iter->end();
+    for (; iter2 != end2; ++iter2) {
+      int32 &submatrix_index = iter2->first;
+      if (submatrix_index > 0) {
+        KALDI_ASSERT(submatrix_index < num_submatrices_orig_);
+        submatrix_index = old_to_new_submatrix_[submatrix_index];
+      }
     }
   }
 }
 
+// removes duplicates within the indexes_multi_ array itself.
+void RemoveIndexesMultiDuplicates() {
+  int32 cur_index = 0,
+      old_indexes_multi_size = computation_->indexes_multi.size();
+  if (old_indexes_multi_size == 0)
+    return;
+  // create index mapping from old to new.
+  std::vector<int32> indexes_multi_old_to_new(old_indexes_multi_size);
+  typedef std::unordered_map<const PairVectorType*, int32,
+                     PairVectorHasher, PointersEqual> MapType;
+  MapType indexes_multi_map;
+  for (int32 i = 0; i < computation_->indexes_multi.size(); i++) {
+    std::pair<MapType::iterator, bool> p =
+        indexes_multi_map.insert(std::pair<const PairVectorType*, int32>(
+            &(computation_->indexes_multi[i], cur_index)));
+    if (p.second) {  // was inserted-- was not there already.
+      index_multi_old_to_new[i] = cur_index++;
+    } else {
+      indexes_multi_old_to_new[i] = iter->second;
+    }
+  }
+  if (cur_index == old_indexes_multi_size)
+    return;  // An optimization.  No duplicates were found.
+  std::vector<PairVectorType> new_indexes_multi(cur_index);
+  for (int32 i = 0; i < computation_->indexes_multi.size(); i++) {
+    int32 new_index = indexes_multi_old_to_new[i];
+    computation->indexes_multi[i].swap(new_indexes_multi[new_index]);
+  }
+  computation->indexes_multi.swap(new_indexes_multi);
+  
+  std::vector<int32*> indexes_multi_args;
+  IdentifyIndexesMultiArgs(&(computation_->commands), &indexes_multi_args);
+  std::vector<int32*>::const_iterator iter = indexes_multi_args.begin(),
+      end = indexes_multi_args.end();
+  for (; iter != end; ++iter)
+    **iter = indexes_multi_old_to_new[**iter];
+}
 
-/// This function detects matrices that have no submatrices corresponding to them (due,
-/// to changes made in other optimization code), and removes them from the computation.
-/// It also renumbers the submatrix indexes to remove duplicates.
-void RemoveOrphanMatrices(NnetComputation *computation) {
+void RemoveOrphans(NnetComputation *computation) {
   ComputationRenumberer renumberer(computation);
   renumberer.Renumber();
 }
