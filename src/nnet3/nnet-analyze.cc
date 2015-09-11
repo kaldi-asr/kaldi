@@ -42,11 +42,17 @@ void ComputationVariables::ComputeSplitPoints(
     column_split_points_[s.matrix_index].push_back(s.col_offset + s.num_cols);
   }
   for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
+    // Because it's possible for matrices not to have any submatrices (after
+    // pruning), we need to make sure that the beginning and end dimensions are
+    // in the split points.
+    column_split_points_[matrix_index].push_back(0);
+    column_split_points_[matrix_index].push_back(
+        computation.matrices[matrix_index].num_cols);
+    row_split_points_[matrix_index].push_back(0);
+    row_split_points_[matrix_index].push_back(
+        computation.matrices[matrix_index].num_rows);
     SortAndUniq(&(column_split_points_[matrix_index]));
     SortAndUniq(&(row_split_points_[matrix_index]));
-    // should have at least 0 and num_rows included, so size >= 2.
-    KALDI_ASSERT(column_split_points_[matrix_index].size() >= 2 &&
-                 row_split_points_[matrix_index].size() >= 2);
   }
   // note: the last split point of each matrix doesn't get its own variable index.
   matrix_to_variable_index_.resize(num_matrices + 1);

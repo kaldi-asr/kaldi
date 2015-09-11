@@ -180,9 +180,9 @@ struct ComputationRequest {
    - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
    - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
    - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
-   with sub-matrix arg2 and indexes[arg3] as arguments.
+     with sub-matrix arg2 and indexes[arg3] as arguments.
    - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
-   with sub-matrix arg2 and indexes[arg3] as arguments.
+     with sub-matrix arg2 and indexes[arg3] as arguments.
    - kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti:
    Call the corresponding function in class CuMatrix.
    - arg1 is sub-matrix index of *this matrix in operation

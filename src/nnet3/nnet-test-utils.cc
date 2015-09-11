@@ -258,7 +258,7 @@ void GenerateConfigSequenceRnnClockwork(
         "input=Sum(affine1_node, IfDefined(recurrent_affine1))\n";
   os << "component-node name=final_affine_0 component=final_affine_0 input=nonlin1\n";
   os << "component-node name=final_affine_1 component=final_affine_1 input=Offset(nonlin1, -1)\n";
-  os << "component-node name=final_affine_2 component=final_affine_1 input=Offset(nonlin1, 1)\n";
+  os << "component-node name=final_affine_2 component=final_affine_2 input=Offset(nonlin1, 1)\n";
   os << "component-node name=output_nonlin component=logsoftmax input=Switch(final_affine_0, final_affine_1, final_affine_2)\n";
   os << "output-node name=output input=output_nonlin\n";
   configs->push_back(os.str());

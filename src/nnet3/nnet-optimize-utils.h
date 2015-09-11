@@ -265,7 +265,7 @@ class ModelUpdateConsolidator {
 
 
 // We declare this class in the .cc file, we don't need to export it.
-// It's used inside RemoveOrphanMatrices. 
+// It's used inside RenumberComputation.
 class ComputationRenumberer {
  public:
   ComputationRenumberer(NnetComputation *computation):
@@ -296,8 +296,10 @@ class ComputationRenumberer {
   // and 'input_output_info'; renumber 'matrices' and if applicable
   // 'debug_info'.
   void RenumberMatrices();
-  // removes duplicates within the indexes_multi_ array itself.
+  // removes duplicates within the indexes_multi array itself.
   void RemoveIndexesMultiDuplicates();
+  // removes unused elements and duplicates within 'computation->indexes'
+  void RenumberIndexes();
 
   struct SubMatrixHasher {
     SubMatrixHasher() { }
@@ -311,26 +313,25 @@ class ComputationRenumberer {
     }
   };
 
-  typedef std::vector<std::pair<int32, int32> > PairVectorType;
-  struct PointersEqual {
-    bool operator ()(const PairVectorType *ptr1,
-                     const PairVectorType *ptr2) const {
-      return *ptr1 == *ptr2;
+
+  // Here, T will be int32 or std::pair<int32,int32>
+  template <class T>
+  struct PointerCompare {
+    // This provides an operator < on two vectors of ints or pairs of ints.  It
+    // is designed to provide a total order on the vectors while accessing as
+    // small a portion of the vectors' data as possible.  It's used in removing
+    // duplicates from computation_->indexes_multi and computation_->indexes.
+    // First it compares the length, then it does lexicographical compare.
+    bool operator ()(const std::vector<T> *ptr1,
+                     const std::vector<T> *ptr2) const {
+      size_t size1 = ptr1->size(), size2 = ptr2->size();
+      if (size1 < size2) return true;
+      else if (size1 > size2) return false;
+      else return (*ptr1 < *ptr2);  // use the std::vector operator <, which is
+                                    // lexicographical comparison.
     }
   };
-  struct PairVectorHasher {
-    size_t operator() (const std::vector<std::pair<int32, int32> > *arg) const {
-      const size_t kPrime1 = 13, kPrime2 = 7853;
-      size_t ans = arg->size();
-      std::vector<std::pair<int32, int32> >::iterator
-          iter = arg->begin(), end = arg->end();
-      for (; iter != end; ++iter)
-        ans = kPrime1 * ans + static_cast<size_t>(iter->first) +
-            kPrime2 * static_cast<size_t>(iter->second);
-      return ans;
-    }
-  };
-  
+
   /// creates a renumbering that removes the elements in "to_remove",
   /// e.g. if old_num_elements = 3 and to_remove = [1], would output
   /// the vector [ 0, -1, 1 ].
@@ -349,11 +350,10 @@ class ComputationRenumberer {
   // submatrix-index is used somewhere in the computation (always true for
   // the zeroth element).
   std::vector<bool> submatrix_is_used_;
-  // vector of bool indexed by original submatrix-index, that is true if
-  // a submatrix-index will be kept (like submatrix_is_used_; but for duplicate
-  // submatrices, all but the first will be marked false).
-  std::vector<bool> submatrix_is_used_;
-  
+  // vector of bool indexed by original submatrix-index, that is true if a
+  // submatrix-index will be kept; this is like submatrix_is_used_; but for
+  // duplicate submatrices, all but the first duplicate will be marked false).
+  std::vector<bool> submatrix_is_kept_;
   // vector of bool indexed by original-matrix-index > 0, that is true if a
   // matrix-index is used somewhere in the computation, directly or indirectly.
   // always true for the zeroth element.
@@ -375,11 +375,10 @@ class ComputationRenumberer {
 // optimization you perform.  This means that the debug_info will
 // be accurate and that all matrices will be initialized with
 // zero contents.
-class DeriativeTimeLimiter {
+class DerivativeTimeLimiter {
 
   DerivativeTimeLimiter(const Nnet &nnet,
                         NnetComputation *computation);
-
 
  private:
   const Nnet &nnet_;
@@ -419,11 +418,12 @@ class DeriativeTimeLimiter {
 
 
 
-
-/// This function detects submatrices, matrices and indexes-multi indexes that
-/// are never used (e.g. due to changes made in other optimization code), and
-/// removes them from the computation by way of suitable renumbering.
-void RemoveOrphans(NnetComputation *computation);
+/// This function detects submatrices, matrices, and members of indexes_multi
+/// and indexes that are never used (e.g. due to changes made in other
+/// optimization code), and removes them from the computation by way of suitable
+/// renumbering.  It does not remove no-ops from computation->commands_; to do
+/// that, call RemoveNoOps(computation).
+void RenumberComputation(NnetComputation *computation);
 
 /// Removes commands of type kNoOperation in the computation.
 void RemoveNoOps(NnetComputation *computation);
@@ -497,6 +497,18 @@ void IdentifyMatrixArgsInComputation(NnetComputation *computation,
 /// to those arguments to 'indexes_multi_args'.  Useful in renumbering code.
 void IdentifyIndexesMultiArgs(std::vector<NnetComputation::Command> *commands,
                               std::vector<int32*> *indexes_multi_args);
+
+/// Identifies in the vector of commands, arguments that correspond to indexes
+/// into the computation's 'indexes' array, and outputs a list of pointers
+/// to those arguments to 'indexes_args'.  Useful in renumbering code.
+void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
+                         std::vector<int32*> *indexes_args);
+
+/// Identifies in the vector of commands, arguments that correspond to indexes
+/// into the computation's 'indexes' array, and outputs a list of pointers
+/// to those arguments to 'indexes_args'.  Useful in renumbering code.
+void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
+                         std::vector<int32*> *indexes_args);
 
 
 
