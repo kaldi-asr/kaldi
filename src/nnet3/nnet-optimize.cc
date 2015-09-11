@@ -322,8 +322,8 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
                                             NnetComputation *computation) {
   if (computation_cache_.size() == cache_capacity_) {
     // full, locate the least-recently-accessed request
-    const typename CacheType::iterator it
-       = computation_cache_.find(access_queue_.front());
+    const CacheType::iterator it =
+        computation_cache_.find(access_queue_.front());
     KALDI_ASSERT(it != computation_cache_.end());
     // purge the least-recently-accessed request
     delete it->first;
@@ -331,13 +331,12 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
     computation_cache_.erase(it);
     access_queue_.pop_front();
   }
-  typename AqType::iterator ait
-    = access_queue_.insert(access_queue_.end(), request);
+  AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
   computation_cache_.insert(std::make_pair(request,
                             std::make_pair(computation, ait)));
 }
 
-void CachingOptimizingCompiler::UpdateAccessQueue(typename CacheType::iterator &cit) {
+void CachingOptimizingCompiler::UpdateAccessQueue(CacheType::iterator &cit) {
   // exist, update access record by moving the accessed
   // request to the end of the access queue
   KALDI_ASSERT(cit != computation_cache_.end());
@@ -346,8 +345,8 @@ void CachingOptimizingCompiler::UpdateAccessQueue(typename CacheType::iterator &
 }
 
 CachingOptimizingCompiler::~CachingOptimizingCompiler() {
-  typename CacheType::const_iterator itr = computation_cache_.begin(),
-                                     end = computation_cache_.end();
+  CacheType::const_iterator itr = computation_cache_.begin(),
+      end = computation_cache_.end();
   for (; itr !=end; ++itr) {
     delete itr->first;
     delete itr->second.first;
@@ -359,7 +358,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
   NnetComputation *computation;
   ComputationRequest *request;
   // find computation in the cache
-  typename CacheType::iterator cit = computation_cache_.find(&in_request);
+  CacheType::iterator cit = computation_cache_.find(&in_request);
   if (cit == computation_cache_.end()) {
     // if not found, compile and update cache
     request = new ComputationRequest;

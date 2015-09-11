@@ -106,7 +106,7 @@ struct ComputationRequestPtrEqual {
     return (*cr1) == (*cr2);
   }
 };
- 
+
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
@@ -145,7 +145,7 @@ class CachingOptimizingCompiler {
   // access_queue_). Used for fast lookup of previously compiled computations.
   // All pointers are owned here.
   typedef unordered_map<const ComputationRequest*, std::pair<NnetComputation*,
-    typename AqType::iterator>, ComputationRequestHasher,
+    AqType::iterator>, ComputationRequestHasher,
     ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
@@ -156,9 +156,9 @@ class CachingOptimizingCompiler {
   void UpdateCache(const ComputationRequest *request,
                    NnetComputation *computation);
   // This function updates the recently accessed queue.
-  void UpdateAccessQueue(typename CacheType::iterator &cit);
+  void UpdateAccessQueue(CacheType::iterator &cit);
   // This configuration value determines how many unique Computations
-  // to cache in our most-recently-used cache. 
+  // to cache in our most-recently-used cache.
   int32 cache_capacity_;
 };
 
