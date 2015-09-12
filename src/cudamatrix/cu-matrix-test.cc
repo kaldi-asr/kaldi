@@ -1112,6 +1112,39 @@ static void UnitTestCuMatrixAddMat() {
 }
 
 template<typename Real> 
+static void UnitTestCuMatrixAddMatBlocks() {
+  int32 num_row_blocks = 10, num_col_blocks = 20;
+  Matrix<Real> Ha1(100, 100), Ha2(100, 100);
+  Matrix<Real> Hb(100 * num_row_blocks, 100 * num_col_blocks);
+  Ha1.SetRandn();
+  Ha2.SetRandn();
+  Hb.SetRandn();
+
+  CuMatrix<Real> Da1(100, 100), Da2(100, 100);
+  CuMatrix<Real> Db(100 * num_row_blocks, 100 * num_col_blocks);
+  Da1.CopyFromMat(Ha1);
+  Da2.CopyFromMat(Ha2);
+  Db.CopyFromMat(Hb);
+
+  for (int32 i = 0; i < num_row_blocks; i++) {
+    for (int32 j = 0; j < num_col_blocks; j++) {
+      SubMatrix<Real> Hs(Hb.Range(i * 100, 100, j * 100, 100));
+      Ha1.AddMat(0.5, Hs, kNoTrans);
+      Ha2.AddMat(0.5, Hs, kTrans);
+    }
+  }
+
+  Da1.AddMatBlocks(0.5, Db, kNoTrans);
+  Da2.AddMatBlocks(0.5, Db, kTrans);
+  Matrix<Real> Ha11(100, 100);
+  Da1.CopyToMat(&Ha11);
+  AssertEqual(Ha1,Ha11);
+  Matrix<Real> Ha22(100, 100);
+  Da2.CopyToMat(&Ha22);
+  AssertEqual(Ha2,Ha22);
+}
+
+template<typename Real> 
 static void UnitTestCuMatrixSum() {
   int32 M = 100 + Rand() % 300, N = 100 + Rand() % 300;
   CuMatrix<Real> A(M, N);
@@ -2375,6 +2408,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixMulRowsVec<Real>();
   UnitTestCuMatrixDivRowsVec<Real>();
   UnitTestCuMatrixAddMat<Real>();
+  UnitTestCuMatrixAddMatBlocks<Real>();
   UnitTestCuMatrixSum<Real>();
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();

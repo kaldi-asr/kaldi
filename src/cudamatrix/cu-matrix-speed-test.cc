@@ -41,6 +41,48 @@ std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
 
+template<typename Real> void TestCuMatrixAddMat(int32 dim, 
+		int32 num_row_blocks, int32 num_col_blocks) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
+  A.SetRandn();
+  B.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    for (int32 i = 0; i < num_row_blocks; i++) {
+      for (int32 j = 0; j < num_col_blocks; j++) {
+        A.AddMat(0.0, CuSubMatrix<Real>(B, i * dim, dim, j * dim, dim));
+      }
+    }
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
+	  / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddMat" << NameOf<Real>() << ", for dim = "
+	    << dim << "numRowBlocks = "<< num_row_blocks << "numColBlocks = "
+	    << num_col_blocks << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim, 
+		int32 num_row_blocks, int32 num_col_blocks) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
+  A.SetRandn();
+  B.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    A.AddMatBlocks(0.0, B);
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
+	  / (tim.Elapsed() * 1.0e+09);
+   KALDI_LOG << "For CuMatrix::AddMatBlocks" << NameOf<Real>() << ", for dim = "
+	     << dim << ", numRowBlocks = "<< num_row_blocks << ", numColBlocks = "
+	     << num_col_blocks << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixMatMat(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim), O(dim, dim);
@@ -747,9 +789,13 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixResize<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixAddMat<Real>(sizes[s], 3, 3);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixAddMatBlocks<Real>(sizes[s], 3, 3);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
-    TestCuMatrixMatMatBatched<Real>(sizes[s],10);
+    TestCuMatrixMatMatBatched<Real>(sizes[s], 10);
   for (int32 s = 0; s < ns; s++) {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kTrans);
