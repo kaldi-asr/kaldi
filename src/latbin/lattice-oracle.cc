@@ -395,7 +395,7 @@ int main(int argc, char *argv[]) {
       }
       n_done++;
     }
-    if (word_syms) delete word_syms;
+    delete word_syms;
     int32 tot_errs = tot_substitutions + tot_deletions + tot_insertions;
     // Warning: the script egs/s5/*/steps/oracle_wer.sh parses the next line.
     KALDI_LOG << "Overall %WER " << (100.*tot_errs)/tot_words << " [ "

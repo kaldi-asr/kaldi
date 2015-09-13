@@ -111,8 +111,8 @@ int main(int argc, char **argv) {
       renderer->Render(query);
     }
 
-    if (renderer) delete renderer;
-    if (query) delete query;
+    delete renderer;
+    delete query;
   } catch (const std::exception &e) {
     std::cerr << e.what();
     return -1;

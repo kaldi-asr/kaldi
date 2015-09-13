@@ -595,7 +595,7 @@ bool SequentialTableReader<Holder>::Done() {
 
 template<class Holder>
 SequentialTableReader<Holder>::~SequentialTableReader() {
-  if (impl_)  delete impl_;
+  delete impl_;
   // Destructor of impl_ may throw.
 }
 
@@ -1763,8 +1763,7 @@ template<class Holder>  class RandomAccessTableReaderSortedArchiveImpl:
 
   virtual bool Close() {
     for (size_t i = 0; i < seen_pairs_.size(); i++)
-      if (seen_pairs_[i].second)
-        delete seen_pairs_[i].second;
+      delete seen_pairs_[i].second;
     seen_pairs_.clear();
 
     pending_delete_ = static_cast<size_t>(-1);
@@ -1955,8 +1954,7 @@ template<class Holder>  class RandomAccessTableReaderUnsortedArchiveImpl:
     for (typename MapType::iterator iter = map_.begin();
         iter != map_.end();
         ++iter) {
-      if (iter->second)
-        delete iter->second;
+      delete iter->second;
     }
     map_.clear();
     first_deleted_string_ = "";
