@@ -63,7 +63,7 @@ template<class KaldiType> class KaldiObjectHolder {
 
   // Reads into the holder.
   bool Read(std::istream &is) {
-    if (t_) delete t_;
+    delete t_;
     t_ = new T;
     // Don't want any existing state to complicate the read functioN: get new object.
     bool is_binary;
@@ -93,7 +93,7 @@ template<class KaldiType> class KaldiObjectHolder {
     return *t_;
   }
 
-  ~KaldiObjectHolder() { if (t_) delete t_; }
+  ~KaldiObjectHolder() { delete t_; }
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(KaldiObjectHolder);
   T *t_;

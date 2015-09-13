@@ -151,8 +151,7 @@ int main(int argc, char *argv[]) {
       n_done++;
       n_words += mbr->GetOneBest().size();
       tot_bayes_risk += mbr->GetBayesRisk();
-      if (mbr != NULL)
-        delete mbr;
+      delete mbr;
     }
 
     KALDI_LOG << "Done " << n_done << " lattices.";

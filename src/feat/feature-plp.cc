@@ -58,8 +58,7 @@ Plp::~Plp() {
       ++iter)
     delete iter->second;
 
-  if (srfft_ != NULL)
-    delete srfft_;
+   delete srfft_;
 }
 
 const MelBanks *Plp::GetMelBanks(BaseFloat vtln_warp) {
