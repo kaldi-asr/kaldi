@@ -161,7 +161,7 @@ void ContextDependency::Read (std::istream &is, bool binary) {
   ReadToken(is, binary, &token);
   if (token == "ToLength") {  // back-compat.
     EventMap *to_num_pdf_classes = EventMap::Read(is, binary);
-    if (to_num_pdf_classes) delete to_num_pdf_classes;
+    delete to_num_pdf_classes;
     ReadToken(is, binary, &token);
   }
   if (token == "ToPdf") {

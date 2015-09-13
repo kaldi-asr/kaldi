@@ -56,8 +56,7 @@ Mfcc::~Mfcc() {
       iter != mel_banks_.end();
       ++iter)
     delete iter->second;
-  if (srfft_ != NULL)
-    delete srfft_;
+  delete srfft_;
 }
 
 const MelBanks *Mfcc::GetMelBanks(BaseFloat vtln_warp) {

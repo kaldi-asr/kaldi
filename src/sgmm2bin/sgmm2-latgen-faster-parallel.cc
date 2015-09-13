@@ -267,8 +267,8 @@ int main(int argc, char *argv[]) {
     }
     sequencer.Wait(); // Wait till all tasks are done.
     
-    if (decode_fst) delete decode_fst; 
-    if (word_syms) delete word_syms;
+    delete decode_fst; 
+    delete word_syms;
     
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Decoded with " << sequencer_config.num_threads << " threads.";

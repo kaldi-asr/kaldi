@@ -191,9 +191,9 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    if (feat_transform) delete feat_transform;
-    if (word_syms) delete word_syms;
-    if (decode_fst) delete decode_fst;
+    delete feat_transform;
+    delete word_syms;
+    delete decode_fst;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
