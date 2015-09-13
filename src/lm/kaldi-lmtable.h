@@ -133,7 +133,7 @@ class LmFstConverter {
 class LmTable {
  public:
   LmTable() { conv_ = new LmFstConverter; }
-  ~LmTable() { if (conv_) delete conv_; }
+  ~LmTable() { delete conv_; }
 
   bool ReadFstFromLmFile(std::istream &istrm,
                          fst::StdVectorFst *pfst,
@@ -154,7 +154,7 @@ class LmTable {
 class LmTable : public lmtable {
  public:
   LmTable() { conv_ = new LmFstConverter; }
-  ~LmTable() { if (conv_) delete conv_; }
+  ~LmTable() { delete conv_; }
 
   /// in this implementation, needed functions come from parent class, e.g.
   ///   table_entry_pos_t wdprune(float *thr, int aflag = 0);
