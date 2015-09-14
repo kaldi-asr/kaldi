@@ -75,6 +75,8 @@ speech_gauss_incr_phase5=2
 num_iters_phase5=7
 
 speech_to_sil_ratio=1
+frame_snrs_scp=
+use_bootstrap_vad=false
 
 . path.sh
 . parse_options.sh || exit 1
@@ -103,7 +105,7 @@ mkdir -p $phase3_dir
 init_model_dir=`dirname $init_speech_model`
 ignore_energy_opts=`cat $init_model_dir/ignore_energy_opts` || exit 1
 add_zero_crossing_feats=`cat $init_model_dir/add_zero_crossing_feats` || exit 1
-add_frame_snrs=`cat $dir/add_frame_snrs` || exit 1
+add_frame_snrs=`cat $init_model_dir/add_frame_snrs` || exit 1
 
 zc_opts=
 [ -f conf/zc_vad.conf ] && zc_opts="--config=conf/zc_vad.conf"
@@ -218,7 +220,7 @@ while IFS=$'\n' read line; do
 
   if $add_frame_snrs; then
     [ -z "$frame_snrs_scp" ] && echo "$0: add-frame-snrs is true but frame-snrs-scp is not supplied" && exit 1
-    utils/filter_scp.pl $data/utt2spk $frame_snrs_scp > $dir/frame_snrs.scp
+    utils/filter_scp.pl $data/utt2spk $frame_snrs_scp > $dir/frame_snrs.scp || exit 1
   fi
 
   sil_num_gauss=$sil_num_gauss_init
