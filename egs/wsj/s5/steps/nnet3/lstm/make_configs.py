@@ -76,10 +76,17 @@ def AddOutputNode(config_lines, input):
     component_nodes = config_lines['component-nodes']
     component_nodes.append('output-node name=output input={0}'.format(input['descriptor']))
 
+
+def AddOutputNodeWithDelay(config_lines, input, label_delay):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
+
 def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = ""):
     prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
     prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
-    AddOutputNode(config_lines, prev_layer_output)
+    AddOutputNodeWithDelay(config_lines, prev_layer_output, args.label_delay)
+
 
 def AddLstmLayer(config_lines,
                  name, input, cell_dim,
@@ -217,14 +224,14 @@ def PrintConfig(file_name, config_lines):
     f.write("\n".join(config_lines['component-nodes']))
     f.close()
 
-def ParseSpliceString(splice_indexes):
+def ParseSpliceString(splice_indexes, label_delay):
     ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
     split1 = splice_indexes.split(" ");  # we already checked the string is nonempty.
     if len(split1) < 1:
         splice_indexes = "0"
 
-    left_context = 0
-    right_context = 0
+    left_context = -label_delay
+    right_context = label_delay
     splice_array = []
     try:
         for i in range(len(split1)):
@@ -279,6 +286,8 @@ if __name__ == "__main__":
                         help="dimension of non-recurrent projection")
     parser.add_argument("--hidden-dim", type=int,
                         help="dimension of fully-connected layers")
+    parser.add_argument("--chunk-left-context", type=int,
+                        help="number of frames used to estimate the state of the first frame in truncated BPTT ", default=20)
 
     # Natural gradient options
     parser.add_argument("--ng-per-element-scale-options", type=str,
@@ -297,6 +306,11 @@ if __name__ == "__main__":
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
+    # Delay options
+    parser.add_argument("--label-delay", type=int,
+                        help="option to delay the labels to make the lstm robust")
+
+
     print(' '.join(sys.argv))
 
     args = parser.parse_args()
@@ -313,12 +327,14 @@ if __name__ == "__main__":
         sys.exit("--feat-dim argument is required")
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
+    if (args.chunk_left_context < 0):
+        sys.exit("--chunk-left-context has to be a non-negative integer")
     if (args.clipping_threshold < 0):
         sys.exit("--clipping-threshold has to be a non-negative")
 
 
 
-    parsed_splice_output = ParseSpliceString(args.splice_indexes.strip())
+    parsed_splice_output = ParseSpliceString(args.splice_indexes.strip(),args.label_delay)
     left_context = parsed_splice_output['left_context']
     right_context = parsed_splice_output['right_context']
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
@@ -326,6 +342,9 @@ if __name__ == "__main__":
 
     if (num_hidden_layers < args.num_lstm_layers):
         sys.exit("--num-lstm-layers : number of lstm layers has to be greater than number of layers, decided based on splice-indexes")
+
+    left_context = left_context + args.chunk_left_context
+    right_context = right_context
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(args.config_dir + "/vars", "w")

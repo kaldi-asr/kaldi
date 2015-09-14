@@ -66,16 +66,17 @@ cell_dim=1024  # dimension of the LSTM cell
 hidden_dim=1024  # the dimension of the fully connected hidden layer outputs
 recurrent_projection_dim=256
 non_recurrent_projection_dim=256
-norm_based_clipping=false
+norm_based_clipping=true
 clipping_threshold=1
-chunk_width=20 # number of output labels in the sequence used to train an LSTM
-chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label
+chunk_width=10 # number of output labels in the sequence used to train an LSTM
+chunk_left_context=10 # number of steps used in the estimation of LSTM state before prediction of the first label
                       ## see Chen 2015, "Training Deep Bidirectional LSTM Acoustic Model for LVCSR by a Context-Sensitive-Chunk BPTT Approach"
 
 
 io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
 affine_opts=
+label_delay=5
 
 # nnet3-train options
 update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processedi
@@ -229,6 +230,7 @@ if [ $stage -le -5 ]; then
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
     --num-targets $num_leaves \
+    --label-delay $label_delay \
    $dir/configs || exit 1;
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
