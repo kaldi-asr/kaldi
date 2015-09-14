@@ -10,8 +10,8 @@ set -e
 stage=0
 train_stage=-10
 has_fisher=true
-mic=sdm1
-use_sat_alignments=false
+mic=ihm
+use_sat_alignments=true
 affix=
 speed_perturb=true
 splice_indexes="-2,-1,0,1,2 0 0"
@@ -84,7 +84,7 @@ if [ $stage -le 7 ]; then
 
   #--online-ivector-dir exp/$mic/nnet3/ivectors_train_hires_sp2 \
 
-  steps/nnet3/lstm/train_delay.sh --stage $train_stage \
+  steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
     --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 12 \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
@@ -93,7 +93,6 @@ if [ $stage -le 7 ]; then
     --feat-type raw \
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "-tc 12" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
