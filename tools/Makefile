@@ -123,7 +123,8 @@ ATLAS/include/cblas.h: | atlas3.8.3.tar.gz
 	tar xozf atlas3.8.3.tar.gz ATLAS/include
 
 atlas3.8.3.tar.gz:
-	wget -T 10  http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || \
+	wget -T 10 ftp://ftp.vim.org/vol/2/metalab/distributions/tinycorelinux/2.x/tce/src/libatlas/atlas3.8.3.tar.gz || \
+    wget -T 10 http://sourceforge.net/projects/math-atlas/files/Stable/3.8.3/atlas3.8.3.tar.gz || \
 	wget --no-check-certificate -T 10 -t 3 http://www.danielpovey.com/files/kaldi/atlas3.8.3.tar.gz
 
 sph2pipe: sph2pipe_compiled
