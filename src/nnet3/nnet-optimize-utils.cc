@@ -136,6 +136,18 @@ void IdentifyIndexesMultiArgs(std::vector<NnetComputation::Command> *commands,
 }
 
 
+void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
+                               std::vector<int32*> *indexes_ranges_args) {
+  indexes_ranges_args->clear();
+  std::vector<NnetComputation::Command>::iterator iter = commands->begin(),
+      end = commands->end();
+  for (; iter != end; ++iter) {
+    NnetComputation::Command &command = *iter;
+    if (command.command_type == kAddRowRanges)
+      indexes_ranges_args->push_back(&(command.arg3));
+  }
+}
+
 void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
                          std::vector<int32*> *indexes_args) {
   indexes_args->clear();
@@ -382,6 +394,7 @@ void ComputationRenumberer::Renumber() {
   RenumberMatrices();
   RemoveIndexesMultiDuplicates();
   RenumberIndexes();
+  RenumberIndexesRanges();
 }
 
 void ComputationRenumberer::RemoveUnusedIndexesMulti() {
@@ -476,8 +489,7 @@ void ComputationRenumberer::RenumberIndexes() {
   for (; iter != end; ++iter)
     indexes_seen[**iter] = true;
 
-  std::map<std::vector<int32>*, int32> vector_to_new_index;
-  std::vector<int32> indexes_old_to_new(old_num_indexes);
+  std::vector<int32> old_to_new_index(old_num_indexes);
   typedef std::map<const std::vector<int32>*, int32,
                    PointerCompare<int32> > MapType;
   MapType indexes_map;
@@ -485,16 +497,16 @@ void ComputationRenumberer::RenumberIndexes() {
   int32 cur_index = 0;
   for (int32 i = 0; i < old_num_indexes; i++) {
     if (!indexes_seen[i]) {
-      indexes_old_to_new[i] = -1;
+      old_to_new_index[i] = -1;
     } else {
       std::pair<MapType::iterator, bool> p =
           indexes_map.insert(std::pair<const std::vector<int32>*, int32>(
               &(computation_->indexes[i]), cur_index));
       if (p.second) {  // was inserted-- was not there already.
-        indexes_old_to_new[i] = cur_index++;
+        old_to_new_index[i] = cur_index++;
       } else {
         int32 index_from_map = p.first->second;
-        indexes_old_to_new[i] = index_from_map;
+        old_to_new_index[i] = index_from_map;
       }
     }
   }
@@ -502,7 +514,7 @@ void ComputationRenumberer::RenumberIndexes() {
     return;  // An optimization.  No changes to the numbering are made.
   std::vector<std::vector<int32> > new_indexes(cur_index);
   for (int32 i = 0; i < old_num_indexes; i++) {
-    int32 new_index = indexes_old_to_new[i];
+    int32 new_index = old_to_new_index[i];
     if (new_index != -1)
       computation_->indexes[i].swap(new_indexes[new_index]);
   }
@@ -512,11 +524,67 @@ void ComputationRenumberer::RenumberIndexes() {
   for (iter = indexes_args.begin(); iter != end; ++iter) {
     int32 old_index = **iter;
     KALDI_ASSERT(old_index >= 0 && old_index < old_num_indexes);
-    int32 new_index = indexes_old_to_new[old_index];
+    int32 new_index = old_to_new_index[old_index];
     KALDI_ASSERT(new_index >= 0);
     **iter = new_index;
   }
 }
+
+void ComputationRenumberer::RenumberIndexesRanges() {
+  int32 old_num_indexes_ranges = computation_->indexes_ranges.size();
+  if (old_num_indexes_ranges == 0)
+    return;
+  std::vector<int32*> indexes_ranges_args;
+  IdentifyIndexesRangesArgs(&(computation_->commands), &indexes_ranges_args);
+
+  std::vector<bool> is_seen(old_num_indexes_ranges, false);
+  std::vector<int32*>::const_iterator iter = indexes_ranges_args.begin(),
+      end = indexes_ranges_args.end();
+  for (; iter != end; ++iter)
+    is_seen[**iter] = true;
+
+  std::vector<int32> old_to_new_index(old_num_indexes_ranges);
+  typedef std::map<const std::vector<std::pair<int32, int32> >*, int32,
+                   PointerCompare<std::pair<int32, int32> > > MapType;
+  MapType indexes_map;
+  int32 cur_index = 0;
+  for (int32 i = 0; i < old_num_indexes_ranges; i++) {
+    if (!is_seen[i]) {
+      old_to_new_index[i] = -1;
+    } else {
+      std::pair<MapType::iterator, bool> p =
+          indexes_map.insert(
+              std::pair<const std::vector<std::pair<int32, int32> >*, int32>(
+                  &(computation_->indexes_ranges[i]), cur_index));
+      if (p.second) {  // was inserted-- was not there already.
+        old_to_new_index[i] = cur_index++;
+      } else {
+        int32 index_from_map = p.first->second;
+        old_to_new_index[i] = index_from_map;
+      }
+    }
+  }
+  if (cur_index == old_num_indexes_ranges)
+    return;  // An optimization.  No changes to the numbering are made.
+  std::vector<std::vector<std::pair<int32, int32> > > new_indexes_ranges(
+      cur_index);
+  for (int32 i = 0; i < old_num_indexes_ranges; i++) {
+    int32 new_index = old_to_new_index[i];
+    if (new_index != -1)
+      computation_->indexes_ranges[i].swap(new_indexes_ranges[new_index]);
+  }
+  computation_->indexes_ranges.swap(new_indexes_ranges);
+
+  // renumber the indexes inside the commmands.
+  for (iter = indexes_ranges_args.begin(); iter != end; ++iter) {
+    int32 old_index = **iter;
+    KALDI_ASSERT(old_index >= 0 && old_index < old_num_indexes_ranges);
+    int32 new_index = old_to_new_index[old_index];
+    KALDI_ASSERT(new_index >= 0);
+    **iter = new_index;
+  }
+}
+
 
 
 
@@ -1115,7 +1183,617 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
   AddCommandsToComputation();
 }
 
+// inline
+void DerivativeTimeLimiter::GetPruneValues(int32 initial_submatrix,
+                                           int32 new_submatrix,
+                                           int32 *left_prune,
+                                           int32 *right_prune) const {
+  KALDI_ASSERT(initial_submatrix > 0 && new_submatrix > 0);
+  const NnetComputation::SubMatrixInfo
+      initial_info = computation_->submatrices[initial_submatrix],
+      new_info = computation_->submatrices[new_submatrix];
+  KALDI_ASSERT(initial_info.matrix_index == new_info.matrix_index);
+  *left_prune = new_info.row_offset - initial_info.row_offset;
+  if (right_prune != NULL) {
+    *right_prune = initial_info.num_rows - new_info.num_rows - *left_prune;
+    KALDI_ASSERT(*left_prune >= 0 && *right_prune >= 0);
+  }
+}
 
+// modify commands to take into account the fact that some matrices are zero or
+// partially zero.  Allocation commands and sizes of underlying matrices are not
+// affected-- we'll work out later on, what to do with them.
+void DerivativeTimeLimiter::ModifyCommand(NnetComputation::Command *command) {
+  CommandType command_type = command->command_type;
+  switch (command_type) {
+    case kAllocMatrixUndefined:
+    case kAllocMatrixFromOther:
+    case kAllocMatrixFromOtherZeroed:
+      KALDI_ERR << "No undefined initialization or initialization-from-other "
+                << "is allowed before LimitDerivativeTimes";
+      break;
+    case kAllocMatrixZeroed:
+    case kDeallocMatrix:
+      break;  // we'll deal with allocation and deallocation later on.
+    case kPropagate:
+      // Propagate commands are unchanged.
+      break;
+    case kStoreStats: {
+      const Component *component = nnet_.GetComponent(command->arg1);
+      if ((component->Properties() & kSimpleComponent)) {
+        // We choose to apply the time-limitation here, as it will save time and
+        // is probably what the user wants.
+        int32 submatrix_mapped = submatrix_map_[command->arg2];
+        if (submatrix_mapped == 0)
+          command->command_type = kNoOperation;
+        else
+          command->arg2 = submatrix_mapped;
+      }
+      break;
+    }
+    case kBackpropNoModelUpdate:  // we actually don't expect to encounter this,
+                                  // but it's trivial to support as it's the
+                                  // same as backprop.
+    case kBackprop: {
+      const Component *component = nnet_.GetComponent(command->arg1);
+      if (!(component->Properties() & kSimpleComponent)) {
+        // we don't (yet) do this optimization for non-simple Components...
+        // it would be a bit more complicated as we'd have to recompute the
+        // PrecomputedIndexes.
+        break;
+      }
+      int32 input_submatrix = command->arg3,
+          output_submatrix = command->arg4,
+          output_deriv_submatrix = command->arg5,
+          input_deriv_submatrix = command->arg6;
+      int32 mapped_input_submatrix = submatrix_map_[input_submatrix],
+           mapped_output_submatrix =  submatrix_map_[output_submatrix],
+     mapped_output_deriv_submatrix = submatrix_map_[output_deriv_submatrix],
+      mapped_input_deriv_submatrix = submatrix_map_[input_deriv_submatrix];
+
+      if (mapped_output_deriv_submatrix == 0) {
+        // completely outside range..
+        KALDI_ASSERT(mapped_input_deriv_submatrix == 0 &&
+                     mapped_input_submatrix == 0 &&
+                     mapped_output_submatrix == 0);
+        // just delete the command.
+        command->command_type = kNoOperation;
+      } else if (mapped_output_deriv_submatrix !=
+                 output_deriv_submatrix) {
+        // we're operating on a range of the input or output.
+        command->arg3 = mapped_input_submatrix;
+        command->arg4 = mapped_output_submatrix;
+        command->arg5 = mapped_output_deriv_submatrix;
+        command->arg6 = mapped_input_deriv_submatrix;
+      }
+    }
+      break;
+    case kMatrixCopy: case kMatrixAdd:
+      MapSimpleMatrixCommand(command);
+      break;
+    case kCopyRows: case kAddRows:
+      MapIndexesCommand(command);
+      break;
+    case kCopyRowsMulti: case kCopyToRowsMulti:
+    case kAddRowsMulti: case kAddToRowsMulti:
+      MapIndexesMultiCommand(command);
+      break;
+    case kAddRowRanges: {
+      MapAddRowRangesCommand(command);
+      break;
+    }
+    case kNoOperation: case kNoOperationMarker:
+      break;
+    default:
+      KALDI_ERR << "Un-handled command type.";
+  }
+}
+
+void DerivativeTimeLimiter::MapSimpleMatrixCommand(NnetComputation::Command *c) {
+  int32 submatrix1 = c->arg1,
+      submatrix2 = c->arg2;
+  int32 submatrix1_mapped = submatrix_map_if_deriv_[submatrix1],
+      submatrix2_mapped = submatrix_map_if_deriv_[submatrix2];
+  if (submatrix1_mapped == submatrix1 &&
+      submatrix2_mapped == submatrix2) {
+    // nothing to do.
+    return;
+  }
+  if (submatrix1_mapped == 0 || submatrix2_mapped == 0) {
+    // remove the operation-- it has nothing to do.
+    c->command_type = kNoOperation;
+    return;
+  }
+  // left_prune1 is the nmber of rows pruned away on the left for submatrix1.
+  int32 orig_num_rows = computation_->submatrices[submatrix1].num_rows,
+      left_prune1, left_prune2, right_prune1, right_prune2;
+  GetPruneValues(submatrix1, submatrix1_mapped, &left_prune1, &right_prune1);
+  GetPruneValues(submatrix2, submatrix2_mapped, &left_prune2, &right_prune2);
+  if (left_prune1 == left_prune2 && right_prune1 == right_prune2) {
+    // we took the same number of rows away from the left and right for
+    // both arguments; the normal mapped values will work in this case
+    c->arg1 = submatrix1_mapped;
+    c->arg2 = submatrix2_mapped;
+  } else {
+    // there is some kind of mismatch- we'll prune back to what remains
+    // after applying the maximum pruning on the left and right.
+    int32 left_prune = std::max(left_prune1, left_prune2),
+        right_prune = std::max(right_prune1, right_prune2);
+    if (left_prune + right_prune >= orig_num_rows) {
+      // everything was pruned away; remove the operation.
+      c->command_type = kNoOperation;
+      return;
+    } else {
+      int32 num_rows = orig_num_rows - left_prune - right_prune;
+      // note: the call NewSubMatrix effectively gives us a sub-matrix of a
+      // subm-matrix.
+      c->arg1 = computation_->NewSubMatrix(submatrix1,
+                                           left_prune, num_rows, 0, -1);
+      c->arg2 = computation_->NewSubMatrix(submatrix2,
+                                           left_prune, num_rows, 0, -1);
+    }
+  }
+}
+
+// does the processing for a command of type kCopyRows or kAddRows, where
+// 1st and 2nd args are submatrix indexes and the 3rd arg is a vector of
+// row-indexes.
+void DerivativeTimeLimiter::MapIndexesCommand(NnetComputation::Command *c) {
+  int32 output_submatrix = c->arg1,
+      input_submatrix = c->arg2;
+  int32 input_submatrix_mapped = submatrix_map_if_deriv_[input_submatrix],
+      output_submatrix_mapped = submatrix_map_if_deriv_[output_submatrix];
+  // input_submatrix_mapped and output_submatrix_mapped map both submatrices to
+  // just the portion that we are treating as nonzero.
+
+  if (input_submatrix_mapped == input_submatrix &&
+      output_submatrix_mapped == output_submatrix) {
+    return;  // nothing is changed.
+  }
+  if (input_submatrix_mapped == 0 ||
+      output_submatrix_mapped == 0) {
+    // Either input or output is all zeros; make the command a no-op.
+    // It may not be obvious that in the case of kCopyRows it would
+    // be valid to make this a no-op (because what if the existing
+    // contents were nonzero?), but we insist that this optimization
+    // come before optimizations, and we know that the originally
+    // generated computation would not overwrite a nonzero value
+    // (and there are no undefined values because we make sure to
+    // initialize everything with zeros; ununitialized values are
+    // allowed only at a later optimization stage.
+    c->command_type = kNoOperation;
+    return;
+  }
+  const std::vector<int32> &old_indexes = computation_->indexes[c->arg3];
+
+  int32 left_prune_input, left_prune_output;
+  GetPruneValues(input_submatrix, input_submatrix_mapped,
+                 &left_prune_input, NULL);
+  GetPruneValues(output_submatrix, output_submatrix_mapped,
+                 &left_prune_output, NULL);
+  int32 new_num_input_rows =
+      computation_->submatrices[input_submatrix_mapped].num_rows,
+      new_num_output_rows =
+      computation_->submatrices[output_submatrix_mapped].num_rows;
+  std::vector<int32> new_indexes(new_num_output_rows);
+  bool must_keep_command = false;
+  for (int32 i = 0; i < new_num_output_rows; i++) {
+    // the index into the 'new_indexes' vector is the row of the output
+    // submatrix; the value is the row of the input submatrix.
+    int32 orig_index = old_indexes[i + left_prune_output];
+    if (orig_index == -1) {
+      new_indexes[i] = -1;
+    } else {
+      int32 mapped_index = orig_index - left_prune_input;
+      if (mapped_index >= 0 && mapped_index < new_num_input_rows) {
+        new_indexes[i] = mapped_index;
+        must_keep_command = true;
+      } else {
+        // input was out of range (i.e. it takes a value that we are asserting
+        // is zero)-- use -1 as the index.
+        new_indexes[i] = -1;
+      }
+    }
+  }
+  if (!must_keep_command) {
+    c->command_type = kNoOperation;
+    return;
+  }
+  int32 new_indexes_index = computation_->indexes.size();
+  computation_->indexes.push_back(new_indexes);
+  c->arg1 = output_submatrix_mapped;
+  c->arg2 = input_submatrix_mapped;
+  c->arg3 = new_indexes_index;
+}
+
+void DerivativeTimeLimiter::MapIndexesMultiCommand(NnetComputation::Command *c) {
+  int32 submatrix_arg = c->arg1,
+      indexes_multi_arg = c->arg2;
+  int32 submatrix_mapped = submatrix_map_if_deriv_[submatrix_arg];
+  if (submatrix_mapped == 0) {
+    c->command_type = kNoOperation;
+    return;
+  }
+  int32 left_prune;
+  GetPruneValues(submatrix_arg, submatrix_mapped, &left_prune, NULL);
+  int32 new_num_rows = computation_->submatrices[submatrix_mapped].num_rows;
+  const std::vector<std::pair<int32, int32> > &old_indexes_multi(
+      computation_->indexes_multi[indexes_multi_arg]);
+  std::vector<std::pair<int32, int32> > new_indexes_multi(new_num_rows);
+  for (int32 i = 0; i < new_num_rows; i++) {
+    std::pair<int32,int32> &this_pair = new_indexes_multi[i];
+    this_pair = old_indexes_multi[i + left_prune];
+    int32 this_submatrix = this_pair.first,
+        this_row = this_pair.second;
+    if (this_submatrix == -1)  // don't map the (-1, -1) pairs.
+      continue;
+    int32 this_submatrix_mapped = submatrix_map_if_deriv_[this_submatrix];
+    if (this_submatrix_mapped == this_submatrix) {
+      continue;
+    } else if (this_submatrix_mapped == 0) {  // was completely out of range.
+      this_pair.first = -1;
+      this_pair.second = -1;
+    } else {
+      int32 this_left_prune, this_num_rows =
+          computation_->submatrices[this_submatrix_mapped].num_rows;
+      GetPruneValues(this_submatrix, this_submatrix_mapped,
+                     &this_left_prune, NULL);
+      int32 this_row_mapped = this_row - this_left_prune;
+      if (this_row_mapped >= 0 && this_row_mapped < this_num_rows) {
+        this_pair.first = this_submatrix_mapped;
+        this_pair.second = this_row_mapped;
+      } else {
+        this_pair.first = -1;
+        this_pair.second = -1;
+      }
+    }
+  }
+  if (submatrix_mapped == submatrix_arg &&
+      new_indexes_multi == old_indexes_multi)  // nothing changed.
+    return;
+  bool command_can_be_deleted = true;
+  std::vector<std::pair<int32, int32> >::iterator
+      iter = new_indexes_multi.begin(),
+      end = new_indexes_multi.end();
+  for (; iter != end; ++iter) {
+    if (iter->first != -1) {
+      command_can_be_deleted = false;
+      break;
+    }
+  }
+  if (command_can_be_deleted) {
+    c->command_type = kNoOperation;
+    return;
+  }
+  c->arg1 = submatrix_mapped;
+  c->arg2 = computation_->indexes_multi.size();
+  computation_->indexes_multi.push_back(new_indexes_multi);
+}
+
+void DerivativeTimeLimiter::MapAddRowRangesCommand(
+    NnetComputation::Command *c) {
+  int32 dest_submatrix = c->arg1,
+      src_submatrix = c->arg2,
+      indexes_ranges_index = c->arg3;
+  int32 dest_submatrix_mapped = submatrix_map_if_deriv_[dest_submatrix],
+      src_submatrix_mapped = submatrix_map_if_deriv_[src_submatrix];
+  if (dest_submatrix_mapped == dest_submatrix &&
+      src_submatrix_mapped == src_submatrix)
+    return;
+  if (dest_submatrix_mapped == 0 || src_submatrix_mapped == 0) {
+    c->command_type = kNoOperation;
+    return;
+  }
+  int32 dest_num_rows = computation_->submatrices[dest_submatrix_mapped].num_rows,
+      src_num_rows = computation_->submatrices[src_submatrix_mapped].num_rows,
+      src_left_prune, dest_left_prune;
+  GetPruneValues(dest_submatrix, dest_submatrix_mapped,
+                 &dest_left_prune, NULL);
+  GetPruneValues(src_submatrix, src_submatrix_mapped,
+                 &src_left_prune, NULL);
+  const std::vector<std::pair<int32,int32> > &old_indexes_ranges(
+      computation_->indexes_ranges[indexes_ranges_index]);
+  std::vector<std::pair<int32,int32> > new_indexes_ranges(dest_num_rows);
+  for (int32 i = 0; i < dest_num_rows; i++) {
+    std::pair<int32, int32> &this_pair = new_indexes_ranges[i];
+    this_pair = old_indexes_ranges[i + dest_left_prune];
+    // note: the .first is a start-index in the src matrix, and the .second is
+    // an end-index in the src matrix.
+    int32 new_first = this_pair.first - src_left_prune,
+        new_second = this_pair.second - src_left_prune;
+    if (new_first < 0) new_first = 0;
+    if (new_first >= src_num_rows) new_first = src_num_rows - 1;
+    if (new_second < 0) new_second = 0;
+    if (new_second >= src_num_rows) new_second = src_num_rows - 1;
+    KALDI_ASSERT(new_second >= new_first);
+    this_pair.first = new_first;
+    this_pair.second = new_second;
+  }
+  c->arg1 = dest_submatrix_mapped;
+  c->arg2 = src_submatrix_mapped;
+  c->arg2 = computation_->indexes_ranges.size();
+  computation_->indexes_ranges.push_back(new_indexes_ranges);
+}
+
+
+DerivativeTimeLimiter::DerivativeTimeLimiter(const Nnet &nnet,
+                                             int32 min_deriv_time,
+                                             int32 max_deriv_time,
+                                             NnetComputation *computation):
+    nnet_(nnet),
+    min_deriv_time_(min_deriv_time),
+    max_deriv_time_(max_deriv_time),
+    computation_(computation) { }
+
+void DerivativeTimeLimiter::LimitDerivTimes() {
+  KALDI_ASSERT(max_deriv_time_ >= min_deriv_time_);
+  if (min_deriv_time_ == std::numeric_limits<BaseFloat>::min() &&
+      max_deriv_time_ == std::numeric_limits<BaseFloat>::max())
+    return;  // nothing to do.
+
+  EnsureMatricesHaveEntireSubmatrices();
+  ComputeMatrixPruneInfo();
+  ComputeSubmatrixMaps();
+  ModifyCommands();
+  PruneMatrices();
+  RemoveNoOps(computation_);
+  RenumberComputation(computation_);
+}
+
+void DerivativeTimeLimiter::EnsureMatricesHaveEntireSubmatrices() {
+  int32 num_matrices = computation_->matrices.size(),
+      num_submatrices = computation_->submatrices.size();
+  entire_submatrix_.clear();
+  entire_submatrix_.resize(num_matrices, -1);
+  entire_submatrix_[0] = 0;
+  for (int32 s = 1; s < num_submatrices; s++)
+    if (computation_->IsWholeMatrix(s))
+      entire_submatrix_[computation_->submatrices[s].matrix_index] = s;
+  for (int32 m = 1; m < num_matrices; m++)
+    if (entire_submatrix_[m] == -1)
+      entire_submatrix_[m] = computation_->NewSubMatrix(m, 0, -1, 0, -1);
+}
+
+void DerivativeTimeLimiter::ComputeMatrixPruneInfo() {
+  KALDI_ASSERT(computation_->matrix_debug_info.size() ==
+               computation_->matrices.size() &&
+               "Limiting derivative times requires debug info.");
+  const int32 num_matrices = computation_->matrices.size(),
+      min_deriv_time = min_deriv_time_,
+      max_deriv_time = max_deriv_time_;
+  matrix_prune_info_.resize(num_matrices);
+  // matrix_prune_info_[0] will remain undefined.
+  for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
+    NnetComputation::MatrixDebugInfo &debug_info =
+        computation_->matrix_debug_info[matrix_index];
+    MatrixPruneInfo &prune_info = matrix_prune_info_[matrix_index];
+    const std::vector<Cindex> &cindexes = debug_info.cindexes;
+    int32 num_rows = computation_->matrices[matrix_index].num_rows;
+    KALDI_ASSERT(num_rows == static_cast<int32>(cindexes.size()));
+    int32 first_row_within_range = num_rows,
+        last_row_within_range = -1;
+    for (int32 i = 0; i < num_rows; i++) {
+      int32 t = cindexes[i].second.t;
+      if (t >= min_deriv_time && t <= max_deriv_time) {
+        if (i < first_row_within_range) first_row_within_range = i;
+        if (i > last_row_within_range) last_row_within_range = i;
+      }
+    }
+    if (last_row_within_range == -1) {
+      prune_info.fully_inside_range = false;
+      prune_info.partly_inside_range = false;
+    } else if (last_row_within_range == num_rows - 1 &&
+               first_row_within_range == 0) {
+      prune_info.fully_inside_range = true;
+      prune_info.partly_inside_range = false;
+    } else {
+      prune_info.fully_inside_range = false;
+      prune_info.partly_inside_range = true;
+      prune_info.row_begin = first_row_within_range;
+      prune_info.row_end = last_row_within_range + 1;
+    }
+  }
+}
+
+void DerivativeTimeLimiter::ComputeSubmatrixMaps() {
+  int32 num_submatrices = computation_->submatrices.size();
+  submatrix_map_.resize(num_submatrices);
+  submatrix_map_if_deriv_.resize(num_submatrices);
+  // index zero is for the empty submatrix.
+  submatrix_map_[0] = 0;
+  submatrix_map_if_deriv_[0] = 0;
+  for (int32 s = 1; s < num_submatrices; s++) {
+    NnetComputation::SubMatrixInfo &submatrix_info(computation_->submatrices[s]);
+    int32 matrix_index = submatrix_info.matrix_index;
+    int32 row_offset = submatrix_info.row_offset,
+        num_rows = submatrix_info.num_rows;
+    const MatrixPruneInfo &matrix_prune_info = matrix_prune_info_[matrix_index];
+    if (matrix_prune_info.fully_inside_range) {
+      submatrix_map_[s] = s;
+    } else if (!matrix_prune_info.partly_inside_range) {
+      // completely outside time range.
+      submatrix_map_[s] = 0;
+    } else {
+      // the matrix is partly inside the time range.
+      int32 pruned_row_begin = std::max(matrix_prune_info.row_begin,
+                                        row_offset),
+          pruned_row_end = std::min(matrix_prune_info.row_end,
+                                    row_offset + num_rows);
+      if (pruned_row_end <= pruned_row_begin) {
+        // there was no overlap between the submatrix and the part
+        // of the matrix that was inside the time range.
+        submatrix_map_[s] = 0;
+      } else {
+        // caution: this invalidates the reference 'submatrix_info'.
+        int32 row_offset_within_submatrix =
+            pruned_row_begin - row_offset,
+            new_num_rows = pruned_row_end - pruned_row_begin;
+        submatrix_map_[s] =
+            computation_->NewSubMatrix(s, row_offset_within_submatrix,
+                                       new_num_rows, 0, -1);
+      }
+    }
+    bool is_deriv = computation_->matrix_debug_info[matrix_index].is_deriv;
+    submatrix_map_if_deriv_[s] = (is_deriv ?
+                                  submatrix_map_[s] : s);
+  }
+}
+
+void DerivativeTimeLimiter::ModifyCommands() {
+  std::vector<NnetComputation::Command>::iterator
+      iter = computation_->commands.begin(),
+      end =  computation_->commands.end();
+  for (; iter != end; ++iter)
+    ModifyCommand(&(*iter));
+}
+
+// called from PruneMatrices only for matrices that are derivatives,
+// not inputs or outputs of the computation, and which are partly
+// inside the time range, this function returns true if we can
+// limit the size of the matrix (because variables outside the
+// desired range are never accessed), and false otherwise.
+bool DerivativeTimeLimiter::CanLimitMatrix(const Analyzer &analyzer,
+                                           int32 m) const {
+  int32 s_entire = entire_submatrix_[m];  // submatrix consisting of
+                                                     // all of the matrix.
+  int32 s_mapped = submatrix_map_[s_entire];  // the matrix limited in time.
+  KALDI_ASSERT(s_mapped != 0 && s_mapped != s_entire);
+  std::vector<int32> entire_variables, mapped_variables;
+  analyzer.variables.AppendVariablesForSubmatrix(s_entire,
+                                                 &entire_variables);
+  analyzer.variables.AppendVariablesForSubmatrix(s_mapped,
+                                                 &mapped_variables);
+  KALDI_ASSERT(entire_variables.size() > mapped_variables.size());
+  std::vector<int32> excluded_variables(entire_variables.size() -
+                                        mapped_variables.size());
+  std::vector<int32>::iterator end_iter =
+      std::set_difference(entire_variables.begin(), entire_variables.end(),
+                          mapped_variables.begin(), mapped_variables.end(),
+                          excluded_variables.begin());
+  KALDI_ASSERT(end_iter == excluded_variables.end());
+  // We want to make sure that none of the excluded variables are
+  // ever accessed.  If they are, we cannot prune the matrix.
+  int32 allocate_command = analyzer.matrix_accesses[m].allocate_command;
+  for (std::vector<int32>::iterator iter = excluded_variables.begin();
+       iter != end_iter; ++iter) {
+    int32 variable_index = *iter;
+    const std::vector<Access> &variable_accesses =
+        analyzer.variable_accesses[variable_index];
+    std::vector<Access>::const_iterator viter = variable_accesses.begin(),
+        vend = variable_accesses.end();
+    for (; viter != vend; ++viter) {
+      // if a variable outside the pruned range of the matrix is ever accessed
+      // apart from on allocation, we cannot prune.
+      if (viter->command_index != allocate_command) {
+        // we may one day want to look at this.. it's not really expected.
+        KALDI_VLOG(4) << "Cannot prune matrix " << m;
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void DerivativeTimeLimiter::LimitMatrices(const std::vector<bool> &will_limit) {
+  // first modify 'submatrices'.
+  int32 num_submatrices = computation_->submatrices.size(),
+      num_matrices = computation_->matrices.size();
+  for (int32 s = 1; s < num_submatrices; s++) {
+    NnetComputation::SubMatrixInfo &submat_info = computation_->submatrices[s];
+    int32 m = submat_info.matrix_index;
+    if (will_limit[m]) {
+      // we need to do something...
+      const MatrixPruneInfo &prune_info = matrix_prune_info_[m];
+      int32 matrix_num_rows = prune_info.row_end - prune_info.row_begin;
+      KALDI_ASSERT(matrix_num_rows > 0 &&
+                   matrix_num_rows < computation_->matrices[m].num_rows);
+      KALDI_ASSERT(prune_info.partly_inside_range);
+      int32 new_row_begin = submat_info.row_offset - prune_info.row_begin;
+      if (new_row_begin >= 0 &&
+          submat_info.num_rows + new_row_begin <= matrix_num_rows) {
+        // If this submatrix is entirely inside the limited range of the matrix,
+        // then we modify its row_offset to account for the truncation of
+        // rows to the left.
+        submat_info.row_offset = new_row_begin;
+      } else {
+        // This submatrix is not entirely the kept range of the matrix.
+        // We assume that this submatrix is never accessed directly (as when
+        // we modified the computation we ensured this).  We
+        // give it a valid but stupid size of num-rows=1, num-cols=1, so
+        // that if it ever does get accessed it should produce an error.
+        submat_info.row_offset = 0;
+        submat_info.num_rows = 1;
+        submat_info.col_offset = 0;
+        submat_info.num_cols = 1;
+      }
+    }
+  }
+  // next modify 'matrices'
+  for (int32 m = 1; m < num_matrices; m++) {
+    if (will_limit[m]) {
+      const MatrixPruneInfo &prune_info = matrix_prune_info_[m];
+      computation_->matrices[m].num_rows =
+          prune_info.row_end - prune_info.row_begin;
+      // num_cols stays the same.
+    }
+  }
+}
+
+void DerivativeTimeLimiter::PruneMatrices() {
+  Analyzer analyzer;
+  analyzer.Init(nnet_, *computation_);
+  KALDI_ASSERT(computation_->matrices.size() == entire_submatrix_.size());
+  int32 num_matrices = computation_->matrices.size();
+  std::vector<bool> will_limit(num_matrices, false);
+  bool will_limit_at_least_one = false;
+  for (int32 m = 1; m < num_matrices; m++) {
+    const MatrixAccesses &accesses = analyzer.matrix_accesses[m];
+    const MatrixPruneInfo &matrix_prune_info = matrix_prune_info_[m];
+    if (matrix_prune_info.fully_inside_range ||
+        accesses.is_input || accesses.is_output ||
+        !computation_->matrix_debug_info[m].is_deriv)
+      continue;  // nothing to do: it's inside the time-range or not a
+                 // derivative.
+    // if we got here it's not completely inside the time range, not an input or
+    // an output, and it's a derivative.
+    if (!matrix_prune_info.partly_inside_range) {
+      // completely outside time range.  we can prune the matrix if it is not an
+      // input or output, and is never accessed apart from allocation.
+      if (accesses.accesses.empty() ||
+          (accesses.accesses.size() == 1 &&
+           accesses.accesses[0].command_index == accesses.allocate_command)) {
+        // we prune the matrix away.  the only thing we need to do here is
+        // to remove the allocation and deallocation commands.
+        // they should exist, because we just checked that it's not an input
+        // or an output.
+        KALDI_ASSERT(accesses.allocate_command >= 0 &&
+                     accesses.deallocate_command >= 0);
+        computation_->commands[accesses.allocate_command].command_type =
+            kNoOperation;
+        computation_->commands[accesses.deallocate_command].command_type =
+            kNoOperation;
+      }
+    } else {
+      // the matrix is partly inside the time range, it's a derivative, and not
+      // an input or an output.
+      if (CanLimitMatrix(analyzer, m)) {
+        will_limit[m] = true;
+        will_limit_at_least_one = true;
+      }
+    }
+  }
+  if (will_limit_at_least_one)
+    LimitMatrices(will_limit);
+}
+
+void LimitDerivativeTimes(const Nnet &nnet,
+                          int32 min_deriv_time,
+                          int32 max_deriv_time,
+                          NnetComputation *computation) {
+  DerivativeTimeLimiter limiter(nnet, min_deriv_time, max_deriv_time,
+                                computation);
+  limiter.LimitDerivTimes();
+}
 
 } // namespace nnet3
 } // namespace kaldi

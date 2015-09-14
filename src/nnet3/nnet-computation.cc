@@ -181,41 +181,25 @@ static void GetIndexesStrings(const Nnet &nnet,
 }
 
 // outputs a string containing a text form of each of the elements of the
-// "indexes_multi" vector.  this requires a little care because the vectors of
-// pairs in indexes_multi can have a couple of different meanings.  If used in
-// kAddRowsMulti, KAddToRowsMulti, kCopyRowsMulti or kCopyToRowsMulti it's pairs
-// (sub-matrix index, row index).  Here, while the .first of each element refers
-// to a sub-matrix index, it's only the actual matrices that have names, so we
-// have to go back to the names of the actual matrices and maybe specify a
-// dimension range.  In a simple case it would be e.g. m1(1,:); in a harder case
-// it would be e.g. m1(2, 10:19).  Also the vectors in "indexes_multi" may be used
-// in commands of type kAddRowRange where each pair refers to a row range like
-// 10-19.  [note, the pair 10,20 would mean the range 10-19 and we print in
-// the 10-19 format].  We figure out how each vector is used and print the
-// string in the appropriate format.
+// "indexes_multi" vector.
 static void GetIndexesMultiStrings(
     const Nnet &nnet,
     const NnetComputation &computation,
     std::vector<std::string> *indexes_multi_strings) {
   int32 indexes_multi_size = computation.indexes_multi.size();
   indexes_multi_strings->resize(indexes_multi_size);
-  std::vector<bool> is_row_range(indexes_multi_size, false);
-  for (int32 c = 0; c < computation.commands.size(); c++)
-    if (computation.commands[c].command_type == kAddRowRanges)
-      is_row_range[computation.commands[c].arg3] = true;
 
   for (int32 i = 0; i < indexes_multi_size; i++) {
-    bool row_range = is_row_range[i];
     std::ostringstream os;
     os << "[";
     const std::vector<std::pair<int32, int32> > &vec =
         computation.indexes_multi[i];
     int32 size = vec.size();
     for (int32 j = 0; j < size; j++) {
-      if (row_range) {
-        os << vec[j].first << ":" << (vec[j].second - 1);
+      int32 submat_index = vec[j].first, row_index = vec[j].second;
+      if (submat_index == -1) {
+        os << "NULL";
       } else {
-        int32 submat_index = vec[j].first, row_index = vec[j].second;
         const NnetComputation::SubMatrixInfo &submat =
             computation.submatrices[submat_index];
         const NnetComputation::MatrixInfo &mat =
@@ -223,7 +207,17 @@ static void GetIndexesMultiStrings(
         int32 row = row_index + submat.row_offset;
         int32 col_start = submat.col_offset,
             col_end = col_start + submat.num_cols;
-        KALDI_ASSERT(row < mat.num_rows);
+        if (!(row_index < submat.num_rows &&
+              row < mat.num_rows)) {
+          KALDI_WARN << "Invalid indexes in indexes-multi[" << i
+                     << ": submatrix " << submat_index << " = m"
+                     << submat.matrix_index << "(" << submat.row_offset
+                     << ':' << (submat.row_offset + submat.num_rows - 1)
+                     << ',' << submat.col_offset << ':'
+                     << (submat.col_offset + submat.num_cols - 1) << ") has "
+                     << submat.num_rows << " rows, but you access row "
+                     << row_index;
+        }
         if (col_start == 0 && col_end == mat.num_cols)
           os << 'm' << submat.matrix_index << '(' << row << ",:)";
         else
@@ -329,11 +323,18 @@ static void PrintCommand(std::ostream &os,
          << indexes_multi_strings[c.arg2] << ")\n";
       break;
     }
-    case kAddRowRanges:
+    case kAddRowRanges: {
       os << submatrix_strings[c.arg1] << ".AddRowRanges("
-          << submatrix_strings[c.arg2] << ", "
-          << indexes_multi_strings[c.arg2] << ")\n";
+         << submatrix_strings[c.arg2] << ", [";
+      const std::vector<std::pair<int32, int32> > &pairs =
+           computation.indexes_ranges[c.arg3];
+      for (size_t i = 0; i < pairs.size(); i++) {
+        os << pairs[i].first << ":" << (pairs[i].second - 1);
+        if (i + 1 < pairs.size()) os << ",";
+      }
+      os << "])\n";
       break;
+    }
     case kNoOperation:
       os << "[no-op]\n";
       break;

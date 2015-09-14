@@ -189,11 +189,7 @@ void ComputationVariables::RecordAccessForSubmatrix(
       ca->matrices_written.push_back(matrix_index);
       // if submatrix does not span the full row range of the matrix,
       // a write operation has to be considered a read/write operation
-      // on the underlying variable.
-      if (!submatrix_is_whole_matrix_[submatrix_index])
-        AppendVariablesForSubmatrix(submatrix_index,
-                                    &(ca->variables_read));
-      // similar logic applies to the matrix accesses.
+      // on the underlying matrix
       if (!is_whole_matrix)
         ca->matrices_read.push_back(matrix_index);
       break;
@@ -209,6 +205,38 @@ void ComputationVariables::RecordAccessForSubmatrix(
   }
 }
 
+std::string ComputationVariables::DescribeVariable(int32 variable) const {
+  KALDI_ASSERT(variable >= 0 && variable < num_variables_);
+  int32 matrix_index = variable_to_matrix_[variable],
+      offset = variable - matrix_to_variable_index_[matrix_index],
+      num_column_variables = column_split_points_[matrix_index].size() - 1,
+      num_row_variables = row_split_points_[matrix_index].size() - 1,
+      column_variable = offset % num_column_variables,
+      row_variable = offset / num_row_variables;
+  KALDI_ASSERT(column_variable >= 0 && row_variable >= 0 &&
+               row_variable < num_row_variables &&
+               column_variable < num_column_variables);
+  std::ostringstream os;
+  os << 'm' << matrix_index;
+  if (num_row_variables != 1 || num_column_variables != 1) {
+    os << '(';
+    if (num_row_variables == 1) {
+      os << ':';
+    } else {
+      os << row_split_points_[matrix_index][row_variable] << ':'
+         << row_split_points_[matrix_index][row_variable+1] - 1;
+    }
+    os << ',';
+    if (num_column_variables == 1) {
+      os << ':';
+    } else {
+      os << column_split_points_[matrix_index][column_variable] << ':'
+         << column_split_points_[matrix_index][column_variable+1] - 1;
+    }
+    os << ')';
+  }
+  return os.str();
+}
 
 
 /// given a vector of pairs from computation.indexes_multi_indexes
@@ -550,8 +578,7 @@ void ComputationChecker::CheckComputationRewrite() const {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
     int32 matrix_index = a_.variables.GetMatrixForVariable(v);
     if (accesses.empty() && ! a_.matrix_accesses[matrix_index].is_input) {
-      KALDI_ERR << "Variable " << v << " (part of matrix m"
-                << matrix_index << ") "
+      KALDI_ERR << "Variable " << v << " = " << a_.variables.DescribeVariable(v)
                 << "is never used.";
     }
     int32 num_accesses = accesses.size();
@@ -566,8 +593,8 @@ void ComputationChecker::CheckComputationRewrite() const {
       for (int32 access = first_pure_read + 1;
            access < num_accesses; access++) {
         if (accesses[access].access_type != kReadAccess) {
-          KALDI_ERR << "Variable " << v << " (part of matrix m"
-                    << matrix_index << ") "
+          KALDI_ERR << "Variable " << v << " = "
+                    << a_.variables.DescribeVariable(v)
                     << "is modified after being read "
                     << "(this is not expected before optimization)";
         }
@@ -588,12 +615,11 @@ void ComputationChecker::CheckComputationUndefined() const {
     bool is_input = a_.matrix_accesses[matrix_index].is_input;
     if (! is_input) {
       if (accesses.empty())
-        KALDI_ERR << "Variable " << v << " (part of matrix m"
-                  << matrix_index << ") "
-                  << "is never used.";
+        KALDI_ERR << "Variable " << v << " == "
+                  << a_.variables.DescribeVariable(v) << "is never used.";
       if (accesses[0].access_type != kWriteAccess)
-        KALDI_ERR << "Variable " << v << " (part of matrix m"
-                  << matrix_index << ") "
+        KALDI_ERR << "Variable " << v << " == "
+                  << a_.variables.DescribeVariable(v)
                   << "is read before it is written to";
     }
   }

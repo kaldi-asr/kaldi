@@ -121,8 +121,19 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
                    v_accesses[0].command_index == allocate_command &&
                    v_accesses[0].access_type == kWriteAccess);
       if (v_accesses.size() > 1 &&
-          v_accesses[1].access_type != kWriteAccess)
+          v_accesses[1].access_type != kWriteAccess) {
         all_variables_ok = false;  // first access after zeroing was not a write
+        break;
+      }
+      if (v_accesses.size() == 1 &&
+          accesses.is_output) {
+        // the only command that touches this variable is the allocation, and it
+        // is an output variable.  (this is unusual, but can happen e.g. if it's
+        // a derivative, but due to min_deriv_time and max_deriv_time it ends up
+        // always being zero.
+        all_variables_ok = false;
+        break;
+      }
     }
     if (all_variables_ok) {
       // Here is where the change actually happens.
@@ -269,6 +280,11 @@ void Optimize(const NnetOptimizeOptions &config,
   if (!config.optimize)
     return;
 
+  // this will do nothing unless --min-deriv-time or --max-deriv-time was
+  // set.
+  LimitDerivativeTimes(nnet, config.min_deriv_time, config.max_deriv_time,
+                       computation);
+
   if (config.consolidate_model_update)
     ConsolidateModelUpdate(nnet, request, computation);
 
@@ -368,8 +384,8 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     computation = new NnetComputation;
     compiler.CreateComputation(opts, computation);
 
-    int32 verbose_level = 4;
-    if (GetVerboseLevel() >= verbose_level) {
+    int32 verbose_cutoff = 4;
+    if (GetVerboseLevel() >= verbose_cutoff) {
       std::ostringstream os1;
       request->Print(os1);
       KALDI_LOG << "Computation request is " << os1.str();
@@ -386,7 +402,12 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       checker.Check();
     }
     Optimize(opt_config_, nnet_, *request, computation);
-    { // check the computation again.
+    if (GetVerboseLevel() >= verbose_cutoff) {
+      std::ostringstream os;
+      computation->Print(os, nnet_);
+      KALDI_LOG << "Optimized computation is: " << os.str();
+    }
+    {  // check the computation again.
       CheckComputationOptions check_config;
       ComputationChecker checker(check_config, nnet_, *request, *computation);
       checker.Check();

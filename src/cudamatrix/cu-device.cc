@@ -213,8 +213,6 @@ void CuDevice::FinalizeActiveGpu() {
     KALDI_LOG << "The active GPU is [" << act_gpu_id << "]: " << name << "\t"
               << GetFreeMemory(&free_memory_at_startup_, NULL) << " version "
               << properties_.major << "." << properties_.minor;
-
-    if (verbose_) PrintMemoryUsage();
   }
   return;
 }

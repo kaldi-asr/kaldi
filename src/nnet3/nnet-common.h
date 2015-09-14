@@ -39,7 +39,7 @@ namespace nnet3 {
    of the member of the minibatch, 't', used for the frame index in speech
    recognition, and 'x', which is a catch-all extra index which we might use in
    convolutional setups or for other reasons.  It is possible to extend this by
-   adding new indexes if needed. 
+   adding new indexes if needed.
 */
 struct Index {
   int32 n;  // member-index of minibatch, or zero.
@@ -48,15 +48,15 @@ struct Index {
   // ... it is possible to add extra index here, if needed.
   Index(): n(0), t(0), x(0) { }
   Index(int32 n, int32 t, int32 x = 0): n(n), t(t), x(x) { }
-  
+
   bool operator == (const Index &a) const {
     return n == a.n && t == a.t && x == a.x;
   }
   bool operator < (const Index &a) const {
-    if (n < a.n) { return true; }
-    else if (n > a.n) { return false; }
-    else if (t < a.t) { return true; }
+    if (t < a.t) { return true; }
     else if (t > a.t) { return false; }
+    else if (n < a.n) { return true; }
+    else if (n > a.n) { return false; }
     else return (x < a.x);
   }
   Index operator + (const Index &other) const {

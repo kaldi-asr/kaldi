@@ -157,25 +157,25 @@ struct ComputationRequest {
      from matrix indexed arg2 (using shallow swap), then zero the matrix
      we just allocated.
    - kPropagate: Forward computation of neural net, see Component::Propagate()
-   - arg1 is is component-index in neural net
-   - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
-   for simple Components)
-   - arg3 is sub-matrix index of input
-   - arg4 is sub-matrix index of output
+     - arg1 is is component-index in neural net
+     - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
+       for simple Components)
+     - arg3 is sub-matrix index of input
+     - arg4 is sub-matrix index of output
    - kStoreStats: Call Component::StoreStats() (used for computing diagnostics
-   such as average activations; called after Propagate).
-   - arg1 is component-index in neural net
-   - arg2 is sub-matrix index of the output of the Propagate function
+      such as average activations; called after Propagate).
+     - arg1 is component-index in neural net
+     - arg2 is sub-matrix index of the output of the Propagate function
    - kBackprop: Do the back-propagation operation, see Component::Backprop()
-   - arg1 is index of component in neural net
-   - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
-   for simple Components)
-   - arg3 is submatrix-index of input value (input to Propagate()); 0 if unused
-   - arg4 is submatrix-index of output value (output of Propagate()); 0 if unused
-   - arg5 is submatrix-index of output derivative
-   - arg6 is submatrix-index of input derivative; 0 if unused.
+     - arg1 is index of component in neural net
+     - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
+       for simple Components)
+     - arg3 is submatrix-index of input value (input to Propagate()); 0 if unused
+     - arg4 is submatrix-index of output value (output of Propagate()); 0 if unused
+     - arg5 is submatrix-index of output derivative
+     - arg6 is submatrix-index of input derivative; 0 if unused.
    - kBackpropNoModelUpdate: as kBackprop, but does not set the
-    'to_update' argument to the Backprop call, even if the model  is updatable,
+     'to_update' argument to the Backprop call, even if the model  is updatable,
      so it skips the model-update phase of backprop.
    - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
    - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
@@ -184,18 +184,18 @@ struct ComputationRequest {
    - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
      with sub-matrix arg2 and indexes[arg3] as arguments.
    - kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti:
-   Call the corresponding function in class CuMatrix.
-   - arg1 is sub-matrix index of *this matrix in operation
-   - arg2 is index into "indexes_multi", of which each pair is
-   (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
-   is turned into a vector of BaseFloat* (pointers to matrix rows)
-   before being given as the argument to the function.
+     Call the corresponding function in class CuMatrix.
+     - arg1 is sub-matrix index of *this matrix in operation
+     - arg2 is index into "indexes_multi", of which each pair is
+     (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
+     is turned into a vector of BaseFloat* (pointers to matrix rows)
+     before being given as the argument to the function.
    - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
-   on sub-matrix arg1, with arg2 as source matrix, and indexes given
-   indexes_ranges[arg3].
+     on sub-matrix arg1, with arg2 as source sub-matrix, and indexes given
+     indexes_ranges[arg3].
    - kNoOperation: does nothing (sometimes useful during optimization)
    - kNoOperationMarker: does nothing, but used to mark end of forward commands
-   (sometimes useful during optimization).
+     (sometimes useful during optimization).
 */
 enum CommandType {
   kAllocMatrixUndefined, kAllocMatrixZeroed,
@@ -321,7 +321,8 @@ struct NnetComputation {
   /// the submatrix of which we want a column and/or row range.  As a
   /// convenience, -1 for the 'num_rows' or the 'num_cols' will be interpreted
   /// as 'as much as possible'.  Returns the new sub-matrix index.  Writes to
-  /// 'this->submatrices'.
+  /// 'this->submatrices'.  There is no mechanism to stop duplicates from being
+  /// created, but calling RenumberComputation() will remove such duplicates.
   int32 NewSubMatrix(int32 base_submatrix,
                      int32 row_offset, int32 num_rows,
                      int32 col_offset, int32 num_cols);

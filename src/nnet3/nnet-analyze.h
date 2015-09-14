@@ -139,13 +139,13 @@ class ComputationVariables {
       AccessType access_type,
       CommandAttributes *ca) const;
 
-  /// Appends to variables_indexes the list of variables corresponding to a
-  /// matrix index.
+  /// Appends to variables_indexes the sorted list of variables corresponding to
+  /// a matrix index.
   void AppendVariablesForMatrix(
       int32 matrix_index,
       std::vector<int32> *variable_indexes) const;
 
-  // Appends to variable_indexes the list of variables corresponding to a
+  // Appends to variable_indexes the sorted list of variables corresponding to a
   // submatrix index.
   void AppendVariablesForSubmatrix(
       int32 submatrix_index,
@@ -155,6 +155,10 @@ class ComputationVariables {
   int32 NumVariables() const { return num_variables_; }
 
   int32 GetMatrixForVariable(int32 variable) const;
+
+  // returns a string that describes a variable in Matlab-like format (but with
+  // zero indexing): something like "m1" or "m1(0:99,:)" or "m1(0:19,10:49)"
+  std::string DescribeVariable(int32 variable) const;
 
  private:
   // sets up split_points_, matrix_to_variable_index_, and num_variables_.
@@ -211,8 +215,8 @@ class ComputationVariables {
 };
 
 
-// This struct records an access to a variable (i.e. a row range of a matrix) or
-// to a matrix.
+// This struct records an access to a variable (i.e. a row and column range of a
+// matrix).
 struct Access {
   int32 command_index;
   AccessType access_type;
@@ -252,7 +256,8 @@ struct MatrixAccesses {
   /// (read, read/write, write).  It will be sorted on command index with only
   /// one record per command.  Note: a write to only a part of the matrix
   /// (i.e. a submatrix that isn't the whole thing) will be recorded as an
-  /// access of type read/write.
+  /// access of type read/write.  An allocation with zeroing is recorded
+  /// as a write access.
   std::vector<Access> accesses;
   /// true if this matrix is an input to the computation (i.e. either an
   /// input-value or an output-deriv).
@@ -401,17 +406,8 @@ class ComputationChecker {
 };
 
 
-
-
-
-
-
-
-
-
 } // namespace nnet3
 } // namespace kaldi
 
 
 #endif
-

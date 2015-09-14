@@ -172,6 +172,12 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 // the outputs are the same.
 static void UnitTestNnetOptimize() {
   NnetOptimizeOptions optimize_all;
+  // randomly sometimes set min_deriv and max_deriv to small/large values,
+  // which will cause some of the LimitDerivativeTimes() code to be called
+  // (without really changing anything).
+  if (RandInt(0, 3) == 0) optimize_all.min_deriv_time = -200;
+  if (RandInt(0, 3) == 0) optimize_all.max_deriv_time = 1000;
+
   // this is useful for debugging as it removes nans:
   // optimize_all.initialize_undefined = false;
   bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
