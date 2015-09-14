@@ -114,7 +114,7 @@ sctk: sctk-2.4.9-20141015-1634Z.tar.bz2
 
 sctk-2.4.9-20141015-1634Z.tar.bz2:
 	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2|| \
-    wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
+	wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
 
 
 atlas: ATLAS/include/cblas.h
@@ -138,8 +138,8 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 	tar xzf sph2pipe_v2.5.tar.gz
 
 sph2pipe_v2.5.tar.gz:
-	wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz || \
-	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz
+	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz || \
+	wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz
 
 openblas: openblas_compiled
 
