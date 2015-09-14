@@ -218,6 +218,9 @@ class Segmentation {
                            int32 filter_label);
 
 
+    // Merge two segmentations
+    void Merge(const Segmentation &other_seg, bool sort = true);
+
     // Create new segmentation by sub-segmentation this segmentation and 
     // assign new labels to the filtered regions from secondary segmentation.
     // This is similar to "IntersectSegments", but instead of keeping only 

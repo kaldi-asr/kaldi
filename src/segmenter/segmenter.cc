@@ -416,6 +416,14 @@ void Segmentation::IntersectSegments(
   Check();
 }
 
+void Segmentation::Merge(const Segmentation &seg, bool sort) {
+  for (SegmentList::const_iterator it = seg.Begin(); it != seg.End(); ++it) {
+    segments_.push_back(*it);
+    dim_++;
+  }
+  if (sort) Sort();
+}
+
 void Segmentation::CreateSubSegments(
     const Segmentation &secondary_segmentation,
     int32 secondary_label, int32 subsegment_label,
