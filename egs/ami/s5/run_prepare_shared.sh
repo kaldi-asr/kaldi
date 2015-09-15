@@ -25,6 +25,7 @@ case "$(hostname -d)" in
 esac
 
 : "${IRSTLM:=}" # set the variable as we are running the script in -u mode
+                # in -u mode, bash checks if all variables have been initialized
 # We can override the automatic setup by : 
 # './run_prepare_shared.sh --AMI-DIR [dir] --FISHER-TRANS [dir]'
 . utils/parse_options.sh 
