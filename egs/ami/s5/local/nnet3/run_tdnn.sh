@@ -6,7 +6,7 @@
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
-set -e
+set -x
 
 stage=0
 train_stage=-10
@@ -69,14 +69,17 @@ if [ $stage -le 7 ]; then
     --relu-dim 850 \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
-exit;
+
 if [ $stage -le 8 ]; then
-  # If this setup used PLP features, we'd have to give the option --feature-type plp
-  # to the script below.
-  steps/online/nnet2/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
-    data/lang exp/$mic/nnet3/extractor "$dir" ${dir}_online || exit 1;
+  rm -f exp/$mic/nnet3/.error 2>/dev/null
+  for data in dev eval; do
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
+      data/$mic/${data}_hires exp/$mic/nnet3/extractor exp/$mic/nnet3/ivectors_${data} || touch exp/$mic/nnet3/.error &
+  done
+  wait
+  [ -f exp/$mic/nnet3/.error ] && echo "$0: error extracting iVectors." && exit 1;
 fi
-wait;
+
 
 if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
@@ -84,28 +87,13 @@ if [ $stage -le 9 ]; then
   for decode_set in dev eval; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      decode_dir=${dir}_online/decode_${decode_set}_utt
-      steps/online/nnet2/decode.sh --config conf/decode.conf --cmd "$decode_cmd" --nj $num_jobs \
-        --per-utt true $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
+      decode_dir=${dir}/decode_${decode_set}
+
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+          --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
+         $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
   done
 fi
-
-if [ $stage -le 10 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information, but looks to the end
-  # of the utterance while computing the iVector (--online false)
-  for decode_set in dev eval; do
-    (
-      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      decode_dir=${dir}_online/decode_${decode_set}_utt_offline
-      steps/online/nnet2/decode.sh --config conf/decode.conf --cmd "$decode_cmd" --nj $num_jobs \
-        --per-utt true --online false $graph_dir data/$mic/${decode_set}_hires \
-          $decode_dir || exit 1;
-    ) & 
-  done
-fi
 wait;
-
 exit 0;
-

@@ -11,6 +11,7 @@ fi
 
 set -e
 set -u
+set -x
 
 amidir=$1
 mkdir -p $amidir
@@ -24,8 +25,10 @@ annot="$amidir/$annotver"
 logdir=data/local/downloads; mkdir -p $logdir/log
 [ ! -f $annot.zip ] && wget -nv -O $annot.zip $amiurl/AMICorpusAnnotations/$annotver.zip &> $logdir/log/download_ami_annot.log
 
-mkdir -p $amidir/annotations
-unzip -o -d $amidir/annotations $annot.zip &> /dev/null
+if [ ! -d $amidir/annotations ]; then
+  mkdir -p $amidir/annotations
+  unzip -o -d $amidir/annotations $annot.zip &> /dev/null
+fi
 
 [ ! -f "$amidir/annotations/AMI-metadata.xml" ] && echo "$0: File AMI-Metadata.xml not found under $amidir/annotations." && exit 1;
 

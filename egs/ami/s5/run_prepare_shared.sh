@@ -16,10 +16,15 @@ case "$(hostname -d)" in
     FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran
     AMI_DIR=$(mktemp -d $(find /mnt/scratch*/$USER -maxdepth 0)/kaldi_ami_data_XXXXXX)
   ;;
+  clsp.jhu.edu) # JHU cluster
+   FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1
+   AMI_DIR=/export/corpora4/ami/amicorpus 
+  ;;
   *) echo "Using defaults locations,"
   ;;
 esac
 
+: "${IRSTLM:=}" # set the variable as we are running the script in -u mode
 # We can override the automatic setup by : 
 # './run_prepare_shared.sh --AMI-DIR [dir] --FISHER-TRANS [dir]'
 . utils/parse_options.sh 
@@ -31,6 +36,7 @@ if [ -z $IRSTLM ] ; then
   export IRSTLM=$KALDI_ROOT/tools/irstlm/
 fi
 export PATH=${PATH}:$IRSTLM/bin
+
 if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: the IRSTLM is not available or compiled" >&2
   echo "$0: Error: We used to install it by default, but." >&2
@@ -39,6 +45,14 @@ if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: and run extras/install_irstlm.sh" >&2
   exit 1
 fi
+
+if ! command -v ngram-count >/dev/null 2>&1 ; then
+  echo "$0: Error: the SRILM is not available or compiled" >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_srilm.sh" >&2
+  exit 1
+fi
+
 
 # Set bash to 'debug' mode, it will exit on : 
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
