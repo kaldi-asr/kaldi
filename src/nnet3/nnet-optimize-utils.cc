@@ -102,14 +102,18 @@ void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *commands,
 }
 
 
-void IdentifyMatrixArgsInComputation(NnetComputation *computation,
+void IdentifyMatrixArgsInComputation(bool include_in_submatrices,
+                                     NnetComputation *computation,
                                      std::vector<int32*> *matrix_args) {
   IdentifyMatrixArgs(&(computation->commands), matrix_args);
   int32 num_submatrices = computation->submatrices.size();
-  matrix_args->reserve(matrix_args->size() + computation->submatrices.size() +
+  matrix_args->reserve(matrix_args->size() +
+                       (include_in_submatrices ?
+                        computation->submatrices.size() : 0) +
                        2 * computation->input_output_info.size());
-  for (int32 s = 1; s < num_submatrices; s++)
-    matrix_args->push_back(&(computation->submatrices[s].matrix_index));
+  if (include_in_submatrices)
+    for (int32 s = 1; s < num_submatrices; s++)
+      matrix_args->push_back(&(computation->submatrices[s].matrix_index));
   unordered_map<int32, std::pair<int32, int32> >::iterator
       iter = computation->input_output_info.begin(),
       end = computation->input_output_info.end();
@@ -274,7 +278,9 @@ void ComputationRenumberer::ComputeMatrixIsUsed() {
   matrix_is_used_[0] = true;
 
   std::vector<int32*> matrix_args;
-  IdentifyMatrixArgsInComputation(computation_, &matrix_args);
+  bool include_in_submatrices = false;
+  IdentifyMatrixArgsInComputation(include_in_submatrices,
+                                  computation_, &matrix_args);
   std::vector<int32*>::iterator iter = matrix_args.begin(),
       end = matrix_args.end();
   for (; iter != end; ++iter) {
@@ -349,7 +355,9 @@ void ComputationRenumberer::RenumberSubmatrices() {
 
 void ComputationRenumberer::RenumberMatrices() {
   std::vector<int32*> matrix_args;
-  IdentifyMatrixArgsInComputation(computation_, &matrix_args);
+  bool include_in_submatrices = true;
+  IdentifyMatrixArgsInComputation(include_in_submatrices,
+                                  computation_, &matrix_args);
   std::vector<int32*>::iterator iter = matrix_args.begin(),
       end = matrix_args.end();
   for (; iter != end; ++iter) {

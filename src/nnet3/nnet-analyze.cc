@@ -643,7 +643,7 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
         KALDI_ERR << "Input matrix is initialized.";
     } else {
       if (accesses.allocate_command == -1)
-        KALDI_ERR << "Matrix is not initialized.";
+        KALDI_ERR << "Matrix m" << matrix_index << "is not initialized.";
       if (accesses.accesses.empty()) {
         KALDI_ERR << "Matrix m" << matrix_index << " is never accessed.";
       } else if (accesses.accesses.front().command_index <
@@ -657,7 +657,7 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
         KALDI_ERR << "Output matrix is destroyed.";
     } else {
       if (accesses.deallocate_command == -1)
-        KALDI_ERR << "Matrix is not destroyed.";
+        KALDI_ERR << "Matrix m" << matrix_index << " is not destroyed.";
       if (accesses.accesses.empty()) {
         if (accesses.is_input) {
           // we allow there to be no accesses if it is an input, e.g. if an

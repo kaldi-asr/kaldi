@@ -347,7 +347,7 @@ class ComputationRenumberer {
   /// number of elements of 'used' that were true.
   static int32 CreateRenumbering(const std::vector<bool> &used,
                                  std::vector<int32> *renumbering);
-  
+
   // vector of bool indexed by original submatrix-index, that is true if a
   // submatrix-index is used somewhere in the computation (always true for
   // the zeroth element).
@@ -385,14 +385,14 @@ class DerivativeTimeLimiter {
                         NnetComputation *computation);
 
   void LimitDerivTimes();
-  
+
  private:
 
   // This command ensures that for each matrix m there is a corresponding
   // submatrix that spans the entire matrix, and stores its index in
   // entire_submatrix_[m].
   void EnsureMatricesHaveEntireSubmatrices();
-  
+
   // sets up matrix_prune_info_.
   void ComputeMatrixPruneInfo();
 
@@ -409,7 +409,7 @@ class DerivativeTimeLimiter {
   // we can actually limit their extent in time, and changes the way the
   // matrices are allocated (it may remove some matrices entirely).
   void PruneMatrices();
-  
+
   // called from PruneMatrices only for matrices that are derivatives,
   // not inputs or outputs of the computation, and which are partly
   // inside the time range, this function returns true if we can
@@ -417,12 +417,12 @@ class DerivativeTimeLimiter {
   // desired range are never accessed), and false otherwise.
   inline bool CanLimitMatrix(const Analyzer &analyzer,
                              int32 matrix_index) const;
-  
+
   // called from PruneMatrices after it has figured out which matrices we need
   // to limit to a row-range, this function changes computation->submatrices and
   // computation->matrices in the way required to do that.
   inline void LimitMatrices(const std::vector<bool> &will_limit);
-   
+
   // does the processing for a command of type kMatrixCopy or kMatrixAdd.
   void MapSimpleMatrixCommand(NnetComputation::Command *c);
 
@@ -436,7 +436,7 @@ class DerivativeTimeLimiter {
   // command is called with, and 2nd arg is 'indexes_multi' index (which
   // contains pairs (source-submatrix, source-row).
   void MapIndexesMultiCommand(NnetComputation::Command *c);
-  
+
   // does the processing for a command of type kAddRowRanges.
   void MapAddRowRangesCommand(NnetComputation::Command *c);
 
@@ -448,7 +448,7 @@ class DerivativeTimeLimiter {
   // Note: this calls computation_->NewSubMatrix, and will generate duplicates
   // of the same submatrix which we'll later remove in RemoveOrphanMatrices.
   void ModifyCommand(NnetComputation::Command *command);
-  
+
   // this will detect which matrices we can reduce the allocated size of,
   // and reduce their size.
   void ResizeMatrices();
@@ -476,12 +476,12 @@ class DerivativeTimeLimiter {
                       // the time range.
   };
 
-  
+
   const Nnet &nnet_;
 
   int32 min_deriv_time_;
   int32 max_deriv_time_;
-  
+
   // the computation; we require it to have debug info set up
   // (otherwise you shouldn't be instantiating this class).
   NnetComputation *computation_;
@@ -491,7 +491,7 @@ class DerivativeTimeLimiter {
   std::vector<int32> entire_submatrix_;
 
   std::vector<MatrixPruneInfo> matrix_prune_info_;
-  
+
   // for each submatrix in the original range of computation_->submatrices,
   // submatrix_map_ maps it to itself if the submatrix is completely inside the
   // time-range, or to zero if it's completely outside the time-range, or to a
@@ -504,8 +504,8 @@ class DerivativeTimeLimiter {
   // debug info) represents a derivative.
   // this comes up so frequently that storing it separately seemed like a good idea.
   std::vector<int32> submatrix_map_if_deriv_;
-  
-  std::vector<MatrixPruneInfo> prune_info_;   
+
+  std::vector<MatrixPruneInfo> prune_info_;
 };
 
 // This is the top-level interface to limit the times on which derivatives are
@@ -585,10 +585,13 @@ void IdentifyMatrixArgs(std::vector<NnetComputation::Command> *command,
 
 /// This function outputs to "matrix_args" the addresses of indexes inside
 /// 'computation' that correspond to matrices.  These live inside
-/// computation->commands, computation->submatrices, and
-/// computation->input_output_info.  Zeros may be present if there were optional
-/// arguments; we do include pointers to them, but you can just ignore them.
-void IdentifyMatrixArgsInComputation(NnetComputation *computation,
+/// computation->commands and computation->input_output_info; and if
+/// 'include_from_submatrices' is true, then the matrix-indexes present in
+/// computation->submatrices[*].matrix_index will be included too.  Zeros may be
+/// present if there were optional arguments; we do include pointers to them,
+/// but you can just ignore them.
+void IdentifyMatrixArgsInComputation(bool include_from_submatrices,
+                                     NnetComputation *computation,
                                      std::vector<int32*> *matrix_args);
 
 

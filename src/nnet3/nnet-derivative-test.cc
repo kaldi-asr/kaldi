@@ -68,6 +68,13 @@ void SetDerivTimesOptions(const ComputationRequest &request,
     t_length = max_t + 1 - min_t;
     KALDI_ASSERT(t_length > 0);
   }
+  if (RandInt(0, 4) == 0) {
+    // ensure that all derivs will be pruned away;
+    // this tests more code.
+    min_t = orig_min_t - 10;
+    max_t = min_t + 1;
+  }
+
   int32 output_min_t, output_max_t;
   KALDI_ASSERT(request.outputs[0].name == "output");
   ComputeMinAndMaxTimes(request.outputs[0].indexes,
