@@ -36,6 +36,7 @@ struct NnetOptimizeOptions {
   bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
+  bool convert_addition;
   bool remove_assignments;
   bool allow_left_merge;
   bool allow_right_merge;
@@ -49,6 +50,7 @@ struct NnetOptimizeOptions {
                          consolidate_model_update(true),
                          propagate_in_place(true),
                          backprop_in_place(true),
+                         convert_addition(true),
                          remove_assignments(true),
                          allow_left_merge(true),
                          allow_right_merge(true),
@@ -69,12 +71,17 @@ struct NnetOptimizeOptions {
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
+    opts->Register("convert-addition", &convert_addition, "Set to false to "
+                   "disable the optimization that converts Add commands into "
+                   "Copy commands wherever possible.");
     opts->Register("remove-assignments", &remove_assignments, "Set to false to "
                    "disable optimization that removes redundant assignments");
     opts->Register("allow-left-merge", &allow_left_merge, "Set to false to "
-                   "disable left-merging of variables (obscure option)");
+                   "disable left-merging of variables in remove-assignments "
+                   "(obscure option)");
     opts->Register("allow-right-merge", &allow_right_merge, "Set to false to "
-                   "disable right-merging of variables (obscure option)");
+                   "disable right-merging of variables in remove-assignments "
+                   "(obscure option)");
     opts->Register("initialize-undefined", &initialize_undefined, "Set to false "
                    "to disable optimization that avoids redundant zeroing");
     opts->Register("move-sizing-commands", &move_sizing_commands, "Set to false "
@@ -217,6 +224,12 @@ void LimitDerivativeTimes(const Nnet &nnet,
 void ConsolidateModelUpdate(const Nnet &nnet,
                             const ComputationRequest &request,
                             NnetComputation *computation);
+
+/// This converts addition operations (things with Add in their names) to
+/// copy operations (things with Copy in their names).  This is both slightly
+/// more efficient,
+void ConvertAdditionToAssignment(const Nnet &nnet,
+                                 NnetComputation *computation);
 
 
 /// This wraps class VariableMergingOptimizer in a simplified interface.
