@@ -313,17 +313,22 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
 
   for (int32 i = 0; i < size; i++) {
     int32 submatrix_index = pairs[i].first, row = pairs[i].second;
-    unordered_map<int32, std::pair<BaseFloat*, int32> >::iterator
+    if (submatrix_index != -1) {
+      unordered_map<int32, std::pair<BaseFloat*, int32> >::iterator
+          iter = lookup.find(submatrix_index);
+      if (iter == lookup.end()) {
+        CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
+        lookup[submatrix_index] = std::pair<BaseFloat*, int32>(m.Data(),
+                                                               m.Stride());
         iter = lookup.find(submatrix_index);
-    if (iter == lookup.end()) {
-      CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
-      lookup[submatrix_index] = std::pair<BaseFloat*, int32>(m.Data(),
-                                                             m.Stride());
-      iter = lookup.find(submatrix_index);
+      }
+      BaseFloat *data = iter->second.first;
+      int32 stride = iter->second.second;
+      vec[i] = data + (row * stride);
+    } else {
+      // -1 is a marker that will be translated to NULL.
+      vec[i] = NULL;
     }
-    BaseFloat *data = iter->second.first;
-    int32 stride = iter->second.second;
-    vec[i] = data + (row * stride);
   }
 #ifdef KALDI_PARANOID
   for (int32 i = 0; i < size; i += 30 + RandInt(0, 9)) {
