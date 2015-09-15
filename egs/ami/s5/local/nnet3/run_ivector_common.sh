@@ -144,4 +144,14 @@ if [ $stage -le 6 ]; then
   [ -f exp/$mic/nnet3/.error ] && echo "$0: error extracting iVectors." && exit 1;
 fi
 
+if [ $stage -le 7 ]; then
+  rm -f exp/$mic/nnet3/.error 2>/dev/null
+  for data in dev eval; do
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
+      data/$mic/${data}_hires exp/$mic/nnet3/extractor exp/$mic/nnet3/ivectors_${data} || touch exp/$mic/nnet3/.error &
+  done
+  wait
+  [ -f exp/$mic/nnet3/.error ] && echo "$0: error extracting iVectors." && exit 1;
+fi
+
 exit 0;
