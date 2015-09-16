@@ -961,6 +961,16 @@ void ComputationChecker::CheckComputationOrder() const {
   }
 }
 
+void CheckComputation(const Nnet &nnet,
+                      const ComputationRequest &request,
+                      const NnetComputation &computation,
+                      bool check_rewrite) {
+  CheckComputationOptions opts;
+  opts.check_rewrite = check_rewrite;
+  ComputationChecker checker(opts, nnet, request, computation);
+  checker.Check();
+}
+
 void ComputeMatrixToSubmatrix(
     const NnetComputation &computation,
     std::vector<std::vector<int32> > *mat_to_submat) {
@@ -1009,6 +1019,45 @@ int32 ComputationAnalysis::FirstAccess(int32 s) const {
   }
   return ans;
 }
+
+
+int32 ComputationAnalysis::FirstMatrixAccess(int32 m) const {
+  KALDI_ASSERT(static_cast<size_t>(m) < computation_.matrices.size() && m > 0);
+  if (analyzer_.matrix_accesses[m].is_input)
+    return -1;
+  int32 ans = computation_.commands.size();
+  const std::vector<Access> &accesses =
+      analyzer_.matrix_accesses[m].accesses;
+  std::vector<Access>::const_iterator access_iter = accesses.begin(),
+      access_end = accesses.end();
+  for (; access_iter != access_end; ++access_iter) {
+    int32 command_index = access_iter->command_index;
+    if (command_index != analyzer_.matrix_accesses[m].allocate_command) {
+      ans = std::min(ans, command_index);
+      break;  // break from access_iter loop (an optimization)
+    }
+  }
+  return ans;
+}
+
+
+int32 ComputationAnalysis::LastMatrixAccess(int32 m) const {
+  KALDI_ASSERT(static_cast<size_t>(m) < computation_.matrices.size() && m > 0);
+  if (analyzer_.matrix_accesses[m].is_output)
+    return computation_.commands.size();
+  int32 ans = -1;
+  const std::vector<Access> &accesses =
+      analyzer_.matrix_accesses[m].accesses;
+  std::vector<Access>::const_reverse_iterator access_iter = accesses.rbegin(),
+      access_end = accesses.rend();
+  for (; access_iter != access_end; ++access_iter) {
+    int32 command_index = access_iter->command_index;
+    ans = std::max(ans, command_index);
+    break;  // break from access_iter loop (an optimization)
+  }
+  return ans;
+}
+
 
 int32 ComputationAnalysis::LastAccess(int32 s) const {
   KALDI_ASSERT(static_cast<size_t>(s) < computation_.submatrices.size() && s>0);

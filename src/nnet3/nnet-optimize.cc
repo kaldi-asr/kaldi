@@ -273,6 +273,56 @@ void ConsolidateModelUpdate(const Nnet &nnet,
 }
 
 
+void ConvertAdditionToAssignment(const Nnet &nnet,
+                                 NnetComputation *computation) {
+  Analyzer analyzer;
+  analyzer.Init(nnet, *computation);
+  ComputationAnalysis analysis(*computation, analyzer);
+  int32 num_commands = computation->commands.size();
+  for (int32 command = 0; command < num_commands; command++) {
+    NnetComputation::Command &c = computation->commands[command];
+    switch (c.command_type) {
+      case kAllocMatrixUndefined: case kAllocMatrixFromOther:
+        KALDI_ERR << "Cannot call ConvertAdditionToAssignment after "
+                  << "allowing undefined initialization.";
+      case kMatrixAdd: case kAddRows: case kAddRowsMulti:
+      case kAddToRowsMulti: {
+        const std::vector<int32> &submatrices_written =
+            analyzer.command_attributes[command].submatrices_written;
+        KALDI_ASSERT(!submatrices_written.empty());
+        std::vector<int32>::const_iterator iter = submatrices_written.begin(),
+            end = submatrices_written.end();
+        bool can_convert = true;
+        for (; iter != end; ++iter) {
+          int32 submatrix_written = *iter;
+          int32 first_access_command = analysis.FirstAccess(submatrix_written);
+          // first_access_command is first non-initialization command that
+          // accesses this submatrix.  It can be assumed to be a write command,
+          // since it makes no sense to read a variable before it's written to.
+          // If it's before this command then we need to add rather than copy,
+          // we can't do the conversion to a copy command.
+          if (first_access_command != command) {
+            can_convert = false;
+            break;
+          }
+        }
+        if (can_convert) {  // convert to a copy command.
+          switch (c.command_type) {
+            case kMatrixAdd: c.command_type = kMatrixCopy; break;
+            case kAddRows: c.command_type = kCopyRows; break;
+            case kAddRowsMulti: c.command_type = kCopyRowsMulti; break;
+            case kAddToRowsMulti: c.command_type = kCopyToRowsMulti; break;
+            default: KALDI_ERR << "Unexpected command type.";
+          }
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+}
+
 void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               const ComputationRequest &request,
@@ -287,6 +337,9 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (config.consolidate_model_update)
     ConsolidateModelUpdate(nnet, request, computation);
+
+  if (config.convert_addition)
+    ConvertAdditionToAssignment(nnet, computation);
 
   if (config.remove_assignments || config.backprop_in_place ||
       config.propagate_in_place)

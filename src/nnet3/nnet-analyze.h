@@ -301,6 +301,7 @@ struct Analyzer {
 /// Analyzer gives you immediately.  It mostly contains special-purpose things
 /// what were needed by class VariableMergingOptimizer (see nnet-optimize.h, and
 /// the extended comment above class VariableMergingOptimizer).
+/// Be careful about the meaninhg of 'access'- read the comments carefully.
 class ComputationAnalysis {
  public:
   /// This class stores the const references provided to its constructor ->
@@ -311,7 +312,7 @@ class ComputationAnalysis {
                                                  analyzer_(analyzer) { }
 
   /// If the matrix underlying submatrix 's' is an input then this returns -1;
-  /// otherwise is returns the first command (read or write) that is not an
+  /// otherwise it returns the first command (read or write) that is not an
   /// allocation command, that accesses any part of 's' [note: deallocation does
   /// not count as a read or write operation].  If there is no such command, it
   /// returns num_commands.
@@ -337,6 +338,20 @@ class ComputationAnalysis {
   /// or if there is no such command, then the total number of commands.
   /// s must be >0 (i.e. not the empty submatrix).
   int32 DataInvalidatedCommand(int32 c, int32 s) const;
+
+  /// If matrix 'm' is an input then this returns -1; otherwise it returns the
+  /// first command (read or write) that is not an allocation command, that
+  /// accesses any part of 'm' [note: deallocation does not count as a read or
+  /// write operation].  If there is no such command, it returns num_commands.
+  /// m must be >0 (i.e. not the empty matrix).
+  int32 FirstMatrixAccess(int32 m) const;
+
+
+  /// If matrix 'm' is an output then this returns num-commands; otherwise it
+  /// returns the last non-deallocation command that accesses any part of
+  /// matrix 'm'; if there is no such command it returns -1.  m must be >0
+  /// (i.e. not the empty matrix).
+  int32 LastMatrixAccess(int32 m) const;
 
  private:
   const NnetComputation &computation_;
@@ -404,6 +419,14 @@ class ComputationChecker {
   const NnetComputation &computation_;
   Analyzer a_;
 };
+
+
+/// This is a convenience interface for class ComputationChecker.  Call it with
+/// check_rewrite = true only if the optimization is pre-optimization.
+void CheckComputation(const Nnet &nnet,
+                      const ComputationRequest &request,
+                      const NnetComputation &computation,
+                      bool check_rewrite = false);
 
 
 } // namespace nnet3

@@ -30,8 +30,13 @@ namespace nnet3 {
 // Run the test wothout optimizations and with optimizations specified by the
 // parameter. Only print warnings; we'll fail the whole test later.
 static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
+  //opt_config.convert_addition = false;
+  //opt_config.remove_assignments = false;
+  //opt_config.move_sizing_commands = false;
+  //opt_config.allocate_from_other = false;
+
   srand(0);  // Every run must be deterministic.
-  for (int32 n = 0; n < 20; n++) {
+  for (int32 n = 0; n < 40; n++) {
     struct NnetGenerationOptions gen_config;
 
     std::vector<std::string> configs;
