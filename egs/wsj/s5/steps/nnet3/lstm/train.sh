@@ -77,7 +77,7 @@ randprune=4.0 # speeds up LDA.
 affine_opts=
 
 # nnet3-train options
-update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processed
+momentum=0.9
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
@@ -117,6 +117,9 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
+  echo "  --momentum <momentum|0.9>                        # Momentum constant: note, this is "
+  echo "                                                   # implemented in such a way that it doesn't"
+  echo "                                                   # increase the effective learning rate."
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
@@ -441,7 +444,7 @@ for realign_time in $realign_times; do
 done
 
 cur_egs_dir=$egs_dir
-min_deriv_time=$((frames_per_eg - num_bptt_steps))  
+min_deriv_time=$((frames_per_eg - num_bptt_steps))
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
@@ -557,7 +560,7 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix --print-interval=10 --update-per-minibatch=$update_per_minibatch \
+          nnet3-train$parallel_suffix --print-interval=10 --momentum=$momentum \
           --optimization.min-deriv-time=$min_deriv_time $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
