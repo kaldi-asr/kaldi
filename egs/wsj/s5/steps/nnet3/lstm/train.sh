@@ -71,6 +71,7 @@ clipping_threshold=10
 chunk_width=20 # number of output labels in the sequence used to train an LSTM
 chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5
+num_bptt_steps=20
 
 randprune=4.0 # speeds up LDA.
 affine_opts=
@@ -295,7 +296,6 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-
 # in FF-DNN architectures
 # num_archives_expanded=$[$num_archives*$frames_per_eg]
 # in RNN architectures all the frames in a sample are processed together
@@ -441,7 +441,7 @@ for realign_time in $realign_times; do
 done
 
 cur_egs_dir=$egs_dir
-
+min_deriv_time=$((frames_per_eg - num_bptt_steps))  
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
@@ -557,7 +557,8 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix --print-interval=10 --update-per-minibatch=$update_per_minibatch $parallel_train_opts "$raw" \
+          nnet3-train$parallel_suffix --print-interval=10 --update-per-minibatch=$update_per_minibatch \
+          --optimization.min-deriv-time=$min_deriv_time $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
@@ -594,7 +595,6 @@ while [ $x -lt $num_iters ]; do
     if [ -f $dir/$[$x-1].mdl ] && $cleanup && \
        [ $[($x-1)%100] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
       rm $dir/$[$x-1].mdl
-       echo "didn't delete models"
     fi
   fi
   x=$[$x+1]
