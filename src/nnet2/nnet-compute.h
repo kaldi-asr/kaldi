@@ -1,6 +1,7 @@
 // nnet2/nnet-compute.h
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+// Copyright 2015  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -45,6 +46,19 @@ void NnetComputation(const Nnet &nnet,
                      const CuMatrixBase<BaseFloat> &input,  // features
                      bool pad_input,
                      CuMatrixBase<BaseFloat> *output); // posteriors.
+/**
+  Does the basic neural net computation, on a sequence of data (e.g.
+  an utterance).  This variant of NnetComputation chunks the input
+  according to chunk_size and does the posterior computation chunk 
+  by chunk.  This allows the computation to be performed on the GPU
+  when the input matrix is very large.  Input is padded with enough
+  frames of context so that the output will be a matrix with 
+  input.NumRows().
+*/
+void NnetComputationChunked(const Nnet &nnet,
+                     const Matrix<BaseFloat> &input,  // features
+                     int32 chunk_size,
+                     Matrix<BaseFloat> *output); // posteriors.
 
 /** Does the neural net computation and backprop, given input and labels.
     Note: if pad_input==true the number of rows of input should be the
