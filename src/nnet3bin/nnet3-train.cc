@@ -40,25 +40,25 @@ int main(int argc, char *argv[]) {
         "\n"
         "e.g.:\n"
         "nnet3-train 1.raw 'ark:nnet3-merge-egs 1.egs ark:-|' 2.raw\n";
-    
+
     bool binary_write = true;
     std::string use_gpu = "yes";
     NnetTrainerOptions train_config;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
-    
+
     train_config.Register(&po);
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
@@ -70,15 +70,20 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    NnetTrainer trainer(train_config, &nnet);
-    
-    SequentialNnetExampleReader example_reader(examples_rspecifier);
+    bool ok;
+    {
+      NnetTrainer trainer(train_config, &nnet);
 
-    for (; !example_reader.Done(); example_reader.Next())
-      trainer.Train(example_reader.Value());
+      SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-    bool ok = trainer.PrintTotalStats();
-    
+      for (; !example_reader.Done(); example_reader.Next())
+        trainer.Train(example_reader.Value());
+
+      bool ok = trainer.PrintTotalStats();
+
+      // need trainer's destructor to be called before we write model.
+    }
+
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif

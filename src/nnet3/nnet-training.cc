@@ -31,6 +31,15 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
     num_minibatches_processed_(0) {
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
+  if (config.momentum == 0.0) {
+    delta_nnet_= NULL;
+  } else {
+    KALDI_ASSERT(config.momentum >= 0.0);
+    delta_nnet_ = nnet_->Copy();
+    bool is_gradient = false;  // setting this to true would disable the
+                               // natural-gradient updates.
+    SetZero(is_gradient, delta_nnet_);
+  }
 }
 
 
@@ -42,11 +51,9 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  const Nnet *const_nnet = (config_.update_per_minibatch ?
-                            static_cast<const Nnet*>(nnet_->Copy()) :
-                            nnet_);
   NnetComputer computer(config_.compute_config, *computation,
-                        *const_nnet, nnet_);
+                        *nnet_,
+                        (config_.momentum == 0.0 ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg);
   computer.Forward();
@@ -54,8 +61,10 @@ void NnetTrainer::Train(const NnetExample &eg) {
   this->ProcessOutputs(eg, &computer);
   computer.Backward();
 
-  if (config_.update_per_minibatch)
-    delete const_nnet;
+  if (config_.momentum != 0.0) {
+    AddNnet(*delta_nnet_, 1.0 - config_.momentum, nnet_);
+    ScaleNnet(config_.momentum, delta_nnet_);
+  }
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,
@@ -129,6 +138,19 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   KALDI_LOG << "Overall average objective function for '" << name << "' is "
             << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
   return (tot_weight != 0.0);
+}
+
+NnetTrainer::~NnetTrainer() {
+  if (delta_nnet_) {
+    // This last AddNnet call is to ensure we don't 'lose' the gradient that we
+    // have left remaining in 'delta_nnet_'- we apply it the same as if we had
+    // continued with the momentum update with zero gradients for a bunch of
+    // steps.  This may not be 100% ideal for stability, but it ensures we don't
+    // 'waste' any data- and anyway, just one step isn't really enough for
+    // instability to get started.
+    AddNnet(*delta_nnet_, 1.0, nnet_);
+    delete delta_nnet_;
+  }
 }
 
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,
