@@ -77,7 +77,8 @@ randprune=4.0 # speeds up LDA.
 affine_opts=
 
 # nnet3-train options
-momentum=0.9
+momentum=0.0    # e.g. set it to 0.8 or 0.9.  Note: we implemented it in such a way that
+                # it doesn't increase the effective learning rate.
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
