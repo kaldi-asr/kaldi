@@ -137,6 +137,9 @@ void ObjectiveFunctionInfo::PrintStatsForThisPhase(
 bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
   KALDI_LOG << "Overall average objective function for '" << name << "' is "
             << (tot_objf / tot_weight) << " over " << tot_weight << " frames.";
+  KALDI_LOG << "[this line is to be parsed by a script:] "
+            << "log-prob-per-frame="
+            << (tot_objf / tot_weight);
   return (tot_weight != 0.0);
 }
 
