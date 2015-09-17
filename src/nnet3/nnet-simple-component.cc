@@ -333,12 +333,12 @@ std::string ClipGradientComponent::Info() const {
          << ", norm-based-clipping="
          << (norm_based_clipping_ ? "true" : "false")
          << ", clipping-threshold=" << clipping_threshold_
-         << ", clipped-proportion=" 
+         << ", clipped-proportion="
          << (count_ > 0 ? static_cast<BaseFloat>(num_clipped_)/count_ : 0);
   return stream.str();
 }
 
-void ClipGradientComponent::Init(int32 dim, 
+void ClipGradientComponent::Init(int32 dim,
                                  BaseFloat clipping_threshold,
                                  bool norm_based_clipping,
                                  int32 num_clipped,
@@ -388,7 +388,7 @@ void ClipGradientComponent::Backprop(const std::string &debug_info,
   ClipGradientComponent *to_update =
       dynamic_cast<ClipGradientComponent*>(to_update_in);
   KALDI_ASSERT(to_update != NULL);
-  
+
   if (clipping_threshold_ > 0) {
     if (norm_based_clipping_) {
       // each row in the derivative matrix, which corresponds to one sample in
@@ -1844,7 +1844,7 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
     BaseFloat param_mean = 1.0, param_stddev = 0.0;
     cfl->GetValue("param-mean", &param_mean);
     cfl->GetValue("param-stddev", &param_stddev);
-    
+
     int32 dim;
     if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
       KALDI_ERR << "Invalid initializer for layer of type "
