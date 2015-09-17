@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
       for (; !example_reader.Done(); example_reader.Next())
         trainer.Train(example_reader.Value());
 
-      bool ok = trainer.PrintTotalStats();
+      ok = trainer.PrintTotalStats();
 
       // need trainer's destructor to be called before we write model.
     }

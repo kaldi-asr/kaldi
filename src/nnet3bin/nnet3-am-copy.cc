@@ -48,7 +48,8 @@ int main(int argc, char *argv[]) {
         raw = false;
     BaseFloat learning_rate = -1;
     std::string set_raw_nnet = "";
-    
+    BaseFloat scale = 0.0;
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("raw", &raw, "If true, write only 'raw' neural net "
@@ -59,7 +60,9 @@ int main(int argc, char *argv[]) {
                 "before the learning-rate is changed.");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
-                "are set to this value.");
+                " are set to this value.");
+    po.Register("scale", &scale, "If non-zero the parameter matrices are scaled"
+                " by the specified value.");
 
 
     po.Read(argc, argv);
@@ -90,6 +93,8 @@ int main(int argc, char *argv[]) {
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
 
+    if (scale != 0.0)
+      ScaleNnet(scale, &(am_nnet.GetNnet()));
 
     if (raw) {
       WriteKaldiObject(am_nnet.GetNnet(), nnet_wxfilename, binary_write);
