@@ -90,7 +90,8 @@ struct ObjectiveFunctionInfo {
 
   // This function updates the stats and, if the phase has just changed,
   // prints a message indicating progress.  The phase equals
-  // minibatch_counter / minibatches_per_phase.
+  // minibatch_counter / minibatches_per_phase.  Its only function is to
+  // control how frequently we print logging messages.
   void UpdateStats(const std::string &output_name,
                    int32 minibatches_per_phase,
                    int32 minibatch_counter,
