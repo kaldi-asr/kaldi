@@ -9,7 +9,7 @@
 
 # To be run from one directory above this script.
 
-# The input is directory name containing the official evaluation test set.
+# The input is directory containing the official evaluation test set and transcripts.
 
 if [ $# -ne 2 ]; then
   echo "Usage: "`basename $0`" <transcription-dir> <eval_num>"

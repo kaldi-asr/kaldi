@@ -1,5 +1,4 @@
-#!/usr/bin/env perl
-use warnings; #sed replacement for -w perl parameter
+#! /usr/bin/perl -w
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
