@@ -310,14 +310,14 @@ class Component {
   //    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
   //    -- a NonLinear component it relates to scaling activation stats, not parameters.
-  virtual void Scale(BaseFloat scale) = 0;
+  virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
   //    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
   //    -- a NonlinearComponent it relates to adding stats
-  virtual void Add(BaseFloat alpha, const Component &other) = 0;
+  virtual void Add(BaseFloat alpha, const Component &other) {};
 
   Component() { }
 

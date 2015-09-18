@@ -66,10 +66,6 @@ class PnormComponent: public Component {
   virtual Component* Copy() const { return new PnormComponent(input_dim_,
                                                               output_dim_); }
   
-
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
-  
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -109,8 +105,6 @@ class ElementwiseProductComponent: public Component {
   virtual Component* Copy() const { return new ElementwiseProductComponent(input_dim_,
                                                               output_dim_); }
   
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -505,8 +499,6 @@ class FixedAffineComponent: public Component {
 
 
   virtual Component* Copy() const;
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -550,8 +542,6 @@ public:
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -599,8 +589,6 @@ class FixedScaleComponent: public Component {
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -643,8 +631,6 @@ class FixedBiasComponent: public Component {
                         Component *, // to_update
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const;
-  virtual void Scale(BaseFloat scale) {};
-  virtual void Add(BaseFloat alpha, const Component &other) {};
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
