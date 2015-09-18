@@ -33,7 +33,9 @@ num_epochs=5
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
+shrink=0.0
 num_chunk_per_minibatch=100
+num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
 # End configuration section.
@@ -95,6 +97,7 @@ if [ $stage -le 8 ]; then
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
@@ -104,6 +107,7 @@ if [ $stage -le 8 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --num-bptt-steps $num_bptt_steps \
     --norm-based-clipping $norm_based_clipping \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
@@ -112,7 +116,7 @@ if [ $stage -le 8 ]; then
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev eval; do
