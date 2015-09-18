@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
     }
     sequencer.Wait();
 
-    if (decode_fst != NULL) delete decode_fst;
+    delete decode_fst;
     
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Decoded with " << sequencer_config.num_threads << " threads.";
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
               << (tot_like/frame_count) << " over "
               << frame_count << " frames.";
 
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (num_done != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {
