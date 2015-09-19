@@ -53,9 +53,24 @@ void NnetCtcOutput::Read(std::istream &is, bool binary) {
 
 void NnetCtcOutput::GetIndexes(std::vector<Index> *indexes) const {
   KALDI_ASSERT(!supervision.empty());
-  size_t total_size = 0;
+  int32 total_size = 0;
   std::vector<ctc::CtcSupervision>::const_iterator
-
+      iter = supervision.begin(), end = supervision.end();
+  for (; iter != end; ++iter)
+    total_size += iter->num_frames;
+  indexes->resize(total_size);
+  std::vector<Index>::iterator out_iter = indexes->begin();
+  int32 n = 0;
+  for (iter = supervision.begin(); iter != end; ++iter,++n) {
+    int32 this_first_frame = iter->first_frame,
+        this_frame_skip = iter->frame_skip,
+        this_num_frames = iter->num_frames;
+    for (int32 i = 0; i < this_num_frames; i++, ++out_iter) {
+      int32 t = this_first_frame + i * this_frame_skip, x = 0;
+      *out_iter = Index(n, t, x);
+    }
+  }
+  KALDI_ASSERT(out_iter == indexes->end());
 }
 
 void NnetCtcExample::Write(std::ostream &os, bool binary) const {
