@@ -415,7 +415,10 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
-  NaturalGradientAffineComponent(): max_change_per_sample_(0.0) { }
+  virtual void Scale(BaseFloat scale); 
+  virtual void Add(BaseFloat alpha, const Component &other);
+  NaturalGradientAffineComponent();
+  virtual void ZeroStats();
 
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientAffineComponent);
@@ -432,8 +435,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
 
   OnlineNaturalGradient preconditioner_out_;
 
-  BaseFloat max_change_per_sample_;
-  // If > 0, max_change_per_sample_ this is the maximum amount of parameter
+  // If > 0, max_change_per_sample_ is the maximum amount of parameter
   // change (in L2 norm) that we allow per sample, averaged over the minibatch.
   // This was introduced in order to control instability.
   // Instead of the exact L2 parameter change, for
@@ -442,7 +444,19 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // for each minibatch, A suitable value might be, for
   // example, 10 or so; larger if there are more
   // parameters.
+  BaseFloat max_change_per_sample_;
 
+  // update_count_ records how many updates we have done.
+  double update_count_;
+
+  // active_scaling_count_ records how many updates we have done,
+  // where the scaling factor is active (not 1.0).
+  double active_scaling_count_;
+
+  // max_change_scale_stats_ records the sum of scaling factors
+  // in each update, so we can compute the averaged scaling factor
+  // in Info().
+  double max_change_scale_stats_;
   /// The following function is only called if max_change_per_sample_ > 0, it returns a
   /// scaling factor alpha <= 1.0 (1.0 in the normal case) that enforces the
   /// "max-change" constraint.  "in_products" is the inner product with itself
@@ -742,7 +756,6 @@ class ClipGradientComponent: public Component {
   int32 count_;  // number of elements which were processed
 
 };
-
 
 
 // PerElementScaleComponent scales each dimension of its input with a separate

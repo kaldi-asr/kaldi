@@ -1010,6 +1010,9 @@ void PerElementScaleComponent::UnVectorize(
   scales_.CopyFromVec(params);
 }
 
+NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0), 
+  update_count_(0.0), active_scaling_count_(0.0), max_change_scale_stats_(0.0) { }
+
 // virtual
 void NaturalGradientAffineComponent::Resize(
     int32 input_dim, int32 output_dim) {
@@ -1049,9 +1052,22 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &max_change_per_sample_);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<UpdateCount>") {
+    ReadBasicType(is, binary, &update_count_);
+    ExpectToken(is, binary, "<ActiveScalingCount>");
+    ReadBasicType(is, binary, &active_scaling_count_);
+    ExpectToken(is, binary, "<MaxChangeScaleStats>");
+    ReadBasicType(is, binary, &max_change_scale_stats_);
+    ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
+  } else {
+    if (token != "<NaturalGradientAffineComponent>") 
+      KALDI_ERR << "Expected <NaturalGradientAffineComponent>, got " << token;
+  }
   SetNaturalGradientConfigs();
 }
+
 void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
@@ -1110,7 +1126,7 @@ void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
 void NaturalGradientAffineComponent::Init(
     BaseFloat learning_rate, int32 rank_in, int32 rank_out,
     int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_sample,
+    BaseFloat max_change_per_sample, 
     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
   rank_in_ = rank_in;
@@ -1130,6 +1146,9 @@ void NaturalGradientAffineComponent::Init(
   linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
   bias_params_.CopyColFromMat(mat, input_dim);
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
+  update_count_ = 0.0;
+  active_scaling_count_ = 0.0;
+  max_change_scale_stats_ = 0.0;
 }
 
 void NaturalGradientAffineComponent::Init(
@@ -1157,8 +1176,10 @@ void NaturalGradientAffineComponent::Init(
   KALDI_ASSERT(max_change_per_sample >= 0.0);
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
+  update_count_ = 0.0;
+  active_scaling_count_ = 0.0;
+  max_change_scale_stats_ = 0.0;
 }
-
 
 void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NaturalGradientAffineComponent>");
@@ -1182,6 +1203,12 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, max_change_per_sample_);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<UpdateCount>");
+  WriteBasicType(os, binary, update_count_);
+  WriteToken(os, binary, "<ActiveScalingCount>");
+  WriteBasicType(os, binary, active_scaling_count_);
+  WriteToken(os, binary, "<MaxChangeScaleStats>");
+  WriteBasicType(os, binary, max_change_scale_stats_);
   WriteToken(os, binary, "<NaturalGradientAffineComponent>");
 }
 
@@ -1205,6 +1232,11 @@ std::string NaturalGradientAffineComponent::Info() const {
          << ", update_period=" << update_period_
          << ", alpha=" << alpha_
          << ", max-change-per-sample=" << max_change_per_sample_;
+  if (update_count_ > 0.0) {
+    stream << ", avg-scaling-factor=" << max_change_scale_stats_ / update_count_
+           << ", active-scaling-portion=" 
+           << active_scaling_count_ / update_count_;
+  }
   return stream.str();
 }
 
@@ -1222,11 +1254,12 @@ Component* NaturalGradientAffineComponent::Copy() const {
   ans->preconditioner_out_ = preconditioner_out_;
   ans->max_change_per_sample_ = max_change_per_sample_;
   ans->is_gradient_ = is_gradient_;
+  ans->update_count_ = update_count_;
+  ans->active_scaling_count_ = active_scaling_count_;
+  ans->max_change_scale_stats_ = max_change_scale_stats_;
   ans->SetNaturalGradientConfigs();
   return ans;
 }
-
-
 
 BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
     const CuVectorBase<BaseFloat> &in_products,
@@ -1245,16 +1278,18 @@ BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
   // to max_value_.
   KALDI_ASSERT(tot_change_norm - tot_change_norm == 0.0 && "NaN in backprop");
   KALDI_ASSERT(tot_change_norm >= 0.0);
-  if (tot_change_norm <= max_change_norm) return 1.0;
-  else {
-    BaseFloat factor = max_change_norm / tot_change_norm;
+  BaseFloat factor = 1.0;
+  if (tot_change_norm > max_change_norm) {
+    factor = max_change_norm / tot_change_norm;
+    active_scaling_count_ += 1.0;
     if (scaling_factor_warnings_remaining > 0) {
       scaling_factor_warnings_remaining--;
       KALDI_LOG << "Limiting step size using scaling factor "
                 << factor << ", for component " << debug_info;
     }
-    return factor;
   }
+  max_change_scale_stats_ += factor;
+  return factor;
 }
 
 void NaturalGradientAffineComponent::Update(
@@ -1308,10 +1343,32 @@ void NaturalGradientAffineComponent::Update(
   precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
 
   BaseFloat local_lrate = scale * minibatch_scale * learning_rate_;
+  update_count_ += 1.0;
   bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
                          precon_ones, 1.0);
   linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
+}
+
+void NaturalGradientAffineComponent::ZeroStats()  {
+  update_count_ = 0.0;
+  max_change_scale_stats_ = 0.0;
+  active_scaling_count_ = 0.0;
+}
+
+void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
+  update_count_ *= scale;
+  max_change_scale_stats_ *= scale;
+  active_scaling_count_ *= scale;
+}
+
+void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const NaturalGradientAffineComponent *other =
+      dynamic_cast<const NaturalGradientAffineComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  update_count_ += alpha * other->update_count_;
+  max_change_scale_stats_ += alpha * other->max_change_scale_stats_;
+  active_scaling_count_ += alpha * other->active_scaling_count_;
 }
 
 std::string FixedAffineComponent::Info() const {
