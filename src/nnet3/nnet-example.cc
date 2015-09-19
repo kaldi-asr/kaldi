@@ -74,6 +74,7 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Nnet3Eg>");
   WriteToken(os, binary, "<NumIo>");
   int32 size = io.size();
+  KALDI_ASSERT(size > 0 && "Writing empty nnet example");
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
     io[i].Write(os, binary);
@@ -85,7 +86,7 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NumIo>");
   int32 size;
   ReadBasicType(is, binary, &size);
-  if (size < 0 || size > 1000000)
+  if (size <= 0 || size > 1000000)
     KALDI_ERR << "Invalid size " << size;
   io.resize(size);
   for (int32 i = 0; i < size; i++)

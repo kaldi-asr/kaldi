@@ -69,6 +69,8 @@ struct CctcTrainingOptions {
 
 class CctcComputation {
  public:
+  /// Note: the 'cu_weights' argument should be the output of
+  /// trans_model.ComputeWeights().
   CctcComputation(const CctcTrainingOptions &opts,
                   const CctcTransitionModel &trans_model,
                   const CuMatrix<BaseFloat> &cu_weights,
@@ -78,9 +80,9 @@ class CctcComputation {
   // Does the forward computation.  Returns the total log-prob.
   BaseFloat Forward();
                     
-  // Does the backward computation and writes the derivative w.r.t. the neural
-  // network output to 'nnet_output_deriv' (which does not have to be initialized
-  // beforehand).
+  // Does the backward computation and (efficiently) writes the derivative
+  // w.r.t. the neural network output to 'nnet_output_deriv' (which does not
+  // have to be initialized beforehand).
   // Returns true if everything was OK (which it should be, normally), and
   // false if some kind of NaN or inf was discovered, in which case you
   // shouldn't use the derivatives.  We're concerned about this because

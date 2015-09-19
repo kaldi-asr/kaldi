@@ -245,6 +245,17 @@ struct CtcSupervision {
   // The weight of this example (will usually be 1.0).
   BaseFloat weight;
 
+  // The time-index of the first supervised frame (will usually be 0).
+  int32 first_frame;
+
+  // frame_skip will normally be 1, but it could be e.g. 2 or 3 in situations
+  // where we only process the output every few input frames (e.g.
+  // clockwork-RNN type situations).
+  int32 frame_skip;
+  
+  // num_frames must equal the path length of any path in the FST.  Technically
+  // this information is redundant with the FST, but it's convenient to have
+  // it separately.
   int32 num_frames;
 
   // the maximum possible value of the labels in 'fst' (which go from 1 to
@@ -261,17 +272,16 @@ struct CtcSupervision {
   // appear within a specified temporal window.
   fst::StdVectorFst fst;
 
+
+  CtcSupervision(): weight(1.0), first_frame(0), frame_skip(0), num_frames(-1),
+                    label_dim(-1) { }
+
+  CtcSupervision(const CtcSupervision &other);
+  
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 };
 
-
-/// This function appends a list of CTC-supervision objects to create a single
-/// such object.  The normal use-case for this is when you are combining
-/// neural-net examples for CTC training.
-void AppendCtcSupervision(const std::vector<CtcSupervision> &input_supervision,
-                          CtcSupervision *output_supervision);
-  
 
 
 /** This function creates a CtcSupervision object with phones-or-blank-plus one

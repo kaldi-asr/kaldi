@@ -24,9 +24,7 @@
 #include "nnet3/nnet-nnet.h"
 #include "hmm/posterior.h"
 #include "util/table-types.h"
-#include "lat/kaldi-lattice.h"
 #include "hmm/posterior.h"
-#include "thread/kaldi-semaphore.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -91,7 +89,7 @@ struct NnetExample {
 
   void Swap(NnetExample *other) { io.swap(other->io); }
 
-  /// Compresses any features that are not sparse.
+  /// Compresses any (input) features that are not sparse.
   void Compress();
 };
 

@@ -487,8 +487,11 @@ void CtcSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<CtcSupervision>");
   WriteToken(os, binary, "<Weight>");
   WriteBasicType(os, binary, weight);
-  WriteToken(os, binary, "<NumFrames>");
+  WriteToken(os, binary, "<Frames>");
+  WriteBasicType(os, binary, first_frame);
+  WriteBasicType(os, binary, frame_skip);
   WriteBasicType(os, binary, num_frames);
+  if (!binary) os << "\n";
   WriteToken(os, binary, "<LabelDim>");
   WriteBasicType(os, binary, label_dim);
   if (binary == false) {
@@ -509,7 +512,9 @@ void CtcSupervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<CtcSupervision>");
   ExpectToken(is, binary, "<Weight>");
   ReadBasicType(is, binary, &weight);
-  ExpectToken(is, binary, "<NumFrames>");
+  ExpectToken(is, binary, "<Frames>");
+  ReadBasicType(is, binary, &first_frame);
+  ReadBasicType(is, binary, &frame_skip);
   ReadBasicType(is, binary, &num_frames);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
@@ -562,6 +567,11 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
     KALDI_ERR << "Input FST does not have required properties.";
   return total_length;
 }
+
+CtcSupervision::CtcSupervision(const CtcSupervision &other):
+    weight(other.weight), first_frame(other.first_frame),
+    frame_skip(other.frame_skip), num_frames(other.num_frames),
+    label_dim(other.label_dim), fst(other.fst) { }
 
 
 }  // namespace ctc

@@ -136,8 +136,8 @@ int main(int argc, char *argv[]) {
     BuildTreeStatsType stats;  // vectorized form.
 
     for (std::map<EventType, GaussClusterable*>::const_iterator iter = tree_stats.begin();  
-        iter != tree_stats.end();
-        iter++ ) {
+         iter != tree_stats.end();
+         ++iter) {
       stats.push_back(std::make_pair(iter->first, iter->second));
     }
     tree_stats.clear();
