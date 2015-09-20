@@ -1930,6 +1930,592 @@ void NaturalGradientPerElementScaleComponent::Update(
   scales_.AddVec(max_change_scale, delta_scales);
 }
 
+Convolutional1dComponent::Convolutional1dComponent():
+    UpdatableComponent(),
+    patch_dim_(0), patch_step_(0), patch_stride_(0), is_gradient_(false) {}
+
+Convolutional1dComponent::Convolutional1dComponent(const Convolutional1dComponent &component):
+    UpdatableComponent(component),
+    filter_params_(component.filter_params_),
+    bias_params_(component.bias_params_),
+    is_gradient_(component.is_gradient_) {}
+
+Convolutional1dComponent::Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
+                                                   const CuVectorBase<BaseFloat> &bias_params,
+                                                   BaseFloat learning_rate):
+    UpdatableComponent(learning_rate),
+    filter_params_(filter_params),
+    bias_params_(bias_params) {
+  KALDI_ASSERT(filter_params.NumRows() == bias_params.Dim() &&
+               bias_params.Dim() != 0);
+  is_gradient_ = false;
+}
+
+// aquire input dim
+int32 Convolutional1dComponent::InputDim() const {
+  int32 filter_dim = filter_params_.NumCols();
+  int32 num_splice = filter_dim / patch_dim_;
+  return patch_stride_ * num_splice;
+}
+
+// aquire output dim
+int32 Convolutional1dComponent::OutputDim() const {
+  int32 num_filters = filter_params_.NumRows();
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  return num_patches * num_filters;
+}
+
+// initialize the component using hyperparameters
+void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    int32 input_dim, int32 output_dim,
+                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
+                                    BaseFloat param_stddev, BaseFloat bias_stddev) {
+  UpdatableComponent::Init(learning_rate);
+  patch_dim_ = patch_dim;
+  patch_step_ = patch_step;
+  patch_stride_ = patch_stride;
+  int32 num_splice = input_dim / patch_stride;
+  int32 filter_dim = num_splice * patch_dim;
+  int32 num_patches = 1 + (patch_stride - patch_dim) / patch_step;
+  int32 num_filters = output_dim / num_patches;
+  KALDI_ASSERT(input_dim % patch_stride == 0);
+  KALDI_ASSERT((patch_stride - patch_dim) % patch_step == 0);
+  KALDI_ASSERT(output_dim % num_patches == 0);
+
+  filter_params_.Resize(num_filters, filter_dim);
+  bias_params_.Resize(num_filters);
+  KALDI_ASSERT(param_stddev >= 0.0 && bias_stddev >= 0.0);
+  filter_params_.SetRandn();
+  filter_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+}
+
+// initialize the component using predefined matrix file
+void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  CuMatrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat);
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 filter_dim = mat.NumCols() - 1, num_filters = mat.NumRows();
+  filter_params_.Resize(num_filters, filter_dim);
+  bias_params_.Resize(num_filters);
+  filter_params_.CopyFromMat(mat.Range(0, num_filters, 0, filter_dim));
+  bias_params_.CopyColFromMat(mat, filter_dim);
+}
+
+// resize the component, setting the parameters to zero, while
+// leaving any other configuration values the same
+void Convolutional1dComponent::Resize(int32 input_dim, int32 output_dim) {
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0);
+  int32 num_splice = input_dim / patch_stride_;
+  int32 filter_dim = num_splice * patch_dim_;
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  int32 num_filters = output_dim / num_patches;
+  KALDI_ASSERT(input_dim % patch_stride_ == 0);
+  KALDI_ASSERT((patch_stride_ - patch_dim_) % patch_step_ == 0);
+  KALDI_ASSERT(output_dim % num_patches == 0);
+  filter_params_.Resize(num_filters, filter_dim);
+  bias_params_.Resize(num_filters);
+}
+
+// display information about component
+std::string Convolutional1dComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows()) 
+                                 * static_cast<BaseFloat>(filter_params_.NumCols());
+  BaseFloat filter_stddev = 
+            std::sqrt(TraceMatMat(filter_params_, filter_params_, kTrans) /
+                      filter_params_size),
+            bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                                    bias_params_.Dim());
+
+  int32 num_splice = InputDim() / patch_stride_;
+  int32 filter_dim = num_splice * patch_dim_;
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  int32 num_filters = OutputDim() / num_patches;
+
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", num-splice=" << num_splice
+         << ", num-patches=" << num_patches
+         << ", num-filters=" << num_filters
+         << ", filter-dim=" << filter_dim
+         << ", filter-params-stddev=" << filter_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate();
+  return stream.str();
+}
+
+// initialize the component using configuration file
+void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_;
+  std::string matrix_filename;
+  int32 input_dim = -1, output_dim = -1;
+  int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
+  cfl->GetValue("learning-rate", &learning_rate); //optional
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    // initialize from prefined parameter matrix
+    Init(learning_rate, matrix_filename);
+    if (cfl->GetValue("input-dim", &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+               "input-dim mismatch vs. matrix.");
+    if (cfl->GetValue("output-dim", &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+               "output-dim mismatch vs. matrix.");
+  } else {
+    // initialize from configuration
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
+    ok = ok && cfl->GetValue("patch-dim", &patch_dim);
+    ok = ok && cfl->GetValue("patch-step", &patch_step);
+    ok = ok && cfl->GetValue("patch-stride", &patch_stride);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
+    cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
+    Init(learning_rate, input_dim, output_dim,
+         patch_dim, patch_step, patch_stride, param_stddev, bias_stddev);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	      << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+// propagation function
+
+/* Convolutional propagation is explained:
+ - Recall the AffineComponent, input X is defined #frames x $input-dim,
+   linear matrix A is defined $output-dim x $input-dim, and bias
+   vector B is defined by length $output-dim. The propagation is
+   Y = X * A' + B                                     (1)
+   where "*" is row-by-row processing of X, executing vector-matrix
+   multiplication 
+   Y(t) = X(t) * A' + B                               (2)
+   which converts each row of input of dim $input-dim to a row of output of
+   dim $output-dim by A' (' defines transpose).
+ - In Convolution1dComponent, A is redefined $num-filters x $filter-dim,
+   and bias vector B is redefined by length $num-filters. The propatation is
+   Y = X o A' + B                                     (3)
+   where "o" is also row-by-row processing of X, but executing vector-matrix
+   convolution, which consists of a group of vector-vector convolutions.
+   For instance, the convolution of X(t) and the i-th filter A(i) is
+   Y(t,i) = X(t) o A'(i) + B(i)                       (4)
+   The convolution used here is valid convolution. Meaning that the
+   output of M o N is of dim |M| - |N| + 1, assuming M is not shorter then N.
+
+   Note that in all the equations, B is extended to proper dimensions
+   for legal addition.
+*/
+void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                         const CuMatrixBase<BaseFloat> &in,
+                                         CuMatrixBase<BaseFloat> *out) const {
+  // dims
+  int32 num_splice = InputDim() / patch_stride_;
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  int32 num_filters = filter_params_.NumRows();
+  int32 num_frames = in.NumRows();
+  int32 filter_dim = filter_params_.NumCols();
+
+  /** Buffer of reshaped inputs:
+   *  1row = vectorized rectangular feature patches
+   *  1col = dim over speech frames,
+   */
+  CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
+  // column_map is indexed by the column-index of "patches",
+  // and the value is the corresponding column-index of "in". 
+  std::vector<int32> column_map(filter_dim * num_patches);
+
+  // build-up a column selection map
+  for (int32 p = 0, index = 0; p < num_patches; p++) {
+    for (int32 s = 0; s < num_splice; s++) {
+        for (int32 d = 0; d < patch_dim_; d++, index++) {
+        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+      }
+    }
+  }
+  CuArray<int32> cu_cols(column_map);
+  patches.CopyCols(in, cu_cols);
+
+  //
+  // compute filter activations
+  //
+
+  std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch, filter_params_batch;
+
+  CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
+		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_.NumCols());
+  
+  // form batch in vector container
+  for (int32 p = 0; p < num_patches; p++) {
+    // form batch in vector container. for filter_params_batch, all elements 
+    // point to the same copy filter_params_elem
+    tgt_batch.push_back(new CuSubMatrix<BaseFloat>(out->ColRange(p * num_filters,
+				    num_filters)));
+    patch_batch.push_back(new CuSubMatrix<BaseFloat>(patches.ColRange(p * filter_dim,
+				    filter_dim)));
+    filter_params_batch.push_back(filter_params_elem);
+
+    tgt_batch[p]->AddVecToRows(1.0, bias_params_, 0.0); // add bias
+  }
+  
+  // apply all filters
+  AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
+		  kTrans, 1.0f);
+
+  // release memory
+  delete filter_params_elem;
+  for (int32 p = 0; p < num_patches; p++) {
+    delete tgt_batch[p];
+    delete patch_batch[p];
+  }
+}
+
+// scale the parameters
+void Convolutional1dComponent::Scale(BaseFloat scale) {
+  filter_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+// add another convolution component
+void Convolutional1dComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const Convolutional1dComponent *other =
+      dynamic_cast<const Convolutional1dComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  filter_params_.AddMat(alpha, other->filter_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+/*
+ This function does an operation similar to reversing a map,
+ except it handles maps that are not one-to-one by outputting
+ the reversed map as a vector of lists.
+ @param[in] forward_indexes is a vector of int32, each of whose
+            elements is between 0 and input_dim - 1.
+ @param[in] input_dim. See definitions of forward_indexes and
+            backward_indexes.
+ @param[out] backward_indexes is a vector of dimension input_dim
+            of lists, The list at (backward_indexes[i]) is a list
+            of all indexes j such that forward_indexes[j] = i.
+*/
+void Convolutional1dComponent::ReverseIndexes(const std::vector<int32> &forward_indexes,
+                                              int32 input_dim,
+                                              std::vector<std::vector<int32> > *backward_indexes) {
+  int32 i, size = forward_indexes.size();
+  int32 reserve_size = 2 + size / input_dim;
+  backward_indexes->resize(input_dim);
+  std::vector<std::vector<int32> >::iterator iter = backward_indexes->begin(),
+    end = backward_indexes->end();
+  for (; iter != end; ++iter)
+    iter->reserve(reserve_size);
+  for (int32 j = 0; j < forward_indexes.size(); j++) {
+    i = forward_indexes[j];
+    KALDI_ASSERT(i < input_dim);
+    (*backward_indexes)[i].push_back(j);
+  }
+}
+
+/*
+ This function transforms a vector of lists into a list of vectors,
+ padded with -1.
+ @param[in] The input vector of lists. Let in.size() be D, and let
+            the longest list length (i.e. the max of in[i].size()) be L.
+ @param[out] The output list of vectors. The length of the list will
+            be L, each vector-dimension will be D (i.e. out[i].size() == D),
+            and if in[i] == j, then for some k we will have that
+            out[k][j] = i. The output vectors are padded with -1
+            where necessary if not all the input lists have the same side.
+*/
+void Convolutional1dComponent::RearrangeIndexes(const std::vector<std::vector<int32> > &in,
+                                                std::vector<std::vector<int32> > *out) {
+  int32 D = in.size();
+  int32 L = 0;
+  for (int32 i = 0; i < D; i++)
+    if (in[i].size() > L)
+      L = in[i].size();
+  out->resize(L);
+  for (int32 i = 0; i < L; i++)
+    (*out)[i].resize(D, -1);
+  for (int32 i = 0; i < D; i++) {
+    for (int32 j = 0; j < in[i].size(); j++) {
+      (*out)[j][i] = in[i][j];
+    }
+  }
+}
+
+// back propagation function
+void Convolutional1dComponent::Backprop(const std::string &debug_info,
+                                        const ComponentPrecomputedIndexes *indexes,
+                                        const CuMatrixBase<BaseFloat> &in_value,
+                                        const CuMatrixBase<BaseFloat> &out_value,
+                                        const CuMatrixBase<BaseFloat> &out_deriv,
+                                        Component *to_update_in,
+                                        CuMatrixBase<BaseFloat> *in_deriv) const {
+  Convolutional1dComponent *to_update = dynamic_cast<Convolutional1dComponent*>(to_update_in);
+  int32 num_splice = InputDim() / patch_stride_;
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  int32 num_filters = filter_params_.NumRows();
+  int32 num_frames = out_deriv.NumRows();
+  int32 filter_dim = filter_params_.NumCols();
+
+  /** Buffer for backpropagation:
+   *  derivatives in the domain of 'patches_',
+   *  1row = vectorized rectangular feature patches,
+   *  1col = dim over speech frames,
+   */
+  CuMatrix<BaseFloat> patches_deriv(num_frames, filter_dim * num_patches, kSetZero);
+
+  //
+  // backpropagate to vector of matrices
+  // (corresponding to position of a filter)
+  //
+  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch, 
+	  filter_params_batch;
+
+  CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
+		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_.NumCols());
+
+  // form batch in vector container
+  for (int32 p = 0; p < num_patches; p++) {
+    // form batch in vector container. for filter_params_batch, all elements 
+    // point to the same copy filter_params_elem
+    patch_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(patches_deriv.ColRange(
+				    p * filter_dim, filter_dim)));
+    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+				    p * num_filters, num_filters)));
+    filter_params_batch.push_back(filter_params_elem);  
+  }
+  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
+		  filter_params_batch, kNoTrans, 0.0f);
+
+  // release memory
+  delete filter_params_elem;
+  for (int32 p = 0; p < num_patches; p++) {
+    delete patch_deriv_batch[p];
+    delete out_deriv_batch[p];
+  }
+
+  // sum the derivatives into in_deriv
+  std::vector<int32> column_map(filter_dim * num_patches);
+  for (int32 p = 0, index = 0; p < num_patches; p++) {
+    for (int32 s = 0; s < num_splice; s++) {
+      for (int32 d = 0; d < patch_dim_; d++, index++) {
+        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+      }
+    }
+  }
+
+  if (in_deriv) {
+    std::vector<std::vector<int32> > reversed_column_map;
+    ReverseIndexes(column_map, InputDim(), &reversed_column_map);
+    std::vector<std::vector<int32> > rearranged_column_map;
+    RearrangeIndexes(reversed_column_map, &rearranged_column_map);
+    for (int32 p = 0; p < rearranged_column_map.size(); p++) {
+      CuArray<int32> cu_cols(rearranged_column_map[p]);
+      in_deriv->AddCols(patches_deriv, cu_cols);
+    }
+  }
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    to_update->Update(debug_info, in_value, out_deriv);
+  }
+}
+
+void Convolutional1dComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+  }
+  filter_params_.SetZero();
+  bias_params_.SetZero();
+  if (treat_as_gradient) {
+    is_gradient_ = true;
+  }
+}
+
+void Convolutional1dComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
+  // might not see the "<Convolutional1dComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchDim>");
+  ReadBasicType(is, binary, &patch_dim_);
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchStep>");
+  ReadBasicType(is, binary, &patch_step_);
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchStride>");
+  ReadBasicType(is, binary, &patch_stride_);
+  ExpectToken(is, binary, "<FilterParams>");
+  filter_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ExpectToken(is, binary, ostr_end.str());
+  } else {
+    is_gradient_ = false;
+    KALDI_ASSERT(tok == ostr_end.str());
+  }
+}
+
+void Convolutional1dComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<PatchDim>");
+  WriteBasicType(os, binary, patch_dim_);
+  WriteToken(os, binary, "<PatchStep>");
+  WriteBasicType(os, binary, patch_step_);
+  WriteToken(os, binary, "<PatchStride>");
+  WriteBasicType(os, binary, patch_stride_);
+  WriteToken(os, binary, "<FilterParams>");
+  filter_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+BaseFloat Convolutional1dComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const Convolutional1dComponent *other =
+      dynamic_cast<const Convolutional1dComponent*>(&other_in);
+  return TraceMatMat(filter_params_, other->filter_params_, kTrans)
+         + VecVec(bias_params_, other->bias_params_);
+}
+
+Component* Convolutional1dComponent::Copy() const {
+  Convolutional1dComponent *ans = new Convolutional1dComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->patch_dim_ = patch_dim_;
+  ans->patch_step_ = patch_step_;
+  ans->patch_stride_ = patch_stride_;
+  ans->filter_params_ = filter_params_;
+  ans->bias_params_ = bias_params_;
+  ans->is_gradient_ = is_gradient_;
+  return ans;
+}
+
+void Convolutional1dComponent::PerturbParams(BaseFloat stddev) {
+  CuMatrix<BaseFloat> temp_filter_params(filter_params_);
+  temp_filter_params.SetRandn();
+  filter_params_.AddMat(stddev, temp_filter_params);
+
+  CuVector<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddVec(stddev, temp_bias_params);
+}
+
+void Convolutional1dComponent::SetParams(const VectorBase<BaseFloat> &bias,
+                                         const MatrixBase<BaseFloat> &filter) {
+  bias_params_ = bias;
+  filter_params_ = filter;
+  KALDI_ASSERT(bias_params_.Dim() == filter_params_.NumRows());
+}
+
+int32 Convolutional1dComponent::NumParameters() const {
+  return (filter_params_.NumCols() + 1) * filter_params_.NumRows();
+}
+
+// update parameters
+void Convolutional1dComponent::Update(const std::string &debug_info,
+		                      const CuMatrixBase<BaseFloat> &in_value,
+                                      const CuMatrixBase<BaseFloat> &out_deriv) {
+  // useful dims
+  int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
+  int32 num_filters = filter_params_.NumRows();
+  int32 filter_dim = filter_params_.NumCols();
+  int32 num_frames = in_value.NumRows();
+  int32 num_splice = InputDim() / patch_stride_;
+  CuMatrix<BaseFloat> filters_grad;
+  CuVector<BaseFloat> bias_grad;
+
+  /** Buffer of reshaped inputs:
+   *  1row = vectorized rectangular feature patches
+   *  1col = dim over speech frames,
+   */
+  CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
+  std::vector<int32> column_map(filter_dim * num_patches);
+  for (int32 p = 0, index = 0; p < num_patches; p++) {
+    for (int32 s = 0; s < num_splice; s++) {
+      for (int32 d = 0; d < patch_dim_; d++, index++) {
+        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+      }
+    }
+  }
+  CuArray<int32> cu_cols(column_map);
+  patches.CopyCols(in_value, cu_cols);
+
+  //
+  // calculate the gradient
+  //
+  filters_grad.Resize(num_filters, filter_dim, kSetZero); // reset
+  bias_grad.Resize(num_filters, kSetZero); // reset
+
+  //
+  // use all the patches
+  //
+
+  // create a single large matrix holding the smaller matrices 
+  // from the vector container filters_grad_batch along the rows
+  CuMatrix<BaseFloat> filters_grad_blocks_batch(
+		  num_patches * filters_grad.NumRows(), filters_grad.NumCols());
+
+  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch, 
+	  patch_batch;
+  for (int32 p = 0; p < num_patches; p++) {
+    // form batch in vector container
+    filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
+			    filters_grad_blocks_batch.RowRange(
+				    p * filters_grad.NumRows(), 
+				    filters_grad.NumRows())));
+    diff_patch_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+				    p * num_filters, num_filters)));
+    patch_batch.push_back(new CuSubMatrix<BaseFloat>(patches.ColRange(
+				    p * filter_dim, filter_dim)));
+  }
+
+  AddMatMatBatched(1.0f, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
+		  kNoTrans, 1.0f);
+
+  // add the row blocks together to filters_grad
+  filters_grad.AddMatBlocks(1.0, filters_grad_blocks_batch);
+
+  // create a matrix holding the col blocks sum of out_deriv
+  CuMatrix<BaseFloat> out_deriv_col_blocks_sum(out_deriv.NumRows(), num_filters);
+
+  // add the col blocks together to out_deriv_col_blocks_sum
+  out_deriv_col_blocks_sum.AddMatBlocks(1.0, out_deriv);
+
+  bias_grad.AddRowSumMat(1.0, out_deriv_col_blocks_sum, 1.0);
+
+  // release memory
+  for (int32 p = 0; p < num_patches; p++) {
+    delete filters_grad_batch[p];
+    delete diff_patch_batch[p];
+    delete patch_batch[p];    
+  }
+
+  //
+  // update
+  //
+  filter_params_.AddMat(learning_rate_, filters_grad);
+  bias_params_.AddVec(learning_rate_, bias_grad);
+}
+
 
 
 } // namespace nnet3

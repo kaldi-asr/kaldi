@@ -891,6 +891,131 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
       = (const NaturalGradientPerElementScaleComponent &other); // Disallow.
 };
 
+/**
+ * Convolutional1dComponent implements convolution over frequency axis.
+ * We assume the input featrues are spliced, i.e. each frame is in
+ * fact a set of stacked frames, where we can form patches which span
+ * over several frequency bands and whole time axis. A patch is the
+ * instance of a filter on a group of frequency bands and whole time
+ * axis. Shifts of the filter generate patches.
+ *
+ * The convolution is done over whole axis with same filter
+ * coefficients, i.e. we don't use separate filters for different
+ * 'regions' of frequency axis. Due to convolution, same weights are
+ * used repeateadly, the final gradient is a sum of all
+ * position-specific gradients (the sum was found better than
+ * averaging).
+ *
+ * In order to have a fast implementations, the filters are
+ * represented in vectorized form, where each rectangular filter
+ * corresponds to a row in a matrix, where all the filters are
+ * stored. The features are then re-shaped to a set of matrices, where
+ * one matrix corresponds to single patch-position, where all the
+ * filters get applied.
+ * 
+ * The type of convolution is controled by hyperparameters:
+ * patch_dim_     ... frequency axis size of the patch
+ * patch_step_    ... size of shift in the convolution
+ * patch_stride_  ... shift for 2nd dim of a patch 
+ *                    (i.e. frame length before splicing)
+ * For instance, for a convolutional component after raw input,
+ * if the input is 36-dim fbank feature with delta of order 2
+ * and spliced using +/- 5 frames of contexts, the convolutional
+ * component takes the input as a 36 x 33 image. The patch_stride_
+ * should be configured 36. If patch_step_ and patch_dim_ are
+ * configured 1 and 7, the Convolutional1dComponent creates a
+ * 2D filter of 7 x 33, such that the convolution is actually done
+ * only along the frequency axis. Specifically, the convolutional
+ * output along the frequency axis is (36 - 7) / 1 + 1 = 30, and
+ * the convolutional output along the temporal axis is 33 - 33 + 1 = 1,
+ * resulting in an output image of 30 x 1, which is called a feature map
+ * in ConvNet. Then if the output-dim is set 3840, the constructor
+ * would know there should be 3840 / 30 = 128 distinct filters,
+ * which will create 128 feature maps of 30 x 1 for one frame of
+ * input. The feature maps are vectorized as a 3840-dim row vector
+ * in the output matrix of this component. For details on progatation
+ * of Convolutional1dComponent, check the function definition.
+ *
+ */
+class Convolutional1dComponent: public UpdatableComponent {
+ public:
+  Convolutional1dComponent();
+  // constructor using another component
+  Convolutional1dComponent(const Convolutional1dComponent &component);
+  // constructor using parameters
+  Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
+                           const CuVectorBase<BaseFloat> &bias_params,
+                           BaseFloat learning_rate);
+
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "Convolutional1dComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+	    kBackpropAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+
+  // Some functions that are specific to this class.
+  void SetParams(const VectorBase<BaseFloat> &bias,
+                 const MatrixBase<BaseFloat> &filter);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
+  void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
+            int32 patch_dim, int32 patch_step, int32 patch_stride,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(BaseFloat learning_rate, std::string matrix_filename);
+
+  // resize the component, setting the parameters to zero, while
+  // leaving any other configuration values the same
+  void Resize(int32 input_dim, int32 output_dim);
+
+  void Update(const std::string &debug_info,
+	      const CuMatrixBase<BaseFloat> &in_value,
+              const CuMatrixBase<BaseFloat> &out_deriv);
+
+ private:
+  int32 patch_dim_;
+  int32 patch_step_;
+  int32 patch_stride_;
+
+  static void ReverseIndexes(const std::vector<int32> &forward_indexes,
+                             int32 input_dim,
+                             std::vector<std::vector<int32> > *backward_indexes);
+  static void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
+                               std::vector<std::vector<int32> > *out);
+    
+  const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
+  CuMatrix<BaseFloat> filter_params_;
+  CuVector<BaseFloat> bias_params_;
+  bool is_gradient_;
+};
 
 
 
