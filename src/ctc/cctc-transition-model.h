@@ -54,15 +54,15 @@ class CctcTransitionModel {
   // (state,phone)->state).
   int32 PhoneLeftContext() const { return phone_left_context_; }
 
-  // The number of output-indexes-- i.e. the output dimension that the neural
-  // net you use with this should have.  It will equal ctx_dep_.NumPdfs() +
-  // language_model_.NumHistoryStates().  The output_indexes are numbered from 0
-  // to NumOutputIndexes() - 1.
+  // Returns the number of output-indexes-- i.e. the output dimension that the
+  // neural net you use with this should have.  It will equal ctx_dep_.NumPdfs()
+  // + language_model_.NumHistoryStates(), i.e. num-non-blank-symbols +
+  // num-blank-symbols.  The output_indexes are numbered from 0 to
+  // NumOutputIndexes() - 1, and the non-blank symbols appear first.
   int32 NumOutputIndexes() const { return num_output_indexes_; }
 
-  // just in case you need to know it, this returns the number of output
-  // indexes that correspond to non-blank symbols (i.e. real phones).  The
-  // non-blank indexes come first.
+  // Returns the number of output indexes that correspond to non-blank symbols
+  // (i.e. real phones).  The non-blank indexes come first.
   int32 NumNonBlankIndexes() const { return num_non_blank_indexes_; }
 
   // return the number of history-states the model contains.

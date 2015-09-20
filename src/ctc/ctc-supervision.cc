@@ -488,8 +488,6 @@ void CtcSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Weight>");
   WriteBasicType(os, binary, weight);
   WriteToken(os, binary, "<Frames>");
-  WriteBasicType(os, binary, first_frame);
-  WriteBasicType(os, binary, frame_skip);
   WriteBasicType(os, binary, num_frames);
   if (!binary) os << "\n";
   WriteToken(os, binary, "<LabelDim>");
@@ -513,8 +511,6 @@ void CtcSupervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Weight>");
   ReadBasicType(is, binary, &weight);
   ExpectToken(is, binary, "<Frames>");
-  ReadBasicType(is, binary, &first_frame);
-  ReadBasicType(is, binary, &frame_skip);
   ReadBasicType(is, binary, &num_frames);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
@@ -569,9 +565,55 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 }
 
 CtcSupervision::CtcSupervision(const CtcSupervision &other):
-    weight(other.weight), first_frame(other.first_frame),
-    frame_skip(other.frame_skip), num_frames(other.num_frames),
+    weight(other.weight), num_frames(other.num_frames),
     label_dim(other.label_dim), fst(other.fst) { }
+
+void AppendCtcSupervision(const std::vector<const CtcSupervision*> &input,
+                          bool compactify,
+                          std::vector<CtcSupervision> *output_supervision) {
+  KALDI_ASSERT(!input.empty());
+  int32 label_dim = input[0]->label_dim,
+      num_inputs = input.size();
+  if (num_inputs == 1) {
+    output_supervision->resize(1);
+    (*output_supervision)[0] = *(input[0]);
+    return;
+  }
+  std::vector<bool> output_was_merged;
+  for (int32 i = 1; i < num_inputs; i++)
+    KALDI_ASSERT(input[i]->label_dim == label_dim &&
+                 "Trying to append incompatible CtcSupervision objects");
+  output_supervision->clear();
+  output_supervision->reserve(input.size());
+  BaseFloat cur_weight = -1.0;
+  for (int32 i = 0; i < input.size(); i++) {
+    const CtcSupervision &src = *(input[i]);
+    if (compactify && src.weight == cur_weight) {
+      // Combine with current output
+      KALDI_ASSERT(!output_supervision->empty());
+      // append src.fst to output_supervision->fst.
+      fst::Concat(&output_supervision->back().fst, src.fst);
+      output_supervision->back().num_frames += src.num_frames;
+      output_was_merged.back() = true;
+    } else {
+      output_supervision->resize(output_supervision->size() + 1);
+      output_supervision->back() = src;
+      cur_weight = src.weight;
+      output_was_merged.push_back(false);
+    }
+  }
+  KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
+  for (size_t i = 0; i < output_supervision->size(); i++) {
+    if (output_was_merged[i]) {
+      fst::StdVectorFst &out_fst = (*output_supervision)[i].fst;
+      // The process of concatenation will have introduced epsilons.
+      fst::RmEpsilon(&out_fst);
+      if (fst::TopSort(&out_fst) == false)
+        KALDI_ERR << "Topological sort of supervision FST failed.";
+    }
+  }
+}
+
 
 
 }  // namespace ctc

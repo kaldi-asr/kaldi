@@ -47,7 +47,6 @@ namespace ctc {
 
 struct CctcTrainingOptions {
   BaseFloat normalizing_weight;
-  BaseFloat min_post;
 
   CctcTrainingOptions(): normalizing_weight(0.0001) { }
 
@@ -66,7 +65,6 @@ struct CctcTrainingOptions {
 // held-out training data.  It is not responsible for the entire process of CCTC
 // model training; it is only responsible for the forward-backward from the
 // neural net output, and the derivative computation.
-
 class CctcComputation {
  public:
   /// Note: the 'cu_weights' argument should be the output of
@@ -81,8 +79,10 @@ class CctcComputation {
   BaseFloat Forward();
                     
   // Does the backward computation and (efficiently) writes the derivative
-  // w.r.t. the neural network output to 'nnet_output_deriv' (which does not
-  // have to be initialized beforehand).
+  // w.r.t. the neural network output to 'nnet_output_deriv'.  This function
+  // requires that 'nnet_output_deriv' not contain any NaN or inf values
+  // (so if it was just allocated, you need to zero it first).
+  //
   // Returns true if everything was OK (which it should be, normally), and
   // false if some kind of NaN or inf was discovered, in which case you
   // shouldn't use the derivatives.  We're concerned about this because

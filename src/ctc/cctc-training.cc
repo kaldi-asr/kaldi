@@ -286,10 +286,6 @@ bool CctcComputation::ComputeDerivatives(
   normalizers_.AddElements(1.0, denominator_indexes_,
                            denominator_deriv_data);
 
-  // Even though the next statement adds it with zero coefficient, we need
-  // to set it to zero to guard against inf's or NaN's.
-  nnet_output_deriv->SetZero();
-  
   // After the following statement, 'nnet_output_deriv' contains the derivative
   // with respect to 'exp_nnet_output_', considering only the denominator term.
   nnet_output_deriv->AddMatMat(1.0, normalizers_, kNoTrans,

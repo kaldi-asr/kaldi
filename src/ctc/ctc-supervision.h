@@ -245,14 +245,6 @@ struct CtcSupervision {
   // The weight of this example (will usually be 1.0).
   BaseFloat weight;
 
-  // The time-index of the first supervised frame (will usually be 0).
-  int32 first_frame;
-
-  // frame_skip will normally be 1, but it could be e.g. 2 or 3 in situations
-  // where we only process the output every few input frames (e.g.
-  // clockwork-RNN type situations).
-  int32 frame_skip;
-  
   // num_frames must equal the path length of any path in the FST.  Technically
   // this information is redundant with the FST, but it's convenient to have
   // it separately.
@@ -272,9 +264,7 @@ struct CtcSupervision {
   // appear within a specified temporal window.
   fst::StdVectorFst fst;
 
-
-  CtcSupervision(): weight(1.0), first_frame(0), frame_skip(0), num_frames(-1),
-                    label_dim(-1) { }
+  CtcSupervision(): weight(1.0), num_frames(-1),  label_dim(-1) { }
 
   CtcSupervision(const CtcSupervision &other);
   
@@ -375,7 +365,19 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
                            std::vector<int32> *state_times);
 
 
-/// TODO: a function to combine (append) multiple examples.
+/// This function appends a list of CTC-supervision objects to create what will
+/// usually be a single such object, but if the weights are not all the same it
+/// will only append CtcSupervision objects where successive ones have the same
+/// weight, and if 'compactify' is true.  The normal use-case for this is when
+/// you are combining neural-net examples for CTC training; appending them like
+/// this helps to reduce the number of GPU kernel invocations.  This function
+/// will crash if the values of label_dim in the inputs are not all the same.
+void AppendCtcSupervision(const std::vector<const CtcSupervision*> &input,
+                          bool compactify,
+                          std::vector<CtcSupervision> *output_supervision);
+  
+
+
 
 }  // namespace ctc
 }  // namespace kaldi

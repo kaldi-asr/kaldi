@@ -18,27 +18,29 @@
 // limitations under the License.
 
 #include "nnet3/nnet-ctc-example.h"
+#include "nnet3/nnet-example-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
 
-void NnetCtcOutput::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<NnetCtcOutput>");
+void NnetCtcSupervision::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetCtcSup>");
   WriteToken(os, binary, name);
   WriteToken(os, binary, "<NumOutputs>");
   int32 size = supervision.size();
-  KALDI_ASSERT(size > 0 && "Attempting to write empty NnetCtcOutput.");
+  KALDI_ASSERT(size > 0 && "Attempting to write empty NnetCtcSupervision.");
   WriteBasicType(os, binary, size);
   if (!binary) os << "\n";  
   for (int32 i = 0; i < size; i++) {
     supervision[i].Write(os, binary);
     if (!binary) os << "\n";
   }
-  WriteToken(os, binary, "</NnetCtcOutput>");
+  WriteToken(os, binary, "</NnetCtcSup>");
 }
 
-void NnetCtcOutput::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<NnetCtcOutput>");
+
+void NnetCtcSupervision::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetCtcSup>");
   ReadToken(is, binary, &name);
   ExpectToken(is, binary, "<NumOutputs>");
   int32 size;
@@ -47,31 +49,73 @@ void NnetCtcOutput::Read(std::istream &is, bool binary) {
   supervision.resize(size);
   for (int32 i = 0; i < size; i++)
     supervision[i].Read(is, binary);
-  ExpectToken(is, binary, "</NnetCtcOutput>");
+  ExpectToken(is, binary, "</NnetCtcSup>");
 }
 
 
-void NnetCtcOutput::GetIndexes(std::vector<Index> *indexes) const {
-  KALDI_ASSERT(!supervision.empty());
-  int32 total_size = 0;
+void NnetCtcSupervision::ComputeObjfAndDerivs(
+    const ctc::CctcTrainingOptions &opts,
+    const ctc::CctcTransitionModel &cctc_trans_model,
+    const CuMatrix<BaseFloat> &cu_weights,
+    const CuMatrixBase<BaseFloat> &nnet_output,
+    BaseFloat *tot_weight_out,
+    BaseFloat *tot_objf_out,
+    CuMatrixBase<BaseFloat> *nnet_out_deriv) const {
+  static int32 num_warnings = 50;
+  int32 num_output_indexes = cctc_trans_model.NumOutputIndexes();
+  KALDI_ASSERT(nnet_output.NumCols() == num_output_indexes);
+  int32 cur_offset = 0;
+  const BaseFloat error_logprob_per_frame = -10.0;
+  BaseFloat tot_weight = 0.0, tot_objf = 0.0;
   std::vector<ctc::CtcSupervision>::const_iterator
       iter = supervision.begin(), end = supervision.end();
-  for (; iter != end; ++iter)
-    total_size += iter->num_frames;
-  indexes->resize(total_size);
-  std::vector<Index>::iterator out_iter = indexes->begin();
-  int32 n = 0;
-  for (iter = supervision.begin(); iter != end; ++iter,++n) {
-    int32 this_first_frame = iter->first_frame,
-        this_frame_skip = iter->frame_skip,
-        this_num_frames = iter->num_frames;
-    for (int32 i = 0; i < this_num_frames; i++, ++out_iter) {
-      int32 t = this_first_frame + i * this_frame_skip, x = 0;
-      *out_iter = Index(n, t, x);
+  if (nnet_out_deriv)
+    nnet_out_deriv->SetZero();
+  for (; iter != end; cur_offset += iter->num_frames,++iter) {
+    const ctc::CtcSupervision &supervision = *iter;
+    const CuSubMatrix<BaseFloat> nnet_output_part(nnet_output, cur_offset,
+                                                  supervision.num_frames,
+                                                  0, num_output_indexes);
+    ctc::CctcComputation computation(opts, cctc_trans_model, cu_weights,
+                                 supervision, nnet_output_part);
+    tot_weight += supervision.num_frames * supervision.weight;
+    BaseFloat tot_log_prob = computation.Forward();
+    if (tot_log_prob == tot_log_prob && tot_log_prob - tot_log_prob == 0.0) {
+      tot_objf += supervision.weight * tot_log_prob;
+    } else {  // NaN or inf
+      tot_objf += supervision.num_frames *
+          supervision.weight * error_logprob_per_frame;
+      if (num_warnings > 0) {
+        num_warnings--;
+        KALDI_WARN << "Bad forward prob " << tot_log_prob
+                   << " encountered in CTC computation";
+      }
+      continue;  // Don't do the backprop.
     }
+    if (nnet_out_deriv == NULL)
+      continue;
+    // Now do the backward phase, if requested.
+    CuSubMatrix<BaseFloat> out_deriv_part(*nnet_out_deriv, cur_offset,
+                                          supervision.num_frames,
+                                          0, num_output_indexes);
+    if (!computation.Backward(&out_deriv_part)) {
+      nnet_out_deriv->Range(cur_offset, supervision.num_frames,
+                            0, num_output_indexes).SetZero();
+      if (num_warnings > 0) {
+        num_warnings--;
+        KALDI_WARN << "NaN's or inf's encountered in CTC backprop";
+      }
+    }                                              
   }
-  KALDI_ASSERT(out_iter == indexes->end());
+  KALDI_ASSERT(cur_offset == nnet_output.NumRows());
+  *tot_weight_out = tot_weight;
+  *tot_objf_out = tot_objf;
 }
+
+NnetCtcSupervision::NnetCtcSupervision(const NnetCtcSupervision &other):
+    name(other.name),
+    indexes(other.indexes),
+    supervision(other.supervision) { }
 
 void NnetCtcExample::Write(std::ostream &os, bool binary) const {
   // Note: weight, label, input_frames and spk_info are members.  This is a
@@ -123,13 +167,106 @@ void NnetCtcExample::Swap(NnetCtcExample *other) {
 }
 
 void NnetCtcExample::Compress() {
-  std::vector<NnetIo>::iterator iter = inputs.begin(),
-      end = inputs.end();
+  std::vector<NnetIo>::iterator iter = inputs.begin(), end = inputs.end();
   // calling features.Compress() will do nothing if they are sparse or already
   // compressed.
-  for (; iter != end; ++iter)
-    iter->features.Compress();
+  for (; iter != end; ++iter) iter->features.Compress();
 }
+
+NnetCtcExample::NnetCtcExample(const NnetCtcExample &other):
+    inputs(other.inputs), outputs(other.outputs) { }
+
+
+// called from MergeCtcExamplesInternal, this function merges the CtcSupervision
+// objects into one.  Requires (and checks) that they all have the same name.
+static void MergeCtcSupervision(
+    const std::vector<const NnetCtcSupervision*> &inputs,
+    bool compactify,
+    NnetCtcSupervision *output) {
+  int32 num_inputs = inputs.size(),
+      num_indexes = 0;
+  for (int32 n = 0; n < num_inputs; n++) {
+    KALDI_ASSERT(inputs[n]->name == inputs[0]->name);
+    num_indexes += inputs[n]->indexes.size();
+  }
+  output->name = inputs[0]->name;
+  std::vector<const ctc::CtcSupervision*> input_supervision;
+  input_supervision.reserve(inputs.size());
+  for (int32 n = 0; n < num_inputs; n++) {
+    std::vector<ctc::CtcSupervision>::const_iterator
+        iter = inputs[n]->supervision.begin(),
+        end = inputs[n]->supervision.end();
+    for (; iter != end; ++iter)
+      input_supervision.push_back(&(*iter));
+  }
+  AppendCtcSupervision(input_supervision,
+                       compactify,
+                       &(output->supervision));
+  output->indexes.clear();
+  output->indexes.reserve(num_indexes);
+  for (int32 n = 0; n < num_inputs; n++) {
+    const std::vector<Index> &src_indexes = inputs[n]->indexes;
+    int32 cur_size = output->indexes.size();
+    output->indexes.insert(output->indexes.end(),
+                           src_indexes.begin(), src_indexes.end());
+    std::vector<Index>::iterator iter = output->indexes.begin() + cur_size,
+        end = output->indexes.end();
+    // change the 'n' index to correspond to the index into 'input'.
+    // Each example gets a different 'n' value, starting from 0.
+    for (; iter != end; ++iter) {
+      KALDI_ASSERT(iter->n == 0 && "Merging already-merged CTC egs");
+      iter->n = n;
+    }
+  }
+  KALDI_ASSERT(output->indexes.size() == num_indexes);
+}
+
+
+static void MergeCtcExamplesInternal(bool compress,
+                                     bool compactify,
+                                     std::vector<NnetCtcExample> *input,
+                                     NnetCtcExample *output) {
+  int32 num_examples = input->size();
+  KALDI_ASSERT(num_examples > 0);
+  // we temporarily make the input-features in 'input' look like regular NnetExamples,
+  // so that we can recycle the MergeExamples() function.
+  std::vector<NnetExample> eg_inputs(num_examples);
+  for (int32 i = 0; i < num_examples; i++)
+    eg_inputs[i].io.swap((*input)[i].inputs);
+  NnetExample eg_output;
+  MergeExamples(eg_inputs, compress, &eg_output);
+  // swap the inputs back so that they are not really changed.
+  for (int32 i = 0; i < num_examples; i++)
+    eg_inputs[i].io.swap((*input)[i].inputs);
+  // write to 'output->inputs'
+  eg_output.io.swap(output->inputs);
+
+  // Now deal with the CTC-supervision 'outputs'.  There will
+  // normally be just one of these, with name "output", but we
+  // handle the more general case.
+  int32 num_output_names = (*input)[0].outputs.size();
+  output->outputs.resize(num_output_names);
+  for (int32 i = 0; i < num_output_names; i++) {
+    std::vector<const NnetCtcSupervision*> to_merge(num_examples);
+    for (int32 j = 0; j < num_examples; j++) {
+      KALDI_ASSERT((*input)[j].outputs.size() == num_output_names);
+      to_merge[j] = &((*input)[j].outputs[i]);
+    }
+    MergeCtcSupervision(to_merge,
+                        compactify,
+                        &(output->outputs[i]));
+  }
+}
+
+void MergeCtcExamples(const std::vector<NnetCtcExample> &input,
+                      bool compress,
+                      bool compactify,
+                      NnetCtcExample *output) {
+  MergeCtcExamplesInternal(compress, compactify,
+                           const_cast<std::vector<NnetCtcExample>*>(&input),
+                           output);
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

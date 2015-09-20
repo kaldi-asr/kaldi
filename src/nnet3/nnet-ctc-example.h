@@ -33,46 +33,76 @@ namespace nnet3 {
 
 // For regular setups we use struct 'NnetIo' as the output.  For CTC, the output
 // supervision is a little more complex as it involves a lattice and we need to
-// do forward-backward, so we use a separate struct for it.
-struct NnetCtcOutput {
+// do forward-backward, so we use a separate struct for it.  The 'output' name
+// means that it pertains to the output of the network, as opposed to features
+// which pertain to the input of the network.  It actually stores the
+// lattice-like supervision information at the output of the network (which
+// imposes constraints on which frames each phone can be active on.
+struct NnetCtcSupervision {
   /// the name of the output in the neural net; in simple setups it
   /// will just be "output".
   std::string name;
 
-  /// This is a vector of CtcSupervision, indexed by 'n' value.  The length of
-  /// this vector will equal the number of distinct sequences in the minibatch
-  /// (e.g. 256).  The assumption is that we cover 'n' values that start from 0,
-  /// without gaps.
+  /// The indexes that the output corresponds to.  The size of this vector
+  /// will be the sum of the 'num_frames' values of the elements of 'supervision'.
+  std::vector<Index> indexes;
+
+  /// This is a vector of CtcSupervision.  When we first aggregate examples we
+  /// will have one for each individual example, but then we'll call Compactify(),
+  /// and successive CtcSupervision objects that have the same weight will get
+  /// merged.  This will make the GPU computation more efficient.
   std::vector<ctc::CtcSupervision> supervision;
 
-  /// This function works out the indexes corresponding to the output, from the
-  /// 'supervision'.  The output indexes will be ordered as first n=0, then
-  /// for n=1, and so on.  The 'x' indexes will always be zero.
-  void GetIndexes(std::vector<Index> *indexes) const;
 
-  /// This function, which will be called between the Forward and Backward
-  /// passes of training, accepts the neural net output, does the forward-backward
-  /// computation, and computes the derivatives.
-  /// The nnet output is interpreted as coming in chunks, the first chunk for
-  /// the first CtcSupervision (for n=0), and so on.  The way the indexes are
-  /// computed by the GetIndexes() function is how we tell the nnet3 code
-  /// that this is the case.
-  void ComputeObjfAndDerivatives(const ctc::CctcTrainingOptions &opts,
-                                 const ctc::CctcTransitionModel &trans_model,
-                                 const CuMatrix<BaseFloat> &cu_weights,
-                                 const ctc::CtcSupervision &supervision,
-                                 const CuMatrixBase<BaseFloat> &nnet_output,
-                                 CuMatrix<BaseFloat> *nnet_output_deriv) const;
+  /** This function, which will be called between the Forward and Backward
+      passes of training, accepts the neural net output, does the forward-backward
+      computation, and computes the derivatives.
+
+      @param [in] opts   The CCTC training options (for normalizing_weight and min_post)
+      @param [in] cctc_trans_model   Certain essential indexes for CTC that we
+                  put in one place, along with the phone-language-model info.
+      @param [in] cu_weights   Obtained from cctc_trans_model.GetWeights().
+      @param [in] nnet_output   The output of the neural net (its num-rows
+                  should equal indexes->size() (where 'indexes' is the
+                  output of GetIndexes()), and its num-cols should equal
+                  cctc_trans_model.NumOutputIndexes().
+      @param [out] tot_weight The total weight of this training data, used for
+                  correctly normalizing the objective function (e.g. for
+                  display), is output to here.  It will be set to the sum of
+                  supervision[i].weight * supervision[i].num_frames.
+      @param [out] tot_objf  The total objective function for this training
+                  data, i.e. the sum of the log-likelihoods from the forward
+                  computation over each of the supervision examples.
+      @param [out] nnet_out_deriv  If non-NULL, the derivative of the CCTC
+                  objective function w.r.t. 'nnet_output' will be written to
+                  here.  Does not have to be zeroed beforehand (this function
+                  does that for you).  Must (if non-NULL) have same dim as
+                  nnet_output.
+  */
+  void ComputeObjfAndDerivs(const ctc::CctcTrainingOptions &opts,
+                            const ctc::CctcTransitionModel &cctc_trans_model,
+                            const CuMatrix<BaseFloat> &cu_weights,
+                            const CuMatrixBase<BaseFloat> &nnet_output,
+                            BaseFloat *tot_weight,
+                            BaseFloat *tot_objf,
+                            CuMatrixBase<BaseFloat> *nnet_out_deriv) const;
   
 
-  // Use default copy constructor and assignment operators.
+  // Use default assignment operator
+
+  NnetCtcSupervision();
+  
+  NnetCtcSupervision(const ctc::CtcSupervision ctc_supervision,
+                     int32 first_frame,
+                     int32 frame_skip);
+  
+  NnetCtcSupervision(const NnetCtcSupervision &other);
   
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
 
 };
-
 
 /// NnetCtcExample is like NnetExample, but specialized for CTC training.
 /// (actually CCTC training, which is our extension of CTC).
@@ -84,21 +114,39 @@ struct NnetCtcExample {
   std::vector<NnetIo> inputs;
 
   /// 'outputs' contains the CTC output supervision.  There will normally
-  /// be just one member with name = "output".
-  std::vector<NnetCtcOutput> outputs;
+  /// be just one member with name == "output".
+  std::vector<NnetCtcSupervision> outputs;
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
   void Swap(NnetCtcExample *other);
 
-  // Compress the input features (if not compressed).
+  // Compresses the input features (if not compressed)
   void Compress();
 
   NnetCtcExample() { }
 
   NnetCtcExample(const NnetCtcExample &other);
 };
+
+
+/// This function merges a list of NnetCtcExample objects into a single one--
+/// intended to be used when forming minibatches for neural net training.  If
+/// 'compress' it compresses the output features (recommended to save disk
+/// space); if 'compactify' is true, it compactifies the output by merging the
+/// CtcSupervision objects (recommended for efficiency).
+///
+/// Note: if you are calling this from multi-threaded code, be aware that
+/// internally this function temporarily changes 'input' by means of a
+/// const_cast, before putting it back to its original value.  This is a trick
+/// to allow us to use the MergeExamples() routine and avoid having to rewrite
+/// code.
+void MergeCtcExamples(const std::vector<NnetCtcExample> &input,
+                      bool compress,
+                      bool compactify,
+                      NnetCtcExample *output);
+
 
 
 typedef TableWriter<KaldiObjectHolder<NnetCtcExample > > NnetCtcExampleWriter;

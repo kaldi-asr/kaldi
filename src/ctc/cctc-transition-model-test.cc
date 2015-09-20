@@ -370,7 +370,11 @@ void TestCtcSupervisionTraining(const CctcTransitionModel &trans_model,
   BaseFloat log_like = computation.Forward();
   KALDI_LOG << "log-like of CCTC computation is " << log_like;
 
-  CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim);
+  CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
+                                        kUndefined);
+  nnet_output_deriv.SetRandn();  // <- the class requires only that it not have
+                                 // NaN's or infs, so we set it random to test
+                                 // that it ignores the existing data.
   computation.Backward(&nnet_output_deriv);
   int32 num_offsets = 3;
   Vector<BaseFloat> predicted_objf_changes(num_offsets),
@@ -405,6 +409,23 @@ void TestCtcSupervisionIo(const CtcSupervision &supervision) {
   std::ostringstream os2;
   supervision2.Write(os2, binary);
   KALDI_ASSERT(os.str() == os2.str());
+}
+
+void TestCtcSupervisionAppend(const CtcSupervision &supervision) {
+  int32 num_append = RandInt(1,5);
+  std::vector<const CtcSupervision*> input(num_append);
+  for (int32 i = 0; i < num_append; i++)
+    input[i] = &supervision;
+  std::vector<CtcSupervision> output;
+  bool compactify = (RandInt(0, 1) == 0);
+  AppendCtcSupervision(input, compactify, &output);
+  if (compactify) {
+    KALDI_ASSERT(output.size() == 1 &&
+                 output[0].num_frames == num_append * supervision.num_frames);
+  } else {
+    KALDI_ASSERT(output.size() == input.size());
+  }
+  TestCtcSupervisionIo(output[0]);
 }
 
 void TestCctcSupervision(const CctcTransitionModel &trans_model) {
@@ -497,6 +518,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
                          last_silence_phone, &phones_from_graph_nosil);
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
   TestCtcSupervisionIo(supervision);
+  TestCtcSupervisionAppend(supervision);
   TestCtcSupervisionTraining(trans_model, supervision);
 }
 
