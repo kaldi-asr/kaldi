@@ -1211,9 +1211,8 @@ void IvectorExtractorStats::IvectorVarianceDiagnostic(
   }
   double trace_W = W.Trace(),
          trace_B = B.Trace();
-  KALDI_LOG << "The proportion of variance explained by the iVectors "
-            << "versus the Gaussians is " << trace_B / (trace_B + trace_W)
-            << ".";
+  KALDI_LOG << "The proportion of within-Gaussian variance explained by "
+            << "the iVectors is " << trace_B / (trace_B + trace_W) << ".";
 }
 
 double IvectorExtractorStats::UpdateProjection(
