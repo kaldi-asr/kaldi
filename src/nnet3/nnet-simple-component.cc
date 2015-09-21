@@ -2160,7 +2160,7 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
 				    filter_dim)));
     filter_params_batch.push_back(filter_params_elem);
 
-    tgt_batch[p]->AddVecToRows(1.0, bias_params_, 0.0); // add bias
+    tgt_batch[p]->AddVecToRows(1.0, bias_params_, 1.0); // add bias
   }
   
   // apply all filters

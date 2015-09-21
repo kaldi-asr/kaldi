@@ -955,7 +955,7 @@ class Convolutional1dComponent: public UpdatableComponent {
   virtual std::string Type() const { return "Convolutional1dComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-	    kBackpropAdds;
+	    kBackpropAdds|kPropagateAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
