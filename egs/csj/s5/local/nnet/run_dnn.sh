@@ -25,7 +25,7 @@
 # Config:
 config=conf/config_opt
 . $config
-gmmdir=exp/tri4
+gmmdir=exp/tri4 
 data_fmllr=data-fmllr-tri4
 stage=0 # resume training with --stage=N
 # End of config.
@@ -60,7 +60,7 @@ if [ $stage -le 1 ]; then
 fi
 
 
-if [ $stage -le 2 ]; then  
+if [ $stage -le 2 ]; then 
   # Train the DNN optimizing per-frame cross-entropy.
   dir=exp/dnn5b_pretrain-dbn_dnn
   ali=${gmmdir}_ali_nodup
@@ -86,7 +86,7 @@ dir=exp/dnn5b_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn5b_pretrain-dbn_dnn
 acwt=0.0909
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 3 ]; then 
   # First we generate lattices and alignments:
   steps/nnet/align.sh --nj 10 --cmd "$train_cmd" \
     $data_fmllr/train_nodup data/lang $srcdir ${srcdir}_ali || exit 1;

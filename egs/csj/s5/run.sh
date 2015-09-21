@@ -19,14 +19,14 @@ set -e # exit on error
 
 #: << '#SKIP'
 
-if [ ! -d data/csj-data/eval ]; then
+if [ ! -e data ]; then
  echo "CSJ transcription file does not exist"
  #local/csj_make_trans/csj_automake.sh <RESOUCE_DIR> <MAKING_PLACE(no change)> || exit 1;
- local/csj_make_trans/csj_automake.sh /database/NINJAL/CSJ/ data/csj-data 2>/dev/null
+ local/csj_make_trans/csj_automake.sh /database/NINJAL/CSJ data/csj-data 2>/dev/null
 fi
 wait
 
-[ ! -d data/csj-data/eval ]\
+[ ! -e data/csj-data/.done_make_all ]\
     && echo "Not finished processing CSJ data" && exit 1;
 
 # Prepare Corpus of Spontaneous Japanese (CSJ) data. 
@@ -36,7 +36,7 @@ local/csj_data_prep.sh data/csj-data/
 
 local/csj_prepare_dict.sh 
 
-utils/prepare_lang.sh data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
+utils/prepare_lang.sh --num-sil-states 4 data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
 
 # Now train the language models.
 local/csj_train_lms.sh data/local/train/text data/local/dict_nosp/lexicon.txt data/local/lm
@@ -155,7 +155,7 @@ $train_cmd $graph_dir/mkgraph.log \
     utils/mkgraph.sh data/lang_nosp_csj_tg exp/tri3 $graph_dir
 for eval_num in `seq 3`; do
     steps/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode.config \
-	$graph_dir data/eval${eval_num} exp/tri3/decode_eval${eval_num}_csj
+	$graph_dir data/eval${eval_num} exp/tri3/decode_eval${eval_num}_csj_nosp
 done
 
 # Now we compute the pronunciation and silence probabilities from training data,                                                                                                     

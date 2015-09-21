@@ -50,7 +50,7 @@ cat $CSJ/dvd{3,5,6,7,8,9,10}/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.fl
 n=`cat $dir/wav.flist | wc -l`
 
 [ $n -ne 986 ] && \
-  echo Warning: expected 986 data data files, found $n
+  echo "Warning: expected 986 data files (Case : Using 'Academic lecture' and 'Other' data), found $n."
 
 
 # (1a) Transcriptions preparation
@@ -102,7 +102,7 @@ awk '{segment=$1; split(segment,S,"[_]"); spkid=S[1]; print $1 " " spkid}' $dir/
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 
-# Copy stuff into its final locations.
+# Copy stuff into its final locations [this has been moved from the format_data script]
 mkdir -p data/train
 for f in spk2utt utt2spk wav.scp text segments; do
   cp data/local/train/$f data/train/$f || exit 1;
