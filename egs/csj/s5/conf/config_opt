@@ -3,7 +3,8 @@
 # Apache 2.0
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.  
 
-# Current optimized parameter config for CSJ
+# Currently optimized parameter config for CSJ
+
 splice=17
 nn_depth=6
 hid_dim=1905

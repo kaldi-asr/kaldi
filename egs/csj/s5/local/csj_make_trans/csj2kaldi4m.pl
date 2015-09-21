@@ -1,5 +1,4 @@
-#!/usr/bin/env perl
-use warnings; #sed replacement for -w perl parameter
+#! /usr/bin/perl -w
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
@@ -204,8 +203,10 @@ while (<>) {
     $word =~ s/\ン\ー/\ン/g; #
     $word =~ s/\ヮ/\ワ/g;
     $word =~ s/\ゎ/\わ/g;
-    $word =~ s/^\ゼロ$/\０/g;
-    $word =~ s/^\零$/\０/g;
+
+    # Normalization
+#    $word =~ s/^\ゼロ$/\０/g;
+#    $word =~ s/^\零$/\０/g;
 
     # Arrange morpheme
     # This function is to arrange morpheme.

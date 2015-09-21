@@ -1,1 +1,1 @@
-link ../steps/score_kaldi.sh
+../steps/score_kaldi.sh
