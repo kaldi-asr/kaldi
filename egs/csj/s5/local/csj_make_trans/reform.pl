@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use warnings;
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
