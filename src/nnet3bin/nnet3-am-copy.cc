@@ -93,7 +93,8 @@ int main(int argc, char *argv[]) {
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
 
-    ScaleNnet(scale, &(am_nnet.GetNnet()));
+    if (scale != 1.0)
+      ScaleNnet(scale, &(am_nnet.GetNnet()));
 
     if (raw) {
       WriteKaldiObject(am_nnet.GetNnet(), nnet_wxfilename, binary_write);
