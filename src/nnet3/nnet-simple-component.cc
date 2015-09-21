@@ -1360,7 +1360,8 @@ void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
   update_count_ *= scale;
   max_change_scale_stats_ *= scale;
   active_scaling_count_ *= scale;
-  AffineComponent::Scale(scale);
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
 }
 
 void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -1370,6 +1371,8 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   update_count_ += alpha * other->update_count_;
   max_change_scale_stats_ += alpha * other->max_change_scale_stats_;
   active_scaling_count_ += alpha * other->active_scaling_count_;
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
 }
 
 std::string FixedAffineComponent::Info() const {
