@@ -42,7 +42,7 @@ struct FbankOptions {
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
   bool htk_compat;  // If true, put energy last (if using energy)
   bool use_log_fbank;  // if true (default), produce log-filterbank, else linear
-  
+
   FbankOptions(): mel_opts(23),
                  // defaults the #mel-banks to 23 for the FBANK computations.
                  // this seems to be common for 16khz-sampled data,
@@ -92,7 +92,7 @@ class Fbank {
                BaseFloat vtln_warp,
                Matrix<BaseFloat> *output,
                Vector<BaseFloat> *wave_remainder = NULL);
-  
+
   /// Const version of Compute()
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
@@ -104,7 +104,7 @@ class Fbank {
                        const MelBanks &mel_banks,
                        Matrix<BaseFloat> *output,
                        Vector<BaseFloat> *wave_remainder = NULL) const;
-  
+
   const MelBanks *GetMelBanks(BaseFloat vtln_warp);
 
   const MelBanks *GetMelBanks(BaseFloat vtln_warp,
