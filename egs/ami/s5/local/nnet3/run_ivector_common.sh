@@ -124,7 +124,7 @@ fi
 
 if [ $stage -le 6 ]; then
   rm exp/$mic/nnet3/.error 2>/dev/null
-  ivectordir=exp/$mic/nnet3/ivectors_${train}_hires
+  ivectordir=exp/$mic/nnet3/ivectors_${train_set}_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
@@ -135,11 +135,11 @@ if [ $stage -le 6 ]; then
 
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$mic/${train}_hires data/$mic/${train}_hires_max2
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/$mic/${train_set}_hires data/$mic/${train_set}_hires_max2
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/$mic/${train}_hires_max2 \
+    data/$mic/${train_set}_hires_max2 \
     exp/$mic/nnet3/extractor \
-    exp/$mic/nnet3/ivectors_${train}_hires \
+    exp/$mic/nnet3/ivectors_${train_set}_hires \
     || touch exp/$mic/nnet3/.error
   [ -f exp/$mic/nnet3/.error ] && echo "$0: error extracting iVectors." && exit 1;
 fi
