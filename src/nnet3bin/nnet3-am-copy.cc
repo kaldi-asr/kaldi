@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
         raw = false;
     BaseFloat learning_rate = -1;
     std::string set_raw_nnet = "";
-    BaseFloat scale = 0.0;
+    BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -61,12 +61,12 @@ int main(int argc, char *argv[]) {
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 " are set to this value.");
-    po.Register("scale", &scale, "If non-zero the parameter matrices are scaled"
+    po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
 
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     std::string nnet_rxfilename = po.GetArg(1),
         nnet_wxfilename = po.GetArg(2);
-    
+
     TransitionModel trans_model;
     AmNnetSimple am_nnet;
     {
@@ -89,18 +89,17 @@ int main(int argc, char *argv[]) {
       ReadKaldiObject(set_raw_nnet, &nnet);
       am_nnet.SetNnet(nnet);
     }
-    
+
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
 
-    if (scale != 0.0)
-      ScaleNnet(scale, &(am_nnet.GetNnet()));
+    ScaleNnet(scale, &(am_nnet.GetNnet()));
 
     if (raw) {
       WriteKaldiObject(am_nnet.GetNnet(), nnet_wxfilename, binary_write);
       KALDI_LOG << "Copied neural net from " << nnet_rxfilename
                 << " to raw format as " << nnet_wxfilename;
-      
+
     } else {
       Output ko(nnet_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);

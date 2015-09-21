@@ -1010,7 +1010,7 @@ void PerElementScaleComponent::UnVectorize(
   scales_.CopyFromVec(params);
 }
 
-NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0), 
+NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0),
   update_count_(0.0), active_scaling_count_(0.0), max_change_scale_stats_(0.0) { }
 
 // virtual
@@ -1062,7 +1062,7 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &max_change_scale_stats_);
     ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
   } else {
-    if (token != "<NaturalGradientAffineComponent>") 
+    if (token != "<NaturalGradientAffineComponent>")
       KALDI_ERR << "Expected <NaturalGradientAffineComponent>, got " << token;
   }
   SetNaturalGradientConfigs();
@@ -1126,7 +1126,7 @@ void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
 void NaturalGradientAffineComponent::Init(
     BaseFloat learning_rate, int32 rank_in, int32 rank_out,
     int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
-    BaseFloat max_change_per_sample, 
+    BaseFloat max_change_per_sample,
     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
   rank_in_ = rank_in;
@@ -1234,7 +1234,7 @@ std::string NaturalGradientAffineComponent::Info() const {
          << ", max-change-per-sample=" << max_change_per_sample_;
   if (update_count_ > 0.0) {
     stream << ", avg-scaling-factor=" << max_change_scale_stats_ / update_count_
-           << ", active-scaling-portion=" 
+           << ", active-scaling-portion="
            << active_scaling_count_ / update_count_;
   }
   return stream.str();
@@ -1360,6 +1360,7 @@ void NaturalGradientAffineComponent::Scale(BaseFloat scale) {
   update_count_ *= scale;
   max_change_scale_stats_ *= scale;
   active_scaling_count_ *= scale;
+  AffineComponent::Scale(scale);
 }
 
 void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other_in) {

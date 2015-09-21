@@ -17,6 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KALDI_FEAT_SIGNAL_H_
+#define KALDI_FEAT_SIGNAL_H_
+
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 
@@ -37,11 +40,12 @@ void ConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal)
 void FFTbasedConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal);
 
 /*
-   This function implements FFT-based block convolution of two signals using 
-   overlap-add method. This is an efficient way to evaluate the discrete 
+   This function implements FFT-based block convolution of two signals using
+   overlap-add method. This is an efficient way to evaluate the discrete
    convolution of a long signal with a finite impulse response filter.
 */
 void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal);
 
-}
+}  // namespace kaldi
 
+#endif  // KALDI_FEAT_SIGNAL_H_
