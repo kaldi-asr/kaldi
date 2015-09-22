@@ -59,6 +59,15 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
 
+def AddPresoftmaxScale(config_lines, name, input, presoftmax_scale_vec):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_presoftmax type=FixedScaleComponent scales={1}".format(name, presoftmax_scale_vec))
+    component_nodes.append("component-node name={0}_presoftmax component={0}_presoftmax input={1}".format(name, input['descriptor']))
+
+    return {'descriptor': '{0}_presoftmax'.format(name),
+            'dimension': input['dimension']}
 
 
 def AddSoftmaxLayer(config_lines, name, input):
@@ -82,8 +91,10 @@ def AddOutputNodeWithDelay(config_lines, input, label_delay):
     component_nodes = config_lines['component-nodes']
     component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = ""):
+def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = "", presoftmax_scale = ""):
     prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
+    if presoftmax_scale != "":
+        prev_layer_output = AddPresoftmaxScale(config_lines, "Final", prev_layer_output, presoftmax_scale)
     prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
     AddOutputNodeWithDelay(config_lines, prev_layer_output, args.label_delay)
 
@@ -292,6 +303,10 @@ if __name__ == "__main__":
                         help="options to be supplied to NaturalGradientPerElementScaleComponent", default="")
     parser.add_argument("--ng-affine-options", type=str,
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
+    
+    # presoftmax scale
+    parser.add_argument("--presoftmax-scale", type=str,
+                        help="scale output before applying softmax", default="")
 
     # Gradient clipper options
     parser.add_argument("--norm-based-clipping", type=str,
@@ -368,7 +383,7 @@ if __name__ == "__main__":
                                          args.ng_per_element_scale_options, args.ng_affine_options)
         # make the intermediate config file for layerwise discriminative
         # training
-        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options)
+        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.presoftmax_scale)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
@@ -378,7 +393,7 @@ if __name__ == "__main__":
                                                args.ng_affine_options)
         # make the intermediate config file for layerwise discriminative
         # training
-        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options)
+        AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.presoftmax_scale)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 

@@ -233,6 +233,7 @@ if [ $stage -le -5 ]; then
     --clipping-threshold $clipping_threshold \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
+    --presoftmax-scale "$dir/presoftmax_prior_scale.vec" \
     --num-targets $num_leaves \
     --label-delay $label_delay \
    $dir/configs || exit 1;
