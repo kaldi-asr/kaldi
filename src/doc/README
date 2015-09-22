@@ -38,7 +38,7 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    scp html.tar.gz newrelay:/var/www/kaldi-asr
 
    echo 'cd /var/www/kaldi-asr/; rm -rf html doc.old;
-        tar -xzf html.tar.gz; mv doc2 doc.old; mv html doc2; rm -rf doc.old' \
+        tar -xzf html.tar.gz; mv doc2 doc.old; mv html doc2; rm -rf doc.old; rm html.tar.gz' \
            | ssh newrelay bash
 fi
 
