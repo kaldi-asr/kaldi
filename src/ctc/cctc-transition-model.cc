@@ -130,8 +130,9 @@ void CctcTransitionModel::Check() const {
   }
   // We don't believe it should ever happen that output indexes are not
   // seen, so assert that it doesn't happen.
-  KALDI_ASSERT(num_not_seen == 0);
-
+  KALDI_ASSERT(num_not_seen == 0 &&
+               "...this assert may later need to be revised/removed");
+  
 
   // Do a spot check that after seeing phone_left_context_ real phones,
   // we always get to the same history state regardless of where we started.

@@ -38,6 +38,9 @@ struct NnetGenerationOptions {
   bool allow_multiple_inputs;
   bool allow_multiple_outputs;
   bool allow_final_nonlinearity;
+  // if set to a value >0, the output-dim of the network
+  // will be set to this value.
+  int32 output_dim;
 
   NnetGenerationOptions():
       allow_context(true),
@@ -46,7 +49,8 @@ struct NnetGenerationOptions {
       allow_clockwork(true),
       allow_multiple_inputs(true),
       allow_multiple_outputs(false),
-      allow_final_nonlinearity(true) { }
+      allow_final_nonlinearity(true),
+      output_dim(-1) { }
 };
 
 /** Generates a sequence of at least one config files, output as strings, where

@@ -1,4 +1,4 @@
-// ctc/ctc-function.cc
+// ctc/cctc-function.cc
 
 // Copyright      2015   Johns Hopkins University (author: Daniel Povey)
 
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ctc/ctc-supervision.h"
+#include "ctc/cctc-supervision.h"
 #include "lat/lattice-functions.h"
 #include "util/text-utils.h"
 #include "ctc/cctc-graph.h"
@@ -26,8 +26,8 @@ namespace kaldi {
 namespace ctc {
 
 // Note: testing code for these functions is in cctc-transition-model-test.cc
-void CtcProtoSupervision::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<CtcProtoSupervision>");
+void CctcProtoSupervision::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<CctcProtoSupervision>");
   if (!binary) os << "\n";
   WriteToken(os, binary, "<NumFrames>");
   WriteBasicType(os, binary, num_frames);
@@ -46,13 +46,13 @@ void CtcProtoSupervision::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, phone_instances[p].end_frame);
     if (!binary) os << "\n";
   }
-  WriteToken(os, binary, "</CtcProtoSupervision>");
+  WriteToken(os, binary, "</CctcProtoSupervision>");
   if (!binary) os << "\n";  
 }
 
 void AlignmentToProtoSupervision(const std::vector<int32> &phones,
                                  const std::vector<int32> &durations,
-                                 CtcProtoSupervision *proto_supervision) {
+                                 CctcProtoSupervision *proto_supervision) {
   KALDI_ASSERT(phones.size() > 0 && phones.size() == durations.size());
   // we don't use element zero of the phone_instances array.
   proto_supervision->phone_instances.resize(phones.size() + 1);
@@ -72,7 +72,7 @@ void AlignmentToProtoSupervision(const std::vector<int32> &phones,
 }
 
 void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
-                                    CtcProtoSupervision *proto_supervision) {
+                                    CctcProtoSupervision *proto_supervision) {
   static bool warned_eps = false, warned_final = false;
   KALDI_ASSERT(lat.NumStates() != 0);
   int32 num_states = lat.NumStates();
@@ -146,10 +146,10 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
 }
 
 
-bool MakeCtcSupervisionNoContext(
-    const CtcProtoSupervision &proto_supervision,
+bool MakeCctcSupervisionNoContext(
+    const CctcProtoSupervision &proto_supervision,
     int32 num_phones,
-    CtcSupervision *supervision) {
+    CctcSupervision *supervision) {
   TimeEnforcerFst enforcer(proto_supervision);
 
   ComposeDeterministicOnDemand(proto_supervision.fst,
@@ -171,8 +171,8 @@ bool MakeCtcSupervisionNoContext(
   return (supervision->fst.NumStates() > 0);
 }
 
-void MakeSilencesOptional(const CtcSupervisionOptions &opts,
-                          CtcProtoSupervision *proto_supervision) {
+void MakeSilencesOptional(const CctcSupervisionOptions &opts,
+                          CctcProtoSupervision *proto_supervision) {
   
   if (opts.silence_phones.empty())
     return;  // Nothing to do.
@@ -230,8 +230,8 @@ void MakeSilencesOptional(const CtcSupervisionOptions &opts,
   }
 }
 
-void ModifyProtoSupervisionTimes(const CtcSupervisionOptions &opts,
-                                 CtcProtoSupervision *proto_supervision) {
+void ModifyProtoSupervisionTimes(const CctcSupervisionOptions &opts,
+                                 CctcProtoSupervision *proto_supervision) {
   const int32 num_frames = proto_supervision->num_frames,
       subsampling_factor = opts.frame_subsampling_factor,
       left_tolerance = opts.left_tolerance,
@@ -257,7 +257,7 @@ void ModifyProtoSupervisionTimes(const CtcSupervisionOptions &opts,
   proto_supervision->num_frames = num_frames / subsampling_factor;
 }
 
-void AddBlanksToProtoSupervision(CtcProtoSupervision *proto_supervision) {
+void AddBlanksToProtoSupervision(CctcProtoSupervision *proto_supervision) {
   int32 num_states = proto_supervision->fst.NumStates(),
       orig_num_phone_instances = proto_supervision->phone_instances.size() - 1;
   for (int32 state = 0; state < num_states; state++) {
@@ -310,12 +310,12 @@ void AddBlanksToProtoSupervision(CtcProtoSupervision *proto_supervision) {
   }
 }
 
-CtcSupervisionSplitter::CtcSupervisionSplitter(
-    const CtcSupervision &supervision):
+CctcSupervisionSplitter::CctcSupervisionSplitter(
+    const CctcSupervision &supervision):
     supervision_(supervision),
     frame_(supervision_.fst.NumStates(), -1) {
   const fst::StdVectorFst &fst(supervision_.fst);
-  // The fst in struct CtcSupervision is supposed to be epsilon-free and
+  // The fst in struct CctcSupervision is supposed to be epsilon-free and
   // topologically sorted; this function relies on those properties to
   // set up the frame_ vector (which maps each state in the
   // FST to a frame-index 0 <= t < num_frames), and it checks them.
@@ -329,9 +329,9 @@ CtcSupervisionSplitter::CtcSupervisionSplitter(
   for (int32 state = 0; state < num_states; state++) {
     int32 cur_frame = frame_[state];
     if (cur_frame == -1) {
-      // If this happens it means the CtcSupervision does not have the required
+      // If this happens it means the CctcSupervision does not have the required
       // properties, e.g. being top-sorted and connected.
-      KALDI_ERR << "Error computing frame indexes for CtcSupervision";
+      KALDI_ERR << "Error computing frame indexes for CctcSupervision";
     }
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
          !aiter.Done(); aiter.Next()) {
@@ -365,8 +365,8 @@ CtcSupervisionSplitter::CtcSupervisionSplitter(
   }
 }
 
-void CtcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
-                                           CtcSupervision *out_supervision) const {
+void CctcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
+                                           CctcSupervision *out_supervision) const {
   int32 end_frame = begin_frame + num_frames;
   // Note: end_frame is not included in the range of frames that the
   // output supervision object covers; it's one past the end.
@@ -400,7 +400,7 @@ void CtcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   out_supervision->num_frames = num_frames;
 }
 
-void CtcSupervisionSplitter::CreateRangeFst(
+void CctcSupervisionSplitter::CreateRangeFst(
     int32 begin_frame, int32 end_frame,
     int32 begin_state, int32 end_state,
     fst::StdVectorFst *fst) const {
@@ -465,9 +465,9 @@ void SortBreadthFirstSearch(fst::StdVectorFst *fst) {
                  input_fst, &visitor, &queue);
 }
 
-void AddContextToCtcSupervision(
+void AddContextToCctcSupervision(
     const CctcTransitionModel &trans_model,
-    CtcSupervision *supervision) {
+    CctcSupervision *supervision) {
   KALDI_ASSERT(supervision->label_dim = trans_model.NumPhones() + 1);
   fst::StdVectorFst phone_plus_blank_fst = supervision->fst;
   BaseFloat phone_language_model_weight = 0.0;
@@ -483,8 +483,8 @@ void AddContextToCtcSupervision(
 }
 
 
-void CtcSupervision::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<CtcSupervision>");
+void CctcSupervision::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<CctcSupervision>");
   WriteToken(os, binary, "<Weight>");
   WriteBasicType(os, binary, weight);
   WriteToken(os, binary, "<Frames>");
@@ -503,11 +503,11 @@ void CtcSupervision::Write(std::ostream &os, bool binary) const {
         fst, fst::UnweightedAcceptorCompactor<fst::StdArc>(), os,
         write_options);
   }
-  WriteToken(os, binary, "</CtcSupervision>");  
+  WriteToken(os, binary, "</CctcSupervision>");  
 }
 
-void CtcSupervision::Read(std::istream &is, bool binary) {
-  ExpectToken(is, binary, "<CtcSupervision>");
+void CctcSupervision::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<CctcSupervision>");
   ExpectToken(is, binary, "<Weight>");
   ReadBasicType(is, binary, &weight);
   ExpectToken(is, binary, "<Frames>");
@@ -526,7 +526,7 @@ void CtcSupervision::Read(std::istream &is, bool binary) {
     delete compact_fst;
   }
     // ReadFstKaldi will work even though we wrote using a compact format.
-  ExpectToken(is, binary, "</CtcSupervision>");    
+  ExpectToken(is, binary, "</CctcSupervision>");    
 }
 
 int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
@@ -564,13 +564,13 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
   return total_length;
 }
 
-CtcSupervision::CtcSupervision(const CtcSupervision &other):
+CctcSupervision::CctcSupervision(const CctcSupervision &other):
     weight(other.weight), num_frames(other.num_frames),
     label_dim(other.label_dim), fst(other.fst) { }
 
-void AppendCtcSupervision(const std::vector<const CtcSupervision*> &input,
+void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
                           bool compactify,
-                          std::vector<CtcSupervision> *output_supervision) {
+                          std::vector<CctcSupervision> *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
@@ -582,12 +582,12 @@ void AppendCtcSupervision(const std::vector<const CtcSupervision*> &input,
   std::vector<bool> output_was_merged;
   for (int32 i = 1; i < num_inputs; i++)
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
-                 "Trying to append incompatible CtcSupervision objects");
+                 "Trying to append incompatible CctcSupervision objects");
   output_supervision->clear();
   output_supervision->reserve(input.size());
   BaseFloat cur_weight = -1.0;
   for (int32 i = 0; i < input.size(); i++) {
-    const CtcSupervision &src = *(input[i]);
+    const CctcSupervision &src = *(input[i]);
     if (compactify && src.weight == cur_weight) {
       // Combine with current output
       KALDI_ASSERT(!output_supervision->empty());

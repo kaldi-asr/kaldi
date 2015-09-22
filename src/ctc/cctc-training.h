@@ -33,7 +33,7 @@
 #include "matrix/kaldi-matrix.h"
 #include "ctc/language-model.h"
 #include "ctc/cctc-transition-model.h"
-#include "ctc/ctc-supervision.h"
+#include "ctc/cctc-supervision.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
 
@@ -72,7 +72,7 @@ class CctcComputation {
   CctcComputation(const CctcTrainingOptions &opts,
                   const CctcTransitionModel &trans_model,
                   const CuMatrix<BaseFloat> &cu_weights,
-                  const CtcSupervision &supervision,
+                  const CctcSupervision &supervision,
                   const CuMatrixBase<BaseFloat> &nnet_output);
 
   // Does the forward computation.  Returns the total log-prob.
@@ -98,7 +98,7 @@ class CctcComputation {
   // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
   const CuMatrix<BaseFloat> &cu_weights_;
   // The supervision object  
-  const CtcSupervision &supervision_;
+  const CctcSupervision &supervision_;
   // The neural net output
   const CuMatrixBase<BaseFloat> &nnet_output_;
   // the exp of the neural net output.

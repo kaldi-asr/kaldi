@@ -28,7 +28,7 @@ CctcComputation::CctcComputation(
     const CctcTrainingOptions &opts,
     const CctcTransitionModel &trans_model,
     const CuMatrix<BaseFloat> &cu_weights,
-    const CtcSupervision &supervision,
+    const CctcSupervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
     opts_(opts), trans_model_(trans_model), cu_weights_(cu_weights),
     supervision_(supervision), nnet_output_(nnet_output) {

@@ -34,28 +34,12 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
 
-   echo "**First copying to kaldi-asr.org**"
-   # First copy to kaldi-asr.org/docs
+   # Copy to kaldi-asr.org/docs2/
    scp html.tar.gz newrelay:/var/www/kaldi-asr
 
    echo 'cd /var/www/kaldi-asr/; rm -rf html doc.old;
-        tar -xzf html.tar.gz; mv doc doc.old; mv html doc; rm -rf doc.old' \
+        tar -xzf html.tar.gz; mv doc2 doc.old; mv html doc2; rm -rf doc.old' \
            | ssh newrelay bash
-
-   echo "**Now copying to sourceforge**"
-   # Next copy to sourceforge.
-   if true; then  # use method that works when their shell access is down.
-     rm -rf htdocs # make sure it's not left over from before.
-     mv html htdocs
-     scp -r htdocs  danielpovey@web.sourceforge.net:/home/project-web/kaldi/
-     mv htdocs html
-   else
-     scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
-     ssh danielpovey,kaldi@shell.sourceforge.net create
-     echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-         tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-          | ssh danielpovey,kaldi@shell.sourceforge.net bash
-   fi
 fi
 
 

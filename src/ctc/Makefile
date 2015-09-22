@@ -6,10 +6,11 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = language-model-test cctc-transition-model-test
+TESTFILES = language-model-test cctc-transition-model-test \
+		    cctc-supervision-test
 
 OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o \
-           ctc-supervision.o cctc-training.o
+           cctc-supervision.o cctc-training.o cctc-test-utils.o
 
 LIBNAME = kaldi-ctc
 

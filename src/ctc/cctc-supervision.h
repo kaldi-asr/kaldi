@@ -1,4 +1,4 @@
-// lat/ctc-supervision.h
+// lat/cctc-supervision.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CTC_SUPERVISION_H_
-#define KALDI_CTC_CTC_SUPERVISION_H_
+#ifndef KALDI_CTC_CCTC_SUPERVISION_H_
+#define KALDI_CTC_CCTC_SUPERVISION_H_
 
 #include <vector>
 #include <map>
@@ -49,14 +49,14 @@ namespace ctc {
 // in a paper they published).  This leads to a natural way to split utterances.
 
 
-struct CtcSupervisionOptions {
+struct CctcSupervisionOptions {
   std::string silence_phones;
   int32 optional_silence_cutoff;
   int32 left_tolerance;
   int32 right_tolerance;
   int32 frame_subsampling_factor;
 
-  CtcSupervisionOptions(): optional_silence_cutoff(15),
+  CctcSupervisionOptions(): optional_silence_cutoff(15),
                            left_tolerance(10),
                            right_tolerance(20),
                            frame_subsampling_factor(1) { }
@@ -108,17 +108,17 @@ struct PhoneInstanceHasher {
 };
 
 // This is the form of the supervision information for CTC that it takes before
-// we compile it to CtcSupervision.  Caution: several different stages of
+// we compile it to CctcSupervision.  Caution: several different stages of
 // compilation use this object, don't mix them up.
 //  The normal compilation sequence is:
 // (AlignmentToProtoSupervision or PhoneLatticeToProtoSupervision)
 // MakeSilencesOptional
 // ModifyProtoSupervisionTimes
 // AddBlanksToProtoSupervision [calls MakeProtoSupervisionConvertor]
-// Then you would call MakeCtcSupervisionNoContext, and then
-//  AddContextToCtcSupervision.
+// Then you would call MakeCctcSupervisionNoContext, and then
+//  AddContextToCctcSupervision.
 
-struct CtcProtoSupervision {
+struct CctcProtoSupervision {
   // the total number of frames in the utterance (will equal the sum of the
   // phone durations if this is directly derived from a simple alignment.
   int32 num_frames;
@@ -135,14 +135,14 @@ struct CtcProtoSupervision {
   void Write(std::ostream &os, bool binary) const;
 };
 
-/**  Creates an CtcProtoSupervision from a vector of phones and their durations,
+/**  Creates an CctcProtoSupervision from a vector of phones and their durations,
      such as might be derived from a training-data alignment (see the function
      AliToPhones()).  Note: this probably isn't the normal way you'll do it, it
      might be better to start with a phone-aligned lattice so you can capture
      the alternative pronunciations; see PhoneLatticeToProtoSupervision(). */
 void AlignmentToProtoSupervision(const std::vector<int32> &phones,
                                  const std::vector<int32> &durations,
-                                 CtcProtoSupervision *proto_supervision);
+                                 CctcProtoSupervision *proto_supervision);
 
 
 /** Creates a proto-supervision from a phone-aligned phone lattice (i.e. a
@@ -153,7 +153,7 @@ void AlignmentToProtoSupervision(const std::vector<int32> &phones,
     similar script, followed by lattice-align-phones
     --replace-output-symbols=true. */
 void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
-                                    CtcProtoSupervision *proto_supervision);
+                                    CctcProtoSupervision *proto_supervision);
 
 /** Modifies the FST by making all silence phones that you specify that have
     duration shorter than opts.optional_silence_cutoff, optional.  It does this
@@ -161,8 +161,8 @@ void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
     opts.optional_silence_cutoff, adding a blank arc with the same time
     limitations (begin_frame and end_frame), between the same states.
 */
-void MakeSilencesOptional(const CtcSupervisionOptions &opts,
-                          CtcProtoSupervision *proto_supervision);
+void MakeSilencesOptional(const CctcSupervisionOptions &opts,
+                          CctcProtoSupervision *proto_supervision);
 
 
 /** Modifies the duration information (start_time and end_time) of each phone
@@ -173,8 +173,8 @@ void MakeSilencesOptional(const CtcSupervisionOptions &opts,
     Requires that proto_supervision->num_frames >=
     options.frame_subsampling_factor.
 */
-void ModifyProtoSupervisionTimes(const CtcSupervisionOptions &options,
-                                 CtcProtoSupervision *proto_supervision);
+void ModifyProtoSupervisionTimes(const CctcSupervisionOptions &options,
+                                 CctcProtoSupervision *proto_supervision);
 
 
 /**  This function adds the optional blanks.  For each arc from state s1 -> s2
@@ -183,13 +183,13 @@ void ModifyProtoSupervisionTimes(const CtcSupervisionOptions &options,
      blank[t1:t2].  Note: x[t1:t2] will later be expanded to symbol x being
      allowed to appear at any time value from t1 to t2-1.
 */
-void AddBlanksToProtoSupervision(CtcProtoSupervision *proto_supervision);
+void AddBlanksToProtoSupervision(CctcProtoSupervision *proto_supervision);
 
 
 
 /**
-   This class wraps a CtcProtoSupervision to create a DeterministicOnDemandFst
-   that we can compose with the FST in the CtcProtoSupervision (with this
+   This class wraps a CctcProtoSupervision to create a DeterministicOnDemandFst
+   that we can compose with the FST in the CctcProtoSupervision (with this
    FST on the right) and then project on the output, to get an FST representing
    the supervision, that enforces limits on the times when phones can appear.
 
@@ -212,7 +212,7 @@ class TimeEnforcerFst:
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  TimeEnforcerFst(const CtcProtoSupervision &proto_supervision):
+  TimeEnforcerFst(const CctcProtoSupervision &proto_supervision):
       proto_supervision_(proto_supervision) { }
   
   // We cannot use "const" because the pure virtual function in the interface is
@@ -234,14 +234,14 @@ class TimeEnforcerFst:
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
   
  private:
-  const CtcProtoSupervision &proto_supervision_;
+  const CctcProtoSupervision &proto_supervision_;
 };
 
 
-// struct CtcSupervision is the fully-processed CTC supervision information for
+// struct CctcSupervision is the fully-processed CTC supervision information for
 // a whole utterance or (after splitting) part of an utterance.  It contains the
 // time limits on phones encoded into the FST.
-struct CtcSupervision {
+struct CctcSupervision {
   // The weight of this example (will usually be 1.0).
   BaseFloat weight;
 
@@ -264,9 +264,9 @@ struct CtcSupervision {
   // appear within a specified temporal window.
   fst::StdVectorFst fst;
 
-  CtcSupervision(): weight(1.0), num_frames(-1),  label_dim(-1) { }
+  CctcSupervision(): weight(1.0), num_frames(-1),  label_dim(-1) { }
 
-  CtcSupervision(const CtcSupervision &other);
+  CctcSupervision(const CctcSupervision &other);
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
@@ -274,52 +274,52 @@ struct CtcSupervision {
 
 
 
-/** This function creates a CtcSupervision object with phones-or-blank-plus one
+/** This function creates a CctcSupervision object with phones-or-blank-plus one
     as the labels (you should then further process it using
-    AddContextToCtcSupervision).  You should give it a fully processed
-    CtcProtoSupervision object (i.e. after calling AddBlanksToProtoSupervision).
+    AddContextToCctcSupervision).  You should give it a fully processed
+    CctcProtoSupervision object (i.e. after calling AddBlanksToProtoSupervision).
     It sets the weight of the output supervision object to 1.0; change it
-    manually if that's not what you want.  It creates a CtcSupervision object
+    manually if that's not what you want.  It creates a CctcSupervision object
     with phone-or-blank-plus-one as the labels.  It sets supervision->label_dim
     to num_phones + 1.  It does not ensure the correct sorting of the FST states;
-    that is done later in AddContextToCtcSupervision.
+    that is done later in AddContextToCctcSupervision.
 
     It returns true on success, and false on failure; the only failure mode is
     that it might return false on that would not be a bug, is when the FST is
     empty because there were too many phones for the number of frames.
 */
-bool MakeCtcSupervisionNoContext(
-    const CtcProtoSupervision &proto_supervision,
+bool MakeCctcSupervisionNoContext(
+    const CctcProtoSupervision &proto_supervision,
     int32 num_phones,
-    CtcSupervision *supervision);
+    CctcSupervision *supervision);
 
 
 /**
    This function sorts the states of the fst argument in an ordering
    corresponding with a breadth-first search order starting from the
    start state.  This gives us the sorting on frame index for the
-   FSTs that appear in class CtcSupervision (it relies on them being
+   FSTs that appear in class CctcSupervision (it relies on them being
    epsilon-free).
 */
 void SortBreadthFirstSearch(fst::StdVectorFst *fst);
 
-/** This function modifies a CtcSupervision object with phones-or-blank-plus-one
-    as the labels, as created by MakeCtcSupervisionNoContext, and converts it to
+/** This function modifies a CctcSupervision object with phones-or-blank-plus-one
+    as the labels, as created by MakeCctcSupervisionNoContext, and converts it to
     have 'graph labels' as the labels (as defined by the CctcTransitionModel
     object).  These encode the left context that the CCTC code needs to train.
  */
-void AddContextToCtcSupervision(
+void AddContextToCctcSupervision(
     const CctcTransitionModel &trans_model,
-    CtcSupervision *supervision);
+    CctcSupervision *supervision);
 
-// This class is used for splitting something of type CtcSupervision into
+// This class is used for splitting something of type CctcSupervision into
 // multiple pieces corresponding to different frame-ranges.
-class CtcSupervisionSplitter {
+class CctcSupervisionSplitter {
  public:
-  CtcSupervisionSplitter(const CtcSupervision &supervision);
+  CctcSupervisionSplitter(const CctcSupervision &supervision);
   // Extracts a frame range of the supervision into "supervision".
   void GetFrameRange(int32 begin_frame, int32 num_frames,
-                     CtcSupervision *supervision) const;
+                     CctcSupervision *supervision) const;
  private:
   // Creates an output FST covering frames begin_frame <= t < end_frame,
   // assuming that the corresponding state-range that we need to
@@ -331,7 +331,7 @@ class CtcSupervisionSplitter {
                       int32 begin_state, int32 end_state,
                       fst::StdVectorFst *fst) const;
   
-  const CtcSupervision &supervision_;
+  const CctcSupervision &supervision_;
   // Indexed by the state-index of 'supervision_.fst', this is the frame-index,
   // which ranges from 0 to supervision_.num_frames - 1.  This will be
   // monotonically increasing (note that supervision_.fst is topologically
@@ -342,7 +342,7 @@ class CtcSupervisionSplitter {
 /// Assuming the 'fst' is epsilon-free, connected, and has the property that all
 /// paths from the start-state are of the same length, output a vector
 /// containing that length (from the start-state to the current state) to
-/// 'state_times'.  The member 'fst' of struct CtcSupervision has this property.
+/// 'state_times'.  The member 'fst' of struct CctcSupervision has this property.
 /// Returns the total number of frames.  This function is similar to
 /// LatticeStateTimes() and CompactLatticeStateTimes() declared in
 /// lat/lattice-functions.h, except that unlike LatticeStateTimes(), we don't
@@ -367,14 +367,14 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 
 /// This function appends a list of CTC-supervision objects to create what will
 /// usually be a single such object, but if the weights are not all the same it
-/// will only append CtcSupervision objects where successive ones have the same
+/// will only append CctcSupervision objects where successive ones have the same
 /// weight, and if 'compactify' is true.  The normal use-case for this is when
 /// you are combining neural-net examples for CTC training; appending them like
 /// this helps to reduce the number of GPU kernel invocations.  This function
 /// will crash if the values of label_dim in the inputs are not all the same.
-void AppendCtcSupervision(const std::vector<const CtcSupervision*> &input,
+void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
                           bool compactify,
-                          std::vector<CtcSupervision> *output_supervision);
+                          std::vector<CctcSupervision> *output_supervision);
   
 
 

@@ -1,4 +1,4 @@
-// nnet3/nnet-ctc-example.h
+// nnet3/nnet-cctc-example.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,14 +17,14 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_CTC_EXAMPLE_H_
-#define KALDI_NNET3_NNET_CTC_EXAMPLE_H_
+#ifndef KALDI_NNET3_NNET_CCTC_EXAMPLE_H_
+#define KALDI_NNET3_NNET_CCTC_EXAMPLE_H_
 
 #include "nnet3/nnet-nnet.h"
 #include "hmm/posterior.h"
 #include "util/table-types.h"
 #include "nnet3/nnet-example.h"
-#include "ctc/ctc-supervision.h"
+#include "ctc/cctc-supervision.h"
 #include "ctc/cctc-training.h"
 
 namespace kaldi {
@@ -38,7 +38,7 @@ namespace nnet3 {
 // which pertain to the input of the network.  It actually stores the
 // lattice-like supervision information at the output of the network (which
 // imposes constraints on which frames each phone can be active on.
-struct NnetCtcSupervision {
+struct NnetCctcSupervision {
   /// the name of the output in the neural net; in simple setups it
   /// will just be "output".
   std::string name;
@@ -47,11 +47,11 @@ struct NnetCtcSupervision {
   /// will be the sum of the 'num_frames' values of the elements of 'supervision'.
   std::vector<Index> indexes;
 
-  /// This is a vector of CtcSupervision.  When we first aggregate examples we
+  /// This is a vector of CctcSupervision.  When we first aggregate examples we
   /// will have one for each individual example, but then we'll call Compactify(),
-  /// and successive CtcSupervision objects that have the same weight will get
+  /// and successive CctcSupervision objects that have the same weight will get
   /// merged.  This will make the GPU computation more efficient.
-  std::vector<ctc::CtcSupervision> supervision;
+  std::vector<ctc::CctcSupervision> supervision;
 
 
   /** This function, which will be called between the Forward and Backward
@@ -90,13 +90,21 @@ struct NnetCtcSupervision {
 
   // Use default assignment operator
 
-  NnetCtcSupervision();
+  NnetCctcSupervision();
+
+  /// Initialize the object from an object of type CctcSupervision, and some
+  /// extra information.
+  /// Note: you probably want to set 'name' to "output".
+  /// 'first_frame' will often be zero but you can choose (just make it consistent
+  /// with how you numbered your inputs), and 'frame_skip' would be 1 in a
+  /// vanilla setup, but we plan to try setups where the output periodicity
+  /// is slower than the input, so in this case it might be 2 or 3.
+  NnetCctcSupervision(const ctc::CctcSupervision &ctc_supervision,
+                      const std::string &name,
+                      int32 first_frame,
+                      int32 frame_skip);
   
-  NnetCtcSupervision(const ctc::CtcSupervision ctc_supervision,
-                     int32 first_frame,
-                     int32 frame_skip);
-  
-  NnetCtcSupervision(const NnetCtcSupervision &other);
+  NnetCctcSupervision(const NnetCctcSupervision &other);
   
   void Write(std::ostream &os, bool binary) const;
 
@@ -104,9 +112,9 @@ struct NnetCtcSupervision {
 
 };
 
-/// NnetCtcExample is like NnetExample, but specialized for CTC training.
+/// NnetCctcExample is like NnetExample, but specialized for CTC training.
 /// (actually CCTC training, which is our extension of CTC).
-struct NnetCtcExample {
+struct NnetCctcExample {
 
   /// 'inputs' contains the input to the network-- normally just it has just one
   /// element called "input", but there may be others (e.g. one called
@@ -115,43 +123,43 @@ struct NnetCtcExample {
 
   /// 'outputs' contains the CTC output supervision.  There will normally
   /// be just one member with name == "output".
-  std::vector<NnetCtcSupervision> outputs;
+  std::vector<NnetCctcSupervision> outputs;
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 
-  void Swap(NnetCtcExample *other);
+  void Swap(NnetCctcExample *other);
 
   // Compresses the input features (if not compressed)
   void Compress();
 
-  NnetCtcExample() { }
+  NnetCctcExample() { }
 
-  NnetCtcExample(const NnetCtcExample &other);
+  NnetCctcExample(const NnetCctcExample &other);
 };
 
 
-/// This function merges a list of NnetCtcExample objects into a single one--
+/// This function merges a list of NnetCctcExample objects into a single one--
 /// intended to be used when forming minibatches for neural net training.  If
 /// 'compress' it compresses the output features (recommended to save disk
 /// space); if 'compactify' is true, it compactifies the output by merging the
-/// CtcSupervision objects (recommended for efficiency).
+/// CctcSupervision objects (recommended for efficiency).
 ///
 /// Note: if you are calling this from multi-threaded code, be aware that
 /// internally this function temporarily changes 'input' by means of a
 /// const_cast, before putting it back to its original value.  This is a trick
 /// to allow us to use the MergeExamples() routine and avoid having to rewrite
 /// code.
-void MergeCtcExamples(const std::vector<NnetCtcExample> &input,
+void MergeCctcExamples(const std::vector<NnetCctcExample> &input,
                       bool compress,
                       bool compactify,
-                      NnetCtcExample *output);
+                      NnetCctcExample *output);
 
 
 
-typedef TableWriter<KaldiObjectHolder<NnetCtcExample > > NnetCtcExampleWriter;
-typedef SequentialTableReader<KaldiObjectHolder<NnetCtcExample > > SequentialNnetCtcExampleReader;
-typedef RandomAccessTableReader<KaldiObjectHolder<NnetCtcExample > > RandomAccessNnetCtcExampleReader;
+typedef TableWriter<KaldiObjectHolder<NnetCctcExample > > NnetCctcExampleWriter;
+typedef SequentialTableReader<KaldiObjectHolder<NnetCctcExample > > SequentialNnetCctcExampleReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<NnetCctcExample > > RandomAccessNnetCctcExampleReader;
 
 } // namespace nnet3
 } // namespace kaldi

@@ -23,7 +23,7 @@ namespace kaldi {
 /**
   \page ctc  Connectionist Temporal Classifiction
 
-  \section Introduction
+  \section ctc_intro Introduction
 
   This page describes the support for Connectionist Temporal Classifiction (CTC)
   in Kaldi.  At the current time CTC is only supported in the nnet3 setup, but
@@ -32,30 +32,233 @@ namespace kaldi {
   should be possible.
 
   The original CTC paper is "Connectionist temporal classification: labelling
-  unsegmented sequence data with recurrent neural networks" by Alex Graves et al.
-  The core of CTC is somewhat indepenent of of the exact network topology
+  unsegmented sequence data with recurrent neural networks" by Alex Graves et
+  al.  The core of CTC is indepenent of of the exact network topology but it has
+  traditionally been implemented with recurrent networks such as LSTMs.
   Originally the idea of CTC was to have the network output words directly, but
-  more recent work by Google, e.g.
-  "Fast and Accurate Recurrent Neural Network Acoustic Models for Speech
-  Recognition" by Hasim Sak, Andrew Senior et al.
+  more recent work by Google, e.g.  "Fast and Accurate Recurrent Neural Network
+  Acoustic Models for Speech Recognition" by Hasim Sak, Andrew Senior et al. has
+  made the network output phones, and that's how we are doing it in our
+  implementation.  (Our goal is to support applications of speech recognition, and
+  while building applications it is generally essential to be able to control the
+  language model and vocabulary without rebuilding the model.)  
+  
+  \section ctc_cctc Context-dependent CTC (CCTC)
 
- What we are implementing is something we are calling Context-dependent CTC (CCTC),
-  which is an extension of the original CTC model whereby the next symbol is dependent not only on the acoustic history, but
- also on the phonetic history.  And we train against a phone-level language model
- in order to force the model to address only the acoustic side of things.
- We also don't allow repeats of non-blank symbols.   The phonetic history is not
- given as an input to the neural net; it all has to do with what sets of symbols
- we normalize the probabilities over, which is phone-history dependent.
- We'll have to create a more extensive introduction.
+  What we have implemented is something we are calling Context-dependent CTC
+  (CCTC).  This is not the same as the CD-CTC that already exists in the
+  literature, although it does stand for the same sequence of words.
+  CCTC is different from phone-level (or triphone-level) CTC in two ways:
+
+    - In CCTC, we get to 'see' the immediate left phonetic context as we
+      predict the next phone.
+    - In CCTC, in order to force the model to learn only the acoustic
+      probabilities we 'train against' a phone-level language model;
+      in test time, this is replaced by the probabilities from
+      a phone-level decoding graph.
+
+  The reader might object that normal CTC already knows the left phonetic
+  context, if it is using a recurrent netowork, so what is different here?
+  The difference is that CTC only knows what probabilities it has output;
+  it doesn't know for sure what phone was chosen.
+  
+  Below, we will explain what CCTC is by working in baby steps from a simpler to a more
+  complex system, explaining CTC on the way.
+
+  \subsection ctc_cctc_baseline1 Baseline 1: monophone phone-level neural network
+
+  The simplest starting point is a neural network that outputs monophone
+  labels (so the output dimension of the network is the same as the number of phones).  Imagine
+  that the network predicts \f$p(q | x)\f$ where q is a phone symbol and x is the acoustic
+  features.  When decoding, we use Bayes' rule to write  \f$p(x | q) = p(q | x) p(x) / p(q)\f$,
+  and we ignore \f$p(x)\f$ because it won't affect the decoding result, so that the quantity
+  we use from the network is $p(q | x) / p(q)$, which can be thought of
+  as the posterior of the phone $q$ corrected for the overall frequency of that phone.  This
+  gets combined with the language-model probability of the word-sequence, and the language
+  model log-probability of the sequence gets scaled by a constant (typically around 10).
+  This is a conventional 'hybrid' DNN-HMM speech recognition system, except without
+  phonetic context-dependency and using a 1-state HMM for each phone instead of a 3-state HMM.
+  Note: in principle the neural network could be any kind of neural network, but it's best
+  to imagine that it's an LSTM or bi-directional LSTM (BLSTM).
+
+  \subsection ctc_cctc_baseline2 Baseline 2: monophone badly-tuned CTC system
+
+  Imagine that we took the system from Baseline 1 and added one more label to the neural
+  network's output, called 'blank'.  Then imagine that we changed the HMM topology so that
+  each phone can generate exactly one copy of its phone symbol, with any number of 'blank'
+  symbols allowed between phones.  Also imagine that we decimate the output frames of the
+  neural network so that we only have one frame every 30ms, instead of every 10ms (the network
+  still gets too see the input at the 10ms frame rate, since we stack the input features; see Sak
+  et al.).  When decoding, we don't divide by the phone-level priors.  When training,
+  we do forward-backward rather than Viterbi (note: this requires training on whole utterances).
+
+  \subsection ctc_cctc_baseline2alt Baseline 2(alt): monophone better-tuned CTC system
+
+  Baseline 2(alt) is as baseline 2 except tuning it slightly better.  We separate this
+  from 2(a) because the problems that are being addressed here are solved in a different
+  way in CCTC, so Baseline 2) remains the shortest path to CCTC.
+  The tuning improvemets (see Sak et al.) are:
+    - Instead of forcing exactly one non-blank symbol per phone, we allow repeats of the
+      symbol, as long as there are no blanks between the repeats.
+    - We still don't divide by the phone-level priors, but in test time we do
+      scale down the probability of the blank symbol by factor that is tuned (e.g. around 10).
+
+  \subsection ctc_cctc_baseline3alt Baseline 3(alt): triphone better-tuned CTC system
+
+  Baseline 3(alt) is as Baseline 2(alt) except it uses context-dependent triphones as targets
+  rather than context-dependent phones, and it also reintroduces the language
+  model scaling factor (but of around 2, rather than around 10 for a conventional
+  HMM-based system).  This is the best system in the Sak et al. paper- but note that
+  the triphone context-dependency only gives a very small improvement compared with the monophone
+  system: 12.7% to 12.2% word error.
+
+  \subsection ctc_cctc_baseline3  Baseline 3: left-context CTC system
+
+  Baseline 3 is as Baseline 2, but the labels are clustered context-dependent phones
+  with only left context-- for example, clustered biphones.
+
+  \subsection ctc_cctc_baseline4  Baseline 4: left-context CTC system with `correct normalization'
+
+  Baseline 4 is as Baseline 3, except it differs in how we normalize the
+  probabilities.  In all previous baselines, there was just one space over which
+  we normalized the probabilities to sum to one.  Here, we normalize only over those
+  phones-in-context that are allowed given the left context.  The left context is obtained
+  in decoding time by using a context-dependent decoding graph; in training time it's known from
+  the reference phone sequence.  Suppose it's an n-phone left-context system (e.g. n=2 means
+  a biphone system).  Let h represent the left-context history, which will be a sequence of
+  n-1 phones.  For each phone q we can work out which clustered biphone corresponds to the pair
+  (h, q); and the probability of each phone q given that history is normalized over that set.
+  In practice, the neural network itself would output the un-normalized log-probabilities, and
+  the CTC code would compute the normalized phone probabilities.  Any
+  probability \f$p(q | h)\f$ can be written as \f$ p(q | h) = p(q, h) / \sum_q' p(q', h) \f$, where
+  the un-normalized log-probabilities \f$ \mathrm{log} p(q, h) \f$ is obtained by computing the corresponding clustered
+  context-dependent phone and looking up its value in the neural network's output.
+  The \f$p(q | h)\f$ quantities are used in both training and decoding.
 
 
+  \subsection ctc_cctc_baseline5  Baseline 5: context-dependent blank symbol
 
-  \section Context-dependent CTC
+  Baseline 5 is a simple extension of Baseline 4, in which, instead of having one blank
+  symbol, we have a separate blank symbol for each distinct history state h.  In the
+  configuration we envisage, we would only have biphone context, so each left-phone corresponds
+  to its own history-state, and the number of blank symbols would be equal to the
+  number of phones.
+  
+  \subsection ctc_cctc_cctc  CCTC itself: incorporating a phone language model
 
- What we are actually implementing here is an extension to the original CTC
- idea that we are calling context-dependent CTC (CCTC).  I
+  Finally we get too CCTC itself.  The difference from Baseline 5 is that prior to training
+  the model, we estimate a phone n-gram language model, and we `train against' this.
+
+  This is done in order to discourage the neural net itself from learning a kind
+  of language model on phones-- that is what we have our word-based decoding
+  graph for.  In test time we rely entirely on the word graph for the language
+  model, and don't use the phone n-gram language model.  We can view decoding as
+  differing from training by the application of a `correction factor' equal to
+  the ratio of the word-graph-based LM probability to the phone-ngram LM
+  probability.
+ 
+  Let us write the phone language model probabilities as $p_{lm}(q | h)$,
+  where h represents the language-model history state.  We use a Kneser-Ney
+  n-gram language model for this, but modified using count cutoffs to minimize
+  the number of distinct history states we need to keep track of (because
+  history-states have a cost in decoding time-- we need to compute a normalizer
+  for each one).  You can think of h as representing a sequence of phones.
+  In, say, a 4-gram phone language model, the maximum number of phones in h
+  is three, but most history-states will be much shorter than that because of data
+  sparsity and the count cutoff.
+
+  The key equation in CCTC is
+\f[
+     p(q | h) = \frac{ p_{ac}(q, h) p_{lm}(q | h)  }
+                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
+\f]
+ where \f$p_{lm}(q | h)\f$ represent the phone-level language model probabilities
+ and \f$p_{ac}(q, h)\f$ represent the un-normalized clustered context-dependent
+ acoustic probabilities that come from the output of the neural network (actually,
+ we exponentiate the network's output to get these quantities).
+ Don't attempt to make sense of any of this in some kind of Bayesian context.  The
+ formula is to be interpreted as defining the model itself.  That is, it defines
+ how we train the model.
+ The only thing in this formula that represents a well-defined, pre-existing constant
+ probability is \f$p_{lm}(q | h)\f$.  \f$\log p(q | h)\f$ is something that we train,
+ and the formula defines how we interpret the neural network's outputs.
+
+  \subsection ctc_cctc_decoding Decoding in CCTC: using the `real' language model
+
+ When we decode with the CTC, the only difference from the training setup is that we replace the
+ phone n-gram probability \f$p_{lm}(q | h)\f$ in the <em>numerator</em>
+ of the equation with the probability from our chosen word-level decoding graph, which we
+ can write as \f$p_{\mathrm{graph}}(q | h)\f$.  So we could write the decoding
+ equation as:
+\f[
+     p(q | h) = \frac{ p_{ac}(q, h) p_{\mathrm{graph}}(q | h)  }
+                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
+\f]
+ However, this doesn't correspond to how we do the computation.  In practice
+ we compute the following quantity:
+\f[
+     p(q | h) = \frac{ p_{ac}(q, h) }
+                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
+\f]
+which we can view as acoustic-only part of the probability, coming from the CCTC code,
+and this gets combined with the language model probability \f$p_{\mathrm{graph}}(q | h)\f$
+when we do the Viterbi graph search.  All this should be familiar to people with
+a speech recognition background.
 
 
+\subsection ctc_cctc_further Further details of CCTC
+
+Some key details which we glossed over above are:
+ 
+  - In the equations above, the history-state h is always the most detailed
+    history-state that either the phone language-model or the lookup phonetic context
+    requires.  We don't want to get into the nitty gritty of how we ensure
+    this; but for now just rest assured that all the quantities we need to compute
+    as a function of h are well-defined because h is 'sufficiently detailed'.
+
+  - For blank symbols, we always take \f$p{lm}(blank | h)\f$ to equal 1.0, in both
+    training time and test time.  Here, by `blank' we mean whichever blank symbol
+    is appropriate for this history-state.
+    This might seem less than ideal, but in fact there is no problem, because the
+    equation above *defines* the model, and the model can learn anything it needs
+    to learn by modifying the `acoustic' probabilities of the blank symbols.
+
+      
+\subsection ctc_cctc_tuning Simplifications in CCTC
+
+ When we were leading up to CCTC via a sequence of baselines, you will recall that
+ there was an `alternative branch' to Baseline 2(alt) and Baseline 3(alt), that
+ we put into a separate path because we don't incorporate those features in CCTC.
+
+ Firstly, of course we don't use fully context-dependent phones, we only use
+ left-context.  This is what makes the other concepts work.  We note that the
+ difference between monophone and triphone is not that great in Google's paper
+ (e.g. 12.7% versus 12.2% word error) so we hope the limitation to left phonetic
+ context for the acoustic states won't be a very great limitation.
+
+ Regarding repeats of the phone symbols-- the Sak et al implementation that we
+ are following, and the original paper on CTC, allow repetitions of the phone
+ symbols as long as they are delineated by blanks (to distinguish the case where
+ the underlying symbol really repeats).  Our framework doesn't allow this.  This
+ is mostly as a simplification.  The problem the repeated-symbols was trying to
+ solve is that sometimes the probabilities of phone symbols can be a little
+ spread-out over time-- it can be hard for the network to learn a distribution that
+ is very 'spiky'.  The reason we don't think this will be a problem in our setup
+ is that the language-model probability of a phone following itself will tend to be quite
+ low, so once we see a phone the model will give up trying to model itself again.
+ Note: we don't expect that this explanation will make much sense to anyone
+ who has not thought long and hard about CTC and the implications of our
+ approach.  A more detailed explanation would take a long time to write.
+
+ Regarding the scaling of the probability of the blank symbol, which in the Sak et al
+ paper was scaled by a factor of 1/10-- we don't believe this will be necessary in our framework,
+ because it happens `naturally'.  In decoding time we omit the factor \f$p_{lm}(q | h)\f$ from
+ the numerator of \f$p(q | h)\f$ because it's `accounted for' by the graph.  Assuming the phone-level
+ perplexity is about 10, which is a reasonable value, this has a very similar effect to scaling
+ the non-blank phone probabilities \em up by a factor 10, which has the same effect as scaling
+ blank \em down by a factor of 10.  So we don't believe any further scaling of the blank symbol
+ will be necessary.
+ 
 
 */
 

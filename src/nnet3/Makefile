@@ -12,7 +12,7 @@ TESTFILES = natural-gradient-online-test nnet-graph-test \
   nnet-compile-utils-test nnet-nnet-test nnet-utils-test \
   nnet-compile-test nnet-analyze-test nnet-compute-test \
   nnet-optimize-test nnet-derivative-test nnet-example-test \
-  nnet-common-test
+  nnet-common-test nnet-cctc-test
 
 OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-simple-component.o \
@@ -23,11 +23,12 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
   nnet-example-utils.o nnet-training.o \
   nnet-diagnostics.o nnet-combine.o nnet-am-decodable-simple.o \
-  nnet-optimize-utils.o nnet-ctc-example.o
+  nnet-optimize-utils.o nnet-cctc-example.o
 
 LIBNAME = kaldi-nnet3
 
-ADDLIBS = ../thread/kaldi-thread.a ../lat/kaldi-lat.a ../gmm/kaldi-gmm.a \
+ADDLIBS = ../ctc/kaldi-ctc.a ../thread/kaldi-thread.a ../lat/kaldi-lat.a \
+      ../gmm/kaldi-gmm.a \
       ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../transform/kaldi-transform.a \
       ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
       ../base/kaldi-base.a  ../util/kaldi-util.a

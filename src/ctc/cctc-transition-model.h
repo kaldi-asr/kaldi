@@ -78,7 +78,7 @@ class CctcTransitionModel {
   // NumOutputIndexes() - 1.
   void ComputeWeights(Matrix<BaseFloat> *mat) const;
 
-  // CUDA version of the above.
+  // Version of ComputeWeights() that outputs to a CUDA matrix.
   void ComputeWeights(CuMatrix<BaseFloat> *cu_mat) const;
 
   // A graph-label is a similar concept to a transition-id in HMM-based models;

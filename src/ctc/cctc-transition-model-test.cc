@@ -20,8 +20,9 @@
 #include "ctc/cctc-transition-model.h"
 #include "ctc/cctc-graph.h"
 #include "ctc/language-model.h"
-#include "ctc/ctc-supervision.h"
+#include "ctc/cctc-supervision.h"
 #include "ctc/cctc-training.h"
+#include "ctc/cctc-test-utils.h"
 #include "tree/build-tree.h"
 #include "tree/build-tree-utils.h"
 
@@ -31,88 +32,7 @@
 namespace kaldi {
 namespace ctc {
 
-static void GetTestingData(int32 *vocab_size,
-                    std::vector<std::vector<int32> > *data,
-                    std::vector<std::vector<int32> > *validation_data) {
-  // read the code of a C++ file as training data.
-  bool binary;
-  Input input("language-model.cc", &binary);
-  KALDI_ASSERT(!binary);
-  std::istream &is = input.Stream();
-  std::string line;
-  *vocab_size = 127;
-  int32 line_count = 0;
-  for (; getline(is, line); line_count++) {
-    std::vector<int32> int_line(line.size());
-    for (size_t i = 0; i < line.size(); i++) {
-      int32 this_char = line[i];
-      if (this_char == 0) {
-        this_char = 1;  // should never happen, but just make sure, as 0 is
-                        // treated as BOS/EOS in the language modeling code.
-      }
-      int_line[i] = std::min<int32>(127, this_char);
-    }
-    if (line_count % 10 != 0)
-      data->push_back(int_line);
-    else
-      validation_data->push_back(int_line);
-  }
-  KALDI_ASSERT(line_count > 0);
-}
 
-// This function, modified from GenRandContextDependency(), generates a random
-// context-dependency tree that only has left-context, and ensures that all
-// pdf-classes are numbered zero (as required for the CCTC code).
-static ContextDependency *GenRandContextDependencySpecial(
-    const std::vector<int32> &phone_ids) {
-  bool ensure_all_covered = true;
-  KALDI_ASSERT(IsSortedAndUniq(phone_ids));
-  int32 num_stats = 1 + (Rand() % 15) * (Rand() % 15);  // up to 14^2 + 1 separate stats.
-  int32 N = 1 + Rand() % 2;  // 1, 2 or 3.  So 0, 1 or 2 phones of left context.
-                             //  The transition-model creation code blows up if
-                             //  we have more, as it's based on enumerating all
-                             //  phone contexts and then merging identical
-                             //  history-states.
-  int32 P = N - 1;  // Ensure tree left-context only.
-  float ctx_dep_prob = 0.7 + 0.3*RandUniform();
-  int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-
-  std::vector<bool> is_ctx_dep(max_phone + 1);
-
-  std::vector<int32> hmm_lengths(max_phone + 1, -1);
-
-  // I'm guessing the values for i==0 will never be accessed.
-  for (int32 i = 1; i <= max_phone; i++) {
-    hmm_lengths[i] = 1;
-    is_ctx_dep[i] = (RandUniform() < ctx_dep_prob);  // true w.p. ctx_dep_prob.
-  }
-
-  // Generate rand stats.
-  BuildTreeStatsType stats;
-  size_t dim = 3 + Rand() % 20;
-  GenRandStats(dim, num_stats, N, P, phone_ids, hmm_lengths,
-               is_ctx_dep, ensure_all_covered, &stats);
-
-  // Now build the tree.
-
-  Questions qopts;
-  int32 num_quest = Rand() % 10, num_iters = rand () % 5;
-  qopts.InitRand(stats, num_quest, num_iters, kAllKeysUnion);  // This was tested in build-tree-utils-test.cc
-
-  float thresh = 100.0 * RandUniform();
-
-  EventMap *tree = NULL;
-  std::vector<std::vector<int32> > phone_sets(phone_ids.size());
-  for (size_t i = 0; i < phone_ids.size(); i++)
-    phone_sets[i].push_back(phone_ids[i]);
-  std::vector<bool> share_roots(phone_sets.size(), true),
-      do_split(phone_sets.size(), true);
-
-  tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
-                   do_split, stats, thresh, 1000, 0.0, P);
-  DeleteBuildTreeStats(&stats);
-  return new ContextDependency(N, P, tree);
-}
 
 void TestCctcTransitionModelIo(const CctcTransitionModel &trans_model) {
   bool binary = (RandInt(0, 1) == 0);
@@ -305,229 +225,12 @@ void TestCctcTransitionModelGraph(const CctcTransitionModel &trans_model) {
 }  
 
 
-// This function creates a compact lattice with phones as the labels,
-// and strings (which would normally be transition-ids) containing
-// repetitions of '1', for the specified duration.  It's used for
-// testing the CCTC supervsion code.
-void CreateCompactLatticeFromPhonesAndDurations(
-    const std::vector<int32> &phones,
-    const std::vector<int32> &durations,
-    CompactLattice *lat_out) {
-  KALDI_ASSERT(phones.size() == durations.size());
-  lat_out->DeleteStates();
-  int32 current_state = lat_out->AddState();
-  lat_out->SetStart(current_state);
-  for (size_t i = 0; i < phones.size(); i++) {
-    int32 next_state = lat_out->AddState(),
-        phone = phones[i], duration = durations[i];
-    std::vector<int32> repeated_ones(duration, 1);
-    CompactLatticeWeight weight(LatticeWeight(RandUniform(), RandUniform()),
-                                repeated_ones);
-    CompactLatticeArc arc(phone, phone, weight, next_state);
-    lat_out->AddArc(current_state, arc);
-    current_state = next_state;
-  }
-  CompactLatticeWeight weight(LatticeWeight(RandUniform(), RandUniform()),
-                              std::vector<int32>());
-  lat_out->SetFinal(current_state, weight);    
-}
-
-std::ostream &operator << (std::ostream &os, const CtcProtoSupervision &p) {
-  p.Write(os, false);
-  return os;
-}
-std::ostream &operator << (std::ostream &os, const CtcSupervision &s) {
-  s.Write(os, false);
-  return os;
-}
-
-
-void ExcludeRangeFromVector(const std::vector<int32> &in,
-                            int32 first, int32 last,
-                            std::vector<int32> *out) {
-  out->clear();
-  out->reserve(in.size());
-  for (std::vector<int32>::const_iterator iter = in.begin(),
-           end = in.end(); iter != end; ++iter) {
-    int32 i = *iter;
-    if (i < first || i > last)
-      out->push_back(i);
-  }
-}
-
-void TestCtcSupervisionTraining(const CctcTransitionModel &trans_model,
-                                const CtcSupervision &supervision) {
-  BaseFloat delta = 1.0e-04;
-  int32 num_frames = supervision.num_frames,
-      nnet_output_dim = trans_model.NumOutputIndexes();
-  CuMatrix<BaseFloat> nnet_output(num_frames, nnet_output_dim);
-  nnet_output.SetRandn();
-  CuMatrix<BaseFloat> cu_weights;
-  trans_model.ComputeWeights(&cu_weights);
-  CctcTrainingOptions opts;
-  CctcComputation computation(opts, trans_model, cu_weights,
-                              supervision, nnet_output);
-  BaseFloat log_like = computation.Forward();
-  KALDI_LOG << "log-like of CCTC computation is " << log_like;
-
-  CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
-                                        kUndefined);
-  nnet_output_deriv.SetRandn();  // <- the class requires only that it not have
-                                 // NaN's or infs, so we set it random to test
-                                 // that it ignores the existing data.
-  computation.Backward(&nnet_output_deriv);
-  int32 num_offsets = 3;
-  Vector<BaseFloat> predicted_objf_changes(num_offsets),
-      measured_objf_changes(num_offsets);
-  for (int32 i = 0; i < num_offsets; i++) {
-    CuMatrix<BaseFloat> modified_output(num_frames, nnet_output_dim);
-    modified_output.SetRandn();
-    modified_output.Scale(delta);
-    predicted_objf_changes(i) = TraceMatMat(modified_output,
-                                            nnet_output_deriv, kTrans);
-    modified_output.AddMat(1.0, nnet_output);
-    CctcComputation computation(opts, trans_model, cu_weights,
-                                supervision, modified_output);
-    BaseFloat modified_log_like = computation.Forward();
-    // no need to do backward.
-    measured_objf_changes(i) = modified_log_like - log_like;
-  }
-  KALDI_LOG << "predicted_objf_changes = " << predicted_objf_changes;
-  KALDI_LOG << "measured_objf_changes = " << measured_objf_changes;
-  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
-}
-
-void TestCtcSupervisionIo(const CtcSupervision &supervision) {
-  bool binary = (RandInt(0, 1) == 0);
-  std::ostringstream os;
-  supervision.Write(os, binary);
-  std::istringstream is(os.str());
-  CtcSupervision supervision2;
-  if (RandInt(0, 1) == 0)
-    supervision2 = supervision;  // test reading already-existing object.
-  supervision2.Read(is, binary);
-  std::ostringstream os2;
-  supervision2.Write(os2, binary);
-  KALDI_ASSERT(os.str() == os2.str());
-}
-
-void TestCtcSupervisionAppend(const CtcSupervision &supervision) {
-  int32 num_append = RandInt(1,5);
-  std::vector<const CtcSupervision*> input(num_append);
-  for (int32 i = 0; i < num_append; i++)
-    input[i] = &supervision;
-  std::vector<CtcSupervision> output;
-  bool compactify = (RandInt(0, 1) == 0);
-  AppendCtcSupervision(input, compactify, &output);
-  if (compactify) {
-    KALDI_ASSERT(output.size() == 1 &&
-                 output[0].num_frames == num_append * supervision.num_frames);
-  } else {
-    KALDI_ASSERT(output.size() == input.size());
-  }
-  TestCtcSupervisionIo(output[0]);
-}
-
-void TestCctcSupervision(const CctcTransitionModel &trans_model) {
-  int32 num_phones = trans_model.NumPhones(),
-      tot_frames = 0, subsample_factor = RandInt(1, 3);
-  std::vector<int32> phones, durations;
-  int32 sequence_length = RandInt(1, 20);
-  for (int32 i = 0; i < sequence_length; i++) {
-    int32 phone = RandInt(1, num_phones),
-        duration = RandInt(1, 6);
-    phones.push_back(phone);
-    durations.push_back(duration);
-    tot_frames += duration;
-  }
-  if (tot_frames < subsample_factor) {
-    // Don't finish the test because it would fail.  we run this multiple times.
-    return;
-  }  
-  CtcSupervisionOptions sup_opts;
-  sup_opts.frame_subsampling_factor = subsample_factor;
-  // keep the following two lines in sync and keep the silence
-  // range contiguous for the test to work.
-  int32 first_silence_phone = 1, last_silence_phone = 3;
-  sup_opts.silence_phones = "1:2:3";
-  bool start_from_lattice = (RandInt(0, 1) == 0);
-  CtcProtoSupervision proto_supervision;
-  if (start_from_lattice) {
-    CompactLattice clat;
-    CreateCompactLatticeFromPhonesAndDurations(phones, durations, &clat);
-    PhoneLatticeToProtoSupervision(clat, &proto_supervision);
-  } else {
-    AlignmentToProtoSupervision(phones, durations, &proto_supervision);
-  }
-  KALDI_LOG << "Original proto-supervision is: " << proto_supervision;
-  MakeSilencesOptional(sup_opts, &proto_supervision);
-  KALDI_LOG << "Proto-supervision after making silences optional is: " << proto_supervision;
-  ModifyProtoSupervisionTimes(sup_opts, &proto_supervision);
-  KALDI_LOG << "Proto-supervision after modifying times is: " << proto_supervision;
-  AddBlanksToProtoSupervision(&proto_supervision);
-  KALDI_LOG << "Proto-supervision after adding blanks is: " << proto_supervision;
-  CtcSupervision supervision;
-  if (!MakeCtcSupervisionNoContext(proto_supervision, num_phones,
-                                   &supervision)) {
-    // the only way this should fail is if we had too many phones for
-    // the number of subsampled frames.    
-    KALDI_ASSERT(sequence_length > tot_frames / subsample_factor);
-    KALDI_LOG << "Failed to create CtcSupervision because too many "
-              << "phones for too few frames.";
-    return;
-  }
-  KALDI_LOG << "Supervision without context is: " << supervision;
-  AddContextToCtcSupervision(trans_model, &supervision);
-  KALDI_LOG << "Supervision after adding context is: " << supervision;
-
-
-  fst::StdVectorFst one_path;
-  // ShortestPath effectively chooses an arbitrary path, because all paths have
-  // unit weight / zero cost.
-  ShortestPath(supervision.fst, &one_path);
-
-  
-  std::vector<int32> graph_label_seq_in, graph_label_seq_out;
-  fst::TropicalWeight tot_weight;
-  GetLinearSymbolSequence(one_path, &graph_label_seq_in,
-                          &graph_label_seq_out, &tot_weight);
-  KALDI_ASSERT(tot_weight == fst::TropicalWeight::One() &&
-               graph_label_seq_in == graph_label_seq_out);
-
-  { // basic testing of ComputeFstStateTimes (it has a lot of asserts).
-    std::vector<int32> state_times;
-    int32 length = ComputeFstStateTimes(supervision.fst, &state_times);
-    KALDI_ASSERT(static_cast<size_t>(length) == graph_label_seq_out.size());
-    for (size_t i = 0; i + 1 < state_times.size(); i++)
-      KALDI_ASSERT(state_times[i] <= state_times[i+1]);
-  }
-  
-
-  std::vector<int32> phones_from_graph;
-  for (size_t i = 0; i < graph_label_seq_in.size(); i++) {
-    int32 this_phone = trans_model.GraphLabelToPhone(graph_label_seq_in[i]);
-    if (this_phone != 0)
-      phones_from_graph.push_back(this_phone);
-  }
-  // phones_from_graph should equal 'phones', except that silences may be
-  // deleted.  Check this.
-  std::vector<int32> phone_nosil, phones_from_graph_nosil;
-  ExcludeRangeFromVector(phones, first_silence_phone, last_silence_phone,
-                         &phone_nosil);
-  ExcludeRangeFromVector(phones_from_graph, first_silence_phone,
-                         last_silence_phone, &phones_from_graph_nosil);
-  KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
-  TestCtcSupervisionIo(supervision);
-  TestCtcSupervisionAppend(supervision);
-  TestCtcSupervisionTraining(trans_model, supervision);
-}
-
 void CctcTransitionModelTest() {
   int32 order = RandInt(1, 4);
   int32 vocab_size;
   std::vector<std::vector<int32> > data, validation_data;
 
-  GetTestingData(&vocab_size, &data, &validation_data);
+  GenerateLanguageModelingData(&vocab_size, &data, &validation_data);
   
   LanguageModelOptions opts;
   opts.ngram_order = order;
@@ -559,7 +262,7 @@ void CctcTransitionModelTest() {
             << " and " << ComputePerplexity(lm, data) << "[train].";
 
   std::vector<int32> phones;
-  for (int32 p = 1; p <= 127; p++)
+  for (int32 p = 1; p <= vocab_size; p++)
     phones.push_back(p);
   ContextDependency *dep = GenRandContextDependencySpecial(phones);
 
@@ -573,7 +276,6 @@ void CctcTransitionModelTest() {
   history_state_map.Init(lm);
   TestCctcTransitionModelIndexes(trans_model, *dep, history_state_map);
   TestCctcTransitionModelGraph(trans_model);
-  TestCctcSupervision(trans_model);
 
   {
     // each row sum of the weights should be 2 (1 for element 0, 1 for
