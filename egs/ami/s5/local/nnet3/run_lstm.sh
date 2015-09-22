@@ -34,8 +34,10 @@ num_epochs=5
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
+num_jobs_initial=2
+num_jobs_final=12
 momentum=0.0
-shrink=1.0
+shrink=0.99
 num_chunk_per_minibatch=100
 num_bptt_steps=20
 samples_per_iter=20000
@@ -91,7 +93,7 @@ if [ $stage -le 8 ]; then
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 12 \
+    --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \

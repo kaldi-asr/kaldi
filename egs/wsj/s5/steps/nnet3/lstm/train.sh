@@ -18,7 +18,7 @@ num_epochs=5      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-shrink=0.0  # if non-zero this parameter would be used to scale the parameter matrices
+shrink=0.99  # this parameter would be used to scale the parameter matrices
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
