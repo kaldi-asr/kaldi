@@ -87,7 +87,9 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
   } else if (component_type == "Convolutional1dComponent") {
-    ans = new Convolutional1dComponent();	  
+    ans = new Convolutional1dComponent();    
+  } else if (component_type == "MaxpoolingComponent") {
+    ans = new MaxpoolingComponent();
   }
   return ans;
 }

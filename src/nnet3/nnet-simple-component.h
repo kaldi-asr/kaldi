@@ -963,7 +963,7 @@ class Convolutional1dComponent: public UpdatableComponent {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update_in,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
@@ -1016,6 +1016,72 @@ class Convolutional1dComponent: public UpdatableComponent {
   bool is_gradient_;
 };
 
+/**
+ * MaxPoolingComponent :
+ * Maxpooling component was firstly used in ConvNet for selecting an representative
+ * activation in an area. It inspired Maxout nonlinearity.
+ *
+ * The input/output matrices are split to submatrices with width 'pool_stride_'.
+ * For instance, a minibatch of 512 frames is propagated by a convolutional
+ * layer, resulting in a 512 x 3840 input matrix for MaxpoolingComponent,
+ * which is composed of 128 feature maps for each frame (128 x 30). If you want
+ * a 3-to-1 maxpooling on each feature map, set 'pool_stride_' and 'pool_size_'
+ * as 128 and 3 respectively. Maxpooling component would create an output
+ * matrix of 512 x 1280. The 30 input neurons are grouped by a group size of 3, and
+ * the maximum in a group is selected, creating a smaller feature map of 10.
+ * 
+ * Our pooling does not supports overlaps, which simplifies the
+ * implementation (and was not helpful for Ossama).
+ */
+class MaxpoolingComponent: public Component {
+ public:
+  explicit MaxpoolingComponent(int32 input_dim, int32 output_dim,
+                               int32 pool_size, int32 pool_stride) {
+    Init(input_dim, output_dim, pool_size, pool_stride);
+  }
+  MaxpoolingComponent(): input_dim_(0), output_dim_(0),
+    pool_size_(0), pool_stride_(0) { }
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "MaxpoolingComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
+	    kBackpropAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *, // to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const {
+    return new MaxpoolingComponent(input_dim_, output_dim_,
+		    pool_size_, pool_stride_); }
+
+  // Some functions that are specific to this 
+  void Init(int32 input_dim, int32 output_dim,
+            int32 pool_size, int32 pool_stride);
+
+ protected:
+  int32 input_dim_;
+  int32 output_dim_;
+  int32 pool_size_;
+  int32 pool_stride_;
+};
 
 
 } // namespace nnet3
