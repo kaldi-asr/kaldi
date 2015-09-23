@@ -236,7 +236,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-      --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
       $data $alidir $dir/egs || exit 1;
