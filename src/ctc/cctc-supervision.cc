@@ -398,6 +398,7 @@ void CctcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
     KALDI_ERR << "Topological sort of supervision FST failed.";
   out_supervision->weight = supervision_.weight;
   out_supervision->num_frames = num_frames;
+  out_supervision->label_dim = supervision_.label_dim;
 }
 
 void CctcSupervisionSplitter::CreateRangeFst(
@@ -420,6 +421,7 @@ void CctcSupervisionSplitter::CreateRangeFst(
     fst->AddState();
   // Add the special final-state.
   int32 final_state = fst->AddState();
+  fst->SetFinal(final_state, fst::TropicalWeight::One());
   for (int32 state = begin_state; state < end_state; state++) {
     int32 output_state = state - begin_state + 1;
     if (frame_[state] == begin_frame) {
@@ -452,7 +454,6 @@ void CctcSupervisionSplitter::CreateRangeFst(
                                 arc.weight, output_nextstate));
       }
     }
-    KALDI_ASSERT(supervision_.fst.Final(state) == fst::TropicalWeight::Zero());
   }
 }
 
@@ -492,6 +493,7 @@ void CctcSupervision::Write(std::ostream &os, bool binary) const {
   if (!binary) os << "\n";
   WriteToken(os, binary, "<LabelDim>");
   WriteBasicType(os, binary, label_dim);
+  KALDI_ASSERT(num_frames > 0 && label_dim > 0);
   if (binary == false) {
     // In text mode, write the FST without any compactification.
     WriteFstKaldi(os, binary, fst);
@@ -614,6 +616,59 @@ void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
   }
 }
 
+void SplitIntoRanges(int32 num_frames,
+                     int32 frames_per_range,
+                     std::vector<int32> *range_starts) {
+  if (frames_per_range > num_frames) {
+    range_starts->clear();
+    return;  // there is no room for even one range.
+  }
+  int32 num_ranges = num_frames  / frames_per_range,
+      extra_frames = num_frames % frames_per_range;
+  // this is a kind of heuristic.  If the number of frames we'd
+  // be skipping is less than 1/4 of the frames_per_range, then
+  // skip frames; otherwise, duplicate frames.
+  // it's important that this is <=, not <, so that if
+  // extra_frames == 0 and frames_per_range is < 4, we
+  // don't insert an extra range.
+  if (extra_frames <= frames_per_range / 4) {
+    // skip frames.  we do this at start or end, or between ranges.
+    std::vector<int32> num_skips(num_ranges + 1, 0);
+    for (int32 i = 0; i < extra_frames; i++)
+      num_skips[RandInt(0, num_ranges)]++;
+    range_starts->resize(num_ranges);
+    int32 cur_start = num_skips[0];
+    for (int32 i = 0; i < num_ranges; i++) {
+      (*range_starts)[i] = cur_start;
+      cur_start += frames_per_range;      
+      cur_start += num_skips[i + 1];
+    }
+    KALDI_ASSERT(cur_start == num_frames);
+  } else {
+    // duplicate frames.
+    num_ranges++;
+    int32 num_duplicated_frames = frames_per_range - extra_frames;
+    // the way we handle the 'extra_frames' frames of output is that we
+    // backtrack zero or more frames between outputting each pair of ranges, and
+    // the total of these backtracks equals 'extra_frames'.
+    std::vector<int32> num_backtracks(num_ranges, 0);
+    for (int32 i = 0; i < num_duplicated_frames; i++) {
+      // num_ranges - 2 below is not a bug.  we only want to backtrack
+      // between ranges, not past the end of the last range (i.e. at
+      // position num_ranges - 1).  we make the vector one longer to
+      // simplify the loop below.
+      num_backtracks[RandInt(0, num_ranges - 2)]++;
+    }
+    range_starts->resize(num_ranges);
+    int32 cur_start = 0;
+    for (int32 i = 0; i < num_ranges; i++) {
+      (*range_starts)[i] = cur_start;
+      cur_start += frames_per_range;
+      cur_start -= num_backtracks[i];
+    }
+    KALDI_ASSERT(cur_start == num_frames);
+  }
+}
 
 
 }  // namespace ctc

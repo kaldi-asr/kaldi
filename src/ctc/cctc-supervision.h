@@ -373,8 +373,21 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 /// this helps to reduce the number of GPU kernel invocations.  This function
 /// will crash if the values of label_dim in the inputs are not all the same.
 void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
-                          bool compactify,
-                          std::vector<CctcSupervision> *output_supervision);
+                           bool compactify,
+                           std::vector<CctcSupervision> *output_supervision);
+
+
+/// This function helps you to pseudo-randomly split a sequence of length 'num_frames',
+/// interpreted as frames 0 ... num_frames - 1, into pieces of length exactly
+/// 'frames_per_range', to be used as examples for training.  Because frames_per_range
+/// may not exactly divide 'num_frames', this function will leave either small gaps or
+/// small overlaps in pseudo-random places.
+/// The output 'range_starts' will be set to a list of the starts of ranges, the
+/// output ranges are of the form
+/// [ (*range_starts)[i] ... (*range_starts)[i] + frames_per_range - 1 ].
+void SplitIntoRanges(int32 num_frames,
+                     int32 frames_per_range,
+                     std::vector<int32> *range_starts);
   
 
 

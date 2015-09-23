@@ -89,8 +89,8 @@ struct NnetCctcSupervision {
   
 
   // Use default assignment operator
-
-  NnetCctcSupervision();
+  
+  NnetCctcSupervision() { }
 
   /// Initialize the object from an object of type CctcSupervision, and some
   /// extra information.
@@ -110,6 +110,7 @@ struct NnetCctcSupervision {
 
   void Read(std::istream &is, bool binary);
 
+  void Swap(NnetCctcSupervision *other);
 };
 
 /// NnetCctcExample is like NnetExample, but specialized for CTC training.
@@ -145,15 +146,13 @@ struct NnetCctcExample {
 /// space); if 'compactify' is true, it compactifies the output by merging the
 /// CctcSupervision objects (recommended for efficiency).
 ///
-/// Note: if you are calling this from multi-threaded code, be aware that
-/// internally this function temporarily changes 'input' by means of a
-/// const_cast, before putting it back to its original value.  This is a trick
-/// to allow us to use the MergeExamples() routine and avoid having to rewrite
-/// code.
-void MergeCctcExamples(const std::vector<NnetCctcExample> &input,
-                      bool compress,
-                      bool compactify,
-                      NnetCctcExample *output);
+/// Note: the input is left as it was at the start, but it is temporarily
+/// changed inside the function; this is a trick to allow us to use the
+/// MergeExamples() routine while avoiding having to rewrite code.
+void MergeCctcExamples(bool compress,
+                       bool compactify,
+                       std::vector<NnetCctcExample> *input,
+                       NnetCctcExample *output);
 
 
 

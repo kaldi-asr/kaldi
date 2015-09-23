@@ -59,6 +59,8 @@ struct NnetIo {
          int32 dim,
          int32 t_begin,
          const Posterior &labels);
+
+  void Swap(NnetIo *other);
   
   NnetIo() { }
   

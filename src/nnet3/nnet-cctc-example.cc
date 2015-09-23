@@ -117,6 +117,12 @@ NnetCctcSupervision::NnetCctcSupervision(const NnetCctcSupervision &other):
     indexes(other.indexes),
     supervision(other.supervision) { }
 
+void NnetCctcSupervision::Swap(NnetCctcSupervision *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  supervision.swap(other->supervision);
+}
+
 NnetCctcSupervision::NnetCctcSupervision(
     const ctc::CctcSupervision &ctc_supervision,
     const std::string &name,
@@ -147,6 +153,7 @@ void NnetCctcExample::Write(std::ostream &os, bool binary) const {
     inputs[i].Write(os, binary);
     if (!binary) os << '\n';
   }
+  WriteToken(os, binary, "<NumOutputs>");
   size = outputs.size();
   WriteBasicType(os, binary, size);
   KALDI_ASSERT(size > 0 && "Attempting to write NnetCctcExample with no outputs");
@@ -194,6 +201,7 @@ NnetCctcExample::NnetCctcExample(const NnetCctcExample &other):
     inputs(other.inputs), outputs(other.outputs) { }
 
 
+
 // called from MergeCctcExamplesInternal, this function merges the CctcSupervision
 // objects into one.  Requires (and checks) that they all have the same name.
 static void MergeCctcSupervision(
@@ -239,10 +247,10 @@ static void MergeCctcSupervision(
 }
 
 
-static void MergeCctcExamplesInternal(bool compress,
-                                     bool compactify,
-                                     std::vector<NnetCctcExample> *input,
-                                     NnetCctcExample *output) {
+void MergeCctcExamples(bool compress,
+                       bool compactify,
+                       std::vector<NnetCctcExample> *input,
+                       NnetCctcExample *output) {
   int32 num_examples = input->size();
   KALDI_ASSERT(num_examples > 0);
   // we temporarily make the input-features in 'input' look like regular NnetExamples,
@@ -273,15 +281,6 @@ static void MergeCctcExamplesInternal(bool compress,
                         compactify,
                         &(output->outputs[i]));
   }
-}
-
-void MergeCctcExamples(const std::vector<NnetCctcExample> &input,
-                      bool compress,
-                      bool compactify,
-                      NnetCctcExample *output) {
-  MergeCctcExamplesInternal(compress, compactify,
-                           const_cast<std::vector<NnetCctcExample>*>(&input),
-                           output);
 }
 
 

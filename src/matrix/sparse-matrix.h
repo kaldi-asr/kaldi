@@ -312,6 +312,8 @@ class GeneralMatrix {
   GeneralMatrix(const GeneralMatrix &other) { *this = other; }
   // Sets to the empty matrix.
   void Clear();
+  // shallow swap
+  void Swap(GeneralMatrix *other);
  private:
   // We don't explicitly store the type of the matrix.  Rather, we make
   // sure that only one of the matrices is ever nonempty, and the Type()

@@ -113,7 +113,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
       KALDI_ASSERT(*names_iter == io.name);
       int32 f = names_iter - names_begin;
       int32 this_size = io.indexes.size(),
-        &this_offset = cur_size[f];
+          &this_offset = cur_size[f];
       KALDI_ASSERT(this_size + this_offset <= sizes[f]);
       output_lists[f].push_back(&(io.features));
       NnetIo &output_io = merged_eg->io[f];

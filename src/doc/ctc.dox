@@ -88,14 +88,14 @@ namespace kaldi {
   each phone can generate exactly one copy of its phone symbol, with any number of 'blank'
   symbols allowed between phones.  Also imagine that we decimate the output frames of the
   neural network so that we only have one frame every 30ms, instead of every 10ms (the network
-  still gets too see the input at the 10ms frame rate, since we stack the input features; see Sak
+  still gets to see the input at the 10ms frame rate, since we stack the input features; see Sak
   et al.).  When decoding, we don't divide by the phone-level priors.  When training,
   we do forward-backward rather than Viterbi (note: this requires training on whole utterances).
 
   \subsection ctc_cctc_baseline2alt Baseline 2(alt): monophone better-tuned CTC system
 
-  Baseline 2(alt) is as baseline 2 except tuning it slightly better.  We separate this
-  from 2(a) because the problems that are being addressed here are solved in a different
+  Baseline 2(alt) is as Baseline 2 except tuning it slightly better.  We separate this
+  from Baseline 2 because the problems that are being addressed here are solved in a different
   way in CCTC, so Baseline 2) remains the shortest path to CCTC.
   The tuning improvemets (see Sak et al.) are:
     - Instead of forcing exactly one non-blank symbol per phone, we allow repeats of the
@@ -115,7 +115,8 @@ namespace kaldi {
   \subsection ctc_cctc_baseline3  Baseline 3: left-context CTC system
 
   Baseline 3 is as Baseline 2, but the labels are clustered context-dependent phones
-  with only left context-- for example, clustered biphones.
+  with only left context-- for example, clustered biphones.  We can get the clustering
+  from the same Gaussian-based clustering process that we use for a GMM-based system.
 
   \subsection ctc_cctc_baseline4  Baseline 4: left-context CTC system with `correct normalization'
 
@@ -130,9 +131,11 @@ namespace kaldi {
   (h, q); and the probability of each phone q given that history is normalized over that set.
   In practice, the neural network itself would output the un-normalized log-probabilities, and
   the CTC code would compute the normalized phone probabilities.  Any
-  probability \f$p(q | h)\f$ can be written as \f$ p(q | h) = p(q, h) / \sum_q' p(q', h) \f$, where
-  the un-normalized log-probabilities \f$ \mathrm{log} p(q, h) \f$ is obtained by computing the corresponding clustered
-  context-dependent phone and looking up its value in the neural network's output.
+  probability \f$p(q | h)\f$ can be written as
+    \f[ p(q | h) = p(q, h) / \sum_{q'} p(q', h) \f]
+   where the un-normalized log-probabilities \f$ \mathrm{log} p(q, h) \f$ are obtained by computing the corresponding clustered
+  context-dependent phone and using that index to perform a lookup in the neural network's output.
+  Note: these \f$p(q, h)\f$ quantities are not normalized.
   The \f$p(q | h)\f$ quantities are used in both training and decoding.
 
 
@@ -146,7 +149,7 @@ namespace kaldi {
   
   \subsection ctc_cctc_cctc  CCTC itself: incorporating a phone language model
 
-  Finally we get too CCTC itself.  The difference from Baseline 5 is that prior to training
+  Finally we get to CCTC itself.  The difference from Baseline 5 is that prior to training
   the model, we estimate a phone n-gram language model, and we `train against' this.
 
   This is done in order to discourage the neural net itself from learning a kind
@@ -157,7 +160,7 @@ namespace kaldi {
   the ratio of the word-graph-based LM probability to the phone-ngram LM
   probability.
  
-  Let us write the phone language model probabilities as $p_{lm}(q | h)$,
+  Let us write the phone language model probabilities as \f$p_{lm}(q | h)\f$,
   where h represents the language-model history state.  We use a Kneser-Ney
   n-gram language model for this, but modified using count cutoffs to minimize
   the number of distinct history states we need to keep track of (because
@@ -172,8 +175,8 @@ namespace kaldi {
      p(q | h) = \frac{ p_{ac}(q, h) p_{lm}(q | h)  }
                      { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
 \f]
- where \f$p_{lm}(q | h)\f$ represent the phone-level language model probabilities
- and \f$p_{ac}(q, h)\f$ represent the un-normalized clustered context-dependent
+ where \f$p_{lm}(q | h)\f$ represents the phone-level language model probabilities
+ and \f$p_{ac}(q, h)\f$ represents the un-normalized clustered context-dependent
  acoustic probabilities that come from the output of the neural network (actually,
  we exponentiate the network's output to get these quantities).
  Don't attempt to make sense of any of this in some kind of Bayesian context.  The
@@ -216,7 +219,7 @@ Some key details which we glossed over above are:
     this; but for now just rest assured that all the quantities we need to compute
     as a function of h are well-defined because h is 'sufficiently detailed'.
 
-  - For blank symbols, we always take \f$p{lm}(blank | h)\f$ to equal 1.0, in both
+  - For blank symbols, we always take \f$p_{lm}(\mathrm{blank} | h)\f$ to equal 1.0, in both
     training time and test time.  Here, by `blank' we mean whichever blank symbol
     is appropriate for this history-state.
     This might seem less than ideal, but in fact there is no problem, because the

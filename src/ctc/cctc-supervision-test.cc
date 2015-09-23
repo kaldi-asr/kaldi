@@ -23,6 +23,7 @@
 #include "ctc/cctc-supervision.h"
 #include "ctc/cctc-training.h"
 #include "ctc/cctc-test-utils.h"
+#include "fstext/fstext-lib.h"
 
 // This test program tests things declared in ctc-supervision.h and
 // cctc-training.h
@@ -82,7 +83,7 @@ void ExcludeRangeFromVector(const std::vector<int32> &in,
 }
 
 void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
-                                const CctcSupervision &supervision) {
+                                 const CctcSupervision &supervision) {
   BaseFloat delta = 1.0e-04;
   int32 num_frames = supervision.num_frames,
       nnet_output_dim = trans_model.NumOutputIndexes();
@@ -123,6 +124,28 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
   KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
 }
 
+void TestCctcSupervisionFrames(const CctcSupervision &supervision) {
+  using namespace fst;
+  UniformArcSelector<StdArc> selector;
+  RandGenOptions<UniformArcSelector<StdArc> > randgen_opts(selector);
+  VectorFst<StdArc> rand_path;
+  RandGen(supervision.fst, &rand_path, randgen_opts);
+  std::vector<int32> isymbols_out, osymbols_out;
+  fst::TropicalWeight weight_out;
+  bool ans = GetLinearSymbolSequence(rand_path, &isymbols_out, &osymbols_out,
+                                     &weight_out);
+  KALDI_ASSERT(ans);
+  KALDI_ASSERT(isymbols_out == osymbols_out);
+  KALDI_ASSERT(isymbols_out.size() == static_cast<size_t>(supervision.num_frames));
+  KALDI_ASSERT(weight_out == fst::TropicalWeight::One());
+
+  bool test = true;
+  // make sure epsilon free
+  KALDI_ASSERT(supervision.fst.Properties(fst::kNoEpsilons, test) != 0);
+  // make sure unweighted
+  KALDI_ASSERT(supervision.fst.Properties(fst::kUnweighted, test) != 0);
+}
+
 void TestCctcSupervisionIo(const CctcSupervision &supervision) {
   bool binary = (RandInt(0, 1) == 0);
   std::ostringstream os;
@@ -153,6 +176,57 @@ void TestCctcSupervisionAppend(const CctcSupervision &supervision) {
   }
   TestCctcSupervisionIo(output[0]);
 }
+
+
+// make sure that reattached_supervision is plausibly the result of splitting
+// and then reattaching 'supervision'.
+void TestCctcSupervisionReattached(const CctcSupervision &supervision,
+                                   const CctcSupervision &reattached_supervision) {
+  using namespace fst;
+  KALDI_LOG << "testing reattached";
+  KALDI_ASSERT(reattached_supervision.num_frames == supervision.num_frames &&
+               reattached_supervision.weight == supervision.weight &&
+               reattached_supervision.label_dim == supervision.label_dim);
+  UniformArcSelector<StdArc> selector;
+  RandGenOptions<UniformArcSelector<StdArc> > randgen_opts(selector);
+  VectorFst<StdArc> fst_path;
+  RandGen(supervision.fst, &fst_path, randgen_opts);
+  VectorFst<StdArc> composed;
+  Compose(fst_path, reattached_supervision.fst, &composed);
+  Connect(&composed);
+  KALDI_ASSERT(composed.NumStates() != 0);
+}
+
+void TestCctcSupervisionSplitting(const CctcSupervision &supervision) {
+  CctcSupervisionSplitter splitter(supervision);
+  int32 num_frames = supervision.num_frames,
+      frames_per_range = RandInt(3, 10);
+  std::vector<int32> range_starts;
+  SplitIntoRanges(num_frames, frames_per_range, &range_starts);
+  int32 num_ranges = range_starts.size();
+  std::vector<CctcSupervision> split_supervision(num_ranges);
+  for (int32 i = 0; i < num_ranges; i++)
+    splitter.GetFrameRange(range_starts[i], frames_per_range,
+                           &split_supervision[i]);
+  if (num_ranges > 0) {
+    TestCctcSupervisionIo(split_supervision[RandInt(0, num_ranges - 1)]);
+    TestCctcSupervisionFrames(split_supervision[RandInt(0, num_ranges - 1)]);
+    if (num_frames % frames_per_range == 0) {
+      // co-test with Append.
+      std::vector<CctcSupervision> reattached_supervision;
+      std::vector<const CctcSupervision*> to_append(num_ranges);
+      for (int32 i = 0; i < num_ranges; i++)
+        to_append[i] = &(split_supervision[i]);
+      bool compactify = true;
+      AppendCctcSupervision(to_append, compactify, &reattached_supervision);
+      KALDI_ASSERT(reattached_supervision.size() == 1);
+      TestCctcSupervisionReattached(supervision,
+                                    reattached_supervision[0]);
+      
+    }
+  }
+}
+
 
 void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   int32 num_phones = trans_model.NumPhones(),
@@ -244,6 +318,8 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
                          last_silence_phone, &phones_from_graph_nosil);
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
   TestCctcSupervisionIo(supervision);
+  TestCctcSupervisionFrames(supervision);
+  TestCctcSupervisionSplitting(supervision);  
   TestCctcSupervisionAppend(supervision);
   TestCctcSupervisionTraining(trans_model, supervision);
 }

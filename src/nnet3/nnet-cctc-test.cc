@@ -17,18 +17,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nnet3/nnet-nnet.h"
-#include "nnet3/nnet-compile.h"
-#include "nnet3/nnet-analyze.h"
-#include "nnet3/nnet-test-utils.h"
-#include "nnet3/nnet-optimize.h"
-#include "nnet3/nnet-compute.h"
 #include "ctc/cctc-transition-model.h"
 #include "ctc/cctc-graph.h"
 #include "ctc/language-model.h"
 #include "ctc/cctc-supervision.h"
 #include "ctc/cctc-training.h"
 #include "ctc/cctc-test-utils.h"
+#include "nnet3/nnet-cctc-example.h"
 
 // This test program tests things declared in ctc-supervision.h and
 // cctc-training.h
@@ -121,38 +116,91 @@ void TestCctcSupervisionTraining(const ctc::CctcTransitionModel &trans_model,
   KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
 }
 
-void TestCctcSupervisionIo(const ctc::CctcSupervision &supervision) {
-  using namespace kaldi::ctc;
+void TestNnetCctcExampleIo(const NnetCctcExample &eg) {
   bool binary = (RandInt(0, 1) == 0);
   std::ostringstream os;
-  supervision.Write(os, binary);
+  eg.Write(os, binary);
   std::istringstream is(os.str());
-  CctcSupervision supervision2;
+  NnetCctcExample eg2;
   if (RandInt(0, 1) == 0)
-    supervision2 = supervision;  // test reading already-existing object.
-  supervision2.Read(is, binary);
+    eg2 = eg;  // test reading already-existing object.
+  eg2.Read(is, binary);
   std::ostringstream os2;
-  supervision2.Write(os2, binary);
-  KALDI_ASSERT(os.str() == os2.str());
+  eg2.Write(os2, binary);
+  if (binary) {
+    KALDI_ASSERT(os.str() == os2.str());
+  }
 }
 
-void TestCctcSupervisionAppend(const ctc::CctcSupervision &supervision) {
-  using namespace kaldi::ctc;
-  int32 num_append = RandInt(1,5);
-  std::vector<const CctcSupervision*> input(num_append);
-  for (int32 i = 0; i < num_append; i++)
-    input[i] = &supervision;
-  std::vector<CctcSupervision> output;
+void TestNnetCctcExampleMerge(const NnetCctcExample &eg) {
+  int32 num_merge = RandInt(1, 10);
+  bool compress = (RandInt(0, 1) == 0);
   bool compactify = (RandInt(0, 1) == 0);
-  AppendCctcSupervision(input, compactify, &output);
-  if (compactify) {
-    KALDI_ASSERT(output.size() == 1 &&
-                 output[0].num_frames == num_append * supervision.num_frames);
-  } else {
-    KALDI_ASSERT(output.size() == input.size());
+  KALDI_LOG << "num_merge = " << num_merge << ", compress = "
+            << (compress ? "true" : "false") << ", compactify = "
+            << (compactify ? "true" : "false");
+  std::vector<NnetCctcExample> egs(num_merge);
+  for (int32 i = 0; i < num_merge; i++)
+    egs[i] = eg;
+  NnetCctcExample merged_eg;
+  MergeCctcExamples(compress, compactify, &egs, &merged_eg);
+  /*
+  {
+    std::ostringstream os;
+    eg.Write(os, false);
+    KALDI_LOG << "Original eg is " << os.str();
   }
-  TestCctcSupervisionIo(output[0]);
+  {
+    std::ostringstream os;
+    merged_eg.Write(os, false);
+    KALDI_LOG << "Merged eg is " << os.str();
+  }
+  */
 }
+
+
+void TestCctcSupervisionNnet(const ctc::CctcSupervision &supervision) {
+  using namespace ctc;
+  CctcSupervisionSplitter splitter(supervision);
+  int32 num_frames = supervision.num_frames,
+      frames_per_range = RandInt(3, 10);
+  std::vector<int32> range_starts;
+  SplitIntoRanges(num_frames, frames_per_range, &range_starts);
+  int32 num_ranges = range_starts.size();
+  std::vector<CctcSupervision> split_supervision(num_ranges);
+  for (int32 i = 0; i < num_ranges; i++)
+    splitter.GetFrameRange(range_starts[i], frames_per_range,
+                           &split_supervision[i]);
+  if (num_ranges > 0) {
+    int32 input_dim = RandInt(10, 80),
+        left_context = RandInt(0, 10),
+        right_context = RandInt(0, 5);
+    int32 first_frame = 0, // 1st supervised frame of each eg
+        frame_skip = RandInt(1, 3);
+    std::vector<NnetCctcExample> nnet_examples(num_ranges);
+    for (int32 i = 0; i < num_ranges; i++) {
+      NnetCctcExample &nnet_eg = nnet_examples[i];
+      const CctcSupervision &cctc_sup = split_supervision[i];
+      int32 num_ctc_frames = cctc_sup.num_frames;
+      NnetCctcSupervision nnet_ctc_sup(cctc_sup, "output", first_frame,
+                                       frame_skip);
+      nnet_eg.outputs.resize(1);
+      nnet_eg.outputs[0].Swap(&nnet_ctc_sup);
+      nnet_eg.inputs.resize(0);
+      int32 num_input_frames = left_context + num_ctc_frames * frame_skip +
+          right_context;
+      Matrix<BaseFloat> feats(num_input_frames, input_dim);
+      feats.SetRandn();
+      NnetIo input_io("input", -left_context, feats);
+      nnet_eg.inputs.resize(1);
+      nnet_eg.inputs[0].Swap(&input_io);
+      TestNnetCctcExampleIo(nnet_eg);
+      TestNnetCctcExampleMerge(nnet_eg);
+    }
+  }
+}
+
+
 
 std::ostream &operator << (std::ostream &os, const ctc::CctcProtoSupervision &p) {
   p.Write(os, false);
@@ -163,7 +211,7 @@ std::ostream &operator << (std::ostream &os, const ctc::CctcSupervision &s) {
   return os;
 }
 
-void TestNnetCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
+void TestCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
   using namespace kaldi::ctc;
   int32 num_phones = trans_model.NumPhones(),
       tot_frames = 0, subsample_factor = RandInt(1, 3);
@@ -222,7 +270,6 @@ void TestNnetCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
   // unit weight / zero cost.
   ShortestPath(supervision.fst, &one_path);
 
-  
   std::vector<int32> graph_label_seq_in, graph_label_seq_out;
   fst::TropicalWeight tot_weight;
   GetLinearSymbolSequence(one_path, &graph_label_seq_in,
@@ -253,15 +300,14 @@ void TestNnetCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
   ExcludeRangeFromVector(phones_from_graph, first_silence_phone,
                          last_silence_phone, &phones_from_graph_nosil);
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
-  TestCctcSupervisionIo(supervision);
-  TestCctcSupervisionAppend(supervision);
-  TestCctcSupervisionTraining(trans_model, supervision);
+
+  TestCctcSupervisionNnet(supervision);
 }
 
 void NnetCctcSupervisionTest() {
   ctc::CctcTransitionModel trans_model;
   ctc::GenerateCctcTransitionModel(&trans_model);
-  TestNnetCctcSupervision(trans_model);
+  TestCctcSupervision(trans_model);
 }
 
 

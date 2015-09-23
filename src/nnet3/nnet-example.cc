@@ -26,6 +26,7 @@ namespace kaldi {
 namespace nnet3 {
 
 void NnetIo::Write(std::ostream &os, bool binary) const {
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(indexes.size()));
   WriteToken(os, binary, "<NnetIo>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
@@ -50,6 +51,12 @@ NnetIo::NnetIo(const std::string &name,
   indexes.resize(num_rows);  // sets all n,t,x to zeros.
   for (int32 i = 0; i < num_rows; i++)
     indexes[i].t = t_begin + i;
+}
+
+void NnetIo::Swap(NnetIo *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  features.Swap(&(other->features));
 }
 
 NnetIo::NnetIo(const std::string &name,
