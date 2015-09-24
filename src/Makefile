@@ -145,7 +145,7 @@ $(EXT_SUBDIRS) : mklibdir
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
 
-bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin latbin ivectorbin lmbin: \
+bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin ctcbin latbin ivectorbin lmbin kwsbin online2bin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector
 
@@ -174,9 +174,8 @@ ctc: hmm tree matrix cudamatrix lat util base
 ivector: base util matrix thread transform tree gmm 
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
-online2bin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online2 thread ivector
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
 online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2
 kws: base util hmm tree matrix lat
-kwsbin: fstext kws lat base util hmm tree matrix
+

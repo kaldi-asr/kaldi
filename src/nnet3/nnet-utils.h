@@ -102,7 +102,7 @@ void ZeroComponentStats(Nnet *nnet);
 /// It does this by constructing a ComputationRequest with a certain number of inputs
 /// available, outputs can be computed..  It does the same after shifting the time
 /// index of the output to all values 0, 1, ... n-1, where n is the output
-/// of Modulus(nnet).   Then it returns the largest left context and the largest
+/// of nnet.Modulus().   Then it returns the largest left context and the largest
 /// right context that it infers from any of these computation requests.
 void ComputeSimpleNnetContext(const Nnet &nnet,
                               int32 *left_context,
@@ -138,6 +138,14 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
 
+
+/// This function returns various info about the neural net, which is
+/// required to satisfy IsSimpleNnet(nnet) == true.  The info includes
+/// e.g. "left-context=5\nright-context=3\n...".  The info includes
+/// the output of nnet.Info().
+/// This is modeled after the info that AmNnetSimple returns in its
+/// Info() function (we need this in the CTC code).
+std::string SimpleNnetInfo(const Nnet &nnet);
 
 
 } // namespace nnet3

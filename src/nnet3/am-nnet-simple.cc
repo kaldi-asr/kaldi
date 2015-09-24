@@ -87,7 +87,7 @@ std::string AmNnetSimple::Info() const {
     ostr << "prior-min: " << priors_.Min() << "\n";
     ostr << "prior-max: " << priors_.Max() << "\n";
   }
-  ostr << "# Nnet info follows.\n" << "\n";
+  ostr << "# Nnet info follows.\n";
   return ostr.str() + nnet_.Info();
 }
 

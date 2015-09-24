@@ -188,6 +188,7 @@ LanguageModelEstimator::LanguageModelEstimator(const LanguageModelOptions &opts,
                                                int32 vocab_size):
     opts_(opts), vocab_size_(vocab_size), counts_(opts_.ngram_order + 1),
     history_state_counts_(opts_.ngram_order) {
+  KALDI_ASSERT(opts_.ngram_order > 0);
   std::vector<int32> word_vec(1);
   // for all words, and EOS (0), add a zero count.  This is the easiest way to
   // ensure that when we eventually create the LM, all words will get given
@@ -199,7 +200,7 @@ LanguageModelEstimator::LanguageModelEstimator(const LanguageModelOptions &opts,
   }
 }
 
-void LanguageModelEstimator::AddCounts(std::vector<int32> &sentence) {
+void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
   int32 order = opts_.ngram_order, vocab_size = vocab_size_;
   { // Do a sanity check on the input.
     std::vector<int32>::const_iterator iter = sentence.begin(),
@@ -241,6 +242,9 @@ BaseFloat LanguageModelEstimator::GetDiscountAmount(BaseFloat count) const {
 }
 
 void LanguageModelEstimator::Discount() {
+  if (counts_.back().empty())
+    KALDI_ERR << "No data available to estimate language model";
+  
   SetType protected_states;
   
   for (int32 order = opts_.ngram_order; order >= 1; order--) {

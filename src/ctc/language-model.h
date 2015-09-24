@@ -200,17 +200,22 @@ class LmHistoryStateMap {
 
 class LanguageModelEstimator {
  public:
+  // note: vocabulary ranges from [1 .. vocab_size].  Index 0
+  // is used internally for both BOS and EOS (beginning-of-sentence and
+  // end-of-sentence symbols), but it should not appear
+  // explicitly in the input sentences.
   LanguageModelEstimator(const LanguageModelOptions &opts,
                          int32 vocab_size);
 
   // Adds counts for this sentence.  Basically does: for each n-gram,
   // count[n-gram] += 1.
-  void AddCounts(std::vector<int32> &sentence);
+  void AddCounts(const std::vector<int32> &sentence);
 
-  // Does the discounting.
+  // Does the discounting.  Call after calling AddCounts() for all sentences,
+  // and then call Output().
   void Discount();
 
-  // outputs to the LM.
+  // Outputs to the LM.  Call this after Discount().
   void Output(LanguageModel *lm) const;
 private:
   // Returns the probability for this word given this history; used inside
