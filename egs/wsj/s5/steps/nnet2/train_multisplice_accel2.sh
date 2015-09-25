@@ -37,6 +37,9 @@ prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
                         # more than enough.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0
+fix_nnet=false
+min_average=0.05
+max_average=0.95
 online_ivector_dir=
 remove_egs=true  # set to false to disable removing egs.
 
@@ -279,7 +282,7 @@ if [ $stage -le -2 ]; then
     nnet-am-init $alidir/tree $lang/topo "nnet-init $dir/nnet.config -|" \
     $dir/0.mdl || exit 1;
 fi
-
+if [ $pnorm_input_dim -eq $pnorm_output_dim ] && [ $fix_nnet ]; then fix_nnet=true;fi  
 if [ $stage -le -1 ]; then
   echo "Training transition probabilities and setting priors"
   $cmd $dir/log/train_trans.log \
@@ -393,7 +396,7 @@ cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
-
+  if [ $x -gt $[$num_iters/2] ]; then fix_nnet=false; fi
   this_num_jobs=$(perl -e "print int(0.5+$num_jobs_initial+($num_jobs_final-$num_jobs_initial)*$x/$num_iters);")
 
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
@@ -539,6 +542,10 @@ while [ $x -lt $num_iters ]; do
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       cp $dir/$[$x+1].$n.mdl $dir/$[$x+1].mdl || exit 1;
+    fi
+    if $fix_nnet; then
+      # do nnet-am-fix to fix some pathology in the network
+      nnet-am-fix --max-average-deriv=$max_average --min-average-deriv=$min_average $dir/$[$x+1].mdl $dir/$[$x+1].mdl 2>$dir/log/fix.$x.log || exit;
     fi
 
     if [ "$mix_up" -gt 0 ] && [ $x -eq $mix_up_iter ]; then
