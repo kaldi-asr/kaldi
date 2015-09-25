@@ -168,7 +168,7 @@ if [ $stage -le 13 ]; then
     --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
 
-#TDNN training
+#TDNN training (nnet3)
 if [ $stage -le 14 ]; then
   local/nnet3/run_tdnn.sh \
     --mic $mic \
@@ -178,7 +178,7 @@ if [ $stage -le 14 ]; then
 fi
 exit 1;
 
-#LSTM training
+#LSTM training (nnet3)
 if [ $stage -le 15 ]; then
   local/nnet3/run_lstm.sh \
     --mic $mic \
