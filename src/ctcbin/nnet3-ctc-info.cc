@@ -1,4 +1,4 @@
-// ctcbin/ctc-copy-transition-model.cc
+// ctcbin/nnet3-ctc-info.cc
 
 // Copyright 2015  Johns Hopkins University (author:  Daniel Povey)
 
@@ -22,42 +22,48 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "ctc/cctc-transition-model.h"
+#include "nnet3/nnet-nnet.h"
+#include "nnet3/nnet-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace kaldi::ctc;
+    using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy CTC transition model (possibly changing binary mode)\n"
+        "Print some text information about an nnet3+ctc neural network, to\n"
+        "standard output\n"
         "\n"
-        "Usage:  ctc-copy-transition-model [options] <ctc-transition-model-in> <ctc-transition-model-out>\n"
+        "Usage:  nnet3-ctc-info [options] <nnet>\n"
         "e.g.:\n"
-        " ctc-copy-transition-model --binary=false 0.trans_mdl - | less\n";
+        " nnet3-ctc-info 0.mdl\n"
+        "See also: nnet3-ctc-info\n";
 
-    bool binary_write = true;
-    
     ParseOptions po(usage);
-    po.Register("binary", &binary_write, "Write output in binary mode");
-
+    
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string ctc_trans_model_rxfilename = po.GetArg(1),
-                ctc_trans_model_wxfilename = po.GetArg(2);
+    std::string ctc_nnet_rxfilename = po.GetArg(1);
     
     CctcTransitionModel trans_model;
-    ReadKaldiObject(ctc_trans_model_rxfilename, &trans_model);
-    
-    WriteKaldiObject(trans_model, ctc_trans_model_wxfilename, binary_write);
-    KALDI_LOG << "Copied CTC transition model from "
-              << ctc_trans_model_rxfilename << " to "
-              << ctc_trans_model_wxfilename;
+    Nnet nnet;
+    {
+      bool binary;
+      Input input(ctc_nnet_rxfilename, &binary);
+      trans_model.Read(input.Stream(), binary);
+      if (set_raw_nnet.empty())
+        nnet.Read(input.Stream(), binary);
+    }
+
+    std::cout << trans_model.Info()
+              << NnetInfo(nnet);
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

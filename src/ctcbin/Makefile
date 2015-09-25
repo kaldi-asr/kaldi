@@ -10,7 +10,7 @@ BINFILES = ctc-init-transition-model ctc-copy-transition-model \
     ctc-get-supervision \
 	nnet3-ctc-get-egs nnet3-ctc-copy-egs nnet3-ctc-subset-egs \
     nnet3-ctc-shuffle-egs nnet3-ctc-merge-egs nnet3-ctc-train \
-    nnet3-ctc-am-copy nnet3-ctc-am-info nnet3-ctc-compute-prob
+    nnet3-ctc-copy nnet3-ctc-info nnet3-ctc-compute-prob
 
 # nnet3-ctc-{copy,subset,shuffle,merge}-egs should all be fairly
 # simple copy-and-modify from the corresponding nnet3-*-egs programs.

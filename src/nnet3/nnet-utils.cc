@@ -352,13 +352,15 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   return ans;
 }
 
-std::string SimpleNnetInfo(const Nnet &nnet) {
+std::string NnetInfo(const Nnet &nnet) {
   std::ostringstream ostr;
-  int32 left_context, right_context;
-  // this call will crash if the nnet is not 'simple'.
-  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
-  ostr << "left-context: " << left_context << "\n";
-  ostr << "right-context: " << right_context << "\n";
+  if (IsSimpleNnet(nnet)) {
+    int32 left_context, right_context;
+    // this call will crash if the nnet is not 'simple'.
+    ComputeSimpleNnetContext(nnet, &left_context, &right_context);
+    ostr << "left-context: " << left_context << "\n";
+    ostr << "right-context: " << right_context << "\n";
+  }
   ostr << "input-dim: " << nnet.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
   ostr << "output-dim: " << nnet.OutputDim("output") << "\n";

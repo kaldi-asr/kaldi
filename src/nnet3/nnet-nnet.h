@@ -203,6 +203,8 @@ class Nnet {
 
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
+  /// Also see function NnetInfo() in nnet-utils.h, which prints out more
+  /// extensive infoformation.
   std::string Info() const;
 
   /// [Relevant for clockwork RNNs and similar].  Computes the smallest integer

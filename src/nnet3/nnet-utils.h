@@ -139,13 +139,12 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 int32 NumUpdatableComponents(const Nnet &dest);
 
 
-/// This function returns various info about the neural net, which is
-/// required to satisfy IsSimpleNnet(nnet) == true.  The info includes
-/// e.g. "left-context=5\nright-context=3\n...".  The info includes
+/// This function returns various info about the neural net.
+/// If the nnet satisfied IsSimpleNnet(nnet), the info includes "left-context=5\nright-context=3\n...".  The info includes
 /// the output of nnet.Info().
 /// This is modeled after the info that AmNnetSimple returns in its
 /// Info() function (we need this in the CTC code).
-std::string SimpleNnetInfo(const Nnet &nnet);
+std::string NnetInfo(const Nnet &nnet);
 
 
 } // namespace nnet3

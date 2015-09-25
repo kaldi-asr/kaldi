@@ -1,4 +1,4 @@
-// ctcbin/ctc-copy-transition-model.cc
+// ctcbin/nnet3-transition-model-info.cc
 
 // Copyright 2015  Johns Hopkins University (author:  Daniel Povey)
 
@@ -30,26 +30,22 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Copy CTC transition model (possibly changing binary mode)\n"
+        "Print info about CTC transition model to the standard output\n"
         "\n"
-        "Usage:  ctc-copy-transition-model [options] <ctc-transition-model-in> <ctc-transition-model-out>\n"
+        "Usage:  ctc-transition-model-info [options] <ctc-transition-model-in>\n"
         "e.g.:\n"
-        " ctc-copy-transition-model --binary=false 0.trans_mdl - | less\n";
+        " ctc-transition-model-info 0.trans_mdl\n";
 
-    bool binary_write = true;
-    
     ParseOptions po(usage);
-    po.Register("binary", &binary_write, "Write output in binary mode");
-
+    
     po.Read(argc, argv);
     
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string ctc_trans_model_rxfilename = po.GetArg(1),
-                ctc_trans_model_wxfilename = po.GetArg(2);
+    std::string ctc_trans_model_rxfilename = po.GetArg(1);
     
     CctcTransitionModel trans_model;
     ReadKaldiObject(ctc_trans_model_rxfilename, &trans_model);

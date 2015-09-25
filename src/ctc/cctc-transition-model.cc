@@ -578,5 +578,16 @@ void CctcTransitionModelCreator::OutputHistoryState(
   info.phone_lm_prob(0) = 1.0;
 }
 
+std::string CctcTransitionModel::Info() const {
+  std::ostringstream ostr;
+  ostr << "num-output-indexes: " << NumOutputIndexes() << "\n";
+  ostr << "num-non-blank-indexes: " << NumNonBlankIndexes() << "\n";
+  ostr << "num-phones: " << NumPhones() << "\n";
+  ostr << "phone-left-context: " << PhoneLeftContext() << "\n";
+  ostr << "num-history-states: " << NumHistoryStates() << "\n";
+  ostr << "num-graph-labels: " << NumGraphLabels() << "\n";
+  return ostr.str();
+}
+
 }  // namespace ctc
 }  // namespace kaldi

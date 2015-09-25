@@ -41,7 +41,7 @@ void UnitTestNnetContext() {
     KALDI_LOG << "Left,right-context= " << left_context << ","
               << right_context << " for config: " << configs[0];
 
-    KALDI_LOG << "Info for nnet is: " << SimpleNnetInfo(nnet);
+    KALDI_LOG << "Info for nnet is: " << NnetInfo(nnet);
   }
 }
 

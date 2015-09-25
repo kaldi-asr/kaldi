@@ -139,6 +139,8 @@ class CctcTransitionModel {
 
   void Read(std::istream &is, bool binary);
 
+  std::string Info() const;
+
  protected:
   // Check that the contents of this object make sense (does not check
   // weights_, which is a derived variable).
