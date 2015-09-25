@@ -257,7 +257,16 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
     CreateCompactLatticeFromPhonesAndDurations(phones, durations, &clat);
     PhoneLatticeToProtoSupervision(clat, &proto_supervision);
   } else {
-    AlignmentToProtoSupervision(phones, durations, &proto_supervision);
+    if (RandInt(0, 1) == 0) {
+      std::vector<std::pair<int32, int32> > pairs(phones.size());
+      for (size_t i = 0; i < pairs.size(); i++) {
+        pairs[i].first = phones[i];
+        pairs[i].second = durations[i];
+      }
+      AlignmentToProtoSupervision(pairs, &proto_supervision);
+    } else {
+      AlignmentToProtoSupervision(phones, durations, &proto_supervision);
+    }
   }
   KALDI_LOG << "Original proto-supervision is: " << proto_supervision;
   MakeSilencesOptional(sup_opts, &proto_supervision);

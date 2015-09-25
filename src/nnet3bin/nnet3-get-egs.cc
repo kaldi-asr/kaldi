@@ -56,7 +56,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
 
-    Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols());
+    Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
     
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
@@ -134,7 +134,7 @@ int main(int argc, char *argv[]) {
         "<pdf-post-rspecifier> <egs-out>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "nnet-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
+        "nnet3-get-egs --num-pdfs=2658 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
         "\"ark:gunzip -c exp/nnet/ali.1.gz | ali-to-pdf exp/nnet/1.nnet ark:- ark:- | ali-to-post ark:- ark:- |\" \\\n"
         "   ark:- \n";
         
@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     po.Register("num-frames", &num_frames, "Number of frames with labels "
                 "that each example contains.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
-                "features, as matrix.");
+                "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
     

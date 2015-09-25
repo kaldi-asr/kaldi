@@ -57,8 +57,8 @@ struct CctcSupervisionOptions {
   int32 frame_subsampling_factor;
 
   CctcSupervisionOptions(): optional_silence_cutoff(15),
-                           left_tolerance(10),
-                           right_tolerance(20),
+                           left_tolerance(5),
+                           right_tolerance(10),
                            frame_subsampling_factor(1) { }
 
   void Register(OptionsItf *opts) {
@@ -76,7 +76,9 @@ struct CctcSupervisionOptions {
                    "relative to the phone end in the alignment.");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                    "if the frame-rate in CTC will be less than the frame-rate "
-                   "of the original alignment");
+                   "of the original alignment.  Applied after left-tolerance "
+                   "and right-tolerance are applied (so they are in terms of "
+                   "the original num-frames.");
   }
 };
 
@@ -137,12 +139,20 @@ struct CctcProtoSupervision {
 
 /**  Creates an CctcProtoSupervision from a vector of phones and their durations,
      such as might be derived from a training-data alignment (see the function
-     AliToPhones()).  Note: this probably isn't the normal way you'll do it, it
+     SplitToPhones()).  Note: this probably isn't the normal way you'll do it, it
      might be better to start with a phone-aligned lattice so you can capture
      the alternative pronunciations; see PhoneLatticeToProtoSupervision(). */
 void AlignmentToProtoSupervision(const std::vector<int32> &phones,
                                  const std::vector<int32> &durations,
                                  CctcProtoSupervision *proto_supervision);
+
+/**   Creates an CctcProtoSupervision from a vector of (phone, duration)
+      pairs (see the function SplitToPhones()).  This does the same
+      jobs as the other AlignmentToProtoSupervision, from different input.
+ */
+void AlignmentToProtoSupervision(
+    const std::vector<std::pair<int32, int32> > &phones_durs,
+    CctcProtoSupervision *proto_supervision);
 
 
 /** Creates a proto-supervision from a phone-aligned phone lattice (i.e. a
@@ -390,7 +400,9 @@ void SplitIntoRanges(int32 num_frames,
                      std::vector<int32> *range_starts);
   
 
-
+typedef TableWriter<KaldiObjectHolder<CctcSupervision > > CctcSupervisionWriter;
+typedef SequentialTableReader<KaldiObjectHolder<CctcSupervision > > SequentialCctcSupervisionReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<CctcSupervision > > RandomAccessCctcSupervisionReader;
 
 }  // namespace ctc
 }  // namespace kaldi

@@ -71,6 +71,29 @@ void AlignmentToProtoSupervision(const std::vector<int32> &phones,
   fst::MakeLinearAcceptor(labels, &(proto_supervision->fst));
 }
 
+void AlignmentToProtoSupervision(
+    const std::vector<std::pair<int32, int32> > &phones_durations,
+    CctcProtoSupervision *proto_supervision) {
+  KALDI_ASSERT(phones_durations.size() > 0);
+  // we don't use element zero of the phone_instances array.
+  proto_supervision->phone_instances.resize(phones_durations.size() + 1);
+  std::vector<int32> labels(phones_durations.size());
+  int32 current_frame = 0;
+  for (size_t i = 0; i < phones_durations.size(); i++) {
+    int32 phone = phones_durations[i].first,
+        duration = phones_durations[i].second;
+    KALDI_ASSERT(phone > 0 && duration > 0);
+    proto_supervision->phone_instances[i+1].phone_or_blank = phone;
+    proto_supervision->phone_instances[i+1].begin_frame = current_frame;    
+    current_frame += duration;
+    proto_supervision->phone_instances[i+1].end_frame = current_frame;
+    labels[i] = i + 1;  // will become labels in the FST.
+  }
+  proto_supervision->num_frames = current_frame;
+  fst::MakeLinearAcceptor(labels, &(proto_supervision->fst));
+}
+
+
 void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
                                     CctcProtoSupervision *proto_supervision) {
   static bool warned_eps = false, warned_final = false;
