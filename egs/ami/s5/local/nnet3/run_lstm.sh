@@ -22,7 +22,7 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=20
-clipping_threshold=10.0
+clipping_threshold=30.0
 norm_based_clipping=true
 common_egs_dir=
 
@@ -42,6 +42,7 @@ num_chunk_per_minibatch=100
 num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -129,7 +130,8 @@ if [ $stage -le 9 ]; then
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       decode_dir=${dir}/decode_${decode_set}
 
-      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+          --extra-left-context $chunk_left_context  \
           --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &

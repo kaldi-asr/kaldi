@@ -255,6 +255,9 @@ if [ $stage -le 2 ]; then
 fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
+valid_left_context=$((left_context + frames_per_eg))
+valid_right_context=$((right_context + frames_per_eg))
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
@@ -268,11 +271,11 @@ if [ $stage -le 3 ]; then
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $valid_egs_opts "$valid_feats" \
     "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
      "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
