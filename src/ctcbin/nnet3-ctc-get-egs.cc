@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
         "An example [where $feats expands to the actual features]:\n"
         "ctc-get-supervision [args] | \\\n"
         "  nnet3-ctc-get-egs --left-context=25 --right-context=9 --num-frames=20 \"$feats\" ark,s,cs:- \\\n"
-        "  ark:ctc_egs.1.ark\n"
+        "  ark:cegs.1.ark\n"
         "Note: the --frame-subsampling-factor option must be the same as given to\n"
         "ctc-get-supervision.\n";
 

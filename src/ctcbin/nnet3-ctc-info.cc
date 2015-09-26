@@ -58,8 +58,7 @@ int main(int argc, char *argv[]) {
       bool binary;
       Input input(ctc_nnet_rxfilename, &binary);
       trans_model.Read(input.Stream(), binary);
-      if (set_raw_nnet.empty())
-        nnet.Read(input.Stream(), binary);
+      nnet.Read(input.Stream(), binary);
     }
 
     std::cout << trans_model.Info()
