@@ -264,3 +264,4 @@ void DecodableAmNnetSimple::PossiblyWarnForFramesPerChunk() const {
 
 } // namespace nnet3
 } // namespace kaldi
+ 

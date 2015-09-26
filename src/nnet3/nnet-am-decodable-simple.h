@@ -73,7 +73,6 @@ class DecodableAmNnetSimple: public DecodableInterface {
   /// take batch-mode or online iVectors.  Note: it stores references to all
   /// arguments to the constructor, so don't delete them till this goes out of
   /// scope.
-
   DecodableAmNnetSimple(const DecodableAmNnetSimpleOptions &opts,
                         const TransitionModel &trans_model,
                         const AmNnetSimple &am_nnet,
