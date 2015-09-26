@@ -171,4 +171,4 @@ class DecodableAmNnetSimple: public DecodableInterface {
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_NNET2_DECODABLE_AM_NNET_H_
+#endif  // KALDI_NNET3_NNET_AM_DECODABLE_SIMPLE_H_

@@ -283,6 +283,53 @@ void MergeCctcExamples(bool compress,
   }
 }
 
+void GetCctcComputationRequest(const Nnet &nnet,
+                               const NnetCctcExample &eg,
+                               bool need_model_derivative,
+                               bool store_component_stats,
+                               ComputationRequest *request) {
+  request->inputs.clear();
+  request->inputs.reserve(eg.inputs.size());
+  request->outputs.clear();
+  request->outputs.reserve(eg.outputs.size());
+  request->need_model_derivative = need_model_derivative;
+  request->store_component_stats = store_component_stats;
+  for (size_t i = 0; i < eg.inputs.size(); i++) {
+    const NnetIo &io = eg.inputs[i];
+    const std::string &name = io.name;
+    int32 node_index = nnet.GetNodeIndex(name);
+    if (node_index == -1 &&
+        !nnet.IsInputNode(node_index))
+      KALDI_ERR << "Nnet example has input named '" << name
+                << "', but no such input node is in the network.";
+    
+    request->inputs.resize(request->inputs.size() + 1);
+    IoSpecification &io_spec = request->inputs.back();
+    io_spec.name = name;
+    io_spec.indexes = io.indexes;
+    io_spec.has_deriv = false;
+  }
+  for (size_t i = 0; i < eg.outputs.size(); i++) {
+    // there will normally be exactly one output , named "output"
+    const NnetCctcSupervision &sup = eg.outputs[i];
+    const std::string &name = sup.name;
+    int32 node_index = nnet.GetNodeIndex(name);
+    if (node_index == -1 &&
+        !nnet.IsOutputNode(node_index))
+      KALDI_ERR << "Nnet example has output named '" << name
+                << "', but no such output node is in the network.";
+    request->outputs.resize(request->outputs.size() + 1);
+    IoSpecification &io_spec = request->outputs.back();
+    io_spec.name = name;
+    io_spec.indexes = sup.indexes;
+    io_spec.has_deriv = need_model_derivative;
+  }
+  // check to see if something went wrong.
+  if (request->inputs.empty())
+    KALDI_ERR << "No inputs in computation request.";
+  if (request->outputs.empty())
+    KALDI_ERR << "No outputs in computation request.";
+}
 
 } // namespace nnet3
 } // namespace kaldi

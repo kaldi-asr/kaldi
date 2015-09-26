@@ -48,16 +48,16 @@ namespace ctc {
 struct CctcTrainingOptions {
   BaseFloat normalizing_weight;
 
-  CctcTrainingOptions(): normalizing_weight(0.0001) { }
+  CctcTrainingOptions(): normalizing_weight(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("normalizing-weight", &normalizing_weight, "Weight on a "
                    "term in the objective function that's a negative squared "
                    "log of the numerator in the CCTC likelihood; it "
                    "exists to keep the network outputs in a reasonable "
-                   "range so we can exp() them without overflow.");
+                   "range so we can exp() them without overflow. "
+                   "Warning: not supported yet.");
   }
-  
 };
 
 

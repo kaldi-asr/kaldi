@@ -76,11 +76,12 @@ class NnetComputer {
   void AcceptInput(const std::string &input_name,
                    CuMatrix<BaseFloat> *input);
 
-  /// This function calls AcceptInput() in turn on all the inputs in
-  /// the training example.  It needs "nnet" only in order to distinguish
+  /// This function calls AcceptInput() in turn on all the inputs in the
+  /// training example (provide example.io; this interface makes it easy to work
+  /// with CCTC examples too).  It needs "nnet" only in order to distinguish
   /// inputs from outputs.
   void AcceptInputs(const Nnet &nnet,
-                    const NnetExample &example);
+                    const std::vector<NnetIo> &io);
 
   
   // Does the forward computation.

@@ -41,19 +41,18 @@ void MergeExamples(const std::vector<NnetExample> &src,
 /** Shifts the time-index t of everything in the "eg" by adding "t_offset" to
     all "t" values.  This might be useful in things like clockwork RNNs that are
     not invariant to time-shifts, to ensure that we see different shifts of each
-    example during training.  "exclude_names" is a vector of names of nnet
-    inputs that we avoid shifting the "t" values of-- normally it will contain
-    just the single string "ivector" because we always leave t=0 for any
-    ivector. */
-void ShiftTime(int32 t_offset,
-               const std::vector<std::string> &exclude_names,
-               NnetExample *eg);
+    example during training.  "exclude_names" is a vector (not necessarily
+    sorted) of names of nnet inputs that we avoid shifting the "t" values of--
+    normally it will contain just the single string "ivector" because we always
+    leave t=0 for any ivector. */
+void ShiftExampleTimes(int32 t_offset,
+                       const std::vector<std::string> &exclude_names,
+                       NnetExample *eg);
 
-/**  This function takes a NnetExample (which should already have
-     been frame-selected, if desired, and merged into a minibatch) an produces
-     a ComputationRequest.
-     Assumes you don't want the derivatives w.r.t. the inputs; if you do,
-     you can create the ComputationRequest manually.
+/**  This function takes a NnetExample (which should already have been
+     frame-selected, if desired, and merged into a minibatch) and produces a
+     ComputationRequest.  It ssumes you don't want the derivatives w.r.t. the
+     inputs; if you do, you can create/modify the ComputationRequest manually.
      Assumes that if need_model_derivative is true, you will be supplying
      derivatives w.r.t. all outputs.
 */

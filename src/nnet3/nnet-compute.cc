@@ -513,9 +513,9 @@ void NnetComputer::CheckInputs(bool check_output_deriv) const {
 }
 
 void NnetComputer::AcceptInputs(const Nnet &nnet,
-                                const NnetExample &example) {
-  for (size_t i = 0; i < example.io.size(); i++) {
-    const NnetIo &io = example.io[i];
+                                const std::vector<NnetIo> &io_vec) {
+  for (size_t i = 0; i < io_vec.size(); i++) {
+    const NnetIo &io = io_vec[i];
     int32 node_index = nnet.GetNodeIndex(io.name);
     if (node_index == -1)
       KALDI_ERR << "No node named '" << io.name << "' in nnet.";

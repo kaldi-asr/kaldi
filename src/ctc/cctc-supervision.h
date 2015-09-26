@@ -407,4 +407,4 @@ typedef RandomAccessTableReader<KaldiObjectHolder<CctcSupervision > > RandomAcce
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CTC_SUPERVISION_H_
+#endif  // KALDI_CTC_CCTC_SUPERVISION_H_

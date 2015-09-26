@@ -21,6 +21,7 @@
 #define KALDI_NNET3_NNET_CCTC_EXAMPLE_H_
 
 #include "nnet3/nnet-nnet.h"
+#include "nnet3/nnet-computation.h"
 #include "hmm/posterior.h"
 #include "util/table-types.h"
 #include "nnet3/nnet-example.h"
@@ -156,6 +157,32 @@ void MergeCctcExamples(bool compress,
 
 
 
+/** Shifts the time-index t of everything in the "eg" by adding "t_offset" to
+    all "t" values.  This might be useful if you are doing subsampling of
+    frames at the output, because shifted examples won't be quite equivalent
+    to their non-shifted counterparts.
+     "exclude_names" is a vector of names of nnet
+    inputs that we avoid shifting the "t" values of-- normally it will contain
+    just the single string "ivector" because we always leave t=0 for any
+    ivector. */
+void ShiftCctcExampleTimes(int32 t_offset,
+                           const std::vector<std::string> &exclude_names,
+                           NnetCctcExample *eg);
+
+/**  This function takes a NnetCctcExample and produces a ComputationRequest.
+     Assumes you don't want the derivatives w.r.t. the inputs; if you do, you
+     can create the ComputationRequest manually.  Assumes that if
+     need_model_derivative is true, you will be supplying derivatives w.r.t. all
+     outputs.
+*/
+void GetCctcComputationRequest(const Nnet &nnet,
+                               const NnetCctcExample &eg,
+                               bool need_model_derivative,
+                               bool store_component_stats,
+                               ComputationRequest *computation_request);
+
+
+
 typedef TableWriter<KaldiObjectHolder<NnetCctcExample > > NnetCctcExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetCctcExample > > SequentialNnetCctcExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetCctcExample > > RandomAccessNnetCctcExampleReader;
@@ -163,4 +190,4 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetCctcExample > > RandomAcce
 } // namespace nnet3
 } // namespace kaldi
 
-#endif // KALDI_NNET3_NNET_EXAMPLE_H_
+#endif // KALDI_NNET3_NNET_CCTC_EXAMPLE_H_

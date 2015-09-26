@@ -156,6 +156,27 @@ void MergeExamples(const std::vector<NnetExample> &src,
   MergeIo(src, io_names, io_sizes, compress, merged_eg);
 }
 
+void ShiftExampleTimes(int32 t_offset,
+                       const std::vector<std::string> &exclude_names,
+                       NnetExample *eg) {
+  if (t_offset == 0)
+    return;
+  std::vector<NnetIo>::iterator iter = eg->io.begin(),
+      end = eg->io.end();
+  for (; iter != end; iter++) {
+    std::vector<std::string>::const_iterator
+        exclude_iter = exclude_names.begin(),
+        exclude_end = exclude_names.end();
+    for (; exclude_iter != exclude_end; ++exclude_iter)
+      if (iter->name == *exclude_iter) break;
+    if (exclude_iter != exclude_end)  // if we broke from the loop above...
+      break;  // this name is to be excluded (e.g. "ivector".
+    std::vector<Index>::iterator index_iter = iter->indexes.begin(),
+        index_end = iter->indexes.end();
+    for (; index_iter != index_end; ++index_iter)
+      index_iter->t += t_offset;
+  }
+}
 
 void GetComputationRequest(const Nnet &nnet,
                            const NnetExample &eg,
