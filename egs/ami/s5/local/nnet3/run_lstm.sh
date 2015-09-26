@@ -30,10 +30,14 @@ common_egs_dir=
 ng_per_element_scale_options=
 ng_affine_options=
 num_epochs=5
+
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-shrink=0.0
+num_jobs_initial=2
+num_jobs_final=12
+momentum=0.0
+shrink=0.99
 num_chunk_per_minibatch=100
 num_bptt_steps=20
 samples_per_iter=20000
@@ -47,8 +51,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -89,7 +93,7 @@ if [ $stage -le 8 ]; then
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 12 \
+    --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
@@ -97,6 +101,7 @@ if [ $stage -le 8 ]; then
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --momentum $momentum \
     --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \

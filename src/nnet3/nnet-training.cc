@@ -144,16 +144,7 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
 }
 
 NnetTrainer::~NnetTrainer() {
-  if (delta_nnet_) {
-    // This last AddNnet call is to ensure we don't 'lose' the gradient that we
-    // have left remaining in 'delta_nnet_'- we apply it the same as if we had
-    // continued with the momentum update with zero gradients for a bunch of
-    // steps.  This may not be 100% ideal for stability, but it ensures we don't
-    // 'waste' any data- and anyway, just one step isn't really enough for
-    // instability to get started.
-    AddNnet(*delta_nnet_, 1.0, nnet_);
-    delete delta_nnet_;
-  }
+  delete delta_nnet_;
 }
 
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,

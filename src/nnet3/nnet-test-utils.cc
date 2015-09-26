@@ -609,11 +609,43 @@ void GenerateConfigSequenceLstmType2(
   configs->push_back(os.str());
 }
 
+void GenerateConfigSequenceCnn(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream os; 
+
+  int32 pool_stride = 5 + Rand() % 10, pool_size = 2 + Rand() % 3,
+	num_pools = 1 + Rand() % 10;
+  int32 num_patches = num_pools * pool_size;
+  int32 patch_step = 1 + Rand() % 4, patch_dim = 4 + Rand () % 5,
+	patch_stride = (num_patches - 1) * patch_step + patch_dim;
+  int32 num_splice = 5 + Rand() % 10, num_filters = pool_stride;
+
+  int32 input_dim = patch_stride * num_splice,
+	hidden_dim = num_patches * num_filters,
+        output_dim = num_pools * pool_stride;
+
+  os << "component name=conv type=Convolutional1dComponent input-dim="
+     << input_dim << " output-dim=" << hidden_dim 
+     << " patch-dim=" << patch_dim << " patch-step=" << patch_step
+     << " patch-stride=" << patch_stride << std::endl;
+  os << "component name=maxpooling type=MaxpoolingComponent input-dim="
+     << hidden_dim << " output-dim=" << output_dim 
+     << " pool-size=" << pool_size << " pool-stride=" << pool_stride 
+     << std::endl;
+
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component-node name=conv_node component=conv input=input\n";
+  os << "component-node name=maxpooling_node component=maxpooling input=conv_node\n";
+  os << "output-node name=output input=maxpooling_node\n";
+  configs->push_back(os.str());
+}
+
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 6);
+  int32 network_type = RandInt(0, 7);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -651,6 +683,11 @@ start:
           !opts.allow_nonlinearity)
         goto start;
       GenerateConfigSequenceLstm(opts, configs);
+      break;
+    case 7:
+      if (!opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceCnn(opts, configs);
       break;
     default:
       KALDI_ERR << "Error generating config sequence.";
@@ -716,7 +753,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 16);
+  int32 n = RandInt(0, 18);
   std::ostringstream os;
   switch(n) {
     case 0: {
@@ -816,6 +853,36 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       int32 output_dim = RandInt(1, 100), multiple = RandInt(2, 4),
           input_dim = output_dim * multiple;
       os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      break;
+    }
+    case 17: {
+      *component_type = "Convolutional1dComponent";
+      int32 patch_stride = 10 + Rand() % 50, patch_step = 1 + Rand() % 4, 
+	    patch_dim = 4 + Rand () % 5;
+
+      // decrease patch_stride so that 
+      // (patch_stride - patch_dim) % patch_step == 0
+      patch_stride = patch_stride - ((patch_stride - patch_dim) % patch_step);
+
+      int32 num_patches = 1 + (patch_stride - patch_dim) / patch_step;
+      int32 num_splice = 5 + Rand() % 10, num_filters = 5 + Rand() % 10;
+      int32 input_dim = patch_stride * num_splice;
+      int32 output_dim = num_patches * num_filters;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+	 << " patch-dim=" << patch_dim << " patch-step=" << patch_step
+	 << " patch-stride=" << patch_stride; 
+      break;
+    }
+    case 18: {
+      *component_type = "MaxpoolingComponent";
+      int32 pool_stride = 5 + Rand() % 10,
+      pool_size = 2 + Rand() % 3,
+      num_pools = 1 + Rand() % 10;
+      int32 output_dim = num_pools * pool_stride;
+      int32 num_patches = num_pools * pool_size;
+      int32 input_dim = pool_stride * num_patches;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+	 << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
       break;
     }
     default:

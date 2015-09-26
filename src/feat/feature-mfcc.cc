@@ -122,7 +122,8 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
       cols_out = opts_.num_ceps;
   if (rows_out == 0) {
     output->Resize(0, 0);
-    *wave_remainder = wave;
+    if (wave_remainder != NULL)
+      *wave_remainder = wave;
     return;
   }
   output->Resize(rows_out, cols_out);

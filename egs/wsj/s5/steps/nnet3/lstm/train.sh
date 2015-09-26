@@ -18,7 +18,7 @@ num_epochs=5      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-shrink=0.0  # if non-zero this parameter would be used to scale the parameter matrices
+shrink=0.99  # this parameter would be used to scale the parameter matrices
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
@@ -72,7 +72,8 @@ clipping_threshold=10
 chunk_width=20 # number of output labels in the sequence used to train an LSTM
 chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5
-num_bptt_steps=20
+num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
+                   # it is usually same as chunk_width
 
 randprune=4.0 # speeds up LDA.
 affine_opts=
@@ -257,8 +258,6 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
-
-frames_per_eg=$chunk_width
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
@@ -274,7 +273,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" $egs_opts \
       --stage $get_egs_stage \
       --samples-per-iter $samples_per_iter \
-      --frames-per-eg $frames_per_eg \
+      --frames-per-eg $chunk_width \
       $data $alidir $dir/egs || exit 1;
 fi
 
@@ -300,18 +299,14 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
   ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
-frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-# in FF-DNN architectures
-# num_archives_expanded=$[$num_archives*$frames_per_eg]
-# in RNN architectures all the frames in a sample are processed together
-num_archives_expanded=$[$num_archives]
+chunk_width=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
+num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/num_archives"; exit 1; }
 
 [ $num_jobs_initial -gt $num_jobs_final ] && \
   echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
 
-[ $num_jobs_final -gt $num_archives_expanded ] && \
-  echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
+[ $num_jobs_final -gt $num_archives ] && \
+  echo "$0: --final-num-jobs cannot exceed #archives $num_archives." && exit 1;
 
 
 if [ $stage -le -3 ]; then
@@ -375,10 +370,10 @@ fi
 
 
 # set num_iters so that as close as possible, we process the data $num_epochs
-# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
+# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives,
 # where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
 
-num_archives_to_process=$[$num_epochs*$num_archives_expanded]
+num_archives_to_process=$[$num_epochs*$num_archives]
 num_archives_processed=0
 num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
@@ -418,7 +413,7 @@ else
 fi
 
 
-approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
+approx_iters_per_epoch_final=$[$num_archives/$num_jobs_final]
 # First work out how many iterations we want to combine over in the final
 # nnet3-combine-fast invocation.  (We may end up subsampling from these if the
 # number exceeds max_model_combine).  The number we use is:
@@ -447,7 +442,7 @@ for realign_time in $realign_times; do
 done
 
 cur_egs_dir=$egs_dir
-min_deriv_time=$((frames_per_eg - num_bptt_steps))
+min_deriv_time=$((chunk_width - num_bptt_steps))
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
@@ -626,7 +621,7 @@ if [ $stage -le $num_iters ]; then
   # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
   # as if there are many models it can give out-of-memory error; and we set
   # num-threads to 8 to speed it up (this isn't ideal...)
-  combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($frames_per_eg))")
+  combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($chunk_width))")
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
@@ -689,7 +684,7 @@ if $cleanup; then
   for x in `seq 0 $num_iters`; do
     if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.mdl ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
-      rm $dir/$x.mdl
+       rm $dir/$x.mdl
     fi
   done
 fi

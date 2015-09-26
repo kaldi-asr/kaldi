@@ -204,8 +204,10 @@ while (<>) {
     $word =~ s/\ン\ー/\ン/g; #
     $word =~ s/\ヮ/\ワ/g;
     $word =~ s/\ゎ/\わ/g;
-    $word =~ s/^\ゼロ$/\０/g;
-    $word =~ s/^\零$/\０/g;
+
+    # Normalization
+#    $word =~ s/^\ゼロ$/\０/g;
+#    $word =~ s/^\零$/\０/g;
 
     # Arrange morpheme
     # This function is to arrange morpheme.

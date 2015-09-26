@@ -111,7 +111,8 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
   int32 cols_out = opts_.mel_opts.num_bins + opts_.use_energy;
   if (rows_out == 0) {
     output->Resize(0, 0);
-    *wave_remainder = wave;
+    if (wave_remainder != NULL)
+      *wave_remainder = wave;
     return;
   }
   // Prepare the output buffer

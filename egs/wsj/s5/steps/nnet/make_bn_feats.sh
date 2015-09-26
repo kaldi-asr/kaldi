@@ -9,6 +9,7 @@
 nj=4
 cmd=run.pl
 remove_last_components=4 # remove N last components from the nnet
+nnet_forward_opts=
 use_gpu=no
 htk_save=false
 # End configuration section.
@@ -83,7 +84,7 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 if [ $htk_save == false ]; then
   # Run the forward pass,
   $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-    nnet-forward --use-gpu=$use_gpu $nnet "$feats" \
+    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" \
     ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
     || exit 1;
   # concatenate the .scp files
@@ -101,7 +102,7 @@ else # htk_save == true
   # Run the forward pass saving HTK features,
   $cmd JOB=1:$nj $logdir/make_bnfeats_htk.JOB.log \
     mkdir -p $data/htkfeats/JOB \; \
-    nnet-forward --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     copy-feats-to-htk --output-dir=$data/htkfeats/JOB ark:- || exit 1
   # Make list of htk features,
   find $data/htkfeats -name *.fea >$data/htkfeats.scp

@@ -143,6 +143,9 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Relative parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
     }
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

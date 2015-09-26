@@ -186,7 +186,6 @@ KaldiErrorMessage::KaldiErrorMessage(const char *func, const char *file,
 
 KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
   std::string str = ss_.str();
-  int32 length = str.length();
   while (!str.empty() && str[str.length() - 1] == '\n')
     str.resize(str.length() - 1);
 
