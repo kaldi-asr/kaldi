@@ -3,14 +3,14 @@
 . ./cmd.sh
 . ./path.sh
 
-# SDM - Signle Distant Microphone 
+# SDM - Signle Distant Microphone
 micid=1 #which mic from array should be used?
 mic=sdm$micid
 
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it will exit on : 
+# Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
 set -e
 set -u
@@ -161,38 +161,36 @@ if [ $stage -le 13 ]; then
     --hidden-dim 850 \
     --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
     --use-sat-alignments false
-  
+
   local/online/run_nnet2_ms_sp_disc.sh  \
     --mic $mic  \
     --gmm-dir exp/$mic/tri3a \
     --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
 
-#TDNN training   
-if [ $stage -le 14 ]; then   
+#TDNN training
+if [ $stage -le 14 ]; then
   local/nnet3/run_tdnn.sh \
     --mic $mic \
     --speed-perturb true \
     --stage 9 \
     --use-sat-alignments false
-fi   
+fi
 exit 1;
 
-#LSTM training   
-if [ $stage -le 15 ]; then   
+#LSTM training
+if [ $stage -le 15 ]; then
   local/nnet3/run_lstm.sh \
     --mic $mic \
     --train-stage -5 \
     --speed-perturb true \
-    --norm-based-clipping true \
-    --clipping-threshold 15 \
     --use-sat-alignments false
-fi   
+fi
 
 echo "Done."
 
 
-# By default we do not build systems adapted to sessions for AMI in distant scnearios 
+# By default we do not build systems adapted to sessions for AMI in distant scnearios
 # as this does not help a lot (around 1%), but one can do this by running below code:
 exit;
 
@@ -208,7 +206,7 @@ graph_dir=exp/$mic/tri4a/graph_${LM}
 $highmem_cmd $graph_dir/mkgraph.log \
   utils/mkgraph.sh data/lang_${LM} exp/$mic/tri4a $graph_dir
 steps/decode_fmllr.sh --nj $nj_dev --cmd "$decode_cmd" --config conf/decode.conf \
-  $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM} 
+  $graph_dir data/$mic/dev exp/$mic/tri4a/decode_dev_${LM}
 steps/decode_fmllr.sh --nj $nj_eval --cmd "$decode_cmd" --config conf/decode.conf \
-  $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM} 
+  $graph_dir data/$mic/eval exp/$mic/tri4a/decode_eval_${LM}
 

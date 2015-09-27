@@ -14,7 +14,6 @@ nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 cmd=run.pl
 beam=15.0
-frames_per_chunk=50
 max_active=7000
 min_active=200
 ivector_scale=1.0
@@ -27,6 +26,10 @@ skip_scoring=false
 feat_type=
 online_ivector_dir=
 minimize=false
+
+frames_per_chunk=10000
+extra_left_context=20   # it is recommended to use the same value as the chunk_left_context
+                        # used during training
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -73,7 +76,7 @@ thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh --per-utt $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 
@@ -135,6 +138,7 @@ if [ $stage -le 1 ]; then
      --frames-per-chunk=$frames_per_chunk \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
+     --extra-left-context=$extra_left_context \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
