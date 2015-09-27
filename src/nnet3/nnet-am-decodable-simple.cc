@@ -43,7 +43,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
-  priors_.ApplyLog();  
+  priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
 }
 
@@ -57,7 +57,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),    
+    priors_(am_nnet_.Priors()),
     feats_(feats),
     ivector_(NULL),
     online_ivector_feats_(&ivectors),
@@ -66,8 +66,8 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     current_log_post_offset_(0) {
   priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
-}      
-    
+}
+
 DecodableAmNnetSimple::DecodableAmNnetSimple(
     const DecodableAmNnetSimpleOptions &opts,
     const TransitionModel &trans_model,
@@ -77,7 +77,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),    
+    priors_(am_nnet_.Priors()),
     feats_(feats),
     ivector_(&ivector),
     online_ivector_feats_(NULL),
@@ -86,7 +86,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     current_log_post_offset_(0) {
   priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
-}      
+}
 
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
@@ -133,12 +133,14 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
       num_output_frames = std::min<int32>(feats_.NumRows() - start_output_frame,
                                           opts_.frames_per_chunk);
   KALDI_ASSERT(num_output_frames > 0);
-  int32 first_input_frame = start_output_frame - am_nnet_.LeftContext(),
-      num_input_frames = am_nnet_.LeftContext() + num_output_frames +
+  KALDI_ASSERT(opts_.extra_left_context >= 0);
+  int32 left_context = am_nnet_.LeftContext() - opts_.extra_left_context;
+  int32 first_input_frame = start_output_frame - left_context,
+      num_input_frames = left_context + num_output_frames +
                          am_nnet_.RightContext();
   Vector<BaseFloat> ivector;
   GetCurrentIvector(start_output_frame, num_output_frames, &ivector);
-  
+
   Matrix<BaseFloat> input_feats;
   if (first_input_frame >= 0 &&
       first_input_frame + num_input_frames <= feats_.NumRows()) {
@@ -159,7 +161,7 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
     }
     DoNnetComputation(first_input_frame, feats_block, ivector,
                       start_output_frame, num_output_frames);
-  }  
+  }
 }
 
 void DecodableAmNnetSimple::GetCurrentIvector(int32 output_t_start,
@@ -194,7 +196,7 @@ void DecodableAmNnetSimple::GetCurrentIvector(int32 output_t_start,
   }
   *ivector = online_ivector_feats_->Row(ivector_frame);
 }
-  
+
 
 void DecodableAmNnetSimple::DoNnetComputation(
     int32 input_t_start,
@@ -210,7 +212,7 @@ void DecodableAmNnetSimple::DoNnetComputation(
                           // time, to take advantage of caching in the compiler.
                           // An optimization.
   int32 time_offset = (shift_time ? -output_t_start : 0);
-  
+
   // First add the regular features-- named "input".
   request.inputs.reserve(2);
   request.inputs.push_back(
@@ -252,7 +254,7 @@ void DecodableAmNnetSimple::DoNnetComputation(
 
 void DecodableAmNnetSimple::PossiblyWarnForFramesPerChunk() const {
   static bool warned = false;
-  int32 nnet_modulus = am_nnet_.GetNnet().Modulus();  
+  int32 nnet_modulus = am_nnet_.GetNnet().Modulus();
   if (opts_.frames_per_chunk % nnet_modulus != 0 && !warned) {
     warned = true;
     KALDI_WARN << "It may be more efficient to set the --frames-per-chunk "
