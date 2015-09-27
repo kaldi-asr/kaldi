@@ -34,6 +34,7 @@ namespace nnet3 {
 
 
 struct DecodableAmNnetSimpleOptions {
+  int32 extra_left_context;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
   bool debug_computation;
@@ -41,10 +42,15 @@ struct DecodableAmNnetSimpleOptions {
   NnetComputeOptions compute_config;
 
   DecodableAmNnetSimpleOptions():
+      extra_left_context(0),
       frames_per_chunk(50),
       acoustic_scale(0.1) { }
 
   void Register(OptionsItf *opts) {
+    opts->Register("extra-left-context", &extra_left_context,
+                   "Number of frames of additional left-context to add on top "
+                   "of the neural net's inherent left context (may be useful in "
+                   "recurrent setups");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.");
@@ -98,23 +104,23 @@ class DecodableAmNnetSimple: public DecodableInterface {
                         const MatrixBase<BaseFloat> &feats,
                         const VectorBase<BaseFloat> &ivector);
 
-  
+
   // Note, frames are numbered from zero.  But transition_id is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
 
   virtual int32 NumFramesReady() const { return feats_.NumRows(); }
-  
+
   // Note: these indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
   }
 
 
-  
+
  private:
   // This call is made to ensure that we have the log-probs for this frame
   // cached in current_log_post_.
@@ -155,16 +161,16 @@ class DecodableAmNnetSimple: public DecodableInterface {
   // online_ivector_period_ helps us interpret online_ivector_feats_; it's the
   // number of frames the rows of ivector_feats are separated by.
   int32 online_ivector_period_;
-  
+
   CachingOptimizingCompiler compiler_;
 
 
   // The current log-posteriors that we got from the last time we
   // ran the computation.
   Matrix<BaseFloat> current_log_post_;
-  // The time-offset of the current log-posteriors. 
+  // The time-offset of the current log-posteriors.
   int32 current_log_post_offset_;
-  
+
 
 };
 
