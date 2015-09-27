@@ -27,7 +27,13 @@
 #include <fst/script/print-impl.h>
 #include "base/kaldi-common.h"
 
-// Some functions for writing Fsts
+// Some functions for writing Fsts.
+// I/O for FSTs is a bit of a mess, and not very well integrated with Kaldi's
+// generic I/O mechanisms, because we want files containing just FSTs to
+// be readable by OpenFST's native binaries, which is not compatible
+// with the normal \0B header that identifies Kaldi files as containing
+// binary data.
+// So use the functions here with your eyes open, and with caution!
 namespace fst {
 
 // Read a binary FST using Kaldi I/O mechanisms (pipes, etc.)

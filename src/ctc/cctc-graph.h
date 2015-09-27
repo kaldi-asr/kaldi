@@ -30,6 +30,7 @@
 #include "lat/kaldi-lattice.h"
 #include "ctc/cctc-transition-model.h"
 #include "fstext/deterministic-fst.h"
+#include "lat/determinize-lattice-pruned.h"
 
 namespace kaldi {
 namespace ctc {
@@ -128,6 +129,19 @@ class CctcDeterministicOnDemandFst:
   const CctcTransitionModel &trans_model_;
   BaseFloat phone_language_model_weight_;
 };
+
+
+/** This is a Cctc version of the function DeterminizeLatticePhonePrunedWrapper,
+    declared in ../lat/determinize-lattice-pruned.h.  It can be used
+    as a top-level interface to all the determinization code.  It's destructive
+    of its input.
+*/
+bool DeterminizeLatticePhonePrunedWrapperCctc(
+    const CctcTransitionModel &trans_model,
+    fst::MutableFst<kaldi::LatticeArc> *ifst,
+    double prune,
+    fst::MutableFst<kaldi::CompactLatticeArc> *ofst,
+    fst::DeterminizeLatticePhonePrunedOptions opts);
 
 
 }  // namespace ctc
