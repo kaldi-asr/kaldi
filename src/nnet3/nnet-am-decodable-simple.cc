@@ -134,7 +134,7 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
                                           opts_.frames_per_chunk);
   KALDI_ASSERT(num_output_frames > 0);
   KALDI_ASSERT(opts_.extra_left_context >= 0);
-  int32 left_context = am_nnet_.LeftContext() - opts_.extra_left_context;
+  int32 left_context = am_nnet_.LeftContext() + opts_.extra_left_context;
   int32 first_input_frame = start_output_frame - left_context,
       num_input_frames = left_context + num_output_frames +
                          am_nnet_.RightContext();
