@@ -128,7 +128,6 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
       current_offset = current_log_post_offset_;
   KALDI_ASSERT(frame < current_offset ||
                frame >= current_offset + current_frames_computed);
-  // allow the output to be computed for frame 0 ... num_input_frames - 1.
   int32 start_output_frame = frame,
       num_output_frames = std::min<int32>(feats_.NumRows() - start_output_frame,
                                           opts_.frames_per_chunk);
