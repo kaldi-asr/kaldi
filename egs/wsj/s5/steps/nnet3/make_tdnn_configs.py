@@ -21,6 +21,9 @@ parser.add_argument("--pnorm-output-dim", type=int,
                     help="output dimension of p-norm nonlinearities")
 parser.add_argument("--relu-dim", type=int,
                     help="dimension of ReLU nonlinearities")
+parser.add_argument("--use-presoftmax-prior-scale", type=str,
+                    help="if true, a presoftmax-prior-scale is added",
+                    choices=['true', 'false'], default = "true")
 parser.add_argument("--num-targets", type=int,
                     help="number of network targets (e.g. num-pdf-ids/num-leaves)")
 parser.add_argument("config_dir",
@@ -53,6 +56,10 @@ else:
     nonlin_input_dim = args.pnorm_input_dim
     nonlin_output_dim = args.pnorm_output_dim
 
+if args.use_presoftmax_prior_scale == "true":
+    use_presoftmax_prior_scale = True
+else:
+    use_presoftmax_prior_scale = False
 
 ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
 splice_array = []
@@ -133,9 +140,10 @@ for l in range(1, num_hidden_layers + 1):
     # printing out the next two, and their component-nodes, for l > 1 is not
     # really necessary as they will already exist, but it doesn't hurt and makes
     # the structure clearer.
-    print('component name=final-fixed-scale type=FixedScaleComponent '
-          'scales={0}/presoftmax_prior_scale.vec'.format(
-          args.config_dir), file=f)
+    if use_presoftmax_prior_scale :
+        print('component name=final-fixed-scale type=FixedScaleComponent '
+            'scales={0}/presoftmax_prior_scale.vec'.format(
+            args.config_dir), file=f)
     print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
           args.num_targets), file=f)
     print('# Now for the network structure', file=f)
@@ -161,10 +169,16 @@ for l in range(1, num_hidden_layers + 1):
 
     print('component-node name=final-affine component=final-affine input=renorm{0}'.
           format(l), file=f)
-    print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
-          file=f)
-    print('component-node name=final-log-softmax component=final-log-softmax '
-          'input=final-fixed-scale', file=f)
+
+    if use_presoftmax_prior_scale:
+        print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+              file=f)
+        print('component-node name=final-log-softmax component=final-log-softmax '
+              'input=final-fixed-scale', file=f)
+    else:
+        print('component-node name=final-log-softmax component=final-log-softmax '
+              'input=final-affine', file=f)
+
     print('output-node name=output input=final-log-softmax', file=f)
     f.close()
 
