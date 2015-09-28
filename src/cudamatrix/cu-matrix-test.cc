@@ -714,7 +714,27 @@ static void UnitTestCuMatrixApplyFloor() {
   }
 }
 
+template<typename Real> 
+static void UnitTestCuMatrixApplyCeiling() {
+	
+  for (int32 i = 0; i < 3; i++) {
+    BaseFloat ceiling = 0.33 * (Rand() % 6);
 
+    Matrix<Real> H(10 + Rand() % 600, 10 + Rand() % 20);
+    H.SetRandn();
+    if (i == 2) { Matrix<Real> tmp(H,kTrans); H = tmp; }
+
+    CuMatrix<Real> cH(H);
+
+    cH.ApplyCeiling(ceiling);
+    
+    H.ApplyCeiling(ceiling);
+    Matrix<Real> H2(cH);
+
+    AssertEqual(H, H2);
+  }
+} 
+ 
 template<typename Real> 
 static void UnitTestCuMatrixApplyHeaviside() {
 
@@ -2400,6 +2420,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixSet<Real>();
   UnitTestCuMatrixAdd<Real>();
   UnitTestCuMatrixApplyFloor<Real>();
+  UnitTestCuMatrixApplyCeiling<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixDivElements<Real>();

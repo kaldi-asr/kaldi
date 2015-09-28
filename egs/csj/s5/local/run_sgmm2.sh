@@ -17,14 +17,16 @@ steps/train_sgmm2_group.sh --cmd "$train_cmd" \
   18000 60000 data/train_nodup data/lang exp/tri4_ali_nodup \
   exp/ubm5/final.ubm exp/sgmm2_5 || exit 1;
 
+
+
+graph_dir=exp/sgmm2_5/graph_csj_tg
+$train_cmd $graph_dir/mkgraph.log \
+  utils/mkgraph.sh data/lang_csj_tg exp/sgmm2_5 $graph_dir
 for eval_num in `seq 3`; do
-  graph_dir=exp/sgmm2_5/graph_csj_tg
-  $train_cmd $graph_dir/mkgraph.log \
-    utils/mkgraph.sh data/lang_csj_tg exp/sgmm2_5 $graph_dir
   steps/decode_sgmm2.sh --nj 10 \
     --cmd "$decode_cmd" --config conf/decode.config \
-    --transform-dir exp/tri4/decode_eval${eval_num}_csj_tg $graph_dir \
-    data/eval${eval_num} exp/sgmm2_5/decode_eval${eval_num}_csj_tg
+    --transform-dir exp/tri4/decode_eval${eval_num}_csj $graph_dir \
+    data/eval${eval_num} exp/sgmm2_5/decode_eval${eval_num}_csj
 done
 wait
 
@@ -48,10 +50,10 @@ steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" \
 for eval_num in `seq 3`; do
     for iter in 1 2 3 4; do
 	steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
-	    --transform-dir exp/tri4/decode_eval${eval_num}_csj_tg \
+	    --transform-dir exp/tri4/decode_eval${eval_num}_csj \
 	    data/lang_csj_tg data/eval${eval_num} \
-	    exp/sgmm2_5/decode_eval${eval_num}_csj_tg \
-	    exp/sgmm2_5_mmi_b0.1/decode_eval${eval_num}_csj_tg_it$iter
+	    exp/sgmm2_5/decode_eval${eval_num}_csj \
+	    exp/sgmm2_5_mmi_b0.1/decode_eval${eval_num}_csj_it$iter
     done
 done
 wait

@@ -39,6 +39,10 @@ NnetCombiner::NnetCombiner(const NnetCombineConfig &config,
   tot_input_weighting_(0) += 1.0;
   num_nnets_provided_ = 1;
   ComputeUpdatableComponentDims();
+  NnetComputeProbOptions compute_prob_opts;
+  compute_prob_opts.compute_deriv = true;
+  prob_computer_ = new NnetComputeProb(compute_prob_opts, nnet_);
+
 }
 
 void NnetCombiner::ComputeUpdatableComponentDims(){
@@ -67,7 +71,7 @@ void NnetCombiner::AcceptNnet(const Nnet &nnet) {
     tot_input_weighting_(num_nnets_provided_) += 1.0;
   } else {
     // this_index is a kind of warped index, mapping the range
-    // 0 ... num_real_inputs_nnets_ - 1 onto the range 
+    // 0 ... num_real_inputs_nnets_ - 1 onto the range
     // 0 ... num_effective_nnets - 1.  View the index as falling in
     // between two integer indexes and determining weighting factors.
     // we could view this as triangular bins.
@@ -124,7 +128,7 @@ void NnetCombiner::Combine() {
   lbfgs_options.m = dim; // Store the same number of vectors as the dimension
                          // itself, so this is BFGS.
   lbfgs_options.first_step_impr = config_.initial_impr;
-  
+
   Vector<BaseFloat> params(dim), deriv(dim);
   BaseFloat objf, initial_objf;
   GetInitialParameters(&params);
@@ -132,7 +136,7 @@ void NnetCombiner::Combine() {
 
   OptimizeLbfgs<BaseFloat> lbfgs(params, lbfgs_options);
 
-  for (int32 i = 0; i < config_.num_iters; i++) {    
+  for (int32 i = 0; i < config_.num_iters; i++) {
     params.CopyFromVec(lbfgs.GetProposedValue());
     objf = ComputeObjfAndDerivFromParameters(params, &deriv);
     KALDI_VLOG(2) << "Iteration " << i << " params = " << params
@@ -163,7 +167,7 @@ void NnetCombiner::PrintParams(const VectorBase<BaseFloat> &params) const {
   GetWeights(params, &weights);
   GetNormalizedWeights(weights, &normalized_weights);
   int32 num_models = nnet_params_.NumRows(),
-      num_uc = NumUpdatableComponents();        
+      num_uc = NumUpdatableComponents();
 
   if (config_.separate_weights_per_component) {
     std::vector<std::string> updatable_component_names;
@@ -173,7 +177,7 @@ void NnetCombiner::PrintParams(const VectorBase<BaseFloat> &params) const {
         updatable_component_names.push_back(nnet_.GetComponentName(c));
     }
     KALDI_ASSERT(static_cast<int32>(updatable_component_names.size()) ==
-                 NumUpdatableComponents());    
+                 NumUpdatableComponents());
     for (int32 uc = 0; uc < num_uc; uc++) {
       std::ostringstream os;
       os.width(20);
@@ -225,7 +229,7 @@ bool NnetCombiner::SelfTestDerivatives() {
     new_params.AddVec(delta, offset);
     BaseFloat new_objf = ComputeObjfAndDerivFromParameters(new_params,
                                                            &new_deriv);
-    // for predicted changes, interpolate old and new derivs.    
+    // for predicted changes, interpolate old and new derivs.
     predicted_changes(i) =
         0.5 * VecVec(new_params, deriv) -  0.5 * VecVec(params, deriv) +
         0.5 * VecVec(new_params, new_deriv) - 0.5 * VecVec(params, new_deriv);
@@ -266,7 +270,7 @@ void NnetCombiner::SelfTestModelDerivatives() {
   BaseFloat delta = 0.002 * std::sqrt(VecVec(nnet_params, nnet_params) /
                                       NnetParameterDim());
 
-  
+
   for (int32 i = 0; i < num_tests; i++) {
     Vector<BaseFloat> new_nnet_deriv(NnetParameterDim()),
         offset(NnetParameterDim()), new_nnet_params(nnet_params);
@@ -404,28 +408,27 @@ void NnetCombiner::GetWeightsDeriv(
     KALDI_ASSERT(dim_offset == nnet_params_.NumCols());
   }
 }
-  
+
 double NnetCombiner::ComputeObjfAndDerivFromNnet(
     VectorBase<BaseFloat> &nnet_params,
     VectorBase<BaseFloat> *nnet_params_deriv) {
   BaseFloat sum = nnet_params.Sum();
   // inf/nan parameters->return -inf objective.
-  if (!(sum == sum && sum - sum == 0))  
+  if (!(sum == sum && sum - sum == 0))
     return -std::numeric_limits<double>::infinity();
   // Set nnet to have these params.
   UnVectorizeNnet(nnet_params, &nnet_);
-  NnetComputeProbOptions compute_prob_opts;
-  compute_prob_opts.compute_deriv = true;
-  NnetComputeProb prob_computer(compute_prob_opts, nnet_);
+
+  prob_computer_->Reset();
   std::vector<NnetExample>::const_iterator iter = egs_.begin(),
                                             end = egs_.end();
   for (; iter != end; ++iter)
-    prob_computer.Compute(*iter);
-  const SimpleObjectiveInfo *objf_info = prob_computer.GetObjective("output");
+    prob_computer_->Compute(*iter);
+  const SimpleObjectiveInfo *objf_info = prob_computer_->GetObjective("output");
   if (objf_info == NULL)
     KALDI_ERR << "Error getting objective info (unsuitable egs?)";
   KALDI_ASSERT(objf_info->tot_weight > 0.0);
-  const Nnet &deriv = prob_computer.GetDeriv();
+  const Nnet &deriv = prob_computer_->GetDeriv();
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
   nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
@@ -514,7 +517,7 @@ void NnetCombiner::GetUnnormalizedWeightsDeriv(
 }
 
 
- 
-  
+
+
 } // namespace nnet3
 } // namespace kaldi

@@ -18,6 +18,7 @@ num_epochs=5      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
+shrink=0.99  # this parameter would be used to scale the parameter matrices
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
@@ -71,13 +72,15 @@ clipping_threshold=10
 chunk_width=20 # number of output labels in the sequence used to train an LSTM
 chunk_left_context=20 # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5
-num_bptt_steps=20
+num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
+                   # it is usually same as chunk_width
 
 randprune=4.0 # speeds up LDA.
 affine_opts=
 
 # nnet3-train options
-update_per_minibatch=true #If true, wait to apply model changes until the whole minibatch has been processed
+momentum=0.0    # e.g. set it to 0.8 or 0.9.  Note: we implemented it in such a way that
+                # it doesn't increase the effective learning rate.
 use_gpu=true    # if true, we run on GPU.
 num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
@@ -98,7 +101,6 @@ realign_times=          # List of times on which we realign.  Each time is
 num_jobs_align=30       # Number of jobs for realignment
 # End configuration section.
 
-
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
 echo "$0 $@"  # Print the command line for logging
@@ -117,12 +119,16 @@ if [ $# != 4 ]; then
   echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
   echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
+  echo "  --momentum <momentum|0.9>                        # Momentum constant: note, this is "
+  echo "                                                   # implemented in such a way that it doesn't"
+  echo "                                                   # increase the effective learning rate."
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
   echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
   echo "                                                   # the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
+  echo "  --shrink <shrink|0.0>                            # if non-zero this parameter will be used to scale the parameter matrices"
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
@@ -251,8 +257,6 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
-
-frames_per_eg=$chunk_width
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
@@ -268,7 +272,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" $egs_opts \
       --stage $get_egs_stage \
       --samples-per-iter $samples_per_iter \
-      --frames-per-eg $frames_per_eg \
+      --frames-per-eg $chunk_width \
       $data $alidir $dir/egs || exit 1;
 fi
 
@@ -294,18 +298,14 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
   ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
-frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
-# in FF-DNN architectures
-# num_archives_expanded=$[$num_archives*$frames_per_eg]
-# in RNN architectures all the frames in a sample are processed together
-num_archives_expanded=$[$num_archives]
+chunk_width=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
+num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/num_archives"; exit 1; }
 
 [ $num_jobs_initial -gt $num_jobs_final ] && \
   echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
 
-[ $num_jobs_final -gt $num_archives_expanded ] && \
-  echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
+[ $num_jobs_final -gt $num_archives ] && \
+  echo "$0: --final-num-jobs cannot exceed #archives $num_archives." && exit 1;
 
 
 if [ $stage -le -3 ]; then
@@ -369,10 +369,10 @@ fi
 
 
 # set num_iters so that as close as possible, we process the data $num_epochs
-# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
+# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives,
 # where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
 
-num_archives_to_process=$[$num_epochs*$num_archives_expanded]
+num_archives_to_process=$[$num_epochs*$num_archives]
 num_archives_processed=0
 num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
@@ -412,7 +412,7 @@ else
 fi
 
 
-approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
+approx_iters_per_epoch_final=$[$num_archives/$num_jobs_final]
 # First work out how many iterations we want to combine over in the final
 # nnet3-combine-fast invocation.  (We may end up subsampling from these if the
 # number exceeds max_model_combine).  The number we use is:
@@ -441,14 +441,15 @@ for realign_time in $realign_times; do
 done
 
 cur_egs_dir=$egs_dir
-min_deriv_time=$((frames_per_eg - num_bptt_steps))  
+min_deriv_time=$((chunk_width - num_bptt_steps))
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
   this_num_jobs=$(perl -e "print int(0.5+$num_jobs_initial+($num_jobs_final-$num_jobs_initial)*$x/$num_iters);")
 
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
-  this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
+  this_effective_learning_rate=$(perl -e "print ($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt));");
+  this_learning_rate=$(perl -e "print ($this_effective_learning_rate*$this_num_jobs);");
 
   echo "On iteration $x, learning rate is $this_learning_rate."
 
@@ -557,7 +558,7 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix --print-interval=10 --update-per-minibatch=$update_per_minibatch \
+          nnet3-train$parallel_suffix --print-interval=10 --momentum=$momentum \
           --optimization.min-deriv-time=$min_deriv_time $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
@@ -577,17 +578,17 @@ while [ $x -lt $num_iters ]; do
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
         nnet3-average $nnets_list - \| \
-        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-am-copy --scale=$shrink --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
           close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
-          $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
+          $best_n=$n; } } print "$best_n\n"; ' $this_num_jobs $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
-        nnet3-am-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-am-copy --scale=$shrink --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     fi
 
     rm $nnets_list
@@ -620,7 +621,7 @@ if [ $stage -le $num_iters ]; then
   # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
   # as if there are many models it can give out-of-memory error; and we set
   # num-threads to 8 to speed it up (this isn't ideal...)
-  combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($frames_per_eg))")
+  combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($chunk_width))")
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
@@ -683,7 +684,7 @@ if $cleanup; then
   for x in `seq 0 $num_iters`; do
     if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.mdl ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
-      rm $dir/$x.mdl
+       rm $dir/$x.mdl
     fi
   done
 fi

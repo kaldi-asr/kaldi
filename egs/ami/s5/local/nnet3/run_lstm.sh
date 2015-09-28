@@ -22,7 +22,7 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=20
-clipping_threshold=10.0
+clipping_threshold=30.0
 norm_based_clipping=true
 common_egs_dir=
 
@@ -30,12 +30,19 @@ common_egs_dir=
 ng_per_element_scale_options=
 ng_affine_options=
 num_epochs=5
+
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
+num_jobs_initial=2
+num_jobs_final=12
+momentum=0.0
+shrink=0.99
 num_chunk_per_minibatch=100
+num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -45,8 +52,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -87,7 +94,7 @@ if [ $stage -le 8 ]; then
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 12 \
+    --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
@@ -95,6 +102,8 @@ if [ $stage -le 8 ]; then
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --momentum $momentum \
+    --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
@@ -104,6 +113,7 @@ if [ $stage -le 8 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --num-bptt-steps $num_bptt_steps \
     --norm-based-clipping $norm_based_clipping \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
@@ -112,7 +122,7 @@ if [ $stage -le 8 ]; then
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev eval; do
@@ -120,7 +130,8 @@ if [ $stage -le 8 ]; then
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       decode_dir=${dir}/decode_${decode_set}
 
-      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+          --extra-left-context $chunk_left_context  \
           --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &

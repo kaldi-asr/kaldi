@@ -1,10 +1,10 @@
 #!/bin/bash
-# Copyright  2014   David Snyder
-#                   Daniel Povey
+# Copyright  2014-2015  David Snyder
+#                       Daniel Povey
 # Apache 2.0.
 #
 # This script runs the NIST 2007 General Language Recognition Closed-Set
-# evaluation. 
+# evaluation.
 
 . cmd.sh
 . path.sh
@@ -36,7 +36,7 @@ local/make_lre07_train.pl /export/corpora5/LDC/LDC2009S05 data
 local/make_lre09.pl /export/corpora5/NIST/LRE/LRE2009/eval data
 
 # Make the evaluation data set. We're concentrating on the General Language
-# Recognition Closet-Set evaluation, so we remove the dialects and filter
+# Recognition Closed-Set evaluation, so we remove the dialects and filter
 # out the unknown languages used in the open-set evaluation.
 local/make_lre07.pl /export/corpora5/LDC/LDC2009S04 data/lre07_all
 
@@ -60,7 +60,8 @@ for d in $src_list; do rm -f $d/spk2gender 2>/dev/null; done
 utils/combine_data.sh data/train_unsplit $src_list
 
 # original utt2lang will remain in data/train_unsplit/.backup/utt2lang.
-utils/apply_map.pl -f 2 --permissive local/lang_map.txt  < data/train_unsplit/utt2lang  2>/dev/null > foo
+utils/apply_map.pl -f 2 --permissive local/lang_map.txt \
+  < data/train_unsplit/utt2lang 2>/dev/null > foo
 cp foo data/train_unsplit/utt2lang
 rm foo
 
@@ -70,9 +71,9 @@ echo "**Language count in i-Vector extractor training (after splitting long utte
 awk '{print $2}' data/train/utt2lang | sort | uniq -c | sort -nr
 
 # This commented script is an alternative to the above utterance
-# splitting method. Here we split the utterance based on the number of 
+# splitting method. Here we split the utterance based on the number of
 # frames which are voiced, rather than the total number of frames.
-# max_voiced=3000 
+# max_voiced=3000
 # local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
 
 use_vtln=true
@@ -81,7 +82,7 @@ if $use_vtln; then
     cp -r data/${t} data/${t}_novtln
     rm -r data/${t}_novtln/{split,.backup,spk2warp} 2>/dev/null || true
     steps/make_mfcc.sh --mfcc-config conf/mfcc_vtln.conf --nj 100 --cmd "$train_cmd" \
-       data/${t}_novtln exp/make_mfcc $mfccdir 
+       data/${t}_novtln exp/make_mfcc $mfccdir
     lid/compute_vad_decision.sh data/${t}_novtln exp/make_mfcc $mfccdir
   done
 
@@ -98,7 +99,7 @@ if $use_vtln; then
      data/train_5k_novtln exp/diag_ubm_vtln exp/vtln
 
   for t in lre07 train; do
-    lid/get_vtln_warps.sh --nj 100 --cmd "$train_cmd" \
+    lid/get_vtln_warps.sh --nj 50 --cmd "$train_cmd" \
        data/${t}_novtln exp/vtln exp/${t}_warps
     cp exp/${t}_warps/utt2warp data/$t/
   done
@@ -126,18 +127,18 @@ utils/subset_data_dir.sh data/train 5000 data/train_5k
 utils/subset_data_dir.sh data/train 10000 data/train_10k
 
 
-lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd" data/train_5k 2048 \
-  exp/diag_ubm_2048
-lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train_10k \
-  exp/diag_ubm_2048 exp/full_ubm_2048_10k
+lid/train_diag_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+  data/train_5k 2048 exp/diag_ubm_2048
+lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=20G,ram_free=20G" \
+  data/train_10k exp/diag_ubm_2048 exp/full_ubm_2048_10k
 
-lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
-  exp/full_ubm_2048_10k exp/full_ubm_2048
+lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+  data/train exp/full_ubm_2048_10k exp/full_ubm_2048
 
 # Alternatively, a diagonal UBM can replace the full UBM used above.
 # The preceding calls to train_diag_ubm.sh and train_full_ubm.sh
 # can be commented out and replaced with the following lines.
-# 
+#
 # This results in a slight degradation but could improve error rate when
 # there is less training data than used in this example.
 #
@@ -147,7 +148,9 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
 #gmm-global-to-fgmm exp/diag_ubm_2048/final.dubm \
 #  exp/full_ubm_2048/final.ubm
 
-lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" \
+lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+  --stage 3 \
+  --use-weights true \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
 
@@ -167,13 +170,13 @@ lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07
 
 lid/run_logistic_regression.sh --prior-scale 0.70 \
-  --conf conf/logistic-regression.conf 
+  --conf conf/logistic-regression.conf
 # Training error-rate
-# ER (%): 5.15
+# ER (%): 3.95
 
 # General LR 2007 closed-set eval
 local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \
   local/general_lr_closed_set_langs.txt
 # Duration (sec):    avg      3     10     30
-#         ER (%):  23.58  43.95  19.43   7.37
-#      C_avg (%):  14.79  27.23  12.16   4.97
+#         ER (%):  23.11  42.84  19.33   7.18
+#      C_avg (%):  14.17  26.04  11.93   4.52

@@ -119,4 +119,4 @@ class DecodableNnet2Online: public DecodableInterface {
 } // namespace nnet2
 } // namespace kaldi
 
-#endif // KALDI_NNET2_ONLINE_GMM_DECODABLE_H_
+#endif // KALDI_NNET2_ONLINE_NNET2_DECODABLE_H_
