@@ -399,11 +399,11 @@ void CctcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
       std::lower_bound(frame_.begin(), frame_.end(), begin_frame),
       end_iter = std::lower_bound(begin_iter, frame_.end(), end_frame);
   KALDI_ASSERT(*begin_iter == begin_frame &&
-               begin_iter == frame_.begin() || begin_iter[-1] < begin_frame);
+               (begin_iter == frame_.begin() || begin_iter[-1] < begin_frame));
   // even if end_frame == supervision_.num_frames, there should be a state with
   // that frame index.
   KALDI_ASSERT(end_iter[-1] < end_frame &&
-               end_iter < frame_.end() || *end_iter == end_frame);
+               (end_iter < frame_.end() || *end_iter == end_frame));
   int32 begin_state = begin_iter - frame_.begin(),
       end_state = end_iter - frame_.begin();
 

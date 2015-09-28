@@ -45,7 +45,7 @@ class NnetComputerFromEg {
     if (GetVerboseLevel() >= 3)
       options.debug = true;
     NnetComputer computer(options, computation, nnet_, NULL);
-    computer.AcceptInputs(nnet_, eg);
+    computer.AcceptInputs(nnet_, eg.io);
     computer.Forward();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
     output->Resize(nnet_output.NumRows(), nnet_output.NumCols());

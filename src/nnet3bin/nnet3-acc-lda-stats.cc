@@ -45,7 +45,7 @@ class NnetLdaStatsAccumulator {
       options.debug = true;
     NnetComputer computer(options, computation, nnet_, NULL);
     
-    computer.AcceptInputs(nnet_, eg);
+    computer.AcceptInputs(nnet_, eg.io);
     computer.Forward();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
     AccStatsFromOutput(eg, nnet_output);

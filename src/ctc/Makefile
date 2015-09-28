@@ -15,8 +15,8 @@ OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o \
 
 LIBNAME = kaldi-ctc
 
-ADDLIBS = ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a \
-          ../lat/kaldi-lat.a ../cudamatrix/kaldi-cudamatrix.a \
+ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
+           ../matrix/kaldi-matrix.a ../cudamatrix/kaldi-cudamatrix.a \
           ../util/kaldi-util.a ../base/kaldi-base.a
 
 
