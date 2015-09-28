@@ -34,10 +34,8 @@ if [ -f $egs/.nodelete ]; then
 fi
 
 
-flist=$egs/egs.*.ark
 
-
-for f in $egs/egs.*.ark $egs/degs.*.ark; do
+for f in $egs/egs.*.ark $egs/degs.*.ark $egs/cegs.*.ark; do
   if [ -L $f ]; then
     rm $(dirname $f)/$(readlink $f)  # this will print a warning if it fails.
   fi
