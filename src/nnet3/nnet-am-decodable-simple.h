@@ -44,7 +44,8 @@ struct DecodableAmNnetSimpleOptions {
   DecodableAmNnetSimpleOptions():
       extra_left_context(0),
       frames_per_chunk(50),
-      acoustic_scale(0.1) { }
+      acoustic_scale(0.1),
+      debug_computation(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("extra-left-context", &extra_left_context,
