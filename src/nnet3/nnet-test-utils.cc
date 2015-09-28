@@ -598,7 +598,7 @@ void GenerateConfigSequenceLstmType2(
 void GenerateConfigSequenceCnn(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
-  std::ostringstream os; 
+  std::ostringstream os;
 
   int32 pool_stride = 5 + Rand() % 10, pool_size = 2 + Rand() % 3,
 	num_pools = 1 + Rand() % 10;
@@ -612,12 +612,12 @@ void GenerateConfigSequenceCnn(
         output_dim = num_pools * pool_stride;
 
   os << "component name=conv type=Convolutional1dComponent input-dim="
-     << input_dim << " output-dim=" << hidden_dim 
+     << input_dim << " output-dim=" << hidden_dim
      << " patch-dim=" << patch_dim << " patch-step=" << patch_step
      << " patch-stride=" << patch_stride << std::endl;
   os << "component name=maxpooling type=MaxpoolingComponent input-dim="
-     << hidden_dim << " output-dim=" << output_dim 
-     << " pool-size=" << pool_size << " pool-stride=" << pool_stride 
+     << hidden_dim << " output-dim=" << output_dim
+     << " pool-size=" << pool_size << " pool-stride=" << pool_stride
      << std::endl;
 
   os << "input-node name=input dim=" << input_dim << std::endl;
@@ -740,12 +740,14 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
   int32 n = RandInt(0, 18);
+  BaseFloat learning_rate = 0.001 * RandInt(1, 3);
+
   std::ostringstream os;
   switch(n) {
     case 0: {
       *component_type = "PnormComponent";
       int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
-             input_dim = output_dim * group_size;
+          input_dim = output_dim * group_size;
       os << "input-dim=" << input_dim << " output-dim=" << output_dim;
       break;
     }
@@ -793,13 +795,15 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     case 9: {
       *component_type = "AffineComponent";
       int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate;
       break;
     }
     case 10: {
       *component_type = "NaturalGradientAffineComponent";
       int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate;
       break;
     }
     case 11: {
@@ -826,12 +830,14 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 14: {
       *component_type = "NaturalGradientPerElementScaleComponent";
-      os << "dim=" << RandInt(1, 100);
+      os << "dim=" << RandInt(1, 100)
+         << " learning-rate=" << learning_rate;
       break;
     }
     case 15: {
       *component_type = "PerElementScaleComponent";
-      os << "dim=" << RandInt(1, 100);
+      os << "dim=" << RandInt(1, 100)
+         << " learning-rate=" << learning_rate;
       break;
     }
     case 16: {
@@ -843,10 +849,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 17: {
       *component_type = "Convolutional1dComponent";
-      int32 patch_stride = 10 + Rand() % 50, patch_step = 1 + Rand() % 4, 
+      int32 patch_stride = 10 + Rand() % 50, patch_step = 1 + Rand() % 4,
 	    patch_dim = 4 + Rand () % 5;
 
-      // decrease patch_stride so that 
+      // decrease patch_stride so that
       // (patch_stride - patch_dim) % patch_step == 0
       patch_stride = patch_stride - ((patch_stride - patch_dim) % patch_step);
 
@@ -855,8 +861,9 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       int32 input_dim = patch_stride * num_splice;
       int32 output_dim = num_patches * num_filters;
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
-	 << " patch-dim=" << patch_dim << " patch-step=" << patch_step
-	 << " patch-stride=" << patch_stride; 
+         << " patch-dim=" << patch_dim << " patch-step=" << patch_step
+         << " patch-stride=" << patch_stride
+         << " learning-rate=" << learning_rate;
       break;
     }
     case 18: {
@@ -868,7 +875,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       int32 num_patches = num_pools * pool_size;
       int32 input_dim = pool_stride * num_patches;
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
-	 << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
+         << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
       break;
     }
     default:
