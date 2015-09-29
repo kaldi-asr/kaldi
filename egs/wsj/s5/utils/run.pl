@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 use warnings; #sed replacement for -w perl parameter
 
-# In general, doing 
+# In general, doing
 #  run.pl some.log a b c is like running the command a b c in
 # the bash shell, and putting the standard error and output into some.log.
 # To run parallel jobs (backgrounded on the host machine), you can do (e.g.)
@@ -13,7 +13,7 @@ use warnings; #sed replacement for -w perl parameter
 #  run.pl some.log my-prog "--opt=foo bar" foo \|  other-prog baz
 # and run.pl will run something like:
 # ( my-prog '--opt=foo bar' foo |  other-prog baz ) >& some.log
-# 
+#
 # Basically it takes the command-line arguments, quotes them
 # as necessary to preserve spaces, and evaluates them with bash.
 # In addition it puts the command line at the top of the log, and
@@ -35,10 +35,12 @@ $ignored_opts = ""; # These will be ignored.
 # options that would normally be given to
 # queue.pl, which we will just discard.
 
-if (@ARGV > 0) {
-  while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) { # parse any options
-    # that would normally go to qsub, but which will be ignored here.
-    $switch = shift @ARGV;
+for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
+  # allow the JOB=1:n option to be interleaved with the
+  # options to qsub.
+  while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
+    # parse any options that would normally go to qsub, but which will be ignored here.
+    my $switch = shift @ARGV;
     if ($switch eq "-V") {
       $ignored_opts .= "-V ";
     } elsif ($switch eq "--max-jobs-run" || $switch eq "-tc") {
@@ -48,19 +50,26 @@ if (@ARGV > 0) {
         die "run.pl: invalid option --max-jobs-run $max_jobs_run";
       }
     } else {
-      $option = shift @ARGV;
-      if ($switch eq "-sync" && $option =~ m/^[yY]/) {
+      my $argument = shift @ARGV;
+      if ($argument =~ m/^--/) {
+        print STDERR "WARNING: suspicious argument '$argument' to $switch; starts with '-'\n";
+      }
+      if ($switch eq "-sync" && $argument =~ m/^[yY]/) {
         $ignored_opts .= "-sync "; # Note: in the
         # corresponding code in queue.pl it says instead, just "$sync = 1;".
-      }
-      $ignored_opts .= "$switch $option ";
-      if ($switch eq "-pe") { # e.g. -pe smp 5
-        $option2 = shift @ARGV;
-        $ignored_opts .= "$option2 ";
+      } elsif ($switch eq "-pe") { # e.g. -pe smp 5
+        my $argument2 = shift @ARGV;
+        $ignored_opts .= "$switch $argument $argument2 ";
+      } elsif ($switch =~ m/^--/) { # Config options
+        # Convert CLI new-style options
+        # Ignore all options
+        $ignored_opts .= "$switch $argument ";
+      } else {  # Other qsub options - passed as is
+        $ignored_opts .= "$switch $argument ";
       }
     }
   }
-  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:10
+  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:20
     $jobname = $1;
     $jobstart = $2;
     $jobend = $3;
@@ -83,7 +92,7 @@ if (@ARGV > 0) {
 
 # Users found this message confusing so we are removing it.
 # if ($ignored_opts ne "") {
-#  print STDERR "run.pl: Warning: ignoring options \"$ignored_opts\"\n";
+#   print STDERR "run.pl: Warning: ignoring options \"$ignored_opts\"\n";
 # }
 
 if ($max_jobs_run == -1) { # If --max-jobs-run option not set,
@@ -136,10 +145,10 @@ if (defined $jobname && $logfile !~ m/$jobname/ &&
 
 $cmd = "";
 
-foreach $x (@ARGV) { 
+foreach $x (@ARGV) {
     if ($x =~ m/^\S+$/) { $cmd .=  $x . " "; }
     elsif ($x =~ m:\":) { $cmd .= "'$x' "; }
-    else { $cmd .= "\"$x\" "; } 
+    else { $cmd .= "\"$x\" "; }
 }
 
 #$Data::Dumper::Indent=0;
@@ -150,7 +159,7 @@ $numfail = 0;
 use POSIX ":sys_wait_h";
 for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   if (scalar(keys %active_pids) >= $max_jobs_run) {
-    
+
     # Lets wait for a change in any child's status
     # Then we have to work out which child finished
     $r = waitpid(-1, 0);
@@ -158,7 +167,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     if ($r < 0 ) { die "run.pl: Error waiting for child process"; } # should never happen.
     if ( defined $active_pids{$r} ) {
         $jid=$active_pids{$r};
-        $fail[$jid]=$code; 
+        $fail[$jid]=$code;
         if ($code !=0) { $numfail++;}
         delete $active_pids{$r};
         # print STDERR "Finished: $r/$jid " .  Dumper(\%active_pids) . "\n";
@@ -166,7 +175,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
         die "run.pl: Cannot find the PID of the chold process that just finished.";
     }
 
-    # In theory we could do a non-blocking waitpid over all jobs running just 
+    # In theory we could do a non-blocking waitpid over all jobs running just
     # to find out if only one or more jobs finished during the previous waitpid()
     # However, we just omit this and will reap the next one in the next pass
     # through the for(;;) cycle
@@ -175,7 +184,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   if (!defined $childpid) { die "run.pl: Error forking in run.pl (writing to $logfile)"; }
   if ($childpid == 0) { # We're in the child... this branch
     # executes the job and returns (possibly with an error status).
-    if (defined $jobname) { 
+    if (defined $jobname) {
       $cmd =~ s/$jobname/$jobid/g;
       $logfile =~ s/$jobname/$jobid/g;
     }
@@ -188,7 +197,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     close(F);
 
     # Pipe into bash.. make sure we're not using any other shell.
-    open(B, "|bash") || die "run.pl: Error opening shell command"; 
+    open(B, "|bash") || die "run.pl: Error opening shell command";
     print B "( " . $cmd . ") 2>>$logfile >> $logfile";
     close(B);                   # If there was an error, exit status is in $?
     $ret = $?;
@@ -231,9 +240,9 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   $job_return = $fail[$jobid];
   if (not defined $job_return ) {
     # print Dumper(\@fail);
-    
-    die "run.pl: Sanity check failed: we have indication that some jobs are running " . 
-      "even after we waited for all jobs to finish" ; 
+
+    die "run.pl: Sanity check failed: we have indication that some jobs are running " .
+      "even after we waited for all jobs to finish" ;
   }
   if ($job_return != 0 ){ $failed_jids++;}
 }
@@ -244,7 +253,7 @@ if ($numfail > 0) { $ret = 1; }
 
 if ($ret != 0) {
   $njobs = $jobend - $jobstart + 1;
-  if ($njobs == 1) { 
+  if ($njobs == 1) {
     if (defined $jobname) {
       $logfile =~ s/$jobname/$jobstart/; # only one numbered job, so replace name with
                                          # that job.
