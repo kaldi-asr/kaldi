@@ -28,8 +28,6 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
-prior_subset_size=20000 # 20k samples per job, for computing priors.
-num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 remove_egs=true  # set to false to disable removing egs after training is done.
@@ -57,13 +55,8 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
-
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
-affine_opts=
-
 use_gpu=true    # if true, we run on GPU.
-num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
 egs_dir=
 max_lda_jobs=20  # use no more than 20 jobs for the LDA accumulation.
@@ -207,7 +200,6 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
-
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
@@ -217,7 +209,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"
-  steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
+  steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
@@ -249,16 +241,11 @@ egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 
-# num_archives_expanded considers each separate label-position from
-# 0..frames_per_eg-1 to be a separate archive.
-num_archives_expanded=$[$num_archives*$frames_per_eg]
-
 [ $num_jobs_initial -gt $num_jobs_final ] && \
   echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
 
-[ $num_jobs_final -gt $num_archives_expanded ] && \
-  echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
-
+[ $num_jobs_final -gt $num_archives ] && \
+  echo "$0: --final-num-jobs cannot exceed #archives $num_archives." && exit 1;
 
 if [ $stage -le -3 ]; then
   echo "$0: getting preconditioning matrix for input features."
@@ -299,10 +286,10 @@ fi
 
 
 # set num_iters so that as close as possible, we process the data $num_epochs
-# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded,
+# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives
 # where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
 
-num_archives_to_process=$[$num_epochs*$num_archives_expanded]
+num_archives_to_process=$[$num_epochs*$num_archives]
 num_archives_processed=0
 num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
@@ -327,22 +314,18 @@ if $use_gpu; then
     exit 1
   fi
 else
-  if [ $num_threads -gt 1 ]; then
-    parallel_suffix="-parallel"
-    parallel_train_opts="--num-threads=$num_threads"
-    train_queue_opt="--num-threads $num_threads"
-    combine_queue_opt=""  # the combine stage will be quite slow if not using
-                          # GPU, as we didn't enable that program to use
-                          # multiple threads.
-  else
-    parallel_suffix=""
-  fi
+  echo "$0: without using a GPU this will be very slow.  nnet3 does not yet support multiple threads."
+  parallel_train_opts="--use-gpu=no"
+  train_queue_opt="--num-threads $num_threads"
+  combine_queue_opt=""  # the combine stage will be quite slow if not using
+                        # GPU, as we didn't enable that program to use
+                        # multiple threads.
   prior_gpu_opt="--use-gpu=no"
   prior_queue_opt=""
 fi
 
 
-approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
+approx_iters_per_epoch_final=$[$num_archives/$num_jobs_final]
 # First work out how many iterations we want to combine over in the final
 # nnet3-combine-fast invocation.  (We may end up subsampling from these if the
 # number exceeds max_model_combine).  The number we use is:
@@ -436,8 +419,8 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix $parallel_train_opts "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          nnet3-ctc-train $parallel_train_opts "$raw" \
+          "ark:nnet3-ctc-copy-egs --frame=$frame $context_opts ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait

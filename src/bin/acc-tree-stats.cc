@@ -37,31 +37,19 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Accumulate statistics for phonetic-context tree building.\n"
-        "Usage:  acc-tree-stats [options] model-in features-rspecifier alignments-rspecifier [tree-accs-out]\n"
+        "Usage:  acc-tree-stats [options] <model-in> <features-rspecifier> <alignments-rspecifier> <tree-accs-out>\n"
         "e.g.: \n"
         " acc-tree-stats 1.mdl scp:train.scp ark:1.ali 1.tacc\n";
-    ParseOptions po(usage);
+
     bool binary = true;
-    float var_floor = 0.01;
-    string ci_phones_str;
-    std::string phone_map_rxfilename;
-    int N = 3;
-    int P = 1;
+    AccumulateTreeStatsOptions opts;
+    ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
-    po.Register("var-floor", &var_floor, "Variance floor for tree clustering.");
-    po.Register("ci-phones", &ci_phones_str, "Colon-separated list of integer "
-                "indices of context-independent phones (after mapping, if "
-                "--phone-map option is used).");
-    po.Register("context-width", &N, "Context window size.");
-    po.Register("central-position", &P, "Central context-window position "
-                "(zero-based)");
-    po.Register("phone-map", &phone_map_rxfilename,
-                "File name containing old->new phone mapping (each line is: "
-                "old-integer-id new-integer-id)");
+    opts.Register(&po);
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -71,23 +59,9 @@ int main(int argc, char *argv[]) {
         alignment_rspecifier = po.GetArg(3),
         accs_out_wxfilename = po.GetOptArg(4);
 
-    std::vector<int32> phone_map;
-    if (phone_map_rxfilename != "") {  // read phone map.
-      ReadPhoneMap(phone_map_rxfilename,
-                   &phone_map);
-    }
     
-    std::vector<int32> ci_phones;
-    if (ci_phones_str != "") {
-      SplitStringToIntegers(ci_phones_str, ":", false, &ci_phones);
-      std::sort(ci_phones.begin(), ci_phones.end());
-      if (!IsSortedAndUniq(ci_phones) || ci_phones[0] == 0) {
-        KALDI_ERR << "Invalid set of ci_phones: " << ci_phones_str;
-      }
-    }
-
+    AccumulateTreeStatsInfo acc_tree_stats_info(opts);
     
-
     TransitionModel trans_model;
     {
       bool binary;
@@ -117,15 +91,10 @@ int main(int argc, char *argv[]) {
           continue;
         }
 
-        ////// This is the important part of this program.  ////////
         AccumulateTreeStats(trans_model,
-                            var_floor,
-                            N,
-                            P,
-                            ci_phones,
+                            acc_tree_stats_info,
                             alignment,
                             mat,
-                            (phone_map_rxfilename != "" ? &phone_map : NULL),
                             &tree_stats);
         num_done++;
         if (num_done % 1000 == 0)

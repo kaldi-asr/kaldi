@@ -32,6 +32,8 @@ power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 phone_map=
 train_tree=true
+tree_stats_opts=
+cluster_phones_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -123,7 +125,7 @@ if [ $stage -le -4 ] && $train_tree; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-    acc-tree-stats $context_opts $phone_map_opt --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
+    acc-tree-stats $context_opts $tree_stats_opts $phone_map_opt --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
   [ "`ls $dir/*.treeacc | wc -w`" -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
@@ -134,7 +136,7 @@ fi
 if [ $stage -le -3 ] && $train_tree; then
   echo "$0: Getting questions for tree clustering."
   # preparing questions, roots file...
-  cluster-phones $context_opts $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
+  cluster-phones $cluster_phones_opts $context_opts $dir/treeacc $lang/phones/sets.int $dir/questions.int 2>$dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
   compile-questions $context_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 

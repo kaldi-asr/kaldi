@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#
+# LDA+MLLT refers to the way we transform the features after computing
+# the MFCCs: we splice across several frames, reduce the dimension (to 40
+# by default) using Linear Discriminant Analysis), and then later estimate,
+# over multiple iterations, a diagonalizing transform known as MLLT or CTC.
+# See http://kaldi.sourceforge.net/transform.html for more explanation.
+#
 # Apache 2.0.
 
 # Begin configuration.

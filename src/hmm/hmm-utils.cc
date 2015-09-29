@@ -707,6 +707,9 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
+  const HmmTopology &old_topo = old_trans_model.GetTopo(),
+      &new_topo = new_trans_model.GetTopo();
+  static bool warned_topology = false;
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   std::vector<std::vector<int32> > split;  // split into phones.
@@ -742,9 +745,10 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
         if (static_cast<size_t>(win_start+offset) < split.size())
           phone_window[offset] = phones[win_start+offset];
       int32 central_phone = phone_window[P];
-      int32 num_pdf_classes = new_trans_model.GetTopo().NumPdfClasses(central_phone);
-      std::vector<int32> state_seq(num_pdf_classes);  // Indexed by pdf-class
-      for (int32 pdf_class = 0; pdf_class < num_pdf_classes; pdf_class++) {
+      int32 new_num_pdf_classes = new_topo.NumPdfClasses(central_phone),
+          old_num_pdf_classes = old_topo.NumPdfClasses(central_phone);
+      std::vector<int32> state_seq(new_num_pdf_classes);  // Indexed by pdf-class
+      for (int32 pdf_class = 0; pdf_class < new_num_pdf_classes; pdf_class++) {
         if (!new_ctx_dep.Compute(phone_window, pdf_class, &(state_seq[pdf_class]))) {
           std::ostringstream ss;
           WriteIntegerVector(ss, false, phone_window);
@@ -757,8 +761,36 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
         int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
         int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
         int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-        if (static_cast<size_t>(pdf_class) >= state_seq.size())
-          KALDI_ERR << "ConvertAlignment: error converting alignment, possibly different topologies?";
+        if (new_num_pdf_classes != old_num_pdf_classes) {
+          if (new_num_pdf_classes == 1) {
+            // we'll try to convert the alignment automatically.
+            const HmmTopology::TopologyEntry &entry =
+                new_topo.TopologyForPhone(phone);
+            if (!(entry.size() == 2 && entry[0].transitions.size() == 2 &&
+                  entry[1].transitions.size() == 0 && entry[0].pdf_class == 0 &&
+                  entry[0].transitions.size() == 2  &&
+                  entry[0].transitions[0].first == 0)) {
+              KALDI_ERR << "There is a topology mismatch, and not the case we "
+                        << "can automatically handle.";
+            }
+            pdf_class = 0;
+            hmm_state = 0;
+            if (IsReordered(old_trans_model, split[central_pos]))
+              trans_idx = (j == 0 ? 1 : 0);
+            else
+              trans_idx = (j + 1 == static_cast<int32>(split[central_pos].size())
+                           ? 1 : 0);
+            if (!warned_topology) {
+              warned_topology = true;
+              KALDI_WARN << "Topology mismatch detected, and new topology has "
+                         << "one state; automatically converting. Won't "
+                         << "warn again.";
+            }
+          } else {
+            KALDI_ERR << "ConvertAlignment: error converting alignment: "
+                      << "different topologies, and new one is not 1-state?";
+          }
+        }
         int32 new_pdf = state_seq[pdf_class];
         int32 new_trans_state =
             new_trans_model.TripleToTransitionState(phone, hmm_state, new_pdf);
