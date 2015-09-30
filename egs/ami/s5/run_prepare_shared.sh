@@ -12,11 +12,9 @@ FISHER_TRANS=/export/ws15-ffs-data/corpora/LDC/LDC2004T19/fe_03_p1_tran # JSALT2
 # JSALT2015 note : it's downloaded to /export/ws15-ffs-data/tools/srilm-1.7.1.tar.gz
 ! hash ngram-count && echo "Missing srilm, run 'cd ../../../tools/; ./install_srilm.sh" && exit 1
 
-# Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -x
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
 # Download of annotations, pre-processing,
 local/ami_text_prep.sh data/local/downloads

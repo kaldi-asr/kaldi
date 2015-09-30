@@ -10,16 +10,14 @@ mic=ihm
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-#AMI_DIR=$PWD/DOWNLOAD/ami # Default,
-AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
+AMI_DIR=$PWD/wav_db # Default,
+#AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV # BUT,
+#AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
 
 [ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
