@@ -28,6 +28,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
+frame_subsampling_factor=3  # controls reduced frame-rate at the output.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 remove_egs=true  # set to false to disable removing egs after training is done.
@@ -213,6 +214,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
+      --frame-subsampling-factor $frame_subsampling_factor \
       $data $alidir $dir/egs || exit 1;
 fi
 
@@ -254,7 +256,7 @@ if [ $stage -le -3 ]; then
 
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
-      nnet3-acc-lda-stats --rand-prune=$rand_prune \
+      nnet3-ctc-acc-lda-stats --rand-prune=$rand_prune \
         $dir/init.raw "ark:$egs_dir/egs.JOB.ark" $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)

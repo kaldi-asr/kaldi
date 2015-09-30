@@ -62,7 +62,8 @@ class CctcTransitionModel {
   int32 NumOutputIndexes() const { return num_output_indexes_; }
 
   // Returns the number of output indexes that correspond to non-blank symbols
-  // (i.e. real phones).  The non-blank indexes come first.
+  // (i.e. real phones).  The non-blank indexes are numbered from 0 to
+  // NumNonBlankIndexes() - 1.
   int32 NumNonBlankIndexes() const { return num_non_blank_indexes_; }
 
   // return the number of history-states the model contains.
