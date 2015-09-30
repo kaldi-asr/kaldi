@@ -30,8 +30,8 @@ ng_per_element_scale_options=
 ng_affine_options=
 num_epochs=10
 # training options
-initial_effective_lrate=0.0002
-final_effective_lrate=0.00002
+initial_effective_lrate=0.0003
+final_effective_lrate=0.00003
 num_jobs_initial=1
 num_jobs_final=12
 shrink=0.99
