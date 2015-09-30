@@ -27,10 +27,13 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Compute snr targets using clean and noisy speech features\n"
-        "Usage: compute-snr-targets [options] <clean-feature-rspecifier> <noisy-feature-rspecifier> <targets-wspecifier>\n"
+        "Usage: compute-snr-targets [options] <clean-feature-rspecifier> [<noisy-feature-rspecifier>|<noise-feature-rspecifier>] <targets-wspecifier>\n"
         "e.g.: compute-snr-targets scp:clean.scp scp:noisy.scp ark:targets.ark\n";
 
+    std::string target_type = "FbankMask";
+
     ParseOptions po(usage);
+    po.Register("--target_type", &target_type, "Target type can be FbankMask or IRM");
     
     po.Read(argc, argv);
 
@@ -62,9 +65,19 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      Matrix<BaseFloat> clean_feats = clean_reader.Value(uniq_key);
-      clean_feats.AddMat(-1.0, noisy_feats);
-      kaldi_writer.Write(key, clean_feats);
+
+      if (target_type == "FbankMask") {
+        Matrix<BaseFloat> clean_feats(clean_reader.Value(uniq_key));
+        clean_feats.AddMat(-1.0, noisy_feats);
+        kaldi_writer.Write(key, clean_feats);
+      } else if (target_type == "IRM") {
+        Matrix<double> clean_feats(clean_reader.Value(uniq_key));
+        Matrix<double> total_feats(noisy_feats);
+
+        total_feats.LogAddExpMat(1.0, clean_feats, kNoTrans);
+        clean_feats.AddMat(-1.0, total_feats);
+        kaldi_writer.Write(key, Matrix<BaseFloat>(clean_feats));
+      }
       num_success++;
     }
     KALDI_LOG << "Computed SNR targets for " << num_success 

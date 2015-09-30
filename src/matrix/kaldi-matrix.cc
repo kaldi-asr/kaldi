@@ -394,6 +394,65 @@ void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
 }
 
 template<typename Real>
+void MatrixBase<Real>::LogAddExpMat(const Real alpha, const MatrixBase<Real>& A,
+                               MatrixTransposeType transA) {
+  if (&A == this) {
+    if (transA == kNoTrans) {
+      Add(alpha + 1.0);
+    } else {
+      KALDI_ASSERT(num_rows_ == num_cols_ && "AddMat: adding to self (transposed): not symmetric.");
+      Real *data = data_;
+      if (alpha == 1.0) {  // common case-- handle separately.
+        for (MatrixIndexT row = 0; row < num_rows_; row++) {
+          for (MatrixIndexT col = 0; col < row; col++) {
+            Real *lower = data + (row * stride_) + col, 
+                 *upper = data + (col * stride_) + row;
+            Real sum = LogAdd(*lower, *upper);
+            *lower = *upper = sum;
+          }
+          *(data + (row * stride_) + row) += Log(2.0);  // diagonal.
+        }
+      } else {
+        for (MatrixIndexT row = 0; row < num_rows_; row++) {
+          for (MatrixIndexT col = 0; col < row; col++) {
+            Real *lower = data + (row * stride_) + col, 
+                 *upper = data + (col * stride_) + row;
+            Real lower_tmp = *lower;
+            *lower = LogAdd(*lower, Log(alpha) + *upper);
+            *upper = LogAdd(*upper, Log(alpha) + lower_tmp);
+          }
+          *(data + (row * stride_) + row) += Log(1.0 + alpha);  // diagonal.
+        }
+      }
+    }
+  } else {
+    int aStride = (int) A.stride_;
+    Real *adata = A.data_, *data = data_;
+    if (transA == kNoTrans) {
+      KALDI_ASSERT(A.num_rows_ == num_rows_ && A.num_cols_ == num_cols_);
+      if (num_rows_ == 0) return;
+      for (MatrixIndexT row = 0; row < num_rows_; row++) {
+        for (MatrixIndexT col = 0; col < num_cols_; col++) {
+          Real *value = data + (row * stride_) + col, 
+               *aValue = adata + (row * aStride) + col;
+          *value = LogAdd(*value, Log(alpha) + *aValue);
+        }
+      }
+    } else {
+      KALDI_ASSERT(A.num_cols_ == num_rows_ && A.num_rows_ == num_cols_);
+      if (num_rows_ == 0) return;      
+      for (MatrixIndexT row = 0; row < num_rows_; row++) {
+        for (MatrixIndexT col = 0; col < num_cols_; col++) {
+          Real *value = data + (row * stride_) + col, 
+               *aValue = adata + (col * aStride) + row;
+          *value = LogAdd(*value, Log(alpha) + *aValue);
+        }
+      }
+    }
+  }
+}
+
+template<typename Real>
 template<typename OtherReal>
 void MatrixBase<Real>::AddSp(const Real alpha, const SpMatrix<OtherReal> &S) {
   KALDI_ASSERT(S.NumRows() == NumRows() && S.NumRows() == NumCols());
