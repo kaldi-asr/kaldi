@@ -105,7 +105,7 @@ if [ $stage -le 8 ]; then
   # without carrying forward speaker information.
   num_jobs=`cat data/eval2000/utt2spk|cut -d' ' -f2|sort -u|wc -l`
   steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-    --extra-left-context $chunk_left_context \
+    --extra-left-context $chunk_left_context --frames-per-chunk $chunk_width \
     $gmm_dir/graph_sw1_tg data/eval2000 \
     $dir/decode_eval2000_sw1_tg || exit 1;
 
