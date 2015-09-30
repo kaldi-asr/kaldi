@@ -66,9 +66,12 @@ template <typename Real>
 void UnitTestSparseVectorMax() {
   for (int32 i = 0; i < 10; i++) {
     MatrixIndexT dim = 10 + Rand() % 40;
+    if (RandInt(0, 3) == 0)
+      dim = RandInt(1, 5);
 
     SparseVector<Real> svec(dim);
-    svec.SetRandn(0.8);
+    if (RandInt(0, 3) != 0)
+      svec.SetRandn(0.8);
 
     Vector<Real> vec(dim);
     vec.SetRandn();
@@ -103,7 +106,7 @@ void UnitTestSparseVectorVecSvec() {
     Real product1 = VecSvec(other_vec, svec);
     Real product2 = VecVec(other_vec, vec);
 
-    AssertEqual(product1, product2, 0.00001);
+    KALDI_ASSERT(fabs(product1 - product2) < 1.0e-04);
   }
 }
 

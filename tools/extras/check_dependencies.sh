@@ -4,37 +4,39 @@
 # script.
 redhat_packages=
 debian_packages=
+opensuse_packages=
 
 function add_packages {
   redhat_packages="$redhat_packages $1";
   debian_packages="$debian_packages $2";
+  opensuse_packages="$opensuse_packages $3";
 }
 
 if ! which g++ >&/dev/null; then
   echo "$0: g++ is not installed."
-  add_packages gcc-c++ g++
+  add_packages gcc-c++ g++ gcc-c++
 fi
 
 if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then
   echo "$0: zlib is not installed."
-  add_packages zlib-devel zlib1g-dev
+  add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make automake libtool autoconf patch awk grep bzip2 gzip wget git; do
+for f in make gcc automake libtool autoconf patch grep bzip2 gzip wget git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
-    add_packages $f $f
+    add_packages $f $f $f
   fi
 done
 
 if ! which svn >&/dev/null; then
   echo "$0: subversion is not installed"
-  add_packages subversion subversion
+  add_packages subversion subversion subversion
 fi
 
 if ! which awk >&/dev/null; then
   echo "$0: awk is not installed"
-  add_packages gawk gawk
+  add_packages gawk gawk gawk
 fi
 
 if which python >&/dev/null ; then
@@ -45,12 +47,12 @@ if which python >&/dev/null ; then
       echo "$0: default or create an bash alias for kaldi scripts to run correctly"
     else
       echo "$0: python 2.7 is not installed"
-      add_packages python2.7 python2.7
+      add_packages python2.7 python2.7 python2.7
     fi
   fi
 else
   echo "$0: python 2.7 is not installed"
-  add_packages python2.7 python2.7
+  add_packages python2.7 python2.7 python2.7
 fi
 
 printed=false
@@ -88,6 +90,20 @@ if which yum >&/dev/null; then
   if ! rpm -qa|  grep atlas >/dev/null; then
     echo "You should probably do something like: "
     echo "sudo yum install atlas.x86_64"
+    printed=true
+  fi
+fi
+
+if which zypper >&/dev/null; then
+  if [ ! -z "$opensuse_packages" ]; then 
+    echo "$0: we recommend that you run (our best guess):"
+    echo " sudo zypper install $opensuse_packages"
+    printed=true 
+    status=1
+  fi
+  if ! zypper search -i | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
+    echo "You should probably do: "
+    echo "sudo zypper install libatlas3-devel"
     printed=true
   fi
 fi

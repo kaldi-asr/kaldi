@@ -20,6 +20,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-general-component.h"
@@ -81,8 +82,14 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new FixedBiasComponent();
   } else if (component_type == "NoOpComponent") {
     ans = new NoOpComponent();
+  } else if (component_type == "ClipGradientComponent") {
+    ans = new ClipGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
+  } else if (component_type == "Convolutional1dComponent") {
+    ans = new Convolutional1dComponent();    
+  } else if (component_type == "MaxpoolingComponent") {
+    ans = new MaxpoolingComponent();
   }
   return ans;
 }
@@ -172,6 +179,19 @@ std::string NonlinearComponent::Info() const {
   std::stringstream stream;
   KALDI_ASSERT(InputDim() == OutputDim());  // always the case
   stream << Type() << ", dim=" << InputDim();
+
+  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+    stream << ", count=" << std::setprecision(3) << count_
+           << std::setprecision(6);
+    Vector<double> value_avg_dbl(value_sum_);
+    Vector<BaseFloat> value_avg(value_avg_dbl);
+    value_avg.Scale(1.0 / count_);
+    stream << ", value-avg=" << SummarizeVector(value_avg);
+    Vector<double> deriv_avg_dbl(deriv_sum_);
+    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+    deriv_avg.Scale(1.0 / count_);
+    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+  }
   return stream.str();
 }
 
@@ -181,16 +201,19 @@ void NonlinearComponent::Scale(BaseFloat scale) {
   count_ *= scale;
 }
 
-void NonlinearComponent::Add(BaseFloat alpha, const NonlinearComponent &other) {
-  if (value_sum_.Dim() == 0 && other.value_sum_.Dim() != 0)
-    value_sum_.Resize(other.value_sum_.Dim());
-  if (deriv_sum_.Dim() == 0 && other.deriv_sum_.Dim() != 0)
-    deriv_sum_.Resize(other.deriv_sum_.Dim());
-  if (other.value_sum_.Dim() != 0)
-    value_sum_.AddVec(alpha, other.value_sum_);
-  if (other.deriv_sum_.Dim() != 0)
-    deriv_sum_.AddVec(alpha, other.deriv_sum_);
-  count_ += alpha * other.count_;
+void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const NonlinearComponent *other =
+      dynamic_cast<const NonlinearComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  if (value_sum_.Dim() == 0 && other->value_sum_.Dim() != 0)
+    value_sum_.Resize(other->value_sum_.Dim());
+  if (deriv_sum_.Dim() == 0 && other->deriv_sum_.Dim() != 0)
+    deriv_sum_.Resize(other->deriv_sum_.Dim());
+  if (other->value_sum_.Dim() != 0)
+    value_sum_.AddVec(alpha, other->value_sum_);
+  if (other->deriv_sum_.Dim() != 0)
+    deriv_sum_.AddVec(alpha, other->deriv_sum_);
+  count_ += alpha * other->count_;
 }
 
 void NonlinearComponent::Read(std::istream &is, bool binary) {

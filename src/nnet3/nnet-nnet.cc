@@ -80,7 +80,7 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
           << component_names_[node.u.component_index] << " input=";
       KALDI_ASSERT(nodes_[node_index-1].node_type == kDescriptor);
       nodes_[node_index-1].descriptor.WriteConfig(ans, node_names_);
-      if (include_dim)      
+      if (include_dim)
         ans << " input-dim=" << nodes_[node_index-1].Dim(*this)
             << " output-dim=" << node.Dim(*this);
       break;
@@ -96,34 +96,34 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
 }
 
 bool Nnet::IsOutputNode(int32 node) const {
-  int32 size = nodes_.size();  
-  KALDI_ASSERT(node >= 0 && node < size);  
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kDescriptor &&
           (node + 1 == size ||
            nodes_[node + 1].node_type != kComponent));
 }
 
 bool Nnet::IsInputNode(int32 node) const {
-  int32 size = nodes_.size();  
-  KALDI_ASSERT(node >= 0 && node < size);  
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kInput);
 }
 
 bool Nnet::IsDescriptorNode(int32 node) const {
-  int32 size = nodes_.size();  
-  KALDI_ASSERT(node >= 0 && node < size);  
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kDescriptor);
 }
 
 bool Nnet::IsComponentNode(int32 node) const {
-  int32 size = nodes_.size();  
-  KALDI_ASSERT(node >= 0 && node < size);  
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kComponent);
 }
 
 bool Nnet::IsDimRangeNode(int32 node) const {
-  int32 size = nodes_.size();  
-  KALDI_ASSERT(node >= 0 && node < size);  
+  int32 size = nodes_.size();
+  KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kDimRange);
 }
 
@@ -154,7 +154,7 @@ void Nnet::GetConfigLines(bool include_dim,
   for (int32 n = 0; n < NumNodes(); n++)
     if (!IsComponentInputNode(n))
       config_lines->push_back(GetAsConfigLine(n, include_dim));
-  
+
 }
 
 void Nnet::ReadConfig(std::istream &config_is) {
@@ -166,14 +166,14 @@ void Nnet::ReadConfig(std::istream &config_is) {
   // and combine the existing and new config lines in that representation.
   const bool include_dim = false;
   GetConfigLines(include_dim, &lines);
-  
+
   // we'll later regenerate what we need from nodes_ and node_name_ from the
   // string representation.
   nodes_.clear();
   node_names_.clear();
-  
+
   int32 num_lines_initial = lines.size();
-    
+
   ReadConfigFile(config_is, &lines);
   // now "lines" will have comments removed and empty lines stripped out
 
@@ -263,12 +263,12 @@ void Nnet::ProcessComponentConfigLine(
 void Nnet::ProcessComponentNodeConfigLine(
     int32 pass,
     ConfigLine *config) {
-  
+
   std::string name;
   if (!config->GetValue("name", &name))
     KALDI_ERR << "Expected field name=<component-name> in config line: "
               << config->WholeLine();
-  
+
   std::string input_name = name + std::string("_input");
   int32 input_node_index = GetNodeIndex(input_name),
       node_index = GetNodeIndex(name);
@@ -293,7 +293,7 @@ void Nnet::ProcessComponentNodeConfigLine(
       KALDI_ERR << "No component named '" << component_name
                 << "', in config line: " << config->WholeLine();
     nodes_[node_index].u.component_index = component_index;
-    
+
     if (!config->GetValue("input", &input_descriptor))
       KALDI_ERR << "Expected input=<input-descriptor>, in config line: "
                 << config->WholeLine();
@@ -329,12 +329,12 @@ void Nnet::ProcessInputNodeConfigLine(
   if (config->HasUnusedValues())
     KALDI_ERR << "Unused values '" << config->UnusedValues()
               << " in config line: " << config->WholeLine();
-  
+
   KALDI_ASSERT(GetNodeIndex(name) == -1);
   if (dim <= 0)
     KALDI_ERR << "Invalid dimension in config line: " << config->WholeLine();
-  
-  int32 node_index = nodes_.size();    
+
+  int32 node_index = nodes_.size();
   nodes_.push_back(NetworkNode(kInput));
   nodes_[node_index].dim = dim;
   node_names_.push_back(name);
@@ -441,8 +441,8 @@ void Nnet::ProcessDimRangeNodeConfigLine(
 
 int32 Nnet::GetNodeIndex(const std::string &node_name) const {
   size_t size = node_names_.size();
-  for (size_t i = 0; i < size; i++) 
-    if (node_names_[i] == node_name) 
+  for (size_t i = 0; i < size; i++)
+    if (node_names_[i] == node_name)
       return static_cast<int32>(i);
   return -1;
 }
@@ -655,18 +655,6 @@ const std::string& Nnet::GetComponentName(int32 component_index) const {
   return component_names_[component_index];
 }
 
-const Component *Nnet::GetComponentForNode(int32 node_index) const {
-  KALDI_ASSERT(static_cast<size_t>(node_index) < node_names_.size() &&
-               nodes_[node_index].node_type == kComponent);
-  return GetComponent(nodes_[node_index].u.component_index);
-}
-
-Component *Nnet::GetComponentForNode(int32 node_index) {
-  KALDI_ASSERT(static_cast<size_t>(node_index) < node_names_.size() &&
-               nodes_[node_index].node_type == kComponent);
-  return GetComponent(nodes_[node_index].u.component_index);
-}
-
 void Nnet::Check() const {
   int32 num_nodes = nodes_.size(),
     num_input_nodes = 0,
@@ -727,7 +715,7 @@ void Nnet::Check() const {
                     << ": input-dim=" << input_dim << ", dim=" << node.dim
                     << ", dim-offset=" << node.dim_offset;
         }
-        break;        
+        break;
       }
       default:
         KALDI_ERR << "Invalid node type for node " << node_name;

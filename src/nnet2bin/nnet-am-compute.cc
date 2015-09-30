@@ -2,6 +2,7 @@
 
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 //           2015  Johns Hopkins University (author:  Daniel Garcia-Romero)
+//           2015  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,6 +45,7 @@ int main(int argc, char *argv[]) {
     bool apply_log = false;
     bool pad_input = true;
     std::string use_gpu = "no";
+    int32 chunk_size = 0;
     ParseOptions po(usage);
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
@@ -52,6 +54,9 @@ int main(int argc, char *argv[]) {
                 "of output being less than those of input.");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    po.Register("chunk-size", &chunk_size, "Process the feature matrix in chunks.  "
+                "This is useful when processing large feature files in the GPU.  "
+                "If chunk-size > 0, pad-input must be true.");
     
     po.Read(argc, argv);
     
@@ -59,6 +64,9 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+    // If chunk_size is greater than 0, pad_input needs to be true.
+    KALDI_ASSERT(chunk_size < 0 || pad_input);
+
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
@@ -79,12 +87,12 @@ int main(int argc, char *argv[]) {
     Nnet &nnet = am_nnet.GetNnet();
     
     int64 num_done = 0, num_frames = 0;
-    SequentialBaseFloatCuMatrixReader feature_reader(features_rspecifier);
-    BaseFloatCuMatrixWriter writer(features_or_loglikes_wspecifier);
+    SequentialBaseFloatMatrixReader feature_reader(features_rspecifier);
+    BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
     
     for (; !feature_reader.Done();  feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const CuMatrix<BaseFloat> &feats  = feature_reader.Value();
+      const Matrix<BaseFloat> &feats  = feature_reader.Value();
 
       int32 output_frames = feats.NumRows(), output_dim = nnet.OutputDim();
       if (!pad_input)
@@ -94,8 +102,16 @@ int main(int argc, char *argv[]) {
                    << "would be empty.";
         continue;
       }
-      CuMatrix<BaseFloat> output(output_frames, output_dim);
-      NnetComputation(nnet, feats, pad_input, &output);
+
+      Matrix<BaseFloat> output(output_frames, output_dim);
+      if (chunk_size > 0 && chunk_size < feats.NumRows()) {
+        NnetComputationChunked(nnet, feats, chunk_size, &output);
+      } else {
+        CuMatrix<BaseFloat> cu_feats(feats);
+        CuMatrix<BaseFloat> cu_output(output);
+        NnetComputation(nnet, cu_feats, pad_input, &cu_output);
+        output.CopyFromMat(cu_output);
+      }
 
       if (apply_log) {
         output.ApplyFloor(1.0e-20);

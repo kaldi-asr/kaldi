@@ -30,8 +30,13 @@ namespace nnet3 {
 // Run the test wothout optimizations and with optimizations specified by the
 // parameter. Only print warnings; we'll fail the whole test later.
 static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
+  //opt_config.convert_addition = false;
+  //opt_config.remove_assignments = false;
+  //opt_config.move_sizing_commands = false;
+  //opt_config.allocate_from_other = false;
+
   srand(0);  // Every run must be deterministic.
-  for (int32 n = 0; n < 20; n++) {
+  for (int32 n = 0; n < 40; n++) {
     struct NnetGenerationOptions gen_config;
 
     std::vector<std::string> configs;
@@ -68,7 +73,7 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
     {
       Optimize(opt_config, nnet, request, &computation_opt);
       std::ostringstream os;
-      computation.Print(os, nnet);
+      computation_opt.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
     }
 
@@ -78,18 +83,30 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 
     computation.ComputeCudaIndexes();
     computation_opt.ComputeCudaIndexes();
+    Nnet nnet_to_update(nnet);  // copy of the nnet that we update...  needed to
+                                // test the consolidation of backprop commands,
+                                // otherwise the optimized and non-optimized
+                                // comptuations differ.
+    bool is_gradient = true;  // with natural gradient, the consolidation would
+                              // affect the final model params -> test just the
+                              // gradient.
+    SetZero(is_gradient, &nnet_to_update);
+
     NnetComputer computer(compute_opts,
                           computation,
                           nnet,
-                          &nnet);
+                          &nnet_to_update);
+
     Nnet nnet_opt(nnet);  // copy of the nnet for the optimized computation.
                           // necessary in case backprop changes parameters.
+    Nnet nnet_opt_to_update(nnet_opt);
+    SetZero(is_gradient, &nnet_opt_to_update);
 
     // NnetComputer for the optimized version of the computation.
     NnetComputer computer_opt(compute_opts,
                               computation_opt,
                               nnet_opt,
-                              &nnet_opt);
+                              &nnet_opt_to_update);
 
     // provide the input to the computations.
     for (size_t i = 0; i < request.inputs.size(); i++) {
@@ -145,7 +162,8 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
       }
     }
 
-    if (!NnetParametersAreIdentical(nnet, nnet_opt, 1.0e-05)) {
+    if (!NnetParametersAreIdentical(nnet_to_update,
+                                    nnet_opt_to_update, 1.0e-05)) {
       KALDI_WARN << "Neural networks differ after training, between "
                  << "optimized and non-optimized computation.";
       return false;
@@ -159,8 +177,14 @@ static bool UnitTestNnetOptimizeWithOptions(NnetOptimizeOptions opt_config) {
 // the outputs are the same.
 static void UnitTestNnetOptimize() {
   NnetOptimizeOptions optimize_all;
+  // randomly sometimes set min_deriv and max_deriv to small/large values,
+  // which will cause some of the LimitDerivativeTimes() code to be called
+  // (without really changing anything).
+  if (RandInt(0, 3) == 0) optimize_all.min_deriv_time = -200;
+  if (RandInt(0, 3) == 0) optimize_all.max_deriv_time = 1000;
+
   // this is useful for debugging as it removes nans:
-  optimize_all.initialize_undefined = false;
+  // optimize_all.initialize_undefined = false;
   bool success = UnitTestNnetOptimizeWithOptions(optimize_all);
   if (success)
     return;

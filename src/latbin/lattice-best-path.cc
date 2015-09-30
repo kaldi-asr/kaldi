@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
               << " over " << n_frame << " frames.";
     KALDI_LOG << "Done " << n_done << " lattices, failed for " << n_fail;
     
-    if (word_syms) delete word_syms;
+    delete word_syms;
     if (n_done != 0) return 0;
     else return 1;
   } catch(const std::exception &e) {

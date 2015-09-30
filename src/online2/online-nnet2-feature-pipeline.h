@@ -266,4 +266,4 @@ class OnlineNnet2FeaturePipeline: public OnlineFeatureInterface {
 
 
 
-#endif  // KALDI_ONLINE2_ONLINE_FEATURE_PIPELINE_H_
+#endif  // KALDI_ONLINE2_ONLINE_NNET2_FEATURE_PIPELINE_H_

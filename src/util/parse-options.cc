@@ -331,8 +331,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
     char *program_name = new char[strlen(c)+2];
     strcpy(program_name, c);
     strcat(program_name, ":");
-    if (g_program_name != NULL)
-      delete [] g_program_name;
+    delete [] g_program_name;
     g_program_name = program_name;
   }
   // first pass: look for config parameter, look for priority

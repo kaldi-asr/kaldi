@@ -56,8 +56,7 @@ Mfcc::~Mfcc() {
       iter != mel_banks_.end();
       ++iter)
     delete iter->second;
-  if (srfft_ != NULL)
-    delete srfft_;
+  delete srfft_;
 }
 
 const MelBanks *Mfcc::GetMelBanks(BaseFloat vtln_warp) {
@@ -123,7 +122,8 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
       cols_out = opts_.num_ceps;
   if (rows_out == 0) {
     output->Resize(0, 0);
-    *wave_remainder = wave;
+    if (wave_remainder != NULL)
+      *wave_remainder = wave;
     return;
   }
   output->Resize(rows_out, cols_out);

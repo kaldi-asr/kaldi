@@ -230,7 +230,8 @@ class ConvolutionalComponent : public UpdatableComponent {
            ", lr-coef " + ToString(bias_learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_splice = input_dim_ / patch_stride_;
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
@@ -338,16 +339,17 @@ class ConvolutionalComponent : public UpdatableComponent {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
-    int32 num_splice = input_dim_ / patch_stride_;
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
     int32 num_filters = filters_.NumRows();
-    int32 num_frames = in.NumRows();
     int32 filter_dim = filters_.NumCols();
 
-    // backpropagate to vector of matrices (corresponding to position of a filter)
+    // backpropagate to vector of matrices
+    // (corresponding to position of a filter)
     for (int32 p=0; p<num_patches; p++) {
       CuSubMatrix<BaseFloat> patch_diff(feature_patch_diffs_.ColRange(
                                         p * filter_dim, filter_dim));
@@ -369,7 +371,8 @@ class ConvolutionalComponent : public UpdatableComponent {
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input,
+              const CuMatrixBase<BaseFloat> &diff) {
     // useful dims
     int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
     int32 num_filters = filters_.NumRows();
@@ -385,7 +388,8 @@ class ConvolutionalComponent : public UpdatableComponent {
     bias_grad_.Resize(num_filters, kSetZero); // reset
     // use all the patches
     for (int32 p=0; p<num_patches; p++) { // sum
-      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters, num_filters));
+      CuSubMatrix<BaseFloat> diff_patch(diff.ColRange(p * num_filters,
+                                                      num_filters));
       CuSubMatrix<BaseFloat> patch(vectorized_feature_patches_.ColRange(
                                    p * filter_dim, filter_dim));
       filters_grad_.AddMatMat(1.0, diff_patch, kTrans, patch, kNoTrans, 1.0);
@@ -417,8 +421,10 @@ class ConvolutionalComponent : public UpdatableComponent {
 
  private:
   int32 patch_dim_,    ///< number of consecutive inputs, 1st dim of patch
-        patch_step_,   ///< step of the convolution (i.e. shift between 2 patches)
-        patch_stride_; ///< shift for 2nd dim of a patch (i.e. frame length before splicing)
+        patch_step_,   ///< step of the convolution
+                       ///  (i.e. shift between 2 patches)
+        patch_stride_; ///< shift for 2nd dim of a patch
+                       ///  (i.e. frame length before splicing)
 
   CuMatrix<BaseFloat> filters_; ///< row = vectorized rectangular filter
   CuVector<BaseFloat> bias_; ///< bias for each filter

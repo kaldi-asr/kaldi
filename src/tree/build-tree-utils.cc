@@ -160,7 +160,7 @@ EventMap *DoTableSplitMultiple(const EventMap &orig, const std::vector<EventKeyT
     EventMap *cur = NULL;  // would make it &orig, except for const issues.
     for (size_t i = 0; i < keys.size(); i++) {
       EventMap *next = DoTableSplit( (cur ? *cur : orig), keys[i], stats, num_leaves);
-      if (cur != NULL) delete cur;  // delete intermediate maps.
+      delete cur;  // delete intermediate maps.
       cur = next;
     }
     return cur;
@@ -450,8 +450,8 @@ class DecisionTreeSplitter {
     FindBestSplit();
   }
   ~DecisionTreeSplitter() {
-    if (yes_) delete yes_;
-    if (no_) delete no_;
+    delete yes_;
+    delete no_;
   }
  private:
   void DoSplitInternal(int32 *next_leaf) {

@@ -124,7 +124,7 @@ void AccumAmDiagGmm::Read(std::istream &in_stream, bool binary,
     gmm_accumulators_.resize(num_pdfs, NULL);
     for (std::vector<AccumDiagGmm*>::iterator it = gmm_accumulators_.begin(),
              end = gmm_accumulators_.end(); it != end; ++it) {
-      if (*it != NULL) delete *it;
+      delete *it;
       *it = new AccumDiagGmm();
       (*it)->Read(in_stream, binary, add);
     }

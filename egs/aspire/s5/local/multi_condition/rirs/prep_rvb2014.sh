@@ -8,6 +8,7 @@
 
 download=true
 sampling_rate=8k
+output_bit=16
 DBname=RVB2014
 file_splitter=  #script to generate job scripts given the command file
 
@@ -57,7 +58,7 @@ echo "" > $log_dir/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${Reverb2014_home1}/RIR."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file | tr '[:upper:]' '[:lower:]'` 
-  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
   files_done=$((files_done + 1))
 done
@@ -69,7 +70,7 @@ echo "" > $log_dir/${DBname}_type${type_num}.noise.list
 echo "Found $total_files noises in ${Reverb2014_home1}/NOISE."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
-  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.noise.list
   files_done=$((files_done + 1))
 done
@@ -83,7 +84,7 @@ echo "" > $log_dir/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${Reverb2014_home2}/RIR."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
-  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
   files_done=$((files_done + 1))
 done
@@ -96,7 +97,7 @@ echo "" > $log_dir/${DBname}_type${type_num}.noise.list
 echo "Found $total_files noises in ${Reverb2014_home2}/NOISE."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file | tr '[:upper:]' '[:lower:]'`
-  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b 32 ${output_dir}/${output_file_name}" >> $command_file
+  echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.noise.list
   files_done=$((files_done + 1))
 done

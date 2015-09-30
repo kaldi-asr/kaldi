@@ -21,6 +21,7 @@ affix=
 hidden_dim=950
 num_threads_ubm=32
 use_sat_alignments=true
+fix_nnet=false
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -125,7 +126,7 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  steps/nnet2/train_multisplice_accel2_fix.sh --stage $train_stage \
+  steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
     --num-epochs 3 --num-jobs-initial 2 --num-jobs-final 12 \
     --num-hidden-layers 6 --splice-indexes "$splice_indexes" \
     --feat-type raw \
@@ -141,6 +142,7 @@ if [ $stage -le 10 ]; then
     --egs-dir "$common_egs_dir" \
     --pnorm-input-dim $hidden_dim \
     --pnorm-output-dim $hidden_dim \
+    --fix-nnet $fix_nnet \
     data/$mic/train_hires_sp data/lang ${gmm_dir}_sp_ali $dir  || exit 1;
 fi
 

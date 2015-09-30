@@ -94,26 +94,32 @@ void NnetComputation::ComputeCudaIndexes() {
   }
 }
 
-int32 NnetComputation::NewSubMatrix(int32 base_submatrix, int32 dim_offset,
-                                    int32 dim) {
+int32 NnetComputation::NewSubMatrix(int32 base_submatrix,
+                                    int32 row_offset, int32 num_rows,
+                                    int32 col_offset, int32 num_cols) {
   KALDI_ASSERT(base_submatrix > 0 &&
                static_cast<size_t>(base_submatrix) < submatrices.size());
   const SubMatrixInfo &base_info = submatrices[base_submatrix];
   int32 base_matrix = base_info.matrix_index;
-  int32 row_offset = base_info.row_offset, num_rows = base_info.num_rows,
-      col_offset = base_info.col_offset + dim_offset,
-      num_cols = dim;
   KALDI_ASSERT(base_matrix > 0 &&
                static_cast<size_t>(base_matrix) < matrices.size());
-  KALDI_ASSERT(col_offset >= 0 &&
-               col_offset + num_cols <= matrices[base_matrix].num_cols);
+  if (num_rows == -1) // we interpret this to mean 'as many as possible'.
+    num_rows = base_info.num_rows - row_offset;
+  if (num_cols == -1) // we interpret this to mean 'as many as possible'.
+    num_cols = base_info.num_cols - col_offset;
+  KALDI_ASSERT(row_offset + num_rows <= base_info.num_rows &&
+               col_offset + num_cols <= base_info.num_cols &&
+               row_offset >= 0 && col_offset >= 0 &&
+               num_rows > 0 && num_cols > 0);
+  int32 matrix_row_offset = base_info.row_offset + row_offset,
+      matrix_col_offset = base_info.col_offset + col_offset;
   int32 ans = submatrices.size();
   submatrices.push_back(
-      NnetComputation::SubMatrixInfo(base_matrix, row_offset, num_rows,
-                                     col_offset, num_cols));
+      NnetComputation::SubMatrixInfo(base_matrix, matrix_row_offset, num_rows,
+                                     matrix_col_offset, num_cols));
   return ans;
 }
-  
+
 int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
   KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
@@ -123,8 +129,16 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
   int32 matrix_index = matrices.size(),
       submatrix_index = submatrices.size();
   matrices.push_back(MatrixInfo(num_rows, num_cols));
+  if (!matrix_debug_info.empty())
+    matrix_debug_info.push_back(MatrixDebugInfo());
   submatrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
   return submatrix_index;
+}
+
+void NnetComputation::MatrixDebugInfo::Swap(
+    NnetComputation::MatrixDebugInfo *other) {
+  std::swap(is_deriv, other->is_deriv);
+  cindexes.swap(other->cindexes);
 }
 
 // outputs a string explaining the meaning each sub-matrix in vaguely
@@ -138,7 +152,7 @@ void NnetComputation::GetSubmatrixStrings(
   (*submat_strings)[0] = "[]";  // the empty matrix
   for (int32 i = 1; i < num_submatrices; i++) {
     const NnetComputation::SubMatrixInfo &submat = this->submatrices[i];
-    std::ostringstream os;    
+    std::ostringstream os;
     if (this->IsWholeMatrix(i)) {
       os << 'm' << submat.matrix_index;
     } else { // part of a range.
@@ -147,8 +161,8 @@ void NnetComputation::GetSubmatrixStrings(
          << submat.col_offset << ':' << (submat.col_offset + submat.num_cols - 1)
          << ')';
     }
-    (*submat_strings)[i] = os.str();    
-  }  
+    (*submat_strings)[i] = os.str();
+  }
 }
 
 // outputs a string containing a text form of each of the elements of the
@@ -167,41 +181,25 @@ static void GetIndexesStrings(const Nnet &nnet,
 }
 
 // outputs a string containing a text form of each of the elements of the
-// "indexes_multi" vector.  this requires a little care because the vectors of
-// pairs in indexes_multi can have a couple of different meanings.  If used in
-// kAddRowsMulti, KAddToRowsMulti, kCopyRowsMulti or kCopyToRowsMulti it's pairs
-// (sub-matrix index, row index).  Here, while the .first of each element refers
-// to a sub-matrix index, it's only the actual matrices that have names, so we
-// have to go back to the names of the actual matrices and maybe specify a
-// dimension range.  In a simple case it would be e.g. m1(1,:); in a harder case
-// it would be e.g. m1(2, 10:19).  Also the vectors in "indexes_multi" may be used
-// in commands of type kAddRowRange where each pair refers to a row range like
-// 10-19.  [note, the pair 10,20 would mean the range 10-19 and we print in
-// the 10-19 format].  We figure out how each vector is used and print the
-// string in the appropriate format.
+// "indexes_multi" vector.
 static void GetIndexesMultiStrings(
     const Nnet &nnet,
     const NnetComputation &computation,
     std::vector<std::string> *indexes_multi_strings) {
   int32 indexes_multi_size = computation.indexes_multi.size();
   indexes_multi_strings->resize(indexes_multi_size);
-  std::vector<bool> is_row_range(indexes_multi_size, false);
-  for (int32 c = 0; c < computation.commands.size(); c++)
-    if (computation.commands[c].command_type == NnetComputation::kAddRowRanges)
-      is_row_range[computation.commands[c].arg3] = true;
-  
+
   for (int32 i = 0; i < indexes_multi_size; i++) {
-    bool row_range = is_row_range[i];
     std::ostringstream os;
     os << "[";
     const std::vector<std::pair<int32, int32> > &vec =
         computation.indexes_multi[i];
     int32 size = vec.size();
     for (int32 j = 0; j < size; j++) {
-      if (row_range) {
-        os << vec[j].first << ":" << (vec[j].second - 1);
+      int32 submat_index = vec[j].first, row_index = vec[j].second;
+      if (submat_index == -1) {
+        os << "NULL";
       } else {
-        int32 submat_index = vec[j].first, row_index = vec[j].second;
         const NnetComputation::SubMatrixInfo &submat =
             computation.submatrices[submat_index];
         const NnetComputation::MatrixInfo &mat =
@@ -209,7 +207,17 @@ static void GetIndexesMultiStrings(
         int32 row = row_index + submat.row_offset;
         int32 col_start = submat.col_offset,
             col_end = col_start + submat.num_cols;
-        KALDI_ASSERT(row < mat.num_rows);
+        if (!(row_index < submat.num_rows &&
+              row < mat.num_rows)) {
+          KALDI_WARN << "Invalid indexes in indexes-multi[" << i
+                     << ": submatrix " << submat_index << " = m"
+                     << submat.matrix_index << "(" << submat.row_offset
+                     << ':' << (submat.row_offset + submat.num_rows - 1)
+                     << ',' << submat.col_offset << ':'
+                     << (submat.col_offset + submat.num_cols - 1) << ") has "
+                     << submat.num_rows << " rows, but you access row "
+                     << row_index;
+        }
         if (col_start == 0 && col_end == mat.num_cols)
           os << 'm' << submat.matrix_index << '(' << row << ",:)";
         else
@@ -226,7 +234,7 @@ static void GetIndexesMultiStrings(
 
 // writes to "os" the statement for this command.
 static void PrintCommand(std::ostream &os,
-                         const Nnet &nnet,                         
+                         const Nnet &nnet,
                          const NnetComputation &computation,
                          int32 command_index,
                          const std::vector<std::string> &submatrix_strings,
@@ -236,80 +244,101 @@ static void PrintCommand(std::ostream &os,
   os << "c" << command_index << ": ";
   const NnetComputation::Command &c = computation.commands[command_index];
   switch (c.command_type) {
-    case NnetComputation::kAllocMatrixZeroed:
+    case kAllocMatrixZeroed:
       os << "m" << c.arg1 << " = zeros("
          << computation.matrices[c.arg1].num_rows
          << ',' << computation.matrices[c.arg1].num_cols << ")\n";
       break;
-    case NnetComputation::kAllocMatrixUndefined:
+    case kAllocMatrixUndefined:
       os << "m" << c.arg1 << " = undefined("
          << computation.matrices[c.arg1].num_rows
          << ',' << computation.matrices[c.arg1].num_cols << ")\n";
       break;
-    case NnetComputation::kDeallocMatrix:
+    case kDeallocMatrix:
       os << "m" << c.arg1 << " = []\n";
-      break;      
-    case NnetComputation::kPropagate:
+      break;
+    case kAllocMatrixFromOther:
+      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
+         << computation.matrices[c.arg1].num_rows << " x "
+         << computation.matrices[c.arg1].num_cols << "]\n";
+      break;
+    case kAllocMatrixFromOtherZeroed:
+      os << "m" << c.arg1 << ".swap(m" << c.arg2 << ") [dim = "
+         << computation.matrices[c.arg1].num_rows << " x "
+         << computation.matrices[c.arg1].num_cols << "]; m"
+         << c.arg1 << ".zero();\n";
+      break;
+    case kPropagate:
       os << nnet.GetComponentName(c.arg1) << ".Propagate(";
       if (c.arg2 == 0) os << "NULL, ";
       else os << "precomputed_indexes[" << c.arg2 << "], ";
       os << submatrix_strings[c.arg3] << ", &" << submatrix_strings[c.arg4]
          << ")\n";
       break;
-    case NnetComputation::kStoreStats:
+    case kStoreStats:
       os << nnet.GetComponentName(c.arg1) << ".StoreStats("
          << submatrix_strings[c.arg2] << ")\n";
       break;
-    case NnetComputation::kBackprop: {
-      int32 component_index = nnet.GetNode(c.arg1).u.component_index;
+    case kBackprop:
+    case kBackpropNoModelUpdate: {
+      int32 component_index = c.arg1;
       os << nnet.GetComponentName(component_index) << ".Backprop(";
       if (c.arg2 == 0) os << "NULL, ";
       else os << "precomputed_indexes[" << c.arg2 << "], ";
       os << submatrix_strings[c.arg3] << ", "
          << submatrix_strings[c.arg4] << ", "
          << submatrix_strings[c.arg5] << ", "
-         << (computation.need_model_derivative ? "[component-pointer], &" :
-             "NULL, &")
-         << submatrix_strings[c.arg6] << ")\n";
+         << (computation.need_model_derivative &&
+             c.command_type == kBackprop ?
+             "[component-pointer], " : "NULL, ")
+         << (c.arg6 == 0 ? std::string("NULL") :
+             std::string("&") + submatrix_strings[c.arg6]) << ")\n";
       break;
     }
-    case NnetComputation::kMatrixCopy:
+    case kMatrixCopy:
       os << submatrix_strings[c.arg1] << " = "
          << submatrix_strings[c.arg2] << "\n";
       break;
-    case NnetComputation::kMatrixAdd:
+    case kMatrixAdd:
       os << submatrix_strings[c.arg1] << " += "
          << submatrix_strings[c.arg2] << "\n";
       break;
-    case NnetComputation::kAddRows:
-    case NnetComputation::kCopyRows:
+    case kAddRows:
+    case kCopyRows:
       os << submatrix_strings[c.arg1] << "."
-         << (c.command_type == NnetComputation::kAddRows ? "AddRows" :
+         << (c.command_type == kAddRows ? "AddRows" :
              "CopyRows") << "(" << submatrix_strings[c.arg2]
          << indexes_strings[c.arg3] << ")\n";
       break;
-    case NnetComputation::kAddRowsMulti:
-    case NnetComputation::kAddToRowsMulti:
-    case NnetComputation::kCopyRowsMulti:
-    case NnetComputation::kCopyToRowsMulti: {
-      NnetComputation::CommandType ct = c.command_type;
+    case kAddRowsMulti:
+    case kAddToRowsMulti:
+    case kCopyRowsMulti:
+    case kCopyToRowsMulti: {
+      CommandType ct = c.command_type;
       os << submatrix_strings[c.arg1] << "."
-         << (ct == NnetComputation::kAddRowsMulti ? "AddRowsMulti" :
-             (ct == NnetComputation::kAddToRowsMulti? "AddToRowsMulti" :
-              (ct == NnetComputation::kCopyRowsMulti ? "CopyRowsMulti" :
-               "CopyToRowsMulti"))) << "(" << submatrix_strings[c.arg2]
+         << (ct == kAddRowsMulti ? "AddRowsMulti" :
+             (ct == kAddToRowsMulti? "AddToRowsMulti" :
+              (ct == kCopyRowsMulti ? "CopyRowsMulti" :
+               "CopyToRowsMulti"))) << "("
          << indexes_multi_strings[c.arg2] << ")\n";
       break;
     }
-    case NnetComputation::kAddRowRanges:
+    case kAddRowRanges: {
       os << submatrix_strings[c.arg1] << ".AddRowRanges("
-          << submatrix_strings[c.arg2] << ", "
-          << indexes_multi_strings[c.arg2] << ")\n";
+         << submatrix_strings[c.arg2] << ", [";
+      const std::vector<std::pair<int32, int32> > &pairs =
+           computation.indexes_ranges[c.arg3];
+      for (size_t i = 0; i < pairs.size(); i++) {
+        os << pairs[i].first << ":" << (pairs[i].second - 1);
+        if (i + 1 < pairs.size()) os << ",";
+      }
+      os << "])\n";
       break;
-    case NnetComputation::kNoOperation:
+    }
+    case kNoOperation:
       os << "[no-op]\n";
       break;
-    case NnetComputation::kNoOperationMarker:
+    case kNoOperationMarker:
       os << "# begin backward commands\n";
       break;
     default:
@@ -325,7 +354,7 @@ static void PrintComputationPreamble(
     const std::vector<std::string> &submatrix_strings,
     const std::vector<std::string> &indexes_strings,
     const std::vector<std::string> &indexes_multi_strings) {
-  
+
   // First print info about the matrices.
   os << "matrix ";
   for (int32 i = 1; i < c.matrices.size(); i++) {
@@ -347,7 +376,7 @@ static void PrintComputationPreamble(
     if (deriv_matrix_index != 0) {
       os << nnet.GetNodeName(node_index) << ".deriv -> m"
          << deriv_matrix_index << "\n";
-    }    
+    }
   }
   if (!c.matrix_debug_info.empty()) {
     os << "# The following show how matrices correspond to network-nodes and\n"
@@ -358,13 +387,8 @@ static void PrintComputationPreamble(
     for (int32 i = 1; i < c.matrices.size(); i++) {
       const NnetComputation::MatrixDebugInfo &debug_info =
           c.matrix_debug_info[i];
-      if (debug_info.node_index == -1)  // was not set up for some reason.
-        continue;
-      KALDI_ASSERT(static_cast<size_t>(debug_info.node_index) < nnet.NumNodes());
-      os << "m" << i << " = " << nnet.GetNodeName(debug_info.node_index)
-         << "." << (debug_info.is_deriv ? "deriv" : "value");
-      // PrintIndexes will print the indexes inside [ ] brackets.
-      PrintIndexes(os, debug_info.indexes);
+      os << "m" << i << " == " << (debug_info.is_deriv ? "deriv: " : "value: ");
+      PrintCindexes(os, debug_info.cindexes, nnet.GetNodeNames());
       os << "\n";
     }
   }
@@ -383,7 +407,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
     PrintCommand(os, nnet, *this, c, submatrix_strings,
                  indexes_strings, indexes_multi_strings);
   }
-}  
+}
 
 void NnetComputation::GetCommandStrings(
     const Nnet &nnet,
@@ -412,7 +436,7 @@ void NnetComputation::GetCommandStrings(
       if (!str.empty())
         str.resize(str.size() - 1);
     }
-  }  
+  }
 }
 
 
@@ -514,7 +538,7 @@ NnetComputation& NnetComputation::operator = (const NnetComputation &other) {
     need_model_derivative = other.need_model_derivative;
     indexes_cuda = other.indexes_cuda;
     indexes_ranges_cuda = other.indexes_ranges_cuda;
-  
+
     for (size_t i = 0; i < component_precomputed_indexes.size(); i++)
       delete component_precomputed_indexes[i];
     component_precomputed_indexes.clear();

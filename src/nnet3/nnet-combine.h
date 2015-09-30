@@ -22,9 +22,10 @@
 
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-compute.h"
-#include "nnet3/nnet-diagnostics.h"
 #include "util/parse-options.h"
 #include "itf/options-itf.h"
+#include "nnet3/nnet-diagnostics.h"
+
 
 namespace kaldi {
 namespace nnet3 {
@@ -55,7 +56,7 @@ struct NnetCombineConfig {
                        enforce_positive_weights(false),
                        enforce_sum_to_one(false),
                        separate_weights_per_component(true) { }
-  
+
   void Register(OptionsItf *po) {
     po->Register("num-iters", &num_iters, "Maximum number of function "
                  "evaluations for BFGS to use when optimizing combination weights");
@@ -75,7 +76,7 @@ struct NnetCombineConfig {
     po->Register("separate-weights-per-component", &separate_weights_per_component,
                  "If true, have a separate weight for each updatable component in "
                  "the nnet.");
-  }  
+  }
 };
 
 
@@ -100,18 +101,22 @@ class NnetCombiner {
   void AcceptNnet(const Nnet &nnet);
   void Combine();
   const Nnet &GetNnet() const { return nnet_; }
+
+  ~NnetCombiner() { delete prob_computer_; }
  private:
   const NnetCombineConfig &config_;
 
   const std::vector<NnetExample> &egs_;
-  
+
   Nnet nnet_;  // The current neural network.
+
+  NnetComputeProb *prob_computer_;
 
   std::vector<int32> updatable_component_dims_;  // dimension of each updatable
                                                  // component.
 
   int32 num_real_input_nnets_;  // number of actual nnet inputs.
- 
+
   int32 num_nnets_provided_;  // keeps track of the number of calls to AcceptNnet().
 
   // nnet_params_ are the parameters of the "effective input"
@@ -124,7 +129,7 @@ class NnetCombiner {
   // and helps us normalize so each row of nnet_params correspondss to
   // a weighted average of its inputs.
   Vector<BaseFloat> tot_input_weighting_;
-  
+
   // returns the parameter dimension, i.e. the dimension of the parameters that
   // we are optimizing.  This depends on the config, the number of updatable
   // components and nnet_params_.NumRows(); it will never exceed the number of
@@ -140,7 +145,7 @@ class NnetCombiner {
   }
 
   int32 NnetParameterDim() const { return nnet_params_.NumCols(); }
-  
+
   // Computes the initial parameters.  The parameters are the underlying thing
   // that we optimize; their dimension equals ParameterDim().  They are not the same
   // thing as the nnet parameters.
@@ -152,10 +157,10 @@ class NnetCombiner {
   // Tests that model derivatives are accurate.  Just prints warning if not.
   void SelfTestModelDerivatives();
 
-  
+
   // prints the parameters via logging statements.
   void PrintParams(const VectorBase<BaseFloat> &params) const;
-  
+
   // This function computes the objective function (and its derivative, if the objective
   // function is finite) at the given value of the parameters (the parameters we're optimizing,
   // i.e. the combination weights; not the nnet parameters.  This function calls most of the
@@ -164,7 +169,7 @@ class NnetCombiner {
       VectorBase<BaseFloat> &params,
       VectorBase<BaseFloat> *params_deriv);
 
-  
+
   // Computes the weights from the parameters in a config-dependent way.  The
   // weight dimension is always (the number of updatable components times
   // nnet_params_.NumRows()).
@@ -202,7 +207,7 @@ class NnetCombiner {
   void GetUnnormalizedWeightsDeriv(const VectorBase<BaseFloat> &unnorm_weights,
                                    const VectorBase<BaseFloat> &norm_weights_deriv,
                                    VectorBase<BaseFloat> *unnorm_weights_deriv);
-  
+
 
   // Given a derivative w.r.t. the weights, outputs a derivative w.r.t.
   // the params
@@ -212,7 +217,7 @@ class NnetCombiner {
 
   void ComputeUpdatableComponentDims();
   void FinishPreprocessingInput();
-  
+
 };
 
 

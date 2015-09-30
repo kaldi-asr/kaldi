@@ -90,8 +90,8 @@ void NnetComputer::DebugBeforeExecute(int32 command,
     }
   }
   const NnetComputation::Command &c = computation_.commands[command];
-  if (c.command_type == NnetComputation::kBackprop) {
-    const Component *component = nnet_.GetComponentForNode(c.arg1);
+  if (c.command_type == kBackprop) {
+    const Component *component = nnet_.GetComponent(c.arg1);
     if (component->Properties() & kUpdatableComponent)
       info->components_parameter_stddev = ParameterStddev(*component);
   }
@@ -131,11 +131,10 @@ void NnetComputer::DebugAfterExecute(int32 command,
     }
   }
   const NnetComputation::Command &c = computation_.commands[command];
-  if (c.command_type == NnetComputation::kBackprop) {
-    const Component *component = nnet_.GetComponentForNode(c.arg1);
+  if (c.command_type == kBackprop) {
+    const Component *component = nnet_.GetComponent(c.arg1);
     if (component->Properties() & kUpdatableComponent) {
-      const std::string &component_name = nnet_.GetComponentName(
-          nnet_.GetNode(c.arg1).u.component_index);
+      const std::string &component_name = nnet_.GetComponentName(c.arg1);
       os << component_name << ": " << info.components_parameter_stddev
          << "->" << ParameterStddev(*component) << " ";
     }
@@ -148,20 +147,27 @@ void NnetComputer::ExecuteCommand(int32 command) {
   const NnetComputation::Command &c = computation_.commands[command];
   try {
     switch (c.command_type) {
-      case NnetComputation::kAllocMatrixZeroed:
+      case kAllocMatrixZeroed:
         matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
                                  computation_.matrices[c.arg1].num_cols,
                                  kSetZero);
         break;
-      case NnetComputation::kAllocMatrixUndefined:
+      case kAllocMatrixUndefined:
         matrices_[c.arg1].Resize(computation_.matrices[c.arg1].num_rows,
                                  computation_.matrices[c.arg1].num_cols,
                                  kUndefined);
         break;
-      case NnetComputation::kDeallocMatrix:
+      case kDeallocMatrix:
         matrices_[c.arg1].Resize(0, 0);
         break;
-      case NnetComputation::kPropagate: {
+      case kAllocMatrixFromOther:
+        matrices_[c.arg1].Swap(&(matrices_[c.arg2]));
+        break;
+      case kAllocMatrixFromOtherZeroed:
+        matrices_[c.arg1].Swap(&(matrices_[c.arg2]));
+        matrices_[c.arg1].SetZero();
+        break;
+      case kPropagate: {
         const Component *component = nnet_.GetComponent(c.arg1);
         ComponentPrecomputedIndexes *indexes =
             computation_.component_precomputed_indexes[c.arg2];
@@ -170,24 +176,24 @@ void NnetComputer::ExecuteCommand(int32 command) {
         component->Propagate(indexes, input, &output);
         break;
       }
-      case NnetComputation::kStoreStats: {
+      case kStoreStats: {
         KALDI_ASSERT(nnet_to_update_ != NULL);
         Component *upd_component = nnet_to_update_->GetComponent(c.arg1);
         CuSubMatrix<BaseFloat> output(GetSubMatrix(c.arg2));
         upd_component->StoreStats(output);
         break;
       }
-      case NnetComputation::kBackprop: {
-        int32 node_index = c.arg1;
+      case kBackprop:
+      case kBackpropNoModelUpdate:  {
         std::ostringstream debug_str;
-        KALDI_ASSERT(nnet_to_update_ != NULL);      
-        debug_str << "node " << node_index << '['
-                  << nnet_.GetNodeNames()[node_index] << ']';
-        const Component *component = nnet_.GetComponentForNode(c.arg1);
+        KALDI_ASSERT(nnet_to_update_ != NULL);
+        debug_str << nnet_.GetComponentName(c.arg1);
+        const Component *component = nnet_.GetComponent(c.arg1);
         KALDI_ASSERT(!(computation_.need_model_derivative && !nnet_to_update_));
         Component *upd_component = (nnet_to_update_ &&
+                                    c.command_type == kBackprop &&
                                     computation_.need_model_derivative ?
-                                    nnet_to_update_->GetComponentForNode(c.arg1) :
+                                    nnet_to_update_->GetComponent(c.arg1) :
                                     NULL);
         ComponentPrecomputedIndexes *indexes =
             computation_.component_precomputed_indexes[c.arg2];
@@ -200,68 +206,68 @@ void NnetComputer::ExecuteCommand(int32 command) {
                             c.arg6 == 0 ? NULL : &in_deriv);
         break;
       }
-      case NnetComputation::kMatrixCopy: {
-        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));      
+      case kMatrixCopy: {
+        CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         dest.CopyFromMat(src);
         break;
       }
-      case NnetComputation::kMatrixAdd: {
+      case kMatrixAdd: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         dest.AddMat(1.0, src);
         break;
       }
-      case NnetComputation::kAddRows: {
+      case kAddRows: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
         dest.AddRows(1.0, src, indexes);
         break;
       }
-      case NnetComputation::kCopyRows: {
+      case kCopyRows: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<int32> &indexes = computation_.indexes_cuda[c.arg3];
         dest.CopyRows(src, indexes);
         break;
       }
-      case NnetComputation::kCopyRowsMulti: {
+      case kCopyRowsMulti: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         CuArray<const BaseFloat*> pointers;
         GetPointers(c.arg2, dest.NumCols(), &pointers);
         dest.CopyRows(pointers);
         break;
       }
-      case NnetComputation::kCopyToRowsMulti: {
+      case kCopyToRowsMulti: {
         CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
         CuArray<BaseFloat*> pointers;
         GetPointers(c.arg2, src.NumCols(), &pointers);
         src.CopyToRows(pointers);
         break;
       }
-      case NnetComputation::kAddRowsMulti: {
+      case kAddRowsMulti: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         CuArray<const BaseFloat*> pointers;
         GetPointers(c.arg2, dest.NumCols(), &pointers);
         dest.AddRows(1.0, pointers);
         break;
       }
-      case NnetComputation::kAddToRowsMulti: {
+      case kAddToRowsMulti: {
         CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg1));
         CuArray<BaseFloat*> pointers;
         GetPointers(c.arg2, src.NumCols(), &pointers);
         src.AddToRows(1.0, pointers);
         break;
       }
-      case NnetComputation::kAddRowRanges: {
+      case kAddRowRanges: {
         CuSubMatrix<BaseFloat> dest(GetSubMatrix(c.arg1));
         const CuSubMatrix<BaseFloat> src(GetSubMatrix(c.arg2));
         const CuArray<Int32Pair> &pairs = computation_.indexes_ranges_cuda[c.arg3];
         dest.AddRowRanges(src, pairs);
         break;
       }
-      case NnetComputation::kNoOperation: case NnetComputation::kNoOperationMarker:
+      case kNoOperation: case kNoOperationMarker:
         break;
       default:
         KALDI_ERR << "Invalid command in computation";
@@ -304,20 +310,25 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
   // the map "lookup" maps from submatrix index to the Data()
   // pointer of that submatrix, and the corresponding Stride().
   unordered_map<int32, std::pair<BaseFloat*, int32> > lookup;
-  
+
   for (int32 i = 0; i < size; i++) {
     int32 submatrix_index = pairs[i].first, row = pairs[i].second;
-    unordered_map<int32, std::pair<BaseFloat*, int32> >::iterator
+    if (submatrix_index != -1) {
+      unordered_map<int32, std::pair<BaseFloat*, int32> >::iterator
+          iter = lookup.find(submatrix_index);
+      if (iter == lookup.end()) {
+        CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
+        lookup[submatrix_index] = std::pair<BaseFloat*, int32>(m.Data(),
+                                                               m.Stride());
         iter = lookup.find(submatrix_index);
-    if (iter == lookup.end()) {
-      CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
-      lookup[submatrix_index] = std::pair<BaseFloat*, int32>(m.Data(),
-                                                             m.Stride());
-      iter = lookup.find(submatrix_index);
+      }
+      BaseFloat *data = iter->second.first;
+      int32 stride = iter->second.second;
+      vec[i] = data + (row * stride);
+    } else {
+      // -1 is a marker that will be translated to NULL.
+      vec[i] = NULL;
     }
-    BaseFloat *data = iter->second.first;
-    int32 stride = iter->second.second;
-    vec[i] = data + (row * stride);
   }
 #ifdef KALDI_PARANOID
   for (int32 i = 0; i < size; i += 30 + RandInt(0, 9)) {
@@ -326,7 +337,7 @@ void NnetComputer::GetPointers(int32 indexes_multi_index,
     CuSubMatrix<BaseFloat> m = GetSubMatrix(submatrix_index);
     KALDI_ASSERT(row >= 0 && row < m.NumRows() && num_cols == m.NumCols());
   }
-#endif  
+#endif
   pointers->CopyFromVec(vec);
 }
 
@@ -343,7 +354,7 @@ void NnetComputer::Forward() {
   const std::vector<NnetComputation::Command> &c = computation_.commands;
   CommandDebugInfo info;
 
-  for (; i < size && c[i].command_type != NnetComputation::kNoOperationMarker;
+  for (; i < size && c[i].command_type != kNoOperationMarker;
        i++) {
     if (debug_)
       DebugBeforeExecute(i, &info);
@@ -351,7 +362,7 @@ void NnetComputer::Forward() {
     if (debug_)
       DebugAfterExecute(i, info);
   }
-    
+
 }
 
 
@@ -359,7 +370,7 @@ void NnetComputer::Backward() {
   CheckInputs(true);
   int32 size = computation_.commands.size(), i = 0;
   const std::vector<NnetComputation::Command> &c = computation_.commands;
-  for (; i < size && c[i].command_type != NnetComputation::kNoOperationMarker;
+  for (; i < size && c[i].command_type != kNoOperationMarker;
        i++);
   CommandDebugInfo info;
   for (; i < size; i++) {

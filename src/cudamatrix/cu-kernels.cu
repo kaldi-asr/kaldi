@@ -602,6 +602,36 @@ static void _add_mat_trans(Real alpha, const Real* src, Real* dst, MatrixDim d, 
 
 template<typename Real>
 __global__
+static void _add_mat_blocks(Real alpha, const Real* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, Real* dst, MatrixDim d, int src_stride) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j * d.stride;
+  int32_cuda index_src = i + j * src_stride;
+  if (i < d.cols && j < d.rows)
+    for (int32_cuda p = 0; p < num_row_blocks; p++) {
+      for (int32_cuda q = 0; q < num_col_blocks; q++) {
+        dst[index] = alpha * src[index_src + p * src_stride * d.rows + q * d.cols] + dst[index];
+      }
+    }
+}
+
+template<typename Real>
+__global__
+static void _add_mat_blocks_trans(Real alpha, const Real* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, Real* dst, MatrixDim d, int src_stride) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j * d.stride;
+  int32_cuda index_src = j + i * src_stride;
+  if (i < d.cols && j < d.rows)
+    for (int32_cuda p = 0; p < num_row_blocks; p++) {
+      for (int32_cuda q = 0; q < num_col_blocks; q++) {
+        dst[index] = alpha * src[index_src + p * src_stride * d.cols + q * d.rows] + dst[index];
+      }
+    }
+}
+
+template<typename Real>
+__global__
 static void _add_mat_mat_div_mat(const Real* A, const Real* B, const Real* C, Real* dst, MatrixDim d, int stride_a, 
                                  int stride_b, int stride_c) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1215,6 +1245,20 @@ static void _vec_apply_floor(Real *v, Real floor_val, float *count, int dim) {
   }
 }
 
+template<typename Real>
+__global__
+static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count, int dim) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  
+  if ( i < dim) {
+    if ( v[i] > ceiling_val) {
+      v[i] = ceiling_val;
+      count[i] = 1;
+    } else {
+      count[i] = 0;
+    }
+  }
+}
 
 // Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
 // this is for no reason, really, I just happened to prefer this
@@ -2315,6 +2359,14 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float* dst, 
   }
 }
 
+void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, float* dst, MatrixDim d, int src_stride, int A_trans) {
+  if (A_trans) {
+    _add_mat_blocks_trans<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride);
+  } else {
+    _add_mat_blocks<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride);
+  }
+}
+
 void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) {
   _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d, stride_a, stride_b, stride_c);
 }
@@ -2430,6 +2482,10 @@ void cudaF_vec_copy_diag_from_packed(int Gr, int Bl, float *dst, const float *sr
 
 void cudaF_vec_apply_floor(int Gr, int Bl, float* v, float floor_val, float *count, int dim) {
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
+}
+
+void cudaF_vec_apply_ceiling(int Gr, int Bl, float* v, float ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v, ceiling_val,count,dim);
 }
 
 void cudaF_vec_apply_exp(int Gr, int Bl, float* v, int dim) {
@@ -2774,6 +2830,14 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double* ds
   }
 }
 
+void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, double* dst, MatrixDim d, int src_stride, int A_trans) {
+  if (A_trans) {
+    _add_mat_blocks_trans<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride);
+  } else {
+    _add_mat_blocks<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride);
+  }
+}
+
 void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) {
   _add_mat_mat_div_mat<<<Gr,Bl>>>(A,B,C,dst,d,stride_a,stride_b,stride_c);
 }
@@ -2890,6 +2954,10 @@ void cudaD_vec_copy_diag_from_packed(int Gr, int Bl, double *dst, const double *
 
 void cudaD_vec_apply_floor(int Gr, int Bl, double* v, double floor_val, float *count, int dim) {
   _vec_apply_floor<<<Gr,Bl>>>(v,floor_val,count,dim);
+}
+
+void cudaD_vec_apply_ceiling(int Gr, int Bl, double* v, double ceiling_val, float *count, int dim) {
+  _vec_apply_ceiling<<<Gr,Bl>>>(v,ceiling_val,count,dim);
 }
 
 void cudaD_vec_apply_exp(int Gr, int Bl, double* v, int dim) {

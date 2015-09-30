@@ -486,8 +486,7 @@ void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
 
 void OnlineCacheFeature::ClearCache() {
   for (size_t i = 0; i < cache_.size(); i++)
-    if (cache_[i] != NULL)
-      delete cache_[i];
+    delete cache_[i];
   cache_.resize(0);
 }
 

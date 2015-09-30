@@ -71,21 +71,21 @@ inline void SetVerboseLevel(int32 i) { g_kaldi_verbose_level = i; }
 // class KaldiWarnMessage is invoked from the KALDI_WARN macro.
 class KaldiWarnMessage {
  public:
-  inline std::ostream &stream() { return ss; }
+  inline std::ostream &stream() { return ss_; }
   KaldiWarnMessage(const char *func, const char *file, int32 line);
-  ~KaldiWarnMessage()  { fprintf(stderr, "%s\n", ss.str().c_str()); }
+  ~KaldiWarnMessage();
  private:
-  std::ostringstream ss;
+  std::ostringstream ss_;
 };
 
 // class KaldiLogMessage is invoked from the KALDI_LOG macro.
 class KaldiLogMessage {
  public:
-  inline std::ostream &stream() { return ss; }
+  inline std::ostream &stream() { return ss_; }
   KaldiLogMessage(const char *func, const char *file, int32 line);
-  ~KaldiLogMessage() { fprintf(stderr, "%s\n", ss.str().c_str()); }
+  ~KaldiLogMessage();
  private:
-  std::ostringstream ss;
+  std::ostringstream ss_;
 };
 
 // Class KaldiVlogMessage is invoked from the KALDI_VLOG macro.
@@ -93,10 +93,10 @@ class KaldiVlogMessage {
  public:
   KaldiVlogMessage(const char *func, const char *file, int32 line,
                    int32 verbose_level);
-  inline std::ostream &stream() { return ss; }
-  ~KaldiVlogMessage() { fprintf(stderr, "%s\n", ss.str().c_str()); }
+  inline std::ostream &stream() { return ss_; }
+  ~KaldiVlogMessage() { fprintf(stderr, "%s\n", ss_.str().c_str()); }
  private:
-  std::ostringstream ss;
+  std::ostringstream ss_;
 };
 
 
@@ -105,10 +105,10 @@ class KaldiVlogMessage {
 class KaldiErrorMessage {
  public:
   KaldiErrorMessage(const char *func, const char *file, int32 line);
-  inline std::ostream &stream() { return ss; }
+  inline std::ostream &stream() { return ss_; }
   ~KaldiErrorMessage() KALDI_NOEXCEPT(false);  // defined in kaldi-error.cc
  private:
-  std::ostringstream ss;
+  std::ostringstream ss_;
 };
 
 

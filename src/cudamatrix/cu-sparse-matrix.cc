@@ -21,7 +21,7 @@
 
 #if HAVE_CUDA == 1
 #include <cuda_runtime_api.h>
-#include <cublas.h>
+#include <cublas_v2.h>
 #endif
 
 #include <utility>

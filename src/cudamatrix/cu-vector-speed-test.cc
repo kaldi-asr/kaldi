@@ -39,7 +39,7 @@ std::string NameOf() {
 }
 
 template<typename Real> void TestCuVectorSoftmax(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -57,7 +57,7 @@ template<typename Real> void TestCuVectorSoftmax(int32 dim) {
 
 
 template<typename Real> void TestCuVectorSum(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -75,7 +75,7 @@ template<typename Real> void TestCuVectorSum(int32 dim) {
 
 
 template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> M(dim);
   M.SetRandn();
 
@@ -99,7 +99,7 @@ template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
 template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
                                                        MatrixTransposeType transN,
                                                        MatrixTransposeType transO) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> v(dim);
   v.SetRandn();
   CuMatrix<Real> N(dim, dim), O(dim, dim);
@@ -108,7 +108,7 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
 
   Timer tim;
   int32 iter = 0;
-  
+
   for (;tim.Elapsed() < time_in_secs; iter++) {
     v.AddDiagMatMat(1.0, N, transN, O, transO, 1.0);
   }
@@ -123,7 +123,7 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
 
 
 template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeType trans) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.02;
   CuVector<Real> v(dim);
   v.SetRandn();
   CuMatrix<Real> N(dim, dim);
@@ -131,7 +131,7 @@ template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeT
 
   Timer tim;
   int32 iter = 0;
-  
+
   for (;tim.Elapsed() < time_in_secs; iter++) {
     v.AddDiagMat2(1.0, N, trans, 0.0);
   }
@@ -209,7 +209,7 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kTrans);
   }
-  for (int32 s = 0; s < ns; s++) { 
+  for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
     TestCuVectorAddDiagMat2<Real>(sizes[s], kTrans);
   }
@@ -221,7 +221,7 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddColSumMat<Real>(sizes[s], kNoTrans);
     TestCuVectorAddColSumMat<Real>(sizes[s], kTrans);
   }
-  
+
 }
 
 

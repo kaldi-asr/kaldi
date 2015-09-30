@@ -125,7 +125,7 @@ class CuVectorBase {
   void ApplyExp();
   void ApplyLog();
   MatrixIndexT ApplyFloor(Real floor_val);
-  void ApplyCeiling(Real ceiling_val);
+  MatrixIndexT ApplyCeiling(Real ceiling_val);
   void ApplyPow(Real power);
   Real Sum() const;
   void SetRandn();
@@ -215,6 +215,7 @@ class CuVectorBase {
   Real *data_; ///< GPU data pointer (or regular data pointer
                ///< if CUDA is not compiled in or we have no GPU).
   MatrixIndexT dim_; ///< dimension of the vector
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(CuVectorBase);
 };
