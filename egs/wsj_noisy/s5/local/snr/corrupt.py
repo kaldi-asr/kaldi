@@ -47,11 +47,14 @@ def wave_load(file):
     out = out / max_val
   return (framerate, out)
 
-def wav_write(file_handle, fs, data):
+def wav_write(file_handle, fs, data, normalize = 'True'):
   if str(data.dtype) in set(['float64', 'float32']):
     #rms_val = np.sqrt(np.mean(data * data))
     #data = (0.25 * data / rms_val ) * (2 ** 15)
-    data = (0.99 * data / np.max(np.abs(data))) * (2 ** 15)
+    if (normalize):
+      data = (0.99 * data / np.max(np.abs(data))) * (2 ** 15)
+    else:
+      data = np.clip(data, 0, 0.99) * (2 ** 15);
     data = data.astype('int16', copy = False)
   elif str(data.dtype) == 'int16':
     pass
@@ -59,16 +62,22 @@ def wav_write(file_handle, fs, data):
     raise Exception('Not implemented for '+str(data.dtype))
   scipy.io.wavfile.write(file_handle, fs, data)
 
-def corrupt(x, h, n, snr):
+def corrupt(x, h, n, snr, signal_db):
     # x : signal, single channel signal
     # h : room impulse response, can be multi-channel
     # n : noise signal, can be multi-channel (same as h)
     # snr : snr of the noise added signal
+    # signal_db : required clean signal power
+
+    direct_signal = x[1][:, 0] # make input single channel
+    x_power = float(np.mean(direct_signal**2))
+    direct_signal = direct_signal / np.sqrt(x_power) * (10 ** (signal_db / 20))
+    assert (abs(float(np.mean(direct_signal**2)) - signal_db) < 1e-10)
 
     # compute direct reverberation of the RIR
     fs = x[0]
     if h is not None:
-      x = x[1][:, 0] # make input single channel
+      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 20)) # make input single channel
       assert(h[0] == fs)
       h = h[1] # copy the samples from (sampling_rate, samples) tuple
       channel_one = h[:,0]
@@ -86,7 +95,7 @@ def corrupt(x, h, n, snr):
         y[:, channel] = signal.fftconvolve(x, h[:,channel])
     else:
       assert (n is not None)
-      x = x[1][:, 0] # make input single channel
+      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 10)) # make input single channel
       y = np.zeros([x.shape[0], n[1].shape[1]])
       for channel in xrange(n[1].shape[1]):
         y[:, channel] = x
@@ -125,6 +134,7 @@ if __name__ == "__main__":
   sys.stderr.write(str(" ".join(sys.argv)))
   main_parser = argparse.ArgumentParser(usage)
   main_parser.add_argument('--temp-file-name', type=str, default='temp.wav', help='file name of temp file to be used')
+  main_parser.add_argument('--normalize', type=str, default='true', choices=['true','True','false','False'], help='normalize wave while writing')
   main_parser.add_argument('input_file', type=str, help='file with list of wave files and corresponding corruption parameters')
   main_params = main_parser.parse_args()
   temp_file = main_params.temp_file_name
@@ -136,8 +146,10 @@ if __name__ == "__main__":
       parser.add_argument('--rir-file', type=str, help='file with the room impulse response')
       parser.add_argument('--noise-file', type=str, help='file with additive noise')
       parser.add_argument('--snr-db', type=float, default=20, help='desired SNR(dB) of the output')
+      parser.add_argument('--signal-db', type=float, default=-5, help='desired signal power (dB) of the clean signal')
       parser.add_argument('--multi-channel', type=str, default='False', help='is output multi-channel')
-      parser.add_argument('--clean-file', type=str, help='Write the clean file just before adding noise')
+      parser.add_argument('--out-clean-file', type=str, help='Write the clean file just before adding noise')
+      parser.add_argument('--out-noise-file', type=str, help='Write the noise file just before adding to clean')
       parser.add_argument('input_file', type=str, help='input-file')
       parser.add_argument('output_file', type=str, help='output-file')
 
@@ -179,10 +191,12 @@ if __name__ == "__main__":
       else:
         n = None
 
-      y,x_clean = corrupt(x, h, n, params.snr_db)
-      if params.clean_file is not None:
-        wav_write(params.clean_file, fs, x_clean)
-      wav_write(params.output_file, fs, y)
+      y,x_clean,x_noise = corrupt(x, h, n, params.snr_db, params.signal_db)
+      if params.out_clean_file is not None:
+        wav_write(params.out_clean_file, fs, x_clean, main_params.normalize)
+      if params.out_noise_file is not None:
+        wav_write(params.out_noise_file, fs, x_noise, main_params.normalize)
+      wav_write(params.output_file, fs, y, main_params.normalize)
       sys.stderr.write('Output signal : '+str(y.shape) + '\n')
       if hasattr(params.output_file, 'write'):
         params.output_file.flush()

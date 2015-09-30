@@ -45,7 +45,8 @@ if __name__ == "__main__":
                       help = 'process file only if output file does not exist', choices = ['True', 'true', 'False', 'false'])
   parser.add_argument('--random-seed', type = int, default = 0,
                       help = 'seed to be used in the randomization of corruption')
-  parser.add_argument('--clean-wav-scp-file', type=str, help='list file to write corrupted output before adding noise')
+  parser.add_argument('--clean-wav-scp-file', type=str, help='list file to write the clean output file before adding noise to create corrupted file')
+  parser.add_argument('--noise-wav-scp-file', type=str, help='list file to write the noise that is added to create the corrupted output file')
   parser.add_argument('wav_scp_file', type=str, help='wav.scp file to corrupt')
   parser.add_argument('output_wav_scp_file', type=str, help='list file to write corrupted output')
   parser.add_argument('impulses_noises_dir', type=str, help='directory with impulses and noises and info directory (e.g. created by local/multicondition/prep_rirs.sh)')
@@ -56,7 +57,10 @@ if __name__ == "__main__":
   snr_string_parts = params.snrs.split(':')
   if (len(snr_string_parts) == 1) and snr_string_parts[0] == "inf":
     add_noise = False
-  snrs = list_cyclic_iterator(params.snrs.split(':'))
+  snrs = list_cyclic_iterator(snr_string_parts, random_seed = params.random_seed)
+
+  signal_db_string_parts = params.signal_dbs.split(':')
+  signal_dbs = list_cyclic_iterator(signal_db_string_parts, random_seed = params.random_seed)
 
   if params.check_output_exists.lower() == 'true':
     params.check_output_exists = True
@@ -69,6 +73,9 @@ if __name__ == "__main__":
   if params.clean_wav_scp_file is not None:
     clean_wav_out_files = return_nonempty_lines(open(params.clean_wav_scp_file, 'r').readlines())
     assert(len(wav_files) == len(clean_wav_out_files))
+  if params.noise_wav_scp_file is not None:
+    noise_wav_out_files = return_nonempty_lines(open(params.noise_wav_scp_file, 'r').readlines())
+    assert(len(wav_files) == len(noise_wav_out_files))
   impulses = list_cyclic_iterator(return_nonempty_lines(open(params.impulses_noises_dir+'/info/impulse_files').readlines()), random_seed = params.random_seed)    # This list could be empty
   noises_impulses_files = glob.glob(params.impulses_noises_dir+'/info/noise_impulse_*')
   impulse_noise_index = []
@@ -104,11 +111,15 @@ if __name__ == "__main__":
       wav_file = " ".join(wav_files[i].split()[1:])   # Can be a pipe input
       output_wav_file = wav_out_files[i]              # An actual wave file
       clean_wav_file = ''
+      noise_wav_file = ''
       if params.clean_wav_scp_file is not None:
-        clean_wav_file = ''.join(['--clean-file ', clean_wav_out_files[i], ' '])
+        clean_wav_file = ''.join(['--out-clean-file ', clean_wav_out_files[i], ' '])
+      if params.noise_wav_scp_file is not None:
+        noise_wav_file = ''.join(['--out-noise-file ', noise_wav_out_files[i], ' '])
       impulse_file = impulses.next()                  # Can be None
       noise_file = ''
       snr = ''
+      signal_db = ''
       found_impulse = (impulse_file is not None)
       found_noise = False
       if add_noise:
@@ -116,22 +127,26 @@ if __name__ == "__main__":
           if impulse_file is None and not impulse_noise_index[i][0]:
             noise_file = impulse_noise_index[i][1].next()
             snr = snrs.next()
+            signal_db = signal_dbs.next()
             assert(len(wav_file.strip()) > 0)
             assert(len(noise_file.strip()) > 0)
             assert(len(snr.strip()) > 0)
+            assert(len(signal_db.strip() > 0)
             assert(len(output_wav_file.strip()) > 0)
-            command_list.append("{0} --noise-file {1} --snr-db {2} {3}- {4} \n".format(wav_file, noise_file, snr, clean_wav_file, output_wav_file))
+            command_list.append("{0} --noise-file {1} --snr-db {2} --signal-db {3} {4}{5}- {6} \n".format(wav_file, noise_file, snr, signal_db, clean_wav_file, noise_wav_file, output_wav_file))
             found_noise = True
             break
           if impulse_file in impulse_noise_index[i][0]:
             noise_file = impulse_noise_index[i][1].next()
             snr = snrs.next()
+            signal_db = signal_dbs.next()
             assert(len(wav_file.strip()) > 0)
             assert(len(impulse_file.strip()) > 0)
             assert(len(noise_file.strip()) > 0)
             assert(len(snr.strip()) > 0)
+            assert(len(signal_db.strip() > 0)
             assert(len(output_wav_file.strip()) > 0)
-            command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} {4}- {5} \n".format(wav_file, impulse_file, noise_file, snr, clean_wav_file, output_wav_file))
+            command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} --signal-db {4} {5}{6}- {7} \n".format(wav_file, impulse_file, noise_file, snr, signal_db, clean_wav_file, noise_wav_file, output_wav_file))
             found_impulse = True
             found_noise = True
             break
@@ -140,7 +155,7 @@ if __name__ == "__main__":
         assert(len(wav_file.strip()) > 0)
         assert(len(impulse_file.strip()) > 0)
         assert(len(output_wav_file.strip()) > 0)
-        command_list.append("{0} --rir-file {1} {3}- {2} \n".format(wav_file, impulse_file, clean_wav_file, output_wav_file))
+        command_list.append("{0} --rir-file {1} {2}{3}- {4} \n".format(wav_file, impulse_file, clean_wav_file, noise_wav_file, output_wav_file))
       if params.check_output_exists and exists_wavfile(output_wav_file):
         # we perform the check at this point to ensure replication of (wavfile, impulse, noise, snr) tuples across runs.
         command_list.pop()
