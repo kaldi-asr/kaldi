@@ -10,17 +10,16 @@ mic=sdm$micid
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it will exit on :
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
+AMI_DIR=$PWD/wav_db # Default,
+#AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV # BUT,
+#AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
 
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
@@ -53,9 +52,8 @@ fi
 
 if [ $stage -le 4 ]; then
   # Taking a subset, now unused, can be handy for quick experiments,
-  # Full set 77h, reduced set 9.5h,
-  local/remove_dup_utts.sh 20 data/$mic/train data/$mic/train_nodup # remvove uh-huh,
-  utils/subset_data_dir.sh --shortest data/$mic/train_nodup 30000 data/$mic/train_30k
+  # Full set 77h, reduced set 10.8h,
+  utils/subset_data_dir.sh data/$mic/train 15000 data/$mic/train_15k
 fi
 
 # Train systems,

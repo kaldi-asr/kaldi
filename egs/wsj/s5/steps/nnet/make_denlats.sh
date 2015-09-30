@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012-2013 Karel Vesely, Daniel Povey
+# Copyright 2012-2013 Brno University of Technology (author: Karel Vesely), Daniel Povey
 # Apache 2.0.
 
 # Create denominator lattices for MMI/MPE/sMBR training.
@@ -22,11 +22,14 @@ max_mem=20000000 # This will stop the processes getting too large.
 # End configuration section.
 use_gpu=no # yes|no|optional
 parallel_opts="--num-threads 2"
+ivector=         # rx-specifier with i-vectors (ark-with-vectors),
 
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 4 ]; then
    echo "Usage: steps/$0 [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
@@ -110,9 +113,21 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+# add-pytel transform (optional),
+[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
+
+# add-ivector (optional),
+if [ -e $D/ivector_dim ]; then
+  ivector_dim=$(cat $D/ivector_dim)
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
+  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
+  # Append to feats
+  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+fi
+
 # nnet-forward,
 feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
-#
 
 # if this job is interrupted by the user, we want any background jobs to be
 # killed too.

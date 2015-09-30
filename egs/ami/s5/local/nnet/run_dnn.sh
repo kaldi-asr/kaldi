@@ -14,13 +14,13 @@ stage=0 # resume training with --stage=N
 #
 
 if [ $# -ne 1 ]; then
-  printf "\nUSAGE: %s <mic condition(ihm|sdm|mdm)>\n\n" `basename $0`
+  printf "\nUSAGE: %s [opts] <mic condition(ihm|sdm|mdm)>\n\n" `basename $0`
   exit 1;
 fi
 mic=$1
 
 gmmdir=exp/$mic/tri4a
-data_fmllr=data-fmllr-tri4
+data_fmllr=data_${mic}-fmllr-tri4
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
@@ -102,13 +102,13 @@ if [ $stage -le 4 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 4 --acwt $acwt --do-smbr true \
     $data_fmllr/$mic/train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir
   # Decode (reuse HCLG graph)
-  for ITER in 4 3 2 1; do
+  for ITER in 4 1; do
     steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}
+      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      $graph_dir $data_fmllr/$mic/dev $dir/decode_dev_${LM}_it${ITER}
     steps/nnet/decode.sh --nj $nj_decode --cmd "$decode_cmd" --config conf/decode_dnn.conf \
-      --num-threads 3 --nnet $dir/${ITER}.nnet --acwt $acwt \
-      $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${LM}
+      --nnet $dir/${ITER}.nnet --acwt $acwt \
+      $graph_dir $data_fmllr/$mic/eval $dir/decode_eval_${LM}_it${ITER}
   done
 fi
 
