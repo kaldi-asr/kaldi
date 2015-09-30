@@ -133,4 +133,6 @@ exit 0
 # fisher 4gram rescoring,
 %WER 13.2 | 1831 21395 | 88.3 8.2 3.4 1.5 13.2 49.2 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_fsh_fg_it4/score_19_0.0/eval2000.ctm.swbd.filt.sys
 
-
+# nnet3 LSTM recipe local/nnet3/run_lstm.sh (30.09.2015), swbd subset
+%WER 16.8 | 1831 21395 | 84.8 10.4 4.7 1.6 16.8 54.3 | exp/nnet3/lstm_ld5/decode_eval2000_sw1_tg/score_10_0.0/eval2000.ctm.swbd.filt.sys
+%WER 15.7 | 1831 21395 | 85.6 9.6 4.8 1.3 15.7 52.8 | exp/nnet3/lstm_ld5/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000.ctm.swbd.filt.sys
