@@ -1098,12 +1098,13 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-        bias_stddev = 1.0, bias_mean = 0.0;
+        bias_stddev = 1.0, bias_mean = 0.0, bias_init = 0.0;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
     cfl->GetValue("bias-mean", &bias_mean);
+    cfl->GetValue("bias-init", &bias_init);
     Init(learning_rate, input_dim, output_dim, param_stddev,
-         bias_stddev, bias_mean, rank_in, rank_out, update_period,
+         bias_init, bias_mean, bias_stddev, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample);
   }
   if (cfl->HasUnusedValues())
@@ -1155,7 +1156,8 @@ void NaturalGradientAffineComponent::Init(
 void NaturalGradientAffineComponent::Init(
     BaseFloat learning_rate,
     int32 input_dim, int32 output_dim,
-    BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
+    BaseFloat param_stddev, BaseFloat bias_init,
+    BaseFloat bias_mean, BaseFloat bias_stddev,
     int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample) {
@@ -1166,9 +1168,13 @@ void NaturalGradientAffineComponent::Init(
                bias_stddev >= 0.0);
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
-  bias_params_.SetRandn();
-  bias_params_.Add(bias_mean);
-  bias_params_.Scale(bias_stddev);
+  if (bias_init != 0.0) {
+    bias_params_.Set(bias_init);
+  } else {
+    bias_params_.SetRandn();
+    bias_params_.Add(bias_mean);
+    bias_params_.Scale(bias_stddev);
+  }
   rank_in_ = rank_in;
   rank_out_ = rank_out;
   update_period_ = update_period;
