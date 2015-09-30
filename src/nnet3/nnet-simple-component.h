@@ -401,7 +401,8 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void Write(std::ostream &os, bool binary) const;
   void Init(BaseFloat learning_rate,
             int32 input_dim, int32 output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
+            BaseFloat param_stddev, BaseFloat bias_init,
+            BaseFloat bias_mean, BaseFloat bias_stddev,
             int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_sample);
