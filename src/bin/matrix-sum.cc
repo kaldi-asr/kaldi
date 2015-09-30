@@ -110,7 +110,8 @@ int32 TypeTwoUsage(const ParseOptions &po,
                "matrix-sum: first argument must be an rspecifier");
   // if next assert fails it would be bug in the code as otherwise we shouldn't
   // be called.
-  KALDI_ASSERT(ClassifyRspecifier(po.GetArg(2), NULL, NULL) == kNoRspecifier);
+  KALDI_ASSERT(ClassifyWspecifier(po.GetArg(2), NULL, NULL, NULL) == 
+               kNoWspecifier);
 
   SequentialBaseFloatMatrixReader mat_reader(po.GetArg(1));
 
@@ -152,11 +153,16 @@ int32 TypeTwoUsage(const ParseOptions &po,
 int32 TypeThreeUsage(const ParseOptions &po,
                      bool binary) {
   KALDI_ASSERT(po.NumArgs() >= 2);
-  for (int32 i = 1; i <= po.NumArgs(); i++) {
-    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier) {
+  for (int32 i = 1; i < po.NumArgs(); i++) {
+    if (ClassifyRspecifier(po.GetArg(i), NULL, NULL) != kNoRspecifier) {
       KALDI_ERR << "Wrong usage (type 3): if first and last arguments are not "
                 << "tables, the intermediate arguments must not be tables.";
     }
+  }
+  if (ClassifyWspecifier(po.GetArg(po.NumArgs()), NULL, NULL, NULL) != 
+      kNoWspecifier) {
+    KALDI_ERR << "Wrong usage (type 3): if first and last arguments are not "
+              << "tables, the intermediate arguments must not be tables.";
   }
 
   bool add = true;
@@ -218,19 +224,19 @@ int main(int argc, char *argv[]) {
     int32 N = po.NumArgs(), exit_status;
     
     if (po.NumArgs() >= 2 &&
-        ClassifyRspecifier(po.GetArg(N), NULL, NULL) != kNoRspecifier) {
+        ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) != kNoWspecifier) {
       // output to table.
       exit_status = TypeOneUsage(po, scale1, scale2);
     } else if (po.NumArgs() == 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
-               ClassifyRspecifier(po.GetArg(N), NULL, NULL) ==
-               kNoRspecifier) {
+               ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) ==
+               kNoWspecifier) {
       KALDI_ASSERT(scale1 == 1.0 && scale2 == 1.0);
       // input from a single table, output not to table.
       exit_status = TypeTwoUsage(po, binary);
     } else if (po.NumArgs() >= 2 &&
                ClassifyRspecifier(po.GetArg(1), NULL, NULL) == kNoRspecifier &&
-               ClassifyRspecifier(po.GetArg(N), NULL, NULL) == kNoRspecifier) {
+               ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) == kNoWspecifier) {
       KALDI_ASSERT(scale1 == 1.0 && scale2 == 1.0);
       // summing flat files.
       exit_status = TypeThreeUsage(po, binary);
