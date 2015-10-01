@@ -118,10 +118,10 @@ if [ $stage -le 6 ]; then
   utils/split_data.sh ${corrupted_data_dir}_fbank $nj
   utils/split_data.sh ${clean_data_dir}_fbank $nj
 
-  sleep 10
+  sleep 2
 
   mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj exp/$tmpdir/$tmpdir_${data_id}.JOB.log \
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     compute-snr-targets --target-type="FbankMask" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${corrupted_data_dir}_fbank/split$nj/JOB/feats.scp \
@@ -138,10 +138,10 @@ if [ $stage -le 7 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
-  sleep 10
+  sleep 2
 
   mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj exp/$tmpdir/$tmpdir_${data_id}.JOB.log \
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     compute-snr-targets --target-type="Irm" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
@@ -158,15 +158,15 @@ if [ $stage -le 8 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
-  sleep 10
+  sleep 2
 
   mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj exp/$tmpdir/$tmpdir_${data_id}.JOB.log \
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     vector-sum \
     "matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
     "matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+    ark:- \| vector-to-feat ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
-    #ark:- \| vector-scale --scale=-0.5 ark:- \
 
   for n in `seq $nj`; do
     cat $targets_dir/${data_id}.$n.scp
@@ -179,10 +179,10 @@ if [ $stage -le 9 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
-  sleep 10
+  sleep 2
 
   mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj exp/$tmpdir/$tmpdir_${data_id}.JOB.log \
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     compute-snr-targets --target-type="FbankMask" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
@@ -200,13 +200,13 @@ if [ $stage -le 10 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
-  sleep 10
+  sleep 2
 
   mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj exp/$tmpdir/$tmpdir_${data_id}.JOB.log \
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     matrix-sum --scale1=1.0 --scale2=-1.0 \
-    "compute-mfcc --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${clean_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
-    "compute-mfcc --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${noise_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
+    "ark:compute-mfcc-feats --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${clean_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
+    "ark:compute-mfcc-feats --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${noise_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
