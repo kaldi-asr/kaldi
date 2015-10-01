@@ -1,10 +1,18 @@
 #!/bin/bash
 
+# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
+#           2015  Vijayaditya Peddinti
+#           2015  Xingyu Na
+#           2015  Pegah Ghahrmani
+# Apache 2.0.
+
+
 # this is a basic lstm script
+# LSTM script runs for more epochs than the TDNN script
+# and each epoch takes twice the time
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call lstm/train.sh with --gpu false
-set -e
 
 stage=0
 train_stage=-10
@@ -13,6 +21,9 @@ mic=ihm
 use_sat_alignments=true
 affix=
 speed_perturb=true
+common_egs_dir=
+
+# LSTM options
 splice_indexes="-2,-1,0,1,2 0 0"
 label_delay=5
 num_lstm_layers=3
@@ -21,27 +32,31 @@ hidden_dim=1024
 recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
-chunk_left_context=20
+chunk_left_context=40
 clipping_threshold=30.0
 norm_based_clipping=true
-common_egs_dir=
 
 # natural gradient options
 ng_per_element_scale_options=
 ng_affine_options=
-num_epochs=5
+num_epochs=10
 
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=2
 num_jobs_final=12
-momentum=0.0
-shrink=0.99
+momentum=0.5
+adaptive_shrink=true
+shrink=0.98
 num_chunk_per_minibatch=100
 num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
+
+#decode options
+extra_left_context=
+frames_per_chunk=
 
 # End configuration section.
 
@@ -103,6 +118,7 @@ if [ $stage -le 8 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
+    --adaptive-shrink "$adaptive_shrink" \
     --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
@@ -123,15 +139,20 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information.
+  if [ -z $extra_left_context ]; then
+    extra_left_context=$chunk_left_context
+  fi
+  if [ -z $frames_per_chunk ]; then
+    frames_per_chunk=$chunk_width
+  fi
   for decode_set in dev eval; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       decode_dir=${dir}/decode_${decode_set}
 
       steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
-          --extra-left-context $chunk_left_context  \
+          --extra-left-context $extra_left_context  \
+          --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &

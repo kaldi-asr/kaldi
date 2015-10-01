@@ -22,6 +22,10 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+valid_left_context=   # amount of left_context for validation egs, typically used in
+                      # recurrent architectures to ensure matched condition with
+                      # training egs
+valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -54,7 +58,6 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
-
 
 if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <data> <ali-dir> <egs-dir>"
@@ -255,8 +258,9 @@ if [ $stage -le 2 ]; then
 fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
-valid_left_context=$((left_context + frames_per_eg))
-valid_right_context=$((right_context + frames_per_eg))
+
+[ -z $valid_left_context ] &&  valid_left_context=$left_context;
+[ -z $valid_right_context ] &&  valid_right_context=$right_context;
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
 
 echo $left_context > $dir/info/left_context
