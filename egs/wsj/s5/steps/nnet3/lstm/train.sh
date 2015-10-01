@@ -291,6 +291,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
+  extra_opts+=(--valid-left-context $((chunk_width + left_context)))
 
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
