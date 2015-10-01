@@ -258,7 +258,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
-  for id in $(seq $num_ali_jobs); do gunzip -c $latdir/lat.$id.gz; done | \
+  for id in $(seq $num_lat_jobs); do gunzip -c $latdir/lat.$id.gz; done | \
     lattice-copy ark:- ark,scp:$dir/lat.ark,$dir/lat.scp || exit 1;
 fi
 
@@ -287,7 +287,7 @@ if [ $stage -le 3 ]; then
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $valid_ivector_opt $egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
+    nnet3-ctc-get-egs $train_subset_ivector_opt $egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."

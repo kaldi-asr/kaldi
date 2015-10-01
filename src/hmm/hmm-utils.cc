@@ -590,7 +590,6 @@ void AddSelfLoops(const TransitionModel &trans_model,
 // code doesn't care what the answer is.
 // The "alignment" vector contains a sequence of TransitionIds.
 
-
 static bool IsReordered(const TransitionModel &trans_model,
                         const std::vector<int32> &alignment) {
   for (size_t i = 0; i+1 < alignment.size(); i++) {
@@ -707,9 +706,10 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const std::vector<int32> &old_alignment,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
+  static bool warned_topology = false;
   const HmmTopology &old_topo = old_trans_model.GetTopo(),
       &new_topo = new_trans_model.GetTopo();
-  static bool warned_topology = false;
+  bool is_reordered = IsReordered(old_trans_model, old_alignment);
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
   std::vector<std::vector<int32> > split;  // split into phones.
@@ -775,7 +775,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
             }
             pdf_class = 0;
             hmm_state = 0;
-            if (IsReordered(old_trans_model, split[central_pos]))
+            if (is_reordered)
               trans_idx = (j == 0 ? 1 : 0);
             else
               trans_idx = (j + 1 == static_cast<int32>(split[central_pos].size())

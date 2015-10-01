@@ -24,7 +24,7 @@ rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
 
-samples_per_iter=400000 # each iteration of training, see this many samples
+frames_per_iter=400000  # each iteration of training, see this many frames
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
@@ -67,7 +67,7 @@ transform_dir=     # If supplied, this dir used instead of latdir to find transf
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
-chunk_width=30  # number of frames of output per chunk.  To be passed on to get_egs.sh.
+frames_per_eg=25   # number of frames of output per chunk.  To be passed on to get_egs.sh.
 
 # End configuration section.
 
@@ -102,7 +102,7 @@ if [ $# != 5 ]; then
   echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
-  echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
+  echo "  --frames-per-iter <#frames|400000>               # Number of frames of data to process per iteration, per"
   echo "                                                   # process."
   echo "  --splice-indexes <string|layer0/-4:-3:-2:-1:0:1:2:3:4> "
   echo "                                                   # Frame indices used for each splice layer."
@@ -163,17 +163,17 @@ fi
 if  [ $stage -le -6 ]; then
   echo "$0: creating CTC transition model"
 
-  num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2) || exit 1;
+  num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2 | wc -l) || exit 1;
   # important not to mak
   $cmd $dir/log/init_trans_model.log \
     ctc-init-transition-model --num-phones=$num_phones \
        $alidir/tree \
-      'ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |' \
+      "ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |" \
        $dir/0.ctc_trans_mdl || exit 1;
 fi
 
 # work out num-leaves
-num_leaves=$(ctc-transition-model-info $dir/0.ctc_trans_mdl | grep '^num-output-indexes' | awk '{print $1}') || exit 1;
+num_leaves=$(ctc-transition-model-info $dir/0.ctc_trans_mdl | grep '^num-output-indexes' | awk '{print $2}') || exit 1;
 [ $num_leaves -gt 0 ] || exit 1;
 
 if [ $stage -le -5 ]; then
@@ -225,7 +225,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
-      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+      --frames-per-iter $frames_per_iter --stage $get_egs_stage \
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
