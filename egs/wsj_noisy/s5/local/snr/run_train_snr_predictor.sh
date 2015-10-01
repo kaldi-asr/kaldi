@@ -20,6 +20,7 @@ pnorm_input_dim=2000
 pnorm_output_dim=250
 train_data_dir=data/train_si284_corrupted_hires
 targets_scp=data/train_si284_corrupted_hires/snr_targets.scp
+max_change_per_sample=0.075
 egs_dir=
 dir=
 
@@ -29,9 +30,10 @@ dir=
 
 num_hidden_layers=`echo $splice_indexes | perl -ane 'print scalar @F'` || exit 1
 if [ -z "$dir" ]; then
-  dir=exp/nnet3_snr_predictor/nnet_tdnn_a_i${pnorm_input_dim}_o${pnorm_output_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
+  dir=exp/nnet3_snr_predictor/nnet_tdnn_a
 fi
 
+dir=${dir}_i${pnorm_input_dim}_o${pnorm_output_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1 
@@ -52,7 +54,7 @@ if [ $stage -le 8 ]; then
     --splice-indexes "$splice_indexes" \
     --feat-type raw --egs-dir "$egs_dir" \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "--max-jobs-run 12" \
+    --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" --nj 40 --objective-type quadratic \
     --pnorm-input-dim $pnorm_input_dim \
