@@ -78,8 +78,8 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 4 ]; then
-  echo "Usage: $0 [opts] <data> <lang> <ali-dir> <exp-dir>"
+if [ $# != 5 ]; then
+  echo "Usage: $0 [opts] <data> <lang> <ali-dir> <phone-lattice-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
   echo ""
   echo "Main options (for others, see top of script file)"
@@ -119,7 +119,8 @@ fi
 data=$1
 lang=$2
 alidir=$3
-dir=$4
+latdir=$4
+dir=$5 \
 
 
 # Check some files.
@@ -161,6 +162,18 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
+
+if  [ $stage -le -6 ]; then
+  echo "$0: creating CTC transition model"
+
+  num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2) || exit 1;
+  # important not to mak
+  $cmd $dir/log/init_trans_model.log \
+    ctc-init-transition-model --num-phones=$num_phones \
+       $alidir/tree \
+      'ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |' \
+       $dir/0.ctc_trans_mdl || exit 1;
+fi
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
@@ -215,7 +228,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $alidir $dir/egs || exit 1;
+      $data $dir/0.ctc_trans_mdl $alidir $dir/egs || exit 1;
 fi
 
 if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
@@ -277,13 +290,22 @@ fi
 if [ $stage -le -1 ]; then
   # Add the first layer; this will add in the lda.mat and
   # presoftmax_prior_scale.vec.
-  $cmd $dir/log/add_first_layer.log \
-       nnet3-init --srand=-3 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 
-  # Convert to .mdl, train the transitions, set the priors.
-  $cmd $dir/log/init_mdl.log \
-    nnet3-am-init $alidir/final.mdl $dir/0.raw - \| \
-    nnet3-am-train-transitions - "ark:gunzip -c $alidir/ali.*.gz|" $dir/0.mdl || exit 1;
+  echo "$0: creating initial raw model"
+  $cmd $dir/log/add_first_layer.log \
+       nnet3-init --srand=-1 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
+
+
+  # The model-format for a CTC acoustic model is just the CTC transition
+  # model and then the raw nnet, so we can use 'cat' to create this, as
+  # long as they have the same mode (binary or not binary).
+  # We ensure that they have the same mode (even if someone changed the
+  # script to make one or both of them text mode) by copying them both
+  # before concatenating them.
+
+  echo "$0: creating initial model"
+  cat <(ctc-copy-transition-model  $dir/0.trans_mdl -)\
+      <(nnet3-copy $dir/0.raw -) > dir/0.mdl
 fi
 
 

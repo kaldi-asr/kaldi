@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "The phone-sequences are used to train a language model.\n"
         "e.g.:\n"
         "gunzip -c input_dir/ali.*.gz | ali-to-phones input_dir/final.mdl ark:- ark:- | \\\n"
-        "  cctc-init-transition-model --num-phones=43 dir/left_context_tree ark:- dir/cctc.trans_mdl\n"
+        "  ctc-init-transition-model --num-phones=43 dir/left_context_tree ark:- dir/cctc.trans_mdl\n"
         "Note: the --num-phones option is required (it should equal the highest-numbered\n"
         "'real' phone, i.e. not including disambiguation symbols #0, #1, ...)\n";
     
