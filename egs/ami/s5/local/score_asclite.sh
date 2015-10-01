@@ -107,7 +107,7 @@ if [ $stage -le 2 ]; then
       cp $ascore/${oname}.ctm.filt.alignments/index.html $ascore/${oname}.ctm.filt.overlap.html
       tar -C $ascore -czf $ascore/${oname}.ctm.filt.alignments.tar.gz ${oname}.ctm.filt.alignments
       rm -r $ascore/${oname}.ctm.filt.alignments
-      echo -n "$LMWT "
+      echo -n "LMWT:$LMWT "
     done
     echo done
   else
