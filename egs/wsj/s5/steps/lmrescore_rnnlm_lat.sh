@@ -24,7 +24,7 @@ if [ $# != 5 ]; then
    echo ""
    echo "Usage: $0 [options] <rnnlm-dir> <old-lang-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
-   echo " e.g.: $0 rnnlm data/lang_tg data/test \\"
+   echo " e.g.: $0 ./rnnlm data/lang_tg data/test \\"
    echo "                   exp/tri3/test_tg exp/tri3/test_rnnlm"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;
@@ -52,10 +52,11 @@ fi
   echo "$0: Missing file $rnnlm_dir/unk.probs" && exit 1;
 [ ! -f $oldlang/words.txt ] &&\
   echo "$0: Missing file $oldlang/words.txt" && exit 1;
-[ $(echo "$weight < 0 || $weight > 1" | bc) -eq 1 ] &&\
-  echo "$0: Interpolation weight should be in the range of [0, 1]" && exit 1;
 ! ls $indir/lat.*.gz >/dev/null &&\
   echo "$0: No lattices input directory $indir" && exit 1;
+awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
+  print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
+  || exit 1;
 
 oldlm_command="fstproject --project_output=true $oldlm |"
 
@@ -65,7 +66,7 @@ mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
-oldlm_weight=$(echo "-1 * $weight" | bc -l)
+oldlm_weight=`perl -e "print -1.0 * $weight;"`
 if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
