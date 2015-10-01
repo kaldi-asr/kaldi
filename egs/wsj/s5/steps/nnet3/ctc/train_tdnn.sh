@@ -63,7 +63,7 @@ egs_dir=
 max_lda_jobs=20  # use no more than 20 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
-transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
+transform_dir=     # If supplied, this dir used instead of latdir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
@@ -79,7 +79,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-  echo "Usage: $0 [opts] <data> <lang> <ali-dir> <phone-lattice-dir> <exp-dir>"
+  echo "Usage: $0 [opts] <data> <lang> <left-context-ali-dir> <phone-lattice-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
   echo ""
   echo "Main options (for others, see top of script file)"
@@ -120,20 +120,17 @@ data=$1
 lang=$2
 alidir=$3
 latdir=$4
-dir=$5 \
+dir=$5
 
 
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree; do
+for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/tree \
+    $latdir/lat.1.gz $latdir/final.mdl $latdir/num_jobs $latdir/splice_opts; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
 
 # Set some variables.
-num_leaves=`tree-info $alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1
-[ -z $num_leaves ] && echo "\$num_leaves is unset" && exit 1
-[ "$num_leaves" -eq "0" ] && echo "\$num_leaves is 0" && exit 1
-
 nj=`cat $alidir/num_jobs` || exit 1;  # number of jobs in alignment dir...
 
 sdata=$data/split$nj
@@ -175,6 +172,10 @@ if  [ $stage -le -6 ]; then
        $dir/0.ctc_trans_mdl || exit 1;
 fi
 
+# work out num-leaves
+num_leaves=$(ctc-transition-model-info $dir/0.ctc_trans_mdl | grep '^num-output-indexes' | awk '{print $1}') || exit 1;
+[ $num_leaves -gt 0 ] || exit 1;
+
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
@@ -190,7 +191,7 @@ if [ $stage -le -5 ]; then
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
      $dim_opts \
-    --num-targets  $num_leaves  \
+    --num-targets $num_leaves  \
    $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
@@ -212,7 +213,7 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
-[ -z "$transform_dir" ] && transform_dir=$alidir
+[ -z "$transform_dir" ] && transform_dir=$latdir
 
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
@@ -228,7 +229,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $dir/0.ctc_trans_mdl $alidir $dir/egs || exit 1;
+      $data $lang $dir/0.ctc_trans_mdl $latdir $dir/egs || exit 1;
 fi
 
 if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then

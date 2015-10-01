@@ -49,11 +49,9 @@ int main(int argc, char *argv[]) {
     
     CctcTransitionModel trans_model;
     ReadKaldiObject(ctc_trans_model_rxfilename, &trans_model);
-    
-    WriteKaldiObject(trans_model, ctc_trans_model_wxfilename, binary_write);
-    KALDI_LOG << "Copied CTC transition model from "
-              << ctc_trans_model_rxfilename << " to "
-              << ctc_trans_model_wxfilename;
+
+    std::cout << trans_model.Info();
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

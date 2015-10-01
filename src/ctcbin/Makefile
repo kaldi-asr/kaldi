@@ -7,7 +7,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = ctc-init-transition-model ctc-copy-transition-model \
-    ctc-get-supervision \
+    ctc-get-supervision ctc-transition-model-info \
 	nnet3-ctc-get-egs nnet3-ctc-copy-egs nnet3-ctc-subset-egs \
     nnet3-ctc-shuffle-egs nnet3-ctc-merge-egs nnet3-ctc-train \
     nnet3-ctc-copy nnet3-ctc-info nnet3-ctc-compute-prob \

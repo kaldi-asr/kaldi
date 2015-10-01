@@ -7,7 +7,7 @@
 # (and also the validation examples used for diagnostics), and puts them in
 # separate archives.
 #
-# This script dumps nnet3+ctc egs with many frames of labels, controlled by the
+# This script dumps egs with many frames of labels, controlled by the
 # frames_per_eg config variable (default: 25), plus left and right context.
 # Because CTC training involves alignment of data, we can't meaningfully train
 # frame by frame.   The supervision approach involves the time alignment, though--
@@ -44,7 +44,7 @@ frames_per_iter=400000 # each iteration of training, see this many frames
                        # that divides the number of samples in the entire data.
 ctc_supervision_opts=
 
-transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
+transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
 stage=0
 nj=6         # This should be set to the maximum number of jobs you are
@@ -99,7 +99,7 @@ dir=$5
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
-for f in $data/feats.scp $alidir/ali.1.gz $latdir/final.mdl $alidir/tree $lang/phones.txt $trans_mdl $extra_files; do
+for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl $lang/phones.txt $trans_mdl $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -107,7 +107,6 @@ sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
 mkdir -p $dir/log $dir/info
-cp $alidir/tree $dir
 
 num_lat_jobs=$(cat $latdir/num_jobs) || exit 1;
 
@@ -129,7 +128,7 @@ fi
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
-[ -z "$transform_dir" ] && transform_dir=$alidir
+[ -z "$transform_dir" ] && transform_dir=$latdir
 
 # because we'll need the features with a different number of jobs than $latdir,
 # copy to ark,scp.
@@ -272,7 +271,7 @@ ctc_supervision_all_opts="$ctc_supervision_opts --lattice-input=true --silence-p
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
-num_pdfs=$(tree-info --print-args=false $alidir/tree | grep num-pdfs | awk '{print $2}')
+
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
