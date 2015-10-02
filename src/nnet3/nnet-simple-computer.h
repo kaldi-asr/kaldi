@@ -84,7 +84,7 @@ class NnetSimpleComputer {
                      const MatrixBase<BaseFloat> &feats,
                      const VectorBase<BaseFloat> *ivector = NULL,
                      const MatrixBase<BaseFloat> *online_ivectors = NULL,
-                     int32 online_ivector_period = NULL);
+                     int32 online_ivector_period = 1);
 
   /// Constructor that also accepts iVectors estimated online;
   /// online_ivector_period is the time spacing between rows of the matrix.
@@ -106,16 +106,6 @@ class NnetSimpleComputer {
   // This call is made to ensure that we have the log-probs for this frame
   // cached in current_log_post_.
   void EnsureFrameIsComputed(int32 frame);
-
-  // This function does the actual nnet computation; it is called from
-  // EnsureFrameIsComputed.  Any padding at file start/end is done by
-  // the caller of this function (so the input should exceed the output
-  // by a suitable amount of context).  It puts its output in current_log_post_.
-  void DoNnetComputation(int32 input_t_start,
-    const MatrixBase<BaseFloat> &input_feats,
-    const VectorBase<BaseFloat> &ivector,
-    int32 output_t_start,
-    int32 num_output_frames);
 
   // This function does the internal computations in the 
   // actual nnet computation; it is called from
@@ -166,6 +156,15 @@ class NnetSimpleComputer {
   Matrix<BaseFloat> current_log_post_;
   // The time-offset of the current log-posteriors. 
   int32 current_log_post_offset_;
+ 
+ private:
+  // This function does the actual nnet computation; it is called from
+  // EnsureFrameIsComputed. It puts its output in current_log_post_.
+  void DoNnetComputation(int32 input_t_start,
+    const MatrixBase<BaseFloat> &input_feats,
+    const VectorBase<BaseFloat> &ivector,
+    int32 output_t_start,
+    int32 num_output_frames);
   
   int32 left_context_;
   int32 right_context_;
