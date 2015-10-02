@@ -39,9 +39,11 @@ num_utts_subset=300     # number of utterances in validation and training
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
-samples_per_iter=400000 # each iteration of training, see this many samples
-                        # per job.  This is just a guideline; it will pick a number
-                        # that divides the number of samples in the entire data.
+samples_per_iter=400000 # this is the target number of egs in each archive of egs
+                        # (prior to merging egs).  We probably should have called
+                        # it egs_per_iter. This is just a guideline; it will pick
+                        # a number that divides the number of samples in the
+                        # entire data.
 
 transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
 
@@ -211,7 +213,6 @@ while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
   reduced=true
 done
 $reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of data is small."
-
 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
