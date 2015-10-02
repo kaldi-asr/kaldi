@@ -23,10 +23,10 @@ adaptive_shrink=true     # if true, the shrink value is increased to 1 with a ra
 shrink=0.98  # this parameter would be used to scale the parameter matrices
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
-samples_per_iter=20000 # each iteration of training, see this many samples
-                       # per job.  This option is passed to get_egs.sh
-                       # this is substantially smaller than of that used for FF-DNN
-                       # as multiple output labels are processed in each sample
+samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
+                       # 'chunk_width' frames in it-- for chunk_width=20, this value (20k)
+                       # is equivalent to the 400k number that we use as a default in
+                       # regular DNN training.
 num_jobs_initial=1 # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
