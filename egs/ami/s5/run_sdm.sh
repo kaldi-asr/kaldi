@@ -24,7 +24,7 @@ final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
 # Download AMI corpus (distant channels), You need arount 130GB of free space to get whole data ihm+mdm,
-if [ $stage -le 0 ]; then
+if [ $stage -le 1 ]; then
   [ -e data/local/downloads/wget_sdm.sh ] && \
     echo "$data/local/downloads/wget_sdm.sh already exists, better quit than re-download... (use --stage N)" && \
     exit 1
