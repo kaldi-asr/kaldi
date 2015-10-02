@@ -1,4 +1,4 @@
-// cudamatrix/cu-sp-matrix-test.cc
+// cudamatrix/cu-tp-matrix-test.cc
 //
 // Copyright 2013  Ehsan Variani
 //                 Lucas Ondel

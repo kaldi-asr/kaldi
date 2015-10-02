@@ -1,4 +1,4 @@
-// lat/kaldi-kws.h
+// kws/kaldi-kws.h
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 

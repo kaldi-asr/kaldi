@@ -1,4 +1,4 @@
-// gmmbin/gmm-latgen-faster.cc
+// gmmbin/gmm-latgen-faster-regtree-fmllr.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (author: Daniel Povey)

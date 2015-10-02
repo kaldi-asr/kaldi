@@ -1,4 +1,4 @@
-// util/simple-options.hh
+// util/simple-options.h
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 

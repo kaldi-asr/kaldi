@@ -1,4 +1,4 @@
-// cudamatrix/cu-matrix-speed-test.cc
+// cudamatrix/cu-sp-matrix-speed-test.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 

@@ -1,4 +1,4 @@
-// featbin/transform-vec.cc
+// bin/transform-vec.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
