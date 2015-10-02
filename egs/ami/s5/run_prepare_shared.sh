@@ -3,12 +3,14 @@
 . ./cmd.sh
 . ./path.sh
 
-
 # Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
-#FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 # Edinburgh,
-#FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1 # JHU,
-#FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran # BUT,
-FISHER_TRANS=/export/ws15-ffs-data/corpora/LDC/LDC2004T19/fe_03_p1_tran # JSALT2015 workshop, cluster AWS-EC2,
+case $(hostname -d) in 
+  fit.vutbr.cz) FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran ;; # BUT,
+  clsp.jhu.edu) FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1 ;; # JHU,
+  cstr.ed.ac.uk) FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 ;; # Edinburgh,
+esac
+# Or select manually,
+# FISHER_TRANS=...
 
 . utils/parse_options.sh 
 

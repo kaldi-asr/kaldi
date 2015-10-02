@@ -15,15 +15,19 @@ stage=0
 set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default,
-#AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV # BUT,
-#AMI_DIR=/export/ws15-ffs-data/corpora/ami # JSALT2015 workshop, cluster AWS-EC2,
+AMI_DIR=$PWD/wav_db # Default, 
+case $(hostname -d) in 
+  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
+  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
+esac
 
 [ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
 # Download AMI corpus, You need arount 130GB of free space to get whole data ihm+mdm,
+# Avoiding re-download, using 'wget --continue ...',
 if [ $stage -le 0 ]; then
   [ -e data/local/downloads/wget_$mic.sh ] && \
     echo "$data/local/downloads/wget_$mic.sh already exists, better quit than re-download... (use --stage N)" && \
