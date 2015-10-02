@@ -60,7 +60,7 @@ class KaldiRnnlmWrapper {
                        std::vector<BaseFloat> *context_out);
 
  private:
-  CRnnLM rnnlm_;
+  rnnlm::CRnnLM rnnlm_;
   std::vector<std::string> label_to_word_;
   int32 eos_;
 

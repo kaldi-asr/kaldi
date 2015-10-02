@@ -52,24 +52,25 @@
 #ifndef KALDI_LM_MIKOLOV_RNNLM_LIB_H_
 #define KALDI_LM_MIKOLOV_RNNLM_LIB_H_
 
-#define MAX_STRING 100
-#define MAX_FILENAME_STRING 300
-
 #include <string>
 #include <vector>
 #include "util/stl-utils.h"
 
-typedef double real;		//  doubles for NN weights
-typedef double direct_t;	//  doubles for ME weights;
-//  TODO: check why floats are not enough for RNNME (convergence problems)
+namespace rnnlm {
+
+#define MAX_STRING 100
+#define MAX_FILENAME_STRING 300
+
+typedef double real;      //  doubles for NN weights
+typedef double direct_t;  //  doubles for ME weights;
 
 struct neuron {
-  real ac;		// actual value stored in neuron
-  real er;		// error value in neuron, used by learning algorithm
+  real ac;    // actual value stored in neuron
+  real er;    // error value in neuron, used by learning algorithm
 };
 
 struct synapse {
-  real weight;	// weight of synapse
+  real weight;  // weight of synapse
 };
 
 struct vocab_word {
@@ -91,9 +92,9 @@ const unsigned int PRIMES_SIZE  =  sizeof(PRIMES) / sizeof(PRIMES[0]);
 
 const int MAX_NGRAM_ORDER = 20;
 
-enum FileTypeEnum {TEXT, BINARY, COMPRESSED}; //  COMPRESSED not yet implemented
+enum FileTypeEnum {TEXT, BINARY, COMPRESSED};  // COMPRESSED not yet implemented
 
-class CRnnLM{
+class CRnnLM {
  protected:
   char train_file[MAX_FILENAME_STRING];
   char valid_file[MAX_FILENAME_STRING];
@@ -156,17 +157,17 @@ class CRnnLM{
 
   int independent;
 
-  struct neuron *neu0;		// neurons in input layer
-  struct neuron *neu1;		// neurons in hidden layer
-  struct neuron *neuc;		// neurons in hidden layer
-  struct neuron *neu2;		// neurons in output layer
+  struct neuron *neu0;    // neurons in input layer
+  struct neuron *neu1;    // neurons in hidden layer
+  struct neuron *neuc;    // neurons in hidden layer
+  struct neuron *neu2;    // neurons in output layer
 
-  struct synapse *syn0;		// weights between input and hidden layer
-  struct synapse *syn1;		// weights between hidden and output layer
-                            // (or hidden and compression if compression>0)
-  struct synapse *sync;		// weights between hidden and compression layer
-  direct_t *syn_d;		// direct parameters between input and output layer
-                        // (similar to Maximum Entropy model parameters)
+  struct synapse *syn0;   // weights between input and hidden layer
+  struct synapse *syn1;   // weights between hidden and output layer
+                          // (or hidden and compression if compression>0)
+  struct synapse *sync;   // weights between hidden and compression layer
+  direct_t *syn_d;        // direct parameters between input and output layer
+                          // (similar to Maximum Entropy model parameters)
 
   // backup used in training:
   struct neuron *neu0b;
@@ -189,152 +190,27 @@ class CRnnLM{
 
   int alpha_set, train_file_set;
 
-  CRnnLM()		// constructor initializes variables
-  {
-    version = 10;
-    filetype = TEXT;
+  CRnnLM();
 
-    use_lmprob = 0;
-    gradient_cutoff = 15;
-    dynamic = 0;
-
-    train_file[0] = 0;
-    valid_file[0] = 0;
-    test_file[0] = 0;
-    rnnlm_file[0] = 0;
-
-    alpha_set = 0;
-    train_file_set = 0;
-
-    alpha = 0.1;
-    beta = 0.0000001;
-    // beta = 0.00000;
-    alpha_divide = 0;
-    logp = 0;
-    llogp = -100000000;
-    iter = 0;
-
-    min_improvement = 1.003;
-
-    train_words = 0;
-    vocab_max_size = 100;
-    vocab_size = 0;
-    vocab = (struct vocab_word *)calloc(vocab_max_size,
-                                        sizeof(struct vocab_word));
-
-    layer1_size = 30;
-
-    direct_size = 0;
-    direct_order = 0;
-
-    bptt = 0;
-    bptt_block = 10;
-    bptt_history = NULL;
-    bptt_hidden = NULL;
-    bptt_syn0 = NULL;
-
-    gen = 0;
-
-    independent = 0;
-
-    neu0 = NULL;
-    neu1 = NULL;
-    neuc = NULL;
-    neu2 = NULL;
-
-    syn0 = NULL;
-    syn1 = NULL;
-    sync = NULL;
-    syn_d = NULL;
-    syn_db = NULL;
-    // backup
-    neu0b = NULL;
-    neu1b = NULL;
-    neucb = NULL;
-    neu2b = NULL;
-
-    neu1b2 = NULL;
-
-    syn0b = NULL;
-    syn1b = NULL;
-    syncb = NULL;
-    // 
-
-    rand_seed = 1;
-
-    class_size = 100;
-    old_classes = 0;
-
-    srand(rand_seed);
-
-    vocab_hash_size = 100000000;
-    vocab_hash  =  (int *)calloc(vocab_hash_size, sizeof(int));
-  }
-
-  ~CRnnLM()		// destructor, deallocates memory
-  {
-    int i;
-
-    if (neu0 != NULL) {
-      free(neu0);
-      free(neu1);
-      if (neuc != NULL) free(neuc);
-      free(neu2);
-
-      free(syn0);
-      free(syn1);
-      if (sync != NULL) free(sync);
-
-      if (syn_d != NULL) free(syn_d);
-
-      if (syn_db != NULL) free(syn_db);
-
-      // 
-      free(neu0b);
-      free(neu1b);
-      if (neucb != NULL) free(neucb);
-      free(neu2b);
-
-      free(neu1b2);
-
-      free(syn0b);
-      free(syn1b);
-      if (syncb != NULL) free(syncb);
-      // 
-
-      for (i = 0; i<class_size; i++) free(class_words[i]);
-      free(class_max_cn);
-      free(class_cn);
-      free(class_words);
-
-      free(vocab);
-      free(vocab_hash);
-
-      if (bptt_history != NULL) free(bptt_history);
-      if (bptt_hidden != NULL) free(bptt_hidden);
-      if (bptt_syn0 != NULL) free(bptt_syn0);
-
-      // todo: free bptt variables too
-    }
-  }
+  ~CRnnLM();
 
   real random(real min, real max);
 
   void setRnnLMFile(const std::string &str);
   int getHiddenLayerSize() const { return layer1_size; }
-  void setRandSeed(int newSeed) {rand_seed = newSeed; srand(rand_seed);}
+  void setRandSeed(int newSeed);
 
   int getWordHash(const char *word);
   void readWord(char *word, FILE *fin);
   int searchVocab(const char *word);
 
-  void saveWeights();			// saves current weights and unit activations
+  void saveWeights();      // saves current weights and unit activations
   void initNet();
   void goToDelimiter(int delim, FILE *fi);
   void restoreNet();
-  void netReset();    // will erase just hidden layer state + bptt history
-                      // + maxent history
-                      // (called at end of sentences in the independent mode)
+  void netReset();         // will erase just hidden layer state + bptt history
+                           // + maxent history (called at end of sentences in
+                           // the independent mode)
 
   void computeNet(int last_word, int word);
   void copyHiddenLayerToInput();
@@ -357,5 +233,7 @@ class CRnnLM{
   float getUnkPenalty(const std::string &word);
   bool isUnk(const std::string &word);
 };
+
+}  // namespace rnnlm
 
 #endif  // KALDI_LM_MIKOLOV_RNNLM_LIB_H_
