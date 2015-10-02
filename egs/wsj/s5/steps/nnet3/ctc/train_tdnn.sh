@@ -271,7 +271,8 @@ if [ $stage -le -3 ]; then
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
       nnet3-ctc-acc-lda-stats --rand-prune=$rand_prune \
-        $dir/init.raw "ark:$egs_dir/egs.JOB.ark" $dir/JOB.lda_stats || exit 1;
+        $dir/0.ctc_trans_mdl $dir/init.raw "ark:$egs_dir/cegs.JOB.ark" \
+        $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
   $cmd $dir/log/sum_transform_stats.log \
@@ -529,7 +530,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$egs_dir/egs.1.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$egs_dir/cegs.1.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
