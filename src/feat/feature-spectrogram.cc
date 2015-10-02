@@ -35,8 +35,7 @@ Spectrogram::Spectrogram(const SpectrogramOptions &opts)
 }
 
 Spectrogram::~Spectrogram() {
-  if (srfft_ != NULL)
-    delete srfft_;
+  delete srfft_;
 }
 
 void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,

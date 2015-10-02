@@ -47,6 +47,15 @@ NnetComputeProb::~NnetComputeProb() {
   delete deriv_nnet_;  // delete does nothing if pointer is NULL.
 }
 
+void NnetComputeProb::Reset() {
+  num_minibatches_processed_ = 0;
+  objf_info_.clear();
+  if (deriv_nnet_) {
+    bool is_gradient = true;
+    SetZero(is_gradient, deriv_nnet_);
+  }
+}
+
 void NnetComputeProb::Compute(const NnetExample &eg) {
   bool need_model_derivative = config_.compute_deriv,
       store_component_stats = false;

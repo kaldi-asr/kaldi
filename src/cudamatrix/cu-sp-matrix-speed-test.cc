@@ -53,7 +53,7 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
     if (iter  > 0) {
       B.Invert();
     } else { // do some more testing...
-    
+
       CuMatrix<Real> D(A);
       A.AddMat2(1.0, D, kTrans, 1.0);
       A.AddToDiag(0.1 * dim);
@@ -61,10 +61,10 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
       CuMatrix<Real> C(B);
       B.AddMat2(1.0, C, kTrans, 1.0);
       B.AddToDiag(0.1 * dim);
-    
+
       A.Invert();
       B.Invert();
-    
+
       SpMatrix<Real> E(dim);
       B.CopyToSp(&E);
 
@@ -82,7 +82,7 @@ static void UnitTestCuSpMatrixInvert(int32 dim) {
 
 template<typename Real>
 static void UnitTestCuSpMatrixCopyFromMat(int32 dim, SpCopyType copy_type) {
-  BaseFloat time_in_secs = 0.05;
+  BaseFloat time_in_secs = 0.01;
   int32 iter = 0;
   Timer tim;
   CuMatrix<Real> A(dim, dim);

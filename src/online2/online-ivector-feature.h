@@ -510,5 +510,5 @@ class OnlineSilenceWeighting {
 /// @} End of "addtogroup onlinefeat"
 }  // namespace kaldi
 
-#endif  // KALDI_ONLINE2_ONLINE_NNET2_FEATURE_PIPELINE_H_
+#endif  // KALDI_ONLINE2_ONLINE_IVECTOR_FEATURE_H_
 

@@ -35,13 +35,14 @@ struct DecodableAmNnetSimpleOptions : public NnetSimpleComputerOptions {
   NnetSimpleComputerOptions simple_computer_opts;
 
   DecodableAmNnetSimpleOptions():
-      acoustic_scale(0.1) { }
+      acoustic_scale(0.1),
 
   void Register(OptionsItf *opts) {
-   opts->Register("acoustic-scale", &acoustic_scale,
-     "Scaling factor for acoustic log-likelihoods");
-   
-   simple_computer_opts.Register(opts);
+    opts->Register("acoustic-scale", &acoustic_scale,
+                   "Scaling factor for acoustic log-likelihoods");
+  
+    simple_computer_opts.Register(opts);
+
   }
 };
 
@@ -85,10 +86,10 @@ class DecodableAmNnetSimple: public DecodableInterface, public NnetSimpleCompute
   virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
 
   virtual int32 NumFramesReady() const { return feats_.NumRows(); }
-  
+
   // Note: these indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
@@ -97,15 +98,16 @@ class DecodableAmNnetSimple: public DecodableInterface, public NnetSimpleCompute
  private: 
 
   void DoNnetComputation(int32 input_t_start,
-    const MatrixBase<BaseFloat> &input_feats,
-    const VectorBase<BaseFloat> &ivector,
-    int32 output_t_start,
-    int32 num_output_frames);
+                         const MatrixBase<BaseFloat> &input_feats,
+                         const VectorBase<BaseFloat> &ivector,
+                         int32 output_t_start,
+                         int32 num_output_frames);
 
   const DecodableAmNnetSimpleOptions &opts_;
   const TransitionModel &trans_model_;
   const AmNnetSimple &am_nnet_;
   CuVector<BaseFloat> priors_;
+
 };
 
 } // namespace nnet3

@@ -164,7 +164,7 @@ class DecodableAmNnetParallel: public DecodableInterface {
     return (frame == NumFramesReady() - 1);
   }
   ~DecodableAmNnetParallel() {
-    if (feats_) delete feats_;
+    delete feats_;
   }
  protected:
   const TransitionModel &trans_model_;

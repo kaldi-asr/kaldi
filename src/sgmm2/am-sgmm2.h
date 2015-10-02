@@ -583,4 +583,4 @@ typedef TableWriter<Sgmm2GauPostHolder> Sgmm2GauPostWriter;
 }  // namespace kaldi
 
 
-#endif  // KALDI_SGMM_AM_SGMM_H_
+#endif  // KALDI_SGMM2_AM_SGMM2_H_

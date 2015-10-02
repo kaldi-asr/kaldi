@@ -15,14 +15,15 @@ mic=ihm
 use_sat_alignments=true
 affix=
 speed_perturb=true
+common_egs_dir=
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -48,10 +49,11 @@ LM=$final_lm.pr1-7
 graph_dir=$gmm_dir/graph_${LM}
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --mic $mic \
   --use-sat-alignments $use_sat_alignments \
   --speed-perturb $speed_perturb || exit 1;
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
@@ -64,48 +66,37 @@ if [ $stage -le 7 ]; then
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --io-opts "-tc 12" \
+    --egs-dir "$common_egs_dir" \
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
     --relu-dim 850 \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
-exit;
-if [ $stage -le 8 ]; then
-  # If this setup used PLP features, we'd have to give the option --feature-type plp
-  # to the script below.
-  steps/online/nnet2/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
-    data/lang exp/$mic/nnet3/extractor "$dir" ${dir}_online || exit 1;
-fi
-wait;
 
 if [ $stage -le 9 ]; then
+  rm -f exp/$mic/nnet3/.error 2>/dev/null
+  for data in dev eval; do
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
+      data/$mic/${data}_hires exp/$mic/nnet3/extractor exp/$mic/nnet3/ivectors_${data} || touch exp/$mic/nnet3/.error &
+  done
+  wait
+  [ -f exp/$mic/nnet3/.error ] && echo "$0: error extracting iVectors." && exit 1;
+fi
+
+
+if [ $stage -le 10 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev eval; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      decode_dir=${dir}_online/decode_${decode_set}_utt
-      steps/online/nnet2/decode.sh --config conf/decode.conf --cmd "$decode_cmd" --nj $num_jobs \
-        --per-utt true $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
+      decode_dir=${dir}/decode_${decode_set}
+
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+          --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
+         $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
   done
 fi
-
-if [ $stage -le 10 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information, but looks to the end
-  # of the utterance while computing the iVector (--online false)
-  for decode_set in dev eval; do
-    (
-      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      decode_dir=${dir}_online/decode_${decode_set}_utt_offline
-      steps/online/nnet2/decode.sh --config conf/decode.conf --cmd "$decode_cmd" --nj $num_jobs \
-        --per-utt true --online false $graph_dir data/$mic/${decode_set}_hires \
-          $decode_dir || exit 1;
-    ) & 
-  done
-fi
 wait;
-
 exit 0;
-

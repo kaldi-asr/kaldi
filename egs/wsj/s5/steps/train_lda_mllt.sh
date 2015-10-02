@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+#
+# LDA+MLLT refers to the way we transform the features after computing
+# the MFCCs: we splice across several frames, reduce the dimension (to 40
+# by default) using Linear Discriminant Analysis), and then later estimate,
+# over multiple iterations, a diagonalizing transform known as MLLT or CTC.
+# See http://kaldi.sourceforge.net/transform.html for more explanation.
+#
 # Apache 2.0.
 
 # Begin configuration.
@@ -85,7 +92,7 @@ feats="$splicedfeats transform-feats $dir/0.mat ark:- ark:- |"
 if [ $stage -le -5 ]; then
   if [ -z "$use_lda_mat" ]; then
     echo "Accumulating LDA statistics."
-    rm $dir/lda.*.acc
+    rm $dir/lda.*.acc 2>/dev/null
     $cmd JOB=1:$nj $dir/log/lda_acc.JOB.log \
     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alidir/final.mdl ark:- ark:- \| \
@@ -204,7 +211,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/update.$x.log \
       gmm-est --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss --power=$power \
         $dir/$x.mdl "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
-    rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs 
+    rm $dir/$x.mdl $dir/$x.*.acc $dir/$x.occs
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];

@@ -30,6 +30,7 @@ namespace kaldi {
 namespace nnet3 {
 
 struct NnetSimpleComputerOptions {
+  int32 extra_left_context;
   int32 frames_per_chunk;
   bool debug_computation;
   
@@ -37,9 +38,15 @@ struct NnetSimpleComputerOptions {
   NnetComputeOptions compute_config;
 
   NnetSimpleComputerOptions():
-      frames_per_chunk(50) { }
+      extra_left_context(0),
+      frames_per_chunk(50),
+      debug_computation(false) { }
 
   void Register(OptionsItf *opts) {
+    opts->Register("extra-left-context", &extra_left_context,
+                   "Number of frames of additional left-context to add on top "
+                   "of the neural net's inherent left context (may be useful in "
+                   "recurrent setups");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.");

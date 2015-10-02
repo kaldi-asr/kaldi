@@ -37,7 +37,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     trans_model_(trans_model),
     am_nnet_(am_nnet),
     priors_(am_nnet_.Priors()) {
-  priors_.ApplyLog();  
+  priors_.ApplyLog();
 }
 
 DecodableAmNnetSimple::DecodableAmNnetSimple(
@@ -53,8 +53,8 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     am_nnet_(am_nnet),
     priors_(am_nnet_.Priors()) {
   priors_.ApplyLog();
-}      
-    
+}
+
 DecodableAmNnetSimple::DecodableAmNnetSimple(
     const DecodableAmNnetSimpleOptions &opts,
     const TransitionModel &trans_model,
@@ -65,9 +65,9 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()) { 
+    priors_(am_nnet_.Priors()) {
   priors_.ApplyLog();
-}      
+}
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                                                int32 transition_id) {
@@ -97,7 +97,6 @@ void DecodableAmNnetSimple::DoNnetComputation(
   cu_output.Swap(&current_log_post_);
   current_log_post_offset_ = output_t_start;
 }
-
 
 } // namespace nnet3
 } // namespace kaldi

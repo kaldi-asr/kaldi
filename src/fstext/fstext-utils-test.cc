@@ -342,8 +342,7 @@ template<class Arc>  void TestMakeLoopFst() {
   std::sort(fsts.begin(), fsts.end());
   fsts.erase(std::unique(fsts.begin(), fsts.end()), fsts.end());
   for (int i = 0; i < (int)fsts.size(); i++)
-    if (fsts[i] != NULL)
-      delete fsts[i];
+    delete fsts[i];
 }
 
 

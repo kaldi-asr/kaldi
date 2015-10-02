@@ -579,7 +579,7 @@ void PreDeterminize(MutableFst<Arc> *fst,
   }
   // Now free up memory.
   for (size_t i = 0;i < S.size();i++)
-    if (S[i] != NULL) delete S[i];
+    delete S[i];
 } // end function PreDeterminize
 
 

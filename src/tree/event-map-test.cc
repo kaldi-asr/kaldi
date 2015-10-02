@@ -233,7 +233,7 @@ void TestEventMapPrune() {
   EventMap *mapped_em = em->Copy(new_leaves),
       *pruned_em = mapped_em->Prune();
   for (size_t i = 0; i < new_leaves.size(); i++)
-    if (new_leaves[i]) delete new_leaves[i];
+    delete new_leaves[i];
   for (int32 i = 0; i < 10; i++) {
     EventType event;
     for (int32 key = 1; key <= 2; key++) {

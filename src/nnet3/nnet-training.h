@@ -34,7 +34,7 @@ struct NnetTrainerOptions {
   bool store_component_stats;
   int32 print_interval;
   bool debug_computation;
-  bool update_per_minibatch;
+  BaseFloat momentum;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   NnetTrainerOptions():
@@ -42,7 +42,7 @@ struct NnetTrainerOptions {
       store_component_stats(true),
       print_interval(100),
       debug_computation(false),
-      update_per_minibatch(false) { }
+      momentum(0.0) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
@@ -53,10 +53,12 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
-    opts->Register("update-per-minibatch", &update_per_minibatch, "If true, "
-                   "wait to apply model changes until the whole minibatch has "
-                   "been processed (requires copying the model on each "
-                   "minibatch ");
+    opts->Register("momentum", &momentum, "momentum constant to apply during "
+                   "training (help stabilize update).  e.g. 0.9.  Note: we "
+                   "automatically multiply the learning rate by (1-momenum) "
+                   "so that the 'effective' learning rate is the same as "
+                   "before (because momentum would normally increase the "
+                   "effective learning rate by 1/(1-momentum))");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -125,12 +127,18 @@ class NnetTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
+
+  ~NnetTrainer();
  private:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
+  Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing
+                      // accumulated parameter-change (we'd call this
+                      // gradient_nnet_, but due to natural-gradient update,
+                      // it's better to consider it as a delta-parameter nnet.
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the

@@ -124,7 +124,7 @@ template<class Label, class StringId> class StringRepository {
     for (typename vector<vector<Label>* >::iterator iter = vec_.begin(); iter != vec_.end(); ++iter)
       delete *iter;
     vector<vector<Label>* > tmp_vec;
-    tmp_vec.swap(vec_);    
+    tmp_vec.swap(vec_);
     MapType tmp_map;
     tmp_map.swap(map_);
   }
@@ -186,9 +186,9 @@ template<class Arc> class DeterminizerStar {
     // now process transitions.
     for (StateId this_state = 0; this_state < nStates; this_state++) {
       vector<TempArc> &this_vec(output_arcs_[this_state]);
-      typename vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
-
-      for (;iter != end; ++iter) {
+      typename vector<TempArc>::const_iterator iter = this_vec.begin(),
+          end = this_vec.end();
+      for (; iter != end; ++iter) {
         const TempArc &temp_arc(*iter);
         GallicArc<Arc> new_arc;
         vector<Label> seq;
@@ -221,34 +221,34 @@ template<class Arc> class DeterminizerStar {
     assert(determinized_);
     if (destroy) determinized_ = false;
     // Outputs to standard fst.
-    OutputStateId nStates = static_cast<OutputStateId>(output_arcs_.size());
+    OutputStateId num_states = static_cast<OutputStateId>(output_arcs_.size());
     if (destroy)
       FreeMostMemory();
     ofst->DeleteStates();
-    if (nStates == 0) {
+    if (num_states == 0) {
       ofst->SetStart(kNoStateId);
       return;
     }
     // Add basic states-- but will add extra ones to account for strings on output.
-    for (OutputStateId s = 0;s < nStates;s++) {
+    for (OutputStateId s = 0; s < num_states; s++) {
       OutputStateId news = ofst->AddState();
       assert(news == s);
     }
     ofst->SetStart(0);
-    for (OutputStateId this_state = 0; this_state < nStates; this_state++) {
+    for (OutputStateId this_state = 0; this_state < num_states; this_state++) {
       vector<TempArc> &this_vec(output_arcs_[this_state]);
 
-      typename vector<TempArc>::const_iterator iter = this_vec.begin(), end = this_vec.end();
-      for (;iter != end; ++iter) {
+      typename vector<TempArc>::const_iterator iter = this_vec.begin(),
+          end = this_vec.end();
+      for (; iter != end; ++iter) {
         const TempArc &temp_arc(*iter);
         vector<Label> seq;
         repository_.SeqOfId(temp_arc.ostring, &seq);
-
         if (temp_arc.nextstate == kNoStateId) {  // Really a final weight.
           // Make a sequence of states going to a final state, with the strings as labels.
           // Put the weight on the first arc.
           OutputStateId cur_state = this_state;
-          for (size_t i = 0;i < seq.size();i++) {
+          for (size_t i = 0; i < seq.size();i++) {
             OutputStateId next_state = ofst->AddState();
             Arc arc;
             arc.nextstate = next_state;
@@ -294,8 +294,8 @@ template<class Arc> class DeterminizerStar {
   }
 
 
-  // Initializer.  After initializing the object you will typically call one of
-  // the Output functions.
+  // Initializer.  After initializing the object you will typically call
+  // Determinize() and then one of the Output functions.
   DeterminizerStar(const Fst<Arc> &ifst, float delta = kDelta,
                    int max_states = -1, bool allow_partial = false):
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
@@ -343,7 +343,7 @@ template<class Arc> class DeterminizerStar {
   bool IsPartial() {
     return is_partial_;
   }
-  
+
   // frees all except output_arcs_, which contains the important info
   // we need to output.
   void FreeMostMemory() {
@@ -355,9 +355,9 @@ template<class Arc> class DeterminizerStar {
         iter != hash_.end(); ++iter)
       delete iter->first;
     SubsetHash tmp;
-    tmp.swap(hash_); 
+    tmp.swap(hash_);
   }
-  
+
   ~DeterminizerStar() {
     FreeMostMemory();
   }
@@ -409,7 +409,8 @@ template<class Arc> class DeterminizerStar {
    public:
     size_t operator ()(const vector<Element> * subset) const {  // hashes only the state and string.
       size_t hash = 0, factor = 1;
-      for (typename vector<Element>::const_iterator iter= subset->begin(); iter != subset->end(); ++iter) {
+      for (typename vector<Element>::const_iterator iter = subset->begin();
+           iter != subset->end(); ++iter) {
         hash *= factor;
         hash += iter->state + 103333*iter->string;
         factor *= 23531;  // these numbers are primes.
@@ -422,16 +423,18 @@ template<class Arc> class DeterminizerStar {
   // and string, and approximate match on weights.
   class SubsetEqual {
    public:
-    bool operator ()(const vector<Element> * s1, const vector<Element> * s2) const {
+    bool operator ()(const vector<Element> *s1,
+                     const vector<Element> *s2) const {
       size_t sz = s1->size();
-      assert(sz>=0);
+      assert(sz >= 0);
       if (sz != s2->size()) return false;
       typename vector<Element>::const_iterator iter1 = s1->begin(),
-          iter1_end = s1->end(), iter2=s2->begin();
+          iter1_end = s1->end(), iter2 = s2->begin();
       for (; iter1 < iter1_end; ++iter1, ++iter2) {
         if (iter1->state != iter2->state ||
            iter1->string != iter2->string ||
-           ! ApproxEqual(iter1->weight, iter2->weight, delta_)) return false;
+           ! ApproxEqual(iter1->weight, iter2->weight, delta_))
+          return false;
       }
       return true;
     }
@@ -444,7 +447,7 @@ template<class Arc> class DeterminizerStar {
   // Used only for debug.
   class SubsetEqualStates {
    public:
-    bool operator ()(const vector<Element> * s1, const vector<Element> * s2) const {
+    bool operator ()(const vector<Element> *s1, const vector<Element> *s2) const {
       size_t sz = s1->size();
       assert(sz>=0);
       if (sz != s2->size()) return false;
@@ -465,7 +468,7 @@ template<class Arc> class DeterminizerStar {
   // Called by ProcessSubset.
   // Has no side effects except on the repository.
 
-  void EpsilonClosure(const vector<Element> & input_subset,
+  void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
     // input_subset must have only one example of each StateId.
 
@@ -473,7 +476,7 @@ template<class Arc> class DeterminizerStar {
     typedef typename std::map<InputStateId, Element>::iterator MapIter;
     {
       MapIter iter = cur_subset.end();
-      for (size_t i = 0;i < input_subset.size();i++) {
+      for (size_t i = 0; i < input_subset.size(); i++) {
         std::pair<const InputStateId, Element> pr(input_subset[i].state, input_subset[i]);
         iter = cur_subset.insert(iter, pr);
         // By providing iterator where we inserted last one, we make insertion more efficient since
@@ -482,7 +485,7 @@ template<class Arc> class DeterminizerStar {
     }
     // find whether input fst is known to be sorted in input label.
     bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-    
+
     vector<Element> queue(input_subset);  // queue of things to be processed.
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // relates to max-states option, used for test.
@@ -496,17 +499,23 @@ template<class Arc> class DeterminizerStar {
       // both the new (optimal) and old (less-optimal) Element will still be in
       // "queue".  The next if-statement stops us from wasting compute by
       // processing the old Element.
+
       if (replaced_elems && cur_subset[elem.state] != elem)
         continue;
+
       if (max_states_ > 0 && counter++ > max_states_) {
         std::cerr << "Determinization aborted since looped more than "
                   << max_states_ << " times during epsilon closure.\n";
         throw std::runtime_error("looped more than max-states times in determinization");
-      }      
-      for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
+      }
+      for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
+           !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
-        if (sorted && arc.ilabel != 0) break;  // Break from the loop: due to sorting there will be no
-        // more transitions with epsilons as input labels.
+        if (sorted && arc.ilabel > 0) {
+          break;
+          // Break from the loop: due to sorting there will be no
+          // more transitions with epsilons as input labels.
+        }
         if (arc.ilabel == 0) {  // Epsilon transition.
           Element next_elem;
           next_elem.state = arc.nextstate;
@@ -545,10 +554,10 @@ template<class Arc> class DeterminizerStar {
             }
             Weight weight = Plus(iter->second.weight, next_elem.weight);
             if (! ApproxEqual(weight, iter->second.weight, delta_)) {  // add extra part of weight to queue.
+              iter->second.weight = weight; // Update weight in map.
               queue.push_back(next_elem);
               replaced_elems = true;
             }
-            iter->second.weight = weight; // Update weight in map.
           }
         }
       }
@@ -590,7 +599,7 @@ template<class Arc> class DeterminizerStar {
           if (final_string != elem.string) {
             std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
             throw std::runtime_error("Non-functional FST: cannot determinize.\n");
-          }            
+          }
           final_weight = Plus(final_weight, Times(elem.weight, this_final_weight));
         }
       }
@@ -606,9 +615,9 @@ template<class Arc> class DeterminizerStar {
     }
   }
 
-  // ProcessTransition is called from "ProcessTransitions".  Broken out for clarity.
-  // Has side effects on output_arcs_, and (via SubsetToStateId) Q_ and hash_
-
+  // ProcessTransition is called from "ProcessTransitions".  Broken out for
+  // clarity.  Has side effects on output_arcs_, and (via SubsetToStateId), Q_
+  // and hash_.
   void ProcessTransition(OutputStateId state, Label ilabel, vector<Element> *subset) {
     // At input, "subset" may contain duplicates for a given dest state (but in sorted
     // order).  This function removes duplicates from "subset", normalizes it, and adds
@@ -629,7 +638,7 @@ template<class Arc> class DeterminizerStar {
           if (cur_in->string != cur_out->string) {
             std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
             throw std::runtime_error("Non-functional FST: cannot determinize.\n");
-          }            
+          }
           cur_out->weight = Plus(cur_out->weight, cur_in->weight);
           cur_in++;
         }
@@ -649,13 +658,13 @@ template<class Arc> class DeterminizerStar {
       {  // This block computes "seq", which is the common prefix, and "common_str",
         // which is the StringId version of "seq".
         vector<Label> tmp_seq;
-        for (iter = begin; iter!= end; ++iter) {
+        for (iter = begin; iter != end; ++iter) {
           if (iter == begin) {
             repository_.SeqOfId(iter->string, &seq);
           } else {
             repository_.SeqOfId(iter->string, &tmp_seq);
             if (tmp_seq.size() < seq.size()) seq.resize(tmp_seq.size());  // size of shortest one.
-            for (size_t i = 0;i < seq.size(); i++) // seq.size() is the shorter one at this point.
+            for (size_t i = 0; i < seq.size(); i++) // seq.size() is the shorter one at this point.
               if (tmp_seq[i] != seq[i]) seq.resize(i);
           }
           if (seq.size() == 0) break;  // will not get any prefix.
@@ -666,7 +675,7 @@ template<class Arc> class DeterminizerStar {
       {  // This block computes "tot_weight".
         iter = begin;
         tot_weight = iter->weight;
-        for (++iter; iter!= end; ++iter)
+        for (++iter; iter != end; ++iter)
           tot_weight = Plus(tot_weight, iter->weight);
       }
 
@@ -713,15 +722,16 @@ template<class Arc> class DeterminizerStar {
   // with the same ilabel.
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
-
   void ProcessTransitions(const vector<Element> &closed_subset, OutputStateId state) {
     vector<pair<Label, Element> > all_elems;
     {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
-      typename vector<Element>::const_iterator iter = closed_subset.begin(), end = closed_subset.end();
-      for (;iter != end; ++iter) {
+      typename vector<Element>::const_iterator iter = closed_subset.begin(),
+          end = closed_subset.end();
+      for (; iter != end; ++iter) {
         const Element &elem = *iter;
-        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); ! aiter.Done(); aiter.Next()) {
+        for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
+             !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
             pair<Label, Element> this_pr;
@@ -766,14 +776,16 @@ template<class Arc> class DeterminizerStar {
   // fst.  This is a hash lookup; if no such state exists, it adds a new state to the hash
   // and adds a new pair to the queue.
   // Side effects on hash_ and Q_, and on output_arcs_ [just affects the size].
-
   OutputStateId SubsetToStateId(const vector<Element> &subset) {  // may add the subset to the queue.
     typedef typename SubsetHash::iterator IterType;
     IterType iter = hash_.find(&subset);
     if (iter == hash_.end()) {  // was not there.
       vector<Element> *new_subset = new vector<Element>(subset);
       OutputStateId new_state_id = (OutputStateId) output_arcs_.size();
-      hash_[new_subset] = new_state_id;
+      bool ans = hash_.insert(std::pair<const vector<Element>*,
+                                        OutputStateId>(new_subset,
+                                                       new_state_id)).second;
+      assert(ans);
       output_arcs_.push_back(vector<TempArc>());
       if (allow_partial_ == false) {
         // If --allow-partial is not requested, we do the old way.
@@ -797,7 +809,6 @@ template<class Arc> class DeterminizerStar {
   // of (states, weights)).  After that we ignore epsilons.  We process the final-weight
   // of the state, and then handle transitions out (this may add more determinized states
   // to the queue).
-
   void ProcessSubset(const pair<vector<Element>*, OutputStateId> & pair) {
     const vector<Element> *subset = pair.first;
     OutputStateId state = pair.second;
