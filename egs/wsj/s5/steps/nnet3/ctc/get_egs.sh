@@ -204,13 +204,13 @@ else
 fi
 
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
-num_archives=$[$num_frames/($frames_per_eg*$samples_per_iter)+1]
+num_archives=$[$num_frames/$frames_per_iter+1]
 # (for small data)- while reduce_frames_per_eg == true and the number of
 # archives is 1 and would still be 1 if we reduced frames_per_eg by 1, reduce it
 # by 1.
 reduced=false
 while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
-  [ $[$num_frames/(($frames_per_eg-1)*$samples_per_iter)] -eq 0 ]; do
+  [ $[$num_frames/(($frames_per_eg-1)*$frames_per_iter)] -eq 0 ]; do
   frames_per_eg=$[$frames_per_eg-1]
   num_archives=1
   reduced=true
@@ -226,17 +226,17 @@ num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do
   archives_multiple=$[$archives_multiple+1]
-  num_archives_intermediate=$[$num_archives/$archives_multiple];
+  num_archives_intermediate=$[$num_archives/$archives_multiple] || exit 1;
 done
 # now make sure num_archives is an exact multiple of archives_multiple.
-num_archives=$[$archives_multiple*$num_archives_intermediate]
+num_archives=$[$archives_multiple*$num_archives_intermediate] || exit 1;
 
 echo $num_archives >$dir/info/num_archives
 echo $frames_per_eg >$dir/info/frames_per_eg
 # Work out the number of egs per archive
-egs_per_archive=$[$num_frames/($frames_per_eg*$num_archives)]
-! [ $egs_per_archive -le $samples_per_iter ] && \
-  echo "$0: script error: egs_per_archive=$egs_per_archive not <= samples_per_iter=$samples_per_iter" \
+egs_per_archive=$[$num_frames/($frames_per_eg*$num_archives)] || exit 1;
+! [ $egs_per_archive -le $frames_per_iter ] && \
+  echo "$0: script error: egs_per_archive=$egs_per_archive not <= frames_per_iter=$frames_per_iter" \
   && exit 1;
 
 echo $egs_per_archive > $dir/info/egs_per_archive
@@ -263,7 +263,7 @@ if [ $stage -le 2 ]; then
 fi
 
 
-silphones=$(cat $lang/phones/silphones.csl)
+silphones=$(cat $lang/phones/silence.csl) || exit 1;
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
 ctc_supervision_all_opts="$ctc_supervision_opts --lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor"
@@ -329,7 +329,7 @@ if [ $stage -le 4 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
     nnet3-ctc-get-egs $ivector_opt $egs_opts "$feats" ark,s,cs:- ark:- \| \
-    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    nnet3-ctc-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
