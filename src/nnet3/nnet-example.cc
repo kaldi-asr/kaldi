@@ -40,7 +40,19 @@ void NnetIo::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   features.Read(is, binary);
-  ExpectToken(is, binary, "</NnetIo>");    
+  ExpectToken(is, binary, "</NnetIo>");
+}
+
+bool NnetIo::operator == (const NnetIo &other) const {
+  if (name != other.name) return false;
+  if (indexes != other.indexes) return false;
+  if (features.NumRows() != other.features.NumRows() ||
+      features.NumCols() != other.features.NumCols())
+    return false;
+  Matrix<BaseFloat> this_mat, other_mat;
+  features.GetMatrix(&this_mat);
+  other.features.GetMatrix(&other_mat);
+  return ApproxEqual(this_mat, other_mat);
 }
 
 NnetIo::NnetIo(const std::string &name,

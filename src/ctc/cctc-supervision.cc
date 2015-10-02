@@ -693,6 +693,10 @@ void SplitIntoRanges(int32 num_frames,
   }
 }
 
+bool CctcSupervision::operator == (const CctcSupervision &other) const {
+  return weight == other.weight && num_frames == other.num_frames &&
+      label_dim == other.label_dim && fst::Equal(fst, other.fst);
+}
 
 }  // namespace ctc
 }  // namespace kaldi

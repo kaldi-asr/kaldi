@@ -101,7 +101,7 @@ void CctcComputation::ComputeBeta() {
     }
     KALDI_PARANOID_ASSERT(this_beta != -std::numeric_limits<double>::infinity());
     log_beta_data[state] = this_beta;
-  }    
+  }
   KALDI_ASSERT(arc_logprob_iter == arc_logprob_data);
 
   int32 start_state = 0;  // We alredy checked this.
@@ -109,7 +109,7 @@ void CctcComputation::ComputeBeta() {
   if (!ApproxEqual(tot_log_prob_backward, tot_log_prob_))
     KALDI_WARN << "Disagreement in forward/backward log-probs: "
                << tot_log_prob_backward << " vs. " << tot_log_prob_;
-  
+
 }
 
 
@@ -137,7 +137,7 @@ void CctcComputation::ComputeLookupIndexes() {
   unordered_map<int32,int32> denominator_index_map_this_frame;
 
   typedef unordered_map<int32,int32>::iterator IterType;
-  
+
   for (int32 state = 0; state < num_states; state++) {
     int32 t = fst_state_times[state];
     if (t != cur_time) {
@@ -154,7 +154,8 @@ void CctcComputation::ComputeLookupIndexes() {
 
       int32 numerator_index = numerator_indexes_cpu.size(),
           denominator_index = denominator_indexes_cpu.size();
-      Int32Pair num_pair, den_pair;  // can't use constructors as declared in C.
+      Int32Pair num_pair, den_pair;  // we can't use constructors as this was
+                                     // declared in C.
       num_pair.first = t;
       num_pair.second = output_index;
       den_pair.first = t;
@@ -232,7 +233,7 @@ bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   ComputeBeta();
   return ComputeDerivatives(nnet_output_deriv);
 }
-  
+
 
 bool CctcComputation::ComputeDerivatives(
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
@@ -255,7 +256,7 @@ bool CctcComputation::ComputeDerivatives(
   // denominator_prob_ vectors.
   denominator_deriv_.Resize(denominator_probs_.Dim());
   BaseFloat *denominator_deriv_data = denominator_deriv_.Data();
-  
+
   const BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
   for (int32 state = 0; state < num_states; state++) {
     for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision_.fst, state);
@@ -333,12 +334,12 @@ bool CctcComputation::ComputeDerivatives(
   // the weights matrix.  Then multiply by exped-matrix to get d(logprob)/d(whole-orig-matrix).
   // then add d(logprob)/d(log-numerator).
 
-  
-  
+
+
   // we have the numerator and denominator values.
-  
+
   // lm_prob * num / den.
-  
+
 
 }  // namespace ctc
 }  // namespace kaldi

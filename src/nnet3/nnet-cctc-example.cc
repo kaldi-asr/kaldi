@@ -24,13 +24,15 @@ namespace kaldi {
 namespace nnet3 {
 
 void NnetCctcSupervision::Write(std::ostream &os, bool binary) const {
+  CheckDim();
   WriteToken(os, binary, "<NnetCctcSup>");
   WriteToken(os, binary, name);
+  WriteIndexVector(os, binary, indexes);
   WriteToken(os, binary, "<NumOutputs>");
   int32 size = supervision.size();
   KALDI_ASSERT(size > 0 && "Attempting to write empty NnetCctcSupervision.");
   WriteBasicType(os, binary, size);
-  if (!binary) os << "\n";  
+  if (!binary) os << "\n";
   for (int32 i = 0; i < size; i++) {
     supervision[i].Write(os, binary);
     if (!binary) os << "\n";
@@ -38,10 +40,14 @@ void NnetCctcSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</NnetCctcSup>");
 }
 
-
+bool NnetCctcSupervision::operator == (const NnetCctcSupervision &other) const {
+  return name == other.name && indexes == other.indexes &&
+      supervision == other.supervision;
+}
 void NnetCctcSupervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NnetCctcSup>");
   ReadToken(is, binary, &name);
+  ReadIndexVector(is, binary, &indexes);
   ExpectToken(is, binary, "<NumOutputs>");
   int32 size;
   ReadBasicType(is, binary, &size);
@@ -50,6 +56,7 @@ void NnetCctcSupervision::Read(std::istream &is, bool binary) {
   for (int32 i = 0; i < size; i++)
     supervision[i].Read(is, binary);
   ExpectToken(is, binary, "</NnetCctcSup>");
+  CheckDim();
 }
 
 
@@ -105,22 +112,39 @@ void NnetCctcSupervision::ComputeObjfAndDerivs(
         num_warnings--;
         KALDI_WARN << "NaN's or inf's encountered in CTC backprop";
       }
-    }                                              
+    }
   }
   KALDI_ASSERT(cur_offset == nnet_output.NumRows());
   *tot_weight_out = tot_weight;
   *tot_objf_out = tot_objf;
 }
 
+void NnetCctcSupervision::CheckDim() const {
+  int32 num_indexes = indexes.size(), num_indexes_check = 0,
+      label_dim = -1;
+  std::vector<ctc::CctcSupervision>::const_iterator
+      iter = supervision.begin(), end = supervision.end();
+  for (; iter != end; ++iter) {
+    num_indexes_check += iter->num_frames;
+    if (label_dim == -1) {
+      label_dim = iter->label_dim;
+    } else {
+      KALDI_ASSERT(label_dim == iter->label_dim);
+    }
+  }
+  KALDI_ASSERT(num_indexes == num_indexes_check);
+}
+
 NnetCctcSupervision::NnetCctcSupervision(const NnetCctcSupervision &other):
     name(other.name),
     indexes(other.indexes),
-    supervision(other.supervision) { }
+    supervision(other.supervision) { CheckDim(); }
 
 void NnetCctcSupervision::Swap(NnetCctcSupervision *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
   supervision.swap(other->supervision);
+  CheckDim();
 }
 
 NnetCctcSupervision::NnetCctcSupervision(
@@ -137,6 +161,7 @@ NnetCctcSupervision::NnetCctcSupervision(
   // leave n and x in the indexes at zero at this point.
   for (int32 i = 0; i < num_frames; i++)
     indexes[i].t = first_frame + i * frame_skip;
+  CheckDim();
 }
 
 
@@ -175,7 +200,7 @@ void NnetCctcExample::Read(std::istream &is, bool binary) {
   inputs.resize(size);
   for (int32 i = 0; i < size; i++)
     inputs[i].Read(is, binary);
-  ExpectToken(is, binary, "<NumOutputs>");  
+  ExpectToken(is, binary, "<NumOutputs>");
   ReadBasicType(is, binary, &size);
   if (size < 1 || size > 1000000)
     KALDI_ERR << "Invalid size " << size;
@@ -302,7 +327,7 @@ void GetCctcComputationRequest(const Nnet &nnet,
         !nnet.IsInputNode(node_index))
       KALDI_ERR << "Nnet example has input named '" << name
                 << "', but no such input node is in the network.";
-    
+
     request->inputs.resize(request->inputs.size() + 1);
     IoSpecification &io_spec = request->inputs.back();
     io_spec.name = name;

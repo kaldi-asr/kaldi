@@ -40,11 +40,11 @@ struct NnetIo {
   /// in the indexes will always be zero in individual examples, but in general
   /// nonzero after we aggregate the examples into the minibatch level.
   std::vector<Index> indexes;
-  
+
   /// The features or labels.  GeneralMatrix may contain either a CompressedMatrix,
   /// a Matrix, or SparseMatrix (a SparseMatrix would be the natural format for posteriors).
   GeneralMatrix features;
-  
+
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
   /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
   /// the provided features.  t_begin should be the frame that feats.Row(0)
@@ -61,20 +61,24 @@ struct NnetIo {
          const Posterior &labels);
 
   void Swap(NnetIo *other);
-  
+
   NnetIo() { }
-  
+
   // Use default copy constructor and assignment operators.
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
+
+  // this comparison is not very efficient, especially for sparse supervision.
+  // It's only used in testing code.
+  bool operator == (const NnetIo &other) const;
 };
 
 
 
 /// NnetExample is the input data and corresponding label (or labels) for one or
 /// more frames of input, used for standard cross-entropy training of neural
-/// nets (and possibly for other objective functions). 
+/// nets (and possibly for other objective functions).
 struct NnetExample {
 
   /// "io" contains the input and output.  In principle there can be multiple
@@ -93,6 +97,10 @@ struct NnetExample {
 
   /// Compresses any (input) features that are not sparse.
   void Compress();
+
+  /// Caution: this operator == is not very efficient.  It's only used in
+  /// testing code.
+  bool operator == (const NnetExample &other) const { return io == other.io; }
 };
 
 

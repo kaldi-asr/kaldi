@@ -112,6 +112,10 @@ struct NnetCctcSupervision {
   void Read(std::istream &is, bool binary);
 
   void Swap(NnetCctcSupervision *other);
+
+  void CheckDim() const;
+
+  bool operator == (const NnetCctcSupervision &other) const;
 };
 
 /// NnetCctcExample is like NnetExample, but specialized for CTC training.
@@ -138,6 +142,10 @@ struct NnetCctcExample {
   NnetCctcExample() { }
 
   NnetCctcExample(const NnetCctcExample &other);
+
+  bool operator == (const NnetCctcExample &other) const {
+    return inputs == other.inputs && outputs == other.outputs;
+  }
 };
 
 

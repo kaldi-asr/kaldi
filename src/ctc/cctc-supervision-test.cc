@@ -24,6 +24,7 @@
 #include "ctc/cctc-training.h"
 #include "ctc/cctc-test-utils.h"
 #include "fstext/fstext-lib.h"
+#include "cudamatrix/cu-device.h"
 
 // This test program tests things declared in ctc-supervision.h and
 // cctc-training.h
@@ -158,6 +159,9 @@ void TestCctcSupervisionIo(const CctcSupervision &supervision) {
   std::ostringstream os2;
   supervision2.Write(os2, binary);
   KALDI_ASSERT(os.str() == os2.str());
+  if (binary) {
+    KALDI_ASSERT(supervision == supervision2);
+  }
 }
 
 void TestCctcSupervisionAppend(const CctcSupervision &supervision) {
@@ -345,6 +349,7 @@ void CctcSupervisionTest() {
 }  // namespace kaldi
 
 int main() {
+  using namespace kaldi;
   for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)

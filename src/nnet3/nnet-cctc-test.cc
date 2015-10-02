@@ -129,6 +129,7 @@ void TestNnetCctcExampleIo(const NnetCctcExample &eg) {
   eg2.Write(os2, binary);
   if (binary) {
     KALDI_ASSERT(os.str() == os2.str());
+    KALDI_ASSERT(eg == eg2);
   }
 }
 

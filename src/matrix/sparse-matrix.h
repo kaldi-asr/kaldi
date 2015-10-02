@@ -259,7 +259,7 @@ class GeneralMatrix {
   const Matrix<BaseFloat>& GetFullMatrix() const;
 
   /// Outputs the contents as a matrix.  This will work regardless of
-  /// Type().
+  /// Type().  Sizes its output, unlike CopyToMat().
   void GetMatrix(Matrix<BaseFloat> *mat) const;
 
   /// Swaps the with the given Matrix.  This will only work if
@@ -267,7 +267,7 @@ class GeneralMatrix {
   void SwapFullMatrix(Matrix<BaseFloat> *mat);
 
   /// Copies contents, regardless of type, to "mat", which must be correctly
-  /// sized.
+  /// sized.  See also GetMatrix(), which will size its output for you.
   void CopyToMat(MatrixBase<BaseFloat> *mat,
                  MatrixTransposeType trans = kNoTrans) const;
 
@@ -303,7 +303,6 @@ class GeneralMatrix {
   explicit GeneralMatrix(const CompressedMatrix &cmat) { *this = cmat; }
 
   explicit GeneralMatrix(const SparseMatrix<BaseFloat> &smat) { *this = smat; }
-
 
   GeneralMatrix() { }
   // Assignment operator.

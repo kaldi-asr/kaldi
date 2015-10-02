@@ -277,6 +277,8 @@ struct CctcSupervision {
   CctcSupervision(): weight(1.0), num_frames(-1),  label_dim(-1) { }
 
   CctcSupervision(const CctcSupervision &other);
+
+  bool operator == (const CctcSupervision &other) const;
   
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
