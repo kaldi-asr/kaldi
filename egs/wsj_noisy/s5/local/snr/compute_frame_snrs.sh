@@ -12,6 +12,8 @@ set -o pipefail
 cmd=run.pl
 nj=4
 use_gpu=no
+prediction_type="FbankMask"
+copy_opts= # Due to code change, the log(Irm) predicted might have previously been log(sqrt(Irm)). Hence use "matrix-scale --scale=2.0 ark:- ark:- \|"
 stage=0
 
 . utils/parse_options.sh
@@ -49,17 +51,37 @@ if [ $use_gpu != "no" ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  $gpu_cmd JOB=1:$nj $dir/log/compute_snr_pred.JOB.log \
+  $gpu_cmd JOB=1:$nj $dir/log/compute_nnet_pred.JOB.log \
     nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/final.raw "$feats" \
-    ark:- \| copy-feats --compress=true ark:- ark:$dir/snr_pred.JOB.ark || exit 1
+    ark:- \| ${copy_opts}copy-feats --compress=true ark:- ark:$dir/nnet_pred.JOB.ark || exit 1
 fi
 
 if [ $stage -le 1 ]; then
-  $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
-    compute-frame-snrs ark:$dir/snr_pred.JOB.ark \
-    scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp ark:- \| \
-    vector-apply-log ark:- \
-    ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+  case $prediction_type in 
+    "Irm")
+      # nnet_pred is log (clean energy / (clean energy + noise energy) )
+      $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
+        vector-sum \
+        "ark:matrix-scale --scale=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
+        "ark:matrix-sum --scale1=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp $dir/nnet_pred.JOB.ark | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+      ;;
+    "FbankMask")
+      # nnet_pred is log (clean feat / noisy feat)
+      $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
+        vector-sum \
+        "ark:matrix-scale --scale=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
+        "ark:matrix-sum scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp $dir/nnet_pred.JOB.ark | matrix-scale --scale=2.0 ark:- ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+      ;;
+    "FrameSnr")
+      $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
+        extract-column 0 $dir/nnet_pred.JOB.ark \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+      ;;
+    *)
+      echo "Unknown prediction-type '$prediction_type'" && exit 1
+  esac
 fi
 
 for n in `seq $nj`; do
