@@ -117,7 +117,7 @@ void CctcTransitionModel::Check() const {
     KALDI_ASSERT(info.phone_lm_prob.Min() > 0.0);
     // check that LM prob for blank is 1.0.
     KALDI_ASSERT(info.phone_lm_prob(0) == 1.0);
-    // .. and that the LM probs of the real phones (>0) sum to one. 
+    // .. and that the LM probs of the real phones (>0) sum to one.
     KALDI_ASSERT(fabs(info.phone_lm_prob.Sum() - 2.0) < 0.001);
   }
   int32 num_not_seen = 0;
@@ -132,7 +132,7 @@ void CctcTransitionModel::Check() const {
   // seen, so assert that it doesn't happen.
   KALDI_ASSERT(num_not_seen == 0 &&
                "...this assert may later need to be revised/removed");
-  
+
 
   // Do a spot check that after seeing phone_left_context_ real phones,
   // we always get to the same history state regardless of where we started.
@@ -181,7 +181,7 @@ void CctcTransitionModel::Write(std::ostream &os, bool binary) const {
     if (!binary) os << "\n";
     info.phone_lm_prob.Write(os, binary);
   }
-  WriteToken(os, binary, "</CctcTransitionModel>");  
+  WriteToken(os, binary, "</CctcTransitionModel>");
 }
 
 
@@ -257,7 +257,7 @@ void CctcTransitionModelCreator::InitCctcTransitionModel(
   KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
             << num_tree_leaves_ << " for non-blank, and "
             << lm_hist_state_map_.NumLmHistoryStates() << " for blank.";
-  
+
   GetInitialHistoryStates();
   while (MergeHistoryStatesOnePass());
   OutputToTransitionModel(model);
@@ -271,10 +271,10 @@ void CctcTransitionModelCreator::GetInitialHistories(SetType *hist_set) const {
   KALDI_ASSERT(ctx_dep_.CentralPosition() == ctx_dep_.ContextWidth() - 1 &&
                "Tree for CCTC model must have left context only.");
 
-  int32 tree_left_context = ctx_dep_.ContextWidth() - 1;  
+  int32 tree_left_context = ctx_dep_.ContextWidth() - 1;
 
   std::vector<std::vector<int32> > hist_state_queue;
-  
+
   for (int32 i = 0; i < lm_hist_state_map_.NumLmHistoryStates(); i++) {
     const std::vector<int32> &hist = lm_hist_state_map_.GetHistoryForState(i);
     hist_set->insert(hist);
@@ -316,7 +316,7 @@ void CctcTransitionModelCreator::GetInitialHistories(SetType *hist_set) const {
     else
       ++iter;
   }
-  
+
   KALDI_LOG << "Initial set of histories (pre-merging) has "
             << hist_set->size() << " elements.";
 }
@@ -360,9 +360,9 @@ void CctcTransitionModelCreator::GetInitialHistoryStates() {
   KALDI_ASSERT(!hist_set.empty());
   // The rest of this function will convert each of the members of hist_set into
   // history-states, and set up the initial version of the associated info.
-  
+
   MapType hist_to_state;
-  
+
   // First get a numbering for the initial history vectors, and
   // a vector of the vectors.
   std::vector<std::vector<int32> > hist_vec;
@@ -408,8 +408,8 @@ void CctcTransitionModelCreator::CreateHistoryInfo(
     const MapType &hist_to_state) {
   int32 num_histories = hist_vec.size(),  // before merging.
       num_phones = phone_lang_model_.VocabSize(),
-      tree_left_context = ctx_dep_.ContextWidth() - 1;  
-  
+      tree_left_context = ctx_dep_.ContextWidth() - 1;
+
   history_states_.resize(num_histories);
 
   for (int32 h = 0; h < num_histories; h++) {
@@ -448,7 +448,7 @@ bool CctcTransitionModelCreator::MergeHistoryStatesOnePass() {
 
   // This maps from const HistoryState* to its new numbering.
   HistoryMapType hist_to_new;
-  
+
   for (int32 h = 0; h < num_history_states; h++) {
     const HistoryState *hist_state = &(history_states_[h]);
     std::pair<const HistoryState*, int32> pair_to_insert(hist_state,
@@ -467,7 +467,7 @@ bool CctcTransitionModelCreator::MergeHistoryStatesOnePass() {
   // save memory.
   hist_to_new.clear();
   hist_to_new.rehash(1);
-  
+
   if (new_num_history_states == num_history_states) {
     // No duplicates were found, nothing was changed
     return false;
@@ -494,24 +494,23 @@ bool CctcTransitionModelCreator::MergeHistoryStatesOnePass() {
   }
   history_states_.swap(new_history_states);
   initial_history_state_ = old2new_history_state[initial_history_state_];
-  
+
   KALDI_LOG << "Merged " << num_history_states << " history states to "
             << new_num_history_states << ".";
   return true;  // we merged at least one state.
 }
-    
+
 void CctcTransitionModelCreator::OutputToTransitionModel(
     CctcTransitionModel *trans_model) const {
   KALDI_ASSERT(!history_states_.empty());
   // first clear some stuff, just in case.
-  trans_model->weights_.Resize(0, 0);
   trans_model->history_state_info_.clear();
-  
+
   int32 num_histories = history_states_.size(),
       num_phones = phone_lang_model_.VocabSize(),
       ngram_order = phone_lang_model_.NgramOrder(),
-      tree_context_width = ctx_dep_.ContextWidth(); 
-  
+      tree_context_width = ctx_dep_.ContextWidth();
+
   trans_model->num_phones_ = num_phones;
   trans_model->phone_left_context_ = std::max(ngram_order,
                                              tree_context_width) - 1;
@@ -523,7 +522,7 @@ void CctcTransitionModelCreator::OutputToTransitionModel(
   for (int32 h = 0; h < num_histories; h++)
     OutputHistoryState(h, trans_model);
 };
-  
+
 
 void CctcTransitionModelCreator::OutputHistoryState(
     int32 h, CctcTransitionModel *trans_model) const {
@@ -552,7 +551,7 @@ void CctcTransitionModelCreator::OutputHistoryState(
   // language model should sum to one over its output space.
   KALDI_ASSERT(fabs(1.0 - info.phone_lm_prob.Sum()) < 1.001);
   // eos_prob is the probability of the end-of-sequence/end-of-sentence symbol.
-  BaseFloat eos_prob = info.phone_lm_prob(0); 
+  BaseFloat eos_prob = info.phone_lm_prob(0);
   KALDI_ASSERT(info.phone_lm_prob(0) < 1.0);  // If EOS had all the prob mass,
                                               // removing it and renormalizing
                                               // would be a problem.
@@ -587,6 +586,23 @@ std::string CctcTransitionModel::Info() const {
   ostr << "num-history-states: " << NumHistoryStates() << "\n";
   ostr << "num-graph-labels: " << NumGraphLabels() << "\n";
   return ostr.str();
+}
+
+bool CctcTransitionModel::HistoryStateInfo::operator == (
+    const CctcTransitionModel::HistoryStateInfo &other) const {
+  if (next_history_state != other.next_history_state) return false;
+  if (output_index != other.output_index) return false;
+  if (!ApproxEqual(phone_lm_prob, other.phone_lm_prob)) return false;
+  return true;
+}
+
+bool CctcTransitionModel::operator == (const CctcTransitionModel &other) const {
+  if (num_phones_ != other.num_phones_) return false;
+  if (phone_left_context_ != other.phone_left_context_) return false;
+  if (num_output_indexes_ != other.num_output_indexes_) return false;
+  if (num_non_blank_indexes_ != other.num_non_blank_indexes_) return false;
+  if (initial_history_state_ != other.initial_history_state_) return false;
+  return history_state_info_ == other.history_state_info_;
 }
 
 }  // namespace ctc

@@ -56,7 +56,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
   KALDI_ASSERT(frames_per_eg % frame_subsampling_factor == 0);
 
   int32 frames_per_eg_subsampled = frames_per_eg / frame_subsampling_factor;
-    
+
   // we don't do any padding, as it would be a bit tricky to pad the CTC supervision.
   // Instead we select ranges of frames that fully fit within the file;  these
   // might slightly overlap with each other or have gaps.
@@ -73,10 +73,10 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
     return false;
   }
   ctc::CctcSupervisionSplitter splitter(cctc_supervision);
-  
+
   for (size_t i = 0; i < range_starts_subsampled.size(); i++) {
     int32 range_start_subsampled = range_starts_subsampled[i],
-        range_start = range_start_subsampled * frames_per_eg;
+        range_start = range_start_subsampled * frame_subsampling_factor;
 
     ctc::CctcSupervision supervision_part;
     splitter.GetFrameRange(range_start_subsampled,
@@ -92,10 +92,10 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
     nnet_cctc_eg.outputs.resize(1);
     nnet_cctc_eg.outputs[0].Swap(&nnet_supervision);
     nnet_cctc_eg.inputs.resize(ivector_feats != NULL ? 2 : 1);
-    
+
     int32 tot_frames = left_context + frames_per_eg + right_context;
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
-    
+
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {
       int32 t = range_start + j;
@@ -125,7 +125,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     if (compress)
       nnet_cctc_eg.Compress();
-      
+
     std::ostringstream os;
     os << utt_id << "-" << range_start;
 
@@ -169,9 +169,9 @@ int main(int argc, char *argv[]) {
     bool compress = true;
     int32 left_context = 0, right_context = 0, num_frames = 1,
         length_tolerance = 100, frame_subsampling_factor = 1;
-        
+
     std::string ivector_rspecifier;
-    
+
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
                 "compressed format (recommended)");
@@ -189,7 +189,7 @@ int main(int argc, char *argv[]) {
     po.Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                 "if the frame-rate in CTC will be less than the frame-rate "
                 "of the original alignment");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -209,7 +209,7 @@ int main(int argc, char *argv[]) {
                 << ", now --num-frames=" << new_num_frames;
       num_frames = new_num_frames;
     }
-    
+
 
     std::string feature_rspecifier = po.GetArg(1),
         supervision_rspecifier = po.GetArg(2),
@@ -219,10 +219,10 @@ int main(int argc, char *argv[]) {
     RandomAccessCctcSupervisionReader supervision_reader(supervision_rspecifier);
     NnetCctcExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
-    
+
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
-    
+
     for (; !feat_reader.Done(); feat_reader.Next()) {
       std::string key = feat_reader.Key();
       const Matrix<BaseFloat> &feats = feat_reader.Value();

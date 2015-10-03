@@ -39,20 +39,20 @@ class NnetCctcLdaStatsAccumulator {
       rand_prune_(rand_prune), trans_model_(trans_model), nnet_(nnet),
       compiler_(nnet) { }
 
-  
+
   void AccStats(const NnetCctcExample &eg) {
     ComputationRequest request;
     bool need_backprop = false, store_stats = false;
-    
+
     GetCctcComputationRequest(nnet_, eg, need_backprop, store_stats, &request);
-    
+
     const NnetComputation &computation = *(compiler_.Compile(request));
 
     NnetComputeOptions options;
     if (GetVerboseLevel() >= 3)
       options.debug = true;
     NnetComputer computer(options, computation, nnet_, NULL);
-    
+
     computer.AcceptInputs(nnet_, eg.inputs);
     computer.Forward();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
@@ -75,12 +75,12 @@ class NnetCctcLdaStatsAccumulator {
     BaseFloat rand_prune = rand_prune_;
 
     if (eg.outputs.size() != 1 || eg.outputs[0].name != "output" ||
-        eg.outputs[0].supervision.size() == 1)
-      KALDI_ERR << "Expecting the example to have one output named 'output'"
-                << ", withone supervision object.";
+        eg.outputs[0].supervision.size() != 1)
+      KALDI_ERR << "Expecting the example to have one output named 'output',"
+                << "with one supervision object.";
 
     const ctc::CctcSupervision &supervision = eg.outputs[0].supervision[0];
-    
+
     int32 num_frames = supervision.num_frames;
     KALDI_ASSERT(num_frames == nnet_output.NumRows());
     const fst::StdVectorFst &fst = supervision.fst;
@@ -114,7 +114,7 @@ class NnetCctcLdaStatsAccumulator {
 
       std::vector<std::pair<int32,BaseFloat> >::const_iterator
           iter = pdf_post[t].begin(), end = pdf_post[t].end();
-      
+
       for (; iter != end; ++iter) {
         int32 pdf = iter->first;
         BaseFloat weight = iter->second;
@@ -155,14 +155,14 @@ class NnetCctcLdaStatsAccumulator {
         dest_iter->second *= scale;
     }
   }
-  
+
 
   BaseFloat rand_prune_;
   const ctc::CctcTransitionModel &trans_model_;
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
   LdaEstimate lda_stats_;
-  
+
 };
 
 }
@@ -189,22 +189,22 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         "nnet3-ctc-acc-lda-stats 0.trans 0.raw ark:1.cegs 1.acc\n"
         "See also: nnet-get-feature-transform\n";
-    
+
     bool binary_write = true;
     BaseFloat rand_prune = 0.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("rand-prune", &rand_prune,
-                "Randomized pruning threshold for posteriors");    
-    
+                "Randomized pruning threshold for posteriors");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string cctc_trans_model_rxfilename = po.GetArg(1),
         nnet_rxfilename = po.GetArg(2),
         examples_rspecifier = po.GetArg(3),
@@ -213,15 +213,15 @@ int main(int argc, char *argv[]) {
 
     ctc::CctcTransitionModel trans_model;
     ReadKaldiObject(cctc_trans_model_rxfilename, &trans_model);
-    
+
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
     NnetCctcLdaStatsAccumulator accumulator(rand_prune, trans_model, nnet);
 
     int64 num_egs = 0;
-    
-    SequentialNnetCctcExampleReader example_reader(examples_rspecifier);    
+
+    SequentialNnetCctcExampleReader example_reader(examples_rspecifier);
     for (; !example_reader.Done(); example_reader.Next(), num_egs++)
       accumulator.AccStats(example_reader.Value());
 

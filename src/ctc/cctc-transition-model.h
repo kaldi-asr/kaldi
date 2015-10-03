@@ -92,7 +92,7 @@ class CctcTransitionModel {
   // specific than the lm_history_state); and to the LM probability
   // corresponding to this transition (this will be 1.0 for blank symbols).
   int32 NumGraphLabels() const { return NumHistoryStates() * (num_phones_+1); }
-  
+
   // Maps graph-label to phone (i.e. the predicted phone, or 0 for blank).
   int32 GraphLabelToPhone(int32 g) const { return (g - 1) % (num_phones_ + 1); }
 
@@ -108,12 +108,12 @@ class CctcTransitionModel {
   // added some other phone to the right of the existing phone-sequence.  (The
   // identity of that added phone wouldn't matter as it wouldn't be part of the
   // history).
-  int32 GraphLabelToNextHistoryState(int32 graph_label) const;  
+  int32 GraphLabelToNextHistoryState(int32 graph_label) const;
 
   // Returns the history-state at the beginning of an utterance, corresponding
   // to beginning of sentence.
   int32 InitialHistoryState() const;
-  
+
   // Given a history-state and a phone (or 0 for blank), gives the
   // corresponding graph label.
   int32 GetGraphLabel(int32 history_state, int32 phone) const;
@@ -124,13 +124,13 @@ class CctcTransitionModel {
 
   // Returns the language model probability of this phone given this history
   // state (or zero for blank).
-  BaseFloat GetLmProb(int32 history_state, int32 phone) const;  
+  BaseFloat GetLmProb(int32 history_state, int32 phone) const;
 
   // Returns the output-index for this phone [or 0 for blank] given this history
   // state.
-  int32 GetOutputIndex(int32 history_state, int32 phone) const;  
+  int32 GetOutputIndex(int32 history_state, int32 phone) const;
 
-  
+
   // Maps graph-label to the output index (between zero NumOutputIndexes() - 1),
   // which will be used to look up (in the nnet output) the numerator of the
   // expression for the likelihood of this phone (or blank).
@@ -142,11 +142,13 @@ class CctcTransitionModel {
 
   std::string Info() const;
 
+  bool operator == (const CctcTransitionModel &other) const;
+
  protected:
   // Check that the contents of this object make sense (does not check
   // weights_, which is a derived variable).
   void Check() const;
-  
+
   struct HistoryStateInfo {
     // The next history-state we'd get to after appending the phone p>0 is
     // tabluated as next_history_state[p].  next_history_state[0] equals the
@@ -163,11 +165,12 @@ class CctcTransitionModel {
     // for blank (0) is defined as 1.0, as we let the acoustic model take
     // care of predicting it, so phone_lm_prob(0) is set to 1.0.
     Vector<BaseFloat> phone_lm_prob;
+
+    bool operator == (const HistoryStateInfo &other) const;
   };
 
   // The graph-label for a (history-state, phone-or-blank) pair (h,p) is equal to
   // h * (num_phones_ + 1) + p
-  
 
   // the number of phones that this model is buit for (this is one-based, so the
   // highest numbered phone is indexed num_phones_; 0 is used for the blank
@@ -178,7 +181,7 @@ class CctcTransitionModel {
   // equals the larger of (the tree context width, and the language-model n-gram
   // order) minus one.
   int32 phone_left_context_;
-  
+
   // the dimension of the neural network output.
   int32 num_output_indexes_;
   // The number of the output indexes that don't correspond to various
@@ -188,18 +191,12 @@ class CctcTransitionModel {
 
   // The index of the history state that we have at the start of a sentence.
   int32 initial_history_state_;
-  
+
   // The vector of information on history states (indexed by history-state).
-  // All other information in this class is derived from this, 
+  // All other information in this class is derived from this,
   // num_phones_, num_output_indexes_ and num_non_blank_indexes_.
   std::vector<HistoryStateInfo> history_state_info_;
 
-  // This matrix is a derived variable; its row is the history_state,
-  // and its column dimension is the output dimension of the neural net.
-  // A row of this will be dotted with the output of the neural net to
-  // get the denominator of the probability value.
-  Matrix<BaseFloat> weights_;
-  
   friend class CctcTransitionModelCreator;
 };
 
@@ -213,11 +210,12 @@ class CctcTransitionModelCreator {
                              const LanguageModel &phone_lang_model);
 
   void InitCctcTransitionModel(CctcTransitionModel *model);
+
  private:
   typedef unordered_set<std::vector<int32>, VectorHasher<int32> > SetType;
   typedef unordered_map<std::vector<int32>, int32, VectorHasher<int32> > MapType;
-  
-  
+
+
   // This function outputs all the initial histories (pre-merging), represented
   // as vectors of phonetic left-context.
   void GetInitialHistories(SetType *hist_set) const;
@@ -227,7 +225,7 @@ class CctcTransitionModelCreator {
   // histories, each of length at least equal to the decision-tree left context.
   void CreateHistoryInfo(const std::vector<std::vector<int32> > &hist_vec,
                          const MapType &hist_to_state);
-  
+
   // writes to history_state_info_ the initial history states, pre-merging.
   void GetInitialHistoryStates();
 
@@ -242,7 +240,7 @@ class CctcTransitionModelCreator {
 
   // Called from OutputToTransitionModel, this function outputs
   // the info for one history state
-  void OutputHistoryState(int32 h, CctcTransitionModel *model) const;  
+  void OutputHistoryState(int32 h, CctcTransitionModel *model) const;
 
   // Returns the neural-net output index for this history and this
   // phone.   hist.size() must >= ctx_dep_.ContextWidth() - 1.
@@ -251,8 +249,8 @@ class CctcTransitionModelCreator {
   // an index by adding that to num_tree_leaves_.
   int32 GetOutputIndex(const std::vector<int32> &hist,
                        int32 phone) const;
-  
-  
+
+
   // This struct contains all the info we need for constructing the history
   // states and merging ones that behave the same.
   struct HistoryState {
@@ -264,7 +262,7 @@ class CctcTransitionModelCreator {
     // likelihoood.  For non-blank phone this corresponds to a decision tree state.
     // note, output_indexes are zero-based.
     std::vector<int32> output_index;
-    
+
     // For each next-phone p > 0, contains the index of the history-state that
     // we get to after appending phone p to the sequence.  The blank phone
     // (phone 0) doesn't affect history states (so it would transition to
@@ -291,7 +289,7 @@ class CctcTransitionModelCreator {
   struct HistoryStateHasher {
     size_t operator () (const HistoryState *const hist_info) const {
       VectorHasher<int32> vec_hasher;
-      size_t p1 = 31; 
+      size_t p1 = 31;
       return p1 * hist_info->lm_history_state +
           vec_hasher(hist_info->output_index) +
           vec_hasher(hist_info->next_history_state);
@@ -304,10 +302,10 @@ class CctcTransitionModelCreator {
     }
   };
 
-  
+
   typedef unordered_map<const HistoryState*, int32,
                         HistoryStateHasher, HistoryStateEqual> HistoryMapType;
-  
+
 
   const ContextDependency &ctx_dep_;
   const LanguageModel &phone_lang_model_;
@@ -322,7 +320,7 @@ class CctcTransitionModelCreator {
 
   // the history state that corresponds to the start of a sentence.
   int32 initial_history_state_;
-  
+
   std::vector<HistoryState> history_states_;
 };
 
@@ -344,7 +342,7 @@ class CctcTransitionModelCreator {
 //    p(p | H).  As such we can write it however we want; I chose a comma p,H rather
 //    than a pipe symbol p|H.
 //
-//    
+//
 //
 //
 

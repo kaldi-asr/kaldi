@@ -192,6 +192,7 @@ if [ $stage -le -5 ]; then
     --ivector-dim $ivector_dim  \
      $dim_opts \
     --num-targets $num_leaves  \
+    --use-presoftmax-prior-scale false \
    $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
@@ -306,7 +307,7 @@ if [ $stage -le -1 ]; then
   # before concatenating them.
 
   echo "$0: creating initial model"
-  cat <(ctc-copy-transition-model  $dir/0.trans_mdl -)\
+  cat <(ctc-copy-transition-model  $dir/0.ctc_trans_mdl -)\
       <(nnet3-copy $dir/0.raw -) > dir/0.mdl
 fi
 
@@ -386,17 +387,18 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-            "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+      nnet3-ctc-compute-prob $dir/$x.mdl \
+            "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-           "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+      nnet3-ctc-compute-prob $dir/$x.mdl \
+           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 
     if [ $x -gt 0 ]; then
+      # This doesn't use the egs, it only shows the relative change in model parameters.
       $cmd $dir/log/progress.$x.log \
-        nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-        "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:-|" '&&' \
-        nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" &
+        nnet3-show-progress --use-gpu=no "nnet3-ctc-copy --raw=true $dir/$[$x-1].mdl - |" \
+                  "nnet3-ctc-copy --raw=true $dir/$x.mdl - |" '&&' \
+        nnet3-ctc-info $dir/$x.mdl &
     fi
 
     echo "Training neural net (pass $x)"
@@ -408,11 +410,11 @@ while [ $x -lt $num_iters ]; do
                        # best.
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
-      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
+      mdl="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl -"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet3-ctc-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -445,7 +447,7 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-ctc-train $parallel_train_opts "$raw" \
+          nnet3-ctc-train $parallel_train_opts --write-raw=true "$mdl" \
           "ark:nnet3-ctc-copy-egs --frame=$frame $context_opts ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
@@ -464,7 +466,7 @@ while [ $x -lt $num_iters ]; do
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
         nnet3-average $nnets_list - \| \
-        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -474,7 +476,7 @@ while [ $x -lt $num_iters ]; do
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
-        nnet3-am-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-ctc-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     fi
 
     rm $nnets_list
@@ -501,7 +503,7 @@ if [ $stage -le $num_iters ]; then
     iter=$[$first_model_combine+$n]
     mdl=$dir/$iter.mdl
     [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
-    nnets_list[$n]="nnet3-am-copy --raw=true $mdl -|";
+    nnets_list[$n]="$mdl";
   done
 
   # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
@@ -509,48 +511,21 @@ if [ $stage -le $num_iters ]; then
   # num-threads to 8 to speed it up (this isn't ideal...)
 
   $cmd $combine_queue_opt $dir/log/combine.log \
-    nnet3-combine --num-iters=40 \
+    nnet3-ctc-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$egs_dir/combine.egs ark:-|" \
-    "|nnet3-am-copy --set-raw-nnet=- $dir/$num_iters.mdl $dir/combined.mdl" || exit 1;
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-ctc-merge-egs --minibatch-size=512 ark:$egs_dir/combine.cegs ark:-|" \
+       $dir/final.mdl || exit 1;
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+    nnet3-ctc-compute-prob $dir/final.mdl \
+    "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
+    nnet3-ctc-compute-prob $dir/final.mdl \
     "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 fi
-
-if [ $stage -le $[$num_iters+1] ]; then
-  echo "Getting average posterior for purposes of adjusting the priors."
-  # Note: this just uses CPUs, using a smallish subset of data.
-  rm $dir/post.$x.*.vec 2>/dev/null
-  if [ $num_jobs_compute_prior -lt $num_archives ]; then egs_part=1;
-  else egs_part=JOB; fi
-  $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$egs_dir/cegs.$egs_part.ark ark:- \| \
-    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs ark:- ark:- \| \
-    nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
-      "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
-    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
-
-  sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
-
-  $cmd $dir/log/vector_sum.$x.log \
-   vector-sum $dir/post.$x.*.vec $dir/post.$x.vec || exit 1;
-
-  rm $dir/post.$x.*.vec;
-
-  echo "Re-adjusting priors based on computed posteriors"
-  $cmd $dir/log/adjust_priors.final.log \
-    nnet3-am-adjust-priors $dir/combined.mdl $dir/post.$x.vec $dir/final.mdl || exit 1;
-fi
-
 
 if [ ! -f $dir/final.mdl ]; then
   echo "$0: $dir/final.mdl does not exist."

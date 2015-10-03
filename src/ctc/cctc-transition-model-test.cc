@@ -43,8 +43,10 @@ void TestCctcTransitionModelIo(const CctcTransitionModel &trans_model) {
   trans_model2.Read(is, binary);
   std::ostringstream os2;
   trans_model2.Write(os2, binary);
-  if (binary)
+  if (binary) {
     KALDI_ASSERT(os.str() == os2.str());
+    KALDI_ASSERT(trans_model2 == trans_model);
+  }
 }
 
 void TestCctcTransitionModelProbs(const CctcTransitionModel &trans_model,
@@ -111,10 +113,10 @@ void TestCctcTransitionModelIndexes(const CctcTransitionModel &trans_model,
   for (int32 i = 0; i < sequence_length; i++) {
     // test_phone is the phone whose output index we will test, which may be
     // zero (blank)
-    int32 test_phone = RandInt(0, num_phones); 
+    int32 test_phone = RandInt(0, num_phones);
     if (RandInt(0, 3) == 0)  // Boost probability of seeing zero (blank phone).
       test_phone = 0;
-    
+
     int32 trans_model_output_index = trans_model.GetOutputIndex(
         current_history_state, test_phone),
         output_index = GetOutputIndex(num_non_blank_indexes, ctx_dep,
@@ -173,7 +175,7 @@ void TestCctcTransitionModelGraph(const CctcTransitionModel &trans_model) {
   // the input side and eps on the output side.
   ShiftPhonesAndAddBlanks(&phone_acceptor);
   BaseFloat phone_language_model_weight = RandUniform();
-  
+
   Fst ctc_fst;
   CreateCctcDecodingFst(trans_model, phone_language_model_weight,
                         phone_acceptor,
@@ -199,14 +201,14 @@ void TestCctcTransitionModelGraph(const CctcTransitionModel &trans_model) {
   MakeLinearAcceptor(graph_ids, &graph_id_acceptor);
 
   // WriteIntegerVector(std::cerr, false, graph_ids);
-  
+
   Fst composed_fst;
   // note: ctc_fst has the graph-labels on its input side.
   Compose(graph_id_acceptor, ctc_fst, &composed_fst);
 
   if (composed_fst.NumStates() == 0)  // empty FST
     KALDI_ERR << "Did not find the expected symbol sequence in CCTC graph.";
-  
+
   // we expect that the output FST will have a linear structure.
   std::vector<int32> input_seq, output_seq;
   fst::StdArc::Weight tot_weight;
@@ -222,7 +224,7 @@ void TestCctcTransitionModelGraph(const CctcTransitionModel &trans_model) {
       expected_tot_cost = -tot_log_prob * phone_language_model_weight;
   if (!ApproxEqual(tot_cost, expected_tot_cost))
     KALDI_ERR << "Total cost of FST is not what we expected";
-}  
+}
 
 
 void CctcTransitionModelTest() {
@@ -231,7 +233,7 @@ void CctcTransitionModelTest() {
   std::vector<std::vector<int32> > data, validation_data;
 
   GenerateLanguageModelingData(&vocab_size, &data, &validation_data);
-  
+
   LanguageModelOptions opts;
   opts.ngram_order = order;
   if (RandInt(0,3) == 0)
@@ -244,8 +246,8 @@ void CctcTransitionModelTest() {
     opts.state_count_cutoff1 = 0.0;
     opts.state_count_cutoff2plus = 0.0;
   }
-  
-  
+
+
   LanguageModelEstimator estimator(opts, vocab_size);
   for (size_t i = 0; i < data.size(); i++) {
     std::vector<int32> &sentence = data[i];
@@ -299,7 +301,7 @@ void CctcTransitionModelTest() {
     KALDI_ASSERT(trans_model.GetOutputIndex(h, p) ==
                  trans_model.GraphLabelToOutputIndex(g));
   }
-  
+
   delete dep;
 }
 
