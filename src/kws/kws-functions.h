@@ -1,4 +1,4 @@
-// lat/kws-functions.h
+// kws/kws-functions.h
 
 // Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 

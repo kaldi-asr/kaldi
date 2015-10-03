@@ -1,4 +1,4 @@
-// online2/compress-uncompress-speex.cc
+// online2bin/compress-uncompress-speex.cc
 
 // 2014  IMSL, PKU-HKUST (author: Wei Shi)
 

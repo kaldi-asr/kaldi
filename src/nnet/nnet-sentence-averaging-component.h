@@ -1,4 +1,4 @@
-// nnet/nnet-affine-transform.h
+// nnet/nnet-sentence-averaging-component.h
 
 // Copyright 2013  Brno University of Technology (Author: Karel Vesely)
 

@@ -1,4 +1,4 @@
-// gmmbin/gmm-est-fmllr.cc
+// gmmbin/gmm-est-fmllr-global.cc
 
 // Copyright 2009-2011  Microsoft Corporation;  Saarland University
 //           2013-2014  Johns Hopkins University (author: Daniel Povey)

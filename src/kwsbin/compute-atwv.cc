@@ -1,4 +1,4 @@
-// bin/compute-atwv.cc
+// kwsbin/compute-atwv.cc
 
 // Copyright (c) 2015, Johns Hopkins University (Yenda Trmal<jtrmal@gmail.com>)
 

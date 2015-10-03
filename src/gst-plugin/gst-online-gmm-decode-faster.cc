@@ -1,4 +1,4 @@
-// gst-plugin/gst-online-decode-faster.cc
+// gst-plugin/gst-online-gmm-decode-faster.cc
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 // Copyright 2012 Cisco Systems (author: Matthias Paulik)

@@ -1,3 +1,5 @@
+// nnet3/nnet-compile-utils.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015                           (author: Vijayaditya Peddinti)
 
@@ -85,7 +87,7 @@ bool  SecondElementComparator(const std::pair<int32, int32>& first_pair,
 void SortSubmatLists(
     // vector of list of location pairs
     const std::vector<std::vector<std::pair<int32, int32> > > submat_lists,
-    // a copy of the input submat_lists where the lists are sorted 
+    // a copy of the input submat_lists where the lists are sorted
     // (this will be used in the caller function for sort and find functions)
     std::vector<std::vector<std::pair<int32, int32> > > * sorted_submat_lists,
     // maximum size of the submat_lists
@@ -113,7 +115,7 @@ void ComputeSubmatIndexHistogram(
     // by submat_indexes (.first element)
     const std::vector<std::vector<std::pair<int32, int32> > >
     sorted_submat_lists,
-    // a histogram of submat_indexes where 
+    // a histogram of submat_indexes where
     // the keys are submat_indexes and values are a vector of frequencies
     // of first occurrence, second occurrence, etc. of a submat_index
     // in a submat_list
@@ -157,7 +159,7 @@ void ComputeSubmatIndexHistogram(
 }
 
 
-// Function to find the first occurrence of a submat_index in list of location 
+// Function to find the first occurrence of a submat_index in list of location
 // pairs from a vector of list of locations pairs.
 // The occurrences are returned as a list of vector iterators,
 // pointing to the position of the pair in the list or to the
@@ -166,7 +168,7 @@ void FindSubmatIndexInSubmatLists(
     // submat_index to search in the submat_lists
     int32 submat_index,
     // sorted_submat_lists is a pointer as we want non-const iterators in the
-    // output 
+    // output
     std::vector<std::vector<std::pair<int32, int32> > > *sorted_submat_lists,
     // a vector of iterators to store the location of the pairs
     std::vector<std::vector<std::pair<int32, int32> >::iterator>
@@ -236,7 +238,7 @@ static void ExtractLastPairFromSubmatLists(
 }
 
 // Function which does the actual splitting of submat_lists. But it operates on
-// sorted submat_lists and uses submat_histogram_vector. 
+// sorted submat_lists and uses submat_histogram_vector.
 // See SplitLocations, below for the algorithm
 static void SplitLocationsUsingSubmatHistogram(
     // maximum size of the lists in the sorted_submat_lists
@@ -247,14 +249,14 @@ static void SplitLocationsUsingSubmatHistogram(
     // a vector of pairs to represent a histogram
     // this is a pointer as the vector will be sorted
     std::vector<std::pair<int32, int32> > *submat_histogram_vector,
-    // a vector of lists of pairs with rearranged pairs 
+    // a vector of lists of pairs with rearranged pairs
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists)  {
 
   // sort the submat_histogram_vector based on second element of pair
   // in descending order then first element of pair in descending order
   std::sort(submat_histogram_vector->begin(),
             submat_histogram_vector->end(), SecondElementComparator);
-  
+
   int32 prev_max_remaining_submat_list_size = max_submat_list_size;
   std::vector<std::pair<int32, int32> >::iterator iter;
   for (iter = submat_histogram_vector->begin();
@@ -281,9 +283,9 @@ static void SplitLocationsUsingSubmatHistogram(
       prev_max_remaining_submat_list_size = max_remaining_submat_list_size;
     }
   }
-  
+
   // rearrange the remaining pairs into lists where
-  // pairs with multiple first elements are allowed 
+  // pairs with multiple first elements are allowed
   // Note : we don't yet know if there is any advantage of having multiple
   // calls to the same submat in kAddRowsMulti. If this is actually helpful
   // then use the sorted_histogram_vector to first copy submat_indexes which
@@ -309,7 +311,7 @@ static void SplitLocationsUsingSubmatHistogram(
 // In the current implementation we replace kAddRowsMulti calls with
 // kAddRows calls wherever possible, while not increasing the number of calls.
 //
-// Algorithm : 
+// Algorithm :
 // The function computes a histogram of submat_indexes and spans through the
 // submat_indexes in descending order of frequency. For each submat_index a
 // decision is made to copy it using a kAddRows call or not.
@@ -319,7 +321,7 @@ static void SplitLocationsUsingSubmatHistogram(
 // submat_indexes which cannot be assigned to kAddRow calls are rearranged into
 // lists for kAddRowsMulti calls.
 //
-// Note : To decide splits we could have solved a combinatorial 
+// Note : To decide splits we could have solved a combinatorial
 // optimization problem where we find the best set of
 // kAddRows + kAddRowsMulti calls;
 // but given that both these calls have similar costs,
@@ -339,7 +341,7 @@ void SplitLocations(
   // a histogram of the submat_indexes in the submat_lists
   // each occurence in a given submat_list is considered unique so we maintain
   // a vector to count each occurrence separately.
-  // The i'th element in the vector corresponds to the count of 
+  // The i'th element in the vector corresponds to the count of
   // the (i+1)'th occurrence of a submat_index in a submat_list
   unordered_map<int32, std::vector<int32> > submat_histogram;
 
@@ -352,7 +354,7 @@ void SplitLocations(
   ComputeSubmatIndexHistogram(sorted_submat_lists, &submat_histogram);
   // the vector has same information as the submat_histogram, but it is
   // suitable for sorting according to frequency. The first elements of pairs
-  // can be repeated, these correspond to different occurrences in the same list 
+  // can be repeated, these correspond to different occurrences in the same list
   std::vector<std::pair<int32, int32> > submat_histogram_vector;
   // copy the key, occurence_counts from submat_histogram to a vector
   unordered_map<int32, std::vector<int32> >::iterator hist_iter;
@@ -402,10 +404,10 @@ void ConvertVectorToContiguousSegments(std::vector<int32> values,
       // create the edge
       (*contiguous_segments).push_back(std::make_pair(
           values[i-1], std::make_pair(edge_start, i-1)));
-      edge_start = i; 
+      edge_start = i;
     }
   }
-  (*contiguous_segments).push_back( 
+  (*contiguous_segments).push_back(
       std::make_pair( values.back(),  std::make_pair(edge_start,
                                                      values.size() - 1)));
 }
@@ -416,7 +418,7 @@ void ConvertVectorToContiguousSegments(std::vector<int32> values,
 void SplitContiguousSegments(
     std::vector<std::pair< int32, std::pair<int32, int32> > >
     &contiguous_segments,
-    std::vector<std::vector<std::pair< int32, std::pair<int32, int32> > > > 
+    std::vector<std::vector<std::pair< int32, std::pair<int32, int32> > > >
     *contiguous_segments_list) {
   // a vector of integer lists used for book-keeping;
   // it stores the values of contiguous segments stored in each list of output
@@ -436,7 +438,7 @@ void SplitContiguousSegments(
         // a segment with the current value does not exist in this list
         // so adding the segment to this list
         (*contiguous_segments_list)[j].push_back(contiguous_segments[i]);
-        // book-keeping 
+        // book-keeping
         segment_values_vector[j].push_back(segment_value);
         added_segment = true;
         break;
@@ -448,7 +450,7 @@ void SplitContiguousSegments(
       std::vector<std::pair<int32, std::pair<int32, int32> > > list_of_pairs;
       list_of_pairs.push_back(contiguous_segments[i]);
       contiguous_segments_list->push_back(list_of_pairs);
-      // book-keeping for easier search  
+      // book-keeping for easier search
       std::vector<int32> list;
       list.push_back(segment_value);
       segment_values_vector.push_back(list);
@@ -516,7 +518,7 @@ void SplitLocationsBackward(
       for (int32 j = 0; j < unique_contiguous_segments_list.size(); j++) {
         std::vector<std::pair<int32, int32> > list_of_pairs(
             split_lists_intermediate[0].size(), std::make_pair(-1, -1));
-        std::vector<std::pair<int32, std::pair<int32, int32> > > 
+        std::vector<std::pair<int32, std::pair<int32, int32> > >
             &current_contiguous_segments = unique_contiguous_segments_list[j];
         // converting the contiguous_segment to a list of pairs
         for (int32 k = 0; k < current_contiguous_segments.size(); k++) {

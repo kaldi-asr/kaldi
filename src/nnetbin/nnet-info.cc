@@ -1,4 +1,4 @@
-// nnetbin/nnet1-info.cc
+// nnetbin/nnet-info.cc
 
 // Copyright 2013  Brno University of Technology (Author: Karel Vesely)
 

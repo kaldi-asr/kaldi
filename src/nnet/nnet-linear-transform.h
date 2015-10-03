@@ -1,4 +1,4 @@
-// nnet/nnet-affine-transform.h
+// nnet/nnet-linear-transform.h
 
 // Copyright 2011-2014  Brno University of Technology (author: Karel Vesely)
 
