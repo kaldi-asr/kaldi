@@ -12,7 +12,8 @@ include ../kaldi.mk
 
 TESTFILES = lm-lib-test
 
-OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o
+OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o kaldi-rnnlm.o \
+           mikolov-rnnlm-lib.o
 
 TESTOUTPUTS = composed.fst output.fst output1.fst output2.fst
 
