@@ -209,8 +209,6 @@ fi
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
 
-context_opts="--left-context=$left_context --right-context=$right_context"
-
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
@@ -307,8 +305,8 @@ if [ $stage -le -1 ]; then
   # before concatenating them.
 
   echo "$0: creating initial model"
-  cat <(ctc-copy-transition-model  $dir/0.ctc_trans_mdl -)\
-      <(nnet3-copy $dir/0.raw -) > dir/0.mdl
+  $cmd $dir/log/init_model.log \
+    nnet3-ctc-copy --set-raw-nnet=$dir/0.raw $dir/0.ctc_trans_mdl $dir/0.mdl || exit 1;
 fi
 
 
@@ -388,10 +386,10 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-ctc-compute-prob $dir/$x.mdl \
-            "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+            "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-ctc-compute-prob $dir/$x.mdl \
-           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
@@ -410,7 +408,7 @@ while [ $x -lt $num_iters ]; do
                        # best.
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
-      mdl="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl -"
+      mdl="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
@@ -441,14 +439,10 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        frame=$[(($k/$num_archives)%$frames_per_eg)]; # work out the 0-based frame
-        # index; this increases more slowly than the archive index because the
-        # same archive with different frame indexes will give similar gradients,
-        # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-ctc-train $parallel_train_opts --write-raw=true "$mdl" \
-          "ark:nnet3-ctc-copy-egs --frame=$frame $context_opts ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          nnet3-ctc-train $parallel_train_opts --print-interval=10 --write-raw=true "$mdl" \
+          "ark:nnet3-ctc-copy-egs ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -521,10 +515,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-ctc-compute-prob $dir/final.mdl \
-    "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-ctc-compute-prob $dir/final.mdl \
-    "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi
 
 if [ ! -f $dir/final.mdl ]; then

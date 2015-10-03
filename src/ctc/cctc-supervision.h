@@ -224,7 +224,7 @@ class TimeEnforcerFst:
 
   TimeEnforcerFst(const CctcProtoSupervision &proto_supervision):
       proto_supervision_(proto_supervision) { }
-  
+
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
   virtual StateId Start() { return 0; }
@@ -242,7 +242,7 @@ class TimeEnforcerFst:
   // the next frame (but not all are allowed).  The interface of GetArc requires
   // ilabel to be nonzero (not epsilon).
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
-  
+
  private:
   const CctcProtoSupervision &proto_supervision_;
 };
@@ -279,7 +279,7 @@ struct CctcSupervision {
   CctcSupervision(const CctcSupervision &other);
 
   bool operator == (const CctcSupervision &other) const;
-  
+
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 };
@@ -312,7 +312,8 @@ bool MakeCctcSupervisionNoContext(
    start state.  This gives us the sorting on frame index for the
    FSTs that appear in class CctcSupervision (it relies on them being
    epsilon-free).
-*/
+   This function requires that the input FST be connected (i.e. all states
+   reachable from the start state).  */
 void SortBreadthFirstSearch(fst::StdVectorFst *fst);
 
 /** This function modifies a CctcSupervision object with phones-or-blank-plus-one
@@ -342,13 +343,13 @@ class CctcSupervisionSplitter {
   void CreateRangeFst(int32 begin_frame, int32 end_frame,
                       int32 begin_state, int32 end_state,
                       fst::StdVectorFst *fst) const;
-  
+
   const CctcSupervision &supervision_;
   // Indexed by the state-index of 'supervision_.fst', this is the frame-index,
   // which ranges from 0 to supervision_.num_frames - 1.  This will be
   // monotonically increasing (note that supervision_.fst is topologically
   // sorted).
-  std::vector<int32> frame_;  
+  std::vector<int32> frame_;
 };
 
 /// Assuming the 'fst' is epsilon-free, connected, and has the property that all
@@ -400,7 +401,7 @@ void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
 void SplitIntoRanges(int32 num_frames,
                      int32 frames_per_range,
                      std::vector<int32> *range_starts);
-  
+
 
 typedef TableWriter<KaldiObjectHolder<CctcSupervision > > CctcSupervisionWriter;
 typedef SequentialTableReader<KaldiObjectHolder<CctcSupervision > > SequentialCctcSupervisionReader;

@@ -47,7 +47,7 @@ void CctcProtoSupervision::Write(std::ostream &os, bool binary) const {
     if (!binary) os << "\n";
   }
   WriteToken(os, binary, "</CctcProtoSupervision>");
-  if (!binary) os << "\n";  
+  if (!binary) os << "\n";
 }
 
 void AlignmentToProtoSupervision(const std::vector<int32> &phones,
@@ -62,7 +62,7 @@ void AlignmentToProtoSupervision(const std::vector<int32> &phones,
     int32 phone = phones[i], duration = durations[i];
     KALDI_ASSERT(phone > 0 && duration > 0);
     proto_supervision->phone_instances[i+1].phone_or_blank = phone;
-    proto_supervision->phone_instances[i+1].begin_frame = current_frame;    
+    proto_supervision->phone_instances[i+1].begin_frame = current_frame;
     current_frame += duration;
     proto_supervision->phone_instances[i+1].end_frame = current_frame;
     labels[i] = i + 1;  // will become labels in the FST.
@@ -84,7 +84,7 @@ void AlignmentToProtoSupervision(
         duration = phones_durations[i].second;
     KALDI_ASSERT(phone > 0 && duration > 0);
     proto_supervision->phone_instances[i+1].phone_or_blank = phone;
-    proto_supervision->phone_instances[i+1].begin_frame = current_frame;    
+    proto_supervision->phone_instances[i+1].begin_frame = current_frame;
     current_frame += duration;
     proto_supervision->phone_instances[i+1].end_frame = current_frame;
     labels[i] = i + 1;  // will become labels in the FST.
@@ -107,7 +107,7 @@ void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
   proto_supervision->num_frames = CompactLatticeStateTimes(lat, &state_times);
   for (int32 state = 0; state < num_states; state++)
     proto_supervision->fst.AddState();
-  proto_supervision->fst.SetStart(lat.Start());  
+  proto_supervision->fst.SetStart(lat.Start());
   for (int32 state = 0; state < num_states; state++) {
     int32 state_time = state_times[state];
     for (fst::ArcIterator<CompactLattice> aiter(lat, state); !aiter.Done();
@@ -150,7 +150,7 @@ void PhoneLatticeToProtoSupervision(const CompactLattice &lat,
 }
 
 
-bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {    
+bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   KALDI_ASSERT(ilabel > 0 && static_cast<size_t>(ilabel) <
                proto_supervision_.phone_instances.size());
   const PhoneInstance &instance =
@@ -185,8 +185,7 @@ bool MakeCctcSupervisionNoContext(
   // the same label sequence; it will reduce the size of the FST.
   fst::Determinize(supervision->fst, &det_fst);
   supervision->fst = det_fst;  // shallow copy.
-  if (fst::TopSort(&(supervision->fst)) == false)
-    KALDI_ERR << "Topological sort of supervision FST failed.";
+  SortBreadthFirstSearch(&(supervision->fst));
   supervision->weight = 1.0;
   supervision->num_frames = proto_supervision.num_frames;
   supervision->label_dim = num_phones + 1;
@@ -196,7 +195,7 @@ bool MakeCctcSupervisionNoContext(
 
 void MakeSilencesOptional(const CctcSupervisionOptions &opts,
                           CctcProtoSupervision *proto_supervision) {
-  
+
   if (opts.silence_phones.empty())
     return;  // Nothing to do.
   std::vector<int32> silence_phones;
@@ -328,7 +327,7 @@ void AddBlanksToProtoSupervision(CctcProtoSupervision *proto_supervision) {
         proto_supervision->fst.AddArc(
             nextstate, fst::StdArc(label, label, fst::TropicalWeight::One(),
                                    nextstate));
-      
+
     }
   }
 }
@@ -416,9 +415,8 @@ void CctcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   // the same label sequence; it will reduce the size of the FST.
   fst::Determinize(out_supervision->fst, &det_fst);
   out_supervision->fst = det_fst;  // shallow copy.
-  KALDI_ASSERT(out_supervision->fst.NumStates() > 0);  
-  if (fst::TopSort(&(out_supervision->fst)) == false)
-    KALDI_ERR << "Topological sort of supervision FST failed.";
+  KALDI_ASSERT(out_supervision->fst.NumStates() > 0);
+  SortBreadthFirstSearch(&(out_supervision->fst));
   out_supervision->weight = supervision_.weight;
   out_supervision->num_frames = num_frames;
   out_supervision->label_dim = supervision_.label_dim;
@@ -480,14 +478,36 @@ void CctcSupervisionSplitter::CreateRangeFst(
   }
 }
 
+
+// I couldn't figure out how to do this with OpenFST's native 'visitor' and
+// queue mechanisms so I'm just coding this myself.
 void SortBreadthFirstSearch(fst::StdVectorFst *fst) {
-  fst::StdVectorFst input_fst = *fst;
-  fst::CopyVisitor<fst::StdArc> visitor(fst);
-  fst::FifoQueue<fst::StdArc::StateId> queue;
-  fst::Visit<fst::StdArc, fst::CopyVisitor<fst::StdArc>,
-             fst::FifoQueue<fst::StdArc::StateId> >(
-                 input_fst, &visitor, &queue);
+  std::vector<int32> state_order(fst->NumStates(), -1);
+  std::vector<bool> seen(fst->NumStates(), false);
+  int32 start_state = fst->Start();
+  KALDI_ASSERT(start_state >= 0);
+  std::deque<int32> queue;
+  queue.push_back(start_state);
+  seen[start_state] = true;
+  int32 num_output = 0;
+  while (!queue.empty()) {
+    int32 state = queue.front();
+    state_order[state] = num_output++;
+    queue.pop_front();
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(*fst, state);
+         !aiter.Done(); aiter.Next()) {
+      int32 nextstate = aiter.Value().nextstate;
+      if (!seen[nextstate]) {
+        seen[nextstate] = true;
+        queue.push_back(nextstate);
+      }
+    }
+  }
+  if (num_output != fst->NumStates())
+    KALDI_ERR << "Input to SortBreadthFirstSearch must be connected.";
+  fst::StateSort(fst, state_order);
 }
+
 
 void AddContextToCctcSupervision(
     const CctcTransitionModel &trans_model,
@@ -528,7 +548,7 @@ void CctcSupervision::Write(std::ostream &os, bool binary) const {
         fst, fst::UnweightedAcceptorCompactor<fst::StdArc>(), os,
         write_options);
   }
-  WriteToken(os, binary, "</CctcSupervision>");  
+  WriteToken(os, binary, "</CctcSupervision>");
 }
 
 void CctcSupervision::Read(std::istream &is, bool binary) {
@@ -551,7 +571,7 @@ void CctcSupervision::Read(std::istream &is, bool binary) {
     delete compact_fst;
   }
     // ReadFstKaldi will work even though we wrote using a compact format.
-  ExpectToken(is, binary, "</CctcSupervision>");    
+  ExpectToken(is, binary, "</CctcSupervision>");
 }
 
 int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
@@ -633,8 +653,7 @@ void AppendCctcSupervision(const std::vector<const CctcSupervision*> &input,
       fst::StdVectorFst &out_fst = (*output_supervision)[i].fst;
       // The process of concatenation will have introduced epsilons.
       fst::RmEpsilon(&out_fst);
-      if (fst::TopSort(&out_fst) == false)
-        KALDI_ERR << "Topological sort of supervision FST failed.";
+      SortBreadthFirstSearch(&out_fst);
     }
   }
 }
@@ -663,7 +682,7 @@ void SplitIntoRanges(int32 num_frames,
     int32 cur_start = num_skips[0];
     for (int32 i = 0; i < num_ranges; i++) {
       (*range_starts)[i] = cur_start;
-      cur_start += frames_per_range;      
+      cur_start += frames_per_range;
       cur_start += num_skips[i + 1];
     }
     KALDI_ASSERT(cur_start == num_frames);

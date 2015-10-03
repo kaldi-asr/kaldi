@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
         "value (the --learning-rate option),\n"
         "and supports replacing the raw nnet in the model (the Nnet)\n"
         "with a provided raw nnet (the --set-raw-nnet option)\n"
+        "Note: the --set-raw-nnet option can be used to initialize the model.\n"
         "\n"
         "Usage: nnet3-ctc-copy [options] <nnet3+ctc-model-in> <nnet3+ctc-model-out>\n"
         "e.g.:\n"
@@ -54,8 +55,13 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("raw", &raw, "If true, write only the raw neural net, without "
+                "the transition-model object");
     po.Register("learning-rate", &learning_rate,
                 "Set all learning rates in the nnet to this value");
+    po.Register("set-raw-nnet", &set_raw_nnet,
+                "Use this option to set the raw nnet in the model to "
+                "a provided neural net (provide an rxfilename)");
 
     po.Read(argc, argv);
 
@@ -93,12 +99,17 @@ int main(int argc, char *argv[]) {
                 << " to raw format as " << ctc_nnet_wxfilename;
 
     } else {
+      int32 nnet_output_dim = nnet.OutputDim("output"),
+          cctc_output_dim = trans_model.NumOutputIndexes();
+      if (nnet_output_dim != cctc_output_dim)
+        KALDI_ERR << "Model output-dimension mismatch: nnet "
+                  << nnet_output_dim << " vs. CTC model "
+                  << cctc_output_dim;
       Output ko(ctc_nnet_wxfilename, binary_write);
       trans_model.Write(ko.Stream(), binary_write);
       nnet.Write(ko.Stream(), binary_write);
       KALDI_LOG << "Copied nnet3+ctc neural net from " << ctc_nnet_rxfilename
                 << " to " << ctc_nnet_wxfilename;
-
     }
     return 0;
   } catch(const std::exception &e) {

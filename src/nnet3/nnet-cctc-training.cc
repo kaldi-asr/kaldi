@@ -83,18 +83,19 @@ void NnetCctcTrainer::ProcessOutputs(const NnetCctcExample &eg,
     if (node_index < 0 ||
         !nnet_->IsOutputNode(node_index))
       KALDI_ERR << "Network has no output named " << sup.name;
-    
+
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
     CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
                                           nnet_output.NumCols(),
                                           kUndefined);
-    
+
     BaseFloat tot_weight, tot_objf;
     sup.ComputeObjfAndDerivs(config_.cctc_training_config,
                              trans_model_,
                              cu_weights_, nnet_output,
                              &tot_weight, &tot_objf, &nnet_output_deriv);
 
+    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, config_.print_interval,
                                      num_minibatches_processed_++,

@@ -28,7 +28,7 @@ void NnetCctcSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NnetCctcSup>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
-  WriteToken(os, binary, "<NumOutputs>");
+  WriteToken(os, binary, "<NumSups>");
   int32 size = supervision.size();
   KALDI_ASSERT(size > 0 && "Attempting to write empty NnetCctcSupervision.");
   WriteBasicType(os, binary, size);
@@ -48,7 +48,11 @@ void NnetCctcSupervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NnetCctcSup>");
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
-  ExpectToken(is, binary, "<NumOutputs>");
+  { // temp. to delete soon.
+    std::string s;
+    ReadToken(is, binary, &s);
+  }
+  // will be replaced with: ExpectToken(is, binary, "<NumSups>");
   int32 size;
   ReadBasicType(is, binary, &size);
   KALDI_ASSERT(size > 0 && size < 1000000);

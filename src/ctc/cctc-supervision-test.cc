@@ -57,7 +57,7 @@ void CreateCompactLatticeFromPhonesAndDurations(
   }
   CompactLatticeWeight weight(LatticeWeight(RandUniform(), RandUniform()),
                               std::vector<int32>());
-  lat_out->SetFinal(current_state, weight);    
+  lat_out->SetFinal(current_state, weight);
 }
 
 std::ostream &operator << (std::ostream &os, const CctcProtoSupervision &p) {
@@ -226,7 +226,7 @@ void TestCctcSupervisionSplitting(const CctcSupervision &supervision) {
       KALDI_ASSERT(reattached_supervision.size() == 1);
       TestCctcSupervisionReattached(supervision,
                                     reattached_supervision[0]);
-      
+
     }
   }
 }
@@ -247,7 +247,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   if (tot_frames < subsample_factor) {
     // Don't finish the test because it would fail.  we run this multiple times.
     return;
-  }  
+  }
   CctcSupervisionOptions sup_opts;
   sup_opts.frame_subsampling_factor = subsample_factor;
   // keep the following two lines in sync and keep the silence
@@ -283,7 +283,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   if (!MakeCctcSupervisionNoContext(proto_supervision, num_phones,
                                    &supervision)) {
     // the only way this should fail is if we had too many phones for
-    // the number of subsampled frames.    
+    // the number of subsampled frames.
     KALDI_ASSERT(sequence_length > tot_frames / subsample_factor);
     KALDI_LOG << "Failed to create CctcSupervision because too many "
               << "phones for too few frames.";
@@ -299,7 +299,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   // unit weight / zero cost.
   ShortestPath(supervision.fst, &one_path);
 
-  
+
   std::vector<int32> graph_label_seq_in, graph_label_seq_out;
   fst::TropicalWeight tot_weight;
   GetLinearSymbolSequence(one_path, &graph_label_seq_in,
@@ -314,7 +314,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
     for (size_t i = 0; i + 1 < state_times.size(); i++)
       KALDI_ASSERT(state_times[i] <= state_times[i+1]);
   }
-  
+
 
   std::vector<int32> phones_from_graph;
   for (size_t i = 0; i < graph_label_seq_in.size(); i++) {
@@ -332,7 +332,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
   TestCctcSupervisionIo(supervision);
   TestCctcSupervisionFrames(supervision);
-  TestCctcSupervisionSplitting(supervision);  
+  TestCctcSupervisionSplitting(supervision);
   TestCctcSupervisionAppend(supervision);
   TestCctcSupervisionTraining(trans_model, supervision);
 }
@@ -343,7 +343,39 @@ void CctcSupervisionTest() {
   TestCctcSupervision(trans_model);
 }
 
+void AddArc(int32 from, int32 to,
+            fst::StdVectorFst *fst) {
+  fst->AddArc(from, fst::StdArc(0, 0, fst::TropicalWeight::One(), to));
+}
 
+void BreadthFirstTest() {
+  using namespace fst;
+  StdVectorFst fst;
+  for (int32 i = 0; i < 6; i++)
+    fst.AddState();
+  fst.SetStart(0);
+  fst.SetFinal(2, TropicalWeight::One());
+  AddArc(0, 3, &fst);
+  AddArc(0, 4, &fst);
+  AddArc(4, 5, &fst);
+  AddArc(3, 5, &fst);
+  AddArc(5, 1, &fst);
+  AddArc(1, 2, &fst);
+  SortBreadthFirstSearch(&fst);
+
+  {
+    std::ostringstream os;
+#ifdef HAVE_OPENFST_GE_10400
+    FstPrinter<StdArc> fstprinter(fst, NULL, NULL, NULL, false, true, "\t");
+#else
+    FstPrinter<StdArc> fstprinter(fst, NULL, NULL, NULL, false, true);
+#endif
+    fstprinter.Print(&os, "standard output");
+    KALDI_LOG << "FST is: " << os.str();
+  }
+  KALDI_ASSERT(fst.Properties(fst::kTopSorted, true) != 0);
+
+}
 
 }  // namespace ctc
 }  // namespace kaldi
@@ -357,7 +389,9 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    for (int32 i = 0; i < 5; i++)
+    for (int32 i = 0; i < 5; i++) {
       kaldi::ctc::CctcSupervisionTest();
+      kaldi::ctc::BreadthFirstTest();
+    }
   }
 }

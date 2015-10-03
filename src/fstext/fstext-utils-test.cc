@@ -51,7 +51,7 @@ void TestMakeLinearAcceptor() {
   assert(vec_nozeros == vec2);
   assert(vec_nozeros == vec3);
 
-  if (vec2.size() != 0 || vec3.size() != 0) { // This test might not work 
+  if (vec2.size() != 0 || vec3.size() != 0) { // This test might not work
     // for empty sequences...
     {
       vector<vector<I> > vecs2;
@@ -70,7 +70,7 @@ void TestMakeLinearAcceptor() {
       assert(RandEquivalent(vfst, fstvec[0], 2/*paths*/, 0.01/*delta*/,
                             kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     }
-  }  
+  }
   bool include_eps = (kaldi::Rand() % 2 == 0);
   if (!include_eps) vec = vec_nozeros;
   kaldi::SortAndUniq(&vec);
@@ -335,7 +335,7 @@ template<class Arc>  void TestMakeLoopFst() {
       *fst2 = MakeLoopFstCompare(fsts);
 
   assert(fst1->Properties(kOLabelSorted, kOLabelSorted) != 0);
-      
+
   assert(RandEquivalent(*fst1, *fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
   delete fst1;
   delete fst2;
