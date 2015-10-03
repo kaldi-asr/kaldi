@@ -45,13 +45,11 @@ if __name__ == "__main__":
         for line_num in range(1, len(lines) + 1):
             # we search from the end as this would result in
             # lesser number of regex searches. Python regex is slow !
-            print("Lines[-1*{0} is {1}".format(line_num, lines[-1*line_num]));
             mat_obj = parse_regex.search(lines[-1*line_num])
             if mat_obj is not None:
                 this_loss = float(mat_obj.groups()[0])
                 break;
         loss.append(this_loss);
-    print(loss);
     max_index = loss.index(max(loss))
     accepted_models = []
     for i in range(args.num_models):
