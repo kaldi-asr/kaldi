@@ -142,7 +142,7 @@ fi
 
 # If we got here, the scoring was successful.
 # As a  small aid to prevent confusion, we remove all wer_{?,??} files;
-# these originate from the previous version of the scoring files 
+# these originate from the previous version of the scoring files
 rm $dir/wer_{?,??} 2>/dev/null
 
 exit 0;

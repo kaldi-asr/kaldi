@@ -309,6 +309,7 @@ if [ $stage -le -1 ]; then
     nnet3-ctc-copy --set-raw-nnet=$dir/0.raw $dir/0.ctc_trans_mdl $dir/0.mdl || exit 1;
 fi
 
+echo $frame_subsampling_factor >$dir/frame_subsampling_factor || exit 1;
 
 # set num_iters so that as close as possible, we process the data $num_epochs
 # times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives

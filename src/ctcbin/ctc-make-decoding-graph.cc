@@ -29,19 +29,19 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace fst;
     using kaldi::int32;
-    
+
     const char *usage =
         "Executes the last stages of creating a CTC decoding graph,\n"
         "given an LG.fst on the input, e.g. min(det(L o G))).\n"
         "\n"
         "Usage:  ctc-make-decoding-graph <ctc-transition-model> <in-fst> <out-fst>\n"
-        "E.g:  ctc-make-decoding-graph final.mdl LG.fst > G.fst\n";
-    
+        "E.g:  fstrmsymbols data/lang/phones/disambig.int LG.fst | \\\n"
+        "         ctc-make-decoding-graph final.mdl - CTC.fst\n";
 
     ParseOptions po(usage);
-    
+
     BaseFloat phone_lm_weight = 0.0;
-    
+
     po.Register("phone-lm-weight", &phone_lm_weight,
                 "The language-model weight to apply to the phone language "
                 "model that the CCTC system was trained with... this would "
@@ -62,9 +62,9 @@ int main(int argc, char *argv[]) {
 
     ctc::CctcTransitionModel trans_model;
     ReadKaldiObject(cctc_trans_model_rxfilename, &trans_model);
-    
+
     VectorFst<StdArc> *fst = ReadFstKaldi(fst_rxfilename);
-    
+
     ctc::ShiftPhonesAndAddBlanks(fst);
 
     VectorFst<StdArc> decoding_fst;
