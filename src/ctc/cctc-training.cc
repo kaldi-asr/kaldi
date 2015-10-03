@@ -190,6 +190,8 @@ void CctcComputation::ComputeLookupIndexes() {
       }
       fst_indexes_.push_back(std::pair<int32,int32>(numerator_index,
                                                     denominator_index));
+      // Note: eventually arc_logprobs_ will contain the log of all the terms
+      // in the arc probability, but at this point it's not a log.
       arc_logprobs_.push_back(trans_model_.GraphLabelToLmProb(graph_label));
     }
   }
@@ -208,7 +210,7 @@ BaseFloat CctcComputation::Forward() {
                          0.0);
   LookUpLikelihoods();
   ComputeAlpha();
-  return tot_log_prob_;
+  return tot_log_prob_ + supervision_.ComputeExtraLogprob(trans_model_);
 }
 
 void CctcComputation::LookUpLikelihoods() {
@@ -223,10 +225,12 @@ void CctcComputation::LookUpLikelihoods() {
       *denominator_prob_data = denominator_probs_.Data();
   std::vector<std::pair<int32,int32> >::const_iterator
       iter = fst_indexes_.begin(), end = fst_indexes_.end();
-  for (; iter != end; ++iter, ++arc_logprob_data)
+  for (; iter != end; ++iter, ++arc_logprob_data) {
     *arc_logprob_data = Log(*arc_logprob_data *
                             numerator_prob_data[iter->first] /
                             denominator_prob_data[iter->second]);
+    KALDI_PARANOID_ASSERT(*arc_logprob_data < 0.001); // should not be positive.
+  }
 }
 
 bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {

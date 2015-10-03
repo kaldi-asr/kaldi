@@ -82,6 +82,7 @@ class CctcTransitionModel {
   // Version of ComputeWeights() that outputs to a CUDA matrix.
   void ComputeWeights(CuMatrix<BaseFloat> *cu_mat) const;
 
+  // Graph-labels are numbered from 1 to NumGraphLabels().
   // A graph-label is a similar concept to a transition-id in HMM-based models;
   // it's a one-based index that appears on the input side of a decoding graph
   // or training graph.  A graph label can be mapped to the phone (which may be
@@ -170,7 +171,7 @@ class CctcTransitionModel {
   };
 
   // The graph-label for a (history-state, phone-or-blank) pair (h,p) is equal to
-  // h * (num_phones_ + 1) + p
+  // h * (num_phones_ + 1) + p + 1.
 
   // the number of phones that this model is buit for (this is one-based, so the
   // highest numbered phone is indexed num_phones_; 0 is used for the blank

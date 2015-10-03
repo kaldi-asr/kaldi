@@ -266,6 +266,7 @@ struct CctcSupervision {
   // encountered in this example).
   int32 label_dim;
 
+
   // This is an epsilon-free unweighted acceptor that is sorted in increasing order of
   // frame index (this implies it's topologically sorted but it's a stronger condition).
   // The labels are CCTC graph labels (see CctcTransitionModel).  Each
@@ -279,6 +280,17 @@ struct CctcSupervision {
   CctcSupervision(const CctcSupervision &other);
 
   bool operator == (const CctcSupervision &other) const;
+
+  // This function checks that this supervision object satifsies some
+  // of the properties we expect of it, and calls KALDI_ERR if not.
+  void Check(const CctcTransitionModel &trans_mdl) const;
+
+
+  // extra_logprob is a rather obscure quantity that is used to ensure that the
+  // objective functions during training can never be positive.  It can be
+  // computed directly from the FST, as the sum over all states of the negative
+  // log of the number of history-states.
+  BaseFloat ComputeExtraLogprob(const CctcTransitionModel &trans_mdl) const;
 
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);

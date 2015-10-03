@@ -185,11 +185,12 @@ bool MakeCctcSupervisionNoContext(
   // the same label sequence; it will reduce the size of the FST.
   fst::Determinize(supervision->fst, &det_fst);
   supervision->fst = det_fst;  // shallow copy.
+  if (supervision->fst.NumStates() == 0)
+    return false;
   SortBreadthFirstSearch(&(supervision->fst));
   supervision->weight = 1.0;
   supervision->num_frames = proto_supervision.num_frames;
   supervision->label_dim = num_phones + 1;
-
   return (supervision->fst.NumStates() > 0);
 }
 
@@ -388,7 +389,7 @@ CctcSupervisionSplitter::CctcSupervisionSplitter(
 }
 
 void CctcSupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
-                                           CctcSupervision *out_supervision) const {
+                                            CctcSupervision *out_supervision) const {
   int32 end_frame = begin_frame + num_frames;
   // Note: end_frame is not included in the range of frames that the
   // output supervision object covers; it's one past the end.
@@ -527,13 +528,60 @@ void AddContextToCctcSupervision(
 }
 
 
+BaseFloat CctcSupervision::ComputeExtraLogprob(
+    const CctcTransitionModel &trans_mdl) const {
+  BaseFloat extra_logprob = 0.0;
+
+  // extra_history_states would logically appear inside the loop, but we want to
+  // avoid the initializer and destructor code.
+  std::set<int32> extra_history_states;
+
+  /*
+    A simpler, non-optimized version of this code is:
+   for (int32 state = 0; state < fst.NumStates(); state++) {
+     std::set<int32> history_states;
+     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
+          aiter.Next()) {
+       history_states.insert(trans_mdl.GraphLabelToHistoryState(arc.ilabel));
+     }
+     if (history_states.size() > 1)
+       extra_logprob += -log(history_states.size());
+   }
+  */
+  for (int32 state = 0; state < fst.NumStates(); state++) {
+    int32 first_history_state;  // an optimization to avoid set operations in
+                                // the common case.
+    bool saw_extra = false;
+    fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
+    if (aiter.Done())
+      continue;
+    // handle the first arc separately-- an optimization.
+    int32 graph_label = aiter.Value().ilabel;
+    first_history_state = trans_mdl.GraphLabelToHistoryState(graph_label);
+    aiter.Next();
+    for (; !aiter.Done(); aiter.Next()) {
+      int32 graph_label = aiter.Value().ilabel;
+      int32 this_history_state = trans_mdl.GraphLabelToHistoryState(graph_label);
+      if (this_history_state != first_history_state) {
+        saw_extra = true;
+        extra_history_states.insert(this_history_state);
+      }
+    }
+    if (saw_extra) {
+      BaseFloat size = 1.0 + extra_history_states.size();
+      extra_logprob += -log(size);
+      extra_history_states.clear();
+    }
+  }
+  return extra_logprob;
+}
+
 void CctcSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<CctcSupervision>");
   WriteToken(os, binary, "<Weight>");
   WriteBasicType(os, binary, weight);
   WriteToken(os, binary, "<Frames>");
   WriteBasicType(os, binary, num_frames);
-  if (!binary) os << "\n";
   WriteToken(os, binary, "<LabelDim>");
   WriteBasicType(os, binary, label_dim);
   KALDI_ASSERT(num_frames > 0 && label_dim > 0);
@@ -716,6 +764,21 @@ bool CctcSupervision::operator == (const CctcSupervision &other) const {
   return weight == other.weight && num_frames == other.num_frames &&
       label_dim == other.label_dim && fst::Equal(fst, other.fst);
 }
+
+void CctcSupervision::Check(const CctcTransitionModel &trans_mdl) const {
+  if (weight <= 0.0)
+    KALDI_ERR << "Weight should be positive.";
+  if (num_frames <= 0)
+    KALDI_ERR << "Invalid num-frames: " << num_frames;
+  if (label_dim != trans_mdl.NumGraphLabels())
+    KALDI_ERR << "Invalid label-dim: " << label_dim
+              << ", expected " << trans_mdl.NumGraphLabels();
+  std::vector<int32> state_times;
+  if (num_frames != ComputeFstStateTimes(fst, &state_times))
+    KALDI_ERR << "Num-frames does not match fst.";
+}
+
+
 
 }  // namespace ctc
 }  // namespace kaldi

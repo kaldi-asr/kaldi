@@ -164,7 +164,8 @@ void TestCctcSupervisionIo(const CctcSupervision &supervision) {
   }
 }
 
-void TestCctcSupervisionAppend(const CctcSupervision &supervision) {
+void TestCctcSupervisionAppend(const CctcTransitionModel &trans_model,
+                               const CctcSupervision &supervision) {
   int32 num_append = RandInt(1,5);
   std::vector<const CctcSupervision*> input(num_append);
   for (int32 i = 0; i < num_append; i++)
@@ -179,12 +180,14 @@ void TestCctcSupervisionAppend(const CctcSupervision &supervision) {
     KALDI_ASSERT(output.size() == input.size());
   }
   TestCctcSupervisionIo(output[0]);
+  output[0].Check(trans_model);
 }
 
 
 // make sure that reattached_supervision is plausibly the result of splitting
 // and then reattaching 'supervision'.
-void TestCctcSupervisionReattached(const CctcSupervision &supervision,
+void TestCctcSupervisionReattached(const CctcTransitionModel &trans_model,
+                                   const CctcSupervision &supervision,
                                    const CctcSupervision &reattached_supervision) {
   using namespace fst;
   KALDI_LOG << "testing reattached";
@@ -199,9 +202,12 @@ void TestCctcSupervisionReattached(const CctcSupervision &supervision,
   Compose(fst_path, reattached_supervision.fst, &composed);
   Connect(&composed);
   KALDI_ASSERT(composed.NumStates() != 0);
+  supervision.Check(trans_model);
+  reattached_supervision.Check(trans_model);
 }
 
-void TestCctcSupervisionSplitting(const CctcSupervision &supervision) {
+void TestCctcSupervisionSplitting(const CctcTransitionModel &trans_model,
+                                  const CctcSupervision &supervision) {
   CctcSupervisionSplitter splitter(supervision);
   int32 num_frames = supervision.num_frames,
       frames_per_range = RandInt(3, 10);
@@ -209,9 +215,11 @@ void TestCctcSupervisionSplitting(const CctcSupervision &supervision) {
   SplitIntoRanges(num_frames, frames_per_range, &range_starts);
   int32 num_ranges = range_starts.size();
   std::vector<CctcSupervision> split_supervision(num_ranges);
-  for (int32 i = 0; i < num_ranges; i++)
+  for (int32 i = 0; i < num_ranges; i++) {
     splitter.GetFrameRange(range_starts[i], frames_per_range,
                            &split_supervision[i]);
+    split_supervision[i].Check(trans_model);
+  }
   if (num_ranges > 0) {
     TestCctcSupervisionIo(split_supervision[RandInt(0, num_ranges - 1)]);
     TestCctcSupervisionFrames(split_supervision[RandInt(0, num_ranges - 1)]);
@@ -224,7 +232,8 @@ void TestCctcSupervisionSplitting(const CctcSupervision &supervision) {
       bool compactify = true;
       AppendCctcSupervision(to_append, compactify, &reattached_supervision);
       KALDI_ASSERT(reattached_supervision.size() == 1);
-      TestCctcSupervisionReattached(supervision,
+      TestCctcSupervisionReattached(trans_model,
+                                    supervision,
                                     reattached_supervision[0]);
 
     }
@@ -330,10 +339,11 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   ExcludeRangeFromVector(phones_from_graph, first_silence_phone,
                          last_silence_phone, &phones_from_graph_nosil);
   KALDI_ASSERT(phone_nosil == phones_from_graph_nosil);
+  supervision.Check(trans_model);
   TestCctcSupervisionIo(supervision);
   TestCctcSupervisionFrames(supervision);
-  TestCctcSupervisionSplitting(supervision);
-  TestCctcSupervisionAppend(supervision);
+  TestCctcSupervisionSplitting(trans_model, supervision);
+  TestCctcSupervisionAppend(trans_model, supervision);
   TestCctcSupervisionTraining(trans_model, supervision);
 }
 
@@ -389,7 +399,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    for (int32 i = 0; i < 5; i++) {
+    for (int32 i = 0; i < 10; i++) {
       kaldi::ctc::CctcSupervisionTest();
       kaldi::ctc::BreadthFirstTest();
     }

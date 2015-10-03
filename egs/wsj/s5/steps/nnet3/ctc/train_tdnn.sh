@@ -231,16 +231,16 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       $data $lang $dir/0.ctc_trans_mdl $latdir $dir/egs || exit 1;
 fi
 
-if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $dir/egs/info/feat_dim)";
-  exit 1;
-fi
-if [ "$ivector_dim" != "$(cat $dir/egs/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $dir/egs/info/ivector_dim)";
-  exit 1;
-fi
-
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
+  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  exit 1;
+fi
+if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
+  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
 
 # copy any of the following that exist, to $dir.
 cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
@@ -451,8 +451,9 @@ while [ $x -lt $num_iters ]; do
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error on iteration $x of training" && exit 1;
 
+    models_to_average=$(steps/nnet3/get_successful_models.py $this_num_jobs $dir/log/train.$x.%.log)
     nnets_list=
-    for n in `seq 1 $this_num_jobs`; do
+    for n in $models_to_average; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.raw"
     done
 
@@ -476,7 +477,7 @@ while [ $x -lt $num_iters ]; do
     rm $nnets_list
     [ ! -f $dir/$[$x+1].mdl ] && exit 1;
     if [ -f $dir/$[$x-1].mdl ] && $cleanup && \
-       [ $[($x-1)%100] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
+       [ $[($x-1)%10] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
       rm $dir/$[$x-1].mdl
     fi
   fi
@@ -518,7 +519,7 @@ if [ $stage -le $num_iters ]; then
     "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-ctc-compute-prob $dir/final.mdl \
-    "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+    "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi
 
 if [ ! -f $dir/final.mdl ]; then

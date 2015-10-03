@@ -77,7 +77,7 @@ int32 CctcTransitionModel::GetGraphLabel(int32 history_state,
                                          int32 phone) const {
   KALDI_ASSERT(static_cast<size_t>(phone) <= static_cast<size_t>(num_phones_) &&
                static_cast<size_t>(history_state) < history_state_info_.size());
-  return history_state * (num_phones_ + 1)  + phone + 1;
+  return history_state * (num_phones_ + 1) + phone + 1;
 }
 
 int32 CctcTransitionModel::GraphLabelToOutputIndex(int32 graph_label) const {
