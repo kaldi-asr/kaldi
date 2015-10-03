@@ -7,16 +7,16 @@
 micid=1 #which mic from array should be used?
 mic=sdm$micid
 
-stage=0
+stage=1
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default, 
-case $(hostname -d) in 
+AMI_DIR=$PWD/wav_db # Default,
+case $(hostname -d) in
   fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
@@ -30,7 +30,7 @@ LM=$final_lm.pr1-7
 # Avoiding re-download, using 'wget --continue ...',
 if [ $stage -le 1 ]; then
   [ -e data/local/downloads/wget_sdm.sh ] && \
-    echo "$data/local/downloads/wget_sdm.sh already exists, better quit than re-download... (use --stage N)" && \
+    echo "data/local/downloads/wget_sdm.sh already exists, better quit than re-download... (use --stage N)" && \
     exit 1
   local/ami_download.sh --mics $micid sdm $AMI_DIR
 fi
