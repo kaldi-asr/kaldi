@@ -12,13 +12,11 @@
 #export scoring_cmd="queue.pl -P inf_hcrc_cstr_nst  -l h_rt=00:20:00"
 
 # JSALT2015 workshop, cluster AWS-EC2, (setup from Vijay)
-#export train_cmd="queue.pl -l arch=*64*"
-export train_cmd="queue.pl -l arch=*64*"
-export decode_cmd="queue.pl -l arch=*64* --mem 4G"
+export train_cmd="queue.pl -l arch=*64* --mem 1G"
+export decode_cmd="queue.pl -l arch=*64* --mem 2G"
 export highmem_cmd="queue.pl -l arch=*64* --mem 4G"
 export scoring_cmd="queue.pl -l arch=*64*"
 export cuda_cmd="queue.pl --gpu 1 -l mem_free=20G,ram_free=20G"
-#export cuda_cmd="run.pl"
 export cntk_decode_cmd="queue.pl -l arch=*64* --mem 1G -pe smp 2"
 
 # To run locally, use:
