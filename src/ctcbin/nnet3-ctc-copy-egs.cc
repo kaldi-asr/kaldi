@@ -54,12 +54,12 @@ int main(int argc, char *argv[]) {
         "nnet3-ctc-copy-egs ark:train.cegs ark,t:text.cegs\n"
         "or:\n"
         "nnet3-ctc-copy-egs ark:train.cegs ark:1.cegs ark:2.cegs\n";
-        
+
     bool random = false;
     int32 srand_seed = 0;
+    int32 shift_input = 0;
     BaseFloat keep_proportion = 1.0;
 
-    
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
@@ -69,7 +69,9 @@ int main(int argc, char *argv[]) {
                 "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true or --keep-proportion != 1.0)");
-    
+    po.Register("shift-input", &shift_input, "Allows you to shift time values "
+                "in the input data (excluding iVector data).");
+
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -88,20 +90,33 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetCctcExampleWriter(po.GetArg(i+2));
 
-    
+    std::vector<std::string> exclude_names; // names we never shift times of;
+                                            // not configurable for now.
+    exclude_names.push_back(std::string("ivector"));
+
+
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
-      int32 count = GetCount(keep_proportion);  
+      int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      const NnetCctcExample &eg = example_reader.Value();
-      for (int32 c = 0; c < count; c++) {
-        int32 index = (random ? Rand() : num_written) % num_outputs;
-        example_writers[index]->Write(key, eg);
-        num_written++;
+      if (shift_input == 0) {
+        const NnetCctcExample &eg = example_reader.Value();
+        for (int32 c = 0; c < count; c++) {
+          int32 index = (random ? Rand() : num_written) % num_outputs;
+          example_writers[index]->Write(key, eg);
+          num_written++;
+        }
+      } else if (count > 0) {
+        NnetCctcExample eg = example_reader.Value();
+        ShiftCctcInputData(shift_input, exclude_names, &eg);
+        for (int32 c = 0; c < count; c++) {
+          int32 index = (random ? Rand() : num_written) % num_outputs;
+          example_writers[index]->Write(key, eg);
+          num_written++;
+        }
       }
     }
-    
     for (int32 i = 0; i < num_outputs; i++)
       delete example_writers[i];
     KALDI_LOG << "Read " << num_read

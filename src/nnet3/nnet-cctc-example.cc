@@ -360,5 +360,26 @@ void GetCctcComputationRequest(const Nnet &nnet,
     KALDI_ERR << "No outputs in computation request.";
 }
 
+void ShiftCctcInputData(int32 frame_shift,
+                        const std::vector<std::string> &exclude_names,
+                        NnetCctcExample *eg) {
+  std::vector<NnetIo>::iterator input_iter = eg->inputs.begin(),
+      input_end = eg->inputs.end();
+  for (; input_iter != input_end; ++input_iter) {
+    bool must_exclude = false;
+    std::vector<string>::const_iterator exclude_iter = exclude_names.begin(),
+        exclude_end = exclude_names.end();
+    for (; exclude_iter != exclude_end; ++exclude_iter)
+      if (input_iter->name == *exclude_iter)
+        must_exclude = true;
+    if (!must_exclude) {
+      std::vector<Index>::iterator indexes_iter = input_iter->indexes.begin(),
+          indexes_end = input_iter->indexes.end();
+      for (; indexes_iter != indexes_end; ++indexes_iter)
+        indexes_iter->t += frame_shift;
+    }
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi

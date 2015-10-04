@@ -87,10 +87,10 @@ struct NnetCctcSupervision {
                             BaseFloat *tot_weight,
                             BaseFloat *tot_objf,
                             CuMatrixBase<BaseFloat> *nnet_out_deriv) const;
-  
+
 
   // Use default assignment operator
-  
+
   NnetCctcSupervision() { }
 
   /// Initialize the object from an object of type CctcSupervision, and some
@@ -104,9 +104,9 @@ struct NnetCctcSupervision {
                       const std::string &name,
                       int32 first_frame,
                       int32 frame_skip);
-  
+
   NnetCctcSupervision(const NnetCctcSupervision &other);
-  
+
   void Write(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary);
@@ -165,17 +165,17 @@ void MergeCctcExamples(bool compress,
 
 
 
-/** Shifts the time-index t of everything in the "eg" by adding "t_offset" to
-    all "t" values.  This might be useful if you are doing subsampling of
-    frames at the output, because shifted examples won't be quite equivalent
-    to their non-shifted counterparts.
-     "exclude_names" is a vector of names of nnet
-    inputs that we avoid shifting the "t" values of-- normally it will contain
-    just the single string "ivector" because we always leave t=0 for any
-    ivector. */
-void ShiftCctcExampleTimes(int32 t_offset,
-                           const std::vector<std::string> &exclude_names,
-                           NnetCctcExample *eg);
+/** Shifts the time-index t of everything in the input of "eg" by adding
+    "t_offset" to all "t" values-- but excluding those with names listed in
+    "exclude_names", e.g.  "ivector".  This might be useful if you are doing
+    subsampling of frames at the output, because shifted examples won't be quite
+    equivalent to their non-shifted counterparts.  "exclude_names" is a vector
+    of names of nnet inputs that we avoid shifting the "t" values of-- normally
+    it will contain just the single string "ivector" because we always leave t=0
+    for any ivector. */
+void ShiftCctcInputData(int32 frame_shift,
+                        const std::vector<std::string> &exclude_names,
+                        NnetCctcExample *eg);
 
 /**  This function takes a NnetCctcExample and produces a ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do, you

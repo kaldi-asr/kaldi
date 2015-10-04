@@ -13,7 +13,7 @@
 
 # Begin configuration section.
 cmd=run.pl
-num_epochs=15      # Number of epochs of training;
+num_epochs=10      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
@@ -221,7 +221,9 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
   extra_opts+=(--transform-dir $transform_dir)
   extra_opts+=(--left-context $left_context)
-  extra_opts+=(--right-context $right_context)
+  # we need a bit of extra right-context to allow for frame shifts (we use shifted
+  # version of the data for more variety).
+  extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor-1])
   echo "$0: calling get_egs.sh"
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
@@ -249,18 +251,20 @@ cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
 egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
-  ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
+( [ $egs_left_context -lt $left_context ] || \
+  [ $egs_right_context -lt $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 num_archives=$(cat $egs_dir/info/num_archives) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
 
+num_archives_expanded=$[$num_archives*$frame_subsampling_factor]
+
 [ $num_jobs_initial -gt $num_jobs_final ] && \
   echo "$0: --initial-num-jobs cannot exceed --final-num-jobs" && exit 1;
 
-[ $num_jobs_final -gt $num_archives ] && \
-  echo "$0: --final-num-jobs cannot exceed #archives $num_archives." && exit 1;
+[ $num_jobs_final -gt $num_archives_expanded ] && \
+  echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
 
 if [ $stage -le -3 ]; then
   echo "$0: getting preconditioning matrix for input features."
@@ -312,10 +316,10 @@ fi
 echo $frame_subsampling_factor >$dir/frame_subsampling_factor || exit 1;
 
 # set num_iters so that as close as possible, we process the data $num_epochs
-# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives
+# times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives_expanded
 # where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
 
-num_archives_to_process=$[$num_epochs*$num_archives]
+num_archives_to_process=$[$num_epochs*$num_archives_expanded]
 num_archives_processed=0
 num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
@@ -351,7 +355,7 @@ else
 fi
 
 
-approx_iters_per_epoch_final=$[$num_archives/$num_jobs_final]
+approx_iters_per_epoch_final=$[$num_archives_expanded/$num_jobs_final]
 # First work out how many iterations we want to combine over in the final
 # nnet3-combine-fast invocation.  (We may end up subsampling from these if the
 # number exceeds max_model_combine).  The number we use is:
@@ -440,10 +444,11 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
+        frame_shift=$[-(($k/$num_archives)%$frames_per_eg)];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-ctc-train $parallel_train_opts --print-interval=10 --write-raw=true "$mdl" \
-          "ark:nnet3-ctc-copy-egs ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark:nnet3-ctc-copy-egs --shift-input=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait

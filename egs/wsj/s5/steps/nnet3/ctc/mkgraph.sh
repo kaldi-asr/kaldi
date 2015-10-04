@@ -11,7 +11,15 @@
 # The output is a Finite State Transducer that has word-ids on the output, and
 # CTC graph-labels on the input.
 
+# Begin configuration section
 phone_lm_weight=0.0
+# End configuration section
+
+echo "$0 $@"  # Print the command line for logging
+
+[ -f ./path.sh ] && . ./path.sh; # source the path.
+. parse_options.sh || exit 1;
+
 
 if [ $# != 3 ]; then
    echo "Usage: steps/nnet3/ctc/mkgraph.sh [options] <lang-dir> <model-dir> <graphdir>"
@@ -22,6 +30,7 @@ if [ $# != 3 ]; then
    echo "                                                     # Should be >= 0.0 and <= 1.0."
    exit 1;
 fi
+
 
 if [ -f path.sh ]; then . ./path.sh; fi
 
