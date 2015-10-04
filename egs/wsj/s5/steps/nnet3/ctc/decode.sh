@@ -12,19 +12,24 @@ stage=1
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=1.0  # Just a default value, used for adaptation and beam-pruning..
+blank_scale=0.4
 lattice_acoustic_scale=10.0  # This is kind of a hack; it's used for
-                             # compatibility with existing scoring scripts.  We
-                             # scale acoustic probs by 10 before writing them
-                             # out.
+                             # compatibility with existing scoring scripts,
+                             # since we normally search the LM-scale in integer
+                             # increments, and this doesn't work when the
+                             # expected LM scale is around one.  We scale
+                             # acoustic probs by 10 before writing them out; we
+                             # expect that the tuned LM-scale after scoring will
+                             # be close to 10.
 cmd=run.pl
-beam=12.0
+beam=15.0
 frames_per_chunk=50
 max_active=7000
 min_active=200
 ivector_scale=1.0
 lattice_beam=6.0 # Beam we use in lattice generation.
 iter=final
-scoring_opts=
+scoring_opts="--min-lmwt 7 --max-lmwt 13"
 skip_scoring=false
 feat_type=
 online_ivector_dir=
@@ -135,7 +140,8 @@ if [ $stage -le 1 ]; then
      --frame-subsampling-factor=$frame_subsampling_factor \
      --frames-per-chunk=$frames_per_chunk \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
-     --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
+     --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
+     --blank-scale=$blank_scale --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/CTC.fst "$feats" \
      "ark:|lattice-scale --acoustic-scale=$lattice_acoustic_scale ark:- ark:- | gzip -c > $dir/lat.JOB.gz" || exit 1;

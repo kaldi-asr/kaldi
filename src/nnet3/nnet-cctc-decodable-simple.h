@@ -39,6 +39,7 @@ struct DecodableNnetCctcSimpleOptions {
   int32 extra_left_context;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
+  BaseFloat blank_scale;
   bool debug_computation;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
@@ -51,6 +52,7 @@ struct DecodableNnetCctcSimpleOptions {
       extra_left_context(0),
       frames_per_chunk(50),
       acoustic_scale(1.0),
+      blank_scale(1.0),
       debug_computation(false) { }
 
   void Register(OptionsItf *opts) {
@@ -69,6 +71,11 @@ struct DecodableNnetCctcSimpleOptions {
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
+    opts->Register("blank-scale", &blank_scale, "Acoustic probabilities for "
+                   "the blank symbol will be multiplied by this value (i.e. "
+                   "we add the log of this value to their log-likes).  Applied "
+                   "before the acoustic scale.");
+
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -86,7 +93,7 @@ struct DecodableNnetCctcSimpleOptions {
 */
 class DecodableNnetCctcSimple: public DecodableInterface {
  public:
-  
+
   /// Constructor that just takes the features as input, but can also optionally
   /// take batch-mode or online iVectors.  Note: it stores references to all
   /// arguments to the constructor, so don't delete them till this goes out of
@@ -115,7 +122,7 @@ class DecodableNnetCctcSimple: public DecodableInterface {
                           const MatrixBase<BaseFloat> &feats,
                           const VectorBase<BaseFloat> &ivector);
 
-  
+
   // Note, frames are numbered from zero.  But graph_label is numbered
   // from one (this routine is called by FSTs).
   virtual BaseFloat LogLikelihood(int32 frame, int32 graph_label);
@@ -128,7 +135,7 @@ class DecodableNnetCctcSimple: public DecodableInterface {
   virtual int32 NumIndices() const { return trans_model_.NumGraphLabels(); }
 
   virtual bool IsLastFrame(int32 frame) const;
-  
+
  private:
   // This call is made to ensure that we have the log-probs for this frame
   // cached in current_log_post_.
@@ -159,7 +166,7 @@ class DecodableNnetCctcSimple: public DecodableInterface {
 
   // returns dimension of the provided iVectors if supplied, or 0 otherwise.
   int32 GetIvectorDim() const;
-  
+
   DecodableNnetCctcSimpleOptions opts_;
   const ctc::CctcTransitionModel &trans_model_;
   CuMatrix<BaseFloat> cu_weights_;  // derived from trans_model_.
@@ -169,6 +176,8 @@ class DecodableNnetCctcSimple: public DecodableInterface {
   int32 nnet_left_context_;
   int32 nnet_right_context_;
   const MatrixBase<BaseFloat> &feats_;
+
+  BaseFloat log_blank_scale_;  // derived from opts_.
 
   // ivector_ is the iVector if we're using iVectors that are estimated in batch
   // mode.
@@ -181,7 +190,7 @@ class DecodableNnetCctcSimple: public DecodableInterface {
   int32 online_ivector_period_;
 
   CachingOptimizingCompiler compiler_;
-  
+
   // The current log-posteriors that we got from the last time we
   // ran the computation.
   Matrix<BaseFloat> current_log_numerators_;

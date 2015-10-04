@@ -100,7 +100,9 @@ BaseFloat DecodableNnetCctcSimple::LogLikelihood(int32 subsampled_frame,
       den = current_log_denominators_(subsampled_frame -
                                       current_log_post_subsampled_offset_,
                                       denominator_index),
-      unnorm_ans = num - den;
+      blank_scale = (numerator_index >= trans_model_.NumNonBlankIndexes() ?
+                     log_blank_scale_ : 0.0),
+      unnorm_ans = num - den + blank_scale;
   if (unnorm_ans - unnorm_ans == 0) { // Not infinite or NaN
     return unnorm_ans * opts_.acoustic_scale;
   } else {
@@ -165,7 +167,7 @@ void DecodableNnetCctcSimple::EnsureFrameIsComputed(int32 subsampled_frame) {
   Vector<BaseFloat> ivector;
   GetCurrentIvector((first_output_frame + last_output_frame) / 2,
                     &ivector);
-  
+
   Matrix<BaseFloat> input_feats;
   if (first_input_frame >= 0 &&
       last_input_frame < feats_.NumRows()) {
@@ -257,7 +259,7 @@ void DecodableNnetCctcSimple::DoNnetComputation(
     output_spec.indexes[i].t = time_offset + output_t_start + i * subsample;
   request.outputs.resize(request.outputs.size() + 1);
   request.outputs.back().Swap(&output_spec);
-  
+
   const NnetComputation *computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
@@ -274,7 +276,7 @@ void DecodableNnetCctcSimple::DoNnetComputation(
   computer.Forward();
   CuMatrix<BaseFloat> cu_numerators;
   computer.GetOutputDestructive("output", &cu_numerators);
-  
+
   current_log_numerators_.Resize(cu_numerators.NumRows(),
                                  cu_numerators.NumCols(),
                                  kUndefined);
@@ -320,6 +322,7 @@ void DecodableNnetCctcSimple::InitializeCommon() {
   }
   trans_model_.ComputeWeights(&cu_weights_);
   ComputeSimpleNnetContext(nnet_, &nnet_left_context_, &nnet_right_context_);
+  log_blank_scale_ = log(opts_.blank_scale);
 }
 
 } // namespace nnet3
