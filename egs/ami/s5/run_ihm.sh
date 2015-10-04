@@ -10,21 +10,24 @@ mic=ihm
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-[ ! -r conf/ami_dir ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
-AMI_DIR=$(cat conf/ami_dir)
+AMI_DIR=$PWD/wav_db # Default, 
+case $(hostname -d) in 
+  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
+  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
+esac
 
+[ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
 # Download AMI corpus, You need arount 130GB of free space to get whole data ihm+mdm,
+# Avoiding re-download, using 'wget --continue ...',
 if [ $stage -le 0 ]; then
   [ -e data/local/downloads/wget_$mic.sh ] && \
     echo "$data/local/downloads/wget_$mic.sh already exists, better quit than re-download... (use --stage N)" && \
@@ -54,9 +57,8 @@ fi
 
 if [ $stage -le 3 ]; then
   # Taking a subset, now unused, can be handy for quick experiments,
-  # Full set 77h, reduced set 9.5h,
-  local/remove_dup_utts.sh 20 data/$mic/train data/$mic/train_nodup # remvove uh-huh,
-  utils/subset_data_dir.sh --shortest data/$mic/train_nodup 30000 data/$mic/train_30k
+  # Full set 77h, reduced set 10.8h,
+  utils/subset_data_dir.sh data/$mic/train 15000 data/$mic/train_15k
 fi
 
 # Train systems,
@@ -186,4 +188,4 @@ if [ $stage -le 13 ]; then
     --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
 
-echo "Done!"
+echo "Done."
