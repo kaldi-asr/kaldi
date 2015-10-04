@@ -444,7 +444,7 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        frame_shift=$[-(($k/$num_archives)%$frames_per_eg)];
+        frame_shift=$[-(($k/$num_archives)%$frame_subsampling_factor)];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-ctc-train $parallel_train_opts --print-interval=10 --write-raw=true "$mdl" \
