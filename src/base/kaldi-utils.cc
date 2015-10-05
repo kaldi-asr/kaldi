@@ -16,17 +16,17 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include "base/kaldi-common.h"
-
-
 #ifdef _WIN32_WINNT_WIN8
 #include <Synchapi.h>
-#elif defined (_WIN32) || defined(_MSC_VER) || defined(MINGW)
+#elif defined(_WIN32) || defined(_MSC_VER) || defined(MINGW)
 #include <Windows.h>
 #else
 #include <unistd.h>
 #endif
+
+#include <string>
+#include "base/kaldi-common.h"
+
 
 namespace kaldi {
 
@@ -35,7 +35,7 @@ std::string CharToString(const char &c) {
   if (std::isprint(c))
     sprintf(buf, "\'%c\'", c);
   else
-    sprintf(buf, "[character %d]", (int) c);
+    sprintf(buf, "[character %d]", static_cast<int>(c));
   return (std::string) buf;
 }
 

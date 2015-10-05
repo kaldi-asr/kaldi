@@ -120,7 +120,8 @@ class KaldiErrorMessage {
 // Note on KALDI_ASSERT and KALDI_PARANOID_ASSERT
 // The original (simple) version of the code was this
 //
-// #define KALDI_ASSERT(cond) if (!(cond)) kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
+// #define KALDI_ASSERT(cond) if (!(cond))
+//              kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);
 //
 // That worked well, but we were concerned that it
 // could potentially cause a performance issue due to failed branch
@@ -139,24 +140,27 @@ class KaldiErrorMessage {
 // and compilers will be able to optimize the loop away (as the condition
 // is always false).
 #ifndef NDEBUG
-#define KALDI_ASSERT(cond) \
-  do { if ((cond)) ; else kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);} while(0)
+#define KALDI_ASSERT(cond) do { if ((cond)) ;  else \
+  kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);}while(0)
 #else
 #define KALDI_ASSERT(cond)
 #endif
 // also see KALDI_COMPILE_TIME_ASSERT, defined in base/kaldi-utils.h,
 // and KALDI_ASSERT_IS_INTEGER_TYPE and KALDI_ASSERT_IS_FLOATING_TYPE,
 // also defined there.
-#ifdef KALDI_PARANOID // some more expensive asserts only checked if this defined
-#define KALDI_PARANOID_ASSERT(cond) \
-  do { if ((cond)) ; else kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);} while(0)
+// some more expensive asserts only checked if this defined
+#ifdef KALDI_PARANOID
+#define KALDI_PARANOID_ASSERT(cond) do { if ((cond)) ;  else \
+  kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);}while(0)
 #else
 #define KALDI_PARANOID_ASSERT(cond)
 #endif
 
 
-#define KALDI_ERR kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream()
-#define KALDI_WARN kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream()
+#define KALDI_ERR \
+  kaldi::KaldiErrorMessage(__func__, __FILE__, __LINE__).stream()
+#define KALDI_WARN \
+  kaldi::KaldiWarnMessage(__func__, __FILE__, __LINE__).stream()
 #define KALDI_LOG kaldi::KaldiLogMessage(__func__, __FILE__, __LINE__).stream()
 
 #define KALDI_VLOG(v) if (v <= kaldi::g_kaldi_verbose_level)     \

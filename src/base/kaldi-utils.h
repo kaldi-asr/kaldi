@@ -21,14 +21,21 @@
 #ifndef KALDI_BASE_KALDI_UTILS_H_
 #define KALDI_BASE_KALDI_UTILS_H_ 1
 
-#include <limits>
-#include <string>
-
 #if defined(_MSC_VER)
 # define WIN32_LEAN_AND_MEAN
 # define NOMINMAX
 # include <windows.h>
 #endif
+
+#ifdef _MSC_VER
+#include <stdio.h>
+#define unlink _unlink
+#else
+#include <unistd.h>
+#endif
+
+#include <limits>
+#include <string>
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4056 4305 4800 4267 4996 4756 4661)
@@ -82,22 +89,36 @@ inline int MachineIsLittleEndian() {
   return (*reinterpret_cast<char*>(&check) != 0);
 }
 
-// This function kaldi::Sleep() provides a portable way to sleep for a possibly fractional
+// This function kaldi::Sleep() provides a portable way
+// to sleep for a possibly fractional
 // number of seconds.  On Windows it's only accurate to microseconds.
 void Sleep(float seconds);
-
 }
 
 #define KALDI_SWAP8(a) { \
-  int t = ((char*)&a)[0]; ((char*)&a)[0]=((char*)&a)[7]; ((char*)&a)[7]=t;\
-      t = ((char*)&a)[1]; ((char*)&a)[1]=((char*)&a)[6]; ((char*)&a)[6]=t;\
-      t = ((char*)&a)[2]; ((char*)&a)[2]=((char*)&a)[5]; ((char*)&a)[5]=t;\
-      t = ((char*)&a)[3]; ((char*)&a)[3]=((char*)&a)[4]; ((char*)&a)[4]=t;}
+  int t = (reinterpret_cast<char*>(&a))[0];\
+          (reinterpret_cast<char*>(&a))[0]=(reinterpret_cast<char*>(&a))[7];\
+          (reinterpret_cast<char*>(&a))[7]=t;\
+      t = (reinterpret_cast<char*>(&a))[1];\
+          (reinterpret_cast<char*>(&a))[1]=(reinterpret_cast<char*>(&a))[6];\
+          (reinterpret_cast<char*>(&a))[6]=t;\
+      t = (reinterpret_cast<char*>(&a))[2];\
+          (reinterpret_cast<char*>(&a))[2]=(reinterpret_cast<char*>(&a))[5];\
+          (reinterpret_cast<char*>(&a))[5]=t;\
+      t = (reinterpret_cast<char*>(&a))[3];\
+          (reinterpret_cast<char*>(&a))[3]=(reinterpret_cast<char*>(&a))[4];\
+          (reinterpret_cast<char*>(&a))[4]=t;}
 #define KALDI_SWAP4(a) { \
-  int t = ((char*)&a)[0]; ((char*)&a)[0]=((char*)&a)[3]; ((char*)&a)[3]=t;\
-      t = ((char*)&a)[1]; ((char*)&a)[1]=((char*)&a)[2]; ((char*)&a)[2]=t;}
+  int t = (reinterpret_cast<char*>(&a))[0];\
+          (reinterpret_cast<char*>(&a))[0]=(reinterpret_cast<char*>(&a))[3];\
+          (reinterpret_cast<char*>(&a))[3]=t;\
+      t = (reinterpret_cast<char*>(&a))[1];\
+          (reinterpret_cast<char*>(&a))[1]=(reinterpret_cast<char*>(&a))[2];\
+          (reinterpret_cast<char*>(&a))[2]=t;}
 #define KALDI_SWAP2(a) { \
-  int t = ((char*)&a)[0]; ((char*)&a)[0]=((char*)&a)[1]; ((char*)&a)[1]=t;}
+  int t = (reinterpret_cast<char*>(&a))[0];\
+          (reinterpret_cast<char*>(&a))[0]=(reinterpret_cast<char*>(&a))[1];\
+          (reinterpret_cast<char*>(&a))[1]=t;}
 
 
 // Makes copy constructor and operator= private.  Same as in compat.h of OpenFst
@@ -109,7 +130,7 @@ void Sleep(float seconds);
 template<bool B> class KaldiCompileTimeAssert { };
 template<> class KaldiCompileTimeAssert<true> {
  public:
-  static inline void Check() { }  
+  static inline void Check() { }
 };
 
 #define KALDI_COMPILE_TIME_ASSERT(b) KaldiCompileTimeAssert<(b)>::Check()
@@ -121,14 +142,6 @@ template<> class KaldiCompileTimeAssert<true> {
 #define KALDI_ASSERT_IS_FLOATING_TYPE(F) \
   KaldiCompileTimeAssert<std::numeric_limits<F>::is_specialized \
                 && !std::numeric_limits<F>::is_integer>::Check()
-
-#ifdef _MSC_VER
-#include <stdio.h>
-#define unlink _unlink
-#else
-#include <unistd.h>
-#endif
-
 
 #ifdef _MSC_VER
 #define KALDI_STRCASECMP _stricmp

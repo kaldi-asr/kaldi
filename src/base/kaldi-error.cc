@@ -40,7 +40,8 @@ const char *g_program_name = NULL;
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
 const char *GetProgramName() {
   if (g_program_name == NULL) return "";
-  else return g_program_name;
+  else
+    return g_program_name;
 }
 
 // Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
@@ -48,8 +49,9 @@ const char *GetProgramName() {
 // the filename separator.
 const char *GetShortFileName(const char *filename) {
   const char *last_slash = strrchr(filename, '/');
-  if (!last_slash) { return filename; }
-  else {
+  if (!last_slash) {
+    return filename;
+  } else {
     while (last_slash > filename && last_slash[-1] != '/')
       last_slash--;
     return last_slash;
@@ -200,7 +202,7 @@ KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
     throw std::runtime_error(str);
 #endif
   } else {
-    abort(); // This may be temporary...
+    abort();  // This may be temporary...
   }
 }
 
