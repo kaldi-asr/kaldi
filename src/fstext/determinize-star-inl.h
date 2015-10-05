@@ -1,6 +1,7 @@
 // fstext/determinize-star-inl.h
 
 // Copyright 2009-2011  Microsoft Corporation;  Jan Silovsky
+//           2015 Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -468,46 +469,112 @@ template<class Arc> class DeterminizerStar {
   // Called by ProcessSubset.
   // Has no side effects except on the repository.
 
+  struct EpsilonClosureInfo {
+    EpsilonClosureInfo() {}
+
+    EpsilonClosureInfo(Element e, Weight w, bool i, int d = 0) :
+      element(e), weight_to_process(w), in_queue(i), depth(d) {}
+
+    // the weight in the Element struct is the total current weight
+    // that has been processed already
+    Element element;
+
+    // this stores the weight that we haven't processed (propagated)
+    Weight weight_to_process;
+
+    // whether "this" struct is in the queue
+    // we store the info here so that we don't have to look it up every time
+    bool in_queue;
+
+    // depth is the max number of epsilons (so far) from the original element set
+    // e.g. if the original set is (s1, s2)
+    // s1 -eps-> s4
+    // s2 -eps-> s3 -eps-> s4
+    // then the depth for s4 would eventually be 2
+
+    // to avoid duplicate of computation, we use a priority_queue for storing
+    // the state_id's to process, and always pick the one with the smallest
+    // depth so far first
+    //
+    // this would be similar to topo-sort the states before processing;
+    // (not quite identical since we don't compute the definitive depth first,
+    // but gradually update the depth while running
+    // it seems to speed up the process very significantly already
+    int depth;
+  };
+
+  // this is the struct that is put into the priority_queue. 
+  // The comparison operator makes sure that the queue.top() returns
+  // the one with the least depth
+  struct IdAndDepth {
+    IdAndDepth (InputStateId i, int d):
+      id(i), depth(d) {}
+    InputStateId id;
+    int depth;
+    bool operator <(const IdAndDepth& other) const {
+      return this->depth > other.depth;  // we want the lowest depth on top
+    }
+  };
+
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
     // input_subset must have only one example of each StateId.
 
-    std::map<InputStateId, Element> cur_subset;
-    typedef typename std::map<InputStateId, Element>::iterator MapIter;
+    std::map<InputStateId, EpsilonClosureInfo> cur_subset;
+    priority_queue<IdAndDepth> queue;  // queue of things to be processed.
+
+    typedef typename std::map<InputStateId, EpsilonClosureInfo>::iterator MapIter;
     {
       MapIter iter = cur_subset.end();
       for (size_t i = 0; i < input_subset.size(); i++) {
-        std::pair<const InputStateId, Element> pr(input_subset[i].state, input_subset[i]);
+        queue.push(IdAndDepth(input_subset[i].state, 0));
+
+        // the weight has not been processed yet,
+        // so put all of them in the "weight_to_process"
+        EpsilonClosureInfo info(input_subset[i],
+                                input_subset[i].weight,
+                                true,
+                                0);
+        info.element.weight = Weight::Zero(); // clear the weight
+
+        std::pair<const InputStateId, EpsilonClosureInfo>
+                                 pr(input_subset[i].state, info);
         iter = cur_subset.insert(iter, pr);
         // By providing iterator where we inserted last one, we make insertion more efficient since
         // input subset was already in sorted order.
       }
     }
     // find whether input fst is known to be sorted in input label.
-    bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
+    bool sorted =
+            ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
-    vector<Element> queue(input_subset);  // queue of things to be processed.
-    bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // relates to max-states option, used for test.
     while (queue.size() != 0) {
-      Element elem = queue.back();
-      queue.pop_back();
-      // The next if-statement is a kind of optimization.  It's to prevent us
-      // unnecessarily repeating the processing of a state.  "cur_subset" always
-      // contains only one Element with a particular state.  The issue is that
-      // whenever we modify the Element corresponding to that state in "cur_subset",
-      // both the new (optimal) and old (less-optimal) Element will still be in
-      // "queue".  The next if-statement stops us from wasting compute by
-      // processing the old Element.
+      InputStateId id = queue.top().id;
+      int this_depth = queue.top().depth;
+      EpsilonClosureInfo &info = cur_subset[id];
+      Element &elem = info.element;
+      Weight unprocessed_weight = info.weight_to_process;
 
-      if (replaced_elems && cur_subset[elem.state] != elem)
+      KALDI_ASSERT(this_depth == info.depth);
+
+      elem.weight = Plus(elem.weight, unprocessed_weight);
+      info.weight_to_process = Weight::Zero();
+
+      info.in_queue = false;
+      queue.pop();
+
+      if (unprocessed_weight == Weight::Zero()) {
         continue;
+      }
 
       if (max_states_ > 0 && counter++ > max_states_) {
         std::cerr << "Determinization aborted since looped more than "
                   << max_states_ << " times during epsilon closure.\n";
         throw std::runtime_error("looped more than max-states times in determinization");
       }
+
+      // now we are going to propagate the "unprocessed_weight"
       for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
            !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -519,7 +586,10 @@ template<class Arc> class DeterminizerStar {
         if (arc.ilabel == 0) {  // Epsilon transition.
           Element next_elem;
           next_elem.state = arc.nextstate;
-          next_elem.weight = Times(elem.weight, arc.weight);
+          next_elem.weight = Weight::Zero();
+          Weight next_unprocessed_weight
+                         = Times(unprocessed_weight, arc.weight);
+
           // now must append strings
           if (arc.olabel == 0)
             next_elem.string = elem.string;
@@ -530,19 +600,24 @@ template<class Arc> class DeterminizerStar {
               seq.push_back(arc.olabel);
             next_elem.string = repository_.IdOfSeq(seq);
           }
-          typename std::map<InputStateId, Element>::iterator
+          typename std::map<InputStateId, EpsilonClosureInfo>::iterator
               iter = cur_subset.find(next_elem.state);
           if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
-            cur_subset[next_elem.state] = next_elem;
-            queue.push_back(next_elem);
+            cur_subset[next_elem.state] =
+                         EpsilonClosureInfo(next_elem,
+                                            next_unprocessed_weight,
+                                            true,
+                                            this_depth + 1
+                                            );
+            queue.push(IdAndDepth(next_elem.state, this_depth + 1));
           } else {  // one is already there.  Add weights.
-            if (iter->second.string != next_elem.string) {
+            if (iter->second.element.string != next_elem.string) {
               std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
               { // Print some debugging information.  Can be helpful to debug
                 // the inputs when FSTs are mysteriously non-functional.
                 vector<Label> tmp_seq;
-                repository_.SeqOfId(iter->second.string, &tmp_seq);
+                repository_.SeqOfId(iter->second.element.string, &tmp_seq);
                 std::cerr << "First string: ";
                 for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
                 std::cerr << "\nSecond string: ";
@@ -552,11 +627,32 @@ template<class Arc> class DeterminizerStar {
               }
               throw std::runtime_error("Non-functional FST: cannot determinize.\n");
             }
-            Weight weight = Plus(iter->second.weight, next_elem.weight);
-            if (! ApproxEqual(weight, iter->second.weight, delta_)) {  // add extra part of weight to queue.
-              iter->second.weight = weight; // Update weight in map.
-              queue.push_back(next_elem);
-              replaced_elems = true;
+            if (iter->second.in_queue) {
+              // since in queue, no check since we're propagating them anyway
+              iter->second.weight_to_process = Plus(iter->second.weight_to_process, next_unprocessed_weight);
+              // probably should take it out of the queue, update the depth
+              // and put it back.
+              // but it seems it's fast enough already ;-)
+            }
+            else {
+              // is in the subset but not in queue (we know its unprcessed_weight == Zero())
+              Weight weight = Plus(iter->second.element.weight, next_unprocessed_weight);
+              if (! ApproxEqual(weight, iter->second.element.weight, delta_)) {
+                // add extra part of weight to queue.
+                iter->second.weight_to_process = next_unprocessed_weight;
+                iter->second.in_queue = true;
+                iter->second.depth = max(iter->second.depth, this_depth + 1);
+                queue.push(IdAndDepth(next_elem.state, iter->second.depth));
+              }
+              else {
+                iter->second.weight_to_process = Weight::Zero();
+
+                // we replace the weight
+                // but not add this node to the queue
+                iter->second.element.weight = weight;
+                iter->second.in_queue = false;
+                iter->second.depth = max(iter->second.depth, this_depth + 1);
+              }
             }
           }
         }
@@ -568,7 +664,10 @@ template<class Arc> class DeterminizerStar {
       output_subset->clear();
       output_subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
-      for (; iter != end; ++iter) output_subset->push_back(iter->second);
+      for (; iter != end; ++iter) {
+        KALDI_ASSERT(iter->second.weight_to_process == Weight::Zero());
+        output_subset->push_back(iter->second.element);
+      }
     }
   }
 
