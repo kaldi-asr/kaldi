@@ -603,7 +603,7 @@ fi
 if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
-  if [ $num_jobs_compute_prior -lt $num_archives ]; then egs_part=1;
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
   else egs_part=JOB; fi
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
