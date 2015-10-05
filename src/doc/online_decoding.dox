@@ -323,9 +323,12 @@ We first have to build an ARPA format language model with SRILM. Note that SRILM
 comes with a lot of training options, and we assume it's the user's
 responsibility to figure out what is the best setting for their own application.
 Suppose "train.txt" is our language model training corpus (e.g., training
-data transcriptions), and "wordlist" is our vocabulary (e.g., recognizer's
-vocabulary), we can build a 3gram Kneser-Ney language model using the following
-SRILM command
+data transcriptions), and "wordlist" is our vocabulary. Here we assume the
+language model vocabulary is the same as the recognizer's vocabulary, i.e., it
+only contains the words from data/lang/words.txt, except the epsilon symbol
+"<eps>" and disambiguation symbol "#0". We will explain how we can use a
+different vocabulary in the next section. We can build a 3gram Kneser-Ney
+language model using the following SRILM command
 \verbatim
 ngram-count -text train.txt -order 3 -limit-vocab -vocab wordlist -unk \
   -map-unk "<unk>" -kndiscount -interpolate -lm srilm.o3g.kn.gz
@@ -371,6 +374,55 @@ where $model_dir is the model directory which contains the model "final.mdl"
 and the tree "tree". At this point, we can use $graph_own_dir/HCLG.fst to
 replace the old HCLG.fst, which uses the language model we just built.
 
+\subsection online_decoding_nnet2_vocab Example for using a different vocabulary with existing online-nnet2 models
+For most applications users will also have to change the recognizer's existing
+vocabulary, for example, adding out-of-vocabulary words such as person names
+to the existing vocabulary. In this section we will explain how this can be
+done.
+
+We first have to create a pronunciation lexicon, either by adding more words to
+the existing pronunciation lexicon, or by introducing a completely different
+lexicon. In the first case, we can use grapheme-to-phoneme (G2P) conversion
+to generate pronunciations for new words automatically. We can train the G2P
+model using the recognizer's existing pronunciation lexicon, apply the trained
+G2P model to the new words to generate pronunciations, and add those new lexical
+entries to the existing pronunciation lexicon. The commonly used G2P tools are
+Sequitur and Phonetisaurus, the later is usually much faster. In the second
+case, if we are using a completely different lexicon, we have to make sure that
+the phone set of the new lexicon is same as the recognizer's old phone set. If
+necessary, we can map the new lexicon's phone set to the recognizer's old phone
+set, and create a mapped pronunciation lexicon that has the recognizer's phone
+set.
+
+The second step is to create a dictionary directory for our new lexicon, which
+contains the required files, for example, lexicon.txt, lexiconp.txt,
+extra_questions.txt, etc. This steps usually depends on the format of the
+lexicon we generated. We suggest the users follow the existing Kaldi scripts,
+for example this one: egs/wsj/s5/local/wsj_prepare_dict.sh
+
+Now we can create a new lang directory with the updated lexicon. Suppose
+$lang is the recognizer's old lang directory, $lang_own is the new lang
+directory that we are going to create, $dict_own is the dictionary directory we
+just created, and "<SPOKEN_NOISE>" is the word symbol that represents
+out-of-vocabulary words in the lexicon, we can generate the new lang directory
+with the updated lexicon using the following command
+\verbatim
+utils/prepare_lang.sh \
+  --phone-symbol-table $lang/phones.txt \
+  $dict_own "<SPOKEN_NOISE>" $lang_own_tmp $lang_own
+\endverbatim
+Make usre you use the option "--phone-symbol-table", which makes sure that
+phones in your new lexicon will be compatible with the recognizer.
+
+The last step is of course to update the decoding graph, using the following
+command
+\verbatim
+graph_own_dir=$model_dir/graph_own
+utils/mkgraph.sh $lang_own $model_dir $graph_own_dir || exit 1;
+\endverbatim
+where $model_dir is the model directory which contains the model "final.mdl"
+and the tree "tree". We now can use $graph_own_dir/HCLG.fst to replace the old
+HCLG.fst.
 */
 
 
