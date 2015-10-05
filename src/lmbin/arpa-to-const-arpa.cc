@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 
     if (bos_symbol == -1 || eos_symbol == -1) {
       KALDI_ERR << "Please set --bos-symbol and --eos-symbol.";
-      exit (1);
+      exit(1);
     }
 
     std::string arpa_rxfilename = po.GetArg(1),
