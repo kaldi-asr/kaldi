@@ -380,25 +380,23 @@ vocabulary, for example, adding out-of-vocabulary words such as person names
 to the existing vocabulary. In this section we will explain how this can be
 done.
 
-We first have to create a pronunciation lexicon, either by adding more words to
-the existing pronunciation lexicon, or by introducing a completely different
-lexicon. In the first case, we can use grapheme-to-phoneme (G2P) conversion
-to generate pronunciations for new words automatically. We can train the G2P
-model using the recognizer's existing pronunciation lexicon, apply the trained
-G2P model to the new words to generate pronunciations, and add those new lexical
-entries to the existing pronunciation lexicon. The commonly used G2P tools are
-Sequitur and Phonetisaurus, the later is usually much faster. In the second
-case, if we are using a completely different lexicon, we have to make sure that
-the phone set of the new lexicon is same as the recognizer's old phone set. If
-necessary, we can map the new lexicon's phone set to the recognizer's old phone
-set, and create a mapped pronunciation lexicon that has the recognizer's phone
-set.
+We first have to create a new pronunciation lexicon, typically by adding more
+words to the recognizer's existing pronunciation lexicon. The recognizer's
+lexicon that we are going to modify is usually located at the $dict_dir/lexicon.txt,
+where $dict_dir is the recognizer's dictionary directory, and is usually
+data/local/dict. The new lexicon can be created manually by adding new lexical
+entries to $dict_dir/lexicon.txt. If we do not have pronunciations for the new
+words, we can use grapheme-to-phoneme (G2P) conversion to generate pronunciations
+automatically. The commonly used G2P tools are Sequitur and Phonetisaurus, the
+later is usually much faster.
 
 The second step is to create a dictionary directory for our new lexicon, which
-contains the required files, for example, lexicon.txt, lexiconp.txt,
-extra_questions.txt, etc. This steps usually depends on the format of the
-lexicon we generated. We suggest the users follow the existing Kaldi scripts,
-for example this one: egs/wsj/s5/local/wsj_prepare_dict.sh
+contains the required files, for example, lexicon.txt, lexiconp.txt, etc.
+Most likely if we don't change the lexicon's phone set, the old files such as
+extra_questions.txt, nonsilence_phones.txt, optional_silence.txt,
+silence_phones.txt can be re-used. For details of how to create those files, we
+suggest the users follow the existing Kaldi scripts, for example this one:
+egs/wsj/s5/local/wsj_prepare_dict.sh
 
 Now we can create a new lang directory with the updated lexicon. Suppose
 $lang is the recognizer's old lang directory, $lang_own is the new lang
