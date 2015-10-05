@@ -15,6 +15,9 @@
 cmd=run.pl
 num_epochs=10      # Number of epochs of training;
                    # the number of iterations is worked out from this.
+                   # Be careful with this: we actually go over the data
+                   # num-epochs * frame-subsampling-rate times, due to
+                   # using different data-shifts.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
 pnorm_input_dim=3000
@@ -24,8 +27,9 @@ rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
 
-frames_per_iter=400000  # each iteration of training, see this many frames
-                        # per job.  This option is passed to get_egs.sh
+frames_per_iter=800000  # each iteration of training, see this many [input]
+                        # frames per job.  This option is passed to get_egs.sh.
+                        # Aim for about a minute of training time
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 frame_subsampling_factor=3  # controls reduced frame-rate at the output.
@@ -220,10 +224,10 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
   extra_opts+=(--transform-dir $transform_dir)
-  extra_opts+=(--left-context $left_context)
-  # we need a bit of extra right-context to allow for frame shifts (we use shifted
-  # version of the data for more variety).
-  extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor-1])
+  # we need a bit of extra left-context and right-context to allow for frame
+  # shifts (we use shifted version of the data for more variety).
+  extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2])
+  extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
   echo "$0: calling get_egs.sh"
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
@@ -444,11 +448,11 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        frame_shift=$[-(($k/$num_archives)%$frame_subsampling_factor)];
+        frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-ctc-train $parallel_train_opts --print-interval=10 --write-raw=true "$mdl" \
-          "ark:nnet3-ctc-copy-egs --shift-input=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -457,7 +461,7 @@ while [ $x -lt $num_iters ]; do
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error on iteration $x of training" && exit 1;
 
-    models_to_average=$(steps/nnet3/get_successful_models.py $this_num_jobs $dir/log/train.$x.%.log)
+    models_to_average=$(steps/nnet3/get_successful_models.py --difference-threshold 0.1 $this_num_jobs $dir/log/train.$x.%.log)
     nnets_list=
     for n in $models_to_average; do
       nnets_list="$nnets_list $dir/$[$x+1].$n.raw"
@@ -540,7 +544,7 @@ echo Done
 
 if $cleanup; then
   echo Cleaning up data
-  if $remove_egs && [[ $egs_dir =~ $dir/cegs* ]]; then
+  if $remove_egs && [[ $egs_dir =~ $dir/egs* ]]; then
     steps/nnet2/remove_egs.sh $egs_dir
   fi
 

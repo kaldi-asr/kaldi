@@ -29,11 +29,6 @@ right_context=4   # amount of right-context per eg.
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
-reduce_frames_per_eg=true  # If true, this script may reduce the frames_per_eg
-                           # if there is only one archive and even with the
-                           # reduced frames_per_eg, the number of
-                           # samples_per_iter that would result is less than or
-                           # equal to the user-specified value.
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
 num_valid_egs_combine=0  # #validation examples for combination weights at the very end.
@@ -205,18 +200,6 @@ fi
 
 # the + 1 is to round up, not down... we assume it doesn't divide exactly.
 num_archives=$[$num_frames/$frames_per_iter+1]
-# (for small data)- while reduce_frames_per_eg == true and the number of
-# archives is 1 and would still be 1 if we reduced frames_per_eg by 1, reduce it
-# by 1.
-reduced=false
-while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
-  [ $[$num_frames/(($frames_per_eg-1)*$frames_per_iter)] -eq 0 ]; do
-  frames_per_eg=$[$frames_per_eg-1]
-  num_archives=1
-  reduced=true
-done
-$reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of data is small."
-
 
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number

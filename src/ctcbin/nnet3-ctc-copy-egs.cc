@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
 
     bool random = false;
     int32 srand_seed = 0;
-    int32 shift_input = 0;
+    int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
 
     ParseOptions po(usage);
@@ -69,8 +69,10 @@ int main(int argc, char *argv[]) {
                 "of times equal to floor(keep-proportion) or ceil(keep-proportion).");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true or --keep-proportion != 1.0)");
-    po.Register("shift-input", &shift_input, "Allows you to shift time values "
-                "in the input data (excluding iVector data).");
+    po.Register("frame-shift", &frame_shift, "Allows you to shift time values "
+                "in the supervision data (excluding iVector data) - useful in "
+                "augmenting data.  Note, the outputs will remain at the closest "
+                "exact multiples of the frame subsampling factor");
 
     po.Read(argc, argv);
 
@@ -100,7 +102,7 @@ int main(int argc, char *argv[]) {
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
-      if (shift_input == 0) {
+      if (frame_shift == 0) {
         const NnetCctcExample &eg = example_reader.Value();
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
@@ -109,7 +111,7 @@ int main(int argc, char *argv[]) {
         }
       } else if (count > 0) {
         NnetCctcExample eg = example_reader.Value();
-        ShiftCctcInputData(shift_input, exclude_names, &eg);
+        ShiftCctcExampleTimes(frame_shift, exclude_names, &eg);
         for (int32 c = 0; c < count; c++) {
           int32 index = (random ? Rand() : num_written) % num_outputs;
           example_writers[index]->Write(key, eg);

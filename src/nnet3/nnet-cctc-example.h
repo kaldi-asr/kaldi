@@ -172,10 +172,16 @@ void MergeCctcExamples(bool compress,
     equivalent to their non-shifted counterparts.  "exclude_names" is a vector
     of names of nnet inputs that we avoid shifting the "t" values of-- normally
     it will contain just the single string "ivector" because we always leave t=0
-    for any ivector. */
-void ShiftCctcInputData(int32 frame_shift,
-                        const std::vector<std::string> &exclude_names,
-                        NnetCctcExample *eg);
+    for any ivector.
+
+    Note: input features will be shifted by 'frame_shift', and indexes in the
+    supervision in (eg->output) will be shifted by 'frame_shift' rounded to the
+    closest multiple of the frame subsampling factor (e.g. 3).  The frame
+    subsampling factor is worked out from the time spacing between the indexes
+    in the output.  */
+void ShiftCctcExampleTimes(int32 frame_shift,
+                           const std::vector<std::string> &exclude_names,
+                           NnetCctcExample *eg);
 
 /**  This function takes a NnetCctcExample and produces a ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do, you

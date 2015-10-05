@@ -1,7 +1,13 @@
 #!/bin/bash
 
-# This is a CTC version of the TDNN system.
-# The non-CTC baseline for this script is in ../nnet3/run_tdnn.sh.
+#  g is as f (which failed after diverging), but fewer jobs and smaller
+#  initial lrate, and one more epoch; and I also
+#  changed the script to dump 800k frames (of input) instead of 400k, per
+#  job, so that each job will last a bit longer.
+#  not really hoping for better model, just more speed.
+#  Also using the longer egs and smaller minibatch-size, as in d (run_tdnn_4.sh)
+#
+# f is as c (aka run_tdnn3.sh), but fewer epochs and higher learning rate
 
 . cmd.sh
 
@@ -13,7 +19,7 @@
 stage=0
 train_stage=-10
 treedir=exp/ctc/tri5b_tree
-dir=exp/ctc/nnet_tdnn_a
+dir=exp/ctc/nnet_tdnn_g
 
 . cmd.sh
 . ./path.sh
@@ -83,12 +89,13 @@ if [ $stage -le 11 ]; then
   fi
 
   steps/nnet3/ctc/train_tdnn.sh --stage $train_stage \
-    --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
+    --minibatch-size 256 --frames-per-eg 50 \
+    --num-epochs 5 --num-jobs-initial 2 --num-jobs-final 8 \
     --splice-indexes "-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
+    --initial-effective-lrate 0.003 --final-effective-lrate 0.001 \
     --cmd "$decode_cmd" \
     --pnorm-input-dim 2000 \
     --pnorm-output-dim 250 \
@@ -123,14 +130,11 @@ wait;
 exit 0;
 
 # Results (still considerably worse than baseline):
-# note: these results are before adding the time-shifting to training egs, which is still being tested;
-# and also before setting the phone-lm-scale to 0.15, which gave a small improvement of 0.2% asbolute or so.
-# grep WER exp/ctc/nnet_tdnn_a/decode_{tgpr,bd_tgpr}_{eval92,dev93}/scoring_kaldi/best_wer
-
-exp/ctc/nnet_tdnn_a/decode_tgpr_eval92/scoring_kaldi/best_wer:%WER 11.94 [ 674 / 5643, 84 ins, 113 del, 477 sub ] exp/ctc/nnet_tdnn_a/decode_tgpr_eval92/wer_10_1.0
-exp/ctc/nnet_tdnn_a/decode_tgpr_dev93/scoring_kaldi/best_wer:%WER 16.54 [ 1362 / 8234, 174 ins, 212 del, 976 sub ] exp/ctc/nnet_tdnn_a/decode_tgpr_dev93/wer_11_0.0
-exp/ctc/nnet_tdnn_a/decode_bd_tgpr_eval92/scoring_kaldi/best_wer:%WER 10.47 [ 591 / 5643, 87 ins, 77 del, 427 sub ] exp/ctc/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_10_0.0
-exp/ctc/nnet_tdnn_a/decode_bd_tgpr_dev93/scoring_kaldi/best_wer:%WER 15.31 [ 1261 / 8234, 90 ins, 294 del, 877 sub ] exp/ctc/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_12_0.0
+# grep WER exp/ctc/nnet_tdnn_g/decode_{tgpr,bd_tgpr}_{dev93,eval92}/scoring_kaldi/best_wer
+exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 8.83 [ 498 / 5643, 76 ins, 89 del, 333 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/wer_10_1.0
+exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 12.23 [ 1007 / 8234, 136 ins, 186 del, 685 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/wer_10_0.5
+exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 6.72 [ 379 / 5643, 43 ins, 37 del, 299 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/wer_10_0.5
+exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 10.59 [ 872 / 8234, 82 ins, 189 del, 601 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/wer_11_0.0
 
 
 # Baseline results:

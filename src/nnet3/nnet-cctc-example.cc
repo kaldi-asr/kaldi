@@ -17,6 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cmath>
 #include "nnet3/nnet-cctc-example.h"
 #include "nnet3/nnet-example-utils.h"
 
@@ -360,9 +361,9 @@ void GetCctcComputationRequest(const Nnet &nnet,
     KALDI_ERR << "No outputs in computation request.";
 }
 
-void ShiftCctcInputData(int32 frame_shift,
-                        const std::vector<std::string> &exclude_names,
-                        NnetCctcExample *eg) {
+void ShiftCctcExampleTimes(int32 frame_shift,
+                           const std::vector<std::string> &exclude_names,
+                           NnetCctcExample *eg) {
   std::vector<NnetIo>::iterator input_iter = eg->inputs.begin(),
       input_end = eg->inputs.end();
   for (; input_iter != input_end; ++input_iter) {
@@ -378,6 +379,30 @@ void ShiftCctcInputData(int32 frame_shift,
       for (; indexes_iter != indexes_end; ++indexes_iter)
         indexes_iter->t += frame_shift;
     }
+  }
+  // note: we'll normally choose a small enough shift that the output-data
+  // shift will be zero.
+  std::vector<NnetCctcSupervision>::iterator
+      sup_iter = eg->outputs.begin(),
+      sup_end = eg->outputs.end();
+  for (; sup_iter != sup_end; ++sup_iter) {
+    std::vector<Index> &indexes = sup_iter->indexes;
+    KALDI_ASSERT(indexes.size() >= 2 && indexes[0].n == indexes[1].n &&
+                 indexes[0].x == indexes[1].x);
+    int32 frame_subsampling_factor = indexes[1].t - indexes[0].t;
+    KALDI_ASSERT(frame_subsampling_factor > 0);
+
+    // We need to shift by a multiple of frame_subsampling_factor.
+    // Round to the closest multiple.
+    int32 supervision_frame_shift =
+        frame_subsampling_factor *
+        std::floor(0.5 + (frame_shift * 1.0 / frame_subsampling_factor));
+    if (supervision_frame_shift == 0)
+      continue;
+    std::vector<Index>::iterator indexes_iter = indexes.begin(),
+        indexes_end = indexes.end();
+    for (; indexes_iter != indexes_end; ++indexes_iter)
+      indexes_iter->t += supervision_frame_shift;
   }
 }
 
