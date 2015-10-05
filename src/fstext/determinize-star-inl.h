@@ -564,10 +564,6 @@ template<class Arc> class DeterminizerStar {
       info.in_queue = false;
       queue.pop();
 
-      if (unprocessed_weight == Weight::Zero()) {
-        continue;
-      }
-
       if (max_states_ > 0 && counter++ > max_states_) {
         std::cerr << "Determinization aborted since looped more than "
                   << max_states_ << " times during epsilon closure.\n";
@@ -629,29 +625,33 @@ template<class Arc> class DeterminizerStar {
             }
             if (iter->second.in_queue) {
               // since in queue, no check since we're propagating them anyway
-              iter->second.weight_to_process = Plus(iter->second.weight_to_process, next_unprocessed_weight);
+              iter->second.weight_to_process =
+                  Plus(iter->second.weight_to_process, next_unprocessed_weight);
               // probably should take it out of the queue, update the depth
               // and put it back.
               // but it seems it's fast enough already ;-)
-            }
-            else {
-              // is in the subset but not in queue (we know its unprcessed_weight == Zero())
-              Weight weight = Plus(iter->second.element.weight, next_unprocessed_weight);
+            } else {
+              // is in the subset but not in queue
+              iter->second.weight_to_process = Plus(iter->second.weight_to_process,
+                                                    next_unprocessed_weight);
+
+              // this is because the code in "else" below: the 
+              // iter->second.weight_to_process might not be Zero()
+              Weight weight = Plus(iter->second.element.weight,
+                                   iter->second.weight_to_process);
+
+              // What is done below is, we propagate the weight (by adding them
+              // to the queue only when the change is big enough;
+              // otherwise we just store the weight, until before returning
+              // we add the element.weight and weight_to_process together
+              iter->second.depth = max(iter->second.depth, this_depth + 1);
               if (! ApproxEqual(weight, iter->second.element.weight, delta_)) {
                 // add extra part of weight to queue.
-                iter->second.weight_to_process = next_unprocessed_weight;
                 iter->second.in_queue = true;
-                iter->second.depth = max(iter->second.depth, this_depth + 1);
                 queue.push(IdAndDepth(next_elem.state, iter->second.depth));
-              }
-              else {
-                iter->second.weight_to_process = Weight::Zero();
-
-                // we replace the weight
-                // but not add this node to the queue
-                iter->second.element.weight = weight;
+              } else {
+                // we update the weight_to_process, but not add it to the queue
                 iter->second.in_queue = false;
-                iter->second.depth = max(iter->second.depth, this_depth + 1);
               }
             }
           }
@@ -665,7 +665,10 @@ template<class Arc> class DeterminizerStar {
       output_subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
       for (; iter != end; ++iter) {
-        KALDI_ASSERT(iter->second.weight_to_process == Weight::Zero());
+        if (iter->second.weight_to_process != Weight::Zero()) {
+          iter->second.element.weight =
+            Plus(iter->second.element.weight, iter->second.weight_to_process);
+        }
         output_subset->push_back(iter->second.element);
       }
     }
