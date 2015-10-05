@@ -39,7 +39,7 @@ void AmNnetSimple::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<LeftContext>");
   WriteBasicType(os, binary, left_context_);
   WriteToken(os, binary, "<RightContext>");
-  WriteBasicType(os, binary, right_context_);  
+  WriteBasicType(os, binary, right_context_);
   WriteToken(os, binary, "<Priors>");
   priors_.Write(os, binary);
 }
@@ -49,7 +49,7 @@ void AmNnetSimple::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LeftContext>");
   ReadBasicType(is, binary, &left_context_);
   ExpectToken(is, binary, "<RightContext>");
-  ReadBasicType(is, binary, &right_context_);  
+  ReadBasicType(is, binary, &right_context_);
   ExpectToken(is, binary, "<Priors>");
   priors_.Read(is, binary);
 }

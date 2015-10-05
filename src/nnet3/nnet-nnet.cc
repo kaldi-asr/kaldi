@@ -763,6 +763,7 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 std::string Nnet::Info() const {
   std::ostringstream os;
   os << "num-parameters: " << NumParameters(*this) << "\n";
+  os << "modulus: " << this->Modulus() << "\n";
   std::vector<std::string> config_lines;
   bool include_dim = true;
   GetConfigLines(include_dim, &config_lines);
