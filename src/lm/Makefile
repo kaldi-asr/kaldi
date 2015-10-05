@@ -1,6 +1,7 @@
 EXTRA_CXXFLAGS = -Wno-sign-compare
 
 all:
+EXTRA_CXXFLAGS = -fno-strict-aliasing
 
 # Disable linking math libs because  not needed here.  Just for compilation speed.
 MATHLIB = NONE

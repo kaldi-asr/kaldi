@@ -20,6 +20,9 @@
 #ifndef KALDI_LM_CONST_ARPA_LM_H_
 #define KALDI_LM_CONST_ARPA_LM_H_
 
+#include <string>
+#include <vector>
+
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
 #include "util/common-utils.h"
@@ -199,14 +202,14 @@ class ConstArpaLm {
  This class wraps a ConstArpaLm format language model with the interface defined
  in DeterministicOnDemandFst.
  */
-class ConstArpaLmDeterministicFst :
-    public fst::DeterministicOnDemandFst<fst::StdArc> {
+class ConstArpaLmDeterministicFst
+  : public fst::DeterministicOnDemandFst<fst::StdArc> {
  public:
   typedef fst::StdArc::Weight Weight;
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  ConstArpaLmDeterministicFst(const ConstArpaLm& lm);
+  explicit ConstArpaLmDeterministicFst(const ConstArpaLm& lm);
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
@@ -235,6 +238,6 @@ bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename);
 
-} // namespace kaldi
+}  // namespace kaldi
 
 #endif  // KALDI_LM_CONST_ARPA_LM_H_
