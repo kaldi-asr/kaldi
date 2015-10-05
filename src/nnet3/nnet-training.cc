@@ -42,7 +42,6 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   }
 }
 
-
 void NnetTrainer::Train(const NnetExample &eg) {
   bool need_model_derivative = true;
   ComputationRequest request;
@@ -145,6 +144,55 @@ bool ObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
 
 NnetTrainer::~NnetTrainer() {
   delete delta_nnet_;
+}
+
+void NnetPerturbedTrainer::Train(const NnetExample &eg) {
+  bool need_model_derivative = true;
+  ComputationRequest request;
+  GetComputationRequest(*nnet_, eg, need_model_derivative,
+                        config_.store_component_stats,
+                        &request);
+  const NnetComputation *computation = compiler_.Compile(request);
+
+  NnetComputer computer(config_.compute_config, *computation,
+                        *nnet_,
+                        (config_.momentum == 0.0 ? nnet_ : delta_nnet_));
+  // give the inputs to the computer object.
+  computer.AcceptInputs(*nnet_, eg);
+  computer.Forward();
+
+  this->ProcessOutputs(eg, &computer);
+  computer.Backward();
+
+  NnetExample eg_perturbed(eg);
+  for (size_t i = 0; i < eg_perturbed.io.size(); i++) {
+    NnetIo io = eg_perturbed.io[i];
+    int32 node_index = nnet_->GetNodeIndex(io.name);
+    if (node_index == -1)
+      KALDI_ERR << "No node named '" << io.name << "' in nnet.";
+    if (nnet_->IsInputNode(node_index)) {
+      CuMatrix<BaseFloat> cu_input_deriv(io.features.NumRows(),
+                                   io.features.NumCols(),
+                                   kUndefined);
+     // cu_input.CopyFromGeneralMat(io.features);
+      BaseFloat epsilon = 1e-4;
+      cu_input_deriv = computer.GetInputDeriv(io.name);
+      Matrix<BaseFloat> input(io.features.NumRows(),
+                                 io.features.NumCols(),
+                                 kUndefined);
+
+      Matrix<BaseFloat> input_deriv(cu_input_deriv); 
+      input.CopyFromMat(io.features.GetFullMatrix());
+
+      input.AddMat(epsilon, input_deriv);   
+      io.features = input;
+    }
+  }
+  
+  if (config_.momentum != 0.0) {
+    AddNnet(*delta_nnet_, 1.0 - config_.momentum, nnet_);
+    ScaleNnet(config_.momentum, delta_nnet_);
+  }
 }
 
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,
