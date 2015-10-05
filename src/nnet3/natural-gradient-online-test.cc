@@ -55,9 +55,9 @@ class OnlineNaturalGradientSimple {
   double epsilon_;
   double delta_;
 
-  // Fisher matrix defined as F_t = X_t^T diag(d_t) X_t + rho_t I.
+  // Fisher matrix defined as F_t = R_t^T diag(d_t) R_t + rho_t I.
   Vector<double> d_t_;
-  Matrix<double> X_t_;
+  Matrix<double> R_t_;
   double rho_t_;
 };
 
@@ -94,9 +94,9 @@ void OnlineNaturalGradientSimple::Init(const MatrixBase<double> &R0) {
     rank_ = D - 1;
   }
   int32 R = rank_;
-  X_t_.Resize(R, D);
+  R_t_.Resize(R, D);
   P.Transpose();
-  X_t_ = P.Range(0, R, 0, D);
+  R_t_ = P.Range(0, R, 0, D);
   d_t_ = s.Range(0, R);
   KALDI_VLOG(3) << "d_t orig is " << d_t_;
   rho_t_ = (TraceMatMat(R0, R0, kTrans) / N - d_t_.Sum()) / (D - R);
@@ -121,18 +121,18 @@ BaseFloat OnlineNaturalGradientSimple::Eta(int32 N) const {
 
 
 void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
-    MatrixBase<double> *R_t,
+    MatrixBase<double> *X_t,
     VectorBase<double> *row_prod,
     BaseFloat *scale) {
-  if (X_t_.NumRows() == 0)
-    Init(*R_t);
-  int32 R = X_t_.NumRows(), D = X_t_.NumCols(), N = R_t->NumRows();
+  if (R_t_.NumRows() == 0)
+    Init(*X_t);
+  int32 R = R_t_.NumRows(), D = R_t_.NumCols(), N = X_t->NumRows();
   BaseFloat eta = Eta(N);
 
   SpMatrix<double> F_t(D);
-  // F_t =(def) X_t^T D_t X_t + \rho_t I
+  // F_t =(def) R_t^T D_t R_t + \rho_t I
   F_t.AddToDiag(rho_t_);
-  F_t.AddMat2Vec(1.0, X_t_, kTrans, d_t_, 1.0);
+  F_t.AddMat2Vec(1.0, R_t_, kTrans, d_t_, 1.0);
 
   // Make sure F_t is +ve definite.
   {
@@ -142,18 +142,18 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
     KALDI_ASSERT(eigs.Min() > 0);
   }
 
-  // S_t =(def) 1/N R_t^T R_t.
+  // S_t =(def) 1/N X_t^T X_t.
   SpMatrix<double> S_t(D);
-  S_t.AddMat2(1.0 / N, *R_t, kTrans, 0.0);
+  S_t.AddMat2(1.0 / N, *X_t, kTrans, 0.0);
 
   // T_t =(def) \eta S_t + (1-\eta) F_t
   SpMatrix<double> T_t(D);
   T_t.AddSp(eta, S_t);
   T_t.AddSp(1.0 - eta, F_t);
 
-  // Y_t =(def) X_t T_t
+  // Y_t =(def) R_t T_t
   Matrix<double> Y_t(R, D);
-  Y_t.AddMatSp(1.0, X_t_, kNoTrans, T_t, 0.0);
+  Y_t.AddMatSp(1.0, R_t_, kNoTrans, T_t, 0.0);
 
   // Z_t =(def) Y_t Y_t^T
   SpMatrix<double> Z_t(R);
@@ -177,10 +177,10 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
   sqrt_c_t.ApplyPow(0.5);
   Vector<double> inv_sqrt_c_t(sqrt_c_t);
   inv_sqrt_c_t.InvertElements();
-  Matrix<double> X_t1(R, D);
-  // X_{t+1} = C_t^{-0.5} U_t^T Y_t
-  X_t1.AddMatMat(1.0, U_t, kTrans, Y_t, kNoTrans, 0.0);
-  X_t1.MulRowsVec(inv_sqrt_c_t);
+  Matrix<double> R_t1(R, D);
+  // R_{t+1} = C_t^{-0.5} U_t^T Y_t
+  R_t1.AddMatMat(1.0, U_t, kTrans, Y_t, kNoTrans, 0.0);
+  R_t1.MulRowsVec(inv_sqrt_c_t);
 
   double rho_t1 = (1.0 / (D - R)) *
       (eta * S_t.Trace() + (1.0 - eta) * (D * rho_t_ + d_t_.Sum()) - sqrt_c_t.Sum());
@@ -211,31 +211,31 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
   G_t_inv.Invert();
 
   double beta_t = rho_t_ + alpha_/D * F_t.Trace();
-  // P_t = beta_t R_t G_t^{-1}.
-  Matrix<double> P_t(N, D);
-  P_t.AddMatSp(beta_t, *R_t, kNoTrans, G_t_inv, 0.0);
+  // X_hat_t = beta_t X_t G_t^{-1}.
+  Matrix<double> X_hat_t(N, D);
+  X_hat_t.AddMatSp(beta_t, *X_t, kNoTrans, G_t_inv, 0.0);
 
-  double tr_r_r = TraceMatMat(*R_t, *R_t, kTrans),
-      tr_p_p = TraceMatMat(P_t, P_t, kTrans);
-  double gamma = (tr_p_p == 0 ? 1.0 : sqrt(tr_r_r / tr_p_p));
+  double tr_x_x = TraceMatMat(*X_t, *X_t, kTrans),
+      tr_Xhat_Xhat = TraceMatMat(X_hat_t, X_hat_t, kTrans);
+  double gamma = (tr_Xhat_Xhat == 0 ? 1.0 : sqrt(tr_x_x / tr_Xhat_Xhat));
 
-  R_t->CopyFromMat(P_t);
-  row_prod->AddDiagMat2(1.0, *R_t, kNoTrans, 0.0);
+  X_t->CopyFromMat(X_hat_t);
+  row_prod->AddDiagMat2(1.0, *X_t, kNoTrans, 0.0);
   *scale = gamma;
 
   // Update the parameters
   rho_t_ = rho_t1;
   d_t_.CopyFromVec(d_t1);
-  X_t_.CopyFromMat(X_t1);
+  R_t_.CopyFromMat(R_t1);
 
   KALDI_VLOG(3) << "rho_t_ = " << rho_t_;
   KALDI_VLOG(3) << "d_t_ = " << d_t_;
-  KALDI_VLOG(3) << "X_t_ = " << X_t_;
+  KALDI_VLOG(3) << "R_t_ = " << R_t_;
 
 
-  { // check that X_t_ X_t_^T = I.
+  { // check that R_t_ R_t_^T = I.
     SpMatrix<double> unit(R);
-    unit.AddMat2(1.0, X_t_, kNoTrans, 0.0);
+    unit.AddMat2(1.0, R_t_, kNoTrans, 0.0);
     KALDI_ASSERT(unit.IsUnit(1.0e-03));
   }
 }
