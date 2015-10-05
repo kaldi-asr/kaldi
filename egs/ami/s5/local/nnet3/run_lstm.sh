@@ -11,7 +11,8 @@ train_stage=-10
 has_fisher=true
 mic=ihm
 use_sat_alignments=true
-affix=
+affix=new_mc_400_0.0008
+# affix=old_mc_0.0625X_0.0008
 speed_perturb=true
 splice_indexes="-2,-1,0,1,2 0 0"
 label_delay=5
@@ -27,12 +28,16 @@ norm_based_clipping=true
 common_egs_dir=
 
 # natural gradient options
-ng_per_element_scale_options=
-ng_affine_options=
+#ng_per_element_scale_options=
+ng_per_element_scale_options="max-change-per-minibatch=400"
+#ng_per_element_scale_options="max-change-per-minibatch=0.0046875"
+#ng_affine_options=
+ng_affine_options="max-change-per-sample=400"
+#ng_affine_options="max-change-per-sample=0.03125"
 num_epochs=5
 
 # training options
-initial_effective_lrate=0.0003
+initial_effective_lrate=0.0008
 final_effective_lrate=0.00003
 num_jobs_initial=2
 num_jobs_final=12

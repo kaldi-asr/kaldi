@@ -558,7 +558,7 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix --print-interval=10 --momentum=$momentum \
+          nnet3-train$parallel_suffix --print-interval=10 --momentum=$momentum --computation.debug=false \
           --optimization.min-deriv-time=$min_deriv_time $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &

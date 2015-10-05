@@ -1307,13 +1307,16 @@ void NaturalGradientAffineComponent::Update(
   in_value_temp.Range(0, in_value.NumRows(),
                       in_value.NumCols(), 1).Set(1.0);
 
+  CuMatrix<BaseFloat> params_deriv(out_deriv.NumCols(), in_value_temp.NumCols());
+  params_deriv.AddMatMat(1.0, out_deriv, kTrans, in_value_temp, kNoTrans, 0.0);
+
   CuMatrix<BaseFloat> out_deriv_temp(out_deriv);
 
   CuMatrix<BaseFloat> row_products(2,
                                    in_value.NumRows());
   CuSubVector<BaseFloat> in_row_products(row_products, 0),
       out_row_products(row_products, 1);
-
+  
   // These "scale" values get will get multiplied into the learning rate (faster
   // than having the matrices scaled inside the preconditioning code).
   BaseFloat in_scale, out_scale;
@@ -1327,27 +1330,63 @@ void NaturalGradientAffineComponent::Update(
   // (it's faster to have them output a scaling factor than to have them scale
   // their outputs).
   BaseFloat scale = in_scale * out_scale;
-  BaseFloat minibatch_scale = 1.0;
+  BaseFloat max_change_scale = 1.0;
 
-  if (max_change_per_sample_ > 0.0)
-    minibatch_scale = GetScalingFactor(in_row_products, debug_info, scale,
+  if (max_change_per_sample_ < 10.0f) {
+    max_change_scale = GetScalingFactor(in_row_products, debug_info, scale,
                                        &out_row_products);
+  
+    CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
+                                                0, in_value_temp.NumRows(),
+                                                0, in_value_temp.NumCols() - 1);
+    // this "precon_ones" is what happens to the vector of 1's representing
+    // offsets, after multiplication by the preconditioner.
+    CuVector<BaseFloat> precon_ones(in_value_temp.NumRows());
+  
+    precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
+  
+    BaseFloat local_lrate = scale * max_change_scale * learning_rate_;
+    update_count_ += 1.0;
+    bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
+                           precon_ones, 1.0);
+    linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
+                             in_value_precon_part, kNoTrans, 1.0);
+  } else {
+    CuMatrix<BaseFloat> params_delta(out_deriv_temp.NumCols(), in_value_temp.NumCols());
+    params_delta.AddMatMat(learning_rate_ * scale, out_deriv_temp, kTrans, in_value_temp, kNoTrans, 1.0);
+  
+    BaseFloat max_objf_change_ = max_change_per_sample_;
+    BaseFloat predicted_objf_change = TraceMatMat(params_deriv, params_delta, kTrans);
+    if (predicted_objf_change < 0.0) {
+      preconditioner_in_.TurnOnDebug(); 
+      preconditioner_out_.TurnOnDebug(); 
+      KALDI_LOG << "predicted_objf_change is negative: " << predicted_objf_change;
+    }
+    predicted_objf_change = std::fabs(predicted_objf_change);
+    max_change_scale = std::min(max_objf_change_ / predicted_objf_change, 1.0f);
+    
+    static int scaling_factor_warnings_remaining = 10;
+    max_change_scale_stats_ += max_change_scale;
+    if (max_change_scale < 1.0f) {
+      active_scaling_count_ += 1.0;
+      if (scaling_factor_warnings_remaining > 0) {
+        scaling_factor_warnings_remaining--;
+        KALDI_LOG << "max_objf_change is " << max_objf_change_ << ". scaling factor is " << max_change_scale << " for component " << debug_info;
+      }
+    }
 
-  CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
-                                              0, in_value_temp.NumRows(),
-                                              0, in_value_temp.NumCols() - 1);
-  // this "precon_ones" is what happens to the vector of 1's representing
-  // offsets, after multiplication by the preconditioner.
-  CuVector<BaseFloat> precon_ones(in_value_temp.NumRows());
-
-  precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
-
-  BaseFloat local_lrate = scale * minibatch_scale * learning_rate_;
-  update_count_ += 1.0;
-  bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
-                         precon_ones, 1.0);
-  linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
-                           in_value_precon_part, kNoTrans, 1.0);
+    CuSubMatrix<BaseFloat> linear_params_delta(params_delta,
+                                                0, params_delta.NumRows(),
+                                                0, params_delta.NumCols() - 1);
+    CuVector<BaseFloat> bias_params_delta(params_delta.NumRows());
+  
+    bias_params_delta.CopyColFromMat(params_delta, params_delta.NumCols() - 1);
+  
+    update_count_ += 1.0;
+    bias_params_.AddVec(max_change_scale, bias_params_delta);
+  
+    linear_params_.AddMat(max_change_scale, linear_params_delta);
+  }
 }
 
 void NaturalGradientAffineComponent::ZeroStats()  {
@@ -1970,22 +2009,33 @@ void NaturalGradientPerElementScaleComponent::Update(
   // scales_.AddRowSumMat(learning_rate_, derivs_per_frame).
 
   BaseFloat scale;
+  CuVector<BaseFloat> derivs_per_minibatch(scales_.Dim());
+  derivs_per_minibatch.AddRowSumMat(1.0, derivs_per_frame);
   preconditioner_.PreconditionDirections(&derivs_per_frame, NULL, &scale);
 
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
 
-  BaseFloat max_change_scale = 1.0,
-      param_delta = delta_scales.Norm(2.0);
-  if (param_delta > max_change_per_minibatch_) {
-    max_change_scale = max_change_per_minibatch_ / param_delta;
-    if (max_change_warnings_remaining >= 0) {
-      max_change_warnings_remaining--;
-      KALDI_WARN << "Parameter change " << param_delta
-                 << " exceeds --max-change-per-minibatch="
-                 << max_change_per_minibatch_ << " for this minibatch, "
-                 << "for " << debug_info << ", scaling by factor "
-                 << max_change_scale;
+  BaseFloat max_change_scale = 1.0;
+  if (max_change_per_minibatch_ < 10.0f) {
+    BaseFloat param_delta = delta_scales.Norm(2.0);
+    if (param_delta > max_change_per_minibatch_) {
+      max_change_scale = max_change_per_minibatch_ / param_delta;
+      if (max_change_warnings_remaining >= 0) {
+        max_change_warnings_remaining--;
+        KALDI_WARN << "Parameter change " << param_delta
+                   << " exceeds --max-change-per-minibatch="
+                   << max_change_per_minibatch_ << " for this minibatch, "
+                   << "for " << debug_info << ", scaling by factor "
+                   << max_change_scale;
+      }
+    }
+  } else {             
+    BaseFloat max_objf_change_ = max_change_per_minibatch_;
+    BaseFloat predicted_objf_change = std::fabs(VecVec(derivs_per_minibatch, delta_scales));
+    max_change_scale = std::min(max_objf_change_ / predicted_objf_change, 1.0f);
+    if (max_change_scale < 1.0f) {
+      KALDI_LOG << "max_objf_change is " << max_objf_change_ << ". scaling factor is " << max_change_scale << " for component " << debug_info;
     }
   }
   scales_.AddVec(max_change_scale, delta_scales);
