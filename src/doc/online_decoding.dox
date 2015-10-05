@@ -396,7 +396,8 @@ Most likely if we don't change the lexicon's phone set, the old files such as
 extra_questions.txt, nonsilence_phones.txt, optional_silence.txt,
 silence_phones.txt can be re-used. For details of how to create those files, we
 suggest the users follow the existing Kaldi scripts, for example this one:
-egs/wsj/s5/local/wsj_prepare_dict.sh
+egs/wsj/s5/local/wsj_prepare_dict.sh. The format of the dictionary directory is
+described \ref data_prep_lang_creating "here". 
 
 Now we can create a new lang directory with the updated lexicon. Suppose
 $lang is the recognizer's old lang directory, $lang_own is the new lang
