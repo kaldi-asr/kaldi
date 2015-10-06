@@ -22,7 +22,7 @@ norm_based_clipping=true
 # natural gradient options
 ng_per_element_scale_options=
 ng_affine_options=
-num_epochs=10
+num_epochs=4
 
 # training options
 initial_effective_lrate=0.0003
@@ -33,8 +33,8 @@ momentum=0.5
 adaptive_shrink=true
 shrink=0.98
 num_chunk_per_minibatch=100
-num_bptt_steps=20
-samples_per_iter=20000
+num_bptt_steps=
+frames_per_iter=400000
 remove_egs=true
 
 #decode options
@@ -72,6 +72,7 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
+dir=exp/$mic/ctc/lstm
 dir=$dir${affix:+_$affix}${use_delay:+_ld$label_delay}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -123,7 +124,7 @@ if [ $stage -le 12 ]; then
     --label-delay $label_delay \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
-    --samples-per-iter $samples_per_iter \
+    --frames-per-iter $frames_per_iter \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -141,7 +142,7 @@ if [ $stage -le 12 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
-    --num-bptt-steps $num_bptt_steps \
+    --num-bptt-steps "$num_bptt_steps" \
     --norm-based-clipping $norm_based_clipping \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
     --ng-affine-options "$ng_affine_options" \
