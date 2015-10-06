@@ -1,4 +1,4 @@
-// cudamatrix/cuda-matrix-test.cc
+// cudamatrix/cu-matrix-test.cc
 
 // Copyright 2010  Karel Vesely
 //           2013  Lucas Ondel

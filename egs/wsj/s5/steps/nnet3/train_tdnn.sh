@@ -238,16 +238,16 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       $data $alidir $dir/egs || exit 1;
 fi
 
-if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $dir/egs/info/feat_dim)";
-  exit 1;
-fi
-if [ "$ivector_dim" != "$(cat $dir/egs/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $dir/egs/info/ivector_dim)";
-  exit 1;
-fi
-
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
+  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  exit 1;
+fi
+if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
+  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
 
 # copy any of the following that exist, to $dir.
 cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
@@ -256,8 +256,8 @@ cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
 egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
-  ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
+ ( [ $egs_left_context -lt $left_context ] || \
+   [ $egs_right_context -lt $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -603,9 +603,11 @@ fi
 if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
+  else egs_part=JOB; fi
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \

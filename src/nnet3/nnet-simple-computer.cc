@@ -28,10 +28,10 @@ namespace nnet3 {
   const NnetSimpleComputerOptions &opts,
   const Nnet &nnet,
   const MatrixBase<BaseFloat> &feats,
+  int32 left_context, int32 right_context,
   const VectorBase<BaseFloat> *ivector,
   const MatrixBase<BaseFloat> *online_ivectors,
-  int32 online_ivector_period,
-  int32 left_context, int32 right_context):
+  int32 online_ivector_period): 
  opts_(opts),
  nnet_(nnet),
  feats_(feats),
@@ -136,7 +136,7 @@ void NnetSimpleComputer::EnsureFrameIsComputed(int32 frame) {
                                           opts_.frames_per_chunk);
   KALDI_ASSERT(num_output_frames > 0);
   KALDI_ASSERT(opts_.extra_left_context >= 0);
-  int32 left_context = am_nnet_.LeftContext() + opts_.extra_left_context;
+  int32 left_context = LeftContext() + opts_.extra_left_context;
   int32 first_input_frame = start_output_frame - left_context,
       num_input_frames = left_context + num_output_frames +
                          RightContext();
@@ -276,11 +276,14 @@ void NnetSimpleComputer::PossiblyWarnForFramesPerChunk() const {
 }
 
 void NnetSimpleComputer::GetOutput(Matrix<BaseFloat> *output) {
-  for (size_t frame = 0; frame < feats_.NumRows(); frame += opts_.frames_per_chunk) {
+  for (size_t frame = 0; frame < feats_.NumRows(); 
+       frame += opts_.frames_per_chunk) {
    EnsureFrameIsComputed(frame);
    if (frame == 0)
     output->Resize(feats_.NumRows(), current_log_post_.NumCols());
-   SubMatrix<BaseFloat> this_output(*output, current_log_post_offset_, current_log_post_.NumRows(), 0, current_log_post_.NumCols());
+   SubMatrix<BaseFloat> this_output(*output, current_log_post_offset_, 
+                                    current_log_post_.NumRows(), 
+                                    0, current_log_post_.NumCols());
    this_output.CopyFromMat(current_log_post_);
   }
 }

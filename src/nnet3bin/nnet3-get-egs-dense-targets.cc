@@ -1,7 +1,7 @@
 // nnet3bin/nnet3-get-egs-dense-targets.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
-//                2014  Vimal Manohar
+//           2014-2015  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,10 +46,11 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
 
-    // actual_frames_per_eg is the number of frames with nonzero
-    // posteriors.  At the end of the file we pad with zero posteriors
+    // actual_frames_per_eg is the number of frames with actual targets.
+    // At the end of the file, we pad with the last frame repeated
     // so that all examples have the same structure (prevents the need
     // for recompilations).
+    // TODO: We might need to ignore the end of the file.
     int32 actual_frames_per_eg = std::min(frames_per_eg,
                                           feats.NumRows() - t);
 
@@ -95,7 +96,18 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       SubVector<BaseFloat> this_target_dest(targets_dest, i);
       SubVector<BaseFloat> this_target_src(targets, t+i);
       this_target_dest.CopyFromVec(this_target_src);
-    }
+    } 
+    
+    // Copy the last frame's target to the padded frames
+    for (int32 i = actual_frames_per_eg; i < frames_per_eg; i++) {
+      // Copy the i^th row of the target matrix from the last row of the 
+      // input targets matrix
+      KALDI_ASSERT(t + actual_frames_per_eg - 1 == feats.NumRows() - 1);
+      SubVector<BaseFloat> this_target_dest(targets_dest, i);
+      SubVector<BaseFloat> this_target_src(targets, t+actual_frames_per_eg-1);
+      this_target_dest.CopyFromVec(this_target_src);
+    } 
+
     // push this created targets matrix into the eg
     eg.io.push_back(NnetIo("output", 0, targets_dest));
     
@@ -127,19 +139,17 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Get frame-by-frame examples of data for nnet3 neural network training.\n"
-        "Essentially this is a format change from features and posteriors\n"
-        "into a special frame-by-frame format.  This program handles the\n"
-        "common case where you have some input features, possibly some\n"
-        "iVectors, and one set of labels.  If people in future want to\n"
-        "do different things they may have to extend this program or create\n"
-        "different versions of it for different tasks (the egs format is quite\n"
-        "general)\n"
+        "This program is similar to nnet3-get-egs, but the targets here are "
+        "dense matrices instead of posteriors (sparse matrices).\n"
+        "This is useful when you want the targets to be continuous real-valued "
+        "with the neural network possibly trained with a quadratic objective\n"
         "\n"
-        "Usage:  nnet3-get-egs [options] <features-rspecifier> "
-        "<pdf-post-rspecifier> <egs-out>\n"
+        "Usage:  nnet3-get-egs-dense-targets --num-targets=<n> [options] "
+        "<features-rspecifier> <targets-rspecifier> <egs-out>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "nnet-get-egs-dense-targets --num-targets=26 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
+        "nnet-get-egs-dense-targets --num-targets=26 --left-context=12 \\\n"
+        "--right-context=9 --num-frames=8 \"$feats\" \\\n"
         "\"ark:copy-matrix ark:exp/snrs/snr.1.ark ark:- |\"\n"
         "   ark:- \n";
         
@@ -197,7 +207,8 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
         if (target_matrix.NumRows() != feats.NumRows()) {
-          KALDI_WARN << "Target matrix has wrong size " << target_matrix.NumRows()
+          KALDI_WARN << "Target matrix has wrong size " 
+                     << target_matrix.NumRows()
                      << " versus " << feats.NumRows();
           num_err++;
           continue;

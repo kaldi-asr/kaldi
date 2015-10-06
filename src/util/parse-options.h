@@ -72,15 +72,15 @@ class ParseOptions : public OptionsItf {
 
   // Methods from the interface
   void Register(const std::string &name,
-                bool *ptr, const std::string &doc); 
+                bool *ptr, const std::string &doc);
   void Register(const std::string &name,
-                int32 *ptr, const std::string &doc); 
+                int32 *ptr, const std::string &doc);
   void Register(const std::string &name,
-                uint32 *ptr, const std::string &doc); 
+                uint32 *ptr, const std::string &doc);
   void Register(const std::string &name,
-                float *ptr, const std::string &doc); 
+                float *ptr, const std::string &doc);
   void Register(const std::string &name,
-                double *ptr, const std::string &doc); 
+                double *ptr, const std::string &doc);
   void Register(const std::string &name,
                 std::string *ptr, const std::string &doc);
 
@@ -97,7 +97,7 @@ class ParseOptions : public OptionsItf {
   /**
     Parses the command line options and fills the ParseOptions-registered
     variables. This must be called after all the variables were registered!!!
-   
+
     Initially the variables have implicit values,
     then the config file values are set-up,
     finally the command line vaues given.
@@ -174,7 +174,7 @@ class ParseOptions : public OptionsItf {
   /// x, and --y= for a string option y, and to disallow --x= and --y.
   void SplitLongArg(std::string in, std::string *key, std::string *value,
                     bool *has_equal_sign);
-  
+
   void NormalizeArgName(std::string *str);
 
   /// Set option with name "key" to "value"; will crash if can't do it.
@@ -184,10 +184,10 @@ class ParseOptions : public OptionsItf {
                  bool has_equal_sign);
 
   bool ToBool(std::string str);
-  int32 ToInt(std::string str);
-  uint32 ToUInt(std::string str);
-  float ToFloat(std::string str);
-  double ToDouble(std::string str);
+  int32 ToInt(const std::string &str);
+  uint32 ToUint(const std::string &str);
+  float ToFloat(const std::string &str);
+  double ToDouble(const std::string &str);
 
   // maps for option variables
   std::map<std::string, bool*> bool_map_;

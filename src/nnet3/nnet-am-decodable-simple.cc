@@ -1,6 +1,7 @@
 // nnet3/nnet-am-decodable-simple.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,11 +33,13 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet_.GetNnet(), feats, ivector, online_ivectors, online_ivector_period, am_nnet_.LeftContext(), am_nnet_.RightContext()),
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        ivector, online_ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()) {
+    priors_(am_nnet.Priors()) {
   priors_.ApplyLog();
 }
 
@@ -47,11 +50,13 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> &feats,
     const MatrixBase<BaseFloat> &ivectors,
     int32 online_ivector_period):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet_.GetNnet(), feats, NULL, &ivectors, online_ivector_period, am_nnet_.LeftContext(), am_nnet_.RightContext()),
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(),
+        NULL, &ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()) {
+    priors_(am_nnet.Priors()) {
   priors_.ApplyLog();
 }
 
@@ -61,11 +66,13 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> &ivector):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet_.GetNnet(), feats, &ivector, NULL, 0, am_nnet_.LeftContext(), am_nnet_.RightContext()), 
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        &ivector, NULL, 0), 
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()) {
+    priors_(am_nnet.Priors()) {
   priors_.ApplyLog();
 }
 

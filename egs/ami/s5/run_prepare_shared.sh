@@ -3,40 +3,16 @@
 . ./cmd.sh
 . ./path.sh
 
-# To run this script you need SRILM,
-
 # Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
-FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 # Edinburgh, [DEFAULT]
-# Path where AMI gets downloaded (or where locally available),
-AMI_DIR=$PWD/DOWNLOAD/amicorpus # [DEFAULT]
-
-# We can make setup specific to the 'domain' where the cluster is,
-case "$(hostname -d)" in
-  fit.vutbr.cz) # BUT cluster,
-    FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran
-    AMI_DIR=$(mktemp -d $(find /mnt/scratch*/$USER -maxdepth 0)/kaldi_ami_data_XXXXXX)
-  ;;
-  clsp.jhu.edu) # JHU cluster
-   FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1
-   AMI_DIR=/export/corpora4/ami/amicorpus 
-  ;;
-  *) echo "Using defaults locations,"
-  ;;
+case $(hostname -d) in 
+  fit.vutbr.cz) FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran ;; # BUT,
+  clsp.jhu.edu) FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1 ;; # JHU,
+  cstr.ed.ac.uk) FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 ;; # Edinburgh,
 esac
+# Or select manually,
+# FISHER_TRANS=...
 
-: "${IRSTLM:=}" # set the variable as we are running the script in -u mode
-                # in -u mode, bash checks if all variables have been initialized
-# We can override the automatic setup by : 
-# './run_prepare_shared.sh --AMI-DIR [dir] --FISHER-TRANS [dir]'
 . utils/parse_options.sh 
-
-# Load previous / store the new AMI_DIR location,
-[ -r conf/ami_dir ] && AMI_DIR=$(cat conf/ami_dir) || echo $AMI_DIR >conf/ami_dir 
-
-if [ -z $IRSTLM ] ; then
-  export IRSTLM=$KALDI_ROOT/tools/irstlm/
-fi
-export PATH=${PATH}:$IRSTLM/bin
 
 if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: the IRSTLM is not available or compiled" >&2
@@ -54,14 +30,12 @@ if ! command -v ngram-count >/dev/null 2>&1 ; then
   exit 1
 fi
 
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
+set -euxo pipefail
 
-# Set bash to 'debug' mode, it will exit on : 
-# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -x
-
-local/ami_text_prep.sh $AMI_DIR
+# Download of annotations, pre-processing,
+local/ami_text_prep.sh data/local/downloads
 
 local/ami_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
@@ -73,6 +47,6 @@ LM=$final_lm.pr1-7
 prune-lm --threshold=1e-7 data/local/lm/$final_lm.gz /dev/stdout | gzip -c > data/local/lm/$LM.gz
 utils/format_lm.sh data/lang data/local/lm/$LM.gz data/local/dict/lexicon.txt data/lang_$LM
 
-echo "Done!"
+echo "Done"
 exit 0
 

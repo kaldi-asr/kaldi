@@ -47,8 +47,54 @@ namespace nnet1 {
     std::istringstream is(s + "\n");
     return Component::Read(is, false); // false for ascii
   }
+
+
   /*
+   * Unit tests,
    */
+  void UnitTestLengthNorm() {
+    // make L2-lenght normalization component,
+    Component* c = ReadComponentFromString("<LengthNormComponent> 5 5");
+    // prepare input,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 1 2 3 4 5 \n 2 3 5 6 8 ] ", &mat_in);
+    // propagate,
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in,&mat_out);
+    // check the lenght,
+    mat_out.MulElements(mat_out); // ^2,
+    CuVector<BaseFloat> check_length_is_one(2);
+    check_length_is_one.AddColSumMat(1.0, mat_out, 0.0); // sum_of_cols(x^2),
+    check_length_is_one.ApplyPow(0.5); // L2norm = sqrt(sum_of_cols(x^2)),
+    CuVector<BaseFloat> ones(2); ones.Set(1.0);
+    AssertEqual(check_length_is_one, ones);
+  }
+
+  void UnitTestSimpleSentenceAveragingComponent() {
+    // make SimpleSentenceAveraging component,
+    Component* c = ReadComponentFromString("<SimpleSentenceAveragingComponent> 2 2 <GradientBoost> 10.0");
+    // prepare input,
+    CuMatrix<BaseFloat> mat_in;
+    ReadCuMatrixFromString("[ 0 0.5 \n 1 1 \n 2 1.5 ] ", &mat_in);
+  
+    // propagate,
+    CuMatrix<BaseFloat> mat_out;
+    c->Propagate(mat_in,&mat_out);
+    // check the output,
+    CuVector<BaseFloat> ones(2); ones.Set(1.0);
+    for (int32 i=0; i<mat_out.NumRows(); i++) {
+      AssertEqual(mat_out.Row(i), ones);
+    }
+  
+    // backpropagate,
+    CuMatrix<BaseFloat> dummy1(3,2), dummy2(3,2), diff_out(mat_in), diff_in;
+    c->Backpropagate(dummy1, dummy2, diff_out, &diff_in); // output 1.0 boosted by 10.0,
+    // check the output,
+    CuVector<BaseFloat> tens(2); tens.Set(10); 
+    for (int32 i=0; i<diff_in.NumRows(); i++) {
+      AssertEqual(diff_in.Row(i), tens);
+    }
+  }
 
   void UnitTestConvolutionalComponentUnity() {
     // make 'identity' convolutional component,
@@ -309,6 +355,8 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("optional"); // use GPU when available
 #endif
     // unit-tests :
+    UnitTestLengthNorm();
+    UnitTestSimpleSentenceAveragingComponent();
     UnitTestConvolutionalComponentUnity();
     UnitTestConvolutionalComponent3x3();
     UnitTestMaxPoolingComponent();

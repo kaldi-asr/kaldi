@@ -1,4 +1,4 @@
-// nnetbin/nnet-train-blstm-parallel.cc
+// nnetbin/nnet-train-blstm-streams.cc
 
 // Copyright 2015 Chongjia Ni
 

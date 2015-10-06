@@ -1,4 +1,4 @@
-// nnet/nnet-average-pooling-component.h
+// nnet/nnet-max-pooling-2d-component.h
 
 // Copyright 2014  Brno University of Technology (author: Karel Vesely),
 //                 Johns Hopkins University (author: Sri Harish Mallidi)

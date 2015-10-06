@@ -1,6 +1,7 @@
 // nnet3/nnet-am-decodable-simple.h
 
 // Copyright 2012-2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,7 +36,7 @@ struct DecodableAmNnetSimpleOptions : public NnetSimpleComputerOptions {
   NnetSimpleComputerOptions simple_computer_opts;
 
   DecodableAmNnetSimpleOptions():
-      acoustic_scale(0.1),
+      acoustic_scale(0.1) {}
 
   void Register(OptionsItf *opts) {
     opts->Register("acoustic-scale", &acoustic_scale,
@@ -49,14 +50,16 @@ struct DecodableAmNnetSimpleOptions : public NnetSimpleComputerOptions {
 /* DecodableAmNnetSimple is a decodable object that decodes with a neural net
    acoustic model of type AmNnetSimple.  It can accept just input features, or
    input features plus iVectors.
+   It inherits from the NnetSimpleComputer class, which does the 
+   neural network computation.
 */
-class DecodableAmNnetSimple: public DecodableInterface, public NnetSimpleComputer {
+class DecodableAmNnetSimple: public DecodableInterface, 
+                             public NnetSimpleComputer {
  public:
   /// Constructor that just takes the features as input, but can also optionally
   /// take batch-mode or online iVectors.  Note: it stores references to all
   /// arguments to the constructor, so don't delete them till this goes out of
   /// scope.
-
   DecodableAmNnetSimple(const DecodableAmNnetSimpleOptions &opts,
                         const TransitionModel &trans_model,
                         const AmNnetSimple &am_nnet,

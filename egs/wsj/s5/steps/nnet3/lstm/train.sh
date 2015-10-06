@@ -23,10 +23,10 @@ adaptive_shrink=true     # if true, the shrink value is increased to 1 with a ra
 shrink=0.98  # this parameter would be used to scale the parameter matrices
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
-samples_per_iter=20000 # each iteration of training, see this many samples
-                       # per job.  This option is passed to get_egs.sh
-                       # this is substantially smaller than of that used for FF-DNN
-                       # as multiple output labels are processed in each sample
+samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
+                       # 'chunk_width' frames in it-- for chunk_width=20, this value (20k)
+                       # is equivalent to the 400k number that we use as a default in
+                       # regular DNN training.
 num_jobs_initial=1 # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
@@ -149,8 +149,8 @@ if [ $# != 4 ]; then
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
   echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
-  echo "  --samples-per-iter <#samples|2000>               # Number of samples of data to process per iteration, per"
-  echo "                                                   # process."
+  echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
+  echo "                                                   # the number of frames processed per iteration"
   echo "  --splice-indexes <string|\"-2,-1,0,1,2 0 0\"> "
   echo "                                                   # Frame indices used for each splice layer."
   echo "                                                   # Format : <frame_indices> .... <frame_indices> "
@@ -321,8 +321,8 @@ cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
 egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
-  ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
+ ( [ $egs_left_context -lt $left_context ] || \
+   [ $egs_right_context -lt $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
 chunk_width=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -675,8 +675,10 @@ if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
+  else egs_part=JOB; fi
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs  ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \

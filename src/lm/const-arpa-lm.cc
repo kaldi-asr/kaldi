@@ -17,7 +17,10 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <limits>
 #include <sstream>
+#include <utility>
 
 #include "lm/const-arpa-lm.h"
 #include "util/stl-utils.h"
@@ -29,9 +32,9 @@ namespace kaldi {
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
 struct ArpaLine {
-  std::vector<int32> words; // Sequence of words to be printed.
-  float logprob;            // Logprob corresponds to word sequence.
-  float backoff_logprob;    // Backoff_logprob corresponds to word sequence.
+  std::vector<int32> words;  // Sequence of words to be printed.
+  float logprob;             // Logprob corresponds to word sequence.
+  float backoff_logprob;     // Backoff_logprob corresponds to word sequence.
   // Comparison function for sorting.
   bool operator < (const ArpaLine &other) const {
     if (words.size() < other.words.size()) {
@@ -60,7 +63,7 @@ class LmState {
   struct ChildrenVectorLessThan {
     bool operator()(
         const std::pair<int32, union ChildType>& lhs,
-        const std::pair<int32, union ChildType>& rhs ) const {
+        const std::pair<int32, union ChildType>& rhs) const {
       return lhs.first < rhs.first;
     }
   };
@@ -163,7 +166,7 @@ class LmState {
   // "A B -> X" backing off to "B -> X".
   float backoff_logprob_;
 
-  // List of children. 
+  // List of children.
   std::vector<std::pair<int32, union ChildType> > children_;
 };
 
@@ -184,7 +187,7 @@ class ConstArpaLmBuilder {
     is_built_ = false;
     lm_states_ = NULL;
     unigram_states_ = NULL;
-    overflow_buffer_ = NULL; 
+    overflow_buffer_ = NULL;
   }
 
   ~ConstArpaLmBuilder() {
@@ -219,7 +222,7 @@ class ConstArpaLmBuilder {
   struct WordsAndLmStatePairLessThan {
     bool operator()(
         const std::pair<std::vector<int32>*, LmState*>& lhs,
-        const std::pair<std::vector<int32>*, LmState*>& rhs ) const {
+        const std::pair<std::vector<int32>*, LmState*>& rhs) const {
       return *(lhs.first) < *(rhs.first);
     }
   };
@@ -305,7 +308,7 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
 
     std::size_t equal_symbol_pos = line.find("=");
     if (equal_symbol_pos != std::string::npos)
-      line.replace(equal_symbol_pos, 1, " = "); // Inserts spaces around "="
+      line.replace(equal_symbol_pos, 1, " = ");  // Inserts spaces around "="
     std::vector<std::string> col;
     SplitStringToVector(line, " \t", true, &col);
 
@@ -377,7 +380,7 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
       // Enters "\N-grams:" section if the keyword has been located.
       if (keyword_found && col.size() > 0) {
         KALDI_ASSERT(col.size() >= 1 + cur_order);
-        KALDI_ASSERT(col.size() <= 2 + cur_order);// backoff_logprob could be 0.
+        KALDI_ASSERT(col.size() <= 2 + cur_order);  // backoff_logprob can be 0.
         if (cur_order == ngram_order_ && col.size() == 2 + cur_order) {
           KALDI_ERR << "Backoff probability detected for final-order entry \""
               << line << "\".";
@@ -400,7 +403,7 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
           logprob *= Log(10.0f);
           backoff_logprob *= Log(10.0f);
         }
-       
+
         // If <ngram_order_> is larger than 1, then we do not create LmState for
         // the final order entry. We only keep the log probability for it.
         LmState *lm_state = NULL;
@@ -547,12 +550,12 @@ void ConstArpaLmBuilder::Build() {
     int32* parent_address = lm_states_ + lm_states_index;
 
     // Adds logprob.
-    float logprob = sorted_vec[i].second->Logprob();
-    lm_states_[lm_states_index++] = *reinterpret_cast<int32*>(&logprob);
+    Int32AndFloat logprob_f(sorted_vec[i].second->Logprob());
+    lm_states_[lm_states_index++] = logprob_f.i;
 
     // Adds backoff_logprob.
-    float backoff_logprob = sorted_vec[i].second->BackoffLogprob();
-    lm_states_[lm_states_index++] = *reinterpret_cast<int32*>(&backoff_logprob);
+    Int32AndFloat backoff_logprob_f(sorted_vec[i].second->BackoffLogprob());
+    lm_states_[lm_states_index++] = backoff_logprob_f.i;
 
     // Adds num_children.
     lm_states_[lm_states_index++] = sorted_vec[i].second->NumChildren();
@@ -570,14 +573,14 @@ void ConstArpaLmBuilder::Build() {
         // Child is a leaf and not unigram. In this case we will not create an
         // entry in <lm_states_>; instead, we put the logprob in the place where
         // we normally store the poitner.
-        float child_logprob;
+        Int32AndFloat child_logprob_f;
         if (sorted_vec[i].second->IsChildFinalOrder()) {
-          child_logprob = sorted_vec[i].second->GetChild(j).second.prob;
+          child_logprob_f.f = sorted_vec[i].second->GetChild(j).second.prob;
         } else {
-          child_logprob =
+          child_logprob_f.f =
               sorted_vec[i].second->GetChild(j).second.state->Logprob();
         }
-        child_info = *reinterpret_cast<int32*>(&child_logprob);
+        child_info = child_logprob_f.i;
         child_info &= ~1;   // Sets the last bit to 0 so <child_info> is even.
       } else {
         // Child is not a leaf or is unigram.
@@ -737,7 +740,7 @@ void ConstArpaLm::Read(std::istream &is, bool binary) {
                (unk_symbol_ > 0 || unk_symbol_ == -1));
   lm_states_end_ = lm_states_ + lm_states_size_ - 1;
   memory_assigned_ = true;
-  initialized_ = true;;
+  initialized_ = true;
 }
 
 bool ConstArpaLm::HistoryStateExists(const std::vector<int32>& hist) const {
@@ -815,7 +818,8 @@ float ConstArpaLm::GetNgramLogprobRecurse(
       // defined.
       return std::numeric_limits<float>::min();
     } else {
-      return *reinterpret_cast<float*>(unigram_states_[word]);
+      Int32AndFloat logprob_i(*unigram_states_[word]);
+      return logprob_i.f;
     }
   }
 
@@ -830,7 +834,8 @@ float ConstArpaLm::GetNgramLogprobRecurse(
       DecodeChildInfo(child_info, state, &child_lm_state, &logprob);
       return logprob;
     } else {
-      backoff_logprob = *reinterpret_cast<float*>(state + 1);
+      Int32AndFloat backoff_logprob_i(*(state + 1));
+      backoff_logprob = backoff_logprob_i.f;
     }
   }
   std::vector<int32> new_hist(hist);
@@ -909,17 +914,19 @@ void ConstArpaLm::DecodeChildInfo(const int32 child_info,
   if (child_info % 2 == 0) {
     // Child is a leaf, only returns the log probability.
     *child_lm_state = NULL;
-    int32 tmp_child_info = child_info;
-    *logprob = *reinterpret_cast<float*>(&tmp_child_info);
+    Int32AndFloat logprob_i(child_info);
+    *logprob = logprob_i.f;
   } else {
     int32 child_offset = child_info / 2;
     if (child_offset > 0) {
       *child_lm_state = parent + child_offset;
-      *logprob = *reinterpret_cast<float*>(*child_lm_state);
+      Int32AndFloat logprob_i(**child_lm_state);
+      *logprob = logprob_i.f;
     } else {
       KALDI_ASSERT(-child_offset < overflow_buffer_size_);
       *child_lm_state = overflow_buffer_[-child_offset];
-      *logprob = *reinterpret_cast<float*>(*child_lm_state);
+      Int32AndFloat logprob_i(**child_lm_state);
+      *logprob = logprob_i.f;
     }
     KALDI_ASSERT(*child_lm_state >= lm_states_);
     KALDI_ASSERT(*child_lm_state <= lm_states_end_);
@@ -937,8 +944,10 @@ void ConstArpaLm::WriteArpaRecurse(int32* lm_state,
   // Inserts the current LmState to <output>.
   ArpaLine arpa_line;
   arpa_line.words = seq;
-  arpa_line.logprob = *reinterpret_cast<float*>(lm_state);
-  arpa_line.backoff_logprob = *reinterpret_cast<float*>(lm_state + 1);
+  Int32AndFloat logprob_i(*lm_state);
+  arpa_line.logprob = logprob_i.f;
+  Int32AndFloat backoff_logprob_i(*(lm_state + 1));
+  arpa_line.backoff_logprob = backoff_logprob_i.f;
   output->push_back(arpa_line);
 
   // Scans for possible children, and recursively adds child to <output>.
@@ -998,7 +1007,7 @@ void ConstArpaLm::WriteArpa(std::ostream &os) const {
   // Writes n-grams.
   int32 current_order = 0;
   for (int32 i = 0; i < tmp_output.size(); ++i) {
-    // Beginning of a n-gram section. 
+    // Beginning of a n-gram section.
     if (tmp_output[i].words.size() != current_order) {
       current_order = tmp_output[i].words.size();
       os << std::endl;
@@ -1099,4 +1108,4 @@ bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
   return true;
 }
 
-} // namespace kaldi
+}  // namespace kaldi

@@ -291,6 +291,49 @@ class CopyComponent: public Component {
 
 
 /**
+ * Rescale the matrix-rows to have unit length (L2-norm).
+ */
+class LengthNormComponent: public Component {
+ public:
+  LengthNormComponent(int32 dim_in, int32 dim_out)
+    : Component(dim_in, dim_out)
+  { }
+  ~LengthNormComponent()
+  { }
+
+  Component* Copy() const { return new LengthNormComponent(*this); }
+  ComponentType GetType() const { return kLengthNormComponent; }
+
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+    // resize vector when needed,   
+    if (row_scales_.Dim() != in.NumRows()) { 
+      row_scales_.Resize(in.NumRows());
+    }
+    // get the normalization scalars,
+    l2_aux_ = in;
+    l2_aux_.MulElements(l2_aux_); // x^2,
+    row_scales_.AddColSumMat(1.0,l2_aux_,0.0); // sum_of_cols(x^2),
+    row_scales_.ApplyPow(0.5); // L2norm = sqrt(sum_of_cols(x^2)),
+    row_scales_.InvertElements(); // 1/L2norm,
+    // compute the output,
+    out->CopyFromMat(in);
+    out->MulRowsVec(row_scales_); // re-normalize,
+  }
+
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+    in_diff->CopyFromMat(out_diff);
+    in_diff->MulRowsVec(row_scales_); // diff_by_x(s * x) = s,
+  }
+
+ private:
+  CuMatrix<BaseFloat> l2_aux_; ///< auxiliary matrix for L2 norm computation,
+  CuVector<BaseFloat> row_scales_; ///< normalization scale of each row,
+};
+
+
+
+/**
  * Adds shift to all the lines of the matrix
  * (can be used for global mean normalization)
  */

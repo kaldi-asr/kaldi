@@ -45,11 +45,11 @@ struct NnetSimpleComputerOptions {
   void Register(OptionsItf *opts) {
     opts->Register("extra-left-context", &extra_left_context,
                    "Number of frames of additional left-context to add on top "
-                   "of the neural net's inherent left context (may be useful in "
-                   "recurrent setups");
+                   "of the neural net's inherent left context "
+                   "(may be useful in recurrent setups");
     opts->Register("frames-per-chunk", &frames_per_chunk,
-                   "Number of frames in each chunk that is separately evaluated "
-                   "by the neural net.");
+                   "Number of frames in each chunk that is separately "
+                   "evaluated by the neural net.");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
 
@@ -66,14 +66,21 @@ struct NnetSimpleComputerOptions {
 class NnetSimpleComputer {
  public:
   
+  /// Constructor that just takes the features, and the left and right
+  /// contexts as input, but can also optionally
+  /// take batch-mode or online iVectors.  Note: it stores references to all
+  /// arguments to the constructor, so don't delete them till this goes out of
+  /// scope.
+  /// This is mainly when the raw neural network is used without the 
+  /// acoustic model.
   NnetSimpleComputer(const NnetSimpleComputerOptions &opts,
                      const Nnet &nnet,
                      const MatrixBase<BaseFloat> &feats,
-                     const VectorBase<BaseFloat> *ivector,
-                     const MatrixBase<BaseFloat> *online_ivectors,
-                     int32 online_ivector_period,
                      int32 left_context,
-                     int32 right_context);
+                     int32 right_context,
+                     const VectorBase<BaseFloat> *ivector = NULL,
+                     const MatrixBase<BaseFloat> *online_ivectors = NULL,
+                     int32 online_ivector_period = 1);
 
   /// Constructor that just takes the features as input, but can also optionally
   /// take batch-mode or online iVectors.  Note: it stores references to all
@@ -100,6 +107,8 @@ class NnetSimpleComputer {
                      const MatrixBase<BaseFloat> &feats,
                      const VectorBase<BaseFloat> &ivector);
 
+  /// This function does the forward pass through the neural network
+  /// and returns the result to the output matrix
   void GetOutput(Matrix<BaseFloat> *output);
 
  protected:
@@ -107,6 +116,17 @@ class NnetSimpleComputer {
   // cached in current_log_post_.
   void EnsureFrameIsComputed(int32 frame);
 
+  // This function does the actual nnet computation; it is called from
+  // EnsureFrameIsComputed. It puts its output in current_log_post_.
+  // This is just a wrapper to the DoNnetComputationInternal function.
+  // This is virtual because its implementation in DecodableAmNnetSimple 
+  // class must also add in acoustic scale and priors.
+  virtual void DoNnetComputation(int32 input_t_start,
+    const MatrixBase<BaseFloat> &input_feats,
+    const VectorBase<BaseFloat> &ivector,
+    int32 output_t_start,
+    int32 num_output_frames);
+  
   // This function does the internal computations in the 
   // actual nnet computation; it is called from
   // DoNnetComputation. Any padding at file start/end is done by
@@ -152,20 +172,14 @@ class NnetSimpleComputer {
   CachingOptimizingCompiler compiler_;
 
   // The current log-posteriors that we got from the last time we
-  // ran the computation.
+  // ran the computation. 
+  // NOTE: This is just the output of the neural network, not necessarily the 
+  // log-posteriors
   Matrix<BaseFloat> current_log_post_;
   // The time-offset of the current log-posteriors. 
   int32 current_log_post_offset_;
  
- private:
-  // This function does the actual nnet computation; it is called from
-  // EnsureFrameIsComputed. It puts its output in current_log_post_.
-  void DoNnetComputation(int32 input_t_start,
-    const MatrixBase<BaseFloat> &input_feats,
-    const VectorBase<BaseFloat> &ivector,
-    int32 output_t_start,
-    int32 num_output_frames);
-  
+  // The left and right contexts that are needed for per-frame computation
   int32 left_context_;
   int32 right_context_;
 };
