@@ -27,17 +27,21 @@
 
 
 int main(int argc, char *argv[]) {
-  // note: making this program work with GPUs is as simple as initializing the
-  // device, but it probably won't make a huge difference in speed for typical
-  // setups.
   try {
     using namespace kaldi;
     using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
 
     const char *usage =
-        "Propagate through neural network model\n"
-        "Usage: nnet3-compute [options] <nnet-in> <features-rspecifier> <matrix-wspecifier>\n";
+        "Propagate the features through raw neural network model "
+        "and write the output.\n"
+        "If --apply-exp=true, apply the Exp() function to the output before writing "
+        "it out.\n"
+        "\n"
+        "Usage: nnet3-compute [options] <raw-nnet-in> <features-rspecifier> <matrix-wspecifier>\n"
+        " e.g.: nnet3-compute final.raw scp:feats.scp ark:nnet_prediction.ark\n"
+        "See also: nnet3-compute-from-egs\n";
+
     ParseOptions po(usage);
     Timer timer;
     
