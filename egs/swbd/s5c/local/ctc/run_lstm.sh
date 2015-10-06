@@ -1,23 +1,7 @@
 #!/bin/bash
 
-# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
-#           2015  Vijayaditya Peddinti
-#           2015  Xingyu Na
-#           2015  Pegah Ghahrmani
-# Apache 2.0.
-
-
-# this is a basic lstm script
-# LSTM script runs for more epochs than the TDNN script
-# and each epoch takes twice the time
-
-# At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call lstm/train.sh with --gpu false
-
 stage=0
 train_stage=-10
-has_fisher=true
-use_sat_alignments=true
 affix=
 speed_perturb=true
 common_egs_dir=
@@ -30,7 +14,7 @@ cell_dim=1024
 hidden_dim=1024
 recurrent_projection_dim=256
 non_recurrent_projection_dim=256
-chunk_width=20
+chunk_width=50
 chunk_left_context=40
 clipping_threshold=30.0
 norm_based_clipping=true
@@ -38,13 +22,13 @@ norm_based_clipping=true
 # natural gradient options
 ng_per_element_scale_options=
 ng_affine_options=
-num_epochs=4
+num_epochs=10
 
 # training options
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-num_jobs_initial=3
-num_jobs_final=15
+num_jobs_initial=2
+num_jobs_final=12
 momentum=0.5
 adaptive_shrink=true
 shrink=0.98
@@ -57,6 +41,9 @@ remove_egs=true
 extra_left_context=
 frames_per_chunk=
 
+# ctc options
+treedir=exp/ctc/tri5b_tree
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -64,6 +51,7 @@ echo "$0 $@"  # Print the command line for logging
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -73,29 +61,65 @@ where "nvcc" is installed.
 EOF
 fi
 
+# The iVector-extraction and feature-dumping parts are the same as the standard
+# nnet3 setup, and you can skip them by setting "--stage 8" if you have already
+# run those things.
+
 use_delay=false
 if [ $label_delay -gt 0 ]; then use_delay=true; fi
-dir=exp/$mic/nnet3/lstm
-train_set=train_nodup
-ali_dir=exp/tri4_ali_nodup
+
+suffix=
 if [ "$speed_perturb" == "true" ]; then
-  dir=${dir}_sp
-  train_set=train_nodup_sp
-  ali_dir=exp/tri4_ali_nodup_sp
+  suffix=_sp
 fi
 dir=$dir${affix:+_$affix}${use_delay:+_ld$label_delay}
+dir=${dir}$suffix
+train_set=train_nodup$suffix
+ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
   --generate-alignments false || exit 1;
 
 if [ $stage -le 9 ]; then
+  # Create a version of the lang/ directory that has one state per phone in the
+  # topo file.
+  lang=data/lang_ctc
+  rm -r $lang 2>/dev/null
+  cp -r data/lang $lang
+  silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
+  nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+  utils/gen_topo.pl 1 1 $nonsilphonelist $silphonelist >$lang/topo
+fi
+
+if [ $stage -le 10 ]; then
+  # Starting from the alignments in tri4_ali_nodup*, we train a rudimentary
+  # LDA+MLLT system with a 1-state HMM topology and with only left phonetic
+  # context (one phone's worth of left context, for now).  We set "--num-iters
+  # 1" because we only need the tree from this system.
+  steps/train_sat.sh --cmd "$train_cmd" --num-iters 1 \
+    --tree-stats-opts "--collapse-pdf-classes=true" \
+    --cluster-phones-opts "--pdf-class-list=0" \
+    --context-opts "--context-width=2 --central-position=1" \
+     2500 15000 data/$train_set data/lang_ctc $ali_dir $treedir
+fi
+
+if [ $stage -le 11 ]; then
+  # Get the alignments as lattices (gives the CTC training more freedom).
+  # use the same num-jobs as the alignments
+  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
+    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
+  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+fi
+
+if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/lstm/train.sh --stage $train_stage \
+  steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
     --label-delay $label_delay \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
@@ -123,11 +147,18 @@ if [ $stage -le 9 ]; then
     --ng-affine-options "$ng_affine_options" \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+    data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-graph_dir=exp/tri4/graph_sw1_tg
-if [ $stage -le 9 ]; then
+if [ $stage -le 13 ]; then
+  phone_lm_weight=0.15
+  steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
+      data/lang_lang_sw1_tg $dir $dir/graph_sw1_tg_${phone_lm_weight}
+fi
+
+decode_suff=sw1_tg_${phone_lm_weight}
+graph_dir=exp/tri4/graph_${decode_suff}
+if [ $stage -le 14 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
   fi
@@ -137,16 +168,11 @@ if [ $stage -le 9 ]; then
   for decode_set in train_dev_hires eval2000_hires; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set} \
-            $dir/decode_${data}_sw1_{tg,fsh_fg} || exit 1;
-      fi
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       ) &
   done
 fi

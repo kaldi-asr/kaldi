@@ -9,13 +9,13 @@ SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat kws cudamatrix nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin
+          ivector ivectorbin online2 online2bin lmbin ctcbin
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat nnet \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin nnet3bin sgmm2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin
+          ivector ivectorbin online2 online2bin lmbin ctcbin
 
 CUDAMEMTESTDIR = cudamatrix
 
@@ -111,7 +111,7 @@ ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
 
 # Define an implicit rule, expands to e.g.:
 #  base/test: base
-#     $(MAKE) -C base test 
+#     $(MAKE) -C base test
 %/test: % mklibdir
 	$(MAKE) -C $< test
 
@@ -134,7 +134,7 @@ ext_depend: check_portaudio
 
 .PHONY: $(SUBDIRS)
 $(SUBDIRS) : mklibdir
-	$(MAKE) -C $@ 
+	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
 $(EXT_SUBDIRS) : mklibdir
@@ -166,12 +166,12 @@ hmm: base tree matrix util
 lm: base util fstext
 decoder: base util matrix gmm sgmm hmm tree transform lat
 lat: base util hmm tree matrix
-cudamatrix: base util matrix	
+cudamatrix: base util matrix
 nnet: base util matrix cudamatrix
 nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
 nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix ctc
 ctc: lat hmm tree matrix cudamatrix util base
-ivector: base util matrix thread transform tree gmm 
+ivector: base util matrix thread transform tree gmm
 #3)Dependencies for optional parts of Kaldi
 onlinebin: base matrix util feat tree optimization gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
 # python-kaldi-decoding: base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
