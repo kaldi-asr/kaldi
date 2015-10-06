@@ -41,13 +41,6 @@ namespace nnet3 {
    from this header is just the core of the algorithm, and some outer-level parts
    of it are implemented in class NaturalGradientAffineComponent.
    
-  Note regarding AISTATS/arXiv paper: we have different notation there.  The following is
-  the mapping from our notation to the AISTATS/arXiv paper notation.
-     R_t -> X_t
-     P_t -> \hat{X}_t
-     Q_t -> \bar{X}_t
-     X_t -> R_t
-
   The rest of this extended comment describes the way we keep updated an estimate
   of the inverse of a scatter matrix, in an online way.  This is the same as the
   estimation of one of the A or B quantities in the paper.  This comment is slightly
