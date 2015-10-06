@@ -15,6 +15,9 @@
 #    the objective is to emphasize state-sequences with better 
 #    frame accuracy w.r.t. reference alignment.
 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
+
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 
@@ -31,8 +34,10 @@ gmm=exp/tri3b
 stage=0
 . utils/parse_options.sh || exit 1;
 
+set -eu
+
 # Make the FBANK features
-if [ $stage -le 0 ]; then
+[ ! -e $dev ] && if [ $stage -le 0 ]; then
   # Dev set
   utils/copy_data_dir.sh $dev_original $dev || exit 1; rm $dev/{cmvn,feats}.scp
   steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd" \
@@ -70,13 +75,12 @@ if [ $stage -le 2 ]; then
   # Decode (reuse HCLG graph)
   steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
     $gmm/graph $dev $dir/decode || exit 1;
-  steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt 0.1 \
-    $gmm/graph_ug $dev $dir/decode_ug || exit 1;
 fi
 
 
-# Sequence training using sMBR criterion, we do Stochastic-GD 
-# with per-utterance updates. We use usually good acwt 0.1
+# Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# the value 0.1 is better both for decoding and sMBR.
 dir=exp/dnn4d-fbank_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn4d-fbank_pretrain-dbn_dnn
 acwt=0.1
@@ -94,7 +98,7 @@ if [ $stage -le 4 ]; then
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
     $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
-  for ITER in 1 2 3 4 5 6; do
+  for ITER in 6 3 1; do
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmm/graph $dev $dir/decode_it${ITER} || exit 1

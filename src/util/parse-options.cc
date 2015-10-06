@@ -556,7 +556,7 @@ bool ParseOptions::SetOption(const std::string &key,
   } else if (int_map_.end() != int_map_.find(key)) {
     *(int_map_[key]) = ToInt(value);
   } else if (uint_map_.end() != uint_map_.find(key)) {
-    *(uint_map_[key]) = ToUInt(value);
+    *(uint_map_[key]) = ToUint(value);
   } else if (float_map_.end() != float_map_.find(key)) {
     *(float_map_[key]) = ToFloat(value);
   } else if (double_map_.end() != double_map_.find(key)) {
@@ -593,50 +593,31 @@ bool ParseOptions::ToBool(std::string str) {
 }
 
 
-int32 ParseOptions::ToInt(std::string str) {
-  char *end_pos;
-  // strtol is cheaper than stringstream...
-  // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
-  int32 ret = std::strtol(str.c_str(), &end_pos, 0);
-  if (str.c_str() == end_pos) {
-    PrintUsage(true);
+int32 ParseOptions::ToInt(const std::string &str) {
+  int32 ret;
+  if (!ConvertStringToInteger(str, &ret))
     KALDI_ERR << "Invalid integer option \"" << str << "\"";
-  }
   return ret;
 }
 
-uint32 ParseOptions::ToUInt(std::string str) {
-  char *end_pos;
-  // strtol is cheaper than stringstream...
-  // strtol accepts decimal 438143, hexa 0x1f2d3 and octal 067123
-  uint32 ret = std::strtoul(str.c_str(), &end_pos, 0);
-  if (str.c_str() == end_pos) {
-    PrintUsage(true);
-    KALDI_ERR << "Invalid integer option  \"" << str << "\"";
-  }
+uint32 ParseOptions::ToUint(const std::string &str) {
+  uint32 ret;
+  if (!ConvertStringToInteger(str, &ret))
+    KALDI_ERR << "Invalid integer option \"" << str << "\"";
   return ret;
 }
 
-
-float ParseOptions::ToFloat(std::string str) {
-  char *end_pos;
-  // strtod is cheaper than stringstream...
-  float ret = std::strtod(str.c_str(), &end_pos);
-  if (str.c_str() == end_pos) {
-    PrintUsage(true);
+float ParseOptions::ToFloat(const std::string &str) {
+  float ret;
+  if (!ConvertStringToReal(str, &ret))
     KALDI_ERR << "Invalid floating-point option \"" << str << "\"";
-  }
   return ret;
 }
 
-double ParseOptions::ToDouble(std::string str) {
-  char *end_pos;
-  // strtod is cheaper than stringstream...
-  double ret = std::strtod(str.c_str(), &end_pos);
-  if (str.c_str() == end_pos) {
-    PrintUsage(true);
-    KALDI_ERR << "Invalid floating-point option  \"" << str << "\"";
-  }
+double ParseOptions::ToDouble(const std::string &str) {
+  double ret;
+  if (!ConvertStringToReal(str, &ret))
+    KALDI_ERR << "Invalid floating-point option \"" << str << "\"";
   return ret;
 }
 

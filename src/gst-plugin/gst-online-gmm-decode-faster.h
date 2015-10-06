@@ -1,4 +1,4 @@
-// gst-plugin/gst-online-decode-faster.h
+// gst-plugin/gst-online-gmm-decode-faster.h
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 

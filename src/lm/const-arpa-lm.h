@@ -100,7 +100,7 @@ class ConstArpaLm {
 
  private:
   // Loops up n-gram probability for given word sequence. Backoff is handled by
-  // recursively calling this function. 
+  // recursively calling this function.
   float GetNgramLogprobRecurse(const int32 word,
                                const std::vector<int32>& hist) const;
 
@@ -109,7 +109,7 @@ class ConstArpaLm {
   //
   // If the word sequence exists in n-gram language model, but it is a leaf and
   // is not an unigram, we still return NULL, since there is no LmState struct
-  // reserved for this sequence. 
+  // reserved for this sequence.
   int32* GetLmState(const std::vector<int32>& seq) const;
 
   // Given a pointer to the parent, find the child_info that corresponds to
@@ -191,7 +191,7 @@ class ConstArpaLm {
   // Note that the floating point representation has 4 bytes, int32 also has 4
   // bytes, therefore one LmState will occupy the following number of bytes:
   //
-  // x = 1 + 1 + 1 + 2 * children.size() = 3 + 2 * children.size() 
+  // x = 1 + 1 + 1 + 2 * children.size() = 3 + 2 * children.size()
   int32* lm_states_;
 };
 

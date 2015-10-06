@@ -1,4 +1,4 @@
-// nnet/nnet-convolutional-component.h
+// nnet/nnet-convolutional-2d-component.h
 
 // Copyright 2014-2015  Johns Hopkins University (author: Sri Harish Mallidi)
 //                      Brno University of Technology (author: Karel Vesely),

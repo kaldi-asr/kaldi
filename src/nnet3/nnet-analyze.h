@@ -411,6 +411,8 @@ class ComputationChecker {
   void CheckComputationRewrite() const;
   // check matrix accesses make sense.
   void CheckComputationMatrixAccesses() const;
+  // check debug_info has the correct size, if used.
+  void CheckComputationDebugInfo() const;
 
 
   const CheckComputationOptions &config_;

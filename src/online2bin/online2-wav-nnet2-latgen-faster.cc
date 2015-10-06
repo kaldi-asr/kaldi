@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-nnet2-latgen-faster.cc
+// online2bin/online2-wav-nnet2-latgen-faster.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 

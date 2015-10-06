@@ -1,4 +1,4 @@
-// util/parse-options-test.cc
+// util/simple-options-test.cc
 
 // Copyright 2013  Tanel Alumae, Tallinn University of Technology
 

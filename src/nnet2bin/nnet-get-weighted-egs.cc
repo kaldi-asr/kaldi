@@ -1,4 +1,4 @@
-// nnet2bin/nnet-weighted-get-egs.cc
+// nnet2bin/nnet-get-weighted-egs.cc
 
 // Copyright 2013-2014  (Author: Vimal Manohar)
 

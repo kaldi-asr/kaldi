@@ -15,14 +15,15 @@ mic=ihm
 use_sat_alignments=true
 affix=
 speed_perturb=true
+common_egs_dir=
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -48,10 +49,11 @@ LM=$final_lm.pr1-7
 graph_dir=$gmm_dir/graph_${LM}
 
 local/nnet3/run_ivector_common.sh --stage $stage \
+  --mic $mic \
   --use-sat-alignments $use_sat_alignments \
   --speed-perturb $speed_perturb || exit 1;
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
@@ -64,13 +66,14 @@ if [ $stage -le 7 ]; then
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --io-opts "-tc 12" \
+    --egs-dir "$common_egs_dir" \
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \
     --relu-dim 850 \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   rm -f exp/$mic/nnet3/.error 2>/dev/null
   for data in dev eval; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
@@ -81,7 +84,7 @@ if [ $stage -le 8 ]; then
 fi
 
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev eval; do

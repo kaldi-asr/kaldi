@@ -219,21 +219,20 @@ class ModelUpdateConsolidator {
   void AddCommandsToComputation();
 
   /// You call this function when you want to consolidate the values of a list
-  /// of submatrices taken just prior particular commands.  The input 'commands'
-  /// and 'submatrices' lists must be the same size, and size must be > 1.  This
-  /// function will create a new matrix that is the row-wise concatentation of
-  /// all these submatrices, with values taken just prior to the respective
-  /// command indexes.  This function will will add to extra_commands_ the
-  /// commands to do the copying at the appropriate places (at the supplied
-  /// command indexes; they will be inserted just before).  The return value is
-  /// the submatrix index of a submatrix that represents the whole of the
-  /// consolidated matrix.  This command will insert, at the beginning of
-  /// the computation (in extra_commands_[0]), a command to initialize the matrix;
-  /// and will append to final_deallocate_commands_ the commands to deallocate
-  /// the matrix.
-  /// If computation_->matrix_debug_info is nonempty, this function will
-  /// also update computation_->matrix_debug_info with suitable values
-  /// for the newly added matrix
+  /// of submatrices taken just prior to particular commands.  The input
+  /// 'commands' and 'submatrices' lists must be the same size, and size must be
+  /// > 1.  This function will create a new matrix that is the row-wise
+  /// concatentation of all these submatrices, with values taken just prior to
+  /// the respective command indexes.  This function will will add to
+  /// extra_commands_ the commands to do the copying at the appropriate places
+  /// (at the supplied command indexes; they will be inserted just before).  The
+  /// return value is the submatrix index of a submatrix that represents the
+  /// whole of the consolidated matrix.  This command will insert, at the
+  /// beginning of the computation (in extra_commands_[0]), a command to
+  /// initialize the matrix; and will append to final_deallocate_commands_ the
+  /// commands to deallocate the matrix.  If computation_->matrix_debug_info is
+  /// nonempty, this function will also update computation_->matrix_debug_info
+  /// with suitable values for the newly added matrix
   int32 ConsolidateSubmatrices(
       const std::vector<int32> &commands,
       const std::vector<int32> &submatrices);
