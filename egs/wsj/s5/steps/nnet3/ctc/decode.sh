@@ -23,6 +23,7 @@ lattice_acoustic_scale=10.0  # This is kind of a hack; it's used for
                              # be close to 10.
 cmd=run.pl
 beam=15.0
+extra_left_context=0
 frames_per_chunk=50
 max_active=7000
 min_active=200
@@ -34,6 +35,7 @@ skip_scoring=false
 feat_type=
 online_ivector_dir=
 minimize=false
+
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging

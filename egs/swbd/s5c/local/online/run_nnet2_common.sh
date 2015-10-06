@@ -1,7 +1,7 @@
 #!/bin/bash
 
 . ./cmd.sh
-set -e 
+set -e
 stage=1
 train_stage=-10
 
@@ -18,7 +18,7 @@ if [ $stage -le 1 ]; then
   fi
   utils/copy_data_dir.sh data/train data/train_scaled_hires
   utils/copy_data_dir.sh data/train data/train_hires
-  
+
   data_dir=data/train_scaled_hires
   cat $data_dir/wav.scp | python -c "
 import sys, os, subprocess, re, random
@@ -34,12 +34,12 @@ for line in sys.stdin.readlines():
       --cmd "$train_cmd" data/train_scaled_hires exp/make_hires/train_scaled $mfccdir;
   steps/compute_cmvn_stats.sh data/train_scaled_hires exp/make_hires/train_scaled $mfccdir;
 
-  # we need these features for the run_nnet2_ms.sh 
+  # we need these features for the run_nnet2_ms.sh
   steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/train_hires exp/make_hires/train $mfccdir;
   steps/compute_cmvn_stats.sh data/train_hires exp/make_hires/train $mfccdir;
 
-  # Remove the small number of utterances that couldn't be extracted for some 
+  # Remove the small number of utterances that couldn't be extracted for some
   # reason (e.g. too short; no such file).
   utils/fix_data_dir.sh data/train_scaled_hires;
   utils/fix_data_dir.sh data/train_hires;
@@ -50,7 +50,7 @@ for line in sys.stdin.readlines():
       data/eval2000_hires exp/make_hires/eval2000 $mfccdir;
   steps/compute_cmvn_stats.sh data/eval2000_hires exp/make_hires/eval2000 $mfccdir;
     utils/fix_data_dir.sh data/eval2000_hires  # remove segments with problems
-    
+
   # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
   # the 1st 10k sentences as dev set, so the 1st 4k won't have been used in the
   # LM training data.   However, they will be in the lexicon, plus speakers
@@ -84,7 +84,7 @@ if [ $stage -le 2 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
-  # this decision is based on fisher_english 
+  # this decision is based on fisher_english
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_scaled_hires_100k_nodup \

@@ -92,7 +92,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     cp $alidir/full.mat $dir 2>/dev/null
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -103,7 +103,7 @@ if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
-else 
+else
   if [ $stage -le -5 ]; then
     echo "$0: obtaining initial fMLLR transforms since not present in $alidir"
     # The next line is necessary because of $silphonelist otherwise being incorrect; would require
@@ -214,7 +214,7 @@ while [ $x -lt $num_iters ]; do
     feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
-  
+
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-acc-stats-ali $dir/$x.mdl "$feats" \
@@ -224,7 +224,7 @@ while [ $x -lt $num_iters ]; do
       gmm-est --power=$power --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc
-    rm $dir/$x.occs 
+    rm $dir/$x.occs
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
@@ -259,7 +259,7 @@ utils/summarize_warnings.pl $dir/log
   echo "$0: Likelihood evolution:"
   for x in `seq $[$num_iters-1]`; do
     tail -n 30 $dir/log/acc.$x.*.log | awk '/Overall avg like/{l += $(NF-3)*$(NF-1); t += $(NF-1); }
-        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);} 
+        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);}
         END{ d /= t2; l /= t; printf("%s ", d+l); } '
   done
   echo
