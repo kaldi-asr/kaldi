@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Propagate the features through raw neural network model "
         "and write the output.\n"
-        "If --apply-exp=true, apply the Exp() function to the output before writing "
-        "it out.\n"
+        "If --apply-exp=true, apply the Exp() function to the output "
+        "before writing it out.\n"
         "\n"
         "Usage: nnet3-compute [options] <raw-nnet-in> <features-rspecifier> <matrix-wspecifier>\n"
         " e.g.: nnet3-compute final.raw scp:feats.scp ark:nnet_prediction.ark\n"

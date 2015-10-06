@@ -33,7 +33,9 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, am_nnet.LeftContext(), am_nnet.RightContext(), ivector, online_ivectors, online_ivector_period),
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        ivector, online_ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
@@ -48,7 +50,9 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> &feats,
     const MatrixBase<BaseFloat> &ivectors,
     int32 online_ivector_period):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, am_nnet.LeftContext(), am_nnet.RightContext(), NULL, &ivectors, online_ivector_period),
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(),
+        NULL, &ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
@@ -62,7 +66,9 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> &ivector):
-    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, am_nnet.LeftContext(), am_nnet.RightContext(), &ivector, NULL, 0), 
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        &ivector, NULL, 0), 
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),

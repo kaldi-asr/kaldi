@@ -148,7 +148,8 @@ int main(int argc, char *argv[]) {
         "<features-rspecifier> <targets-rspecifier> <egs-out>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "nnet-get-egs-dense-targets --num-targets=26 --left-context=12 --right-context=9 --num-frames=8 \"$feats\"\\\n"
+        "nnet-get-egs-dense-targets --num-targets=26 --left-context=12 \\\n"
+        "--right-context=9 --num-frames=8 \"$feats\" \\\n"
         "\"ark:copy-matrix ark:exp/snrs/snr.1.ark ark:- |\"\n"
         "   ark:- \n";
         
@@ -206,7 +207,8 @@ int main(int argc, char *argv[]) {
       } else {
         const Matrix<BaseFloat> &target_matrix = matrix_reader.Value(key);
         if (target_matrix.NumRows() != feats.NumRows()) {
-          KALDI_WARN << "Target matrix has wrong size " << target_matrix.NumRows()
+          KALDI_WARN << "Target matrix has wrong size " 
+                     << target_matrix.NumRows()
                      << " versus " << feats.NumRows();
           num_err++;
           continue;

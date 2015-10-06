@@ -45,11 +45,11 @@ struct NnetSimpleComputerOptions {
   void Register(OptionsItf *opts) {
     opts->Register("extra-left-context", &extra_left_context,
                    "Number of frames of additional left-context to add on top "
-                   "of the neural net's inherent left context (may be useful in "
-                   "recurrent setups");
+                   "of the neural net's inherent left context "
+                   "(may be useful in recurrent setups");
     opts->Register("frames-per-chunk", &frames_per_chunk,
-                   "Number of frames in each chunk that is separately evaluated "
-                   "by the neural net.");
+                   "Number of frames in each chunk that is separately "
+                   "evaluated by the neural net.");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
 

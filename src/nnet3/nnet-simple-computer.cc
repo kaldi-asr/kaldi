@@ -276,11 +276,14 @@ void NnetSimpleComputer::PossiblyWarnForFramesPerChunk() const {
 }
 
 void NnetSimpleComputer::GetOutput(Matrix<BaseFloat> *output) {
-  for (size_t frame = 0; frame < feats_.NumRows(); frame += opts_.frames_per_chunk) {
+  for (size_t frame = 0; frame < feats_.NumRows(); 
+       frame += opts_.frames_per_chunk) {
    EnsureFrameIsComputed(frame);
    if (frame == 0)
     output->Resize(feats_.NumRows(), current_log_post_.NumCols());
-   SubMatrix<BaseFloat> this_output(*output, current_log_post_offset_, current_log_post_.NumRows(), 0, current_log_post_.NumCols());
+   SubMatrix<BaseFloat> this_output(*output, current_log_post_offset_, 
+                                    current_log_post_.NumRows(), 
+                                    0, current_log_post_.NumCols());
    this_output.CopyFromMat(current_log_post_);
   }
 }

@@ -53,7 +53,8 @@ struct DecodableAmNnetSimpleOptions : public NnetSimpleComputerOptions {
    It inherits from the NnetSimpleComputer class, which does the 
    neural network computation.
 */
-class DecodableAmNnetSimple: public DecodableInterface, public NnetSimpleComputer {
+class DecodableAmNnetSimple: public DecodableInterface, 
+                             public NnetSimpleComputer {
  public:
   /// Constructor that just takes the features as input, but can also optionally
   /// take batch-mode or online iVectors.  Note: it stores references to all
