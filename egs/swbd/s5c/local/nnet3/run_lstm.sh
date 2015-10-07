@@ -134,7 +134,7 @@ if [ $stage -le 9 ]; then
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
   fi
-  for decode_set in train_dev_hires eval2000_hires; do
+  for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
@@ -144,7 +144,7 @@ if [ $stage -le 9 ]; then
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set} \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${data}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
