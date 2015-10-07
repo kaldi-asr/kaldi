@@ -305,17 +305,18 @@ void UnitTestLogSpeed() {
 }  // end namespace kaldi.
 
 int main() {
-  kaldi::UnitTestApproxEqual();
-  kaldi::UnitTestGcdLcm();
-  kaldi::UnitTestFactorize();
-  kaldi::UnitTestDefines();
-  kaldi::UnitTestLogAddSub();
-  kaldi::UnitTestRand();
-  kaldi::UnitTestAssertFunc();
-  kaldi::UnitTestRoundUpToNearestPowerOfTwo();
-  kaldi::UnitTestExpSpeed<float>();
-  kaldi::UnitTestExpSpeed<double>();
-  kaldi::UnitTestLogSpeed<float>();
-  kaldi::UnitTestLogSpeed<double>();
+  using namespace kaldi;
+  UnitTestApproxEqual();
+  UnitTestGcdLcm();
+  UnitTestFactorize();
+  UnitTestDefines();
+  UnitTestLogAddSub();
+  UnitTestRand();
+  UnitTestAssertFunc();
+  UnitTestRoundUpToNearestPowerOfTwo();
+  UnitTestExpSpeed<float>();
+  UnitTestExpSpeed<double>();
+  UnitTestLogSpeed<float>();
+  UnitTestLogSpeed<double>();
 }
 

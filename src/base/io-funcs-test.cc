@@ -128,9 +128,10 @@ void UnitTestIo(bool binary) {
 }  // end namespace kaldi.
 
 int main() {
+  using namespace kaldi;
   for (size_t i = 0; i < 10; i++) {
-    kaldi::UnitTestIo(false);
-    kaldi::UnitTestIo(true);
+    UnitTestIo(false);
+    UnitTestIo(true);
   }
   KALDI_ASSERT(1);  // just to check that KALDI_ASSERT does not fail for 1.
   return 0;

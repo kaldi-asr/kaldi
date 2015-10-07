@@ -33,9 +33,9 @@ namespace kaldi {
 std::string CharToString(const char &c) {
   char buf[20];
   if (std::isprint(c))
-    sprintf(buf, "\'%c\'", c);
+    snprintf(buf, sizeof(buf), "\'%c\'", c);
   else
-    sprintf(buf, "[character %d]", static_cast<int>(c));
+    snprintf(buf, sizeof(buf), "[character %d]", static_cast<int>(c));
   return (std::string) buf;
 }
 
