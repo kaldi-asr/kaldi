@@ -80,7 +80,7 @@ class NnetCctcLdaStatsAccumulator {
                 << "with one supervision object.";
 
     const ctc::CctcSupervision &supervision = eg.outputs[0].supervision[0];
-
+    supervision.Check(trans_model_);
     int32 num_frames = supervision.num_frames;
     KALDI_ASSERT(num_frames == nnet_output.NumRows());
     const fst::StdVectorFst &fst = supervision.fst;

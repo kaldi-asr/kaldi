@@ -22,7 +22,7 @@ norm_based_clipping=true
 # natural gradient options
 ng_per_element_scale_options=
 ng_affine_options=
-num_epochs=4
+num_epochs=2
 
 # training options
 initial_effective_lrate=0.0003
