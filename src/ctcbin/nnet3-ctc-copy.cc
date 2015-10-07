@@ -62,6 +62,8 @@ int main(int argc, char *argv[]) {
     po.Register("set-raw-nnet", &set_raw_nnet,
                 "Use this option to set the raw nnet in the model to "
                 "a provided neural net (provide an rxfilename)");
+    po.Register("scale", &scale, "The parameter matrices are scaled"
+                " by the specified value.");
 
     po.Read(argc, argv);
 

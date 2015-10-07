@@ -26,6 +26,10 @@ frame_subsampling_factor=3 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+valid_left_context=   # amount of left_context for validation egs, typically used in
+                      # recurrent architectures to ensure matched condition with
+                      # training egs
+valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -249,6 +253,11 @@ fi
 silphones=$(cat $lang/phones/silence.csl) || exit 1;
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
+
+[ -z $valid_left_context ] &&  valid_left_context=$left_context;
+[ -z $valid_right_context ] &&  valid_right_context=$right_context;
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+
 ctc_supervision_all_opts="$ctc_supervision_opts --lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor"
 
 
@@ -266,11 +275,11 @@ if [ $stage -le 3 ]; then
   $cmd $dir/log/create_valid_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $valid_ivector_opt $egs_opts "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
+    nnet3-ctc-get-egs $valid_ivector_opt $valid_egs_opts "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $train_subset_ivector_opt $egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
+    nnet3-ctc-get-egs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."

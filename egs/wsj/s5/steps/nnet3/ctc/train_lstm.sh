@@ -11,7 +11,6 @@
 
 
 
-
 # Begin configuration section.
 cmd=run.pl
 num_epochs=10      # Number of epochs of training;
@@ -27,10 +26,9 @@ shrink=0.98  # this parameter would be used to scale the parameter matrices
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
 frame_subsampling_factor=3  # controls reduced frame-rate at the output.
-frames_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
-                       # 'chunk_width' frames in it-- for chunk_width=20, this value (20k)
-                       # is equivalent to the 400k number that we use as a default in
-                       # regular DNN training.
+frames_per_iter=400000 # each iteration of training, see this many frames
+                       # per job.  This is just a guideline; it will pick a number
+                       # that divides the number of samples in the entire data.
 num_jobs_initial=1 # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
@@ -85,7 +83,7 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
-num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
+num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
 
@@ -122,7 +120,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 4 ]; then
+if [ $# != 5 ]; then
   echo "Usage: $0 [opts] <data> <lang> <ali-dir> <exp-dir>"
   echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
   echo ""
@@ -197,7 +195,7 @@ data=$1
 lang=$2
 alidir=$3
 latdir=$4
-dir=$4
+dir=$5
 
 
 # Check some files.
@@ -316,7 +314,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --frames-per-iter $frames_per_iter \
       --frames-per-eg $chunk_width \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $lang $dir/0.ctc_trans_mdl $alidir $dir/egs || exit 1;
+      $data $lang $dir/0.ctc_trans_mdl $latdir $dir/egs || exit 1;
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
@@ -460,7 +458,9 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
 
+[ -z $num_bptt_steps ] && num_bptt_steps=$chunk_width;
 
+min_deriv_time=$((chunk_width - num_bptt_steps))
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
@@ -485,8 +485,8 @@ while [ $x -lt $num_iters ]; do
       nnet3-ctc-compute-prob $dir/$x.mdl \
             "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob $dir/$x.mdl \
-           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
+      nnet3-ctc-compute-prob $dir/$x.mdl \
+           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
@@ -505,11 +505,11 @@ while [ $x -lt $num_iters ]; do
                        # best.
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
-      raw="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl - |"
+      mdl="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      raw="nnet3-ctc-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet3-ctc-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_num_chunk_per_minibatch=$num_chunk_per_minibatch
@@ -614,7 +614,7 @@ if [ $stage -le $num_iters ]; then
   # num-threads to 8 to speed it up (this isn't ideal...)
   combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($chunk_width))")
   $cmd $combine_queue_opt $dir/log/combine.log \
-    nnet3-combine --num-iters=40 \
+    nnet3-ctc-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 "${nnets_list[@]}" "ark:nnet3-ctc-merge-egs --minibatch-size=$combine_num_chunk_per_minibatch ark:$egs_dir/combine.cegs ark:-|" \
     $dir/final.mdl || exit 1;
