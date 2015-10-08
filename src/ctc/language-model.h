@@ -60,6 +60,7 @@ struct LanguageModelOptions {
   int32 ngram_order;
   int32 state_count_cutoff1;
   int32 state_count_cutoff2plus;
+  int32 target_num_history_states;
   BaseFloat discount1;  // Discounting factor for singletons in Kneser-Ney type
                         // scheme
   BaseFloat discount2plus;  // Discounting factor for things with >1 count in
@@ -68,9 +69,10 @@ struct LanguageModelOptions {
       ngram_order(3), // recommend only 1 or 2 or 3.
       state_count_cutoff1(0),
       state_count_cutoff2plus(200), // count cutoff for n-grams of order >= 3 (if used)
+      target_num_history_states(-1),
       discount1(0.8),
       discount2plus(1.3) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
                    "language model used while training the CTC model");
@@ -80,6 +82,10 @@ struct LanguageModelOptions {
     opts->Register("state-count-cutoff2plus",
                    &state_count_cutoff2plus,
                    "Count cutoff for language-model history states of order >= 2 ");
+    opts->Register("target-num-history-states", &target_num_history_states,
+                   "If >0, the target (approximate) number of history states, "
+                   "obtained by doing a line search with the --state-count-cutoff2plus "
+                   "as the variable being optimized.");
     opts->Register("discount1", &discount1, "Discount constant for 1-counts");
     opts->Register("discount2plus", &discount2plus,
                    "Discount constant for 2-counts or greater");
@@ -115,20 +121,20 @@ class LanguageModel {
   // Note: phone indexes are 1-based, so they range from 1 to vocab_size_.
   // with 0 for BOS and EOS.
   int32 VocabSize() const { return vocab_size_; }
-  
+
   // Get the language-model probability [not log-prob] for this history-plus-phone.
   // zeros in the non-final position are interpreted as <s>.
   // zeros in the final position are interpreted as </s>.
-  BaseFloat GetProb(const std::vector<int32> &ngram) const; 
+  BaseFloat GetProb(const std::vector<int32> &ngram) const;
 
   void Write(std::ostream &os, bool binary) const;
-  
+
   void Read(std::istream &is, bool binary);
-  
+
  protected:
   friend class LanguageModelEstimator;
   friend class LmHistoryStateMap;
-  
+
   typedef unordered_map<std::vector<int32>, BaseFloat,
                         VectorHasher<int32> > MapType;
   typedef unordered_map<std::vector<int32>, std::pair<BaseFloat,BaseFloat>, VectorHasher<int32> > PairMapType;
@@ -173,11 +179,11 @@ class LmHistoryStateMap {
   int32 NumLmHistoryStates() const { return lm_history_states_.size(); }
 
   const std::vector<int32>& GetHistoryForState(int32 lm_history_state) const;
-  
+
   BaseFloat GetProb(const LanguageModel &lm, int32 lm_history_state,
                     int32 predicted_word) const;
-  
-  // Maps a history to an integer lm-history-state. 
+
+  // Maps a history to an integer lm-history-state.
   int32 GetLmHistoryState(const std::vector<int32> &hist) const;
 
   // Returns true if this history is an LM history state (equivalent to
@@ -185,7 +191,7 @@ class LmHistoryStateMap {
   bool IsLmHistoryState(const std::vector<int32> &hist) const {
     return GetHistoryForState(GetLmHistoryState(hist)) == hist;
   }
-  
+
   // Initialize the history states.
   void Init(const LanguageModel &lm);
 
@@ -195,7 +201,6 @@ class LmHistoryStateMap {
   IntMapType history_to_state_;
 
 };
-
 
 
 class LanguageModelEstimator {
@@ -217,7 +222,57 @@ class LanguageModelEstimator {
 
   // Outputs to the LM.  Call this after Discount().
   void Output(LanguageModel *lm) const;
-private:
+
+  // use defult copy constructor and assignment operator.
+ private:
+  int32 NumHistoryStates() const;
+  void Swap(LanguageModelEstimator *other);
+
+  struct LineSearchConfig {
+    BaseFloat terminate_relative_error;  // controls termination
+    int32 max_iters;  // controls termination.
+    BaseFloat max_x_change_factor;  // maximum factor of x change we try.
+    BaseFloat lower_search_bound;  // we don't search x below this.
+
+    LineSearchConfig(): terminate_relative_error(0.1),
+                        max_iters(10),
+                        max_x_change_factor(8.0),
+                        lower_search_bound(1.0) { }
+  };
+
+  // A rather specialized form of line search in which we assume that x and y
+  // are positive values for which it's meaningful to deal with ratios, and
+  // y is a decreasing function of x.
+  class LineSearch {
+   public:
+    LineSearch(const LineSearchConfig &config,
+               BaseFloat target_y, BaseFloat initial_x,
+               BaseFloat initial_y);
+    bool Done() const;
+    BaseFloat BestX() const;  // x value that gives y closest to target.
+    BaseFloat BestY() const;  // y value closest to target.
+    BaseFloat NextX() const;  // next x value that the user should test.
+                              // You must not call this if Done() == true.
+    void AcceptValue(BaseFloat x, BaseFloat y);
+   private:
+    BaseFloat UpperRelativeError() const;
+    BaseFloat LowerRelativeError() const;
+    LineSearchConfig config_;
+    int32 num_evaluations_;
+    BaseFloat target_y_;
+    BaseFloat lower_y_;  // y value less than target y (but closest of all we've
+                        // tried).
+    BaseFloat lower_x_;  // x value corresponding to lower_y (will be > target x).
+    BaseFloat upper_y_;  // x value corresponding to upper_y (will be < target x).
+    BaseFloat upper_x_;  // y value greater than target y (but closest).
+
+
+  };
+
+  // Discount function used when --target-num-history-states option is not
+  // supplied.
+  void DiscountSimple();
+
   // Returns the probability for this word given this history; used inside
   // Output().  This includes not just the direct prob, but the additional prob
   // that comes via backoff, since this is Kneser-Ney "with addition".  (this is
@@ -227,11 +282,11 @@ private:
   // Gets the backoff probability for this state, i.e. the
   // probability mass assigned to backoff.
   BaseFloat GetBackoffProb(std::vector<int32> &hist) const;
-  
+
   typedef unordered_map<std::vector<int32>, BaseFloat, VectorHasher<int32> > MapType;
   typedef unordered_map<std::vector<int32>, std::pair<BaseFloat, BaseFloat>, VectorHasher<int32> > PairMapType;
   typedef unordered_set<std::vector<int32>, VectorHasher<int32> > SetType;
-      
+
   // applies discounting or to the counts for all stored n-grams of this order.
   // If order >= 2 we apply this continuous Kneser-Ney-like discounting; if
   // order == 1 we apply add-one smoothing.
@@ -273,7 +328,7 @@ private:
       const std::vector<int32> &vec) const;
 
 
-  
+
   // Returns a discounting-amount for this count.  The amount returned will be
   // between zero and discount2plus.  It's the amount we are to subtract
   // from the count while discounting.  This simple implementation doesn't
@@ -283,7 +338,7 @@ private:
   // counts are provided.
   BaseFloat GetDiscountAmount(BaseFloat count) const;
 
-  
+
   // Outputs into "backoff_vec", which must be initially empty, all but the
   // first element of "vec".
   inline static void RemoveFront(const std::vector<int32> &vec,
@@ -299,10 +354,10 @@ private:
   inline static void AddPairToMap(const std::vector<int32> &vec,
                                   BaseFloat count1, BaseFloat count2,
                                   PairMapType *map);
-  
+
 
   // data members:
-    const LanguageModelOptions &opts_;
+  LanguageModelOptions opts_;
   // the allowed words go from 1 to vocab_size_.  0 is reserved for
   // epsilon.
   int32 vocab_size_;
@@ -317,7 +372,7 @@ private:
   // backoff).  Indexed first by the order of the history state (which equals
   // the vector length).
   std::vector<PairMapType> history_state_counts_;
-    
+
 };
 
 

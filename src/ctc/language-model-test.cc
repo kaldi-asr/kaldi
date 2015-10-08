@@ -101,7 +101,7 @@ void LanguageModelTest() {
   std::vector<std::vector<int32> > data, validation_data;
 
   GetTestingData(&vocab_size, &data, &validation_data);
-  
+
   LanguageModelOptions opts;
   opts.ngram_order = order;
   if (RandInt(0,3) == 0)
@@ -114,8 +114,9 @@ void LanguageModelTest() {
     opts.state_count_cutoff1 = 0.0;
     opts.state_count_cutoff2plus = 0.0;
   }
-  
-  
+  if (RandInt(0,2) == 0)
+    opts.target_num_history_states = RandInt(50, 150);
+
   LanguageModelEstimator estimator(opts, vocab_size);
   for (size_t i = 0; i < data.size(); i++) {
     std::vector<int32> &sentence = data[i];

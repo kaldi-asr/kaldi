@@ -28,7 +28,7 @@ void LanguageModel::Write(std::ostream &os, bool binary) const {
   if (!binary) os << "\n";
   WriteToken(os, binary, "<VocabSize>");
   WriteBasicType(os, binary, vocab_size_);
-  if (!binary) os << "\n";  
+  if (!binary) os << "\n";
   WriteToken(os, binary, "<NgramOrder>");
   WriteBasicType(os, binary, ngram_order_);
   if (!binary) os << "\n";
@@ -41,7 +41,7 @@ void LanguageModel::Write(std::ostream &os, bool binary) const {
     KALDI_ASSERT(iter->first.size() == ngram_order_ && iter->second > 0.0);
     WriteIntegerVector(os, binary, iter->first);
     WriteBasicType(os, binary, iter->second);
-    if (!binary) os << "\n";    
+    if (!binary) os << "\n";
   }
   WriteToken(os, binary, "<OtherProbs>");
   size = other_probs_.size();
@@ -51,9 +51,9 @@ void LanguageModel::Write(std::ostream &os, bool binary) const {
     WriteIntegerVector(os, binary, iter->first);
     WriteBasicType(os, binary, iter->second.first);
     WriteBasicType(os, binary, iter->second.second);
-    if (!binary) os << "\n";    
+    if (!binary) os << "\n";
   }
-  WriteToken(os, binary, "</LanguageModel>");  
+  WriteToken(os, binary, "</LanguageModel>");
 }
 
 void LanguageModel::Read(std::istream &is, bool binary) {
@@ -89,7 +89,7 @@ void LanguageModel::Read(std::istream &is, bool binary) {
     KALDI_ASSERT(prob > 0.0 && backoff_prob > 0.0);
     other_probs_[vec] = std::pair<BaseFloat,BaseFloat>(prob,backoff_prob);
   }
-  ExpectToken(is, binary, "</LanguageModel>");  
+  ExpectToken(is, binary, "</LanguageModel>");
 }
 
 
@@ -107,7 +107,7 @@ BaseFloat LanguageModel::GetProb(const std::vector<int32> &ngram) const {
       return iter->second;
   } else {
     KALDI_ASSERT(size > 0);
-    PairMapType::const_iterator iter = other_probs_.find(ngram);    
+    PairMapType::const_iterator iter = other_probs_.find(ngram);
     if (iter != other_probs_.end())
       return iter->second.first;
   }
@@ -208,8 +208,8 @@ void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
     for (; iter != end; ++iter) {
       KALDI_ASSERT(*iter > 0 && *iter <= vocab_size);
     }
-  }  
-  
+  }
+
   std::vector<int32> ngram;
   ngram.push_back(0); // <s>
   for (int32 i = 0; i + 1 < order && i < sentence.size(); i++) {
@@ -242,16 +242,66 @@ BaseFloat LanguageModelEstimator::GetDiscountAmount(BaseFloat count) const {
 }
 
 void LanguageModelEstimator::Discount() {
+  if (opts_.target_num_history_states <= 0 ||
+      opts_.ngram_order <= 2)
+    DiscountSimple();
+  else if (opts_.target_num_history_states > vocab_size_) {
+    KALDI_LOG << "--target-num-history-states="
+              << opts_.target_num_history_states << " exceeds vocab size "
+              << vocab_size_ << ", setting --state-count-cutoff2plus to inf.";
+    opts_.state_count_cutoff2plus = std::numeric_limits<int32>::max();
+    DiscountSimple();
+  } else {
+    // Don't start with cutoff < 1.
+    if (opts_.state_count_cutoff2plus < 1)
+      opts_.state_count_cutoff2plus = 1;
+    // simple line search.
+    LanguageModelEstimator this_copy(*this);
+    this_copy.DiscountSimple();
+    int32 num_history_states = this_copy.NumHistoryStates();
+    LineSearchConfig config;
+    LineSearch searcher(config,
+                        opts_.target_num_history_states,
+                        opts_.state_count_cutoff2plus,
+                        num_history_states);
+    while (!searcher.Done()) {
+      this_copy = *this;
+
+      this_copy.opts_.state_count_cutoff2plus =
+          static_cast<int32>(searcher.NextX());
+      this_copy.DiscountSimple();
+      searcher.AcceptValue(this_copy.opts_.state_count_cutoff2plus,
+                           this_copy.NumHistoryStates());
+    }
+    KALDI_LOG << "Searching for --target-num-history-states="
+              << opts_.target_num_history_states << ", chose "
+              << "--state-count-cutoff2plus=" << searcher.BestX()
+              << ", giving num-history-states=" << searcher.BestY();
+
+    if (this_copy.opts_.state_count_cutoff2plus !=
+        static_cast<int32>(searcher.BestX())) {
+      // do the discounting one more time because we need the discounted counts
+      // with the best x value.
+      this_copy = *this;
+      this_copy.opts_.state_count_cutoff2plus =
+          static_cast<int32>(searcher.BestX());
+      this_copy.DiscountSimple();
+    }
+    Swap(&this_copy);
+  }
+}
+
+void LanguageModelEstimator::DiscountSimple() {
   if (counts_.back().empty())
     KALDI_ERR << "No data available to estimate language model";
-  
+
   SetType protected_states;
-  
+
   for (int32 order = opts_.ngram_order; order >= 1; order--) {
     // We do the normal discounting before applying the count cutoffs, because
     // inside here is where the total counts for history-states are computed.
     DiscountForOrder(order);
-        
+
     if (order > 1) {
       // Before doing the regular discounting, completely discount any n-grams
       // that belong to language-model states whose counts are too small.
@@ -265,6 +315,9 @@ void LanguageModelEstimator::Discount() {
       protected_states.swap(next_protected_states);
     }
   }
+  KALDI_LOG << "Discounted LM with --state-count-cutoff2plus="
+            << opts_.state_count_cutoff2plus << ", num-states is "
+            << NumHistoryStates();
 }
 
 void LanguageModelEstimator::DiscountForOrder(int32 order) {
@@ -342,7 +395,7 @@ void LanguageModelEstimator::ApplyHistoryStateCountCutoffForOrder(
     MapType &counts = counts_[order+1];
     MapType::iterator iter = counts.begin(), end = counts.end();
     for (; iter != end; ) {
-      std::vector<int32> history = iter->first;  
+      std::vector<int32> history = iter->first;
       history.pop_back();  // get history state by popping predicted word
       if (deleted_history_states.count(history) != 0) {  // we must delete it
         BaseFloat count = iter->second;
@@ -350,7 +403,7 @@ void LanguageModelEstimator::ApplyHistoryStateCountCutoffForOrder(
         RemoveFront(iter->first, &backoff_ngram);
         AddCountForNgram(backoff_ngram, count);
         // this erase function returns an iterator to the next position.
-        iter = counts.erase(iter);  
+        iter = counts.erase(iter);
       } else {
         ++iter;
       }
@@ -402,7 +455,7 @@ BaseFloat LanguageModelEstimator::GetCountForNgram(const std::vector<int32> &vec
 // inline
 void LanguageModelEstimator::AddCountsForHistoryState(
     const std::vector<int32> &hist, BaseFloat tot_count,
-    BaseFloat discounted_count) {    
+    BaseFloat discounted_count) {
   AddPairToMap(hist, tot_count, discounted_count,
                &(history_state_counts_[hist.size()]));
 }
@@ -532,6 +585,112 @@ BaseFloat ComputePerplexity(const LanguageModel &lm,
   BaseFloat perplexity = exp(-tot_logprob / num_probs);
   return perplexity;
 }
+
+int32 LanguageModelEstimator::NumHistoryStates() const {
+  int32 ans = 0;
+  std::vector<PairMapType>::const_iterator iter = history_state_counts_.begin(),
+      end = history_state_counts_.end();
+  for (; iter != end; ++iter)
+    ans += static_cast<int32>(iter->size());
+  return ans;
+}
+
+void LanguageModelEstimator::Swap(LanguageModelEstimator *other) {
+  std::swap(opts_, other->opts_);
+  std::swap(vocab_size_, other->vocab_size_);
+  counts_.swap(other->counts_);
+  history_state_counts_.swap(other->history_state_counts_);
+}
+
+LanguageModelEstimator::LineSearch::LineSearch(
+    const LanguageModelEstimator::LineSearchConfig &config,
+    BaseFloat target_y, BaseFloat initial_x, BaseFloat initial_y):
+    config_(config),
+    num_evaluations_(1),
+    target_y_(target_y) {
+  KALDI_ASSERT(target_y > 0);
+  if (initial_y < target_y) {
+    lower_y_ = initial_y;
+    lower_x_ = initial_x;
+    upper_y_ = std::numeric_limits<BaseFloat>::max();
+    upper_x_ = -std::numeric_limits<BaseFloat>::max();
+  } else {
+    upper_y_ = initial_y;
+    upper_x_ = initial_x;
+    lower_y_ = -std::numeric_limits<BaseFloat>::max();
+    lower_x_ = std::numeric_limits<BaseFloat>::max();
+  }
+}
+
+bool LanguageModelEstimator::LineSearch::Done() const {
+  return num_evaluations_ >= config_.max_iters ||
+      UpperRelativeError() < config_.terminate_relative_error ||
+      LowerRelativeError() < config_.terminate_relative_error ||
+      lower_x_ <= config_.lower_search_bound;
+}
+
+BaseFloat LanguageModelEstimator::LineSearch::UpperRelativeError() const {
+  return (upper_y_ / target_y_) - 1.0;
+}
+
+BaseFloat LanguageModelEstimator::LineSearch::LowerRelativeError() const {
+  return 1.0 - (lower_y_ / target_y_);
+}
+
+BaseFloat LanguageModelEstimator::LineSearch::BestX() const {
+  return (UpperRelativeError() < LowerRelativeError() ?
+          upper_x_ : lower_x_);
+}
+
+BaseFloat LanguageModelEstimator::LineSearch::BestY() const {
+  return (UpperRelativeError() < LowerRelativeError() ?
+          upper_y_ : lower_y_);
+}
+
+void LanguageModelEstimator::LineSearch::AcceptValue(BaseFloat x,
+                                                     BaseFloat y) {
+  num_evaluations_++;
+  if (y <= target_y_ && y > lower_y_) {
+    lower_x_ = x;
+    lower_y_ = y;
+  }
+  if (y > target_y_ && y < upper_y_) {
+    upper_x_ = x;
+    upper_y_ = y;
+  }
+}
+
+BaseFloat LanguageModelEstimator::LineSearch::NextX() const {
+  if (Done())
+    KALDI_WARN << "Calling NextX() when Done() == true.";
+  // next x value that the user should test.
+  BaseFloat power_heuristic = 2.0;
+  if (upper_y_ == std::numeric_limits<BaseFloat>::max()) {
+    BaseFloat ratio = std::pow(target_y_ / lower_y_, power_heuristic);
+    if (ratio > config_.max_x_change_factor)
+      ratio = config_.max_x_change_factor;
+    return lower_x_ / ratio;
+  } else if (lower_y_ == -std::numeric_limits<BaseFloat>::max()) {
+    BaseFloat ratio = std::pow(upper_y_ / target_y_, power_heuristic);
+    if (ratio > config_.max_x_change_factor)
+      ratio = config_.max_x_change_factor;
+    return upper_x_ * ratio;
+  } else {
+    // target is bracketed by upper and lower values.
+    BaseFloat y_log_delta = log(upper_y_ / lower_y_),
+        x_log_delta = log(lower_x_ / upper_x_),
+        slope = y_log_delta / x_log_delta,
+        delta_log_x = log(target_y_ / lower_y_) / slope,
+        target_x = lower_x_ * exp(-delta_log_x);
+    if (!(slope > 0.0)) {
+      KALDI_WARN << "Something unexpected happened in line search.";
+      return 0.5 * (lower_x_ + upper_x_);
+    }
+    KALDI_ASSERT(target_x < lower_x_);
+    return target_x;
+  }
+}
+
 
 
 }  // namespace ctc
