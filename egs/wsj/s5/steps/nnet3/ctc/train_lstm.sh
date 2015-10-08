@@ -111,6 +111,9 @@ num_jobs_align=30       # Number of jobs for realignment
 rand_prune=4.0 # speeds up LDA.
 affine_opts=
 
+#ctc options
+target_num_history_states=500
+
 # End configuration section.
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
@@ -236,12 +239,10 @@ fi
 
 if  [ $stage -le -6 ]; then
   echo "$0: creating CTC transition model"
-
   num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2 | wc -l) || exit 1;
-  # important not to mak
   $cmd $dir/log/init_trans_model.log \
-    ctc-init-transition-model --num-phones=$num_phones \
-       $alidir/tree \
+    ctc-init-transition-model  --target-num-history-states=$target_num_history_states  \
+       --num-phones=$num_phones $alidir/tree \
       "ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |" \
        $dir/0.ctc_trans_mdl || exit 1;
 fi
