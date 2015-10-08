@@ -245,9 +245,9 @@ void LanguageModelEstimator::Discount() {
   if (opts_.target_num_history_states <= 0 ||
       opts_.ngram_order <= 2)
     DiscountSimple();
-  else if (opts_.target_num_history_states > vocab_size_) {
+  else if (opts_.target_num_history_states < vocab_size_) {
     KALDI_LOG << "--target-num-history-states="
-              << opts_.target_num_history_states << " exceeds vocab size "
+              << opts_.target_num_history_states << " is less than vocab size "
               << vocab_size_ << ", setting --state-count-cutoff2plus to inf.";
     opts_.state_count_cutoff2plus = std::numeric_limits<int32>::max();
     DiscountSimple();

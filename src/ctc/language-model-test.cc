@@ -115,7 +115,7 @@ void LanguageModelTest() {
     opts.state_count_cutoff2plus = 0.0;
   }
   if (RandInt(0,2) == 0)
-    opts.target_num_history_states = RandInt(50, 150);
+    opts.target_num_history_states = RandInt(100, 250);
 
   LanguageModelEstimator estimator(opts, vocab_size);
   for (size_t i = 0; i < data.size(); i++) {
