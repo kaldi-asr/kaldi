@@ -515,13 +515,120 @@ template<class Arc> class DeterminizerStar {
       return this->depth > other.depth;  // we want the lowest depth on top
     }
   };
+  
+  // queue for EpsilonClosure() function
+  // put it here so the memeory allocation for better effiency
+  // otherwise it gets created and destroyed constantly, also
+  // possibly a lot of resize() call the for underlying vector
+  priority_queue<IdAndDepth> queue;
+
+  // Sub-routine that we call in EpsilonClosure()
+  // To avoid the function getting too long, we make it a separate function
+  // It takes the current "unprocessed_weight" and propagate it to the 
+  // states accessible from elem.state by an epsilon arc
+  // and add the results to cur_subset.
+  void ExpandOneElement(const Element &elem,
+                        bool sorted,
+                        Weight unprocessed_weight,
+                        std::map<InputStateId, EpsilonClosureInfo> *cur_subset,
+                        int this_depth) {
+    // now we are going to propagate the "unprocessed_weight"
+    for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
+         !aiter.Done(); aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      if (sorted && arc.ilabel > 0) {
+        break;
+        // Break from the loop: due to sorting there will be no
+        // more transitions with epsilons as input labels.
+      }
+      if (arc.ilabel == 0) {  // Epsilon transition.
+        Element next_elem;
+        next_elem.state = arc.nextstate;
+        next_elem.weight = Weight::Zero();
+        Weight next_unprocessed_weight
+                       = Times(unprocessed_weight, arc.weight);
+
+        // now must append strings
+        if (arc.olabel == 0)
+          next_elem.string = elem.string;
+        else {
+          vector<Label> seq;
+          repository_.SeqOfId(elem.string, &seq);
+          if (arc.olabel != 0)
+            seq.push_back(arc.olabel);
+          next_elem.string = repository_.IdOfSeq(seq);
+        }
+        typename std::map<InputStateId, EpsilonClosureInfo>::iterator
+            iter = cur_subset->find(next_elem.state);
+        if (iter == cur_subset->end()) {
+          // was no such StateId: insert and add to queue.
+          (*cur_subset)[next_elem.state] =
+                       EpsilonClosureInfo(next_elem,
+                                          next_unprocessed_weight,
+                                          true,
+                                          this_depth + 1
+                                          );
+          queue.push(IdAndDepth(next_elem.state, this_depth + 1));
+        } else {  // one is already there.  Add weights.
+          if (iter->second.element.string != next_elem.string) {
+            std::cerr << "DeterminizerStar: FST was not functional "
+              "-> not determinizable\n";
+            { // Print some debugging information.  Can be helpful to debug
+              // the inputs when FSTs are mysteriously non-functional.
+              vector<Label> tmp_seq;
+              repository_.SeqOfId(iter->second.element.string, &tmp_seq);
+              std::cerr << "First string: ";
+              for (size_t i = 0; i < tmp_seq.size(); i++)
+                std::cerr << tmp_seq[i] << " ";
+              std::cerr << "\nSecond string: ";
+              repository_.SeqOfId(next_elem.string, &tmp_seq);
+              for (size_t i = 0; i < tmp_seq.size(); i++)
+                std::cerr << tmp_seq[i] << " ";
+              std::cerr << "\n";
+            }
+            throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+          }
+          if (iter->second.in_queue) {
+            // since in queue, no check since we're propagating them anyway
+            iter->second.weight_to_process =
+                Plus(iter->second.weight_to_process, next_unprocessed_weight);
+            // probably should take it out of the queue, update the depth
+            // and put it back.
+            // but it seems it's fast enough already ;-)
+          } else {
+            // is in the subset but not in queue
+            iter->second.weight_to_process = Plus(iter->second.weight_to_process,
+                                                  next_unprocessed_weight);
+
+            // this is because the code in "else" below: the 
+            // iter->second.weight_to_process might not be Zero()
+            Weight weight = Plus(iter->second.element.weight,
+                                 iter->second.weight_to_process);
+
+            // What is done below is, we propagate the weight (by adding them
+            // to the queue only when the change is big enough;
+            // otherwise we just store the weight, until before returning
+            // we add the element.weight and weight_to_process together
+            iter->second.depth = max(iter->second.depth, this_depth + 1);
+            if (! ApproxEqual(weight, iter->second.element.weight, delta_)) {
+              // add extra part of weight to queue.
+              iter->second.in_queue = true;
+              queue.push(IdAndDepth(next_elem.state, iter->second.depth));
+            } else {
+              // we update the weight_to_process, but not add it to the queue
+              iter->second.in_queue = false;
+            }
+          }
+        }
+      }
+    }
+  }
 
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
     // input_subset must have only one example of each StateId.
 
     std::map<InputStateId, EpsilonClosureInfo> cur_subset;
-    priority_queue<IdAndDepth> queue;  // queue of things to be processed.
 
     typedef typename std::map<InputStateId, EpsilonClosureInfo>::iterator MapIter;
     {
@@ -540,7 +647,8 @@ template<class Arc> class DeterminizerStar {
         std::pair<const InputStateId, EpsilonClosureInfo>
                                  pr(input_subset[i].state, info);
         iter = cur_subset.insert(iter, pr);
-        // By providing iterator where we inserted last one, we make insertion more efficient since
+        // By providing iterator where we inserted last one,
+        // we make insertion more efficient since
         // input subset was already in sorted order.
       }
     }
@@ -567,96 +675,15 @@ template<class Arc> class DeterminizerStar {
       if (max_states_ > 0 && counter++ > max_states_) {
         std::cerr << "Determinization aborted since looped more than "
                   << max_states_ << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-states times in determinization");
+        throw std::runtime_error("looped more than max-states times"
+           " in determinization");
       }
 
-      // now we are going to propagate the "unprocessed_weight"
-      for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
-           !aiter.Done(); aiter.Next()) {
-        const Arc &arc = aiter.Value();
-        if (sorted && arc.ilabel > 0) {
-          break;
-          // Break from the loop: due to sorting there will be no
-          // more transitions with epsilons as input labels.
-        }
-        if (arc.ilabel == 0) {  // Epsilon transition.
-          Element next_elem;
-          next_elem.state = arc.nextstate;
-          next_elem.weight = Weight::Zero();
-          Weight next_unprocessed_weight
-                         = Times(unprocessed_weight, arc.weight);
-
-          // now must append strings
-          if (arc.olabel == 0)
-            next_elem.string = elem.string;
-          else {
-            vector<Label> seq;
-            repository_.SeqOfId(elem.string, &seq);
-            if (arc.olabel != 0)
-              seq.push_back(arc.olabel);
-            next_elem.string = repository_.IdOfSeq(seq);
-          }
-          typename std::map<InputStateId, EpsilonClosureInfo>::iterator
-              iter = cur_subset.find(next_elem.state);
-          if (iter == cur_subset.end()) {
-            // was no such StateId: insert and add to queue.
-            cur_subset[next_elem.state] =
-                         EpsilonClosureInfo(next_elem,
-                                            next_unprocessed_weight,
-                                            true,
-                                            this_depth + 1
-                                            );
-            queue.push(IdAndDepth(next_elem.state, this_depth + 1));
-          } else {  // one is already there.  Add weights.
-            if (iter->second.element.string != next_elem.string) {
-              std::cerr << "DeterminizerStar: FST was not functional -> not determinizable\n";
-              { // Print some debugging information.  Can be helpful to debug
-                // the inputs when FSTs are mysteriously non-functional.
-                vector<Label> tmp_seq;
-                repository_.SeqOfId(iter->second.element.string, &tmp_seq);
-                std::cerr << "First string: ";
-                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
-                std::cerr << "\nSecond string: ";
-                repository_.SeqOfId(next_elem.string, &tmp_seq);
-                for (size_t i = 0; i < tmp_seq.size(); i++) std::cerr << tmp_seq[i] << " ";
-                std::cerr << "\n";
-              }
-              throw std::runtime_error("Non-functional FST: cannot determinize.\n");
-            }
-            if (iter->second.in_queue) {
-              // since in queue, no check since we're propagating them anyway
-              iter->second.weight_to_process =
-                  Plus(iter->second.weight_to_process, next_unprocessed_weight);
-              // probably should take it out of the queue, update the depth
-              // and put it back.
-              // but it seems it's fast enough already ;-)
-            } else {
-              // is in the subset but not in queue
-              iter->second.weight_to_process = Plus(iter->second.weight_to_process,
-                                                    next_unprocessed_weight);
-
-              // this is because the code in "else" below: the 
-              // iter->second.weight_to_process might not be Zero()
-              Weight weight = Plus(iter->second.element.weight,
-                                   iter->second.weight_to_process);
-
-              // What is done below is, we propagate the weight (by adding them
-              // to the queue only when the change is big enough;
-              // otherwise we just store the weight, until before returning
-              // we add the element.weight and weight_to_process together
-              iter->second.depth = max(iter->second.depth, this_depth + 1);
-              if (! ApproxEqual(weight, iter->second.element.weight, delta_)) {
-                // add extra part of weight to queue.
-                iter->second.in_queue = true;
-                queue.push(IdAndDepth(next_elem.state, iter->second.depth));
-              } else {
-                // we update the weight_to_process, but not add it to the queue
-                iter->second.in_queue = false;
-              }
-            }
-          }
-        }
-      }
+      ExpandOneElement(elem,
+                       sorted,
+                       unprocessed_weight,
+                       &cur_subset,
+                       this_depth);
     }
 
     {  // copy cur_subset to output_subset.
