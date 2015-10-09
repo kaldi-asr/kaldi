@@ -12,8 +12,6 @@ has_fisher=true
 mic=ihm
 use_sat_alignments=true
 affix=new_mc_3.2_fast2_0.0008
-#affix=old_mc_0.0625X_0.0008
-#affix=old_mc_0.125X_0.0008
 speed_perturb=true
 splice_indexes="-2,-1,0,1,2 0 0"
 label_delay=5
@@ -29,7 +27,6 @@ norm_based_clipping=true
 common_egs_dir=
 
 # natural gradient options
-#ng_per_element_scale_options=
 ng_per_element_scale_options="max-change-per-minibatch=3.2"
 #ng_per_element_scale_options="max-change-per-minibatch=0.0046875"
 #ng_per_element_scale_options="max-change-per-minibatch=0.009375"

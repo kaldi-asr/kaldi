@@ -183,7 +183,7 @@ if [ $stage -le 15 ]; then
     --stage 8 \
     --mic $mic \
     --common-egs-dir "exp/sdm1/nnet3/lstm_sp_0916_ld5/egs/" \
-    --train-stage -6 \
+    --train-stage 52 \
     --speed-perturb true \
     --use-sat-alignments false
 fi
