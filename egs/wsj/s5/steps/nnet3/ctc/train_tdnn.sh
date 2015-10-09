@@ -40,6 +40,8 @@ remove_egs=true  # set to false to disable removing egs after training is done.
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
   # iteration-number ranges.
+target_num_history_states=1000
+ngram_order=3
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
                 # on each iter.  You could set it to 0 or to a large value for complete
@@ -171,6 +173,8 @@ if  [ $stage -le -6 ]; then
   # important not to mak
   $cmd $dir/log/init_trans_model.log \
     ctc-init-transition-model --num-phones=$num_phones \
+       --target-num-history-states=$target_num_history_states \
+       --ngram-order=$ngram_order \
        $alidir/tree \
       "ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |" \
        $dir/0.ctc_trans_mdl || exit 1;
