@@ -1296,21 +1296,20 @@ void NaturalGradientAffineComponent::Update(
     const std::string &debug_info,
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
-  CuMatrix<BaseFloat> in_value_temp;
+  CuMatrix<BaseFloat> in_value_extended;
 
-  in_value_temp.Resize(in_value.NumRows(),
+  in_value_extended.Resize(in_value.NumRows(),
                        in_value.NumCols() + 1, kUndefined);
-  in_value_temp.Range(0, in_value.NumRows(),
+  in_value_extended.Range(0, in_value.NumRows(),
                       0, in_value.NumCols()).CopyFromMat(in_value);
 
   // Add the 1.0 at the end of each row "in_value_temp"
-  in_value_temp.Range(0, in_value.NumRows(),
+  in_value_extended.Range(0, in_value.NumRows(),
                       in_value.NumCols(), 1).Set(1.0);
 
-  CuMatrix<BaseFloat> params_deriv(out_deriv.NumCols(), in_value_temp.NumCols());
-  params_deriv.AddMatMat(1.0, out_deriv, kTrans, in_value_temp, kNoTrans, 0.0);
 
   CuMatrix<BaseFloat> out_deriv_temp(out_deriv);
+  CuMatrix<BaseFloat> in_value_temp(in_value_extended);
 
   CuMatrix<BaseFloat> row_products(2,
                                    in_value.NumRows());
@@ -1332,7 +1331,7 @@ void NaturalGradientAffineComponent::Update(
   BaseFloat scale = in_scale * out_scale;
   BaseFloat max_change_scale = 1.0;
 
-  if (max_change_per_sample_ < 10.0f) {
+  if (max_change_per_sample_ < 0.0f) {
     max_change_scale = GetScalingFactor(in_row_products, debug_info, scale,
                                        &out_row_products);
   
@@ -1353,10 +1352,12 @@ void NaturalGradientAffineComponent::Update(
                              in_value_precon_part, kNoTrans, 1.0);
   } else {
     CuMatrix<BaseFloat> params_delta(out_deriv_temp.NumCols(), in_value_temp.NumCols());
-    params_delta.AddMatMat(learning_rate_ * scale, out_deriv_temp, kTrans, in_value_temp, kNoTrans, 1.0);
-  
+    params_delta.AddMatMat(learning_rate_ * scale, out_deriv_temp, kTrans, in_value_temp, kNoTrans, 0.0);
     BaseFloat max_objf_change_ = max_change_per_sample_;
-    BaseFloat predicted_objf_change = TraceMatMat(params_deriv, params_delta, kTrans);
+    BaseFloat predicted_objf_change = 0.0f;
+    predicted_objf_change = std::sqrt(TraceMatMat(params_delta, params_delta, kTrans));
+
+
     if (predicted_objf_change < 0.0) {
       preconditioner_in_.TurnOnDebug(); 
       preconditioner_out_.TurnOnDebug(); 
@@ -2017,7 +2018,7 @@ void NaturalGradientPerElementScaleComponent::Update(
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
 
   BaseFloat max_change_scale = 1.0;
-  if (max_change_per_minibatch_ < 10.0f) {
+  if (max_change_per_minibatch_ < 0.0f) {
     BaseFloat param_delta = delta_scales.Norm(2.0);
     if (param_delta > max_change_per_minibatch_) {
       max_change_scale = max_change_per_minibatch_ / param_delta;
@@ -2032,7 +2033,7 @@ void NaturalGradientPerElementScaleComponent::Update(
     }
   } else {             
     BaseFloat max_objf_change_ = max_change_per_minibatch_;
-    BaseFloat predicted_objf_change = std::fabs(VecVec(derivs_per_minibatch, delta_scales));
+    BaseFloat predicted_objf_change = std::sqrt(VecVec(delta_scales, delta_scales)) ;
     max_change_scale = std::min(max_objf_change_ / predicted_objf_change, 1.0f);
     if (max_change_scale < 1.0f) {
       KALDI_LOG << "max_objf_change is " << max_objf_change_ << ". scaling factor is " << max_change_scale << " for component " << debug_info;

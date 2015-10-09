@@ -63,7 +63,7 @@ static void CheckOrthogonal(CuMatrixBase<BaseFloat> *N,
 
 OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
-    epsilon_(1.0e-10), delta_(1.0e-05), t_(-1),
+    epsilon_(1.0e-10), delta_(5.0e-04), t_(-1),
     num_updates_skipped_(0), self_debug_(false) { }
 
 void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
