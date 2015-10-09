@@ -633,14 +633,16 @@ template<class Arc> class DeterminizerStar {
     typedef typename std::map<InputStateId, EpsilonClosureInfo>::iterator MapIter;
     {
       MapIter iter = cur_subset.end();
-      for (size_t i = 0; i < input_subset.size(); i++) {
-        queue.push(IdAndDepth(input_subset[i].state, 0));
+      size_t size = input_subset.size();
+      for (size_t i = 0; i < size; i++) {
+        // comment out this because we will process the initial states separately
+        // queue.push(IdAndDepth(input_subset[i].state, 0));
 
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
         EpsilonClosureInfo info(input_subset[i],
                                 input_subset[i].weight,
-                                true,
+                                false,
                                 0);
         info.element.weight = Weight::Zero(); // clear the weight
 
@@ -655,6 +657,15 @@ template<class Arc> class DeterminizerStar {
     // find whether input fst is known to be sorted in input label.
     bool sorted =
             ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
+
+    size_t size = input_subset.size();
+    for (size_t i = 0; i < size; i++) {
+      ExpandOneElement(input_subset[i],
+                       sorted,
+                       input_subset[i].weight,
+                       &cur_subset,
+                       0);
+    }
 
     int counter = 0; // relates to max-states option, used for test.
     while (queue.size() != 0) {
