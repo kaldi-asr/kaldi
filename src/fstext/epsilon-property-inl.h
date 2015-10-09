@@ -1,4 +1,4 @@
-// fstext/fstext-utils-inl.h
+// fstext/epsilon-property-inl.h
 
 // Copyright 2014    Johns Hopkins University (Author: Daniel Povey)
 

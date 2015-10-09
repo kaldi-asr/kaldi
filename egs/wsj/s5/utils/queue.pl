@@ -18,7 +18,7 @@ use Getopt::Long;
 
 # The script now supports configuring the queue system using a config file
 # (default in conf/queue.conf; but can be passed specified with --config option)
-# and a set of command line options. 
+# and a set of command line options.
 # The current script handles:
 # 1) Normal configuration arguments
 # For e.g. a command line option of "--gpu 1" could be converted into the option
@@ -28,7 +28,7 @@ use Getopt::Long;
 # $0 here in the line is replaced with the argument read from the CLI and the
 # resulting string is passed to qsub.
 # 2) Special arguments to options such as
-# gpu=0 
+# gpu=0
 # If --gpu 0 is given in the command line, then no special "-q" is given.
 # 3) Default argument
 # default gpu=0
@@ -94,12 +94,12 @@ if (@ARGV < 2) {
   print_usage();
 }
 
-for (my $x = 1; $x <= 3; $x++) { # This for-loop is to 
+for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
   # allow the JOB=1:n option to be interleaved with the
   # options to qsub.
   while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
     my $switch = shift @ARGV;
-    
+
     if ($switch eq "-V") {
       $qsub_opts .= "-V ";
     } else {
@@ -116,10 +116,10 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
         $num_threads = $argument2;
       } elsif ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
-        # by removing '--' from the switch and replacing any 
+        # by removing '--' from the switch and replacing any
         # '-' with a '_'
         $switch =~ s/^--//;
-        $switch =~ s/-/_/g;         
+        $switch =~ s/-/_/g;
         $cli_options{$switch} = $argument;
       } else {  # Other qsub options - passed as is
         $qsub_opts .= "$switch $argument ";
@@ -145,7 +145,7 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
     $jobend = $2;
     shift;
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
+    print STDERR "queue.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
 
@@ -155,7 +155,7 @@ if (@ARGV < 2) {
 
 if (exists $cli_options{"config"}) {
   $config = $cli_options{"config"};
-}  
+}
 
 my $default_config_file = <<'EOF';
 # Default configuration
@@ -172,7 +172,7 @@ EOF
 
 # Here the configuration options specified by the user on the command line
 # (e.g. --mem 2G) are converted to options to the qsub system as defined in
-# the config file. (e.g. if the config file has the line 
+# the config file. (e.g. if the config file has the line
 # "option mem=* -l ram_free=$0,mem_free=$0"
 # and the user has specified '--mem 2G' on the command line, the options
 # passed to queue system would be "-l ram_free=2G,mem_free=2G
@@ -186,7 +186,7 @@ open CONFIG, "<$config" or $opened_config_file = 0;
 my %cli_config_options = ();
 my %cli_default_options = ();
 
-if ($opened_config_file == 0 && exists($cli_options{"config"})) {   
+if ($opened_config_file == 0 && exists($cli_options{"config"})) {
   print STDERR "Could not open config file $config\n";
   exit(1);
 } elsif ($opened_config_file == 0 && !exists($cli_options{"config"})) {
@@ -206,12 +206,12 @@ while(<CONFIG>) {
   if ($_ =~ /^command (.+)/) {
     $read_command = 1;
     $qsub_cmd = $1 . " ";
-  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) { 
+  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) {
     # Config option that needs replacement with parameter value read from CLI
     # e.g.: option mem=* -l mem_free=$0,ram_free=$0
     my $option = $1;     # mem
     my $arg= $2;         # -l mem_free=$0,ram_free=$0
-    if ($arg !~ m:\$0:) {  
+    if ($arg !~ m:\$0:) {
       die "Unable to parse line '$line' in config file ($config)\n";
     }
     if (exists $cli_options{$option}) {
@@ -231,7 +231,7 @@ while(<CONFIG>) {
     }
   } elsif ($_ =~ m/^default (\S+)=(\S+)/) {
     # Default options. Used for setting default values to options i.e. when
-    # the user does not specify the option on the command line 
+    # the user does not specify the option on the command line
     # e.g. default gpu=0
     my $option = $1;  # gpu
     my $value = $2;   # 0
@@ -291,7 +291,7 @@ if ($array_job == 1 && $logfile !~ m/$jobname/
 #
 my $cmd = "";
 
-foreach my $x (@ARGV) { 
+foreach my $x (@ARGV) {
   if ($x =~ m/^\S+$/) { $cmd .= $x . " "; } # If string contains no spaces, take
                                             # as-is.
   elsif ($x =~ m:\":) { $cmd .= "'$x' "; } # else if no dbl-quotes, use single
@@ -312,19 +312,19 @@ if (!-d $dir) { die "Cannot make the directory $dir\n"; }
 # make a directory called "q",
 # where we will put the log created by qsub... normally this doesn't contain
 # anything interesting, evertyhing goes to $logfile.
-if (! -d "$qdir") { 
+if (! -d "$qdir") {
   system "mkdir $qdir 2>/dev/null";
   sleep(5); ## This is to fix an issue we encountered in denominator lattice creation,
   ## where if e.g. the exp/tri2b_denlats/log/15/q directory had just been
   ## created and the job immediately ran, it would die with an error because nfs
   ## had not yet synced.  I'm also decreasing the acdirmin and acdirmax in our
   ## NFS settings to something like 5 seconds.
-} 
+}
 
 my $queue_array_opt = "";
 if ($array_job == 1) { # It's an array job.
-  $queue_array_opt = "-t $jobstart:$jobend"; 
-  $logfile =~ s/$jobname/\$SGE_TASK_ID/g; # This variable will get 
+  $queue_array_opt = "-t $jobstart:$jobend";
+  $logfile =~ s/$jobname/\$SGE_TASK_ID/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
   $cmd =~ s/$jobname/\$\{SGE_TASK_ID\}/g; # same for the command...
   $queue_logfile =~ s/\.?$jobname//; # the log file in the q/ subdirectory
@@ -455,14 +455,14 @@ if (! $sync) { # We're not submitting with -sync y, so we
         }
       }
 
-      # Check that the job exists in SGE. Job can be killed if duration 
-      # exceeds some hard limit, or in case of a machine shutdown. 
+      # Check that the job exists in SGE. Job can be killed if duration
+      # exceeds some hard limit, or in case of a machine shutdown.
       if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("qstat -j $sge_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
         if ($ret>>8 == 1) {     # Job does not seem to exist
-          # Don't consider immediately missing job as error, first wait some  
+          # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
 
           sleep(3);
@@ -526,7 +526,7 @@ if (!defined $jobname) { # not an array job.
   push @logfiles, $logfile;
 } else {
   for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    my $l = $logfile; 
+    my $l = $logfile;
     $l =~ s/\$SGE_TASK_ID/$jobid/g;
     push @logfiles, $l;
   }

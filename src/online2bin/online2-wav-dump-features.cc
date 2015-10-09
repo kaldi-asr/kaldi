@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-dump-features.cc
+// online2bin/online2-wav-dump-features.cc
 
 // Copyright 2014  Johns Hopkins University (author: Daniel Povey)
 

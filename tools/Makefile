@@ -83,8 +83,8 @@ endif
 # support multi-threads when compile with g++ (gcc) version above 4.1
 openfst-$(OPENFST_VERSION)/.patched: | openfst-$(OPENFST_VERSION)
 	-cd openfst-$(OPENFST_VERSION)/src/include/fst; \
-	patch -p0 -N < ../../../../extras/openfst-$(OPENFST_VERSION).patch;
-	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
+	patch -c -p0 -N < ../../../../extras/openfst-$(OPENFST_VERSION).patch;
+	$(CXX) -dumpversion | awk '{if(NR==1 && $$1>"4.1") print "cd openfst-$(OPENFST_VERSION)/src/include/fst; patch -c -p0 -N < ../../../../extras/openfst_gcc41up.patch"}' | sh -
 	touch $@
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
@@ -161,7 +161,7 @@ fortran_opt = $(shell gcc -v 2>&1 | perl -e '$$x = join(" ", <STDIN>); if($$x =~
 # option.
 openblas_compiled:
 	echo "Note: see tools/Makefile for options regarding OpenBLAS compilation"
-	-git clone git://github.com/xianyi/OpenBLAS
+	-git clone https://github.com/xianyi/OpenBLAS.git
 	-cd OpenBLAS; git pull
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install

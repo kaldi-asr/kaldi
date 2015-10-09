@@ -40,8 +40,9 @@ int main(int argc, char *argv[]) {
         "--apply-log=true\n"
         "\n"
         "Usage:  nnet-am-compute [options] <model-in> <feature-rspecifier> "
-        "<feature-or-loglikes-wspecifier>\n";
-    
+        "<feature-or-loglikes-wspecifier>\n"
+        "See also: nnet-compute, nnet-logprob\n";
+
     bool apply_log = false;
     bool pad_input = true;
     std::string use_gpu = "no";
@@ -57,9 +58,9 @@ int main(int argc, char *argv[]) {
     po.Register("chunk-size", &chunk_size, "Process the feature matrix in chunks.  "
                 "This is useful when processing large feature files in the GPU.  "
                 "If chunk-size > 0, pad-input must be true.");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -70,7 +71,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
-    
+
     std::string nnet_rxfilename = po.GetArg(1),
         features_rspecifier = po.GetArg(2),
         features_or_loglikes_wspecifier = po.GetArg(3);
@@ -85,11 +86,11 @@ int main(int argc, char *argv[]) {
     }
 
     Nnet &nnet = am_nnet.GetNnet();
-    
+
     int64 num_done = 0, num_frames = 0;
     SequentialBaseFloatMatrixReader feature_reader(features_rspecifier);
     BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
-    
+
     for (; !feature_reader.Done();  feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       const Matrix<BaseFloat> &feats  = feature_reader.Value();
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
-    
+
     KALDI_LOG << "Processed " << num_done << " feature files, "
               << num_frames << " frames of input were processed.";
 

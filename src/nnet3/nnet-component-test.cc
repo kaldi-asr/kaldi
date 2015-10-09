@@ -38,6 +38,23 @@ void TestNnetComponentIo(Component *c) {
   delete c2;
 }
 
+void TestNnetComponentCopy(Component *c) {
+  Component *c2 = c->Copy();
+  KALDI_ASSERT(c->Info() == c2->Info());
+  delete c2;
+}
+
+void TestNnetComponentAddScale(Component *c) {
+  Component *c2 = c->Copy();
+  Component *c3 = c2->Copy();
+  c3->Add(0.5, *c2);
+  c2->Scale(1.5);
+  KALDI_ASSERT(c2->Info() == c3->Info());
+  delete c2;
+  delete c3;
+}
+
+
 // tests the properties kPropagateAdds, kBackpropAdds,
 // kBackpropNeedsInput, kBackpropNeedsOutput.
 void TestSimpleComponentPropagateProperties(const Component &c) {
@@ -51,7 +68,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   CuMatrix<BaseFloat> input_data(num_rows, input_dim),
       output_data1(num_rows, output_dim),
       output_data2(num_rows, output_dim);
-  output_data2.Add(1.0); 
+  output_data2.Add(1.0);
 
   c.Propagate(NULL, input_data, &output_data1);
   c.Propagate(NULL, input_data, &output_data2);
@@ -117,7 +134,7 @@ bool TestSimpleComponentDataDerivative(const Component &c,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
              ((properties & kBackpropNeedsOutput) ? output_data : empty_mat),
              output_deriv, NULL, &input_deriv);
-  
+
   int32 test_dim = 3;
   BaseFloat original_objf = TraceMatMat(output_deriv, output_data, kTrans);
   Vector<BaseFloat> measured_objf_change(test_dim),
@@ -170,7 +187,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     // nothing to test.
     return true;
   }
-  
+
   CuMatrix<BaseFloat> input_data(num_rows, input_dim),
       output_data(num_rows, output_dim),
       output_deriv(num_rows, output_dim);
@@ -180,7 +197,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   c.Propagate(NULL, input_data, &output_data);
 
   BaseFloat original_objf = TraceMatMat(output_deriv, output_data, kTrans);
-  
+
   Component *c_copy = c.Copy();
 
   const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(&c);
@@ -190,7 +207,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
     bool is_gradient = true;
     uc_copy->SetZero(is_gradient);
   }
-  
+
   CuMatrix<BaseFloat> input_deriv(num_rows, input_dim), empty_mat;
   c.Backprop("foobar", NULL,
              ((properties & kBackpropNeedsInput) ? input_data : empty_mat),
@@ -251,6 +268,8 @@ void UnitTestNnetComponent() {
   for (int32 n = 0; n < 100; n++) {
     Component *c = GenerateRandomSimpleComponent();
     TestNnetComponentIo(c);
+    TestNnetComponentCopy(c);
+    TestNnetComponentAddScale(c);
     TestSimpleComponentPropagateProperties(*c);
     if (!TestSimpleComponentDataDerivative(*c, 1.0e-04) &&
         !TestSimpleComponentDataDerivative(*c, 1.0e-03) &&
@@ -262,12 +281,12 @@ void UnitTestNnetComponent() {
         !TestSimpleComponentModelDerivative(*c, 1.0e-03, false) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-06, false))
       KALDI_ERR << "Component downhill-update test failed";
-    
+
     if (!TestSimpleComponentModelDerivative(*c, 1.0e-04, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-03, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-06, true))
-      KALDI_ERR << "Component model-derivative test failed";      
+      KALDI_ERR << "Component model-derivative test failed";
     delete c;
   }
 }

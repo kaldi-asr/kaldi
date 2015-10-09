@@ -11,8 +11,8 @@ for x in "$@"; do orig_args="$orig_args '$x'"; done
 # score_basic.sh might need, or parse_options.sh will die.
 cmd=run.pl
 stage=0
-min_lmwt=9
-max_lmwt=20
+min_lmwt=9 # unused,
+max_lmwt=15 # unused,
 asclite=true
 #end configuration section.
 
@@ -34,18 +34,16 @@ data=$1
 
 mic=$(echo $data | awk -F '/' '{print $2}')
 case $mic in
-  ihm)
-    #echo "use standard scoring took for ihm (close talk)"
-    #eval steps/score_kaldi.sh $orig_args
-    echo "use sclite for ihm (close talk), better outputs than with kaldi scoring"
+  ihm*)
+    echo "Using sclite for IHM (close talk),"
     eval local/score_asclite.sh --asclite false $orig_args
   ;;
   sdm*)
-    echo "use asclite for overlapped speech sdm condition"
+    echo "Using asclite for overlapped speech SDM (single distant mic),"
     eval local/score_asclite.sh --asclite $asclite $orig_args
   ;;
   mdm*)
-    echo "use asclite for overlapped speech mdm condition"
+    echo "Using asclite for overlapped speech MDM (multiple distant mics),"
     eval local/score_asclite.sh --asclite $asclite $orig_args
   ;;
   *)

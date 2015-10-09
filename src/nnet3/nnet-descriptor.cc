@@ -1,3 +1,5 @@
+// nnet3/nnet-descriptor.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -74,7 +76,7 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
     Index offset;
     offset.t = ReadIntegerToken("OffsetForwardingDescriptor", next_token);
     if (**next_token == ",") {
-      (*next_token)++;      
+      (*next_token)++;
       offset.x = ReadIntegerToken("OffsetForwardingDescriptor", next_token);
     }
     ExpectToken(")", "OffsetForwardingDescriptor", next_token);
@@ -101,7 +103,7 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
     int32 t_modulus = ReadIntegerToken("RoundingForwardingDescriptor", next_token);
     if (t_modulus <= 0)
       KALDI_ERR << "Invalid modulus " << t_modulus << " in Round(..) expression";
-    ExpectToken(")", "RoundingForwardingDescriptor", next_token);    
+    ExpectToken(")", "RoundingForwardingDescriptor", next_token);
     return new RoundingForwardingDescriptor(src, t_modulus);
   } else if (**next_token == "ReplaceIndex") {
     (*next_token)++;
@@ -140,7 +142,7 @@ ForwardingDescriptor* ForwardingDescriptor::Parse(
     return NULL;  // suppress compiler warning.
   }
 }
-                        
+
 
 
 void Descriptor::GetDependencies(
@@ -284,14 +286,14 @@ Cindex ReplaceIndexForwardingDescriptor::MapToInput(const Index &ind) const {
     default:  // kN or any other value is not allowed (doesn't make sense
       // to change the minibatch index in this way).
       KALDI_ERR << "Invalid variable name";
-  }    
+  }
   return ans;
 }
 
 ForwardingDescriptor *ReplaceIndexForwardingDescriptor::Copy() const {
   return new ReplaceIndexForwardingDescriptor(src_->Copy(),
                                               variable_name_, value_);
-                                              
+
 }
 
 void ReplaceIndexForwardingDescriptor::WriteConfig(
@@ -329,7 +331,7 @@ void UnarySumDescriptor::WriteConfig(
     const std::vector<std::string> &node_names) const {
   if (!required_) os << "IfDefined(";
   src_->WriteConfig(os, node_names);
-  if (!required_) os << ")";  
+  if (!required_) os << ")";
 }
 
 int32 UnarySumDescriptor::Dim(const Nnet &nnet) const {
@@ -379,7 +381,7 @@ bool BinarySumDescriptor::IsComputable(
                                 src1_inputs.begin(), src1_inputs.end());
       return true;
     } else if (src2_computable) {
-      if (r) 
+      if (r)
         required_inputs->insert(required_inputs->end(),
                                 src2_inputs.begin(), src2_inputs.end());
       return true;
@@ -537,12 +539,12 @@ int32 Descriptor::Modulus() const {
   int32 ans = 1;
   for (size_t i = 0; i < parts_.size(); i++)
     ans = Lcm(ans, parts_[i]->Modulus());
-  return ans;  
+  return ans;
 }
 
 
 bool Descriptor::IsComputable(const Index &ind,
-                              const CindexSet &cindex_set,                    
+                              const CindexSet &cindex_set,
                               std::vector<Cindex> *input_terms) const {
   if (input_terms)
     input_terms->clear();

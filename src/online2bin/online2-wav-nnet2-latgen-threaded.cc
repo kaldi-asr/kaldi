@@ -1,4 +1,4 @@
-// onlinebin/online2-wav-nnet2-latgen-thread.cc
+// online2bin/online2-wav-nnet2-latgen-threaded.cc
 
 // Copyright 2014-2015  Johns Hopkins University (author: Daniel Povey)
 
