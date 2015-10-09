@@ -302,7 +302,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --frames-per-eg $chunk_width \
       $data $alidir $dir/egs || exit 1;
 fi
-
+exit;
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
