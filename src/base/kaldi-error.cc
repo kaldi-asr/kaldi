@@ -90,7 +90,8 @@ inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(const char *to_append,
   }
 }
 #else  // defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
-#define KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(to_append, ans) ans += to_append
+#define KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(to_append, ans) \
+  ans->append(to_append)
 #endif  // defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
 
 #ifdef HAVE_EXECINFO_H
