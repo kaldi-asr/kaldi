@@ -6,14 +6,17 @@
 set -e 
 set -o pipefail
 
+. path.sh
+
 # This script computes per-frame SNR from time-frequency bin SNR predicted 
 # by an SNR predictor nnet and the original noisy fbank features
 
 cmd=run.pl
 nj=4
 use_gpu=no
+iter=final
 prediction_type="FbankMask"
-copy_opts= # Due to code change, the log(Irm) predicted might have previously been log(sqrt(Irm)). Hence use "matrix-scale --scale=2.0 ark:- ark:- \|"
+copy_opts= # Due to code change, the log(Irm) predicted might have previously been log(sqrt(Irm)). Hence use "matrix-scale --scale=2.0 ark:- ark:- \|". Also for log(Snr), it might have been log(sqrt(Snr)). 
 stage=0
 
 . utils/parse_options.sh
@@ -52,7 +55,7 @@ fi
 
 if [ $stage -le 0 ]; then
   $gpu_cmd JOB=1:$nj $dir/log/compute_nnet_pred.JOB.log \
-    nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/final.raw "$feats" \
+    nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/$iter.raw "$feats" \
     ark:- \| ${copy_opts}copy-feats --compress=true ark:- ark:$dir/nnet_pred.JOB.ark || exit 1
 fi
 
@@ -61,23 +64,34 @@ if [ $stage -le 1 ]; then
     "Irm")
       # nnet_pred is log (clean energy / (clean energy + noise energy) )
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
-        vector-sum \
-        "ark:matrix-scale --scale=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
-        "ark:matrix-sum --scale1=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp $dir/nnet_pred.JOB.ark | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+        compute-frame-snrs --prediction-type="Irm" \
+        scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
+        ark:$dir/nnet_pred.JOB.ark \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
+        ark:$dir/clean_pred.JOB.ark
+        
       ;;
     "FbankMask")
       # nnet_pred is log (clean feat / noisy feat)
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
-        vector-sum \
-        "ark:matrix-scale --scale=2.0 scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
-        "ark:matrix-sum scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp $dir/nnet_pred.JOB.ark | matrix-scale --scale=2.0 ark:- ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+        compute-frame-snrs --prediction-type="FbankMask" \
+        scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
+        ark:$dir/nnet_pred.JOB.ark \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
+        ark:$dir/clean_pred.JOB.ark
       ;;
     "FrameSnr")
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
         extract-column 0 $dir/nnet_pred.JOB.ark \
         ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+      ;;
+    "Snr")
+      $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
+        compute-frame-snrs --prediction-type="Snr" \
+        scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
+        ark:$dir/nnet_pred.JOB.ark \
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
+        ark:$dir/clean_pred.JOB.ark
       ;;
     *)
       echo "Unknown prediction-type '$prediction_type'" && exit 1

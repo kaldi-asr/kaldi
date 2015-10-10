@@ -186,13 +186,13 @@ if [ $stage -le 9 ]; then
     compute-snr-targets --target-type="FbankMask" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
+    ark:- \| matrix-scale --scale=2.0 ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
     cat $targets_dir/${data_id}.$n.scp
   done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
 fi
-
 
 tmpdir=exp/make_frame_snr_correct_targets
 targets_dir=frame_snr_correct_targets

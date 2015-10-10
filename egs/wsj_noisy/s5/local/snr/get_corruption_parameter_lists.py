@@ -39,6 +39,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--snrs', type=str, default = '20:10:0',
                       help='snrs to be used for corruption')
+  parser.add_argument('--signal-dbs', type=str, default = '2:0:-2:-5:-10:-20:-40:-60:-80:-120:-160:-200:-300:-400',
+                      help='clean signal dbs to be used')
   parser.add_argument('--num-files-per-job', type=int, default = None,
                       help='number of commands for corruption to be stored in each file -- This is the number of parallel jobs that will be run')
   parser.add_argument('--check-output-exists', type = str, default = 'True',
@@ -79,6 +81,8 @@ if __name__ == "__main__":
   impulses = list_cyclic_iterator(return_nonempty_lines(open(params.impulses_noises_dir+'/info/impulse_files').readlines()), random_seed = params.random_seed)    # This list could be empty
   noises_impulses_files = glob.glob(params.impulses_noises_dir+'/info/noise_impulse_*')
   impulse_noise_index = []
+
+  all_impulses_set = set()
   for file in noises_impulses_files:
     noises_list = []
     impulses_set = set([])
@@ -91,9 +95,11 @@ if __name__ == "__main__":
         noises_list = list_cyclic_iterator(parts[1].split())
       elif parts[0].strip() == 'impulse_files':
         impulses_set = set(parts[1].split())
+        all_impulses_set.union(impulses_set)
       else:
         raise Exception('Unknown format of ' + file)
-    impulse_noise_index.append([impulses_set, noises_list])
+      impulse_noise_index.append([impulses_set, noises_list])
+  impulses = list_cyclic_iterator(list(all_impulses_set))
 
   if params.num_files_per_job is None:
     lines_per_file = len(wav_files)
@@ -123,34 +129,35 @@ if __name__ == "__main__":
       found_impulse = (impulse_file is not None)
       found_noise = False
       if add_noise:
-        for i in xrange(len(impulse_noise_index)):
-          if impulse_file is None and not impulse_noise_index[i][0]:
-            noise_file = impulse_noise_index[i][1].next()
+        for j in xrange(len(impulse_noise_index)):
+          if impulse_file is None and not impulse_noise_index[j][0]:
+            noise_file = impulse_noise_index[j][1].next()
             snr = snrs.next()
             signal_db = signal_dbs.next()
             assert(len(wav_file.strip()) > 0)
             assert(len(noise_file.strip()) > 0)
             assert(len(snr.strip()) > 0)
-            assert(len(signal_db.strip() > 0)
+            assert(len(signal_db.strip()) > 0)
             assert(len(output_wav_file.strip()) > 0)
             command_list.append("{0} --noise-file {1} --snr-db {2} --signal-db {3} {4}{5}- {6} \n".format(wav_file, noise_file, snr, signal_db, clean_wav_file, noise_wav_file, output_wav_file))
             found_noise = True
             break
-          if impulse_file in impulse_noise_index[i][0]:
-            noise_file = impulse_noise_index[i][1].next()
+          if impulse_file in impulse_noise_index[j][0]:
+            noise_file = impulse_noise_index[j][1].next()
             snr = snrs.next()
             signal_db = signal_dbs.next()
             assert(len(wav_file.strip()) > 0)
             assert(len(impulse_file.strip()) > 0)
             assert(len(noise_file.strip()) > 0)
             assert(len(snr.strip()) > 0)
-            assert(len(signal_db.strip() > 0)
+            assert(len(signal_db.strip()) > 0)
             assert(len(output_wav_file.strip()) > 0)
             command_list.append("{0} --rir-file {1} --noise-file {2} --snr-db {3} --signal-db {4} {5}{6}- {7} \n".format(wav_file, impulse_file, noise_file, snr, signal_db, clean_wav_file, noise_wav_file, output_wav_file))
             found_impulse = True
             found_noise = True
             break
       if not found_noise:
+        continue
         assert (found_impulse)
         assert(len(wav_file.strip()) > 0)
         assert(len(impulse_file.strip()) > 0)

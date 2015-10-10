@@ -71,13 +71,13 @@ def corrupt(x, h, n, snr, signal_db):
 
     direct_signal = x[1][:, 0] # make input single channel
     x_power = float(np.mean(direct_signal**2))
-    direct_signal = direct_signal / np.sqrt(x_power) * (10 ** (signal_db / 20))
-    assert (abs(float(np.mean(direct_signal**2)) - signal_db) < 1e-10)
+    direct_signal = direct_signal / np.sqrt(x_power) * (10 ** (signal_db / 20.0))
+    assert (abs(float(np.mean(direct_signal**2)) - 10 ** (signal_db / 10.0)) < 1e-10)
 
     # compute direct reverberation of the RIR
     fs = x[0]
     if h is not None:
-      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 20)) # make input single channel
+      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 20.0)) # make input single channel
       assert(h[0] == fs)
       h = h[1] # copy the samples from (sampling_rate, samples) tuple
       channel_one = h[:,0]
@@ -95,7 +95,7 @@ def corrupt(x, h, n, snr, signal_db):
         y[:, channel] = signal.fftconvolve(x, h[:,channel])
     else:
       assert (n is not None)
-      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 10)) # make input single channel
+      x = x[1][:, 0] / np.sqrt(x_power) * (10 ** (signal_db / 20.0)) # make input single channel
       y = np.zeros([x.shape[0], n[1].shape[1]])
       for channel in xrange(n[1].shape[1]):
         y[:, channel] = x
@@ -122,11 +122,11 @@ def corrupt(x, h, n, snr, signal_db):
       n_power = float(np.mean(n_ref**2))
       x_power = float(np.mean(direct_signal**2))
       M_snr = np.multiply(1/n_power, x_power)
-      M_snr = np.sqrt((10**(-snr/10))*M_snr)
+      M_snr = np.sqrt((10**(-snr/10.0))*M_snr)
       n_scaled = np.dot(n_y, np.diagflat(M_snr))
       y = y + n_scaled
       # scipy.io.savemat('debug.mat',{'n_scaled':n_scaled, 'y':y, 'x':x, 'h':h})
-    return (y[delay_impulse:(delay_impulse + x.shape[0]), :], x)
+    return (y[delay_impulse:(delay_impulse + x.shape[0]), :], x, n_scaled)
 
 if __name__ == "__main__":
   usage = """ Python script to corrupt the input wav stream with
