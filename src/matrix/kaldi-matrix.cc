@@ -396,6 +396,8 @@ void MatrixBase<Real>::AddMat(const Real alpha, const MatrixBase<Real>& A,
 template<typename Real>
 void MatrixBase<Real>::LogAddExpMat(const Real alpha, const MatrixBase<Real>& A,
                                MatrixTransposeType transA) {
+  if (alpha == 0) return;
+
   if (&A == this) {
     if (transA == kNoTrans) {
       Add(alpha + 1.0);
@@ -418,10 +420,20 @@ void MatrixBase<Real>::LogAddExpMat(const Real alpha, const MatrixBase<Real>& A,
             Real *lower = data + (row * stride_) + col, 
                  *upper = data + (col * stride_) + row;
             Real lower_tmp = *lower;
-            *lower = LogAdd(*lower, Log(alpha) + *upper);
-            *upper = LogAdd(*upper, Log(alpha) + lower_tmp);
+            if (alpha > 0) {
+              *lower = LogAdd(*lower, Log(alpha) + *upper);
+              *upper = LogAdd(*upper, Log(alpha) + lower_tmp);
+            } else {
+              KALDI_ASSERT(alpha < 0);
+              *lower = LogSub(*lower, Log(-alpha) + *upper);
+              *upper = LogSub(*upper, Log(-alpha) + lower_tmp);
+            }
           }
-          *(data + (row * stride_) + row) += Log(1.0 + alpha);  // diagonal.
+          if (alpha > -1.0)
+            *(data + (row * stride_) + row) += Log(1.0 + alpha);  // diagonal.
+          else 
+            KALDI_ERR << "Cannot subtract log-matrices if the difference is "
+                      << "negative";
         }
       }
     }
@@ -435,7 +447,12 @@ void MatrixBase<Real>::LogAddExpMat(const Real alpha, const MatrixBase<Real>& A,
         for (MatrixIndexT col = 0; col < num_cols_; col++) {
           Real *value = data + (row * stride_) + col, 
                *aValue = adata + (row * aStride) + col;
-          *value = LogAdd(*value, Log(alpha) + *aValue);
+          if (alpha > 0)
+            *value = LogAdd(*value, Log(alpha) + *aValue);
+          else {
+            KALDI_ASSERT(alpha < 0);
+            *value = LogSub(*value, Log(-alpha) + *aValue);
+          }
         }
       }
     } else {
@@ -445,7 +462,12 @@ void MatrixBase<Real>::LogAddExpMat(const Real alpha, const MatrixBase<Real>& A,
         for (MatrixIndexT col = 0; col < num_cols_; col++) {
           Real *value = data + (row * stride_) + col, 
                *aValue = adata + (col * aStride) + row;
-          *value = LogAdd(*value, Log(alpha) + *aValue);
+          if (alpha > 0)
+            *value = LogAdd(*value, Log(alpha) + *aValue);
+          else {
+            KALDI_ASSERT(alpha < 0);
+            *value = LogSub(*value, Log(-alpha) + *aValue);
+          }
         }
       }
     }
