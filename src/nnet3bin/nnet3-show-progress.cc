@@ -46,12 +46,15 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 num_segments = 1;
-    std::string use_gpu = "optional";
+    std::string use_gpu = "no";
+    NnetComputeProbOptions compute_prob_opts;
+    compute_prob_opts.compute_deriv = true;
 
     po.Register("num-segments", &num_segments,
                 "Number of line segments used for computing derivatives");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    compute_prob_opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -99,8 +102,6 @@ int main(int argc, char *argv[]) {
         ScaleNnet(middle, &interp_nnet);
         AddNnet(nnet1, 1.0 - middle, &interp_nnet);
 
-        NnetComputeProbOptions compute_prob_opts;
-        compute_prob_opts.compute_deriv = true;
         NnetComputeProb prob_computer(compute_prob_opts, interp_nnet);
         std::vector<NnetExample>::const_iterator eg_iter = examples.begin(),
                                                  eg_end = examples.end();
