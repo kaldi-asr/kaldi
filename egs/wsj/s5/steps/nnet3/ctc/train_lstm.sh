@@ -61,11 +61,6 @@ splice_indexes="-2,-1,0,1,2 0 0"
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
-# Natural gradient options
-ng_per_element_scale_options=  # a string which will be used in the parameter config
-ng_affine_options=             # NaturalGradientAffine or NaturalGradientPerElementScale
-                               # components
-
 # LSTM parameters
 num_lstm_layers=3
 cell_dim=1024  # dimension of the LSTM cell
@@ -82,7 +77,6 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
                           # else this is the max-absolute value of each element in Jacobian.
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
-label_delay=5  # the lstm output is used to predict the label with the specified delay
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
@@ -178,7 +172,6 @@ if [ $# != 5 ]; then
   echo "                                                   # If false, element-wise clipping is used."
   echo "  --num-bptt-steps <int|20>                        # this variable counts the number of time steps to back-propagate from the last label in the chunk"
   echo "                                                   # it is usually same as chunk_width"
-  echo "  --label-delay <int|5>                            # the lstm output is used to predict the label with the specified delay"
   echo "  --clipping-threshold <int|30>                    # if norm_based_clipping is true this would be the maximum value of the row l2-norm,"
   echo "                                                   # else this is the max-absolute value of each element in Jacobian."
   echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
@@ -269,10 +262,8 @@ if [ $stage -le -5 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --norm-based-clipping $norm_based_clipping \
     --clipping-threshold $clipping_threshold \
-    --ng-per-element-scale-options "$ng_per_element_scale_options" \
-    --ng-affine-options "$ng_affine_options" \
+    --label-delay 0 \
     --num-targets $num_leaves \
-    --label-delay $label_delay \
    $dir/configs || exit 1;
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;

@@ -1,14 +1,16 @@
 #!/bin/bash
 
+# place to build CTC tree
+treedir=exp/ctc/tri5b_tree
+
 stage=0
 train_stage=-10
-affix=
 speed_perturb=true
-common_egs_dir=
+dir=exp/ctc/lstm  # Note: _sp will get added to this if $speed_perturb == true.
+common_egs_dir=  # be careful with this: it's dependent on the CTC transition model
 
 # LSTM options
 splice_indexes="-2,-1,0,1,2 0 0"
-label_delay=5
 num_lstm_layers=3
 cell_dim=1024
 hidden_dim=1024
@@ -20,8 +22,6 @@ clipping_threshold=30.0
 norm_based_clipping=true
 
 # natural gradient options
-ng_per_element_scale_options=
-ng_affine_options=
 num_epochs=2
 
 # training options
@@ -41,8 +41,6 @@ remove_egs=true
 extra_left_context=
 frames_per_chunk=
 
-# ctc options
-treedir=exp/ctc/tri5b_tree
 
 # End configuration section.
 
@@ -65,15 +63,11 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
 
-use_delay=false
-if [ $label_delay -gt 0 ]; then use_delay=true; fi
-
 suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
-dir=exp/$mic/ctc/lstm
-dir=$dir${affix:+_$affix}${use_delay:+_ld$label_delay}
+
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
@@ -102,7 +96,7 @@ if [ $stage -le 10 ]; then
     --tree-stats-opts "--collapse-pdf-classes=true" \
     --cluster-phones-opts "--pdf-class-list=0" \
     --context-opts "--context-width=2 --central-position=1" \
-     2500 15000 data/$train_set data/lang_ctc $ali_dir $treedir
+     11000 100000 data/$train_set data/lang_ctc $ali_dir $treedir
 fi
 
 if [ $stage -le 11 ]; then
@@ -121,7 +115,6 @@ if [ $stage -le 12 ]; then
   fi
 
   steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
-    --label-delay $label_delay \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --frames-per-iter $frames_per_iter \
@@ -144,8 +137,6 @@ if [ $stage -le 12 ]; then
     --chunk-left-context $chunk_left_context \
     --num-bptt-steps "$num_bptt_steps" \
     --norm-based-clipping $norm_based_clipping \
-    --ng-per-element-scale-options "$ng_per_element_scale_options" \
-    --ng-affine-options "$ng_affine_options" \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
