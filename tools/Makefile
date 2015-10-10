@@ -31,6 +31,9 @@ all: check_required_programs sph2pipe atlas sclite openfst
 	@echo "Warning: use the script extras/install_irstlm.sh"
 	@echo "All done OK."
 
+# make sure check_required_programs runs before anything else:
+sph2pipe atlas sclite openfst sctk: | check_required_programs
+
 check_required_programs:
 	extras/check_dependencies.sh
 
@@ -72,7 +75,7 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
-openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched | check_required_programs
 ifeq ($(OSTYPE),cygwin)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else

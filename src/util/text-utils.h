@@ -122,7 +122,8 @@ bool ConvertStringToInteger(const std::string &str,
   if (end == this_str || *end != '\0' || errno != 0)
     return false;
   Int iInt = static_cast<Int>(i);
-  if (static_cast<long long int>(iInt) != i || (i<0 && !std::numeric_limits<Int>::is_signed)) {
+  if (static_cast<long long int>(iInt) != i ||
+      (i < 0 && !std::numeric_limits<Int>::is_signed)) {
     return false;
   }
   *out = iInt;

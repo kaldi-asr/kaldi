@@ -81,6 +81,7 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
+lstm_delay=    # the delay to be used in the recurrence of lstms
 num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
@@ -246,7 +247,10 @@ if [ $stage -le -5 ]; then
   # note an additional space is added to splice_indexes to
   # avoid issues with the python ArgParser which can have
   # issues with negative arguments (due to minus sign)
-  steps/nnet3/lstm/make_configs.py  \
+  config_extra_opts=()
+  [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
+
+  steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --splice-indexes "$splice_indexes " \
     --num-lstm-layers $num_lstm_layers \
     --feat-dim $feat_dim \
@@ -537,7 +541,7 @@ while [ $x -lt $num_iters ]; do
       $cmd $dir/log/progress.$x.log \
         nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" '&&' \
         nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" &
+        "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/train_diagnostic.egs ark:-|" &
     fi
 
     echo "Training neural net (pass $x)"
@@ -665,17 +669,17 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
   rm $dir/post.$x.*.vec 2>/dev/null
-  if [ $num_jobs_compute_prior -lt $num_archives ]; then egs_part=1;
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
   else egs_part=JOB; fi
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \

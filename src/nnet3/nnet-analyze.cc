@@ -559,6 +559,7 @@ void ComputationChecker::Check() {
   CheckComputationOrder();
   CheckComputationMatrixAccesses();
   CheckComputationUndefined();
+  CheckComputationDebugInfo();
   if (config_.check_rewrite)
     CheckComputationRewrite();
 
@@ -958,6 +959,19 @@ void ComputationChecker::CheckComputationOrder() const {
     if (c > marker_location &&
         command_type == kStoreStats)
       KALDI_ERR << "StoreStats occurs after kNoOpMarker";
+  }
+}
+
+void ComputationChecker::CheckComputationDebugInfo() const {
+  if (computation_.matrix_debug_info.empty()) return;
+  if (computation_.matrix_debug_info.size() !=
+      computation_.matrices.size())
+    KALDI_ERR << "Debug info has wrong size";
+  for (size_t i = 1; i < computation_.matrix_debug_info.size(); i++) {
+    if (computation_.matrix_debug_info[i].cindexes.size() !=
+        static_cast<size_t>(computation_.matrices[i].num_rows))
+      KALDI_ERR << "Debug info for matrix m" << i
+                << " has wrong num-rows.";
   }
 }
 

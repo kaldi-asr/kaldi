@@ -133,7 +133,7 @@ feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_trans
 # killed too.
 cleanup() {
   local pids=$(jobs -pr)
-  [ -n "$pids" ] && kill $pids
+  [ -n "$pids" ] && kill $pids || true
 }
 trap "cleanup" INT QUIT TERM EXIT
 
@@ -155,7 +155,7 @@ else
   # each job from 1 to $nj is split into multiple pieces (sub-split), and we aim
   # to have at most two jobs running at each time.  The idea is that if we have stragglers
   # from one job, we can be processing another one at the same time.
-  rm $dir/.error 2>/dev/null
+  rm -f $dir/.error
 
   prev_pid=
   for n in `seq $[nj+1]`; do

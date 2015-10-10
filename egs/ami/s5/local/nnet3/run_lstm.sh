@@ -25,6 +25,7 @@ common_egs_dir=
 
 # LSTM options
 splice_indexes="-2,-1,0,1,2 0 0"
+lstm_delay=" -1 -2 -3 "
 label_delay=5
 num_lstm_layers=3
 cell_dim=1024
@@ -53,6 +54,9 @@ num_chunk_per_minibatch=100
 num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
+
+# feature options
+use_ivectors=true
 
 #decode options
 extra_left_context=
@@ -106,19 +110,27 @@ if [ $stage -le 8 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
+  if [ "$use_ivectors" == "true" ]; then
+    ivector_opts=" --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires "
+    cmvn_opts="--norm-means=false --norm-vars=false"
+  else
+    ivector_opts=
+    cmvn_opts="--norm-means=true --norm-vars=true"
+  fi
 
-  steps/nnet3/lstm/train.sh --stage $train_stage \
+  steps/nnet3/lstm/train.sh $ivector_opts \
+    --stage $train_stage \
     --label-delay $label_delay \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
-    --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
+    --cmvn-opts "$cmvn_opts" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
     --adaptive-shrink "$adaptive_shrink" \
+    --lstm-delay "$lstm_delay" \
     --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
@@ -149,11 +161,14 @@ if [ $stage -le 9 ]; then
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       decode_dir=${dir}/decode_${decode_set}
-
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      if [ "$use_ivectors" == "true" ]; then
+        ivector_opts=" --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} "
+      else
+        ivector_opts=
+      fi
+      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" $ivector_opts \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
-          --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
   done
