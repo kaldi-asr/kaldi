@@ -1,6 +1,7 @@
 // featbin/wav-reverberate.cc
 
 // Copyright 2015  Tom Ko
+//           2015  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -40,6 +41,10 @@ BaseFloat MaxAbsolute(const Vector<BaseFloat> &vector) {
   return std::max(std::abs(vector.Max()), std::abs(vector.Min()));
 }
 
+inline BaseFloat ComputeEnergy(const Vector<BaseFloat> &vec) {
+  return VecVec(vec, vec) / vec.Dim();
+}
+
 /* 
    Early reverberation component of the signal is composed of reflections 
    within 0.05 seconds of the direct path signal (assumed to be the peak of 
@@ -67,7 +72,7 @@ BaseFloat ComputeEarlyReverbEnergy(const Vector<BaseFloat> &rir, const Vector<Ba
   FFTbasedBlockConvolveSignals(early_rir, &early_reverb);
 
   // compute the energy
-  return VecVec(early_reverb, early_reverb) / early_reverb.Dim();
+  return ComputeEnergy(early_reverb);
 }
 
 /*
@@ -79,23 +84,33 @@ BaseFloat ComputeEarlyReverbEnergy(const Vector<BaseFloat> &rir, const Vector<Ba
    the sampling frequency, the SNR(dB), the noise and the signal respectively.
 */
 void DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
-                        BaseFloat snr_db, Vector<BaseFloat> *noise,
-                        Vector<BaseFloat> *signal) {
-  if (noise->Dim()) {
-    float input_power = ComputeEarlyReverbEnergy(rir, *signal, samp_freq);
+                     BaseFloat snr_db, Vector<BaseFloat> *noise,
+                     Vector<BaseFloat> *signal, Vector<BaseFloat> *clean) {
+  if (noise) {
+    float input_power;
+    
+    if (rir.Dim() > 0) {
+      input_power = ComputeEarlyReverbEnergy(rir, *signal, samp_freq);
+    } else {
+      input_power = ComputeEnergy(*signal);
+    }
     float noise_power = VecVec(*noise, *noise) / noise->Dim();
-    float scale_factor = sqrt(pow(10, -snr_db / 10) * input_power / noise_power);
+    float scale_factor = sqrt(pow(10, -snr_db / 10.0) * input_power / noise_power);
     noise->Scale(scale_factor);
     KALDI_VLOG(1) << "Noise signal is being scaled with " << scale_factor
                   << " to generate output with SNR " << snr_db << "db\n";
   }
 
-  FFTbasedBlockConvolveSignals(rir, signal);
+  if (rir.Dim() > 0)
+    FFTbasedBlockConvolveSignals(rir, signal);
 
-  if (noise->Dim() > 0) {
+  if (clean)
+    clean->CopyFromVec(*signal);
+
+  if (noise)
     AddVectorsOfUnequalLength(*noise, signal);
-  }
 }
+
 }
 
 int main(int argc, char *argv[]) {
@@ -105,10 +120,16 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Corrupts the wave files supplied via input pipe with the specified\n"
         "room-impulse response (rir_matrix) and additive noise distortions\n"
-        "(specified by corresponding files).\n";
+        "(specified by corresponding files).\n"
+        "Usage: wav-reverberate <input-wave-file> [<rir-file>] <output-wave-file>\n"
+        " e.g.: wav-reverberate clean.wav large_room_rir.wav corrupted.wav\n";
 
     ParseOptions po(usage);
+    
     std::string noise_file;
+    std::string out_clean_file;
+    std::string out_noise_file;
+
     BaseFloat snr_db = 20;
     bool multi_channel_output = false;
     int32 input_channel = 0;
@@ -116,6 +137,7 @@ int main(int argc, char *argv[]) {
     int32 noise_channel = 0;
     bool normalize_output = true;
     BaseFloat volume = 0;
+    BaseFloat signal_db = 0;
 
     po.Register("multi-channel-output", &multi_channel_output,
                 "Specifies if the output should be multi-channel or not");
@@ -138,12 +160,23 @@ int main(int argc, char *argv[]) {
                 "energy is the same as the original input signal.");
     po.Register("volume", &volume,
                 "If nonzero, a scaling factor on the signal that is applied "
-                "after reverberating and possibly adding noise. "
+                "after reverberating and possibly adding noise. \n"
                 "If you set this option to a nonzero value, it will be as"
-                "if you had also specified --normalize-output=false.");
+                "if you had also specified --normalize-output=false. \n"
+                "If you set this option to a negative value, it will be "
+                "ignored and instead the --signal-db option would be used.");
+    po.Register("signal-db", &signal_db,
+                "Desired signal energy after corruption. This will be used "
+                "only if volume is less than 0");
+    po.Register("out-noise-file", &out_noise_file,
+                "Wave file to write the output noise file just before "
+                "adding it to the reverberated signal");
+    po.Register("out-clean-file", &out_clean_file,
+                "Wave file to write the output clean file just before "
+                "adding additive noise. It may have reverberation");
 
     po.Read(argc, argv);
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 3 && po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
@@ -154,9 +187,13 @@ int main(int argc, char *argv[]) {
                       "are ignored as --multi-channel-output is true.";
     }
 
+
     std::string input_wave_file = po.GetArg(1);
-    std::string rir_file = po.GetArg(2);
-    std::string output_wave_file = po.GetArg(3);
+    std::string output_wave_file = po.GetArg(po.NumArgs());
+
+    std::string rir_file;
+    if (po.NumArgs() == 3)
+      rir_file = po.GetArg(2);
 
     WaveData input_wave;
     {
@@ -173,20 +210,33 @@ int main(int argc, char *argv[]) {
                   << " #channel: " << num_input_channel;
     KALDI_ASSERT(input_channel < num_input_channel);
 
-    WaveData rir_wave;
-    {
-      Input ki(rir_file);
-      rir_wave.Read(ki.Stream());
-    }
-    const Matrix<BaseFloat> &rir_matrix = rir_wave.Data();
-    BaseFloat samp_freq_rir = rir_wave.SampFreq();
-    int32 num_samp_rir = rir_matrix.NumCols(),
-          num_rir_channel = rir_matrix.NumRows();
-    KALDI_VLOG(1) << "sampling frequency of rir: " << samp_freq_rir
-                  << " #samples: " << num_samp_rir
-                  << " #channel: " << num_rir_channel;
-    if (!multi_channel_output) {
-      KALDI_ASSERT(rir_channel < num_rir_channel);
+    BaseFloat samp_freq_rir = samp_freq_input;
+    int32 num_samp_rir = 0,
+          num_rir_channel = 1;
+
+    const Matrix<BaseFloat> *rir_matrix = NULL;
+
+    if (rir_file != "") {
+      WaveData rir_wave;
+      {
+        Input ki(rir_file);
+        rir_wave.Read(ki.Stream());
+      }
+      rir_matrix = &rir_wave.Data();
+
+      samp_freq_rir = rir_wave.SampFreq();
+      num_samp_rir = rir_matrix.NumCols();
+      num_rir_channel = rir_matrix.NumRows();
+      KALDI_VLOG(1) << "sampling frequency of rir: " << samp_freq_rir
+                    << " #samples: " << num_samp_rir
+                    << " #channel: " << num_rir_channel;
+      if (!multi_channel_output) {
+        KALDI_ASSERT(rir_channel < num_rir_channel);
+      }
+    } else {
+      rir_channel = 0;
+      // Cannot create multichannel output without an rir-file
+      KALDI_ASSERT(!multi_channel_output);    
     }
 
     Matrix<BaseFloat> noise_matrix;
@@ -213,6 +263,9 @@ int main(int argc, char *argv[]) {
     int32 num_output_channels = (multi_channel_output ? num_rir_channel : 1);
     Matrix<BaseFloat> out_matrix(num_output_channels, num_samp_input);
 
+    Matrix<BaseFloat> out_clean_matrix;
+    Matrix<BaseFloat> out_noise_matrix;
+
     for (int32 output_channel = 0; output_channel < num_output_channels; output_channel++) {
       Vector<BaseFloat> input(num_samp_input);
       input.CopyRowFromMat(input_matrix, input_channel);
@@ -220,31 +273,72 @@ int main(int argc, char *argv[]) {
 
       int32 this_rir_channel = (multi_channel_output ? output_channel : rir_channel);
       Vector<BaseFloat> rir(num_samp_rir);
-      rir.CopyRowFromMat(rir_matrix, this_rir_channel);
-      rir.Scale(1.0 / (1 << 15));
 
-      Vector<BaseFloat> noise(0);
+      if (rir_matrix != NULL) {
+        rir.CopyRowFromMat(*rir_matrix, this_rir_channel);
+        rir.Scale(1.0 / (1 << 15));
+      }
+
+      Vector<BaseFloat> noise;
       if (!noise_file.empty()) {
         noise.Resize(noise_matrix.NumCols());
         int32 this_noise_channel = (multi_channel_output ? output_channel : noise_channel);
         noise.CopyRowFromMat(noise_matrix, this_noise_channel);
       }
 
-      DoReverberation(rir, samp_freq_rir, snr_db, &noise, &input);
+      Vector<BaseFloat> clean_signal;
+      DoReverberation(rir, samp_freq_rir, snr_db, 
+          (!noise_file.empty() ? &noise : NULL), &input,
+          (!out_clean_file.empty() ? &clean_signal : NULL));
 
       float power_after_reverb = VecVec(input, input) / input.Dim();
 
-      if (volume > 0)
+      if (volume > 0) {
         input.Scale(volume);
-      else if (normalize_output)
+        if (!out_clean_file.empty())
+          clean_signal.Scale(volume);
+        if (!noise_file.empty()) 
+          noise_file.Scale(volume);
+      } else if (volume < 0) {
+        BaseFloat scale = sqrt(pow(10, signal_db / 10.0) / power_after_reverb);
+        input.Scale(scale);
+        if (!out_clean_file.empty())
+          clean_signal.Scale(scale);
+        if (!noise_file.empty()) 
+          noise_file.Scale(scale);
+      } else if (normalize_output)
         input.Scale(sqrt(power_before_reverb / power_after_reverb));
 
       out_matrix.CopyRowFromVec(input, output_channel);
+      
+      if (!out_clean_file.empty()) {
+        if (output_channel == 0)
+          out_clean_matrix.Resize(out_matrix.NumRows(), out_matrix.NumCols());
+        out_clean_matrix.CopyRowFromVec(clean_signal, output_channel);
+      }
+
+      if (!out_noise_file.empty()) {
+        if (output_channel == 0)
+          out_noise_matrix.Resize(out_matrix.NumRows(), out_matrix.NumCols());
+        out_noise_matrix.CopyRowFromVec(noise, output_channel);
+      }
     }
 
     WaveData out_wave(samp_freq_input, out_matrix);
     Output ko(output_wave_file, false);
     out_wave.Write(ko.Stream());
+
+    if (!out_clean_file.empty()) {
+      WaveData out_clean_wave(samp_freq_input, out_clean_matrix);
+      Output ko(out_clean_file, false);
+      out_clean_wave.Write(ko.Stream());
+    }
+
+    if (!out_noise_file.empty()) {
+      WaveData out_noise_wave(samp_freq_input, out_noise_matrix);
+      Output ko(out_noise_file, false);
+      out_noise_wave.Write(ko.Stream());
+    }
 
     return 0;
   } catch(const std::exception &e) {
