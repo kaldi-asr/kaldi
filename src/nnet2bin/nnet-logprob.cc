@@ -35,31 +35,33 @@ int main(int argc, char *argv[]) {
         "Do the forward computation for a neural net acoustic model (and division by\n"
         "the prior, if --divide-by-priors=true), and output as an archive the matrix\n"
         "of log probabilities for each utterance, e.g. for input to latgen-faster-mapped\n"
+        "or lattice-rescore-mapped.\n"
         "(note: you can also directly use nnet-latgen-faster.\n"
         "\n"
         "Usage: nnet-logprob [options] <model-in> <features-rspecifier> <logprobs-wspecifier>\n"
         "\n"
-        "e.g.: nnet-logprob 1.nnet \"$feats\" ark:- | latgen-faster-mapped ... \n";
-    
+        "e.g.: nnet-logprob 1.nnet \"$feats\" ark:- | latgen-faster-mapped ... \n"
+        "See also: nnet-am-compute, nnet-compute\n";
+
     bool pad_input = true; // This is not currently configurable.
     bool divide_by_priors = true;
-    
+
     ParseOptions po(usage);
-    
+
     po.Register("divide-by-priors", &divide_by_priors, "If true, before getting "
                 "the log-probs, divide by the priors stored with the model");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string nnet_rxfilename = po.GetArg(1),
         feats_rspecifier = po.GetArg(2),
         logprob_wspecifier = po.GetArg(3);
-    
+
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -75,14 +77,14 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(inv_priors.Dim() == am_nnet.NumPdfs() &&
                  "Priors in neural network not set up.");
     inv_priors.ApplyPow(-1.0);
-    
+
     SequentialBaseFloatCuMatrixReader feature_reader(feats_rspecifier);
     BaseFloatCuMatrixWriter logprob_writer(logprob_wspecifier);
-    
+
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string key = feature_reader.Key();
       const CuMatrix<BaseFloat> &feats = feature_reader.Value();
-      
+
       CuMatrix<BaseFloat> log_probs(feats.NumRows(), am_nnet.NumPdfs());
       NnetComputation(am_nnet.GetNnet(), feats, pad_input, &log_probs);
       // at this point "log_probs" contains actual probabilities, not logs.
@@ -105,7 +107,7 @@ int main(int argc, char *argv[]) {
       logprob_writer.Write(key, log_probs);
       num_done++;
     }
-    
+
     KALDI_LOG << "Finished computing neural net log-probs, processed "
               << num_done << " utterances, " << num_err << " with errors.";
     return (num_done == 0 ? 1 : 0);

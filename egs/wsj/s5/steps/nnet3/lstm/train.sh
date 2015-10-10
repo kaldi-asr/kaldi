@@ -81,6 +81,9 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
+lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
+                         # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
+                         # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
@@ -246,7 +249,10 @@ if [ $stage -le -5 ]; then
   # note an additional space is added to splice_indexes to
   # avoid issues with the python ArgParser which can have
   # issues with negative arguments (due to minus sign)
-  steps/nnet3/lstm/make_configs.py  \
+  config_extra_opts=()
+  [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
+
+  steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --splice-indexes "$splice_indexes " \
     --num-lstm-layers $num_lstm_layers \
     --feat-dim $feat_dim \
@@ -537,7 +543,7 @@ while [ $x -lt $num_iters ]; do
       $cmd $dir/log/progress.$x.log \
         nnet3-info "nnet3-am-copy --raw=true $dir/$x.mdl - |" '&&' \
         nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" "nnet3-am-copy --raw=true $dir/$x.mdl - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" &
+        "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/train_diagnostic.egs ark:-|" &
     fi
 
     echo "Training neural net (pass $x)"
@@ -665,10 +671,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob  "nnet3-am-copy --raw=true $dir/combined.mdl -|" \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs --minibatch-size=256 ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if [ $stage -le $[$num_iters+1] ]; then
