@@ -149,7 +149,6 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
 #  exp/full_ubm_2048/final.ubm
 
 lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
-  --stage 3 \
   --use-weights true \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
