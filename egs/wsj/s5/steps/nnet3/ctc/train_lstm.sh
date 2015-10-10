@@ -302,7 +302,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   # shifts (we use shifted version of the data for more variety).
   extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2])
   extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
-  extra_opts+=(--valid-left-context $((chunk_width + left_context)))
 
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"

@@ -1,36 +1,46 @@
 #!/bin/bash
 
 # this is a basic ctc+lstm script
+# d is as b, but:
+# changing lstm-delay to "-1 -3 -3" (was -1 -1 -1 in "b", as default, but
+# we since changed the script to make the default "-1 -2 -3".
+# Reduced num-epochs from 10 to 5, and num-jobs-final from 12 to 4.
+# Reduced parameters (cell-dim,hidden-dim: 1024->750, recurrent_projection_dim
+# non_recurrent_projection_dim: 256->175.
+# reduced learning rate slightly.
+# added --frames-per-iter 800000 (since it was training too fast)...
+#
+# note: b was as a but double learning-rate.
+#
 
-# At this script level we don't support not running on GPU, as it would be painfully slow.
-# If you want to run without GPU you'd have to call lstm/train.sh with --gpu false,
-# --num-threads 16 and --minibatch-size 128.
+
 set -e
 
 # configs for ctc
 treedir=exp/ctc/tri5b_tree
-dir=exp/nnet3/lstm_ctc_a
+dir=exp/nnet3/lstm_ctc_d
 
 stage=0
 train_stage=-10
 splice_indexes="-2,-1,0,1,2 0 0"
 num_lstm_layers=3
-cell_dim=1024
-hidden_dim=1024
-recurrent_projection_dim=256
-non_recurrent_projection_dim=256
-chunk_width=20
-chunk_left_context=20
+cell_dim=750
+hidden_dim=750
+recurrent_projection_dim=175
+non_recurrent_projection_dim=175
+chunk_width=50
+chunk_left_context=30
 clipping_threshold=5.0
 norm_based_clipping=true
 has_fisher=true
 
-num_epochs=10
+num_epochs=5
+lstm_delay="-1 -3 -3"
 # training options
-initial_effective_lrate=0.0003
-final_effective_lrate=0.00003
+initial_effective_lrate=0.0015
+final_effective_lrate=0.00015
 num_jobs_initial=1
-num_jobs_final=12
+num_jobs_final=4
 shrink=0.99
 momentum=0.9
 num_chunk_per_minibatch=100
@@ -104,8 +114,13 @@ if [ $stage -le 11 ]; then
      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
+  # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
+  # script must have had a different default at that time.
   steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
+    --frames-per-iter 800000 \
+    --target-num-history-states 500 \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
+    --lstm-delay "$lstm_delay" \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
