@@ -81,7 +81,9 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
-lstm_delay=    # the delay to be used in the recurrence of lstms
+lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
+                         # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
+                         # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
