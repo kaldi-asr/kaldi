@@ -77,6 +77,9 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
                           # else this is the max-absolute value of each element in Jacobian.
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
+lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
+                         # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
+                         # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
@@ -106,7 +109,7 @@ rand_prune=4.0 # speeds up LDA.
 affine_opts=
 
 #ctc options
-target_num_history_states=500
+target_num_history_states=1000
 
 # End configuration section.
 
@@ -251,7 +254,10 @@ if [ $stage -le -5 ]; then
   # note an additional space is added to splice_indexes to
   # avoid issues with the python ArgParser which can have
   # issues with negative arguments (due to minus sign)
-  steps/nnet3/lstm/make_configs.py  \
+  config_extra_opts=()
+  [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
+
+  steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --splice-indexes "$splice_indexes " \
     --num-lstm-layers $num_lstm_layers \
     --feat-dim $feat_dim \
