@@ -107,3 +107,4 @@ void DecodableAmNnetSimple::DoNnetComputation(
 
 } // namespace nnet3
 } // namespace kaldi
+ 
