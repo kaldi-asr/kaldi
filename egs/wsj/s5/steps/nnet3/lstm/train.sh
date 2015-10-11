@@ -20,20 +20,13 @@ initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 adaptive_shrink=true     # if true, the shrink value is increased to 1 with a rate
                          # inversely proportional to the effective_learning_rate
-shrink=0.98  # this parameter would be used to scale the parameter matrices
-num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
-
-samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
-                       # 'chunk_width' frames in it-- for chunk_width=20, this value (20k)
-                       # is equivalent to the 400k number that we use as a default in
-                       # regular DNN training.
 num_jobs_initial=1 # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
-presoftmax_prior_scale_power=-0.25
+presoftmax_prior_scale_power=-0.25  # we haven't yet used pre-softmax prior scaling in the LSTM model
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -59,11 +52,6 @@ splice_indexes="-2,-1,0,1,2 0 0"
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
-# Natural gradient options
-ng_per_element_scale_options=  # a string which will be used in the parameter config
-ng_affine_options=             # NaturalGradientAffine or NaturalGradientPerElementScale
-                               # components
-
 # LSTM parameters
 num_lstm_layers=3
 cell_dim=1024  # dimension of the LSTM cell
@@ -84,12 +72,19 @@ label_delay=5  # the lstm output is used to predict the label with the specified
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
-num_bptt_steps=20  # this variable counts the number of time steps to back-propagate from the last label in the chunk
+num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
 
 # nnet3-train options
-momentum=0.0    # e.g. set it to 0.8 or 0.9.  Note: we implemented it in such a way that
+shrink=0.98  # this parameter would be used to scale the parameter matrices
+num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
+
+samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
+                       # 'chunk_width' frames in it-- for chunk_width=20, this value (20k)
+                       # is equivalent to the 400k number that we use as a default in
+                       # regular DNN training.
+momentum=0.5    # e.g. 0.5.  Note: we implemented it in such a way that
                 # it doesn't increase the effective learning rate.
 use_gpu=true    # if true, we run on GPU.
 cleanup=true
@@ -110,7 +105,6 @@ realign_times=          # List of times on which we realign.  Each time is
 num_jobs_align=30       # Number of jobs for realignment
 
 rand_prune=4.0 # speeds up LDA.
-affine_opts=
 
 # End configuration section.
 
@@ -128,37 +122,35 @@ if [ $# != 4 ]; then
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --num-epochs <#epochs|15>                        # Number of epochs of training"
-  echo "  --initial-effective-lrate <lrate|0.02> # effective learning rate at start of training."
-  echo "  --final-effective-lrate <lrate|0.004>   # effective learning rate at end of training."
+  echo "  --num-epochs <#epochs|10>                        # Number of epochs of training"
+  echo "  --initial-effective-lrate <lrate|0.0003>         # effective learning rate at start of training."
+  echo "  --final-effective-lrate <lrate|0.00003>          # effective learning rate at end of training."
   echo "                                                   # data, 0.00025 for large data"
-  echo "  --momentum <momentum|0.9>                        # Momentum constant: note, this is "
+  echo "  --momentum <momentum|0.5>                        # Momentum constant: note, this is "
   echo "                                                   # implemented in such a way that it doesn't"
   echo "                                                   # increase the effective learning rate."
-  echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
-  echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
-  echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
-  echo "                                                   # the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
-  echo "  --adaptive-shrink <shrink|true>                  # if true, adaptive shrinkage is turned on"
-  echo "                                                   # the shrink value is increased to 1 with a rate"
-  echo "                                                   # inversely proportional to the effective_learning_rate"
-  echo "  --shrink <shrink|0.0>                            # if non-zero this parameter will be used to scale the parameter matrices"
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
   echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
-  echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
-  echo "                                                   # the number of frames processed per iteration"
   echo "  --splice-indexes <string|\"-2,-1,0,1,2 0 0\"> "
   echo "                                                   # Frame indices used for each splice layer."
   echo "                                                   # Format : <frame_indices> .... <frame_indices> "
+  echo "                                                   # the number of fields determines the number of LSTM and non-recurrent layers"
+  echo "                                                   # also see the --num-lstm-layers option"
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
+  echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
+  echo "                                                   # realignment is to be done"
+  echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
+  echo "  --align-use-gpu (yes/no)                         # specify is gpu is to be used for realignment"
+  echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
+  echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
+  echo "                                                   # the middle."
 
   echo " ################### LSTM options ###################### "
   echo "  --num-lstm-layers <int|3>                        # number of LSTM layers"
@@ -174,21 +166,25 @@ if [ $# != 4 ]; then
   echo "                                                   # to ensure that the individual row-norm (l2) does not increase"
   echo "                                                   # beyond the clipping_threshold."
   echo "                                                   # If false, element-wise clipping is used."
-  echo "  --num-bptt-steps <int|20>                        # this variable counts the number of time steps to back-propagate from the last label in the chunk"
-  echo "                                                   # it is usually same as chunk_width"
+  echo "  --num-bptt-steps <int|>                          # this variable counts the number of time steps to back-propagate from the last label in the chunk"
+  echo "                                                   # it defaults to chunk_width"
   echo "  --label-delay <int|5>                            # the lstm output is used to predict the label with the specified delay"
+
+  echo "  --lstm-delay <str|\" -1 -2 -3 \">                # the delay to be used in the recurrence of lstms"
+  echo "                                                   # \"-1 -2 -3\" means the a three layer stacked LSTM would use recurrence connections with "
+  echo "                                                   # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively"
   echo "  --clipping-threshold <int|30>                    # if norm_based_clipping is true this would be the maximum value of the row l2-norm,"
   echo "                                                   # else this is the max-absolute value of each element in Jacobian."
-  echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
-  echo "                                                   # realignment is to be done"
-  echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
-  echo "  --align-use-gpu (yes/no)                         # specify is gpu is to be used for realignment"
-  echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
-  echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
-  echo "                                                   # the middle."
 
-
-
+  echo " ################### LSTM specific training options ###################### "
+  echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
+  echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
+  echo "                                                   # the number of frames processed per iteration"
+  echo "  --adaptive-shrink <shrink|true>                  # if true, adaptive shrinkage is turned on"
+  echo "                                                   # the shrink value is increased to 1 with a rate"
+  echo "                                                   # inversely proportional to the effective_learning_rate"
+  echo "  --shrink <shrink|0.98>                           # if non-zero this parameter will be used to scale the parameter matrices"
+  echo " for more options see the script"
   exit 1;
 fi
 
@@ -263,8 +259,6 @@ if [ $stage -le -5 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --norm-based-clipping $norm_based_clipping \
     --clipping-threshold $clipping_threshold \
-    --ng-per-element-scale-options "$ng_per_element_scale_options" \
-    --ng-affine-options "$ng_affine_options" \
     --num-targets $num_leaves \
     --label-delay $label_delay \
    $dir/configs || exit 1;
@@ -468,6 +462,7 @@ for realign_time in $realign_times; do
 done
 
 cur_egs_dir=$egs_dir
+[ -z $num_bptt_steps ] && num_bptt_steps=$chunk_width;
 min_deriv_time=$((chunk_width - num_bptt_steps))
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;

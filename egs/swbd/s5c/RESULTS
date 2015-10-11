@@ -105,11 +105,17 @@ exit 0
 %WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
 %WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
 
+# these are results with nnet3 LSTMs : local/nnet3/run_lstm.sh (8 epoch training on speed-perturbed and volume perturbed data)
+%WER 11.8 | 1831 21395 | 89.4 7.0 3.6 1.3 11.8 47.8 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.2 | 1831 21395 | 88.3 8.0 3.7 1.5 13.2 49.5 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+
+
 # Resegmentation numbers for swbd subset.
 %WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
 %WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
 
-# Raw fmllr numbers for swbd subset. 
+# Raw fmllr numbers for swbd subset.
 %WER 22.1 | 1831 21395 | 80.1 14.1 5.8 2.2 22.1 59.8 | exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
 %WER 30.1 | 1831 21395 | 72.7 19.5 7.9 2.8 30.1 65.4 | exp/tri4b/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
 
