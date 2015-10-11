@@ -563,11 +563,8 @@ template<class Arc> class DeterminizerStar {
         if (iter == cur_subset->end()) {
           // was no such StateId: insert and add to queue.
           (*cur_subset)[next_elem.state] =
-                       EpsilonClosureInfo(next_elem,
-                                          next_unprocessed_weight,
-                                          true,
-                                          this_depth + 1
-                                          );
+                       EpsilonClosureInfo(next_elem, next_unprocessed_weight,
+                                          true, this_depth + 1);
           queue.push(IdAndDepth(next_elem.state, this_depth + 1));
         } else {  // one is already there.  Add weights.
           if (iter->second.element.string != next_elem.string) {
@@ -630,19 +627,20 @@ template<class Arc> class DeterminizerStar {
 
     std::map<InputStateId, EpsilonClosureInfo> cur_subset;
 
+    size_t size = input_subset.size();
     typedef typename std::map<InputStateId, EpsilonClosureInfo>::iterator MapIter;
     {
       MapIter iter = cur_subset.end();
-      size_t size = input_subset.size();
       for (size_t i = 0; i < size; i++) {
         // comment out this because we will process the initial states separately
         // queue.push(IdAndDepth(input_subset[i].state, 0));
 
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
-        EpsilonClosureInfo info(input_subset[i],
-                                input_subset[i].weight,
-                                false,
+        EpsilonClosureInfo info(input_subset[i], input_subset[i].weight,
+                                true, // now it is equivalent to having 
+                                // the vector as a "virtual queue" so it 
+                                // needs to be set true
                                 0);
         info.element.weight = Weight::Zero(); // clear the weight
 
@@ -658,24 +656,18 @@ template<class Arc> class DeterminizerStar {
     bool sorted =
             ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
-    size_t size = input_subset.size();
     for (size_t i = 0; i < size; i++) {
-      ExpandOneElement(input_subset[i],
-                       sorted,
-                       input_subset[i].weight,
-                       &cur_subset,
-                       0);
+      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight,
+                       &cur_subset, 0);
     }
 
     int counter = 0; // relates to max-states option, used for test.
-    while (queue.size() != 0) {
+    while (!queue.empty()) {
       InputStateId id = queue.top().id;
       int this_depth = queue.top().depth;
       EpsilonClosureInfo &info = cur_subset[id];
       Element &elem = info.element;
       Weight unprocessed_weight = info.weight_to_process;
-
-      KALDI_ASSERT(this_depth == info.depth);
 
       elem.weight = Plus(elem.weight, unprocessed_weight);
       info.weight_to_process = Weight::Zero();
@@ -690,11 +682,8 @@ template<class Arc> class DeterminizerStar {
            " in determinization");
       }
 
-      ExpandOneElement(elem,
-                       sorted,
-                       unprocessed_weight,
-                       &cur_subset,
-                       this_depth);
+      ExpandOneElement(elem, sorted, unprocessed_weight,
+                       &cur_subset, this_depth);
     }
 
     {  // copy cur_subset to output_subset.
