@@ -35,9 +35,6 @@ chunk_left_context=40
 clipping_threshold=30.0
 norm_based_clipping=true
 
-# natural gradient options
-ng_per_element_scale_options=
-ng_affine_options=
 num_epochs=8
 
 # training options
@@ -49,7 +46,7 @@ momentum=0.5
 adaptive_shrink=true
 shrink=0.98
 num_chunk_per_minibatch=100
-num_bptt_steps=20
+num_bptt_steps=
 samples_per_iter=20000
 remove_egs=true
 
@@ -118,10 +115,8 @@ if [ $stage -le 9 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
-    --num-bptt-steps $num_bptt_steps \
+    --num-bptt-steps "$num_bptt_steps" \
     --norm-based-clipping $norm_based_clipping \
-    --ng-per-element-scale-options "$ng_per_element_scale_options" \
-    --ng-affine-options "$ng_affine_options" \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
