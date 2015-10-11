@@ -42,7 +42,7 @@ namespace nnet3 {
    size), but the maximum size of the lists will usually be fairly small e.g. no
    more than 4 or so, as it represents the number of terms in a hand-coded
    summation expression.
-   
+
    The use of this function is in interpreting a command to set each row of
    a matrix to a sum of terms.  Each pair represents an input term, interpreted
    as (index-of-matrix, row-index), which represents a vector that will form
@@ -100,9 +100,18 @@ void SplitLocationsBackward(
    false and the outputs are don't-cares. */
 bool ConvertToIndexes(
     const std::vector<std::pair<int32, int32> > &location_vector,
-    int32 *first_value,    
+    int32 *first_value,
     std::vector<int32> *second_values);
 
+// This function returns true if for each integer i != -1, all the indexes j at which
+// indexes[j] == i are consecutive with no gaps (more formally: if j1 < j2 < j3
+// and indexes[j1] == indexes[j3], then indexes[j1] == indexes[j2]).  If so it
+// also outputs to "reverse_indexes" the begin and end of these ranges, so that
+// indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j && j <
+// (*reverse_indexes)[i].second.
+bool HasContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::pair<int32, int32> > *reverse_indexes);
 
 
 
