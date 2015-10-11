@@ -286,6 +286,8 @@ class Compiler {
 };
 
 
+
+
 } // namespace nnet3
 } // namespace kaldi
 

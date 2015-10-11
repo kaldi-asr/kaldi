@@ -548,5 +548,58 @@ void SplitLocationsBackward(
   }
 }
 
+// This function returns true if for each integer i != -1, all the indexes j at which
+// indexes[j] == i are consecutive with no gaps (more formally: if j1 < j2 < j3
+// and indexes[j1] == indexes[j3], then indexes[j1] == indexes[j2]).  If so it
+// also outputs to "reverse_indexes" the begin and end of these ranges, so that
+// indexes[j] == i for all j such that (*reverse_indexes)[i].first <= j && j <
+// (*reverse_indexes)[i].second.
+bool HasContiguousProperty(
+    const std::vector<int32> &indexes,
+    std::vector<std::pair<int32, int32> > *reverse_indexes) {
+  reverse_indexes->clear();
+  int32 num_indexes = indexes.size();
+  if (num_indexes == 0)
+    return true;
+  int32 num_input_indexes =
+      *std::max_element(indexes.begin(), indexes.end()) + 1;
+  KALDI_ASSERT(num_input_indexes >= 0);
+  if (num_input_indexes == 0) {
+    // we don't really expect this input, filled with -1's.
+    KALDI_WARN << "HasContiguousProperty called on vector of -1's.";
+    return true;
+  }
+  reverse_indexes->resize(num_input_indexes,
+                          std::pair<int32,int32>(-1, -1));
+  // set each pair's "first" to the min index of all elements
+  // of "indexes" with that value, and the "second" to the
+  // max plus one.
+  for (int32 i = 0; i < num_indexes; i++) {
+    int32 j = indexes[i];
+    if (j == -1) continue;
+    KALDI_ASSERT(j >= 0);
+    std::pair<int32, int32> &pair = (*reverse_indexes)[j];
+    if (pair.first == -1) {
+      pair.first = i;
+      pair.second = i + 1;
+    } else {
+      pair.first = std::min(pair.first, i);
+      pair.second = std::max(pair.second, i + 1);
+    }
+  }
+  // check that the contiguous property holds.
+  for (int32 i = 0; i < num_input_indexes; i++) {
+    std::pair<int32, int32> pair = (*reverse_indexes)[i];
+    if (pair.first != -1) {
+      for (int32 j = pair.first; j < pair.second; j++)
+        if (indexes[j] != i)
+          return false;
+    }
+  }
+  return true;
+}
+
+
+
 }  // namespace nnet3
 }  // namespace kaldi
