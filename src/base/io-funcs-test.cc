@@ -92,7 +92,8 @@ void UnitTestIo(bool binary) {
       KALDI_ASSERT(vec3_in == vec3);
       std::string  token1_in, token2_in;
       KALDI_ASSERT(Peek(infile, binary_in) == static_cast<int>(*token1));
-      KALDI_ASSERT(PeekToken(infile, binary_in) == (int)*token1); // Note:
+      KALDI_ASSERT(PeekToken(infile, binary_in) == static_cast<int>(*token1));
+      // Note:
       // the stuff with skipping over '<' is tested in ../util/kaldi-io-test.cc,
       // since we need to make sure it works with pipes.
       ReadToken(infile, binary_in, &token1_in);
@@ -132,7 +133,7 @@ int main() {
     UnitTestIo(false);
     UnitTestIo(true);
   }
-  KALDI_ASSERT(1);  // just wanted to check that KALDI_ASSERT does not fail for 1.
+  KALDI_ASSERT(1);  // just to check that KALDI_ASSERT does not fail for 1.
   return 0;
 }
 
