@@ -37,6 +37,7 @@ prior_subset_size=20000 # 20k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
+max_param_change=0.4
 presoftmax_prior_scale_power=-0.25
 remove_egs=true  # set to false to disable removing egs after training is done.
 
@@ -547,6 +548,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-ctc-train $parallel_train_opts --print-interval=10 \
+          --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time \
           --momentum=$momentum --write-raw=true "$mdl" \
           "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_num_chunk_per_minibatch ark:- ark:- |" \
