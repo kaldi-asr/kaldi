@@ -7,8 +7,8 @@
 config=            # config, which is also sent to all other scripts
 
 # NETWORK INITIALIZATION
-nnet_init=          # select initialized MLP (override initialization)
-nnet_proto=         # select network prototype (initialize it)
+nnet_init=          # select initialized MLP (override initialization) (TODO)
+nnet_proto=
 proto_opts=        # non-default options for 'make_nnet_proto.py'
 feature_transform= # provide feature transform (=splice,rescaling,...) (don't build new one)
 pytel_transform=   # use external transform defined in python (BUT specific)
@@ -163,7 +163,7 @@ if [ ! -z "$cmvn_opts" ]; then
   [ ! -r $data_cv/utt2spk ] && echo "Missing $data_cv/utt2spk" && exit 1;
   feats_opts="$feats_opts $cmvn_opts" 
   feats_opts="$feats_opts --trn-utt2spk-file=$data/utt2spk --trn-cmvn-scp=$data/cmvn.scp"
-  feats_opts="$feats_opts --trn-utt2spk-file=$data_cv/utt2spk --trn-cmvn-scp=$data_cv/cmvn.scp"
+  feats_opts="$feats_opts --cv-utt2spk-file=$data_cv/utt2spk --cv-cmvn-scp=$data_cv/cmvn.scp"
 else
   echo "apply-cmvn is not used"
 fi
@@ -180,18 +180,18 @@ echo $feats_opts >$dir/feats_opts
 if [ -z "$nnet_proto" ]; then
   #output-dim
   [ -z $num_tgt ] && num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
-  
+
   #input-dim
   num_fea=$(python theano-nnet/nnet1/feat_to_dim.py $feats_opts $dir/train.scp)
 
   # make network prototype
   nnet_proto=$dir/nnet.proto
+  echo "Creating proto file in $nnet_proto"
   utils/nnet/make_nnet_proto.py $proto_opts \
     ${bn_dim:+ --bottleneck-dim=$bn_dim} \
     $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
 
 fi
-
 
 echo "Training neural network"
 python $train_tool \

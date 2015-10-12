@@ -52,8 +52,8 @@ logging.basicConfig(filename=outdir+'/train.log', format='%(asctime)s: %(message
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 ## Check final_nnet.pkl exist, if yes quit
-if os.path.exists(outdir+"/final_nnet.h5"):
-  logging.info("Skipping training as %s/final_nnet.h5 exists", outdir)
+if os.path.exists(outdir+"/final_nnet.pklz"):
+  logging.info("Skipping training as %s/final_nnet.pklz exists", outdir)
   sys.exit(0)
 
 ## Load labels ##
@@ -67,8 +67,8 @@ cv_lab_dict  = utils.labels_ascii_to_dict(cv_lab)
 feat_preprocess = FeaturePreprocess(o)
 
 ## Load cmvn ##
-trn_cmvn = CMVN(o, o.trn_utt2spk_file, o.trn_cmvn_scp)
-cv_cmvn = CMVN(o, o.cv_utt2spk_file, o.cv_cmvn_scp)
+trn_cmvn = CMVN(feat_preprocess, o.trn_utt2spk_file, o.trn_cmvn_scp)
+cv_cmvn = CMVN(feat_preprocess, o.cv_utt2spk_file, o.cv_cmvn_scp)
 ##
 
 ## Check if to start from initial or middle

@@ -31,7 +31,7 @@ feats_scp = args[0]
 feat_preprocess = FeaturePreprocess(o)
 
 ## Load cmvn ##
-cmvn = CMVN(o, o.trn_utt2spk_file, o.trn_cmvn_scp)
+cmvn = CMVN(feat_preprocess, o.trn_utt2spk_file, o.trn_cmvn_scp)
 
 
 with kaldi_io.KaldiScpReader(feats_scp, feature_preprocess.full_preprocess, reader_args=[feat_preprocess, cmvn.utt2spk_dict, cmvn.cmvn_dict]) as data_it:

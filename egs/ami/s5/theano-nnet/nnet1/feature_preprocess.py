@@ -69,23 +69,21 @@ def full_preprocess(fea, utt, feat_preprocess, utt2spk_dict, cmvn_dict):
 
 class CMVN:
   
-  def __init__(self, o, utt2spk_file=None, cmvn_scp=None):
+  def __init__(self, feat_preprocess, utt2spk_file=None, cmvn_scp=None):
   
     self.utt2spk_dict = {}
     self.cmvn_dict = {}
     
-    if o.norm_means == "true" or o.norm_vars == "true":
+    if feat_preprocess.norm_means == True or feat_preprocess.norm_vars == True:
       if (not os.path.exists(utt2spk_file)) or (not os.path.exists(cmvn_scp)):
         print ("ERROR: utt2spk_file=%s or cmvn_scp=%s, does not exists" % (utt2spk_file, cmvn_scp))
         sys.exit(1)
         
 
-      utt2spk_file = data_dir+"/utt2spk"
       with open(utt2spk_file) as fd:
         self.utt2spk_dict = dict(line.strip().split(None, 1) for line in fd)
 
-      cmvn_scp_file_name = data_dir+"/cmvn.scp"
-      with kaldi_io.KaldiScpReader(cmvn_scp_file_name) as data_it:
+      with kaldi_io.KaldiScpReader(cmvn_scp) as data_it:
         for jj, (X, spk) in enumerate(data_it):
           self.cmvn_dict[spk] = X
 
