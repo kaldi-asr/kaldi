@@ -653,6 +653,7 @@ template<class Arc> class DeterminizerStar {
     for (size_t i = 0; i < size; i++) {
       ExpandOneElement(input_subset[i], sorted, input_subset[i].weight,
                        &cur_subset);
+      ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
     }
 
     int counter = 0; // relates to max-states option, used for test.
