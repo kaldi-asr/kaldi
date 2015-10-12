@@ -41,7 +41,7 @@ num_egs_diagnostic=400 # number of frames for "compute_prob" jobs
 frames_per_iter=400000 # each iteration of training, see this many frames
                        # per job.  This is just a guideline; it will pick a number
                        # that divides the number of samples in the entire data.
-ctc_supervision_opts=
+right_tolerance=  #CTC right tolerance == max label delay.
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
@@ -258,7 +258,7 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
-ctc_supervision_all_opts="$ctc_supervision_opts --lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor"
+ctc_supervision_all_opts="--lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor --right-tolerance=$right_tolerance"
 
 
 echo $left_context > $dir/info/left_context

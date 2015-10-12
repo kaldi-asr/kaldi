@@ -16,7 +16,7 @@ cmd=run.pl
 num_epochs=10      # Number of epochs of training;
                    # the number of iterations is worked out from this.
                    # Be careful with this: we actually go over the data
-                   # num-epochs * frame-subsampling-rate times, due to
+                   # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001

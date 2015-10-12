@@ -35,6 +35,7 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   NnetTrainerOptions():
@@ -42,7 +43,8 @@ struct NnetTrainerOptions {
       store_component_stats(true),
       print_interval(100),
       debug_computation(false),
-      momentum(0.0) { }
+      momentum(0.0),
+      max_param_change(0.4) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
@@ -53,6 +55,9 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
+    opts->Register("max_param_change", &max_param_change, "The maximum change in"
+                   "parameters allowed per minibatch, measured in Frobenius norm "
+                   "over the entire model (change will be clipped to this value)");
     opts->Register("momentum", &momentum, "momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
                    "automatically multiply the learning rate by (1-momenum) "

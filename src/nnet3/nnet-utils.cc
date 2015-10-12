@@ -1,7 +1,5 @@
 // nnet3/nnet-utils.cc
 
-// nnet3/nnet-utils.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -267,9 +265,14 @@ void SetLearningRate(BaseFloat learning_rate,
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    comp->Scale(scale);
+  if (scale == 1.0) return;
+  else if (scale == 0.0) {
+    SetZero(false, nnet);
+  } else {
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->Scale(scale);
+    }
   }
 }
 

@@ -20,9 +20,11 @@ num_epochs=10      # Number of epochs of training;
                    # using different data-shifts.
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-adaptive_shrink=true     # if true, the shrink value is increased to 1 with a rate
-                         # inversely proportional to the effective_learning_rate
-shrink=0.98  # this parameter would be used to scale the parameter matrices
+shrink=0.99  # this parameter would be used to scale the parameter matrices
+shrink_threshold=0.125 # a value less than 0.25 that we compare the mean of
+                       # 'deriv-avg' for sigmoid components with, and if it's
+                       # less, we shrink.
+right_tolerance=10
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
 frame_subsampling_factor=3  # controls reduced frame-rate at the output.
@@ -75,8 +77,8 @@ norm_based_clipping=true  # if true norm_based_clipping is used.
                           # If false, element-wise clipping is used.
 clipping_threshold=30     # if norm_based_clipping is true this would be the maximum value of the row l2-norm,
                           # else this is the max-absolute value of each element in Jacobian.
-chunk_width=20  # number of output labels in the sequence used to train an LSTM
-chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
+chunk_width=50  # number of output labels in the sequence used to train an LSTM
+chunk_left_context=30  # number of steps used in the estimation of LSTM state before prediction of the first label
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
@@ -140,10 +142,10 @@ if [ $# != 5 ]; then
   echo "                                                   # the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
-  echo "  --adaptive-shrink <shrink|true>                  # if true, adaptive shrinkage is turned on"
-  echo "                                                   # the shrink value is increased to 1 with a rate"
-  echo "                                                   # inversely proportional to the effective_learning_rate"
-  echo "  --shrink <shrink|0.0>                            # if non-zero this parameter will be used to scale the parameter matrices"
+  echo "  --shrink <shrink|0.99>                           # this parameter will be used to scale the parameter matrices on each iteration"
+  echo "                                                   # as long as the average derivative at sigmoids is < --shrink-threshold."
+  echo "  --shrink-threshold <threshold|0.125>             # a threshold (should be between 0.0 and 0.25) that controls when to"
+  echo "                                                   # do parameter shrinking."
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
@@ -306,6 +308,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
+      --right-tolerance $right_tolerance \
       --cmd "$cmd" $egs_opts \
       --stage $get_egs_stage \
       --frames-per-iter $frames_per_iter \
@@ -466,15 +469,19 @@ while [ $x -lt $num_iters ]; do
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_effective_learning_rate=$(perl -e "print ($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt));");
   this_learning_rate=$(perl -e "print ($this_effective_learning_rate*$this_num_jobs);");
-  if [ "$adaptive_shrink" == "true" ]; then
-    this_shrink=$(perl -e "print $shrink + ($flr/$this_effective_learning_rate) * (1 - $shrink)")
-  else
-    this_shrink=$shrink
-  fi
 
-  echo "On iteration $x, learning rate is $this_learning_rate and shrink value is $this_shrink."
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
+
+    # Set this_shrink value.
+    if [ $x -eq 0 ] || nnet3-ctc-info --print-args=false $dir/$x.mdl | \
+      perl -e "while(<>){ if (m/type=Sigmoid.+deriv-avg=.+mean=(\S+)/) { \$n++; \$tot+=\$1; } } exit(\$tot/\$n > $shrink_threshold);"; then
+      this_shrink=$shrink; # e.g. avg-deriv of sigmoids was <= 0.125, so shrink.
+    else
+      this_shrink=1.0  # don't shrink: sigmoids are not over-saturated.
+    fi
+    echo "On iteration $x, learning rate is $this_learning_rate and shrink value is $this_shrink."
+
 
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
