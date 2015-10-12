@@ -472,8 +472,8 @@ template<class Arc> class DeterminizerStar {
   struct EpsilonClosureInfo {
     EpsilonClosureInfo() {}
 
-    EpsilonClosureInfo(const Element &e, const Weight &w, bool i, int d = 0) :
-      element(e), weight_to_process(w), in_queue(i), depth(d) {}
+    EpsilonClosureInfo(const Element &e, const Weight &w, bool i) :
+      element(e), weight_to_process(w), in_queue(i) {}
 
     // the weight in the Element struct is the total current weight
     // that has been processed already
@@ -485,65 +485,44 @@ template<class Arc> class DeterminizerStar {
     // whether "this" struct is in the queue
     // we store the info here so that we don't have to look it up every time
     bool in_queue;
-
-    // depth is the max number of epsilons (so far) from the original element set
-    // e.g. if the original set is (s1, s2)
-    // s1 -eps-> s4
-    // s2 -eps-> s3 -eps-> s4
-    // then the depth for s4 would eventually be 2
-
-    // to avoid duplicate of computation, we use a priority_queue for storing
-    // the state_id's to process, and always pick the one with the smallest
-    // depth so far first
-    //
-    // this would be similar to topo-sort the states before processing;
-    // (not quite identical since we don't compute the definitive depth first,
-    // but gradually update the depth while running
-    // it seems to speed up the process very significantly already
-    int depth;
   };
 
-  // this is the struct that is put into the priority_queue. 
-  // The comparison operator makes sure that the queue.top() returns
-  // the one with the least depth
-  struct IdAndDepth {
-    IdAndDepth (InputStateId i, int d):
-      id(i), depth(d) {}
-    InputStateId id;
-    int depth;
-    bool operator <(const IdAndDepth& other) const {
-      return this->depth > other.depth;  // we want the lowest depth on top
-    }
-  };
+  vector<EpsilonClosureInfo> ecinfo_;
   
   // queue for EpsilonClosure() function
   // put it here so the memeory allocation for better effiency
   // otherwise it gets created and destroyed constantly, also
   // possibly a lot of resize() call the for underlying vector
-  priority_queue<IdAndDepth> queue_;
+  list<typename Arc::StateId> queue_;
+
+  vector<size_t> id_to_index_;
+  
 
   // Add one element (elem) into cur_subset
   // it also adds the necessary stuff to queue_, set the correct weight, depth
   // depth here is the new depth
-  void AddOneElement(const Element &elem, int depth,
-                     const Weight &unprocessed_weight,
-                     std::map<InputStateId, EpsilonClosureInfo> *cur_subset) {
-    typename std::map<InputStateId, EpsilonClosureInfo>::iterator
+  void AddOneElement(const Element &elem, const Weight &unprocessed_weight,
+                     std::map<InputStateId, size_t> *cur_subset) {
+    typename std::map<InputStateId, size_t>::iterator
         iter = cur_subset->find(elem.state);
     if (iter == cur_subset->end()) {
       // was no such StateId: insert and add to queue.
-      (*cur_subset)[elem.state] =
-                   EpsilonClosureInfo(elem, unprocessed_weight,
-                                      true, depth);
-      queue_.push(IdAndDepth(elem.state, depth));
+      ecinfo_.push_back(EpsilonClosureInfo(elem, unprocessed_weight, true));
+      (*cur_subset)[elem.state] = ecinfo_.size() - 1;
+      if (id_to_index_.size() < elem.state + 1) {
+        id_to_index_.resize(elem.state + 1, 0);
+      }
+      id_to_index_[elem.state] = ecinfo_.size() - 1;
+      queue_.push_back(elem.state);
     } else {  // one is already there.  Add weights.
-      if (iter->second.element.string != elem.string) {
+      EpsilonClosureInfo &info = ecinfo_[iter->first];
+      if (info.element.string != elem.string) {
         std::cerr << "DeterminizerStar: FST was not functional "
           "-> not determinizable\n";
         { // Print some debugging information.  Can be helpful to debug
           // the inputs when FSTs are mysteriously non-functional.
           vector<Label> tmp_seq;
-          repository_.SeqOfId(iter->second.element.string, &tmp_seq);
+          repository_.SeqOfId(info.element.string, &tmp_seq);
           std::cerr << "First string: ";
           for (size_t i = 0; i < tmp_seq.size(); i++)
             std::cerr << tmp_seq[i] << " ";
@@ -555,35 +534,34 @@ template<class Arc> class DeterminizerStar {
         }
         throw std::runtime_error("Non-functional FST: cannot determinize.\n");
       }
-      if (iter->second.in_queue) {
+      if (info.in_queue) {
         // since in queue, no check since we're propagating them anyway
-        iter->second.weight_to_process =
-            Plus(iter->second.weight_to_process, unprocessed_weight);
+        info.weight_to_process =
+            Plus(info.weight_to_process, unprocessed_weight);
         // probably should take it out of the queue, update the depth
         // and put it back.
         // but it seems it's fast enough already ;-)
       } else {
         // is in the subset but not in queue
-        iter->second.weight_to_process = Plus(iter->second.weight_to_process,
-                                              unprocessed_weight);
+        info.weight_to_process = Plus(info.weight_to_process,
+                                      unprocessed_weight);
 
         // this is because the code in "else" below: the 
         // iter->second.weight_to_process might not be Zero()
-        Weight weight = Plus(iter->second.element.weight,
-                             iter->second.weight_to_process);
+        Weight weight = Plus(info.element.weight,
+                             info.weight_to_process);
 
         // What is done below is, we propagate the weight (by adding them
         // to the queue only when the change is big enough;
         // otherwise we just store the weight, until before returning
         // we add the element.weight and weight_to_process together
-        iter->second.depth = max(iter->second.depth, depth);
-        if (! ApproxEqual(weight, iter->second.element.weight, delta_)) {
+        if (! ApproxEqual(weight, info.element.weight, delta_)) {
           // add extra part of weight to queue.
-          iter->second.in_queue = true;
-          queue_.push(IdAndDepth(elem.state, iter->second.depth));
+          info.in_queue = true;
+          queue_.push_back(elem.state);
         } else {
           // we update the weight_to_process, but not add it to the queue
-          iter->second.in_queue = false;
+          info.in_queue = false;
         }
       }
     }
@@ -597,8 +575,7 @@ template<class Arc> class DeterminizerStar {
   void ExpandOneElement(const Element &elem,
                         bool sorted,
                         Weight unprocessed_weight,
-                        int this_depth,
-                        std::map<InputStateId, EpsilonClosureInfo> *cur_subset) {
+                        std::map<InputStateId, size_t> *cur_subset) {
     // now we are going to propagate the "unprocessed_weight"
     for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
          !aiter.Done(); aiter.Next()) {
@@ -627,8 +604,7 @@ template<class Arc> class DeterminizerStar {
           seq.push_back(arc.olabel);
         next_elem.string = repository_.IdOfSeq(seq);
       }
-      AddOneElement(next_elem, this_depth + 1, next_unprocessed_weight,
-                    cur_subset);
+      AddOneElement(next_elem, next_unprocessed_weight, cur_subset);
     }
   }
 
@@ -636,11 +612,12 @@ template<class Arc> class DeterminizerStar {
                       vector<Element> *output_subset) {
     // input_subset must have only one example of each StateId.
 
-    std::map<InputStateId, EpsilonClosureInfo> cur_subset;
+    std::map<InputStateId, size_t> cur_subset;
 
     size_t size = input_subset.size();
-    typedef typename std::map<InputStateId, EpsilonClosureInfo>::iterator MapIter;
-    /*
+    typedef typename std::map<InputStateId, size_t>::iterator MapIter;
+    //*
+    ecinfo_.resize(0);
     {
       MapIter iter = cur_subset.end();
       for (size_t i = 0; i < size; i++) {
@@ -649,39 +626,40 @@ template<class Arc> class DeterminizerStar {
 
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
-        EpsilonClosureInfo info(input_subset[i], input_subset[i].weight,
-                                true, // now it is equivalent to having 
-                                // the vector as a "virtual queue" so it 
-                                // needs to be set true
-                                0);
-        info.element.weight = Weight::Zero(); // clear the weight
+        ecinfo_.push_back(EpsilonClosureInfo(input_subset[i], input_subset[i].weight, true));
+                               // now it is equivalent to having 
+                               // the vector as a "virtual queue" so it 
+                               // needs to be set true
+        ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
-        std::pair<const InputStateId, EpsilonClosureInfo>
-                                 pr(input_subset[i].state, info);
+        if (id_to_index_.size() < input_subset[i].state + 1) {
+          id_to_index_.resize(input_subset[i].state + 1, 0);
+        }
+        id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
+        std::pair<const InputStateId, size_t>
+                                 pr(input_subset[i].state, ecinfo_.size() - 1);
         iter = cur_subset.insert(iter, pr);
         // By providing iterator where we inserted last one,
         // we make insertion more efficient since
         // input subset was already in sorted order.
       }
     }
-    */
+//    */
+
     // find whether input fst is known to be sorted in input label.
     bool sorted =
             ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
     for (size_t i = 0; i < size; i++) {
-      /*
       ExpandOneElement(input_subset[i], sorted, input_subset[i].weight,
-                       0, &cur_subset);
-                       */
-      AddOneElement(input_subset[i], 0, input_subset[i].weight, &cur_subset);
+                       &cur_subset);
     }
 
     int counter = 0; // relates to max-states option, used for test.
     while (!queue_.empty()) {
-      InputStateId id = queue_.top().id;
-      int this_depth = queue_.top().depth;
-      EpsilonClosureInfo &info = cur_subset[id];
+      InputStateId id = queue_.front();
+      size_t index = id_to_index_[id];
+      EpsilonClosureInfo &info = ecinfo_[index];
       Element &elem = info.element;
       Weight unprocessed_weight = info.weight_to_process;
 
@@ -689,7 +667,7 @@ template<class Arc> class DeterminizerStar {
       info.weight_to_process = Weight::Zero();
 
       info.in_queue = false;
-      queue_.pop();
+      queue_.pop_front();
 
       if (max_states_ > 0 && counter++ > max_states_) {
         std::cerr << "Determinization aborted since looped more than "
@@ -698,8 +676,10 @@ template<class Arc> class DeterminizerStar {
            " in determinization");
       }
 
-      ExpandOneElement(elem, sorted, unprocessed_weight,
-                       this_depth, &cur_subset);
+      // generally we need to be careful about iterator invalidation problem
+      // but here since we're only adding stuff to cur_subset, the reference
+      // "elem" has no danger of getting invalidated
+      ExpandOneElement(elem, sorted, unprocessed_weight, &cur_subset);
     }
 
     {  // copy cur_subset to output_subset.
@@ -708,11 +688,12 @@ template<class Arc> class DeterminizerStar {
       output_subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
       for (; iter != end; ++iter) {
-        if (iter->second.weight_to_process != Weight::Zero()) {
-          iter->second.element.weight =
-            Plus(iter->second.element.weight, iter->second.weight_to_process);
+        size_t index = id_to_index_[iter->first];
+        EpsilonClosureInfo& info = ecinfo_[index];
+        if (info.weight_to_process != Weight::Zero()) {
+          info.element.weight = Plus(info.element.weight, info.weight_to_process);
         }
-        output_subset->push_back(iter->second.element);
+        output_subset->push_back(info.element);
       }
     }
   }
