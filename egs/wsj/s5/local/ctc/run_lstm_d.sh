@@ -143,17 +143,24 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # this does offline decoding that should give the same results as the real
-  # online decoding.
+  phone_lm_weight=0.15
   for lm_suffix in tgpr bd_tgpr; do
-    graph_dir=exp/tri4b/graph_${lm_suffix}
+    steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
+        data/lang_test_${lm_suffix} $dir $dir/graph_${lm_suffix}_${phone_lm_weight}
+  done
+fi
+
+# this does offline decoding
+if [ $stage -le 13 ]; then
+  for lm_suffix in tgpr bd_tgpr; do
     # use already-built graphs.
     for year in eval92 dev93; do
-      steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_test_$year \
-         $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
+      steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
+         $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
+         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
     done
   done
 fi
+wait;
 
 exit 0;
