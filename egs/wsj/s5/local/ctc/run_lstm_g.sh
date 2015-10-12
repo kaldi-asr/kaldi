@@ -173,6 +173,7 @@ if [ $stage -le 13 ]; then
     # use already-built graphs.
     for year in eval92 dev93; do
       steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
+         --frames-per-chunk $chunk_width --extra-left-context $chunk_left_context \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
          $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
     done
