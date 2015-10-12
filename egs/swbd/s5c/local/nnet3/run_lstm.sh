@@ -84,8 +84,7 @@ train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-  --speed-perturb $speed_perturb \
-  --generate-alignments false || exit 1;
+  --speed-perturb $speed_perturb || exit 1;
 
 if [ $stage -le 9 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
