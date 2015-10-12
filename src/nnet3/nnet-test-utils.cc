@@ -35,7 +35,9 @@ void GenerateConfigSequenceSimplest(
   std::ostringstream os;
 
   int32 input_dim = 10 + Rand() % 20,
-       output_dim = 100 + Rand() % 200;
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200);
 
 
   os << "component name=affine1 type=AffineComponent input-dim="
@@ -62,7 +64,9 @@ void GenerateConfigSequenceSimpleContext(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-       output_dim = 100 + Rand() % 200;
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200);  
 
   os << "component name=affine1 type=AffineComponent input-dim="
      << spliced_dim << " output-dim=" << output_dim << std::endl;
@@ -100,7 +104,9 @@ void GenerateConfigSequenceSimple(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   bool use_final_nonlinearity = (opts.allow_final_nonlinearity &&
                                  RandInt(0, 1) == 0);
@@ -171,7 +177,9 @@ void GenerateConfigSequenceRnn(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
@@ -228,7 +236,9 @@ void GenerateConfigSequenceRnnClockwork(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
@@ -318,7 +328,9 @@ void GenerateConfigSequenceLstm(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       cell_dim = 40 + Rand() % 50,
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 1));
 
@@ -474,7 +486,9 @@ void GenerateConfigSequenceLstmType2(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       cell_dim = 40 + Rand() % 50,
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 2));
 

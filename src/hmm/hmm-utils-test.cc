@@ -1,6 +1,7 @@
 // hmm/hmm-utils-test.cc
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//                2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,6 +19,7 @@
 // limitations under the License.
 
 #include "hmm/hmm-utils.h"
+#include "hmm/tree-accu.h"
 
 namespace kaldi {
 
@@ -180,15 +182,35 @@ void TestConvertPhnxToProns() {
                                     word_end_sym, &ans)
                  && ans == ans_check);
   }
-
-  
 }
+
+void TestAccumulateTreeStatsOptions() {
+  AccumulateTreeStatsOptions opts;
+  opts.var_floor = RandInt(0, 10);
+  opts.ci_phones_str = "3:2:1";
+  opts.phone_map_rxfilename = "echo 1 2; echo 2 5 |";
+  opts.collapse_pdf_classes = (RandInt(0, 1) == 0);
+  opts.context_width = RandInt(3, 4);
+  opts.central_position = RandInt(0, 2);
+  AccumulateTreeStatsInfo info(opts);
+  KALDI_ASSERT(info.var_floor == opts.var_floor);
+  KALDI_ASSERT(info.ci_phones.size() == 3 && info.ci_phones[2] == 3);
+  KALDI_ASSERT(info.phone_map.size() == 3 && info.phone_map[2] == 5);
+  KALDI_ASSERT(info.context_width == opts.context_width);
+  KALDI_ASSERT(info.central_position == opts.central_position);
+}
+
+
+
 
 
 }
 
 int main() {
   kaldi::TestConvertPhnxToProns();
+#ifndef _MSC_VER
+  kaldi::TestAccumulateTreeStatsOptions();
+#endif
   std::cout << "Test OK.\n";
 }
 

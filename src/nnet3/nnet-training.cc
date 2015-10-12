@@ -55,7 +55,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
                         *nnet_,
                         (config_.momentum == 0.0 ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
-  computer.AcceptInputs(*nnet_, eg);
+  computer.AcceptInputs(*nnet_, eg.io);
   computer.Forward();
 
   this->ProcessOutputs(eg, &computer);

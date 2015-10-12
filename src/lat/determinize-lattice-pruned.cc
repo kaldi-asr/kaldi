@@ -1552,5 +1552,3 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
     DeterminizeLatticePhonePrunedOptions opts);
 
 }
-
-

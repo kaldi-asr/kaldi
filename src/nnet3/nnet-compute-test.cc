@@ -28,6 +28,15 @@ namespace kaldi {
 namespace nnet3 {
 
 
+void TestNnetDecodable(const ComputationRequest &request,
+                       const std::vector<Matrix<BaseFloat> > &inputs,
+                       const Nnet &nnet,
+                       const CuMatrixBase<BaseFloat> &reference_output) {
+  // DecodableAmNnetSimpleOptions opts;
+  // This is a placeholder for where we'll eventually test either the decodable
+  // object or something similar to it (e.g. a base class)
+}
+
 void UnitTestNnetCompute() {
   for (int32 n = 0; n < 20; n++) {    
     struct NnetGenerationOptions gen_config;
@@ -90,6 +99,9 @@ void UnitTestNnetCompute() {
     }
     computer.Forward();
     const CuMatrixBase<BaseFloat> &output(computer.GetOutput("output"));
+
+    TestNnetDecodable(request, inputs, nnet, output);
+    
     KALDI_LOG << "Output sum is " << output.Sum();
     CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols());
     output_deriv.SetRandn();

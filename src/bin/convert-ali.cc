@@ -86,11 +86,11 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &old_alignment = alignment_reader.Value();
       std::vector<int32> new_alignment;
       if (ConvertAlignment(old_trans_model,
-                          new_trans_model,
-                          new_ctx_dep,
-                          old_alignment,
-                          (phone_map_rxfilename != "" ? &phone_map : NULL),
-                          &new_alignment)) {
+                           new_trans_model,
+                           new_ctx_dep,
+                           old_alignment,
+                           (phone_map_rxfilename != "" ? &phone_map : NULL),
+                           &new_alignment)) {
         alignment_writer.Write(key, new_alignment);
         num_success++;
       } else {
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
     }
 
     KALDI_LOG << "Succeeded converting alignments for " << num_success
-              <<" files, failed for " << num_fail;
+              << " files, failed for " << num_fail;
 
     if (num_success != 0) return 0;
     else return 1;
@@ -110,5 +110,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

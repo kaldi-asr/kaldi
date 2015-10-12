@@ -26,6 +26,7 @@ namespace kaldi {
 namespace nnet3 {
 
 void NnetIo::Write(std::ostream &os, bool binary) const {
+  KALDI_ASSERT(features.NumRows() == static_cast<int32>(indexes.size()));
   WriteToken(os, binary, "<NnetIo>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
@@ -39,7 +40,19 @@ void NnetIo::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   features.Read(is, binary);
-  ExpectToken(is, binary, "</NnetIo>");    
+  ExpectToken(is, binary, "</NnetIo>");
+}
+
+bool NnetIo::operator == (const NnetIo &other) const {
+  if (name != other.name) return false;
+  if (indexes != other.indexes) return false;
+  if (features.NumRows() != other.features.NumRows() ||
+      features.NumCols() != other.features.NumCols())
+    return false;
+  Matrix<BaseFloat> this_mat, other_mat;
+  features.GetMatrix(&this_mat);
+  other.features.GetMatrix(&other_mat);
+  return ApproxEqual(this_mat, other_mat);
 }
 
 NnetIo::NnetIo(const std::string &name,
@@ -50,6 +63,12 @@ NnetIo::NnetIo(const std::string &name,
   indexes.resize(num_rows);  // sets all n,t,x to zeros.
   for (int32 i = 0; i < num_rows; i++)
     indexes[i].t = t_begin + i;
+}
+
+void NnetIo::Swap(NnetIo *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  features.Swap(&(other->features));
 }
 
 NnetIo::NnetIo(const std::string &name,
@@ -74,6 +93,7 @@ void NnetExample::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Nnet3Eg>");
   WriteToken(os, binary, "<NumIo>");
   int32 size = io.size();
+  KALDI_ASSERT(size > 0 && "Writing empty nnet example");
   WriteBasicType(os, binary, size);
   for (int32 i = 0; i < size; i++)
     io[i].Write(os, binary);
@@ -85,7 +105,7 @@ void NnetExample::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NumIo>");
   int32 size;
   ReadBasicType(is, binary, &size);
-  if (size < 0 || size > 1000000)
+  if (size <= 0 || size > 1000000)
     KALDI_ERR << "Invalid size " << size;
   io.resize(size);
   for (int32 i = 0; i < size; i++)

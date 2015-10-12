@@ -87,6 +87,8 @@ struct IoSpecification {
   /// Output ends in a newline.
   void Print(std::ostream &os) const;
 
+  void Swap(IoSpecification *other);
+
   bool operator== (const IoSpecification &other) const;
 };
 

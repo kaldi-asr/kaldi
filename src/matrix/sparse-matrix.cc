@@ -1096,6 +1096,13 @@ Real SparseVector<Real>::Max(int32 *index_out) const {
   return 0.0;
 }
 
+void GeneralMatrix::Swap(GeneralMatrix *other) {
+  mat_.Swap(&(other->mat_));
+  cmat_.Swap(&(other->cmat_));
+  smat_.Swap(&(other->smat_));
+}
+
+
 template class SparseVector<float>;
 template class SparseVector<double>;
 template class SparseMatrix<float>;
