@@ -321,11 +321,11 @@ fi
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  echo "$0: feature dimension mismatch with egs in $egs_dir: $feat_dim vs $(cat $egs_dir/info/feat_dim)";
   exit 1;
 fi
 if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  echo "$0: ivector dimension mismatch with egs in $egs_dir: $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
   exit 1;
 fi
 

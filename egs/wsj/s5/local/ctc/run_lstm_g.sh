@@ -126,12 +126,12 @@ if [ $stage -le 11 ]; then
      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-#  touch exp/ctc/lstm_f/egs/.nodelete # keep egs around when that run dies.
-#    --egs-dir exp/ctc/lstm_f/egs \
+  touch exp/ctc/lstm_f/egs/.nodelete # keep egs around when that run dies.
 
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
   steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
+    --egs-dir exp/ctc/lstm_f/egs \
     --right-tolerance 20 \
     --frames-per-iter 800000 \
     --target-num-history-states 500 \
@@ -158,8 +158,8 @@ if [ $stage -le 11 ]; then
 fi
 
 
+phone_lm_weight=0.15
 if [ $stage -le 12 ]; then
-  phone_lm_weight=0.15
   for lm_suffix in tgpr bd_tgpr; do
     steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
         data/lang_test_${lm_suffix} $dir $dir/graph_${lm_suffix}_${phone_lm_weight}
@@ -173,11 +173,11 @@ if [ $stage -le 13 ]; then
     # use already-built graphs.
     for year in eval92 dev93; do
       steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
-         --online-ivector-dir exp/nnet3/ivectors_test_$year \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
          $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
     done
   done
 fi
+wait
 
 exit 0;

@@ -141,6 +141,7 @@ if [ $stage -le 1 ]; then
     nnet3-ctc-latgen-faster $ivector_opts \
      --frame-subsampling-factor=$frame_subsampling_factor \
      --frames-per-chunk=$frames_per_chunk \
+     --extra-left-context=$extra_left_context \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
      --blank-scale=$blank_scale --allow-partial=true \

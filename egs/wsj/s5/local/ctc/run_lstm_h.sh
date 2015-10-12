@@ -162,9 +162,8 @@ if [ $stage -le 11 ]; then
     data/train_si284_hires data/lang_ctc $treedir exp/tri4b_lats_si284  $dir  || exit 1;
 fi
 
-
+phone_lm_weight=0.15
 if [ $stage -le 12 ]; then
-  phone_lm_weight=0.15
   for lm_suffix in tgpr bd_tgpr; do
     steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
         data/lang_test_${lm_suffix} $dir $dir/graph_${lm_suffix}_${phone_lm_weight}
@@ -178,11 +177,12 @@ if [ $stage -le 13 ]; then
     # use already-built graphs.
     for year in eval92 dev93; do
       steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
-         --online-ivector-dir exp/nnet3/ivectors_test_$year \
+        --frames-per-chunk $chunk_width --extra-left-context $chunk_left_context \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
          $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
     done
   done
 fi
+wait
 
 exit 0;
