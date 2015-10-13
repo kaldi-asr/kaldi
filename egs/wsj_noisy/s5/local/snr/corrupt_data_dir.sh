@@ -1,6 +1,7 @@
 #!/bin/bash 
 
 # Copyright 2014  Johns Hopkins University (Author: Vijayaditya Peddinti)
+#           2015  Tom Ko
 #           2015  Vimal Manohar
 # Apache 2.0.
 # This script processes generates multi-condition training data from clean data dir
@@ -8,18 +9,21 @@
 
 . ./cmd.sh;
 set -e
+set -o pipefail
 
 stage=0
 random_seed=0
 num_files_per_job=100
-snrs="20:10:15:5:0"
+snrs="20:10:15:5:0:-5"
+signal_dbs="5:2:0:-2:-5:-10:-20:-30:-40:-50:-60"
 tmp_dir=exp/make_corrupt
-max_jobs_run=50
 output_clean_dir=
 output_clean_wav_dir=
 output_noise_dir=
 output_noise_wav_dir=
 dest_wav_dir=
+select_only_corruption_with_noise=true
+nj=200
 
 . ./path.sh;
 . ./utils/parse_options.sh
@@ -57,7 +61,7 @@ fi
 
 if [ ! -z "$output_noise_dir" ]; then
   [ -z "$output_noise_wav_dir" ] && output_noise_wav_dir=$output_noise_dir/wavs
-  mkdir -p $output_noise_dir $output_noise_wav_dir
+  mkdir -p $output_noise_wav_dir
   output_noise_wav_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $output_noise_wav_dir ${PWD}`
 fi
 
@@ -79,7 +83,7 @@ if [ $stage -le 0 ]; then
   cat $src_dir/wav.scp | sed -e "s/^\s*//g" | \
     cut -d' ' -f1 | \
     awk -v p1=$dest_wav_dir -v p2=$wav_prefix \
-    '{printf("%s/%s%s.wav\n", p1, p2, $1);}'> $tmp_dir/corrupted_${random_seed}.list
+    '{printf("%s%s %s/%s%s.wav\n", p2, $1, p1, p2, $1);}'> $tmp_dir/corrupted_${random_seed}.list
 
   if [ ! -z "$output_clean_dir" ]; then
     utils/copy_data_dir.sh --extra-files utt2uniq $dest_dir $output_clean_dir
@@ -87,7 +91,7 @@ if [ $stage -le 0 ]; then
     cat $src_dir/wav.scp | sed -e "s/^\s*//g" | \
       cut -d' ' -f1 | \
       awk -v p1=$output_clean_wav_dir -v p2=$wav_prefix \
-      '{printf("%s/%s%s.wav\n", p1, p2, $1);}'> $tmp_dir/clean_${random_seed}.list
+      '{printf("%s%s %s/%s%s.wav\n", p2, $1, p1, p2, $1);}'> $tmp_dir/clean_${random_seed}.list
   fi
   
   if [ ! -z "$output_noise_dir" ]; then
@@ -96,44 +100,44 @@ if [ $stage -le 0 ]; then
     cat $src_dir/wav.scp | sed -e "s/^\s*//g" | \
       cut -d' ' -f1 | \
       awk -v p1=$output_noise_wav_dir -v p2=$wav_prefix \
-      '{printf("%s/%s%s.wav\n", p1, p2, $1);}'> $tmp_dir/noise_${random_seed}.list
+      '{printf("%s%s %s/%s%s.wav\n", p2, $1, p1, p2, $1);}'> $tmp_dir/noise_${random_seed}.list
   fi
 fi
 
 
-# Create a list of new wave files
+## Create a list of new wave files
+#if [ $stage -le 1 ]; then
+#  # Create the new wav.scp file
+#  python -c "
+#import re
+#file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
+#dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/corrupted_${random_seed}.list'))
+#for file_id, dest_file_name in zip(file_ids, dest_file_names):
+#  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
+#" > $dest_dir/wav.scp
+#
+#  if [ ! -z "$output_clean_dir" ]; then
+#    python -c "
+#import re
+#file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
+#dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/clean_${random_seed}.list'))
+#for file_id, dest_file_name in zip(file_ids, dest_file_names):
+#  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
+#" > $output_clean_dir/wav.scp
+#  fi
+#  
+#  if [ ! -z "$output_noise_dir" ]; then
+#    python -c "
+#import re
+#file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
+#dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/noise_${random_seed}.list'))
+#for file_id, dest_file_name in zip(file_ids, dest_file_names):
+#  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
+#" > $output_noise_dir/wav.scp
+#  fi
+#fi
+
 if [ $stage -le 1 ]; then
-  # Create the new wav.scp file
-  python -c "
-import re
-file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
-dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/corrupted_${random_seed}.list'))
-for file_id, dest_file_name in zip(file_ids, dest_file_names):
-  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
-" > $dest_dir/wav.scp
-
-  if [ ! -z "$output_clean_dir" ]; then
-    python -c "
-import re
-file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
-dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/clean_${random_seed}.list'))
-for file_id, dest_file_name in zip(file_ids, dest_file_names):
-  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
-" > $output_clean_dir/wav.scp
-  fi
-  
-  if [ ! -z "$output_noise_dir" ]; then
-    python -c "
-import re
-file_ids = map(lambda x: x.split()[0], open('$src_dir/wav.scp').readlines())
-dest_file_names = map(lambda x: x.split()[0], open('$tmp_dir/noise_${random_seed}.list'))
-for file_id, dest_file_name in zip(file_ids, dest_file_names):
-  print '$wav_prefix{0} cat {1} |'.format(file_id, dest_file_name)
-" > $output_noise_dir/wav.scp
-  fi
-fi
-
-if [ $stage -le 2 ]; then
   # Modify segments file to point to the new wav files
   if [ -f $dest_dir/segments ]; then
     cat $dest_dir/segments | awk -v p=$wav_prefix \
@@ -167,23 +171,66 @@ for file in cmvn.scp feats.scp reco2file_and_channel; do
   fi
 done
 
+if $select_only_corruption_with_noise; then
+  if [ $stage -le 2 ]; then
+    mkdir -p ${impnoise_dir}_noisy/info
+    cp ${impnoise_dir}/info/* ${impnoise_dir}_noisy/info
+    cat ${impnoise_dir}/info/noise_impulse_* | grep "impulse_files" | \
+      python -c "
+import sys
+for line in sys.stdin.readlines():
+  for x in line.strip().split('=')[1].split():
+    print (x)
+" > ${impnoise_dir}_noisy/info/impulse_files
+  fi
+  impnoise_dir=${impnoise_dir}_noisy
+  [ ! -s $impnoise_dir/info/impulse_files ] && echo "$0: $impnoise_dir/info/impulse_files contains no impulses" && exit 1
+fi
+
 if [ $stage -le 3 ]; then
-  # Create a random list of parameters for noising the wav files
-  python local/snr/get_corruption_parameter_lists.py \
-    --snrs $snrs --num-files-per-job $num_files_per_job --random-seed $random_seed \
-    --check-output-exists false \
-    --clean-wav-scp $tmp_dir/clean_${random_seed}.list \
-    --noise-wav-scp $tmp_dir/noise_${random_seed}.list \
+  python local/snr/corrupt_wavs.py \
+    --snrs $snrs --signal-dbs $signal_dbs --random-seed $random_seed \
+    --output-clean-wav-file-list $tmp_dir/clean_${random_seed}.list \
+    --output-noise-wav-file-list $tmp_dir/noise_${random_seed}.list \
     $src_dir/wav.scp $tmp_dir/corrupted_${random_seed}.list $impnoise_dir \
-    $tmp_dir/corrupt_wavs.${random_seed}.list > $tmp_dir/num_corruption_jobs || exit 1;
+    $tmp_dir/corrupt_wav_commands.${random_seed}.list
 fi
 
 if [ $stage -le 4 ]; then
-  # Do the noising of wav files using parallel jobs. This creates the 
-  # actual corrupted wav files
-  num_jobs=$(cat $tmp_dir/num_corruption_jobs)
-  $decode_cmd -V --max-jobs-run $max_jobs_run JOB=1:$num_jobs $tmp_dir/log/corrupt_wavs.${random_seed}.JOB.log \
-    python local/snr/corrupt.py --temp-file-name $tmp_dir/temp_JOB.wav --normalize false $tmp_dir/corrupt_wavs.${random_seed}.JOB.list || exit 1;
+  corrupt_wav_command_lists=
+  for i in `seq $nj`; do
+    corrupt_wav_command_lists="$corrupt_wav_command_lists $tmp_dir/corrupt_wav_commands.${random_seed}.$i.list"
+  done
+
+  if $select_only_corruptions_with_noise; then
+    grep "noise-file=" $tmp_dir/corrupt_wav_commands.${random_seed}.list | \
+      awk '{print $1}' > $tmp_dir/wavs_with_noise.${random_seed}.list
+
+    utils/filter_scp.pl $tmp_dir/wavs_with_noise.${random_seed}.list \
+      $tmp_dir/corrupt_wav_commands.${random_seed}.list | \
+      utils/split_scp.pl /dev/stdin \
+      $corrupt_wav_command_lists
+
+    utils/filter_scp.pl $tmp_dir/wavs_with_noise.${random_seed}.list \
+      $tmp_dir/corrupted_${random_seed}.list | sort -k1,1 -u > $dest_dir/wav.scp
+    utils/filter_scp.pl $tmp_dir/wavs_with_noise.${random_seed}.list \
+      $tmp_dir/clean_${random_seed}.list | sort -k1,2 -u > $output_clean_dir/wav.scp
+    utils/filter_scp.pl $tmp_dir/wavs_with_noise.${random_seed}.list \
+      $tmp_dir/noise_${random_seed}.list | sort -k1,2 -u > $output_noise_dir/wav.scp
+
+    utils/fix_data_dir.sh $dest_dir
+    utils/fix_data_dir.sh $output_noise_dir
+    utils/fix_data_dir.sh $output_clean_dir
+  else
+    utils/split_scp.pl $tmp_dir/wavs_with_noise.${random_seed}.list \
+      $corrupt_wav_command_lists
+  fi
+
+
+  $train_cmd JOB=1:$nj $tmp_dir/corrupt_wavs.${random_seed}.JOB.log \
+    cat $tmp_dir/corrupt_wav_commands.${random_seed}.JOB.list \| \
+    awk '{a=""; for (i=2; i<=NF; i++) a=a" "$i; print(a)}' \| \
+    bash -xe || exit 1
 fi
 
 echo "Successfully generated corrupted data and stored it in $dest_dir." && exit 0;

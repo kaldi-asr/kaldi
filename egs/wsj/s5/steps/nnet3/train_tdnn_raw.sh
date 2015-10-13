@@ -73,7 +73,10 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
 feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
+num_targets=    # applicable only if posterior_targets is true
+posterior_targets=false
 objective_type=linear
+skip_final_softmax=true
 max_change_per_sample=0.075
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
@@ -129,9 +132,11 @@ for f in $data/feats.scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+if ! $posterior_targets; then
+  # Set num targets as the dimension of targets features
+  num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
+fi
 
-# Set some variables.
-num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
 [ -z $num_targets ] && echo "\$num_targets is unset" && exit 1
 [ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
 
@@ -169,7 +174,15 @@ if [ $stage -le -5 ]; then
   else
     dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
   fi
-  
+    
+  raw_nnet_config_opts=
+  if $skip_final_softmax; then
+    raw_nnet_config_opts+=" --skip-final-softmax"
+  fi
+  if $skip_lda; then
+    raw_nnet_config_opts+=" --skip-lda"
+  fi
+
   objective_opts="--objective-type linear"
   if [ "$objective_type" == "quadratic" ]; then
     objective_opts="--objective-type quadratic"
@@ -179,7 +192,7 @@ if [ $stage -le -5 ]; then
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
-    --skip-final-softmax --skip-lda \
+    $raw_nnet_config_opts \
     $objective_opts \
     $dim_opts --max-change-per-sample $max_change_per_sample \
     --num-targets $num_targets  \
@@ -213,12 +226,22 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"
-  steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
+  
+  if $posterior_targets; then
+    steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
       --io-opts "$io_opts" \
       --cmd "$cmd" --nj $nj $egs_opts \
       --frames-per-eg $frames_per_eg \
       $data $targets_scp $dir/egs || exit 1;
+  else
+    steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
+      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+      --io-opts "$io_opts" \
+      --cmd "$cmd" --nj $nj $egs_opts \
+      --frames-per-eg $frames_per_eg \
+      $data $targets_scp $dir/egs || exit 1;
+  fi
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs

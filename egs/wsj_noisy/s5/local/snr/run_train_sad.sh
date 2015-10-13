@@ -13,13 +13,14 @@
 stage=0
 train_stage=-10
 num_epochs=8
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -3,1  0  -7,2 0"
+splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 pnorm_input_dim=2000
 pnorm_output_dim=250
 train_data_dir=data/train_si284_corrupted_hires
-targets_scp=data/train_si284_corrupted_hires/snr_targets.scp
+snr_scp=data/train_si284_corrupted_hires/snr_targets.scp
+vad_scp=data/train_si284_corrupted_hires/vad.scp
 max_change_per_sample=0.075
 egs_dir=
 dir=
@@ -43,7 +44,14 @@ where "nvcc" is installed.
 EOF
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 0 ]; then
+  utils/copy_data_dir.sh --extra-files utt2uniq \
+    $train_data_dir $dir/snr_data
+  cp $snr_scp $dir/snr_data/feats.scp
+  steps/compute_cmvn_stats.sh --fake $dir/snr_data $dir/snr_data/log snr
+fi
+
+if [ $stage -le 1 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
@@ -56,9 +64,9 @@ if [ $stage -le 8 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --cmd "$decode_cmd" --nj 40 --objective-type quadratic \
+    --cmd "$decode_cmd" --nj 40 --objective-type linear \
+    --skip-final-softmax false --skip-lda false --posterior-targets true \
     --pnorm-input-dim $pnorm_input_dim \
     --pnorm-output-dim $pnorm_output_dim \
-    $train_data_dir $targets_scp $dir || exit 1;
+    $dir/snr_data "$vad_scp" $dir || exit 1;
 fi
-

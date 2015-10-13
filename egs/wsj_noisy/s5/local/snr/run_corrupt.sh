@@ -10,6 +10,7 @@ data_dir=data/train_si284
 dest_wav_dir=wavs
 nj=40
 stage=1
+corruption_stage=-10
 
 . utils/parse_options.sh
 
@@ -27,6 +28,7 @@ if [ $stage -le 1 ]; then
     local/snr/corrupt_data_dir.sh --random-seed $x --dest-wav-dir $dest_wav_dir/corrupted$x \
       --output-clean-wav-dir $dest_wav_dir/clean$x --output-clean-dir $output_clean_dir \
       --output-noise-wav-dir $dest_wav_dir/noise$x --output-noise-dir $output_noise_dir \
+      --stage $corruption_stage \
       $data_dir data/impulse_noises $cur_dest_dir
     corrupted_data_dirs+=" $cur_dest_dir"
     clean_data_dirs+=" $output_clean_dir"
@@ -35,6 +37,7 @@ if [ $stage -le 1 ]; then
 
   utils/combine_data.sh --extra-files utt2uniq ${data_dir}_corrupted ${corrupted_data_dirs}
   utils/combine_data.sh --extra-files utt2uniq ${data_dir}_clean ${clean_data_dirs}
+  utils/combine_data.sh --extra-files utt2uniq ${data_dir}_noise ${noise_data_dirs}
   rm -rf $corrupted_data_dirs
   rm -rf $clean_data_dirs
 fi
@@ -120,6 +123,14 @@ if [ $stage -le 6 ]; then
 
   sleep 2
 
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $targets_dir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$targets_dir/storage $targets_dir/storage
+    for n in `seq $nj`; do 
+      utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
+    done
+  fi
+
   mkdir -p $targets_dir 
   $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     compute-snr-targets --target-type="FbankMask" \
@@ -140,6 +151,14 @@ if [ $stage -le 7 ]; then
 
   sleep 2
 
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $targets_dir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$targets_dir/storage $targets_dir/storage
+    for n in `seq $nj`; do 
+      utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
+    done
+  fi
+
   mkdir -p $targets_dir 
   $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     compute-snr-targets --target-type="Irm" \
@@ -152,34 +171,21 @@ if [ $stage -le 7 ]; then
   done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
 fi
 
-tmpdir=exp/make_frame_snr_targets
-targets_dir=frame_snr_targets
+tmpdir=exp/make_snr_targets
+targets_dir=snr_targets
 if [ $stage -le 8 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
-
+  
   sleep 2
 
-  mkdir -p $targets_dir 
-  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
-    vector-sum \
-    "matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
-    "matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
-    ark:- \| vector-to-feat ark:- \
-    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
-
-  for n in `seq $nj`; do
-    cat $targets_dir/${data_id}.$n.scp
-  done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
-fi
-
-tmpdir=exp/make_snr_targets
-targets_dir=snr_targets
-if [ $stage -le 9 ]; then
-  utils/split_data.sh ${clean_data_dir}_fbank $nj
-  utils/split_data.sh ${noise_data_dir}_fbank $nj
-
-  sleep 2
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $targets_dir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$targets_dir/storage $targets_dir/storage
+    for n in `seq $nj`; do 
+      utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
+    done
+  fi
 
   mkdir -p $targets_dir 
   $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
@@ -194,6 +200,27 @@ if [ $stage -le 9 ]; then
   done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
 fi
 
+#tmpdir=exp/make_frame_snr_targets
+#targets_dir=frame_snr_targets
+#if [ $stage -le 9 ]; then
+#  utils/split_data.sh ${clean_data_dir}_fbank $nj
+#  utils/split_data.sh ${noise_data_dir}_fbank $nj
+#
+#  sleep 2
+#
+#  mkdir -p $targets_dir 
+#  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
+#    vector-sum \
+#    "ark:matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
+#    "ark:matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+#    ark:- \| vector-to-feat ark:- \
+#    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
+#
+#  for n in `seq $nj`; do
+#    cat $targets_dir/${data_id}.$n.scp
+#  done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
+#fi
+
 tmpdir=exp/make_frame_snr_correct_targets
 targets_dir=frame_snr_correct_targets
 if [ $stage -le 10 ]; then
@@ -201,6 +228,14 @@ if [ $stage -le 10 ]; then
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
   sleep 2
+  
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $targets_dir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$targets_dir/storage $targets_dir/storage
+    for n in `seq $nj`; do 
+      utils/create_data_link.pl $targets_dir/${data_id}.$n.ark
+    done
+  fi
 
   mkdir -p $targets_dir 
   $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
