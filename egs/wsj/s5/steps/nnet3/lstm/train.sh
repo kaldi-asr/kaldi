@@ -18,8 +18,6 @@ num_epochs=10      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-adaptive_shrink=true     # if true, the shrink value is increased to 1 with a rate
-                         # inversely proportional to the effective_learning_rate
 num_jobs_initial=1 # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
@@ -78,6 +76,10 @@ num_bptt_steps=    # this variable counts the number of time steps to back-propa
 
 # nnet3-train options
 shrink=0.98  # this parameter would be used to scale the parameter matrices
+shrink_threshold=0.15  # a value less than 0.25 that we compare the mean of
+                       # 'deriv-avg' for sigmoid components with, and if it's
+                       # less, we shrink.
+max_param_change=1.0  # max param change per minibatch
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
 samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
@@ -180,10 +182,9 @@ if [ $# != 4 ]; then
   echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
   echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
   echo "                                                   # the number of frames processed per iteration"
-  echo "  --adaptive-shrink <shrink|true>                  # if true, adaptive shrinkage is turned on"
-  echo "                                                   # the shrink value is increased to 1 with a rate"
-  echo "                                                   # inversely proportional to the effective_learning_rate"
   echo "  --shrink <shrink|0.98>                           # if non-zero this parameter will be used to scale the parameter matrices"
+  echo "  --shrink-threshold <threshold|0.15>             # a threshold (should be between 0.0 and 0.25) that controls when to"
+  echo "                                                   # do parameter shrinking."
   echo " for more options see the script"
   exit 1;
 fi
@@ -472,13 +473,6 @@ while [ $x -lt $num_iters ]; do
   ilr=$initial_effective_lrate; flr=$final_effective_lrate; np=$num_archives_processed; nt=$num_archives_to_process;
   this_effective_learning_rate=$(perl -e "print ($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt));");
   this_learning_rate=$(perl -e "print ($this_effective_learning_rate*$this_num_jobs);");
-  if [ "$adaptive_shrink" == "true" ]; then
-    this_shrink=$(perl -e "print $shrink + ($flr/$this_effective_learning_rate) * (1 - $shrink)")
-  else
-    this_shrink=$shrink
-  fi
-
-  echo "On iteration $x, learning rate is $this_learning_rate and shrink value is $this_shrink."
 
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
@@ -486,6 +480,15 @@ while [ $x -lt $num_iters ]; do
   fi
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
+    # Set this_shrink value.
+    if [ $x -eq 0 ] || nnet3-am-info --print-args=false $dir/$x.mdl | \
+      perl -e "while(<>){ if (m/type=Sigmoid.+deriv-avg=.+mean=(\S+)/) { \$n++; \$tot+=\$1; } } exit(\$tot/\$n > $shrink_threshold);"; then
+      this_shrink=$shrink; # e.g. avg-deriv of sigmoids was <= 0.125, so shrink.
+    else
+      this_shrink=1.0  # don't shrink: sigmoids are not over-saturated.
+    fi
+    echo "On iteration $x, learning rate is $this_learning_rate and shrink value is $this_shrink."
+
     if [ ! -z "${realign_this_iter[$x]}" ]; then
       time=${realign_this_iter[$x]}
 
@@ -586,6 +589,7 @@ while [ $x -lt $num_iters ]; do
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts --print-interval=10 --momentum=$momentum \
+          --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
