@@ -29,11 +29,18 @@ namespace kaldi {
    This function is to repeatedly concatenate signal1 by itself 
    to match the length of signal2 and add the two signals together.
 */
-void AddVectorsOfUnequalLength(const Vector<BaseFloat> &signal1, Vector<BaseFloat> *signal2) {
+void AddVectorsOfUnequalLength(const Vector<BaseFloat> &signal1, 
+                               Vector<BaseFloat> *signal2,
+                               Vector<BaseFloat> *signal1_added) {
+  if (signal1_added)
+    KALDI_ASSERT(signal2->Dim() == signal1_added->Dim());
   for (int32 po = 0; po < signal2->Dim(); po += signal1.Dim()) {
     int32 block_length = signal1.Dim();
     if (signal2->Dim() - po < block_length) block_length = signal2->Dim() - po;
     signal2->Range(po, block_length).AddVec(1.0, signal1.Range(0, block_length));
+    if (signal1_added)
+      signal1_added->Range(po, block_length).CopyFromVec(
+                                              signal1.Range(0, block_length));
   }
 }
 
@@ -85,7 +92,9 @@ BaseFloat ComputeEarlyReverbEnergy(const Vector<BaseFloat> &rir, const Vector<Ba
 */
 void DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
                      BaseFloat snr_db, Vector<BaseFloat> *noise,
-                     Vector<BaseFloat> *signal, Vector<BaseFloat> *clean) {
+                     Vector<BaseFloat> *signal, 
+                     Vector<BaseFloat> *out_clean,
+                     Vector<BaseFloat> *out_noise = NULL) {
   if (noise) {
     float input_power;
     
@@ -104,11 +113,12 @@ void DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
   if (rir.Dim() > 0)
     FFTbasedBlockConvolveSignals(rir, signal);
 
-  if (clean)
-    clean->CopyFromVec(*signal);
+  if (out_clean)
+    out_clean->CopyFromVec(*signal);
 
-  if (noise)
-    AddVectorsOfUnequalLength(*noise, signal);
+  if (noise) {
+    AddVectorsOfUnequalLength(*noise, signal, out_noise);
+  }
 }
 
 }
@@ -137,7 +147,8 @@ int main(int argc, char *argv[]) {
     int32 noise_channel = 0;
     bool normalize_output = true;
     BaseFloat volume = 0;
-    BaseFloat signal_db = 0;
+    BaseFloat signal_db = 0, rms_energy_amplitude = 0.8;
+    bool normalize_by_amplitude = false, normalize_by_power = false;
 
     po.Register("multi-channel-output", &multi_channel_output,
                 "Specifies if the output should be multi-channel or not");
@@ -160,18 +171,27 @@ int main(int argc, char *argv[]) {
                 "energy is the same as the original input signal.");
     po.Register("volume", &volume,
                 "If nonzero, a scaling factor on the signal that is applied "
-                "after reverberating and possibly adding noise. \n"
+                "after reverberating and possibly adding noise. "
                 "If you set this option to a nonzero value, it will be as"
-                "if you had also specified --normalize-output=false. \n"
+                "if you had also specified --normalize-output=false. "
                 "If you set this option to a negative value, it will be "
                 "ignored and instead the --signal-db option would be used.");
     po.Register("signal-db", &signal_db,
                 "Desired signal energy after corruption. This will be used "
                 "only if volume is less than 0");
-    po.Register("out-noise-file", &out_noise_file,
+    po.Register("normalize-by-amplitude", &normalize_by_amplitude, 
+                "Make the maximum amplitude in the output signal to be 95% of "
+                "the amplitude range possible in wave output");
+    po.Register("normalize-by-power", &normalize_by_power,
+                "Make the amplitude such that the RMS energy of the signal "
+                "is rms-energy-amplitude fraction of the total range of "
+                "amplitudes possible in wave output");
+    po.Register("rms-energy-amplitude", &rms_energy_amplitude,
+                "Fraction of the range of amplitides possible in wave output");
+    po.Register("output-noise-file", &out_noise_file,
                 "Wave file to write the output noise file just before "
                 "adding it to the reverberated signal");
-    po.Register("out-clean-file", &out_clean_file,
+    po.Register("output-clean-file", &out_clean_file,
                 "Wave file to write the output clean file just before "
                 "adding additive noise. It may have reverberation");
 
@@ -180,7 +200,6 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
     if (multi_channel_output) {
       if (rir_channel != 0 || noise_channel != 0)
         KALDI_WARN << "options for --rir-channel and --noise-channel"
@@ -194,6 +213,10 @@ int main(int argc, char *argv[]) {
     std::string rir_file;
     if (po.NumArgs() == 3)
       rir_file = po.GetArg(2);
+    
+    KALDI_VLOG(1) << "input-wav-file: " << input_wave_file;
+    KALDI_VLOG(1) << "output-wav-file: " << output_wave_file;
+    KALDI_VLOG(1) << "rir-file: " << (!rir_file.empty() ? rir_file : "None");
 
     WaveData input_wave;
     {
@@ -215,9 +238,9 @@ int main(int argc, char *argv[]) {
           num_rir_channel = 1;
 
     const Matrix<BaseFloat> *rir_matrix = NULL;
+    WaveData rir_wave;
 
-    if (rir_file != "") {
-      WaveData rir_wave;
+    if (!rir_file.empty()) {
       {
         Input ki(rir_file);
         rir_wave.Read(ki.Stream());
@@ -225,8 +248,8 @@ int main(int argc, char *argv[]) {
       rir_matrix = &rir_wave.Data();
 
       samp_freq_rir = rir_wave.SampFreq();
-      num_samp_rir = rir_matrix.NumCols();
-      num_rir_channel = rir_matrix.NumRows();
+      num_samp_rir = rir_matrix->NumCols();
+      num_rir_channel = rir_matrix->NumRows();
       KALDI_VLOG(1) << "sampling frequency of rir: " << samp_freq_rir
                     << " #samples: " << num_samp_rir
                     << " #channel: " << num_rir_channel;
@@ -286,26 +309,42 @@ int main(int argc, char *argv[]) {
         noise.CopyRowFromMat(noise_matrix, this_noise_channel);
       }
 
-      Vector<BaseFloat> clean_signal;
+      Vector<BaseFloat> clean_signal(input.Dim());
+      Vector<BaseFloat> noise_signal(input.Dim());
       DoReverberation(rir, samp_freq_rir, snr_db, 
           (!noise_file.empty() ? &noise : NULL), &input,
-          (!out_clean_file.empty() ? &clean_signal : NULL));
+          (!out_clean_file.empty() ? &clean_signal : NULL),
+          (!out_noise_file.empty() ? &noise_signal : NULL));
 
-      float power_after_reverb = VecVec(input, input) / input.Dim();
+      float power_after_reverb = ComputeEnergy(input);
 
       if (volume > 0) {
         input.Scale(volume);
         if (!out_clean_file.empty())
           clean_signal.Scale(volume);
         if (!noise_file.empty()) 
-          noise_file.Scale(volume);
+          noise.Scale(volume);
       } else if (volume < 0) {
-        BaseFloat scale = sqrt(pow(10, signal_db / 10.0) / power_after_reverb);
+        BaseFloat scale;
+
+        if (normalize_by_amplitude) {
+          BaseFloat max = MaxAbsolute(input);
+
+          scale = Exp( signal_db / 20.0 * Log(10.0) 
+                       - Log(max) + 15.0 * Log(2.0) + Log(0.95) );
+          
+        } else if (normalize_by_power) {
+          scale = Exp( signal_db / 20.0 * Log(10.0) 
+                      - 0.5 * Log(power_after_reverb)
+                      + 15.0 * Log(2.0) + Log(rms_energy_amplitude) ); 
+        }
+        
         input.Scale(scale);
+
         if (!out_clean_file.empty())
           clean_signal.Scale(scale);
         if (!noise_file.empty()) 
-          noise_file.Scale(scale);
+          noise_signal.Scale(scale);
       } else if (normalize_output)
         input.Scale(sqrt(power_before_reverb / power_after_reverb));
 
@@ -320,7 +359,7 @@ int main(int argc, char *argv[]) {
       if (!out_noise_file.empty()) {
         if (output_channel == 0)
           out_noise_matrix.Resize(out_matrix.NumRows(), out_matrix.NumCols());
-        out_noise_matrix.CopyRowFromVec(noise, output_channel);
+        out_noise_matrix.CopyRowFromVec(noise_signal, output_channel);
       }
     }
 
