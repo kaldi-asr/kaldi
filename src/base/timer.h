@@ -19,7 +19,6 @@
 #ifndef KALDI_BASE_TIMER_H_
 #define KALDI_BASE_TIMER_H_
 
-
 #include "base/kaldi-utils.h"
 // Note: Sleep(float secs) is included in base/kaldi-utils.h.
 
