@@ -21,7 +21,7 @@ num_epochs=10      # Number of epochs of training;
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 shrink=0.99  # this parameter would be used to scale the parameter matrices
-shrink_threshold=0.125 # a value less than 0.25 that we compare the mean of
+shrink_threshold=0.15  # a value less than 0.25 that we compare the mean of
                        # 'deriv-avg' for sigmoid components with, and if it's
                        # less, we shrink.
 right_tolerance=10
@@ -37,7 +37,7 @@ prior_subset_size=20000 # 20k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
-max_param_change=0.4
+max_param_change=1.0
 presoftmax_prior_scale_power=-0.25
 remove_egs=true  # set to false to disable removing egs after training is done.
 
