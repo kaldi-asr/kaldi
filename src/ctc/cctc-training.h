@@ -64,7 +64,8 @@ struct CctcTrainingOptions {
 // This class is used while training CCTC models and evaluating probabilities on
 // held-out training data.  It is not responsible for the entire process of CCTC
 // model training; it is only responsible for the forward-backward from the
-// neural net output, and the derivative computation.
+// neural net output, and the derivative computation that comes from this
+// forward-backward.
 class CctcComputation {
  public:
   /// Note: the 'cu_weights' argument should be the output of
@@ -75,9 +76,9 @@ class CctcComputation {
                   const CctcSupervision &supervision,
                   const CuMatrixBase<BaseFloat> &nnet_output);
 
-  // Does the forward computation.  Returns the total log-prob.
+  // Does the forward computation.  Returns the total log-prob,
   BaseFloat Forward();
-                    
+
   // Does the backward computation and (efficiently) writes the derivative
   // w.r.t. the neural network output to 'nnet_output_deriv'.  This function
   // requires that 'nnet_output_deriv' not contain any NaN or inf values
@@ -90,6 +91,13 @@ class CctcComputation {
   // any ceiling.
   bool Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
+
+  // This function does the 'tombstone part' of the computation, including
+  // computing its derivatives (which are added to 'nnet_output_deriv', and it
+  // returns a log-likelihood that must be added to the result of Forward().
+  BaseFloat TombstoneComputation(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+
+
  private:
 
   const CctcTrainingOptions &opts_;
@@ -97,7 +105,7 @@ class CctcComputation {
   // CUDA copy of trans_model_.Weights().  Dimension is
   // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
   const CuMatrix<BaseFloat> &cu_weights_;
-  // The supervision object  
+  // The supervision object
   const CctcSupervision &supervision_;
   // The neural net output
   const CuMatrixBase<BaseFloat> &nnet_output_;
@@ -121,7 +129,7 @@ class CctcComputation {
   // log(numerator-prob * lm_prob / denominator-prob)), where lm_prob is the
   // phone-language-model probability, taken from the transition model.
   std::vector<BaseFloat> arc_logprobs_;
-  
+
   // numerator_indexes is a list of indexes that we need to look up in
   // exp_nnet_output_ for the forward-backward computation.  The order is not
   // important, but indexes into this vector appear in .first members in
@@ -132,7 +140,7 @@ class CctcComputation {
   // is the i'th member of numerator_indexes.  In the backward computation,
   // the storage is reused for derivatives.
   Vector<BaseFloat> numerator_probs_;
-    
+
 
   // denominator_indexes is a list of indexes that we need to look up in
   // normalizers_ for the forward-backward computation.  The order is not
@@ -156,13 +164,13 @@ class CctcComputation {
   // the posterior of this phone-sequence).
   double tot_log_prob_;
 
-  // The log-beta value (backward probability) for each state in the lattice  
+  // The log-beta value (backward probability) for each state in the lattice
   Vector<double> log_beta_;
 
  private:
   // This function, called from the constructor, checks various dimensions.
   void CheckDims() const;
-  
+
   //  This function, called from Forward(), creates fst_indexes_,
   //  numerator_indexes_ and denominator_indexes_.
   void ComputeLookupIndexes();
@@ -182,8 +190,8 @@ class CctcComputation {
   // Computes derivatives (called from Backward()).
   // Returns true on success, false if a NaN or Inf was detected.
   bool ComputeDerivatives(CuMatrixBase<BaseFloat> *nnet_output_deriv);
-  
-  
+
+
 };
 
 

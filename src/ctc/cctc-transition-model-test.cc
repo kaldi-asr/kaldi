@@ -105,8 +105,8 @@ void TestCctcTransitionModelIndexes(const CctcTransitionModel &trans_model,
   int32 num_phones = trans_model.NumPhones(),
       left_context = trans_model.PhoneLeftContext(),
       sequence_length = RandInt(1, 20),
-      num_non_blank_indexes = trans_model.NumNonBlankIndexes();
-  KALDI_ASSERT(num_non_blank_indexes == ctx_dep.NumPdfs());
+      num_tree_indexes = trans_model.NumTreeIndexes();
+  KALDI_ASSERT(num_tree_indexes == ctx_dep.NumPdfs());
   std::vector<int32> history;
   history.push_back(0);  // Beginning-of-sentence history.
   int32 current_history_state = trans_model.InitialHistoryState();
@@ -119,7 +119,7 @@ void TestCctcTransitionModelIndexes(const CctcTransitionModel &trans_model,
 
     int32 trans_model_output_index = trans_model.GetOutputIndex(
         current_history_state, test_phone),
-        output_index = GetOutputIndex(num_non_blank_indexes, ctx_dep,
+        output_index = GetOutputIndex(num_tree_indexes, ctx_dep,
                                       history_state_map, history, test_phone);
     KALDI_ASSERT(trans_model_output_index == output_index);
 

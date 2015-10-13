@@ -57,14 +57,26 @@ class CctcTransitionModel {
   // Returns the number of output-indexes-- i.e. the output dimension that the
   // neural net you use with this should have.  It will equal ctx_dep_.NumPdfs()
   // + language_model_.NumHistoryStates(), i.e. num-non-blank-symbols +
-  // num-blank-symbols.  The output_indexes are numbered from 0 to
+  // 2 * num-blank-symbols [each blank has its own tombstone].
+  // The output_indexes are numbered from 0 to
   // NumOutputIndexes() - 1, and the non-blank symbols appear first.
   int32 NumOutputIndexes() const { return num_output_indexes_; }
 
-  // Returns the number of output indexes that correspond to non-blank symbols
-  // (i.e. real phones).  The non-blank indexes are numbered from 0 to
-  // NumNonBlankIndexes() - 1.
-  inline int32 NumNonBlankIndexes() const { return num_non_blank_indexes_; }
+  // Returns the number of output indexes that correspond to states from the
+  // decision tree.   These 'tree indexes' are numbered from 0 to
+  // NumTreeIndexes() - 1.
+  inline int32 NumTreeIndexes() const { return num_tree_indexes_; }
+
+  inline int32 FirstTreeIndex() const { return 0; }
+
+  inline int32 FirstBlankIndex() const { return num_tree_indexes_; }
+
+  inline int32 NumBlankIndexes() const {
+    return (num_output_indexes_ - num_tree_indexes_) / 2;
+  }
+  inline int32 FirstTombstoneIndex() const {
+    return num_tree_indexes_ + NumBlankIndexes();
+  }
 
   // return the number of history-states the model contains.
   int32 NumHistoryStates() const { return history_state_info_.size(); }
@@ -185,17 +197,16 @@ class CctcTransitionModel {
 
   // the dimension of the neural network output.
   int32 num_output_indexes_;
-  // The number of the output indexes that don't correspond to various
-  // left-contexts of the blank symbol.  Non-blank indexes come before blank
-  // ones.
-  int32 num_non_blank_indexes_;
+
+  // The number of the output indexes that correspond to decision-tree leaves.
+  int32 num_tree_indexes_;
 
   // The index of the history state that we have at the start of a sentence.
   int32 initial_history_state_;
 
   // The vector of information on history states (indexed by history-state).
   // All other information in this class is derived from this,
-  // num_phones_, num_output_indexes_ and num_non_blank_indexes_.
+  // num_phones_, num_output_indexes_ and num_tree_indexes_.
   std::vector<HistoryStateInfo> history_state_info_;
 
   friend class CctcTransitionModelCreator;

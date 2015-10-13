@@ -91,8 +91,8 @@ void CctcTransitionModel::Check() const {
   KALDI_ASSERT(num_phones > 0);
   KALDI_ASSERT(phone_left_context_ >= 0);
   KALDI_ASSERT(num_output_indexes_ > 0);
-  KALDI_ASSERT(num_non_blank_indexes_ > 0 &&
-               num_non_blank_indexes_ < num_output_indexes_);
+  KALDI_ASSERT(num_tree_indexes_ > 0 &&
+               num_tree_indexes_ < num_output_indexes_);
   int32 num_histories = history_state_info_.size();
   KALDI_ASSERT(static_cast<size_t>(initial_history_state_) <
                history_state_info_.size());
@@ -106,12 +106,12 @@ void CctcTransitionModel::Check() const {
       KALDI_ASSERT(next_h >= 0 && next_h < num_histories);
     }
     // output-index if we predict blank should be after the
-    // non-blank indexes.
-    KALDI_ASSERT(info.output_index[0] >= num_non_blank_indexes_);
+    // tree indexes.
+    KALDI_ASSERT(info.output_index[0] >= num_tree_indexes_);
     output_index_seen[info.output_index[0]] = true;
     for (int32 p = 1; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
-      KALDI_ASSERT(output_index < num_non_blank_indexes_);
+      KALDI_ASSERT(output_index < num_tree_indexes_);
       output_index_seen[output_index] = true;
     }
     KALDI_ASSERT(info.phone_lm_prob.Min() > 0.0);
@@ -162,8 +162,8 @@ void CctcTransitionModel::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NumOutputIndexes>");
   WriteBasicType(os, binary, num_output_indexes_);
   if (!binary) os << "\n";
-  WriteToken(os, binary, "<NumNonBlankIndexes>");
-  WriteBasicType(os, binary, num_non_blank_indexes_);
+  WriteToken(os, binary, "<NumTreeIndexes>");
+  WriteBasicType(os, binary, num_tree_indexes_);
   if (!binary) os << "\n";
   WriteToken(os, binary, "<InitialHistoryState>");
   WriteBasicType(os, binary, initial_history_state_);
@@ -193,8 +193,8 @@ void CctcTransitionModel::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &phone_left_context_);
   ExpectToken(is, binary, "<NumOutputIndexes>");
   ReadBasicType(is, binary, &num_output_indexes_);
-  ExpectToken(is, binary, "<NumNonBlankIndexes>");
-  ReadBasicType(is, binary, &num_non_blank_indexes_);
+  ExpectToken(is, binary, "<NumTreeIndexes>");
+  ReadBasicType(is, binary, &num_tree_indexes_);
   ExpectToken(is, binary, "<InitialHistoryState>");
   ReadBasicType(is, binary, &initial_history_state_);
   ExpectToken(is, binary, "<NumHistoryStates>");
@@ -217,13 +217,20 @@ void CctcTransitionModel::Read(std::istream &is, bool binary) {
 void CctcTransitionModel::ComputeWeights(Matrix<BaseFloat> *weights) const {
   int32 num_history_states = history_state_info_.size(),
       num_output_indexes = num_output_indexes_,
-      num_phones = num_phones_;
+      num_phones = num_phones_,
+      num_blank_indexes = NumBlankIndexes();
   weights->Resize(num_history_states,
                   num_output_indexes);
   for (int32 h = 0; h < num_history_states; h++) {
     const HistoryStateInfo &info = history_state_info_[h];
     SubVector<BaseFloat> row(*weights, h);
     for (int32 p = 0; p <= num_phones; p++) {
+      int32 output_index = info.output_index[p];
+      row(output_index) = 1.0;  // 1.0 == LM-prob for blank.
+      row(output_index + num_blank_indexes) = 1.0;  // .. and the corresponding
+                                                    // tombstone
+    }
+    for (int32 p = 1; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
       BaseFloat lm_prob = info.phone_lm_prob(p);
       row(output_index) += lm_prob;
@@ -253,10 +260,12 @@ void CctcTransitionModelCreator::InitCctcTransitionModel(
   KALDI_LOG << "Decision tree has " << (ctx_dep_.ContextWidth() - 1)
             << " phones of left context.";
   num_tree_leaves_ = ctx_dep_.NumPdfs();
-  num_output_indexes_ = num_tree_leaves_ + lm_hist_state_map_.NumLmHistoryStates();
+  num_output_indexes_ = num_tree_leaves_ +
+      lm_hist_state_map_.NumLmHistoryStates() * 2;
   KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
-            << num_tree_leaves_ << " for non-blank, and "
-            << lm_hist_state_map_.NumLmHistoryStates() << " for blank.";
+            << num_tree_leaves_ << " for tree indexes, and "
+            << lm_hist_state_map_.NumLmHistoryStates() << " for blank "
+            << "and the same number for tombstones.";
 
   GetInitialHistoryStates();
   while (MergeHistoryStatesOnePass());
@@ -515,7 +524,7 @@ void CctcTransitionModelCreator::OutputToTransitionModel(
   trans_model->phone_left_context_ = std::max(ngram_order,
                                              tree_context_width) - 1;
   trans_model->num_output_indexes_ = num_output_indexes_;
-  trans_model->num_non_blank_indexes_ = num_tree_leaves_;
+  trans_model->num_tree_indexes_ = num_tree_leaves_;
   trans_model->initial_history_state_ = initial_history_state_;
   KALDI_ASSERT(initial_history_state_ < num_histories);
   trans_model->history_state_info_.resize(num_histories);
@@ -580,7 +589,7 @@ void CctcTransitionModelCreator::OutputHistoryState(
 std::string CctcTransitionModel::Info() const {
   std::ostringstream ostr;
   ostr << "num-output-indexes: " << NumOutputIndexes() << "\n";
-  ostr << "num-non-blank-indexes: " << NumNonBlankIndexes() << "\n";
+  ostr << "num-tree-indexes: " << NumTreeIndexes() << "\n";
   ostr << "num-phones: " << NumPhones() << "\n";
   ostr << "phone-left-context: " << PhoneLeftContext() << "\n";
   ostr << "num-history-states: " << NumHistoryStates() << "\n";
@@ -600,7 +609,7 @@ bool CctcTransitionModel::operator == (const CctcTransitionModel &other) const {
   if (num_phones_ != other.num_phones_) return false;
   if (phone_left_context_ != other.phone_left_context_) return false;
   if (num_output_indexes_ != other.num_output_indexes_) return false;
-  if (num_non_blank_indexes_ != other.num_non_blank_indexes_) return false;
+  if (num_tree_indexes_ != other.num_tree_indexes_) return false;
   if (initial_history_state_ != other.initial_history_state_) return false;
   return history_state_info_ == other.history_state_info_;
 }
