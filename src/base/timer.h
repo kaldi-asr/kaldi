@@ -19,9 +19,6 @@
 #ifndef KALDI_BASE_TIMER_H_
 #define KALDI_BASE_TIMER_H_
 
-# include <sys/time.h>
-# include <unistd.h>
-
 #include "base/kaldi-utils.h"
 // Note: Sleep(float secs) is included in base/kaldi-utils.h.
 
@@ -39,8 +36,11 @@ class Timer {
     LARGE_INTEGER time_end;
     LARGE_INTEGER freq;
     QueryPerformanceCounter(&time_end);
-    // Hardware does not support this.
-    if (QueryPerformanceFrequency(&freq) == 0) return 0.0;
+
+    if (QueryPerformanceFrequency(&freq) == 0) {
+      //  Hardware does not support this.
+      return 0.0;
+    }
     return (static_cast<double>(time_end.QuadPart) -
             static_cast<double>(time_start_.QuadPart)) /
            (static_cast<double>(freq.QuadPart));
@@ -51,6 +51,8 @@ class Timer {
 }
 
 #else
+#include <sys/time.h>
+#include <unistd.h>
 
 namespace kaldi {
 class Timer {

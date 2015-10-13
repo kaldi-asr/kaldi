@@ -20,6 +20,7 @@
 #include <Synchapi.h>
 #elif defined(_WIN32) || defined(_MSC_VER) || defined(MINGW)
 #include <Windows.h>
+#define snprintf _snprintf
 #else
 #include <unistd.h>
 #endif
