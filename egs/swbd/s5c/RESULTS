@@ -114,7 +114,6 @@ exit 0
 %WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 
-
 # Resegmentation numbers for swbd subset.
 %WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
 %WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys

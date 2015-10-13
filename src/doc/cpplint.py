@@ -2567,8 +2567,8 @@ def CheckLanguage(filename, clean_lines, linenum, file_extension, include_state,
     error(filename, linenum, 'runtime/memset', 4,
           'Did you mean "memset(%s, 0, %s)"?'
           % (match.group(1), match.group(2)))
-
-  if Search(r'\busing namespace\b', line):
+  match = Search(r'\busing namespace kaldi\b',line)
+  if not match and Search(r'\busing namespace\b', line):
     error(filename, linenum, 'build/namespaces', 5,
           'Do not use namespace using-directives.  '
           'Use using-declarations instead.')

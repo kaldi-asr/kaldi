@@ -182,7 +182,7 @@ if [ $# != 4 ]; then
   echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
   echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
   echo "                                                   # the number of frames processed per iteration"
-  echo "  --shrink <shrink|0.98>                           # if non-zero this parameter will be used to scale the parameter matrices"
+  echo "  --shrink <shrink|0.98>                           # this parameter will be used to scale the parameter matrices"
   echo "  --shrink-threshold <threshold|0.125>             # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
   echo " for more options see the script"
