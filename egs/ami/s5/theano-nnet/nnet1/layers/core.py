@@ -70,6 +70,31 @@ class AffineTransform(Layer):
                 "n_in": self.n_in,
                 "n_out": self.n_out}
 
+class LinearTransform(Layer):
+    def __init__(self, n_in, n_out, param_stddev_factor=0.1, learn_rate_coef = 1.0):
+        
+        self.n_in = n_in
+        self.n_out = n_out
+
+        W_values = np.random.standard_normal((n_in, n_out)) * param_stddev_factor 
+        W_values = W_values.astype(T.config.floatX)
+
+        W = theano.shared(W_values, name='W')
+
+        self.W = W
+        self.W_lr_coef = learn_rate_coef
+
+        self.params = [self.W]
+        self.lr_coefs = [self.W_lr_coef]
+        
+    def link_IO(self, input):
+        self.X = input
+        self.Y = T.dot(self.X, self.W)
+
+    def get_config(self):
+        return {"name": self.__class__.__name__,
+                "n_in": self.n_in,
+                "n_out": self.n_out}
 
 class Activation(Layer):
     '''

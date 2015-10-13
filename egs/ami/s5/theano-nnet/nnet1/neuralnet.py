@@ -8,7 +8,9 @@ from collections import OrderedDict
 
 import kaldi_io
 
-from layers.core import AffineTransform, Activation
+from layers.core import AffineTransform
+from layers.core import LinearTransform
+from layers.core import Activation
 
 class NeuralNet(object):
     '''
@@ -40,7 +42,7 @@ class NeuralNet(object):
         Function to initialize from nnet1 style prototype file
         '''
         ##################################
-        def getLayerDef(line):
+        def getAffineLayerDef(line):
             """
             Parses one line of Layer definition from proto file
             """
@@ -52,8 +54,22 @@ class NeuralNet(object):
                     return None
                 params[k[1:-1]] = np.float32(v)
             return params
+
+        def getLinearLayerDef(line):
+            """
+            Parses one line of Layer definition from proto file
+            """
+            allowed_keys = ["<OutputDim>","<InputDim>","<ParamStddev>","<LearnRateCoef>","<MaxNorm>"]
+            params = {}
+            for k,v in zip(line.split()[1:-2:2], line.split()[2::2]):
+                if k not in allowed_keys:
+                    print "%s parameter is not known!" %(k)
+                    return None
+                params[k[1:-1]] = np.float32(v)
+            return params
         ##################################
-        layer_params_default = {"ParamStddev":0.1, "BiasMean":-2.0, "BiasRange": 2.0,"LearnRateCoef":1.0,"BiasLearnRateCoef":1.0,"MaxNorm":0.0}
+        affine_layer_params_default = {"ParamStddev":0.1, "BiasMean":-2.0, "BiasRange": 2.0,"LearnRateCoef":1.0,"BiasLearnRateCoef":1.0,"MaxNorm":0.0}
+        linear_layer_params_default = {"ParamStddev":0.1, "LearnRateCoef":1.0,"MaxNorm":0.0}
         f = kaldi_io.open_or_fd(proto_file, mode='r')
         try:
             while 1:
@@ -64,10 +80,10 @@ class NeuralNet(object):
                     continue
                 else:
                     if "<AffineTransform>" in row:
-                        layer_params = getLayerDef(row)
+                        layer_params = getAffineLayerDef(row)
                         (n_in, n_out) = (int(row.split()[2]), int(row.split()[4]))
 
-                        [layer_params.setdefault(a, layer_params_default[a]) for a in layer_params_default]
+                        [layer_params.setdefault(a, layer_params_default[a]) for a in affine_layer_params_default]
                         layer = AffineTransform(n_in, n_out,
                                                 param_stddev_factor=layer_params["ParamStddev"], 
                                                 bias_mean=layer_params["BiasMean"], 
@@ -75,6 +91,17 @@ class NeuralNet(object):
                                                 learn_rate_coef=layer_params["LearnRateCoef"],
                                                 bias_learn_rate_coef=layer_params["BiasLearnRateCoef"], 
                                                 max_norm=layer_params["MaxNorm"])
+
+                    elif "<LinearTransform>" in row:
+                        layer_params = getLinearLayerDef(row)
+                        (n_in, n_out) = (int(row.split()[2]), int(row.split()[4]))
+
+                        [layer_params.setdefault(a, layer_params_default[a]) for a in linear_layer_params_default]
+                        layer = LinearTransform(n_in, n_out,
+                                                param_stddev_factor=layer_params["ParamStddev"], 
+                                                learn_rate_coef=layer_params["LearnRateCoef"],
+                                                max_norm=layer_params["MaxNorm"])
+
                     elif "<Sigmoid>" in row:
                         layer = Activation("sigmoid")
                     elif "<Softmax>" in row:
