@@ -7,7 +7,7 @@
 micid=1 #which mic from array should be used?
 mic=sdm$micid
 
-stage=1
+stage=15
 . utils/parse_options.sh
 
 # Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
@@ -170,24 +170,26 @@ if [ $stage -le 13 ]; then
     --srcdir exp/$mic/nnet2_online/nnet_ms_sp
 fi
 
-#TDNN training (nnet3)
-if [ $stage -le 14 ]; then
-  local/nnet3/run_tdnn.sh \
-    --mic $mic \
-    --speed-perturb true \
-    --stage 9 \
-    --use-sat-alignments false
-fi
-exit 1;
+#TDNN training
+#if [ $stage -le 14 ]; then
+#  local/nnet3/run_tdnn.sh \
+#    --mic $mic \
+#    --speed-perturb true \
+#    --stage 9 \
+#    --use-sat-alignments false
+#fi
 
 #LSTM training (nnet3)
 if [ $stage -le 15 ]; then
   local/nnet3/run_lstm.sh \
+    --stage 8 \
     --mic $mic \
-    --train-stage -5 \
+    --common-egs-dir "exp/sdm1/nnet3/lstm_sp_0916_ld5/egs/" \
+    --train-stage 52 \
     --speed-perturb true \
     --use-sat-alignments false
 fi
+exit 1;
 
 echo "Done."
 

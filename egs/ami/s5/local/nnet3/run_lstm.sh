@@ -19,7 +19,7 @@ train_stage=-10
 has_fisher=true
 mic=ihm
 use_sat_alignments=true
-affix=
+affix=new_mc_3.2_fast2_0.0008
 speed_perturb=true
 common_egs_dir=
 
@@ -38,12 +38,23 @@ clipping_threshold=30.0
 norm_based_clipping=true
 
 # natural gradient options
+<<<<<<< HEAD
+ng_per_element_scale_options="max-change-per-minibatch=3.2"
+#ng_per_element_scale_options="max-change-per-minibatch=0.0046875"
+#ng_per_element_scale_options="max-change-per-minibatch=0.009375"
+#ng_affine_options=
+ng_affine_options="max-change-per-sample=3.2"
+#ng_affine_options="max-change-per-sample=0.03125"
+#ng_affine_options="max-change-per-sample=0.0625"
+num_epochs=5
+=======
 ng_per_element_scale_options=
 ng_affine_options=
 num_epochs=10
+>>>>>>> 7215c0717aa00d96c1bd6f883e41c97ec2d1909c
 
 # training options
-initial_effective_lrate=0.0003
+initial_effective_lrate=0.0008
 final_effective_lrate=0.00003
 num_jobs_initial=2
 num_jobs_final=12

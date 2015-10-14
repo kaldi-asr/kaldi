@@ -135,7 +135,7 @@ class NnetTrainer {
   bool PrintTotalStats() const;
 
   ~NnetTrainer();
- private:
+ protected:
   void ProcessOutputs(const NnetExample &eg,
                       NnetComputer *computer);
 
@@ -153,6 +153,11 @@ class NnetTrainer {
   int32 num_minibatches_processed_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+};
+
+class NnetPerturbedTrainer : public NnetTrainer {
+ public:
+  void Train(const NnetExample &eg);
 };
 
 /**
