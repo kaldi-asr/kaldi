@@ -493,7 +493,7 @@ template<class Arc> class DeterminizerStar {
   // put it here so the memeory allocation for better effiency
   // otherwise it gets created and destroyed constantly, also
   // possibly a lot of resize() call the for underlying vector
-  list<typename Arc::StateId> queue_;
+  deque<typename Arc::StateId> queue_;
 
   vector<size_t> id_to_index_;
   
@@ -534,18 +534,11 @@ template<class Arc> class DeterminizerStar {
         }
         throw std::runtime_error("Non-functional FST: cannot determinize.\n");
       }
-      if (info.in_queue) {
-        // since in queue, no check since we're propagating them anyway
-        info.weight_to_process =
-            Plus(info.weight_to_process, unprocessed_weight);
-        // probably should take it out of the queue, update the depth
-        // and put it back.
-        // but it seems it's fast enough already ;-)
-      } else {
-        // is in the subset but not in queue
-        info.weight_to_process = Plus(info.weight_to_process,
-                                      unprocessed_weight);
 
+      info.weight_to_process =
+            Plus(info.weight_to_process, unprocessed_weight);
+
+      if (!info.in_queue) {
         // this is because the code in "else" below: the 
         // iter->second.weight_to_process might not be Zero()
         Weight weight = Plus(info.element.weight,
@@ -559,9 +552,6 @@ template<class Arc> class DeterminizerStar {
           // add extra part of weight to queue.
           info.in_queue = true;
           queue_.push_back(elem.state);
-        } else {
-          // we update the weight_to_process, but not add it to the queue
-          info.in_queue = false;
         }
       }
     }
