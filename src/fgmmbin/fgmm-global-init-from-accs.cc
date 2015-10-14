@@ -87,9 +87,10 @@ int main(int argc, char *argv[]) {
       covar.Scale(1.0 / occ);
       covar.AddVec2(-1.0, means.Row(i));  // subtract squared means.
       // Floor variance Eigenvalues.
-      BaseFloat floored = std::max(
+      BaseFloat floor = std::max(
           static_cast<BaseFloat>(gmm_opts.variance_floor),
           static_cast<BaseFloat>(covar.MaxAbsEig() / gmm_opts.max_condition));
+      int32 floored = covar.ApplyFloor(floor);
       if (floored) {
         tot_floored += floored;
         gauss_floored++;
