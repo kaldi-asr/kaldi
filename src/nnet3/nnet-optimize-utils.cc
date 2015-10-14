@@ -1509,13 +1509,18 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
     if (new_first >= src_num_rows) new_first = src_num_rows - 1;
     if (new_second < 0) new_second = 0;
     if (new_second >= src_num_rows) new_second = src_num_rows - 1;
+    if (new_first == new_second) {
+      // for clarity, represent empty ranges as (-1, -1).
+      new_first = -1;
+      new_second = -1;
+    }
     KALDI_ASSERT(new_second >= new_first);
     this_pair.first = new_first;
     this_pair.second = new_second;
   }
   c->arg1 = dest_submatrix_mapped;
   c->arg2 = src_submatrix_mapped;
-  c->arg2 = computation_->indexes_ranges.size();
+  c->arg3 = computation_->indexes_ranges.size();
   computation_->indexes_ranges.push_back(new_indexes_ranges);
 }
 
