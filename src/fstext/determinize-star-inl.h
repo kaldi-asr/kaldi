@@ -485,6 +485,10 @@ template<class Arc> class DeterminizerStar {
     // whether "this" struct is in the queue
     // we store the info here so that we don't have to look it up every time
     bool in_queue;
+
+    bool operator<(const EpsilonClosureInfo &other) const {
+      return this->element.state < other.element.state;
+    }
   };
 
   vector<EpsilonClosureInfo> ecinfo_;
@@ -495,27 +499,41 @@ template<class Arc> class DeterminizerStar {
   // possibly a lot of resize() call the for underlying vector
   deque<typename Arc::StateId> queue_;
 
+  struct idWeight {
+    idWeight(int i, const Weight& w) : id(i), weight(w) {}
+    int id;
+    Weight weight;
+  };
+
+  vector<idWeight> queue_2;
+
   vector<size_t> id_to_index_;
   
 
   // Add one element (elem) into cur_subset
   // it also adds the necessary stuff to queue_, set the correct weight, depth
   // depth here is the new depth
-  void AddOneElement(const Element &elem, const Weight &unprocessed_weight,
-                     std::map<InputStateId, size_t> *cur_subset) {
-    typename std::map<InputStateId, size_t>::iterator
-        iter = cur_subset->find(elem.state);
-    if (iter == cur_subset->end()) {
+  void AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
+    int index = -1;
+    if (elem.state < id_to_index_.size()) {
+      index = id_to_index_[elem.state];
+    }
+    if (index != -1 && ecinfo_[index].element.state != elem.state) {
+      index = -1;
+    }
+
+    if (index == -1) {
       // was no such StateId: insert and add to queue.
       ecinfo_.push_back(EpsilonClosureInfo(elem, unprocessed_weight, true));
-      (*cur_subset)[elem.state] = ecinfo_.size() - 1;
-      if (id_to_index_.size() < elem.state + 1) {
-        id_to_index_.resize(elem.state + 1, 0);
+      size_t size = id_to_index_.size();
+      if (size < elem.state + 1) {
+        // double the size to reduce lots of memory operations
+        id_to_index_.resize(2 * elem.state + 1, -1);
       }
       id_to_index_[elem.state] = ecinfo_.size() - 1;
       queue_.push_back(elem.state);
     } else {  // one is already there.  Add weights.
-      EpsilonClosureInfo &info = ecinfo_[iter->first];
+      EpsilonClosureInfo &info = ecinfo_[index];
       if (info.element.string != elem.string) {
         std::cerr << "DeterminizerStar: FST was not functional "
           "-> not determinizable\n";
@@ -564,8 +582,7 @@ template<class Arc> class DeterminizerStar {
   // and add the results to cur_subset.
   void ExpandOneElement(const Element &elem,
                         bool sorted,
-                        Weight unprocessed_weight,
-                        std::map<InputStateId, size_t> *cur_subset) {
+                        Weight unprocessed_weight) {
     // now we are going to propagate the "unprocessed_weight"
     for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
          !aiter.Done(); aiter.Next()) {
@@ -594,62 +611,51 @@ template<class Arc> class DeterminizerStar {
           seq.push_back(arc.olabel);
         next_elem.string = repository_.IdOfSeq(seq);
       }
-      AddOneElement(next_elem, next_unprocessed_weight, cur_subset);
+      AddOneElement(next_elem, next_unprocessed_weight);
     }
   }
 
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
-    // input_subset must have only one example of each StateId.
-
-    std::map<InputStateId, size_t> cur_subset;
-
     size_t size = input_subset.size();
     typedef typename std::map<InputStateId, size_t>::iterator MapIter;
-    //*
+
     ecinfo_.resize(0);
     {
-      MapIter iter = cur_subset.end();
       for (size_t i = 0; i < size; i++) {
-        // comment out this because we will process the initial states separately
-        // queue.push(IdAndDepth(input_subset[i].state, 0));
-
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
-        ecinfo_.push_back(EpsilonClosureInfo(input_subset[i], input_subset[i].weight, true));
+        ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
+                                             input_subset[i].weight, true));
                                // now it is equivalent to having 
                                // the vector as a "virtual queue" so it 
                                // needs to be set true
         ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
         if (id_to_index_.size() < input_subset[i].state + 1) {
-          id_to_index_.resize(input_subset[i].state + 1, 0);
+          id_to_index_.resize(input_subset[i].state + 1, -1);
         }
         id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
-        std::pair<const InputStateId, size_t>
-                                 pr(input_subset[i].state, ecinfo_.size() - 1);
-        iter = cur_subset.insert(iter, pr);
-        // By providing iterator where we inserted last one,
-        // we make insertion more efficient since
-        // input subset was already in sorted order.
       }
     }
-//    */
 
     // find whether input fst is known to be sorted in input label.
     bool sorted =
             ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
     for (size_t i = 0; i < size; i++) {
-      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight,
-                       &cur_subset);
+      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight);
+
+      // no need to check index is valid since we just pushed them in
       ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
     }
 
     int counter = 0; // relates to max-states option, used for test.
     while (!queue_.empty()) {
       InputStateId id = queue_.front();
-      size_t index = id_to_index_[id];
+
+      // no need to check validity of the index
+      int index = id_to_index_[id];
       EpsilonClosureInfo &info = ecinfo_[index];
       Element &elem = info.element;
       Weight unprocessed_weight = info.weight_to_process;
@@ -670,17 +676,18 @@ template<class Arc> class DeterminizerStar {
       // generally we need to be careful about iterator invalidation problem
       // but here since we're only adding stuff to cur_subset, the reference
       // "elem" has no danger of getting invalidated
-      ExpandOneElement(elem, sorted, unprocessed_weight, &cur_subset);
+      ExpandOneElement(elem, sorted, unprocessed_weight);
     }
 
-    {  // copy cur_subset to output_subset.
-      // sorted order is automatic.
+    {
+      sort(ecinfo_.begin(), ecinfo_.end());
+
       output_subset->clear();
-      output_subset->reserve(cur_subset.size());
-      MapIter iter = cur_subset.begin(), end = cur_subset.end();
-      for (; iter != end; ++iter) {
-        size_t index = id_to_index_[iter->first];
-        EpsilonClosureInfo& info = ecinfo_[index];
+      output_subset->reserve(size);
+
+      size = ecinfo_.size();
+      for (size_t i = 0; i < size; i++) {
+        EpsilonClosureInfo& info = ecinfo_[i];
         if (info.weight_to_process != Weight::Zero()) {
           info.element.weight = Plus(info.element.weight, info.weight_to_process);
         }
