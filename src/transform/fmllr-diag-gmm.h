@@ -81,7 +81,10 @@ class FmllrDiagGmmAccs: public AffineXformStats {
   void Init(size_t dim) {
     AffineXformStats::Init(dim, dim); single_frame_stats_.Init(dim);
   }
-
+  void Read(std::istream &in, bool binary, bool add) {
+      AffineXformStats::Read(in, binary, add);
+      single_frame_stats_.Init(Dim());
+  }
   /// Accumulate stats for a single GMM in the model; returns log likelihood.
   BaseFloat AccumulateForGmm(const DiagGmm &gmm,
                              const VectorBase<BaseFloat> &data,
