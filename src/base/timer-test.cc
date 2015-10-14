@@ -36,7 +36,6 @@ void TimerTest() {
     KALDI_ERR << "Timer fail: waited " << f << " seconds instead of "
               <<  time_secs << " secs.";
 }
-
 }
 
 

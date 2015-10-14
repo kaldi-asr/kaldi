@@ -50,6 +50,7 @@ NnetComputeProb::~NnetComputeProb() {
 void NnetComputeProb::Reset() {
   num_minibatches_processed_ = 0;
   objf_info_.clear();
+  accuracy_info_.clear();
   if (deriv_nnet_) {
     bool is_gradient = true;
     SetZero(is_gradient, deriv_nnet_);
@@ -67,7 +68,7 @@ void NnetComputeProb::Compute(const NnetExample &eg) {
   NnetComputer computer(config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
-  computer.AcceptInputs(nnet_, eg);
+  computer.AcceptInputs(nnet_, eg.io);
   computer.Forward();
   this->ProcessOutputs(eg, &computer);
   if (config_.compute_deriv)
@@ -81,8 +82,9 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
   for (; iter != end; ++iter) {
     const NnetIo &io = *iter;
     int32 node_index = nnet_.GetNodeIndex(io.name);
+    if (node_index < 0)
+      KALDI_ERR << "Network has no output named " << io.name;
     ObjectiveType obj_type = nnet_.GetNode(node_index).u.objective_type;
-    KALDI_ASSERT(node_index >= 0);
     if (nnet_.IsOutputNode(node_index)) {
       const CuMatrixBase<BaseFloat> &output = computer->GetOutput(io.name);
       if (output.NumCols() != io.features.NumCols()) {
