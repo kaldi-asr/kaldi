@@ -458,18 +458,6 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // in each update, so we can compute the averaged scaling factor
   // in Info().
   double max_change_scale_stats_;
-  /// The following function is only called if max_change_per_sample_ > 0, it returns a
-  /// scaling factor alpha <= 1.0 (1.0 in the normal case) that enforces the
-  /// "max-change" constraint.  "in_products" is the inner product with itself
-  /// of each row of the matrix of preconditioned input features; "out_products"
-  /// is the same for the output derivatives.  gamma_prod is a product of two
-  /// scalars that are output by the preconditioning code (for the input and
-  /// output), which we will need to multiply into the learning rate.
-  /// out_products is a pointer because we modify it in-place.
-  BaseFloat GetScalingFactor(const CuVectorBase<BaseFloat> &in_products,
-                             const std::string &debug_info,
-                             BaseFloat gamma_prod,
-                             CuVectorBase<BaseFloat> *out_products);
 
   // Sets the configs rank, alpha and eta in the preconditioner objects,
   // from the class variables.
