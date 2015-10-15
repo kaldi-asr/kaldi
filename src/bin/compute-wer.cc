@@ -139,6 +139,12 @@ int main(int argc, char *argv[]) {
         num_ins += ins;
         num_del += del;
         num_sub += sub;
+      
+        if (kaldi::g_kaldi_verbose_level >= 1) { 
+          std::cerr << key << " wer " << 100.0*(sub+del+ins)/ref_sent.size() 
+                    << " ref " << ref_sent.size() << " ins " << ins
+                    << " del " << del << " sub " << sub << std::endl;
+        }
 
         if (detailed_stats) {
           const int32 eps = -1;
@@ -172,6 +178,12 @@ int main(int argc, char *argv[]) {
         num_ins += ins;
         num_del += del;
         num_sub += sub;
+
+        if (kaldi::g_kaldi_verbose_level >= 1) { 
+          std::cerr << key << " wer " << 100.0*(sub+del+ins)/ref_sent.size() 
+                    << " ref " << ref_sent.size() << " ins " << ins
+                    << " del " << del << " sub " << sub << std::endl;
+        } 
 
         if (detailed_stats) {
           const std::string eps = "";
