@@ -514,12 +514,18 @@ template<class Arc> class DeterminizerStar {
   // it also adds the necessary stuff to queue_, set the correct weight, depth
   // depth here is the new depth
   void AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
+    // first we try to find the element info in the ecinfo_ vector
     int index = -1;
     if (elem.state < id_to_index_.size()) {
       index = id_to_index_[elem.state];
     }
-    if (index != -1 && ecinfo_[index].element.state != elem.state) {
-      index = -1;
+    if (index != -1) {
+      if (index >= ecinfo_.size()) {
+        index = -1;
+      }
+      else if (ecinfo_[index].element.state != elem.state) {
+        index = -1;
+      }
     }
 
     if (index == -1) {
@@ -620,7 +626,7 @@ template<class Arc> class DeterminizerStar {
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
     ecinfo_.resize(0);
-    id_to_index_.resize(0);
+//    id_to_index_.resize(0);
     size_t size = input_subset.size();
     {
       for (size_t i = 0; i < size; i++) {
@@ -705,6 +711,7 @@ template<class Arc> class DeterminizerStar {
         if (info.weight_to_process != Weight::Zero()) {
           info.element.weight = Plus(info.element.weight, info.weight_to_process);
         }
+//        cout << info.element.state << ": " << info.element.weight << endl;
         output_subset->push_back(info.element);
       }
     }
