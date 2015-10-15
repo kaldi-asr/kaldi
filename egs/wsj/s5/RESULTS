@@ -281,3 +281,18 @@ for x in exp/nnet2_online/nnet_ms_a_online/decode_*rnnlm-hs.nce20.h400.voc40k; d
 %WER 2.91 [ 164 / 5643, 24 ins, 9 del, 131 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_rnnlm-hs.nce20.h400.voc40k/wer_10_0.0
 %WER 7.83 [ 645 / 8234, 159 ins, 50 del, 436 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_rnnlm-hs.nce20.h400.voc40k/wer_11_0.0
 %WER 5.40 [ 305 / 5643, 77 ins, 16 del, 212 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_rnnlm-hs.nce20.h400.voc40k/wer_13_1.0
+
+# LSTM results:
+for x in exp/nnet3/lstm_ld5/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 7.07 [ 582 / 8234, 61 ins, 92 del, 429 sub ] exp/nnet3/lstm_ld5/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 4.27 [ 241 / 5643, 19 ins, 27 del, 195 sub ] exp/nnet3/lstm_ld5/decode_bd_tgpr_eval92/wer_11_1.0
+%WER 9.50 [ 782 / 8234, 155 ins, 76 del, 551 sub ] exp/nnet3/lstm_ld5/decode_tgpr_dev93/wer_11_0.0
+%WER 6.84 [ 386 / 5643, 87 ins, 23 del, 276 sub ] exp/nnet3/lstm_ld5/decode_tgpr_eval92/wer_11_1.0
+
+# BLSTM results
+for x in exp/nnet3/blstm_ld5/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 6.79 [ 559 / 8234, 55 ins, 89 del, 415 sub ] exp/nnet3/blstm_ld5/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 4.38 [ 247 / 5643, 18 ins, 29 del, 200 sub ] exp/nnet3/blstm_ld5/decode_bd_tgpr_eval92/wer_12_1.0
+%WER 9.35 [ 770 / 8234, 152 ins, 80 del, 538 sub ] exp/nnet3/blstm_ld5/decode_tgpr_dev93/wer_10_0.0
+%WER 6.84 [ 386 / 5643, 68 ins, 28 del, 290 sub ] exp/nnet3/blstm_ld5/decode_tgpr_eval92/wer_12_1.0
+
