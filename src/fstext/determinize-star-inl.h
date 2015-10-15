@@ -507,7 +507,7 @@ template<class Arc> class DeterminizerStar {
 
   vector<idWeight> queue_2;
 
-  vector<size_t> id_to_index_;
+  vector<int> id_to_index_;
   
 
   // Add one element (elem) into cur_subset
@@ -582,7 +582,7 @@ template<class Arc> class DeterminizerStar {
   // and add the results to cur_subset.
   void ExpandOneElement(const Element &elem,
                         bool sorted,
-                        Weight unprocessed_weight) {
+                        const Weight &unprocessed_weight) {
     // now we are going to propagate the "unprocessed_weight"
     for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
          !aiter.Done(); aiter.Next()) {
@@ -626,14 +626,14 @@ template<class Arc> class DeterminizerStar {
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
         ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
-                                             input_subset[i].weight, true));
                                // now it is equivalent to having 
-                               // the vector as a "virtual queue" so it 
+                               // the vector as a "virtual queue" so in_queue
                                // needs to be set true
+                                             input_subset[i].weight, true));
         ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
         if (id_to_index_.size() < input_subset[i].state + 1) {
-          id_to_index_.resize(input_subset[i].state + 1, -1);
+          id_to_index_.resize(2 * input_subset[i].state + 1, -1);
         }
         id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
       }
@@ -647,6 +647,8 @@ template<class Arc> class DeterminizerStar {
       ExpandOneElement(input_subset[i], sorted, input_subset[i].weight);
 
       // no need to check index is valid since we just pushed them in
+      // setting the in_queue false sicne we've taken them out of the 
+      // "virtual" queue
       ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
     }
 
@@ -655,6 +657,7 @@ template<class Arc> class DeterminizerStar {
       InputStateId id = queue_.front();
 
       // no need to check validity of the index
+      // since anything in the queue we are sure they're in the "virtual set"
       int index = id_to_index_[id];
       EpsilonClosureInfo &info = ecinfo_[index];
       Element &elem = info.element;
