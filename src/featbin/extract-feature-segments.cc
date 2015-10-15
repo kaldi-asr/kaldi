@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
     BaseFloat min_segment_length = 0.1,  // Minimum segment length in seconds.
         max_overshoot = 0.0;  // max time by which last segment can overshoot
     BaseFloat samp_freq = 100;  // feature sampling frequency (assuming 10ms window shift)
+    int32 frame_length = 25;
+    bool trim_starts = false;
 
     // Register the options
     po.Register("min-segment-length", &min_segment_length,
@@ -54,6 +56,14 @@ int main(int argc, char *argv[]) {
     po.Register("max-overshoot", &max_overshoot,
                 "End segments overshooting by less (in seconds) are truncated,"
                 " else rejected.");
+    po.Register("frame-length", &frame_length,
+                "Frame length in ms, used when --trim-starts=true");
+    po.Register("trim-starts", &trim_starts,
+                "Trim segment start by (frame_length - frame_shift)/frame_shift samples,"
+                " where frame_shift = 1000/frame_rate "
+                " except for segment starts at the beginning of a file."
+                " This way the segment lengths will match with feature vector lengths "
+                " calculated from already segmented audio");
 
     // OPTION PARSING ...
     // parse options  (+filling the registered variables)
@@ -63,7 +73,6 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-
 
     std::string rspecifier = po.GetArg(1); // get script file/feature archive
     std::string segments_rxfilename = po.GetArg(2);// get segment file
@@ -76,7 +85,13 @@ int main(int argc, char *argv[]) {
     Input ki(segments_rxfilename); // no binary argment: never binary.
 
     int32 num_lines = 0, num_success = 0;
-    
+
+    int32 trim_length = 0;
+    if (trim_starts) {
+      BaseFloat frame_shift = 1000./samp_freq;
+      trim_length =  static_cast<int32>(ceil((frame_length - frame_shift)/frame_shift));
+    }
+
     std::string line;
     /* read each line from segments file */
     while (std::getline(ki.Stream(), line)) {
@@ -106,6 +121,7 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
         continue;
       }
+
       // start time must not be negative; start time must not be greater than
       // end time, except if end time is -1
       if (start < 0 || end <= 0 || start >= end) {
@@ -133,10 +149,13 @@ int main(int argc, char *argv[]) {
       const Matrix<BaseFloat> &feats = feat_reader.Value(utterance);
       int32 num_samp = feats.NumRows(), // total number of samples present in wav data
           num_chan = feats.NumCols(); // total number of channels present in wav file
-
       // Convert start & end times of the segment to corresponding sample number
-      int32 start_samp = static_cast<int32>(start * samp_freq);
-      int32 end_samp = static_cast<int32>(end * samp_freq);
+      int32 start_samp = static_cast<int32>(round((start * samp_freq)));
+      if (start_samp > 0) {
+        start_samp += trim_length;
+      }
+
+      int32 end_samp = static_cast<int32>(round(end * samp_freq));
       /* start sample must be less than total number of samples 
        * otherwise skip the segment
        */
@@ -150,7 +169,7 @@ int main(int argc, char *argv[]) {
        */
       if (end_samp > num_samp) {
         if (end_samp >=
-            num_samp + static_cast<int32>(max_overshoot * samp_freq)) {
+            num_samp + static_cast<int32>(round(max_overshoot * samp_freq))) {
           KALDI_WARN << "End sample too far out of range " << end_samp
                      << " [length:] " << num_samp << "x" << num_chan << ", skipping segment "
                      << segment;
@@ -158,11 +177,12 @@ int main(int argc, char *argv[]) {
         }
         end_samp = num_samp; // for small differences, just truncate.
       }
+
       /* check whether the segment size is less than minimum segment length(default 0.1 sec)
        * if yes, skip the segment
        */
       if (end_samp <=
-          start_samp + static_cast<int32>(min_segment_length * samp_freq)) {
+          start_samp + static_cast<int32>(round((min_segment_length * samp_freq)))) {
         KALDI_WARN << "Segment " << segment << " too short, skipping it.";
         continue;
       }
