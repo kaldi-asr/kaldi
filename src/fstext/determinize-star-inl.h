@@ -527,11 +527,13 @@ template<class Arc> class DeterminizerStar {
       ecinfo_.push_back(EpsilonClosureInfo(elem, unprocessed_weight, true));
       size_t size = id_to_index_.size();
       if (size < elem.state + 1) {
-        // double the size to reduce lots of memory operations
+        // double the size to reduce memory operations
         id_to_index_.resize(2 * elem.state + 1, -1);
       }
       id_to_index_[elem.state] = ecinfo_.size() - 1;
       queue_.push_back(elem.state);
+      KALDI_ASSERT(elem.state == ecinfo_[id_to_index_[elem.state]].element.state); // TODO(hxu)
+
     } else {  // one is already there.  Add weights.
       EpsilonClosureInfo &info = ecinfo_[index];
       if (info.element.string != elem.string) {
@@ -617,25 +619,27 @@ template<class Arc> class DeterminizerStar {
 
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
-    size_t size = input_subset.size();
-    typedef typename std::map<InputStateId, size_t>::iterator MapIter;
-
     ecinfo_.resize(0);
+    id_to_index_.resize(0);
+    size_t size = input_subset.size();
     {
       for (size_t i = 0; i < size; i++) {
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
         ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
+                               // not very sure the weight is right.. TODO(hxu)
+                                             input_subset[i].weight,
                                // now it is equivalent to having 
                                // the vector as a "virtual queue" so in_queue
                                // needs to be set true
-                                             input_subset[i].weight, true));
+                                             true));
         ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
         if (id_to_index_.size() < input_subset[i].state + 1) {
           id_to_index_.resize(2 * input_subset[i].state + 1, -1);
         }
         id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
+        KALDI_ASSERT(input_subset[i].state == ecinfo_[id_to_index_[input_subset[i].state]].element.state); // TODO(hxu)
       }
     }
 
@@ -643,6 +647,7 @@ template<class Arc> class DeterminizerStar {
     bool sorted =
             ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
 
+    // size is still the input_subset.size()
     for (size_t i = 0; i < size; i++) {
       ExpandOneElement(input_subset[i], sorted, input_subset[i].weight);
 
@@ -660,6 +665,12 @@ template<class Arc> class DeterminizerStar {
       // since anything in the queue we are sure they're in the "virtual set"
       int index = id_to_index_[id];
       EpsilonClosureInfo &info = ecinfo_[index];
+      if (!(info.element.state == id)) {
+        std::cerr << index << endl
+                  << info.element.state << " " << id << endl
+                  << "..." << queue_.size() << endl;
+      }
+      KALDI_ASSERT(info.element.state == id);
       Element &elem = info.element;
       Weight unprocessed_weight = info.weight_to_process;
 
@@ -686,9 +697,9 @@ template<class Arc> class DeterminizerStar {
       sort(ecinfo_.begin(), ecinfo_.end());
 
       output_subset->clear();
-      output_subset->reserve(size);
 
       size = ecinfo_.size();
+      output_subset->reserve(size);
       for (size_t i = 0; i < size; i++) {
         EpsilonClosureInfo& info = ecinfo_[i];
         if (info.weight_to_process != Weight::Zero()) {
