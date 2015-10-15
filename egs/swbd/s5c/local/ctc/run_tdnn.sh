@@ -70,7 +70,7 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  # Starting from the alignments in tri4b_ali_si284, we train a rudimentary
+  # Starting from the alignments in tri4_ali_nodup*, we train a rudimentary
   # LDA+MLLT system with a 1-state HMM topology and with only left phonetic
   # context (one phone's worth of left context, for now).  We set "--num-iters
   # 1" because we only need the tree from this system.
@@ -123,15 +123,21 @@ if [ $stage -le 12 ]; then
 fi
 
 decode_suff=sw1_tg_${phone_lm_weight}
-graph_dir=exp/tri4/graph_${decode_suff}
+graph_dir=$dir/graph_sw1_tg_${phone_lm_weight}
 if [ $stage -le 14 ]; then
-  # offline decoding
-  for decode_set in train_dev_hires eval2000_hires; do
+  for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/ctc/decode.sh --nj 250 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_${phone_lm_weight} || exit 1;
+      fi
+
+
       ) &
   done
 fi
