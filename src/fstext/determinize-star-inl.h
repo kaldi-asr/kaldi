@@ -491,13 +491,6 @@ template<class Arc> class DeterminizerStar {
     }
   };
 
-
-  struct idWeight {
-    idWeight(int i, const Weight& w) : id(i), weight(w) {}
-    int id;
-    Weight weight;
-  };
-
   // to further speed up EpsilonClosure() computation, we have this 2 queue
   // design, which goes like this
   // while (first queue not empty) {
@@ -518,7 +511,7 @@ template<class Arc> class DeterminizerStar {
   //
   // We put the queues here for better efficiency for memory allocation
   deque<typename Arc::StateId> queue_;
-  vector<idWeight> queue_2;
+  vector<pair<typename Arc::StateId, Weight> > queue_2_;
 
   // the following 2 structures together form our *virtual "map"*
   // basically we need a map from state_id to EpsilonClousreInfo that operates
@@ -614,7 +607,8 @@ template<class Arc> class DeterminizerStar {
   // and add the results to cur_subset.
   void ExpandOneElement(const Element &elem,
                         bool sorted,
-                        const Weight &unprocessed_weight) {
+                        const Weight &unprocessed_weight,
+                        bool save_to_queue_2 = false) {
     // now we are going to propagate the "unprocessed_weight"
     for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
          !aiter.Done(); aiter.Next()) {
@@ -634,34 +628,58 @@ template<class Arc> class DeterminizerStar {
                      = Times(unprocessed_weight, arc.weight);
 
       // now must append strings
-      if (arc.olabel == 0)
+      if (arc.olabel == 0) {
         next_elem.string = elem.string;
-      else {
+      } else {
         vector<Label> seq;
         repository_.SeqOfId(elem.string, &seq);
         if (arc.olabel != 0)
           seq.push_back(arc.olabel);
         next_elem.string = repository_.IdOfSeq(seq);
       }
-      AddOneElement(next_elem, next_unprocessed_weight);
+      if (save_to_queue_2) {
+        queue_2_.push_back(make_pair(next_elem.state, next_unprocessed_weight));
+      } else {
+        AddOneElement(next_elem, next_unprocessed_weight);
+      }
     }
+  }
+
+  static bool ElementCompare(const Element &a, const Element &b) {
+    return a.state < b.state;
   }
 
   void EpsilonClosure(const vector<Element> &input_subset,
                       vector<Element> *output_subset) {
     ecinfo_.resize(0);
-//    id_to_index_.resize(0);
     size_t size = input_subset.size();
-    {
+    // find whether input fst is known to be sorted in input label.
+    bool sorted =
+            ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
+
+    // size is still the input_subset.size()
+    for (size_t i = 0; i < size; i++) {
+      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight, true);
+
+      // no need to check index is valid since we just pushed them in
+      // setting the in_queue false sicne we've taken them out of the 
+      // "virtual" queue
+
+      // ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
+    }
+
+    size_t s = queue_2_.size();
+    if (s == 0) {
+      *output_subset = input_subset;
+      sort(output_subset->begin(), output_subset->end(), ElementCompare);
+      return;
+    } else {
       for (size_t i = 0; i < size; i++) {
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
         ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
                                              input_subset[i].weight,
-                               // now it is equivalent to having 
-                               // the vector as a "virtual queue" so in_queue
-                               // needs to be set true
-                                             true));
+                                             false));
         ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
 
         if (id_to_index_.size() < input_subset[i].state + 1) {
@@ -671,18 +689,15 @@ template<class Arc> class DeterminizerStar {
       }
     }
 
-    // find whether input fst is known to be sorted in input label.
-    bool sorted =
-            ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-
-    // size is still the input_subset.size()
-    for (size_t i = 0; i < size; i++) {
-      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight);
-
-      // no need to check index is valid since we just pushed them in
-      // setting the in_queue false sicne we've taken them out of the 
-      // "virtual" queue
-      ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
+    {
+      Element elem;
+      elem.weight = Weight::Zero();
+      for (size_t i = 0; i < s; i++) {
+        elem.state = queue_2_[i].first;
+        elem.string = ecinfo_[id_to_index_[elem.state]].element.string;
+        AddOneElement(elem, queue_2_[i].second);
+      }
+      queue_2_.resize(0);
     }
 
     int counter = 0; // relates to max-states option, used for test.
