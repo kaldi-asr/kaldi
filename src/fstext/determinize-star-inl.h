@@ -511,7 +511,7 @@ template<class Arc> class DeterminizerStar {
   //
   // We put the queues here for better efficiency for memory allocation
   deque<typename Arc::StateId> queue_;
-  vector<pair<typename Arc::StateId, Weight> > queue_2_;
+  vector<Element> queue_2_;
 
   // the following 2 structures together form our *virtual "map"*
   // basically we need a map from state_id to EpsilonClousreInfo that operates
@@ -638,7 +638,8 @@ template<class Arc> class DeterminizerStar {
         next_elem.string = repository_.IdOfSeq(seq);
       }
       if (save_to_queue_2) {
-        queue_2_.push_back(make_pair(next_elem.state, next_unprocessed_weight));
+        next_elem.weight = next_unprocessed_weight;
+        queue_2_.push_back(next_elem);
       } else {
         AddOneElement(next_elem, next_unprocessed_weight);
       }
@@ -693,9 +694,9 @@ template<class Arc> class DeterminizerStar {
       Element elem;
       elem.weight = Weight::Zero();
       for (size_t i = 0; i < s; i++) {
-        elem.state = queue_2_[i].first;
-        elem.string = ecinfo_[id_to_index_[elem.state]].element.string;
-        AddOneElement(elem, queue_2_[i].second);
+        elem.state = queue_2_[i].state;
+        elem.string = queue_2_[i].string;
+        AddOneElement(elem, queue_2_[i].weight);
       }
       queue_2_.resize(0);
     }
