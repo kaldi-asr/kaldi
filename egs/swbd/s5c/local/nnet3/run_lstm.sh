@@ -17,7 +17,6 @@
 stage=0
 train_stage=-10
 has_fisher=true
-use_sat_alignments=true
 affix=
 speed_perturb=true
 common_egs_dir=
@@ -32,21 +31,16 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
-clipping_threshold=30.0
-norm_based_clipping=true
 
-num_epochs=8
 
 # training options
+num_epochs=8
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=3
 num_jobs_final=15
 momentum=0.5
-adaptive_shrink=true
-shrink=0.98
 num_chunk_per_minibatch=100
-num_bptt_steps=
 samples_per_iter=20000
 remove_egs=true
 
@@ -103,19 +97,14 @@ if [ $stage -le 9 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
-    --adaptive-shrink "$adaptive_shrink" \
-    --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
     --hidden-dim $hidden_dim \
-    --clipping-threshold $clipping_threshold \
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
-    --num-bptt-steps "$num_bptt_steps" \
-    --norm-based-clipping $norm_based_clipping \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
