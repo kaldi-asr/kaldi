@@ -538,7 +538,6 @@ template<class Arc> class DeterminizerStar {
       }
       id_to_index_[elem.state] = ecinfo_.size() - 1;
       queue_.push_back(elem.state);
-      KALDI_ASSERT(elem.state == ecinfo_[id_to_index_[elem.state]].element.state); // TODO(hxu)
 
     } else {  // one is already there.  Add weights.
       EpsilonClosureInfo &info = ecinfo_[index];
@@ -645,7 +644,6 @@ template<class Arc> class DeterminizerStar {
           id_to_index_.resize(2 * input_subset[i].state + 1, -1);
         }
         id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
-        KALDI_ASSERT(input_subset[i].state == ecinfo_[id_to_index_[input_subset[i].state]].element.state); // TODO(hxu)
       }
     }
 
@@ -671,12 +669,6 @@ template<class Arc> class DeterminizerStar {
       // since anything in the queue we are sure they're in the "virtual set"
       int index = id_to_index_[id];
       EpsilonClosureInfo &info = ecinfo_[index];
-      if (!(info.element.state == id)) {
-        std::cerr << index << endl
-                  << info.element.state << " " << id << endl
-                  << "..." << queue_.size() << endl;
-      }
-      KALDI_ASSERT(info.element.state == id);
       Element &elem = info.element;
       Weight unprocessed_weight = info.weight_to_process;
 
