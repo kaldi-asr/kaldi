@@ -36,8 +36,9 @@ int main(int argc, char *argv[]) {
         "and outputs overall WER statistics to standard output.\n"
         "\n"
         "Usage: compute-wer [options] <ref-rspecifier> <hyp-rspecifier>\n"
-        "\n"
-        "E.g.: compute-wer --text --mode=present ark:data/train/text ark:hyp_text\n";
+        "E.g.: compute-wer --text --mode=present ark:data/train/text ark:hyp_text\n"
+        "See also: align-text,\n"
+        "Example scoring script: egs/wsj/s5/steps/score_kaldi.sh\n";
 
     ParseOptions po(usage);
 
@@ -49,7 +50,7 @@ int main(int argc, char *argv[]) {
                 "  \"strict\" means die if all in ref not also in hyp");
     
     bool dummy = false;
-    po.Register("text", &dummy, "Deprecatad option! Keeping for compatibility reasons.");
+    po.Register("text", &dummy, "Deprecated option! Keeping for compatibility reasons.");
 
     po.Read(argc, argv);
 
