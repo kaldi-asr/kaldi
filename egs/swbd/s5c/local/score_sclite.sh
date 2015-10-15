@@ -8,6 +8,7 @@ min_lmwt=5
 max_lmwt=20
 reverse=false
 word_ins_penalty=0.0,0.5,1.0
+use_ctc=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -40,6 +41,16 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
      $model $data/segments $data/reco2file_and_channel $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
+
+align_word=
+reorder=
+if $reverse; then
+  align_word="lattice-reverse ark:- ark:- |"
+  reorder="--reorder=false"
+fi
+if [ ! $use_ctc ]; then
+  align_word="$align_word lattice-align-words $reorder $lang/phones/word_boundary.int $model ark:- ark:- |"
+fi
 
 name=`basename $data`; # e.g. eval2000
 
