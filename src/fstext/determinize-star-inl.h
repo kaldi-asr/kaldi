@@ -491,13 +491,6 @@ template<class Arc> class DeterminizerStar {
     }
   };
 
-  vector<EpsilonClosureInfo> ecinfo_;
-  
-  // queue for EpsilonClosure() function
-  // put it here so the memeory allocation for better effiency
-  // otherwise it gets created and destroyed constantly, also
-  // possibly a lot of resize() call the for underlying vector
-  deque<typename Arc::StateId> queue_;
 
   struct idWeight {
     idWeight(int i, const Weight& w) : id(i), weight(w) {}
@@ -505,14 +498,46 @@ template<class Arc> class DeterminizerStar {
     Weight weight;
   };
 
+  // to further speed up EpsilonClosure() computation, we have this 2 queue
+  // design, which goes like this
+  // while (first queue not empty) {
+  //   while (first queue not empty) {
+  //     process transitions and add to second queue
+  //   }
+  //   while (second queue not empty) {
+  //     add things to the "map" (will explain later about the map)
+  //     add things to the 1st queue if needed
+  //   }
+  // }
+  //
+  // Since Epsilon arcs are relatively rare in FSTs, this way we could efficiently
+  // detect the epsilon-free case, without having to waste our computation e.g.
+  // allocating the EpsilonClosureInfo structure; this also lets us do a 
+  // level-by-level traversal, which could avoid some (unfortunately not all)
+  // duplicate computation if epsilons form a DAG that is not a tree
+  //
+  // We put the queues here for better efficiency for memory allocation
+  deque<typename Arc::StateId> queue_;
   vector<idWeight> queue_2;
 
+  // the following 2 structures together form our *virtual "map"*
+  // basically we need a map from state_id to EpsilonClousreInfo that operates
+  // in O(1) time, while still takes relatively small mem, and this does it well
+  // for efficiency we don't clear id_to_index_ of its outdated information
+  // As a result each time we do a look-up, we need to check
+  // if (ecinfo_[id_to_index_[id]].element.state == id)
+  // Yet this is still faster than using a std::map<StateId, EpsilonClosureInfo>
   vector<int> id_to_index_;
+
+  // unlike id_to_index_, we clear the content of ecinfo_ each time we call
+  // EpsilonClosure(). This needed because we need an efficient way to 
+  // traverse the virtual map - it is just too costly to traverse the 
+  // id_to_index_ vector. 
+  vector<EpsilonClosureInfo> ecinfo_;
   
 
   // Add one element (elem) into cur_subset
-  // it also adds the necessary stuff to queue_, set the correct weight, depth
-  // depth here is the new depth
+  // it also adds the necessary stuff to queue_, set the correct weight
   void AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
     // first we try to find the element info in the ecinfo_ vector
     int index = -1;
@@ -632,7 +657,6 @@ template<class Arc> class DeterminizerStar {
         // the weight has not been processed yet,
         // so put all of them in the "weight_to_process"
         ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
-                               // not very sure the weight is right.. TODO(hxu)
                                              input_subset[i].weight,
                                // now it is equivalent to having 
                                // the vector as a "virtual queue" so in_queue
@@ -692,6 +716,7 @@ template<class Arc> class DeterminizerStar {
     }
 
     {
+      // this sorting is based on StateId
       sort(ecinfo_.begin(), ecinfo_.end());
 
       output_subset->clear();
