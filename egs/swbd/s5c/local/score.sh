@@ -14,6 +14,7 @@ min_lmwt=5
 max_lmwt=20
 reverse=false
 word_ins_penalty=0.0,0.5,1.0
+use_ctc=false
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
