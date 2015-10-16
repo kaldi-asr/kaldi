@@ -93,17 +93,16 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
   CuMatrix<BaseFloat> cu_weights;
   trans_model.ComputeWeights(&cu_weights);
   CctcTrainingOptions opts;
-  CctcComputation computation(opts, trans_model, cu_weights,
-                              supervision, nnet_output);
-  BaseFloat log_like = computation.Forward();
-  KALDI_LOG << "log-like of CCTC computation is " << log_like;
-
+  CctcCommonComputation computation(opts, trans_model, cu_weights,
+                                      supervision, nnet_output);
   CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
                                         kUndefined);
-  nnet_output_deriv.SetRandn();  // <- the class requires only that it not have
-                                 // NaN's or infs, so we set it random to test
-                                 // that it ignores the existing data.
+
+  BaseFloat log_like, den_term, normalizer;
+  computation.Forward(&log_like, &den_term, &normalizer);
+  KALDI_LOG << "log-like of CCTC computation is " << log_like;
   computation.Backward(&nnet_output_deriv);
+
   int32 num_offsets = 3;
   Vector<BaseFloat> predicted_objf_changes(num_offsets),
       measured_objf_changes(num_offsets);
@@ -114,9 +113,11 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
     predicted_objf_changes(i) = TraceMatMat(modified_output,
                                             nnet_output_deriv, kTrans);
     modified_output.AddMat(1.0, nnet_output);
-    CctcComputation computation(opts, trans_model, cu_weights,
-                                supervision, modified_output);
-    BaseFloat modified_log_like = computation.Forward();
+    CctcCommonComputation computation(opts, trans_model, cu_weights,
+                                      supervision, modified_output);
+    BaseFloat modified_log_like, modified_den_term, modified_normalizer;
+    computation.Forward(&modified_log_like, &modified_den_term,
+                        &modified_normalizer);
     // no need to do backward.
     measured_objf_changes(i) = modified_log_like - log_like;
   }

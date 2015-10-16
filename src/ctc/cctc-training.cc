@@ -24,30 +24,21 @@ namespace kaldi {
 namespace ctc {
 
 
-CctcComputation::CctcComputation(
+CctcPositiveComputation::CctcPositiveComputation(
     const CctcTrainingOptions &opts,
     const CctcTransitionModel &trans_model,
-    const CuMatrix<BaseFloat> &cu_weights,
     const CctcSupervision &supervision,
-    const CuMatrixBase<BaseFloat> &nnet_output):
-    opts_(opts), trans_model_(trans_model), cu_weights_(cu_weights),
-    supervision_(supervision), nnet_output_(nnet_output) {
-  CheckDims();
-}
+    const CuMatrixBase<BaseFloat> &exp_nnet_output,
+    const CuMatrixBase<BaseFloat> &denominators):
+    opts_(opts), trans_model_(trans_model),
+    supervision_(supervision), exp_nnet_output_(exp_nnet_output),
+    denominators_(denominators) { }
 
-
-void CctcComputation::CheckDims() const {
-  KALDI_ASSERT(cu_weights_.NumRows() == trans_model_.NumHistoryStates() &&
-               cu_weights_.NumCols() == trans_model_.NumOutputIndexes());
-  KALDI_ASSERT(nnet_output_.NumRows() == supervision_.num_frames &&
-               nnet_output_.NumCols() == trans_model_.NumOutputIndexes());
-  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumGraphLabels());
-}
 
 // This function, called from Forward(), does the actual forward-computation on
 // the FST, setting alpha_ and tot_log_prob_.
 // Note: the FST is unweighted.
-void CctcComputation::ComputeAlpha() {
+void CctcPositiveComputation::ComputeAlpha() {
   const fst::StdVectorFst &fst = supervision_.fst;
   KALDI_ASSERT(fst.Start() == 0);
   int32 num_states = fst.NumStates();
@@ -74,7 +65,7 @@ void CctcComputation::ComputeAlpha() {
   KALDI_ASSERT(arc_logprob_iter == &(arc_logprobs_[0]) + arc_logprobs_.size());
 }
 
-void CctcComputation::ComputeBeta() {
+void CctcPositiveComputation::ComputeBeta() {
   const fst::StdVectorFst &fst = supervision_.fst;
   int32 num_states = fst.NumStates();
   log_beta_.Resize(num_states, kUndefined);
@@ -113,7 +104,7 @@ void CctcComputation::ComputeBeta() {
 }
 
 
-void CctcComputation::ComputeLookupIndexes() {
+void CctcPositiveComputation::ComputeLookupIndexes() {
   std::vector<int32> fst_state_times;
   ComputeFstStateTimes(supervision_.fst, &fst_state_times);
   int32 num_states = supervision_.fst.NumStates();
@@ -200,24 +191,18 @@ void CctcComputation::ComputeLookupIndexes() {
   KALDI_ASSERT(!fst_indexes_.empty());
 }
 
-BaseFloat CctcComputation::Forward() {
+BaseFloat CctcPositiveComputation::Forward() {
   ComputeLookupIndexes();
-  exp_nnet_output_ = nnet_output_;
-  exp_nnet_output_.ApplyExp();
-  normalizers_.Resize(exp_nnet_output_.NumRows(),
-                      trans_model_.NumHistoryStates());
-  normalizers_.AddMatMat(1.0, exp_nnet_output_, kNoTrans, cu_weights_, kTrans,
-                         0.0);
   LookUpLikelihoods();
   ComputeAlpha();
   return tot_log_prob_ + supervision_.ComputeExtraLogprob(trans_model_);
 }
 
-void CctcComputation::LookUpLikelihoods() {
+void CctcPositiveComputation::LookUpLikelihoods() {
   numerator_probs_.Resize(numerator_indexes_.Dim(), kUndefined);
   exp_nnet_output_.Lookup(numerator_indexes_, numerator_probs_.Data());
   denominator_probs_.Resize(denominator_indexes_.Dim(), kUndefined);
-  normalizers_.Lookup(denominator_indexes_, denominator_probs_.Data());
+  denominators_.Lookup(denominator_indexes_, denominator_probs_.Data());
   // Note: at this point, arc_logprobs_ contains the phone language model
   // probabilities.
   BaseFloat *arc_logprob_data = &(arc_logprobs_[0]);
@@ -233,14 +218,17 @@ void CctcComputation::LookUpLikelihoods() {
   }
 }
 
-bool CctcComputation::Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+void CctcPositiveComputation::Backward(
+    CuMatrixBase<BaseFloat> *nnet_output_deriv,
+    CuMatrixBase<BaseFloat> *denominators_deriv) {
   ComputeBeta();
-  return ComputeDerivatives(nnet_output_deriv);
+  ComputeDerivatives(nnet_output_deriv, denominators_deriv);
 }
 
 
-bool CctcComputation::ComputeDerivatives(
-    CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+void CctcPositiveComputation::ComputeDerivatives(
+    CuMatrixBase<BaseFloat> *nnet_output_deriv,
+    CuMatrixBase<BaseFloat> *denominators_deriv) {
   // we assume nnet_output_deriv is already zeroed; we add to it.
   int32 num_states = supervision_.fst.NumStates();
   int32 arc_index = 0;  // Index of arc in global tables of arcs.
@@ -280,35 +268,96 @@ bool CctcComputation::ComputeDerivatives(
     }
   }
   // Change denominator_deriv_ from being d(objf)/d(log denominator)
-  // to being d(objf)/d(denominator).  This division is why we couldn't reuse
-  // denominator_probs_ itself as the derivative.
+  // to being d(objf)/d(denominator).
   denominator_deriv_.DivElements(denominator_probs_);
 
-  // We will reuse the normalizers_ array to be the derivatives
-  // w.r.t. the normalizers.
-  normalizers_.SetZero();
-
-  normalizers_.AddElements(1.0, denominator_indexes_,
-                           denominator_deriv_data);
-
-  // After the following statement, 'nnet_output_deriv' contains the derivative
-  // with respect to 'exp_nnet_output_', considering only the denominator term.
-  nnet_output_deriv->AddMatMat(1.0, normalizers_, kNoTrans,
-                               cu_weights_, kNoTrans, 0.0);
-  // After the following statement, 'nnet_output_deriv' contains the derivative with
-  // respect to 'nnet_output_', considering only the denominator term.
-  // we use that y/d(exp x) = exp(x) dy/dx.
-  nnet_output_deriv->MulElements(exp_nnet_output_);
+  denominators_deriv->AddElements(1.0, denominator_indexes_,
+                                 denominator_deriv_data);
 
   // After the following statement, 'nnet_output_deriv' should contain the
-  // entire derivative, also including the numerator term.  Note: at this point,
-  // numerator_probs_ contains summed posteriors, which equal the derivative of
-  // the likelihood w.r.t. the nnet log output (considering only the numerator
-  // term).
+  // numerator term of the derivative.  At this point, numerator_probs_ contains
+  // summed posteriors, which equal the derivative of the likelihood w.r.t. the
+  // nnet log output (considering only the numerator term).
   nnet_output_deriv->AddElements(1.0, numerator_indexes_, numerator_probs_.Data());
 
-  BaseFloat sum = nnet_output_deriv->Sum();
-  return (sum == sum && sum - sum == 0);  // check for NaN/inf.
+}
+
+
+CctcCommonComputation::CctcCommonComputation(
+    const CctcTrainingOptions &opts,
+    const CctcTransitionModel &trans_model,
+    const CuMatrix<BaseFloat> &cu_weights,
+    const CctcSupervision &supervision,
+    const CuMatrixBase<BaseFloat> &nnet_output):
+    opts_(opts), trans_model_(trans_model), cu_weights_(cu_weights),
+    supervision_(supervision), nnet_output_(nnet_output),
+    positive_computation_(NULL) {
+  CheckDims();
+
+}
+
+
+void CctcCommonComputation::CheckDims() const {
+  KALDI_ASSERT(cu_weights_.NumRows() == trans_model_.NumHistoryStates() &&
+               cu_weights_.NumCols() == trans_model_.NumOutputIndexes());
+  KALDI_ASSERT(nnet_output_.NumRows() == supervision_.num_frames &&
+               nnet_output_.NumCols() == trans_model_.NumOutputIndexes());
+  KALDI_ASSERT(supervision_.label_dim == trans_model_.NumGraphLabels());
+}
+
+
+void CctcCommonComputation::Forward(BaseFloat *positive_objf_part,
+                                    BaseFloat *negative_objf_part,
+                                    BaseFloat *objf_denominator) {
+  exp_nnet_output_ = nnet_output_;
+  exp_nnet_output_.ApplyExp();
+  denominators_.Resize(exp_nnet_output_.NumRows(),
+                      trans_model_.NumHistoryStates());
+  denominators_.AddMatMat(1.0, exp_nnet_output_, kNoTrans, cu_weights_, kTrans,
+                         0.0);
+  denominators_deriv_.Resize(denominators_.NumRows(), denominators_.NumCols());
+
+  KALDI_ASSERT(positive_computation_ == NULL && "Forward() called twice?");
+  positive_computation_ = new CctcPositiveComputation(opts_, trans_model_,
+                                                      supervision_,
+                                                      exp_nnet_output_,
+                                                      denominators_);
+
+  *positive_objf_part = supervision_.weight * positive_computation_->Forward();
+  *negative_objf_part = 0.0;  // until we implement it.
+  *objf_denominator = supervision_.weight * nnet_output_.NumRows();
+}
+
+
+CctcCommonComputation::~CctcCommonComputation() {
+  delete positive_computation_;
+}
+
+void CctcCommonComputation::Backward(
+    CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+  KALDI_ASSERT(SameDim(*nnet_output_deriv, nnet_output_));
+  nnet_output_deriv->SetZero();
+  positive_computation_->Backward(nnet_output_deriv,
+                                  &denominators_deriv_);
+
+  // deriv w.r.t. exp of nnet output, as used in denominator computation.
+  CuMatrix<BaseFloat> exp_nnet_output_deriv(nnet_output_.NumRows(),
+                                            nnet_output_.NumCols());
+
+  exp_nnet_output_deriv.AddMatMat(1.0, denominators_deriv_, kNoTrans,
+                                  cu_weights_, kNoTrans, 0.0);
+
+  // After the following statement, 'exp_nnet_output_deriv' contains the
+  // derivative with respect to 'nnet_output_' itself, *considering only the
+  // denominator term* of the positive computation.  We use that y/d(exp x) =
+  // exp(x) dy/dx.
+  exp_nnet_output_deriv.MulElements(exp_nnet_output_);
+  nnet_output_deriv->AddMat(1.0, exp_nnet_output_deriv);
+
+  if (supervision_.weight != 1.0) {
+    // should be rare.  scale the derivatives.
+    nnet_output_deriv->Scale(supervision_.weight);
+  }
 }
 
 
@@ -338,11 +387,90 @@ bool CctcComputation::ComputeDerivatives(
   // the weights matrix.  Then multiply by exped-matrix to get d(logprob)/d(whole-orig-matrix).
   // then add d(logprob)/d(log-numerator).
 
-
-
   // we have the numerator and denominator values.
 
   // lm_prob * num / den.
+
+
+/**
+   Computation of
+     p(data | all classes).
+   It's a HMM with num-states == num-history-states.  Each state has the same
+   number of out-transitions, equal to num-phones + 1.
+
+   Divide by p(data | all classes).  Forward-backward computation, with alphas and
+   betas.  Store as non-log, but
+
+
+     p(data | all classes), which we have to divide by, is the product over all
+     frames of (non-tombstone-prob-mass), so the objf contains a term
+
+     - \sum_{all frames} \log  (1 - tombstone-prob-mass)
+
+     - \sum_{all frames} \log  (1 - tombstone-prob-mass)
+
+  =  - \sum_{all frames} \log ( (denominator-sum - tombstone-sum) / denominator-sum ).
+
+  =   \sum_{all frames} \log(denominator-sum) - \log (denominator-sum - tombstone-sum).
+
+  so dObjf/d(denominator-sum) on frame t is
+      1/(denominator-sum on frame t) - 1/(denominator-sum - tombstone-sum on frame t).
+
+   = 1/d * (1 - 1/(1 - tombstone-prob)).
+
+  and d/d(tombstone-sum) on frame t is:
+     1/(denominator-sum - tombstone-sum).
+  so dObjf/d(log tombstone-sum) on frame t is:
+     tombstone-sum/(denominator-sum - tombstone-sum).
+
+  Computation for a sequence of frames, t == 0 ... T - 1.
+  Have two vectors 'occupancy0' and 'occupancy1', for
+  even and odd times, of dimension == num-history-states.
+
+  Initialize occupancy[*] = 1/num-history-states [for time t=0].
+  # note: we go to only t - 2 because there is no point dealing
+  # with end effects.  We should probably get rid of derivatives
+  # near the edges anyway, they won't be accurate.
+
+  # note: we imagine we are in a CUDA kernel and we have a range
+  # of history-states that we are responsible for, and a particular
+  # minibatch-element that we are responsible for.
+
+  # the grid is one-dimensional and splits over the element of the
+  # minibatch.
+  # the block is one-dimensional and splits over the range of
+  # history-states that this thread is responsible for.
+
+  for t = 0 ... t - 2:
+    if t % 2 == 0,
+       this_occupancy = occupancy0;
+       next_occupancy = occupancy1;
+    else
+       this_occupancy = occupancy0;
+       next_occupancy = occupancy1;
+    fi
+    for j=0:num_history_states-1:
+      # in CUDA, only handle a range of history-states in this j.
+      next_occupancy[j] = 0.0
+    done
+    # note: we assume at this point that 'this_occupancy' is normalized
+    # to sum to one.
+    for j=0:num_history_states-1:
+      occ = this_occupancy[j].
+      if (occ very tiny) continue;
+      this_factor = this_occ / this_den
+      for k=0:num_history_states-1:  # in CUDA, only handle a range of history-states in this k.
+         next_occupancy[k] += this_num * this_factor.
+      done
+    done
+    #
+
+
+
+  done
+
+
+ */
 
 
 }  // namespace ctc

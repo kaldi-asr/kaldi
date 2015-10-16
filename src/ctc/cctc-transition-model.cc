@@ -109,6 +109,8 @@ void CctcTransitionModel::Check() const {
     // tree indexes.
     KALDI_ASSERT(info.output_index[0] >= num_tree_indexes_);
     output_index_seen[info.output_index[0]] = true;
+    output_index_seen[info.output_index[0] +
+                      FirstTombstoneIndex() - FirstBlankIndex()] = true;
     for (int32 p = 1; p <= num_phones; p++) {
       int32 output_index = info.output_index[p];
       KALDI_ASSERT(output_index < num_tree_indexes_);

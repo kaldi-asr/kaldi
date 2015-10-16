@@ -66,54 +66,39 @@ struct CctcTrainingOptions {
 // model training; it is only responsible for the forward-backward from the
 // neural net output, and the derivative computation that comes from this
 // forward-backward.
-class CctcComputation {
+// note: the supervision.weight is ignored by this class, you have to apply
+// it externally.
+class CctcPositiveComputation {
  public:
-  /// Note: the 'cu_weights' argument should be the output of
-  /// trans_model.ComputeWeights().
-  CctcComputation(const CctcTrainingOptions &opts,
-                  const CctcTransitionModel &trans_model,
-                  const CuMatrix<BaseFloat> &cu_weights,
-                  const CctcSupervision &supervision,
-                  const CuMatrixBase<BaseFloat> &nnet_output);
+  CctcPositiveComputation(const CctcTrainingOptions &opts,
+                          const CctcTransitionModel &trans_model,
+                          const CctcSupervision &supervision,
+                          const CuMatrixBase<BaseFloat> &exp_nnet_output,
+                          const CuMatrixBase<BaseFloat> &denominators);
 
   // Does the forward computation.  Returns the total log-prob,
   BaseFloat Forward();
 
-  // Does the backward computation and (efficiently) writes the derivative
-  // w.r.t. the neural network output to 'nnet_output_deriv'.  This function
-  // requires that 'nnet_output_deriv' not contain any NaN or inf values
-  // (so if it was just allocated, you need to zero it first).
-  //
-  // Returns true if everything was OK (which it should be, normally), and
-  // false if some kind of NaN or inf was discovered, in which case you
-  // shouldn't use the derivatives.  We're concerned about this because
-  // the setup takes exponentials of neural network outputs without applying
-  // any ceiling.
-  bool Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
-
-
-  // This function does the 'tombstone part' of the computation, including
-  // computing its derivatives (which are added to 'nnet_output_deriv', and it
-  // returns a log-likelihood that must be added to the result of Forward().
-  BaseFloat TombstoneComputation(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  // Does the backward computation and (efficiently) adds the direct part of
+  // the derivative w.r.t. the neural network output to 'nnet_output_deriv' (by
+  // 'direct' we mean the term not involving the denominators), and the derivative
+  // w.r.t. the the denominators to 'log_denominators_deriv'.
+  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                CuMatrixBase<BaseFloat> *denominators_deriv);
 
 
  private:
 
   const CctcTrainingOptions &opts_;
   const CctcTransitionModel &trans_model_;
-  // CUDA copy of trans_model_.Weights().  Dimension is
-  // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
-  const CuMatrix<BaseFloat> &cu_weights_;
   // The supervision object
   const CctcSupervision &supervision_;
-  // The neural net output
-  const CuMatrixBase<BaseFloat> &nnet_output_;
+
   // the exp of the neural net output.
-  CuMatrix<BaseFloat> exp_nnet_output_;
-  // the normalizers (denominator terms), of dimension nnet_output_.NumRows() by
+  const CuMatrixBase<BaseFloat> &exp_nnet_output_;
+  // the denominators, of dimension nnet_output_.NumRows() by
   // trans_model_.NumHistoryStates(), equal to exp_nnet_output_ * weights_'.
-  CuMatrix<BaseFloat> normalizers_;
+  const CuMatrixBase<BaseFloat> &denominators_;
 
 
   // 'fst_indexes' contains an entry for each arc in the supervision FST, in
@@ -143,7 +128,7 @@ class CctcComputation {
 
 
   // denominator_indexes is a list of indexes that we need to look up in
-  // normalizers_ for the forward-backward computation.  The order is not
+  // denominators_ for the forward-backward computation.  The order is not
   // important, but indexes into this vector appear in .second members in
   // fst_indexes.
   CuArray<Int32Pair> denominator_indexes_;
@@ -168,8 +153,6 @@ class CctcComputation {
   Vector<double> log_beta_;
 
  private:
-  // This function, called from the constructor, checks various dimensions.
-  void CheckDims() const;
 
   //  This function, called from Forward(), creates fst_indexes_,
   //  numerator_indexes_ and denominator_indexes_.
@@ -177,7 +160,7 @@ class CctcComputation {
 
   // This function, called from Forward(), computes denominator_probs_ and
   // numerator_probs_ via batch lookup operations in exp_nnet_output_ and
-  // normalizers_, and then computes arc_probs_.
+  // denominators_, and then computes arc_probs_.
   void LookUpLikelihoods();
 
   // This function, called from Forward(), does the actual forward-computation on
@@ -189,12 +172,65 @@ class CctcComputation {
 
   // Computes derivatives (called from Backward()).
   // Returns true on success, false if a NaN or Inf was detected.
-  bool ComputeDerivatives(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  void ComputeDerivatives(CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                          CuMatrixBase<BaseFloat> *denominators_deriv);
 
 
 };
 
+// This is a wrapping layer for both CctcPositiveComputation and
+// CctcNegativeComputation; it does the parts that both share, so
+// we can avoid duplication.
+class CctcCommonComputation {
+ public:
+  /// Note: the 'cu_weights' argument should be the output of
+  /// trans_model.ComputeWeights().
+  CctcCommonComputation(const CctcTrainingOptions &opts,
+                        const CctcTransitionModel &trans_model,
+                        const CuMatrix<BaseFloat> &cu_weights,
+                        const CctcSupervision &supervision,
+                        const CuMatrixBase<BaseFloat> &nnet_output);
 
+
+  // Does the forward part of the computation
+  // the objf parts should be added together to get the real objf, and then
+  // divided by the denominator (== num-frames * weight) for reporting purposes.
+  void Forward(BaseFloat *positive_objf_part, BaseFloat *negative_objf_part,
+               BaseFloat *objf_denominator);
+
+  // Does the backward part of the computation; outputs the derivative to 'nnet_output_deriv'.
+  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+
+  ~CctcCommonComputation();
+ private:
+  // This function, called from the constructor, checks various dimensions.
+  void CheckDims() const;
+
+  const CctcTrainingOptions &opts_;
+  const CctcTransitionModel &trans_model_;
+  // cu_weights_ is derived from trans_model_.  Dimension is
+  // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
+  const CuMatrix<BaseFloat> &cu_weights_;
+  // The supervision object
+  const CctcSupervision &supervision_;
+  // The neural net output
+  const CuMatrixBase<BaseFloat> &nnet_output_;
+  // the exponent of the neural net output.
+  CuMatrix<BaseFloat> exp_nnet_output_;
+
+  // the denominators, of dimension nnet_output_.NumRows() by
+  // trans_model_.NumHistoryStates(), equal to exp_nnet_output_ * weights_'.
+  // Equal to exp_nnet_output_ * cu_weights_'.
+  CuMatrix<BaseFloat> denominators_;
+
+  // used to store the derivative of the objf w.r.t. the log-denominators and w.r.t. the
+  // denominators, at different times.
+  CuMatrix<BaseFloat> denominators_deriv_;
+
+  CctcPositiveComputation *positive_computation_;
+
+
+};
 
 }  // namespace ctc
 }  // namespace kaldi
