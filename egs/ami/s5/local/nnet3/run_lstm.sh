@@ -34,24 +34,16 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
-clipping_threshold=30.0
-norm_based_clipping=true
 
-# natural gradient options
-ng_per_element_scale_options=
-ng_affine_options=
-num_epochs=10
 
 # training options
+num_epochs=10
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=2
 num_jobs_final=12
 momentum=0.5
-adaptive_shrink=true
-shrink=0.98
 num_chunk_per_minibatch=100
-num_bptt_steps=20
 samples_per_iter=20000
 remove_egs=true
 
@@ -129,22 +121,15 @@ if [ $stage -le 8 ]; then
     --cmvn-opts "$cmvn_opts" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
-    --adaptive-shrink "$adaptive_shrink" \
     --lstm-delay "$lstm_delay" \
-    --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
     --hidden-dim $hidden_dim \
-    --clipping-threshold $clipping_threshold \
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
-    --num-bptt-steps $num_bptt_steps \
-    --norm-based-clipping $norm_based_clipping \
-    --ng-per-element-scale-options "$ng_per_element_scale_options" \
-    --ng-affine-options "$ng_affine_options" \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;

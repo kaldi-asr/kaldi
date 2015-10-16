@@ -8,7 +8,7 @@
 # Results (EERs) are inline in comments below.
 #
 # This example script shows how to replace the GMM-UBM
-# with a DNN trained for ASR. It also demonstrates the 
+# with a DNN trained for ASR. It also demonstrates the
 # using the DNN to create a supervised-GMM.
 
 . cmd.sh
@@ -20,9 +20,6 @@ trials_female=data/sre10_test_female/trials
 trials_male=data/sre10_test_male/trials
 trials=data/sre10_test/trials
 nnet=exp/nnet2_online/nnet_ms_a/final.mdl
-
-# Use nnet-am-info to determine the size of the output layer.
-num_components=5297
 
 # Train a DNN on about 1800 hours of the english portion of Fisher.
 local/dnn/train_dnn.sh
@@ -66,16 +63,17 @@ steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
     data/sre10_test exp/make_mfcc $mfccdir
 
 # Extract DNN features.
-steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 --cmd "$train_cmd" \
-    data/train_dnn exp/make_mfcc $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 --cmd "$train_cmd" \
-    data/sre_dnn exp/make_mfcc $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 --cmd "$train_cmd" \
-    data/sre10_train_dnn exp/make_mfcc $mfccdir
-steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 --cmd "$train_cmd" \
-    data/sre10_test_dnn exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 \
+    --cmd "$train_cmd" data/train_dnn exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 \
+    --cmd "$train_cmd" data/sre_dnn exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 \
+    --cmd "$train_cmd" data/sre10_train_dnn exp/make_mfcc $mfccdir
+steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 \
+    --cmd "$train_cmd" data/sre10_test_dnn exp/make_mfcc $mfccdir
 
-for name in sre_dnn sre10_train_dnn sre10_test_dnn train_dnn sre sre10_train sre10_test train; do
+for name in sre_dnn sre10_train_dnn sre10_test_dnn train_dnn sre \
+    sre10_train sre10_test train; do
   utils/fix_data_dir.sh data/${name}
 done
 
@@ -89,7 +87,7 @@ sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
 sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
     data/sre10_test exp/make_vad $vaddir
 
-for name sre sre10_train sre10_test train; do
+for name in sre sre10_train sre10_test train; do
   cp data/${name}/vad.scp data/${name}_dnn/vad.scp
   cp data/${name}/utt2spk data/${name}_dnn/utt2spk
   cp data/${name}/spk2utt data/${name}_dnn/spk2utt
@@ -100,25 +98,27 @@ done
 # Subset training data for faster sup-GMM initialization.
 utils/subset_data_dir.sh data/train_dnn 32000 data/train_dnn_32k
 utils/fix_data_dir.sh data/train_dnn_32k
-utils/subset_data_dir.sh --utt-list data/train_dnn_32k/utt2spk data/train data/train_32k
+utils/subset_data_dir.sh --utt-list data/train_dnn_32k/utt2spk data/train \
+    data/train_32k
 utils/fix_data_dir.sh data/train_32k
 
 # Initialize a full GMM from the DNN posteriors and speaker recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
 sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
-  --num_components $num_components \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
-# Train an i-vector extractor based on just the supervised-GMM. 
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=70G,ram_free=70G" \
+# Train an i-vector extractor based on just the supervised-GMM.
+sid/train_ivector_extractor.sh \
+  --cmd "$train_cmd -l mem_free=70G,ram_free=70G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm data/train \
   exp/extractor_sup_gmm
 
 # Train an i-vector extractor based on the DNN-UBM.
-sid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
+sid/train_ivector_extractor_dnn.sh \
+  --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
   --min-post 0.015 \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm $nnet \
@@ -127,34 +127,40 @@ sid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80
   exp/extractor_dnn
 
 # Extract i-vectors from the extractor with the sup-GMM UBM.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 50 \
+sid/extract_ivectors.sh \
+   --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
    exp/extractor_sup_gmm data/sre10_train \
    exp/ivectors_sre10_train_sup_gmm
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 50 \
+sid/extract_ivectors.sh \
+   --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
    exp/extractor_sup_gmm data/sre10_test \
    exp/ivectors_sre10_test_sup_gmm
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 50 \
+sid/extract_ivectors.sh \
+   --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
    exp/extractor_sup_gmm data/sre \
    exp/ivectors_sre_sup_gmm
 
 # Extract i-vectors using the extractor with the DNN-UBM.
-sid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+sid/extract_ivectors_dnn.sh \
+   --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
    exp/extractor_dnn \
    $nnet \
    data/sre10_test \
    data/sre10_test_dnn \
    exp/ivectors10_test_dnn
 
-sid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+sid/extract_ivectors_dnn.sh
+   --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
    exp/extractor_dnn \
    $nnet \
    data/sre10_train \
    data/sre10_train_dnn \
    exp/ivectors10_train_dnn
 
-sid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+sid/extract_ivectors_dnn.sh
+   --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
    exp/extractor_dnn \
    $nnet \
    data/sre \
@@ -172,7 +178,7 @@ local/scoring_common.sh data/sre data/sre10_train data/sre10_test \
   exp/ivectors_sre10_test_dnn
 
 # The commented out scripts show how to do cosine scoring with and without
-# first reducing the i-vector dimensionality with LDA. PLDA tends to work 
+# first reducing the i-vector dimensionality with LDA. PLDA tends to work
 # best, so we don't focus on the scores obtained here.
 #
 # local/cosine_scoring.sh data/sre10_train data/sre10_test \

@@ -1073,7 +1073,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_sample = 0.075;
+      max_change_per_sample = 0.0;
   int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
       update_period = 4;
   cfl->GetValue("learning-rate", &learning_rate); // optional.
@@ -1181,7 +1181,11 @@ void NaturalGradientAffineComponent::Init(
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
-  KALDI_ASSERT(max_change_per_sample >= 0.0);
+  if (max_change_per_sample >= 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_sample for "
+               << "NaturalGradientAffineComponent. But the per-component "
+               << "gradient clipping mechansim has been removed. Instead it's currently "
+               << "done at the whole model level."; 
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
   update_count_ = 0.0;
@@ -1269,37 +1273,6 @@ Component* NaturalGradientAffineComponent::Copy() const {
   return ans;
 }
 
-BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
-    const CuVectorBase<BaseFloat> &in_products,
-    const std::string &debug_info,
-    BaseFloat learning_rate_scale,
-    CuVectorBase<BaseFloat> *out_products) {
-  static int scaling_factor_warnings_remaining = 10;
-  int32 minibatch_size = in_products.Dim();
-
-  out_products->MulElements(in_products);
-  out_products->ApplyPow(0.5);
-  BaseFloat prod_sum = out_products->Sum();
-  BaseFloat tot_change_norm = learning_rate_scale * learning_rate_ * prod_sum,
-      max_change_norm = max_change_per_sample_ * minibatch_size;
-  // tot_change_norm is the product of norms that we are trying to limit
-  // to max_value_.
-  KALDI_ASSERT(tot_change_norm - tot_change_norm == 0.0 && "NaN in backprop");
-  KALDI_ASSERT(tot_change_norm >= 0.0);
-  BaseFloat factor = 1.0;
-  if (tot_change_norm > max_change_norm) {
-    factor = max_change_norm / tot_change_norm;
-    active_scaling_count_ += 1.0;
-    if (scaling_factor_warnings_remaining > 0) {
-      scaling_factor_warnings_remaining--;
-      KALDI_LOG << "Limiting step size using scaling factor "
-                << factor << ", for component " << debug_info;
-    }
-  }
-  max_change_scale_stats_ += factor;
-  return factor;
-}
-
 void NaturalGradientAffineComponent::Update(
     const std::string &debug_info,
     const CuMatrixBase<BaseFloat> &in_value,
@@ -1335,11 +1308,6 @@ void NaturalGradientAffineComponent::Update(
   // (it's faster to have them output a scaling factor than to have them scale
   // their outputs).
   BaseFloat scale = in_scale * out_scale;
-  BaseFloat minibatch_scale = 1.0;
-
-  if (max_change_per_sample_ > 0.0)
-    minibatch_scale = GetScalingFactor(in_row_products, debug_info, scale,
-                                       &out_row_products);
 
   CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
                                               0, in_value_temp.NumRows(),
@@ -1350,7 +1318,7 @@ void NaturalGradientAffineComponent::Update(
 
   precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
 
-  BaseFloat local_lrate = scale * minibatch_scale * learning_rate_;
+  BaseFloat local_lrate = scale * learning_rate_;
   update_count_ += 1.0;
   bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
                          precon_ones, 1.0);
@@ -1892,7 +1860,7 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
   // the parameter-change.  It has the same purpose as the max-change-per-sample in
   // the NaturalGradientAffineComponent.
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_minibatch = 0.5,
+      max_change_per_minibatch = 0.0,
       learning_rate = learning_rate_;  // default to value from constructor.
   cfl->GetValue("rank", &rank);
   cfl->GetValue("update-period", &update_period);
@@ -1937,6 +1905,11 @@ void NaturalGradientPerElementScaleComponent::Init(
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
   max_change_per_minibatch_ = max_change_per_minibatch;
+  if (max_change_per_minibatch >= 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
+               << "NaturalGradientPerElementScaleComponent. But the per-component "
+               << "gradient clipping mechansim has been removed. Instead it's currently "
+               << "done at the whole model level."; 
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
@@ -1970,8 +1943,6 @@ void NaturalGradientPerElementScaleComponent::Update(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
 
-  static int max_change_warnings_remaining = 10;
-
   CuMatrix<BaseFloat> derivs_per_frame(in_value);
   derivs_per_frame.MulElements(out_deriv);
   // the non-natural-gradient update would just do
@@ -1982,21 +1953,7 @@ void NaturalGradientPerElementScaleComponent::Update(
 
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
-
-  BaseFloat max_change_scale = 1.0,
-      param_delta = delta_scales.Norm(2.0);
-  if (param_delta > max_change_per_minibatch_) {
-    max_change_scale = max_change_per_minibatch_ / param_delta;
-    if (max_change_warnings_remaining >= 0) {
-      max_change_warnings_remaining--;
-      KALDI_WARN << "Parameter change " << param_delta
-                 << " exceeds --max-change-per-minibatch="
-                 << max_change_per_minibatch_ << " for this minibatch, "
-                 << "for " << debug_info << ", scaling by factor "
-                 << max_change_scale;
-    }
-  }
-  scales_.AddVec(max_change_scale, delta_scales);
+  scales_.AddVec(1.0, delta_scales);
 }
 
 Convolutional1dComponent::Convolutional1dComponent():
