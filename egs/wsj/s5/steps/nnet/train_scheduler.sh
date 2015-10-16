@@ -29,6 +29,7 @@ halving_factor=0.5
 # misc,
 verbose=1
 frame_weights=
+utt_weights=
  
 # End configuration.
 
@@ -77,6 +78,7 @@ log=$dir/log/iter00.initial.log; hostname>$log
 $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
   ${feature_transform:+ --feature-transform=$feature_transform} \
   ${frame_weights:+ "--frame-weights=$frame_weights"} \
+  ${utt_weights:+ "--utt-weights=$utt_weights"} \
   "$feats_cv" "$labels_cv" $mlp_best \
   2>> $log
 
@@ -103,6 +105,7 @@ for iter in $(seq -w $max_iters); do
     --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
     ${feature_transform:+ --feature-transform=$feature_transform} \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
+    ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_tr" "$labels_tr" $mlp_best $mlp_next \
     2>> $log || exit 1; 
 
@@ -114,6 +117,7 @@ for iter in $(seq -w $max_iters); do
   $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
     ${feature_transform:+ --feature-transform=$feature_transform} \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
+    ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_cv" "$labels_cv" $mlp_next \
     2>>$log || exit 1;
   
