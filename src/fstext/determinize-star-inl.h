@@ -302,7 +302,11 @@ template<class Arc> class DeterminizerStar {
       ifst_(ifst.Copy()), delta_(delta), max_states_(max_states),
       determinized_(false), allow_partial_(allow_partial),
       is_partial_(false), equal_(delta),
-      hash_(ifst.Properties(kExpanded, false) ? down_cast<const ExpandedFst<Arc>*, const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20, hasher_, equal_) { }
+      hash_(ifst.Properties(kExpanded, false) ?
+              down_cast<const ExpandedFst<Arc>*,
+              const Fst<Arc> >(&ifst)->NumStates()/2 + 3 : 20,
+            hasher_, equal_),
+      epsilon_closure_(ifst_, max_states, &repository_, delta) { }
 
   void Determinize(bool *debug_ptr) {
     assert(!determinized_);
@@ -464,291 +468,302 @@ template<class Arc> class DeterminizerStar {
   // Define the hash type we use to store subsets.
   typedef unordered_map<const vector<Element>*, OutputStateId, SubsetKey, SubsetEqual> SubsetHash;
 
+  class EpsilonClosure {
+   public:
+    EpsilonClosure(const Fst<Arc> *ifst, int max_states,
+        StringRepository<Label, StringId> *repository,
+        float delta):
+      ifst_(ifst), max_states_(max_states), repository_(repository),
+      delta_(delta) {
 
-  // This function computes epsilon closure of subset of states by following epsilon links.
-  // Called by ProcessSubset.
-  // Has no side effects except on the repository.
-
-  struct EpsilonClosureInfo {
-    EpsilonClosureInfo() {}
-
-    EpsilonClosureInfo(const Element &e, const Weight &w, bool i) :
-      element(e), weight_to_process(w), in_queue(i) {}
-
-    // the weight in the Element struct is the total current weight
-    // that has been processed already
-    Element element;
-
-    // this stores the weight that we haven't processed (propagated)
-    Weight weight_to_process;
-
-    // whether "this" struct is in the queue
-    // we store the info here so that we don't have to look it up every time
-    bool in_queue;
-
-    bool operator<(const EpsilonClosureInfo &other) const {
-      return this->element.state < other.element.state;
     }
+
+    // This function computes epsilon closure of subset of states by following epsilon links.
+    // Called by ProcessSubset.
+    // Has no side effects except on the repository.
+    void GetEpsilonClosure(const vector<Element> &input_subset,
+                        vector<Element> *output_subset) {
+      ecinfo_.resize(0);
+      size_t size = input_subset.size();
+      // find whether input fst is known to be sorted in input label.
+      bool sorted =
+              ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
+
+      // size is still the input_subset.size()
+      for (size_t i = 0; i < size; i++) {
+        ExpandOneElement(input_subset[i], sorted, input_subset[i].weight, true);
+
+        // no need to check index is valid since we just pushed them in
+        // setting the in_queue false sicne we've taken them out of the 
+        // "virtual" queue
+
+        // ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
+      }
+
+      size_t s = queue_2_.size();
+      if (s == 0) {
+        *output_subset = input_subset;
+        return;
+      } else {
+        for (size_t i = 0; i < size; i++) {
+          // the weight has not been processed yet,
+          // so put all of them in the "weight_to_process"
+          ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
+                                               input_subset[i].weight,
+                                               false));
+          ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
+
+          if (id_to_index_.size() < input_subset[i].state + 1) {
+            id_to_index_.resize(2 * input_subset[i].state + 1, -1);
+          }
+          id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
+        }
+      }
+
+      {
+        Element elem;
+        elem.weight = Weight::Zero();
+        for (size_t i = 0; i < s; i++) {
+          elem.state = queue_2_[i].state;
+          elem.string = queue_2_[i].string;
+          AddOneElement(elem, queue_2_[i].weight);
+        }
+        queue_2_.resize(0);
+      }
+
+      int counter = 0; // relates to max-states option, used for test.
+      while (!queue_.empty()) {
+        InputStateId id = queue_.front();
+
+        // no need to check validity of the index
+        // since anything in the queue we are sure they're in the "virtual set"
+        int index = id_to_index_[id];
+        EpsilonClosureInfo &info = ecinfo_[index];
+        Element &elem = info.element;
+        Weight unprocessed_weight = info.weight_to_process;
+
+        elem.weight = Plus(elem.weight, unprocessed_weight);
+        info.weight_to_process = Weight::Zero();
+
+        info.in_queue = false;
+        queue_.pop_front();
+
+        if (max_states_ > 0 && counter++ > max_states_) {
+          std::cerr << "Determinization aborted since looped more than "
+                    << max_states_ << " times during epsilon closure.\n";
+          throw std::runtime_error("looped more than max-states times"
+             " in determinization");
+        }
+
+        // generally we need to be careful about iterator invalidation problem
+        // but here since we're only adding stuff to cur_subset, the reference
+        // "elem" has no danger of getting invalidated
+        ExpandOneElement(elem, sorted, unprocessed_weight);
+      }
+
+      {
+        // this sorting is based on StateId
+        sort(ecinfo_.begin(), ecinfo_.end());
+
+        output_subset->clear();
+
+        size = ecinfo_.size();
+        output_subset->reserve(size);
+        for (size_t i = 0; i < size; i++) {
+          EpsilonClosureInfo& info = ecinfo_[i];
+          if (info.weight_to_process != Weight::Zero()) {
+            info.element.weight = Plus(info.element.weight, info.weight_to_process);
+          }
+  //        cout << info.element.state << ": " << info.element.weight << endl;
+          output_subset->push_back(info.element);
+        }
+      }
+    }
+
+   private:
+    struct EpsilonClosureInfo {
+      EpsilonClosureInfo() {}
+
+      EpsilonClosureInfo(const Element &e, const Weight &w, bool i) :
+        element(e), weight_to_process(w), in_queue(i) {}
+
+      // the weight in the Element struct is the total current weight
+      // that has been processed already
+      Element element;
+
+      // this stores the weight that we haven't processed (propagated)
+      Weight weight_to_process;
+
+      // whether "this" struct is in the queue
+      // we store the info here so that we don't have to look it up every time
+      bool in_queue;
+
+      bool operator<(const EpsilonClosureInfo &other) const {
+        return this->element.state < other.element.state;
+      }
+    };
+
+    // to further speed up EpsilonClosure() computation, we have this 2 queue
+    // design, which goes like this
+    // while (first queue not empty) {
+    //   while (first queue not empty) {
+    //     process transitions and add to second queue
+    //   }
+    //   while (second queue not empty) {
+    //     add things to the "map" (will explain later about the map)
+    //     add things to the 1st queue if needed
+    //   }
+    // }
+    //
+    // Since Epsilon arcs are relatively rare in FSTs, this way we could efficiently
+    // detect the epsilon-free case, without having to waste our computation e.g.
+    // allocating the EpsilonClosureInfo structure; this also lets us do a 
+    // level-by-level traversal, which could avoid some (unfortunately not all)
+    // duplicate computation if epsilons form a DAG that is not a tree
+    //
+    // We put the queues here for better efficiency for memory allocation
+    deque<typename Arc::StateId> queue_;
+    vector<Element> queue_2_;
+
+    // the following 2 structures together form our *virtual "map"*
+    // basically we need a map from state_id to EpsilonClousreInfo that operates
+    // in O(1) time, while still takes relatively small mem, and this does it well
+    // for efficiency we don't clear id_to_index_ of its outdated information
+    // As a result each time we do a look-up, we need to check
+    // if (ecinfo_[id_to_index_[id]].element.state == id)
+    // Yet this is still faster than using a std::map<StateId, EpsilonClosureInfo>
+    vector<int> id_to_index_;
+
+    // unlike id_to_index_, we clear the content of ecinfo_ each time we call
+    // EpsilonClosure(). This needed because we need an efficient way to 
+    // traverse the virtual map - it is just too costly to traverse the 
+    // id_to_index_ vector. 
+    vector<EpsilonClosureInfo> ecinfo_;
+    
+
+    // Add one element (elem) into cur_subset
+    // it also adds the necessary stuff to queue_, set the correct weight
+    void AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
+      // first we try to find the element info in the ecinfo_ vector
+      int index = -1;
+      if (elem.state < id_to_index_.size()) {
+        index = id_to_index_[elem.state];
+      }
+      if (index != -1) {
+        if (index >= ecinfo_.size()) {
+          index = -1;
+        }
+        else if (ecinfo_[index].element.state != elem.state) {
+          index = -1;
+        }
+      }
+
+      if (index == -1) {
+        // was no such StateId: insert and add to queue.
+        ecinfo_.push_back(EpsilonClosureInfo(elem, unprocessed_weight, true));
+        size_t size = id_to_index_.size();
+        if (size < elem.state + 1) {
+          // double the size to reduce memory operations
+          id_to_index_.resize(2 * elem.state + 1, -1);
+        }
+        id_to_index_[elem.state] = ecinfo_.size() - 1;
+        queue_.push_back(elem.state);
+
+      } else {  // one is already there.  Add weights.
+        EpsilonClosureInfo &info = ecinfo_[index];
+        if (info.element.string != elem.string) {
+          std::cerr << "DeterminizerStar: FST was not functional "
+            "-> not determinizable\n";
+          { // Print some debugging information.  Can be helpful to debug
+            // the inputs when FSTs are mysteriously non-functional.
+            vector<Label> tmp_seq;
+            repository_->SeqOfId(info.element.string, &tmp_seq);
+            std::cerr << "First string: ";
+            for (size_t i = 0; i < tmp_seq.size(); i++)
+              std::cerr << tmp_seq[i] << " ";
+            std::cerr << "\nSecond string: ";
+            repository_->SeqOfId(elem.string, &tmp_seq);
+            for (size_t i = 0; i < tmp_seq.size(); i++)
+              std::cerr << tmp_seq[i] << " ";
+            std::cerr << "\n";
+          }
+          throw std::runtime_error("Non-functional FST: cannot determinize.\n");
+        }
+
+        info.weight_to_process =
+              Plus(info.weight_to_process, unprocessed_weight);
+
+        if (!info.in_queue) {
+          // this is because the code in "else" below: the 
+          // iter->second.weight_to_process might not be Zero()
+          Weight weight = Plus(info.element.weight,
+                               info.weight_to_process);
+
+          // What is done below is, we propagate the weight (by adding them
+          // to the queue only when the change is big enough;
+          // otherwise we just store the weight, until before returning
+          // we add the element.weight and weight_to_process together
+          if (! ApproxEqual(weight, info.element.weight, delta_)) {
+            // add extra part of weight to queue.
+            info.in_queue = true;
+            queue_.push_back(elem.state);
+          }
+        }
+      }
+    }
+
+    // Sub-routine that we call in EpsilonClosure()
+    // To avoid the function getting too long, we make it a separate function
+    // It takes the current "unprocessed_weight" and propagate it to the 
+    // states accessible from elem.state by an epsilon arc
+    // and add the results to cur_subset.
+    void ExpandOneElement(const Element &elem,
+                          bool sorted,
+                          const Weight &unprocessed_weight,
+                          bool save_to_queue_2 = false) {
+      // now we are going to propagate the "unprocessed_weight"
+      for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
+           !aiter.Done(); aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        if (sorted && arc.ilabel > 0) {
+          break;
+          // Break from the loop: due to sorting there will be no
+          // more transitions with epsilons as input labels.
+        }
+        if (arc.ilabel != 0) {
+          continue;  // we only process epsilons here
+        }
+        Element next_elem;
+        next_elem.state = arc.nextstate;
+        next_elem.weight = Weight::Zero();
+        Weight next_unprocessed_weight
+                       = Times(unprocessed_weight, arc.weight);
+
+        // now must append strings
+        if (arc.olabel == 0) {
+          next_elem.string = elem.string;
+        } else {
+          vector<Label> seq;
+          repository_->SeqOfId(elem.string, &seq);
+          if (arc.olabel != 0)
+            seq.push_back(arc.olabel);
+          next_elem.string = repository_->IdOfSeq(seq);
+        }
+        if (save_to_queue_2) {
+          next_elem.weight = next_unprocessed_weight;
+          queue_2_.push_back(next_elem);
+        } else {
+          AddOneElement(next_elem, next_unprocessed_weight);
+        }
+      }
+    }
+
+    // no pointers below would take the ownership
+    const Fst<Arc> *ifst_;
+    int max_states_;
+    StringRepository<Label, StringId> *repository_;
+    float delta_;
   };
-
-  // to further speed up EpsilonClosure() computation, we have this 2 queue
-  // design, which goes like this
-  // while (first queue not empty) {
-  //   while (first queue not empty) {
-  //     process transitions and add to second queue
-  //   }
-  //   while (second queue not empty) {
-  //     add things to the "map" (will explain later about the map)
-  //     add things to the 1st queue if needed
-  //   }
-  // }
-  //
-  // Since Epsilon arcs are relatively rare in FSTs, this way we could efficiently
-  // detect the epsilon-free case, without having to waste our computation e.g.
-  // allocating the EpsilonClosureInfo structure; this also lets us do a 
-  // level-by-level traversal, which could avoid some (unfortunately not all)
-  // duplicate computation if epsilons form a DAG that is not a tree
-  //
-  // We put the queues here for better efficiency for memory allocation
-  deque<typename Arc::StateId> queue_;
-  vector<Element> queue_2_;
-
-  // the following 2 structures together form our *virtual "map"*
-  // basically we need a map from state_id to EpsilonClousreInfo that operates
-  // in O(1) time, while still takes relatively small mem, and this does it well
-  // for efficiency we don't clear id_to_index_ of its outdated information
-  // As a result each time we do a look-up, we need to check
-  // if (ecinfo_[id_to_index_[id]].element.state == id)
-  // Yet this is still faster than using a std::map<StateId, EpsilonClosureInfo>
-  vector<int> id_to_index_;
-
-  // unlike id_to_index_, we clear the content of ecinfo_ each time we call
-  // EpsilonClosure(). This needed because we need an efficient way to 
-  // traverse the virtual map - it is just too costly to traverse the 
-  // id_to_index_ vector. 
-  vector<EpsilonClosureInfo> ecinfo_;
-  
-
-  // Add one element (elem) into cur_subset
-  // it also adds the necessary stuff to queue_, set the correct weight
-  void AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
-    // first we try to find the element info in the ecinfo_ vector
-    int index = -1;
-    if (elem.state < id_to_index_.size()) {
-      index = id_to_index_[elem.state];
-    }
-    if (index != -1) {
-      if (index >= ecinfo_.size()) {
-        index = -1;
-      }
-      else if (ecinfo_[index].element.state != elem.state) {
-        index = -1;
-      }
-    }
-
-    if (index == -1) {
-      // was no such StateId: insert and add to queue.
-      ecinfo_.push_back(EpsilonClosureInfo(elem, unprocessed_weight, true));
-      size_t size = id_to_index_.size();
-      if (size < elem.state + 1) {
-        // double the size to reduce memory operations
-        id_to_index_.resize(2 * elem.state + 1, -1);
-      }
-      id_to_index_[elem.state] = ecinfo_.size() - 1;
-      queue_.push_back(elem.state);
-
-    } else {  // one is already there.  Add weights.
-      EpsilonClosureInfo &info = ecinfo_[index];
-      if (info.element.string != elem.string) {
-        std::cerr << "DeterminizerStar: FST was not functional "
-          "-> not determinizable\n";
-        { // Print some debugging information.  Can be helpful to debug
-          // the inputs when FSTs are mysteriously non-functional.
-          vector<Label> tmp_seq;
-          repository_.SeqOfId(info.element.string, &tmp_seq);
-          std::cerr << "First string: ";
-          for (size_t i = 0; i < tmp_seq.size(); i++)
-            std::cerr << tmp_seq[i] << " ";
-          std::cerr << "\nSecond string: ";
-          repository_.SeqOfId(elem.string, &tmp_seq);
-          for (size_t i = 0; i < tmp_seq.size(); i++)
-            std::cerr << tmp_seq[i] << " ";
-          std::cerr << "\n";
-        }
-        throw std::runtime_error("Non-functional FST: cannot determinize.\n");
-      }
-
-      info.weight_to_process =
-            Plus(info.weight_to_process, unprocessed_weight);
-
-      if (!info.in_queue) {
-        // this is because the code in "else" below: the 
-        // iter->second.weight_to_process might not be Zero()
-        Weight weight = Plus(info.element.weight,
-                             info.weight_to_process);
-
-        // What is done below is, we propagate the weight (by adding them
-        // to the queue only when the change is big enough;
-        // otherwise we just store the weight, until before returning
-        // we add the element.weight and weight_to_process together
-        if (! ApproxEqual(weight, info.element.weight, delta_)) {
-          // add extra part of weight to queue.
-          info.in_queue = true;
-          queue_.push_back(elem.state);
-        }
-      }
-    }
-  }
-
-  // Sub-routine that we call in EpsilonClosure()
-  // To avoid the function getting too long, we make it a separate function
-  // It takes the current "unprocessed_weight" and propagate it to the 
-  // states accessible from elem.state by an epsilon arc
-  // and add the results to cur_subset.
-  void ExpandOneElement(const Element &elem,
-                        bool sorted,
-                        const Weight &unprocessed_weight,
-                        bool save_to_queue_2 = false) {
-    // now we are going to propagate the "unprocessed_weight"
-    for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
-         !aiter.Done(); aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      if (sorted && arc.ilabel > 0) {
-        break;
-        // Break from the loop: due to sorting there will be no
-        // more transitions with epsilons as input labels.
-      }
-      if (arc.ilabel != 0) {
-        continue;  // we only process epsilons here
-      }
-      Element next_elem;
-      next_elem.state = arc.nextstate;
-      next_elem.weight = Weight::Zero();
-      Weight next_unprocessed_weight
-                     = Times(unprocessed_weight, arc.weight);
-
-      // now must append strings
-      if (arc.olabel == 0) {
-        next_elem.string = elem.string;
-      } else {
-        vector<Label> seq;
-        repository_.SeqOfId(elem.string, &seq);
-        if (arc.olabel != 0)
-          seq.push_back(arc.olabel);
-        next_elem.string = repository_.IdOfSeq(seq);
-      }
-      if (save_to_queue_2) {
-        next_elem.weight = next_unprocessed_weight;
-        queue_2_.push_back(next_elem);
-      } else {
-        AddOneElement(next_elem, next_unprocessed_weight);
-      }
-    }
-  }
-
-  static bool ElementCompare(const Element &a, const Element &b) {
-    return a.state < b.state;
-  }
-
-  void EpsilonClosure(const vector<Element> &input_subset,
-                      vector<Element> *output_subset) {
-    ecinfo_.resize(0);
-    size_t size = input_subset.size();
-    // find whether input fst is known to be sorted in input label.
-    bool sorted =
-            ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-
-    // size is still the input_subset.size()
-    for (size_t i = 0; i < size; i++) {
-      ExpandOneElement(input_subset[i], sorted, input_subset[i].weight, true);
-
-      // no need to check index is valid since we just pushed them in
-      // setting the in_queue false sicne we've taken them out of the 
-      // "virtual" queue
-
-      // ecinfo_[id_to_index_[input_subset[i].state]].in_queue = false;
-    }
-
-    size_t s = queue_2_.size();
-    if (s == 0) {
-      *output_subset = input_subset;
-      sort(output_subset->begin(), output_subset->end(), ElementCompare);
-      return;
-    } else {
-      for (size_t i = 0; i < size; i++) {
-        // the weight has not been processed yet,
-        // so put all of them in the "weight_to_process"
-        ecinfo_.push_back(EpsilonClosureInfo(input_subset[i],
-                                             input_subset[i].weight,
-                                             false));
-        ecinfo_.back().element.weight = Weight::Zero(); // clear the weight
-
-        if (id_to_index_.size() < input_subset[i].state + 1) {
-          id_to_index_.resize(2 * input_subset[i].state + 1, -1);
-        }
-        id_to_index_[input_subset[i].state] = ecinfo_.size() - 1;
-      }
-    }
-
-    {
-      Element elem;
-      elem.weight = Weight::Zero();
-      for (size_t i = 0; i < s; i++) {
-        elem.state = queue_2_[i].state;
-        elem.string = queue_2_[i].string;
-        AddOneElement(elem, queue_2_[i].weight);
-      }
-      queue_2_.resize(0);
-    }
-
-    int counter = 0; // relates to max-states option, used for test.
-    while (!queue_.empty()) {
-      InputStateId id = queue_.front();
-
-      // no need to check validity of the index
-      // since anything in the queue we are sure they're in the "virtual set"
-      int index = id_to_index_[id];
-      EpsilonClosureInfo &info = ecinfo_[index];
-      Element &elem = info.element;
-      Weight unprocessed_weight = info.weight_to_process;
-
-      elem.weight = Plus(elem.weight, unprocessed_weight);
-      info.weight_to_process = Weight::Zero();
-
-      info.in_queue = false;
-      queue_.pop_front();
-
-      if (max_states_ > 0 && counter++ > max_states_) {
-        std::cerr << "Determinization aborted since looped more than "
-                  << max_states_ << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-states times"
-           " in determinization");
-      }
-
-      // generally we need to be careful about iterator invalidation problem
-      // but here since we're only adding stuff to cur_subset, the reference
-      // "elem" has no danger of getting invalidated
-      ExpandOneElement(elem, sorted, unprocessed_weight);
-    }
-
-    {
-      // this sorting is based on StateId
-      sort(ecinfo_.begin(), ecinfo_.end());
-
-      output_subset->clear();
-
-      size = ecinfo_.size();
-      output_subset->reserve(size);
-      for (size_t i = 0; i < size; i++) {
-        EpsilonClosureInfo& info = ecinfo_[i];
-        if (info.weight_to_process != Weight::Zero()) {
-          info.element.weight = Plus(info.element.weight, info.weight_to_process);
-        }
-//        cout << info.element.state << ": " << info.element.weight << endl;
-        output_subset->push_back(info.element);
-      }
-    }
-  }
 
 
   // This function works out the final-weight of the determinized state.
@@ -992,7 +1007,7 @@ template<class Arc> class DeterminizerStar {
     OutputStateId state = pair.second;
 
     vector<Element> closed_subset;  // subset after epsilon closure.
-    EpsilonClosure(*subset, &closed_subset);
+    epsilon_closure_.GetEpsilonClosure(*subset, &closed_subset);
 
     // Now follow non-epsilon arcs [and also process final states]
     ProcessFinal(closed_subset, state);
@@ -1080,6 +1095,7 @@ template<class Arc> class DeterminizerStar {
   SubsetHash hash_;  // hash from Subset to StateId in final Fst.
 
   StringRepository<Label, StringId> repository_;  // associate integer id's with sequences of labels.
+  EpsilonClosure epsilon_closure_;
 };
 
 
