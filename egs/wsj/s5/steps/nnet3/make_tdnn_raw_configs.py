@@ -21,16 +21,17 @@ parser.add_argument("--pnorm-output-dim", type=int,
                     help="output dimension of p-norm nonlinearities")
 parser.add_argument("--relu-dim", type=int,
                     help="dimension of ReLU nonlinearities")
+parser.add_argument("--use-presoftmax-prior-scale", type=str,
+                    help="if true, a presoftmax-prior-scale is added",
+                    choices=['true', 'false'], default = "true")
 parser.add_argument("--num-targets", type=int,
                     help="number of network targets (e.g. num-pdf-ids/num-leaves)")
-parser.add_argument("--skip-final-softmax", dest='add_final_softmax', action='store_false', default=True,
-                    help="skip final softmax layer and per-element scale layer")
-parser.add_argument("--add-final-softmax", dest='add_final_softmax', action='store_true', default=True,
-                    help="add final softmax layer and per-element scale layer")
-parser.add_argument("--skip-lda", action='store_false', dest='add_lda', default=True,
-                    help="skip addition of lda matrix")
-parser.add_argument("--add-lda", action='store_true', dest='add_lda', default=True,
-                    help="add lda matrix")
+parser.add_argument("--skip-final-softmax", type=str,
+                    help="skip final softmax layer and per-element scale layer",
+                    choices=['true', 'false'], default = "false")
+parser.add_argument("--skip-lda", type=str,
+                    help="add lda matrix",
+                    choices=['true', 'false'], default = "false")
 parser.add_argument("--objective-type", type=str, default="linear",
                     choices = ["linear", "quadratic"],
                     help = "the type of objective; i.e. quadratic or linear")
@@ -38,6 +39,9 @@ parser.add_argument("--max-change-per-sample", type=float, default=0.075,
                     help = "the maximum a paramter is allowed to change")
 parser.add_argument("config_dir",
                     help="Directory to write config files and variables")
+parser.add_argument("--no-hidden-layers", type=str,
+                    help="Train the nnet with only the softmax layer",
+                    choices=['true', 'false'], default = "false")
 
 print(' '.join(sys.argv))
 
@@ -66,36 +70,66 @@ else:
     nonlin_input_dim = args.pnorm_input_dim
     nonlin_output_dim = args.pnorm_output_dim
 
+if args.use_presoftmax_prior_scale == "true":
+    use_presoftmax_prior_scale = True
+else:
+    use_presoftmax_prior_scale = False
+
+if args.skip_lda == "true":
+    skip_lda = True
+else:
+    skip_lda = False
+
+if args.skip_final_softmax == "true":
+    skip_final_softmax = True
+else:
+    skip_final_softmax = False
+
+if args.no_hidden_layers == "true":
+    no_hidden_layers = True
+else:
+    no_hidden_layers = False
+
 
 ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
 splice_array = []
 left_context = 0
 right_context = 0
-split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
-if len(split1) < 1:
-    sys.exit("invalid --splice-indexes argument, too short: "
-             + args.splice_indexes)
-try:
-    for string in split1:
-        split2 = string.split(",")
-        if len(split2) < 1:
-            sys.exit("invalid --splice-indexes argument, too-short element: "
-                     + args.splice_indexes)
-        int_list = []
-        for int_str in split2:
-            int_list.append(int(int_str))
-        if not int_list == sorted(int_list):
-            sys.exit("elements of --splice-indexes must be sorted: "
-                     + args.splice_indexes)
-        left_context += -int_list[0]
-        right_context += int_list[-1]
-        splice_array.append(int_list)
-except ValueError as e:
-    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
-left_context = max(0, left_context)
-right_context = max(0, right_context)
-num_hidden_layers = len(splice_array)
-input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
+num_hidden_layers = 0
+input_dim = args.feat_dim + args.ivector_dim
+
+if no_hidden_layers:
+    if len(args.splice_indexes.strip()) > 0:
+        sys.exit("invalid --splice-indexes argument, must be 0 "
+                 + "when --no-hidden-layers true is given")
+    splice_array = [ [0] ]
+else:
+    if len(args.splice_indexes.strip()) == 0:
+        sys.exit("invalid --splice-indexes argument, too short: "
+                 + args.splice_indexes)
+    split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
+
+    try:
+        for string in split1:
+            split2 = string.split(",")
+            if len(split2) < 1:
+                sys.exit("invalid --splice-indexes argument, too-short element: "
+                         + args.splice_indexes)
+            int_list = []
+            for int_str in split2:
+                int_list.append(int(int_str))
+            if not int_list == sorted(int_list):
+                sys.exit("elements of --splice-indexes must be sorted: "
+                         + args.splice_indexes)
+            left_context += -int_list[0]
+            right_context += int_list[-1]
+            splice_array.append(int_list)
+    except ValueError as e:
+        sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
+    left_context = max(0, left_context)
+    right_context = max(0, right_context)
+    num_hidden_layers = len(splice_array)
+    input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
 
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
@@ -122,7 +156,7 @@ f.close()
 for l in range(1, num_hidden_layers + 1):
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
-    if l == 1 and args.add_lda:
+    if l == 1 and not skip_lda:
         print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
     cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
@@ -144,13 +178,14 @@ for l in range(1, num_hidden_layers + 1):
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
           nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
 
-    if args.add_final_softmax:
+    if skip_final_softmax:
       # printing out the next two, and their component-nodes, for l > 1 is not
       # really necessary as they will already exist, but it doesn't hurt and makes
       # the structure clearer.
-      print('component name=final-fixed-scale type=FixedScaleComponent '
-            'scales={0}/presoftmax_prior_scale.vec'.format(
-            args.config_dir), file=f)
+      if use_presoftmax_prior_scale:
+        print('component name=final-fixed-scale type=FixedScaleComponent '
+              'scales={0}/presoftmax_prior_scale.vec'.format(
+              args.config_dir), file=f)
       print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
             args.num_targets), file=f)
     print('# Now for the network structure', file=f)
@@ -159,7 +194,7 @@ for l in range(1, num_hidden_layers + 1):
         if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
-        if args.add_lda:
+        if not skip_lda:
           print('component-node name=lda component=lda input={0}'.format(orig_input),
                 file=f)
           cur_input='lda'
@@ -179,11 +214,59 @@ for l in range(1, num_hidden_layers + 1):
 
     print('component-node name=final-affine component=final-affine input=renorm{0}'.
           format(l), file=f)
-    if args.add_final_softmax:
-      print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+    if not skip_final_softmax:
+        if use_presoftmax_prior_scale:
+            print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+                  file=f)
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-fixed-scale', file=f)
+        else:
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-affine', file=f)
+    else:
+        print('component-node name=final-log-softmax component=final-log-softmax '
+              'input=final-affine', file=f)
+    print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
+    f.close()
+
+if num_hidden_layers == 0:
+    f = open(args.config_dir + "/layer1.config", "w")
+    print('# Config file for adding LDA and presoftmax_scale', file=f)
+    if not skip_lda:
+        print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
+              format(args.config_dir), file=f)
+    print('component name=final-affine type=NaturalGradientAffineComponent '
+          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
+          input_dim, args.num_targets, args.max_change_per_sample), file=f)
+    if not skip_final_softmax:
+      if use_presoftmax_prior_scale:
+        print('component name=final-fixed-scale type=FixedScaleComponent '
+              'scales={0}/presoftmax_prior_scale.vec'.format(
+              args.config_dir), file=f)
+      print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
+            args.num_targets), file=f)
+    print('# Now for the network structure', file=f)
+    splices = [ 'input' ]
+    if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
+    orig_input='Append({0})'.format(', '.join(splices))
+    # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
+    if not skip_lda:
+      print('component-node name=lda component=lda input={0}'.format(orig_input),
             file=f)
-      print('component-node name=final-log-softmax component=final-log-softmax '
-            'input=final-fixed-scale', file=f)
+      cur_input='lda'
+    else:
+      cur_input = orig_input
+    print('component-node name=final-affine component=final-affine input={0}'.
+          format(cur_input), file=f)
+    if not skip_final_softmax:
+      if use_presoftmax_prior_scale:
+          print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+                file=f)
+          print('component-node name=final-log-softmax component=final-log-softmax '
+                'input=final-fixed-scale', file=f)
+      else:
+          print('component-node name=final-log-softmax component=final-log-softmax '
+                'input=final-affine', file=f)
       print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
     else:
       print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)

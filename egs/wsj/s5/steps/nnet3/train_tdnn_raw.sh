@@ -5,7 +5,7 @@
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
-#           2014  Vimal Manohar
+#           2014-2015  Vimal Manohar
 #           2014  Vijayaditya Peddinti
 # Apache 2.0.
 
@@ -79,6 +79,7 @@ posterior_targets=false
 objective_type=linear
 skip_final_softmax=true
 max_change_per_sample=0.075
+no_hidden_layers=false
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -179,19 +180,14 @@ if [ $stage -le -5 ]; then
   fi
     
   raw_nnet_config_opts=()
-  if $skip_final_softmax; then
-    raw_nnet_config_opts+=(--skip-final-softmax)
-  else
-    raw_nnet_config_opts+=(--use-presoftmax-prior-scale $use_presoftmax_prior_scale)
-  fi
-  if $skip_lda; then
-    raw_nnet_config_opts+=(--skip-lda)
-  fi
 
-  objective_opts="--objective-type linear"
-  if [ "$objective_type" == "quadratic" ]; then
-    objective_opts="--objective-type quadratic"
-  fi
+  objective_opts="--objective-type $objective_type"
+
+  raw_nnet_config_opts+=(--skip-final-softmax $skip_final_softmax)
+  raw_nnet_config_opts+=(--use-presoftmax-prior-scale $use_presoftmax_prior_scale)
+  raw_nnet_config_opts+=(--skip-lda $skip_lda)
+  raw_nnet_config_opts+=(--no-hidden-layers $no_hidden_layers)
+
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_raw_configs.py  \
     --splice-indexes "$splice_indexes"  \
@@ -218,7 +214,9 @@ fi
 
 context_opts="--left-context=$left_context --right-context=$right_context"
 
-! [ "$num_hidden_layers" -gt 0 ] && echo \
+# Allow 0 hidden layers -- Probably only a single affine component followed by 
+# a softmax
+! $no_hidden_layers && [ "$num_hidden_layers" -le 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
@@ -231,21 +229,16 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"
   
+  target_type=dense
   if $posterior_targets; then
-    steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
-      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-      --io-opts "$io_opts" \
-      --cmd "$cmd" --nj $nj $egs_opts \
-      --frames-per-eg $frames_per_eg \
-      $data $targets_scp $dir/egs || exit 1;
-  else
-    steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
-      --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-      --io-opts "$io_opts" \
-      --cmd "$cmd" --nj $nj $egs_opts \
-      --frames-per-eg $frames_per_eg \
-      $data $targets_scp $dir/egs || exit 1;
+    target_type=sparse
   fi
+
+  steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
+    --samples-per-iter $samples_per_iter --stage $get_egs_stage \
+    --cmd "$cmd" --nj $nj --num-targets $num_targets $egs_opts \
+    --frames-per-eg $frames_per_eg --target-type $target_type \
+    $data $targets_scp $dir/egs || exit 1;
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
@@ -316,8 +309,9 @@ if ! $skip_final_softmax && [ $stage -le -2 ]; then
 
   # obtains raw pdf count
   $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
-     ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:- \| \
-     post-to-tacc --per-pdf=true  $alidir/final.mdl ark:- $dir/pdf_counts.JOB || exit 1;
+     ali-to-post "scp:utils/split_scp.pl -j $nj \$[JOB-1] $targets_scp |" ark:- \| \
+     post-to-tacc --per-pdf=false --num-targets=$num_targets \
+     ark:- $dir/pdf_counts.JOB || exit 1;
   $cmd $dir/log/sum_pdf_counts.log \
        vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
   rm $dir/pdf_counts.*
@@ -347,10 +341,10 @@ num_archives_to_process=$[$num_epochs*$num_archives_expanded]
 num_archives_processed=0
 num_iters=$[($num_archives_to_process*2)/($num_jobs_initial+$num_jobs_final)]
 
+finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
+
 ! [ $num_iters -gt $[$finish_add_layers_iter+2] ] \
   && echo "$0: Insufficient epochs" && exit 1
-
-finish_add_layers_iter=$[$num_hidden_layers * $add_layers_period]
 
 echo "$0: Will train for $num_epochs epochs = $num_iters iterations"
 
@@ -371,8 +365,6 @@ else
   combine_queue_opt=""  # the combine stage will be quite slow if not using
                         # GPU, as we didn't enable that program to use
                         # multiple threads.
-  prior_gpu_opt="--use-gpu=no"
-  prior_queue_opt=""
 fi
 
 
@@ -394,16 +386,6 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
 
-for realign_time in $realign_times; do
-  # Work out the iterations on which we will re-align, if the --realign-times
-  # option was used.  This is slightly approximate.
-  ! perl -e "exit($realign_time > 0.0 && $realign_time < 1.0 ? 0:1);" && \
-    echo "Invalid --realign-times option $realign_times: elements must be strictly between 0 and 1.";
-  # the next formula is based on the one for mix_up_iter above.
-  realign_iter=$(perl -e '($j,$k,$n,$p)=@ARGV; print int(0.5 + ($j==$k ? $n*$p : $n*(sqrt((1-$p)*$j*$j+$p*$k*$k)-$j)/($k-$j))); ' $num_jobs_initial $num_jobs_final $num_iters $realign_time) || exit 1;
-  realign_this_iter[$realign_iter]=$realign_time
-done
-
 cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
@@ -415,11 +397,6 @@ while [ $x -lt $num_iters ]; do
   this_learning_rate=$(perl -e "print (($x + 1 >= $num_iters ? $flr : $ilr*exp($np*log($flr/$ilr)/$nt))*$this_num_jobs);");
 
   echo "On iteration $x, learning rate is $this_learning_rate."    
-
-  if [ ! -z "${realign_this_iter[$x]}" ]; then
-    prev_egs_dir=$cur_egs_dir
-    cur_egs_dir=$dir/egs_${realign_this_iter[$x]}
-  fi
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
     # Set off jobs doing some diagnostics, in the background.
