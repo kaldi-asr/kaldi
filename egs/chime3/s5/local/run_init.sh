@@ -45,22 +45,22 @@ set -x
 if [ $stage -le 0 ]; then
   # process for clean speech and making LMs etc. from original WSJ0
   # note that training on clean data means original WSJ0 data only (no booth data)
-  local/clean_wsj0_data_prep.sh $wsj0_data 
-  local/wsj_prepare_dict.sh 
-  utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang 
-  local/clean_chime3_format_data.sh 
+  local/clean_wsj0_data_prep.sh $wsj0_data
+  local/wsj_prepare_dict.sh
+  utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang
+  local/clean_chime3_format_data.sh
 fi
 
 if [ $stage -le 1 ]; then
   # process for close talking speech for real data (will not be used)
-  # local/real_close_chime3_data_prep.sh $chime3_data 
+  # local/real_close_chime3_data_prep.sh $chime3_data
 
   # process for booth recording speech (will not be used)
-  # local/bth_chime3_data_prep.sh $chime3_data 
+  # local/bth_chime3_data_prep.sh $chime3_data
 
   # process for distant talking speech for real and simulation data
-  local/real_noisy_chime3_data_prep.sh $chime3_data 
-  local/simu_noisy_chime3_data_prep.sh $chime3_data 
+  local/real_noisy_chime3_data_prep.sh $chime3_data
+  local/simu_noisy_chime3_data_prep.sh $chime3_data
 fi
 
 # Now make MFCC features for clean, close, and noisy data
@@ -86,10 +86,10 @@ else
 fi
 mfccdir=mfcc
 if [ $stage -le 2 ]; then
-  for x in $list; do 
+  for x in $list; do
     steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" \
-      data/$x exp/make_mfcc/$x $mfccdir 
-    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir 
+      data/$x exp/make_mfcc/$x $mfccdir
+    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
   done
 fi
 
@@ -114,32 +114,32 @@ if [ $stage -le 4 ]; then
     fi
     # training monophone model
     steps/train_mono.sh --boost-silence 1.25 --nj $nj2 --cmd "$train_cmd" \
-      data/$train data/lang exp/mono0a_$train 
+      data/$train data/lang exp/mono0a_$train
     steps/align_si.sh --boost-silence 1.25 --nj $nj2 --cmd "$train_cmd" \
-      data/$train data/lang exp/mono0a_$train exp/mono0a_ali_$train 
+      data/$train data/lang exp/mono0a_$train exp/mono0a_ali_$train
 
     # training triphone model with lad mllt features
     steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-      2000 10000 data/$train data/lang exp/mono0a_ali_$train exp/tri1_$train 
+      2000 10000 data/$train data/lang exp/mono0a_ali_$train exp/tri1_$train
     steps/align_si.sh --nj $nj2 --cmd "$train_cmd" \
-      data/$train data/lang exp/tri1_$train exp/tri1_ali_$train 
+      data/$train data/lang exp/tri1_$train exp/tri1_ali_$train
 
     steps/train_lda_mllt.sh --cmd "$train_cmd" \
       --splice-opts "--left-context=3 --right-context=3" \
-      2500 15000 data/$train data/lang exp/tri1_ali_$train exp/tri2b_$train 
+      2500 15000 data/$train data/lang exp/tri1_ali_$train exp/tri2b_$train
     steps/align_si.sh  --nj $nj2 --cmd "$train_cmd" \
-      --use-graphs true data/$train data/lang exp/tri2b_$train exp/tri2b_ali_$train  
+      --use-graphs true data/$train data/lang exp/tri2b_$train exp/tri2b_ali_$train
 
     steps/train_sat.sh --cmd "$train_cmd" \
-      2500 15000 data/$train data/lang exp/tri2b_ali_$train exp/tri3b_$train 
-    utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_$train exp/tri3b_$train/graph_tgpr_5k 
+      2500 15000 data/$train data/lang exp/tri2b_ali_$train exp/tri3b_$train
+    utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_$train exp/tri3b_$train/graph_tgpr_5k
   done
 fi
 
 # decoding
 if [ $stage -le 5 ]; then
   for train in tr05_multi_noisy tr05_orig_clean; do
-    # if you want to know the result of the close talk microphone, plese try the following 
+    # if you want to know the result of the close talk microphone, please try the following
     # decode close speech
     # steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
     #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
@@ -170,4 +170,3 @@ if [ $stage -le 6 ]; then
 fi
 
 echo "`basename $0` Done."
-
