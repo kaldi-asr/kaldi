@@ -32,7 +32,7 @@ fi
 # See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming, 
 # robust feature extraction, and advanced speech recognition,“ ASRU’15
 # note that beamformed wav files are generated in the following directory
-enhancement_method=beamformit_5ch
+enhancement_method=beamformit_5mics
 enhancement_data=`pwd`/$enhancement_method
 if [ $stage -le 1 ]; then
   ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1

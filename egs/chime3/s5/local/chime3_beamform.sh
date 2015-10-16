@@ -20,8 +20,6 @@ if [ $# != 2 ]; then
    exit 1;
 fi
 
-beamformit=bin/BeamformIt-3.51/BeamformIt
-beamformit=/remote/kiki/data2/watanabe/work/201410CHiME3/CHiME3/tools/beamformit_mandel/bin/BeamformIt-3.51/BeamformIt
 sdir=$1
 odir=$2
 wdir=data/local/beamforming
@@ -72,7 +70,7 @@ echo -e "Beamforming\n"
 for n in `seq $nj`; do
 cat << EOF > $wdir/log/beamform.$n.sh
 while read line; do
-  $beamformit -s \$line -c $input_arrays \
+  $BEAMFORMIT/BeamformIt -s \$line -c $input_arrays \
     --config_file `pwd`/conf/ami.cfg \
     --source_dir $sdir \
     --result_dir $odir
@@ -88,5 +86,6 @@ chmod a+x $wdir/log/beamform.*.sh
 $cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
   $wdir/log/beamform.JOB.sh
 
-exit
+echo "`basename $0` Done."
+
 
