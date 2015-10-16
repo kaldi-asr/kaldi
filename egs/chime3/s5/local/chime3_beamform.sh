@@ -31,6 +31,12 @@ set -u
 set -o pipefail
 #set -x
 
+if [ -z $BEAMFORMIT ] ; then
+  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
+fi
+export PATH=${PATH}:$BEAMFORMIT
+! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+
 mkdir -p $odir
 mkdir -p $wdir/log
 
@@ -87,5 +93,3 @@ $cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
   $wdir/log/beamform.JOB.sh
 
 echo "`basename $0` Done."
-
-

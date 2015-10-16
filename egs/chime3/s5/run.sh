@@ -22,7 +22,7 @@ stage=0 # resume training with --stage=N
 # If you use kaldi scripts distributed in the CHiME3 data,
 # chime3_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
-chime3_data=/remote/kiki/data2/watanabe/work/201410CHiME3/CHiME3
+chime3_data=/data2/archive/speech-db/original/public/CHiME3
 if [ $stage -le 0 ]; then
   local/run_init.sh $chime3_data
 fi
@@ -35,7 +35,6 @@ fi
 enhancement_method=beamformit_5mics
 enhancement_data=`pwd`/$enhancement_method
 if [ $stage -le 1 ]; then
-  ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
   local/chime3_beamform.sh --cmd "$train_cmd" --nj 8 $chime3_data/data/audio/16kHz/isolated $enhancement_data
 fi
 
