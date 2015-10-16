@@ -114,6 +114,11 @@ if [ $stage -le 2 ]; then
         --nj $nj --cmd "$train_cmd" --io-opts "" \
         $datadir $vad_scp $dir || exit 1
       ;;
+    "LogisticRegressionSubsampled")
+      $train_cmd $dir/log/train_logistic_regression.log \
+        logistic-regression-train --num-targets=2 \
+        scp:$datadir/feats.scp scp:$vad_scp $dir/0.mdl || exit 1
+
     "LogisticRegression")
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
         utils/create_split_dir.pl \

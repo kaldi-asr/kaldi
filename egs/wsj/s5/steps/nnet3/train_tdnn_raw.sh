@@ -58,10 +58,7 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
-
-io_opts="--max-job-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
-
 use_gpu=true    # if true, we run on GPU.
 cleanup=true
 egs_dir=
