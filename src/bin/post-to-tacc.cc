@@ -39,33 +39,49 @@ int main(int argc, char *argv[]) {
 
     bool binary = true;
     bool per_pdf = false;
+    int32 num_targets = -1;
+
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode.");
-    po.Register("per-pdf", &per_pdf, "if ture, accumulate counts per pdf-id"
+    po.Register("per-pdf", &per_pdf, "if true, accumulate counts per pdf-id"
                 " rather than transition-id. (default: false)");
+    po.Register("num-targets", &num_targets, "number of targets; useful when "
+                "there is no transition model.");
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if ( (po.NumArgs() != 3) && (po.NumArgs() != 2) ) {
       po.PrintUsage();
       exit(1);
     }
       
-    std::string model_rxfilename = po.GetArg(1),
-        post_rspecifier = po.GetArg(2),
-        accs_wxfilename = po.GetArg(3);
+    int32 N = po.NumArgs();
+
+    std::string model_rxfilename,
+        post_rspecifier = po.GetArg(N-1),
+        accs_wxfilename = po.GetArg(N);
+
+     
+    if (N == 3) 
+      model_rxfilename = po.GetArg(1);
+    else 
+      KALDI_ASSERT(num_targets > 0 && !per_pdf);
 
     kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
     
-    int32 num_transition_ids;
+    int32 num_transition_ids = 0;
     
+    TransitionModel *trans_model = NULL;
+    
+    if (N == 3) {
       bool binary_in;
       Input ki(model_rxfilename, &binary_in);
-      TransitionModel trans_model;
-      trans_model.Read(ki.Stream(), binary_in);
-      num_transition_ids = trans_model.NumTransitionIds();
+      trans_model = new TransitionModel;
+      trans_model->Read(ki.Stream(), binary_in);
+      num_transition_ids = trans_model->NumTransitionIds();
+    }
     
-    Vector<double> transition_accs(num_transition_ids+1); // +1 because they're
-    // 1-based; position zero is empty.  We'll write as float.
+    Vector<double> accs(trans_model ? num_transition_ids+1 : num_targets); 
+    // +1 because tids 1-based; position zero is empty.  
     int32 num_done = 0;      
     
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
@@ -73,12 +89,16 @@ int main(int argc, char *argv[]) {
       int32 num_frames = static_cast<int32>(posterior.size());
       for (int32 i = 0; i < num_frames; i++) {
         for (int32 j = 0; j < static_cast<int32>(posterior[i].size()); j++) {
-          int32 tid = posterior[i][j].first;
-          if (tid <= 0 || tid > num_transition_ids)
-            KALDI_ERR << "Invalid transition-id " << tid
+          int32 id = posterior[i][j].first;
+          if (num_targets < 0 && (id <= 0 || id > num_transition_ids) )
+            KALDI_ERR << "Invalid transition-id " << id
                       << " encountered for utterance "
                       << posterior_reader.Key();
-          transition_accs(tid) += posterior[i][j].second;
+          else if (num_targets >= 0 && (id < 0 || id > num_targets)) 
+            KALDI_ERR << "Invalid target " << id
+                      << " encountered for utterance "
+                      << posterior_reader.Key();
+          accs(id) += posterior[i][j].second;
         }
       }
       num_done++;
@@ -86,21 +106,21 @@ int main(int argc, char *argv[]) {
 
     if (per_pdf) {
       KALDI_LOG << "accumulate counts per pdf-id";
-      int32 num_pdf_ids = trans_model.NumPdfs();
+      int32 num_pdf_ids = trans_model->NumPdfs();
       Vector<double> pdf_accs(num_pdf_ids);
       for (int32 i = 1; i < num_transition_ids; i++) {
-        int32 pid = trans_model.TransitionIdToPdf(i);
-        pdf_accs(pid) += transition_accs(i);
+        int32 pid = trans_model->TransitionIdToPdf(i);
+        pdf_accs(pid) += accs(i);
       }
       Vector<BaseFloat> pdf_accs_float(pdf_accs);
       Output ko(accs_wxfilename, binary);
       pdf_accs_float.Write(ko.Stream(), binary);
     } else {
-      Vector<BaseFloat> transition_accs_float(transition_accs);
+      Vector<BaseFloat> accs_float(accs);
       Output ko(accs_wxfilename, binary);
-      transition_accs_float.Write(ko.Stream(), binary);
+      accs_float.Write(ko.Stream(), binary);
     }
-    KALDI_LOG << "Done computing transition stats over "
+    KALDI_LOG << "Done accumulating stats over "
               << num_done << " utterances; wrote stats to "
               << accs_wxfilename;
     return (num_done != 0 ? 0 : 1);
