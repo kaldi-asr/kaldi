@@ -9,6 +9,7 @@
 #           2014  Vijayaditya Peddinti
 # Apache 2.0.
 
+set -u 
 
 # Begin configuration section.
 cmd=run.pl
@@ -399,13 +400,18 @@ while [ $x -lt $num_iters ]; do
   echo "On iteration $x, learning rate is $this_learning_rate."    
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
+    compute_accuracy=false
+    if [ "$objective_type" == "linear" ]; then
+      compute_accuracy=true
+    fi
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-compute-prob --compute-accuracy=false $dir/$x.raw \
+      nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
             "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-compute-prob --compute-accuracy=false $dir/$x.raw \
+      nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
            "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 
     if [ $x -gt 0 ]; then
@@ -486,7 +492,7 @@ while [ $x -lt $num_iters ]; do
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
           close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
-          $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
+          $best_n=$n; } } print "$best_n\n"; ' $this_num_jobs $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
         nnet3-copy $dir/$[$x+1].$n.raw $dir/$[$x+1].raw || exit 1;
@@ -533,10 +539,10 @@ if [ $stage -le $num_iters ]; then
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-compute-prob --compute-accuracy=false $dir/final.raw \
+    nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-compute-prob --compute-accuracy=false $dir/final.raw \
+    nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
     "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
