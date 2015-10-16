@@ -54,9 +54,20 @@ if [ $use_gpu != "no" ]; then
 fi
 
 if [ $stage -le 0 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$dir/storage $dir/storage
+    for n in `seq $nj`; do 
+      utils/create_data_link.pl $dir/nnet_pred.$n.ark
+      utils/create_data_link.pl $dir/clean_pred.$n.ark
+      utils/create_data_link.pl $dir/frame_snrs.$n.ark
+    done
+  fi
+
   $gpu_cmd JOB=1:$nj $dir/log/compute_nnet_pred.JOB.log \
     nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/$iter.raw "$feats" \
-    ark:- \| ${copy_opts}copy-feats --compress=true ark:- ark:$dir/nnet_pred.JOB.ark || exit 1
+    ark:- \| ${copy_opts}copy-feats --compress=true ark:- \
+    ark,scp:$dir/nnet_pred.JOB.ark,$dir/nnet_pred.JOB.scp || exit 1
 fi
 
 if [ $stage -le 1 ]; then
@@ -67,9 +78,9 @@ if [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="Irm" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
-        ark:$dir/clean_pred.JOB.ark
-        
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        copy-feats --compress=true ark:- \
+        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;
     "FbankMask")
       # nnet_pred is log (clean feat / noisy feat)
@@ -77,8 +88,9 @@ if [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="FbankMask" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
-        ark:$dir/clean_pred.JOB.ark
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        copy-feats --compress=true ark:- \
+        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;
     "FrameSnr")
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
@@ -90,8 +102,9 @@ if [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="Snr" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp \
-        ark:$dir/clean_pred.JOB.ark
+        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        copy-feats --compress=true ark:- \
+        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;
     *)
       echo "Unknown prediction-type '$prediction_type'" && exit 1
@@ -101,3 +114,7 @@ fi
 for n in `seq $nj`; do
   cat $dir/frame_snrs.$n.scp
 done > $dir/frame_snrs.scp
+
+for n in `seq $nj`; do
+  cat $dir/nnet_pred.$n.scp
+done > $dir/nnet_pred_snrs.scp

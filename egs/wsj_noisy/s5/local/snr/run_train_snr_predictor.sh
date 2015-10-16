@@ -56,7 +56,7 @@ if [ $stage -le 8 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --cmd "$decode_cmd" --nj 40 --objective-type quadratic \
+    --cmd "$decode_cmd" --nj 40 --objective-type quadratic --cleanup false \
     --pnorm-input-dim $pnorm_input_dim \
     --pnorm-output-dim $pnorm_output_dim \
     $train_data_dir $targets_scp $dir || exit 1;
