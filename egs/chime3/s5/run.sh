@@ -8,7 +8,7 @@
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
 . ./path.sh
-. ./cmd.sh 
+. ./cmd.sh
 
 # Config:
 stage=0 # resume training with --stage=N
@@ -16,12 +16,12 @@ stage=0 # resume training with --stage=N
 . utils/parse_options.sh || exit 1;
 
 # You can execute run_init.sh only "once"
-# This creates LMs, basic task files, basic models, 
+# This creates LMs, basic task files, basic models,
 # baseline results without speech enhancement techniques, and so on.
 # Please set a main root directory of the CHiME3 data
-# If you use kaldi scripts distributed in the CHiME3 data, 
-# chime3_data=`pwd`/../.. 
-# Otherwise, please specify it, e.g., 
+# If you use kaldi scripts distributed in the CHiME3 data,
+# chime3_data=`pwd`/../..
+# Otherwise, please specify it, e.g.,
 chime3_data=/remote/kiki/data2/watanabe/work/201410CHiME3/CHiME3
 if [ $stage -le 0 ]; then
   local/run_init.sh $chime3_data
@@ -29,7 +29,7 @@ fi
 
 # Using Beamformit
 # This results in better performance than the CHiME3 official beamforming
-# See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming, 
+# See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
 # robust feature extraction, and advanced speech recognition,“ ASRU’15
 # note that beamformed wav files are generated in the following directory
 enhancement_method=beamformit_5mics
@@ -43,14 +43,12 @@ fi
 # Please set a directory of your speech enhancement method.
 # run_gmm.sh can be done every time when you change a speech enhancement technique.
 # The directory structure and audio files must follow the attached baseline enhancement directory
-# if you want tou use the CHiME3 official enhanced data, please comment out the following
+# if you want to use the CHiME3 official enhanced data, please comment out the following
 # enhancement_method=enhanced
 # enhancement_data=$chime3_data/data/audio/16kHz/enhanced
 if [ $stage -le 2 ]; then
   local/run_gmm.sh $enhancement_method $enhancement_data
 fi
-
-exit
 
 # DNN based ASR experiment
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
