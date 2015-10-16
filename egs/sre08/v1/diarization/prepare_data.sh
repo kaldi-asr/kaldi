@@ -31,6 +31,10 @@ tmpdir=$2
 featdir=$3
 
 if [ $stage -le 1 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $featdir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$featdir/storage $featdir/storage
+  fi
   if $add_pitch; then
     steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_vad.conf --nj $nj --cmd "$cmd" \
       $data $tmpdir/make_mfcc_vad $featdir || exit 1

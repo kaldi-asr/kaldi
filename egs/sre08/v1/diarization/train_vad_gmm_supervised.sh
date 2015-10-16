@@ -9,7 +9,7 @@ set -o pipefail
 cmd=run.pl
 speech_max_gauss=64
 sil_max_gauss=32
-noise_max_gauss=32
+noise_max_gauss=16
 sil_num_gauss_init=4
 speech_num_gauss_init=4
 noise_num_gauss_init=4
