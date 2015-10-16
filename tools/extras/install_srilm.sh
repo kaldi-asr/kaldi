@@ -37,7 +37,7 @@ cd ..
     echo >&2 "SRILM config is already in env.sh" && exit
 
   wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`readlink -f $wd || pwd`
 
   echo "export SRILM=$wd/srilm"
   dirs="\${PATH}"
