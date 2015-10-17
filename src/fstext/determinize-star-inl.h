@@ -161,7 +161,8 @@ template<class Label, class StringId> class StringRepository {
 };
 
 
-template<class Arc> class DeterminizerStar {
+template<class F> class DeterminizerStar {
+  typedef typename F::Arc Arc;
  public:
   // Output to Gallic acceptor (so the strings go on weights, and there is a 1-1 correspondence
   // between our states and the states in ofst.  If destroy == true, release memory as we go
@@ -627,33 +628,36 @@ template<class Arc> class DeterminizerStar {
 };
 
 
-template<class Arc>
-bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+template<class F>
+bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta, bool *debug_ptr, int max_states,
                      bool allow_partial) {
+  typedef typename F::Arc Arc;
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
   det.Determinize(debug_ptr);
   det.Output(ofst);
   return det.IsPartial();
 }
 
 
-template<class Arc>
-bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst, float delta,
+template<class F>
+bool DeterminizeStar(F &ifst,
+                     MutableFst<GallicArc<typename F::Arc> > *ofst, float delta,
                      bool *debug_ptr, int max_states,
                      bool allow_partial) {
+  typedef typename F::Arc Arc;
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
-  DeterminizerStar<Arc> det(ifst, delta, max_states, allow_partial);
+  DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
   det.Determinize(debug_ptr);
   det.Output(ofst);
   return det.IsPartial();
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::EpsilonClosure::
+template<class F>
+void DeterminizerStar<F>::EpsilonClosure::
             GetEpsilonClosure(const vector<Element> &input_subset,
                                        vector<Element> *output_subset) {
   ecinfo_.resize(0);
@@ -744,8 +748,8 @@ void DeterminizerStar<Arc>::EpsilonClosure::
   }
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::EpsilonClosure::
+template<class F>
+void DeterminizerStar<F>::EpsilonClosure::
      AddOneElement(const Element &elem, const Weight &unprocessed_weight) {
   // first we try to find the element info in the ecinfo_ vector
   int index = -1;
@@ -815,8 +819,8 @@ void DeterminizerStar<Arc>::EpsilonClosure::
   }
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::EpsilonClosure::ExpandOneElement(
+template<class F>
+void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
                                           const Element &elem,
                                           bool sorted,
                                           const Weight &unprocessed_weight,
@@ -858,8 +862,8 @@ void DeterminizerStar<Arc>::EpsilonClosure::ExpandOneElement(
   }
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::Output(MutableFst<GallicArc<Arc> > *ofst,
+template<class F>
+void DeterminizerStar<F>::Output(MutableFst<GallicArc<Arc> > *ofst,
                                    bool destroy) {
   assert(determinized_);
   if (destroy) determinized_ = false;
@@ -908,8 +912,8 @@ void DeterminizerStar<Arc>::Output(MutableFst<GallicArc<Arc> > *ofst,
   if (destroy) { vector<vector<TempArc> > temp; temp.swap(output_arcs_); }
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::Output(MutableFst<Arc> *ofst, bool destroy) {
+template<class F>
+void DeterminizerStar<F>::Output(MutableFst<Arc> *ofst, bool destroy) {
   assert(determinized_);
   if (destroy) determinized_ = false;
   // Outputs to standard fst.
@@ -985,7 +989,7 @@ void DeterminizerStar<Arc>::Output(MutableFst<Arc> *ofst, bool destroy) {
   }
 }
 
-template<class Arc> void DeterminizerStar<Arc>::
+template<class F> void DeterminizerStar<F>::
 ProcessTransition(OutputStateId state, Label ilabel, vector<Element> *subset) {
   // At input, "subset" may contain duplicates for a given dest state (but in sorted
   // order).  This function removes duplicates from "subset", normalizes it, and adds
@@ -1065,8 +1069,8 @@ ProcessTransition(OutputStateId state, Label ilabel, vector<Element> *subset) {
   output_arcs_[state].push_back(temp_arc);  // record the arc.
 }
 
-template<class Arc>
-void DeterminizerStar<Arc>::Debug() {
+template<class F>
+void DeterminizerStar<F>::Debug() {
   // this function called if you send a signal
   // SIGUSR1 to the process (and it's caught by the handler in
   // fstdeterminizestar).  It prints out some traceback
