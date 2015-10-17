@@ -83,7 +83,7 @@ class NeuralNet(object):
                         layer_params = getAffineLayerDef(row)
                         (n_in, n_out) = (int(row.split()[2]), int(row.split()[4]))
 
-                        [layer_params.setdefault(a, layer_params_default[a]) for a in affine_layer_params_default]
+                        [layer_params.setdefault(a, affine_layer_params_default[a]) for a in affine_layer_params_default]
                         layer = AffineTransform(n_in, n_out,
                                                 param_stddev_factor=layer_params["ParamStddev"], 
                                                 bias_mean=layer_params["BiasMean"], 
@@ -96,7 +96,7 @@ class NeuralNet(object):
                         layer_params = getLinearLayerDef(row)
                         (n_in, n_out) = (int(row.split()[2]), int(row.split()[4]))
 
-                        [layer_params.setdefault(a, layer_params_default[a]) for a in linear_layer_params_default]
+                        [layer_params.setdefault(a, linear_layer_params_default[a]) for a in linear_layer_params_default]
                         layer = LinearTransform(n_in, n_out,
                                                 param_stddev_factor=layer_params["ParamStddev"], 
                                                 learn_rate_coef=layer_params["LearnRateCoef"],
