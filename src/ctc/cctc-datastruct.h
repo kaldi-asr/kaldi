@@ -30,21 +30,20 @@
  */
 
 extern "C" {
+  // "C" version of the BaseFloat typedef-- this saves us having to write
+  // multiple versions of these kernels.
+#if (KALDI_DOUBLEPRECISION != 0)
+  typedef double  BaseFloat;
+#else
+  typedef float   BaseFloat;
+#endif
 
-  struct CtcHmmTransition {
-    float transition_prob;  // language-model part of the probability.
+  struct CctcHmmTransition {
+    BaseFloat transition_prob;  // language-model part of the probability.
     int32 num_index;  // numerator-prob index for the acoustic part of the probability.
     // the index for the denominator part of the probability is the same as the
     // hmm-state index.
     int32 hmm_state;  // source, or destination, HMM-state.
-  };
-
-  struct CtcHmmHeader {
-    int32_cuda num_states;  // The number of states in the HMM.
-    int32_cuda transition_array_size;  // The total number of CtHmmTransition
-                                       // objects in the array.
-    CtcHmmStateInfo *state_info;
-    CtcHmmTransition *transitions;  // the array of transitions.
   };
 
 

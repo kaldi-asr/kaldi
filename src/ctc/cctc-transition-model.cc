@@ -262,15 +262,16 @@ void CctcTransitionModelCreator::InitCctcTransitionModel(
   KALDI_LOG << "Decision tree has " << (ctx_dep_.ContextWidth() - 1)
             << " phones of left context.";
   num_tree_leaves_ = ctx_dep_.NumPdfs();
-  num_output_indexes_ = num_tree_leaves_ +
-      lm_hist_state_map_.NumLmHistoryStates() * 2;
-  KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
-            << num_tree_leaves_ << " for tree indexes, and "
-            << lm_hist_state_map_.NumLmHistoryStates() << " for blank "
-            << "and the same number for tombstones.";
-
   GetInitialHistoryStates();
   while (MergeHistoryStatesOnePass());
+
+  num_output_indexes_ = num_tree_leaves_ +
+      history_states_.size() * 2;
+  KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
+            << num_tree_leaves_ << " for tree indexes, and "
+            << history_states_.size() << " for blank "
+            << "and the same number for tombstones.";
+
   OutputToTransitionModel(model);
   model->Check();
 }

@@ -1,4 +1,4 @@
-// ctc/ctc-kernels-ansi.h
+// ctc/cctc-kernels-ansi.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -18,14 +18,15 @@
 // limitations under the License.
 
 
-
-#ifndef KALDI_CTC_CTC_KERNELS_ANSI_H_
-#define KALDI_CTC_CTC_KERNELS_ANSI_H_
+#ifndef KALDI_CTC_CCTC_KERNELS_ANSI_H_
+#define KALDI_CTC_CCTC_KERNELS_ANSI_H_
+#include "ctc/cctc-datastruct.h"
 
 #if HAVE_CUDA == 1
 extern "C" {
 
-  // float CUDA kernel calls.
+
+  // CUDA kernel calls.
 
   // one iteration of alpha computation in the 'tombstone' CTC HMM computation.
   // The grid x and y determine which HMM-state we handle.  [put this in the grid because
@@ -38,9 +39,11 @@ extern "C" {
   // the blockIdx.y and blockIdx.z together determine which HMM-state we handle.
   void cudaF_compute_ctc_hmm_alpha(dim3 Gr, dim3 Bl, const CtcHmmHeader *hmm, int32_cuda t,
                                    int32_cuda num_time_steps, int32_cuda num_sequences,
-                                   const float *num_probs, MatrixDim num_dim,
-                                   const float *den_probs, MatrixDim den_dim,
-                                   float *alpha, MatrixDim alpha_dim);
+                                   const BaseFloat *num_probs, MatrixDim num_dim,
+                                   const BaseFloat *den_probs, MatrixDim den_dim,
+                                   BaseFloat *alpha, MatrixDim alpha_dim);
+
+
 
   // it will be better if we can load in contiguous memory over all the minibatch elements
   // for one t-value, so if we could arrange the den and num probs using row-index ==

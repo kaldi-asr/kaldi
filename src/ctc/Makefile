@@ -7,11 +7,11 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = language-model-test cctc-transition-model-test \
-		    cctc-supervision-test
+		    cctc-supervision-test cctc-tombstone-test
 
 OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o \
            cctc-supervision.o cctc-training.o cctc-test-utils.o \
-           cctc-decoder-wrappers.o
+           cctc-decoder-wrappers.o cctc-tombstone.o
 
 LIBNAME = kaldi-ctc
 

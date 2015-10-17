@@ -89,10 +89,10 @@ class CctcTransitionModel {
   // probabilities: row index is history-state index from 0 to
   // NumHistoryStates() - 1, column index is neural-net output index, from 0 to
   // NumOutputIndexes() - 1.
-  void ComputeWeights(Matrix<BaseFloat> *mat) const;
+  void ComputeWeights(Matrix<BaseFloat> *weights) const;
 
   // Version of ComputeWeights() that outputs to a CUDA matrix.
-  void ComputeWeights(CuMatrix<BaseFloat> *cu_mat) const;
+  void ComputeWeights(CuMatrix<BaseFloat> *cu_weights) const;
 
   // Graph-labels are numbered from 1 to NumGraphLabels().
   // A graph-label is a similar concept to a transition-id in HMM-based models;

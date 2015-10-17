@@ -18,7 +18,7 @@
 
 
 #include <cfloat>
-#include "ctc/ctc-kernels-ansi.h"
+#include "ctc/cctc-kernels-ansi.h"
 
 
 
@@ -27,15 +27,15 @@
 
 template <typename Real>
 __global__
-static void _cuda_rearrange_3d_tensor(const float *src,
-                                      int32_cuda xdim,
+static void _cuda_rearrange_3d_tensor(int32_cuda xdim,
                                       int32_cuda xstride_in,
                                       int32_cuda ystride_in,
                                       int32_cuda zstride_in,
                                       int32_cuda xstride_out,
                                       int32_cuda ystride_out,
                                       int32_cuda zstride_out,
-                                      float *dst) {
+                                      const Real *src,
+                                      Real *dst) {
   // threads only vary in x.
   int32_cuda x = threadIdx.x + blockIdx.x * blockDim.x,
       y = blockIdx.y,
@@ -65,15 +65,14 @@ __device__ inline void atomicAdd(Real* address, Real value) {
 // The block x and y determine which sequence (0 ... num_sequences - 1) we handle;
 // note that num_sequences == the number of elements in the minibatch, and we
 // insist they all have the same number of time steps.
-template <typename Real>
 __global__
 static void _cuda_ctc_hmm_forward(Int32Pair *state_info,
                                   CtcHmmTransition *transition_info,
                                   int32_cuda t, int32_cuda num_sequences,
-                                  const Real *num_probs, int32 num_stride,
-                                  const Real *den_probs, int32 den_stride,
-                                  const Real *prev_alpha, int32 alpha_stride,
-                                  Real *this_alpha) {
+                                  const BaseFloat *num_probs, int32 num_stride,
+                                  const BaseFloat *den_probs, int32 den_stride,
+                                  const BaseFloat *prev_alpha, int32 alpha_stride,
+                                  BaseFloat *this_alpha) {
   // 'state_info', indexed by hmm-state, consists of [start, end] indexes into
   // the 'transition_info' array.  The state_info supplied to this function consists of
   // indexes for transitions *into* this state.
@@ -97,14 +96,14 @@ static void _cuda_ctc_hmm_forward(Int32Pair *state_info,
   // transition-probs by on this frame.  Mathematically we could use any value
   // here and it wouldn't affect the result, but we use this value in order
   // to keep things in a good numerical range.
-  Real inv_transition_scale = prev_alpha[0];
+  BaseFloat inv_transition_scale = prev_alpha[0];
 
   // there no need to say "if (hmm_state < num_hmm_states) return;" or
   // even to know the number of HMM states, because CUDA does not pad
   // the grid dimension, only the block dimension (num-threads).
   int32_cuda trans_index = state_info[hmm_state].first,
       trans_end = state_info[hmm_state].second;
-  Real this_tot_alpha = 0.0;
+  BaseFloat this_tot_alpha = 0.0;
 
   for (; trans_index != trans_end; trans_index++) {
     float transition_prob = transition_info[t].transition_prob;
@@ -121,18 +120,16 @@ static void _cuda_ctc_hmm_forward(Int32Pair *state_info,
 }
 
 
-
-template <typename Real>
 __global__
 static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
                                    CtcHmmTransition *transition_info,
                                    int32_cuda t, int32_cuda num_sequences,
-                                   const Real *num_probs, int32 num_stride,
-                                   const Real *den_probs, int32 den_stride,
-                                   const Real *this_alpha,
-                                   const Real *next_beta, Real *this_beta,
-                                   Real deriv_scale,
-                                   Real *num_logprob_derivs, Real *den_logprob_derivs) {
+                                   const BaseFloat *num_probs, int32 num_stride,
+                                   const BaseFloat *den_probs, int32 den_stride,
+                                   const BaseFloat *this_alpha,
+                                   const BaseFloat *next_beta, BaseFloat *this_beta,
+                                   BaseFloat deriv_scale,
+                                   BaseFloat *num_logprob_derivs, BaseFloat *den_logprob_derivs) {
   // 'state_info', indexed by hmm-state, consists of [start, end] indexes into
   // the 'transition_info' array.  The state_info supplied to this function consists of
   // indexes for transitions *out of* this state.
@@ -162,7 +159,7 @@ static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
   // here and it wouldn't affect the result, but we use this value in order
   // to keep things in a good numerical range.  Must be identical to the one
   // used in the forward pass.
-  Real inv_transition_scale = this_alpha[sequence_index];
+  BaseFloat inv_transition_scale = this_alpha[sequence_index];
 
   // there no need to say "if (hmm_state < num_hmm_states) return;" or
   // even to know the number of HMM states, because CUDA does not pad
@@ -170,7 +167,7 @@ static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
   int32_cuda trans_index = state_info[hmm_state].first,
       trans_end = state_info[hmm_state].second;
 
-  Real tot_variable_factor = 0.0,
+  BaseFloat tot_variable_factor = 0.0,
       common_factor = 1.0 / (den_probs[hmm_state * den_stride + sequence_index] *
                              inv_transition_scale),
       occupation_factor = common_factor * deriv_scale *
@@ -182,7 +179,7 @@ static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
     int32 num_index = transition_info[t].num_index,
         dest_hmm_state = transition_info[t].hmm_state;
 
-    Real variable_factor = transition_prob *
+    BaseFloat variable_factor = transition_prob *
         next_beta[dest_hmm_state * alpha_stride + sequence_index] *
         num_probs[num_index * num_dim.stride + sequence_index];
     // accumulate part of this beta prob.
@@ -192,7 +189,7 @@ static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
     // quantity for this transition; it would be between 0 and 1, were it not
     // for deriv_scale.  (We don't have any 1/tot-prob to worry about here,
     // because we multiplied that into the beta at the end).
-    Real scaled_transition_occupation_prob = occupation_factor * variable_factor;
+    BaseFloat scaled_transition_occupation_prob = occupation_factor * variable_factor;
     atomicAdd(num_logprob_derivs + (num_index * num_dim.stride) + sequence_index,
               scaled_transition_occupation_prob);
   }
@@ -202,7 +199,7 @@ static void _cuda_ctc_hmm_backward(Int32Pair *state_info,
 
   // 'scaled_state_occupation_prob' is the state occupation probability
   // (between 0 and 1) multiplied by deriv_scale.
-  Real scaled_state_occupation_prob = occupation_factor * my_beta;
+  BaseFloat scaled_state_occupation_prob = occupation_factor * my_beta;
 
   // set rather than add.  we'll make the interface reflect this; it saves a
   // load.q
@@ -239,6 +236,18 @@ void cudaF_ctc_hmm_backward(dim3 Gr, dim3 Bl,
 
 
 
+void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl,
+                               int32_cuda xdim,
+                               int32_cuda xstride_in,
+                               int32_cuda ystride_in,
+                               int32_cuda zstride_in,
+                               int32_cuda xstride_out,
+                               int32_cuda ystride_out,
+                               int32_cuda zstride_out,
+                               float *dst) {
+  _cuda_rearrange_3d_tensor<<<Gr,Bl>>>(xdim, xstride_in, ystride_in, zstride_in,
+                                       xstride_out, ystride_out, zstride_out);
+}
 void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl,
                                int32_cuda xdim,
                                int32_cuda xstride_in,
