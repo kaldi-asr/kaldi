@@ -35,7 +35,7 @@ fi
 enhancement_method=beamformit_5mics
 enhancement_data=`pwd`/$enhancement_method
 if [ $stage -le 1 ]; then
-  local/chime3_beamform.sh --cmd "$train_cmd" --nj 8 $chime3_data/data/audio/16kHz/isolated $enhancement_data
+  local/chime3_beamform.sh --cmd "$train_cmd" --nj 20 $chime3_data/data/audio/16kHz/isolated $enhancement_data
 fi
 
 # GMM based ASR experiment

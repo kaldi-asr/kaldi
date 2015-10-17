@@ -24,18 +24,18 @@ sdir=$1
 odir=$2
 wdir=data/local/beamforming
 
+if [ -z $BEAMFORMIT ] ; then
+  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
+fi
+export PATH=${PATH}:$BEAMFORMIT
+! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+
 # Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
 set -e
 set -u
 set -o pipefail
 #set -x
-
-if [ -z $BEAMFORMIT ] ; then
-  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
-fi
-export PATH=${PATH}:$BEAMFORMIT
-! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
 
 mkdir -p $odir
 mkdir -p $wdir/log
