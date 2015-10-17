@@ -5,17 +5,20 @@ os.environ['THEANO_FLAGS']='device=gpu,floatX=float32'
 import theano, theano.tensor as T
 
 import scipy.io.wavfile
-import itertools
-import shutil
+import itertools, shutil
 import cPickle as pickle
+from collections import OrderedDict
 
-import kaldi_io, utils, features, parse_config
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+import parse_config
+from io_funcs import kaldi_io, utils
+from feature_funcs import features, feature_preprocess
+
 from neuralnet import NeuralNet
 import neuralnet
-import feature_preprocess
-from feature_preprocess import FeaturePreprocess
-from feature_preprocess import CMVN
-from collections import OrderedDict
+from feature_funcs.feature_preprocess import FeaturePreprocess, CMVN
+
 
 import mkl
 mkl.set_num_threads(1)

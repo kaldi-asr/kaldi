@@ -6,7 +6,8 @@ import cPickle as pickle
 from theano.tensor.shared_randomstreams import RandomStreams
 from collections import OrderedDict
 
-import kaldi_io
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from io_funcs import kaldi_io
 
 from layers.core import AffineTransform
 from layers.core import LinearTransform
