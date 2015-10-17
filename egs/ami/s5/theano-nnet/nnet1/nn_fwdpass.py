@@ -3,21 +3,26 @@ import sys, os, logging, numpy as np
 os.environ['THEANO_FLAGS']='nvcc.flags=-arch=sm_30,mode=FAST_RUN,device=cpu,floatX=float32' #since fwdpass
 import theano, theano.tensor as T
 
-# import pytel.htk, pytel.utils, pytel.features, pytel.kaldi_io
-# import mypytel.kaldi_io, mypytel.utils
-
 import scipy.io.wavfile
-import tarfile
-import itertools
-import StringIO
-import shutil
+import tarfile, itertools, StringIO, shutil
 import cPickle as pickle
 
-import kaldi_io, utils, features
+# import kaldi_io, utils, features
+# from neuralnet import NeuralNet
+# import feature_preprocess
+# from feature_preprocess import FeaturePreprocess
+# from feature_preprocess import CMVN
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+import parse_config
+from io_funcs import kaldi_io, utils
+from feature_funcs import features, feature_preprocess
+
 from neuralnet import NeuralNet
-import feature_preprocess
-from feature_preprocess import FeaturePreprocess
-from feature_preprocess import CMVN
+import neuralnet
+from feature_funcs.feature_preprocess import FeaturePreprocess, CMVN
+
 from PdfPrior import PdfPrior
 
 import mkl
