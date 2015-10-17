@@ -142,7 +142,10 @@ int main(int argc, char *argv[]) {
     po.Register("skip-last-layer", &skip_last_layer, "If true, averaging of "
                 "the last updatable layer is skipped (result comes from model1)");
     po.Register("skip-layers", &skip_layers_str, "Colon-separated list of "
-                "indices of the layers that should be skipped during averaging");
+                "indices of the layers that should be skipped during averaging."
+                "Be careful: this parameter uses an absolute indexing of "
+                "layers, i.e. iterates over all components, not over updatable "
+                "ones only.");
 
     po.Read(argc, argv);
 
@@ -202,7 +205,8 @@ int main(int argc, char *argv[]) {
         updated = true;
       }
       if (! updated) {
-        KALDI_VLOG(2) << "Not averaging layer " << c << " (uncalable component)";
+        KALDI_VLOG(2) << "Not averaging layer " << c
+          << " (unscalable component)";
       }
     }
 
