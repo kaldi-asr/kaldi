@@ -15,7 +15,7 @@ set -e
 local/dnn/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
 # You could also try specifying the --calldata argument to this command as below.
-# If specified, the script will use actual speaker personal identification 
+# If specified, the script will use actual speaker personal identification
 # numbers released with the dataset, i.e. real speaker IDs. Note: --calldata has
 # to be the first argument of this script.
 # local/fisher_data_prep.sh --calldata /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
@@ -28,7 +28,7 @@ local/dnn/fisher_prepare_dict.sh
 
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
-local/dnn/fisher_train_lms.sh 
+local/dnn/fisher_train_lms.sh
 local/dnn/fisher_create_test_lang.sh
 
 # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
@@ -55,12 +55,12 @@ utils/subset_data_dir.sh --first data/dev_and_test_asr 5000 data/dev_asr
 utils/subset_data_dir.sh --last data/dev_and_test_asr 5000 data/test_asr
 rm -r data/dev_and_test_asr
 
-steps/compute_cmvn_stats.sh data/dev_asr exp/make_mfcc/dev_asr $mfccdir 
-steps/compute_cmvn_stats.sh data/test_asr exp/make_mfcc/test_asr $mfccdir 
+steps/compute_cmvn_stats.sh data/dev_asr exp/make_mfcc/dev_asr $mfccdir
+steps/compute_cmvn_stats.sh data/test_asr exp/make_mfcc/test_asr $mfccdir
 
 n=$[`cat data/train_all_asr/segments | wc -l` - 10000]
 utils/subset_data_dir.sh --last data/train_all_asr $n data/train_asr
-steps/compute_cmvn_stats.sh data/train_asr exp/make_mfcc/train_asr $mfccdir 
+steps/compute_cmvn_stats.sh data/train_asr exp/make_mfcc/train_asr $mfccdir
 
 
 # Now-- there are 1.6 million utterances, and we want to start the monophone training
@@ -75,30 +75,30 @@ utils/subset_data_dir.sh --speakers data/train_asr 30000 data/train_asr_30k
 utils/subset_data_dir.sh --speakers data/train_asr 100000 data/train_asr_100k
 
 
-# The next commands are not necessary for the scripts to run, but increase 
-# efficiency of data access by putting the mfcc's of the subset 
+# The next commands are not necessary for the scripts to run, but increase
+# efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh; 
+( . path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_asr_10k_nodup/feats.scp{,.bak} 
+  cp data/train_asr_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_asr_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_asr_10k_nodup/feats.scp
 )
-( . path.sh; 
+( . path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_asr_30k/feats.scp{,.bak} 
+  cp data/train_asr_30k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_30k/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k.ark,$mfccdir/kaldi_fish_30k.scp \
   && cp $mfccdir/kaldi_fish_30k.scp data/train_asr_30k/feats.scp
 )
-( . path.sh; 
+( . path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_asr_100k/feats.scp{,.bak} 
+  cp data/train_asr_100k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_100k/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k.ark,$mfccdir/kaldi_fish_100k.scp \
   && cp $mfccdir/kaldi_fish_100k.scp data/train_asr_100k/feats.scp
 )
 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
-  data/train_asr_10k_nodup data/lang exp/mono0a 
+  data/train_asr_10k_nodup data/lang exp/mono0a
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_asr_30k data/lang exp/mono0a exp/mono0a_ali || exit 1;
@@ -109,7 +109,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 
 (utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri1/graph data/dev exp/tri1/decode_dev)&
+   exp/tri1/graph data/dev_asr exp/tri1/decode_dev)&
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
    data/train_asr_30k data/lang exp/tri1 exp/tri1_ali || exit 1;
@@ -120,7 +120,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri2/graph data/dev exp/tri2/decode_dev || exit 1;
+   exp/tri2/graph data/dev_asr exp/tri2/decode_dev || exit 1;
 )&
 
 
@@ -134,11 +134,11 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri3a/graph data/dev exp/tri3a/decode_dev || exit 1;
+   exp/tri3a/graph data/dev_asr exp/tri3a/decode_dev || exit 1;
 )&
 
 
-# Next we'll use fMLLR and train with SAT (i.e. on 
+# Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
@@ -150,9 +150,8 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   exp/tri4a/graph data/dev exp/tri4a/decode_dev
+   exp/tri4a/graph data/dev_asr exp/tri4a/decode_dev
 )&
-
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_asr data/lang exp/tri4a exp/tri4a_ali || exit 1;
@@ -164,7 +163,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 (
   utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-    exp/tri5a/graph data/dev exp/tri5a/decode_dev
+    exp/tri5a/graph data/dev_asr exp/tri5a/decode_dev
 )&
 
 # this will help find issues with the lexicon.

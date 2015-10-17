@@ -1,7 +1,6 @@
 #!/bin/bash
 set -u
 set -e
-g2p_archive=g2p-r1668.tar.gz
 
 
 # Make sure we are in the tools/ directory.
@@ -38,13 +37,33 @@ else
 fi
 
 
-[ ! -f $g2p_archive ] && wget http://www-i6.informatik.rwth-aachen.de/web/Software/$g2p_archive
-tar xzf $g2p_archive
-mv g2p sequitur
+if [ -d ./g2p ] || [ -d sequitur ] ; then
+  echo  >&2 "$0: Warning: old installation of Sequitur found. You should manually"
+  echo  >&2 "  delete the directories tools/sequitur and/or tools/g2p and "
+  echo  >&2 "  edit the file tools/env.sh and remove manually all references to it"
+fi
+
+if [ ! -d ./sequitur-g2p ] ; then
+  git clone https://github.com/sequitur-g2p/sequitur-g2p.git sequitur-g2p ||
+  {
+    echo  >&2 "$0: Warning: git clone operation ended unsuccessfully"
+    echo  >&2 "  I will assume this is because you don't have https support"
+    echo  >&2 "  compiled into your git "
+    git clone git@github.com:sequitur-g2p/sequitur-g2p.git sequitur-g2p
+
+    if [ $? -ne 0 ]; then
+      echo  >&2 "$0: Error git clone operation ended unsuccessfully"
+      echo  >&2 "  Clone the github repository (https://github.com/sequitur-g2p/sequitur-g2p.git)"
+      echo  >&2 "  manually and re-run the script"
+    fi
+  }
+fi
+#just to retain backward compatibility for a while. Can be removed
+#in a couple of months. 
+ln -sf sequitur-g2p sequitur
 
 
-cd sequitur
-patch  < ../extras/sequitur.patch
+cd sequitur-g2p
 make
 python setup.py install --prefix `pwd`
 
@@ -62,11 +81,11 @@ cd ../
     echo >&2 "SEQUITUR config is already in env.sh" && exit
 
   wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`readlink -f $wd || pwd`
 
-  echo "export SEQUITUR=$wd/sequitur"
+  echo "export SEQUITUR=$wd/sequitur-g2p"
   echo "export PATH=\$PATH:\${SEQUITUR}/bin"
-  echo "_site_packages=\`readlink -f \${SEQUITUR}/lib/python*/site-packages\`"
+  echo "_site_packages=\`find \${SEQUITUR}/lib -type d -regex '.*python.*/site-packages'\`"
   echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
 ) >> env.sh
 

@@ -11,7 +11,7 @@ fi
 splitFile=$1
 
 # Train first
-for split in train dev test
+for split in train dev test sup h5
 do
 
   cp -r $train_all $data_dir/$split
