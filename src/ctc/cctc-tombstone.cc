@@ -216,7 +216,7 @@ CctcNegativeComputation::CctcNegativeComputation(
   KALDI_ASSERT(exp_nnet_output_.NumRows() % num_sequences_ == 0);
   num_time_steps_ = exp_nnet_output_.NumRows() / num_sequences_;
   numerator_dim_ = trans_model_.NumTreeIndexes() +
-      trans_model_.NumHistoryStates();
+      trans_model_.NumBlankIndexes();
   num_hmm_states_ = trans_model_.NumHistoryStates();
   numerators_rearranged_.Resize(num_time_steps_,
                                 numerator_dim_ * num_sequences_,
@@ -228,7 +228,7 @@ CctcNegativeComputation::CctcNegativeComputation(
                                   kUndefined);
   RearrangeNnetOutput(denominators_, &denominators_rearranged_);
 
-  alpha_.Resize(num_time_steps_, num_hmm_states_ * num_sequences_,
+  alpha_.Resize(num_time_steps_ + 1, num_hmm_states_ * num_sequences_,
                 kUndefined);
   beta_.Resize(2, num_hmm_states_ * num_sequences_, kUndefined);
 
@@ -248,9 +248,9 @@ void CctcNegativeComputation::AlphaFirstFrame() {
   alpha_mat.AddVecToCols(1.0, hmm_.InitialProbs(), 0.0);
 }
 
-// the alpha computation for some 0 < t < num_time_steps_.
+// the alpha computation for some 0 < t <= num_time_steps_.
 void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
-  KALDI_ASSERT(t > 0 && t < num_time_steps_);
+  KALDI_ASSERT(t > 0 && t <= num_time_steps_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(0);  // TODO!
@@ -292,7 +292,7 @@ void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
 
 BaseFloat CctcNegativeComputation::Forward() {
   AlphaFirstFrame();
-  for (int32 t = 1; t < num_time_steps_; t++)
+  for (int32 t = 1; t <= num_time_steps_; t++)
     AlphaGeneralFrame(t);
   return ComputeTotLogLike();
 }
@@ -300,10 +300,11 @@ BaseFloat CctcNegativeComputation::Forward() {
 BaseFloat CctcNegativeComputation::ComputeTotLogLike() {
   tot_prob_.Resize(num_sequences_);
   // Vpiew the last alpha as a matrix of size num-time-steps by num-sequences.
-  CuSubMatrix<BaseFloat> last_alpha(alpha_.RowData(num_time_steps_ - 1),
-                                    num_time_steps_,
+  CuSubMatrix<BaseFloat> last_alpha(alpha_.RowData(num_time_steps_),
+                                    num_hmm_states_,
                                     num_sequences_,
                                     num_sequences_);
+
   tot_prob_.AddRowSumMat(1.0, last_alpha, 0.0);
   // we should probably add an ApplyLog() function that takes a vector argument.
   tot_log_prob_ = tot_prob_;
@@ -311,6 +312,35 @@ BaseFloat CctcNegativeComputation::ComputeTotLogLike() {
   // later we'll add the scaling-factor.
   return tot_log_prob_.Sum();
 }
+
+void CctcNegativeComputation::Backward(
+    CuMatrixBase<BaseFloat> *nnet_output_deriv,
+    CuMatrixBase<BaseFloat> *denominators_deriv) {
+  // we need to zero the log-numerator-derivs becaus the
+  // backprop function adds to them rather than setting them.
+  log_numerator_derivs_rearranged_.Resize(numerators_rearranged_.NumRows(),
+                                          numerators_rearranged_.NumCols());
+  // ... but it sets the denominator-derivs.
+  denominator_derivs_rearranged_.Resize(denominators_rearranged_.NumRows(),
+                                        denominators_rearranged_.NumCols(),
+                                        kUndefined);
+
+  // The real backward computation happens here.
+  BackwardInternal();
+
+  // do the deriv ative rearrangement.
+  CuSubMatrix<BaseFloat> log_numerator_deriv(*nnet_output_deriv,
+                                         0, nnet_output_deriv->NumRows(),
+                                         0, numerator_dim_);
+  RearrangeNnetOutputReverse(log_numerator_derivs_rearranged_,
+                             &log_numerator_deriv);
+  // set the remaining part of nnet_output_deriv to zero.
+  nnet_output_deriv->ColRange(numerator_dim_,
+                              trans_model_.NumBlankIndexes()).SetZero();
+  RearrangeNnetOutputReverse(denominator_derivs_rearranged_,
+                             denominators_deriv);
+}
+
 
 }  // namespace ctc
 }  // namespace kaldi

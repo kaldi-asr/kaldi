@@ -282,11 +282,11 @@ void CctcTransitionModelTest() {
   TestCctcTransitionModelGraph(trans_model);
 
   {
-    // each row sum of the weights should be 2 (1 for element 0, 1 for
-    // the sum of the rest).
+    // each row sum of the weights should be 3 (1 for element 0 == blank, 1 for
+    // the sum of the rest, and 1 for the tombstone state).
     Matrix<BaseFloat> weights;
     trans_model.ComputeWeights(&weights);
-    AssertEqual(weights.Sum(), 2.0 * trans_model.NumHistoryStates());
+    AssertEqual(weights.Sum(), 3.0 * trans_model.NumHistoryStates());
   }
 
   KALDI_ASSERT(trans_model.NumGraphLabels() ==

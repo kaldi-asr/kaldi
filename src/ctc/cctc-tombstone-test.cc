@@ -42,7 +42,9 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
       num_time_steps = RandInt(10, 20);
   CuMatrix<BaseFloat> nnet_output(num_sequences * num_time_steps,
                                   trans_model.NumOutputIndexes());
-  nnet_output.SetRandn();
+  bool zero_output = (RandInt(0, 3) == 0);
+  if (!zero_output)
+    nnet_output.SetRandn();
   CuMatrix<BaseFloat> exp_nnet_output(nnet_output);
   exp_nnet_output.ApplyExp();
 
@@ -55,8 +57,22 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
                                                exp_nnet_output,
                                                denominators, num_sequences);
 
-  BaseFloat forward_prob = negative_computation.Forward();
-  KALDI_LOG << "Forward prob is " << forward_prob;
+  BaseFloat forward_prob = negative_computation.Forward(),
+      per_frame = forward_prob / (num_sequences * num_time_steps);
+  KALDI_LOG << "Forward prob is " << forward_prob
+            << " = " << per_frame << " per frame.";
+  if (zero_output)
+    KALDI_ASSERT(ApproxEqual(BaseFloat(log(2.0 / 3.0)),
+                             per_frame));
+
+  CuMatrix<BaseFloat> denominators_deriv(denominators.NumRows(),
+                                         denominators.NumCols(),
+                                         kUndefined),
+      nnet_output_deriv(nnet_output.NumRows(),
+                        nnet_output.NumCols(),
+                        kUndefined);
+  negative_computation.Backward(&nnet_output_deriv,
+                                &denominators_deriv);
 
 }
 

@@ -226,7 +226,8 @@ void CctcTransitionModel::ComputeWeights(Matrix<BaseFloat> *weights) const {
   for (int32 h = 0; h < num_history_states; h++) {
     const HistoryStateInfo &info = history_state_info_[h];
     SubVector<BaseFloat> row(*weights, h);
-    for (int32 p = 0; p <= num_phones; p++) {
+    {
+      int32 p = 0;
       int32 output_index = info.output_index[p];
       row(output_index) = 1.0;  // 1.0 == LM-prob for blank.
       row(output_index + num_blank_indexes) = 1.0;  // .. and the corresponding
@@ -262,16 +263,15 @@ void CctcTransitionModelCreator::InitCctcTransitionModel(
   KALDI_LOG << "Decision tree has " << (ctx_dep_.ContextWidth() - 1)
             << " phones of left context.";
   num_tree_leaves_ = ctx_dep_.NumPdfs();
-  GetInitialHistoryStates();
-  while (MergeHistoryStatesOnePass());
-
   num_output_indexes_ = num_tree_leaves_ +
-      history_states_.size() * 2;
+      lm_hist_state_map_.NumLmHistoryStates() * 2;
   KALDI_LOG << "There are " << num_output_indexes_ << " output indexes, = "
             << num_tree_leaves_ << " for tree indexes, and "
-            << history_states_.size() << " for blank "
+            << lm_hist_state_map_.NumLmHistoryStates() << " for blank "
             << "and the same number for tombstones.";
 
+  GetInitialHistoryStates();
+  while (MergeHistoryStatesOnePass());
   OutputToTransitionModel(model);
   model->Check();
 }

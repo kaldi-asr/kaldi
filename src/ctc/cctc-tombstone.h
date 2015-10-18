@@ -171,13 +171,14 @@ class CctcNegativeComputation {
   // over all sequences.
   BaseFloat Forward();
 
-  // nnet_output is the same as log_numerators.
-  // 'deriv_scale' is a scale that is applied to the derivatives as they are
-  // accumulated, which will normally be -1.0 or (if we have a scaling factor
-  // to avoid tombstone probabilities from getting too large), something like
-  // -0.9.
-  void Backward(BaseFloat deriv_scale,
-                CuMatrixBase<BaseFloat> *log_numerators_deriv,
+  // It *sets* nnet_output_deriv and denominators_deriv.  These
+  // are the derivatives w.r.t. the likelihood, which gets negated in the
+  // overall objective function.
+  // Note: 'nnet_output_deriv' is the deriv w.r.t. the log of
+  // 'exp_nnet_output_deriv', i.e the log of the numerators.
+  // Note, you may want to scale them (e.g. by -1) afterward; that is the
+  // responsibility of calling code.
+  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv,
                 CuMatrixBase<BaseFloat> *denominators_deriv);
 
 
@@ -190,13 +191,13 @@ private:
   int32 num_sequences_;
   int32 num_time_steps_;
   int32 numerator_dim_;  // == trans_model_.NumTreeIndexes() +
-                         // trans_model_.NumHistoryStates().
+                         // trans_model_.NumBlankIndexes();
   int32 num_hmm_states_;  // == trans_model_.NumHistoryStates().
 
 
   // sets up the alpha for frame t = 0.
   void AlphaFirstFrame();
-  // the alpha computation for some 0 < t < num_time_steps_.
+  // the alpha computation for some 0 < t <= num_time_steps_.
   void AlphaGeneralFrame(int32 t);
 
   // done after all the alphas, this function computes and returns the total
@@ -205,6 +206,9 @@ private:
   // 'deriv_scale' (which of course we haven't seen by the time this is called,
   // from the Forward() computation).
   BaseFloat ComputeTotLogLike();
+
+  // backward computation without rearrangement.
+  void BackwardInternal() { } // TODO.
 
 
   // the numerator-probs (== part of exp-nnet-output) rearranged.  dimension
@@ -221,8 +225,8 @@ private:
   // the derivs w.r.t. the denominator-probs, rearranged.
   CuMatrix<BaseFloat> denominator_derivs_rearranged_;
 
-  // the alpha probabilities; dimension is num-time-steps by (num-hmm-states *
-  // num-sequences).  Note, they are not logs.
+  // the alpha probabilities; dimension is num-time-steps + 1 by (num-hmm-states
+  // * num-sequences).  Note, they are not logs.
   CuMatrix<BaseFloat> alpha_;
 
   // the beta probabilities (rolling buffer); dimension is 2 * (num-hmm-states *
