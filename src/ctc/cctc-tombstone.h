@@ -208,8 +208,11 @@ private:
   BaseFloat ComputeTotLogLike();
 
   // backward computation without rearrangement.
-  void BackwardInternal() { } // TODO.
+  void BackwardInternal();
 
+  void BetaLastFrame();
+  // beta computation for 0 <= beta < num_time_steps_.
+  void BetaGeneralFrame(int32 t);
 
   // the numerator-probs (== part of exp-nnet-output) rearranged.  dimension
   // is num-time-steps by (partial-nnet-output-dim * num-sequences.)

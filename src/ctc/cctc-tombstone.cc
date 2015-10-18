@@ -342,5 +342,84 @@ void CctcNegativeComputation::Backward(
 }
 
 
+void CctcNegativeComputation::BackwardInternal() {
+  BetaLastFrame();
+  for (int32 t = num_time_steps_ - 1; t >= 0; t--)
+    BetaGeneralFrame(t);
+}
+
+void CctcNegativeComputation::BetaLastFrame() {
+  // sets up the beta on the last frame (frame == num_time_steps_).  Note that
+  // the betas we use here contain a 1/(tot-prob) factor in order to simplify
+  // the backprop.
+
+  int32 t = num_time_steps_;
+  BaseFloat *last_frame_beta = beta_.RowData(t % 2);
+
+  // create a 'fake matrix' - view this row as a matrix.
+  CuSubMatrix<BaseFloat> beta_mat(last_frame_beta,
+                                  num_hmm_states_,
+                                  num_sequences_,
+                                  num_sequences_);
+  CuVector<BaseFloat> inv_tot_prob(tot_prob_);
+  inv_tot_prob.InvertElements();
+  // the beta values at the end of the file only vary with the sequence-index,
+  // not with the HMM-index.  There is no notion of final-prob; the sequence
+  // ends when it ends, and at that point we treat all states as having a
+  // final-prob of one (which we treat as p of being final given that it just
+  // ended, i.e. the probability of a sure thing, which is one).
+  beta_mat.CopyRowsFromVec(inv_tot_prob);
+
+  beta_mat.SetZero();
+  beta_mat.AddVecToCols(1.0, hmm_.InitialProbs(), 0.0);
+}
+
+void CctcNegativeComputation::BetaGeneralFrame() {
+  KALDI_ASSERT(t >= 0 && t < num_time_steps_);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(0);  // TODO!
+  } else
+#endif
+  // for now just implement the CPU version of the computation.
+  {
+    const BaseFloat *this_alpha = alpha_.RowData(t),
+        *next_beta = beta_.RowData((t + 1) % 2);
+    BaseFloat *this_beta = beta_.RowData(t % 2);
+
+    const Int32Pair *forward_transitions = hmm_.ForwardTransitions();
+    const CctcHmmTransition *transitions = hmm_.Transitions();
+    const BaseFloat *den = denominators_rearranged_.RowData(t),
+        *num = numerators_rearranged_.RowData(t);
+    // we'll add the arbitrary-scale thing later on.
+    int32 num_hmm_states = num_hmm_states_,
+        num_sequences = num_sequences_;
+    for (int32 h = 0; h < num_hmm_states; h++) {
+      for (int32 s = 0; s < num_sequences; s++) {
+        double tot_variable_factor = 0.0,
+            common_factor = 1.0 / den[h * num_sequences + s],
+            occupation_factor = common_factor * this_alpha[h * num_sequences + s];
+
+        double this_tot_beta = 0.0;
+        const CctcHmmTransition
+            *trans_iter = transitions + backward_transitions[h].first,
+            *trans_end = transitions + backward_transitions[h].second;
+        for (; trans_iter != trans_end; ++trans_iter) {
+          BaseFloat transition_prob = trans_iter->transition_prob;
+          int32 num_index = trans_iter->num_index,
+              prev_hmm_state = trans_iter->hmm_state;
+          BaseFloat
+              den = prev_den_rearranged[prev_hmm_state * num_sequences + s],
+              num = prev_num_rearranged[num_index * num_sequences + s],
+              this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
+          this_tot_alpha += this_prev_alpha * transition_prob * num / den;
+        }
+        this_alpha[h * num_sequences + s] = this_tot_alpha;
+      }
+    }
+  }
+}
+
+
 }  // namespace ctc
 }  // namespace kaldi
