@@ -145,7 +145,7 @@ if [ $# != 5 ]; then
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
   echo "  --shrink <shrink|0.99>                           # this parameter will be used to scale the parameter matrices on each iteration"
   echo "                                                   # as long as the average derivative at sigmoids is < --shrink-threshold."
-  echo "  --shrink-threshold <threshold|0.125>             # a threshold (should be between 0.0 and 0.25) that controls when to"
+  echo "  --shrink-threshold <threshold|0.15>              # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"

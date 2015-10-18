@@ -1,47 +1,30 @@
 #!/bin/bash
 
-# This is a lstm+ctc script based on Dan's WSJ local/ctc/lstm_h.sh recipe.
-#
+# based on lstm_h
 
 
 set -e
 
 # configs for ctc
 treedir=exp/ctc/tri5b_tree
-
 stage=9
 train_stage=-10
 speed_perturb=true
-dir=exp/ctc/lstm  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/ctc/tdnn  # Note: _sp will get added to this if $speed_perturb == true.
 common_egs_dir=  # be careful with this: it's dependent on the CTC transition model
 
-# LSTM options
-splice_indexes="-2,-1,0,1,2 0 0"
-num_lstm_layers=3
-cell_dim=1024
-hidden_dim=1024
-recurrent_projection_dim=256
-non_recurrent_projection_dim=256
-chunk_width=75
-chunk_left_context=30
-clipping_threshold=5.0
-norm_based_clipping=true
+# TDNN options
+splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
-num_epochs=4
-lstm_delay="-1 -3 -3"
 # training options
-initial_effective_lrate=0.0005
-final_effective_lrate=0.0001
-num_jobs_initial=2
-num_jobs_final=12
-num_chunk_per_minibatch=100
-frames_per_iter=800000
+num_epochs=4
+initial_effective_lrate=0.0017
+final_effective_lrate=0.00017
+num_jobs_initial=3
+num_jobs_final=16
+minibatch_size=256
+frames_per_eg=75
 remove_egs=false
-
-
-#decode options
-extra_left_context=
-frames_per_chunk=
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -117,59 +100,35 @@ if [ $stage -le 12 ]; then
 
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
-  steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
-    --right-tolerance 20 \
-    --frames-per-iter $frames_per_iter \
-    --target-num-history-states 1000 \
-    --max-param-change 1.0 \
+  steps/nnet3/ctc/train_tdnn.sh --stage $train_stage \
+    --right-tolerance 10 \
+    --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
-    --lstm-delay "$lstm_delay" \
-    --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --shrink 0.99 \
-    --shrink-threshold 0.15 \
-    --momentum 0.75 \
+    --relu-dim 1024 \
     --cmd "$decode_cmd" \
-    --num-lstm-layers $num_lstm_layers \
-    --cell-dim $cell_dim \
-    --hidden-dim $hidden_dim \
-    --clipping-threshold $clipping_threshold \
-    --recurrent-projection-dim $recurrent_projection_dim \
-    --non-recurrent-projection-dim $non_recurrent_projection_dim \
-    --chunk-width $chunk_width \
-    --chunk-left-context $chunk_left_context \
-    --norm-based-clipping $norm_based_clipping \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
 phone_lm_weight=0.15
-if [ $stage -le 13 ]; then
+if [ $stage -le 12 ]; then
   phone_lm_weight=0.15
   steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
-      data/lang_sw1_tg $dir $dir/graph_sw1_tg_${phone_lm_weight}
+      data/lang_lang_sw1_tg $dir $dir/graph_sw1_tg_${phone_lm_weight}
 fi
 
 decode_suff=sw1_tg_${phone_lm_weight}
 graph_dir=$dir/graph_sw1_tg_${phone_lm_weight}
 if [ $stage -le 14 ]; then
-  # offline decoding
-  if [ -z $extra_left_context ]; then
-    extra_left_context=$chunk_left_context
-  fi
-  if [ -z $frames_per_chunk ]; then
-    frames_per_chunk=$chunk_width
-  fi
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/ctc/decode.sh --nj 250 --cmd "$decode_cmd" \
-          --extra-left-context $extra_left_context  \
-          --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
