@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# i is as h, but using a monophone system and no context, to get closer to
+# vanilla CTC.
+
 # h is as g, but going for more aggressive learning,
 # max-param-change=1.0, and momentum=0.75.  Also increasing the shrinking threshold so we
 # will get more shrinking (we were getting some oversaturated neurons).
@@ -34,8 +37,8 @@
 set -e
 
 # configs for ctc
-treedir=exp/ctc/tri5b_tree
-dir=exp/ctc/lstm_h
+treedir=exp/ctc/tri5b_tree_monophone
+dir=exp/ctc/lstm_i
 
 stage=0
 train_stage=-10
@@ -92,7 +95,18 @@ if [ $stage -le 8 ]; then
   utils/gen_topo.pl 1 1 $nonsilphonelist $silphonelist >$lang/topo
 fi
 
+
 if [ $stage -le 9 ]; then
+  # Get the alignments as lattices (gives the CTC training more freedom).
+  # use the same num-jobs as the alignments
+  nj=$(cat exp/tri4b_ali_si284/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train_si284 \
+    data/lang exp/tri4b exp/tri4b_lats_si284
+  rm exp/tri4b_lats_si284/fsts.*.gz # save space
+fi
+
+
+if [ $stage -le 10 ]; then
   # Starting from the alignments in tri4b_ali_si284, we train a rudimentary
   # LDA+MLLT system with a 1-state HMM topology and with only left phonetic
   # context (one phone's worth of left context, for now).  We set "--num-iters
@@ -100,7 +114,7 @@ if [ $stage -le 9 ]; then
   steps/train_sat.sh --cmd "$train_cmd" --num-iters 1 \
     --tree-stats-opts "--collapse-pdf-classes=true" \
     --cluster-phones-opts "--pdf-class-list=0" \
-    --context-opts "--context-width=2 --central-position=1" \
+    --context-opts "--context-width=1 --central-position=0" \
      2500 15000 data/train_si284 data/lang_ctc exp/tri4b_ali_si284 $treedir
 
   # copying the transforms is just more convenient than having the transforms in
@@ -111,15 +125,6 @@ if [ $stage -le 9 ]; then
 
   # note: the likelihood improvement from building the tree is 6.49, versus 8.48
   # in the baseline.
-fi
-
-if [ $stage -le 10 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
-  # use the same num-jobs as the alignments
-  nj=$(cat exp/tri4b_ali_si284/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/train_si284 \
-    data/lang exp/tri4b exp/tri4b_lats_si284
-  rm exp/tri4b_lats_si284/fsts.*.gz # save space
 fi
 
 if [ $stage -le 11 ]; then
@@ -136,7 +141,7 @@ if [ $stage -le 11 ]; then
     --egs-dir exp/ctc/lstm_f/egs \
     --right-tolerance 20 \
     --frames-per-iter 800000 \
-    --target-num-history-states 500 \
+    --ngram-order 1 \
     --max-param-change 1.0 \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --lstm-delay "$lstm_delay" \
@@ -187,26 +192,3 @@ fi
 wait
 
 exit 0;
-
-grep LOG exp/ctc/lstm_h/log/compute_prob_*.final.log
-exp/ctc/lstm_h/log/compute_prob_train.final.log:LOG (nnet3-ctc-merge-egs:main():nnet3-ctc-merge-egs.cc:97) Merged 400 egs to 7.
-exp/ctc/lstm_h/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:130) Overall log-probability for 'output' is -0.0164049 per frame, over 10000 frames.
-exp/ctc/lstm_h/log/compute_prob_valid.final.log:LOG (nnet3-ctc-merge-egs:main():nnet3-ctc-merge-egs.cc:97) Merged 400 egs to 7.
-exp/ctc/lstm_h/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:130) Overall log-probability for 'output' is -0.039894 per frame, over 10000 frames.
-
-# none of these results are very good.
-
-%WER 12.40 [ 1021 / 8234, 71 ins, 244 del, 706 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15/wer_13_0.0
-%WER 12.45 [ 1025 / 8234, 86 ins, 205 del, 734 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_bs0.3/wer_13_0.0
-%WER 12.48 [ 1028 / 8234, 75 ins, 244 del, 709 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_bs0.6/wer_11_0.0
-%WER 12.95 [ 1066 / 8234, 74 ins, 292 del, 700 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_fpc25/wer_12_0.0
-%WER 8.45 [ 477 / 5643, 55 ins, 73 del, 349 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15/wer_10_0.5
-%WER 8.59 [ 485 / 5643, 56 ins, 76 del, 353 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15_bs0.3/wer_11_0.5
-%WER 8.98 [ 507 / 5643, 67 ins, 72 del, 368 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15_fpc25/wer_9_0.5
-%WER 14.12 [ 1163 / 8234, 144 ins, 227 del, 792 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15/wer_11_0.0
-%WER 14.08 [ 1159 / 8234, 136 ins, 200 del, 823 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15_bs0.3/wer_11_0.5
-%WER 14.31 [ 1178 / 8234, 135 ins, 260 del, 783 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15_fpc25/wer_10_0.5
-%WER 10.35 [ 584 / 5643, 73 ins, 123 del, 388 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15/wer_11_1.0
-%WER 10.40 [ 587 / 5643, 85 ins, 97 del, 405 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15_bs0.3/wer_11_1.0
-%WER 10.79 [ 609 / 5643, 72 ins, 116 del, 421 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15_fpc25/wer_10_1.0
-

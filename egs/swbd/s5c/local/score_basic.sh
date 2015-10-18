@@ -28,7 +28,7 @@ dir=$3
 
 model=$dir/../final.mdl # assume model one level up from decoding dir.
 
-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
+hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
 hubdir=`dirname $hubscr`
 
@@ -42,7 +42,7 @@ mkdir -p $dir/scoring/log
 
 
 function filter_text {
-  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; } 
+  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
    while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}) { print "$a "; }} print "\n"; }' \
    '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION'

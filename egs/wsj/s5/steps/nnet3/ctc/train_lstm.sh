@@ -113,6 +113,7 @@ affine_opts=
 
 #ctc options
 target_num_history_states=1000
+ngram_order=3
 
 # End configuration section.
 
@@ -241,6 +242,7 @@ if  [ $stage -le -6 ]; then
   num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2 | wc -l) || exit 1;
   $cmd $dir/log/init_trans_model.log \
     ctc-init-transition-model  --target-num-history-states=$target_num_history_states  \
+       --ngram-order $ngram_order \
        --num-phones=$num_phones $alidir/tree \
       "ark:gunzip -c $alidir/ali.*.gz | ali-to-phones $alidir/final.mdl ark:- ark:- |" \
        $dir/0.ctc_trans_mdl || exit 1;
