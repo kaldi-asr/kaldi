@@ -187,3 +187,26 @@ fi
 wait
 
 exit 0;
+
+grep LOG exp/ctc/lstm_h/log/compute_prob_*.final.log
+exp/ctc/lstm_h/log/compute_prob_train.final.log:LOG (nnet3-ctc-merge-egs:main():nnet3-ctc-merge-egs.cc:97) Merged 400 egs to 7.
+exp/ctc/lstm_h/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:130) Overall log-probability for 'output' is -0.0164049 per frame, over 10000 frames.
+exp/ctc/lstm_h/log/compute_prob_valid.final.log:LOG (nnet3-ctc-merge-egs:main():nnet3-ctc-merge-egs.cc:97) Merged 400 egs to 7.
+exp/ctc/lstm_h/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:130) Overall log-probability for 'output' is -0.039894 per frame, over 10000 frames.
+
+# none of these results are very good.
+
+%WER 12.40 [ 1021 / 8234, 71 ins, 244 del, 706 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15/wer_13_0.0
+%WER 12.45 [ 1025 / 8234, 86 ins, 205 del, 734 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_bs0.3/wer_13_0.0
+%WER 12.48 [ 1028 / 8234, 75 ins, 244 del, 709 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_bs0.6/wer_11_0.0
+%WER 12.95 [ 1066 / 8234, 74 ins, 292 del, 700 sub ] exp/ctc/lstm_h/decode_bd_tgpr_dev93_plm0.15_fpc25/wer_12_0.0
+%WER 8.45 [ 477 / 5643, 55 ins, 73 del, 349 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15/wer_10_0.5
+%WER 8.59 [ 485 / 5643, 56 ins, 76 del, 353 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15_bs0.3/wer_11_0.5
+%WER 8.98 [ 507 / 5643, 67 ins, 72 del, 368 sub ] exp/ctc/lstm_h/decode_bd_tgpr_eval92_plm0.15_fpc25/wer_9_0.5
+%WER 14.12 [ 1163 / 8234, 144 ins, 227 del, 792 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15/wer_11_0.0
+%WER 14.08 [ 1159 / 8234, 136 ins, 200 del, 823 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15_bs0.3/wer_11_0.5
+%WER 14.31 [ 1178 / 8234, 135 ins, 260 del, 783 sub ] exp/ctc/lstm_h/decode_tgpr_dev93_plm0.15_fpc25/wer_10_0.5
+%WER 10.35 [ 584 / 5643, 73 ins, 123 del, 388 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15/wer_11_1.0
+%WER 10.40 [ 587 / 5643, 85 ins, 97 del, 405 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15_bs0.3/wer_11_1.0
+%WER 10.79 [ 609 / 5643, 72 ins, 116 del, 421 sub ] exp/ctc/lstm_h/decode_tgpr_eval92_plm0.15_fpc25/wer_10_1.0
+
