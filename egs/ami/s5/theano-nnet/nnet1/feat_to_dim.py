@@ -1,11 +1,22 @@
 #!/usr/bin/env python
 import sys, os, logging, numpy as np
-import kaldi_io, utils, features, parse_config
+
+# import kaldi_io, utils, features, parse_config
+# from neuralnet import NeuralNet
+# import neuralnet
+# import feature_preprocess
+# from feature_preprocess import FeaturePreprocess
+# from feature_preprocess import CMVN
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+import parse_config
+from io_funcs import kaldi_io, utils
+from feature_funcs import features, feature_preprocess
+
 from neuralnet import NeuralNet
 import neuralnet
-import feature_preprocess
-from feature_preprocess import FeaturePreprocess
-from feature_preprocess import CMVN
+from feature_funcs.feature_preprocess import FeaturePreprocess, CMVN
 
 from optparse import OptionParser
 usage = "%prog [options] <feats-scp>"
