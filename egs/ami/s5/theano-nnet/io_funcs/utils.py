@@ -77,6 +77,30 @@ def theano_nnet_start(nnet_dir, o):
   return (last_iter, last_cv_error, last_learn_rate, halving, best_nnet_file)
 
 
+def theano_nnet_start_ExpLrSched(nnet_dir, o):
+
+  # starting iteration
+  last_iter = 0
+  last_learn_rate = o.learn_rate
+  nSamples = 0.0
+  best_nnet_file = ""
+  for kk in range(o.max_iters, 0, -1):
+    done_file = "%s/.done_epoch%d" %(nnet_dir, kk)
+    if os.path.exists(done_file):
+      last_iter = kk
+
+      po = OptionParser()
+      po = nnet_donefile_options(po)
+      (done_o, a) = po.parse_args(parse_config_dict(done_file))
+
+      last_learn_rate = done_o.learn_rate
+      nSamples = done_o.nSamples
+
+      if os.path.exists(nnet_dir+"/.best_nnet"):
+        best_nnet_file = open(nnet_dir+"/.best_nnet", "r").readline().rstrip()
+
+  return (last_iter, last_learn_rate, nSamples, best_nnet_file)
+
 def labels_ascii_to_dict(labels_ascii_file):
 
   labels_dict = {}

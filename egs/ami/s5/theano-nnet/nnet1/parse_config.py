@@ -128,16 +128,19 @@ def nnet_hyperparams_options(parser):
 
   parser.add_option('--learn-rate', dest="learn_rate", help="[default: %default]", default=0.008, type=float)
 
+  parser.add_option('--keep-lr-iters', dest="keep_lr_iters", help="fix learning rate for N initial epochs [default: %default]", default=0, type=int)
+  parser.add_option('--start-learn-rate', dest="start_learn_rate", help="[default: %default]", default=0.008, type=float)
+  parser.add_option('--end-learn-rate', dest="end_learn_rate", help="[default: %default]", default=0.008/512, type=float)
+  parser.add_option('--decay-factor', dest="decay_factor", help="[default: %default]", default=1e8, type=float) #9iters on 80 hrs of speech
+  
+
   parser.add_option('--segment-buffer-size', dest="segment_buffer_size", help="[default: %default]", default=80, type=int)
   parser.add_option('--batch-size', dest="batch_size", help="[default: %default]", default=256, type=int)
 
   parser.add_option('--max-iters', dest="max_iters", help="[default: %default]", default=20, type=int)
   parser.add_option('--min-iters', dest="min_iters", help="keep training, disable weight rejection, start learn-rate halving as usual, [default: %default]", default=0, type=int)
 
-
   parser.add_option('--tolerance', dest="tolerance", help="[default: %default]", default=0.003, type=float)
-
-  parser.add_option('--keep-lr-iters', dest="keep_lr_iters", help="fix learning rate for N initial epochs [default: %default]", default=0, type=int)
 
   parser.add_option('--start-halving-impr', dest="start_halving_impr", help="[default: %default]", default=0.01, type=float)
   parser.add_option('--end-halving-impr', dest="end_halving_impr", help="[default: %default]", default=0.001, type=float)
