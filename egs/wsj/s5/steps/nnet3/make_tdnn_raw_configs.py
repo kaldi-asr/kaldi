@@ -178,7 +178,7 @@ for l in range(1, num_hidden_layers + 1):
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
           nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
 
-    if skip_final_softmax:
+    if not skip_final_softmax:
       # printing out the next two, and their component-nodes, for l > 1 is not
       # really necessary as they will already exist, but it doesn't hurt and makes
       # the structure clearer.
@@ -223,10 +223,9 @@ for l in range(1, num_hidden_layers + 1):
         else:
             print('component-node name=final-log-softmax component=final-log-softmax '
                   'input=final-affine', file=f)
+        print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
     else:
-        print('component-node name=final-log-softmax component=final-log-softmax '
-              'input=final-affine', file=f)
-    print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
+        print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
     f.close()
 
 if num_hidden_layers == 0:
