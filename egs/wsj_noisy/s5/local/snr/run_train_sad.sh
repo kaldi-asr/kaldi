@@ -14,11 +14,10 @@ set -o pipefail
 stage=0
 train_stage=-10
 num_epochs=8
-splice_indexes=""
+splice_indexes="-5,-4,-3,-2,-1,0,1,2,3,4"
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-pnorm_input_dim=2000
-pnorm_output_dim=250
+relu_dim=50
 train_data_dir=data/train_si284_corrupted_hires
 snr_scp=data/train_si284_corrupted_hires/snr_targets.scp
 vad_scp=data/train_si284_corrupted_hires/vad.scp
@@ -28,12 +27,13 @@ egs_dir=
 dir=
 nj=40
 method=LogisticRegression
+max_param_change=1
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-if [ $method == "LogisticRegression" ]; then
+if [ $method == "Dnn" ]; then
   num_hidden_layers=`echo $splice_indexes | perl -ane 'print scalar @F'` || exit 1
 else
   num_hidden_layers=0
@@ -45,7 +45,10 @@ fi
 
 case $method in 
   "Dnn")
-    dir=${dir}_i${pnorm_input_dim}_o${pnorm_output_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
+    dir=${dir} #_i${relu_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
+    ;;
+  "LogisticRegressionSubsampled")
+    dir=${dir}
     ;;
   "LogisticRegression")
     dir=${dir}
@@ -62,8 +65,11 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
+  
+mkdir -p $dir
 
 if [ -z "$datadir" ]; then
+  datadir=$dir/snr_data
   if [ $stage -le 0 ]; then
     utils/copy_data_dir.sh --extra-files utt2uniq \
       $train_data_dir $datadir
@@ -73,7 +79,7 @@ if [ -z "$datadir" ]; then
 
   if [ $method != "Gmm" ]; then 
     if [ $stage -le 1 ]; then
-      mkdir -p $dir/vad
+      mkdir -p $datadir/vad
       vad_scp_splits=()
       for n in `seq $nj`; do
         vad_scp_splits+=($datadir/vad/vad.tmp.$n.scp)
@@ -111,14 +117,14 @@ if [ $stage -le 2 ]; then
       diarization/train_vad_gmm_supervised.sh \
         --ignore-energy false --add-zero-crossing-feats false \
         --add-frame-snrs false \
-        --nj $nj --cmd "$train_cmd" --io-opts "" \
+        --nj $nj --cmd "$train_cmd" \
         $datadir $vad_scp $dir || exit 1
       ;;
     "LogisticRegressionSubsampled")
-      $train_cmd $dir/log/train_logistic_regression.log \
-        logistic-regression-train --num-targets=2 \
+      $train_cmd --mem 8G $dir/log/train_logistic_regression.log \
+        logistic-regression-train-on-feats --num-targets=2 \
         scp:$datadir/feats.scp scp:$vad_scp $dir/0.mdl || exit 1
-
+      ;;
     "LogisticRegression")
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
         utils/create_split_dir.pl \
@@ -130,11 +136,11 @@ if [ $stage -le 2 ]; then
         --splice-indexes "" --no-hidden-layers true --minibatch-size 2048 \
         --feat-type raw --egs-dir "$egs_dir" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
+        --max-change-per-sample $max_change_per_sample \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --use-presoftmax-prior-scale false \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
-        --num-targets 2 --cleanup false \
+        --num-targets 2 --cleanup false --max-param-change $max_param_change \
         --pnorm-input-dim $pnorm_input_dim \
         --pnorm-output-dim $pnorm_output_dim \
         $datadir "$vad_scp" $dir || exit 1;
@@ -150,12 +156,12 @@ if [ $stage -le 2 ]; then
         --splice-indexes "$splice_indexes" \
         --feat-type raw --egs-dir "$egs_dir" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
+        --max-change-per-sample $max_change_per_sample \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-        --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup false \
+        --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup false --use-presoftmax-prior-scale true \
         --skip-final-softmax false --skip-lda false --posterior-targets true \
-        --pnorm-input-dim $pnorm_input_dim \
-        --pnorm-output-dim $pnorm_output_dim \
+        --num-targets 2 --cleanup false --max-param-change $max_param_change \
+        --relu-dim $relu_dim \
         $datadir "$vad_scp" $dir || exit 1;
       ;;
     default)

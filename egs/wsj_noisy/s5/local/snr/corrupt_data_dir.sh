@@ -22,7 +22,7 @@ output_clean_wav_dir=
 output_noise_dir=
 output_noise_wav_dir=
 dest_wav_dir=
-select_only_corruption_with_noise=true
+select_only_corruption_with_noise=false
 nj=200
 
 . ./path.sh;
@@ -184,8 +184,9 @@ for line in sys.stdin.readlines():
 " > ${impnoise_dir}_noisy/info/impulse_files
   fi
   impnoise_dir=${impnoise_dir}_noisy
-  [ ! -s $impnoise_dir/info/impulse_files ] && echo "$0: $impnoise_dir/info/impulse_files contains no impulses" && exit 1
 fi
+[ ! -s $impnoise_dir/info/impulse_files ] && echo "$0: $impnoise_dir/info/impulse_files contains no impulses" && exit 1
+[ ! -s $impnoise_dir/info/noise_files ] && echo "$0: $impnoise_dir/info/noise_files contains no noises" && exit 1
 
 if [ $stage -le 3 ]; then
   python local/snr/corrupt_wavs.py \

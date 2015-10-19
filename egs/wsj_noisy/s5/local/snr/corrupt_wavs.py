@@ -19,6 +19,9 @@ class list_cyclic_iterator:
     self.list_index = (self.list_index + 1) % len(self.list)
     return item
 
+  def add_to_list(self, a):
+    self.list.insert(random.randrange(len(self.list)+1), a)
+
 def return_nonempty_lines(lines):
   new_lines = []
   for line in lines:
@@ -60,24 +63,27 @@ if __name__ == "__main__":
     assert(len(wav_files) == len(noise_wav_out_files))
 
   impulses = list_cyclic_iterator(return_nonempty_lines(open(params.impulses_noises_dir+'/info/impulse_files').readlines()), random_seed = params.random_seed)    # This list could be empty
-  noises_impulses_files = glob.glob(params.impulses_noises_dir+'/info/noise_impulse_*')
-  impulse_noise_index = []
+  impulses.add_to_list(None)
+  noises = list_cyclic_iterator(return_nonempty_lines(open(params.impulses_noises_dir+'/info/noise_files').readlines()), random_seed = params.random_seed)
 
-  for file in noises_impulses_files:
-    noises_list = []
-    impulses_set = set([])
-    for line in return_nonempty_lines(open(file).readlines()):
-      line = line.strip()
-      if len(line) == 0 or line[0] == '#':
-        continue
-      parts = line.split('=')
-      if parts[0].strip() == 'noise_files':
-        noises_list = list_cyclic_iterator(parts[1].split())
-      elif parts[0].strip() == 'impulse_files':
-        impulses_set = set(parts[1].split())
-      else:
-        raise Exception('Unknown format of ' + file)
-    impulse_noise_index.append([impulses_set, noises_list])
+  #noises_impulses_files = glob.glob(params.impulses_noises_dir+'/info/noise_impulse_*')
+  #impulse_noise_index = []
+
+  #for file in noises_impulses_files:
+  #  noises_list = []
+  #  impulses_set = set([])
+  #  for line in return_nonempty_lines(open(file).readlines()):
+  #    line = line.strip()
+  #    if len(line) == 0 or line[0] == '#':
+  #      continue
+  #    parts = line.split('=')
+  #    if parts[0].strip() == 'noise_files':
+  #      noises_list = list_cyclic_iterator(parts[1].split())
+  #    elif parts[0].strip() == 'impulse_files':
+  #      impulses_set = set(parts[1].split())
+  #    else:
+  #      raise Exception('Unknown format of ' + file)
+  #  impulse_noise_index.append([impulses_set, noises_list])
 
   command_list = []
   for i in range(len(wav_files)):
@@ -86,50 +92,34 @@ if __name__ == "__main__":
     output_filename = splits[0]
     output_wav_file = " ".join(splits[1:])
     impulse_file = impulses.next()
-    noise_file = ''
-    snr = ''
-    found_impulse = False
-    if add_noise:
-      for j in xrange(len(impulse_noise_index)):
-        if (impulse_file is None and not impulse_noise_index[j][0]) or impulse_file in impulse_noise_index[j][0]:
-          noise_file = impulse_noise_index[j][1].next()
-          snr = snrs.next()
-          signal_db = signal_dbs.next()
-          assert(len(wav_file.strip()) > 0)
-          assert(impulse_file is None or len(impulse_file.strip()) > 0)
-          assert(len(noise_file.strip()) > 0)
-          assert(len(snr.strip()) > 0)
-          assert(len(output_wav_file.strip()) > 0)
+    noise_file = noises.next()
+    signal_db = signal_dbs.next()
+    snr = snrs.next()
 
-          if impulse_file is None:
-            impulse_file = ''
+    assert(len(wav_file.strip()) > 0)
+    assert(impulse_file is None or len(impulse_file.strip()) > 0)
+    assert(len(noise_file.strip()) > 0)
+    assert(len(snr.strip()) > 0)
+    assert(len(output_wav_file.strip()) > 0)
 
-          volume_opts = ""
-          if signal_db is not None:
-            assert(len(signal_db.strip()) > 0)
-            volume_opts = "--volume=-1 --signal-db={0} --normalize-by-amplitude=true".format(signal_db)
+    if impulse_file is None:
+      impulse_file = ''
 
-          if params.output_clean_wav_file_list is None and params.noise_clean_wav_file_list is None:
-            command_list.append("{6} {0} wav-reverberate --noise-file={2} --snr-db={3} {4} - {1} - |\n".format(wav_file, impulse_file, noise_file, snr, volume_opts, output_wav_file, output_filename))
-          else:
-            if params.output_clean_wav_file_list is not None:
-              splits = clean_wav_out_files[i].split()
-              assert(output_filename == splits[0])
-              output_clean_wav_opts = "--output-clean-file={0}".format(" ".join(splits[1:]))
-            if params.output_noise_wav_file_list is not None:
-              splits = noise_wav_out_files[i].split()
-              assert(output_filename == splits[0])
-              output_noise_wav_opts = "--output-noise-file={0}".format(" ".join(splits[1:]))
-            command_list.append("{8} {0} wav-reverberate --noise-file={2} --snr-db={3} {4} {5} {6} - {1} {7}\n".format(wav_file, impulse_file, noise_file, snr, volume_opts, output_clean_wav_opts, output_noise_wav_opts, output_wav_file, output_filename))
+    volume_opts = ""
+    if signal_db is not None:
+      assert(len(signal_db.strip()) > 0)
+      volume_opts = "--volume=-1 --signal-db={0} --normalize-by-amplitude=true".format(signal_db)
 
-          found_impulse = True
-          break
-    if not found_impulse:
-      assert(false)
-      assert(len(wav_file.strip()) > 0)
-      assert(len(impulse_file.strip()) > 0)
-      assert(len(output_wav_file.strip()) > 0)
-      command_list.append("{2} {0} wav-reverberate - {1} - |\n".format(wav_file, impulse_file, output_wav_file))
+    if params.output_clean_wav_file_list is not None:
+      splits = clean_wav_out_files[i].split()
+      assert(output_filename == splits[0])
+      output_clean_wav_opts = "--output-clean-file={0}".format(" ".join(splits[1:]))
+    if params.output_noise_wav_file_list is not None:
+      splits = noise_wav_out_files[i].split()
+      assert(output_filename == splits[0])
+      output_noise_wav_opts = "--output-noise-file={0}".format(" ".join(splits[1:]))
+    command_list.append("{8} {0} wav-reverberate --noise-file={2} --snr-db={3} {4} {5} {6} - {1} {7}\n".format(wav_file, impulse_file, noise_file, snr, volume_opts, output_clean_wav_opts, output_noise_wav_opts, output_wav_file, output_filename))
+
   file_handle = open(params.output_command_file, 'w')
   file_handle.write("".join(command_list))
   file_handle.close()

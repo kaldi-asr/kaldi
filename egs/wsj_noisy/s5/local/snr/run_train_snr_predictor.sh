@@ -12,6 +12,7 @@
 
 stage=0
 train_stage=-10
+get_egs_stage=-10
 num_epochs=8
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -3,1  0  -7,2 0"
 initial_effective_lrate=0.005
@@ -52,9 +53,9 @@ if [ $stage -le 8 ]; then
   steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
     --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 14 \
     --splice-indexes "$splice_indexes" \
-    --feat-type raw --egs-dir "$egs_dir" \
+    --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "--max-jobs-run 12" --max-change-per-sample $max_change_per_sample \
+    --max-change-per-sample $max_change_per_sample \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" --nj 40 --objective-type quadratic --cleanup false \
     --pnorm-input-dim $pnorm_input_dim \

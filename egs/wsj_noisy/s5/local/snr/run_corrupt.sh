@@ -200,30 +200,9 @@ if [ $stage -le 8 ]; then
   done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
 fi
 
-#tmpdir=exp/make_frame_snr_targets
-#targets_dir=frame_snr_targets
-#if [ $stage -le 9 ]; then
-#  utils/split_data.sh ${clean_data_dir}_fbank $nj
-#  utils/split_data.sh ${noise_data_dir}_fbank $nj
-#
-#  sleep 2
-#
-#  mkdir -p $targets_dir 
-#  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
-#    vector-sum \
-#    "ark:matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
-#    "ark:matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
-#    ark:- \| vector-to-feat ark:- \
-#    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
-#
-#  for n in `seq $nj`; do
-#    cat $targets_dir/${data_id}.$n.scp
-#  done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
-#fi
-
 tmpdir=exp/make_frame_snr_correct_targets
 targets_dir=frame_snr_correct_targets
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   utils/split_data.sh ${clean_data_dir}_fbank $nj
   utils/split_data.sh ${noise_data_dir}_fbank $nj
 
@@ -242,6 +221,27 @@ if [ $stage -le 10 ]; then
     matrix-sum --scale1=1.0 --scale2=-1.0 \
     "ark:compute-mfcc-feats --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${clean_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
     "ark:compute-mfcc-feats --config=conf/mfcc.conf --num-ceps=1 --num-mel-bins=3 scp:${noise_data_dir}_fbank/split$nj/JOB/wav.scp ark:- |" \
+    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
+
+  for n in `seq $nj`; do
+    cat $targets_dir/${data_id}.$n.scp
+  done > ${corrupted_data_dir}_hires/`basename $targets_dir`.scp
+fi
+
+tmpdir=exp/make_frame_snr_targets
+targets_dir=frame_snr_targets
+if [ $stage -le 10 ]; then
+  utils/split_data.sh ${clean_data_dir}_fbank $nj
+  utils/split_data.sh ${noise_data_dir}_fbank $nj
+
+  sleep 2
+
+  mkdir -p $targets_dir 
+  $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
+    vector-sum \
+    "ark:matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
+    "ark:matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+    ark:- \| vector-to-feat ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
