@@ -1730,7 +1730,9 @@ class Convolutional1dComponent: public UpdatableComponent {
   void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
             int32 patch_dim, int32 patch_step, int32 patch_stride,
             BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(BaseFloat learning_rate, std::string matrix_filename);
+  void Init(BaseFloat learning_rate,
+            int32 patch_dim, int32 patch_step, int32 patch_stride,
+            std::string matrix_filename);
 
   // resize the component, setting the parameters to zero, while
   // leaving any other configuration values the same
