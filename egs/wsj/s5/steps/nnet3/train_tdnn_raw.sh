@@ -77,6 +77,7 @@ posterior_targets=false
 objective_type=linear
 skip_final_softmax=true
 max_change_per_sample=0.075
+max_param_change=1
 no_hidden_layers=false
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
@@ -172,28 +173,28 @@ if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
   if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
+    dim_opts="--relu-dim=$relu_dim"
   else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
+    dim_opts="--pnorm-input-dim=$pnorm_input_dim --pnorm-output-dim=$pnorm_output_dim"
   fi
     
   raw_nnet_config_opts=()
 
-  objective_opts="--objective-type $objective_type"
+  objective_opts="--objective-type=$objective_type"
 
   raw_nnet_config_opts+=(--skip-final-softmax $skip_final_softmax)
-  raw_nnet_config_opts+=(--use-presoftmax-prior-scale $use_presoftmax_prior_scale)
-  raw_nnet_config_opts+=(--skip-lda $skip_lda)
-  raw_nnet_config_opts+=(--no-hidden-layers $no_hidden_layers)
+  raw_nnet_config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
+  raw_nnet_config_opts+=(--skip-lda=$skip_lda)
+  raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
 
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_raw_configs.py  \
-    --splice-indexes "$splice_indexes"  \
-    --feat-dim $feat_dim \
-    --ivector-dim $ivector_dim \
+    --splice-indexes="$splice_indexes"  \
+    --feat-dim=$feat_dim \
+    --ivector-dim=$ivector_dim \
     "${raw_nnet_config_opts[@]}" $objective_opts \
-    $dim_opts --max-change-per-sample $max_change_per_sample \
-    --num-targets $num_targets  \
+    $dim_opts --max-change-per-sample=$max_change_per_sample \
+    --num-targets=$num_targets  \
    $dir/configs || exit 1;
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
@@ -464,7 +465,7 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train $parallel_train_opts "$raw" \
+          nnet3-train $parallel_train_opts --max-param-change=$max_param_change "$raw" \
           "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
