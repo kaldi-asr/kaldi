@@ -33,6 +33,26 @@
 namespace kaldi {
 namespace ctc {
 
+void Tensor3dCopyTest() {
+  int32 dim_x = RandInt(1, 10), dim_y = RandInt(1, 5), dim_z = RandInt(1, 5);
+  CuVector<BaseFloat> vec(dim_x * dim_y * dim_z), vec2(dim_x * dim_y * dim_z);
+  vec.SetRandn();
+
+  CuVector<BaseFloat> vec_rearranged(dim_x * dim_y * dim_z);
+  Tensor3dCopy(dim_x, dim_y, dim_z,
+               1, dim_x, dim_x * dim_y,
+               dim_y * dim_z, dim_z, 1,
+               vec.Data(), vec_rearranged.Data());
+  Tensor3dCopy(dim_x, dim_y, dim_z,
+               dim_y * dim_z, dim_z, 1,
+               1, dim_x, dim_x * dim_y,
+               vec_rearranged.Data(), vec2.Data());
+  // KALDI_LOG << "vec is " << vec;
+  // KALDI_LOG << "vec_rearranged is " << vec_rearranged;
+  // KALDI_LOG << "vec2 is " << vec2;
+  AssertEqual(vec, vec2);
+}
+
 void TestCctcTombstone(const CctcTransitionModel &trans_model) {
   CuMatrix<BaseFloat> weights;
   trans_model.ComputeWeights(&weights);
@@ -100,7 +120,7 @@ void CctcTombstoneTest() {
 int main() {
   using namespace kaldi;
   // will later change this to "< 2" and test with GPU.
-  for (int32 loop = 0; loop < 1; loop++) {
+  for (int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -108,6 +128,7 @@ int main() {
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
     for (int32 i = 0; i < 10; i++) {
+      kaldi::ctc::Tensor3dCopyTest();
       kaldi::ctc::CctcTombstoneTest();
     }
   }

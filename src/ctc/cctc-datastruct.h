@@ -40,10 +40,10 @@ extern "C" {
 
   struct CctcHmmTransition {
     BaseFloat transition_prob;  // language-model part of the probability.
-    int32 num_index;  // numerator-prob index for the acoustic part of the probability.
+    int32_cuda num_index;  // numerator-prob index for the acoustic part of the probability.
     // the index for the denominator part of the probability is the same as the
     // hmm-state index.
-    int32 hmm_state;  // source, or destination, HMM-state.
+    int32_cuda hmm_state;  // source, or destination, HMM-state.
   };
 
 

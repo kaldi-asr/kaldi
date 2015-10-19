@@ -19,6 +19,7 @@
 
 
 #include "ctc/cctc-tombstone.h"
+#include "ctc/cctc-kernels.h"
 
 namespace kaldi {
 namespace ctc {
@@ -30,7 +31,17 @@ void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
                   const Real *src, Real *dst) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(0);  // TODO!
+    Timer tim;
+    dim3 dimBlock(std::min<int32>(CU1DBLOCK, xdim), 1, 1);
+    dim3 dimGrid(n_blocks(xdim, dimBlock.x), ydim, zdim);
+    // the kernel only needs the xdim because it's only the number of
+    // threads (i.e. blockDim) that gets padded.
+    cuda_rearrange_3d_tensor(dimGrid, dimBlock, xdim,
+                             src_xstride, src_ystride, src_zstride,
+                             dst_xstride, dst_ystride, dst_zstride,
+                             src, dst);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
@@ -254,24 +265,31 @@ void CctcNegativeComputation::AlphaFirstFrame() {
 // the alpha computation for some 0 < t <= num_time_steps_.
 void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
   KALDI_ASSERT(t > 0 && t <= num_time_steps_);
+  BaseFloat *this_alpha = alpha_.RowData(t);
+  const BaseFloat *prev_alpha = alpha_.RowData(t - 1);
+  const Int32Pair *backward_transitions = hmm_.BackwardTransitions();
+  const CctcHmmTransition *transitions = hmm_.Transitions();
+  const BaseFloat *num_probs = numerators_rearranged_.RowData(t - 1),
+      *den_probs = denominators_rearranged_.RowData(t - 1);
+  int32 num_hmm_states = num_hmm_states_,
+      num_sequences = num_sequences_,
+      special_hmm_state = hmm_.SpecialHmmState();
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(0);  // TODO!
+    Timer tim;
+    dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
+    dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
+
+    cuda_ctc_hmm_forward(dimGrid, dimBlock, backward_transitions, transitions, t,
+                         num_sequences, special_hmm_state, num_probs,
+                         den_probs, prev_alpha, this_alpha);
+
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
-  // for now just implement the CPU version of the computation.
   {
-    BaseFloat *this_alpha = alpha_.RowData(t);
-    const BaseFloat *prev_alpha = alpha_.RowData(t - 1);
-    const Int32Pair *backward_transitions = hmm_.BackwardTransitions();
-    const CctcHmmTransition *transitions = hmm_.Transitions();
-    const BaseFloat
-        *prev_den_rearranged = denominators_rearranged_.RowData(t - 1),
-        *prev_num_rearranged = numerators_rearranged_.RowData(t - 1);
-    // we'll add the arbitrary-scale thing later on.
-    int32 num_hmm_states = num_hmm_states_,
-        num_sequences = num_sequences_,
-        special_hmm_state = hmm_.SpecialHmmState();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
         double this_tot_alpha = 0.0;
@@ -283,8 +301,8 @@ void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
           int32 num_index = trans_iter->num_index,
               prev_hmm_state = trans_iter->hmm_state;
           BaseFloat
-              den = prev_den_rearranged[prev_hmm_state * num_sequences + s],
-              num = prev_num_rearranged[num_index * num_sequences + s],
+              den = den_probs[prev_hmm_state * num_sequences + s],
+              num = num_probs[num_index * num_sequences + s],
               this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * num / den;
         }
@@ -403,35 +421,42 @@ void CctcNegativeComputation::BetaLastFrame() {
 
 void CctcNegativeComputation::BetaGeneralFrame(int32 t) {
   KALDI_ASSERT(t >= 0 && t < num_time_steps_);
+  const BaseFloat *this_alpha = alpha_.RowData(t),
+      *next_beta = beta_.RowData((t + 1) % 2);
+  BaseFloat *this_beta = beta_.RowData(t % 2);
+  const Int32Pair *forward_transitions = hmm_.ForwardTransitions();
+  const CctcHmmTransition *transitions = hmm_.Transitions();
+  const BaseFloat *num_probs = numerators_rearranged_.RowData(t),
+      *den_probs = denominators_rearranged_.RowData(t);
+  BaseFloat *log_num_deriv = log_numerator_derivs_rearranged_.RowData(t),
+      *den_deriv = denominator_derivs_rearranged_.RowData(t);
+  // we'll add the arbitrary-scale thing later on.
+  int32 num_hmm_states = num_hmm_states_,
+      num_sequences = num_sequences_,
+      special_hmm_state = hmm_.SpecialHmmState();
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    KALDI_ASSERT(0);  // TODO!
+    Timer tim;
+    dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
+    dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
+    cuda_ctc_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions, t,
+                          num_sequences, special_hmm_state,
+                          num_probs, den_probs, this_alpha, next_beta,
+                          this_beta, log_num_deriv, den_deriv);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
-  // for now just implement the CPU version of the computation.
   {
-    const BaseFloat *this_alpha = alpha_.RowData(t),
-        *next_beta = beta_.RowData((t + 1) % 2);
-    BaseFloat *this_beta = beta_.RowData(t % 2);
-
-    const Int32Pair *forward_transitions = hmm_.ForwardTransitions();
-    const CctcHmmTransition *transitions = hmm_.Transitions();
-    const BaseFloat *den = denominators_rearranged_.RowData(t),
-        *num = numerators_rearranged_.RowData(t);
-    BaseFloat *log_num_deriv = log_numerator_derivs_rearranged_.RowData(t),
-        *den_deriv = denominator_derivs_rearranged_.RowData(t);
-    // we'll add the arbitrary-scale thing later on.
-    int32 num_hmm_states = num_hmm_states_,
-        num_sequences = num_sequences_,
-        special_hmm_state = hmm_.SpecialHmmState();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
         BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
             inv_arbitrary_scale =
             this_alpha[special_hmm_state * num_sequences + s];
-        double tot_variable_factor = 0.0,
-            common_factor = 1.0 / (den[h * num_sequences + s] *
-                                   inv_arbitrary_scale),
+        double tot_variable_factor = 0.0;
+        BaseFloat common_factor = 1.0 / (den_probs[h * num_sequences + s] *
+                                         inv_arbitrary_scale),
             occupation_factor = common_factor * this_alpha_prob;
         const CctcHmmTransition
             *trans_iter = transitions + forward_transitions[h].first,
@@ -442,7 +467,7 @@ void CctcNegativeComputation::BetaGeneralFrame(int32 t) {
               next_hmm_state = trans_iter->hmm_state;
           BaseFloat variable_factor = transition_prob *
               next_beta[next_hmm_state * num_sequences + s] *
-              num[num_index * num_sequences + s];
+              num_probs[num_index * num_sequences + s];
           tot_variable_factor += variable_factor;
           BaseFloat occupation_prob = variable_factor * occupation_factor;
           log_num_deriv[num_index * num_sequences + s] += occupation_prob;
