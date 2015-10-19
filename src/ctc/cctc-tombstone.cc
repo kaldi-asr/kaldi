@@ -200,6 +200,9 @@ void CctcHmm::SetInitialProbs(const CctcTransitionModel &trans_mdl) {
     cur_prob.Scale(1.0 / cur_prob.Sum());
   }
   Vector<BaseFloat> cur_prob_float(cur_prob);
+  MatrixIndexT max_index;
+  cur_prob_float.Max(&max_index);
+  special_hmm_state_ = max_index;
   initial_probs_ = cur_prob_float;
 }
 
@@ -267,7 +270,8 @@ void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
         *prev_num_rearranged = numerators_rearranged_.RowData(t - 1);
     // we'll add the arbitrary-scale thing later on.
     int32 num_hmm_states = num_hmm_states_,
-        num_sequences = num_sequences_;
+        num_sequences = num_sequences_,
+        special_hmm_state = hmm_.SpecialHmmState();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
         double this_tot_alpha = 0.0;
@@ -284,7 +288,17 @@ void CctcNegativeComputation::AlphaGeneralFrame(int32 t) {
               this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * num / den;
         }
-        this_alpha[h * num_sequences + s] = this_tot_alpha;
+        // Let arbitrary_scale be the inverse of the alpha value for the
+        // hmm-state indexed special_hmm_state_ on the previous frame (for this
+        // sequence); we multiply this into all the transition-probabilities
+        // from the previous frame to this frame, in both the forward and
+        // backward passes, in order to keep the alphas in a good numeric range.
+        // This won't affect the posteriors, but when computing the total
+        // likelihood we'll need to compensate for it later on.
+        BaseFloat arbitrary_scale =
+            1.0 / prev_alpha[special_hmm_state * num_sequences + s];
+        KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
+        this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
       }
     }
   }
@@ -299,7 +313,7 @@ BaseFloat CctcNegativeComputation::Forward() {
 
 BaseFloat CctcNegativeComputation::ComputeTotLogLike() {
   tot_prob_.Resize(num_sequences_);
-  // Vpiew the last alpha as a matrix of size num-time-steps by num-sequences.
+  // View the last alpha as a matrix of size num-time-steps by num-sequences.
   CuSubMatrix<BaseFloat> last_alpha(alpha_.RowData(num_time_steps_),
                                     num_hmm_states_,
                                     num_sequences_,
@@ -309,8 +323,24 @@ BaseFloat CctcNegativeComputation::ComputeTotLogLike() {
   // we should probably add an ApplyLog() function that takes a vector argument.
   tot_log_prob_ = tot_prob_;
   tot_log_prob_.ApplyLog();
-  // later we'll add the scaling-factor.
-  return tot_log_prob_.Sum();
+  BaseFloat tot_log_prob = tot_log_prob_.Sum();
+
+  // We now have to add something for the arbitrary scaling factor.  the
+  // inverses of all the alphas for hmm-states numbered zero, for t = 0
+  // ... num_time_steps_ - 1, were included as the 'arbitrary factors' in the
+  // transition-probs, so we need to multiply them all together (not inversed)
+  // and add them as a correction term to the total log-likes.  Note: the
+  // purpose of the arbitrary scaling factors was to keep things in a good
+  // floating-point range.
+  CuSubMatrix<BaseFloat> inv_arbitrary_scales(
+      alpha_, 0, num_time_steps_,
+      num_sequences_ * hmm_.SpecialHmmState(), num_sequences_);
+  CuMatrix<BaseFloat> log_inv_arbitrary_scales(
+      inv_arbitrary_scales);
+  log_inv_arbitrary_scales.ApplyLog();
+  BaseFloat log_inv_arbitrary_scales_product =
+      log_inv_arbitrary_scales.Sum();
+  return tot_log_prob + log_inv_arbitrary_scales_product;
 }
 
 void CctcNegativeComputation::Backward(
@@ -369,12 +399,9 @@ void CctcNegativeComputation::BetaLastFrame() {
   // final-prob of one (which we treat as p of being final given that it just
   // ended, i.e. the probability of a sure thing, which is one).
   beta_mat.CopyRowsFromVec(inv_tot_prob);
-
-  beta_mat.SetZero();
-  beta_mat.AddVecToCols(1.0, hmm_.InitialProbs(), 0.0);
 }
 
-void CctcNegativeComputation::BetaGeneralFrame() {
+void CctcNegativeComputation::BetaGeneralFrame(int32 t) {
   KALDI_ASSERT(t >= 0 && t < num_time_steps_);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -391,30 +418,40 @@ void CctcNegativeComputation::BetaGeneralFrame() {
     const CctcHmmTransition *transitions = hmm_.Transitions();
     const BaseFloat *den = denominators_rearranged_.RowData(t),
         *num = numerators_rearranged_.RowData(t);
+    BaseFloat *log_num_deriv = log_numerator_derivs_rearranged_.RowData(t),
+        *den_deriv = denominator_derivs_rearranged_.RowData(t);
     // we'll add the arbitrary-scale thing later on.
     int32 num_hmm_states = num_hmm_states_,
-        num_sequences = num_sequences_;
+        num_sequences = num_sequences_,
+        special_hmm_state = hmm_.SpecialHmmState();
     for (int32 h = 0; h < num_hmm_states; h++) {
       for (int32 s = 0; s < num_sequences; s++) {
+        BaseFloat this_alpha_prob = this_alpha[h * num_sequences + s],
+            inv_arbitrary_scale =
+            this_alpha[special_hmm_state * num_sequences + s];
         double tot_variable_factor = 0.0,
-            common_factor = 1.0 / den[h * num_sequences + s],
-            occupation_factor = common_factor * this_alpha[h * num_sequences + s];
-
-        double this_tot_beta = 0.0;
+            common_factor = 1.0 / (den[h * num_sequences + s] *
+                                   inv_arbitrary_scale),
+            occupation_factor = common_factor * this_alpha_prob;
         const CctcHmmTransition
-            *trans_iter = transitions + backward_transitions[h].first,
-            *trans_end = transitions + backward_transitions[h].second;
+            *trans_iter = transitions + forward_transitions[h].first,
+            *trans_end = transitions + forward_transitions[h].second;
         for (; trans_iter != trans_end; ++trans_iter) {
           BaseFloat transition_prob = trans_iter->transition_prob;
           int32 num_index = trans_iter->num_index,
-              prev_hmm_state = trans_iter->hmm_state;
-          BaseFloat
-              den = prev_den_rearranged[prev_hmm_state * num_sequences + s],
-              num = prev_num_rearranged[num_index * num_sequences + s],
-              this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
-          this_tot_alpha += this_prev_alpha * transition_prob * num / den;
+              next_hmm_state = trans_iter->hmm_state;
+          BaseFloat variable_factor = transition_prob *
+              next_beta[next_hmm_state * num_sequences + s] *
+              num[num_index * num_sequences + s];
+          tot_variable_factor += variable_factor;
+          BaseFloat occupation_prob = variable_factor * occupation_factor;
+          log_num_deriv[num_index * num_sequences + s] += occupation_prob;
         }
-        this_alpha[h * num_sequences + s] = this_tot_alpha;
+        // d(objf) / d(den) is an occupation count divided by the denominator
+        // prob.
+        den_deriv[h * num_sequences + s] =
+            occupation_factor * tot_variable_factor;
+        this_beta[h * num_sequences + s] = tot_variable_factor * common_factor;
       }
     }
   }

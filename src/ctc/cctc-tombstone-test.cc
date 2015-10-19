@@ -40,6 +40,8 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
 
   int32 num_sequences = RandInt(1, 5),
       num_time_steps = RandInt(10, 20);
+  if (RandInt(0, 3) == 0)
+    num_time_steps *= 30;  // test how it works on long sequences
   CuMatrix<BaseFloat> nnet_output(num_sequences * num_time_steps,
                                   trans_model.NumOutputIndexes());
   bool zero_output = (RandInt(0, 3) == 0);
@@ -74,6 +76,14 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
   negative_computation.Backward(&nnet_output_deriv,
                                 &denominators_deriv);
 
+  BaseFloat output_deriv_sum = nnet_output_deriv.Sum(),
+      den_deriv_sum = denominators_deriv.Sum();
+  KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
+            << " vs. expected " << (num_sequences * num_time_steps);
+  KALDI_LOG << "Sum of denominators-deriv is " << den_deriv_sum
+            << " vs. expected " << (num_sequences * num_time_steps);
+  AssertEqual(output_deriv_sum, BaseFloat(num_sequences * num_time_steps));
+  AssertEqual(den_deriv_sum, BaseFloat(num_sequences * num_time_steps));
 }
 
 

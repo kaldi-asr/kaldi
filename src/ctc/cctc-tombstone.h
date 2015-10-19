@@ -119,6 +119,12 @@ class CctcHmm {
   // exact values won't be very critical.
   const CuVector<BaseFloat> &InitialProbs() const;
 
+  // returns the index of the HMM-state that has the highest value in
+  // InitialProbs (and which we believe will always be reachable from all other
+  // states... later on we may check this more carefully [TODO]).
+  // It's used in getting the 'arbitrary_scale' value to keep the alphas
+  // in a good dynamic range.
+  int32 SpecialHmmState() const { return special_hmm_state_; }
  private:
   // functions called from the constructor
   void SetTransitions(const CctcTransitionModel &trans_mdl);
@@ -140,6 +146,14 @@ class CctcHmm {
   // we make this a generic probability distribution close to the limiting
   // distribution of the HMM.  This isn't too critical.
   CuVector<BaseFloat> initial_probs_;
+
+  // The index of a somewhat arbitrarily chosen HMM-state that we
+  // use for adjusting the alpha probabilities.  It needs to be
+  // one that is reachable from all states (i.e. not a special
+  // state that's only reachable at sentence-start).  We choose
+  // whichever one has the greatest initial-prob.  It's set
+  // in SetInitialProbs().
+  int32 special_hmm_state_;
 };
 
 
