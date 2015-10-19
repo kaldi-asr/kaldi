@@ -33,8 +33,8 @@ void ComputeFrameSnrs(const Matrix<BaseFloat> &clean_fbank,
     SubVector<BaseFloat> clean_fbank_t(clean_fbank, t);
     SubVector<BaseFloat> fbank_t(fbank, t);
 
-    BaseFloat clean_energy_t = clean_fbank_t.LogSumExp();
-    BaseFloat total_energy_t = fbank_t.LogSumExp();
+    BaseFloat clean_energy_t = 2 * clean_fbank_t.LogSumExp();
+    BaseFloat total_energy_t = 2 * fbank_t.LogSumExp();
 
     BaseFloat noise_energy_t = (total_energy_t > clean_energy_t ? 
                                 LogSub(total_energy_t, clean_energy_t) : 
