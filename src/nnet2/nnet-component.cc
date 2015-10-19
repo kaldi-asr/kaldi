@@ -3811,9 +3811,9 @@ void Convolutional1dComponent::InitFromString(std::string args) {
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   ParseFromString("learning-rate", &args, &learning_rate);
-  ParseFromString("patch-dim", &args, &patch_dim);
-  ParseFromString("patch-step", &args, &patch_step);
-  ParseFromString("patch-stride", &args, &patch_stride);
+  ok = ok && ParseFromString("patch-dim", &args, &patch_dim);
+  ok = ok && ParseFromString("patch-step", &args, &patch_step);
+  ok = ok && ParseFromString("patch-stride", &args, &patch_stride);
   if (ParseFromString("matrix", &args, &matrix_filename)) {
     // initialize from prefined parameter matrix
     Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);

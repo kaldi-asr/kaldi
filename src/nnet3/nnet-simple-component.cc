@@ -2086,9 +2086,9 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   cfl->GetValue("learning-rate", &learning_rate); //optional
-  cfl->GetValue("patch-dim", &patch_dim);
-  cfl->GetValue("patch-step", &patch_step);
-  cfl->GetValue("patch-stride", &patch_stride);
+  ok = ok && cfl->GetValue("patch-dim", &patch_dim);
+  ok = ok && cfl->GetValue("patch-step", &patch_step);
+  ok = ok && cfl->GetValue("patch-stride", &patch_stride);
   if (cfl->GetValue("matrix", &matrix_filename)) {
     // initialize from prefined parameter matrix
     Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);
