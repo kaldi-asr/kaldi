@@ -65,7 +65,7 @@ data_fmllr=data-fmllr-tri3b
 mkdir -p $data_fmllr
 fmllrdir=fmllr-tri3b/$enhan
 if [ $stage -le 1 ]; then
-  for x in tr05_multi_$enhan; do
+  for x in tr05_real_$enhan tr05_simu_$enhan; do
     steps/nnet/make_fmllr_feats.sh --nj 4 --cmd "$train_cmd" \
       --transform-dir $gmmdir \
       $data_fmllr/$x data/$x $gmmdir exp/make_fmllr_tri3b/$x $fmllrdir

@@ -21,7 +21,7 @@ diff -rupN BeamformIt-3.51.org/CMakeLists.txt BeamformIt-3.51.changed/CMakeLists
  #gather project files (note that when adding a new file cmake needs to be rerun)
 diff -rupN BeamformIt-3.51.org/src/delaysum.cc BeamformIt-3.51.changed/src/delaysum.cc
 --- BeamformIt-3.51.org/src/delaysum.cc	2014-06-25 12:35:44.000000000 -0400
-+++ BeamformIt-3.51.changed/src/delaysum.cc	2015-10-16 10:30:14.897851141 -0400
++++ BeamformIt-3.51.changed/src/delaysum.cc	2015-10-19 13:11:13.062184285 -0400
 @@ -12,7 +12,7 @@
  #include <iostream>
  #include <cstring>
@@ -41,7 +41,7 @@ diff -rupN BeamformIt-3.51.org/src/delaysum.cc BeamformIt-3.51.changed/src/delay
    int signal_scroll; //advancement in the signal for the next segment
    int segment_duration = 10 * m_sampleRate; //10 seconds segments
    float sum_weighting;
-@@ -442,9 +443,15 @@ void DelaySum::compute_scalling_factor()
+@@ -442,9 +443,16 @@ void DelaySum::compute_scalling_factor()
      num_segments = 0;
      start_place = (long)(m_UEMGap);
      //check if we have enough signal for the number of segments
@@ -49,12 +49,13 @@ diff -rupN BeamformIt-3.51.org/src/delaysum.cc BeamformIt-3.51.changed/src/delay
 +    if(((m_frames - start_place)/segment_duration) < total_num_segments_initial)
      {
 -      total_num_segments = int((m_frames - start_place)/segment_duration); 
-+      total_num_segments = int((m_frames - start_place) * total_num_segments_initial / segment_duration);
++      total_num_segments = int((m_frames - start_place) / segment_duration);
 +      if (total_num_segments < 1)
 +      {
-+	total_num_segments = 1;
++				total_num_segments = 1;
++				segment_duration = m_frames - start_place; //we do not have more frames
 +      }
-+      char tmp_string[1024]; sprintf(tmp_string,"Set the total number of segments from %d to %d for computing scalling factor\n", total_num_segments_initial, total_num_segments);
++      char tmp_string[1024]; sprintf(tmp_string,"Set the total number of segments from %d to %d for computing scalling factor, with segment duration %d\n", total_num_segments_initial, total_num_segments, segment_duration);
 +      m_log.print_this(tmp_string, 1);
      }
      signal_scroll = int((m_frames - start_place)/total_num_segments);
