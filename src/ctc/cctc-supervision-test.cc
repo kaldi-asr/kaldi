@@ -84,7 +84,8 @@ void ExcludeRangeFromVector(const std::vector<int32> &in,
 }
 
 void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
-                                 const CctcSupervision &supervision) {
+                                 const CctcSupervision &supervision,
+                                 int32 num_sequences) {
   BaseFloat delta = 1.0e-04;
   int32 num_frames = supervision.num_frames,
       nnet_output_dim = trans_model.NumOutputIndexes();
@@ -94,13 +95,14 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
   trans_model.ComputeWeights(&cu_weights);
   CctcTrainingOptions opts;
   CctcCommonComputation computation(opts, trans_model, cu_weights,
-                                      supervision, nnet_output);
+                                    supervision, num_sequences, nnet_output);
   CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
                                         kUndefined);
 
   BaseFloat log_like, den_term, normalizer;
   computation.Forward(&log_like, &den_term, &normalizer);
-  KALDI_LOG << "log-like of CCTC computation is " << log_like;
+  KALDI_LOG << "log-like of CCTC computation is " << log_like << " + " << den_term
+            << " = " << (log_like + den_term);
   computation.Backward(&nnet_output_deriv);
 
   int32 num_offsets = 3;
@@ -114,12 +116,14 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
                                             nnet_output_deriv, kTrans);
     modified_output.AddMat(1.0, nnet_output);
     CctcCommonComputation computation(opts, trans_model, cu_weights,
-                                      supervision, modified_output);
+                                      supervision, num_sequences,
+                                      modified_output);
     BaseFloat modified_log_like, modified_den_term, modified_normalizer;
     computation.Forward(&modified_log_like, &modified_den_term,
                         &modified_normalizer);
     // no need to do backward.
-    measured_objf_changes(i) = modified_log_like - log_like;
+    measured_objf_changes(i) =
+        (modified_log_like + modified_den_term) - (log_like + den_term);
   }
   KALDI_LOG << "predicted_objf_changes = " << predicted_objf_changes;
   KALDI_LOG << "measured_objf_changes = " << measured_objf_changes;
@@ -181,6 +185,8 @@ void TestCctcSupervisionAppend(const CctcTransitionModel &trans_model,
     KALDI_ASSERT(output.size() == input.size());
   }
   TestCctcSupervisionIo(output[0]);
+  int32 num_append_0 = output[0].num_frames / supervision.num_frames;
+  TestCctcSupervisionTraining(trans_model, output[0], num_append_0);
   output[0].Check(trans_model);
 }
 
@@ -345,7 +351,7 @@ void TestCctcSupervision(const CctcTransitionModel &trans_model) {
   TestCctcSupervisionFrames(supervision);
   TestCctcSupervisionSplitting(trans_model, supervision);
   TestCctcSupervisionAppend(trans_model, supervision);
-  TestCctcSupervisionTraining(trans_model, supervision);
+  TestCctcSupervisionTraining(trans_model, supervision, 1);
 }
 
 void CctcSupervisionTest() {

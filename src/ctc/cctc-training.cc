@@ -288,12 +288,13 @@ CctcCommonComputation::CctcCommonComputation(
     const CctcTransitionModel &trans_model,
     const CuMatrix<BaseFloat> &cu_weights,
     const CctcSupervision &supervision,
+    int32 num_sequences,
     const CuMatrixBase<BaseFloat> &nnet_output):
-    opts_(opts), trans_model_(trans_model), cu_weights_(cu_weights),
-    supervision_(supervision), nnet_output_(nnet_output),
-    positive_computation_(NULL) {
+    hmm_(trans_model), opts_(opts), trans_model_(trans_model),
+    cu_weights_(cu_weights), supervision_(supervision),
+    num_sequences_(num_sequences), nnet_output_(nnet_output),
+    positive_computation_(NULL), negative_computation_(NULL) {
   CheckDims();
-
 }
 
 
@@ -315,7 +316,8 @@ void CctcCommonComputation::Forward(BaseFloat *positive_objf_part,
                       trans_model_.NumHistoryStates());
   denominators_.AddMatMat(1.0, exp_nnet_output_, kNoTrans, cu_weights_, kTrans,
                          0.0);
-  denominators_deriv_.Resize(denominators_.NumRows(), denominators_.NumCols());
+  denominators_deriv_.Resize(denominators_.NumRows(), denominators_.NumCols(),
+                             kUndefined);
 
   KALDI_ASSERT(positive_computation_ == NULL && "Forward() called twice?");
   positive_computation_ = new CctcPositiveComputation(opts_, trans_model_,
@@ -324,19 +326,35 @@ void CctcCommonComputation::Forward(BaseFloat *positive_objf_part,
                                                       denominators_);
 
   *positive_objf_part = supervision_.weight * positive_computation_->Forward();
-  *negative_objf_part = 0.0;  // until we implement it.
+
+  negative_computation_ = new CctcNegativeComputation(trans_model_, hmm_,
+                                                      exp_nnet_output_, denominators_,
+                                                      num_sequences_);
+
+  *negative_objf_part = -opts_.denominator_scale * supervision_.weight *
+      negative_computation_->Forward();
+
   *objf_denominator = supervision_.weight * nnet_output_.NumRows();
 }
 
 
 CctcCommonComputation::~CctcCommonComputation() {
   delete positive_computation_;
+  delete negative_computation_;
 }
 
 void CctcCommonComputation::Backward(
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   KALDI_ASSERT(SameDim(*nnet_output_deriv, nnet_output_));
   nnet_output_deriv->SetZero();
+
+  // this function *sets* its output.
+  negative_computation_->Backward(nnet_output_deriv,
+                                  &denominators_deriv_);
+  nnet_output_deriv->Scale(-opts_.denominator_scale);
+  denominators_deriv_.Scale(-opts_.denominator_scale);
+
+  // this function *adds to* its output.
   positive_computation_->Backward(nnet_output_deriv,
                                   &denominators_deriv_);
 

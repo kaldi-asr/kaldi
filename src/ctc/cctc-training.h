@@ -34,6 +34,7 @@
 #include "ctc/language-model.h"
 #include "ctc/cctc-transition-model.h"
 #include "ctc/cctc-supervision.h"
+#include "ctc/cctc-tombstone.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
 
@@ -46,17 +47,15 @@ namespace ctc {
 // thereof) in addition to the acoustic history.
 
 struct CctcTrainingOptions {
-  BaseFloat normalizing_weight;
+  BaseFloat denominator_scale;
 
-  CctcTrainingOptions(): normalizing_weight(0.0) { }
+  CctcTrainingOptions(): denominator_scale(1.0) { }
 
   void Register(OptionsItf *opts) {
-    opts->Register("normalizing-weight", &normalizing_weight, "Weight on a "
-                   "term in the objective function that's a negative squared "
-                   "log of the numerator in the CCTC likelihood; it "
-                   "exists to keep the network outputs in a reasonable "
-                   "range so we can exp() them without overflow. "
-                   "Warning: not supported yet.");
+    opts->Register("denominator-scale", &denominator_scale,
+                   "Scale on the denominator term in the objective function; "
+                   "you can set it to e.g. 0.9 to encourage the probabilities "
+                   "to sum to one more closely.");
   }
 };
 
@@ -79,10 +78,10 @@ class CctcPositiveComputation {
   // Does the forward computation.  Returns the total log-prob,
   BaseFloat Forward();
 
-  // Does the backward computation and (efficiently) adds the direct part of
-  // the derivative w.r.t. the neural network output to 'nnet_output_deriv' (by
-  // 'direct' we mean the term not involving the denominators), and the derivative
-  // w.r.t. the the denominators to 'log_denominators_deriv'.
+  // Does the backward computation and (efficiently) adds the direct part of the
+  // derivative w.r.t. the neural network output to 'nnet_output_deriv' (by
+  // 'direct' we mean the term not involving the denominators), and adds the
+  // derivative w.r.t. the the denominators to 'log_denominators_deriv'.
   void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv,
                 CuMatrixBase<BaseFloat> *denominators_deriv);
 
@@ -185,16 +184,24 @@ class CctcCommonComputation {
  public:
   /// Note: the 'cu_weights' argument should be the output of
   /// trans_model.ComputeWeights().
+  ///
+  /// The 'num_sequences' should be the number of separate sequences
+  /// that the computation contains (i.e. number of separate 'n' values
+  /// in the supervision's indexes)... this info has to be provided from
+  /// the nnet3 code, as it's not stored at this level.
   CctcCommonComputation(const CctcTrainingOptions &opts,
                         const CctcTransitionModel &trans_model,
                         const CuMatrix<BaseFloat> &cu_weights,
                         const CctcSupervision &supervision,
+                        int32 num_sequences,
                         const CuMatrixBase<BaseFloat> &nnet_output);
 
 
   // Does the forward part of the computation
   // the objf parts should be added together to get the real objf, and then
   // divided by the denominator (== num-frames * weight) for reporting purposes.
+  // Note: negative_objf_part is the likelihood from the CctcNegativeComputation object
+  // times -opts_.denominator_scale.
   void Forward(BaseFloat *positive_objf_part, BaseFloat *negative_objf_part,
                BaseFloat *objf_denominator);
 
@@ -206,6 +213,7 @@ class CctcCommonComputation {
   // This function, called from the constructor, checks various dimensions.
   void CheckDims() const;
 
+  CctcHmm hmm_;
   const CctcTrainingOptions &opts_;
   const CctcTransitionModel &trans_model_;
   // cu_weights_ is derived from trans_model_.  Dimension is
@@ -213,6 +221,10 @@ class CctcCommonComputation {
   const CuMatrix<BaseFloat> &cu_weights_;
   // The supervision object
   const CctcSupervision &supervision_;
+  // The number of separate time-sequences that the supervision object covers,
+  // which must all be of the same lengty.  This info has to be computed at the
+  // nnet3 level of the code.
+  int32 num_sequences_;
   // The neural net output
   const CuMatrixBase<BaseFloat> &nnet_output_;
   // the exponent of the neural net output.
@@ -228,6 +240,8 @@ class CctcCommonComputation {
   CuMatrix<BaseFloat> denominators_deriv_;
 
   CctcPositiveComputation *positive_computation_;
+
+  CctcNegativeComputation *negative_computation_;
 
 
 };
