@@ -3743,8 +3743,12 @@ void Convolutional1dComponent::Init(BaseFloat learning_rate,
 
 // initialize the component using predefined matrix file
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
                                     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
+  patch_dim_ = patch_dim;
+  patch_step_ = patch_step;
+  patch_stride_ = patch_stride;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat);
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -3807,9 +3811,12 @@ void Convolutional1dComponent::InitFromString(std::string args) {
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   ParseFromString("learning-rate", &args, &learning_rate);
+  ok = ok && ParseFromString("patch-dim", &args, &patch_dim);
+  ok = ok && ParseFromString("patch-step", &args, &patch_step);
+  ok = ok && ParseFromString("patch-stride", &args, &patch_stride);
   if (ParseFromString("matrix", &args, &matrix_filename)) {
     // initialize from prefined parameter matrix
-    Init(learning_rate, matrix_filename);
+    Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);
     if (ParseFromString("input-dim", &args, &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                "input-dim mismatch vs. matrix.");
@@ -3820,9 +3827,6 @@ void Convolutional1dComponent::InitFromString(std::string args) {
     // initialize from configuration
     ok = ok && ParseFromString("input-dim", &args, &input_dim);
     ok = ok && ParseFromString("output-dim", &args, &output_dim);
-    ok = ok && ParseFromString("patch-dim", &args, &patch_dim);
-    ok = ok && ParseFromString("patch-step", &args, &patch_step);
-    ok = ok && ParseFromString("patch-stride", &args, &patch_stride);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);

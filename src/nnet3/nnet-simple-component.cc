@@ -2019,8 +2019,12 @@ void Convolutional1dComponent::Init(BaseFloat learning_rate,
 
 // initialize the component using predefined matrix file
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
                                     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
+  patch_dim_ = patch_dim;
+  patch_step_ = patch_step;
+  patch_stride_ = patch_stride;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat);
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -2082,9 +2086,12 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   cfl->GetValue("learning-rate", &learning_rate); //optional
+  ok = ok && cfl->GetValue("patch-dim", &patch_dim);
+  ok = ok && cfl->GetValue("patch-step", &patch_step);
+  ok = ok && cfl->GetValue("patch-stride", &patch_stride);
   if (cfl->GetValue("matrix", &matrix_filename)) {
     // initialize from prefined parameter matrix
-    Init(learning_rate, matrix_filename);
+    Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);
     if (cfl->GetValue("input-dim", &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                "input-dim mismatch vs. matrix.");
@@ -2092,12 +2099,9 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
       KALDI_ASSERT(output_dim == OutputDim() &&
                "output-dim mismatch vs. matrix.");
   } else {
-    // initialize from configuration
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
-    ok = ok && cfl->GetValue("patch-dim", &patch_dim);
-    ok = ok && cfl->GetValue("patch-step", &patch_step);
-    ok = ok && cfl->GetValue("patch-stride", &patch_stride);
+    // initialize from configuration
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);

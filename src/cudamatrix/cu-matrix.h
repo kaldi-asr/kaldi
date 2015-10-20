@@ -45,6 +45,10 @@ template<typename Real>
 Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
                  MatrixTransposeType trans = kNoTrans);
 
+/// Does multiple matrix multiplications, executing them in parallel using
+/// cuBLAS's gemmBatched if we are using a GPU. Vectors A, B and C must have
+/// the same length; for each i, this function executes the matrix operation
+/// C[i] = alpha *  A[i](^T)*B[i](^T) + beta * C[i].
 template<typename Real>
 void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
