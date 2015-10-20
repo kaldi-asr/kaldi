@@ -198,10 +198,11 @@ class CctcCommonComputation {
 
 
   // Does the forward part of the computation
-  // the objf parts should be added together to get the real objf, and then
+  // the objf parts should be added together to get the real objf (including
+  // the weighting factor in supervision.weight), and then
   // divided by the denominator (== num-frames * weight) for reporting purposes.
   // Note: negative_objf_part is the likelihood from the CctcNegativeComputation object
-  // times -opts_.denominator_scale.
+  // times -opts_.denominator_scale times supervision.weight.
   void Forward(BaseFloat *positive_objf_part, BaseFloat *negative_objf_part,
                BaseFloat *objf_denominator);
 

@@ -106,29 +106,30 @@ void NnetCctcTrainer::ProcessOutputs(const NnetCctcExample &eg,
                                           nnet_output.NumCols(),
                                           kUndefined);
 
-    BaseFloat tot_weight, tot_objf;
+    BaseFloat tot_weight, tot_num_objf, tot_den_objf;
     sup.ComputeObjfAndDerivs(config_.cctc_training_config,
                              trans_model_,
                              cu_weights_, nnet_output,
-                             &tot_weight, &tot_objf, &nnet_output_deriv);
+                             &tot_weight, &tot_num_objf, &tot_den_objf,
+                             &nnet_output_deriv);
 
     computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, config_.print_interval,
                                      num_minibatches_processed_++,
-                                     tot_weight, tot_objf);
+                                     tot_weight, tot_num_objf, tot_den_objf);
   }
 }
 
 
 bool NnetCctcTrainer::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, CctcObjectiveFunctionInfo>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
+    const CctcObjectiveFunctionInfo &info = iter->second;
     ans = ans || info.PrintTotalStats(name);
   }
   return ans;
@@ -137,6 +138,68 @@ bool NnetCctcTrainer::PrintTotalStats() const {
 
 NnetCctcTrainer::~NnetCctcTrainer() {
   delete delta_nnet_;
+}
+
+
+CctcObjectiveFunctionInfo::CctcObjectiveFunctionInfo():
+    current_phase(0),
+    tot_weight(0.0), tot_num_objf(0.0), tot_den_objf(0.0),
+    tot_weight_this_phase(0.0),
+    tot_num_objf_this_phase(0.0),
+    tot_den_objf_this_phase(0.0) { }
+
+
+void CctcObjectiveFunctionInfo::UpdateStats(
+    const std::string &output_name,
+    int32 minibatches_per_phase,
+    int32 minibatch_counter,
+    BaseFloat this_minibatch_weight,
+    BaseFloat this_minibatch_tot_num_objf,
+    BaseFloat this_minibatch_tot_den_objf) {
+  int32 phase = minibatch_counter / minibatches_per_phase;
+  if (phase != current_phase) {
+    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
+    PrintStatsForThisPhase(output_name, minibatches_per_phase);
+    current_phase = phase;
+    tot_weight_this_phase = 0.0;
+    tot_num_objf_this_phase = 0.0;
+    tot_den_objf_this_phase = 0.0;
+  }
+  tot_weight_this_phase += this_minibatch_weight;
+  tot_num_objf_this_phase += this_minibatch_tot_num_objf;
+  tot_den_objf_this_phase += this_minibatch_tot_den_objf;
+  tot_weight += this_minibatch_weight;
+  tot_num_objf += this_minibatch_tot_num_objf;
+  tot_den_objf += this_minibatch_tot_den_objf;
+}
+
+void CctcObjectiveFunctionInfo::PrintStatsForThisPhase(
+    const std::string &output_name,
+    int32 minibatches_per_phase) const {
+  int32 start_minibatch = current_phase * minibatches_per_phase,
+      end_minibatch = start_minibatch + minibatches_per_phase - 1;
+  BaseFloat tot_objf_this_phase = tot_num_objf_this_phase +
+      tot_den_objf_this_phase;
+  KALDI_LOG << "Average objective function for '" << output_name
+            << "' for minibatches " << start_minibatch
+            << '-' << end_minibatch << " is "
+            << (tot_objf_this_phase / tot_weight_this_phase) << " over "
+            << tot_weight_this_phase << " frames = "
+            << (tot_num_objf_this_phase / tot_weight_this_phase) << " + "
+            << (tot_den_objf_this_phase / tot_weight_this_phase);
+}
+
+bool CctcObjectiveFunctionInfo::PrintTotalStats(const std::string &name) const {
+  BaseFloat tot_objf = tot_num_objf + tot_den_objf;
+  KALDI_LOG << "Overall average objective function for '" << name << "' is "
+            << (tot_objf / tot_weight) << " over " << tot_weight << " frames = "
+            << (tot_num_objf / tot_weight) << " + "
+            << (tot_den_objf / tot_weight);
+
+  KALDI_LOG << "[this line is to be parsed by a script:] "
+            << "log-prob-per-frame="
+            << (tot_objf / tot_weight);
+  return (tot_weight != 0.0);
 }
 
 

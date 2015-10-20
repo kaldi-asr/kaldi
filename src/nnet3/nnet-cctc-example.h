@@ -71,9 +71,12 @@ struct NnetCctcSupervision {
                   correctly normalizing the objective function (e.g. for
                   display), is output to here.  It will be set to the sum of
                   supervision[i].weight * supervision[i].num_frames.
-      @param [out] tot_objf  The total objective function for this training
-                  data, i.e. the sum of the log-likelihoods from the forward
+      @param [out] tot_objf_num_part  The total objective function for this training
+                  data (numerator part), i.e. the sum of the log-likelihoods from the forward
                   computation over each of the supervision examples.
+      @param [out] tot_objf_den_part  The total objective function for this training
+                  data (denominator part), i.e. the negative of the log-like from
+                  the tombstone computation.
       @param [out] nnet_out_deriv  If non-NULL, the derivative of the CCTC
                   objective function w.r.t. 'nnet_output' will be written to
                   here.  Does not have to be zeroed beforehand (this function
@@ -85,7 +88,8 @@ struct NnetCctcSupervision {
                             const CuMatrix<BaseFloat> &cu_weights,
                             const CuMatrixBase<BaseFloat> &nnet_output,
                             BaseFloat *tot_weight,
-                            BaseFloat *tot_objf,
+                            BaseFloat *tot_objf_num_part,
+                            BaseFloat *tot_objf_den_part,
                             CuMatrixBase<BaseFloat> *nnet_out_deriv) const;
 
 

@@ -100,7 +100,7 @@ class NnetCctcLdaStatsAccumulator {
     MapPosterior(post, &pdf_post);
 
     if (lda_stats_.Dim() == 0)
-      lda_stats_.Init(trans_model_.NumNonBlankIndexes(),
+      lda_stats_.Init(trans_model_.NumTreeIndexes(),
                       nnet_output.NumCols());
 
     for (int32 t = 0; t < num_frames; t++) {
@@ -139,7 +139,7 @@ class NnetCctcLdaStatsAccumulator {
       for (; src_iter != src_end; ++src_iter) {
         int32 graph_label = src_iter->first,
             output_index = trans_model_.GraphLabelToOutputIndex(graph_label);
-        if (output_index < trans_model_.NumNonBlankIndexes()) {
+        if (output_index < trans_model_.NumTreeIndexes()) {
           BaseFloat weight = src_iter->second;
           dest.push_back(std::pair<int32, BaseFloat>(output_index, weight));
           weight_sum += weight;

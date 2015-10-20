@@ -56,7 +56,7 @@ void CreateCompactLatticeFromPhonesAndDurations(
   }
   CompactLatticeWeight weight(LatticeWeight(RandUniform(), RandUniform()),
                               std::vector<int32>());
-  lat_out->SetFinal(current_state, weight);    
+  lat_out->SetFinal(current_state, weight);
 }
 
 
@@ -74,7 +74,8 @@ void ExcludeRangeFromVector(const std::vector<int32> &in,
 }
 
 void TestCctcSupervisionTraining(const ctc::CctcTransitionModel &trans_model,
-                                 const ctc::CctcSupervision &supervision) {
+                                 const ctc::CctcSupervision &supervision,
+                                 int32 num_sequences) {
   using namespace kaldi::ctc;
   BaseFloat delta = 1.0e-04;
   int32 num_frames = supervision.num_frames,
@@ -84,10 +85,13 @@ void TestCctcSupervisionTraining(const ctc::CctcTransitionModel &trans_model,
   CuMatrix<BaseFloat> cu_weights;
   trans_model.ComputeWeights(&cu_weights);
   CctcTrainingOptions opts;
-  CctcComputation computation(opts, trans_model, cu_weights,
-                              supervision, nnet_output);
-  BaseFloat log_like = computation.Forward();
-  KALDI_LOG << "log-like of CCTC computation is " << log_like;
+  CctcCommonComputation computation(opts, trans_model, cu_weights,
+                                    supervision, num_sequences, nnet_output);
+
+  BaseFloat log_like, den_term, normalizer;
+  computation.Forward(&log_like, &den_term, &normalizer);
+  KALDI_LOG << "log-like of CCTC computation is " << log_like << " + " << den_term
+            << " = " << (log_like + den_term);
 
   CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
                                         kUndefined);
@@ -105,11 +109,16 @@ void TestCctcSupervisionTraining(const ctc::CctcTransitionModel &trans_model,
     predicted_objf_changes(i) = TraceMatMat(modified_output,
                                             nnet_output_deriv, kTrans);
     modified_output.AddMat(1.0, nnet_output);
-    CctcComputation computation(opts, trans_model, cu_weights,
-                                supervision, modified_output);
-    BaseFloat modified_log_like = computation.Forward();
+    CctcCommonComputation computation(opts, trans_model, cu_weights,
+                                      supervision, num_sequences,
+                                      modified_output);
+
+    BaseFloat modified_log_like, modified_den_term, modified_normalizer;
+    computation.Forward(&modified_log_like, &modified_den_term,
+                        &modified_normalizer);
     // no need to do backward.
-    measured_objf_changes(i) = modified_log_like - log_like;
+    measured_objf_changes(i) =
+        (modified_log_like + modified_den_term) - (log_like + den_term);
   }
   KALDI_LOG << "predicted_objf_changes = " << predicted_objf_changes;
   KALDI_LOG << "measured_objf_changes = " << measured_objf_changes;
@@ -228,7 +237,7 @@ void TestCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
   if (tot_frames < subsample_factor) {
     // Don't finish the test because it would fail.  we run this multiple times.
     return;
-  }  
+  }
   CctcSupervisionOptions sup_opts;
   sup_opts.frame_subsampling_factor = subsample_factor;
   // keep the following two lines in sync and keep the silence
@@ -255,7 +264,7 @@ void TestCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
   if (!MakeCctcSupervisionNoContext(proto_supervision, num_phones,
                                    &supervision)) {
     // the only way this should fail is if we had too many phones for
-    // the number of subsampled frames.    
+    // the number of subsampled frames.
     KALDI_ASSERT(sequence_length > tot_frames / subsample_factor);
     KALDI_LOG << "Failed to create CctcSupervision because too many "
               << "phones for too few frames.";
@@ -285,7 +294,7 @@ void TestCctcSupervision(const ctc::CctcTransitionModel &trans_model) {
     for (size_t i = 0; i + 1 < state_times.size(); i++)
       KALDI_ASSERT(state_times[i] <= state_times[i+1]);
   }
-  
+
 
   std::vector<int32> phones_from_graph;
   for (size_t i = 0; i < graph_label_seq_in.size(); i++) {

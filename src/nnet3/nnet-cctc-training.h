@@ -30,6 +30,7 @@
 namespace kaldi {
 namespace nnet3 {
 
+
 struct NnetCctcTrainerOptions: public NnetTrainerOptions {
   ctc::CctcTrainingOptions cctc_training_config;
 
@@ -37,6 +38,38 @@ struct NnetCctcTrainerOptions: public NnetTrainerOptions {
     NnetTrainerOptions::Register(opts);
     cctc_training_config.Register(opts);
   }
+};
+
+
+struct CctcObjectiveFunctionInfo {
+  int32 current_phase;
+
+  double tot_weight;
+  double tot_num_objf;
+  double tot_den_objf;
+
+  double tot_weight_this_phase;
+  double tot_num_objf_this_phase;
+  double tot_den_objf_this_phase;
+
+  CctcObjectiveFunctionInfo();
+
+  // This function updates the stats and, if the phase has just changed,
+  // prints a message indicating progress.  The phase equals
+  // minibatch_counter / minibatches_per_phase.  Its only function is to
+  // control how frequently we print logging messages.
+  void UpdateStats(const std::string &output_name,
+                   int32 minibatches_per_phase,
+                   int32 minibatch_counter,
+                   BaseFloat this_minibatch_weight,
+                   BaseFloat this_minibatch_num_objf,
+                   BaseFloat this_minibatch_den_objf);
+
+  // Prints stats for the current phase.
+  void PrintStatsForThisPhase(const std::string &output_name,
+                              int32 minibatches_per_phase) const;
+  // Prints total stats, and returns true if total stats' weight was nonzero.
+  bool PrintTotalStats(const std::string &output_name) const;
 };
 
 
@@ -76,7 +109,7 @@ class NnetCctcTrainer {
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
 
-  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+  unordered_map<std::string, CctcObjectiveFunctionInfo, StringHasher> objf_info_;
 };
 
 /**

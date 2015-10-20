@@ -25,11 +25,22 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-cctc-example.h"
-#include "nnet3/nnet-diagnostics.h"
 #include "nnet3/nnet-training.h"
 
 namespace kaldi {
 namespace nnet3 {
+
+
+struct SimpleCctcObjectiveInfo {
+  double tot_weight;
+  double tot_num_objective;
+  double tot_den_objective;
+
+  SimpleCctcObjectiveInfo(): tot_weight(0.0),
+                             tot_num_objective(0.0),
+                             tot_den_objective(0.0) { }
+
+};
 
 struct NnetCctcComputeProbOptions {
   bool debug_computation;
@@ -77,10 +88,10 @@ class NnetCctcComputeProb {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
-  
+
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
-  const SimpleObjectiveInfo *GetObjective(const std::string &output_name) const;
+  const SimpleCctcObjectiveInfo *GetObjective(const std::string &output_name) const;
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
@@ -102,7 +113,7 @@ class NnetCctcComputeProb {
   // this is only for diagnostics.
   int32 num_minibatches_processed_;
 
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher> objf_info_;
+  unordered_map<std::string, SimpleCctcObjectiveInfo, StringHasher> objf_info_;
 
 };
 

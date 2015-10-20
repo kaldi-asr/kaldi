@@ -100,7 +100,7 @@ BaseFloat DecodableNnetCctcSimple::LogLikelihood(int32 subsampled_frame,
       den = current_log_denominators_(subsampled_frame -
                                       current_log_post_subsampled_offset_,
                                       denominator_index),
-      blank_scale = (numerator_index >= trans_model_.NumNonBlankIndexes() ?
+      blank_scale = (numerator_index >= trans_model_.NumTreeIndexes() ?
                      log_blank_scale_ : 0.0),
       unnorm_ans = num - den + blank_scale;
   if (unnorm_ans - unnorm_ans == 0) { // Not infinite or NaN

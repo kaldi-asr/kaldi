@@ -90,25 +90,26 @@ void NnetCctcComputeProb::ProcessOutputs(const NnetCctcExample &eg,
     if (node_index < 0 ||
         !nnet_.IsOutputNode(node_index))
       KALDI_ERR << "Network has no output named " << sup.name;
-    
+
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
     CuMatrix<BaseFloat> nnet_output_deriv;
     if (config_.compute_deriv)
       nnet_output_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
-    
-    BaseFloat tot_weight, tot_objf;
+
+    BaseFloat tot_weight, tot_num_objf, tot_den_objf;
     sup.ComputeObjfAndDerivs(config_.cctc_training_config,
                              trans_model_,
                              cu_weights_, nnet_output,
-                             &tot_weight, &tot_objf,
+                             &tot_weight, &tot_num_objf, &tot_den_objf,
                              (config_.compute_deriv ?
                               &nnet_output_deriv : NULL));
 
-    SimpleObjectiveInfo &totals = objf_info_[sup.name];
+    SimpleCctcObjectiveInfo &totals = objf_info_[sup.name];
     totals.tot_weight += tot_weight;
-    totals.tot_objective += tot_objf;
-    
+    totals.tot_num_objective += tot_num_objf;
+    totals.tot_den_objective += tot_den_objf;
+
     if (config_.compute_deriv)
       computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
@@ -118,7 +119,7 @@ void NnetCctcComputeProb::ProcessOutputs(const NnetCctcExample &eg,
 
 bool NnetCctcComputeProb::PrintTotalStats() const {
   bool ans = false;
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, SimpleCctcObjectiveInfo, StringHasher>::const_iterator
       iter, end;
   iter = objf_info_.begin();
   end = objf_info_.end();
@@ -126,11 +127,15 @@ bool NnetCctcComputeProb::PrintTotalStats() const {
     const std::string &name = iter->first;
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
-    const SimpleObjectiveInfo &info = iter->second;
+    const SimpleCctcObjectiveInfo &info = iter->second;
+    BaseFloat tot_objf = info.tot_num_objective + info.tot_den_objective,
+        w = info.tot_weight;
     KALDI_LOG << "Overall log-probability for '"
               << name << "' is "
-              << (info.tot_objective / info.tot_weight) << " per frame"
-              << ", over " << info.tot_weight << " frames.";
+              << (tot_objf / w) << " per frame"
+              << ", over " << info.tot_weight << " frames = "
+              << (info.tot_num_objective / w) << " + "
+              << (info.tot_den_objective / w);
     if (info.tot_weight > 0)
       ans = true;
   }
@@ -138,9 +143,9 @@ bool NnetCctcComputeProb::PrintTotalStats() const {
 }
 
 
-const SimpleObjectiveInfo* NnetCctcComputeProb::GetObjective(
+const SimpleCctcObjectiveInfo* NnetCctcComputeProb::GetObjective(
     const std::string &output_name) const {
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, SimpleCctcObjectiveInfo, StringHasher>::const_iterator
       iter = objf_info_.find(output_name);
   if (iter != objf_info_.end())
     return &(iter->second);
