@@ -84,7 +84,8 @@ utils.mkdir_p(outdir+"/nnet")
 logging.basicConfig(filename=outdir+'/train.log', format='%(asctime)s: %(message)s', level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
-logging.info("Running as %s ", " ".join(sys.argv))
+logging.info("Running as %s ", sys.argv[0])
+logging.info("%s", " ".join(sys.argv))
 
 if len(o.strm_indices) == 0:
   logging.error("Use train.py for normal DNN training")

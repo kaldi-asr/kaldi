@@ -54,6 +54,9 @@ utils.mkdir_p(outdir+"/nnet")
 logging.basicConfig(filename=outdir+'/train.log', format='%(asctime)s: %(message)s', level=logging.INFO)
 logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
+logging.info("Running as %s ", sys.argv[0])
+logging.info("%s", " ".join(sys.argv))
+
 ## Check final_nnet.pkl exist, if yes quit
 if os.path.exists(outdir+"/final_nnet.pklz"):
   logging.info("Skipping training as %s/final_nnet.pklz exists", outdir)
