@@ -388,7 +388,7 @@ x=0
 deriv_time_opts=
 [ ! -z "$left_deriv_truncate" ] && deriv_time_opts="--optimization.min-deriv-time=$left_deriv_truncate"
 [ ! -z "$right_deriv_truncate" ] && \
-  deriv_time_opts="$deriv_time_opts --optimization.max-deriv-time=$((chunk_width - right_deriv_truncate))"
+  deriv_time_opts="$deriv_time_opts --optimization.max-deriv-time=$((frames_per_eg - right_deriv_truncate))"
 
 
 while [ $x -lt $num_iters ]; do
