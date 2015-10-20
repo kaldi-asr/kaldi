@@ -75,6 +75,8 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
 frames_per_eg=25   # number of frames of output per chunk.  To be passed on to get_egs.sh.
+left_deriv_truncate=   # number of time-steps to avoid using the deriv of, on the lefr.
+right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on the right.
 
 # End configuration section.
 
@@ -237,7 +239,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --right-tolerance $right_tolerance \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
-      --cmd "$cmd" $egs_opts \
+      --cmd "$cmd" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
       $data $lang $dir/0.ctc_trans_mdl $latdir $dir/egs || exit 1;
@@ -383,6 +385,11 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
 
+deriv_time_opts=
+[ ! -z "$left_deriv_truncate" ] && deriv_time_opts="--optimization.min-deriv-time=$left_deriv_truncate"
+[ ! -z "$right_deriv_truncate" ] && \
+  deriv_time_opts="$deriv_time_opts --optimization.max-deriv-time=$((chunk_width - right_deriv_truncate))"
+
 
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
@@ -457,7 +464,7 @@ while [ $x -lt $num_iters ]; do
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-ctc-train $parallel_train_opts --print-interval=10 --write-raw=true "$mdl" \
+          nnet3-ctc-train $parallel_train_opts $deriv_time_opts --print-interval=10 --write-raw=true "$mdl" \
           "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done

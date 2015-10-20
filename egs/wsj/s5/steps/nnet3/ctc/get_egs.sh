@@ -22,6 +22,9 @@ feat_type=raw     # set it to 'lda' to use LDA features.
 frames_per_eg=25   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
+frames_overlap_per_eg=0  # number of supervised frames of overlap that we aim for per eg.
+                  # can be useful to avoid wasted data if you're using --left-deriv-truncate
+                  # and --right-deriv-truncate.
 frame_subsampling_factor=3 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
@@ -76,7 +79,8 @@ if [ $# != 5 ]; then
   echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frame-subsampling-factor <factor;3>            # factor by which num-frames at nnet output is reduced "
-  echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
+  echo "  --frames-per-eg <frames;25>                      # number of supervised frames per eg on disk"
+  echo "  --frames-overlap-per-eg <frames;25>              # number of supervised frames of overlap between egs"
   echo "  --left-context <width;4>                         # Number of frames on left side to append for feature input"
   echo "  --right-context <width;4>                        # Number of frames on right side to append for feature input"
   echo "  --num-egs-diagnostic <#frames;4000>              # Number of egs used in computing (train,valid) diagnostics"
@@ -251,11 +255,12 @@ fi
 
 
 silphones=$(cat $lang/phones/silence.csl) || exit 1;
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
+# don't do the overlap thing for the validation data.
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
 ctc_supervision_all_opts="--lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor --right-tolerance=$right_tolerance"
