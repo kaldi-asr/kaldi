@@ -33,13 +33,10 @@ fi
 # Using Beamformit
 # This results in better performance than the CHiME3 official beamforming
 # See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
-# robust feature extraction, and advanced speech recognition,“ ASRU’15
+# robust feature extraction, and advanced speech recognition," in Proc. ASRU'15
 # note that beamformed wav files are generated in the following directory
 enhancement_method=beamformit_5mics
 enhancement_data=`pwd`/$enhancement_method
-if [ ! -d $enhancement_data ]; then
-  echo "$enhancement_data does not exist. Please specify enhancement data correctly" && exit 1
-fi
 if [ $stage -le 1 ]; then
   local/chime3_beamform.sh --cmd "$train_cmd" --nj 20 $chime3_data/data/audio/16kHz/isolated $enhancement_data
 fi
