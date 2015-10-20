@@ -219,12 +219,11 @@ void CctcHmm::SetInitialProbs(const CctcTransitionModel &trans_mdl) {
 
 CctcNegativeComputation::CctcNegativeComputation(
     const CctcTransitionModel &trans_model,
-    const CuMatrix<BaseFloat> &cu_weights,
     const CctcHmm &hmm,
     const CuMatrixBase<BaseFloat> &exp_nnet_output,
     const CuMatrixBase<BaseFloat> &denominators,
     int32 num_sequences):
-    trans_model_(trans_model), cu_weights_(cu_weights), hmm_(hmm),
+    trans_model_(trans_model), hmm_(hmm),
     exp_nnet_output_(exp_nnet_output), denominators_(denominators),
     num_sequences_(num_sequences) {
   KALDI_ASSERT(exp_nnet_output_.NumRows() % num_sequences_ == 0);
@@ -455,8 +454,8 @@ void CctcNegativeComputation::BetaGeneralFrame(int32 t) {
             inv_arbitrary_scale =
             this_alpha[special_hmm_state * num_sequences + s];
         double tot_variable_factor = 0.0;
-        BaseFloat common_factor = 1.0 / (den_probs[h * num_sequences + s] *
-                                         inv_arbitrary_scale),
+        BaseFloat this_den_prob = den_probs[h * num_sequences + s],
+            common_factor = 1.0 / (this_den_prob * inv_arbitrary_scale),
             occupation_factor = common_factor * this_alpha_prob;
         const CctcHmmTransition
             *trans_iter = transitions + forward_transitions[h].first,
@@ -472,10 +471,10 @@ void CctcNegativeComputation::BetaGeneralFrame(int32 t) {
           BaseFloat occupation_prob = variable_factor * occupation_factor;
           log_num_deriv[num_index * num_sequences + s] += occupation_prob;
         }
-        // d(objf) / d(den) is an occupation count divided by the denominator
+        // d(objf) / d(den) is an occupation count times the denominator
         // prob.
         den_deriv[h * num_sequences + s] =
-            occupation_factor * tot_variable_factor;
+            - tot_variable_factor * occupation_factor / this_den_prob;
         this_beta[h * num_sequences + s] = tot_variable_factor * common_factor;
       }
     }

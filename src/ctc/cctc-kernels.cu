@@ -157,8 +157,8 @@ static void _cuda_ctc_hmm_backward(const Int32Pair *forward_transitions,
       inv_arbitrary_scale =
       this_alpha[special_hmm_state * num_sequences + s];
   double tot_variable_factor = 0.0;
-  BaseFloat common_factor = 1.0 / (den_probs[h * num_sequences + s] *
-                                   inv_arbitrary_scale),
+  BaseFloat this_den_prob = den_probs[h * num_sequences + s],
+      common_factor = 1.0 / (this_den_prob * inv_arbitrary_scale),
       occupation_factor = common_factor * this_alpha_prob;
   const CctcHmmTransition
       *trans_iter = transitions + forward_transitions[h].first,
@@ -174,10 +174,9 @@ static void _cuda_ctc_hmm_backward(const Int32Pair *forward_transitions,
     BaseFloat occupation_prob = variable_factor * occupation_factor;
     atomic_add(log_num_deriv + (num_index * num_sequences + s), occupation_prob);
   }
-  // d(objf) / d(den) is an occupation count divided by the denominator
-  // prob.
+  // d(objf) / d(den) is an occupation count times the denominator prob.
   den_deriv[h * num_sequences + s] =
-      occupation_factor * tot_variable_factor;
+      - tot_variable_factor * occupation_factor / this_den_prob;
   this_beta[h * num_sequences + s] = tot_variable_factor * common_factor;
 }
 

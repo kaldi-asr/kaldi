@@ -75,7 +75,7 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
 
   denominators.AddMatMat(1.0, exp_nnet_output, kNoTrans, weights, kTrans, 0.0);
 
-  CctcNegativeComputation negative_computation(trans_model, weights, hmm,
+  CctcNegativeComputation negative_computation(trans_model, hmm,
                                                exp_nnet_output,
                                                denominators, num_sequences);
 
@@ -96,14 +96,62 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
   negative_computation.Backward(&nnet_output_deriv,
                                 &denominators_deriv);
 
-  BaseFloat output_deriv_sum = nnet_output_deriv.Sum(),
-      den_deriv_sum = denominators_deriv.Sum();
-  KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
-            << " vs. expected " << (num_sequences * num_time_steps);
-  KALDI_LOG << "Sum of denominators-deriv is " << den_deriv_sum
-            << " vs. expected " << (num_sequences * num_time_steps);
-  AssertEqual(output_deriv_sum, BaseFloat(num_sequences * num_time_steps));
-  AssertEqual(den_deriv_sum, BaseFloat(num_sequences * num_time_steps));
+  { // a check
+    BaseFloat output_deriv_sum = nnet_output_deriv.Sum();
+    KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
+              << " vs. expected " << (num_sequences * num_time_steps);
+    AssertEqual(output_deriv_sum, BaseFloat(num_sequences * num_time_steps));
+  }
+
+  // compute the deriv w.r.t. the output by adding the term
+  // that comes via the denominator.
+  CuMatrix<BaseFloat> exp_nnet_output_deriv(nnet_output.NumRows(),
+                                            nnet_output.NumCols());
+  exp_nnet_output_deriv.AddMatMat(1.0, denominators_deriv, kNoTrans,
+                                  weights, kNoTrans, 0.0);
+  // make it the deriv (via denominator) w.r.t. the actual nnet output, using
+  // df/d(exp x) = df/dx * exp(x).
+  exp_nnet_output_deriv.MulElements(exp_nnet_output);
+  BaseFloat den_sum = exp_nnet_output_deriv.Sum(),
+      num_sum = nnet_output_deriv.Sum();
+  KALDI_LOG << "den-sum = " << den_sum << ", num-sum = " << num_sum << " (should cancel)";
+  KALDI_ASSERT(den_sum + num_sum < 0.05 * (fabs(den_sum) + fabs(num_sum)));
+
+  nnet_output_deriv.AddMat(1.0, exp_nnet_output_deriv);  // combine with the
+                                                         // term from the
+                                                         // numerators.
+
+  int32 num_tries = 3;
+  BaseFloat epsilon = 1.0e-03;
+  Vector<BaseFloat> predicted_objf_changes(num_tries),
+      observed_objf_changes(num_tries);
+  for (int32 p = 0; p < num_tries; p++) {
+    CuMatrix<BaseFloat> nnet_delta_output(nnet_output.NumRows(),
+                                          nnet_output.NumCols());
+    nnet_delta_output.SetRandn();
+    nnet_delta_output.Scale(epsilon);
+    predicted_objf_changes(p) = TraceMatMat(nnet_output_deriv,
+                                            nnet_delta_output, kTrans);
+    CuMatrix<BaseFloat> exp_nnet_output_perturbed(nnet_delta_output);
+    exp_nnet_output_perturbed.AddMat(1.0, nnet_output);
+    exp_nnet_output_perturbed.ApplyExp();
+    CuMatrix<BaseFloat> denominators_perturbed(nnet_output.NumRows(),
+                                               trans_model.NumHistoryStates());
+
+    denominators_perturbed.AddMatMat(1.0, exp_nnet_output_perturbed,
+                                     kNoTrans, weights, kTrans, 0.0);
+
+    CctcNegativeComputation negative_computation_perturbed(trans_model, hmm,
+                                                           exp_nnet_output_perturbed,
+                                                           denominators_perturbed,
+                                                           num_sequences);
+
+    BaseFloat forward_prob_perturbed = negative_computation_perturbed.Forward();
+    observed_objf_changes(p) = forward_prob_perturbed - forward_prob;
+  }
+  KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
+  KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
+  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
 }
 
 

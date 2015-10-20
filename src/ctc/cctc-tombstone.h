@@ -176,7 +176,6 @@ class CctcNegativeComputation {
   // number of frames, and we assume that we're sorted first on n and then on t,
   // since that's the way the positive computation requires them to be.
   CctcNegativeComputation(const CctcTransitionModel &trans_model,
-                          const CuMatrix<BaseFloat> &cu_weights,
                           const CctcHmm &hmm,
                           const CuMatrixBase<BaseFloat> &exp_nnet_output,
                           const CuMatrixBase<BaseFloat> &denominators,
@@ -198,7 +197,6 @@ class CctcNegativeComputation {
 
 private:
   const CctcTransitionModel &trans_model_;
-  const CuMatrix<BaseFloat> &cu_weights_;
   const CctcHmm &hmm_;
   const CuMatrixBase<BaseFloat> &exp_nnet_output_;
   const CuMatrixBase<BaseFloat> &denominators_;
