@@ -38,6 +38,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int32 left_context,
                         int32 right_context,
                         int32 frames_per_eg,
+                        int32 frames_overlap_per_eg,
                         int32 frame_subsampling_factor,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
@@ -55,14 +56,19 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
 
   KALDI_ASSERT(frames_per_eg % frame_subsampling_factor == 0);
 
-  int32 frames_per_eg_subsampled = frames_per_eg / frame_subsampling_factor;
+  int32 frames_per_eg_subsampled = frames_per_eg / frame_subsampling_factor,
+      frames_overlap_subsampled = frames_overlap_per_eg / frame_subsampling_factor,
+      frames_shift_subsampled = frames_per_eg_subsampled - frames_overlap_subsampled;
+
+  if (num_feature_frames_subsampled < frames_per_eg_subsampled)
+    return false;
 
   // we don't do any padding, as it would be a bit tricky to pad the CTC supervision.
   // Instead we select ranges of frames that fully fit within the file;  these
   // might slightly overlap with each other or have gaps.
   std::vector<int32> range_starts_subsampled;
-  ctc::SplitIntoRanges(num_feature_frames_subsampled,
-                       frames_per_eg_subsampled,
+  ctc::SplitIntoRanges(num_feature_frames_subsampled - frames_overlap_subsampled,
+                       frames_shift_subsampled,
                        &range_starts_subsampled);
 
   if (range_starts_subsampled.empty()) {
@@ -139,6 +145,35 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
   return true;
 }
 
+void RoundUpNumFrames(int32 frame_subsampling_factor,
+                      int32 *num_frames,
+                      int32 *num_frames_overlap) {
+  if (*num_frames % frame_subsampling_factor != 0) {
+    int32 new_num_frames = frame_subsampling_factor *
+        (*num_frames / frame_subsampling_factor + 1);
+    KALDI_LOG << "Rounding up --num-frames=" << (*num_frames)
+              << " to a multiple of --frame-subsampling-factor="
+              << frame_subsampling_factor
+              << ", now --num-frames=" << new_num_frames;
+    *num_frames = new_num_frames;
+  }
+  if (*num_frames_overlap % frame_subsampling_factor != 0) {
+    int32 new_num_frames_overlap = frame_subsampling_factor *
+        (*num_frames_overlap / frame_subsampling_factor + 1);
+    KALDI_LOG << "Rounding up --num-frames-overlap=" << num_frames_overlap
+              << " to a multiple of --frame-subsampling-factor="
+              << frame_subsampling_factor
+              << ", now --num-frames=" << new_num_frames_overlap;
+    *num_frames_overlap = new_num_frames_overlap;
+  }
+  if (num_frames_overlap < 0 || num_frames_overlap >= num_frames) {
+    KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
+              << "--num-frames=" << (*num_frames);
+  }
+
+
+}
+
 
 } // namespace nnet2
 } // namespace kaldi
@@ -168,7 +203,8 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 left_context = 0, right_context = 0, num_frames = 1,
-        length_tolerance = 100, frame_subsampling_factor = 1;
+        num_frames_overlap = 0, length_tolerance = 100,
+        frame_subsampling_factor = 1;
 
     std::string ivector_rspecifier;
 
@@ -182,6 +218,10 @@ int main(int argc, char *argv[]) {
     po.Register("num-frames", &num_frames, "Number of frames with labels "
                 "that each example contains.  Will be rounded up to a multiple "
                 "of --frame-subsampling-factor.");
+    po.Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
+                "overlap between each example (could be useful in conjunction "
+                "--min-deriv-time and --max-deriv-time, to avoid wasting data). "
+                "Each time we shift by --num-frames minus --num-frames-overlap.");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier of ivector "
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
@@ -200,16 +240,8 @@ int main(int argc, char *argv[]) {
     if (num_frames <= 0 || left_context < 0 || right_context < 0 ||
         length_tolerance < 0 || frame_subsampling_factor <= 0)
       KALDI_ERR << "One of the integer options is out of the allowed range.";
-    if (num_frames % frame_subsampling_factor != 0) {
-      int32 new_num_frames = frame_subsampling_factor *
-          (num_frames / frame_subsampling_factor + 1);
-      KALDI_LOG << "Rounding up --num-frames=" << num_frames
-                << " to a multiple of --frame-subsampling-factor="
-                << frame_subsampling_factor
-                << ", now --num-frames=" << new_num_frames;
-      num_frames = new_num_frames;
-    }
-
+    RoundUpNumFrames(frame_subsampling_factor,
+                     &num_frames, &num_frames_overlap);
 
     std::string feature_rspecifier = po.GetArg(1),
         supervision_rspecifier = po.GetArg(2),
@@ -254,7 +286,7 @@ int main(int argc, char *argv[]) {
         }
         if (ProcessFile(feats, ivector_feats, supervision, key, compress,
                         left_context, right_context, num_frames,
-                        frame_subsampling_factor,
+                        num_frames_overlap, frame_subsampling_factor,
                         &num_frames_written, &num_egs_written,
                         &example_writer))
           num_done++;

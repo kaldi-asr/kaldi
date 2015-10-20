@@ -83,8 +83,9 @@ chunk_left_context=30  # number of steps used in the estimation of LSTM state be
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
-num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
-                   # it is usually same as chunk_width
+left_deriv_truncate=0   # number of time-steps to avoid using the deriv of, on the lefr.
+right_deriv_truncate=0  # number of time-steps to avoid using the deriv of, on the right.
+
 
 
 # nnet3-train options
@@ -312,7 +313,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --right-tolerance $right_tolerance \
-      --cmd "$cmd" $egs_opts \
+      --cmd "$cmd" \
       --stage $get_egs_stage \
       --frames-per-iter $frames_per_iter \
       --frames-per-eg $chunk_width \
@@ -461,9 +462,10 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 
 x=0
 
-[ -z $num_bptt_steps ] && num_bptt_steps=$chunk_width;
 
-min_deriv_time=$((chunk_width - num_bptt_steps))
+min_deriv_time=$left_deriv_truncate
+max_deriv_time=$((chunk_width - right_deriv_truncate))
+
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
 
@@ -552,6 +554,7 @@ while [ $x -lt $num_iters ]; do
           nnet3-ctc-train $parallel_train_opts --print-interval=10 \
           --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time \
+          --optimization.max-deriv-time=$max_deriv_time \
           --momentum=$momentum --write-raw=true "$mdl" \
           "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_num_chunk_per_minibatch ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &

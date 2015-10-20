@@ -138,7 +138,6 @@ if [ $stage -le 11 ]; then
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
   steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
-    --egs-dir exp/ctc/lstm_f/egs \
     --right-tolerance 20 \
     --frames-per-iter 800000 \
     --ngram-order 1 \
@@ -178,13 +177,15 @@ fi
 
 if [ $stage -le 13 ]; then
   # offline decoding
+  blank_scale=0.05
   for lm_suffix in tgpr bd_tgpr; do
     # use already-built graphs.
     for year in eval92 dev93; do
       steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
+        --blank-scale $blank_scale \
         --frames-per-chunk $chunk_width --extra-left-context $chunk_left_context \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
-         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
+         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight}_bs${blank_scale} &
     done
   done
 fi
