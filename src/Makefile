@@ -21,6 +21,7 @@ CUDAMEMTESTDIR = cudamatrix
 
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 
+SUBDIRS_BIN = $(filter %bin, $(SUBDIRS))
 
 # Optional subdirectories
 EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
@@ -139,6 +140,13 @@ $(SUBDIRS) : mklibdir
 .PHONY: $(EXT_SUBDIRS)
 $(EXT_SUBDIRS) : mklibdir
 	$(MAKE) -C $@
+
+install: all
+	mkdir -p $(INSTALLPREFIX)/{bin,lib}
+	# copying binaries to $(INSTALLPREFIX)/bin
+	find $(SUBDIRS_BIN) -type f -executable -exec cp -v {} $(INSTALLPREFIX)/bin/ ';'
+	# copying libs to $(INSTALLPREFIX)/lib
+	cp -av ../tools/openfst/lib/* $(INSTALLPREFIX)/lib/
 
 
 ### Dependency list ###
