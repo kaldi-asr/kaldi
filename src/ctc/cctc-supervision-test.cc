@@ -86,7 +86,7 @@ void ExcludeRangeFromVector(const std::vector<int32> &in,
 void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
                                  const CctcSupervision &supervision,
                                  int32 num_sequences) {
-  BaseFloat delta = 1.0e-04;
+  BaseFloat delta = 2.0e-04;
   int32 num_frames = supervision.num_frames,
       nnet_output_dim = trans_model.NumOutputIndexes();
   CuMatrix<BaseFloat> nnet_output(num_frames, nnet_output_dim);

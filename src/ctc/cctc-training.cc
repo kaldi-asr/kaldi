@@ -267,9 +267,6 @@ BaseFloat CctcPositiveComputation::Forward(
   ComputeLookupIndexes(first_frame_alpha);
   LookUpLikelihoods();
   ComputeAlpha();
-  // TODO: remove this and remove that ComputeExtraLogprob function.
-  KALDI_ASSERT(ApproxEqual(extra_log_prob_,
-                           supervision_.ComputeExtraLogprob(trans_model_)));
   return tot_log_prob_ + extra_log_prob_;
 }
 

@@ -269,7 +269,8 @@ void ModifyProtoSupervisionTimes(const CctcSupervisionOptions &opts,
   std::vector<PhoneInstance>::iterator
       iter = proto_supervision->phone_instances.begin(),
       end = proto_supervision->phone_instances.end();
-  for (; iter != end; ++iter) {
+  ++iter;  // element zero of the array is not used.
+  for (; iter < end; ++iter) {
     iter->begin_frame = std::max<int32>(0,
                                         iter->begin_frame - left_tolerance) /
         subsampling_factor;
@@ -525,55 +526,6 @@ void AddContextToCctcSupervision(
   if (supervision->fst.NumStates() == 0)
     KALDI_ERR << "Supervision FST is empty after context expansion.";
   supervision->label_dim = trans_model.NumGraphLabels();
-}
-
-
-BaseFloat CctcSupervision::ComputeExtraLogprob(
-    const CctcTransitionModel &trans_mdl) const {
-  BaseFloat extra_logprob = 0.0;
-
-  // extra_history_states would logically appear inside the loop, but we want to
-  // avoid the initializer and destructor code.
-  std::set<int32> extra_history_states;
-
-  /*
-    A simpler, non-optimized version of this code is:
-   for (int32 state = 0; state < fst.NumStates(); state++) {
-     std::set<int32> history_states;
-     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
-          aiter.Next()) {
-       history_states.insert(trans_mdl.GraphLabelToHistoryState(arc.ilabel));
-     }
-     if (history_states.size() > 1)
-       extra_logprob += -log(history_states.size());
-   }
-  */
-  for (int32 state = 0; state < fst.NumStates(); state++) {
-    int32 first_history_state;  // an optimization to avoid set operations in
-                                // the common case.
-    bool saw_extra = false;
-    fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
-    if (aiter.Done())
-      continue;
-    // handle the first arc separately-- an optimization.
-    int32 graph_label = aiter.Value().ilabel;
-    first_history_state = trans_mdl.GraphLabelToHistoryState(graph_label);
-    aiter.Next();
-    for (; !aiter.Done(); aiter.Next()) {
-      int32 graph_label = aiter.Value().ilabel;
-      int32 this_history_state = trans_mdl.GraphLabelToHistoryState(graph_label);
-      if (this_history_state != first_history_state) {
-        saw_extra = true;
-        extra_history_states.insert(this_history_state);
-      }
-    }
-    if (saw_extra) {
-      BaseFloat size = 1.0 + extra_history_states.size();
-      extra_logprob += -log(size);
-      extra_history_states.clear();
-    }
-  }
-  return extra_logprob;
 }
 
 void CctcSupervision::Write(std::ostream &os, bool binary) const {

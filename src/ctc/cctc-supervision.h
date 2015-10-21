@@ -285,20 +285,6 @@ struct CctcSupervision {
   // of the properties we expect of it, and calls KALDI_ERR if not.
   void Check(const CctcTransitionModel &trans_mdl) const;
 
-
-  // extra_logprob is a rather obscure quantity that is used to ensure that the
-  // objective functions during training can never be positive.  It can be
-  // computed directly from the FST, as the sum over all states of the negative
-  // log of the number of history-states represented in arcs that leave those
-  // states.  What we are really getting at here, is that if the FSTs of
-  // alternatives have been split, shuffled and then reconnected, at the
-  // reconnection points (and only there) we have FST states that correspond to
-  // multiple history-states.  The log-prob that we return can be thought of as
-  // a factor that take into account the fact that every time we start a
-  // 'new' sequence (i.e. at the reconnection points), we want to divide the probability
-  // mass equally between all the history-states we could be in.
-  BaseFloat ComputeExtraLogprob(const CctcTransitionModel &trans_mdl) const;
-
   void Write(std::ostream &os, bool binary) const;
   void Read(std::istream &is, bool binary);
 };
