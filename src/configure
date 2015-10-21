@@ -82,6 +82,7 @@ static_fst=false
 use_cuda=true
 dynamic_kaldi=false
 mkl_threading=sequential
+INSTALLPREFIX=/opt/kaldi
 
 cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
 
