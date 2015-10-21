@@ -45,7 +45,7 @@ template<class Arc> void TestDeterminizeGeneral() {
     }
     VectorFst<Arc> ofst;
     try {
-      DeterminizeStar<Arc>(*fst, &ofst, kDelta, NULL, max_states);
+      DeterminizeStar<Fst<Arc> >(*fst, &ofst, kDelta, NULL, max_states);
       std::cout << "FST after determinizing is:\n";
       {
 #ifdef HAVE_OPENFST_GE_10400

@@ -727,6 +727,10 @@ void DeterminizerStar<F>::EpsilonClosure::
          " in determinization");
     }
 
+    // generally we need to be careful about iterator-invalidation problem
+    // here we pass a reference (elem), which could be an issue.
+    // In the beginning of ExpandOneElement, we make a copy of elem.string
+    // to avoid that issue
     ExpandOneElement(elem, sorted, unprocessed_weight);
   }
 
@@ -825,6 +829,9 @@ void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
                                           bool sorted,
                                           const Weight &unprocessed_weight,
                                           bool save_to_queue_2) {
+  StringId str = elem.string; // copy it here because there is an iterator-
+                // - invalidation problem (it really happens for some FSTs)
+
   // now we are going to propagate the "unprocessed_weight"
   for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state);
        !aiter.Done(); aiter.Next()) {
@@ -845,10 +852,10 @@ void DeterminizerStar<F>::EpsilonClosure::ExpandOneElement(
 
     // now must append strings
     if (arc.olabel == 0) {
-      next_elem.string = elem.string;
+      next_elem.string = str;
     } else {
       vector<Label> seq;
-      repository_->SeqOfId(elem.string, &seq);
+      repository_->SeqOfId(str, &seq);
       if (arc.olabel != 0)
         seq.push_back(arc.olabel);
       next_elem.string = repository_->IdOfSeq(seq);
