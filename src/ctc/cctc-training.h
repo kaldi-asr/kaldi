@@ -69,14 +69,27 @@ struct CctcTrainingOptions {
 // it externally.
 class CctcPositiveComputation {
  public:
+  // The 'num-sequences' is the number of separate FSTs from which the
+  // supervision object was created; this is only needed in order to correctly handle
+  // edge effects (to avoid getting a positive log-prob) and to output the
+  // 'first_frame_alpha' vector which is used by the negative computation.  This
+  // function requires that the sequences that were pasted together all have the
+  // same number of frames.
   CctcPositiveComputation(const CctcTrainingOptions &opts,
                           const CctcTransitionModel &trans_model,
                           const CctcSupervision &supervision,
+                          int32 num_sequences,
                           const CuMatrixBase<BaseFloat> &exp_nnet_output,
                           const CuMatrixBase<BaseFloat> &denominators);
 
-  // Does the forward computation.  Returns the total log-prob,
-  BaseFloat Forward();
+  // Does the forward computation.  Returns the total log-prob.  If
+  // first_frame_alpha is non-NULL, it also outputs to 'first_frame_alpha',
+  // which should be of dimension trans_model.NumHistoryStates() *
+  // num_sequences, alpha values for the first frame of each sequence; this is
+  // needed for the negative computation, to ensure the overall probability is
+  // negative.  In this array, the sequence-index has a stride of 1, and the
+  // hmm-index has a stride of num_sequences.
+  BaseFloat Forward(CuVectorBase<BaseFloat> *first_frame_alpha);
 
   // Does the backward computation and (efficiently) adds the direct part of the
   // derivative w.r.t. the neural network output to 'nnet_output_deriv' (by
@@ -90,8 +103,8 @@ class CctcPositiveComputation {
 
   const CctcTrainingOptions &opts_;
   const CctcTransitionModel &trans_model_;
-  // The supervision object
   const CctcSupervision &supervision_;
+  int32 num_sequences_;
 
   // the exp of the neural net output.
   const CuMatrixBase<BaseFloat> &exp_nnet_output_;
@@ -144,18 +157,37 @@ class CctcPositiveComputation {
   // The log-alpha value (forward probability) for each state in the lattice
   Vector<double> log_alpha_;
 
-  // The total log-probability of the supervision (you can interpret this as
-  // the posterior of this phone-sequence).
+  // The total log-probability of the supervision, from the forward-backward
+  // (you can interpret this as the posterior of this phone-sequence, after
+  // adding in extra_log_prob_).
   double tot_log_prob_;
+
+  // this is an extra term that gets added to tot_log_prob_prob_; it is the sum
+  // over the individual sequences, of the negative log of the number of
+  // history-states active on the first frame of that sequence (the idea being,
+  // that we distribute the initial-probs evenly among those history-states on
+  // those frames).
+  double extra_log_prob_;
 
   // The log-beta value (backward probability) for each state in the lattice
   Vector<double> log_beta_;
 
- private:
 
-  //  This function, called from Forward(), creates fst_indexes_,
-  //  numerator_indexes_ and denominator_indexes_.
-  void ComputeLookupIndexes();
+  // This function, called from Forward(), creates fst_indexes_,
+  // numerator_indexes_ and denominator_indexes_.
+  // first_frame_alpha, if non-NULL, is where we write some info about
+  // the first-frame's alpha probabilities for the sequences; see
+  // the documentation for Forward() for more explanation.
+  void ComputeLookupIndexes(CuVectorBase<BaseFloat> *first_frame_alpha);
+
+  // this function, called from ComputeLookupIndexes, outputs the
+  // first-frame alpha values (needed by the negative computation), if
+  // first_frame_alpha != NULL.
+  // It also sets extra_logprob_ to a penalty term that we need to add
+  // to the probability from this computation to ensure it's always < 1.
+  void OutputFirstFrameAlpha(const std::vector<int32> &fst_state_times,
+                             CuVectorBase<BaseFloat> *first_frame_alpha);
+
 
   // This function, called from Forward(), computes denominator_probs_ and
   // numerator_probs_ via batch lookup operations in exp_nnet_output_ and
@@ -220,6 +252,12 @@ class CctcCommonComputation {
   // cu_weights_ is derived from trans_model_.  Dimension is
   // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
   const CuMatrix<BaseFloat> &cu_weights_;
+
+  // vector, of dimension trans_model_.NumHistoryStates() by num_sequences_, of
+  // alphas that we can use on the first frame in the negative computation
+  // (taken from the positive computation).
+  CuVector<BaseFloat> first_frame_alphas_;
+
   // The supervision object
   const CctcSupervision &supervision_;
   // The number of separate time-sequences that the supervision object covers,

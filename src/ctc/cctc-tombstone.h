@@ -159,13 +159,11 @@ class CctcHmm {
 
 
 
-// This header relates to the 'tombstone' extension of CTC, and contains
+// This class relates to the 'tombstone' extension of CTC, and contains
 // utilities for efficient forward-backward over the entire model
 // (all word sequences), which becomes a negated term in the objective
 // function (like the denominator lattice in MMI training).
-
-// This class is supposed to be initialized just once and then used repeatedly,
-// as it needs to do some startup work.  This class supports both CPU and GPU
+// This class supports both CPU and GPU
 // versions of the computation, and it uses the GPU is you have initialized the
 // device (however, the CPU one will be very slow).
 class CctcNegativeComputation {
@@ -175,11 +173,17 @@ class CctcNegativeComputation {
   // distinct values of 'n' in the output indexes.  All must have the same
   // number of frames, and we assume that we're sorted first on n and then on t,
   // since that's the way the positive computation requires them to be.
+  //
+  // If not NULL, 'first_frame_alphas' is treated as suggested alpha values for
+  // the first frame (this will have been obtained by taking the history-states
+  // active on the 1st frame of each piece of the supervision lattice, and
+  // dividing the probability mass of 1.0 equall among all of them).
   CctcNegativeComputation(const CctcTransitionModel &trans_model,
                           const CctcHmm &hmm,
                           const CuMatrixBase<BaseFloat> &exp_nnet_output,
                           const CuMatrixBase<BaseFloat> &denominators,
-                          int32 num_sequences);
+                          int32 num_sequences,
+                          const CuVectorBase<BaseFloat> *first_frame_alphas);
   // Does the forward computation, and returns the total negated log-like summed
   // over all sequences.
   BaseFloat Forward();
@@ -201,6 +205,7 @@ private:
   const CuMatrixBase<BaseFloat> &exp_nnet_output_;
   const CuMatrixBase<BaseFloat> &denominators_;
   int32 num_sequences_;
+  const CuVectorBase<BaseFloat> *first_frame_alphas_;
   int32 num_time_steps_;
   int32 numerator_dim_;  // == trans_model_.NumTreeIndexes() +
                          // trans_model_.NumBlankIndexes();

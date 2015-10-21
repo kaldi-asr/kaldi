@@ -222,10 +222,12 @@ CctcNegativeComputation::CctcNegativeComputation(
     const CctcHmm &hmm,
     const CuMatrixBase<BaseFloat> &exp_nnet_output,
     const CuMatrixBase<BaseFloat> &denominators,
-    int32 num_sequences):
+    int32 num_sequences,
+    const CuVectorBase<BaseFloat> *first_frame_alphas):
     trans_model_(trans_model), hmm_(hmm),
     exp_nnet_output_(exp_nnet_output), denominators_(denominators),
-    num_sequences_(num_sequences) {
+    num_sequences_(num_sequences),
+    first_frame_alphas_(first_frame_alphas) {
   KALDI_ASSERT(exp_nnet_output_.NumRows() % num_sequences_ == 0);
   num_time_steps_ = exp_nnet_output_.NumRows() / num_sequences_;
   numerator_dim_ = trans_model_.NumTreeIndexes() +
@@ -248,17 +250,37 @@ CctcNegativeComputation::CctcNegativeComputation(
 }
 
 void CctcNegativeComputation::AlphaFirstFrame() {
-  // dim == num_hmm_states_ * num_sequences_.
-  BaseFloat *first_frame_alpha = alpha_.RowData(0);
-  // create a 'fake matrix' - view this row as a matrix.
-  CuSubMatrix<BaseFloat> alpha_mat(first_frame_alpha,
-                                   num_hmm_states_,
-                                   num_sequences_,
-                                   num_sequences_);
-  // TODO: It would be more efficient here if we implemented a CopyColsFromVec
-  // function in class CuMatrix.
-  alpha_mat.SetZero();
-  alpha_mat.AddVecToCols(1.0, hmm_.InitialProbs(), 0.0);
+  if (first_frame_alphas_ != NULL) {
+    // We have user-supplied alphas for the first frame- these
+    // will divide the probability mass equally among the states
+    // that were active in the supervision FST.
+    KALDI_ASSERT(first_frame_alphas_->Dim() == num_hmm_states_ * num_sequences_);
+    CuSubVector<BaseFloat> first_frame_alpha(alpha_, 0);
+    first_frame_alpha.CopyFromVec(*first_frame_alphas_);
+    // We can't allow the 'special' HMM state to ever have zero or very tiny
+    // probability, or it would generate NaN's in the computation as a side
+    // effect of our renormalization scheme that's intended to keep things in a
+    // good numeric range.  In order to prevent this, we give the special-state
+    // a small extra probability mass on frame zero.  This will make the
+    // den-prob very slightly higher (and so the objf very slightly worse).
+    BaseFloat special_state_extra_prob = 0.01;
+    CuSubVector<BaseFloat> special_state_probs(
+        first_frame_alpha.Data() + hmm_.SpecialHmmState() * num_sequences_,
+        num_sequences_);
+    special_state_probs.Add(special_state_extra_prob);
+  } else {
+    // dim == num_hmm_states_ * num_sequences_.
+    BaseFloat *first_frame_alpha = alpha_.RowData(0);
+    // create a 'fake matrix' - view this row as a matrix.
+    CuSubMatrix<BaseFloat> alpha_mat(first_frame_alpha,
+                                     num_hmm_states_,
+                                     num_sequences_,
+                                     num_sequences_);
+    // TODO: It would be more efficient here if we implemented a CopyColsFromVec
+    // function in class CuMatrix.
+    alpha_mat.SetZero();
+    alpha_mat.AddVecToCols(1.0, hmm_.InitialProbs(), 0.0);
+  }
 }
 
 // the alpha computation for some 0 < t <= num_time_steps_.

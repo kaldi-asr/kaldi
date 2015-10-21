@@ -28,10 +28,13 @@ CctcPositiveComputation::CctcPositiveComputation(
     const CctcTrainingOptions &opts,
     const CctcTransitionModel &trans_model,
     const CctcSupervision &supervision,
+    int32 num_sequences,
     const CuMatrixBase<BaseFloat> &exp_nnet_output,
     const CuMatrixBase<BaseFloat> &denominators):
     opts_(opts), trans_model_(trans_model),
-    supervision_(supervision), exp_nnet_output_(exp_nnet_output),
+    supervision_(supervision),
+    num_sequences_(num_sequences),
+    exp_nnet_output_(exp_nnet_output),
     denominators_(denominators) { }
 
 
@@ -104,9 +107,77 @@ void CctcPositiveComputation::ComputeBeta() {
 }
 
 
-void CctcPositiveComputation::ComputeLookupIndexes() {
+void CctcPositiveComputation::OutputFirstFrameAlpha(
+    const std::vector<int32> &fst_state_times,
+    CuVectorBase<BaseFloat> *first_frame_alpha) {
+  std::vector<MatrixElement<BaseFloat> > nonzero_alphas;
+  if (first_frame_alpha != NULL)
+    nonzero_alphas.reserve(num_sequences_ * 4);  // a guess.
+  KALDI_ASSERT(!fst_state_times.empty());
+  // note: the FST should have an end-state, its time will equal the total
+  // num-frames.
+  int32 num_frames = fst_state_times.back();
+  if (num_frames % num_sequences_ != 0)
+    KALDI_ERR << "num-frames " << num_frames << " in supervision is not divided "
+              << "by num-sequences " << num_sequences_;
+  int32 frames_per_sequence = num_frames / num_sequences_;
+  int32 num_sequence_initial_states = 0;
+  std::vector<int32>::const_iterator begin = fst_state_times.begin(),
+      iter = begin, end = fst_state_times.end();
+  extra_log_prob_ = 0.0;
+  for (; iter != end; ++iter) {
+    int32 t = *iter;  // the time-index.
+    if (t % frames_per_sequence == 0 && t != num_frames) {
+      // this state's time divides the frames_per_sequence -> it's a
+      // reconnection point.
+      num_sequence_initial_states++;
+      int32 state = iter - begin;  // The FST state.
+      std::set<int32> history_states;
+      fst::ArcIterator<fst::StdVectorFst> aiter(supervision_.fst, state);
+      for (; !aiter.Done(); aiter.Next()) {
+        int32 graph_label = aiter.Value().ilabel;
+        int32 this_history_state = trans_model_.GraphLabelToHistoryState(
+            graph_label);
+        history_states.insert(this_history_state);
+      }
+      KALDI_ASSERT(!history_states.empty());
+      extra_log_prob_ -= log(history_states.size());
+      if (first_frame_alpha != NULL) {
+        int32 sequence_index = t / frames_per_sequence;
+        // the concept is that we divide the initial-prob evenly among
+        // these history-states.
+        BaseFloat prob = 1.0 / history_states.size();
+        for (std::set<int32>::iterator set_iter = history_states.begin();
+             set_iter != history_states.end(); ++set_iter) {
+          int32 history_state = *set_iter;
+          MatrixElement<BaseFloat> elem;
+          elem.row = history_state;
+          elem.column = sequence_index;
+          elem.weight= prob;
+          nonzero_alphas.push_back(elem);
+        }
+      }
+    }
+  }
+  if (first_frame_alpha != NULL) {
+    KALDI_ASSERT(first_frame_alpha->Dim() == num_sequences_ *
+                 trans_model_.NumHistoryStates());
+    // construct a fake matrix pointing to this data, with num-rows ==
+    // num-hmm-states and num-cols == num-sequences.
+    int32 num_hmm_states = trans_model_.NumHistoryStates();
+    first_frame_alpha->SetZero();
+    CuSubMatrix<BaseFloat> mat(first_frame_alpha->Data(),
+                               num_hmm_states, num_sequences_,
+                               num_sequences_);
+    mat.AddElements(1.0, nonzero_alphas);
+  }
+}
+
+void CctcPositiveComputation::ComputeLookupIndexes(
+    CuVectorBase<BaseFloat> *first_frame_alpha) {
   std::vector<int32> fst_state_times;
   ComputeFstStateTimes(supervision_.fst, &fst_state_times);
+  OutputFirstFrameAlpha(fst_state_times, first_frame_alpha);
   int32 num_states = supervision_.fst.NumStates();
   int32 num_arcs_guess = num_states * 2;
   fst_indexes_.reserve(num_arcs_guess);
@@ -191,11 +262,15 @@ void CctcPositiveComputation::ComputeLookupIndexes() {
   KALDI_ASSERT(!fst_indexes_.empty());
 }
 
-BaseFloat CctcPositiveComputation::Forward() {
-  ComputeLookupIndexes();
+BaseFloat CctcPositiveComputation::Forward(
+    CuVectorBase<BaseFloat> *first_frame_alpha) {
+  ComputeLookupIndexes(first_frame_alpha);
   LookUpLikelihoods();
   ComputeAlpha();
-  return tot_log_prob_ + supervision_.ComputeExtraLogprob(trans_model_);
+  // TODO: remove this and remove that ComputeExtraLogprob function.
+  KALDI_ASSERT(ApproxEqual(extra_log_prob_,
+                           supervision_.ComputeExtraLogprob(trans_model_)));
+  return tot_log_prob_ + extra_log_prob_;
 }
 
 void CctcPositiveComputation::LookUpLikelihoods() {
@@ -291,7 +366,10 @@ CctcCommonComputation::CctcCommonComputation(
     int32 num_sequences,
     const CuMatrixBase<BaseFloat> &nnet_output):
     hmm_(trans_model), opts_(opts), trans_model_(trans_model),
-    cu_weights_(cu_weights), supervision_(supervision),
+    cu_weights_(cu_weights),
+    first_frame_alphas_(trans_model.NumHistoryStates() * num_sequences,
+                        kUndefined),
+    supervision_(supervision),
     num_sequences_(num_sequences), nnet_output_(nnet_output),
     positive_computation_(NULL), negative_computation_(NULL) {
   CheckDims();
@@ -322,14 +400,18 @@ void CctcCommonComputation::Forward(BaseFloat *positive_objf_part,
   KALDI_ASSERT(positive_computation_ == NULL && "Forward() called twice?");
   positive_computation_ = new CctcPositiveComputation(opts_, trans_model_,
                                                       supervision_,
+                                                      num_sequences_,
                                                       exp_nnet_output_,
                                                       denominators_);
 
-  *positive_objf_part = supervision_.weight * positive_computation_->Forward();
+  *positive_objf_part = supervision_.weight *
+      positive_computation_->Forward(&first_frame_alphas_);
 
   negative_computation_ = new CctcNegativeComputation(trans_model_, hmm_,
-                                                      exp_nnet_output_, denominators_,
-                                                      num_sequences_);
+                                                      exp_nnet_output_,
+                                                      denominators_,
+                                                      num_sequences_,
+                                                      &first_frame_alphas_);
 
   *negative_objf_part = -opts_.denominator_scale * supervision_.weight *
       negative_computation_->Forward();

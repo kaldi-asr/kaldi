@@ -77,7 +77,8 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
 
   CctcNegativeComputation negative_computation(trans_model, hmm,
                                                exp_nnet_output,
-                                               denominators, num_sequences);
+                                               denominators, num_sequences,
+                                               NULL);
 
   BaseFloat forward_prob = negative_computation.Forward(),
       per_frame = forward_prob / (num_sequences * num_time_steps);
@@ -144,7 +145,7 @@ void TestCctcTombstone(const CctcTransitionModel &trans_model) {
     CctcNegativeComputation negative_computation_perturbed(trans_model, hmm,
                                                            exp_nnet_output_perturbed,
                                                            denominators_perturbed,
-                                                           num_sequences);
+                                                           num_sequences, NULL);
 
     BaseFloat forward_prob_perturbed = negative_computation_perturbed.Forward();
     observed_objf_changes(p) = forward_prob_perturbed - forward_prob;
