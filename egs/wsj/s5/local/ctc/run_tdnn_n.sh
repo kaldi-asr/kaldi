@@ -119,9 +119,8 @@ if [ $stage -le 11 ]; then
 fi
 
 
-
+phone_lm_weight=0.15
 if [ $stage -le 12 ]; then
-  phone_lm_weight=0.15
   for lm_suffix in tgpr bd_tgpr; do
     steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
         data/lang_test_${lm_suffix} $dir $dir/graph_${lm_suffix}_${phone_lm_weight}
@@ -131,13 +130,14 @@ fi
 
 if [ $stage -le 13 ]; then
   # offline decoding
+  blank_scale=1.0
   for lm_suffix in tgpr bd_tgpr; do
     # use already-built graphs.
     for year in eval92 dev93; do
-      steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" --blank-scale $blank_scale \
          --online-ivector-dir exp/nnet3/ivectors_test_$year \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
-         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
+         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight}_bs${blank_scale} &
     done
   done
 fi

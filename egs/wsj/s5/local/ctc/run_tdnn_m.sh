@@ -116,9 +116,8 @@ if [ $stage -le 11 ]; then
 fi
 
 
-
+phone_lm_weight=0.15
 if [ $stage -le 12 ]; then
-  phone_lm_weight=0.15
   for lm_suffix in tgpr bd_tgpr; do
     steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
         data/lang_test_${lm_suffix} $dir $dir/graph_${lm_suffix}_${phone_lm_weight}
@@ -128,13 +127,14 @@ fi
 
 if [ $stage -le 13 ]; then
   # offline decoding
+  blank_scale=1.0
   for lm_suffix in tgpr bd_tgpr; do
     # use already-built graphs.
     for year in eval92 dev93; do
-      steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" --blank-scale $blank_scale \
          --online-ivector-dir exp/nnet3/ivectors_test_$year \
          $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
-         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight} &
+         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight}_bs${blank_scale} &
     done
   done
 fi
@@ -142,12 +142,12 @@ fi
 wait;
 exit 0;
 
-# Results (still considerably worse than baseline):
-# grep WER exp/ctc/nnet_tdnn_g/decode_{tgpr,bd_tgpr}_{dev93,eval92}/scoring_kaldi/best_wer
-exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 8.83 [ 498 / 5643, 76 ins, 89 del, 333 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/wer_10_1.0
-exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 12.23 [ 1007 / 8234, 136 ins, 186 del, 685 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/wer_10_0.5
-exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 6.72 [ 379 / 5643, 43 ins, 37 del, 299 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/wer_10_0.5
-exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 10.59 [ 872 / 8234, 82 ins, 189 del, 601 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/wer_11_0.0
+# Results (very close to baseline:
+cat exp/ctc/nnet_tdnn_m/decode_*/scoring_kaldi/best_wer | grep bs1
+%WER 6.68 [ 377 / 5643, 78 ins, 30 del, 269 sub ] exp/ctc/nnet_tdnn_m/decode_tgpr_eval92_plm0.15_bs1.0/wer_9_1.0
+%WER 9.76 [ 804 / 8234, 91 ins, 204 del, 509 sub ] exp/ctc/nnet_tdnn_m/decode_tgpr_dev93_plm0.15_bs1.0/wer_11_0.5
+%WER 4.39 [ 248 / 5643, 32 ins, 20 del, 196 sub ] exp/ctc/nnet_tdnn_m/decode_bd_tgpr_eval92_plm0.15_bs1.0/wer_11_0.5
+%WER 7.71 [ 635 / 8234, 59 ins, 145 del, 431 sub ] exp/ctc/nnet_tdnn_m/decode_bd_tgpr_dev93_plm0.15_bs1.0/wer_12_0.0
 
 
 # Baseline results:
