@@ -27,7 +27,7 @@ CONFIGURE_VERSION=2
 
 function rel2abs {
   if [ ! -z "$1" ]; then
-    local retval=`readlink -f $1 || exit 1`
+    local retval=`cd $1 2>/dev/null && pwd || exit 1`
     echo $retval
   fi
 }
