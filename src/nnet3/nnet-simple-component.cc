@@ -1181,7 +1181,7 @@ void NaturalGradientAffineComponent::Init(
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
-  if (max_change_per_sample >= 0.0)
+  if (max_change_per_sample > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_sample for "
                << "NaturalGradientAffineComponent. But the per-component "
                << "gradient clipping mechansim has been removed. Instead it's currently "
@@ -1905,7 +1905,7 @@ void NaturalGradientPerElementScaleComponent::Init(
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
   max_change_per_minibatch_ = max_change_per_minibatch;
-  if (max_change_per_minibatch >= 0.0)
+  if (max_change_per_minibatch > 0.0)
     KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
                << "NaturalGradientPerElementScaleComponent. But the per-component "
                << "gradient clipping mechansim has been removed. Instead it's currently "
