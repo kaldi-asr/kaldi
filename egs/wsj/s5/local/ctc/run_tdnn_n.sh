@@ -147,10 +147,12 @@ exit 0;
 
 # Results (still considerably worse than baseline):
 # grep WER exp/ctc/nnet_tdnn_g/decode_{tgpr,bd_tgpr}_{dev93,eval92}/scoring_kaldi/best_wer
-exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 8.83 [ 498 / 5643, 76 ins, 89 del, 333 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_eval92_plm0.15/wer_10_1.0
-exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 12.23 [ 1007 / 8234, 136 ins, 186 del, 685 sub ] exp/ctc/nnet_tdnn_g/decode_tgpr_dev93_plm0.15/wer_10_0.5
-exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/scoring_kaldi/best_wer:%WER 6.72 [ 379 / 5643, 43 ins, 37 del, 299 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_eval92_plm0.15/wer_10_0.5
-exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/scoring_kaldi/best_wer:%WER 10.59 [ 872 / 8234, 82 ins, 189 del, 601 sub ] exp/ctc/nnet_tdnn_g/decode_bd_tgpr_dev93_plm0.15/wer_11_0.0
+
+ cat exp/ctc/nnet_tdnn_n/decode_{tgpr,bd_tgpr}_{eval92,dev93}*/scoring_kaldi/best_wer | grep bs1
+%WER 6.56 [ 370 / 5643, 67 ins, 70 del, 233 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_eval92_plm0.15_bs1.0/wer_9_0.5
+%WER 9.35 [ 770 / 8234, 109 ins, 202 del, 459 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_dev93_plm0.15_bs1.0/wer_9_0.0
+%WER 4.25 [ 240 / 5643, 20 ins, 36 del, 184 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_eval92_plm0.15_bs1.0/wer_10_0.5
+%WER 7.51 [ 618 / 8234, 77 ins, 113 del, 428 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_dev93_plm0.15_bs1.0/wer_9_0.0
 
 
 # Baseline results:
