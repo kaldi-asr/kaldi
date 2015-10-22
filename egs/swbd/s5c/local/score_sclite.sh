@@ -24,8 +24,6 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
-set -x
-
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
