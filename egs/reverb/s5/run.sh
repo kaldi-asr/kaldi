@@ -31,6 +31,7 @@ if [ ! `which matlab` ]; then
 fi
 
 . ./cmd.sh
+. ./path.sh
 
 # please make sure to set the paths of the REVERB and WSJ0 data
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then
@@ -39,6 +40,14 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then
   # set LDC WSJ0 directory to obtain LMs
   # REVERB data directory only provides bi-gram (bcb05cnp), but this recipe also uses 3-gram (tcb05cnp.z)
   export wsj0=/export/corpora5/LDC/LDC93S6A/11-13.1 #LDC93S6A or LDC93S6B
+  # It is assumed that there will be a 'wsj0' subdirectory
+  # within the top-level corpus directory
+elif [[ $(hostname -f) == *.merl.com ]] ; then
+  REVERB_home=/db/laputa1/data/original/public/REVERB
+  export wsjcam0=$REVERB_home/wsjcam0
+  # set LDC WSJ0 directory to obtain LMs
+  # REVERB data directory only provides bi-gram (bcb05cnp), but this recipe also uses 3-gram (tcb05cnp.z)
+  export wsj0=/db/laputa1/data/original/public/WSJ0/11-13.1 #LDC93S6A or LDC93S6B
   # It is assumed that there will be a 'wsj0' subdirectory
   # within the top-level corpus directory
 else
