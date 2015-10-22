@@ -25,7 +25,7 @@
 // In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
-#include "cu-kernels-ansi.h"
+#include "cudamatrix/cu-kernels-ansi.h"
 
 
 /***********************************************************************
@@ -1688,10 +1688,11 @@ static void _add_row_ranges(Real *data, MatrixDim dim, const Real *src_data,
   if (row >= dim.rows || col >= dim.cols)
     return;
   int dst_index = row * dim.stride + col;
-  for (int row_index = indexes[col].first;
-      row_index < indexes[col].second; row_index++) {
+  int src_index_start = indexes[row].first,
+      src_index_end = indexes[row].second;
+  for (int row_index = src_index_start; row_index < src_index_end;
+       row_index++)
     data[dst_index] += src_data[row_index * src_dim.stride + col];
-  }
 }
 
 template<typename Real>

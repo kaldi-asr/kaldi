@@ -46,6 +46,7 @@ scheduler_opts=    # options, passed to the training scheduler,
 train_tool=        # optionally change the training tool,
 train_tool_opts=   # options for the training tool,
 frame_weights=     # per-frame weights for gradient weighting,
+utt_weights=       # per-utterance weights (scalar for --frame-weights),
 
 # data processing, misc.
 copy_feats=true     # resave the train/cv features into /tmp (disabled by default),
@@ -443,6 +444,7 @@ steps/nnet/train_scheduler.sh \
   ${feature_transform:+ --feature-transform $feature_transform} \
   --learn-rate $learn_rate \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
+  ${utt_weights:+ --utt-weights "$utt_weights"} \
   ${config:+ --config $config} \
   $nnet_init "$feats_tr" "$feats_cv" "$labels_tr" "$labels_cv" $dir || exit 1
 

@@ -83,9 +83,6 @@ if __name__ == "__main__":
                         help="dimension of non-recurrent projection")
     parser.add_argument("--hidden-dim", type=int,
                         help="dimension of fully-connected layers")
-    # CLSTM options
-    parser.add_argument("--rates", type=str, default=None,
-                        help="the rates of operation in each clockwork-lstm")
 
     # Natural gradient options
     parser.add_argument("--ng-per-element-scale-options", type=str,
@@ -140,19 +137,6 @@ if __name__ == "__main__":
             sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
         if len(lstm_delay) != args.num_lstm_layers:
             sys.exit("--lstm-delay: Number of delays provided has to match --num-lstm-layers")
-    if args.rates is None:
-        rates = [1]
-    else:
-        try:
-            rates = map(lambda x: float(x), args.lstm_delay.split())
-            rates.sort()
-            # assert that lower rates are divisors of higher rates
-            for rate_index in len(rates):
-                for higher_rate in rates[rate_index+1:]:
-                    if not (higher_rate % rates[rate_index] == 0):
-                        sys.exit("--rates : higher rates should be divisible by all lower rates")
-        except ValueError:
-            sys.exit("--rates has incorrect format value. Provided value is '{0}'".format(args.rates))
 
     parsed_splice_output = ParseSpliceString(args.splice_indexes.strip(), args.label_delay)
     left_context = parsed_splice_output['left_context']

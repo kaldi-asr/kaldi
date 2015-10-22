@@ -2299,8 +2299,8 @@ void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
 template<typename Real>
 void CuMatrixBase<Real>::AddRowRanges(const CuMatrixBase<Real> &src,
                                       const CuArray<Int32Pair> &indexes) {
-  KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumCols());
-  KALDI_ASSERT(src.NumCols() >= NumCols());
+  KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+  KALDI_ASSERT(src.NumCols() == NumCols());
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2322,9 +2322,9 @@ void CuMatrixBase<Real>::AddRowRanges(const CuMatrixBase<Real> &src,
     const Real *src_data = src.data_;
     const Int32Pair *indexes_data = indexes.Data();
     for (int32 row = 0; row < num_rows; row++) {
+      int32 start_row = indexes_data[row].first,
+          end_row = indexes_data[row].second;
       for (int32 col = 0; col < num_cols; col++) {
-        int32 start_row = indexes_data[col].first,
-                end_row = indexes_data[col].second;
         Real sum = 0.0;
         for (int32 src_row = start_row; src_row < end_row; src_row++)
           sum += src_data[src_row * src_stride + col];

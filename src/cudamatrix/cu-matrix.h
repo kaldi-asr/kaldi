@@ -45,6 +45,10 @@ template<typename Real>
 Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
                  MatrixTransposeType trans = kNoTrans);
 
+/// Does multiple matrix multiplications, executing them in parallel using
+/// cuBLAS's gemmBatched if we are using a GPU. Vectors A, B and C must have
+/// the same length; for each i, this function executes the matrix operation
+/// C[i] = alpha *  A[i](^T)*B[i](^T) + beta * C[i].
 template<typename Real>
 void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
@@ -164,9 +168,9 @@ class CuMatrixBase {
 
   /// For each row r of this and for each column c, do
   /// (*this)(r, c) += \sum_j src(j, c),
-  /// where j ranges from indexes[c].first through indexes[c].second - 1.
-  /// All indexes must be >= 0 and < src.NumRows(); to represent an empty range
-  /// just use the same index twice.
+  /// where j ranges from indexes[r].first through indexes[r].second - 1.
+  /// In general indexes must be >= 0 and < src.NumRows(); but to represent an empty range
+  /// you may use the pair (-1, -1) or any pair of numbers (i, j) such that i >= j.
   void AddRowRanges(const CuMatrixBase<Real> &src,
                     const CuArray<Int32Pair> &indexes);
 

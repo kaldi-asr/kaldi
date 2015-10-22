@@ -669,6 +669,11 @@ void Compiler::DoBackwardComputationFromIndexes(
   std::vector<std::pair<int32, int32> > ranges;
   if (HasContiguousProperty(indexes, &ranges)) {
     // the operation can be set up as AddRowRanges.
+    if (static_cast<int32>(ranges.size()) != input_num_rows) {
+      KALDI_ASSERT(static_cast<int32>(ranges.size()) < input_num_rows);
+      // extend with (-1, -1) pairs.
+      ranges.resize(input_num_rows, std::pair<int32,int32>(-1, -1));
+    }
     int32 indexes_ranges_index = computation->indexes_ranges.size();
     computation->indexes_ranges.push_back(ranges);
     computation->commands.push_back(
