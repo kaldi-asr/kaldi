@@ -1,4 +1,4 @@
-// matrix/matrix-lib-test.cc
+// matrix/matrix-lib-speed-test.cc
 
 // Copyright 2009-2014   Microsoft Corporation;  Mohit Agarwal;  Lukas Burget;
 //                       Ondrej Glembek;  Saarland University (Author: Arnab Ghoshal);

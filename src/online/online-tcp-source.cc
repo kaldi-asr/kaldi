@@ -1,4 +1,4 @@
-// online/online-audio-source.cc
+// online/online-tcp-source.cc
 
 // Copyright 2013 Polish-Japanese Institute of Information Technology (author: Danijel Korzinek)
 

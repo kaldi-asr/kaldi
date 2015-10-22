@@ -71,23 +71,27 @@ if($N > $numlines) {
 }
 
 sub select_n {
-    my ($start,$end,$num_needed) = @_;
-    my $diff = $end - $start;
-    if($num_needed > $diff) { die "select_n: code error"; }
-    if($diff == 1 ) {
-        if($num_needed  > 0) {
-            print $F[$start];
-        }
-    } else {
-        my $halfdiff = int($diff/2);
-        my $halfneeded = int($num_needed/2);
-        select_n($start, $start+$halfdiff, $halfneeded);
-        select_n($start+$halfdiff, $end, $num_needed - $halfneeded);
+  my ($start,$end,$num_needed) = @_;
+  my $diff = $end - $start;
+  if ($num_needed > $diff) {
+    die "select_n: code error";
+  }
+  if ($diff == 1 ) {
+    if ($num_needed  > 0) {
+      print $F[$start];
     }
+  } else {
+    my $halfdiff = int($diff/2);
+    my $halfneeded = int($num_needed/2);
+    select_n($start, $start+$halfdiff, $halfneeded);
+    select_n($start+$halfdiff, $end, $num_needed - $halfneeded);
+  }
 }
 
 if ( ! $first && ! $last) {
-  select_n(0, $numlines, $N);
+  if ($N > 0) {
+    select_n(0, $numlines, $N);
+  }
 } else {
   if ($first) { # --first option: same as head.
     for ($n = 0; $n < $N; $n++) {

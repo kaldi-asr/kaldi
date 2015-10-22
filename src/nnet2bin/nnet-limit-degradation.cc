@@ -1,4 +1,4 @@
-// nnet2bin/nnet-linit-degradation.cc
+// nnet2bin/nnet-limit-degradation.cc
 
 // Copyright 2012-2013  Johns Hopkins University (author:  Daniel Povey)
 

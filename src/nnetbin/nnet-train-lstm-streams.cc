@@ -176,28 +176,34 @@ int main(int argc, char *argv[]) {
             }
             // else, this stream exhausted, need new utterance
             while (!feature_reader.Done()) {
-                keys[s]  = feature_reader.Key();
+                const std::string& key = feature_reader.Key();
+                // get the feature matrix,
                 const Matrix<BaseFloat> &mat = feature_reader.Value();
-                { // apply optional feature transform,
-                  // Karel: feature transform may contain <Splice> which does clone
-                  // frames on sentence boundaries. It is better to apply feature 
-                  // transform to whole sentences.
-                  nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feat_transf);
-                  feats[s].Resize(feat_transf.NumRows(), feat_transf.NumCols());
-                  feat_transf.CopyToMat(&feats[s]); 
-                }
-                if (!target_reader.HasKey(keys[s])) {
-                    KALDI_WARN << keys[s] << ", missing targets";
+                // forward the features through a feature-transform,
+                nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feat_transf);
+                
+                // get the labels,
+                if (!target_reader.HasKey(key)) {
+                    KALDI_WARN << key << ", missing targets";
                     num_no_tgt_mat++;
                     feature_reader.Next();
                     continue;
                 }
-                targets[s] = target_reader.Value(keys[s]);
-                if (feats[s].NumRows() != targets[s].size()) {
-                    KALDI_WARN << keys[s] << ", length miss-match between feats and targets, skip";
+                const Posterior& target = target_reader.Value(key);
+
+                // check that the length matches,
+                if (feat_transf.NumRows() != target.size()) {
+                    KALDI_WARN << key << ", length miss-match between feats and targets, skip";
+                    num_other_error++;
                     feature_reader.Next();
                     continue;
                 }
+
+                // checks ok, put the data in the buffers,
+                keys[s] = key;
+                feats[s].Resize(feat_transf.NumRows(), feat_transf.NumCols());
+                feat_transf.CopyToMat(&feats[s]); 
+                targets[s] = target;
                 curt[s] = 0;
                 lent[s] = feats[s].NumRows();
                 new_utt_flags[s] = 1;  // a new utterance feeded to this stream

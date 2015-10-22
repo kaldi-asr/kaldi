@@ -1,6 +1,7 @@
 // nnet3/nnet-am-decodable-simple.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,6 +19,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-simple-computer.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -31,20 +33,14 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        ivector, online_ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),
-    feats_(feats),
-    ivector_(ivector), online_ivector_feats_(online_ivectors),
-    online_ivector_period_(online_ivector_period),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
-    current_log_post_offset_(0) {
-  KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
-  KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
-                 "You need to set the --online-ivector-period option!"));
-  priors_.ApplyLog();  
-  PossiblyWarnForFramesPerChunk();
+    priors_(am_nnet.Priors()) {
+  priors_.ApplyLog();
 }
 
 DecodableAmNnetSimple::DecodableAmNnetSimple(
@@ -54,40 +50,31 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> &feats,
     const MatrixBase<BaseFloat> &ivectors,
     int32 online_ivector_period):
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(),
+        NULL, &ivectors, online_ivector_period),
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),    
-    feats_(feats),
-    ivector_(NULL),
-    online_ivector_feats_(&ivectors),
-    online_ivector_period_(online_ivector_period),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
-    current_log_post_offset_(0) {
+    priors_(am_nnet.Priors()) {
   priors_.ApplyLog();
-  PossiblyWarnForFramesPerChunk();
-}      
-    
+}
+
 DecodableAmNnetSimple::DecodableAmNnetSimple(
     const DecodableAmNnetSimpleOptions &opts,
     const TransitionModel &trans_model,
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> &ivector):
+    NnetSimpleComputer(opts.simple_computer_opts, am_nnet.GetNnet(), feats, 
+        am_nnet.LeftContext(), am_nnet.RightContext(), 
+        &ivector, NULL, 0), 
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),    
-    feats_(feats),
-    ivector_(&ivector),
-    online_ivector_feats_(NULL),
-    online_ivector_period_(0),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
-    current_log_post_offset_(0) {
+    priors_(am_nnet.Priors()) {
   priors_.ApplyLog();
-  PossiblyWarnForFramesPerChunk();
-}      
-
+}
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                                                int32 transition_id) {
@@ -99,147 +86,15 @@ BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                            pdf_id);
 }
 
-int32 DecodableAmNnetSimple::GetIvectorDim() const {
-  if (ivector_ != NULL)
-    return ivector_->Dim();
-  else if (online_ivector_feats_ != NULL)
-    return online_ivector_feats_->NumCols();
-  else
-    return 0;
-}
-
-void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
-  KALDI_ASSERT(frame >= 0 && frame  < feats_.NumRows());
-
-  const Nnet &nnet = am_nnet_.GetNnet();
-  int32 feature_dim = feats_.NumCols(),
-      ivector_dim = GetIvectorDim(),
-      nnet_input_dim = nnet.InputDim("input"),
-      nnet_ivector_dim = std::max<int32>(0, nnet.InputDim("ivector"));
-  if (feature_dim != nnet_input_dim)
-    KALDI_ERR << "Neural net expects 'input' features with dimension "
-              << nnet_input_dim << " but you provided "
-              << feature_dim;
-  if (ivector_dim != std::max<int32>(0, nnet.InputDim("ivector")))
-    KALDI_ERR << "Neural net expects 'ivector' features with dimension "
-              << nnet_ivector_dim << " but you provided " << ivector_dim;
-
-  int32 current_frames_computed = current_log_post_.NumRows(),
-      current_offset = current_log_post_offset_;
-  KALDI_ASSERT(frame < current_offset ||
-               frame >= current_offset + current_frames_computed);
-  // allow the output to be computed for frame 0 ... num_input_frames - 1.
-  int32 start_output_frame = frame,
-      num_output_frames = std::min<int32>(feats_.NumRows() - start_output_frame,
-                                          opts_.frames_per_chunk);
-  KALDI_ASSERT(num_output_frames > 0);
-  int32 first_input_frame = start_output_frame - am_nnet_.LeftContext(),
-      num_input_frames = am_nnet_.LeftContext() + num_output_frames +
-                         am_nnet_.RightContext();
-  Vector<BaseFloat> ivector;
-  GetCurrentIvector(start_output_frame, num_output_frames, &ivector);
-  
-  Matrix<BaseFloat> input_feats;
-  if (first_input_frame >= 0 &&
-      first_input_frame + num_input_frames <= feats_.NumRows()) {
-    SubMatrix<BaseFloat> input_feats(feats_.RowRange(first_input_frame,
-                                                     num_input_frames));
-    DoNnetComputation(first_input_frame, input_feats, ivector,
-                      start_output_frame, num_output_frames);
-  } else {
-    Matrix<BaseFloat> feats_block(num_input_frames, feats_.NumCols());
-    int32 tot_input_feats = feats_.NumRows();
-    for (int32 i = 0; i < num_input_frames; i++) {
-      SubVector<BaseFloat> dest(feats_block, i);
-      int32 t = i + first_input_frame;
-      if (t < 0) t = 0;
-      if (t >= tot_input_feats) t = tot_input_feats - 1;
-      const SubVector<BaseFloat> src(feats_, t);
-      dest.CopyFromVec(src);
-    }
-    DoNnetComputation(first_input_frame, feats_block, ivector,
-                      start_output_frame, num_output_frames);
-  }  
-}
-
-void DecodableAmNnetSimple::GetCurrentIvector(int32 output_t_start,
-                                              int32 num_output_frames,
-                                              Vector<BaseFloat> *ivector) {
-  if (ivector_ != NULL) {
-    *ivector = *ivector_;
-    return;
-  } else if (online_ivector_feats_ == NULL) {
-    return;
-  }
-  KALDI_ASSERT(online_ivector_period_ > 0);
-  // frame_to_search is the frame that we want to get the most recent iVector
-  // for.  We choose a point near the middle of the current window, the concept
-  // being that this is the fairest comparison to nnet2.   Obviously we could do
-  // better by always taking the last frame's iVector, but decoding with
-  // 'online' ivectors is only really a mechanism to simulate online operation.
-  int32 frame_to_search = output_t_start + num_output_frames / 2;
-  int32 ivector_frame = frame_to_search / online_ivector_period_;
-  KALDI_ASSERT(ivector_frame >= 0);
-  if (ivector_frame >= online_ivector_feats_->NumRows()) {
-    int32 margin = ivector_frame - (online_ivector_feats_->NumRows() - 1);
-    if (margin * online_ivector_period_ > 50) {
-      // Half a second seems like too long to be explainable as edge effects.
-      KALDI_ERR << "Could not get iVector for frame " << frame_to_search
-                << ", only available till frame "
-                << online_ivector_feats_->NumRows()
-                << " * ivector-period=" << online_ivector_period_
-                << " (mismatched --ivector-period?)";
-    }
-    ivector_frame = online_ivector_feats_->NumRows() - 1;
-  }
-  *ivector = online_ivector_feats_->Row(ivector_frame);
-}
-  
-
 void DecodableAmNnetSimple::DoNnetComputation(
     int32 input_t_start,
     const MatrixBase<BaseFloat> &input_feats,
     const VectorBase<BaseFloat> &ivector,
     int32 output_t_start,
     int32 num_output_frames) {
-  ComputationRequest request;
-  request.need_model_derivative = false;
-  request.store_component_stats = false;
-
-  bool shift_time = true; // shift the 'input' and 'output' to a consistent
-                          // time, to take advantage of caching in the compiler.
-                          // An optimization.
-  int32 time_offset = (shift_time ? -output_t_start : 0);
-  
-  // First add the regular features-- named "input".
-  request.inputs.reserve(2);
-  request.inputs.push_back(
-      IoSpecification("input", time_offset + input_t_start,
-                      time_offset + input_t_start + input_feats.NumRows()));
-  if (ivector.Dim() != 0) {
-    std::vector<Index> indexes;
-    indexes.push_back(Index(0, 0, 0));
-    request.inputs.push_back(IoSpecification("ivector", indexes));
-  }
-  request.outputs.push_back(
-      IoSpecification("output", time_offset + output_t_start,
-                      time_offset + output_t_start + num_output_frames));
-  const NnetComputation *computation = compiler_.Compile(request);
-  Nnet *nnet_to_update = NULL;  // we're not doing any update.
-  NnetComputer computer(opts_.compute_config, *computation,
-                        am_nnet_.GetNnet(), nnet_to_update);
-
-  CuMatrix<BaseFloat> input_feats_cu(input_feats);
-  computer.AcceptInput("input", &input_feats_cu);
-  CuMatrix<BaseFloat> ivector_feats_cu;
-  if (ivector.Dim() > 0) {
-    ivector_feats_cu.Resize(1, ivector.Dim());
-    ivector_feats_cu.Row(0).CopyFromVec(ivector);
-    computer.AcceptInput("ivector", &ivector_feats_cu);
-  }
-  computer.Forward();
   CuMatrix<BaseFloat> cu_output;
-  computer.GetOutputDestructive("output", &cu_output);
+  DoNnetComputationInternal(input_t_start, input_feats, ivector, 
+                            output_t_start, num_output_frames, &cu_output);
   // subtract log-prior (divide by prior)
   cu_output.AddVecToRows(-1.0, priors_);
   // apply the acoustic scale
@@ -248,18 +103,6 @@ void DecodableAmNnetSimple::DoNnetComputation(
   // the following statement just swaps the pointers if we're not using a GPU.
   cu_output.Swap(&current_log_post_);
   current_log_post_offset_ = output_t_start;
-}
-
-void DecodableAmNnetSimple::PossiblyWarnForFramesPerChunk() const {
-  static bool warned = false;
-  int32 nnet_modulus = am_nnet_.GetNnet().Modulus();  
-  if (opts_.frames_per_chunk % nnet_modulus != 0 && !warned) {
-    warned = true;
-    KALDI_WARN << "It may be more efficient to set the --frames-per-chunk "
-               << "(currently " << opts_.frames_per_chunk << " to a "
-               << "multiple of the network's shift-invariance modulus "
-               << nnet_modulus;
-  }
 }
 
 } // namespace nnet3

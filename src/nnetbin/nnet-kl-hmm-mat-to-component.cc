@@ -1,4 +1,4 @@
-// nnetbin/nnet-kl-gmm-sum-accs.cc
+// nnetbin/nnet-kl-hmm-mat-to-component.cc
 
 // Copyright 2013  Idiap Research Institute (Author: David Imseng)
 //                 Karlsruhe Institute of Technology (Author: Ngoc Thang Vu)

@@ -559,6 +559,7 @@ void ComputationChecker::Check() {
   CheckComputationOrder();
   CheckComputationMatrixAccesses();
   CheckComputationUndefined();
+  CheckComputationDebugInfo();
   if (config_.check_rewrite)
     CheckComputationRewrite();
 
@@ -898,7 +899,7 @@ void ComputationChecker::CheckComputationIndexes() const {
             static_cast<size_t>(c.arg3) >= computation_.indexes_ranges.size())
           KALDI_ERR << "Index out of range in add-row-ranges command";
         const std::vector<std::pair<int32, int32> > pairs =
-            computation_.indexes_ranges[c.arg2];
+            computation_.indexes_ranges[c.arg3];
         if (static_cast<size_t>(submatrices[c.arg1].num_rows) != pairs.size())
           KALDI_ERR << "Num-rows mismatch in add-row-ranges command";
         if (submatrices[c.arg1].num_cols != submatrices[c.arg2].num_cols)
@@ -907,12 +908,11 @@ void ComputationChecker::CheckComputationIndexes() const {
         std::vector<std::pair<int32, int32> >::const_iterator
             iter = pairs.begin(), end = pairs.end();
         for (; iter != end; ++iter) {
-          // note: -1's are not allowed.  To represent the empty range,
-          // the user should use some valid index twice.
-          if (iter->second < iter->first || iter->first < 0 ||
-              iter->second > src_num_rows)
+          if (!((iter->first == -1 && iter->second == -1) ||
+                (iter->second > iter->first &&
+                 iter->first >= 0 && iter->second <= src_num_rows)))
             KALDI_ERR << "Row range " << iter->first << ',' << iter->second
-                      << " out of range in add-row-ranges command.";
+                      << " is invalid in add-row-ranges command.";
         }
         break;
       }
@@ -958,6 +958,19 @@ void ComputationChecker::CheckComputationOrder() const {
     if (c > marker_location &&
         command_type == kStoreStats)
       KALDI_ERR << "StoreStats occurs after kNoOpMarker";
+  }
+}
+
+void ComputationChecker::CheckComputationDebugInfo() const {
+  if (computation_.matrix_debug_info.empty()) return;
+  if (computation_.matrix_debug_info.size() !=
+      computation_.matrices.size())
+    KALDI_ERR << "Debug info has wrong size";
+  for (size_t i = 1; i < computation_.matrix_debug_info.size(); i++) {
+    if (computation_.matrix_debug_info[i].cindexes.size() !=
+        static_cast<size_t>(computation_.matrices[i].num_rows))
+      KALDI_ERR << "Debug info for matrix m" << i
+                << " has wrong num-rows.";
   }
 }
 

@@ -1,4 +1,4 @@
-// nnet/nnet-example-functions.cc
+// nnet2/nnet-example-functions.cc
 
 // Copyright 2012-2013  Johns Hopkins University (author: Daniel Povey)
 

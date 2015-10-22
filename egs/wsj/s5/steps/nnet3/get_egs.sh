@@ -22,6 +22,10 @@ frames_per_eg=8   # number of frames of labels per example.  more->less disk spa
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+valid_left_context=   # amount of left_context for validation egs, typically used in
+                      # recurrent architectures to ensure matched condition with
+                      # training egs
+valid_right_context=  # amount of right_context for validation egs
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
@@ -35,9 +39,11 @@ num_utts_subset=300     # number of utterances in validation and training
 num_valid_frames_combine=0 # #valid frames for combination weights at the very end.
 num_train_frames_combine=10000 # # train frames for the above.
 num_frames_diagnostic=4000 # number of frames for "compute_prob" jobs
-samples_per_iter=400000 # each iteration of training, see this many samples
-                        # per job.  This is just a guideline; it will pick a number
-                        # that divides the number of samples in the entire data.
+samples_per_iter=400000 # this is the target number of egs in each archive of egs
+                        # (prior to merging egs).  We probably should have called
+                        # it egs_per_iter. This is just a guideline; it will pick
+                        # a number that divides the number of samples in the
+                        # entire data.
 
 transform_dir=     # If supplied, overrides alidir as the place to find fMLLR transforms
 
@@ -55,7 +61,6 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-
 if [ $# != 3 ]; then
   echo "Usage: $0 [opts] <data> <ali-dir> <egs-dir>"
   echo " e.g.: $0 data/train exp/tri3_ali exp/tri4_nnet/egs"
@@ -66,8 +71,7 @@ if [ $# != 3 ]; then
   echo "                                                   # parallel (increase this only if you have good disk and"
   echo "                                                   # network speed).  default=6"
   echo "  --cmd (utils/run.pl;utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --samples-per-iter <#samples;400000>             # Number of samples of data to process per iteration, per"
-  echo "                                                   # process."
+  echo "  --samples-per-iter <#samples;400000>             # Target number of egs per archive (option is badly named)"
   echo "  --feat-type <lda|raw>                            # (raw is the default).  The feature type you want"
   echo "                                                   # to use as input to the neural net."
   echo "  --frames-per-eg <frames;8>                       # number of frames per eg on disk"
@@ -209,7 +213,6 @@ while $reduce_frames_per_eg && [ $frames_per_eg -gt 1 ] && \
 done
 $reduced && echo "$0: reduced frames_per_eg to $frames_per_eg because amount of data is small."
 
-
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
@@ -256,6 +259,10 @@ fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
 
+[ -z $valid_left_context ] &&  valid_left_context=$left_context;
+[ -z $valid_right_context ] &&  valid_right_context=$right_context;
+valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --compress=$compress"
+
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
 num_pdfs=$(tree-info --print-args=false $alidir/tree | grep num-pdfs | awk '{print $2}')
@@ -268,11 +275,11 @@ if [ $stage -le 3 ]; then
     <$dir/ali.scp >$dir/ali_special.scp
 
   $cmd $dir/log/create_valid_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $egs_opts "$valid_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $valid_ivector_opt $valid_egs_opts "$valid_feats" \
     "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
     "ark:$dir/valid_all.egs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
-    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
+    nnet3-get-egs --num-pdfs=$num_pdfs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" \
      "ark,s,cs:ali-to-pdf $alidir/final.mdl scp:$dir/ali_special.scp ark:- | ali-to-post ark:- ark:- |" \
      "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;

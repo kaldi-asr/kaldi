@@ -1,6 +1,6 @@
 #!/bin/bash 
 
-# Copyright 2012-2014 Brno University of Technology (author: Karel Vesely)
+# Copyright 2012-2015 Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
@@ -9,14 +9,18 @@
 nj=4
 cmd=run.pl
 remove_last_components=4 # remove N last components from the nnet
+nnet_forward_opts=
 use_gpu=no
 htk_save=false
+ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 5 ]; then
    echo "usage: $0 [options] <tgt-data-dir> <src-data-dir> <nnet-dir> <log-dir> <abs-path-to-bn-feat-dir>";
@@ -78,12 +82,23 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$srcdata/utt2spk scp:$srcdata/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
-#
+# add-pytel transform (optional),
+[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
+
+# add-ivector (optional),
+if [ -e $D/ivector_dim ]; then
+  ivector_dim=$(cat $D/ivector_dim)
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
+  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
+  # Append to feats
+  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+fi
 
 if [ $htk_save == false ]; then
   # Run the forward pass,
   $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
-    nnet-forward --use-gpu=$use_gpu $nnet "$feats" \
+    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" \
     ark,scp:$bnfeadir/raw_bnfea_$name.JOB.ark,$bnfeadir/raw_bnfea_$name.JOB.scp \
     || exit 1;
   # concatenate the .scp files
@@ -101,7 +116,7 @@ else # htk_save == true
   # Run the forward pass saving HTK features,
   $cmd JOB=1:$nj $logdir/make_bnfeats_htk.JOB.log \
     mkdir -p $data/htkfeats/JOB \; \
-    nnet-forward --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
+    nnet-forward $nnet_forward_opts --use-gpu=$use_gpu $nnet "$feats" ark:- \| \
     copy-feats-to-htk --output-dir=$data/htkfeats/JOB ark:- || exit 1
   # Make list of htk features,
   find $data/htkfeats -name *.fea >$data/htkfeats.scp

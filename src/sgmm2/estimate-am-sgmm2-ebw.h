@@ -239,4 +239,4 @@ class EbwAmSgmm2Updater {
 }  // namespace kaldi
 
 
-#endif  // KALDI_SGMM_ESTIMATE_AM_SGMM_EBW_H_
+#endif  // KALDI_SGMM2_ESTIMATE_AM_SGMM2_EBW_H_

@@ -1019,6 +1019,7 @@ void ModelUpdateConsolidator::AppendDebugInfoForSubmatrix(
 }
 
 
+// see comment by declaration in header.
 int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
     const std::vector<int32> &commands,
     const std::vector<int32> &submatrices) {
@@ -1041,7 +1042,7 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
   // Add a command at the very start, to initialize this new matrix.
   int32 new_matrix_index =
       computation_->submatrices[new_whole_submatrix].matrix_index;
-  // we can later on optimized this zeroed initialization to an undefined
+  // we can later on optimize this zeroed initialization to an undefined
   // initialization.
   extra_commands_[0].push_back(
       NnetComputation::Command(kAllocMatrixZeroed, new_matrix_index));
@@ -1508,13 +1509,18 @@ void DerivativeTimeLimiter::MapAddRowRangesCommand(
     if (new_first >= src_num_rows) new_first = src_num_rows - 1;
     if (new_second < 0) new_second = 0;
     if (new_second >= src_num_rows) new_second = src_num_rows - 1;
+    if (new_first == new_second) {
+      // for clarity, represent empty ranges as (-1, -1).
+      new_first = -1;
+      new_second = -1;
+    }
     KALDI_ASSERT(new_second >= new_first);
     this_pair.first = new_first;
     this_pair.second = new_second;
   }
   c->arg1 = dest_submatrix_mapped;
   c->arg2 = src_submatrix_mapped;
-  c->arg2 = computation_->indexes_ranges.size();
+  c->arg3 = computation_->indexes_ranges.size();
   computation_->indexes_ranges.push_back(new_indexes_ranges);
 }
 
@@ -1735,8 +1741,17 @@ void DerivativeTimeLimiter::LimitMatrices(const std::vector<bool> &will_limit) {
   for (int32 m = 1; m < num_matrices; m++) {
     if (will_limit[m]) {
       const MatrixPruneInfo &prune_info = matrix_prune_info_[m];
-      computation_->matrices[m].num_rows =
-          prune_info.row_end - prune_info.row_begin;
+      NnetComputation::MatrixInfo &matrix_info = computation_->matrices[m];
+      if (!computation_->matrix_debug_info.empty()) {
+        NnetComputation::MatrixDebugInfo &debug_info =
+            computation_->matrix_debug_info[m];
+        std::vector<Cindex> &cindexes = debug_info.cindexes;
+        KALDI_ASSERT(cindexes.size() == static_cast<size_t>(matrix_info.num_rows));
+        cindexes.erase(cindexes.begin() + prune_info.row_end, cindexes.end());
+        cindexes.erase(cindexes.begin(),
+                       cindexes.begin() + prune_info.row_begin);
+      }
+      matrix_info.num_rows = prune_info.row_end - prune_info.row_begin;
       // num_cols stays the same.
     }
   }

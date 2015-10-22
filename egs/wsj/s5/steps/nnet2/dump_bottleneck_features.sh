@@ -36,12 +36,6 @@ nnetdir=$3
 archivedir=$4
 dir=$5
 
-if [ ! -z "$transform_dir" ]; then
-  # because we [cat trans.*], we need to keep nj consistent with [# of trans]
-  nj=`cat $transform_dir/num_jobs` || exit 1;
-  echo "Set number of parallel jobs to $nj to be consistent with  $transform_dir/num_jobs"
-fi
-
 # Assume that final.nnet is in nnetdir
 bnf_nnet=$nnetdir/final.raw
 if [ ! -f $bnf_nnet ] ; then
@@ -49,12 +43,15 @@ if [ ! -f $bnf_nnet ] ; then
   exit 1;
 fi
 
-if [ "$feat_type" == "lda" ]; then
-  nnet_lda=$nnetdir/final.mat
-  if [ ! -f $nnet_lda ] ; then 
-    echo "No such file $nnet_lda"; 
-    exit 1;
-  fi
+## Set up input features of nnet
+if [ -z "$feat_type" ]; then
+  if [ -f $nnetdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
+fi
+echo "$0: feature type is $feat_type"
+
+if [ "$feat_type" == "lda" ] && [ ! -f $nnetdir/final.mat ]; then
+  echo "$0: no such file $nnetdir/final.mat"
+  exit 1
 fi
 
 name=`basename $data`
@@ -63,20 +60,14 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 mkdir -p $bnf_data
 echo $nj > $nnetdir/num_jobs
-nnet_plice_opts=`cat $nnetdir/nnet_splice_opts 2>/dev/null`
 splice_opts=`cat $nnetdir/splice_opts 2>/dev/null`
+delta_opts=`cat $nnetdir/delta_opts 2>/dev/null`
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
-
-## Set up input features of nnet
-if [ -z "$feat_type" ]; then
-  if [ -f $nnetdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
-fi
-echo "$0: feature type is $feat_type"
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |";;
-  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnet_lda ark:- ark:- |"
+  delta) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $nnetdir/final.mat ark:- ark:- |"
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -84,9 +75,15 @@ esac
 if [ ! -z "$transform_dir" ]; then
   echo "Using transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "No such file $transform_dir/trans.1" && exit 1;
-#  cat $transform_dir/trans.* > $nnetdir/trans || exit 1;
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+  transform_nj=`cat $transform_dir/num_jobs` || exit 1;
+  if [ "$nj" != "$transform_nj" ]; then
+    for n in $(seq $transform_nj); do cat $transform_dir/trans.$n; done >$dir/trans.ark
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.ark ark:- ark:- |"
+  else
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
+  fi
 fi
+
 
 if [ $stage -le 1 ]; then
   echo "Making BNF scp and ark."
@@ -95,23 +92,23 @@ if [ $stage -le 1 ]; then
     copy-feats --compress=true ark:- ark,scp:$archivedir/raw_bnfeat_$name.JOB.ark,$archivedir/raw_bnfeat_$name.JOB.scp || exit 1;
 fi
 
-N0=$(cat $data/feats.scp | wc -l) 
+rm $dir/trans.ark 2>/dev/null
+
+N0=$(cat $data/feats.scp | wc -l)
 N1=$(cat $archivedir/raw_bnfeat_$name.*.scp | wc -l)
 if [[ "$N0" != "$N1" ]]; then
   echo "Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
   exit 1;
 fi
 
-echo -n >$bnf_data/feats.scp
 # Concatenate feats.scp into bnf_data
-for n in `seq 1 $nj`; do
-  cat $archivedir/raw_bnfeat_$name.$n.scp >> $bnf_data/feats.scp
-done
+for n in $(seq $nj); do  cat $archivedir/raw_bnfeat_$name.$n.scp; done > $bnf_data/feats.scp
 
 for f in segments spk2utt text utt2spk wav.scp char.stm glm kws reco2file_and_channel stm; do
   [ -e $data/$f ] && cp -r $data/$f $bnf_data/$f
 done
 
+echo "$0: computing CMVN stats."
 steps/compute_cmvn_stats.sh $bnf_data $dir $archivedir
 
 echo "$0: done making BNF feats.scp."

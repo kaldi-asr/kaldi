@@ -1073,7 +1073,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   std::string matrix_filename;
   BaseFloat learning_rate = learning_rate_;
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_sample = 0.075;
+      max_change_per_sample = 0.0;
   int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
       update_period = 4;
   cfl->GetValue("learning-rate", &learning_rate); // optional.
@@ -1098,11 +1098,13 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-        bias_stddev = 1.0;
+        bias_stddev = 1.0, bias_mean = 0.0, bias_init = 0.0;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
+    cfl->GetValue("bias-mean", &bias_mean);
+    cfl->GetValue("bias-init", &bias_init);
     Init(learning_rate, input_dim, output_dim, param_stddev,
-         bias_stddev, rank_in, rank_out, update_period,
+         bias_init, bias_mean, bias_stddev, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample);
   }
   if (cfl->HasUnusedValues())
@@ -1154,7 +1156,8 @@ void NaturalGradientAffineComponent::Init(
 void NaturalGradientAffineComponent::Init(
     BaseFloat learning_rate,
     int32 input_dim, int32 output_dim,
-    BaseFloat param_stddev, BaseFloat bias_stddev,
+    BaseFloat param_stddev, BaseFloat bias_init,
+    BaseFloat bias_mean, BaseFloat bias_stddev,
     int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample) {
@@ -1165,15 +1168,24 @@ void NaturalGradientAffineComponent::Init(
                bias_stddev >= 0.0);
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
-  bias_params_.SetRandn();
-  bias_params_.Scale(bias_stddev);
+  if (bias_init != 0.0) {
+    bias_params_.Set(bias_init);
+  } else {
+    bias_params_.SetRandn();
+    bias_params_.Add(bias_mean);
+    bias_params_.Scale(bias_stddev);
+  }
   rank_in_ = rank_in;
   rank_out_ = rank_out;
   update_period_ = update_period;
   num_samples_history_ = num_samples_history;
   alpha_ = alpha;
   SetNaturalGradientConfigs();
-  KALDI_ASSERT(max_change_per_sample >= 0.0);
+  if (max_change_per_sample > 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_sample for "
+               << "NaturalGradientAffineComponent. But the per-component "
+               << "gradient clipping mechansim has been removed. Instead it's currently "
+               << "done at the whole model level.";
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
   update_count_ = 0.0;
@@ -1261,37 +1273,6 @@ Component* NaturalGradientAffineComponent::Copy() const {
   return ans;
 }
 
-BaseFloat NaturalGradientAffineComponent::GetScalingFactor(
-    const CuVectorBase<BaseFloat> &in_products,
-    const std::string &debug_info,
-    BaseFloat learning_rate_scale,
-    CuVectorBase<BaseFloat> *out_products) {
-  static int scaling_factor_warnings_remaining = 10;
-  int32 minibatch_size = in_products.Dim();
-
-  out_products->MulElements(in_products);
-  out_products->ApplyPow(0.5);
-  BaseFloat prod_sum = out_products->Sum();
-  BaseFloat tot_change_norm = learning_rate_scale * learning_rate_ * prod_sum,
-      max_change_norm = max_change_per_sample_ * minibatch_size;
-  // tot_change_norm is the product of norms that we are trying to limit
-  // to max_value_.
-  KALDI_ASSERT(tot_change_norm - tot_change_norm == 0.0 && "NaN in backprop");
-  KALDI_ASSERT(tot_change_norm >= 0.0);
-  BaseFloat factor = 1.0;
-  if (tot_change_norm > max_change_norm) {
-    factor = max_change_norm / tot_change_norm;
-    active_scaling_count_ += 1.0;
-    if (scaling_factor_warnings_remaining > 0) {
-      scaling_factor_warnings_remaining--;
-      KALDI_LOG << "Limiting step size using scaling factor "
-                << factor << ", for component " << debug_info;
-    }
-  }
-  max_change_scale_stats_ += factor;
-  return factor;
-}
-
 void NaturalGradientAffineComponent::Update(
     const std::string &debug_info,
     const CuMatrixBase<BaseFloat> &in_value,
@@ -1327,11 +1308,6 @@ void NaturalGradientAffineComponent::Update(
   // (it's faster to have them output a scaling factor than to have them scale
   // their outputs).
   BaseFloat scale = in_scale * out_scale;
-  BaseFloat minibatch_scale = 1.0;
-
-  if (max_change_per_sample_ > 0.0)
-    minibatch_scale = GetScalingFactor(in_row_products, debug_info, scale,
-                                       &out_row_products);
 
   CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
                                               0, in_value_temp.NumRows(),
@@ -1342,7 +1318,7 @@ void NaturalGradientAffineComponent::Update(
 
   precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
 
-  BaseFloat local_lrate = scale * minibatch_scale * learning_rate_;
+  BaseFloat local_lrate = scale * learning_rate_;
   update_count_ += 1.0;
   bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
                          precon_ones, 1.0);
@@ -1884,7 +1860,7 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
   // the parameter-change.  It has the same purpose as the max-change-per-sample in
   // the NaturalGradientAffineComponent.
   BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_minibatch = 0.5,
+      max_change_per_minibatch = 0.0,
       learning_rate = learning_rate_;  // default to value from constructor.
   cfl->GetValue("rank", &rank);
   cfl->GetValue("update-period", &update_period);
@@ -1929,6 +1905,11 @@ void NaturalGradientPerElementScaleComponent::Init(
   preconditioner_.SetNumSamplesHistory(num_samples_history);
   preconditioner_.SetAlpha(alpha);
   max_change_per_minibatch_ = max_change_per_minibatch;
+  if (max_change_per_minibatch > 0.0)
+    KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
+               << "NaturalGradientPerElementScaleComponent. But the per-component "
+               << "gradient clipping mechansim has been removed. Instead it's currently "
+               << "done at the whole model level.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
@@ -1962,8 +1943,6 @@ void NaturalGradientPerElementScaleComponent::Update(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
 
-  static int max_change_warnings_remaining = 10;
-
   CuMatrix<BaseFloat> derivs_per_frame(in_value);
   derivs_per_frame.MulElements(out_deriv);
   // the non-natural-gradient update would just do
@@ -1974,21 +1953,7 @@ void NaturalGradientPerElementScaleComponent::Update(
 
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
-
-  BaseFloat max_change_scale = 1.0,
-      param_delta = delta_scales.Norm(2.0);
-  if (param_delta > max_change_per_minibatch_) {
-    max_change_scale = max_change_per_minibatch_ / param_delta;
-    if (max_change_warnings_remaining >= 0) {
-      max_change_warnings_remaining--;
-      KALDI_WARN << "Parameter change " << param_delta
-                 << " exceeds --max-change-per-minibatch="
-                 << max_change_per_minibatch_ << " for this minibatch, "
-                 << "for " << debug_info << ", scaling by factor "
-                 << max_change_scale;
-    }
-  }
-  scales_.AddVec(max_change_scale, delta_scales);
+  scales_.AddVec(1.0, delta_scales);
 }
 
 Convolutional1dComponent::Convolutional1dComponent():
@@ -2054,8 +2019,12 @@ void Convolutional1dComponent::Init(BaseFloat learning_rate,
 
 // initialize the component using predefined matrix file
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
+                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
                                     std::string matrix_filename) {
   UpdatableComponent::Init(learning_rate);
+  patch_dim_ = patch_dim;
+  patch_step_ = patch_step;
+  patch_stride_ = patch_stride;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat);
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -2084,9 +2053,9 @@ void Convolutional1dComponent::Resize(int32 input_dim, int32 output_dim) {
 // display information about component
 std::string Convolutional1dComponent::Info() const {
   std::stringstream stream;
-  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows()) 
+  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows())
                                  * static_cast<BaseFloat>(filter_params_.NumCols());
-  BaseFloat filter_stddev = 
+  BaseFloat filter_stddev =
             std::sqrt(TraceMatMat(filter_params_, filter_params_, kTrans) /
                       filter_params_size),
             bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
@@ -2117,9 +2086,12 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   cfl->GetValue("learning-rate", &learning_rate); //optional
+  ok = ok && cfl->GetValue("patch-dim", &patch_dim);
+  ok = ok && cfl->GetValue("patch-step", &patch_step);
+  ok = ok && cfl->GetValue("patch-stride", &patch_stride);
   if (cfl->GetValue("matrix", &matrix_filename)) {
     // initialize from prefined parameter matrix
-    Init(learning_rate, matrix_filename);
+    Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);
     if (cfl->GetValue("input-dim", &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                "input-dim mismatch vs. matrix.");
@@ -2127,12 +2099,9 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
       KALDI_ASSERT(output_dim == OutputDim() &&
                "output-dim mismatch vs. matrix.");
   } else {
-    // initialize from configuration
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
-    ok = ok && cfl->GetValue("patch-dim", &patch_dim);
-    ok = ok && cfl->GetValue("patch-step", &patch_step);
-    ok = ok && cfl->GetValue("patch-stride", &patch_stride);
+    // initialize from configuration
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
@@ -2154,7 +2123,7 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
    vector B is defined by length $output-dim. The propagation is
    Y = X * A' + B                                     (1)
    where "*" is row-by-row processing of X, executing vector-matrix
-   multiplication 
+   multiplication
    Y(t) = X(t) * A' + B                               (2)
    which converts each row of input of dim $input-dim to a row of output of
    dim $output-dim by A' (' defines transpose).
@@ -2187,7 +2156,7 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
    */
   CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
   // column_map is indexed by the column-index of "patches",
-  // and the value is the corresponding column-index of "in". 
+  // and the value is the corresponding column-index of "in".
   std::vector<int32> column_map(filter_dim * num_patches);
 
   // build-up a column selection map
@@ -2208,12 +2177,12 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
   std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch, filter_params_batch;
 
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_, 0, filter_params_.NumRows(), 0,
 		  filter_params_.NumCols());
-  
+
   // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    // form batch in vector container. for filter_params_batch, all elements 
+    // form batch in vector container. for filter_params_batch, all elements
     // point to the same copy filter_params_elem
     tgt_batch.push_back(new CuSubMatrix<BaseFloat>(out->ColRange(p * num_filters,
 				    num_filters)));
@@ -2223,7 +2192,7 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
 
     tgt_batch[p]->AddVecToRows(1.0, bias_params_, 1.0); // add bias
   }
-  
+
   // apply all filters
   AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
 		  kTrans, 1.0f);
@@ -2334,24 +2303,24 @@ void Convolutional1dComponent::Backprop(const std::string &debug_info,
   // backpropagate to vector of matrices
   // (corresponding to position of a filter)
   //
-  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch, 
+  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch,
 	  filter_params_batch;
 
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_, 0, filter_params_.NumRows(), 0,
 		  filter_params_.NumCols());
 
   // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    // form batch in vector container. for filter_params_batch, all elements 
+    // form batch in vector container. for filter_params_batch, all elements
     // point to the same copy filter_params_elem
     patch_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(patches_deriv.ColRange(
 				    p * filter_dim, filter_dim)));
     out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
 				    p * num_filters, num_filters)));
-    filter_params_batch.push_back(filter_params_elem);  
+    filter_params_batch.push_back(filter_params_elem);
   }
-  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
+  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans,
 		  filter_params_batch, kNoTrans, 0.0f);
 
   // release memory
@@ -2530,18 +2499,18 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
   // use all the patches
   //
 
-  // create a single large matrix holding the smaller matrices 
+  // create a single large matrix holding the smaller matrices
   // from the vector container filters_grad_batch along the rows
   CuMatrix<BaseFloat> filters_grad_blocks_batch(
 		  num_patches * filters_grad.NumRows(), filters_grad.NumCols());
 
-  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch, 
+  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch,
 	  patch_batch;
   for (int32 p = 0; p < num_patches; p++) {
     // form batch in vector container
     filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
 			    filters_grad_blocks_batch.RowRange(
-				    p * filters_grad.NumRows(), 
+				    p * filters_grad.NumRows(),
 				    filters_grad.NumRows())));
     diff_patch_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
 				    p * num_filters, num_filters)));
@@ -2567,7 +2536,7 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
   for (int32 p = 0; p < num_patches; p++) {
     delete filters_grad_batch[p];
     delete diff_patch_batch[p];
-    delete patch_batch[p];    
+    delete patch_batch[p];
   }
 
   //

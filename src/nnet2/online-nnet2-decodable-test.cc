@@ -1,4 +1,4 @@
-// online2/online-nnet2-decodable-test.cc
+// nnet2/online-nnet2-decodable-test.cc
 
 // Copyright 2014  Johns Hopkins University (author:  Daniel Povey)
 

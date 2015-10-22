@@ -330,30 +330,53 @@ void Optimize(const NnetOptimizeOptions &config,
   if (!config.optimize)
     return;
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, true);
+
   // this will do nothing unless --min-deriv-time or --max-deriv-time was
   // set.
   LimitDerivativeTimes(nnet, config.min_deriv_time, config.max_deriv_time,
                        computation);
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, true);
+
   if (config.consolidate_model_update)
     ConsolidateModelUpdate(nnet, request, computation);
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, true);
+
   if (config.convert_addition)
     ConvertAdditionToAssignment(nnet, computation);
+
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, true);
 
   if (config.remove_assignments || config.backprop_in_place ||
       config.propagate_in_place)
     VariableMergingOptimization(config, nnet, request, computation);
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, false);
+
   if (config.initialize_undefined)
     RemoveUnnecessaryZeroing(nnet, computation);
+
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, false);
 
   if (config.move_sizing_commands)
     MoveSizingCommands(nnet, computation);
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, false);
+
   if (config.allocate_from_other)
     RemoveUnnecessaryAllocation(nnet, computation);
 
+  if (GetVerboseLevel() >= 4)
+    CheckComputation(nnet, request, *computation, false);
 }
 
 // ComputationRequests are distinguished by the names and indexes

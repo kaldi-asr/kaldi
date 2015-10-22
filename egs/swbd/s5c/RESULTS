@@ -1,3 +1,10 @@
+#!/bin/bash
+# eval2000,
+for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
+# swbd subset of eval2000,
+for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
+
 # Note: we report the overall eval2000 performance and the Switchboard portion
 # of eval2000 (without CallHome) performance separately below.
 
@@ -98,10 +105,40 @@
 %WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
 %WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
 
+# these are results with nnet3 LSTMs : local/nnet3/run_lstm.sh (8 epoch training on speed-perturbed and volume perturbed data)
+%WER 11.8 | 1831 21395 | 89.4 7.0 3.6 1.3 11.8 47.8 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.2 | 1831 21395 | 88.3 8.0 3.7 1.5 13.2 49.5 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# results with nnet3 tdnn: local/nnet3/run_tdnn.sh (11.10.2015) (2 epoch training on speed-perturbed and volume perturbed data)
+%WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+
+
 # Resegmentation numbers for swbd subset.
 %WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
 %WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
 
-# Raw fmllr numbers for swbd subset. 
+# Raw fmllr numbers for swbd subset.
 %WER 22.1 | 1831 21395 | 80.1 14.1 5.8 2.2 22.1 59.8 | exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
 %WER 30.1 | 1831 21395 | 72.7 19.5 7.9 2.8 30.1 65.4 | exp/tri4b/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
+
+
+### Karel's nnet1
+# nnet1 DNN recipe (29.09.2015), swbd subset,
+# cross-entropy (3gram decoding, fisher 4gram rescoring),
+%WER 14.6 | 1831 21395 | 87.0 8.9 4.2 1.6 14.6 52.3 | exp/dnn5b_pretrain-dbn_dnn/decode_eval2000_sw1_tg/score_12_0.5/eval2000.ctm.swbd.filt.sys
+%WER 13.0 | 1831 21395 | 88.5 7.8 3.7 1.4 13.0 49.5 | exp/dnn5b_pretrain-dbn_dnn/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000.ctm.swbd.filt.sys
+# sMBR (3gram decoding, fisher 4gram rescoring),
+%WER 13.2 | 1831 21395 | 88.5 8.1 3.4 1.7 13.2 48.7 | exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_tg_it4/score_14_0.0/eval2000.ctm.swbd.filt.sys
+%WER 11.7 | 1831 21395 | 89.9 7.1 3.0 1.6 11.7 45.8 | exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_fsh_fg_it4/score_13_0.0/eval2000.ctm.swbd.filt.sys
+
+# nnet1 Tandem recipe local/nnet/run_dnn_tandem_uc.sh (29.09.2015), swbd subset,
+# Stacked bottleneck network,
+%WER 15.3 | 1831 21395 | 86.2 9.5 4.3 1.5 15.3 52.6 | exp/nnet5uc-part2/decode_eval2000_sw1_tg/score_13_0.0/eval2000.ctm.swbd.filt.sys
+# GMMs on BN-features,
+%WER 16.7 | 1831 21395 | 85.0 10.5 4.5 1.8 16.7 54.3 | exp/tri6uc/decode_eval2000_graph_sw1_tg/score_20_0.0/eval2000.ctm.swbd.filt.sys
+%WER 15.8 | 1831 21395 | 85.8 9.9 4.4 1.6 15.8 53.2 | exp/tri7uc-sat/decode_eval2000_graph_sw1_tg/score_20_0.0/eval2000.ctm.swbd.filt.sys
+%WER 14.6 | 1831 21395 | 87.1 9.2 3.6 1.8 14.6 51.8 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_tg_it4/score_17_0.0/eval2000.ctm.swbd.filt.sys
+# fisher 4gram rescoring,
+%WER 13.2 | 1831 21395 | 88.3 8.2 3.4 1.5 13.2 49.2 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_fsh_fg_it4/score_19_0.0/eval2000.ctm.swbd.filt.sys

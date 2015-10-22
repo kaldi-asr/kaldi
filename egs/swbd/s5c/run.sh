@@ -12,6 +12,8 @@
 set -e # exit on error
 has_fisher=true
 local/swbd1_data_download.sh /export/corpora3/LDC/LDC97S62
+# local/swbd1_data_download.sh /mnt/matylda2/data/SWITCHBOARD_1R2 # BUT,
+
 # prepare SWBD dictionary first since we want to find acronyms according to pronunciations
 # before mapping lexicon and transcripts
 local/swbd1_prepare_dict.sh
@@ -28,7 +30,7 @@ local/swbd1_prepare_dict.sh
 local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /home/dpovey/data/LDC97S62
 # local/swbd1_data_prep.sh /data/corpora0/LDC97S62
-# local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
+# local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2 # BUT,
 # local/swbd1_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
 
 utils/prepare_lang.sh data/local/dict_nosp \
@@ -40,12 +42,10 @@ utils/prepare_lang.sh data/local/dict_nosp \
 
 # If you have the Fisher data, you can set this "fisher_dir" variable.
 fisher_dirs="/export/corpora3/LDC/LDC2004T19/fe_03_p1_tran/ /export/corpora3/LDC/LDC2005T19/fe_03_p2_tran/"
-#fisher_dirs="/home/dpovey/data/LDC2004T19/fe_03_p1_tran/"
-#fisher_dirs="/data/corpora0/LDC2004T19/fe_03_p1_tran/"
-# edinburgh:
-# fisher_dirs="/exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts"
-# brno:
-# fisher_dirs="/mnt/matylda2/data/FISHER/fe_03_p1_tran" # BUT
+# fisher_dirs="/home/dpovey/data/LDC2004T19/fe_03_p1_tran/"
+# fisher_dirs="/data/corpora0/LDC2004T19/fe_03_p1_tran/"
+# fisher_dirs="/exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts" # Edinburgh,
+# fisher_dirs="/mnt/matylda2/data/FISHER/fe_03_p1_tran /mnt/matylda2/data/FISHER/fe_03_p2_tran" # BUT,
 local/swbd1_train_lms.sh data/local/train/text \
   data/local/dict_nosp/lexicon.txt data/local/lm $fisher_dirs
 
@@ -245,7 +245,7 @@ if $has_fisher; then
     (
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
         data/lang_sw1_{tg,fsh_fg} data/eval2000 \
-        exp/tri4_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_fsh_{tg,fsh_fg}
+        exp/tri4_mmi_b0.1/decode_eval2000_${iter}.mdl_sw1_{tg,fsh_fg}
     ) &
   done
 fi

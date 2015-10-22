@@ -18,11 +18,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
 #include <pthread.h>
 #endif
+#include <string>
 
 namespace kaldi {
 // These routines are tested in matrix/matrix-test.cc
@@ -42,16 +42,14 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
 static pthread_mutex_t _RandMutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-int Rand(struct RandomState* state)
-{
+int Rand(struct RandomState* state) {
 #ifdef _MSC_VER
   // On Windows, just call Rand()
   return rand();
 #else
   if (state) {
     return rand_r(&(state->seed));
-  }
-  else {
+  } else {
     int rs = pthread_mutex_lock(&_RandMutex);
     KALDI_ASSERT(rs == 0);
     int val = rand();
@@ -86,7 +84,7 @@ bool WithProb(BaseFloat prob, struct RandomState* state) {
     // prob is very small but nonzero, and the "main algorithm"
     // wouldn't work that well.  So: with probability 1/128, we
     // return WithProb (prob * 128), else return false.
-    if (Rand(state) < RAND_MAX / 128) { // with probability 128...
+    if (Rand(state) < RAND_MAX / 128) {  // with probability 128...
       // Note: we know that prob * 128.0 < 1.0, because
       // we asserted RAND_MAX > 128 * 128.
       return WithProb(prob * 128.0);
@@ -98,7 +96,8 @@ bool WithProb(BaseFloat prob, struct RandomState* state) {
   }
 }
 
-int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {  // This is not exact.
+int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
+  // This is not exact.
   KALDI_ASSERT(max_val >= min_val);
   if (max_val == min_val) return min_val;
 
@@ -106,9 +105,11 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {  // Thi
   // RAND_MAX is quite small on Windows -> may need to handle larger numbers.
   if (RAND_MAX > (max_val-min_val)*8) {
         // *8 to avoid large inaccuracies in probability, from the modulus...
-    return min_val + ((unsigned int)Rand(state) % (unsigned int)(max_val+1-min_val));
+    return min_val +
+      ((unsigned int)Rand(state) % (unsigned int)(max_val+1-min_val));
   } else {
-    if ((unsigned int)(RAND_MAX*RAND_MAX) > (unsigned int)((max_val+1-min_val)*8)) {
+    if ((unsigned int)(RAND_MAX*RAND_MAX) >
+        (unsigned int)((max_val+1-min_val)*8)) {
         // *8 to avoid inaccuracies in probability, from the modulus...
       return min_val + ( (unsigned int)( (Rand(state)+RAND_MAX*Rand(state)))
                     % (unsigned int)(max_val+1-min_val));
@@ -121,7 +122,7 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {  // Thi
   }
 #else
   return min_val +
-      (static_cast<int32>(Rand(state)) % (int32)(max_val+1-min_val));
+      (static_cast<int32>(Rand(state)) % static_cast<int32>(max_val+1-min_val));
 #endif
 }
 
@@ -141,8 +142,7 @@ int32 RandPoisson(float lambda, struct RandomState* state) {
   return k-1;
 }
 
-void RandGauss2(float *a, float *b, RandomState *state)
-{
+void RandGauss2(float *a, float *b, RandomState *state) {
   KALDI_ASSERT(a);
   KALDI_ASSERT(b);
   float u1 = RandUniform(state);
@@ -153,15 +153,15 @@ void RandGauss2(float *a, float *b, RandomState *state)
   *b = u1 * sinf(u2);
 }
 
-void RandGauss2(double *a, double *b, RandomState *state)
-{
+void RandGauss2(double *a, double *b, RandomState *state) {
   KALDI_ASSERT(a);
   KALDI_ASSERT(b);
   float a_float, b_float;
   // Just because we're using doubles doesn't mean we need super-high-quality
   // random numbers, so we just use the floating-point version internally.
   RandGauss2(&a_float, &b_float, state);
-  *a = a_float; *b = b_float;
+  *a = a_float;
+  *b = b_float;
 }
 
 

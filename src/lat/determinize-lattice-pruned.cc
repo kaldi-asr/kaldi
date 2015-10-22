@@ -1,4 +1,4 @@
-// lat/determinize-lattice-pruned-inl.h
+// lat/determinize-lattice-pruned.cc
 
 // Copyright 2009-2012  Microsoft Corporation
 //           2012-2013  Johns Hopkins University (Author: Daniel Povey)

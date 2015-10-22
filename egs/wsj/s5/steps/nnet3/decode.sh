@@ -14,6 +14,7 @@ nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 cmd=run.pl
 beam=15.0
+frames_per_chunk=50
 max_active=7000
 min_active=200
 ivector_scale=1.0
@@ -69,7 +70,7 @@ done
 sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
@@ -95,7 +96,7 @@ if [ ! -z "$transform_dir" ]; then
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
-  
+
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
   if [ $feat_type == "lda" ] && \
@@ -131,13 +132,14 @@ fi
 if [ $stage -le 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     nnet3-latgen-faster$thread_string $ivector_opts \
+     --frames-per-chunk=$frames_per_chunk \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at 
+# The output of this script is the files "lat.*.gz"-- we'll rescore this at
 # different acoustic scales to get the final output.
 
 

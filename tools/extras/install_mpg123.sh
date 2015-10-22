@@ -65,7 +65,7 @@ ln -s mpg123-1.21.0  mpg123
     echo >&2 "MPG123 config is already in env.sh" && exit
 
   wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`readlink -f $wd || pwd`
 
   echo "export MPG123=$wd/mpg123"
   echo "export PATH=\${PATH}:\${MPG123}/bin"

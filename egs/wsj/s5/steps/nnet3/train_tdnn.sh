@@ -32,6 +32,7 @@ num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 presoftmax_prior_scale_power=-0.25
+use_presoftmax_prior_scale=true
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -57,13 +58,8 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
 
-
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 randprune=4.0 # speeds up LDA.
-affine_opts=
-
 use_gpu=true    # if true, we run on GPU.
-num_threads=16  # if using CPU, the number of threads we use.
 cleanup=true
 egs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
@@ -123,8 +119,8 @@ if [ $# != 4 ]; then
   echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
-  echo "  --realign-epochs <list-of-epochs|''>             # A list of space-separated epoch indices the beginning of which"
-  echo "                                                   # realignment is to be done"
+  echo "  --realign-times <list-of-times|\"\">             # A list of space-separated floating point numbers between 0.0 and"
+  echo "                                                   # 1.0 to specify how far through training realignment is to be done"
   echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
   echo "  --align-use-gpu (yes/no)                         # specify is gpu is to be used for realignment"
   echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
@@ -200,6 +196,7 @@ if [ $stage -le -5 ]; then
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
      $dim_opts \
+    --use-presoftmax-prior-scale $use_presoftmax_prior_scale \
     --num-targets  $num_leaves  \
    $dir/configs || exit 1;
 
@@ -236,22 +233,21 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   echo "$0: calling get_egs.sh"
   steps/nnet3/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --samples-per-iter $samples_per_iter --stage $get_egs_stage \
-      --io-opts "$io_opts" \
       --cmd "$cmd" $egs_opts \
       --frames-per-eg $frames_per_eg \
       $data $alidir $dir/egs || exit 1;
 fi
 
-if [ "$feat_dim" != "$(cat $dir/egs/info/feat_dim)" ]; then
-  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $dir/egs/info/feat_dim)";
-  exit 1;
-fi
-if [ "$ivector_dim" != "$(cat $dir/egs/info/ivector_dim)" ]; then
-  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $dir/egs/info/ivector_dim)";
-  exit 1;
-fi
-
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
+  echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
+  exit 1;
+fi
+if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
+  echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
 
 # copy any of the following that exist, to $dir.
 cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
@@ -260,8 +256,8 @@ cp $egs_dir/{cmvn_opts,splice_opts,final.mat} $dir 2>/dev/null
 # the --egs-dir option was used on the command line).
 egs_left_context=$(cat $egs_dir/info/left_context) || exit -1
 egs_right_context=$(cat $egs_dir/info/right_context) || exit -1
-( ! [ $(cat $egs_dir/info/left_context) -le $left_context ] ||
-  ! [ $(cat $egs_dir/info/right_context) -le $right_context ] ) && \
+ ( [ $egs_left_context -lt $left_context ] || \
+   [ $egs_right_context -lt $right_context ] ) && \
    echo "$0: egs in $egs_dir have too little context" && exit -1;
 
 frames_per_eg=$(cat $egs_dir/info/frames_per_eg) || { echo "error: no such file $egs_dir/info/frames_per_eg"; exit 1; }
@@ -367,16 +363,11 @@ if $use_gpu; then
     exit 1
   fi
 else
-  if [ $num_threads -gt 1 ]; then
-    parallel_suffix="-parallel"
-    parallel_train_opts="--num-threads=$num_threads"
-    train_queue_opt="--num-threads $num_threads"
-    combine_queue_opt=""  # the combine stage will be quite slow if not using
-                          # GPU, as we didn't enable that program to use
-                          # multiple threads.
-  else
-    parallel_suffix=""
-  fi
+  echo "$0: without using a GPU this will be very slow.  nnet3 does not yet support multiple threads."
+  parallel_train_opts="--use-gpu=no"
+  combine_queue_opt=""  # the combine stage will be quite slow if not using
+                        # GPU, as we didn't enable that program to use
+                        # multiple threads.
   prior_gpu_opt="--use-gpu=no"
   prior_queue_opt=""
 fi
@@ -529,7 +520,7 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train$parallel_suffix $parallel_train_opts "$raw" \
+          nnet3-train $parallel_train_opts "$raw" \
           "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
@@ -612,9 +603,11 @@ fi
 if [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
+  else egs_part=JOB; fi
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.1.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \

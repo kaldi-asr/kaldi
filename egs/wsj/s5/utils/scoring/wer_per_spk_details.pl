@@ -96,6 +96,8 @@ while(<UTT2SPK>) {
   my @F=split;
   die "Incompatible format of the utt2spk file: $_" if @F != 2; 
   $UTTMAP{$F[0]} = $F[1];
+  # Set width of speaker column by its longest label,
+  if($SPK_WIDTH < length($F[1])) { $SPK_WIDTH = length($F[1]) }
 }
 close(UTT2SPK);
 
