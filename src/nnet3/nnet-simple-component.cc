@@ -1185,7 +1185,7 @@ void NaturalGradientAffineComponent::Init(
     KALDI_WARN << "You are setting a positive max_change_per_sample for "
                << "NaturalGradientAffineComponent. But the per-component "
                << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level."; 
+               << "done at the whole model level.";
   max_change_per_sample_ = max_change_per_sample;
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
   update_count_ = 0.0;
@@ -1909,7 +1909,7 @@ void NaturalGradientPerElementScaleComponent::Init(
     KALDI_WARN << "You are setting a positive max_change_per_minibatch for "
                << "NaturalGradientPerElementScaleComponent. But the per-component "
                << "gradient clipping mechansim has been removed. Instead it's currently "
-               << "done at the whole model level."; 
+               << "done at the whole model level.";
 }
 
 void NaturalGradientPerElementScaleComponent::Init(
@@ -2053,9 +2053,9 @@ void Convolutional1dComponent::Resize(int32 input_dim, int32 output_dim) {
 // display information about component
 std::string Convolutional1dComponent::Info() const {
   std::stringstream stream;
-  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows()) 
+  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows())
                                  * static_cast<BaseFloat>(filter_params_.NumCols());
-  BaseFloat filter_stddev = 
+  BaseFloat filter_stddev =
             std::sqrt(TraceMatMat(filter_params_, filter_params_, kTrans) /
                       filter_params_size),
             bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
@@ -2123,7 +2123,7 @@ void Convolutional1dComponent::InitFromConfig(ConfigLine *cfl) {
    vector B is defined by length $output-dim. The propagation is
    Y = X * A' + B                                     (1)
    where "*" is row-by-row processing of X, executing vector-matrix
-   multiplication 
+   multiplication
    Y(t) = X(t) * A' + B                               (2)
    which converts each row of input of dim $input-dim to a row of output of
    dim $output-dim by A' (' defines transpose).
@@ -2156,7 +2156,7 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
    */
   CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
   // column_map is indexed by the column-index of "patches",
-  // and the value is the corresponding column-index of "in". 
+  // and the value is the corresponding column-index of "in".
   std::vector<int32> column_map(filter_dim * num_patches);
 
   // build-up a column selection map
@@ -2177,12 +2177,12 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
   std::vector<CuSubMatrix<BaseFloat>* > tgt_batch, patch_batch, filter_params_batch;
 
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_, 0, filter_params_.NumRows(), 0,
 		  filter_params_.NumCols());
-  
+
   // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    // form batch in vector container. for filter_params_batch, all elements 
+    // form batch in vector container. for filter_params_batch, all elements
     // point to the same copy filter_params_elem
     tgt_batch.push_back(new CuSubMatrix<BaseFloat>(out->ColRange(p * num_filters,
 				    num_filters)));
@@ -2192,7 +2192,7 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
 
     tgt_batch[p]->AddVecToRows(1.0, bias_params_, 1.0); // add bias
   }
-  
+
   // apply all filters
   AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
 		  kTrans, 1.0f);
@@ -2303,24 +2303,24 @@ void Convolutional1dComponent::Backprop(const std::string &debug_info,
   // backpropagate to vector of matrices
   // (corresponding to position of a filter)
   //
-  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch, 
+  std::vector<CuSubMatrix<BaseFloat>* > patch_deriv_batch, out_deriv_batch,
 	  filter_params_batch;
 
   CuSubMatrix<BaseFloat>* filter_params_elem = new CuSubMatrix<BaseFloat>(
-		  filter_params_, 0, filter_params_.NumRows(), 0, 
+		  filter_params_, 0, filter_params_.NumRows(), 0,
 		  filter_params_.NumCols());
 
   // form batch in vector container
   for (int32 p = 0; p < num_patches; p++) {
-    // form batch in vector container. for filter_params_batch, all elements 
+    // form batch in vector container. for filter_params_batch, all elements
     // point to the same copy filter_params_elem
     patch_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(patches_deriv.ColRange(
 				    p * filter_dim, filter_dim)));
     out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
 				    p * num_filters, num_filters)));
-    filter_params_batch.push_back(filter_params_elem);  
+    filter_params_batch.push_back(filter_params_elem);
   }
-  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
+  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans,
 		  filter_params_batch, kNoTrans, 0.0f);
 
   // release memory
@@ -2499,18 +2499,18 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
   // use all the patches
   //
 
-  // create a single large matrix holding the smaller matrices 
+  // create a single large matrix holding the smaller matrices
   // from the vector container filters_grad_batch along the rows
   CuMatrix<BaseFloat> filters_grad_blocks_batch(
 		  num_patches * filters_grad.NumRows(), filters_grad.NumCols());
 
-  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch, 
+  std::vector<CuSubMatrix<BaseFloat>* > filters_grad_batch, diff_patch_batch,
 	  patch_batch;
   for (int32 p = 0; p < num_patches; p++) {
     // form batch in vector container
     filters_grad_batch.push_back(new CuSubMatrix<BaseFloat>(
 			    filters_grad_blocks_batch.RowRange(
-				    p * filters_grad.NumRows(), 
+				    p * filters_grad.NumRows(),
 				    filters_grad.NumRows())));
     diff_patch_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
 				    p * num_filters, num_filters)));
@@ -2536,7 +2536,7 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
   for (int32 p = 0; p < num_patches; p++) {
     delete filters_grad_batch[p];
     delete diff_patch_batch[p];
-    delete patch_batch[p];    
+    delete patch_batch[p];
   }
 
   //
