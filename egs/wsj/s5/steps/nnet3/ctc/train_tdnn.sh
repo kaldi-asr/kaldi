@@ -31,6 +31,7 @@ frames_per_iter=800000  # each iteration of training, see this many [input]
                         # frames per job.  This option is passed to get_egs.sh.
                         # Aim for about a minute of training time
 right_tolerance=10
+denominator_scale=1.0 # relates to tombsone stuff.
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 frame_subsampling_factor=3  # controls reduced frame-rate at the output.
@@ -464,7 +465,8 @@ while [ $x -lt $num_iters ]; do
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-ctc-train $parallel_train_opts $deriv_time_opts --print-interval=10 --write-raw=true "$mdl" \
+          nnet3-ctc-train $parallel_train_opts $deriv_time_opts --denominator-scale=$denominator_scale \
+            --print-interval=10 --write-raw=true "$mdl" \
           "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done

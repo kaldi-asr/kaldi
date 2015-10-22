@@ -47,7 +47,7 @@ mkdir -p $dir/scoring/log
 # check if this is a ctc model, we check for both cases as
 # the *info bins could fail due to other reasons too
 is_ctc=
-nnet3-am-info --print-args=false $model  1>/dev/null 2>&1;
+am-info --print-args=false $model  1>/dev/null 2>&1;
 [ $? -eq 0 ] && is_ctc=false;
 nnet3-ctc-info --print-args=false $model  1>/dev/null 2>&1;
 [ $? -eq 0 ] && is_ctc=true;

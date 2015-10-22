@@ -119,7 +119,7 @@ if [ $stage -le 11 ]; then
 fi
 
 
-phone_lm_weight=0.15
+phone_lm_weight=0.0
 if [ $stage -le 12 ]; then
   for lm_suffix in tgpr bd_tgpr; do
     steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
@@ -127,8 +127,23 @@ if [ $stage -le 12 ]; then
   done
 fi
 
+unk_penalty=4   # natural-log penalty for <UNK>, which for some reason is
+                # decoded a lot in this setup.
+
 
 if [ $stage -le 13 ]; then
+  for lm_suffix in tgpr bd_tgpr; do
+    src=$dir/graph_${lm_suffix}_${phone_lm_weight}
+    dst=$dir/graph_${lm_suffix}_${phone_lm_weight}_unk${unk_penalty}
+    rm -rf $dst;
+    cp -r $src $dst
+    unk_word=$(grep -w '<UNK>' data/lang_test_${lm_suffix}/words.txt | awk '{print $2}') || exit 1;
+    fstprint $src/CTC.fst | awk -v u=$unk_word -v p=$unk_penalty '{if ($4 == u) $5 += p; print;} ' | \
+      fstcompile > $dst/CTC.fst || exit 1;
+  done
+fi
+
+if [ $stage -le 14 ]; then
   # offline decoding
   blank_scale=1.0
   for lm_suffix in tgpr bd_tgpr; do
@@ -136,8 +151,8 @@ if [ $stage -le 13 ]; then
     for year in eval92 dev93; do
       steps/nnet3/ctc/decode.sh --nj 8 --cmd "$decode_cmd" --blank-scale $blank_scale \
          --online-ivector-dir exp/nnet3/ivectors_test_$year \
-         $dir/graph_${lm_suffix}_${phone_lm_weight} data/test_${year}_hires \
-         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight}_bs${blank_scale} &
+         $dir/graph_${lm_suffix}_${phone_lm_weight}_unk${unk_penalty} data/test_${year}_hires \
+         $dir/decode_${lm_suffix}_${year}_plm${phone_lm_weight}_bs${blank_scale}_unk${unk_penalty} &
     done
   done
 fi
@@ -145,15 +160,22 @@ fi
 wait;
 exit 0;
 
-# Results (still considerably worse than baseline):
+# Results (almost as good as the baseline):
 # grep WER exp/ctc/nnet_tdnn_g/decode_{tgpr,bd_tgpr}_{dev93,eval92}/scoring_kaldi/best_wer
 
- cat exp/ctc/nnet_tdnn_n/decode_{tgpr,bd_tgpr}_{eval92,dev93}*/scoring_kaldi/best_wer | grep bs1
+# this is with phone_lm_weight 0.0, which on average seems very slightly better than 0.15.
+b01:s5:  cat exp/ctc/nnet_tdnn_n/decode_{tgpr,bd_tgpr}_{eval92,dev93}*/scoring_kaldi/best_wer | grep plm0.0
+%WER 6.63 [ 374 / 5643, 73 ins, 60 del, 241 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_eval92_plm0.0_bs1.0/wer_9_1.0
+%WER 9.23 [ 760 / 8234, 114 ins, 152 del, 494 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_dev93_plm0.0_bs1.0/wer_9_0.5
+%WER 4.22 [ 238 / 5643, 21 ins, 28 del, 189 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_eval92_plm0.0_bs1.0/wer_10_1.0
+%WER 7.37 [ 607 / 8234, 74 ins, 103 del, 430 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_dev93_plm0.0_bs1.0/wer_10_0.0
+
+b01:s5: steps/align_fmllr.sh: doing final alignment.
+ cat exp/ctc/nnet_tdnn_n/decode_{tgpr,bd_tgpr}_{eval92,dev93}*/scoring_kaldi/best_wer | grep -v plm0.0
 %WER 6.56 [ 370 / 5643, 67 ins, 70 del, 233 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_eval92_plm0.15_bs1.0/wer_9_0.5
 %WER 9.35 [ 770 / 8234, 109 ins, 202 del, 459 sub ] exp/ctc/nnet_tdnn_n/decode_tgpr_dev93_plm0.15_bs1.0/wer_9_0.0
 %WER 4.25 [ 240 / 5643, 20 ins, 36 del, 184 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_eval92_plm0.15_bs1.0/wer_10_0.5
 %WER 7.51 [ 618 / 8234, 77 ins, 113 del, 428 sub ] exp/ctc/nnet_tdnn_n/decode_bd_tgpr_dev93_plm0.15_bs1.0/wer_9_0.0
-
 
 # Baseline results:
 grep WER exp/nnet3/nnet_tdnn_a/decode_{tgpr,bd_tgpr}_{eval92,dev93}/scoring_kaldi/best_wer
@@ -161,4 +183,4 @@ exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/scoring_kaldi/best_wer:%WER 6.03 [ 340 
 exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/scoring_kaldi/best_wer:%WER 9.35 [ 770 / 8234, 162 ins, 84 del, 524 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_11_0.5
 exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/scoring_kaldi/best_wer:%WER 3.81 [ 215 / 5643, 30 ins, 18 del, 167 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_10_1.0
 exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/scoring_kaldi/best_wer:%WER 6.74 [ 555 / 8234, 69 ins, 72 del, 414 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_11_0.0
-b03:s5:
+
