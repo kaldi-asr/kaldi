@@ -15,6 +15,25 @@ stage=0 # resume training with --stage=N
 
 . utils/parse_options.sh || exit 1;
 
+# check BeamformIt and IRSTLM are installed or not
+if [ -z $BEAMFORMIT ] ; then
+  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
+fi
+export PATH=${PATH}:$BEAMFORMIT
+! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+if [ -z $IRSTLM ] ; then
+  export IRSTLM=$KALDI_ROOT/tools/irstlm/
+fi
+export PATH=${PATH}:$IRSTLM/bin
+if ! command -v prune-lm >/dev/null 2>&1 ; then
+  echo "$0: Error: the IRSTLM is not available or compiled" >&2
+  echo "$0: Error: We used to install it by default, but." >&2
+  echo "$0: Error: this is no longer the case." >&2
+  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
+  echo "$0: Error: and run extras/install_irstlm.sh" >&2
+  exit 1
+fi
+
 # You can execute run_init.sh only "once"
 # This creates LMs, basic task files, basic models,
 # baseline results without speech enhancement techniques, and so on.
