@@ -230,7 +230,7 @@ void TestWordAlignLatticeLexicon() {
 } // end namespace kaldi
 
 int main() {
-  for (int32 i = 0; i < 400; i++)
+  for (int32 i = 0; i < 3; i++)
     kaldi::TestWordAlignLatticeLexicon();
   std::cout << "Tests succeeded\n";
 }
