@@ -41,8 +41,8 @@ namespace kaldi {
   made the network output phones, and that's how we are doing it in our
   implementation.  (Our goal is to support applications of speech recognition, and
   while building applications it is generally essential to be able to control the
-  language model and vocabulary without rebuilding the model.)  
-  
+  language model and vocabulary without rebuilding the model.)
+
   \section ctc_cctc Context-dependent CTC (CCTC)
 
   What we have implemented is something we are calling Context-dependent CTC
@@ -61,7 +61,7 @@ namespace kaldi {
   context, if it is using a recurrent netowork, so what is different here?
   The difference is that CTC only knows what probabilities it has output;
   it doesn't know for sure what phone was chosen.
-  
+
   Below, we will explain what CCTC is by working in baby steps from a simpler to a more
   complex system, explaining CTC on the way.
 
@@ -146,7 +146,7 @@ namespace kaldi {
   configuration we envisage, we would only have biphone context, so each left-phone corresponds
   to its own history-state, and the number of blank symbols would be equal to the
   number of phones.
-  
+
   \subsection ctc_cctc_cctc  CCTC itself: incorporating a phone language model
 
   Finally we get to CCTC itself.  The difference from Baseline 5 is that prior to training
@@ -159,7 +159,7 @@ namespace kaldi {
   differing from training by the application of a `correction factor' equal to
   the ratio of the word-graph-based LM probability to the phone-ngram LM
   probability.
- 
+
   Let us write the phone language model probabilities as \f$p_{lm}(q | h)\f$,
   where h represents the language-model history state.  We use a Kneser-Ney
   n-gram language model for this, but modified using count cutoffs to minimize
@@ -212,7 +212,7 @@ a speech recognition background.
 \subsection ctc_cctc_further Further details of CCTC
 
 Some key details which we glossed over above are:
- 
+
   - In the equations above, the history-state h is always the most detailed
     history-state that either the phone language-model or the lookup phonetic context
     requires.  We don't want to get into the nitty gritty of how we ensure
@@ -226,8 +226,7 @@ Some key details which we glossed over above are:
     equation above *defines* the model, and the model can learn anything it needs
     to learn by modifying the `acoustic' probabilities of the blank symbols.
 
-      
-\subsection ctc_cctc_tuning Simplifications in CCTC
+ \subsection ctc_cctc_tuning Simplifications in CCTC
 
  When we were leading up to CCTC via a sequence of baselines, you will recall that
  there was an `alternative branch' to Baseline 2(alt) and Baseline 3(alt), that
@@ -261,7 +260,110 @@ Some key details which we glossed over above are:
  the non-blank phone probabilities \em up by a factor 10, which has the same effect as scaling
  blank \em down by a factor of 10.  So we don't believe any further scaling of the blank symbol
  will be necessary.
- 
+
+ \subsection ctc_cctc_tombstone 'Tombstone' CCTC
+
+ An extension to CCTC which seems to be working very well is the 'Tombstone' concept, which
+ we will briefly describe here (pending more complete documentation).  We believe this
+ will become the standard CTC recipe we use, because the results are so far very encouraging.
+
+ You can view the model we train with in CCTC as a HMM, where the number of HMM
+ states is a little bit more than the number of distinct history-states in the
+ phone language model (it's slightly more because of phonetic-context
+ effects.. it's complicated, just ignore that for now).  Each HMM state has
+ num-phones + 1 transitions out of it: one for a blank symbol specific to the
+ phonetic history-state (this one is a self-loop), and one each for each of the
+ context-independent phones.  The 'tombstone' idea is to add one more transition
+ out of each HMM-state: a transition to a 'tombstone state' that doesn't go
+ anywhere and isn't part of any valid sequence that we can decode.  If the model takes the 'tombstone'
+ transition, it's saying ``I don't like any of these alternatives.  I think a mistake
+ was made earlier in the prediction''.  That is, it's saying that it's not happy
+ being in the phonetic-LM history state that it is in.
+
+ This allows the CCTC model to atone for earlier mistakes, and it means that it
+ doesn't have to wait until all the evidence is in before outputting symbols.
+ Instead it can output them 'provisionally' and then later decide it made a bad
+ move.  Of course, none of this affects the Viterbi decoding process-- the
+ decoding process is exactly the same, and doesn't ever look at the tombstone
+ symbols. </em>The tombstones are simply a mechanism to relax the constraint
+ that the transitions out of each state sum to one.</em>.  In fact, there are
+ other ways to achieve the same thing-- for instance, we could take out the
+ denominator of the CCTC equation, which would substantially simplify the
+ training and recognition process.  We will have to experiment with things like
+ that.
+
+ The 'tombstone' idea is not applicable to conventional CTC,.  Viewing CTC it as
+ a special case of CCTC, there is just one HMM state -- imagine there is just
+ one phonetic language-model state -- and the effect of the tombstone
+ probability would just cancel out and would not affect the probability of different
+ sequences differently.
+
+
+ In normal CCTC, the model is 'locally normalized' like a directed graphical
+ model because we ensure via the model structure tthat the
+ (acoustic-data-dependent) transition probabilities out of each state sum to
+ one.  Tombstone CCTC is more like an undirected graphical model that has
+ a Z factor that needs to be computed-- this gives rise to the denominator
+ term in training, which we will talk about below.
+
+ \subsection ctc_cctc_tombstone_training Training 'Tombstone' CCTC
+
+ The training process in 'tombstone' CCTC essentially differs from CCTC training
+ in the same way as MMI training differs from Maximum Likelihood training, in that
+ we add a denominator term to the objective function in addition to the existing
+ numerator term.  The denominator does not need a lattice because it is feasible,
+ on a GPU card, to do a full forward-backward over the HMM states of the CCTC model.
+ (The number of HMM states is, as mentioned before, generally a little larger than
+ the number of history-states in the phone-level language model).
+
+ In order to avoid confusion with other uses of the words 'numerator' and 'denominator'
+ in CCTC, we refer to the numerator as the 'positive' part and the denominator as the
+ 'negative' part of the objective function, because the likelihood from
+ denominator is negated in the overall objective function.  Both the numerator
+ and denominator involve an alpha-beta forward-backward algorithm; however, the numerator
+ is constrained by a Finite State Acceptor representation of the allowable sequences
+ (we do this so that we can control at what frames any given phone can appear, to within,
+ say, a range of 5 frames before the start of the phone in the a reference alignment,
+ to 10 frames after the end.  The denominator allows all paths through the HMM without
+ any constraint, so you can view the numerator as a subset of the denominator.
+
+ We have to be a little careful with edge effects-- remember that we train on
+ split-up pieces of files, of typically 50 to 100 frames.  If we used a fixed
+ distribution for the 'initial-probabilities' of the HMM states in the
+ denominator, we found that the objective function tended to be positive, due to
+ these edge effects-- basically, because the 'good' HMM-states have a low
+ initial-probability.  We were able to fix this by assigning the first-frame
+ alpha probabilities of the denominator to be the same as those used for the
+ numerator, which is a uniform distribution over the small subset of HMM-states
+ that are 'allowed' in the FST on the first frame of the numerator FST.  This is
+ anyway a closer approximation to what the alpha scores would look like if we
+ had done forward-backward over the entire file without breaking it up.  Note
+ that we anyway discard the derivatives of the (currently) first 5 and last 10
+ frames of each segment of (say) 75 frames that we train on, out of concern that
+ the occupation probabilities there are inaccurate due to edge effects.
+
+
+ \subsection ctc_cctc_tombstone_decoding Decoding using 'Tombstone' CCTC
+
+ We found that with 'tombstone' CCTC, no special tricks are necessary during decoding.
+ Adding a penalty on blank is not helpful.  For the language model, we completely
+ remove the phone language model that was used during training, and replace
+ it with the score from the language-model FST, as described in \ref ctc_cctc_decoding.
+ Although our setup supports a language-model scale, in practice it tends to
+ choose a scale of one.  Note, in the scripts you'll see values like 9, 10 and 11 being
+ chosen, but these have to be divided by 10 to get the true scale: we scale down the
+ acoustic probabilities by a factor of 10 in the lattices after decoding so that
+ we can test integer language-model scale factors and still get a fine enough gradation in
+ relative scales.
+
+  We noticed that the 'tombstone' models, at least in the WSJ setup, tend to
+ decode '<UNK>' quite often (about 10 times more frequently than before), and
+ that it quite often corresponds to words that were in fact out of vocabulary.
+ We tried penalizing '<UNK>' in the decoding graph and, while it reduced the
+ number of times that '<UNK>' was decoded, the WER did not improve.
+ We regard this as encouraging-- maybe the tombstone model is just better
+ at detecting out-of-vocabulary words.
+
 
 */
 

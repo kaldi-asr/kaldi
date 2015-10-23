@@ -127,7 +127,7 @@ if [ $stage -le 12 ]; then
   done
 fi
 
-unk_penalty=4   # natural-log penalty for <UNK>, which for some reason is
+unk_penalty=0   # natural-log penalty for <UNK>, which for some reason is
                 # decoded a lot in this setup.
 
 

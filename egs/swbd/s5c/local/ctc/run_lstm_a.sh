@@ -2,7 +2,6 @@
 
 # This is a lstm+ctc script based on Dan's WSJ local/ctc/lstm_h.sh recipe.
 
-
 set -e
 
 # configs for ctc
@@ -10,8 +9,8 @@ treedir=exp/ctc/tri5b_tree
 
 stage=9
 train_stage=-10
-speed_perturb=true
-dir=exp/ctc/lstm  # Note: _sp will get added to this if $speed_perturb == true.
+speed_perturb=false
+dir=exp/ctc/lstm_a  # Note: _sp will get added to this if $speed_perturb == true.
 common_egs_dir=  # be careful with this: it's dependent on the CTC transition model
 
 # LSTM options
@@ -26,14 +25,14 @@ chunk_left_context=30
 clipping_threshold=5.0
 norm_based_clipping=true
 
-num_epochs=4
+num_epochs=8
 lstm_delay="-1 -3 -3"
 # training options
 initial_effective_lrate=0.0005
 final_effective_lrate=0.0001
 num_jobs_initial=2
 num_jobs_final=12
-num_chunk_per_minibatch=100
+num_chunk_per_minibatch=128
 frames_per_iter=800000
 remove_egs=false
 
@@ -72,7 +71,7 @@ ali_dir=exp/tri4_ali_nodup$suffix
 
 local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
-  --generate-alignments false || exit 1;
+  --generate-alignments $speed_perturb || exit 1;
 
 if [ $stage -le 9 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
@@ -94,7 +93,7 @@ if [ $stage -le 10 ]; then
     --tree-stats-opts "--collapse-pdf-classes=true" \
     --cluster-phones-opts "--pdf-class-list=0" \
     --context-opts "--context-width=2 --central-position=1" \
-     11000 100000 data/$train_set data/lang_ctc $ali_dir $treedir
+     9000 20000 data/$train_set data/lang_ctc $ali_dir $treedir
 fi
 
 if [ $stage -le 11 ]; then
@@ -114,14 +113,13 @@ if [ $stage -le 12 ]; then
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
-  # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
-  # script must have had a different default at that time.
   steps/nnet3/ctc/train_lstm.sh --stage $train_stage \
-    --right-tolerance 20 \
+    --left-deriv-truncate 5  --right-deriv-truncate 10 \
+    --egs-opts "--frames-overlap-per-eg 15" \
     --frames-per-iter $frames_per_iter \
-    --target-num-history-states 1000 \
-    --max-param-change 1.0 \
-    --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
+    --target-num-history-states 2000 \
+    --num-epochs $num_epochs \
+    --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --lstm-delay "$lstm_delay" \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --splice-indexes "$splice_indexes" \
@@ -146,15 +144,13 @@ if [ $stage -le 12 ]; then
     data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-phone_lm_weight=0.15
 if [ $stage -le 13 ]; then
-  phone_lm_weight=0.15
-  steps/nnet3/ctc/mkgraph.sh --phone-lm-weight $phone_lm_weight \
-      data/lang_sw1_tg $dir $dir/graph_sw1_tg_${phone_lm_weight}
+  steps/nnet3/ctc/mkgraph.sh --phone-lm-weight 0.0 \
+      data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
-decode_suff=sw1_tg_${phone_lm_weight}
-graph_dir=$dir/graph_sw1_tg_${phone_lm_weight}
+decode_suff=sw1_tg
+graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 14 ]; then
   # offline decoding
   if [ -z $extra_left_context ]; then
@@ -174,7 +170,7 @@ if [ $stage -le 14 ]; then
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_${phone_lm_weight} || exit 1;
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
 
 

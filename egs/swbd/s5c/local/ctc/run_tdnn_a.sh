@@ -6,7 +6,6 @@
 set -e
 
 # configs for ctc
-treedir=exp/ctc/tri5b_tree
 stage=0
 train_stage=-10
 # running first with speed_perturb=false for speed.
@@ -18,7 +17,7 @@ common_egs_dir=  # be careful with this: it's dependent on the CTC transition mo
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
 # training options
-num_epochs=8  # would use fewer if we had speed-perturbed data.
+num_epochs=4
 initial_effective_lrate=0.0017
 final_effective_lrate=0.00017
 num_jobs_initial=3
@@ -54,6 +53,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
+treedir=exp/ctc/tri5b_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -121,18 +121,18 @@ if [ $stage -le 12 ]; then
     data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   steps/nnet3/ctc/mkgraph.sh --phone-lm-weight 0.0 \
-      data/lang_lang_sw1_tg $dir $dir/graph_sw1_tg
+      data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
-decode_suff=sw1_tg_${phone_lm_weight}
-graph_dir=$dir/graph_sw1_tg_${phone_lm_weight}
+decode_suff=sw1_tg
+graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/ctc/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
