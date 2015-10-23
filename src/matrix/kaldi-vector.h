@@ -110,7 +110,7 @@ class VectorBase {
   /// Copy data from a SparseMatrix.
   template<typename OtherReal>
   void CopyFromSmat(const SparseMatrix<OtherReal> &M);
-  
+
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal> &v);
@@ -139,7 +139,7 @@ class VectorBase {
 
   /// Applies ceiling to all elements. Returns number of elements changed.
   MatrixIndexT ApplyCeiling(Real ceil_val);
-  
+
   /// Applies floor to all elements. Returns number of elements floored.
   MatrixIndexT ApplyFloor(const VectorBase<Real> &floor_vec);
 
@@ -158,7 +158,7 @@ class VectorBase {
   /// Sets each element of *this to the sigmoid function of the corresponding
   /// element of "src".
   void Sigmoid(const VectorBase<Real> &src);
-  
+
   /// Take all  elements of vector to a power.
   void ApplyPow(Real power);
 
@@ -193,19 +193,19 @@ class VectorBase {
   /// Calls BLAS GEMV.
   void AddMatVec(const Real alpha, const MatrixBase<Real> &M,
                  const MatrixTransposeType trans,  const VectorBase<Real> &v,
-                 const Real beta); // **beta previously defaulted to 0.0**
+                 const Real beta);  // **beta previously defaulted to 0.0**
 
   /// This is as AddMatVec, except optimized for where v contains a lot
   /// of zeros.
   void AddMatSvec(const Real alpha, const MatrixBase<Real> &M,
                   const MatrixTransposeType trans,  const VectorBase<Real> &v,
-                  const Real beta); // **beta previously defaulted to 0.0**
+                  const Real beta);  // **beta previously defaulted to 0.0**
 
-  
   /// Add symmetric positive definite matrix times vector:
   ///  this <-- beta*this + alpha*M*v.   Calls BLAS SPMV.
   void AddSpVec(const Real alpha, const SpMatrix<Real> &M,
-                const VectorBase<Real> &v, const Real beta);  // **beta previously defaulted to 0.0**
+                const VectorBase<Real> &v, const Real beta);
+                // **beta previously defaulted to 0.0**
 
   /// Add triangular matrix times vector: this <-- beta*this + alpha*M*v.
   /// Works even if rv == *this.
@@ -275,7 +275,7 @@ class VectorBase {
   /// Extracts a row of the symmetric matrix S.
   template<typename OtherReal>
   void CopyRowFromSp(const SpMatrix<OtherReal> &S, MatrixIndexT row);
-  
+
   /// Extracts a column of the matrix M.
   template<typename OtherReal>
   void CopyColFromMat(const MatrixBase<OtherReal> &M , MatrixIndexT col);
@@ -299,16 +299,20 @@ class VectorBase {
   /// Returns the maximum value of any element, and the associated index.
   /// Error if vector is empty.
   Real Max(MatrixIndexT *index) const;
-  
+
   /// Returns the minimum value of any element, or +infinity for the empty vector.
   Real Min() const;
 
   /// Returns the minimum value of any element, and the associated index.
   /// Error if vector is empty.
   Real Min(MatrixIndexT *index) const;
-  
+
   /// Returns sum of the elements
   Real Sum() const;
+
+  /// Returns sum of the elements raised to power p. For p>0, this is the same
+  /// as Norm(p) raised to the p-th power.
+  Real SumPower(Real p) const;
 
   /// Returns sum of the logs of the elements.  More efficient than
   /// just taking log of each.  Will return NaN if any elements are
@@ -317,7 +321,7 @@ class VectorBase {
 
   /// Does *this = alpha * (sum of rows of M) + beta * *this.
   void AddRowSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
-  
+
   /// Does *this = alpha * (sum of columns of M) + beta * *this.
   void AddColSumMat(Real alpha, const MatrixBase<Real> &M, Real beta = 1.0);
 
@@ -378,7 +382,7 @@ class VectorBase {
   /// dimension of vector
   MatrixIndexT dim_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(VectorBase);
-}; // class VectorBase
+};  // class VectorBase
 
 /** @brief A class representing a vector.
  *
@@ -402,7 +406,7 @@ class Vector: public VectorBase<Real> {
   explicit Vector(const CuVectorBase<OtherReal> &cu);
 
   /// Copy constructor.  The need for this is controversial.
-  Vector(const Vector<Real> &v) : VectorBase<Real>()  { //  (cannot be explicit)
+  Vector(const Vector<Real> &v) : VectorBase<Real>()  {  //NOLINT (can't be explicit)
     Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
   }
@@ -425,15 +429,6 @@ class Vector: public VectorBase<Real> {
     Resize(smat.NumElements(), kUndefined);
     this->CopyFromSmat(smat);
   }
-
-// Took this out since it is unsafe : Arnab
-//  /// Constructor from a pointer and a size; copies the data to a location
-//  /// it owns.
-//  Vector(const Real* Data, const MatrixIndexT s): VectorBase<Real>() {
-//    Resize(s);
-  //    CopyFromPtr(Data, s);
-//  }
-
 
   /// Swaps the contents of *this and *other.  Shallow swap.
   void Swap(Vector<Real> *other);
@@ -479,7 +474,6 @@ class Vector: public VectorBase<Real> {
 
   /// Destroy function, called internally.
   void Destroy();
-
 };
 
 
@@ -504,11 +498,11 @@ class SubVector : public VectorBase<Real> {
 
   /// This constructor initializes the vector to point at the contents
   /// of this packed matrix (SpMatrix or TpMatrix).
-  SubVector(const PackedMatrix<Real> &M) {
+  SubVector(const PackedMatrix<Real> &M) {  //NOLINT (can't be explicit)
     VectorBase<Real>::data_ = const_cast<Real*> (M.Data());
     VectorBase<Real>::dim_   = (M.NumRows()*(M.NumRows()+1))/2;
   }
-  
+
   /// Copy constructor
   SubVector(const SubVector &other) : VectorBase<Real> () {
     // this copy constructor needed for Range() to work in base class.
