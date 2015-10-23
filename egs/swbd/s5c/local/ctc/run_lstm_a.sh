@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # This is a lstm+ctc script based on Dan's WSJ local/ctc/lstm_h.sh recipe.
-#
 
 
 set -e

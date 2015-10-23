@@ -96,6 +96,7 @@ class NnetCctcTrainer {
 
   const NnetCctcTrainerOptions config_;
   const ctc::CctcTransitionModel &trans_model_;
+  ctc::CctcHmm hmm_;  // derived from trans_model_.
   CuMatrix<BaseFloat> cu_weights_;  // derived from trans_model_.
   Nnet *nnet_;
   Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing

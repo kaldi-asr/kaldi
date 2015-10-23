@@ -223,6 +223,7 @@ class CctcCommonComputation {
   /// the nnet3 code, as it's not stored at this level.
   CctcCommonComputation(const CctcTrainingOptions &opts,
                         const CctcTransitionModel &trans_model,
+                        const CctcHmm &hmm,
                         const CuMatrix<BaseFloat> &cu_weights,
                         const CctcSupervision &supervision,
                         int32 num_sequences,
@@ -246,9 +247,10 @@ class CctcCommonComputation {
   // This function, called from the constructor, checks various dimensions.
   void CheckDims() const;
 
-  CctcHmm hmm_;
   const CctcTrainingOptions &opts_;
   const CctcTransitionModel &trans_model_;
+  const CctcHmm &hmm_;
+
   // cu_weights_ is derived from trans_model_.  Dimension is
   // trans_model_.NumHistoryStates() by trans_model_.NumOutputIndexes().
   const CuMatrix<BaseFloat> &cu_weights_;

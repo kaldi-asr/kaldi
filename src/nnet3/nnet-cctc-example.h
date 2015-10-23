@@ -85,6 +85,7 @@ struct NnetCctcSupervision {
   */
   void ComputeObjfAndDerivs(const ctc::CctcTrainingOptions &opts,
                             const ctc::CctcTransitionModel &cctc_trans_model,
+                            const ctc::CctcHmm &hmm,
                             const CuMatrix<BaseFloat> &cu_weights,
                             const CuMatrixBase<BaseFloat> &nnet_output,
                             BaseFloat *tot_weight,

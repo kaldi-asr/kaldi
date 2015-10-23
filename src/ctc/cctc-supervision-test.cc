@@ -93,8 +93,9 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
   nnet_output.SetRandn();
   CuMatrix<BaseFloat> cu_weights;
   trans_model.ComputeWeights(&cu_weights);
+  CctcHmm hmm(trans_model);
   CctcTrainingOptions opts;
-  CctcCommonComputation computation(opts, trans_model, cu_weights,
+  CctcCommonComputation computation(opts, trans_model, hmm, cu_weights,
                                     supervision, num_sequences, nnet_output);
   CuMatrix<BaseFloat> nnet_output_deriv(num_frames, nnet_output_dim,
                                         kUndefined);
@@ -115,7 +116,7 @@ void TestCctcSupervisionTraining(const CctcTransitionModel &trans_model,
     predicted_objf_changes(i) = TraceMatMat(modified_output,
                                             nnet_output_deriv, kTrans);
     modified_output.AddMat(1.0, nnet_output);
-    CctcCommonComputation computation(opts, trans_model, cu_weights,
+    CctcCommonComputation computation(opts, trans_model, hmm, cu_weights,
                                       supervision, num_sequences,
                                       modified_output);
     BaseFloat modified_log_like, modified_den_term, modified_normalizer;

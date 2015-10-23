@@ -104,6 +104,7 @@ class NnetCctcComputeProb {
 
   NnetCctcComputeProbOptions config_;
   const ctc::CctcTransitionModel trans_model_;
+  ctc::CctcHmm hmm_;  // derived from trans_model_.
   CuMatrix<BaseFloat> cu_weights_;  // weights derived from trans_model_.
   const Nnet &nnet_;
 

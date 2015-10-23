@@ -103,6 +103,7 @@ static int32 NumSequences(const NnetCctcSupervision &supervision,
 void NnetCctcSupervision::ComputeObjfAndDerivs(
     const ctc::CctcTrainingOptions &opts,
     const ctc::CctcTransitionModel &cctc_trans_model,
+    const ctc::CctcHmm &hmm,
     const CuMatrix<BaseFloat> &cu_weights,
     const CuMatrixBase<BaseFloat> &nnet_output,
     BaseFloat *tot_weight_out,
@@ -127,7 +128,7 @@ void NnetCctcSupervision::ComputeObjfAndDerivs(
                                                   0, num_output_indexes);
     int32 num_sequences = NumSequences(*this, cur_offset,
                                        supervision.num_frames);
-    ctc::CctcCommonComputation computation(opts, cctc_trans_model,
+    ctc::CctcCommonComputation computation(opts, cctc_trans_model, hmm,
                                            cu_weights, supervision,
                                            num_sequences, nnet_output_part);
     tot_weight += supervision.num_frames * supervision.weight;

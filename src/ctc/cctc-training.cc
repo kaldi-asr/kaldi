@@ -358,11 +358,12 @@ void CctcPositiveComputation::ComputeDerivatives(
 CctcCommonComputation::CctcCommonComputation(
     const CctcTrainingOptions &opts,
     const CctcTransitionModel &trans_model,
+    const CctcHmm &hmm,
     const CuMatrix<BaseFloat> &cu_weights,
     const CctcSupervision &supervision,
     int32 num_sequences,
     const CuMatrixBase<BaseFloat> &nnet_output):
-    hmm_(trans_model), opts_(opts), trans_model_(trans_model),
+    opts_(opts), trans_model_(trans_model), hmm_(hmm),
     cu_weights_(cu_weights),
     first_frame_alphas_(trans_model.NumHistoryStates() * num_sequences,
                         kUndefined),

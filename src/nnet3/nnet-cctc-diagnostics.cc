@@ -29,6 +29,7 @@ NnetCctcComputeProb::NnetCctcComputeProb(
     const Nnet &nnet):
     config_(config),
     trans_model_(trans_model),
+    hmm_(trans_model_),
     nnet_(nnet),
     deriv_nnet_(NULL),
     compiler_(nnet),
@@ -99,7 +100,7 @@ void NnetCctcComputeProb::ProcessOutputs(const NnetCctcExample &eg,
 
     BaseFloat tot_weight, tot_num_objf, tot_den_objf;
     sup.ComputeObjfAndDerivs(config_.cctc_training_config,
-                             trans_model_,
+                             trans_model_, hmm_,
                              cu_weights_, nnet_output,
                              &tot_weight, &tot_num_objf, &tot_den_objf,
                              (config_.compute_deriv ?
