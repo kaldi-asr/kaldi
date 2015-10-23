@@ -625,6 +625,7 @@ static void UnitTestSimpleForVec() {  // testing some simple operaters on vector
     V2.CopyFromVec(V1);
     AssertEqual(V1.Norm(p), V2.Norm(p));
     AssertEqual(sqrt(V1.Sum()), V.Norm(2.0));
+    AssertEqual(V1.Sum(), V.SumPower(2.0));
   }
 
   for (MatrixIndexT i = 0; i < 5; i++) {
