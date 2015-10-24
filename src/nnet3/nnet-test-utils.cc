@@ -793,7 +793,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 19);
+  int32 n = RandInt(0, 20);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -970,6 +970,21 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
       break;
     }
+    case 20: {
+      *component_type = "PermuteComponent";
+      int32 input_dim = 10 + Rand() % 100;
+      std::vector<int32> column_map(input_dim);
+      for (int32 i = 0; i < input_dim; i++)
+        column_map[i] = i;
+      std::random_shuffle(column_map.begin(), column_map.end());
+      std::ostringstream buffer;
+      for (int32 i = 0; i < input_dim-1; i++)
+        buffer << column_map[i] << ",";
+      buffer << column_map.back();
+      os << "new-column-order=" << buffer.str();
+      break;
+    }
+
     default:
       KALDI_ERR << "Error generating random component";
   }

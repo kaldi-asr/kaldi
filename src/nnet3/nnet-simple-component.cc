@@ -20,6 +20,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <algorithm>
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
 
@@ -3208,6 +3209,84 @@ std::string MaxpoolingComponent::Info() const {
          << ", output-dim = " << output_dim_
          << ", pool-size = " << pool_size_
          << ", pool-stride = " << pool_stride_;
+  return stream.str();
+}
+
+void PermuteComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                 const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const  {
+  out->CopyCols(in, column_map_);
+}
+void PermuteComponent::Backprop(const std::string &debug_info,
+                                const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &, //in_value
+                                const CuMatrixBase<BaseFloat> &, // out_value,
+                                const CuMatrixBase<BaseFloat> &out_deriv,
+                                Component *to_update,
+                                CuMatrixBase<BaseFloat> *in_deriv) const  {
+  // computing the reverse column_map
+  std::vector<int32> reverse_column_map(column_map_.Dim()),
+                     column_map(column_map_.Dim());
+  column_map_.CopyToVec(&column_map);
+
+  for (int32 i = 0; i < column_map.size(); i++)  {
+    reverse_column_map[column_map[i]] = i;
+  }
+  CuArray<int32> cu_reverse_column_map(reverse_column_map);
+  in_deriv->CopyCols(out_deriv, cu_reverse_column_map);
+}
+
+void PermuteComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  std::string new_column_order;
+  ok = ok && cfl->GetValue("new-column-order", &new_column_order);
+  std::vector<int32> column_map;
+  SplitStringToIntegers(new_column_order, ",", true, &column_map);
+  CuArray<int32> cu_column_map(column_map);
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	      << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(cu_column_map);
+}
+
+void PermuteComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<PermuteComponent>", "<ColumnMap>");
+  CuVector<BaseFloat> cu_column_map;
+  cu_column_map.Read(is, binary);
+  std::vector<int32> column_map(cu_column_map.Dim());
+  for (int32 i = 0; i < cu_column_map.Dim(); i++)
+    column_map[i] = static_cast<int32>(cu_column_map(i));
+  column_map_.CopyFromVec(column_map);
+  ExpectToken(is, binary, "</PermuteComponent>");
+}
+
+void PermuteComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PermuteComponent>");
+  WriteToken(os, binary, "<ColumnMap>");
+  std::ostringstream buffer;
+  std::vector<int32> column_map(column_map_.Dim());
+  column_map_.CopyToVec(&column_map);
+  CuVector<BaseFloat> cu_column_map(column_map.size());
+  for (int32 i = 0; i < column_map.size() -1; i++)
+    cu_column_map(i) = static_cast<BaseFloat>(column_map[i]);
+  cu_column_map.Write(os, binary);
+  WriteToken(os, binary, "</PermuteComponent>");
+}
+
+std::string PermuteComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", dim=" << column_map_.Dim();
+  stream << " , new-column-order=";
+  std::vector<int32> column_map(column_map_.Dim());
+  column_map_.CopyToVec(&column_map);
+  CuVector<BaseFloat> cu_column_map(column_map.size());
+  for (int32 i = 0; i < column_map.size() -1; i++)
+    cu_column_map(i) = static_cast<BaseFloat>(column_map[i]);
+  cu_column_map.Write(stream, false);
+
   return stream.str();
 }
 

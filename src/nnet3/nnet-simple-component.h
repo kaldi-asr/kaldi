@@ -746,6 +746,55 @@ class ClipGradientComponent: public Component {
 
 };
 
+// PermuteComponent shuffles the rows in the input, according to the
+// specification.
+class PermuteComponent: public Component {
+ public:
+  PermuteComponent()  {}
+  PermuteComponent(CuArray<int32> column_map): column_map_(column_map){}
+
+  virtual int32 InputDim() const { return column_map_.Dim(); }
+  virtual int32 OutputDim() const { return column_map_.Dim(); }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void Init(CuArray<int32> column_map) { column_map_ = column_map;}
+
+  virtual std::string Type() const { return "PermuteComponent"; }
+
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput;
+  }
+
+  virtual void ZeroStats() {}
+
+  virtual Component* Copy() const {
+    return new PermuteComponent(column_map_);}
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Scale(BaseFloat scale) {}
+  virtual void Add(BaseFloat alpha, const Component &other) {}
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+ private:
+  CuArray<int32> column_map_;
+  PermuteComponent &operator =
+      (const PermuteComponent &other); // Disallow.
+};
+
+
+
 
 // PerElementScaleComponent scales each dimension of its input with a separate
 // trainable scale; it's like a linear component with a diagonal matrix.
