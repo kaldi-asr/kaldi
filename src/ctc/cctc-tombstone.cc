@@ -24,11 +24,50 @@
 namespace kaldi {
 namespace ctc {
 
+// This function is used inside Tensor3dCopy to swap x with y(or z) if x's 
+// stride is not 1 but y(or z)'s stride is 1. Since x maps to the thread
+// index in GPU, it would be more efficient if {src|dest}_xstride is 1.
+// Note that the one with both src and dst strides being 1 is more preferable
+// to swap with x than those with only src or dst stride being 1.
+static void SwapDimsForX(int32* xdim, int32* ydim, int32* zdim,
+		  int32* src_xstride, int32* src_ystride, int32* src_zstride,
+		  int32* dst_xstride, int32* dst_ystride, int32* dst_zstride) {
+  if (*src_xstride != 1 || *dst_xstride != 1) {
+    // first try to look for y or z with both src and dst strides being 1
+    if (*src_ystride == 1 && *dst_ystride == 1) {
+      std::swap(*xdim, *ydim);
+      std::swap(*src_xstride, *src_ystride);
+      std::swap(*dst_xstride, *dst_ystride);
+    }
+    else if (*src_zstride == 1 && *dst_zstride == 1) {
+      std::swap(*xdim, *zdim);
+      std::swap(*src_xstride, *src_zstride);
+      std::swap(*dst_xstride, *dst_zstride);
+    }
+    // then try to look for the one with only src or dst stride being 1
+    else if (*src_xstride != 1 && *dst_xstride != 1) {
+      if (*src_ystride == 1 || *dst_ystride == 1) {
+	std::swap(*xdim, *ydim);
+        std::swap(*src_xstride, *src_ystride);
+	std::swap(*dst_xstride, *dst_ystride);
+      }
+      else if (*src_zstride == 1 || *dst_zstride == 1) {
+	std::swap(*xdim, *zdim);
+        std::swap(*src_xstride, *src_zstride);
+	std::swap(*dst_xstride, *dst_zstride);
+      }
+    }
+  }
+}
+
 template <typename Real>
 void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
                   int32 src_xstride, int32 src_ystride, int32 src_zstride,
                   int32 dst_xstride, int32 dst_ystride, int32 dst_zstride,
                   const Real *src, Real *dst) {
+SwapDimsForX(&xdim, &ydim, &zdim, &src_xstride, &src_ystride, &src_zstride,
+	     &dst_xstride, &dst_ystride, &dst_zstride);
+
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
@@ -45,9 +84,10 @@ void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
   } else
 #endif
   {
-    for (int32 x = 0; x < xdim; x++)
+    // iterate over z, y, x if xstride is 1, for memory-locality reasons.
+    for (int32 z = 0; z < zdim; z++)
       for (int32 y = 0; y < ydim; y++)
-        for (int32 z = 0; z < zdim; z++)
+        for (int32 x = 0; x < xdim; x++)
           dst[x * dst_xstride + y * dst_ystride + z * dst_zstride] =
               src[x * src_xstride + y * src_ystride + z * src_zstride];
   }
