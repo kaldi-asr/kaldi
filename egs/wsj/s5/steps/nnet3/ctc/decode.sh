@@ -12,7 +12,7 @@ stage=1
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=1.0  # Just a default value, used for adaptation and beam-pruning..
-blank_scale=0.4
+blank_scale=1.0
 lattice_acoustic_scale=10.0  # This is kind of a hack; it's used for
                              # compatibility with existing scoring scripts,
                              # since we normally search the LM-scale in integer

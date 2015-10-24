@@ -59,6 +59,8 @@ fi
 
 if $is_ctc ; then
   echo "Warning : This is a CTC model, using corresponding scoring pipeline."
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
 else
   align_word="$align_word lattice-align-words $reorder $lang/phones/word_boundary.int $model ark:- ark:- |"
 fi
@@ -74,7 +76,7 @@ if [ $stage -le 0 ]; then
       lattice-scale --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
       lattice-1best ark:- ark:- \| $align_word \
-      nbest-to-ctm ark:- - \| \
+      nbest-to-ctm $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
       '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
