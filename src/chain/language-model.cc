@@ -198,6 +198,19 @@ LanguageModelEstimator::LanguageModelEstimator(const LanguageModelOptions &opts,
     word_vec[0] = word;
     AddCountForNgram(word_vec, 0.0);
   }
+  if (opts_.ensure_all_bigram_history_states_exist) {
+    // For all words, add a zero-count of EOS in the history of that word.  EOS
+    // is an arbitrarily chosen symbol, it won't make a difference which one we
+    // choose.  This is just to ensure that the bigram history-states exist for
+    // each word; it's important in, later on, being able to impose the 'pair
+    // constraints'.
+    std::vector<int32> eos_vec(2);
+    eos_vec[1] = 0;
+    for (int32 word = 1; word <= vocab_size; word++) {
+      eos_vec[0] = word;
+      AddCountForNgram(word_vec, 0.0);
+    }
+  }
 }
 
 void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {

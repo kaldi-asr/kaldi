@@ -1,5 +1,5 @@
 // chain/phone-topology.h
-o
+
 // Copyright      2015  Johns Hopkins University (Author: Daniel Povey)
 
 
@@ -95,5 +95,4 @@ class PhoneTopology {
 }  // namespace chain
 }  // namespace kaldi
 
-#endif
-
+#endif  // KALDI_CHAIN_PHONE_TOPOLOGY_H_

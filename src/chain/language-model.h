@@ -2,7 +2,6 @@
 
 // Copyright      2015  Johns Hopkins University (Author: Daniel Povey)
 
-
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +31,6 @@
 
 namespace kaldi {
 
-//
 // This header implements a language-model class that's suitable for a
 // phone-level model to be used while training our 'chain' model (a kind of
 // sequence-model using DNNs; almost like a regular hybrid system but trained in
@@ -47,11 +45,20 @@ namespace kaldi {
 // rather discrete counts; and we fix the constants rather than estimating them.
 // this is Kneser-Ney "with addition" instead of backoff (see A Bit of Progress
 // in Language Modeling).
+//
+// This code has the special feature that we ensure that backoff states exist
+// for each of the symbols in the vocabulary, even if we never saw them.  This
+// is important for the version of LmHistoryStateMap::GetAsFst() that takes an
+// 'allowed_pairs' vector, because it ensures we always 'know' what the
+// immediate left-context is.
 namespace chain {
-
 
 struct LanguageModelOptions {
   int32 ngram_order;
+  // 'ensure_all_bigram_history_states_exist' is not configurable for now.
+  bool ensure_all_bigram_history_states_exist;
+  // 'state_count_cutoff1' is not configurable for now, it's fixed at 0
+  // to make sure all bigram history-states exist.
   int32 state_count_cutoff1;
   int32 state_count_cutoff2plus;
   int32 target_num_history_states;
@@ -60,7 +67,8 @@ struct LanguageModelOptions {
   BaseFloat discount2plus;  // Discounting factor for things with >1 count in
                             // Kneser-Ney type scheme.
   LanguageModelOptions():
-      ngram_order(3), // recommend only 1 or 2 or 3.
+      ngram_order(3), // recommend only 2 or 3 (mostly 3).
+      ensure_all_bigram_history_states_exist(true),
       state_count_cutoff1(0),
       state_count_cutoff2plus(200), // count cutoff for n-grams of order >= 3 (if used)
       target_num_history_states(-1),
@@ -70,9 +78,6 @@ struct LanguageModelOptions {
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
                    "language model used while training the 'chain' model");
-    opts->Register("state-count-cutoff1", &state_count_cutoff1,
-                   "Count cutoff for language-model history states of order 1 "
-                   "(meaning one left word is known, i.e. bigram states)");
     opts->Register("state-count-cutoff2plus",
                    &state_count_cutoff2plus,
                    "Count cutoff for language-model history states of order >= 2 ");
@@ -173,6 +178,37 @@ class LmHistoryStateMap {
 
   BaseFloat GetProb(const LanguageModel &lm, int32 lm_history_state,
                     int32 predicted_word) const;
+
+  /// Return the language model in OpenFst weighted acceptor format (the output
+  /// will be epsilon-free; there are no backoff arcs, rather the probabilities
+  /// are explicitly) There lm_history_state indexes and FST states have the
+  /// same numbering.  The probability predicted for symbol 0 (EOS) maps to the
+  /// final-probs.  The initial-state is whichever lm_history_state the sequence
+  /// [ 0 ] (where 0 represents BOS) maps to.
+  /// Note: after calling this, you may want to call Connect() on the output
+  /// FST to remove the unigram-backoff state which should never be reachable.
+  /// This will cause the states to be renumbered (which shouldn't matter).
+  fst::VectorFst<fst::StdArc> *GetAsFst();
+
+  /// This version of GetAsFst allows you to specify a limitation on the allowed
+  /// pairs of phones (p, q) that may appear sequentially; this mask can be
+  /// supplied by the user to reflect contraints on which (e.g.)
+  /// word-position-dependent phones can appear after each other.
+  /// 'allowed_pairs' is a list of phones (p, q) such that q may appear after p.
+  /// For instance, in a word-position-dependent phone system, the pair AA_E B_I
+  /// [a final phone then a word-internal] could not appear, because we have to
+  /// have a word-begin phone e.g. AA_B before we can see a word-internal phone
+  /// like B_I.  In this code they would be converted as integers.  The
+  /// 'allowed_pairs' list will (shown here in text form) also contain sequences
+  /// of the form '<eps> AA_B' (specifying that AA_B can appear at
+  /// sentence-begin) and of the form 'AA_E <eps>' specifying that AA_E can appear
+  /// just before sentence-end.  This function will remove any probability mass
+  /// corresponding to 'disallowed' sequence while it creates the FST, but it will
+  /// warn if more than 0.75 of the probability mass has been removed from any
+  /// given history-state (which might indicate an error in specifying
+  /// 'allowed_pairs').
+  fst::VectorFst<fst::StdArc> *GetAsFst(
+      const std::vector<std::pair<int32, int32> > &allowed_pairs);
 
   // Maps a history to an integer lm-history-state.
   int32 GetLmHistoryState(const std::vector<int32> &hist) const;
@@ -363,7 +399,6 @@ class LanguageModelEstimator {
   // backoff).  Indexed first by the order of the history state (which equals
   // the vector length).
   std::vector<PairMapType> history_state_counts_;
-
 };
 
 
