@@ -376,25 +376,27 @@ void UnitTestConvolutional1dComponent() {
     if (Rand() % 2 == 0) {
       component.Init(learning_rate, input_dim, output_dim,
                      patch_dim, patch_step, patch_stride,
-                     param_stddev, bias_stddev);
+                     param_stddev, bias_stddev, true);
     } else {
-      // initialize the hyper-parameters
-      component.Init(learning_rate, input_dim, output_dim,
-                     patch_dim, patch_step, patch_stride,
-                     param_stddev, bias_stddev);
       Matrix<BaseFloat> mat(num_filters, filter_dim + 1);
       mat.SetRandn();
       mat.Scale(param_stddev);
       WriteKaldiObject(mat, "tmpf", true);
       Sleep(0.5);
       component.Init(learning_rate, patch_dim,
-                     patch_step, patch_stride, "tmpf");
+                     patch_step, patch_stride, "tmpf", false);
       unlink("tmpf");
     }
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10";
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 rearrange-input=false";
+    Convolutional1dComponent component;
+    component.InitFromString(str);
+    UnitTestGenericComponentInternal(component);
+  }
+  {
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 rearrange-input=true";
     Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);

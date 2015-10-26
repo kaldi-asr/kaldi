@@ -4,6 +4,7 @@
 #                2013  Xiaohui Zhang
 #                2013  Guoguo Chen
 #                2014  Vimal Manohar
+#                2015  Xingyu Na
 # Apache 2.0.
 
 # train_convnet_accel2.sh is modified from train_pnorm_accel2.sh. It propotypes
@@ -84,6 +85,7 @@ patch_dim1=7          # dim of convolutional kernel in the first layer
 pool_size=3           # size of pooling after the first convolutional layer
 num_filters2=256      # number of filters in the second convolutional layer
 patch_dim2=4          # dim of convolutional kernel in the second layer
+patch_step2=1         # patch step of the second convolutional layer
 
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
@@ -262,10 +264,8 @@ if [ $stage -le -2 ]; then
   tot_input_dim=$[$feat_dim*$tot_splice]
   num_patch1=$[1+($feat_dim-$patch_dim1)/$patch_step1]
   num_pool=$[$num_patch1/$pool_size]
-  patch_dim2=$[$patch_dim2*$num_filters1]
-  patch_step2=$num_filters1
-  patch_stride2=$[$num_pool*$num_filters1]   # same as pool outputs
-  num_patch2=$[1+($num_pool*$num_filters1-$patch_dim2)/$patch_step2]
+  patch_stride2=$num_pool
+  num_patch2=$[1+($patch_stride2-$patch_dim2)/$patch_step2]
   conv_out_dim1=$[$num_filters1*$num_patch1] # 128 x (36 - 7 + 1)
   pool_out_dim=$[$num_filters1*$num_pool]
   conv_out_dim2=$[$num_filters2*$num_patch2]
@@ -284,7 +284,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
   
   cat >$dir/replace.1.config <<EOF
-Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2
+Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2 rearrange-input=true
 NormalizeComponent dim=$conv_out_dim2
 AffineComponentPreconditionedOnline input-dim=$conv_out_dim2 output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves

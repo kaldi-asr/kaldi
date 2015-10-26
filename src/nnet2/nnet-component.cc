@@ -3682,12 +3682,14 @@ void AdditiveNoiseComponent::Propagate(const ChunkInfo &in_info,
 
 Convolutional1dComponent::Convolutional1dComponent():
     UpdatableComponent(),
-    patch_dim_(0), patch_step_(0), patch_stride_(0), is_gradient_(false) {}
+    patch_dim_(0), patch_step_(0), patch_stride_(0),
+    rearrange_input_(false), is_gradient_(false) {}
 
 Convolutional1dComponent::Convolutional1dComponent(const Convolutional1dComponent &component):
     UpdatableComponent(component),
     filter_params_(component.filter_params_),
     bias_params_(component.bias_params_),
+    rearrange_input_(component.rearrange_input_),
     is_gradient_(component.is_gradient_) {}
 
 Convolutional1dComponent::Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
@@ -3698,6 +3700,7 @@ Convolutional1dComponent::Convolutional1dComponent(const CuMatrixBase<BaseFloat>
     bias_params_(bias_params) {
   KALDI_ASSERT(filter_params.NumRows() == bias_params.Dim() &&
                bias_params.Dim() != 0);
+  rearrange_input_ = false;
   is_gradient_ = false;
 }
 
@@ -3719,11 +3722,13 @@ int32 Convolutional1dComponent::OutputDim() const {
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
                                     int32 input_dim, int32 output_dim,
                                     int32 patch_dim, int32 patch_step, int32 patch_stride,
-                                    BaseFloat param_stddev, BaseFloat bias_stddev) {
+                                    BaseFloat param_stddev, BaseFloat bias_stddev,
+                                    bool rearrange_input) {
   UpdatableComponent::Init(learning_rate);
   patch_dim_ = patch_dim;
   patch_step_ = patch_step;
   patch_stride_ = patch_stride;
+  rearrange_input_ = rearrange_input;
   int32 num_splice = input_dim / patch_stride;
   int32 filter_dim = num_splice * patch_dim;
   int32 num_patches = 1 + (patch_stride - patch_dim) / patch_step;
@@ -3744,11 +3749,12 @@ void Convolutional1dComponent::Init(BaseFloat learning_rate,
 // initialize the component using predefined matrix file
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
                                     int32 patch_dim, int32 patch_step, int32 patch_stride,
-                                    std::string matrix_filename) {
+                                    std::string matrix_filename, bool rearrange_input) {
   UpdatableComponent::Init(learning_rate);
   patch_dim_ = patch_dim;
   patch_step_ = patch_step;
   patch_stride_ = patch_stride;
+  rearrange_input_ = rearrange_input;
   CuMatrix<BaseFloat> mat;
   ReadKaldiObject(matrix_filename, &mat);
   KALDI_ASSERT(mat.NumCols() >= 2);
@@ -3798,6 +3804,7 @@ std::string Convolutional1dComponent::Info() const {
          << ", filter-dim=" << filter_dim
          << ", filter-params-stddev=" << filter_stddev
          << ", bias-params-stddev=" << bias_stddev
+         << ", rearrange-input=" << rearrange_input_
          << ", learning-rate=" << LearningRate();
   return stream.str();
 }
@@ -3805,18 +3812,20 @@ std::string Convolutional1dComponent::Info() const {
 // initialize the component using configuration file
 void Convolutional1dComponent::InitFromString(std::string args) {
   std::string orig_args(args);
-  bool ok = true;
+  bool ok = true, rearrange_input = false;
   BaseFloat learning_rate = learning_rate_;
   std::string matrix_filename;
   int32 input_dim = -1, output_dim = -1;
   int32 patch_dim = -1, patch_step = -1, patch_stride = -1;
   ParseFromString("learning-rate", &args, &learning_rate);
+  ParseFromString("rearrange-input", &args, &rearrange_input);
   ok = ok && ParseFromString("patch-dim", &args, &patch_dim);
   ok = ok && ParseFromString("patch-step", &args, &patch_step);
   ok = ok && ParseFromString("patch-stride", &args, &patch_stride);
   if (ParseFromString("matrix", &args, &matrix_filename)) {
     // initialize from prefined parameter matrix
-    Init(learning_rate, patch_dim, patch_step, patch_stride, matrix_filename);
+    Init(learning_rate, patch_dim, patch_step, patch_stride,
+         matrix_filename, rearrange_input);
     if (ParseFromString("input-dim", &args, &input_dim))
       KALDI_ASSERT(input_dim == InputDim() &&
                "input-dim mismatch vs. matrix.");
@@ -3830,8 +3839,8 @@ void Convolutional1dComponent::InitFromString(std::string args) {
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim), bias_stddev = 1.0;
     ParseFromString("param-stddev", &args, &param_stddev);
     ParseFromString("bias-stddev", &args, &bias_stddev);
-    Init(learning_rate, input_dim, output_dim,
-         patch_dim, patch_step, patch_stride, param_stddev, bias_stddev);
+    Init(learning_rate, input_dim, output_dim, patch_dim,
+         patch_step, patch_stride, param_stddev, bias_stddev, rearrange_input);
   }
   if (!args.empty())
     KALDI_ERR << "Could not process these elements in initializer: " << args;
@@ -3841,28 +3850,23 @@ void Convolutional1dComponent::InitFromString(std::string args) {
 
 // propagation function
 
-/* Convolutional propagation is explained:
- - Recall the AffineComponent, input X is defined #frames x $input-dim,
-   linear matrix A is defined $output-dim x $input-dim, and bias
-   vector B is defined by length $output-dim. The propagation is
-   Y = X * A' + B                                     (1)
-   where "*" is row-by-row processing of X, executing vector-matrix
-   multiplication 
-   Y(t) = X(t) * A' + B                               (2)
-   which converts each row of input of dim $input-dim to a row of output of
-   dim $output-dim by A' (' defines transpose).
- - In Convolution1dComponent, A is redefined $num-filters x $filter-dim,
-   and bias vector B is redefined by length $num-filters. The propatation is
-   Y = X o A' + B                                     (3)
-   where "o" is also row-by-row processing of X, but executing vector-matrix
-   convolution, which consists of a group of vector-vector convolutions.
+/*
+   In Convolution1dComponent, filter is defined $num-filters x $filter-dim,
+   and bias vector B is defined by length $num-filters. The propatation is
+   Y = X o A' + B
+   where "o" is executing matrix-matrix convolution, which consists of a group
+   of vector-matrix convolutions.
    For instance, the convolution of X(t) and the i-th filter A(i) is
-   Y(t,i) = X(t) o A'(i) + B(i)                       (4)
+   Y(t,i) = X(t) o A'(i) + B(i)
    The convolution used here is valid convolution. Meaning that the
    output of M o N is of dim |M| - |N| + 1, assuming M is not shorter then N.
 
-   Note that in all the equations, B is extended to proper dimensions
-   for legal addition.
+   By default, input is arranged by
+   x (time), y (channel), z(frequency)
+   and output is arranged by
+   x (time), y (frequency), z(channel).
+   When appending convolutional1dcomponent, rearrange_input_ should be
+   set ture for the appended convolutional1dcomponent.
 */
 void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
                                          const ChunkInfo &out_info,
@@ -3890,9 +3894,14 @@ void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
 
   // build-up a column selection map
   for (int32 p = 0, index = 0; p < num_patches; p++) {
+    int32 fstride = p * patch_step_;
     for (int32 s = 0; s < num_splice; s++) {
-        for (int32 d = 0; d < patch_dim_; d++, index++) {
-        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+      int32 cstride = s * patch_stride_;
+      for (int32 d = 0; d < patch_dim_; d++, index++) {
+        if (rearrange_input_)
+          column_map[index] = (fstride + d) * num_splice + s;
+        else
+          column_map[index] = fstride + cstride + d;
       }
     }
   }
@@ -4063,9 +4072,14 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
   // sum the derivatives into in_deriv
   std::vector<int32> column_map(filter_dim * num_patches);
   for (int32 p = 0, index = 0; p < num_patches; p++) {
+    int32 fstride = p * patch_step_;
     for (int32 s = 0; s < num_splice; s++) {
+      int32 cstride = s * patch_stride_;
       for (int32 d = 0; d < patch_dim_; d++, index++) {
-        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+        if (rearrange_input_)
+          column_map[index] = (fstride + d) * num_splice + s;
+        else
+          column_map[index] = fstride + cstride + d;
       }
     }
   }
@@ -4110,6 +4124,8 @@ void Convolutional1dComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &patch_step_);
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchStride>");
   ReadBasicType(is, binary, &patch_stride_);
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<RearrangeInput>");
+  ReadBasicType(is, binary, &rearrange_input_);
   ExpectToken(is, binary, "<FilterParams>");
   filter_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
@@ -4138,6 +4154,8 @@ void Convolutional1dComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, patch_step_);
   WriteToken(os, binary, "<PatchStride>");
   WriteBasicType(os, binary, patch_stride_);
+  WriteToken(os, binary, "<RearrangeInput>");
+  WriteBasicType(os, binary, rearrange_input_);
   WriteToken(os, binary, "<FilterParams>");
   filter_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
@@ -4162,6 +4180,7 @@ Component* Convolutional1dComponent::Copy() const {
   ans->patch_stride_ = patch_stride_;
   ans->filter_params_ = filter_params_;
   ans->bias_params_ = bias_params_;
+  ans->rearrange_input_ = rearrange_input_;
   ans->is_gradient_ = is_gradient_;
   return ans;
 }
@@ -4206,9 +4225,14 @@ void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
   CuMatrix<BaseFloat> patches(num_frames, filter_dim * num_patches, kUndefined);
   std::vector<int32> column_map(filter_dim * num_patches);
   for (int32 p = 0, index = 0; p < num_patches; p++) {
+    int32 fstride = p * patch_step_;
     for (int32 s = 0; s < num_splice; s++) {
+      int32 cstride = s * patch_stride_;
       for (int32 d = 0; d < patch_dim_; d++, index++) {
-        column_map[index] = p * patch_step_ + s * patch_stride_ + d;
+        if (rearrange_input_)
+          column_map[index] = (fstride + d) * num_splice + s;
+        else
+          column_map[index] = fstride + cstride + d;
       }
     }
   }
@@ -4311,6 +4335,11 @@ void MaxpoolingComponent::InitFromString(std::string args) {
   Init(input_dim, output_dim, pool_size, pool_stride);
 }
 
+/*
+   Input and output of maxpooling component is arranged as
+   x (time), y (frequency), z (channel)
+   for efficient pooling.
+ */
 void MaxpoolingComponent::Propagate(const ChunkInfo &in_info,
                                     const ChunkInfo &out_info,
                                     const CuMatrixBase<BaseFloat> &in,
