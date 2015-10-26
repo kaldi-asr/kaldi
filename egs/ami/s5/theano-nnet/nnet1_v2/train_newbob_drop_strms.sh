@@ -65,6 +65,8 @@ start_halving_impr=0.01
 end_halving_impr=0.001
 halving_factor=0.5
 
+#which queue?
+cv_cmd="${cuda_cmd}"
 
 . utils/parse_options.sh || exit 1;
 # End configuration
@@ -221,7 +223,7 @@ if [ ! -e $cv_done_file ]; then
 
 echo "Cross-validating using INITIAL $nnet_best"
 echo " total combinatios = $tot_comb"
-$train_cmd JOB=1:$tot_comb $dir/log/iter${iter}_comb.JOB.cv.log \
+$cv_cmd JOB=1:$tot_comb $dir/log/iter${iter}_comb.JOB.cv.log \
 theano-nnet/nnet1_v2/cross_validate.sh \
   --cv-tool $cv_tool \
   --feat-preprocess $dir/feat_preprocess.pkl \
@@ -274,7 +276,7 @@ for iter in $(seq -w $max_iters); do
   if [ ! -e $cv_done_file ]; then
     echo "Cross-validating using INITIAL $nnet_best"
     echo " total combinatios = $tot_comb"
-    $train_cmd JOB=1:$tot_comb $dir/log/iter${iter}_comb.JOB.cv.log \
+    $cv_cmd JOB=1:$tot_comb $dir/log/iter${iter}_comb.JOB.cv.log \
     theano-nnet/nnet1_v2/cross_validate.sh \
       --cv-tool $cv_tool \
       --feat-preprocess $dir/feat_preprocess.pkl \
