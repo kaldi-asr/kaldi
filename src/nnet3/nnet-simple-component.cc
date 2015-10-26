@@ -2192,6 +2192,7 @@ void ConvolutionComponent::InputToInputPatches(
 
   std::vector<int32> column_map(filter_dim);
   CuArray<int32> cu_cols(filter_dim);
+  std::vector<CuSubMatrix<BaseFloat> *>
   for (int32 x_step = 0; x_step < num_x_steps; x_step++) {
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
       int32 patch_number = x_step * num_y_steps + y_step;

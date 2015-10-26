@@ -133,6 +133,10 @@ class CuMatrixBase {
   void CopyToRows(const CuArray<Real*> &dst) const;
 
 
+  void CopyToCols(const std::vector<CuMatrixBase<Real>*> &dst,
+                  const CuArray<MatrixIndexT> col_inds) const;
+
+
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
   /// If indexes[r] < 0, does not add anything.
   /// "reorder".size() must equal this->NumRows(),
