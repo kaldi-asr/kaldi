@@ -27,5 +27,6 @@ fi
 mkdir $rnnlm_ver
 cd $rnnlm_ver
 tar -xvzf ../$rnnlm_ver.tgz || exit 1;
+patch  < ../extras/mikolov_rnnlm.patch
 make CC=g++ || exit 1;
 echo Done making the rnnlm tools

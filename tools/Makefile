@@ -31,6 +31,9 @@ all: check_required_programs sph2pipe atlas sclite openfst
 	@echo "Warning: use the script extras/install_irstlm.sh"
 	@echo "All done OK."
 
+# make sure check_required_programs runs before anything else:
+sph2pipe atlas sclite openfst sctk: | check_required_programs
+
 check_required_programs:
 	extras/check_dependencies.sh
 
@@ -45,13 +48,13 @@ sclite_cleaned:
 
 distclean:
 	rm -rf openfst-$(OPENFST_VERSION)/
-	rm -rf sctk-2.4.9/
+	rm -rf sctk-2.4.10/
 	rm -rf sctk
 	rm -rf ATLAS/
 	rm -rf sph2pipe_v2.5/
 	rm -rf sph2pipe_v2.5.tar.gz
 	rm -rf atlas3.8.3.tar.gz
-	rm -rf sctk-2.4.9-20141015-1634Z.tar.bz2
+	rm -rf sctk-2.4.10-20151007-1312Z.tar.bz2
 	rm -rf openfst-$(OPENFST_VERSION).tar.gz
 	rm -f openfst
 	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
@@ -72,7 +75,7 @@ openfst-$(OPENFST_VERSION)/lib: | openfst-$(OPENFST_VERSION)/Makefile
 
 # Add the -O flag to CXXFLAGS on cygwin as it can fix the compilation error
 # "file too big".
-openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched
+openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)/.patched | check_required_programs
 ifeq ($(OSTYPE),cygwin)
 	cd openfst-$(OPENFST_VERSION)/; ./configure --prefix=`pwd` --enable-static --enable-shared --enable-far --enable-ngram-fsts CXX=$(CXX) CXXFLAGS="$(CXXFLAGS) -O" LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 else
@@ -108,13 +111,13 @@ sctk/.configured: sctk
 	touch sctk/.configured
 
 .PHONY: sctk
-sctk: sctk-2.4.9-20141015-1634Z.tar.bz2
-	tar xojf sctk-2.4.9-20141015-1634Z.tar.bz2
-	rm -rf sctk && ln -s sctk-2.4.9 sctk
+sctk: sctk-2.4.10-20151007-1312Z.tar.bz2
+	tar xojf sctk-2.4.10-20151007-1312Z.tar.bz2
+	rm -rf sctk && ln -s sctk-2.4.10 sctk
 
-sctk-2.4.9-20141015-1634Z.tar.bz2:
-	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.9-20141015-1634Z.tar.bz2|| \
-	wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.9-20141015-1634Z.tar.bz2
+sctk-2.4.10-20151007-1312Z.tar.bz2:
+	wget -T 10 -t 3 ftp://jaguar.ncsl.nist.gov/pub/sctk-2.4.10-20151007-1312Z.tar.bz2|| \
+	wget --no-check-certificate -T 10 http://www.openslr.org/resources/4/sctk-2.4.10-20151007-1312Z.tar.bz2
 
 
 atlas: ATLAS/include/cblas.h

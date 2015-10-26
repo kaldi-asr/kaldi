@@ -41,9 +41,10 @@ Fbank::Fbank(const FbankOptions &opts)
 Fbank::~Fbank() {
   for (std::map<BaseFloat, MelBanks*>::iterator iter = mel_banks_.begin();
       iter != mel_banks_.end();
-      ++iter)
+      ++iter) {
     delete iter->second;
-    delete srfft_;
+  }
+  delete srfft_;
 }
 
 const MelBanks *Fbank::GetMelBanks(BaseFloat vtln_warp) {
@@ -82,7 +83,7 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
                     Matrix<BaseFloat> *output,
                     Vector<BaseFloat> *wave_remainder) {
   const MelBanks *this_mel_banks = GetMelBanks(vtln_warp);
-  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);  
+  ComputeInternal(wave, *this_mel_banks, output, wave_remainder);
 }
 
 void Fbank::Compute(const VectorBase<BaseFloat> &wave,
@@ -92,9 +93,9 @@ void Fbank::Compute(const VectorBase<BaseFloat> &wave,
   bool must_delete_mel_banks;
   const MelBanks *mel_banks = GetMelBanks(vtln_warp,
                                           &must_delete_mel_banks);
-  
+
   ComputeInternal(wave, *mel_banks, output, wave_remainder);
-  
+
   if (must_delete_mel_banks)
     delete mel_banks;
 }
@@ -125,7 +126,7 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
   // Buffers
   Vector<BaseFloat> window;  // windowed waveform.
   Vector<BaseFloat> mel_energies;
-  std::vector<BaseFloat> temp_buffer;  // used by srfft.  
+  std::vector<BaseFloat> temp_buffer;  // used by srfft.
   BaseFloat log_energy;
 
   // Compute all the freames, r is frame index..

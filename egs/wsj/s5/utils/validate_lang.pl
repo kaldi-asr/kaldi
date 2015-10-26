@@ -48,7 +48,7 @@ while (<P>) {
   $idx ++;
 }
 close(P);
-%pint2sym = (); 
+%pint2sym = ();
 foreach (keys %psymtab) {
   if ($pint2sym{$psymtab{$_}}) {
     print "--> ERROR: ID \"$psymtab{$_}\" duplicates\n"; exit 1;
@@ -81,7 +81,7 @@ while (<W>) {
   $idx ++;
 }
 close(W);
-%wint2sym = (); 
+%wint2sym = ();
 foreach (keys %wsymtab) {
   if ($wint2sym{$wsymtab{$_}}) {
     print "--> ERROR: ID \"$wsymtab{$_}\" duplicates\n"; exit 1;
@@ -172,7 +172,7 @@ sub check_txt_int_csl {
   close(CSL);
   if ($idx1 != 0) {             # nonempty .txt,.int files
     if ($num_lines != 1) {
-      $exit = 1; 
+      $exit = 1;
       return print "--> ERROR: expect 1 line in $cat.csl\n";
     }
   } else {
@@ -212,7 +212,7 @@ sub check_txt_int {
     s/ internal$//g;
     s/ singleton$//g;
     $entry[$idx1] = $_;
-    $idx1 ++; 
+    $idx1 ++;
   }
   close(TXT); $idx1 --;
   print "--> $idx1 entry/entries in $cat.txt\n";
@@ -305,7 +305,7 @@ sub check_disjoint {
   }
   close(S);
 
-  $idx = 1; 
+  $idx = 1;
   while (<N>) {
     chomp;
     my @col = split(" ", $_);
@@ -446,7 +446,7 @@ if ((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions
     print "--> ERROR: $lang/phones/extra_questions.\{txt, int\} do not exist (they may be empty, but should be present)\n\n";
     $exit = 1;
   }
-} 
+}
 if (-e "$lang/phones/word_boundary.txt") {
   check_txt_int("$lang/phones/word_boundary", \%psymtab, 0); print "\n";
 }
@@ -606,7 +606,7 @@ if (-s "$lang/phones/word_boundary.txt") {
     foreach (keys %sum) {
       if (!$itset{$_}) {
         print "$_ ";
-      }            
+      }
     }
     print "\n";
   }
@@ -641,7 +641,7 @@ if (-s "$lang/phones/word_boundary.int") {
   if (!open (D, "<$lang/phones/disambig.int")) {
     $exit = 1; print "--> ERROR: fail to open $lang/phones/disambig.int\n";
   }
-  while (<D>) { 
+  while (<D>) {
     @A = split;
     if (@A != 1) {
       $exit = 1; print "--> ERROR: bad line $_ in $lang/phones/disambig.int\n";
@@ -782,7 +782,7 @@ if (-e "$lang/G.fst") {
 
   # Check that G.fst does not have cycles with only disambiguation symbols or
   # epsilons on the input, or the forbidden symbols <s> and </s>.
-  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" | \"cat 1>&2\"; exit(1); }}' | fstcompile | fstinfo ";
+  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[\$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" | \"cat 1>&2\"; exit(1); }}' | fstcompile | fstinfo ";
   $output = `$cmd`;
   if ($output !~ m/# of states\s+[1-9]/) { # fstinfo did not read a nonempty FST (there should be final probs at least)...
     print "--> ERROR: failure running command to check for disambig-sym loops [possibly G.fst " .

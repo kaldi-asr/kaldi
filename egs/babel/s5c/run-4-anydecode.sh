@@ -188,11 +188,11 @@ echo ---------------------------------------------------------------------
 if [ ! -f  $dataset_dir/.done ] ; then
   if [ "$dataset_kind" == "supervised" ]; then
     if [ "$dataset_segments" == "seg" ]; then
-      . ./local/datasets/supervised_seg.sh
+      . ./local/datasets/supervised_seg.sh || exit 1
     elif [ "$dataset_segments" == "uem" ]; then
-      . ./local/datasets/supervised_uem.sh
+      . ./local/datasets/supervised_uem.sh || exit 1
     elif [ "$dataset_segments" == "pem" ]; then
-      . ./local/datasets/supervised_pem.sh
+      . ./local/datasets/supervised_pem.sh || exit 1
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";
@@ -241,12 +241,12 @@ echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 if ! $skip_kws ; then
-  . ./local/datasets/basic_kws.sh
+  . ./local/datasets/basic_kws.sh || exit 1
   if  $extra_kws ; then 
-    . ./local/datasets/extra_kws.sh
+    . ./local/datasets/extra_kws.sh || exit 1
   fi
   if  $vocab_kws ; then 
-    . ./local/datasets/vocab_kws.sh
+    . ./local/datasets/vocab_kws.sh || exit 1
   fi
 fi
 

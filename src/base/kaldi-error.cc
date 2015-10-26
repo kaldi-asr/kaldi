@@ -40,7 +40,8 @@ const char *g_program_name = NULL;
 // colon, e.g. "gmm-align:".  Otherwise it returns the empty string "".
 const char *GetProgramName() {
   if (g_program_name == NULL) return "";
-  else return g_program_name;
+  else
+    return g_program_name;
 }
 
 // Given a filename like "/a/b/c/d/e/f.cc",  GetShortFileName
@@ -48,8 +49,9 @@ const char *GetProgramName() {
 // the filename separator.
 const char *GetShortFileName(const char *filename) {
   const char *last_slash = strrchr(filename, '/');
-  if (!last_slash) { return filename; }
-  else {
+  if (!last_slash) {
+    return filename;
+  } else {
     while (last_slash > filename && last_slash[-1] != '/')
       last_slash--;
     return last_slash;
@@ -59,8 +61,8 @@ const char *GetShortFileName(const char *filename) {
 
 #if defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
 // The function name looks like a macro: it's a macro if we don't have ccxxabi.h
-inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,
-                                                   const char *to_append) {
+inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(const char *to_append,
+                                                   std::string *ans) {
   // at input the string "to_append" looks like:
   //   ./kaldi-error-test(_ZN5kaldi13UnitTestErrorEv+0xb) [0x804965d]
   // We want to extract the name e.g. '_ZN5kaldi13UnitTestErrorEv",
@@ -70,7 +72,7 @@ inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,
   const char *plus = (paren ? strchr(paren, '+') : NULL);
   if (!plus) {  // did not find the '(' or did not find the '+'
     // This is a soft failure in case we did not get what we expected.
-    ans += to_append;
+    ans->append(to_append);
     return;
   }
   std::string stripped(paren+1, plus-(paren+1));  // the bit between ( and +.
@@ -81,14 +83,15 @@ inline void KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(std::string &ans,
   // to demangle, so we don't check it.
 
   if (demangled_name != NULL) {
-    ans += demangled_name;
+    ans->append(demangled_name);
     free(demangled_name);
   } else {
-    ans += to_append;  // add the original string.
+    ans->append(to_append);  // add the original string.
   }
 }
 #else  // defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
-#define KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(ans, to_append) ans += to_append
+#define KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(to_append, ans) \
+  ans->append(to_append)
 #endif  // defined(HAVE_CXXABI_H) && defined(HAVE_EXECINFO_H)
 
 #ifdef HAVE_EXECINFO_H
@@ -101,17 +104,17 @@ std::string KaldiGetStackTrace() {
   char **strings = backtrace_symbols(array, size);
   if (size <= KALDI_MAX_TRACE_PRINT) {
     for (size_t i = 0; i < size; i++) {
-      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(ans, strings[i]);
+      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(strings[i], &ans);
       ans += "\n";
     }
   } else {  // print out first+last (e.g.) 5.
     for (size_t i = 0; i < KALDI_MAX_TRACE_PRINT/2; i++) {
-      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(ans, strings[i]);
+      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(strings[i], &ans);
       ans += "\n";
     }
     ans += ".\n.\n.\n";
     for (size_t i = size - KALDI_MAX_TRACE_PRINT/2; i < size; i++) {
-      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(ans, strings[i]);
+      KALDI_APPEND_POSSIBLY_DEMANGLED_STRING(strings[i], &ans);
       ans += "\n";
     }
     if (size == KALDI_MAX_TRACE_SIZE)
@@ -200,7 +203,7 @@ KaldiErrorMessage::~KaldiErrorMessage() KALDI_NOEXCEPT(false) {
     throw std::runtime_error(str);
 #endif
   } else {
-    abort(); // This may be temporary...
+    abort();  // This may be temporary...
   }
 }
 
