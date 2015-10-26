@@ -6,9 +6,9 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = language-model-test
+TESTFILES =
 
-OBJFILES = language-model.o
+OBJFILES =
 
 LIBNAME = kaldi-chain
 
