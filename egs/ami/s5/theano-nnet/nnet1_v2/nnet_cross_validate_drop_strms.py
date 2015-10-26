@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys, os, logging, numpy as np
 #os.environ['THEANO_FLAGS']='nvcc.flags=-arch=sm_30,mode=FAST_RUN,device=gpu,floatX=float32'
-os.environ['THEANO_FLAGS']='device=cpu,floatX=float32'
+os.environ['THEANO_FLAGS']='device=gpu,floatX=float32'
 import theano, theano.tensor as T
 
 import scipy.io.wavfile
