@@ -490,8 +490,6 @@ void SplitPairList(std::vector<std::pair<int32, int32> >& list,
     KALDI_ERR << "Input list has just dummy pairs";
 }
 
-
-
 void SplitLocationsBackward(
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists) {

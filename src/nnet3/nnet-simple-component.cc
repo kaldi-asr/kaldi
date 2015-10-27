@@ -2180,6 +2180,25 @@ inline int32 ZyxVectorIndex(int32 x, int32 y, int32 z,
   return (input_y_dim * input_z_dim) * x + (input_z_dim) * y + z;
 }
 
+void SplitForUniqueSrcLocations(
+    int32 max_list_size,
+    std::vector<std::vector<std::pair<int32, int32> > > * src_dest_map,  // this is a pointer as src_dest_map is modified
+    std::vector<std::vector<std::pair<int32, int32> > >* column_maps) {
+  column_maps->clear();
+  for (int32 i = 0; i < max_list_size; i++) {
+    std::vector<std::pair<int32, int32> > column_map(src_dest_map->size());
+    for (int32 j = 0; j < src_dest_map->size(); j++) {
+      if (src_dest_map->at(j).size() == 0)  {
+        column_map[j] = std::make_pair(-1, -1);
+        continue;
+      }
+      column_map[j] = src_dest_map->at(j).back();
+      src_dest_map->at(j).pop_back();
+    }
+    column_maps->push_back(column_map);
+  }
+}
+
 void ConvolutionComponent::InputToInputPatches(
     const CuMatrixBase<BaseFloat>& in,
     CuMatrix<BaseFloat> *patches) const{
@@ -2190,38 +2209,60 @@ void ConvolutionComponent::InputToInputPatches(
   int32 num_frames = in.NumRows();
   int32 filter_dim = filter_params_.NumCols();
 
-  std::vector<int32> column_map(filter_dim);
+  std::vector<std::vector<std::pair<int32, int32> > > src_dst_map(in.NumCols());
   CuArray<int32> cu_cols(filter_dim);
-  std::vector<CuSubMatrix<BaseFloat> *>
+  std::vector<CuSubMatrix<BaseFloat> *> patch_submatrices;
+  int32 max_list_size = 0;
   for (int32 x_step = 0; x_step < num_x_steps; x_step++) {
     for (int32 y_step = 0; y_step < num_y_steps; y_step++)  {
       int32 patch_number = x_step * num_y_steps + y_step;
-      CuSubMatrix<BaseFloat> current_patches(*patches,
+      patch_submatrices.push_back(new CuSubMatrix<BaseFloat>(*patches,
                                               patch_number * num_frames,
-                                              num_frames, 0, filter_dim);
+                                              num_frames, 0, filter_dim));
+      int32 target_submat_index = patch_submatrices.size() - 1;
       for (int32 x = 0, index = 0; x < filt_x_dim_; x++)  {
         for (int32 y = 0; y < filt_y_dim_; y++)  {
           for (int32 z = 0; z < input_z_dim_; z++, index++)  {
+            int32 src_col_index;
             if (input_vectorization_ == kZyx)  {
-              column_map[index] = ZyxVectorIndex(x_step * filt_x_step_ + x,
-                                                 y_step * filt_y_step_ + y, z,
-                                                 input_x_dim_, input_y_dim_,
-                                                 input_z_dim_);
+              src_col_index = ZyxVectorIndex(x_step * filt_x_step_ + x,
+                                             y_step * filt_y_step_ + y, z,
+                                             input_x_dim_, input_y_dim_,
+                                             input_z_dim_);
             } else if (input_vectorization_ == kYzx)  {
-              column_map[index] = YzxVectorIndex(x_step * filt_x_step_ + x,
-                                                 y_step * filt_y_step_ + y, z,
-                                                 input_x_dim_, input_y_dim_,
-                                                 input_z_dim_);
+              src_col_index = YzxVectorIndex(x_step * filt_x_step_ + x,
+                                             y_step * filt_y_step_ + y, z,
+                                             input_x_dim_, input_y_dim_,
+                                             input_z_dim_);
             }
+            src_dst_map[src_col_index].push_back(
+                std::make_pair<int32, int32>(target_submat_index, index));
+            int32 current_list_size = src_dst_map[src_col_index].size();
+            max_list_size =
+                max_list_size > current_list_size ? max_list_size  : current_list_size;
           }
         }
       }
-      cu_cols.CopyFromVec(column_map);
-      current_patches.CopyCols(in, cu_cols);
     }
   }
-}
+  std::vector<std::vector<std::pair<int32, int32> > > column_maps;
+  SplitForUniqueSrcLocations(max_list_size, &src_dst_map, &column_maps);
+  for (int32 i = 0; i < column_maps.size(); i++)  {
+    std::vector<CuMatrixBase<BaseFloat>* > cur_patch_submatrices(in.NumCols(), NULL);
+    std::vector<MatrixIndexT> target_col_indexes(in.NumCols(), -1);
+    for (int32 j = 0; j < column_maps[i].size(); j++) {
+      if (column_maps[i][j].first == -1)
+       continue;
+      cur_patch_submatrices[j] = static_cast<CuMatrixBase<BaseFloat>*>(patch_submatrices[column_maps[i][j].first]);
+      target_col_indexes[j] = column_maps[i][j].second;
+    }
+    CuArray<MatrixIndexT> target_col_indexes_cuda(target_col_indexes);
+    in.CopyToCols(cur_patch_submatrices, target_col_indexes_cuda);
+  }
 
+  for (int32 i = 0; i < patch_submatrices.size(); i++)
+    delete patch_submatrices[i];
+}
 
 // propagation function
 void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
