@@ -153,6 +153,7 @@ inline void cuda_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const
 inline void cuda_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* const* src, MatrixDim dst_dim) { cudaF_copy_rows_direct(Gr, Bl, dst, src, dst_dim); }
 inline void cuda_copy_to_rows(dim3 Gr, dim3 Bl, float* const* dst, const float* src, MatrixDim src_dim) { cudaF_copy_to_rows_direct(Gr, Bl, dst, src, src_dim); }
 inline void cuda_copy_to_cols(dim3 Gr, dim3 Bl, const float* src, MatrixDim src_dim, float* const* dst, const MatrixIndexT_cuda* dst_strides, const MatrixIndexT_cuda* dst_col_indexes) { cudaF_copy_to_cols(Gr, Bl, src, src_dim, dst, dst_strides, dst_col_indexes); }
+inline void cuda_copy_from_cols(dim3 Gr, dim3 Bl, float* dst, MatrixDim dst_dim, float* const* src, const MatrixIndexT_cuda* src_strides, const MatrixIndexT_cuda* src_col_indexes) { cudaF_copy_from_cols(Gr, Bl, dst, dst_dim, src, src_strides, src_col_indexes); }
 inline void cuda_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   cudaF_add_rows(Gr, Bl, alpha, dst, src, reorder, dst_dim, src_stride);
 }
@@ -342,6 +343,7 @@ inline void cuda_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, con
 inline void cuda_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* const* src, MatrixDim dst_dim) { cudaD_copy_rows_direct(Gr, Bl, dst, src, dst_dim); }
 inline void cuda_copy_to_rows(dim3 Gr, dim3 Bl, double* const* dst, const double* src, MatrixDim src_dim) { cudaD_copy_to_rows_direct(Gr, Bl, dst, src, src_dim); }
 inline void cuda_copy_to_cols(dim3 Gr, dim3 Bl, const double* src, MatrixDim src_dim, double* const* dst, const MatrixIndexT_cuda* dst_strides, const MatrixIndexT_cuda* dst_col_indexes) { cudaD_copy_to_cols(Gr, Bl, src, src_dim, dst, dst_strides, dst_col_indexes); }
+inline void cuda_copy_from_cols(dim3 Gr, dim3 Bl, double* dst, MatrixDim dst_dim, double* const* src, const MatrixIndexT_cuda* src_strides, const MatrixIndexT_cuda* src_col_indexes) { cudaD_copy_from_cols(Gr, Bl, dst, dst_dim, src, src_strides, src_col_indexes); }
 inline void cuda_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
   cudaD_add_rows(Gr, Bl, alpha, dst, src, reorder, dst_dim, src_stride);
 }

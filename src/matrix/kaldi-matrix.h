@@ -303,6 +303,7 @@ class MatrixBase {
   void CopyToRows(Real *const *dst) const;
 
   void CopyToCols( Real* const* dst, const MatrixIndexT* strides, const MatrixIndexT* dest_column_indexes) const;
+  void CopyFromCols( Real* const* src, const MatrixIndexT* strides, const MatrixIndexT* src_column_indexes);
 
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
   /// If indexes[r] < 0, does not add anything. all elements of "indexes" must

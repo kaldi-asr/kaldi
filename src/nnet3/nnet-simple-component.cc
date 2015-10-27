@@ -2253,7 +2253,8 @@ void ConvolutionComponent::InputToInputPatches(
     for (int32 j = 0; j < column_maps[i].size(); j++) {
       if (column_maps[i][j].first == -1)
        continue;
-      cur_patch_submatrices[j] = static_cast<CuMatrixBase<BaseFloat>*>(patch_submatrices[column_maps[i][j].first]);
+      cur_patch_submatrices[j] = static_cast<CuMatrixBase<BaseFloat>*>(
+          patch_submatrices[column_maps[i][j].first]);
       target_col_indexes[j] = column_maps[i][j].second;
     }
     CuArray<MatrixIndexT> target_col_indexes_cuda(target_col_indexes);

@@ -133,6 +133,8 @@ class CuMatrixBase {
   void CopyToRows(const CuArray<Real*> &dst) const;
 
 
+  void CopyFromCols(const std::vector<CuMatrixBase<Real>*> &src,
+                  const CuArray<MatrixIndexT> col_inds);
   void CopyToCols(const std::vector<CuMatrixBase<Real>*> &dst,
                   const CuArray<MatrixIndexT> col_inds) const;
 

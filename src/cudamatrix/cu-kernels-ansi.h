@@ -67,6 +67,7 @@ void cudaF_copy_rows(dim3 Gr, dim3 Bl, float* dst, const float* src, const Matri
 void cudaF_copy_rows_direct(dim3 Gr, dim3 Bl, float* dst, const float* const* src, MatrixDim dst_dim);
 void cudaF_copy_to_rows_direct(dim3 Gr, dim3 Bl, float* const* dst, const float* src, MatrixDim src_dim);
 void cudaF_copy_to_cols(dim3 Gr, dim3 Bl, const float* src, MatrixDim src_dim, float* const* dst, const MatrixIndexT_cuda* dst_strides, const MatrixIndexT_cuda* dst_col_indexes);
+void cudaF_copy_from_cols(dim3 Gr, dim3 Bl, float* dst, MatrixDim dst_dim, float* const* src, const MatrixIndexT_cuda* src_strides, const MatrixIndexT_cuda* src_col_indexes);
 void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
 void cudaF_add_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* const* src, MatrixDim dst_dim);
 void cudaF_add_to_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* const* dst, const float* src, MatrixDim src_dim);
@@ -209,6 +210,7 @@ void cudaD_copy_rows(dim3 Gr, dim3 Bl, double* dst, const double* src, const Mat
 void cudaD_copy_rows_direct(dim3 Gr, dim3 Bl, double* dst, const double* const* src, MatrixDim dst_dim);
 void cudaD_copy_to_rows_direct(dim3 Gr, dim3 Bl, double* const* dst, const double* src, MatrixDim src_dim);
 void cudaD_copy_to_cols(dim3 Gr, dim3 Bl, const double* src, MatrixDim src_dim, double* const* dst, const MatrixIndexT_cuda* dst_strides, const MatrixIndexT_cuda* dst_col_indexes);
+void cudaD_copy_from_cols(dim3 Gr, dim3 Bl, double* dst, MatrixDim dst_dim, double* const* src, const MatrixIndexT_cuda* src_strides, const MatrixIndexT_cuda* src_col_indexes);
 void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride);
 void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst, const double* const* src, MatrixDim dst_dim);
 void cudaD_add_to_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* const* dst, const double* src, MatrixDim src_dim);

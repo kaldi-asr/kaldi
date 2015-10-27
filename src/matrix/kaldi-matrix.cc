@@ -2666,6 +2666,23 @@ void MatrixBase<Real>::CopyToCols(Real* const* dst,
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::CopyFromCols(Real* const* src,
+                                    const MatrixIndexT* src_strides,
+                                    const MatrixIndexT* src_col_indexes) {
+  MatrixIndexT num_rows = num_rows_,
+      num_cols = num_cols_, this_stride = stride_;
+  Real * this_data = this->data_;
+  for (MatrixIndexT c = 0; c < num_cols; c++) {
+    Real *const src_data = src[c];
+    MatrixIndexT src_column = src_col_indexes[c];
+    MatrixIndexT src_stride = src_strides[c];
+    if (src_data != NULL)
+      cblas_Xcopy(num_rows, src_data + src_column, src_stride,
+                  this_data + c, this_stride);
+  }
+}
+
 
 template<typename Real>
 void MatrixBase<Real>::AddRows(Real alpha,
