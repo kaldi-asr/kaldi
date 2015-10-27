@@ -65,7 +65,7 @@ class PnormComponent: public Component {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new PnormComponent(input_dim_,
                                                               output_dim_); }
-  
+
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -104,7 +104,7 @@ class ElementwiseProductComponent: public Component {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual Component* Copy() const { return new ElementwiseProductComponent(input_dim_,
                                                               output_dim_); }
-  
+
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
 
@@ -416,7 +416,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
-  virtual void Scale(BaseFloat scale); 
+  virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   NaturalGradientAffineComponent();
   virtual void ZeroStats();
@@ -668,7 +668,7 @@ class NoOpComponent: public NonlinearComponent {
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
-// ClipGradientComponent just duplicates its input, but clips gradients 
+// ClipGradientComponent just duplicates its input, but clips gradients
 // during backpropagation if they cross a predetermined threshold.
 // This component will be used to prevent gradient explosion problem in
 // recurrent neural networks
@@ -681,22 +681,22 @@ class ClipGradientComponent: public Component {
 
   ClipGradientComponent(): dim_(0), clipping_threshold_(-1),
     norm_based_clipping_(false), num_clipped_(0), count_(0) { }
-  
+
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
-  virtual void InitFromConfig(ConfigLine *cfl); 
+  virtual void InitFromConfig(ConfigLine *cfl);
   void Init(int32 dim, BaseFloat clipping_threshold, bool norm_based_clipping,
             int32 num_clipped, int32 count);
-  
+
   virtual std::string Type() const { return "ClipGradientComponent"; }
-  
+
   virtual int32 Properties() const {
     return kSimpleComponent|kLinearInInput|kPropagateInPlace|kBackpropInPlace;
   }
 
   virtual void ZeroStats();
-  
-  virtual Component* Copy() const { 
+
+  virtual Component* Copy() const {
     return new ClipGradientComponent(dim_,
                                      clipping_threshold_,
                                      norm_based_clipping_,
@@ -713,8 +713,8 @@ class ClipGradientComponent: public Component {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  
-  virtual void Scale(BaseFloat scale); 
+
+  virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
@@ -731,7 +731,7 @@ class ClipGradientComponent: public Component {
                               // else element-wise absolute value clipping is
                               // done
 
-  
+
   ClipGradientComponent &operator =
       (const ClipGradientComponent &other); // Disallow.
 
@@ -745,6 +745,55 @@ class ClipGradientComponent: public Component {
   int32 count_;  // number of elements which were processed
 
 };
+
+// PermuteComponent shuffles the rows in the input, according to the
+// specification.
+class PermuteComponent: public Component {
+ public:
+  PermuteComponent()  {}
+  PermuteComponent(CuArray<int32> column_map): column_map_(column_map){}
+
+  virtual int32 InputDim() const { return column_map_.Dim(); }
+  virtual int32 OutputDim() const { return column_map_.Dim(); }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void Init(CuArray<int32> column_map) { column_map_ = column_map;}
+
+  virtual std::string Type() const { return "PermuteComponent"; }
+
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput;
+  }
+
+  virtual void ZeroStats() {}
+
+  virtual Component* Copy() const {
+    return new PermuteComponent(column_map_);}
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, //in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Scale(BaseFloat scale) {}
+  virtual void Add(BaseFloat alpha, const Component &other) {}
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+ private:
+  CuArray<int32> column_map_;
+  PermuteComponent &operator =
+      (const PermuteComponent &other); // Disallow.
+};
+
+
 
 
 // PerElementScaleComponent scales each dimension of its input with a separate
@@ -880,6 +929,149 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 };
 
 /**
+ * ConvolutionalComponent implements 2d-convolution over frequency and time axes
+ * i.e., it uses 3D filters but only does time and frequency hops.
+ * Input : A matrix where each row is a  vectorized 3D-tensor.
+ * The 3D tensor has dimensions
+ * x: time y: frequency and z: channels (e.g. features/delta/delta-delta)
+ *
+ * The input is vectorized by spanning axes y, z and x in that order.
+ * e.g. given 3d tensor A with sizes (2, 2, 2) along the three dimensions
+ * the vectorized input looks like
+ * A(0,0,0) A(0,1,0) A(0,0,1) A(0,1,1) A(1,0,0) A(1,1,0) A(1,0,1) A(1,1,1)
+ *
+ * Inputs of this type can be generated by using the Append descriptor on
+ *  the feature vectors per time-step
+ *  e.g. Append(Offset(input, -1), input, Offset(input, 1))
+ *  To generate a 3D tensor with the filter-bank, delta, delta-delta spliced
+ *  across time steps one could simply use the Append descriptor on the output
+ *  generated by the binary add-deltas.
+ *
+ * The output is also a 3D tensor vectorized in the same format as the input.
+ * The channel axis in the output corresponds to the output of
+ * different filters.
+ *
+ * The parameters of the ConvolutionComponent are
+ *  1.  the filter (or kernel) matrix
+ *      A matrix of vectorized 3D filters where each row in the matrix
+ *      corresponds to one filter. The filter is vectorized in the same format
+ *      as the input.
+ *  2.  the filter-specific bias vector (i.e., there is a seperate bias added to the
+ *      output of each filter).
+ *  3.  Stride along time dimension
+ *  4.  Stride along frequency dimension
+ *
+ * For efficient implementation of convolutions we use matrix-matrix products
+ * The filter (or kernel) matrix is also vectorized for this purpose. It is also
+ * vectorized in the same format as the input.
+ *
+ */
+class ConvolutionComponent: public UpdatableComponent {
+ public:
+  enum TensorVectorizationType  {
+    kYzx= 0,
+    kZyx = 1
+  };
+
+  ConvolutionComponent();
+  // constructor using another component
+  ConvolutionComponent(const ConvolutionComponent &component);
+  // constructor using parameters
+  ConvolutionComponent(
+    const CuMatrixBase<BaseFloat> &filter_params,
+    const CuVectorBase<BaseFloat> &bias_params,
+    int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+    int32 filt_x_dim, int32 filt_y_dim,
+    int32 filt_x_step, int32 filt_y_step,
+    TensorVectorizationType input_vectorization,
+    BaseFloat learning_rate);
+
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "ConvolutionComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
+	    kBackpropAdds|kPropagateAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+
+  // Some functions that are specific to this class.
+  void SetParams(const VectorBase<BaseFloat> &bias,
+                 const MatrixBase<BaseFloat> &filter);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
+  void Init(BaseFloat learning_rate,
+            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+            int32 filt_x_dim, int32 filt_y_dim,
+            int32 filt_x_step, int32 filt_y_step, int32 num_filters,
+            TensorVectorizationType input_vectorization,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  // there is no filt_z_dim parameter as the length of the filter along
+  // z-dimension is same as the input
+  void Init(BaseFloat learning_rate,
+            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+            int32 filt_x_dim, int32 filt_y_dim,
+            int32 filt_x_step, int32 filt_y_step,
+            TensorVectorizationType input_vectorization,
+            std::string matrix_filename);
+
+  // resize the component, setting the parameters to zero, while
+  // leaving any other configuration values the same
+  void Resize(int32 input_dim, int32 output_dim);
+
+  void Update(const std::string &debug_info,
+	      const CuMatrixBase<BaseFloat> &in_value,
+              const CuMatrixBase<BaseFloat> &out_deriv);
+
+
+ private:
+  // there is no filt_z_dim_ as it is the same input_z_dim_
+  int32 input_x_dim_;
+  int32 input_y_dim_;
+  int32 input_z_dim_;
+  int32 filt_x_dim_;
+  int32 filt_y_dim_;
+  int32 filt_x_step_;
+  int32 filt_y_step_;
+  TensorVectorizationType input_vectorization_;
+  CuMatrix<BaseFloat> filter_params_;
+  CuVector<BaseFloat> bias_params_;
+  bool is_gradient_;
+
+  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
+                           CuMatrix<BaseFloat> *patches) const;
+  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
+                               CuMatrixBase<BaseFloat> *in_deriv) const;
+  const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
+};
+
+/**
  * Convolutional1dComponent implements convolution over frequency axis.
  * We assume the input featrues are spliced, i.e. each frame is in
  * fact a set of stacked frames, where we can form patches which span
@@ -900,11 +1092,11 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
  * stored. The features are then re-shaped to a set of matrices, where
  * one matrix corresponds to single patch-position, where all the
  * filters get applied.
- * 
+ *
  * The type of convolution is controled by hyperparameters:
  * patch_dim_     ... frequency axis size of the patch
  * patch_step_    ... size of shift in the convolution
- * patch_stride_  ... shift for 2nd dim of a patch 
+ * patch_stride_  ... shift for 2nd dim of a patch
  *                    (i.e. frame length before splicing)
  * For instance, for a convolutional component after raw input,
  * if the input is 36-dim fbank feature with delta of order 2
@@ -956,7 +1148,7 @@ class Convolutional1dComponent: public UpdatableComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update_in,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
-  
+
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
@@ -1000,7 +1192,7 @@ class Convolutional1dComponent: public UpdatableComponent {
                              std::vector<std::vector<int32> > *backward_indexes);
   static void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
                                std::vector<std::vector<int32> > *out);
-    
+
   const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
   CuMatrix<BaseFloat> filter_params_;
   CuVector<BaseFloat> bias_params_;
@@ -1020,7 +1212,7 @@ class Convolutional1dComponent: public UpdatableComponent {
  * as 128 and 3 respectively. Maxpooling component would create an output
  * matrix of 512 x 1280. The 30 input neurons are grouped by a group size of 3, and
  * the maximum in a group is selected, creating a smaller feature map of 10.
- * 
+ *
  * Our pooling does not supports overlaps, which simplifies the
  * implementation (and was not helpful for Ossama).
  */
@@ -1063,7 +1255,7 @@ class MaxpoolingComponent: public Component {
     return new MaxpoolingComponent(input_dim_, output_dim_,
 		    pool_size_, pool_stride_); }
 
-  // Some functions that are specific to this 
+  // Some functions that are specific to this
   void Init(int32 input_dim, int32 output_dim,
             int32 pool_size, int32 pool_stride);
 

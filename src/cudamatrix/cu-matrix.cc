@@ -2098,6 +2098,96 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::CopyFromCols(const std::vector<CuMatrixBase<Real>*> &src,
+                                      const CuArray<MatrixIndexT> src_col_indexes)
+  {
+  if (NumCols() == 0) return;
+  KALDI_ASSERT(src.size() == src_col_indexes.Dim());
+  std::vector<MatrixIndexT> src_col_indexes_vec;
+  src_col_indexes.CopyToVec(&src_col_indexes_vec);
+
+  for (int32 i = 0; i < src.size(); i++)  {
+    if (src[i] != NULL)
+      KALDI_ASSERT(src[i]->NumRows() == NumRows() &&
+                   src_col_indexes_vec[i] < src[i]->NumCols());
+  }
+  std::vector<MatrixIndexT> src_strides_vec(src_col_indexes.Dim(), -1);
+  std::vector<Real*> src_data_vec(src_col_indexes.Dim(), NULL);
+  for (int32 i = 0; i < src_strides_vec.size(); i++)  {
+    if (src[i] == NULL)
+      continue;
+    src_strides_vec[i] = src[i]->Stride();
+    src_data_vec[i] = src[i]->Data();
+  }
+  CuArray<MatrixIndexT> src_strides(src_strides_vec);
+  CuArray<Real*> src_data(src_data_vec);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_from_cols(dimGrid, dimBlock, data_, Dim(),
+                        src_data.Data(), src_strides.Data(),
+                        src_col_indexes.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyFromCols(src_data.Data(), src_strides.Data(),
+                     src_col_indexes.Data());
+  }
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::CopyToCols(const std::vector<CuMatrixBase<Real>*> &dst,
+                                    const CuArray<MatrixIndexT> dst_col_indexes)
+  const {
+  if (NumCols() == 0) return;
+  KALDI_ASSERT(dst.size() == dst_col_indexes.Dim());
+  std::vector<MatrixIndexT> dst_col_indexes_vec;
+  dst_col_indexes.CopyToVec(&dst_col_indexes_vec);
+
+  for (int32 i = 0; i < dst.size(); i++)  {
+    if (dst[i] != NULL)
+      KALDI_ASSERT(dst[i]->NumRows() == NumRows() &&
+                   dst_col_indexes_vec[i] < dst[i]->NumCols());
+  }
+  std::vector<MatrixIndexT> dst_strides_vec(dst_col_indexes.Dim(), -1);
+  std::vector<Real*> dst_data_vec(dst_col_indexes.Dim(), NULL);
+  for (int32 i = 0; i < dst_strides_vec.size(); i++)  {
+    if (dst[i] == NULL)
+      continue;
+    dst_strides_vec[i] = dst[i]->Stride();
+    dst_data_vec[i] = dst[i]->Data();
+  }
+  CuArray<MatrixIndexT> dst_strides(dst_strides_vec);
+  CuArray<Real*> dst_data(dst_data_vec);
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+    cuda_copy_to_cols(dimGrid, dimBlock, data_, Dim(),
+                      dst_data.Data(), dst_strides.Data(),
+                      dst_col_indexes.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().CopyToCols(dst_data.Data(), dst_strides.Data(),
+                     dst_col_indexes.Data());
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
