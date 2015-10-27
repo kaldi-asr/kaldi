@@ -1460,8 +1460,8 @@ static void _copy_from_cols(Real * dst, MatrixDim dst_dim,
                             Real* const* src,
                             const MatrixIndexT_cuda* src_strides,
                             const MatrixIndexT_cuda* src_col_indexes) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int j = blockIdx.x * blockDim.x + threadIdx.x;
+  int i = blockIdx.y * blockDim.y + threadIdx.y;
   if (i < dst_dim.rows && j < dst_dim.cols) {
     if (src[j] != NULL) {
       dst[i * dst_dim.stride + j] =
