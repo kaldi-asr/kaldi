@@ -1,12 +1,5 @@
 #!/bin/bash
 
-# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
-#           2015  Vijayaditya Peddinti
-#           2015  Xingyu Na
-#           2015  Pegah Ghahrmani
-# Apache 2.0.
-
-
 # this is a basic lstm script
 # LSTM script runs for more epochs than the TDNN script
 # and each epoch takes twice the time
@@ -16,9 +9,7 @@
 
 stage=0
 train_stage=-10
-has_fisher=true
 affix=
-speed_perturb=true
 common_egs_dir=
 
 # LSTM options
@@ -36,11 +27,11 @@ chunk_right_context=0
 
 
 # training options
-num_epochs=8
-initial_effective_lrate=0.0003
-final_effective_lrate=0.00003
-num_jobs_initial=3
-num_jobs_final=15
+num_epochs=10
+initial_effective_lrate=0.0006
+final_effective_lrate=0.00006
+num_jobs_initial=2
+num_jobs_final=12
 momentum=0.5
 num_chunk_per_minibatch=100
 samples_per_iter=20000
@@ -51,13 +42,14 @@ extra_left_context=
 extra_right_context=
 frames_per_chunk=
 
-# End configuration section.
+#End configuration section
 
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $@" # Print the command line for logging
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -67,24 +59,16 @@ where "nvcc" is installed.
 EOF
 fi
 
-suffix=
-if [ "$speed_perturb" == "true" ]; then
-  suffix=_sp
-fi
 dir=exp/nnet3/lstm
 dir=$dir${affix:+_$affix}
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
-dir=${dir}$suffix
-train_set=train_nodup$suffix
-ali_dir=exp/tri4_ali_nodup$suffix
 
-local/nnet3/run_ivector_common.sh --stage $stage \
-  --speed-perturb $speed_perturb || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
@@ -95,7 +79,7 @@ if [ $stage -le 9 ]; then
     --samples-per-iter $samples_per_iter \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
+    --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
@@ -110,11 +94,10 @@ if [ $stage -le 9 ]; then
     --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+    data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
-graph_dir=exp/tri4/graph_sw1_tg
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
   fi
@@ -124,21 +107,22 @@ if [ $stage -le 10 ]; then
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
   fi
-  for decode_set in train_dev eval2000; do
+  for lm_suffix in tgpr bd_tgpr; do
+    graph_dir=exp/tri4b/graph_${lm_suffix}
+    # use already-built graphs
+    for year in eval92 dev93; do
       (
-      num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
-          --extra-left-context $extra_left_context  \
-          --frames-per-chunk "$frames_per_chunk" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
-      fi
+      num_jobs=`cat data/test_${year}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+	  --extra-left-context $extra_left_context \
+	  --extra-right-context $extra_right_context \
+	  --frames-per-chunk "$frames_per_chunk" \
+	  --online-ivector-dir exp/nnet3/ivectors_test_$year \
+	 $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
       ) &
+    done
   done
 fi
-wait;
+
 exit 0;
+

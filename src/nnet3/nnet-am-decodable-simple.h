@@ -37,6 +37,7 @@ namespace nnet3 {
 // for which IsSimpleNnet(nnet) would return true.
 struct NnetSimpleComputationOptions {
   int32 extra_left_context;
+  int32 extra_right_context;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
   bool debug_computation;
@@ -45,6 +46,7 @@ struct NnetSimpleComputationOptions {
 
   NnetSimpleComputationOptions():
       extra_left_context(0),
+      extra_right_context(0),
       frames_per_chunk(50),
       acoustic_scale(0.1),
       debug_computation(false) { }
@@ -53,6 +55,10 @@ struct NnetSimpleComputationOptions {
     opts->Register("extra-left-context", &extra_left_context,
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context (may be useful in "
+                   "recurrent setups");
+    opts->Register("extra-right-context", &extra_right_context,
+                   "Number of frames of additional right-context to add on top "
+                   "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
