@@ -390,13 +390,14 @@ void UnitTestConvolutional1dComponent() {
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 rearrange-input=false";
+    // appended-conv is false by default
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10";
     Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);
   }
   {
-    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 rearrange-input=true";
+    const char *str = "learning-rate=0.01 input-dim=100 output-dim=70 param-stddev=0.1 patch-dim=4 patch-step=1 patch-stride=10 appended-conv=true";
     Convolutional1dComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);

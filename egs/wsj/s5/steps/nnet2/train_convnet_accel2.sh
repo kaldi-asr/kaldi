@@ -284,7 +284,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
   
   cat >$dir/replace.1.config <<EOF
-Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2 rearrange-input=true
+Convolutional1dComponent input-dim=$pool_out_dim output-dim=$conv_out_dim2 learning-rate=$initial_lrate param-stddev=$stddev bias-stddev=$bias_stddev patch-dim=$patch_dim2 patch-step=$patch_step2 patch-stride=$patch_stride2 appended-conv=true
 NormalizeComponent dim=$conv_out_dim2
 AffineComponentPreconditionedOnline input-dim=$conv_out_dim2 output-dim=$num_leaves $online_preconditioning_opts learning-rate=$initial_lrate param-stddev=0 bias-stddev=0
 SoftmaxComponent dim=$num_leaves

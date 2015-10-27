@@ -1729,10 +1729,10 @@ class Convolutional1dComponent: public UpdatableComponent {
   int32 OutputDim() const;
   void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
             int32 patch_dim, int32 patch_step, int32 patch_stride,
-            BaseFloat param_stddev, BaseFloat bias_stddev, bool rearrange_input);
+            BaseFloat param_stddev, BaseFloat bias_stddev, bool appended_conv);
   void Init(BaseFloat learning_rate,
             int32 patch_dim, int32 patch_step, int32 patch_stride,
-            std::string matrix_filename, bool rearrange_input);
+            std::string matrix_filename, bool appended_conv);
 
   // resize the component, setting the parameters to zero, while
   // leaving any other configuration values the same
@@ -1784,7 +1784,7 @@ class Convolutional1dComponent: public UpdatableComponent {
   const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
   CuMatrix<BaseFloat> filter_params_;
   CuVector<BaseFloat> bias_params_;
-  bool rearrange_input_;
+  bool appended_conv_;
   bool is_gradient_;
 };
 
