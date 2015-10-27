@@ -2661,7 +2661,7 @@ void MatrixBase<Real>::CopyToCols(Real* const* dst,
     MatrixIndexT dst_column = dst_col_indexes[c];
     MatrixIndexT dst_stride = dst_strides[c];
     if (dst_data != NULL)
-      cblas_Xcopy(num_cols, this_data + c, this_stride,
+      cblas_Xcopy(num_rows, this_data + c, this_stride,
                   dst_data + dst_column, dst_stride);
   }
 }

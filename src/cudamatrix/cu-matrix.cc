@@ -2104,11 +2104,13 @@ void CuMatrixBase<Real>::CopyToCols(const std::vector<CuMatrixBase<Real>*> &dst,
   const {
   if (NumCols() == 0) return;
   KALDI_ASSERT(dst.size() == dst_col_indexes.Dim());
-  const MatrixIndexT * dst_col_indexes_ptr = dst_col_indexes.Data();
+  std::vector<MatrixIndexT> dst_col_indexes_vec;
+  dst_col_indexes.CopyToVec(&dst_col_indexes_vec);
+
   for (int32 i = 0; i < dst.size(); i++)  {
     if (dst[i] != NULL)
       KALDI_ASSERT(dst[i]->NumRows() == NumRows() &&
-                   dst_col_indexes_ptr[i] < dst[i]->NumCols());
+                   dst_col_indexes_vec[i] < dst[i]->NumCols());
   }
   std::vector<MatrixIndexT> dst_strides_vec(dst_col_indexes.Dim(), -1);
   std::vector<Real*> dst_data_vec(dst_col_indexes.Dim(), NULL);

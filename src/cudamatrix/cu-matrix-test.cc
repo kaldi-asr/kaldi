@@ -481,8 +481,6 @@ static void UnitTestCuMatrixCopyToCols() {
 }
 
 
-
-
 template<typename Real>
 static void UnitTestCuMatrixAddRows() {
   for (int32 p = 0; p < 2; p++) {

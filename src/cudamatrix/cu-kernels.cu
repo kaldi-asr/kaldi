@@ -1447,9 +1447,9 @@ static void _copy_to_cols(const Real *src, MatrixDim src_dim,
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int j = blockIdx.y * blockDim.y + threadIdx.y;
   if (i < src_dim.rows && j < src_dim.cols) {
-    if (dst[i] != NULL) {
-      dst[i][j * dst_strides[i] + dst_col_indexes[i]] =
-        src[j * src_dim.stride + i];
+    if (dst[j] != NULL) {
+      dst[j][i * dst_strides[j] + dst_col_indexes[j]] =
+        src[i * src_dim.stride + j];
     }
   }
 }
