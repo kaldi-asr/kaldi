@@ -22,6 +22,8 @@ pnorm_output_dim=250
 train_data_dir=data/train_si284_corrupted_hires
 targets_scp=data/train_si284_corrupted_hires/snr_targets.scp
 max_change_per_sample=0.075
+max_param_change=1
+add_layers_period=2
 egs_dir=
 dir=
 
@@ -55,11 +57,12 @@ if [ $stage -le 8 ]; then
     --splice-indexes "$splice_indexes" \
     --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --max-change-per-sample $max_change_per_sample \
+    --max-change-per-sample $max_change_per_sample --max-param-change $max_param_change \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" --nj 40 --objective-type quadratic --cleanup false \
     --pnorm-input-dim $pnorm_input_dim \
     --pnorm-output-dim $pnorm_output_dim \
+    --add-layers-period $add_layers_period \
     $train_data_dir $targets_scp $dir || exit 1;
 fi
 

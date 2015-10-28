@@ -14,7 +14,7 @@ set -o pipefail
 stage=0
 train_stage=-10
 num_epochs=8
-splice_indexes="-5,-4,-3,-2,-1,0,1,2,3,4"
+splice_indexes=`seq -s',' -50 50`
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 relu_dim=50
@@ -27,6 +27,7 @@ egs_dir=
 dir=
 nj=40
 method=LogisticRegression
+splice_opts="--left-context=50 --right-context=50"
 max_param_change=1
 
 . cmd.sh
@@ -122,8 +123,9 @@ if [ $stage -le 2 ]; then
       ;;
     "LogisticRegressionSubsampled")
       $train_cmd --mem 8G $dir/log/train_logistic_regression.log \
-        logistic-regression-train-on-feats --num-targets=2 \
-        scp:$datadir/feats.scp scp:$vad_scp $dir/0.mdl || exit 1
+        logistic-regression-train-on-feats --num-frames=8000000 --num-targets=2 \
+        "ark:cat $datadir/feats.scp | splice-feats $splice_opts scp:- ark:- |" \
+        scp:$vad_scp $dir/0.mdl || exit 1
       ;;
     "LogisticRegression")
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -133,16 +135,14 @@ if [ $stage -le 2 ]; then
 
       steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
         --num-epochs $num_epochs --num-jobs-initial 1 --num-jobs-final 4 \
-        --splice-indexes "" --no-hidden-layers true --minibatch-size 2048 \
+        --splice-indexes "$splice_indexes" --no-hidden-layers true --minibatch-size 512 \
         --feat-type raw --egs-dir "$egs_dir" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --max-change-per-sample $max_change_per_sample \
+        --max-param-change $max_param_change \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --use-presoftmax-prior-scale false \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
         --num-targets 2 --cleanup false --max-param-change $max_param_change \
-        --pnorm-input-dim $pnorm_input_dim \
-        --pnorm-output-dim $pnorm_output_dim \
         $datadir "$vad_scp" $dir || exit 1;
       ;;
     "Dnn")
@@ -159,7 +159,7 @@ if [ $stage -le 2 ]; then
         --max-change-per-sample $max_change_per_sample \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup false --use-presoftmax-prior-scale true \
-        --skip-final-softmax false --skip-lda false --posterior-targets true \
+        --skip-final-softmax false --skip-lda true --posterior-targets true \
         --num-targets 2 --cleanup false --max-param-change $max_param_change \
         --relu-dim $relu_dim \
         $datadir "$vad_scp" $dir || exit 1;
