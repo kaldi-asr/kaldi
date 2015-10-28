@@ -98,38 +98,38 @@ right_context = 0
 num_hidden_layers = 0
 input_dim = args.feat_dim + args.ivector_dim
 
-if no_hidden_layers:
-    if len(args.splice_indexes.strip()) > 0:
-        sys.exit("invalid --splice-indexes argument, must be 0 "
-                 + "when --no-hidden-layers true is given")
-    splice_array = [ [0] ]
-else:
-    if len(args.splice_indexes.strip()) == 0:
-        sys.exit("invalid --splice-indexes argument, too short: "
-                 + args.splice_indexes)
-    split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
+if len(args.splice_indexes.strip()) == 0:
+    sys.exit("invalid --splice-indexes argument, too short: "
+             + args.splice_indexes)
 
-    try:
-        for string in split1:
-            split2 = string.split(",")
-            if len(split2) < 1:
-                sys.exit("invalid --splice-indexes argument, too-short element: "
-                         + args.splice_indexes)
-            int_list = []
-            for int_str in split2:
-                int_list.append(int(int_str))
-            if not int_list == sorted(int_list):
-                sys.exit("elements of --splice-indexes must be sorted: "
-                         + args.splice_indexes)
-            left_context += -int_list[0]
-            right_context += int_list[-1]
-            splice_array.append(int_list)
-    except ValueError as e:
-        sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
-    left_context = max(0, left_context)
-    right_context = max(0, right_context)
-    num_hidden_layers = len(splice_array)
-    input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
+split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
+
+if no_hidden_layers:
+    if len(split1) != 1:
+        sys.exit("invalid --splice-indexes argument, "
+                 + "must have only input level splicing "
+                 + "when --no-hidden-layers true is given")
+try:
+    for string in split1:
+        split2 = string.split(",")
+        if len(split2) < 1:
+            sys.exit("invalid --splice-indexes argument, too-short element: "
+                     + args.splice_indexes)
+        int_list = []
+        for int_str in split2:
+            int_list.append(int(int_str))
+        if not int_list == sorted(int_list):
+            sys.exit("elements of --splice-indexes must be sorted: "
+                     + args.splice_indexes)
+        left_context += -int_list[0]
+        right_context += int_list[-1]
+        splice_array.append(int_list)
+except ValueError as e:
+    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
+left_context = max(0, left_context)
+right_context = max(0, right_context)
+num_hidden_layers = len(splice_array) if not no_hidden_layers else 0
+input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
 
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
@@ -234,6 +234,8 @@ if num_hidden_layers == 0:
     if not skip_lda:
         print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
+
+    print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
           input_dim, args.num_targets, args.max_change_per_sample), file=f)
@@ -245,7 +247,7 @@ if num_hidden_layers == 0:
       print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
             args.num_targets), file=f)
     print('# Now for the network structure', file=f)
-    splices = [ 'input' ]
+    splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[0] ]
     if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
     orig_input='Append({0})'.format(', '.join(splices))
     # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
