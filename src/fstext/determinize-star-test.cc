@@ -1,6 +1,7 @@
 // fstext/determinize-star-test.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//           2015       Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -45,7 +46,7 @@ template<class Arc> void TestDeterminizeGeneral() {
     }
     VectorFst<Arc> ofst;
     try {
-      DeterminizeStar<Arc>(*fst, &ofst, kDelta, NULL, max_states);
+      DeterminizeStar<Fst<Arc> >(*fst, &ofst, kDelta, NULL, max_states);
       std::cout << "FST after determinizing is:\n";
       {
 #ifdef HAVE_OPENFST_GE_10400

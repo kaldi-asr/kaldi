@@ -265,8 +265,9 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 100; n++) {
+  for (int32 n = 0; n < 100; n++)  {
     Component *c = GenerateRandomSimpleComponent();
+    KALDI_LOG << c->Info();
     TestNnetComponentIo(c);
     TestNnetComponentCopy(c);
     TestNnetComponentAddScale(c);
@@ -287,6 +288,7 @@ void UnitTestNnetComponent() {
         !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-06, true))
       KALDI_ERR << "Component model-derivative test failed";
+
     delete c;
   }
 }
