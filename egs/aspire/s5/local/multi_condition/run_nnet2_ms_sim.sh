@@ -9,10 +9,11 @@
 . cmd.sh
 
 
-stage=1
+stage=7
 train_stage=-10
 use_gpu=true
-dir=exp/nnet2_multicondition/nnet_ms_a
+dir=exp/nnet2_multicondition/nnet_ms_s_3epoch
+dest_wav_dir=data/rvbsim_wavs # directory to store the reverberated wav files
 
 set -e
 . cmd.sh
@@ -51,7 +52,7 @@ else
 fi
 
 # do the common parts of the script.
-local/multi_condition/run_nnet2_common.sh --stage $stage
+local/multi_condition/run_nnet2_common_sim.sh --stage $stage
 
 
 if [ $stage -le 7 ]; then
@@ -67,7 +68,7 @@ if [ $stage -le 7 ]; then
     --num-epochs 3 --num-jobs-initial 4 --num-jobs-final 22 \
     --num-hidden-layers 6 --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer3/-3:3 layer4/-10:-7:2:5" \
     --feat-type raw \
-    --online-ivector-dir exp/nnet2_multicondition/ivectors_train \
+    --online-ivector-dir exp/nnet2_multicondition/ivectors_train_sim \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
@@ -80,14 +81,14 @@ if [ $stage -le 7 ]; then
     --mix-up 12000 \
     --frames-per-eg 16 \
     --remove-egs false \
-    data/train_rvb_hires data/lang exp/tri5a_rvb_ali $dir  || exit 1;
+    data/train_rvbsim_hires data/lang exp/tri5a_rvbsim_ali $dir  || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le -1 ]; then
   # dump iVectors for the testing data.
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
+  for data_dir in dev_rvbsim test_rvbsim dev_aspire dev test; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-      data/${data_dir}_hires exp/nnet2_multicondition/extractor exp/nnet2_multicondition/ivectors_${data_dir} || exit 1;
+      data/${data_dir}_hires exp/nnet2_multicondition/extractor_sim exp/nnet2_multicondition/ivectors_${data_dir}_sim || exit 1;
   done
 fi
 
@@ -95,59 +96,13 @@ fi
 if [ $stage -le 9 ]; then
   # this does offline decoding that should give about the same results as the
   # real online decoding (the one with --per-utt true)
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
+  for data_dir in dev_rvbsim test_rvbsim dev_aspire dev test; do
    ( steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
-      --online-ivector-dir exp/nnet2_multicondition/ivectors_${data_dir} \
+      --online-ivector-dir exp/nnet2_multicondition/ivectors_${data_dir}_sim \
       exp/tri5a/graph data/${data_dir}_hires $dir/decode_${data_dir} || exit 1;
    ) &
   done
   wait;
-fi
-
-
-if [ $stage -le 10 ]; then
-  # If this setup used PLP features, we'd have to give the option --feature-type plp
-  # to the script below.
-  steps/online/nnet2/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
-    data/lang exp/nnet2_multicondition/extractor "$dir" ${dir}_online || exit 1;
-fi
-
-if [ $stage -le 11 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
-  # previous utterances of the same speaker.
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-   ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
-      --config conf/decode.config \
-      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
-   ) &
-  done
-  wait;
-fi
-
-if [ $stage -le 12 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information.
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-   ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
-      --config conf/decode.config \
-      --per-utt true \
-      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
-   ) &
-  done
-  wait;
-fi
-
-if [ $stage -le 13 ]; then
-  # this version of the decoding treats each utterance separately
-  # without carrying forward speaker information, but looks to the end
-  # of the utterance while computing the iVector (--online false)
-  for data_dir in dev_rvb test_rvb dev_aspire dev test; do
-   ( steps/online/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" \
-      --config conf/decode.config \
-      --per-utt true --online false \
-      exp/tri5a/graph data/${data_dir}_hires ${dir}_online/decode_${data_dir} || exit 1;
-   ) &
-  done
 fi
 
 exit 0;
