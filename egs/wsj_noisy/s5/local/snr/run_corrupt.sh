@@ -192,7 +192,7 @@ if [ $stage -le 8 ]; then
     compute-snr-targets --target-type="FbankMask" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
-    ark:- \| matrix-scale --scale=2.0 ark:- \
+    ark:- \| \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
@@ -239,8 +239,8 @@ if [ $stage -le 10 ]; then
   mkdir -p $targets_dir 
   $train_cmd JOB=1:$nj $tmpdir/${tmpdir}_${data_id}.JOB.log \
     vector-sum \
-    "ark:matrix-scale --scale=2.0 scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
-    "ark:matrix-scale --scale=2.0 scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
+    "ark:matrix-scale scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- |" \
+    "ark:matrix-scale scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp ark:- | matrix-sum-cols --log-sum-exp=true ark:- ark:- | vector-scale --scale=-1.0 ark:- ark:- |" \
     ark:- \| vector-to-feat ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 

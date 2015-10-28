@@ -72,10 +72,9 @@ int main(int argc, char *argv[]) {
         kaldi_writer.Write(key, clean_feats);
       } else if (target_type == "Irm") {
         Matrix<double> clean_energy(clean_reader.Value(uniq_key));
-        clean_energy.Scale(2.0);
         
         Matrix<double> total_energy(noisy_feats);  // Actually noise feats
-        total_energy.Scale(2.0);
+        
         total_energy.LogAddExpMat(1.0, clean_energy, kNoTrans);
 
         clean_energy.AddMat(-1.0, total_energy);
