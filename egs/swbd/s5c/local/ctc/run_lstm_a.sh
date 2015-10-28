@@ -162,7 +162,7 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/ctc/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 30 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \

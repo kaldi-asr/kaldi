@@ -533,7 +533,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-ctc-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-ctc-merge-egs --minibatch-size=512 ark:$egs_dir/combine.cegs ark:-|" \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-ctc-merge-egs --minibatch-size=256 ark:$egs_dir/combine.cegs ark:-|" \
        $dir/final.mdl || exit 1;
 
   # Compute the probability of the final, combined model with

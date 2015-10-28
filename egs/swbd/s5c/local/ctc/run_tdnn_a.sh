@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# based on lstm_h
-
+# see results at end of file
 
 set -e
 
@@ -12,6 +11,7 @@ train_stage=-10
 speed_perturb=false
 dir=exp/ctc/tdnn_a  # Note: _sp will get added to this if $speed_perturb == true.
 common_egs_dir=  # be careful with this: it's dependent on the CTC transition model
+
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
@@ -132,11 +132,11 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/ctc/decode.sh --stage 2 --nj 50 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --stage 2 --cmd "$decode_cmd" \
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
@@ -145,3 +145,21 @@ if [ $stage -le 14 ]; then
 fi
 wait;
 exit 0;
+
+
+#b01:s5c: grep Overall exp/ctc/tdnn_a_sp/log/compute_prob_*.final.log
+#exp/ctc/tdnn_a_sp/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0214241 per frame, over 20000 frames = -0.294677 + 0.273253
+#exp/ctc/tdnn_a_sp/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0325563 per frame, over 20000 frames = -0.319421 + 0.286865
+#b01:s5c: grep Overall exp/ctc/tdnn_a/log/compute_prob_*.final.log
+#exp/ctc/tdnn_a/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0178068 per frame, over 20000 frames = -0.29416 + 0.276353
+#exp/ctc/tdnn_a/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0468761 per frame, over 20000 frames = -0.335203 + 0.288326
+
+# results without speed perturbation:
+# for x in exp/ctc/tdnn_a/decode_eval2000_sw1_{tg,fsh_fg}; do grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done
+# %WER 16.3 | 1831 21395 | 85.7 10.0 4.4 2.0 16.3 55.2 | exp/ctc/tdnn_a/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.5 | 1831 21395 | 87.0 8.7 4.3 1.6 14.5 52.3 | exp/ctc/tdnn_a/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# results with speed perturbation:
+# for x in exp/ctc/tdnn_a_sp/decode_eval2000_sw1_{tg,fsh_fg}; do grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done
+# %WER 14.9 | 1831 21395 | 86.9 9.2 3.9 1.8 14.9 53.5 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 13.1 | 1831 21395 | 88.4 8.0 3.6 1.5 13.1 50.6 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
