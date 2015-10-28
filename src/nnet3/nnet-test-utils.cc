@@ -1,7 +1,7 @@
 // nnet3/nnet-test-utils.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-// Copyright      2015  Johns Hopkins University (author: Vijayaditya Peddinti)
+// Copyright      2015  Vijayaditya Peddinti
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -627,11 +627,59 @@ void GenerateConfigSequenceCnn(
   configs->push_back(os.str());
 }
 
+void GenerateConfigSequenceCnn2d(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  std::ostringstream os;
+
+
+  int32 input_x_dim = 10 + Rand() % 20,
+        input_y_dim = 10 + Rand() % 20,
+        input_z_dim = 3 + Rand() % 10,
+        filt_x_dim = 1 + Rand() % input_x_dim,
+        filt_y_dim = 1 + Rand() % input_y_dim,
+        num_filters = 10 + Rand() % 20,
+        filt_x_step = (1 + Rand() % filt_x_dim),
+        filt_y_step = (1 + Rand() % filt_y_dim);
+  int32 remainder = (input_x_dim - filt_x_dim) % filt_x_step;
+  // adjusting input_x_dim to ensure divisibility
+  input_x_dim = input_x_dim - remainder;
+  remainder = (input_y_dim - filt_y_dim) % filt_y_step;
+  // adjusting input_x_dim to ensure divisibility
+  input_y_dim = input_y_dim - remainder;
+
+  int32 input_vectorization = Rand() % 2;
+  std::string vectorization;
+  if (input_vectorization == 0) {
+    vectorization = "yzx";
+  } else  {
+    vectorization = "zyx";
+  }
+
+  os << "component name=conv type=ConvolutionComponent "
+     << " input-x-dim=" << input_x_dim
+     << " input-y-dim=" << input_y_dim
+     << " input-z-dim=" << input_z_dim
+     << " filt-x-dim=" << filt_x_dim
+     << " filt-y-dim=" << filt_y_dim
+     << " filt-x-step=" << filt_x_step
+     << " filt-y-step=" << filt_y_step
+     << " num-filters=" << num_filters
+     << " input-vectorization-order=" << vectorization
+     << std::endl;
+
+  os << "input-node name=input dim=" << (input_x_dim * input_y_dim * input_z_dim) << std::endl;
+  os << "component-node name=conv_node component=conv input=input\n";
+  os << "output-node name=output input=conv_node\n";
+  configs->push_back(os.str());
+}
+
+
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 7);
+  int32 network_type = RandInt(0, 8);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -675,6 +723,12 @@ start:
         goto start;
       GenerateConfigSequenceCnn(opts, configs);
       break;
+    case 8:
+      if (!opts.allow_nonlinearity)
+        goto start;
+      GenerateConfigSequenceCnn2d(opts, configs);
+      break;
+
     default:
       KALDI_ERR << "Error generating config sequence.";
   }
@@ -739,7 +793,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 18);
+  int32 n = RandInt(0, 20);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -867,6 +921,44 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 18: {
+      int32 input_vectorization = Rand() % 2;
+      std::string vectorization;
+      if (input_vectorization == 0) {
+        vectorization = "yzx";
+      } else  {
+        vectorization = "zyx";
+      }
+      *component_type = "ConvolutionComponent";
+      int32 input_x_dim = 10 + Rand() % 20,
+            input_y_dim = 10 + Rand() % 20,
+            input_z_dim = 3 + Rand() % 10,
+            filt_x_dim = 1 + Rand() % input_x_dim,
+            filt_y_dim = 1 + Rand() % input_y_dim,
+            num_filters = 1 + Rand() % 10,
+            filt_x_step = (1 + Rand() % filt_x_dim),
+            filt_y_step = (1 + Rand() % filt_y_dim);
+      int32 remainder = (input_x_dim - filt_x_dim) % filt_x_step;
+      // adjusting input_x_dim to ensure divisibility
+      input_x_dim = input_x_dim - remainder;
+      remainder = (input_y_dim - filt_y_dim) % filt_y_step;
+      // adjusting input_x_dim to ensure divisibility
+      input_y_dim = input_y_dim - remainder;
+
+      os << "input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " filt-x-dim=" << filt_x_dim
+         << " filt-y-dim=" << filt_y_dim
+         << " filt-x-step=" << filt_x_step
+         << " filt-y-step=" << filt_y_step
+         << " num-filters=" << num_filters
+         << " input-vectorization-order=" << vectorization
+         << " learning-rate=" << learning_rate;
+      break;
+      // TODO : add test for file based initialization. But confirm how to write
+      // a file which is not going to be overwritten by other components
+    }
+    case 19: {
       *component_type = "MaxpoolingComponent";
       int32 pool_stride = 5 + Rand() % 10,
       pool_size = 2 + Rand() % 3,
@@ -878,6 +970,21 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
       break;
     }
+    case 20: {
+      *component_type = "PermuteComponent";
+      int32 input_dim = 10 + Rand() % 100;
+      std::vector<int32> column_map(input_dim);
+      for (int32 i = 0; i < input_dim; i++)
+        column_map[i] = i;
+      std::random_shuffle(column_map.begin(), column_map.end());
+      std::ostringstream buffer;
+      for (int32 i = 0; i < input_dim-1; i++)
+        buffer << column_map[i] << ",";
+      buffer << column_map.back();
+      os << "new-column-order=" << buffer.str();
+      break;
+    }
+
     default:
       KALDI_ERR << "Error generating random component";
   }
