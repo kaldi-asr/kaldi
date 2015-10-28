@@ -34,10 +34,6 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
     
-//SegmentationOptions opts;
-
-    //opts.Register(&po);
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -45,16 +41,6 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    //std::vector<int32> merge_labels;
-    //if (opts.merge_labels_csl != "") {
-    //  if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-    //        &merge_labels)) {
-    //    KALDI_ERR << "Bad value for --merge-labels option: "
-    //      << opts.merge_labels_csl;
-    //  }
-    //  std::sort(merge_labels.begin(), merge_labels.end());
-    //}
-
     std::string ali_rspecifier = po.GetArg(1),
         segmentation_wspecifier = po.GetArg(2);
     

@@ -38,6 +38,7 @@ int main(int argc, char *argv[]) {
     int32 widen_length = -1;
     int32 widen_label = -1;
     int32 max_segment_length = -1;
+    int32 max_intersegment_length = 1;
     bool merge_adjacent_segments = false;
 
     ParseOptions po(usage);
@@ -54,7 +55,9 @@ int main(int argc, char *argv[]) {
     po.Register("widen-length", &widen_length, "Widen by this amount of frames on either sides");
     po.Register("max-segment-length", &max_segment_length, "Split segment into pieces of this number of frames");
     po.Register("merge-adjacent-segments", &merge_adjacent_segments, 
-                "Merge adjacent segments of the same label");
+                "Merge adjacent segments of the same label if they are within max-intersegment-length distance");
+    po.Register("max-intersegment-length", &max_intersegment_length,  
+                "The maximum intersegment length that is allowed for two adjacent segments to be merged");
 
     opts.Register(&po);
 
@@ -110,7 +113,7 @@ int main(int argc, char *argv[]) {
         seg.RemoveShortSegments(opts.merge_dst_label, max_remove_length);
 
       if (merge_adjacent_segments)
-        seg.MergeAdjacentSegments();
+        seg.MergeAdjacentSegments(max_intersegment_length);
 
       if (max_segment_length >= 0)
         seg.SplitSegments(max_segment_length, max_segment_length/2);

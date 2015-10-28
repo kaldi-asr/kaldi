@@ -162,7 +162,7 @@ class Segmentation {
                      int32 dest_label);
 
     // Merge adjacent segments of the same label
-    void MergeAdjacentSegments();
+    void MergeAdjacentSegments(int32 max_intersegment_length = 1);
 
     // Create a Histogram Encoder that can map a segment to 
     // a bin based on the average score

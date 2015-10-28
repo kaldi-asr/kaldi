@@ -100,13 +100,13 @@ void Segmentation::MergeLabels(const std::vector<int32> &merge_labels,
   Check();
 }
 
-void Segmentation::MergeAdjacentSegments() {
+void Segmentation::MergeAdjacentSegments(int32 max_intersegment_length) {
   for (SegmentList::iterator it = segments_.begin(), prev_it = segments_.begin(); 
       it != segments_.end();) {
 
     if (it != segments_.begin() &&
         it->Label() == prev_it->Label() && 
-        prev_it->end_frame + 1 >= it->start_frame) {
+        prev_it->end_frame + max_intersegment_length >= it->start_frame) {
       if (prev_it->end_frame < it->end_frame) 
         prev_it->end_frame = it->end_frame;
       it = segments_.erase(it);
