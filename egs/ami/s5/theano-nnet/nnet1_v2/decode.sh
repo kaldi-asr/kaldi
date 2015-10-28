@@ -89,7 +89,8 @@ thread_string=
 
 # Run the decoding in the queue,
 if [ $stage -le 0 ]; then
-  $cmd --num-threads $((num_threads+1)) JOB=1:$nj $dir/log/decode.JOB.log \
+  #$cmd --num-threads $((num_threads+1)) JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
       $nnet_fwdpass_tool $nnet_forward_opts \
       --feat-preprocess=$feat_preprocess --class-frame-counts=$class_frame_counts \
       --utt2spk-file=$data/utt2spk --cmvn-scp=$data/cmvn.scp \
