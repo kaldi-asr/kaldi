@@ -212,7 +212,7 @@ nnet_best=$dir/nnet_initial.pklz
 cv_done_file=$dir/.done_cv_iter00
 if [ ! -e $cv_done_file ]; then
 log=$dir/log/iter00.initial.log
-$train_cmd $log \
+$cuda_cmd $log \
   theano-nnet/nnet1_v2/cross_validate.sh \
     --cv-tool $cv_tool \
     --feat-preprocess $dir/feat_preprocess.pkl \
@@ -260,7 +260,7 @@ for iter in $(seq -w $max_iters); do
 
     echo "Cross-validating ITERATION $iter"
     log=$dir/log/iter${iter}.cv.log
-    $train_cmd $log \
+    $cuda_cmd $log \
     theano-nnet/nnet1_v2/cross_validate.sh \
       --cv-tool $cv_tool \
       --feat-preprocess $dir/feat_preprocess.pkl \

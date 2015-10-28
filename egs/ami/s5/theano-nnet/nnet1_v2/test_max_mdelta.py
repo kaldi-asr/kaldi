@@ -91,6 +91,11 @@ def wrap_compute_mdelta(Y, pri): #phone post or state post
   delta_t = range(1,6)+range(10,81,5)
   m_curve = compute_mtd.compute_mtd(Y, delta_t)
 
+  #fix pri 
+  if pri.shape[0] != m_curve.shape[0]:
+    new_pri = pri[0:m_curve.shape[0],:]
+    pri = new_pri
+
   this_H = compute_mdelta(pri, m_curve)
 
   return this_H
