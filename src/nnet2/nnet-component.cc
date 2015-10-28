@@ -3721,9 +3721,9 @@ int32 Convolutional1dComponent::OutputDim() const {
 // initialize the component using hyperparameters
 void Convolutional1dComponent::Init(BaseFloat learning_rate,
                                     int32 input_dim, int32 output_dim,
-                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
-                                    BaseFloat param_stddev, BaseFloat bias_stddev,
-                                    bool appended_conv) {
+                                    int32 patch_dim, int32 patch_step,
+                                    int32 patch_stride, BaseFloat param_stddev,
+                                    BaseFloat bias_stddev, bool appended_conv) {
   UpdatableComponent::Init(learning_rate);
   patch_dim_ = patch_dim;
   patch_step_ = patch_step;
@@ -3747,9 +3747,10 @@ void Convolutional1dComponent::Init(BaseFloat learning_rate,
 }
 
 // initialize the component using predefined matrix file
-void Convolutional1dComponent::Init(BaseFloat learning_rate,
-                                    int32 patch_dim, int32 patch_step, int32 patch_stride,
-                                    std::string matrix_filename, bool appended_conv) {
+void Convolutional1dComponent::Init(BaseFloat learning_rate, int32 patch_dim,
+                                    int32 patch_step, int32 patch_stride,
+                                    std::string matrix_filename,
+                                    bool appended_conv) {
   UpdatableComponent::Init(learning_rate);
   patch_dim_ = patch_dim;
   patch_step_ = patch_step;
