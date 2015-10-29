@@ -29,11 +29,14 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
 
     const char *usage =
-        "Apply log on a set of vectors in a Table (useful for speaker vectors and "
-        "per-frame weights)\n"
+        "Apply log on a set of vectors in a Table (useful for probabilities)\n"
         "Usage: vector-apply-log [options] <in-rspecifier> <out-wspecifier>\n";
 
+    bool invert = false;
+
     ParseOptions po(usage);
+
+    po.Register("invert", &invert, "Apply exp instead of log");
 
     po.Read(argc, argv);
 
@@ -50,7 +53,10 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatVectorReader vec_reader(rspecifier);
     for (; !vec_reader.Done(); vec_reader.Next()) {
       Vector<BaseFloat> vec(vec_reader.Value());
-      vec.ApplyLog();
+      if (!invert)
+        vec.ApplyLog();
+      else 
+        vec.ApplyExp();
       vec_writer.Write(vec_reader.Key(), vec);
     }
     return 0;
