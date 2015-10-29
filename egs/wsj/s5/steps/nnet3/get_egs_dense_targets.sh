@@ -19,6 +19,8 @@ feat_type=raw     # set it to 'lda' to use LDA features.
 target_type=dense # dense to have dense targets, 
                   # sparse to have posteriors targets
 num_targets=
+#sparse_input_dim=
+#feats_scp=
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
@@ -66,7 +68,7 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 [opts] <data> <targets-scp> <egs-dir>"
+  echo "Usage: $0 [opts] <data> <targets-scp|ali-dir> <egs-dir>"
   echo " e.g.: $0 data/train data/train/snr_targets.scp exp/tri4_nnet/egs"
   echo ""
   echo "Main options (for others, see top of script file)"
@@ -95,7 +97,11 @@ dir=$3
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
-for f in $data/feats.scp $target_scp $extra_files; do
+#if [ "$feat_type" != "sparse" ]; then
+#  feats_scp=$data/feats.scp
+#fi
+
+for f in $feats_scp $targets_scp $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -105,7 +111,7 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log $dir/info
 [ ! -z "$transform_dir" ] && cp $transform_dir/tree $dir
 
-# Get list of validation utterances. 
+# Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/valid_uttlist || exit 1;
 
@@ -146,12 +152,12 @@ fi
 echo "$0: feature type is $feat_type"
 
 case $feat_type in
-  raw) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
+  raw|sparse) feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
    ;;
-  lda)
+  lda|lda_sparse)
     splice_opts=`cat $transform_dir/splice_opts 2>/dev/null`
     # caution: the top-level nnet training script should copy these to its own dir now.
     cp $transform_dir/{splice_opts,cmvn_opts,final.mat} $dir || exit 1;
@@ -162,6 +168,17 @@ case $feat_type in
     valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
+  #sparse) 
+  #  for n in `seq $nj`; do 
+  #    utils/filter_scp.pl $sdata/$n/utt2spk $feats_scp > $dir/sparse_feats.$n.scp
+  #  done
+
+  #  feats_scp_split=$dir/sparse_feats.JOB.scp
+
+  #  feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $feats_scp_split | copy-post scp:- ark:- |"
+  #  valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $feats_scp | copy-post scp:- ark:- |"
+  #  train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $feats_scp | copy-post scp:- ark:- |"
+  #  ;;
   *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
 esac
 
@@ -189,7 +206,17 @@ if [ $stage -le 1 ]; then
   echo $num_frames > $dir/info/num_frames
   echo "$0: working out feature dim"
   feats_one="$(echo $feats | sed s/JOB/1/g)"
+  #if [ $feat_type != "sparse" ]; then
   feat_dim=$(feat-to-dim "$feats_one" -) || exit 1;
+  #else
+  #  if [ -z "$sparse_input_dim" ]; then
+  #    echo "$0: feat-type is sparse; but sparse-input-dim is not specified"
+  #    exit 1
+  #  fi
+
+  #  feat_dim=$sparse_input_dim
+  #fi
+
   echo $feat_dim > $dir/info/feat_dim
 else
   num_frames=$(cat $dir/info/num_frames) || exit 1;
@@ -259,42 +286,62 @@ echo $right_context > $dir/info/right_context
 
 if [ $target_type == "dense" ]; then
   num_targets=$(feat-to-dim "scp:$targets_scp" - 2>/dev/null) || exit 1
+else
+  if [ -z "$num_targets" ]; then
+    echo "$0: num-targets is not set" 
+    exit 1
+  fi
 fi
+
+for n in `seq $nj`; do
+  utils/filter_scp.pl $sdata/$n/utt2spk $targets_scp > $dir/targets.$n.scp
+done
+targets_scp_split=$dir/targets.JOB.scp
+
+case $target_type in
+  "dense") 
+    #if [ "$feat_type" == "sparse" ]; then
+    #  echo "$0: dense targets with sparse inputs is not supported"
+    #  exit 1
+    #fi
+    get_egs_program="nnet3-get-egs-dense-targets --num-targets=$num_targets"
+
+    targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | copy-feats scp:- ark:- |"
+    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | copy-feats scp:- ark:- |"
+    train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | copy-feats scp:- ark:- |"
+    ;;
+  "sparse")
+    #if [ "$feat_type" != "sparse" ]; then
+      get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
+    #else 
+    #  get_egs_program="nnet3-get-egs-sparse-input --sparse-input-dim=$feat_dim --num-pdfs=$num_targets"
+    #fi
+    targets="ark:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
+    valid_targets="ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" \
+    train_subset_targets="ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
+    ;;
+  default)
+    echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"
+    exit 1
+esac
 
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
   rm $dir/.error 2>/dev/null
   echo "$0: ... extracting validation and training-subset alignments."
 
-  case $target_type in
-    "dense") 
-      $cmd $dir/log/create_valid_subset.log \
-        nnet3-get-egs-dense-targets --num-targets=$num_targets \
-        $valid_ivector_opt $egs_opts "$valid_feats" \
-        "scp:utils/filter_scp.pl $dir/valid_uttlist $targets_scp |" \
-        "ark:$dir/valid_all.egs" || touch $dir/.error &
-      $cmd $dir/log/create_train_subset.log \
-        nnet3-get-egs-dense-targets --num-targets=$num_targets \
-        $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
-        "scp:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp |" \
-        "ark:$dir/train_subset_all.egs" || touch $dir/.error &
-      ;;
-    "sparse")
-      $cmd $dir/log/create_valid_subset.log \
-        nnet3-get-egs --num-pdfs=$num_targets \
-        $valid_ivector_opt $egs_opts "$valid_feats" \
-        "ark:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" \
-        "ark:$dir/valid_all.egs" || touch $dir/.error &
-      $cmd $dir/log/create_train_subset.log \
-        nnet3-get-egs --num-pdfs=$num_targets \
-        $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
-        "ark:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |" \
-        "ark:$dir/train_subset_all.egs" || touch $dir/.error &
-      ;;
-    default)
-      echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"
-  esac
+  $cmd $dir/log/create_valid_subset.log \
+    $get_egs_program \
+    $valid_ivector_opt $egs_opts "$valid_feats" \
+    "$valid_targets" \
+    "ark:$dir/valid_all.egs" || touch $dir/.error &
+  $cmd $dir/log/create_train_subset.log \
+    $get_egs_program \
+    $train_subset_ivector_opt $egs_opts "$train_subset_feats" \
+    "$train_subset_targets" \
+    "ark:$dir/train_subset_all.egs" || touch $dir/.error &
   wait;
+
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
@@ -331,24 +378,11 @@ if [ $stage -le 4 ]; then
   echo "$0: Generating training examples on disk"
   # The examples will go round-robin to egs_list.
   
-  case $target_type in 
-    "dense") 
-      $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-        nnet3-get-egs-dense-targets --num-targets=$num_targets \
-        $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
-        "scp:utils/filter_scp.pl $sdata/JOB/utt2spk $targets_scp |" ark:- \| \
-        nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
-      ;;
-    "sparse")
-      $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
-        nnet3-get-egs --num-pdfs=$num_targets \
-        $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" \
-        "ark:utils/filter_scp.pl $sdata/JOB/utt2spk $targets_scp | ali-to-post scp:- ark:- |" ark:- \| \
-        nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
-      ;;
-    default)
-      echo "$0: Unknown --target-type $target_type. Choices are dense and sparse"
-  esac
+  $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
+    $get_egs_program \
+    $ivector_opt $egs_opts --num-frames=$frames_per_eg "$feats" "$targets" \
+    ark:- \| \
+    nnet3-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then

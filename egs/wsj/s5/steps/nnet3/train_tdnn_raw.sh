@@ -73,6 +73,8 @@ feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
 num_targets=    # applicable only if posterior_targets is true
+#feats_scp=
+quantization_bin_boundaries=
 posterior_targets=false
 objective_type=linear
 skip_final_softmax=true
@@ -152,13 +154,22 @@ echo $nj > $dir/num_jobs
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.
 case $feat_type in
-  raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
+  raw|sparse) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
       { echo "$0: Error getting feature dim"; exit 1; }
     ;;
-  lda)  [ ! -f $transform_dir/final.mat ] && echo "$0: With --feat-type lda option, expect $transform_dir/final.mat to exist."
+  lda|lda_sparse)  [ ! -f $transform_dir/final.mat ] && echo "$0: With --feat-type lda option, expect $transform_dir/final.mat to exist."
    # get num-rows in lda matrix, which is the lda feature dim.
    feat_dim=$(matrix-dim --print-args=false $transform_dir/final.mat | cut -f 1)
     ;;
+  #sparse)
+  #  
+  #  if [ -z "$sparse_input_dim" ]; then
+  #    echo "$0: feat-type is sparse; sparse-input-dim must be specified"
+  #    exit 1
+  #  fi
+
+  #  feat_dim=$sparse_input_dim
+  #  ;;
   *)
    echo "$0: Bad --feat-type '$feat_type';"; exit 1;
 esac
@@ -187,10 +198,16 @@ if [ $stage -le -5 ]; then
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
   raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
 
+  input_dim=feat_dim
+  if [ "$feat_type" == "sparse" ]; then
+    num_bins=`echo $quantization_bin_boundaries | awk -F ':' '{print NF + 1}'` || exit 1
+    input_dim=$[num_bins * feat_dim]
+  fi
+
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_raw_configs.py  \
     --splice-indexes="$splice_indexes"  \
-    --feat-dim=$feat_dim \
+    --feat-dim=$input_dim \
     --ivector-dim=$ivector_dim \
     "${raw_nnet_config_opts[@]}" $objective_opts \
     $dim_opts --max-change-per-sample=$max_change_per_sample \
@@ -232,6 +249,14 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   if $posterior_targets; then
     target_type=sparse
   fi
+
+  #if [ "$feat_type" == "sparse" ]; then
+  #  if [ -z "$sparse_input_dim" ]; then
+  #    echo "$0: sparse-input-dim or feats-scp not set"
+  #    exit 1
+  #  fi
+  #  extra_opts+=(--sparse-input-dim $sparse_input_dim --feats-scp $feats_scp)
+  #fi
 
   steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
     --samples-per-iter $samples_per_iter --stage $get_egs_stage \
@@ -386,6 +411,16 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 x=0
 
 cur_egs_dir=$egs_dir
+  
+compute_accuracy=false
+if [ "$objective_type" == "linear" ]; then
+  compute_accuracy=true
+fi
+
+quantize_opts=
+if [ "$feat_type" == "sparse" ]; then
+  quantize_opts="nnet3-copy-egs --quantize-input=true --bin-boundaries=$quantization_bin_boundaries ark:- ark:- |"
+fi
 
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
@@ -398,24 +433,19 @@ while [ $x -lt $num_iters ]; do
   echo "On iteration $x, learning rate is $this_learning_rate."    
 
   if [ $x -ge 0 ] && [ $stage -le $x ]; then
-    compute_accuracy=false
-    if [ "$objective_type" == "linear" ]; then
-      compute_accuracy=true
-    fi
-
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- | $quantize_opts" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- | $quantize_opts" &
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no "nnet3-copy $dir/$[$x-1].raw - |" "nnet3-copy $dir/$x.raw - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" '&&' \
+        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-| $quantize_opts" '&&' \
         nnet3-info "nnet3-copy $dir/$x.raw - |" &
     fi
 
@@ -466,7 +496,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- | $quantize_opts" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -530,7 +560,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-| $quantize_opts" \
     $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -538,10 +568,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- | $quantize_opts" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- | $quantize_opts" &
 fi
 
 sleep 2
