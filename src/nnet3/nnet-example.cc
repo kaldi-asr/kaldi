@@ -53,6 +53,17 @@ NnetIo::NnetIo(const std::string &name,
 }
 
 NnetIo::NnetIo(const std::string &name,
+               int32 t_begin,
+               const SparseMatrix<BaseFloat> &feats):
+    name(name), features(feats) {
+  int32 num_rows = feats.NumRows();
+  KALDI_ASSERT(num_rows > 0);
+  indexes.resize(num_rows);  // sets all n,t,x to zeros.
+  for (int32 i = 0; i < num_rows; i++)
+    indexes[i].t = t_begin + i;
+}
+
+NnetIo::NnetIo(const std::string &name,
                int32 dim,
                int32 t_begin,
                const Posterior &labels):
@@ -65,7 +76,6 @@ NnetIo::NnetIo(const std::string &name,
   for (int32 i = 0; i < num_rows; i++)
     indexes[i].t = t_begin + i;
 }
-
 
 
 void NnetExample::Write(std::ostream &os, bool binary) const {
