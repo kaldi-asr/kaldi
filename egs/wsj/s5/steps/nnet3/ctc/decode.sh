@@ -13,6 +13,7 @@ transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=1.0  # Just a default value, used for adaptation and beam-pruning..
 blank_scale=1.0
+shift=0 # frame shift.. for combination.
 lattice_acoustic_scale=10.0  # This is kind of a hack; it's used for
                              # compatibility with existing scoring scripts,
                              # since we normally search the LM-scale in integer
@@ -134,6 +135,9 @@ fi
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
   ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector_period=$ivector_period"
+fi
+if [ $shift != 0 ]; then
+  feats="$feats shift-feats --shift=$shift ark:- ark:- |"
 fi
 
 if [ $stage -le 1 ]; then
