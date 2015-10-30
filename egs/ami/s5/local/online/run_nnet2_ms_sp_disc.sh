@@ -111,14 +111,14 @@ if [ $stage -le 3 ]; then
 
   steps/nnet2/get_egs_discriminative2.sh \
     --stage 0 \
-    --cmd "$decode_cmd -tc $max_jobs" \
+    --cmd "$decode_cmd --max-jobs-run $max_jobs" \
     --online-ivector-dir exp/$mic/nnet2_online/ivectors_train_hires_sp2 \
     --criterion $criterion --drop-frames $drop_frames \
      data/$mic/train_hires_sp data/lang ${srcdir}{_ali,_denlats,/final.mdl,_degs} || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
   #steps/online/nnet2/get_egs_discriminative2.sh \
-  #  --cmd "$decode_cmd -tc $max_jobs" \
+  #  --cmd "$decode_cmd --max-jobs-run $max_jobs" \
   #  --criterion $criterion --drop-frames $drop_frames \
   #   data/train_hires data/lang ${srcdir}{_ali,_denlats,_online,_degs} || exit 1;
 fi

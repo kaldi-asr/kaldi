@@ -58,7 +58,7 @@ if [ $stage -le 0 ]; then
     tgt_dir=$data/${code}_$(basename $dir)
     utils/copy_data_dir.sh --utt-suffix _$code --spk-suffix _$code $dir $tgt_dir; rm $tgt_dir/{feats,cmvn}.scp || true # remove features,
     # extract features, get cmvn stats,
-    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd -tc 10" $tgt_dir{,/log,/data}
+    steps/make_fbank_pitch.sh --nj 30 --cmd "$train_cmd --max-jobs-run 10" $tgt_dir{,/log,/data}
     steps/compute_cmvn_stats.sh $tgt_dir{,/log,/data}
     # split lists 90% train / 10% held-out,
     utils/subset_data_dir_tr_cv.sh $tgt_dir ${tgt_dir}_tr90 ${tgt_dir}_cv10
