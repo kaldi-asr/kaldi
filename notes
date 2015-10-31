@@ -1,0 +1,109 @@
+--
+TODO:
+--
+
+ Transition-model equivalent.
+
+ chain::Topology
+
+   This stores the topology for each phone in the 'chain-model' modeling code.
+   It has a list of phones and allows you to get the topology FST for each phone.
+
+  A topology is an unweighted, epsilon-free acceptor FST [acceptor means the
+   ilabels and olabels are the same].  Its initial state must not be final.
+   The labels on the arcs must start from 1 and have no gaps-- i.e. they must
+   form a set like (1, 2) or (1, 2, 3).
+
+   An example FST would be (in OpenFst acceptor format),
+
+0   1   1      # transition from state 0 to state 1 with label 1.
+1   1   2      # transition from state 1 to state 1 (self-loop) with label 2.
+1   0          # this says that state 1 is final.
+
+
+  A Topology object is 'alignable' if all of the phones' topology FSTs
+  have the property that the set of labels on the arcs from the start state are
+  disjoint from the set of labels on other arcs, and there are no transitions to
+  the start state.  This means that we can identify the beginning of the phone.
+
+
+ chain::PhoneContextModel
+   - list of phones
+   - LeftContext() ... the number of phones of left context (there is no right context).
+
+ A mechanism to find a particular context-depenendent phone: you have to call the following
+ LeftContext() + 1 times.
+
+ // returns new state. if phone_in_context != NULL, outputs
+ // the cd_phone_index to there (FST-wise, view this as the input symbol on the
+ // transition, where 'phone' is the output symbool.
+ int32 AdvanceState(int32 cur_state, int32 phone, int32 *cd_phone);
+
+ Fst *GetFst();
+
+ - Phone indexes may not include zero (and may have gaps)
+
+ - cd_phoness are 1-based, without gaps.
+
+ - We will initialize the PhoneContextModel using a tree for now, but in
+   future we may enable different ways of doing this.  We'll require that
+   the tree be trained using only one pdf-class.
+
+  TODO: enable tree-building with separate stats per state, but to give a single
+   index per phone.  [so store array of Gaussian stats].
+----
+
+ To get labels for the individual transitions on the context-dependent phones,
+ we need to store an offset for each
+
+ chain::ContextDependentTopology  [note, you can use this even if you don't have
+   context].
+   stores Topology and PhoneContextModel, and also stores offsets for each context-dependent
+   phone that allow us to assign a unique context-dependent label for each label in the
+   cd-label
+
+ cd-labels will be 1-based so they can appear on FSTs.  We may subtract one so they
+ can appear at the output layer of a nnet.
+---
+
+ FST-based representation of phone language model??  We can get it from class
+ LanguageModel as an FST, and then prune away disallowed phone sequences and
+ rebalance.  The output can be in the standard FST representation.
+
+ What do we do about initial alphas and final betas?  We want to limit it
+ to the same states that are active in the phone lattice at that time, as a
+ better approximation of the end effects.
+
+ For the betas, it's just a question of what [context-independent] phones are
+ active at the end-time.
+
+   We can limit it with reasonable acuracy by just considering the set of
+   symbols that are active at times 0 and T, and then limiting the alphas and
+   betas to the states from which those symbols would be emitted.
+   By time T we mean one past the end of the file.  We can store information
+   saying that either it's a final-prob, or just storing the active symbols
+   at that point.
+
+
+
+
+
+---
+
+
+ phones.  It will store the probs more compactly than OpenFst.
+
+---
+ Suppose we have 200 phones, and 500 history-states.
+ If there are 5000 CD-phones, then each phone has on average 25 versions...
+
+ Suppose for each history-state, the output-prob for a phone is just a
+ combination of some subspace of output-probs for that phone.
+
+    num-params = 500 * 200 * 25 = 2.5 million.
+
+--
+
+
+
+

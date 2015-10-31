@@ -71,7 +71,9 @@ class PhoneTopology {
   // Returns the topology for a given phone.
   const fst::VectorFst<StdArc> &TopologyForPhone(int32 phone);
 
-  // This constructor gives the phones the default topology
+  // This constructor gives the phones the default topology.  If you want to
+  // give it a different topology, then you can create the text-form of this
+  // object using a script.
   PhoneTopology(int32 num_phones);
 
   void Write(std::ostream &os, bool binary) const;

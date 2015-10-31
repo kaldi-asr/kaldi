@@ -95,10 +95,19 @@ class PhoneContext: public fst::DeterministicOnDemandFst<fst::StdArc> {
   // CentralPosition() == ContextWidth() - 1).  The initialization method relies
   // on enumerating all possible contexts, so it will be slow if you have a
   // ridiculously large context.
-  PhoneContext(int32 num_phones, const ContextDependency &ctx_dep);
+
+  // Note: we hope not to use this, we will use a separate version of the
+  // tree-building code that tries to reduce the number of 'context states'.
+  PhoneContext(int32 num_phones, const ContextDependencyInterface &ctx_dep);
 
   // Phones are numbered from 1 to NumPhones().
   int32 NumPhones() const { return num_phones_; }
+
+
+  // Return the number of distinct labels on the topology FST for this phone:
+  // the labels must be contiguously numbered from 1, so this is the same as
+  // the largest topology label.
+  bool GetNumLabels(int32 phone) const;
 
   // Logical context-dependent phones are numbered from 1 to
   // NumLogicalCdPhones().
@@ -135,10 +144,13 @@ class PhoneContext: public fst::DeterministicOnDemandFst<fst::StdArc> {
 
   void Read(std::istream &is);
 
-  // Outputs to 'output' an FST that's a copy of this object.  ilabels are
-  // phones, olabels are cd-phones.  Note: can be implemented by taking an FST
-  // 'f' with one state that's initial and final, with self-loops for each
-  // phone, and then calling ComposeDeterministicOnDemand(f, *this, output).
+  // Outputs to 'output' an FST that's a copy of this object in the normal FST
+  // format (as opposed to DeterministicOnDemandFst).  This is the 'C' FST
+  // (the context-dependency FST) in the HCLG recipe.
+  // ilabels are phones, olabels are cd-phones.  Note: can be implemented by
+  // taking an FST 'f' with one state that's initial and final, with self-loops
+  // for each phone, and then calling ComposeDeterministicOnDemand(f, *this,
+  // output).
   void GetAsFst(fst::VectorFst<fst::StdArc>* output) const;
  private:
   void Check();
