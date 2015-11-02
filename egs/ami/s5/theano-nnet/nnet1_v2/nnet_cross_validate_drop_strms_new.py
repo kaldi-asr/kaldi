@@ -101,6 +101,11 @@ for st, en in zip(a[0:-1], a[1:]):
   o.strm_indices.append((st, en))
 o.comb_num = int(o.comb_num)
 
+if os.path.exists(o.done_file):
+  logging.info(" done_file = %s exists", o.done_file)
+  logging.info(" ...... Skipping cross-validation ")
+  sys.exit(0)
+
 ## Load labels ##
 logging.info(" Loading labels from %s", cv_lab_file)
 cv_lab_dict = utils.labels_ascii_to_dict(cv_lab_file)

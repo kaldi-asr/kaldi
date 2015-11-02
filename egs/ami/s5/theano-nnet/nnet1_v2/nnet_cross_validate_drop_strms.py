@@ -68,6 +68,11 @@ logging.basicConfig(stream=sys.stdout, format='%(asctime)s: %(message)s', level=
 logging.info(" Running as %s ", sys.argv[0])
 logging.info(" %s", " ".join(sys.argv))
 
+if os.path.exists(o.done_file):
+  logging.info(" done_file = %s exists", o.done_file)
+  logging.info(" ...... Skipping cross-validation ")
+  sys.exit(0)
+
 ## Load labels ##
 logging.info(" Loading labels from %s", cv_lab_file)
 cv_lab_dict = utils.labels_ascii_to_dict(cv_lab_file)
