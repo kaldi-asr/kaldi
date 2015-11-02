@@ -79,7 +79,7 @@ shrink=0.99  # this parameter would be used to scale the parameter matrices
 shrink_threshold=0.15  # a value less than 0.25 that we compare the mean of
                        # 'deriv-avg' for sigmoid components with, and if it's
                        # less, we shrink.
-max_param_change=1.0  # max param change per minibatch
+max_param_change=2.0  # max param change per minibatch
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
 samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
