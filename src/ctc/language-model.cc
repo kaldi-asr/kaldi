@@ -216,7 +216,7 @@ void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
     ngram.push_back(sentence[i]);
     AddCountForNgram(ngram, 1.0);
   }
-  for (int32 i = order; i < sentence.size(); i++) {
+  for (int32 i = order - 1; i < sentence.size(); i++) {
     ngram.erase(ngram.begin());  // remove the first element
     ngram.push_back(sentence[i]);
     AddCountForNgram(ngram, 1.0);
