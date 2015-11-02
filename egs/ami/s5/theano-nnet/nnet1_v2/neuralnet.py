@@ -124,7 +124,7 @@ class NeuralNet(object):
         weights = []
         for ii, l in enumerate(self.layers):
             c = l.get_config()
-            if c["name"] == "AffineTransform":
+            if c["name"] == "AffineTransform" or c["name"] == "LinearTransform":
                 c["weights"] = l.get_weights()
                 c["lr_coefs"] = l.lr_coefs
             weights.append(c)
