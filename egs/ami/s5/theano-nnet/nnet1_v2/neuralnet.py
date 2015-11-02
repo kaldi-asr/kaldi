@@ -49,7 +49,7 @@ class NeuralNet(object):
             """
             allowed_keys = ["<OutputDim>","<InputDim>","<ParamStddev>","<BiasMean>","<BiasRange>","<LearnRateCoef>","<BiasLearnRateCoef>","<MaxNorm>"]
             params = {}
-            for k,v in zip(line.split()[1:-2:2], line.split()[2::2]):
+            for k,v in zip(line.split()[1:-1:2], line.split()[2::2]):
                 if k not in allowed_keys:
                     print "%s parameter is not known!" %(k)
                     return None
@@ -62,7 +62,7 @@ class NeuralNet(object):
             """
             allowed_keys = ["<OutputDim>","<InputDim>","<ParamStddev>","<LearnRateCoef>","<MaxNorm>"]
             params = {}
-            for k,v in zip(line.split()[1:-2:2], line.split()[2::2]):
+            for k,v in zip(line.split()[1:-1:2], line.split()[2::2]):
                 if k not in allowed_keys:
                     print "%s parameter is not known!" %(k)
                     return None
