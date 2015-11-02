@@ -71,7 +71,7 @@ class AffineTransform(Layer):
                 "n_out": self.n_out}
 
 class LinearTransform(Layer):
-    def __init__(self, n_in, n_out, param_stddev_factor=0.1, learn_rate_coef = 1.0):
+    def __init__(self, n_in, n_out, param_stddev_factor=0.1, learn_rate_coef = 1.0, max_norm=0.0):
         
         self.n_in = n_in
         self.n_out = n_out
