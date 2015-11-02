@@ -67,24 +67,23 @@ where "nvcc" is installed.
 EOF
 fi
 
-use_delay=false
-if [ $label_delay -gt 0 ]; then use_delay=true; fi
+suffix=
+if [ "$speed_perturb" == "true" ]; then
+  suffix=_sp
+fi
 
-dir=exp/nnet3/lstm${speed_perturb:+_sp}${affix:+_$affix}${use_delay:+_ld$label_delay}
+dir=exp/nnet3/lstm
+dir=$dir${affix:+_$affix}
+if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
+dir=${dir}$suffix
+
 if [ "$use_sat_alignments" == "true" ] ; then
   gmm_dir=exp/tri5a
 else
   gmm_dir=exp/tri3a
 fi
-
-if [ "$speed_perturb" == "true" ]; then
-  train_set=train_sp
-  ali_dir=${gmm_dir}_sp_ali
-else
-  train_set=train
-  ali_dir=${gmm_dir}_ali
-fi
-
+train_set=train$suffix
+ali_dir=${gmm_dir}${suffix}_ali
 graph_dir=$gmm_dir/graph
 
 if [ $stage -le 7 ]; then

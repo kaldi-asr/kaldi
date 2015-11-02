@@ -64,15 +64,13 @@ where "nvcc" is installed.
 EOF
 fi
 
-use_delay=false
-if [ $label_delay -gt 0 ]; then use_delay=true; fi
-
 suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 dir=exp/nnet3/lstm
-dir=$dir${affix:+_$affix}${use_delay:+_ld$label_delay}
+dir=$dir${affix:+_$affix}
+if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix

@@ -86,9 +86,9 @@ class CompactLatticeHolder {
   const T &Value() const {
     KALDI_ASSERT(t_ != NULL && "Called Value() on empty CompactLatticeHolder");
     return *t_;
-  } 
+  }
 
-  void Clear() { if (t_) { delete t_; t_ = NULL; } }
+  void Clear() { delete t_; t_ = NULL; }
 
   ~CompactLatticeHolder() { Clear(); }
 
@@ -116,9 +116,9 @@ class LatticeHolder {
   const T &Value() const {
     KALDI_ASSERT(t_ != NULL && "Called Value() on empty LatticeHolder");
     return *t_;
-  } 
+  }
 
-  void Clear() { if (t_) { delete t_; t_ = NULL; } }
+  void Clear() {  delete t_; t_ = NULL; }
 
   ~LatticeHolder() { Clear(); }
 

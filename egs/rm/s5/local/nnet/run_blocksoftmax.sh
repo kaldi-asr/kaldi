@@ -43,11 +43,11 @@ set -euxo pipefail
     $dev $dev/log $dev/data
   steps/compute_cmvn_stats.sh $dev $dev/log $dev/data
   # Training set,
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
     $train $train/log $train/data
   steps/compute_cmvn_stats.sh $train $train/log $train/data
   # Wsj,
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
     $wsj $wsj/log $wsj/data
   steps/compute_cmvn_stats.sh $wsj $wsj/log $wsj/data
 
