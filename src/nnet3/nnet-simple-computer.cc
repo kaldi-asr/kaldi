@@ -137,9 +137,10 @@ void NnetSimpleComputer::EnsureFrameIsComputed(int32 frame) {
   KALDI_ASSERT(num_output_frames > 0);
   KALDI_ASSERT(opts_.extra_left_context >= 0);
   int32 left_context = LeftContext() + opts_.extra_left_context;
+  int32 right_context = RightContext() + opts_.extra_right_context;
   int32 first_input_frame = start_output_frame - left_context,
       num_input_frames = left_context + num_output_frames +
-                         RightContext();
+                         right_context;
   Vector<BaseFloat> ivector;
   GetCurrentIvector(start_output_frame, num_output_frames, &ivector);
   

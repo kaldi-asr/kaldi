@@ -83,6 +83,8 @@ if __name__ == "__main__":
                         help="dimension of non-recurrent projection")
     parser.add_argument("--hidden-dim", type=int,
                         help="dimension of fully-connected layers")
+    parser.add_argument("--bi-directional", type=str,
+                        help="use bi-directional recurrent layers", default="false", choices = ["false", "true"])
 
     # Natural gradient options
     parser.add_argument("--ng-per-element-scale-options", type=str,
@@ -170,14 +172,30 @@ if __name__ == "__main__":
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
 
     for i in range(args.num_lstm_layers):
-        prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
-                                         args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                                         args.clipping_threshold, args.norm_based_clipping,
-                                         args.ng_per_element_scale_options, args.ng_affine_options,
-                                         lstm_delay = lstm_delay[i])
+        if (args.bi_directional == "true"):
+            prev_layer_output_f = nodes.AddLstmLayer(config_lines, "Lstm{0}f".format(i+1), prev_layer_output, args.cell_dim,
+                                             args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                                             args.clipping_threshold, args.norm_based_clipping,
+                                             args.ng_per_element_scale_options, args.ng_affine_options,
+                                             lstm_delay = lstm_delay[i])
+            prev_layer_output_b = nodes.AddLstmLayer(config_lines, "Lstm{0}b".format(i+1), prev_layer_output, args.cell_dim,
+                                             args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                                             args.clipping_threshold, args.norm_based_clipping,
+                                             args.ng_per_element_scale_options, args.ng_affine_options,
+                                             lstm_delay = -lstm_delay[i])
+            prev_layer_output['descriptor'] = "Append(" + prev_layer_output_f['descriptor'] + ", " + prev_layer_output_b['descriptor'] + ")"
+            prev_layer_output['dimension'] = prev_layer_output_f['dimension'] + prev_layer_output_b['dimension']
+            nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
+            prev_layer_output['descriptor'] = prev_layer_output_f['descriptor'] + ", " + prev_layer_output_b['descriptor']
+        else:
+            prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
+                                             args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                                             args.clipping_threshold, args.norm_based_clipping,
+                                             args.ng_per_element_scale_options, args.ng_affine_options,
+                                             lstm_delay = lstm_delay[i])
+            nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 

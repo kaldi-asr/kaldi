@@ -31,6 +31,7 @@ namespace nnet3 {
 
 struct NnetSimpleComputerOptions {
   int32 extra_left_context;
+  int32 extra_right_context;
   int32 frames_per_chunk;
   bool debug_computation;
   
@@ -38,7 +39,7 @@ struct NnetSimpleComputerOptions {
   NnetComputeOptions compute_config;
 
   NnetSimpleComputerOptions():
-      extra_left_context(0),
+      extra_left_context(0), extra_right_context(0),
       frames_per_chunk(50),
       debug_computation(false) { }
 
@@ -47,6 +48,10 @@ struct NnetSimpleComputerOptions {
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context "
                    "(may be useful in recurrent setups");
+    opts->Register("extra-right-context", &extra_right_context,
+                   "Number of frames of additional right-context to add on top "
+                   "of the neural net's inherent right context "
+                   "(may be useful in bi-directional recurrent setups");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately "
                    "evaluated by the neural net.");
