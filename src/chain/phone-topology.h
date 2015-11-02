@@ -78,14 +78,14 @@ class PhoneTopology {
 
   void Write(std::ostream &os, bool binary) const;
 
-  void Read(std::istream &is) const;
+  void Read(std::istream &is, bool binary) const;
 
   // returns true if all the phones' FSTs have the following properties:
   //  - the symbols on arcs out of the start-state are disjoint from the
   //    symbols on arcs out of other states.
   //  - there are no arcs ending in the start state.
   bool IsAlignable();
-  private:
+ private:
   void Check();
 
   // index zero is not used.
