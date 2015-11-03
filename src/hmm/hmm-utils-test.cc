@@ -20,6 +20,7 @@
 
 #include "hmm/hmm-utils.h"
 #include "hmm/tree-accu.h"
+#include "hmm/hmm-test-utils.h"
 
 namespace kaldi {
 
@@ -72,7 +73,7 @@ void TestConvertPhnxToProns() {
 
   { // test w/ unexpected word-end -> should fail.
     std::vector<int32> phnx; phnx.push_back(3); phnx.push_back(4);
-    phnx.push_back(word_end_sym); 
+    phnx.push_back(word_end_sym);
     std::vector<int32> words;
     std::vector<std::vector<int32> > ans;
     KALDI_ASSERT(!ConvertPhnxToProns(phnx, words, word_start_sym,
@@ -122,7 +123,7 @@ void TestConvertPhnxToProns() {
   }
 
   { // test w/ ONE real word w/ one phone..
-    std::vector<int32> phnx; 
+    std::vector<int32> phnx;
     phnx.push_back(word_start_sym); phnx.push_back(5); phnx.push_back(word_end_sym);
     std::vector<int32> words; words.push_back(100);
     std::vector<std::vector<int32> > ans;
@@ -136,9 +137,9 @@ void TestConvertPhnxToProns() {
 
   { // test w/ ONE real word w/ one phone, but no
     // words supplied-- should fail.
-    std::vector<int32> phnx; 
+    std::vector<int32> phnx;
     phnx.push_back(word_start_sym); phnx.push_back(5); phnx.push_back(word_end_sym);
-    std::vector<int32> words; 
+    std::vector<int32> words;
     std::vector<std::vector<int32> > ans;
     KALDI_ASSERT(!ConvertPhnxToProns(phnx, words, word_start_sym,
                                     word_end_sym, &ans));
@@ -146,9 +147,9 @@ void TestConvertPhnxToProns() {
 
   { // test w/ ONE real word w/ one phone, but two
     // words supplied-- should fail.
-    std::vector<int32> phnx; 
+    std::vector<int32> phnx;
     phnx.push_back(word_start_sym); phnx.push_back(5); phnx.push_back(word_end_sym);
-    std::vector<int32> words(2, 10); 
+    std::vector<int32> words(2, 10);
     std::vector<std::vector<int32> > ans;
     KALDI_ASSERT(!ConvertPhnxToProns(phnx, words, word_start_sym,
                                     word_end_sym, &ans));
@@ -156,17 +157,17 @@ void TestConvertPhnxToProns() {
 
   { // test w/ ONE real word w/ one phone, but word-id
     // is zero-- should fail.
-    std::vector<int32> phnx; 
+    std::vector<int32> phnx;
     phnx.push_back(word_start_sym); phnx.push_back(5); phnx.push_back(word_end_sym);
     std::vector<int32> words(1, 0);
     std::vector<std::vector<int32> > ans;
     KALDI_ASSERT(!ConvertPhnxToProns(phnx, words, word_start_sym,
                                     word_end_sym, &ans));
   }
-  
+
   { // test w/ ONE real word w/ two phones, then one
     // empty word...
-    std::vector<int32> phnx; 
+    std::vector<int32> phnx;
     phnx.push_back(word_start_sym); phnx.push_back(5);
     phnx.push_back(7); phnx.push_back(word_end_sym);
     phnx.push_back(10);
@@ -182,6 +183,7 @@ void TestConvertPhnxToProns() {
                                     word_end_sym, &ans)
                  && ans == ans_check);
   }
+<<<<<<< HEAD
 }
 
 void TestAccumulateTreeStatsOptions() {
@@ -200,6 +202,34 @@ void TestAccumulateTreeStatsOptions() {
   KALDI_ASSERT(info.central_position == opts.central_position);
 }
 
+void TestSplitToPhones() {
+  ContextDependency *ctx_dep;
+  TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep);
+  std::vector<int32> phone_seq;
+  int32 num_phones = RandInt(0, 10);
+  const std::vector<int32> &phone_list = trans_model->GetPhones();
+  for (int32 i = 0; i < num_phones; i++) {
+    int32 rand_phone = phone_list[RandInt(0, phone_list.size() - 1)];
+    phone_seq.push_back(rand_phone);
+  }
+  bool reorder = (RandInt(0, 1) == 0);
+  std::vector<int32> alignment;
+  GenerateRandomAlignment(*ctx_dep, *trans_model, reorder,
+                          phone_seq, &alignment);
+  std::vector<std::vector<int32> > split_alignment;
+  SplitToPhones(*trans_model, alignment, &split_alignment);
+  KALDI_ASSERT(split_alignment.size() == phone_seq.size());
+  for (size_t i = 0; i < split_alignment.size(); i++) {
+    KALDI_ASSERT(!split_alignment[i].empty());
+    for (size_t j = 0; j < split_alignment[i].size(); j++) {
+      int32 transition_id = split_alignment[i][j];
+      KALDI_ASSERT(trans_model->TransitionIdToPhone(transition_id) ==
+                   phone_seq[i]);
+    }
+  }
+  delete trans_model;
+  delete ctx_dep;
+}
 
 
 
@@ -211,6 +241,8 @@ int main() {
 #ifndef _MSC_VER
   kaldi::TestAccumulateTreeStatsOptions();
 #endif
+  for (int32 i = 0; i < 2; i++)
+    kaldi::TestSplitToPhones();
   std::cout << "Test OK.\n";
 }
 

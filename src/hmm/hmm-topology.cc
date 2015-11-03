@@ -58,7 +58,8 @@ void HmmTopology::Read(std::istream &is, bool binary) {
           else {
             int32 phone;
             if (!ConvertStringToInteger(s, &phone))
-              KALDI_ERR << "Reading HmmTopology object, expected integer, got instead "<<s;
+              KALDI_ERR << "Reading HmmTopology object, expected "
+                        << "integer, got instead " << s;
             phones.push_back(phone);
           }
         }
@@ -362,6 +363,5 @@ HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
   return topo;
 
 }
-
 
 } // End namespace kaldi

@@ -22,6 +22,7 @@
 #include "nnet2/decodable-am-nnet.h"
 #include "nnet2/online-nnet2-decodable.h"
 #include "feat/online-feature.h"
+#include "hmm/hmm-test-utils.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -41,11 +42,11 @@ void UnitTestNnetDecodable() {
   ContextDependency *ctx_dep =
       GenRandContextDependencyLarge(phones, N, P,
                                     true, &num_pdf_classes);
-  
+
   HmmTopology topo = GetDefaultTopology(phones);
-  
+
   TransitionModel trans_model(*ctx_dep, topo);
-  
+
   delete ctx_dep; // We won't need this further.
   ctx_dep = NULL;
 
@@ -71,9 +72,9 @@ void UnitTestNnetDecodable() {
   int32 num_input_frames = 400;
   Matrix<BaseFloat> input_feats(num_input_frames, input_dim);
   input_feats.SetRandn();
-  
+
   OnlineMatrixFeature matrix_feature(input_feats);
-  
+
   DecodableNnet2Online online_decodable(am_nnet, trans_model,
                                         opts, &matrix_feature);
 
@@ -86,7 +87,7 @@ void UnitTestNnetDecodable() {
                offline_decodable.NumFramesReady());
   int32 num_frames = online_decodable.NumFramesReady(),
       num_tids = trans_model.NumTransitionIds();
-  
+
   for (int32 i = 0; i < 50; i++) {
 
     int32 t = rand() % num_frames, tid = 1 + rand() % num_tids;
@@ -109,5 +110,5 @@ int main() {
     UnitTestNnetDecodable();
   return 0;
 }
-  
+
 

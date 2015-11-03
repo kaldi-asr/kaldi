@@ -95,7 +95,7 @@ if [ $stage -le 6 ]; then
     # dir is the neural-net training dir.
     utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/rm/s5/$dir/egs $dir/egs/storage
   fi
-  # the -tc 15 allows more of the dump_egs jobs than the default (5), since we
+  # the --max-jobs-run 15 allows more of the dump_egs jobs than the default (5), since we
   # have 4 filesystems to access.  We reduce the number of epochs since we have
   # more data and we don't want so slow down the training too much, and we also
   # reduce the final learning rate (when we have a lot of data we like a ratio of 10
@@ -110,7 +110,7 @@ if [ $stage -le 6 ]; then
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --io-opts "-tc 15" \
+    --io-opts "--max-jobs-run 15" \
     --num-jobs-nnet 4 \
     --num-epochs 5 --num-epochs-extra 2 \
     --add-layers-period 2 \
