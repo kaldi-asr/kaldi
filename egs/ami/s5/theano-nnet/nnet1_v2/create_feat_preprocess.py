@@ -54,7 +54,7 @@ feat_preprocess = FeaturePreprocess(o)
 ##
 
 ## Load cmvn ##
-trn_cmvn = CMVN(feat_preprocess, o.trn_utt2spk_file, o.trn_cmvn_scp)
+trn_cmvn = CMVN(feat_preprocess, o.utt2spk_file, o.cmvn_scp)
 ##
 
 ## input mean and variance normalization
