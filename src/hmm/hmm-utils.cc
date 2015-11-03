@@ -592,7 +592,7 @@ void AddSelfLoops(const TransitionModel &trans_model,
 
 static bool IsReordered(const TransitionModel &trans_model,
                         const std::vector<int32> &alignment) {
-  for (size_t i = 0; i+1 < alignment.size(); i++) {
+  for (size_t i = 0; i + 1 < alignment.size(); i++) {
     int32 tstate1 = trans_model.TransitionIdToTransitionState(alignment[i]),
         tstate2 = trans_model.TransitionIdToTransitionState(alignment[i+1]);
     if (tstate1 != tstate2) {
@@ -679,7 +679,7 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
     int32 pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].pdf_class;
     if (pdf_class != kNoPdf)  // initial-state of the current phone is emitting
       if (trans_model.TransitionStateToHmmState(trans_state) != 0)
-        was_ok= false;
+        was_ok = false;
     for (size_t j = cur_point; j < end_points[i]; j++)
       split_output->back().push_back(alignment[j]);
     cur_point = end_points[i];
@@ -730,9 +730,8 @@ static inline void ConvertAlignmentForPhone(
   if (topology_mismatch) {
     if (!warned_topology) {
       warned_topology = true;
-      KALDI_WARN << "Topology mismatch detected, and new topology has "
-                 << "one state; automatically converting. Won't "
-                 << "warn again.";
+      KALDI_WARN << "Topology mismatch detected; automatically converting. "
+                 << "Won't warn again.";
     }
   }
   bool length_mismatch =
@@ -774,7 +773,7 @@ static inline void ConvertAlignmentForPhone(
                                                 new_pdf);
     int32 new_tid =
         new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
-    new_phone_alignment->push_back(new_tid);
+    (*new_phone_alignment)[j] = new_tid;
   }
 
   if (new_is_reordered != old_is_reordered)
@@ -887,15 +886,20 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
   // the sizes of each element of 'new_split' indicate the length of alignment
   // that we want for each phone in the new sequence.
   std::vector<std::vector<int32> > new_split(phone_sequence_length);
-  if (subsample_factor == 1) {
+  if (subsample_factor == 1 &&
+      old_trans_model.GetTopo() == new_trans_model.GetTopo()) {
+    // we know the old phone lengths will be fine.
     for (size_t i = 0; i < phone_sequence_length; i++)
       new_split[i].resize(old_split[i].size());
   } else {
+    // .. they may not be fine.
     std::vector<int32> old_lengths(phone_sequence_length), new_lengths;
     if (!ComputeNewPhoneLengths(new_trans_model.GetTopo(),
                                 mapped_phones, old_lengths,
-                                subsample_factor, &new_lengths))
+                                subsample_factor, &new_lengths)) {
+      KALDI_WARN << "Failed to produce suitable phone lengths";
       return false;
+    }
     for (int32 i = 0; i < phone_sequence_length; i++)
       new_split[i].resize(new_lengths[i]);
   }
@@ -1113,8 +1117,12 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
     fst::RandGenOptions<fst::UniformArcSelector<Arc> > randgen_opts(selector);
     fst::RandGen(composed_fst, &single_path_fst, randgen_opts);
   }
-  if (single_path_fst.NumStates() == 0)
-    KALDI_ERR << "Error generating random alignment (wrong length?)";
+  if (single_path_fst.NumStates() == 0) {
+    KALDI_ERR << "Error generating random alignment (wrong length?): "
+              << "requested length is " << length << " versus min-length "
+              << trans_model.GetTopo().MinLength(
+                  phone_window[ctx_dep.CentralPosition()]);
+  }
   std::vector<int32> symbol_sequence;
   bool ans = fst::GetLinearSymbolSequence<Arc, int32>(
       single_path_fst, &symbol_sequence, NULL, NULL);
@@ -1129,18 +1137,27 @@ void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
   while (start_pos != size) {
     int32 start_tid = (*alignment)[start_pos];
     int32 cur_tstate = trans_model.TransitionIdToTransitionState(start_tid);
-    bool start_is_self_loop = trans_model.IsSelfLoop(start_tid);
+    bool start_is_self_loop = trans_model.IsSelfLoop(start_tid) ? 0 : 1;
     int32 end_pos = start_pos + 1;
     // If the first instance of this transition-state was a self-loop, then eat
     // only non-self-loops of this state; if it was a non-self-loop, then eat
     // only self-loops of this state.  Imposing this condition on self-loops
-    // would only actually matter in rare circumstances, if phones could have
-    // length 1.
+    // would only actually matter in the rare circumstances that phones can
+    // have length 1.
     while (end_pos != size &&
            trans_model.TransitionIdToTransitionState((*alignment)[end_pos]) ==
-           cur_tstate &&
-           trans_model.IsSelfLoop((*alignment)[end_pos]) != start_is_self_loop)
+           cur_tstate) {
+      bool this_is_self_loop = trans_model.IsSelfLoop((*alignment)[end_pos]);
+      if (!this_is_self_loop) {
+        if (start_is_self_loop) {
+          break;  // stop before including this transition-id.
+        } else {
+          end_pos++;
+          break;  // stop after including this transition-id.
+        }
+      }
       end_pos++;
+    }
     std::swap((*alignment)[start_pos], (*alignment)[end_pos - 1]);
     start_pos = end_pos;
   }
