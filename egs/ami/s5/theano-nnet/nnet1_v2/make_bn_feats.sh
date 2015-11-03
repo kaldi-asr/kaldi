@@ -75,7 +75,8 @@ if [ $htk_save == false ]; then
     $nnet_fwdpass_tool $nnet_fwdpass_opts \
       --feat-preprocess=$bnfeadir/feat_preprocess.pkl \
       --utt2spk-file=$srcdata/utt2spk --cmvn-scp=$srcdata/cmvn.scp \
-      $bnfeadir $sdata/JOB/ | copy-feats ark,t:- ark,scp:$bnfeadir/raw_bnfea_${name}.JOB.ark,$bnfeadir/raw_bnfea_${name}.JOB.scp || exit 1;
+      $bnfeadir $sdata/JOB/ \| \
+      copy-feats ark,t:- ark,scp:$bnfeadir/raw_bnfea_${name}.JOB.ark,$bnfeadir/raw_bnfea_${name}.JOB.scp || exit 1;
   # concatenate the .scp files
   for ((n=1; n<=nj; n++)); do
     cat $bnfeadir/raw_bnfea_$name.$n.scp >> $data/feats.scp
