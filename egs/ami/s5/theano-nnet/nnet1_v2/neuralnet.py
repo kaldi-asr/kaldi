@@ -24,20 +24,31 @@ class NeuralNet(object):
         self.Y = self.X 
 
         self.layers = []
-        self.params = []
-        self.lr_coefs = []
-        
+
+    def remove_last_layer(self):
+        self.layers.pop()
+
+    def remove_first_layer(self):
+        self.layers.pop(0)
+
     def add(self, layer):
-
-        self.params += layer.params
         self.layers.append(layer)
-        if hasattr(layer, 'lr_coefs'):
-            self.lr_coefs += layer.lr_coefs
 
-        #link_IO
-        layer.link_IO(self.Y)
-        self.Y = layer.Y
-        
+    @property
+    def params(self):
+        this_params = []
+        for layer in self.layers:
+            this_params += layer.params
+        return this_params
+
+    @property
+    def lr_coefs(self):
+        this_lr_coefs = []
+        for layer in self.layers:
+            if hasattr(layer, 'lr_coefs'):
+                this_lr_coefs += layer.lr_coefs
+        return this_lr_coefs
+
     def initialize_from_proto(self, proto_file):
         '''
         Function to initialize from nnet1 style prototype file
