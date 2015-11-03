@@ -159,9 +159,13 @@ class NeuralNet(object):
             if w["name"] == "AffineTransform":
                 layer = AffineTransform(w["n_in"], w["n_out"])
                 layer.set_weights(w["weights"])
+                layer.set_lr_coefs(w["lr_coefs"])
+
             elif w["name"] == "LinearTransform":
                 layer = LinearTransform(w["n_in"], w["n_out"])
                 layer.set_weights(w["weights"])
+                layer.set_lr_coefs(w["lr_coefs"])
+
             elif w["name"] == "Activation":
                 layer = Activation(w["activation"])
             else:

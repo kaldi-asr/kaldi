@@ -21,6 +21,13 @@ class Layer(object):
                 raise Exception("Layer shape %s not compatible with weight shape %s." % (p.eval().shape, w.shape))
             p.set_value(w.astype(T.config.floatX))
 
+    def set_lr_coefs(self, lr_coefs):
+
+        if len(self.lr_coefs) != len(lr_coefs):
+            raise Exception("Layer lr_coefs %s not compatible with given lr_coefs %s." % (self.lr_coefs, lr_coefs))
+        for ii in xrange(len(self.lr_coefs)):
+            self.lr_coefs[ii] = lr_coefs[ii]
+
     def get_weights(self):
         weights = []
         for p in self.params:
