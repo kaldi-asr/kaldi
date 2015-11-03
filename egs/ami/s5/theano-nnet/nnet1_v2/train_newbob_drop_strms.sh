@@ -160,8 +160,23 @@ cp $data_cv/feats.scp $dir/cv.scp
 # print the list sizes
 wc -l $dir/train.scp $dir/cv.scp
 
-feats_opts=
 ###### PREPARE FEATURE PIPELINE ######
+feats_opts=
+# optionally add deltas,
+if [ ! -z "$delta_opts" ]; then
+  feats_opts="$feats_opts $delta_opts"
+  echo "add-deltas with $delta_opts"
+fi
+#optionally cmvn_opts
+if [ ! -z "$cmvn_opts" ]; then
+  feats_opts="$feats_opts $cmvn_opts"
+  echo "cmnv-opts with $cmvn_opts"
+fi
+#add splice and splice-step
+feats_opts="$feats_opts --splice=$splice --splice-step=$splice_step"
+echo $feats_opts >$dir/feats_opts
+
+###### OPTS DIFF TRAIN AND CV ########
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
   echo "Will use CMVN statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
@@ -169,24 +184,17 @@ if [ ! -z "$cmvn_opts" ]; then
   [ ! -r $data/utt2spk ] && echo "Missing $data/utt2spk" && exit 1;
   [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
   [ ! -r $data_cv/utt2spk ] && echo "Missing $data_cv/utt2spk" && exit 1;
-  feats_opts="$feats_opts $cmvn_opts" 
-  feats_opts="$feats_opts --trn-utt2spk-file=$data/utt2spk --trn-cmvn-scp=$data/cmvn.scp"
-  feats_opts="$feats_opts --cv-utt2spk-file=$data_cv/utt2spk --cv-cmvn-scp=$data_cv/cmvn.scp"
+  feats_opts_tr="--utt2spk-file=$data/utt2spk --cmvn-scp=$data/cmvn.scp"
+  feats_opts_cv="--utt2spk-file=$data_cv/utt2spk --cmvn-scp=$data_cv/cmvn.scp"
 else
   echo "apply-cmvn is not used"
 fi
-# optionally add deltas,
-if [ ! -z "$delta_opts" ]; then
-  feats_opts="$feats_opts $delta_opts"
-  echo "add-deltas with $delta_opts"
-fi
-#add splice and splice-step
-feats_opts="$feats_opts --splice=$splice --splice-step=$splice_step"
-echo $feats_opts >$dir/feats_opts
 
 ###### CREATE FEAT PREPROCESS ######
 if [ ! -e $dir/feat_preprocess.pkl ]; then
-python theano-nnet/nnet1_v2/create_feat_preprocess.py $feats_opts \
+python theano-nnet/nnet1_v2/create_feat_preprocess.py \
+  $feats_opts \
+  ${feats_opts_tr:+ ${feats_opts_tr}} \
   $dir/train.scp $dir/feat_preprocess.pkl 2>$dir/log/create_feat_preprocess.log || exit 1
 fi
 
@@ -196,7 +204,7 @@ if [ -z "$nnet_proto" ]; then
   [ -z $num_tgt ] && num_tgt=$(hmm-info --print-args=false $alidir/final.mdl | grep pdfs | awk '{ print $NF }')
 
   #input-dim
-  num_fea=$(python theano-nnet/nnet1_v2/feat_to_dim.py $feats_opts $dir/train.scp)
+  num_fea=$(python theano-nnet/nnet1_v2/feat_to_dim.py $feats_opts ${feats_opts_tr:+ ${feats_opts_tr}} $dir/train.scp)
 
   # make network prototype
   nnet_proto=$dir/nnet.proto
@@ -211,6 +219,11 @@ if [ -z "$nnet_proto" ]; then
     $nnet_proto $dir/nnet_initial.pklz 2>$dir/log/nnet_initialize.log || exit 1
 
 fi
+
+
+echo ""
+echo "##############################"
+echo "Started neural net training"
 
 num_strms=`echo $strm_indices | awk -F "," '{print NF-1}'`
 tot_comb=`echo "2^$num_strms"-1|bc`
@@ -227,7 +240,7 @@ $cv_cmd JOB=1:$tot_comb $dir/log/iter${iter}_comb.JOB.cv.log \
 theano-nnet/nnet1_v2/cross_validate.sh \
   --cv-tool $cv_tool \
   --feat-preprocess $dir/feat_preprocess.pkl \
-  --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
+  --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts_cv --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
   $dir/cv.scp $labels_cv $nnet_best || exit 1;
 
 #Combine them to $cv_done_file
@@ -265,7 +278,7 @@ for iter in $(seq -w $max_iters); do
     theano-nnet/nnet1_v2/train_1iter.sh \
       --train-tool $train_tool \
       --feat-preprocess $dir/feat_preprocess.pkl \
-      --tool-opts "$train_cv_tool_opts $train_tool_opts --strm-indices=$strm_indices --learn-rate=$learn_rate $feats_opts --done-file=$train_done_file" \
+      --tool-opts "$train_cv_tool_opts $train_tool_opts --strm-indices=$strm_indices --learn-rate=$learn_rate $feats_opts_tr --done-file=$train_done_file" \
     $dir/train.scp $labels_tr $nnet_best $nnet_next || exit 1;
   else
     echo "Skipping training ITERATION $iter"
@@ -280,7 +293,7 @@ for iter in $(seq -w $max_iters); do
     theano-nnet/nnet1_v2/cross_validate.sh \
       --cv-tool $cv_tool \
       --feat-preprocess $dir/feat_preprocess.pkl \
-      --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
+      --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts_cv --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
     $dir/cv.scp $labels_cv $nnet_next || exit 1;
 
     #Combine them to $cv_done_file

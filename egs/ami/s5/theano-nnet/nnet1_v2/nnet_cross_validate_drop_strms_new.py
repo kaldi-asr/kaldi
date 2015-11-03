@@ -120,7 +120,7 @@ else:
   sys.exit(1)
 
 ## Load cmvn ##
-cv_cmvn = CMVN(feat_preprocess, o.cv_utt2spk_file, o.cv_cmvn_scp)
+cv_cmvn = CMVN(feat_preprocess, o.utt2spk_file, o.cmvn_scp)
 ##
 
 # creating theano neural network
