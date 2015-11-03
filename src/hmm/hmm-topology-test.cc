@@ -60,7 +60,10 @@ void TestHmmTopology() {
 
   std::istringstream iss(input_str);
   topo.Read(iss, false);
-  
+
+  KALDI_ASSERT(topo.MinLength(3) == 3);
+  KALDI_ASSERT(topo.MinLength(11) == 2);
+
   std::ostringstream oss;
   topo.Write(oss, binary);
 

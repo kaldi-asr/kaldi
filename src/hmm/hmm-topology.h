@@ -61,7 +61,7 @@ namespace kaldi {
  <Final> 0.5
  </State>
  <State> 3
- </State> 
+ </State>
  </TopologyEntry>
  </Topology>
 */
@@ -110,7 +110,7 @@ class HmmTopology {
     bool operator == (const HmmState &other) const {
       return (pdf_class == other.pdf_class && transitions == other.transitions);
     }
-    
+
     HmmState(): pdf_class(-1) { }
   };
 
@@ -143,6 +143,10 @@ class HmmTopology {
   /// number of \ref pdf_class pdf-classes for the phones; this is
   /// used by tree-building code such as BuildTree().
   void GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_classes) const;
+
+  // Returns the minimum number of frames it takes to traverse this model for
+  // this phone: e.g. 3 for the normal HMM topology.
+  int32 MinLength(int32 phone) const;
 
   HmmTopology() {}
 

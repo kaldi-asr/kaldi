@@ -36,12 +36,19 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " convert-ali old.mdl new.mdl new.tree ark:old.ali ark:new.ali\n";
 
+    int32 frame_subsampling_factor = 1;
+    bool reorder = true;
 
     std::string phone_map_rxfilename;
     ParseOptions po(usage);
     po.Register("phone-map", &phone_map_rxfilename,
                 "File name containing old->new phone mapping (each line is: "
                 "old-integer-id new-integer-id)");
+    po.Register("reorder", &reorder,
+                "True if you want the converted alignments to be 'reordered' "
+                "versus the way they appear in the HmmTopology object");
+    po.Register("frame-subsampling-factor", &frame_subsampling_factor,
+                "Can be used in converting alignments to reduced frame rates.");
 
     po.Read(argc, argv);
 
@@ -61,7 +68,7 @@ int main(int argc, char *argv[]) {
       ReadPhoneMap(phone_map_rxfilename,
                    &phone_map);
     }
-    
+
     SequentialInt32VectorReader alignment_reader(old_alignments_rspecifier);
     Int32VectorWriter alignment_writer(new_alignments_wspecifier);
 
@@ -74,8 +81,8 @@ int main(int argc, char *argv[]) {
     if (!(old_trans_model.GetTopo() == new_trans_model.GetTopo()))
       KALDI_WARN << "Toplogies of models are not equal: "
                  << "conversion may not be correct or may fail.";
-    
-    
+
+
     ContextDependency new_ctx_dep;  // the tree.
     ReadKaldiObject(new_tree_filename, &new_ctx_dep);
 
@@ -89,6 +96,8 @@ int main(int argc, char *argv[]) {
                            new_trans_model,
                            new_ctx_dep,
                            old_alignment,
+                           frame_subsampling_factor,
+                           reorder,
                            (phone_map_rxfilename != "" ? &phone_map : NULL),
                            &new_alignment)) {
         alignment_writer.Write(key, new_alignment);
