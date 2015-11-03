@@ -9,7 +9,7 @@
 nj=4
 cmd=run.pl
 remove_last_components=4 # remove N last components from the nnet
-nnet_forward_opts=
+nnet_fwdpass_opts=
 nnet_fwdpass_tool=theano-nnet/nnet1_v2/nn_fwdpass.py
 htk_save=false
 # End configuration section.
