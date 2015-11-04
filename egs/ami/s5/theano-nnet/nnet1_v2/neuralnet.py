@@ -193,3 +193,10 @@ class NeuralNet(object):
             this_layer.link_IO(self.Y)
             self.Y = this_layer.Y
 
+    def Info(self):
+        for ii, this_layer in enumerate(self.layers):
+            this_layer.Info()
+
+
+
+
