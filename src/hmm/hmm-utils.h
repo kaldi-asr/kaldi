@@ -129,7 +129,8 @@ GetHmmAsFstSimple(std::vector<int32> context_window,
 
 
 /**
-  * Returns the H tranducer; result owned by caller.
+  * Returns the H tranducer; result owned by caller.  Caution: our version of
+  * the H transducer does not include self-loops; you have to add those later.
   * See \ref hmm_graph_get_h_transducer.  The H transducer has on the
   * input transition-ids, and also possibly some disambiguation symbols, which
   * will be put in disambig_syms.  The output side contains the identifiers that
