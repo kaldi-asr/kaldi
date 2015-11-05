@@ -65,7 +65,8 @@ void Segmentation::SplitSegments(
 }
 
 void Segmentation::SplitSegments(int32 segment_length,
-                                 int32 min_remainder) {
+                                 int32 min_remainder, int32 overlap) {
+  KALDI_ASSERT(overlap < segment_length);
   for (SegmentList::iterator it = segments_.begin(); 
       it != segments_.end(); ++it) {
     int32 start_frame = it->start_frame;
@@ -74,7 +75,7 @@ void Segmentation::SplitSegments(int32 segment_length,
 
     if (length > segment_length + min_remainder) {
       // Split segment
-      it->start_frame = start_frame + segment_length;
+      it->start_frame = start_frame + segment_length - overlap;
       it = segments_.emplace(it, start_frame, start_frame + segment_length - 1, it->Label());
 
       // Forward list code
@@ -589,6 +590,17 @@ void Segmentation::RemoveSegments(int32 label) {
   for (SegmentList::iterator it = segments_.begin();
         it != segments_.end();) {
     if (it->Label() == label) {
+      it = segments_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+}
+
+void Segmentation::RemoveSegments(const std::vector<int32> &labels) {
+  for (SegmentList::iterator it = segments_.begin();
+        it != segments_.end();) {
+    if (std::binary_search(labels.begin(), labels.end(), it->Label())) {
       it = segments_.erase(it);
     } else {
       ++it;

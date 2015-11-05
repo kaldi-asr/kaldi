@@ -151,9 +151,11 @@ class Segmentation {
     // Split this segmentation into pieces of size 
     // segment_length such that the last remaining piece
     // is not longer than min_remainder.
+    // Optionally create overlapping pieces with the number
+    // of overlapping frames specified by overlap.
     // Typically used to create 1s windows from 10 minute long chunks
     void SplitSegments(int32 segment_length,
-                       int32 min_remainder);
+                       int32 min_remainder, int32 overlap = 0);
 
     // Modify this segmentation to merge labels in merge_labels vector into a
     // single label dest_label.
@@ -251,6 +253,9 @@ class Segmentation {
 
     // Remove segments of label "label"
     void RemoveSegments(int32 label);
+
+    // Remove segments of labels "labels"
+    void RemoveSegments(const std::vector<int32> &labels);
 
     // Reset segmentation i.e. clear all values
     void Clear();

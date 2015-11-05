@@ -39,21 +39,31 @@ int main(int argc, char *argv[]) {
     int32 widen_label = -1;
     int32 max_segment_length = -1;
     int32 max_intersegment_length = 1;
+    int32 overlap_length = 0;
     bool merge_adjacent_segments = false;
 
     ParseOptions po(usage);
     
     SegmentationOptions opts;
 
+    std::string remove_labels_csl;
+
     int32 &remove_label = opts.merge_dst_label;
 
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("remove-label", &remove_label, "The label for which the short segments are to be removed. "
                 "If --merge-labels is specified, then all of them would be removed instead.");
+    po.Register("remove-labels", &remove_labels_csl, 
+                "Remove all segments of these labels.");
     po.Register("max-remove-length", &max_remove_length, "The maximum length of segment in number of frames that will be removed");
     po.Register("widen-label", &widen_label, "Widen segments of this label");
     po.Register("widen-length", &widen_length, "Widen by this amount of frames on either sides");
-    po.Register("max-segment-length", &max_segment_length, "Split segment into pieces of this number of frames");
+    po.Register("max-segment-length", &max_segment_length, 
+                "If segment is longer than this length, split it into "
+                "pieces with less than these many frames.");
+    po.Register("overlap-length", &overlap_length,
+                "When splitting segments longer than max-segment-length, "
+                "have the pieces overlap by these many frames");
     po.Register("merge-adjacent-segments", &merge_adjacent_segments, 
                 "Merge adjacent segments of the same label if they are within max-intersegment-length distance");
     po.Register("max-intersegment-length", &max_intersegment_length,  
@@ -73,11 +83,21 @@ int main(int argc, char *argv[]) {
     std::vector<int32> merge_labels;
     RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
 
+    std::vector<int32> remove_labels;
+    if (remove_labels_csl != "") {
+      if (!SplitStringToIntegers(remove_labels_csl, ":",
+            false, &remove_labels)) {
+        KALDI_ERR << "Bad value for --remove-labels option: "
+                  << remove_labels_csl;
+      }
+      std::sort(remove_labels.begin(), remove_labels.end());
+    }
+
     if (opts.merge_labels_csl != "") {
       if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
             &merge_labels)) {
         KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
+                  << opts.merge_labels_csl;
       }
       std::sort(merge_labels.begin(), merge_labels.end());
     }
@@ -112,11 +132,15 @@ int main(int argc, char *argv[]) {
       if (max_remove_length >= 0)
         seg.RemoveShortSegments(opts.merge_dst_label, max_remove_length);
 
+      if (remove_labels_csl != "")
+        seg.RemoveSegments(remove_labels);
+
       if (merge_adjacent_segments)
         seg.MergeAdjacentSegments(max_intersegment_length);
 
       if (max_segment_length >= 0)
-        seg.SplitSegments(max_segment_length, max_segment_length/2);
+        seg.SplitSegments(max_segment_length, 
+                          max_segment_length/2, overlap_length);
 
       writer.Write(key, seg);
     }
