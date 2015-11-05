@@ -1,4 +1,4 @@
-// featbin/quantize-feats.cc
+// bin/quantize-feats.cc
 
 // Copyright 2015   Vimal Manohar
 
@@ -23,8 +23,8 @@
 #include "hmm/posterior.h"
 
 int main(int argc, char *argv[]) {
-  try {
-    using namespace kaldi;
+  try { using namespace kaldi;
+    typedef TableWriter<BasicVectorVectorHolder<bool> >  BooleanVectorVectorWriter;
 
     const char *usage =
         "Quantize feature values into bins using <bin-boundaries>.\n"
@@ -34,8 +34,13 @@ int main(int argc, char *argv[]) {
         " e.g.: quantize-feats ark:- -10:0:10 ark,scp:foo.ark,foo.scp\n"
         "See also: copy-feats, copy-matrix\n";
 
+    bool write_boolean_vector = false;
+
     ParseOptions po(usage);
     
+    po.Register("write-boolean-vector", &write_boolean_vector, "Write boolean "
+                "vector instead of posteriors");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -61,14 +66,25 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feats_reader(feats_rspecifier);
     PosteriorWriter bin_writer(bins_wspecifier);
-
+    BooleanVectorVectorWriter bits_writer(bins_wspecifier);
+    
     for (; !feats_reader.Done(); feats_reader.Next(), num_done++) {
       const Matrix<BaseFloat> &feats = feats_reader.Value();
       const std::string &key = feats_reader.Key();
       
-      Posterior bins(feats.NumRows());
+      Posterior bins;
+      std::vector<std::vector<bool> > bits;
+
+      if (!write_boolean_vector)
+        bins.resize(feats.NumRows());
+      else 
+        bits.resize(feats.NumRows());
+
       for (size_t t = 0; t < feats.NumRows(); t++) {
-        bins[t].resize(feats.NumCols());
+        if (!write_boolean_vector)
+          bins[t].resize(feats.NumCols());
+        else
+          bits[t].resize(num_bins * feats.NumCols(), false);
         for (size_t j = 0; j < feats.NumCols(); j++) {
           auto bin = std::lower_bound(bin_boundaries.begin(), 
                                       bin_boundaries.end(), feats(t,j));
@@ -78,11 +94,17 @@ int main(int argc, char *argv[]) {
           else 
             k = static_cast<size_t>(bin_boundaries.size());
 
-          bins[t][j] = std::make_pair(j * num_bins + k, 1.0);
+          if (!write_boolean_vector)
+            bins[t][j] = std::make_pair(j * num_bins + k, 1.0);
+          else 
+            bits[t][j * num_bins + k] = true;
         }
       }
 
-      bin_writer.Write(key, bins);
+      if (!write_boolean_vector)
+        bin_writer.Write(key, bins);
+      else
+        bits_writer.Write(key, bits);
     }
     
     KALDI_LOG << "Quantized " << num_done << " feature matrices.";
