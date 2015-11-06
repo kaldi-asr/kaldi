@@ -25,6 +25,8 @@
 #include <algorithm>
 #include <limits>
 #include <cassert>
+#include <utility>
+#include "util/edit-distance-inl.h"
 #include "base/kaldi-types.h"
 
 namespace kaldi {
@@ -36,7 +38,8 @@ int32 LevenshteinEditDistance(const std::vector<T> &a,
 
 
 // edit distance calculation with conventional method.
-// note: noise word must be filtered out from the hypothesis and reference sequence
+// note: noise word must be filtered out from the hypothesis and
+// reference sequence
 // before the following procedure conducted.
 template<class T>
 int32 LevenshteinEditDistance(const std::vector<T> &ref,
@@ -56,8 +59,6 @@ int32 LevenshteinAlignment(const std::vector<T> &a,
                            T eps_symbol,
                            std::vector<std::pair<T, T> > *output);
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
-#include "edit-distance-inl.h"
-
-#endif
+#endif  // KALDI_UTIL_EDIT_DISTANCE_H_

@@ -22,6 +22,7 @@
 // #include base/timer.h
 #ifndef KALDI_UTIL_TIMER_H_
 #define KALDI_UTIL_TIMER_H_
-#pragma message warning: please do not include util/timer.h, include base/timer.h (it has been moved)
+#pragma message warning: please do not include util/timer.h, \
+  include base/timer.h(it has been moved)
 #include "base/timer.h"
-#endif
+#endif  // KALDI_UTIL_TIMER_H_

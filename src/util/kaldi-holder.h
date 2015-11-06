@@ -50,14 +50,15 @@ namespace kaldi {
 // text or binary mode (but it's OK if it doesn't eat up trailing space).
 //
 //     [Desirable property: when writing in text mode the output should contain
-//      exactly one newline, at the end of the output; this makes it easier to manipulate]
+//      exactly one newline, at the end of the output; this makes it easier to
+//      manipulate]
 //
 //     [Desirable property for classes: the output should just be a binary-mode
 //      header (if in binary mode and it's a Kaldi object, or no header
 //      othewise), and then the output of Object.Write().  This means that when
-//      written to individual files with the scp: type of wspecifier, we can read
-//      the individual files in the "normal" Kaldi way by reading the binary
-//      header and then the object.]
+//      written to individual files with the scp: type of wspecifier, we can
+//      read the individual files in the "normal" Kaldi way by reading the
+//      binary header and then the object.]
 //
 //
 // The Write function takes a 'binary' argument.  In general, each object will
@@ -92,22 +93,19 @@ template<class SomeType> class GenericHolder {
   /// assume the stream has been opened in the given mode (where relevant).  The
   /// object can write the data how it likes.
   static bool Write(std::ostream &os, bool binary, const T &t);
-  
-  /// Reads into the holder.  Must work out from the stream (which will be opened
-  /// on Windows in binary mode if the IsReadInBinary() function of this class
-  /// returns true, and text mode otherwise) whether the actual data is binary or
-  /// not (usually via reading the Kaldi binary-mode header).  We put the
-  /// responsibility for reading the Kaldi binary-mode header in the Read
-  /// function (rather than making the binary mode an argument to this function),
-  /// so that for non-Kaldi binary files we don't have to write the header, which
-  /// would prevent the file being read by non-Kaldi programs (e.g. if we write
-  /// to individual files using an scp).
-  ///
+
+  /// Reads into the holder.  Must work out from the stream (which will be
+  /// opened on Windows in binary mode if the IsReadInBinary() function of this
+  /// class returns true, and text mode otherwise) whether the actual data is
+  /// binary or not (usually via reading the Kaldi binary-mode header).
+  /// We put the responsibility for reading the Kaldi binary-mode header in the
+  /// Read function (rather than making the binary mode an argument to this
+  /// function), so that for non-Kaldi binary files we don't have to write the
+  /// header, which would prevent the file being read by non-Kaldi programs
+  /// (e.g. if we write to individual files using an scp).
   /// Read must deallocate any existing data we have here, if applicable (must
   /// not assume the object was newly constructed).
-  ///
   /// Returns true on success.
-  ///
   /// If Read() returns false, the contents of this object and hence the value
   /// returned by Value() may be undefined.
   bool Read(std::istream &is);
@@ -124,7 +122,7 @@ template<class SomeType> class GenericHolder {
   /// Returns the value of the object held here.  Will only
   /// ever be called if Read() has been previously called and it returned
   /// true (so OK to throw exception if no object was read).
-  const T &Value() const { return t_; } // if t is a pointer, would return *t_;
+  const T &Value() const { return t_; }  // if t is a pointer, would return *t_;
 
   /// The Clear() function doesn't have to do anything.  Its purpose is to
   /// allow the object to free resources if they're no longer needed.
@@ -150,8 +148,8 @@ template<class SomeType> class GenericHolder {
 /// \addtogroup holders
 /// @{
 
-/// KaldiObjectHolder works for Kaldi objects that have the "standard" Read and Write
-/// functions, and a copy constructor.
+/// KaldiObjectHolder works for Kaldi objects that have the "standard" Read
+/// and Write functions, and a copy constructor.
 template<class KaldiType> class KaldiObjectHolder;
 
 /// BasicHolder is valid for float, double, bool, and integer
@@ -186,10 +184,12 @@ template<class BasicType> class BasicPairVectorHolder;
 
 /// We define a Token (not a typedef, just a word) as a nonempty, printable,
 /// whitespace-free std::string.  The binary and text formats here are the same
-/// (newline-terminated) and as such we don't bother with the binary-mode headers.
+/// (newline-terminated) and as such we don't bother with the binary-mode
+/// headers.
 class TokenHolder;
 
-/// Class TokenVectorHolder is a Holder class for vectors of Tokens (T == std::string).
+/// Class TokenVectorHolder is a Holder class for vectors of Tokens
+/// (T == std::string).
 class TokenVectorHolder;
 
 /// A class for reading/writing HTK-format matrices.
@@ -197,14 +197,14 @@ class TokenVectorHolder;
 class HtkMatrixHolder;
 
 /// A class for reading/writing Sphinx format matrices.
-template<int kFeatDim=13> class SphinxMatrixHolder;
+template<int kFeatDim = 13> class SphinxMatrixHolder;
 
 
 /// @} end "addtogroup holders"
 
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
-#include "kaldi-holder-inl.h"
+#include "util/kaldi-holder-inl.h"
 
-#endif
+#endif  // KALDI_UTIL_KALDI_HOLDER_H_
