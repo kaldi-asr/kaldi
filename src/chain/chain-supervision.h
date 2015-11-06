@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CCTC_SUPERVISION_H_
-#define KALDI_CTC_CCTC_SUPERVISION_H_
+#ifndef KALDI_CHAIN_CHAIN_SUPERVISION_H_
+#define KALDI_CHAIN_CHAIN_SUPERVISION_H_
 
 #include <vector>
 #include <map>
@@ -217,6 +217,17 @@ struct Supervision {
   // Included to avoid training on mismatched egs.
   int32 label_dim;
 
+  // This is a log-prob (<= 0) that is added to forward-backward likelihoods
+  // obtained from this object in order to be properly normalize them (so that
+  // they are comparable with likelihoods from the denominator, and the log
+  // objective function will usually be less than zero).  We plan to get this by
+  // composing the sequence with the FST used for the denominator
+  // forward-backward, and taking the best-path prob.  Note, this doesn't
+  // 100% guarantee that objf will be <= 0, but should be enough.  This is
+  // mostly an issue of getting nice diagnostics, it doesn't affect the
+  // training progress per se.
+  BaseFloat penalty_logprob;
+
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
   // stronger condition).  The labels are pdf-ids plus one (to avoid epsilons,
@@ -226,7 +237,7 @@ struct Supervision {
   fst::StdVectorFst fst;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
-                 label_dim(-1) { }
+                 label_dim(-1), penalty_logprob(0.0) { }
 
 
   Supervision(const Supervision &other);
@@ -356,4 +367,4 @@ typedef RandomAccessTableReader<KaldiObjectHolder<Supervision> > RandomAccessSup
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CCTC_SUPERVISION_H_
+#endif  // KALDI_CHAIN_CHAIN_SUPERVISION_H_

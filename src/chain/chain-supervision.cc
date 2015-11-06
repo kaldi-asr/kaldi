@@ -498,6 +498,8 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, frames_per_sequence);
   WriteToken(os, binary, "<LabelDim>");
   WriteBasicType(os, binary, label_dim);
+  WriteToken(os, binary, "<Penalty>");
+  WriteBasicType(os, binary, penalty_logprob);
   KALDI_ASSERT(frames_per_sequence > 0 && label_dim > 0 &&
                num_sequences > 0);
   if (binary == false) {
@@ -524,6 +526,8 @@ void Supervision::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &frames_per_sequence);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
+  ExpectToken(is, binary, "<Penalty>");
+  ReadBasicType(is, binary, &penalty_logprob);
   if (!binary) {
     ReadFstKaldi(is, binary, &fst);
   } else {
@@ -577,7 +581,7 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence), label_dim(other.label_dim),
-    fst(other.fst) { }
+    penalty_logprob(other.penalty_logprob), fst(other.fst) { }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        bool compactify,
@@ -681,7 +685,8 @@ void SplitIntoRanges(int32 num_frames,
 bool Supervision::operator == (const Supervision &other) const {
   return weight == other.weight && num_sequences == other.num_sequences &&
       frames_per_sequence == other.frames_per_sequence &&
-      label_dim == other.label_dim && fst::Equal(fst, other.fst);
+      label_dim == other.label_dim &&
+      penalty_logprob == other.penalty_logprob && fst::Equal(fst, other.fst);
 }
 
 void Supervision::Check(const TransitionModel &trans_mdl) const {

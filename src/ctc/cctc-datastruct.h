@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CU_DATASTRUCT_H_
-#define KALDI_CTC_CU_DATASTRUCT_H_
+#ifndef KALDI_CTC_CCTC_DATASTRUCT_H_
+#define KALDI_CTC_CCTC_DATASTRUCT_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK, and int32_cuda
 
 /**

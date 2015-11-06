@@ -17,8 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CTC_CTC_DECODER_WRAPPERS_H_
-#define KALDI_CTC_CTC_DECODER_WRAPPERS_H_
+#ifndef KALDI_CTC_CCTC_DECODER_WRAPPERS_H_
+#define KALDI_CTC_CCTC_DECODER_WRAPPERS_H_
 
 #include "itf/options-itf.h"
 #include "decoder/lattice-faster-decoder.h"

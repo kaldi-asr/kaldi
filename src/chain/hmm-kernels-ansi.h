@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CCTC_KERNELS_ANSI_H_
-#define KALDI_CTC_CCTC_KERNELS_ANSI_H_
+#ifndef KALDI_CHAIN_HMM_KERNELS_ANSI_H_
+#define KALDI_CHAIN_HMM_KERNELS_ANSI_H_
 #include "ctc/cctc-datastruct.h"
 
 #if HAVE_CUDA == 1
@@ -63,4 +63,4 @@ void cuda_ctc_hmm_forward(dim3 Gr, dim3 Bl,
 #endif  // HAVE_CUDA
 
 
-#endif  // KALDI_CTC_CCTC_KERNELS_ANSI_H_
+#endif  // KALDI_CHAIN_HMM_KERNELS_ANSI_H_

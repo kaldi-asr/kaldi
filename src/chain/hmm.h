@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CCTC_TOMBSTONE_H_
-#define KALDI_CTC_CCTC_TOMBSTONE_H_
+#ifndef KALDI_CHAIN_HMM_H_
+#define KALDI_CHAIN_HMM_H_
 
 #include <vector>
 #include <map>
@@ -235,4 +235,4 @@ private:
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CCTC_TRAINING_H_
+#endif  // KALDI_CHAIN_HMM_H_

@@ -18,8 +18,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_NNET3_NNET_SIMPLE_COMPUTER_H
-#define KALDI_NNET3_NNET_SIMPLE_COMPUTER_H
+#ifndef KALDI_NNET3_NNET_SIMPLE_COMPUTER_H_
+#define KALDI_NNET3_NNET_SIMPLE_COMPUTER_H_
 
 #include "base/kaldi-common.h"
 #include "nnet3/nnet-optimize.h"
@@ -187,4 +187,4 @@ class NnetSimpleComputer {
 } // namespace nnet3
 } // namespace kaldi
 
-#endif  // KALDI_NNET3_NNET_SIMPLE_COMPUTER_H
+#endif  // KALDI_NNET3_NNET_SIMPLE_COMPUTER_H_

@@ -272,5 +272,5 @@ private:
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CCTC_TRAINING_H_
+#endif  // KALDI_CTC_CCTC_TOMBSTONE_H_
 

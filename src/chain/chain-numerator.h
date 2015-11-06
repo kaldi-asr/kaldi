@@ -1,4 +1,4 @@
-// chain/chain-training.h
+// chain/chain-numerator.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CTC_CCTC_TRAINING_H_
-#define KALDI_CTC_CCTC_TRAINING_H_
+#ifndef KALDI_CHAIN_CHAIN_NUMERATOR_H_
+#define KALDI_CHAIN_CHAIN_NUMERATOR_H_
 
 #include <vector>
 #include <map>
@@ -31,10 +31,8 @@
 #include "tree/context-dep.h"
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
-#include "ctc/language-model.h"
-#include "ctc/cctc-transition-model.h"
-#include "ctc/cctc-supervision.h"
-#include "ctc/cctc-tombstone.h"
+#include "hmm/transition-model.h"
+#include "chain/chain-supervision.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
 
@@ -42,7 +40,8 @@ namespace kaldi {
 namespace ctc {
 
 // This class is responsible for the forward-backward of the 'supervision'
-// FST.
+// (numerator) FST.
+//
 // note: the supervision.weight is ignored by this class, you have to apply
 // it externally.
 // Because the supervision FSTs are quite skinny, i.e. have very few paths for
@@ -55,15 +54,17 @@ class SupervisionForwardBackward {
 
   /// Initialize the objcect.  Note: we expect the 'nnet_output' to have the
   /// same number of rows as supervision.num_frames * supervision.num_sequences,
-  /// but the ordering of the rows of 'nnet_output' is not the same as the
-  /// ordering of frames in paths in the 'supervision' object (which has all
-  /// frames of the 1st sequence first, then the 2nd sequence, and so on).
-  /// Instead, the frames in 'nnet_output' are ordered as: first the first
-  /// frame, ordered by sequence; then the second frame, ordered by sequence;
-  /// and so on.  This is more convenient both because the nnet3 code internally
-  /// orders them that way, and because this makes it easier to order things
-  /// in the way that class SingleHmmForwardBackward needs (we can just transpose,
-  /// instead of doing a 3d tensor rearrangement).
+  /// and the same number of columns as the 'label-dim' of the supervision
+  /// object (which will be the NumPdfs() of the transition model); but the
+  /// ordering of the rows of 'nnet_output' is not the same as the ordering of
+  /// frames in paths in the 'supervision' object (which has all frames of the
+  /// 1st sequence first, then the 2nd sequence, and so on).  Instead, the
+  /// frames in 'nnet_output' are ordered as: first the first frame of each
+  /// sequence, then the second frame of each sequence, and so on.  This is more
+  /// convenient both because the nnet3 code internally orders them that way,
+  /// and because this makes it easier to order things in the way that class
+  /// SingleHmmForwardBackward needs (we can just transpose, instead of doing a
+  /// 3d tensor rearrangement).
   SupervisionForwardBackward(const Supervision &supervision,
                              const CuMatrixBase<BaseFloat> &nnet_output);
 
@@ -215,5 +216,5 @@ class ChainCommonComputation {
 }  // namespace ctc
 }  // namespace kaldi
 
-#endif  // KALDI_CTC_CCTC_TRAINING_H_
+#endif  // KALDI_CHAIN_CHAIN_NUMERATOR_H_
 
