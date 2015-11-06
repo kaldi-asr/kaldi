@@ -47,20 +47,21 @@ dest_dir=$3
 # noise_files =<list of noise_wav_files>
 # impulse_files =<list of impulse_response_files>
 
+data_id=`basename $src_dir`
 if [ -z "$dest_wav_dir" ]; then
-  dest_wav_dir=$dest_dir/wavs
+  dest_wav_dir=$dest_dir/wavs_${data_id}
 fi
 
 dest_wav_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dest_wav_dir ${PWD}`
 
 if [ ! -z "$output_clean_dir" ]; then
-  [ -z "$output_clean_wav_dir" ] && output_clean_wav_dir=$output_clean_dir/wavs
+  [ -z "$output_clean_wav_dir" ] && output_clean_wav_dir=$output_clean_dir/wavs_${data_id}
   mkdir -p $output_clean_dir $output_clean_wav_dir
   output_clean_wav_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $output_clean_wav_dir ${PWD}`
 fi
 
 if [ ! -z "$output_noise_dir" ]; then
-  [ -z "$output_noise_wav_dir" ] && output_noise_wav_dir=$output_noise_dir/wavs
+  [ -z "$output_noise_wav_dir" ] && output_noise_wav_dir=$output_noise_dir/wavs_${data_id}
   mkdir -p $output_noise_wav_dir
   output_noise_wav_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $output_noise_wav_dir ${PWD}`
 fi
@@ -188,12 +189,22 @@ fi
 [ ! -s $impnoise_dir/info/impulse_files ] && echo "$0: $impnoise_dir/info/impulse_files contains no impulses" && exit 1
 [ ! -s $impnoise_dir/info/noise_files ] && echo "$0: $impnoise_dir/info/noise_files contains no noises" && exit 1
 
+sox -n -r 16000 -c 1 $tmp_dir/silence.wav trim 0.0 2.0
+
+cat $src_dir/wav.scp | \
+  awk -v sil=$tmp_dir/silence.wav '{
+if ($NF == 2) { 
+  print $1" cat "$2" | sox "sil" -t wav - "sil" -t wav - |"; 
+} else { 
+  print $0" sox "sil" -t wav - "sil" -t wav - |"; 
+} }' > $tmp_dir/src_wav.scp
+
 if [ $stage -le 3 ]; then
   python local/snr/corrupt_wavs.py \
     --snrs $snrs --signal-dbs $signal_dbs --random-seed $random_seed \
     --output-clean-wav-file-list $tmp_dir/clean_${random_seed}.list \
     --output-noise-wav-file-list $tmp_dir/noise_${random_seed}.list \
-    $src_dir/wav.scp $tmp_dir/corrupted_${random_seed}.list $impnoise_dir \
+    $tmp_dir/src_wav.scp $tmp_dir/corrupted_${random_seed}.list $impnoise_dir \
     $tmp_dir/corrupt_wav_commands.${random_seed}.list
 fi
 

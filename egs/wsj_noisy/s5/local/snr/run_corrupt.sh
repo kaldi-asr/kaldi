@@ -7,7 +7,7 @@ set -o pipefail
 
 num_data_reps=5
 data_dir=data/train_si284
-dest_wav_dir=wavs
+dest_wav_dir=wavs_si284
 nj=40
 stage=1
 corruption_stage=-10
@@ -19,9 +19,9 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le $num_data_reps ]; then
   corrupted_data_dirs=
-  for x in `seq $num_data_reps`; do
+  for x in `seq $stage $num_data_reps`; do
     cur_dest_dir=data/temp_`basename ${data_dir}`_$x
     output_clean_dir=data/temp_clean_`basename ${data_dir}`_$x
     output_noise_dir=data/temp_noise_`basename ${data_dir}`_$x
@@ -63,6 +63,7 @@ mfccdir=mfcc_hires
 #  utils/fix_data_dir.sh ${clean_data_dir}_hires
 #fi
 
+stage=$[stage - num_data_reps]
 if [ $stage -le 2 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
@@ -136,6 +137,8 @@ if [ $stage -le 6 ]; then
     compute-snr-targets --target-type="FbankMask" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${corrupted_data_dir}_fbank/split$nj/JOB/feats.scp \
+    ark:- \| \
+    copy-feats --compress=true ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
@@ -164,6 +167,8 @@ if [ $stage -le 7 ]; then
     compute-snr-targets --target-type="Irm" \
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
+    ark:- \| \
+    copy-feats --compress=true ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
@@ -193,6 +198,7 @@ if [ $stage -le 8 ]; then
     scp:${clean_data_dir}_fbank/split$nj/JOB/feats.scp \
     scp:${noise_data_dir}_fbank/split$nj/JOB/feats.scp \
     ark:- \| \
+    copy-feats --compress=true ark:- \
     ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp
 
   for n in `seq $nj`; do
