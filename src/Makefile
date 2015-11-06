@@ -6,13 +6,13 @@ SHELL := /bin/bash
 
 
 SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
-          fstext hmm lm decoder lat kws cudamatrix nnet segmenter \
+          fstext hmm lm decoder lat kws cudamatrix nnet segmenter decision-tree \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin segmenterbin
+          ivector ivectorbin online2 online2bin lmbin segmenterbin 
 
 MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
-          fstext hmm lm decoder lat nnet segmenter \
+          fstext hmm lm decoder lat nnet segmenter decision-tree \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin nnet3bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin segmenterbin
@@ -147,7 +147,7 @@ $(EXT_SUBDIRS) : mklibdir
 
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin latbin ivectorbin lmbin segmenterbin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector segmenter
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector segmenter decision-tree
 
 #2)The libraries have inter-dependencies
 base:
@@ -180,3 +180,4 @@ online: decoder gmm transform feat matrix util base lat hmm thread tree
 online2: decoder gmm transform feat matrix util base lat hmm thread ivector cudamatrix nnet2
 kws: base util hmm tree matrix lat
 kwsbin: fstext kws lat base util hmm tree matrix
+decision-tree: base util matrix

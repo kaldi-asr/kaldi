@@ -29,9 +29,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Sum statistics for phonetic-context tree building.\n"
-        "Usage:  sum-tree-stats [options] tree-accs-out tree-accs-in1 tree-accs-in2 ...\n"
+        "Usage:  sum-bool-vector-stats [options] tree-accs-out tree-accs-in1 tree-accs-in2 ...\n"
         "e.g.: \n"
-        " sum-tree-stats treeacc 1.treeacc 2.treeacc 3.treeacc\n";
+        " sum-bool-vector-stats treeacc 1.treeacc 2.treeacc 3.treeacc\n";
 
     ParseOptions po(usage);
     bool binary = true;
@@ -47,21 +47,23 @@ int main(int argc, char *argv[]) {
     BooleanTreeStats tree_stats;
     
     std::string tree_stats_wxfilename = po.GetArg(1);
-
-    // A reminder on what BuildTreeStatsType is:
-    // typedef std::vector<std::pair<EventType, Clusterable*> > BuildTreeStatsType;
     
     for (int32 arg = 2; arg <= po.NumArgs(); arg++) {
       std::string tree_stats_rxfilename = po.GetArg(arg);
-      BooleanTreeStats other_tree_stats;
-      ReadKaldiObject(tree_stats_rxfilename, &other_tree_stats);
-      tree_stats.AddStats(other_tree_stats);
+      {
+        bool binary_in;
+        Input ki(tree_stats_rxfilename, &binary_in);
+        tree_stats.Read(ki.Stream(), binary_in, true);
+      }
+      KALDI_VLOG(2) << "Summed accs from " << arg-1 << " files "
+                    << "( " << tree_stats.NumStats() << " individual stats)";
     }
 
     Output ko(tree_stats_wxfilename, binary);
     tree_stats.Write(ko.Stream(), binary);
 
-    KALDI_LOG << "Wrote summed accs ( " << tree_stats.NumStats() << " individual stats)";
+    KALDI_LOG << "Wrote summed accs ( " << tree_stats.NumStats() 
+              << " individual stats)";
     return (tree_stats.NumStats() != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
