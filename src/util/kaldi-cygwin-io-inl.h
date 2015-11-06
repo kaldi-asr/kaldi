@@ -23,6 +23,8 @@
 #error This is a Windows-compatibility file. Something went wery wrong.
 #endif
 
+#include <string>
+
 // This file is included only into kaldi-io.cc, and only if
 // KALDI_CYGWIN_COMPAT is enabled.
 //
