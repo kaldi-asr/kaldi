@@ -114,7 +114,7 @@ EOF
   fi 
 fi
 
-feats_opts="--feat-type raw"
+feats_opts=(--feat-type $feat_type)
 #if [ "$feat_type" == "sparse" ]; then
 #  if [ $stage -le 2 ]; then
 #    split_data.sh $datadir $nj
@@ -140,7 +140,9 @@ feats_opts="--feat-type raw"
 #  feats_opts="--feat-type $feat_type --feats-scp $feats_scp --sparse-input-dim $sparse_input_dim"
 #fi
 
-feats_opts="--feat-type $feat_type --quantization-bin-boundaries $quantization_bins"
+if [ "$feat_type" == "sparse" ]; then
+  feats_opts+=(--quantization-bin-boundaries "$quantization_bins")
+fi
 
 if [ $stage -le 3 ]; then
   case $method in
@@ -166,7 +168,7 @@ if [ $stage -le 3 ]; then
       steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
         --num-epochs $num_epochs --num-jobs-initial 1 --num-jobs-final 4 \
         --splice-indexes "$splice_indexes" --no-hidden-layers true --minibatch-size 512 \
-        --egs-dir "$egs_dir" $feats_opts \
+        --egs-dir "$egs_dir" "${feats_opts[@]}" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
         --max-param-change $max_param_change \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
@@ -184,7 +186,7 @@ if [ $stage -le 3 ]; then
       bash -x steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
         --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 14 \
         --splice-indexes "$splice_indexes" \
-        --egs-dir "$egs_dir" $feats_opts \
+        --egs-dir "$egs_dir" ${feats_opts[@]} \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
         --max-change-per-sample $max_change_per_sample \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
@@ -194,7 +196,7 @@ if [ $stage -le 3 ]; then
         --relu-dim $relu_dim \
         $datadir "$vad_scp" $dir || exit 1;
       ;;
-    default)
+    *)
       echo "Unknown method $method" 
       exit 1
   esac

@@ -198,7 +198,7 @@ if [ $stage -le -5 ]; then
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
   raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
 
-  input_dim=feat_dim
+  input_dim=$feat_dim
   if [ "$feat_type" == "sparse" ]; then
     num_bins=`echo $quantization_bin_boundaries | awk -F ':' '{print NF + 1}'` || exit 1
     input_dim=$[num_bins * feat_dim]
@@ -419,8 +419,10 @@ fi
 
 quantize_opts=
 if [ "$feat_type" == "sparse" ]; then
-  quantize_opts="nnet3-copy-egs --quantize-input=true --bin-boundaries=$quantization_bin_boundaries ark:- ark:- |"
+  quantize_opts=" nnet3-copy-egs --quantize-input=true --bin-boundaries=$quantization_bin_boundaries ark:- ark:- |"
 fi
+echo $quantization_bin_boundaries > $dir/quantization_bin_boundaries
+echo $feat_type > $dir/feat_type
 
 while [ $x -lt $num_iters ]; do
   [ $x -eq $exit_stage ] && echo "$0: Exiting early due to --exit-stage $exit_stage" && exit 0;
@@ -437,15 +439,15 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- | $quantize_opts" &
+            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |$quantize_opts" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- | $quantize_opts" &
+           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |$quantize_opts" &
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no "nnet3-copy $dir/$[$x-1].raw - |" "nnet3-copy $dir/$x.raw - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-| $quantize_opts" '&&' \
+        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|$quantize_opts" '&&' \
         nnet3-info "nnet3-copy $dir/$x.raw - |" &
     fi
 
@@ -496,7 +498,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- | $quantize_opts" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |$quantize_opts" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -560,7 +562,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-| $quantize_opts" \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|$quantize_opts" \
     $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -568,10 +570,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- | $quantize_opts" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |$quantize_opts" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- | $quantize_opts" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |$quantize_opts" &
 fi
 
 sleep 2
