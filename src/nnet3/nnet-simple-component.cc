@@ -795,18 +795,6 @@ Component *AffineComponent::CollapseWithNext(
   return ans;
 }
 
-Component *AffineComponent::CollapseWithNext(
-    const PerElementScaleComponent &next_component) const {
-  KALDI_ASSERT(this->OutputDim() == next_component.InputDim());
-  AffineComponent *ans =
-      dynamic_cast<AffineComponent*>(this->Copy());
-  KALDI_ASSERT(ans != NULL);
-  ans->linear_params_.MulRowsVec(next_component.scales_);
-  ans->bias_params_.MulElements(next_component.scales_);
-
-  return ans;
-}
-
 Component *AffineComponent::CollapseWithPrevious(
     const FixedAffineComponent &prev_component) const {
   // If at least one was non-updatable, make the whole non-updatable.
@@ -827,11 +815,6 @@ Component *AffineComponent::CollapseWithPrevious(
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
   scales_.Scale(scale);
-}
-
-void PerElementScaleComponent::Resize(int32 dim) {
-  KALDI_ASSERT(dim > 0);
-  scales_.Resize(dim);
 }
 
 void PerElementScaleComponent::Add(BaseFloat alpha,
@@ -856,17 +839,21 @@ void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
 }
 
 void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
-  CuVector<BaseFloat> temp_scales(scales_);
+  CuVector<BaseFloat> temp_scales(scales_.Dim(), kUndefined);
   temp_scales.SetRandn();
   scales_.AddVec(stddev, temp_scales);
 }
 
 std::string PerElementScaleComponent::Info() const {
   std::stringstream stream;
+  BaseFloat scales_mean = scales_.Sum() / scales_.Dim();
   BaseFloat scales_stddev = std::sqrt(VecVec(scales_, scales_) /
                               scales_.Dim());
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
+         << ", scales-min=" << scales_.Min()
+         << ", scales-max=" << scales_.Max()
+         << ", scales-mean=" << scales_mean
          << ", scales-stddev=" << scales_stddev
          << ", learning-rate=" << LearningRate();
   return stream.str();
@@ -891,37 +878,35 @@ void PerElementScaleComponent::Init(
     BaseFloat learning_rate, int32 dim,
     BaseFloat param_mean, BaseFloat param_stddev) {
   UpdatableComponent::Init(learning_rate);
-  scales_.Resize(dim);
   KALDI_ASSERT(dim > 0 && param_stddev >= 0.0);
+  scales_.Resize(dim);
   scales_.SetRandn();
   scales_.Scale(param_stddev);
   scales_.Add(param_mean);
 }
 
 void PerElementScaleComponent::Init(BaseFloat learning_rate,
-                                    std::string matrix_filename) {
+                                    std::string vector_filename) {
   UpdatableComponent::Init(learning_rate);
-  CuMatrix<BaseFloat> mat;
-  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
-  KALDI_ASSERT(mat.NumCols() == 1);
-  int32 dim = mat.NumRows();
-  scales_.Resize(dim);
-  scales_.CopyColFromMat(mat, 0);
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(vector_filename, &vec); // will abort on failure.
+  scales_.Resize(vec.Dim());
+  scales_.CopyFromVec(vec);
 }
 
 void PerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
-  bool ok = true;
   BaseFloat learning_rate = learning_rate_;
-  std::string matrix_filename;
+  std::string vector_filename;
   int32 dim = -1;
   cfl->GetValue("learning-rate", &learning_rate); // optional.
-  if (cfl->GetValue("matrix", &matrix_filename)) {
-    Init(learning_rate, matrix_filename);
+  if (cfl->GetValue("vector", &vector_filename)) {
+    Init(learning_rate, vector_filename);
     if (cfl->GetValue("dim", &dim))
       KALDI_ASSERT(dim == InputDim() &&
-                   "input-dim mismatch vs. matrix.");
+                   "input-dim mismatch vs. vector.");
   } else {
-    ok = ok && cfl->GetValue("dim", &dim);
+    if(!cfl->GetValue("dim", &dim))
+      KALDI_ERR << "'dim' not provided in the config line.";
     BaseFloat param_mean = 1.0, param_stddev = 0.0;
     cfl->GetValue("param-mean", &param_mean);
     cfl->GetValue("param-stddev", &param_stddev);
@@ -930,8 +915,6 @@ void PerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
-  if (!ok)
-    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
 void PerElementScaleComponent::Propagate(
@@ -1010,6 +993,176 @@ void PerElementScaleComponent::UnVectorize(
     const VectorBase<BaseFloat> &params) {
   scales_.CopyFromVec(params);
 }
+
+void PerElementOffsetComponent::Scale(BaseFloat scale) {
+  offsets_.Scale(scale);
+}
+
+
+void PerElementOffsetComponent::Add(BaseFloat alpha,
+                                   const Component &other_in) {
+  const PerElementOffsetComponent *other =
+      dynamic_cast<const PerElementOffsetComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  offsets_.AddVec(alpha, other->offsets_);
+}
+
+PerElementOffsetComponent::PerElementOffsetComponent(
+    const PerElementOffsetComponent &component):
+    UpdatableComponent(component),
+    offsets_(component.offsets_) { }
+
+void PerElementOffsetComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  offsets_.SetZero();
+}
+
+void PerElementOffsetComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp_offsets(offsets_.Dim(), kUndefined);
+  temp_offsets.SetRandn();
+  offsets_.AddVec(stddev, temp_offsets);
+}
+
+std::string PerElementOffsetComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat offsets_mean = offsets_.Sum() / offsets_.Dim();
+  BaseFloat offsets_stddev = std::sqrt(VecVec(offsets_, offsets_) /
+                              offsets_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", offsets-min=" << offsets_.Min()
+         << ", offsets-max=" << offsets_.Max()
+         << ", offsets-mean=" << offsets_mean
+         << ", offsets-stddev=" << offsets_stddev
+         << ", learning-rate=" << LearningRate();
+  return stream.str();
+}
+
+Component* PerElementOffsetComponent::Copy() const {
+  PerElementOffsetComponent *ans = new PerElementOffsetComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->offsets_ = offsets_;
+  ans->is_gradient_ = is_gradient_;
+  return ans;
+}
+
+BaseFloat PerElementOffsetComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  const PerElementOffsetComponent *other =
+      dynamic_cast<const PerElementOffsetComponent*>(&other_in);
+  return VecVec(offsets_, other->offsets_);
+}
+
+void PerElementOffsetComponent::Init(
+    BaseFloat learning_rate, int32 dim,
+    BaseFloat param_mean, BaseFloat param_stddev) {
+  UpdatableComponent::Init(learning_rate);
+  KALDI_ASSERT(dim > 0 && param_stddev >= 0.0);
+  offsets_.Resize(dim);
+  offsets_.SetRandn();
+  offsets_.Scale(param_stddev);
+  offsets_.Add(param_mean);
+}
+
+void PerElementOffsetComponent::Init(BaseFloat learning_rate,
+                                    std::string vector_filename) {
+  UpdatableComponent::Init(learning_rate);
+  CuVector<BaseFloat> vec;
+  ReadKaldiObject(vector_filename, &vec); // will abort on failure.
+  offsets_.Resize(vec.Dim());
+  offsets_.CopyFromVec(vec);
+}
+
+void PerElementOffsetComponent::InitFromConfig(ConfigLine *cfl) {
+  BaseFloat learning_rate = learning_rate_;
+  std::string vector_filename;
+  int32 dim = -1;
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  if (cfl->GetValue("vector", &vector_filename)) {
+    Init(learning_rate, vector_filename);
+    if (cfl->GetValue("dim", &dim))
+      KALDI_ASSERT(dim == InputDim() &&
+                   "input-dim mismatch vs. vector.");
+  } else {
+    if(!cfl->GetValue("dim", &dim))
+      KALDI_ERR << "'dim' not provided in the config line.";
+    BaseFloat param_mean = 0.0, param_stddev = 0.0;
+    cfl->GetValue("param-mean", &param_mean);
+    cfl->GetValue("param-stddev", &param_stddev);
+    Init(learning_rate, dim, param_mean, param_stddev);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+}
+
+void PerElementOffsetComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);
+  out->AddVecToRows(1.0, offsets_);
+}
+
+void PerElementOffsetComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  PerElementOffsetComponent *to_update =
+      dynamic_cast<PerElementOffsetComponent*>(to_update_in);
+
+  if (in_deriv) {
+    // Propagate the derivative back to the input.
+    in_deriv->CopyFromMat(out_deriv);
+  }
+
+  if (to_update != NULL)
+    to_update->offsets_.AddRowSumMat(to_update->learning_rate_, out_deriv);
+}
+
+void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
+  // might not see the begin marker part because of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "<PerElementOffsetComponent>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<Offsets>");
+  offsets_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</PerElementOffsetComponent>");
+}
+
+void PerElementOffsetComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<PerElementOffsetComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<Offsets>");
+  offsets_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</PerElementOffsetComponent>");
+}
+
+int32 PerElementOffsetComponent::NumParameters() const {
+  return InputDim();
+}
+
+void PerElementOffsetComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->CopyFromVec(offsets_);
+}
+
+void PerElementOffsetComponent::UnVectorize(
+    const VectorBase<BaseFloat> &params) {
+  offsets_.CopyFromVec(params);
+}
+
+
 
 NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0),
   update_count_(0.0), active_scaling_count_(0.0), max_change_scale_stats_(0.0) { }
@@ -2635,6 +2788,19 @@ int32 ConvolutionComponent::NumParameters() const {
   return (filter_params_.NumCols() + 1) * filter_params_.NumRows();
 }
 
+void ConvolutionComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  int32 num_filter_params = filter_params_.NumCols() * filter_params_.NumRows();
+  params->Range(0, num_filter_params).CopyRowsFromMat(filter_params_);
+  params->Range(num_filter_params, bias_params_.Dim()).CopyFromVec(bias_params_);
+}
+void ConvolutionComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  int32 num_filter_params = filter_params_.NumCols() * filter_params_.NumRows();
+  filter_params_.CopyRowsFromVec(params.Range(0, num_filter_params));
+  bias_params_.CopyFromVec(params.Range(num_filter_params, bias_params_.Dim()));
+}
+
 Convolutional1dComponent::Convolutional1dComponent():
     UpdatableComponent(),
     patch_dim_(0), patch_step_(0), patch_stride_(0), is_gradient_(false) {}
@@ -3226,6 +3392,19 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
   //
   filter_params_.AddMat(learning_rate_, filters_grad);
   bias_params_.AddVec(learning_rate_, bias_grad);
+}
+
+void Convolutional1dComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  int32 num_filter_params = filter_params_.NumCols() * filter_params_.NumRows();
+  params->Range(0, num_filter_params).CopyRowsFromMat(filter_params_);
+  params->Range(num_filter_params, bias_params_.Dim()).CopyFromVec(bias_params_);
+}
+void Convolutional1dComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  int32 num_filter_params = filter_params_.NumCols() * filter_params_.NumRows();
+  filter_params_.CopyRowsFromVec(params.Range(0, num_filter_params));
+  bias_params_.CopyFromVec(params.Range(num_filter_params, bias_params_.Dim()));
 }
 
 void MaxpoolingComponent::Init(int32 input_dim, int32 output_dim,
