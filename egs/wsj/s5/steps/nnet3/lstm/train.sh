@@ -75,11 +75,11 @@ num_bptt_steps=    # this variable counts the number of time steps to back-propa
 
 
 # nnet3-train options
-shrink=0.98  # this parameter would be used to scale the parameter matrices
+shrink=0.99  # this parameter would be used to scale the parameter matrices
 shrink_threshold=0.15  # a value less than 0.25 that we compare the mean of
                        # 'deriv-avg' for sigmoid components with, and if it's
                        # less, we shrink.
-max_param_change=1.0  # max param change per minibatch
+max_param_change=2.0  # max param change per minibatch
 num_chunk_per_minibatch=100  # number of sequences to be processed in parallel every mini-batch
 
 samples_per_iter=20000 # this is really the number of egs in each archive.  Each eg has
@@ -182,7 +182,7 @@ if [ $# != 4 ]; then
   echo "  --num-chunks-per-minibatch <minibatch-size|100>  # Number of sequences to be processed in parallel in a minibatch"
   echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
   echo "                                                   # the number of frames processed per iteration"
-  echo "  --shrink <shrink|0.98>                           # if non-zero this parameter will be used to scale the parameter matrices"
+  echo "  --shrink <shrink|0.99>                           # if non-zero this parameter will be used to scale the parameter matrices"
   echo "  --shrink-threshold <threshold|0.15>             # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
   echo " for more options see the script"
@@ -591,7 +591,7 @@ while [ $x -lt $num_iters ]; do
           nnet3-train $parallel_train_opts --print-interval=10 --momentum=$momentum \
           --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time "$raw" \
-          "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false ark:- ark:- |" \
+          "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -685,7 +685,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs  ark:- ark:- \| \
+    nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
       "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

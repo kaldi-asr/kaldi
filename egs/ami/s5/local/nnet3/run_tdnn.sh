@@ -65,7 +65,7 @@ if [ $stage -le 8 ]; then
     --feat-type raw \
     --online-ivector-dir exp/$mic/nnet3/ivectors_${train_set}_hires \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --egs-dir "$common_egs_dir" \
     --initial-effective-lrate 0.0015 --final-effective-lrate 0.00015 \
     --cmd "$decode_cmd" \

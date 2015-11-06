@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2014  Guoguo Chen
+//                2015  Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -82,8 +83,8 @@ namespace fst {
     The function will return false if partial FST is generated, and true if the
     complete determinized FST is generated.
 */
-template<class Arc>
-bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
+template<class F>
+bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta = kDelta,
                      bool *debug_ptr = NULL,
                      int max_states = -1,
@@ -102,8 +103,8 @@ bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<Arc> *ofst,
     The function will return false if partial FST is generated, and true if the
     complete determinized FST is generated.
 */
-template<class Arc>
-bool DeterminizeStar(Fst<Arc> &ifst, MutableFst<GallicArc<Arc> > *ofst,
+template<class F>
+bool DeterminizeStar(F &ifst, MutableFst<GallicArc<typename F::Arc> > *ofst,
                      float delta = kDelta, bool *debug_ptr = NULL,
                      int max_states = -1,
                      bool allow_partial = false);

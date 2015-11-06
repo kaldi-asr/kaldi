@@ -137,7 +137,7 @@ class RemoveEpsLocalClass {
 
 
   void Reweight(StateId s, size_t pos, Weight reweight) {
-    // Reweight is called from RemoveEpsPatter1; it is a step we
+    // Reweight is called from RemoveEpsPattern1; it is a step we
     // do to preserve stochasticity.  This function multiplies the
     // arc at (s, pos) by reweight and divides all the arcs [+final-prob]
     // out of the next state by the same.  This is only valid if
@@ -313,7 +313,7 @@ void RemoveEpsLocal(MutableFst<Arc> *fst) {
 
 void RemoveEpsLocalSpecial(MutableFst<StdArc> *fst) {
   // work gets done in initializer.
-  RemoveEpsLocalClass<StdArc, ReweightPlusLogArc> c(fst);  
+  RemoveEpsLocalClass<StdArc, ReweightPlusLogArc> c(fst);
 }
 
 } // end namespace fst.

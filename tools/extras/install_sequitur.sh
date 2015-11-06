@@ -81,11 +81,11 @@ cd ../
     echo >&2 "SEQUITUR config is already in env.sh" && exit
 
   wd=`pwd`
-  wd=`readlink -f $wd`
+  wd=`readlink -f $wd || pwd`
 
   echo "export SEQUITUR=$wd/sequitur-g2p"
   echo "export PATH=\$PATH:\${SEQUITUR}/bin"
-  echo "_site_packages=\`readlink -f \${SEQUITUR}/lib/python*/site-packages\`"
+  echo "_site_packages=\`find \${SEQUITUR}/lib -type d -regex '.*python.*/site-packages'\`"
   echo "export PYTHONPATH=\$PYTHONPATH:\$_site_packages"
 ) >> env.sh
 

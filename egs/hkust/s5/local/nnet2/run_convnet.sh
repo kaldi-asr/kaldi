@@ -49,7 +49,7 @@ fi
       --num-threads 1 --minibatch-size 512 \
       --mix-up 20000 --samples-per-iter 300000 \
       --num-epochs 15 --delta-order 2 \
-      --initial-effective-lrate 0.0005 --final-effective-lrate 0.000025 \
+      --initial-effective-lrate 0.0001 --final-effective-lrate 0.00001 \
       --num-jobs-initial 3 --num-jobs-final 8 --splice-width 5 \
       --hidden-dim 2000 --num-filters1 128 --patch-dim1 7 --pool-size 3 \
       --num-filters2 256 --patch-dim2 4 \

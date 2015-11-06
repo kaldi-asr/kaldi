@@ -1,6 +1,16 @@
 
 To install the most important prerequisites for Kaldi:
 
+ first do
+
+  extras/check_dependencies.sh
+
+to see if there are any system-level installations or modifications you need to do.
+Check the output carefully: there are some things that will make your life a lot
+easier if you fix them at this stage.
+
+Then run
+
   make
 
 If you have multiple CPUs and want to speed things up, you can do a parallel

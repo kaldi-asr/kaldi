@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     }
     RandomAccessBaseFloatReader utt_weights_reader;
     if (utt_weights != "") {
-      weights_reader.Open(utt_weights);
+      utt_weights_reader.Open(utt_weights);
     }
 
     RandomizerMask randomizer_mask(rnd_opts);

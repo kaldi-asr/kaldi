@@ -67,11 +67,23 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   CuMatrix<BaseFloat> input_data(num_rows, input_dim),
       output_data1(num_rows, output_dim),
-      output_data2(num_rows, output_dim);
+      output_data2(num_rows, output_dim),
+      output_data3(input_data);
   output_data2.Add(1.0);
+
+  if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
+    KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
+  }
 
   c.Propagate(NULL, input_data, &output_data1);
   c.Propagate(NULL, input_data, &output_data2);
+  if (properties & kPropagateInPlace) {
+    c.Propagate(NULL, output_data3, &output_data3);
+    if (!output_data1.ApproxEqual(output_data3)) {
+      KALDI_ERR << "Test of kPropagateInPlace flag for component of type "
+                << c.Type() << " failed.";
+    }
+  }
   if (properties & kPropagateAdds)
     output_data2.Add(-1.0); // remove the offset
   AssertEqual(output_data1, output_data2);
@@ -107,6 +119,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
                c_copy,
                &input_deriv3);
   }
+
   if (properties & kBackpropAdds)
     input_deriv2.Add(-1.0);  // subtract the offset.
   AssertEqual(input_deriv1, input_deriv2);
@@ -265,8 +278,9 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 100; n++) {
+  for (int32 n = 0; n < 100; n++)  {
     Component *c = GenerateRandomSimpleComponent();
+    KALDI_LOG << c->Info();
     TestNnetComponentIo(c);
     TestNnetComponentCopy(c);
     TestNnetComponentAddScale(c);
@@ -287,6 +301,7 @@ void UnitTestNnetComponent() {
         !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-06, true))
       KALDI_ERR << "Component model-derivative test failed";
+
     delete c;
   }
 }
