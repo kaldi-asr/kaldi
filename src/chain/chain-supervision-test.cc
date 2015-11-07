@@ -58,6 +58,13 @@ void TestSupervisionNumerator(const Supervision &supervision) {
   NumeratorComputation num(supervision, nnet_output);
 
   // Test that derivs are accurate.
+
+  if (RandInt(0, 1) == 0) {
+    std::vector<std::vector<int32> > allowed_initial_symbols,
+        allowed_final_symbols;
+    num.GetAllowedInitialAndFinalSymbols(&allowed_initial_symbols,
+                                         &allowed_final_symbols);
+  }
   BaseFloat forward_prob = num.Forward();
 
   CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
@@ -83,7 +90,7 @@ void TestSupervisionNumerator(const Supervision &supervision) {
             << predicted_objf_changes;
   KALDI_LOG << "Measured objf changes are: "
             << measured_objf_changes;
-  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.025));
+  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
 
   {
     CuVector<BaseFloat> rand(nnet_output.NumRows());

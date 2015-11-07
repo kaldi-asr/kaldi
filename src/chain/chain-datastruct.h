@@ -1,4 +1,4 @@
-// chain/hmm-datastruct.h
+// chain/chain-datastruct.h
 
 // Copyright 2015    Johns Hopkins University (author: Daniel Povey)
 
@@ -17,9 +17,8 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
-#ifndef KALDI_CHAIN_HMM_DATASTRUCT_H_
-#define KALDI_CHAIN_HMM_DATASTRUCT_H_
+#ifndef KALDI_CHAIN_CHAIN_DATASTRUCT_H_
+#define KALDI_CHAIN_CHAIN_DATASTRUCT_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK, and int32_cuda
 
 /**
@@ -38,10 +37,9 @@ extern "C" {
   typedef float   BaseFloat;
 #endif
 
-  struct HmmTransition {
+  struct DenominatorGraphTransition {
     BaseFloat transition_prob;  // language-model part of the probability.
-    int32_cuda output_index;  // nnet output index (== output-label - 1): which
-                              // index we look up the 'emission probability' in.
+    int32_cuda pdf_id;
   };
 
 

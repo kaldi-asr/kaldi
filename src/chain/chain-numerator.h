@@ -39,6 +39,7 @@
 namespace kaldi {
 namespace chain {
 
+
 // This class is responsible for the forward-backward of the 'supervision'
 // (numerator) FST.
 //
@@ -69,6 +70,16 @@ class NumeratorComputation {
                        const CuMatrixBase<BaseFloat> &nnet_output);
 
   // TODO: we could enable a Viterbi mode.
+
+  // this function, if called, must be called before Forward().  It computes
+  // vectors, indexed by sequence, containing lists of pdf-ids that may appear
+  // on the first and last frame of each sequence.  This will later be used as a
+  // constraint on the denominator-graph computation (it's intended to more
+  // approximate full-utterance training while training on split-up fixed-length
+  // pieces).
+  void GetAllowedInitialAndFinalSymbols(
+      std::vector<std::vector<int32> > *initial_pdf_ids,
+      std::vector<std::vector<int32> > *final_pdf_ids);
 
   // Does the forward computation.  Returns the total log-prob.
   BaseFloat Forward();
@@ -116,9 +127,12 @@ class NumeratorComputation {
   // The log-beta value (backward probability) for each state in the lattice
   Vector<double> log_beta_;
 
-  // This function, called from Forward(), creates fst_output_indexes_ and
-  // nnet_output_indexes_.
-  void ComputeLookupIndexes();
+  // This function, called from GetAllowedInitialAndFinalSymbols() or from
+  // Forward(), creates fst_output_indexes_ and nnet_output_indexes_.
+  // initial_pdf_ids and final_pdf_ids may be NULL;
+  // they are only non-NULL if called from GetAllowedInitialAndFinalSymbols().
+  void ComputeLookupIndexes(std::vector<std::vector<int32> > *initial_pdf_ids,
+                            std::vector<std::vector<int32> > *final_pdf_ids);
 
   // Computes derivatives (called from Backward()).
   void ComputeDerivatives(CuMatrixBase<BaseFloat> *nnet_output_deriv);
@@ -132,6 +146,18 @@ class NumeratorComputation {
   }
 
 };
+
+
+// This function is called from
+// NumeratorComputation::GetAllowedInitialAndFinalSymbols().
+// we do it like that instead of a separate function, so we don't
+// have to compute the FST state times twice.
+void ComputeAllowedInitialAndFinalSymbols(
+    const Supervision &supervision,
+    const std::vector<int32> &fst_state_times,
+    std::vector<std::vector<int32> > *initial_symbols,
+    std::vector<std::vector<int32> > *final_symbols);
+
 
 
 }  // namespace chain

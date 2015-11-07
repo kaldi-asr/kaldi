@@ -36,9 +36,18 @@ NumeratorComputation::NumeratorComputation(
 }
 
 
-void NumeratorComputation::ComputeLookupIndexes() {
+void NumeratorComputation::ComputeLookupIndexes(
+    std::vector<std::vector<int32> > *initial_pdf_ids,
+    std::vector<std::vector<int32> > *final_pdf_ids) {
   std::vector<int32> fst_state_times;
   ComputeFstStateTimes(supervision_.fst, &fst_state_times);
+
+  if (initial_pdf_ids)
+    ComputeAllowedInitialAndFinalSymbols(supervision_,
+                                         fst_state_times,
+                                         initial_pdf_ids,
+                                         final_pdf_ids);
+
 
   int32 num_states = supervision_.fst.NumStates();
   int32 num_arcs_guess = num_states * 2;
@@ -105,8 +114,20 @@ void NumeratorComputation::ComputeLookupIndexes() {
   KALDI_ASSERT(!fst_output_indexes_.empty());
 }
 
+void NumeratorComputation::GetAllowedInitialAndFinalSymbols(
+    std::vector<std::vector<int32> > *initial_pdf_ids,
+    std::vector<std::vector<int32> > *final_pdf_ids) {
+  KALDI_ASSERT(fst_output_indexes_.empty());  // or functions called in wrong
+                                              // order.
+  ComputeLookupIndexes(initial_pdf_ids, final_pdf_ids);
+}
+
+
 BaseFloat NumeratorComputation::Forward() {
-  ComputeLookupIndexes();
+  if (fst_output_indexes_.empty()) {
+    // if we haven't called this via GetAllowedInitialAndFinalSymbols()
+    ComputeLookupIndexes(NULL, NULL);
+  }
   nnet_logprobs_.Resize(nnet_output_indexes_.Dim(), kUndefined);
   nnet_output_.Lookup(nnet_output_indexes_, nnet_logprobs_.Data());
   const fst::StdVectorFst &fst = supervision_.fst;
@@ -200,6 +221,45 @@ void NumeratorComputation::Backward(
   nnet_logprob_deriv_cuda.Swap(&nnet_logprob_derivs_);
   nnet_output_deriv->AddElements(1.0, nnet_output_indexes_,
                                  nnet_logprob_deriv_cuda.Data());
+}
+
+
+void ComputeAllowedInitialAndFinalSymbols(
+    const Supervision &supervision,
+    const std::vector<int32> &fst_state_times,
+    std::vector<std::vector<int32> > *initial_symbols,
+    std::vector<std::vector<int32> > *final_symbols) {
+  int32 frames_per_sequence = supervision.frames_per_sequence,
+      num_sequences = supervision.num_sequences,
+      num_states = fst_state_times.size();
+  initial_symbols->clear();
+  initial_symbols->resize(num_sequences);
+  final_symbols->clear();
+  final_symbols->resize(num_sequences);
+  for (int32 s = 0; s < num_states; s++) {
+    int32 t = fst_state_times[s],
+        sequence = t / frames_per_sequence,
+        frame = t % frames_per_sequence;
+    fst::vector<int32> *target;
+    if (frame == 0) {
+      target = &((*initial_symbols)[sequence]);
+    } else if (frame == frames_per_sequence - 1) {
+      target = &((*final_symbols)[sequence]);
+    } else {
+      continue;
+    }
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision.fst, s);
+         !aiter.Done(); aiter.Next()) {
+      int32 pdf_id = aiter.Value().ilabel - 1;
+      target->push_back(pdf_id);
+    }
+  }
+  for (int32 seq = 0; seq < num_sequences; seq++) {
+    KALDI_ASSERT(!(*initial_symbols)[seq].empty() &&
+                 !(*final_symbols)[seq].empty());
+    SortAndUniq(&((*initial_symbols)[seq]));
+    SortAndUniq(&((*final_symbols)[seq]));
+  }
 }
 
 
