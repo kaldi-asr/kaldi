@@ -1061,6 +1061,29 @@ void CuMatrixBase<Real>::AddMatMat(
 }
 
 
+template<typename Real>
+void CuMatrixBase<Real>::AddVecVec(
+    Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y) {
+
+    MatrixIndexT m = y.Dim();
+    MatrixIndexT n = x.Dim();
+    KALDI_ASSERT(m == NumCols());
+    KALDI_ASSERT(n == NumRows());
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    CU_SAFE_CALL(cublas_ger(GetCublasHandle(), m, n, alpha,
+                 y.Data(), 1, x.Data(), 1, data_, Stride()));
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().AddVecVec(alpha, x.Vec(), y.Vec());
+  }
+}
+
 
 template<typename Real>
 void CuMatrixBase<Real>::SymAddMat2(
