@@ -20,14 +20,12 @@
 #include "chain/chain-supervision.h"
 #include "lat/lattice-functions.h"
 #include "util/text-utils.h"
-#include "ctc/cctc-graph.h"
 #include "hmm/hmm-utils.h"
 #include <numeric>
 
 namespace kaldi {
-namespace ctc {
+namespace chain {
 
-// Note: testing code for these functions is in cctc-transition-model-test.cc
 void ProtoSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<ProtoSupervision>");
   if (!binary) os << "\n";
@@ -707,5 +705,5 @@ void Supervision::Check(const TransitionModel &trans_mdl) const {
 
 
 
-}  // namespace ctc
+}  // namespace chain
 }  // namespace kaldi

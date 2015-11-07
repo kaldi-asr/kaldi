@@ -8,7 +8,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = chain-supervision-test
 
-OBJFILES = chain-supervision.o
+OBJFILES = chain-supervision.o chain-numerator.o
 
 LIBNAME = kaldi-chain
 

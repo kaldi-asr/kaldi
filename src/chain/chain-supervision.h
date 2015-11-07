@@ -32,7 +32,7 @@
 #include "hmm/transition-model.h"
 
 namespace kaldi {
-namespace ctc {
+namespace chain {
 
 /*
   This file contains some declarations relating to the object we use to
@@ -364,7 +364,7 @@ typedef TableWriter<KaldiObjectHolder<Supervision> > SupervisionWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Supervision> > SequentialSupervisionReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Supervision> > RandomAccessSupervisionReader;
 
-}  // namespace ctc
+}  // namespace chain
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_SUPERVISION_H_
