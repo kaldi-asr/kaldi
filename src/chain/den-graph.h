@@ -32,6 +32,7 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "chain/chain-datastruct.h"
+#include "hmm/transition-model.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 #include "cudamatrix/cu-array.h"
@@ -54,7 +55,10 @@ class DenominatorGraph {
 
   int32 NumStates();
 
-  DenominatorGraph(const fst::StdVectorFst> &fst);
+  // Initialize from epsilon-free acceptor FST with pdf-ids plus one as the
+  // labels.  'num_pdfs' is only needeed for checking.
+  DenominatorGraph(const fst::StdVectorFst &fst,
+                   int32 num_pdfs);
 
   // returns the pointer to the forward-transitions array, indexed by hmm-state,
   // which will be on the GPU if we're using a GPU.
@@ -67,13 +71,14 @@ class DenominatorGraph {
   // returns the array to the actual transitions (this is indexed by the ranges
   // returned from the ForwardTransitions and BackwardTransitions arrays).  The
   // memory will be GPU memory if we are using a GPU.
-  const GraphTransition *Transitions() const;
+  const DenominatorGraphTransition *Transitions() const;
 
   // returns the initial-probs of the HMM-states... note, these initial-probs
-  // don't mean initial at the start of the file, because we usually train
-  // on pieces of a file.  They are approximate initial-probs obtained
-  // by running the HMM for a fixed number of iters from a flat start.  The
-  // exact values won't be very critical.
+  // don't mean initial at the start of the file, because we usually train on
+  // pieces of a file.  They are approximate initial-probs obtained by running
+  // the HMM for a fixed number of time-steps (e.g. 100) and averaging the
+  // posteriors over those time-steps.  The exact values won't be very critical.
+  // Note: we renormalize each HMM-state to sum to one before doing this.
   const CuVector<BaseFloat> &InitialProbs() const;
 
   // returns the index of the HMM-state that has the highest value in
@@ -82,9 +87,20 @@ class DenominatorGraph {
   // It's used in getting the 'arbitrary_scale' value to keep the alphas
   // in a good dynamic range.
   int32 SpecialHmmState() const { return special_hmm_state_; }
+
+  // This function outputs a modifified version of the FST that was used to
+  // build this object, that has an initial-state with epsilon transitions to
+  // each state, with weight determined by initial_probs_.  This is used in
+  // computing the 'penalty_logprob' of the Supervision objects, to ensure that
+  // the objective function is never positive, which makes it more easily
+  // interpretable.  'ifst' must be the same FST that was provided to the
+  // constructor of this object.  [note: ifst and ofst may be the same object.]
+  void GetNormalizationGraph(const fst::StdVectorFst &ifst,
+                             fst::StdVectorFst *ofst);
+
  private:
   // functions called from the constructor
-  void SetTransitions(const fst::StdVectorFst> &fst);
+  void SetTransitions(const fst::StdVectorFst &fst, int32 num_pfds);
 
   // work out the initial-probs and the 'special state'
   // Note, there are no final-probs; we treat all states as final
@@ -94,7 +110,14 @@ class DenominatorGraph {
   // appear at arbitrary points in the sequence.
   // At both beginning and end of the chunk, we limit ourselves to
   // only those pdf-ids that were allowed in the numerator sequence.
-  void SetInitialProbs(const fst::StdVectorFst> &fst);
+  void SetInitialProbs(const fst::StdVectorFst &fst);
+
+  // return a suitable 'special' HMM-state used for normalizing probabilities in
+  // the forward-backward.  It has to have a reasonably high probability and be
+  // reachable from most of the graph.  returns a suitable state-index
+  // that we can set special_hmm_state_ to.
+  int32 ComputeSpecialState(const fst::StdVectorFst &fst,
+                            const Vector<BaseFloat> &initial_probs);
 
   // forward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
@@ -124,7 +147,32 @@ class DenominatorGraph {
   int32 special_hmm_state_;
 };
 
+// returns the number of states from which there is a path to
+// 'dest_state'.  Utility function used in selecting 'special' state
+// for normalization of probabilities.
+int32 NumStatesThatCanReach(const fst::StdVectorFst &fst,
+                            int32 dest_state);
 
+
+// Function that does acceptor minimization without weight pushing...
+// this is useful when constructing the denominator graph.
+void MinimizeAcceptorNoPush(fst::StdVectorFst *fst);
+
+// Utility function used while building the graph.  Converts
+// transition-ids to pdf-ids plus one.  Assumes 'fst'
+// is an acceptor, but does not check this (only looks at its
+// ilabels).
+void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
+                           fst::StdVectorFst *fst);
+
+// Starting from an acceptor on phones that represents some kind of compiled
+// language model (with no disambiguation symbols), this funtion creates the
+// denominator-graph.  Note: there is similar code in chain-supervision.cc, when
+// creating the supervision graph.
+void CreateDenominatorGraph(const ContextDependency &ctx_dep,
+                            const TransitionModel &trans_model,
+                            const fst::StdVectorFst &phone_lm,
+                            fst::StdVectorFst *den_graph);
 
 
 }  // namespace chain

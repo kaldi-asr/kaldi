@@ -240,7 +240,7 @@ void ComputeAllowedInitialAndFinalSymbols(
     int32 t = fst_state_times[s],
         sequence = t / frames_per_sequence,
         frame = t % frames_per_sequence;
-    fst::vector<int32> *target;
+    std::vector<int32> *target;
     if (frame == 0) {
       target = &((*initial_symbols)[sequence]);
     } else if (frame == frames_per_sequence - 1) {

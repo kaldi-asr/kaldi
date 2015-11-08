@@ -38,8 +38,10 @@ extern "C" {
 #endif
 
   struct DenominatorGraphTransition {
-    BaseFloat transition_prob;  // language-model part of the probability.
-    int32_cuda pdf_id;
+    BaseFloat transition_prob;  // language-model part of the probability (not
+                                // in log)
+    int32_cuda pdf_id;   // pdf-id on the transition.
+    int32_cuda hmm_state;  // source, or destination, HMM state.
   };
 
 

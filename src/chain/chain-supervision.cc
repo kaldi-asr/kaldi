@@ -217,7 +217,7 @@ bool ProtoSupervisionToSupervision(
   using fst::VectorFst;
   using fst::StdArc;
   VectorFst<StdArc> phone_fst(proto_supervision.fst);
-  int32 subsequential_symbol = trans_model.NumPhones() + 1;
+  int32 subsequential_symbol = trans_model.GetPhones().back() + 1;
   if (ctx_dep.CentralPosition() != ctx_dep.ContextWidth() - 1) {
     // note: this function only adds the subseq symbol to the input of what was
     // previously an acceptor, so we project, i.e. copy the ilabels to the
@@ -253,6 +253,7 @@ bool ProtoSupervisionToSupervision(
 
   VectorFst<StdArc> transition_id_fst;
   TableCompose(*h_fst, context_dep_fst, &transition_id_fst);
+  delete h_fst;
 
   BaseFloat self_loop_scale = 0.0;   // all transition-scales are 0.0; we aren't
                                      // using transition-probs here.

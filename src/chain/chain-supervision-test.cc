@@ -23,12 +23,48 @@
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-vector.h"
 #include "hmm/hmm-test-utils.h"
+#include "chain/den-graph.h"
+#include "hmm/hmm-utils.h"
 
 
-// This test program tests things declared in chain-supervision.h
 
 namespace kaldi {
 namespace chain {
+
+// computes a phone language-model FST, which has only monophone context.
+void ComputeExamplePhoneLanguageModel(const std::vector<int32> &phones,
+                                      fst::StdVectorFst *g_fst) {
+
+  g_fst->DeleteStates();
+  int32 state = g_fst->AddState();
+  g_fst->SetStart(state);
+
+  Vector<BaseFloat> probs(phones.size() + 1);
+  probs.SetRandn();
+  probs.ApplyPow(2.0);
+  probs.Add(0.01);
+  probs.Scale(1.0 / probs.Sum());
+
+  for (size_t i = 0; i < phones.size(); i++) {
+    int32 phone = phones[i];
+    fst::StdArc arc(phone, phone,
+                    fst::TropicalWeight(-exp(probs(i))), state);
+    g_fst->AddArc(state, arc);
+  }
+  g_fst->SetFinal(state, fst::TropicalWeight(-exp(probs(phones.size()))));
+}
+
+
+void ComputeExampleDenGraph(const ContextDependency &ctx_dep,
+                            const TransitionModel &trans_model,
+                            fst::StdVectorFst *den_graph) {
+  using fst::StdVectorFst;
+  using fst::StdArc;
+  StdVectorFst phone_lm;
+  ComputeExamplePhoneLanguageModel(trans_model.GetPhones(), &phone_lm);
+
+  CreateDenominatorGraph(ctx_dep, trans_model, phone_lm, den_graph);
+}
 
 
 void TestSupervisionIo(const Supervision &supervision) {
@@ -156,9 +192,9 @@ void TestSupervisionReattached(const TransitionModel &trans_model,
                reattached_supervision.label_dim == supervision.label_dim);
   UniformArcSelector<StdArc> selector;
   RandGenOptions<UniformArcSelector<StdArc> > randgen_opts(selector);
-  VectorFst<StdArc> fst_path;
+  StdVectorFst fst_path;
   RandGen(supervision.fst, &fst_path, randgen_opts);
-  VectorFst<StdArc> composed;
+  StdVectorFst composed;
   Compose(fst_path, reattached_supervision.fst, &composed);
   Connect(&composed);
   KALDI_ASSERT(composed.NumStates() != 0);
@@ -221,7 +257,6 @@ void TestSupervisionSplitting(const TransitionModel &trans_model,
       TestSupervisionReattached(trans_model,
                                 supervision,
                                 reattached_supervision[0]);
-
     }
   }
 }
@@ -276,6 +311,12 @@ void ChainSupervisionTest() {
   TestSupervisionIo(supervision);
   TestSupervisionSplitting(*trans_model, supervision);
   TestSupervisionAppend(*trans_model, supervision);
+
+  {
+    fst::StdVectorFst den_graph;
+    ComputeExampleDenGraph(*ctx_dep, *trans_model, &den_graph);
+        //
+  }
 
   // HERE
   delete ctx_dep;
