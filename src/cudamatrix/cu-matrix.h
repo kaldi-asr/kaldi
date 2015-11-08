@@ -398,6 +398,8 @@ class CuMatrixBase {
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
+  /// A = alpha * x * y^T + A .
+  void AddVecVec(Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y);
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 

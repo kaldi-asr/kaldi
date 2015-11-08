@@ -37,6 +37,14 @@ inline cublasStatus_t cublas_gemm(cublasHandle_t handle, cublasOperation_t trans
 		double *C, int ldc) {
   return cublasDgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
 }
+inline cublasStatus_t cublas_ger(cublasHandle_t handle, int m, int n, float alpha,
+        const float *x, int incx, const float *y, int incy, float *A, int lda ) {
+  return cublasSger_v2(handle,m,n,&alpha,x,incx,y,incy,A,lda);
+}
+inline cublasStatus_t cublas_ger(cublasHandle_t handle, int m, int n, double alpha,
+        const double *x, int incx, const double *y, int incy, double *A, int lda ) {
+  return cublasDger_v2(handle,m,n,&alpha,x,incx,y,incy,A,lda);
+}
 inline cublasStatus_t cublas_gemmBatched(cublasHandle_t handle, cublasOperation_t transa,
 	       	cublasOperation_t transb, int m, int n, int k, float alpha,
 		const float *A[], int lda, const float *B[], int ldb, float beta,
