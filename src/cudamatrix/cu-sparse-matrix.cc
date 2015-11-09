@@ -42,6 +42,21 @@
 namespace kaldi {
 
 template <typename Real>
+const RowElement<Real>* CuRowSparseMatrix<Real>::Data() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (data_.Dim() == 0)
+      return NULL;
+    else
+      return data_.Data();
+  } else
+#endif
+  {
+    return NULL;
+  }
+}
+
+template <typename Real>
 MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
