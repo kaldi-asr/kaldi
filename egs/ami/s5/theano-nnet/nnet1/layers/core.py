@@ -77,6 +77,15 @@ class AffineTransform(Layer):
                 "n_in": self.n_in,
                 "n_out": self.n_out}
 
+    def Info(self):
+        import scipy.stats
+
+        print "<AffineTransform>, input-dim "+str(self.n_in)+", output-dim "+str(self.n_out)+","
+        print "   linearity ( min "+str(np.min(self.W.get_value()))+", max "+str(np.max(self.W.get_value()))+", mean "+str(np.mean(self.W.get_value()))+", variance "+str(np.var(self.W.get_value()))+", stddev "+str(np.std(self.W.get_value()))+", skewness "+str(scipy.stats.skew(self.W.get_value(), axis=None))+", kurtosis "+str(scipy.stats.kurtosis(self.W.get_value(), axis=None))+" )"
+        print "   bias ( min "+str(np.min(self.b.get_value()))+", max "+str(np.max(self.b.get_value()))+", mean "+str(np.mean(self.b.get_value()))+", variance "+str(np.var(self.b.get_value()))+", stddev "+str(np.std(self.b.get_value()))+", skewness "+str(scipy.stats.skew(self.b.get_value(), axis=None))+", kurtosis "+str(scipy.stats.kurtosis(self.b.get_value(), axis=None))+" )"
+
+
+
 class LinearTransform(Layer):
     def __init__(self, n_in, n_out, param_stddev_factor=0.1, learn_rate_coef = 1.0, max_norm=0.0):
         
@@ -103,6 +112,12 @@ class LinearTransform(Layer):
                 "n_in": self.n_in,
                 "n_out": self.n_out}
 
+    def Info(self):
+        import scipy.stats
+
+        print "<LinearTransform>, input-dim "+str(self.n_in)+", output-dim "+str(self.n_out)+","
+        print "   linearity ( min "+str(np.min(self.W.get_value()))+", max "+str(np.max(self.W.get_value()))+", mean "+str(np.mean(self.W.get_value()))+", variance "+str(np.var(self.W.get_value()))+", stddev "+str(np.std(self.W.get_value()))+", skewness "+str(scipy.stats.skew(self.W.get_value(), axis=None))+", kurtosis "+str(scipy.stats.kurtosis(self.W.get_value(), axis=None))+" )"
+
 class Activation(Layer):
     '''
         Apply an activation function to an output.
@@ -118,5 +133,8 @@ class Activation(Layer):
     def get_config(self):
         return {"name": self.__class__.__name__,
                 "activation": self.activation.__name__}
+    
+    def Info(self):
+        print self.activation.__name__
 
 
