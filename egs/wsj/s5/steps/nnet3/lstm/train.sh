@@ -66,13 +66,14 @@ clipping_threshold=30     # if norm_based_clipping is true this would be the max
                           # else this is the max-absolute value of each element in Jacobian.
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
+chunk_right_context=0  # number of steps used in the estimation of LSTM state before prediction of the first backward label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
-
+bi_directional=false
 
 # nnet3-train options
 shrink=0.99  # this parameter would be used to scale the parameter matrices
@@ -161,6 +162,7 @@ if [ $# != 4 ]; then
   echo "  --recurrent-projection-dim  <int|256>            # the output dimension of the recurrent-projection-matrix"
   echo "  --non-recurrent-projection-dim  <int|256>        # the output dimension of the non-recurrent-projection-matrix"
   echo "  --chunk-left-context <int|40>                    # number of time-steps used in the estimation of the first LSTM state"
+  echo "  --chunk-right-context <int|40>                   # number of time-steps used in the estimation of the first backward LSTM state"
   echo "  --chunk-width <int|20>                           # number of output labels in the sequence used to train an LSTM"
   echo "  --norm-based-clipping <bool|true>                # if true norm_based_clipping is used."
   echo "                                                   # In norm-based clipping the activation Jacobian matrix"
@@ -248,6 +250,7 @@ if [ $stage -le -5 ]; then
   # issues with negative arguments (due to minus sign)
   config_extra_opts=()
   [ ! -z "$lstm_delay" ] && config_extra_opts+=(--lstm-delay "$lstm_delay")
+  [ "$bi_directional" == "true" ] && config_extra_opts+=(--bi-directional "true")
 
   steps/nnet3/lstm/make_configs.py  "${config_extra_opts[@]}" \
     --splice-indexes "$splice_indexes " \
@@ -276,7 +279,7 @@ fi
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
 left_context=$((chunk_left_context + model_left_context))
-right_context=$model_right_context
+right_context=$((chunk_right_context + model_right_context))
 context_opts="--left-context=$left_context --right-context=$right_context"
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \

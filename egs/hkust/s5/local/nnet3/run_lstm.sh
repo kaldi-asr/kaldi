@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
+#           2015  Xingyu Na
+# Apache 2.0.
+
 # this is a basic lstm script
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
@@ -24,8 +28,10 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
+chunk_right_context=40
 clipping_threshold=10.0
 norm_based_clipping=true
+bi_directional=true
 common_egs_dir=
 
 # natural gradient options
@@ -51,6 +57,7 @@ use_ivectors=true
 
 #decode options
 extra_left_context=
+extra_right_context=
 frames_per_chunk=
 
 # End configuration section.
@@ -117,6 +124,7 @@ if [ $stage -le 8 ]; then
     --shrink $shrink --momentum $momentum \
     --adaptive-shrink "$adaptive_shrink" \
     --lstm-delay "$lstm_delay" \
+    --bi-directional "$bi_directional" \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
@@ -126,6 +134,7 @@ if [ $stage -le 8 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --chunk-right-context $chunk_right_context \
     --num-bptt-steps $num_bptt_steps \
     --norm-based-clipping $norm_based_clipping \
     --ng-per-element-scale-options "$ng_per_element_scale_options" \
@@ -139,6 +148,9 @@ fi
 if [ $stage -le 9 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
+  fi
+  if [ -z $extra_right_context ]; then
+    extra_right_context=$chunk_right_context
   fi
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
@@ -157,6 +169,7 @@ if [ $stage -le 9 ]; then
 
       steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" $ivector_opts \
         --extra-left-context $extra_left_context \
+        --extra-right-context $extra_right_context \
         --frames-per-chunk "$frames_per_chunk" \
         $graph_dir data/${decode_set}_hires $decode_dir || exit 1;
       ) &
