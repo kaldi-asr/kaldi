@@ -20,7 +20,7 @@ lattice_beam=8.0
 min_active=200
 max_active=7000 # limit of active tokens
 max_mem=50000000 # approx. limit to memory consumption during minimization in bytes
-nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
+nnet_fwdpass_opts="--no-softmax=true --prior-scale=1.0"
 
 skip_scoring=false
 scoring_opts="--min-lmwt 4 --max-lmwt 15"
@@ -91,7 +91,7 @@ thread_string=
 if [ $stage -le 0 ]; then
   #$cmd --num-threads $((num_threads+1)) JOB=1:$nj $dir/log/decode.JOB.log \
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-      $nnet_fwdpass_tool $nnet_forward_opts \
+      $nnet_fwdpass_tool $nnet_fwdpass_opts \
       --feat-preprocess=$feat_preprocess --class-frame-counts=$class_frame_counts \
       --utt2spk-file=$data/utt2spk --cmvn-scp=$data/cmvn.scp \
       $srcdir $sdata/JOB/ \| \
