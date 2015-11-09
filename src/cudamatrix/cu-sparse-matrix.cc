@@ -42,6 +42,205 @@
 namespace kaldi {
 
 template <typename Real>
+RowElement<Real>* CuRowSparseMatrix<Real>::Data() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (data_.Dim() == 0)
+      return NULL;
+    else
+      return data_.Data();
+  } else
+#endif
+  {
+    return NULL;
+  }
+}
+
+template <typename Real>
+const RowElement<Real>* CuRowSparseMatrix<Real>::Data() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (data_.Dim() == 0)
+      return NULL;
+    else
+      return data_.Data();
+  } else
+#endif
+  {
+    return NULL;
+  }
+}
+
+template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const SparseMatrix<Real> &smat) {
+  this->CopyFromSmat(smat);
+  return *this;
+}
+
+template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const CuRowSparseMatrix<Real> &smat) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    data_ = smat.data_;
+    num_rows_ = smat.num_rows_;
+    num_cols_ = smat.num_cols_;
+    elements_per_row_ = smat.elements_per_row_;
+  } else
+#endif
+  {
+    this->Mat() = smat.Mat();
+  }
+  return *this;
+}
+
+template <typename Real>
+void CuRowSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuRowSparseMatrix<Real> tmp(*smat);
+    Swap(&tmp);
+    tmp.CopyToSmat(smat);
+  } else
+#endif
+  {
+    num_rows_ = smat->NumRows();
+    num_cols_ = smat->NumCols();
+    Mat().Swap(smat);
+  }
+}
+
+template <typename Real>
+void CuRowSparseMatrix<Real>::Swap(CuRowSparseMatrix<Real> *smat) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuArray<RowElement<Real> > tmp_data(data_);
+    data_ = smat->data_;
+    smat->data_ = tmp_data;
+    MatrixIndexT tmp_dim = num_rows_;
+    num_rows_ = smat->num_rows_;
+    smat->num_rows_ = tmp_dim;
+    tmp_dim = num_cols_;
+    num_cols_ = smat->num_cols_;
+    smat->num_cols_ = tmp_dim;
+    tmp_dim = elements_per_row_;
+    elements_per_row_ = smat->elements_per_row_;
+    smat->elements_per_row_ = tmp_dim;
+  } else
+#endif
+  {
+    Real dim = num_rows_;
+    num_rows_ = smat->num_rows_;
+    smat->num_rows_ = dim;
+    dim = num_cols_;
+    num_cols_ = smat->num_cols_;
+    smat->num_cols_ = dim;
+    dim = elements_per_row_;
+    elements_per_row_ = smat->elements_per_row_;
+    smat->elements_per_row_ = dim;
+    Mat().Swap(&(smat->Mat()));
+  }
+}
+
+template <typename Real>
+void CuRowSparseMatrix<Real>::SetRandn(BaseFloat zero_prob) {
+  if (num_rows_ == 0) return;
+  // Use the CPU function for the moment, not efficient...
+  SparseMatrix<Real> tmp(num_rows_, num_cols_);
+  tmp.SetRandn(zero_prob);
+  Swap(&tmp);
+}
+
+template <typename Real>
+void CuRowSparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
+  SparseMatrix<Real> tmp;
+  CopyToSmat(&tmp);
+  tmp.Write(os, binary);
+}
+
+template <typename Real>
+void CuRowSparseMatrix<Real>::Read(std::istream &is, bool binary) {
+  SparseMatrix<Real> tmp;
+  tmp.Read(is, binary);
+  this->Swap(&tmp);
+}
+
+template <typename Real>
+template <typename OtherReal>
+void CuRowSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) {
+  num_rows_ = smat.NumRows();
+  num_cols_ = smat.NumCols();
+  MatrixIndexT max_num_elements = 0;
+  for (int32 i = 0; i < num_rows_; ++i) {
+    MatrixIndexT num_elements = (smat.Data() + i)->NumElements();
+    if ( num_elements > max_num_elements)
+      max_num_elements = num_elements;
+  }
+  elements_per_row_ = max_num_elements;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0 || num_cols_ == 0 || elements_per_row_ == 0) {
+      data_.Resize(0);
+      return;
+    }
+    RowElement<Real> pad;
+    pad.column = -1;
+    pad.weight = 0.0;
+    std::vector<RowElement<Real> > cpu_elements(num_rows_ * elements_per_row_, pad);
+    for (int32 i = 0; i < num_rows_; ++i) {
+      for (int32 j = 0; j < (smat.Data() + i)->NumElements(); ++j) {
+        RowElement<Real>* cpu_element = &(cpu_elements[i * elements_per_row_ + j]);
+        cpu_element->column = ((smat.Data() + i)->Data() + j)->first;
+        cpu_element->weight = ((smat.Data() + i)->Data() + j)->second;
+      }
+    }
+    data_.CopyFromVec(cpu_elements);
+  } else
+#endif
+  {
+    this->Mat().CopyFromSmat(smat);
+  }
+}
+template
+void CuRowSparseMatrix<float>::CopyFromSmat(const SparseMatrix<float> &smat);
+template
+void CuRowSparseMatrix<float>::CopyFromSmat(const SparseMatrix<double> &smat);
+template
+void CuRowSparseMatrix<double>::CopyFromSmat(const SparseMatrix<float> &smat);
+template
+void CuRowSparseMatrix<double>::CopyFromSmat(const SparseMatrix<double> &smat);
+
+template <typename Real>
+template <typename OtherReal>
+void CuRowSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
+  KALDI_ASSERT(smat != NULL);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    std::vector<RowElement<Real> > cpu_data;
+    data_.CopyToVec(&cpu_data);
+    std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(num_rows_);
+    for (int32 i = 0; i < cpu_data.size(); ++i) {
+      pairs[i].push_back(std::make_pair(cpu_data[i].column, cpu_data[i].weight));
+    }
+    SparseMatrix<Real> tmp(num_cols_, pairs);
+    smat->CopyFromSmat(tmp);
+  } else
+#endif
+  {
+    smat->CopyFromSmat(this->Mat());
+  }
+}
+template
+void CuRowSparseMatrix<float>::CopyToSmat(SparseMatrix<float> *smat) const;
+template
+void CuRowSparseMatrix<float>::CopyToSmat(SparseMatrix<double> *smat) const;
+template
+void CuRowSparseMatrix<double>::CopyToSmat(SparseMatrix<float> *smat) const;
+template
+void CuRowSparseMatrix<double>::CopyToSmat(SparseMatrix<double> *smat) const;
+
+template <typename Real>
 MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
