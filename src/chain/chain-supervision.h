@@ -217,17 +217,6 @@ struct Supervision {
   // Included to avoid training on mismatched egs.
   int32 label_dim;
 
-  // This is a log-prob (<= 0) that is added to forward-backward likelihoods
-  // obtained from this object in order to be properly normalize them (so that
-  // they are comparable with likelihoods from the denominator, and the log
-  // objective function will usually be less than zero).  We plan to get this by
-  // composing the sequence with the FST used for the denominator
-  // forward-backward, and taking the best-path prob.  Note, this doesn't
-  // 100% guarantee that objf will be <= 0, but should be enough.  This is
-  // mostly an issue of getting nice diagnostics, it doesn't affect the
-  // training progress per se.
-  BaseFloat penalty_logprob;
-
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
   // stronger condition).  The labels are pdf-ids plus one (to avoid epsilons,
@@ -237,8 +226,7 @@ struct Supervision {
   fst::StdVectorFst fst;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
-                 label_dim(-1), penalty_logprob(0.0) { }
-
+                 label_dim(-1) { }
 
   Supervision(const Supervision &other);
 
@@ -307,6 +295,25 @@ class SupervisionSplitter {
   std::vector<int32> frame_;
 };
 
+
+/// This function adds weights to the FST in the supervision object, by
+/// composing with the 'normalization fst'.  It should be called directly after
+/// GetFrameRange().  The 'normalization fst' is produced by the function
+/// DenominatorGraph::GetNormalizationFst(); it's a slight modification of the
+/// 'denominator fst'.  This function modifies the weights in the supervision
+/// object- adding to each path, the weight that it gets in the normalization
+/// fst, which is the same weight that it will get in the denominator
+/// forward-backward computation.  This ensures that the (log) objective
+/// function can never be positive (as the numerator graph will be a strict
+/// subset of the denominator, with the same weights for the same paths).  This
+/// function returns true on success, and false on the (hopefully) rare occasion
+/// that the composition of the normalization fst with the supervision produced
+/// an empty result (this shouldn't happen unless there were alignment errors in
+/// the alignments used to train the phone language model leading to unseen
+/// 3-grams that occur in the training sequences).
+bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
+                               Supervision *supervision);
+
 /// Assuming the 'fst' is epsilon-free, connected, and has the property that all
 /// paths from the start-state are of the same length, output a vector
 /// containing that length (from the start-state to the current state) to
@@ -327,7 +334,8 @@ class SupervisionSplitter {
 ///                and its states should be sorted on this path length (e.g.
 ///                SortBreadthFirst will do this).
 /// @param state_times[out]  The state times that we output; will be set to
-///                a vector with the dimension fst.NumStates()
+///                a vector with the dimension fst.NumStates().
+///
 /// @return  Returns the path length
 int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
                            std::vector<int32> *state_times);

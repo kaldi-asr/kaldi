@@ -455,6 +455,10 @@ void SupervisionSplitter::CreateRangeFst(
   }
 }
 
+// HERE
+bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_graph,
+                               Supervision *supervision);
+
 
 // I couldn't figure out how to do this with OpenFST's native 'visitor' and
 // queue mechanisms so I'm just coding this myself.
@@ -497,19 +501,17 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, frames_per_sequence);
   WriteToken(os, binary, "<LabelDim>");
   WriteBasicType(os, binary, label_dim);
-  WriteToken(os, binary, "<Penalty>");
-  WriteBasicType(os, binary, penalty_logprob);
   KALDI_ASSERT(frames_per_sequence > 0 && label_dim > 0 &&
                num_sequences > 0);
   if (binary == false) {
     // In text mode, write the FST without any compactification.
     WriteFstKaldi(os, binary, fst);
   } else {
-    // Write using StdUnweightedAcceptorCompactFst, making use of the fact that
-    // it's an unweighted acceptor.
+    // Write using StdAcceptorCompactFst, making use of the fact that it's an
+    // acceptor.
     fst::FstWriteOptions write_options("<unknown>");
-    fst::StdCompactUnweightedAcceptorFst::WriteFst(
-        fst, fst::UnweightedAcceptorCompactor<fst::StdArc>(), os,
+    fst::StdCompactAcceptorFst::WriteFst(
+        fst, fst::AcceptorCompactor<fst::StdArc>(), os,
         write_options);
   }
   WriteToken(os, binary, "</Supervision>");
@@ -525,13 +527,11 @@ void Supervision::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &frames_per_sequence);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
-  ExpectToken(is, binary, "<Penalty>");
-  ReadBasicType(is, binary, &penalty_logprob);
   if (!binary) {
     ReadFstKaldi(is, binary, &fst);
   } else {
-    fst::StdCompactUnweightedAcceptorFst *compact_fst =
-        fst::StdCompactUnweightedAcceptorFst::Read(
+    fst::StdCompactAcceptorFst *compact_fst =
+        fst::StdCompactAcceptorFst::Read(
             is, fst::FstReadOptions(std::string("[unknown]")));
     if (compact_fst == NULL)
       KALDI_ERR << "Error reading compact FST from disk";
@@ -579,8 +579,8 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 
 Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
-    frames_per_sequence(other.frames_per_sequence), label_dim(other.label_dim),
-    penalty_logprob(other.penalty_logprob), fst(other.fst) { }
+    frames_per_sequence(other.frames_per_sequence),
+    label_dim(other.label_dim), fst(other.fst) { }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        bool compactify,
@@ -625,6 +625,26 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
       SortBreadthFirstSearch(&out_fst);
     }
   }
+}
+
+bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
+                               Supervision *supervision) {
+  fst::StdVectorFst composed_fst;
+  // note: by default, 'Compose' will call 'Connect', so if the
+  // resulting FST is not connected, it will end up empty.
+  fst::Compose(supervision->fst, normalization_fst, &composed_fst);
+  if (composed_fst.NumStates() == 0)
+    return false;
+  // projection should not be necessary, as both FSTs are acceptors.
+  // determinize and minimize to make it as compact as possible.
+  fst::Determinize(composed_fst, &(supervision->fst));
+  fst::Minimize(&(supervision->fst));
+  // Make sure the states are numbered in increasing order of time.
+  SortBreadthFirstSearch(&(supervision->fst));
+  KALDI_ASSERT(composed_fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
+  KALDI_ASSERT(composed_fst.Properties(fst::kIEpsilons, true) == 0);
+  supervision->fst = composed_fst;
+  return true;
 }
 
 void SplitIntoRanges(int32 num_frames,
@@ -684,8 +704,7 @@ void SplitIntoRanges(int32 num_frames,
 bool Supervision::operator == (const Supervision &other) const {
   return weight == other.weight && num_sequences == other.num_sequences &&
       frames_per_sequence == other.frames_per_sequence &&
-      label_dim == other.label_dim &&
-      penalty_logprob == other.penalty_logprob && fst::Equal(fst, other.fst);
+      label_dim == other.label_dim && fst::Equal(fst, other.fst);
 }
 
 void Supervision::Check(const TransitionModel &trans_mdl) const {

@@ -1,4 +1,4 @@
-// ctc/den-graph.cc
+// ctc/chain-den-graph.cc
 
 // Copyright      2015   Johns Hopkins University (author: Daniel Povey)
 
@@ -18,7 +18,7 @@
 // limitations under the License.
 
 
-#include "chain/den-graph.h"
+#include "chain/chain-den-graph.h"
 #include "hmm/hmm-utils.h"
 
 namespace kaldi {
@@ -210,8 +210,8 @@ int32 DenominatorGraph::ComputeSpecialState(
   return -1;
 }
 
-void DenominatorGraph::GetNormalizationGraph(const fst::StdVectorFst &ifst,
-                                             fst::StdVectorFst *ofst) {
+void DenominatorGraph::GetNormalizationFst(const fst::StdVectorFst &ifst,
+                                           fst::StdVectorFst *ofst) {
   KALDI_ASSERT(ifst.NumStates() == initial_probs_.Dim());
   if (&ifst != ofst)
     *ofst = ifst;
@@ -221,8 +221,11 @@ void DenominatorGraph::GetNormalizationGraph(const fst::StdVectorFst &ifst,
     BaseFloat initial_prob = initial_probs(s);
     fst::StdArc arc(0, 0, fst::TropicalWeight(-log(initial_prob)), s);
     ofst->AddArc(new_initial_state, arc);
+    ofst->SetFinal(s, fst::TropicalWeight::One());
   }
   ofst->SetStart(new_initial_state);
+  fst::RmEpsilon(ofst);
+  fst::ArcSort(ofst, fst::ILabelCompare<fst::StdArc>());
 }
 
 

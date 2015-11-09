@@ -1,4 +1,4 @@
-// chain/den-graph.h
+// chain/chain-den-graph.h
 
 // Copyright       2015  Johns Hopkins University (Author: Daniel Povey)
 
@@ -19,8 +19,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CHAIN_DEN_GRAPH_H_
-#define KALDI_CHAIN_DEN_GRAPH_H_
+#ifndef KALDI_CHAIN_CHAIN_DEN_GRAPH_H_
+#define KALDI_CHAIN_CHAIN_DEN_GRAPH_H_
 
 #include <vector>
 #include <map>
@@ -54,6 +54,8 @@ class DenominatorGraph {
  public:
 
   int32 NumStates();
+
+  DenominatorGraph();
 
   // Initialize from epsilon-free acceptor FST with pdf-ids plus one as the
   // labels.  'num_pdfs' is only needeed for checking.
@@ -90,13 +92,16 @@ class DenominatorGraph {
 
   // This function outputs a modifified version of the FST that was used to
   // build this object, that has an initial-state with epsilon transitions to
-  // each state, with weight determined by initial_probs_.  This is used in
-  // computing the 'penalty_logprob' of the Supervision objects, to ensure that
-  // the objective function is never positive, which makes it more easily
-  // interpretable.  'ifst' must be the same FST that was provided to the
+  // each state, with weight determined by initial_probs_; and has each original
+  // state being final with probability one (note: we remove epsilons).  This is
+  // used in computing the 'penalty_logprob' of the Supervision objects, to
+  // ensure that the objective function is never positive, which makes it more
+  // easily interpretable.  'ifst' must be the same FST that was provided to the
   // constructor of this object.  [note: ifst and ofst may be the same object.]
-  void GetNormalizationGraph(const fst::StdVectorFst &ifst,
-                             fst::StdVectorFst *ofst);
+  // This function ensures that 'ofst' is ilabel sorted (which will be useful in
+  // composition).
+  void GetNormalizationFst(const fst::StdVectorFst &ifst,
+                           fst::StdVectorFst *ofst);
 
  private:
   // functions called from the constructor
@@ -178,4 +183,4 @@ void CreateDenominatorGraph(const ContextDependency &ctx_dep,
 }  // namespace chain
 }  // namespace kaldi
 
-#endif  // KALDI_CHAIN_HMM_H_
+#endif  // KALDI_CHAIN_CHAIN_DEN_GRAPH_H_

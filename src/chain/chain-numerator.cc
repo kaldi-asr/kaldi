@@ -149,14 +149,20 @@ BaseFloat NumeratorComputation::Forward() {
     double this_log_alpha = log_alpha_data[state];
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
          aiter.Next(), ++fst_output_indexes_iter) {
-      int32 nextstate = aiter.Value().nextstate;
+      const fst::StdArc &arc = aiter.Value();
+      int32 nextstate = arc.nextstate;
+      BaseFloat transition_logprob = -arc.weight.Value();
       int32 index = *fst_output_indexes_iter;
       BaseFloat pseudo_loglike = nnet_logprob_data[index];
       double &next_log_alpha = log_alpha_data[nextstate];
-      next_log_alpha = LogAdd(next_log_alpha, pseudo_loglike + this_log_alpha);
+      next_log_alpha = LogAdd(next_log_alpha, pseudo_loglike +
+                              transition_logprob + this_log_alpha);
     }
-    if (fst.Final(state) != fst::TropicalWeight::Zero())
-      tot_log_prob_ = LogAdd(tot_log_prob_, this_log_alpha);
+    if (fst.Final(state) != fst::TropicalWeight::Zero()) {
+      BaseFloat final_logprob = -fst.Final(state).Value();
+      tot_log_prob_ = LogAdd(tot_log_prob_,
+                             this_log_alpha + final_logprob);
+    }
   }
   KALDI_ASSERT(fst_output_indexes_iter ==
                fst_output_indexes_.end());
@@ -187,17 +193,19 @@ void NumeratorComputation::Backward(
     // pattern.
     fst_output_indexes_iter -= this_num_arcs;
     const int32 *this_fst_output_indexes_iter = fst_output_indexes_iter;
-    double this_log_beta = (fst.Final(state) == fst::TropicalWeight::Zero() ?
-                            -std::numeric_limits<double>::infinity() : 0.0);
+    double this_log_beta = -fst.Final(state).Value();
     double this_log_alpha = log_alpha_data[state];
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state); !aiter.Done();
          aiter.Next(), this_fst_output_indexes_iter++) {
-      double next_log_beta = log_beta_data[aiter.Value().nextstate];
+      const fst::StdArc &arc = aiter.Value();
+      double next_log_beta = log_beta_data[arc.nextstate];
+      BaseFloat transition_logprob = -arc.weight.Value();
       int32 index = *this_fst_output_indexes_iter;
       BaseFloat pseudo_loglike = nnet_logprob_data[index];
-      this_log_beta = LogAdd(this_log_beta, pseudo_loglike + next_log_beta);
+      this_log_beta = LogAdd(this_log_beta, pseudo_loglike +
+                             transition_logprob + next_log_beta);
       BaseFloat occupation_logprob = this_log_alpha + pseudo_loglike +
-          next_log_beta - tot_log_prob,
+          transition_logprob + next_log_beta - tot_log_prob,
           occupation_prob = exp(occupation_logprob);
       nnet_logprob_deriv_data[index] += occupation_prob;
     }

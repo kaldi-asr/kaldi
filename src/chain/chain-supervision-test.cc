@@ -23,7 +23,7 @@
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-vector.h"
 #include "hmm/hmm-test-utils.h"
-#include "chain/den-graph.h"
+#include "chain/chain-den-graph.h"
 #include "hmm/hmm-utils.h"
 
 
@@ -48,14 +48,14 @@ void ComputeExamplePhoneLanguageModel(const std::vector<int32> &phones,
   for (size_t i = 0; i < phones.size(); i++) {
     int32 phone = phones[i];
     fst::StdArc arc(phone, phone,
-                    fst::TropicalWeight(-exp(probs(i))), state);
+                    fst::TropicalWeight(-log(probs(i))), state);
     g_fst->AddArc(state, arc);
   }
-  g_fst->SetFinal(state, fst::TropicalWeight(-exp(probs(phones.size()))));
+  g_fst->SetFinal(state, fst::TropicalWeight(-log(probs(phones.size()))));
 }
 
 
-void ComputeExampleDenGraph(const ContextDependency &ctx_dep,
+void ComputeExampleDenFst(const ContextDependency &ctx_dep,
                             const TransitionModel &trans_model,
                             fst::StdVectorFst *den_graph) {
   using fst::StdVectorFst;
@@ -223,13 +223,19 @@ void TestSupervisionFrames(const Supervision &supervision) {
   bool test = true;
   // make sure epsilon free
   KALDI_ASSERT(supervision.fst.Properties(fst::kNoEpsilons, test) != 0);
-  // make sure unweighted
-  KALDI_ASSERT(supervision.fst.Properties(fst::kUnweighted, test) != 0);
+  // make sure acceptor
+  KALDI_ASSERT(supervision.fst.Properties(fst::kAcceptor, test) != 0);
 }
 
 
-void TestSupervisionSplitting(const TransitionModel &trans_model,
+void TestSupervisionSplitting(const ContextDependency &ctx_dep,
+                              const TransitionModel &trans_model,
                               const Supervision &supervision) {
+  fst::StdVectorFst den_fst, normalization_fst;
+  ComputeExampleDenFst(ctx_dep, trans_model, &den_fst);
+  DenominatorGraph den_graph(den_fst, trans_model.NumPdfs());
+  den_graph.GetNormalizationFst(den_fst, &normalization_fst);
+
   SupervisionSplitter splitter(supervision);
   int32 num_frames = supervision.num_sequences * supervision.frames_per_sequence,
       frames_per_range = RandInt(3, 10);
@@ -240,6 +246,9 @@ void TestSupervisionSplitting(const TransitionModel &trans_model,
   for (int32 i = 0; i < num_ranges; i++) {
     splitter.GetFrameRange(range_starts[i], frames_per_range,
                            &split_supervision[i]);
+    bool ans = AddWeightToSupervisionFst(normalization_fst,
+                                         &split_supervision[i]);
+    KALDI_ASSERT(ans);
     split_supervision[i].Check(trans_model);
   }
   if (num_ranges > 0) {
@@ -309,13 +318,13 @@ void ChainSupervisionTest() {
   }
   supervision.Check(*trans_model);
   TestSupervisionIo(supervision);
-  TestSupervisionSplitting(*trans_model, supervision);
+  TestSupervisionSplitting(*ctx_dep, *trans_model, supervision);
   TestSupervisionAppend(*trans_model, supervision);
 
   {
-    fst::StdVectorFst den_graph;
-    ComputeExampleDenGraph(*ctx_dep, *trans_model, &den_graph);
-        //
+    fst::StdVectorFst den_fst;
+    ComputeExampleDenFst(*ctx_dep, *trans_model, &den_fst);
+    DenominatorGraph den_graph(den_fst, trans_model->NumPdfs());
   }
 
   // HERE

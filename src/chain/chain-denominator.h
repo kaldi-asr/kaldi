@@ -50,14 +50,22 @@ class DenominatorComputation {
 
     @param [in] graph  The HMM that we use for the denominator (like a decoding graph,
                        with pdf-ids on the transitions).
-
-    'nnet_output' is the
-
-
+    @param [in] num_sequences The number of separate time sequences (all of the same length)
+                       that we are working with.
+    @param [in] nnet_output  The output of the neural network for this minibatch.
+                       Organized as (first frame of all sequences) (second frame
+                       of all sequences)...
+    @param [in] initial_pdf_ids Indexed by sequence, a list of the pdf-ids that
+                      (in the numerator sequence) are active on the first frame.
+                      Used to modify the nnet output, to limit sequences that
+                      have that pdf-id as the initial frame.
+    @param [in] final_pdf_ids Indexed by sequence, a list of the pdf-ids that
+                     (in the numerator sequence) are active on the final frame.
+                     Used to modify the nnet output, to limit sequences that
+                     have that pdf-id as the final frame.
   */
-
-
   DenominatorComputation(const DenominatorGraph &graph,
+                         int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output,
                          const std::vector<std::vector<int32 > > &initial_pdf_ids,
                          const std::vector<std::vector<int32 > > &final_pdf_ids);
