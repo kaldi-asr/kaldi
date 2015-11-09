@@ -367,9 +367,9 @@ class CuMatrixBase {
   void Scale(Real value);
   void ApplyLog();
 
-  /// Multiply two matrices elementwise: C = A .* C
+  /// Multiply two matrices elementwise: C = C .* A
   void MulElements(const CuMatrixBase<Real> &A);
-  /// Divide two matrices elementwise: C = A ./ C
+  /// Divide two matrices elementwise: C = A ./ A
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
