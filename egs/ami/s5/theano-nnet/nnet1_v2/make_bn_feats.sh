@@ -93,8 +93,8 @@ else # htk_save == true
   $cmd JOB=1:$nj $logdir/make_bnfeats.JOB.log \
     $nnet_fwdpass_tool $nnet_fwdpass_opts \
       --feat-preprocess=$bnfeadir/feat_preprocess.pkl \
-      --utt2spk-file=$data/utt2spk --cmvn-scp=$data/cmvn.scp \
-      $bnfeadir $sdata/JOB/ | \
+      --utt2spk-file=$srcdata/utt2spk --cmvn-scp=$srcdata/cmvn.scp \
+      $bnfeadir $sdata/JOB/ \| \
       copy-feats-to-htk --output-dir=$data/htkfeats/JOB ark:- || exit 1
   # Make list of htk features,
   find $data/htkfeats -name *.fea >$data/htkfeats.scp
