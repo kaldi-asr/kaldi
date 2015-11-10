@@ -85,8 +85,9 @@ void CuRowSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) 
       }
     }
     data_.CopyFromVec(cpu_elements);
-  } else {
+  } else
 #endif
+  {
     return;
     // Todo. CPU version
     //  this->Mat().CopyFromSmat(smat);

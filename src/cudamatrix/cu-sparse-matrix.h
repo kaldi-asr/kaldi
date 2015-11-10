@@ -61,8 +61,8 @@ class CuRowSparseMatrix {
   ~CuRowSparseMatrix() { }
 
  private:
-  int32 num_rows_;
-  int32 elements_per_row_;
+  MatrixIndexT num_rows_;
+  MatrixIndexT elements_per_row_;
   CuArray<RowElement<Real> > data_; // pairs(column-index, value)
   // dim = num_rows_ * elements_per_row_.
 };
