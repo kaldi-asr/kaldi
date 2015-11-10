@@ -33,7 +33,7 @@ get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 presoftmax_prior_scale_power=-0.25
 use_presoftmax_prior_scale=true
-remove_egs=false  # set to false to disable removing egs after training is done.
+remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
