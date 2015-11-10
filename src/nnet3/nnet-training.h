@@ -44,7 +44,7 @@ struct NnetTrainerOptions {
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
-      max_param_change(1.0) { }
+      max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
     opts->Register("store-component-stats", &store_component_stats,
                    "If true, store activations and derivatives for nonlinear "
