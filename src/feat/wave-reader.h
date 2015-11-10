@@ -62,6 +62,10 @@ class WaveData {
   WaveData(BaseFloat samp_freq, const MatrixBase<BaseFloat> &data)
       : data_(data), samp_freq_(samp_freq) {}
 
+  WaveData(BaseFloat samp_freq, const Vector<BaseFloat> &data): samp_freq_(samp_freq) { 
+    data_.Resize(1,data.Dim()); data_.CopyRowFromVec(data,0);
+  }
+
   WaveData() : samp_freq_(0.0) {}
 
   /// Read() will throw on error.  It's valid to call Read() more than once--

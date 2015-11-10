@@ -12,7 +12,7 @@ TESTFILES = feature-mfcc-test feature-plp-test feature-fbank-test \
 OBJFILES = feature-functions.o feature-mfcc.o feature-plp.o feature-fbank.o \
            feature-spectrogram.o mel-computations.o wave-reader.o \
            pitch-functions.o resample.o online-feature.o sinusoid-detection.o \
-           signal.o
+           signal.o stft-functions.o signal-functions.o feature-stft.o inverse-stft.o
 
 LIBNAME = kaldi-feat
 
