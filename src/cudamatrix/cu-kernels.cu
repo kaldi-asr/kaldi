@@ -753,8 +753,8 @@ __global__
 static void _add_mat_smat(Real *data, int stride, Real alpha, const Real *srcA_data, const int srcA_stride, bool transA, const RowElement<Real>* srcB_data, const int srcB_stride, Real beta) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index of output matrix
   int32_cuda j = blockIdx.y; // column index of output matrix
-  int32_cuda tgt_index = i * stride; // actual index of data
-  int32_cuda srcA_index = -1, srcB_index = -1, sparse_index = -1;
+  int32_cuda tgt_index = i * stride + j; // actual index of data
+  int32_cuda srcA_index, srcB_index, sparse_index;
   Real tgt_value = beta * data[tgt_index];
   for (int k = 0; k < srcB_stride; k++) {
     srcB_index = j * srcB_stride + k;

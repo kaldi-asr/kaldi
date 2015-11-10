@@ -50,6 +50,15 @@ class CuRowSparseMatrix {
   MatrixIndexT NumCols() const { return elements_per_row_; }
   MatrixIndexT NumElements() const { return num_rows_ * elements_per_row_; }
   const RowElement<Real>* Data() const;
+  template <typename OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
+
+  // Constructor from CPU-based sparse matrix.
+  explicit CuRowSparseMatrix(const SparseMatrix<Real> &smat) {
+    this->CopyFromSmat(smat);
+  }
+
+  ~CuRowSparseMatrix() { }
 
  private:
   int32 num_rows_;
