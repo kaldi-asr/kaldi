@@ -35,6 +35,8 @@ def apply_mask_to_minibatch(minibatch, strm_indices, pvals=None):
   if pvals==None:
     pvals=[1.0/ncombs]*ncombs
 
+  assert ncombs == len(pvals)
+
   for X, t in minibatch:
     assert strm_indices[-1][-1] == X.shape[1]
     
@@ -74,6 +76,9 @@ parser.add_option('--strm-indices', dest="strm_indices",
 parser.add_option('--iters-per-epoch', dest="iters_per_epoch",
                   help="Iterations per epoch [default: %default]",
                   default=1, type=int)
+parser.add_option('--pvals', dest="pvals",
+                  help="prob values for each combination [default: %default]",
+                  default="", type='string')
 
 parser.add_option('--done-file', dest="done_file",
                   help="Done file to dump [default: %default]",
@@ -153,6 +158,13 @@ train = theano.function(
 
 
 strm_indices = o.strm_indices
+
+#convert o.pvals
+if o.pvals != "":
+  pvals = np.asarray( map(lambda x: float(x), o.pvals.split(",")))
+else:
+  pvals = None
+
 lr = o.learn_rate
 (segment_buffer_size, batch_size) = (o.segment_buffer_size, o.batch_size) 
 
@@ -162,7 +174,7 @@ for ii in range(o.iters_per_epoch):
   with kaldi_io.KaldiScpReader(trn_scp, feature_preprocess.full_preprocess, reader_args=[feat_preprocess, trn_cmvn.utt2spk_dict, trn_cmvn.cmvn_dict]) as trn_data_it:
     for mm, segment_buffer in enumerate(utils.isplit_every(features.fea_lab_pair_iter(trn_data_it, trn_lab_dict), segment_buffer_size)):
       noncum_error = noncum_accuracy = noncum_n = 0.0
-      for X, t in apply_mask_to_minibatch(utils.segment_buffer_to_minibatch_iter(segment_buffer, batch_size), strm_indices):
+      for X, t in apply_mask_to_minibatch(utils.segment_buffer_to_minibatch_iter(segment_buffer, batch_size), strm_indices, pvals):
         err, acc = train(X, t, lr)
         error += err; accuracy += acc; n += len(X); 
       noncum_error += err; noncum_accuracy += acc; noncum_n += len(X)
