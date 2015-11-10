@@ -57,6 +57,29 @@ const RowElement<Real>* CuRowSparseMatrix<Real>::Data() const {
 }
 
 template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const SparseMatrix<Real> &smat) {
+  this->CopyFromSmat(smat);
+  return *this;
+}
+
+template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const CuRowSparseMatrix<Real> &smat) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    data_ = smat.data_;
+    num_rows_ = smat.num_rows_;
+    elements_per_row_ = smat.elements_per_row_;
+  } else
+#endif
+  {
+    // Todo. CPU-based copy
+  }
+  return *this;
+}
+
+template <typename Real>
 template <typename OtherReal>
 void CuRowSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) {
   num_rows_ = smat.NumRows();
