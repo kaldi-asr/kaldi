@@ -44,6 +44,12 @@ struct MatrixElement {
   Real weight;
 };
 
+template<typename Real>
+struct RowElement {
+  int32_cuda column;
+  Real weight;
+};
+
 extern "C" {
   /**
    * Structure containing size of the matrix plus stride.

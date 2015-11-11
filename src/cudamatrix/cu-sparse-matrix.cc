@@ -42,6 +42,90 @@
 namespace kaldi {
 
 template <typename Real>
+const RowElement<Real>* CuRowSparseMatrix<Real>::Data() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (data_.Dim() == 0)
+      return NULL;
+    else
+      return data_.Data();
+  } else
+#endif
+  {
+    return NULL;
+  }
+}
+
+template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const SparseMatrix<Real> &smat) {
+  this->CopyFromSmat(smat);
+  return *this;
+}
+
+template <typename Real>
+CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
+    const CuRowSparseMatrix<Real> &smat) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    data_ = smat.data_;
+    num_rows_ = smat.num_rows_;
+    elements_per_row_ = smat.elements_per_row_;
+  } else
+#endif
+  {
+    // Todo. CPU-based copy
+  }
+  return *this;
+}
+
+template <typename Real>
+template <typename OtherReal>
+void CuRowSparseMatrix<Real>::CopyFromSmat(const SparseMatrix<OtherReal> &smat) {
+  num_rows_ = smat.NumRows();
+  MatrixIndexT max_num_elements = 0;
+  for (int32 i = 0; i < num_rows_; ++i) {
+    MatrixIndexT num_elements = (smat.Data() + i)->NumElements();
+    if ( num_elements > max_num_elements)
+      max_num_elements = num_elements;
+  }
+  elements_per_row_ = max_num_elements;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (num_rows_ == 0 || elements_per_row_ == 0) {
+      data_.Resize(0);
+      return;
+    }
+    RowElement<Real> pad;
+    pad.column = -1;
+    pad.weight = 0.0;
+    std::vector<RowElement<Real> > cpu_elements(num_rows_ * elements_per_row_, pad);
+    for (int32 i = 0; i < num_rows_; ++i) {
+      for (int32 j = 0; j < (smat.Data() + i)->NumElements(); ++j) {
+        RowElement<Real>* cpu_element = &(cpu_elements[i * elements_per_row_ + j]);
+        cpu_element->column = ((smat.Data() + i)->Data() + j)->first;
+        cpu_element->weight = ((smat.Data() + i)->Data() + j)->second;
+      }
+    }
+    data_.CopyFromVec(cpu_elements);
+  } else
+#endif
+  {
+    return;
+    // Todo. CPU version
+    //  this->Mat().CopyFromSmat(smat);
+  }
+}
+template
+void CuRowSparseMatrix<float>::CopyFromSmat(const SparseMatrix<float> &smat);
+template
+void CuRowSparseMatrix<float>::CopyFromSmat(const SparseMatrix<double> &smat);
+template
+void CuRowSparseMatrix<double>::CopyFromSmat(const SparseMatrix<float> &smat);
+template
+void CuRowSparseMatrix<double>::CopyFromSmat(const SparseMatrix<double> &smat);
+
+template <typename Real>
 MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {

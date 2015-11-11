@@ -37,6 +37,44 @@
 #include "cudamatrix/cu-rand.h"
 
 namespace kaldi {
+/*
+ * Matrix sparse on a row basis
+ */
+template <class Real>
+class CuRowSparseMatrix {
+ public:
+  friend class CuMatrixBase<float>;
+  friend class CuMatrixBase<double>;
+  friend class CuMatrixBase<Real>;
+  MatrixIndexT NumRows() const { return num_rows_; }
+  MatrixIndexT NumCols() const { return elements_per_row_; }
+  MatrixIndexT NumElements() const { return num_rows_ * elements_per_row_; }
+
+  const RowElement<Real>* Data() const;
+
+  /// Copy from CPU-based matrix.
+  CuRowSparseMatrix<Real> &operator = (const SparseMatrix<Real> &smat);
+
+  /// Copy from possibly-GPU-based matrix.
+  CuRowSparseMatrix<Real> &operator = (const CuRowSparseMatrix<Real> &smat);
+
+  template <typename OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
+
+  // Constructor from CPU-based sparse matrix.
+  explicit CuRowSparseMatrix(const SparseMatrix<Real> &smat) {
+    this->CopyFromSmat(smat);
+  }
+
+  ~CuRowSparseMatrix() { }
+
+ private:
+  MatrixIndexT num_rows_;
+  MatrixIndexT elements_per_row_;
+  CuArray<RowElement<Real> > data_; // pairs(column-index, value)
+  // dim = num_rows_ * elements_per_row_.
+};
+
 
 template <typename Real>
 Real TraceMatSmat(const CuMatrixBase<Real> &A,
