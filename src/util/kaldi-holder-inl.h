@@ -764,9 +764,9 @@ template<int kFeatDim> class SphinxMatrixHolder {
         if (MachineIsLittleEndian())
           KALDI_SWAP4(tmp[j]);
       }
-      os.write(reinterpret_cast<char*> (tmp), sizeof(tmp));
+      os.write(reinterpret_cast<char*>(&(tmp[0])),
+               tmp.size() * 4);
     }
-
     return true;
   }
 
