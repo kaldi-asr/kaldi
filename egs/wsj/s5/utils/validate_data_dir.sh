@@ -283,7 +283,7 @@ if [ -f $data/utt2warp ]; then
 fi
 
 # check some optionally-required things
-for f in vad.scp utt2lang; do
+for f in vad.scp utt2lang utt2uniq; do
   if [ -f $data/$f ]; then
     check_sorted_and_uniq $data/$f
     if ! cmp -s <( awk '{print $1}' $data/utt2spk ) \

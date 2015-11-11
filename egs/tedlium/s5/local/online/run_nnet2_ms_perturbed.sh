@@ -61,7 +61,7 @@ if [ $stage -le 6 ]; then
   done
   utils/fix_data_dir.sh data/train_sp
 fi
-
+exit 1;
 if [ $stage -le 7 ]; then
   #obtain the alignment of the perturbed data
   steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
