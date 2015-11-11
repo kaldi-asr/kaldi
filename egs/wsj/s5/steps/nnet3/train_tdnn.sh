@@ -519,8 +519,8 @@ while [ $x -lt $num_iters ]; do
         # so we want to separate them in time.
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train $parallel_train_opts "$raw" \
-          --max-param-change=$max_param_change \
+          nnet3-train $parallel_train_opts \
+          --max-param-change=$max_param_change "$raw" \
           "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size --discard-partial-minibatches=true ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
