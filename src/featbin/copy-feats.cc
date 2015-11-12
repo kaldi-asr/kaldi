@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     po.Register("compress", &compress, "If true, write output in compressed form"
                 "(only currently supported for wxfilename, i.e. archive/script,"
                 "output)");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
     }
 
     int32 num_done = 0;
-    
+
     if (ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier) {
       // Copying tables of features.
       std::string rspecifier = po.GetArg(1);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       return (num_done != 0 ? 0 : 1);
     } else {
       KALDI_ASSERT(!compress && "Compression not yet supported for single files");
-      
+
       std::string feat_rxfilename = po.GetArg(1), feat_wxfilename = po.GetArg(2);
 
       Matrix<BaseFloat> feat_matrix;

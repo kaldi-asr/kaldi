@@ -34,6 +34,7 @@ phone_map=
 train_tree=true
 tree_stats_opts=
 cluster_phones_opts=
+compile_questions_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -138,7 +139,7 @@ if [ $stage -le -3 ] && $train_tree; then
   # preparing questions, roots file...
   cluster-phones $cluster_phones_opts $context_opts $dir/treeacc $lang/phones/sets.int $dir/questions.int 2>$dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
-  compile-questions $context_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  compile-questions $context_opts $compile_questions_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \

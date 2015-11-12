@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# based on lstm_h
-
+# see results at end of file
 
 set -e
 
@@ -12,6 +11,7 @@ train_stage=-10
 speed_perturb=false
 dir=exp/ctc/tdnn_a  # Note: _sp will get added to this if $speed_perturb == true.
 common_egs_dir=  # be careful with this: it's dependent on the CTC transition model
+
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
@@ -132,16 +132,91 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/ctc/decode.sh --stage 2 --nj 50 --cmd "$decode_cmd" \
+      steps/nnet3/ctc/decode.sh --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --stage 2 --cmd "$decode_cmd" \
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
   done
 fi
+
+# trying the same decoding but with different frame shifts; I want to see if
+# there is any combination effect.
+if [ $stage -le 15 ]; then
+  for decode_set in eval2000; do # train_dev eval2000
+    for shift in 1 -1; do
+     (
+      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+      steps/nnet3/ctc/decode.sh --nj 50 --cmd "$decode_cmd" --shift $shift \
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff}_shift$shift || exit 1;
+      if $has_fisher; then
+          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_shift$shift || exit 1;
+      fi
+      ) &
+    done
+  done
+  wait
+fi
+
+if [ $stage -le 16 ]; then
+  for decode_set in train_dev eval2000; do
+    for lm_suffix in sw1_tg sw1_fsh_fg; do
+   (
+    # this combination script only combines things to at a time, so use it twice.
+    steps/decode_combine.sh --cmd "$decode_cmd" \
+        data/${decode_set} data/lang_${lm_suffix}  exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix} exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix}_shift1 exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix}_shift0_1
+    steps/decode_combine.sh --cmd "$decode_cmd" \
+      --weight1 0.666 data/${decode_set} data/lang_${lm_suffix}  exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix}_shift0_1 exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix}_shift-1 exp/ctc/tdnn_a_sp/decode_${decode_set}_${lm_suffix}_shift0_1_-1
+   ) &
+    done
+  done
+  wait
+fi
+
+# the frame-shift combination gives us 0.6% abs on eval2000, swbd subset.
+#b01:s5c: grep Sum exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg/score*/*ys | utils/best_wer.sh
+#%WER 13.1 | 1831 21395 | 88.4 8.0 3.6 1.5 13.1 50.6 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+#b01:s5c: grep Sum exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg_shift0_1_-1/score*/*ys | utils/best_wer.sh
+#%WER 12.5 | 1831 21395 | 88.9 7.6 3.5 1.4 12.5 49.5 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg_shift0_1_-1/score_11_0.0/eval2000.ctm.swbd.filt.sys
+#b01:s5c:
+
+
+#b01:s5c: cat exp/ctc/tdnn_a_sp/decode_train_dev_sw1_tg/wer_* | utils/best_wer.sh
+#%WER 19.48 [ 9587 / 49204, 1214 ins, 2364 del, 6009 sub ]
+#b01:s5c: cat exp/ctc/tdnn_a_sp/decode_train_dev_sw1_tg_shift1/wer_* | utils/best_wer.sh
+#%WER 19.38 [ 9534 / 49204, 1110 ins, 2510 del, 5914 sub ]
+#b01:s5c: cat exp/ctc/tdnn_a_sp/decode_train_dev_sw1_tg_shift-1/wer_* | utils/best_wer.sh
+#%WER 19.64 [ 9665 / 49204, 1111 ins, 2688 del, 5866 sub ]
+#b01:s5c: cat exp/ctc/tdnn_a_sp/decode_train_dev_sw1_tg_shift0_1/wer_* | utils/best_wer.sh
+#%WER 18.67 [ 9187 / 49204, 1059 ins, 2519 del, 5609 sub ]
+#cat exp/ctc/tdnn_a_sp/decode_train_dev_sw1_tg_shift0_1_-1/wer_* | utils/best_wer.sh
+#%WER 18.37 [ 9041 / 49204, 1026 ins, 2542 del, 5473 sub ]
+
+
 wait;
 exit 0;
+
+
+#b01:s5c: grep Overall exp/ctc/tdnn_a_sp/log/compute_prob_*.final.log
+#exp/ctc/tdnn_a_sp/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0214241 per frame, over 20000 frames = -0.294677 + 0.273253
+#exp/ctc/tdnn_a_sp/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0325563 per frame, over 20000 frames = -0.319421 + 0.286865
+#b01:s5c: grep Overall exp/ctc/tdnn_a/log/compute_prob_*.final.log
+#exp/ctc/tdnn_a/log/compute_prob_train.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0178068 per frame, over 20000 frames = -0.29416 + 0.276353
+#exp/ctc/tdnn_a/log/compute_prob_valid.final.log:LOG (nnet3-ctc-compute-prob:PrintTotalStats():nnet-cctc-diagnostics.cc:134) Overall log-probability for 'output' is -0.0468761 per frame, over 20000 frames = -0.335203 + 0.288326
+
+# results without speed perturbation:
+# for x in exp/ctc/tdnn_a/decode_eval2000_sw1_{tg,fsh_fg}; do grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done
+# %WER 16.3 | 1831 21395 | 85.7 10.0 4.4 2.0 16.3 55.2 | exp/ctc/tdnn_a/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.5 | 1831 21395 | 87.0 8.7 4.3 1.6 14.5 52.3 | exp/ctc/tdnn_a/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# results with speed perturbation:
+# for x in exp/ctc/tdnn_a_sp/decode_eval2000_sw1_{tg,fsh_fg}; do grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done
+# %WER 14.9 | 1831 21395 | 86.9 9.2 3.9 1.8 14.9 53.5 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 13.1 | 1831 21395 | 88.4 8.0 3.6 1.5 13.1 50.6 | exp/ctc/tdnn_a_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
