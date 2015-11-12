@@ -1064,19 +1064,28 @@ template <typename Real>
 void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                             const CuRowSparseMatrix<Real> &B, MatrixTransposeType transB, Real beta) {
   KALDI_ASSERT(transB == kTrans && num_cols_ == B.num_rows_);
-  KALDI_ASSERT((transA == kTrans && num_rows_ == A.num_cols_ && A.num_rows_ >= B.elements_per_row_) ||
-               (transA == kNoTrans && num_rows_ == A.num_rows_ && A.num_cols_ >= B.elements_per_row_));
+  KALDI_ASSERT((transA == kTrans && num_rows_ == A.num_cols_ && A.num_rows_ == B.num_cols_) ||
+               (transA == kNoTrans && num_rows_ == A.num_rows_ && A.num_cols_ == B.num_cols_));
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
-    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK), n_blocks(NumCols(), CU2DBLOCK));
-    cuda_add_mat_smat(dimGrid, dimBlock, this->data_, Stride(), alpha, A.data_, A.Stride(), transA,
-                      B.Data(), B.elements_per_row_, beta);
+    dim3 dimBlock(CU1DBLOCK, 1);
+    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), n_blocks(NumCols(), 1));
+    if (transA == kNoTrans)
+      cuda_add_mat_smat(dimGrid, dimBlock, this->data_, Stride(), alpha, A.data_, A.Stride(),
+                        B.Data(), B.elements_per_row_, beta);
+    else
+      cuda_add_mat_trans_smat(dimGrid, dimBlock, this->data_, Stride(), alpha, A.data_, A.Stride(),
+                              B.Data(), B.elements_per_row_, beta);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
-  }
+  } else
 #endif
+  {
+    Matrix<Real> cpuB(B.num_rows_, B.num_cols_);
+    reinterpret_cast<const SparseMatrix<Real>*>(&B)->CopyToMat(&cpuB, kNoTrans);
+    Mat().AddMatMat(alpha, A.Mat(), transA, cpuB, transB, beta);
+  }
 }
 
 template<typename Real>

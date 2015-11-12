@@ -47,9 +47,15 @@ class CuRowSparseMatrix {
   friend class CuMatrixBase<double>;
   friend class CuMatrixBase<Real>;
   MatrixIndexT NumRows() const { return num_rows_; }
-  MatrixIndexT NumCols() const { return elements_per_row_; }
+  MatrixIndexT NumCols() const { return num_cols_; }
   MatrixIndexT NumElements() const { return num_rows_ * elements_per_row_; }
 
+  // returns pointer to element data, or NULL if empty (use with NumElements()).
+  // This should only be called when CUDA is enabled.
+  RowElement<Real> *Data();
+
+  // returns pointer to element data, or NULL if empty (use with NumElements()),
+  // const version. This should only be called when CUDA is enabled.
   const RowElement<Real>* Data() const;
 
   /// Copy from CPU-based matrix.
@@ -58,8 +64,30 @@ class CuRowSparseMatrix {
   /// Copy from possibly-GPU-based matrix.
   CuRowSparseMatrix<Real> &operator = (const CuRowSparseMatrix<Real> &smat);
 
+  /// Copy from CPU-based matrix. We will add the transpose option later when it
+  /// is necessary.
   template <typename OtherReal>
   void CopyFromSmat(const SparseMatrix<OtherReal> &smat);
+
+  /// Copy to CPU-based matrix. We will add the transpose option later when it
+  /// is necessary.
+  template <typename OtherReal>
+  void CopyToSmat(SparseMatrix<OtherReal> *smat) const;
+
+  /// Swap with CPU-based matrix.
+  void Swap(SparseMatrix<Real> *smat);
+
+  /// Swap with possibly-CPU-based matrix.
+  void Swap(CuRowSparseMatrix<Real> *smat);
+
+  /// Sets up to a pseudo-randomly initialized matrix, with each element zero
+  /// with probability zero_prob and else normally distributed- mostly for
+  /// purposes of testing.
+  void SetRandn(BaseFloat zero_prob);
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
 
   // Constructor from CPU-based sparse matrix.
   explicit CuRowSparseMatrix(const SparseMatrix<Real> &smat) {
@@ -68,8 +96,24 @@ class CuRowSparseMatrix {
 
   ~CuRowSparseMatrix() { }
 
+ protected:
+  // The following two functions should only be called if we did not compile
+  // with CUDA or could not get a CUDA card; in that case the contents are
+  // interpreted the same as a regular sparse matrix.
+  inline const SparseMatrix<Real> &Mat() const {
+    return *(reinterpret_cast<const SparseMatrix<Real>* >(this));
+  }
+  inline SparseMatrix<Real> &Mat() {
+    return *(reinterpret_cast<SparseMatrix<Real>* >(this));
+  }
+
  private:
+  // This member is only used if we did not compile for the GPU, or if the GPU
+  // is not enabled.  It needs to be first because we reinterpret_cast this
+  std::vector<SparseVector<Real> > cpu_rows_;
+
   MatrixIndexT num_rows_;
+  MatrixIndexT num_cols_;
   MatrixIndexT elements_per_row_;
   CuArray<RowElement<Real> > data_; // pairs(column-index, value)
   // dim = num_rows_ * elements_per_row_.
