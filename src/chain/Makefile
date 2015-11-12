@@ -6,9 +6,10 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-TESTFILES = chain-supervision-test
+TESTFILES = chain-supervision-test language-model-test
 
-OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o
+OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
+          language-model.o
 
 LIBNAME = kaldi-chain
 

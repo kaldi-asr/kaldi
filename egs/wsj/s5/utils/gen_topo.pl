@@ -5,7 +5,7 @@
 # Generate a topology file.  This allows control of the number of states in the
 # non-silence HMMs, and in the silence HMMs.
 
-if(@ARGV != 4) {
+if (@ARGV != 4) {
   print STDERR "Usage: utils/gen_topo.pl <num-nonsilence-states> <num-silence-states> <colon-separated-nonsilence-phones> <colon-separated-silence-phones>\n";
   print STDERR "e.g.:  utils/gen_topo.pl 3 5 4:5:6:7:8:9:10 1:2:3\n";
   exit (1);
@@ -44,7 +44,7 @@ if ($num_sil_states > 1) {
   print "$sil_phones\n";
   print "</ForPhones>\n";
   print "<State> 0 <PdfClass> 0 ";
-  for ($nextstate = 0; $nextstate < $num_sil_states-1; $nextstate++) { # Transitions to all but last 
+  for ($nextstate = 0; $nextstate < $num_sil_states-1; $nextstate++) { # Transitions to all but last
     # emitting state.
     print "<Transition> $nextstate $transp ";
   }
@@ -61,7 +61,7 @@ if ($num_sil_states > 1) {
   $state = $num_sil_states-1;
   print "<State> $state <PdfClass> $state <Transition> $state 0.75 <Transition> $num_sil_states 0.25 </State>\n";
   # Final nonemitting state:
-  print "<State> $num_sil_states </State>\n"; 
+  print "<State> $num_sil_states </State>\n";
   print "</TopologyEntry>\n";
 } else {
   print "<TopologyEntry>\n";
