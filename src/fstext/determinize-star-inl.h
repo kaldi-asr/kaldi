@@ -632,7 +632,6 @@ template<class F>
 bool DeterminizeStar(F &ifst, MutableFst<typename F::Arc> *ofst,
                      float delta, bool *debug_ptr, int max_states,
                      bool allow_partial) {
-  typedef typename F::Arc Arc;
   ofst->SetOutputSymbols(ifst.OutputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
   DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
@@ -647,7 +646,6 @@ bool DeterminizeStar(F &ifst,
                      MutableFst<GallicArc<typename F::Arc> > *ofst, float delta,
                      bool *debug_ptr, int max_states,
                      bool allow_partial) {
-  typedef typename F::Arc Arc;
   ofst->SetOutputSymbols(ifst.InputSymbols());
   ofst->SetInputSymbols(ifst.InputSymbols());
   DeterminizerStar<F> det(ifst, delta, max_states, allow_partial);
