@@ -13,7 +13,6 @@ stage=1
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_multicondition/nnet_ms_a
-dest_wav_dir=data/rvb_wavs # directory to store the reverberated wav files
 
 set -e
 . cmd.sh
@@ -52,7 +51,7 @@ else
 fi
 
 # do the common parts of the script.
-local/multi_condition/run_nnet2_common.sh --dest-wav-dir $dest_wav_dir --stage $stage
+local/multi_condition/run_nnet2_common.sh --stage $stage
 
 
 if [ $stage -le 7 ]; then

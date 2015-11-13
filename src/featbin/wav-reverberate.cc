@@ -105,7 +105,12 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Corrupts the wave files supplied via input pipe with the specified\n"
         "room-impulse response (rir_matrix) and additive noise distortions\n"
-        "(specified by corresponding files).\n";
+        "(specified by corresponding files).\n"
+        "Usage:  wav-reverberate [options...] <wav-in-rxfilename> "
+        "<rir-rxfilename> <wav-out-wxfilename>\n"
+        "e.g.\n"
+        "wav-reverberate --noise-file=noise.wav \\\n"
+        "  input.wav rir.wav output.wav\n";
 
     ParseOptions po(usage);
     std::string noise_file;
