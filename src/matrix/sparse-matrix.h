@@ -293,6 +293,10 @@ class GeneralMatrix {
   /// Assignment from SparseMatrix<BaseFloat>
   GeneralMatrix &operator= (const SparseMatrix<BaseFloat> &smat);
 
+  /// Assignment from cuda matrix.
+  /// Implemented in ../cudamatrix/cu-matrix.cc
+  GeneralMatrix &operator= (const CuMatrixBase<BaseFloat> &cu_mat);
+
   MatrixIndexT NumRows() const;
 
   MatrixIndexT NumCols() const;
@@ -338,6 +342,16 @@ void FilterSparseMatrixRows(const SparseMatrix<Real> &in,
                             const std::vector<bool> &keep_rows,
                             SparseMatrix<Real> *out);
 
+/// Outputs a SparseMatrix containing all the rows of matrix "in" 
+/// in the specified range [row_begin, row_end).
+/// It is a significantly faster alternative for filtering contiguous rows
+/// compared to FilterSparseMatrixRows().
+template <typename Real>
+void FilterSparseMatrixRowsRange(const SparseMatrix<Real> &in,
+                                 const MatrixIndexT row_begin,
+                                 const MatrixIndexT row_end,
+                                 SparseMatrix<Real> *out);
+ 
 /// Outputs a Matrix<Real> containing only the rows r of "in" such that
 /// keep_keep_rows[r] == true.  keep_rows.size() must equal in.NumRows(), and
 /// keep_rows must contain at least one "true" element.
@@ -363,6 +377,15 @@ void FilterGeneralMatrixRows(const GeneralMatrix &in,
                              const std::vector<bool> &keep_rows,
                              GeneralMatrix *out);
 
+/// Outputs a GeneralMatrix containing the rows ranging [row_begin, row_end) of
+/// "in". It must contain at least one "true" element. If in.Type() is
+/// kCompressedMatrix, the result will not be compressed; otherwise, the type
+/// is preserved. It is faster than FilterGeneralMatrixRows() if the rows we
+/// want to keep are within a continuous range.
+void FilterGeneralMatrixRowsRange(const GeneralMatrix &in,
+                                  const MatrixIndexT row_begin,
+                                  const MatrixIndexT row_end,
+                                  GeneralMatrix *out); 
 
 
 /// @} end of \addtogroup matrix_group

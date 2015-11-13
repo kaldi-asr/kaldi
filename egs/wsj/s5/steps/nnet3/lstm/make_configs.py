@@ -62,6 +62,10 @@ def GetArgs():
                         help="dimension of non-recurrent projection")
     parser.add_argument("--hidden-dim", type=int,
                         help="dimension of fully-connected layers")
+    parser.add_argument("--preserve-state", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="if true, additional nodes necessary for state preserving RNN training are created. "
+                        "The states of the recurrent nodes in the previous minibatch are preserved for the next minibatch.",
+                        default=False, choices = ["false", "true"])
 
     # Natural gradient options
     parser.add_argument("--ng-per-element-scale-options", type=str,
@@ -143,7 +147,7 @@ def PrintConfig(file_name, config_lines):
     f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
-def ParseSpliceString(splice_indexes, label_delay=None):
+def ParseSpliceString(splice_indexes, label_delay=None, preserve_state=False):
     ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
     split1 = splice_indexes.split(" ");  # we already checked the string is nonempty.
     if len(split1) < 1:
@@ -154,6 +158,11 @@ def ParseSpliceString(splice_indexes, label_delay=None):
     if label_delay is not None:
         left_context = -label_delay
         right_context = label_delay
+    # left_context is used to decide the left boundary of a chunk, which is the left-most input frame among
+    # those that each output-node required. Unlike "output", the output-nodes for state outputs will never
+    # be label-delayed, so label_delay has no effects on left_context in state preserving RNN training.
+    if preserve_state:
+        left_context = max(0, left_context)
 
     splice_array = []
     try:
@@ -209,7 +218,7 @@ def ParseLstmDelayString(lstm_delay):
 def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 splice_indexes, lstm_delay, cell_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
-                num_lstm_layers, num_hidden_layers,
+                num_lstm_layers, num_hidden_layers, preserve_state,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize, self_repair_scale):
@@ -230,9 +239,12 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     for i in range(num_lstm_layers):
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
+            if preserve_state:
+                raise ValueError("State preserving training with BLSTM is not desirable.")
             prev_layer_output = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
                                                     prev_layer_output, cell_dim,
                                                     recurrent_projection_dim, non_recurrent_projection_dim,
+                                                    preserve_state,
                                                     clipping_threshold, norm_based_clipping,
                                                     ng_per_element_scale_options, ng_affine_options,
                                                     lstm_delay = lstm_delay[i], self_repair_scale = self_repair_scale)
@@ -240,6 +252,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
             prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
                                                    prev_layer_output, cell_dim,
                                                    recurrent_projection_dim, non_recurrent_projection_dim,
+                                                   preserve_state,
                                                    clipping_threshold, norm_based_clipping,
                                                    ng_per_element_scale_options, ng_affine_options,
                                                    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
@@ -280,8 +293,8 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
 
 
-def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layers):
-    parsed_splice_output = ParseSpliceString(splice_indexes.strip(), label_delay)
+def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layers, preserve_state):
+    parsed_splice_output = ParseSpliceString(splice_indexes.strip(), label_delay, preserve_state)
     left_context = parsed_splice_output['left_context']
     right_context = parsed_splice_output['right_context']
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
@@ -303,7 +316,7 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
 def Main():
     args = GetArgs()
-    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers)
+    [left_context, right_context, num_hidden_layers, splice_indexes] = ProcessSpliceIndexes(args.config_dir, args.splice_indexes, args.label_delay, args.num_lstm_layers, args.preserve_state)
 
     MakeConfigs(config_dir = args.config_dir,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
@@ -314,6 +327,7 @@ def Main():
                 non_recurrent_projection_dim = args.non_recurrent_projection_dim,
                 num_lstm_layers = args.num_lstm_layers,
                 num_hidden_layers = num_hidden_layers,
+                preserve_state = args.preserve_state,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
                 ng_per_element_scale_options = args.ng_per_element_scale_options,

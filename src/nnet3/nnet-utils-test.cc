@@ -100,6 +100,34 @@ void UnitTestConvertRepeatedToBlockAffineComposite() {
   }
 }
 
+void UnitTestRecurrentNodeNamesAndOffsets() {
+  struct NnetGenerationOptions gen_config;
+  std::vector<std::string> configs;
+  GenerateConfigSequenceStatePreservingLstm(gen_config, &configs);
+  Nnet nnet;
+  std::istringstream is(configs[0]);
+  nnet.ReadConfig(is);
+
+  const std::string arr[] = {"r_t", "c1_t", "c2_t"};
+  std::vector<std::string> recurrent_node_names_truth(arr,
+		  arr + sizeof(arr) / sizeof(arr[0]));
+  
+  std::vector<std::string> recurrent_output_names;
+  std::vector<std::string> recurrent_node_names;
+  std::vector<int32> recurrent_offsets;
+  GetRecurrentOutputNodeNames(nnet, &recurrent_output_names,
+		              &recurrent_node_names);
+  GetRecurrentNodeOffsets(nnet, recurrent_node_names, &recurrent_offsets);
+  for (int32 i = 0; i < recurrent_offsets.size(); i++) {
+    KALDI_LOG << recurrent_node_names[i] << " offset=" << recurrent_offsets[i];
+    std::vector<std::string>::iterator iter;
+    iter = find(recurrent_node_names_truth.begin(),
+                recurrent_node_names_truth.end(), recurrent_node_names[i]);
+    KALDI_ASSERT(iter != recurrent_node_names_truth.end());
+    KALDI_ASSERT(recurrent_offsets[i] == -1);
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -111,6 +139,7 @@ int main() {
   UnitTestNnetContext();
   UnitTestConvertRepeatedToBlockAffine();
   UnitTestConvertRepeatedToBlockAffineComposite();
+  UnitTestRecurrentNodeNamesAndOffsets();
 
   KALDI_LOG << "Nnet tests succeeded.";
 

@@ -35,6 +35,8 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
+                        bool left_shift_window,
+                        bool multiple_ivectors_per_eg,
                         int32 num_pdfs,
                         int32 left_context,
                         int32 right_context,
@@ -45,6 +47,15 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
   KALDI_ASSERT(feats.NumRows() == static_cast<int32>(pdf_post.size()));
   
   for (int32 t = 0; t < feats.NumRows(); t += frames_per_eg) {
+
+    if (left_shift_window) {
+      // At the end of the file we left shift the frame window
+      // so that all examples have the same length if the length
+      // of the utterance is at least equal to frames_per_eg;
+      // otherwise just left shift as far as we can.
+      if (feats.NumRows() - t < frames_per_eg)
+        t = std::max(feats.NumRows() - frames_per_eg, 0);
+    }
 
     // actual_frames_per_eg is the number of frames with nonzero
     // posteriors.  At the end of the file we pad with zero posteriors
@@ -76,15 +87,39 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
-      // try to get closest frame to middle of window to get
-      // a representative iVector.
-      int32 closest_frame = t + (actual_frames_per_eg / 2);
-      KALDI_ASSERT(ivector_feats->NumRows() > 0);
-      if (closest_frame >= ivector_feats->NumRows())
-        closest_frame = ivector_feats->NumRows() - 1;
-      Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
-      eg.io.push_back(NnetIo("ivector", 0, ivector));
+      if (!multiple_ivectors_per_eg) {
+        // try to get closest frame to middle of window to get
+        // a representative iVector.
+        int32 closest_frame = t + (actual_frames_per_eg / 2);
+        KALDI_ASSERT(ivector_feats->NumRows() > 0);
+        if (closest_frame >= ivector_feats->NumRows())
+          closest_frame = ivector_feats->NumRows() - 1;
+        Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
+        ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+        eg.io.push_back(NnetIo("ivector", 0, ivector));
+      } else {
+        // get a representative iVector every 20 frames in an eg
+        const int32 interval = 20;
+        int32 closest_frame = t +
+            std::min(interval, actual_frames_per_eg) / 2;
+        // use frames_per_eg instead of actual_frames_per_eg so that
+        // num_ivectors are invariant across all egs
+        int32 num_ivectors =
+            std::max(0, frames_per_eg - closest_frame + t) / interval + 1;
+        Matrix<BaseFloat> ivector(num_ivectors, ivector_feats->NumCols());
+        for (int32 n = 0; n < num_ivectors; n++) {
+          if (closest_frame < t + actual_frames_per_eg)
+            ivector.Row(n).CopyFromVec(ivector_feats->Row(closest_frame));
+          else
+            // if closest_frame exceeds the last frame of an utterance,
+            // just copy from the previous ivector
+            ivector.Row(n).CopyFromVec(ivector.Row(n - 1));
+          closest_frame += interval;
+        }
+        eg.io.push_back(NnetIo("ivector", 0, ivector));
+        for (int32 n = 0; n < eg.io.back().indexes.size(); n++)
+          eg.io.back().indexes[n].t *= interval;
+      }
     }
 
     // add the labels.
@@ -139,7 +174,8 @@ int main(int argc, char *argv[]) {
         "   ark:- \n";
         
 
-    bool compress = true;
+    bool compress = true, left_shift_window = false,
+         multiple_ivectors_per_eg = false;
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
@@ -160,6 +196,17 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("left-shift-window", &left_shift_window, "If false, the last "
+                "example extracted from an utterance would be padded with the "
+                "final frame to get frames_per_eg frames. If true, the starting"
+                " frame-index of the last example would be shifted to the left "
+                "to get frames_per_eg frames.");
+    po.Register("multiple-ivectors-per-eg", &multiple_ivectors_per_eg, "If "
+                "true, dump more ivectors (e.g. every 20 frames) per eg. One "
+                "situation when it is used is in state preserving training "
+                "when we usually get egs of large chunk size, and it may be "
+                "inappropriate to just use one ivector to represent all the "
+                "smaller chunks after splitting.");
     
     po.Read(argc, argv);
 
@@ -221,11 +268,12 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-          
+
         ProcessFile(feats, ivector_feats, pdf_post, key, compress,
-                    num_pdfs, left_context, right_context, num_frames,
-                    &num_frames_written, &num_egs_written,
-                    &example_writer);
+                    left_shift_window, multiple_ivectors_per_eg, num_pdfs,
+                    left_context, right_context, num_frames,
+                    &num_frames_written, &num_egs_written, &example_writer);
+
         num_done++;
       }
     }

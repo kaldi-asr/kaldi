@@ -286,5 +286,220 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 }
 
 
+int32 NumFramesPerChunk(const NnetIo &io) {
+  // Counts num of distinct "t" values for all indexes whose "n" value is 0.
+  std::vector<Index>::const_iterator begin = io.indexes.begin(),
+                                     iter = begin,
+                                     end = io.indexes.end();
+  unordered_set<int32> frame_indexes_t;
+  int32 n_offset = begin->n;
+  for (; iter != end; ++iter)
+    if (iter->n == n_offset)
+      frame_indexes_t.insert(iter->t);
+  return static_cast<int32>(frame_indexes_t.size());
+}
+
+int32 NumChunks(const NnetIo &io) {
+  // Computes it by just finding the the starting and the largest "n" value
+  std::vector<Index>::const_iterator begin = io.indexes.begin(),
+                                     iter = begin,
+                                     end = io.indexes.end();
+  int32 n_offset = begin->n, n = n_offset;
+  for (; iter != end; ++iter)
+    n = std::max(iter->n, n);
+  return n - n_offset + 1;
+}
+
+// Split output in eg and store them in *split_egs. It is called by
+// SplitChunk(). It assumes that the space of *split_egs has been allocated by
+// the caller.
+static void SplitOutput(int32 old_chunk_size, int32 new_chunk_size,
+                       int32 num_chunks, int32 feat, const NnetExample &eg,
+                       const std::vector<int32> &output_t_begin,
+                       std::vector<NnetExample> *split_egs) {
+  KALDI_ASSERT(split_egs != NULL);
+  const int32 num_minibatches = split_egs->size();
+  for (int32 i = 0; i < num_minibatches; i++) {
+    std::vector<GeneralMatrix const*> output_list(num_chunks);
+    std::vector<GeneralMatrix> output_matrices(num_chunks);
+
+    NnetExample &new_eg = (*split_egs)[i];
+    new_eg.io[feat].name = eg.io[feat].name;
+    new_eg.io[feat].indexes.resize(num_chunks * new_chunk_size);
+    for (int32 n = 0; n < num_chunks; n++) {
+      int32 src_begin = n * old_chunk_size + i * new_chunk_size,
+            src_end = src_begin + new_chunk_size,
+            dst_begin = n * new_chunk_size;
+      // the last frame being copied should be the last row of features
+      if (i == num_minibatches - 1 && n == num_chunks - 1)
+        KALDI_ASSERT(src_end == eg.io[feat].features.NumRows());
+      // copy indexes
+      std::copy(eg.io[feat].indexes.begin() + src_begin,
+                eg.io[feat].indexes.begin() + src_end,
+                new_eg.io[feat].indexes.begin() + dst_begin);
+      // modify indexes "t"
+      for (int32 t = 0; t < new_chunk_size; t++)
+        new_eg.io[feat].indexes[dst_begin + t].t = t + output_t_begin[n];
+      // copy corresponding features
+      FilterGeneralMatrixRowsRange(eg.io[feat].features, src_begin,
+                                   src_end, &output_matrices[n]);
+      output_list[n] = &output_matrices[n];
+    }
+    AppendGeneralMatrixRows(output_list, &(new_eg.io[feat].features));
+  }
+}
+
+// Split input in eg and store them in *split_egs. It is called by SplitChunk().
+// It assumes that the space of *split_egs has been allocated by the caller.
+static void SplitInput(int32 num_input_frames_per_chunk, int32 new_chunk_size,
+                       int32 num_chunks, int32 left_context, int32 right_context,
+                       int32 extra_left_frames, int32 extra_right_frames,
+                       int32 feat, const NnetExample &eg,
+                       const std::vector<int32> &output_t_begin,
+                       std::vector<NnetExample> *split_egs) {
+  KALDI_ASSERT(split_egs != NULL);
+  const int32 num_minibatches = split_egs->size();
+  for (int32 i = 0; i < num_minibatches; i++) {
+    std::vector<GeneralMatrix const*> output_list(num_chunks);
+    std::vector<GeneralMatrix> output_matrices(num_chunks);
+
+    NnetExample &new_eg = (*split_egs)[i];
+    new_eg.io[feat].name = eg.io[feat].name;
+    // new chunks in the first/last minibatches should also include all extra
+    // frames before/after left_context/right_context from the old chunks
+    // (e.g. chunk_left_context/chunk_right_context)
+    new_eg.io[feat].indexes.resize(num_chunks * (new_chunk_size + left_context +
+              right_context + (i == 0 ? extra_left_frames : 0) +
+              (i == num_minibatches - 1 ? extra_right_frames : 0)));
+    for (int32 n = 0; n < num_chunks; n++) {
+      int32 src_begin = n * num_input_frames_per_chunk + i * new_chunk_size +
+                (i == 0 ? 0 : extra_left_frames),
+            src_end = src_begin + new_chunk_size + left_context + right_context +
+                (i == 0 ? extra_left_frames : 0) +
+                (i == num_minibatches - 1 ? extra_right_frames : 0),
+            dst_begin = n * (new_chunk_size + left_context + right_context +
+                (i == 0 ? extra_left_frames : 0) +
+                (i == num_minibatches - 1 ? extra_right_frames : 0));
+      // the last frame being copied should be the last row of features
+      if (i == num_minibatches - 1 && n == num_chunks - 1)
+        KALDI_ASSERT(src_end == eg.io[feat].features.NumRows());
+      //copy indexes
+      std::copy(eg.io[feat].indexes.begin() + src_begin,
+                eg.io[feat].indexes.begin() + src_end,
+                new_eg.io[feat].indexes.begin() + dst_begin);
+      // modify indexes "t"
+      int32 t = -left_context - (i == 0 ? extra_left_frames : 0);
+      for (int32 j = 0; j < src_end - src_begin; j++, t++)
+        new_eg.io[feat].indexes[dst_begin + j].t = t + output_t_begin[n];
+      // copy corresponding features
+      FilterGeneralMatrixRowsRange(eg.io[feat].features, src_begin,
+                                   src_end, &output_matrices[n]);
+      output_list[n] = &output_matrices[n];
+    }
+    AppendGeneralMatrixRows(output_list, &(new_eg.io[feat].features));
+  }
+}
+
+// Split ivector in eg and store them in *split_egs. It is called by
+// SplitChunk(). It assumes that the space of *split_egs has been allocated by
+// the caller.
+static void SplitIvector(int32 new_chunk_size, int32 num_chunks,
+                         int32 feat, const NnetExample &eg,
+                         std::vector<NnetExample> *split_egs) {
+  KALDI_ASSERT(split_egs != NULL);
+  const int32 num_minibatches = split_egs->size();
+  const int32 num_ivectors_per_old_chunk = NumFramesPerChunk(eg.io[feat]);
+  for (int32 i = 0; i < num_minibatches; i++) {
+    std::vector<GeneralMatrix const*> output_list(num_chunks);
+    std::vector<GeneralMatrix> output_matrices(num_chunks);
+
+    NnetExample &new_eg = (*split_egs)[i];
+    new_eg.io[feat].name = eg.io[feat].name;
+    new_eg.io[feat].indexes.resize(num_chunks);
+    for (int32 n = 0; n < num_chunks; n++) {
+      // assign one of iVectors in the old chunk to the new chunk
+      int32 src_begin = n * num_ivectors_per_old_chunk +
+                        i * num_ivectors_per_old_chunk / num_minibatches,
+            src_end = src_begin + 1, dst_begin = n;
+      // copy indexes
+      std::copy(eg.io[feat].indexes.begin() + src_begin,
+                eg.io[feat].indexes.begin() + src_end,
+                new_eg.io[feat].indexes.begin() + dst_begin);
+      // modify indexes "t"
+      new_eg.io[feat].indexes[dst_begin].t = 0;
+      // copy corresponding features
+      FilterGeneralMatrixRowsRange(eg.io[feat].features, src_begin,
+                                   src_end, &output_matrices[n]);
+      output_list[n] = &output_matrices[n];
+    }
+    AppendGeneralMatrixRows(output_list, &(new_eg.io[feat].features));
+  }
+}
+
+void SplitChunk(int32 new_chunk_size, int32 left_context, int32 right_context,
+                const NnetExample &eg, const Nnet &nnet,
+                std::vector<NnetExample> *split_egs) {
+  KALDI_ASSERT(new_chunk_size > 0);
+  int32 old_chunk_size = 0, num_chunks = 0, num_input_frames_per_chunk = 0,
+        extra_left_frames = 0, extra_right_frames = 0, num_minibatches = 0;
+  std::vector<int32> output_t_begin;
+
+  for (int32 f = 0; f < eg.io.size(); f++) {
+    if (eg.io[f].name == "output") {
+      // compute the original chunk size, num of chunks in minibatch,
+      // the begining output "t" index of each chunk and
+      // num of minibatches after splitting
+      old_chunk_size = NumFramesPerChunk(eg.io[f]);
+      num_chunks = NumChunks(eg.io[f]);
+      KALDI_ASSERT(old_chunk_size % new_chunk_size == 0);
+      num_minibatches = old_chunk_size / new_chunk_size;
+      output_t_begin.reserve(num_chunks);
+      for (int32 n = 0; n < num_chunks; n++)
+        output_t_begin.push_back((eg.io[f].indexes.begin() +
+                                 n * old_chunk_size)->t);
+      KALDI_LOG << "Splitting an example into " << num_minibatches
+                << " minibatches.";
+      break;
+    }
+  }
+
+  for (int32 f = 0; f < eg.io.size(); f++) {
+    if (eg.io[f].name == "input") {
+      // compute num of input frames per chunk
+      num_input_frames_per_chunk = NumFramesPerChunk(eg.io[f]);
+      // compute extra left frames and extra right frames
+      extra_left_frames = output_t_begin[0] - eg.io[f].indexes.begin()->t -
+                          left_context;
+      extra_right_frames = num_input_frames_per_chunk - old_chunk_size - 
+                           left_context - right_context - extra_left_frames;
+      KALDI_VLOG(2) << "extra_left_context=" << extra_left_frames 
+                    << ", extra_right_context=" << extra_right_frames;
+      break;
+    }
+  }
+
+  split_egs->clear();
+  split_egs->resize(num_minibatches);
+  for (int32 i = 0; i < num_minibatches; i++)
+    (*split_egs)[i].io.resize(eg.io.size());
+  for (int32 f = 0; f < eg.io.size(); f++) {
+    const int32 node_index = nnet.GetNodeIndex(eg.io[f].name);
+    if (node_index != -1 && nnet.IsOutputNode(node_index)) // e.g., is "output"
+      SplitOutput(old_chunk_size, new_chunk_size, num_chunks, f, eg,
+                  output_t_begin, split_egs);
+    else if (node_index != -1 && nnet.IsInputNode(node_index) &&
+             eg.io[f].name != "ivector") //e.g., is "input"
+      SplitInput(num_input_frames_per_chunk, new_chunk_size, num_chunks,
+                 left_context, right_context, extra_left_frames,
+                 extra_right_frames, f, eg, output_t_begin, split_egs);
+    else if (node_index != -1 && nnet.IsInputNode(node_index) &&
+             eg.io[f].name == "ivector")
+      SplitIvector(new_chunk_size, num_chunks, f, eg, split_egs);
+    else
+      KALDI_ERR << "The io named \"" << eg.io[f].name << "\" in the example is " 
+                << "not defined in nnet.";
+  }
+}
+
 } // namespace nnet3
 } // namespace kaldi

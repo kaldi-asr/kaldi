@@ -40,6 +40,159 @@ int32 NumInputNodes(const Nnet &nnet) {
   return ans;
 }
 
+void CheckStateIoForStatePreserving(const Nnet &nnet) {
+  const std::string suffix = "_STATE_PREVIOUS_MINIBATCH";
+  const std::vector<std::string> &node_names = nnet.GetNodeNames();
+  for (int32 n = 0; n < node_names.size(); n++) {
+    const std::string node_name = node_names[n];
+    if (node_name.size() >= suffix.size() &&
+        node_name.substr(node_name.size() - suffix.size()) == suffix) {
+      const std::string node_name_no_suffix = 
+          node_name.substr(0, node_name.size() - suffix.size());
+      int32 node_index = nnet.GetNodeIndex(node_name_no_suffix);
+      if (node_index == -1 || !nnet.IsInputNode(n) ||
+          !nnet.IsOutputNode(node_index))
+        KALDI_ERR << "The name \"" << node_name_no_suffix << "\" with suffix \""
+                  << "_STATE_PREVIOUS_MINIBATCH\" is reserved only for input "
+                  << "node. Further such an input node should be accompanied "
+                  << "by an output node of the name \"" << node_name_no_suffix
+                  << "\". These nodes are used to implement state preserving "
+                  << "RNN training.";
+    }
+  }
+}
+
+void GetRecurrentOutputNodeNames(const Nnet &nnet,
+                                 std::vector<std::string>
+                                 *recurrent_output_names,
+                                 std::vector<std::string>
+                                 *recurrent_node_names) {
+  recurrent_output_names->clear();
+  recurrent_node_names->clear();
+  const std::string suffix = "_STATE_PREVIOUS_MINIBATCH";
+  for (int32 i = 0; i < nnet.NumNodes(); i++) {
+    const std::string node_name = nnet.GetNodeName(i);
+    int32 suffixed_node_index = nnet.GetNodeIndex(node_name + suffix);
+    if (nnet.IsOutputNode(i) && node_name != "output" &&
+        suffixed_node_index > -1 && nnet.IsInputNode(suffixed_node_index)) {
+      recurrent_output_names->push_back(node_name);
+      std::vector<int32> node_indexes;
+      nnet.GetNode(i).descriptor.GetNodeDependencies(&node_indexes);
+      KALDI_ASSERT(node_indexes.size() == 1);
+      recurrent_node_names->push_back(nnet.GetNodeName(node_indexes[0]));
+    }
+  }
+}
+
+void GetRecurrentNodeOffsets(const Nnet &nnet,
+                             const std::vector<std::string>
+                             &recurrent_node_names,
+                             std::vector<int32> *recurrent_offsets) {
+  recurrent_offsets->clear();
+  recurrent_offsets->resize(recurrent_node_names.size(), 0);
+  for (int32 i = 0; i < nnet.NumNodes(); i++) {
+    const NetworkNode &node = nnet.GetNode(i);
+    // skip output node to circumvent the problem when a recurrent output 
+    // is "label delayed" and thus also contain keyword "Offset", which is not
+    // what we are trying to look at for our "offset"  
+    if (node.node_type == kDescriptor && !nnet.IsOutputNode(i)) {
+      for (int32 p = 0; p < node.descriptor.NumParts(); p++) {
+        const SumDescriptor &this_part = node.descriptor.Part(p);
+        TraceIntoSumDescriptorForOffsets(nnet, this_part, recurrent_node_names,
+                                         recurrent_offsets);
+      }
+    }
+  }
+}
+
+void TraceIntoSumDescriptorForOffsets(const Nnet &nnet,
+                                  const SumDescriptor &this_descriptor,
+                                  const std::vector<std::string> &node_names,
+                                  std::vector<int32> *offsets) {
+  const OptionalSumDescriptor *ptr_optional =
+      dynamic_cast<const OptionalSumDescriptor*>(&this_descriptor);
+  if (ptr_optional != NULL) {
+    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_optional->src_),
+                                     node_names, offsets);
+    return;
+  }
+  const BinarySumDescriptor *ptr_binary =
+      dynamic_cast<const BinarySumDescriptor*>(&this_descriptor);
+  if (ptr_binary != NULL) {
+    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_binary->src1_),
+                                     node_names, offsets);
+    TraceIntoSumDescriptorForOffsets(nnet, *(ptr_binary->src2_),
+                                     node_names, offsets);
+    return;
+  }
+  const SimpleSumDescriptor *ptr_simple =
+      dynamic_cast<const SimpleSumDescriptor*>(&this_descriptor);
+  if (ptr_simple != NULL) {
+    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_simple->src_),
+                                            node_names, offsets);
+    return;
+  }
+  KALDI_ERR << "Unidentified SumDescriptor.";
+}
+
+void TraceIntoForwardingDescriptorForOffsets(const Nnet &nnet,
+                                 const ForwardingDescriptor &this_descriptor,
+                                 const std::vector<std::string> &node_names,
+                                 std::vector<int32> *offsets) {
+  const OffsetForwardingDescriptor *ptr_offset =
+      dynamic_cast<const OffsetForwardingDescriptor*>(&this_descriptor);
+  if (ptr_offset != NULL) {
+    const SimpleForwardingDescriptor *ptr_simple =
+        dynamic_cast<const SimpleForwardingDescriptor*>(ptr_offset->src_);
+    if (ptr_simple != NULL) {
+      std::vector<int32> node_index;
+      ptr_simple->GetNodeDependencies(&node_index);
+      KALDI_ASSERT(node_index.size() == 1);
+      const std::string &node_name = nnet.GetNodeName(node_index[0]);
+      std::vector<std::string>::const_iterator iter,
+            begin = node_names.begin(),
+            end = node_names.end();
+      iter = find(begin, end, node_name);
+      // if it is a recurrent node that we are looking for, 
+      // then get its offset "t" value
+      if (iter != end)
+        (*offsets)[iter - begin] = ptr_offset->offset_.t;
+    } else {
+      TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_offset->src_),
+          node_names, offsets);
+    }
+    return;
+  }
+  const RoundingForwardingDescriptor *ptr_rounding =
+      dynamic_cast<const RoundingForwardingDescriptor*>(&this_descriptor);
+  if (ptr_rounding != NULL) {
+    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_rounding->src_),
+        node_names, offsets);
+    return;
+  }
+  const ReplaceIndexForwardingDescriptor *ptr_replace =
+      dynamic_cast<const ReplaceIndexForwardingDescriptor*>(&this_descriptor);
+  if (ptr_replace != NULL) {
+    TraceIntoForwardingDescriptorForOffsets(nnet, *(ptr_replace->src_),
+        node_names, offsets);
+    return;
+  }
+  const SwitchingForwardingDescriptor *ptr_switching =
+      dynamic_cast<const SwitchingForwardingDescriptor*>(&this_descriptor);
+  if (ptr_switching != NULL) {
+    for (int32 i = 0; i < ptr_switching->src_.size(); i++)
+      TraceIntoForwardingDescriptorForOffsets(nnet,
+          *(ptr_switching->src_[i]), node_names, offsets);
+    return;
+  }
+  const SimpleForwardingDescriptor *ptr_simple =
+      dynamic_cast<const SimpleForwardingDescriptor*>(&this_descriptor);
+  if (ptr_simple != NULL) {
+     // do nothing
+     return;
+  }
+  KALDI_ERR << "Unidentified ForwardingDescriptor.";
+}
 
 bool IsSimpleNnet(const Nnet &nnet) {
   // check that we have an output node and called "output".
@@ -50,13 +203,17 @@ bool IsSimpleNnet(const Nnet &nnet) {
   if (nnet.GetNodeIndex("input") == -1 ||
       !nnet.IsInputNode(nnet.GetNodeIndex("input")))
     return false;
-  // if there was just one input, then it was named
+  std::vector<std::string> recurrent_output_names;
+  std::vector<std::string> recurrent_node_names;
+  GetRecurrentOutputNodeNames(nnet, &recurrent_output_names,
+                              &recurrent_node_names);
+  // if there was just one input (excluding recurrent inputs), then it was named
   // "input" and everything checks out.
-  if (NumInputNodes(nnet) == 1)
+  if (NumInputNodes(nnet) == 1 + recurrent_output_names.size())
     return true;
   // Otherwise, there should be 2 inputs and one
   // should be called "ivector".
-  return NumInputNodes(nnet) == 2 &&
+  return NumInputNodes(nnet) == 2 + recurrent_output_names.size() &&
       nnet.GetNodeIndex("ivector") != -1 &&
       nnet.IsInputNode(nnet.GetNodeIndex("ivector"));
 }
@@ -94,12 +251,46 @@ static void ComputeSimpleNnetContextForShift(
   IoSpecification ivector;  // we might or might not use this.
   ivector.name = "ivector";
 
+  // extract recurrent output names from nnet 
+  std::vector<std::string> recurrent_output_names;
+  std::vector<std::string> recurrent_node_names; 
+  GetRecurrentOutputNodeNames(nnet, &recurrent_output_names,
+                              &recurrent_node_names);
+
+  // create IoSpecification for all recurrent inputs
+  std::vector<IoSpecification> r_inputs;
+  for (int32 i = 0; i < nnet.NumNodes(); i++) {
+    std::string node_name = nnet.GetNodeName(i);
+    if (nnet.IsInputNode(i) && node_name != "input" && node_name != "ivector")
+      for (int32 j = 0; j < recurrent_output_names.size(); j++) {
+        if (recurrent_output_names[j] + "_STATE_PREVIOUS_MINIBATCH" 
+            == node_name) {
+          // note that here IoSpecification::indexes is empty
+          r_inputs.push_back(IoSpecification(node_name, 0, 0));
+          break;
+        }
+      }
+  }
+  // create IoSpecification for all recurrent outputs
+  std::vector<IoSpecification> r_outputs;
+  for (int32 j = 0; j < recurrent_output_names.size(); j++)
+    // note that here IoSpecification::indexes is empty
+    r_outputs.push_back(IoSpecification(recurrent_output_names[j], 0, 0));
+
   int32 n = rand() % 10;
   // in the IoSpecification for now we we will request all the same indexes at
   // output that we requested at input.
   for (int32 t = input_start; t < input_end; t++) {
     input.indexes.push_back(Index(n, t));
     output.indexes.push_back(Index(n, t));
+    //for (int32 i = 0; i < r_inputs.size(); i++)
+      //r_inputs[i].indexes.push_back(Index(n, t));
+    for (int32 i = 0; i < r_outputs.size(); i++)
+      r_outputs[i].indexes.push_back(Index(n, t));
+  }
+  for (int32 t = input_start - 100; t < input_end + 100; t++) {// an ugly hack
+    for (int32 i = 0; i < r_inputs.size(); i++)
+      r_inputs[i].indexes.push_back(Index(n, t));
   }
   // the assumption here is that the network just requires the ivector at time
   // t=0.
@@ -110,20 +301,30 @@ static void ComputeSimpleNnetContextForShift(
   request.outputs.push_back(output);
   if (nnet.GetNodeIndex("ivector") != -1)
     request.inputs.push_back(ivector);
+  // add recurrent inputs to request
+  for (int32 i = 0; i < r_inputs.size(); i++)
+    request.inputs.push_back(r_inputs[i]);
+  // add recurrent outputs to request
+  for (int32 i = 0; i < r_outputs.size(); i++)
+    request.outputs.push_back(r_outputs[i]);
+
   std::vector<std::vector<bool> > computable;
   EvaluateComputationRequest(nnet, request, &computable);
 
-  KALDI_ASSERT(computable.size() == 1);
-  std::vector<bool> &output_ok = computable[0];
-  std::vector<bool>::iterator iter =
-      std::find(output_ok.begin(), output_ok.end(), true);
-  int32 first_ok = iter - output_ok.begin();
-  int32 first_not_ok = std::find(iter, output_ok.end(), false) -
-      output_ok.begin();
-  if (first_ok == window_size || first_not_ok <= first_ok)
-    KALDI_ERR << "No outputs were computable (perhaps not a simple nnet?)";
-  *left_context = first_ok;
-  *right_context = window_size - first_not_ok;
+  *left_context = 0;
+  *right_context = 0;
+  for (int32 i = 0; i < computable.size(); i++) {
+    std::vector<bool> &output_ok = computable[i];
+    std::vector<bool>::iterator iter =
+        std::find(output_ok.begin(), output_ok.end(), true);
+    int32 first_ok = iter - output_ok.begin();
+    int32 first_not_ok = std::find(iter, output_ok.end(), false) -
+        output_ok.begin();
+    if (first_ok == window_size || first_not_ok <= first_ok)
+      KALDI_ERR << "No outputs were computable (perhaps not a simple nnet?)";
+    *left_context = std::max(first_ok, *left_context);
+    *right_context = std::max(window_size - first_not_ok, *right_context);
+  }
 }
 
 void ComputeSimpleNnetContext(const Nnet &nnet,

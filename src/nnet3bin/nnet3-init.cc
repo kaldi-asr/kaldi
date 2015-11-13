@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-nnet.h"
+#include "nnet3/nnet-utils.h"
 #include "hmm/transition-model.h"
 #include "tree/context-dep.h"
 
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
       Input ki(config_rxfilename, &binary);
       KALDI_ASSERT(!binary && "Expect config file to contain text.");
       nnet.ReadConfig(ki.Stream());
+      CheckStateIoForStatePreserving(nnet);
     }
     
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);

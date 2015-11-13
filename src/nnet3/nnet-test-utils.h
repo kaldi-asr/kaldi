@@ -53,6 +53,12 @@ struct NnetGenerationOptions {
       output_dim(-1) { }
 };
 
+// we need to explicitly call it from nnet-utils-test.cc and
+// nnet-example-test.cc, so we declare it here
+void GenerateConfigSequenceStatePreservingLstm(
+                const NnetGenerationOptions &opts,
+                std::vector<std::string> *configs);
+
 /** Generates a sequence of at least one config files, output as strings, where
     the first in the sequence is the initial nnet, and the remaining ones may do
     things like add layers.  */

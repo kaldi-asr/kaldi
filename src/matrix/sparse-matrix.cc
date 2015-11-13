@@ -1031,6 +1031,64 @@ void FilterGeneralMatrixRows(const GeneralMatrix &in,
   }
 }
 
+template <typename Real>
+void FilterSparseMatrixRowsRange(const SparseMatrix<Real> &in,
+                                 const MatrixIndexT row_begin,
+                                 const MatrixIndexT row_end,
+                                 SparseMatrix<Real> *out) {
+  KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(row_begin) >= 0 &&
+               static_cast<UnsignedMatrixIndexT>(row_begin) <
+               static_cast<UnsignedMatrixIndexT>(in.NumRows()) &&
+               static_cast<UnsignedMatrixIndexT>(row_end) > 
+               static_cast<UnsignedMatrixIndexT>(row_begin) &&
+               static_cast<UnsignedMatrixIndexT>(row_end) <=
+               static_cast<UnsignedMatrixIndexT>(in.NumRows()));
+
+  out->Resize(row_end - row_begin, in.NumCols(), kUndefined);
+  for (int32 out_row = 0; out_row + row_begin < row_end; ++out_row)
+    out->SetRow(out_row, in.Row(out_row + row_begin));
+}
+
+template
+void FilterSparseMatrixRowsRange(const SparseMatrix<float> &in,
+                                 const MatrixIndexT row_begin,
+                                 const MatrixIndexT row_end,                        
+                                 SparseMatrix<float> *out);
+template
+void FilterSparseMatrixRowsRange(const SparseMatrix<double> &in,
+                                 const MatrixIndexT row_begin,
+                                 const MatrixIndexT row_end,
+                                 SparseMatrix<double> *out);
+
+void FilterGeneralMatrixRowsRange(const GeneralMatrix &in,
+                                  const MatrixIndexT row_begin,
+                                  const MatrixIndexT row_end,
+                                  GeneralMatrix *out) {
+  out->Clear();
+  switch (in.Type()) {
+    case kCompressedMatrix: {
+      Matrix<BaseFloat> full_mat; 
+      in.GetMatrix(&full_mat);
+      *out = full_mat.RowRange(row_begin, row_end - row_begin);
+      return;
+    }
+    case kSparseMatrix: {
+      const SparseMatrix<BaseFloat> &smat = in.GetSparseMatrix();
+      SparseMatrix<BaseFloat> smat_out;
+      FilterSparseMatrixRowsRange(smat, row_begin, row_end, &smat_out);
+      out->SwapSparseMatrix(&smat_out);
+      return;
+    }
+    case kFullMatrix: {
+      const Matrix<BaseFloat> &full_mat = in.GetFullMatrix();
+      *out = full_mat.RowRange(row_begin, row_end - row_begin);
+      return;
+    }
+    default:
+      KALDI_ERR << "Invalid general-matrix type.";
+  }
+}
+
 void GeneralMatrix::AddToMat(BaseFloat alpha, MatrixBase<BaseFloat> *mat,
                              MatrixTransposeType trans) const {
   switch (this->Type()) {
