@@ -5,10 +5,9 @@
 set -e
 
 # configs for 'chain'
-stage=0
+stage=9
 train_stage=-10
-# running first with speed_perturb=false for speed.
-speed_perturb=false
+speed_perturb=true
 dir=exp/chain/tdnn_a  # Note: _sp will get added to this if $speed_perturb == true.
 
 
@@ -52,7 +51,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/ctc/tri5b_tree$suffix
+treedir=exp/chain/tri5b_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -63,24 +62,20 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 if [ $stage -le 9 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file.
-  lang=data/lang_ctc
+  lang=data/lang_chain
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-  utils/gen_topo.pl 1 1 $nonsilphonelist $silphonelist >$lang/topo
+  # Use our special topology... note that later on may have to tune this
+  # topology.
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 10 ]; then
-  # Starting from the alignments in tri4_ali_nodup*, we train a rudimentary
-  # LDA+MLLT system with a 1-state HMM topology and with only left phonetic
-  # context (one phone's worth of left context, for now).  We set "--num-iters
-  # 1" because we only need the tree from this system.
-  steps/train_sat.sh --cmd "$train_cmd" --num-iters 1 \
-    --tree-stats-opts "--collapse-pdf-classes=true" \
-    --cluster-phones-opts "--pdf-class-list=0" \
-    --context-opts "--context-width=2 --central-position=1" \
-     5000 20000 data/$train_set data/lang_ctc $ali_dir $treedir
+  # Build a tree using our new topology.
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+      --cmd "$train_cmd" 5000 data/$train_set data/lang_chain $ali_dir $treedir
 fi
 
 if [ $stage -le 11 ]; then
@@ -102,7 +97,7 @@ if [ $stage -le 12 ]; then
 
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
-  steps/nnet3/ctc/train_tdnn.sh --stage $train_stage \
+  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 10" \

@@ -217,14 +217,11 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
       BaseFloat log_prob;
       Label label;
       int32 dest_state = entry[hmm_state].transitions[trans_idx].first;
-      bool is_self_loop = (dest_state == hmm_state);
-      if (is_self_loop)
-        continue;
       if (pdf_class == kNoPdf) {
-        // no pdf, hence non-estimated probability.  very unusual case.
-        // [would not happen with normal topology] .  There is no transition-state
+        // no pdf, hence non-estimated probability.  very unusual case.  [would
+        // not happen with normal topology] .  There is no transition-state
         // involved in this case.
-        KALDI_ASSERT(!is_self_loop);
+        KALDI_ASSERT(hmm_state != dest_state);
         log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
         label = 0;
       } else {  // normal probability.
@@ -802,9 +799,14 @@ static bool ComputeNewPhoneLengths(const HmmTopology &topology,
     min_lengths[i] = topology.MinLength(mapped_phones[i]);
   int32 cur_time_elapsed = 0;
   for (int32 i = 0; i < phone_sequence_length; i++) {
-    int32 subsampled_time = cur_time_elapsed % subsample_factor;
+    // Note: the '+ subsample_factor - 1' here is needed so that
+    // the subsampled alignments have the same length as features
+    // subsampled with 'subsample-feats'.
+    int32 subsampled_time =
+        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
     cur_time_elapsed += old_lengths[i];
-    int32 next_subsampled_time = cur_time_elapsed % subsample_factor;
+    int32 next_subsampled_time =
+        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
     (*new_lengths)[i] = next_subsampled_time - subsampled_time;
   }
   bool changed = true;
@@ -894,6 +896,8 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
   } else {
     // .. they may not be fine.
     std::vector<int32> old_lengths(phone_sequence_length), new_lengths;
+    for (int32 i = 0; i < phone_sequence_length; i++)
+      old_lengths[i] = old_split[i].size();
     if (!ComputeNewPhoneLengths(new_trans_model.GetTopo(),
                                 mapped_phones, old_lengths,
                                 subsample_factor, &new_lengths)) {
@@ -932,7 +936,8 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                             new_alignment_for_phone.end());
     }
   }
-  KALDI_ASSERT(new_alignment->size() == old_alignment.size());
+  KALDI_ASSERT(new_alignment->size() ==
+               (old_alignment.size() + subsample_factor - 1)/subsample_factor);
   return true;
 }
 
@@ -1097,13 +1102,14 @@ void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
     // note: 'fst' is an acceptor so ilabels == olabels.
     GetInputSymbols(*fst, include_epsilon, &symbols);
     int32 cur_state = length_constraint_fst.AddState();
+    length_constraint_fst.SetStart(cur_state);
     for (int32 i = 0; i < length; i++) {
       int32 next_state = length_constraint_fst.AddState();
       for (size_t j = 0; j < symbols.size(); j++) {
         length_constraint_fst.AddArc(cur_state,
                                      Arc(symbols[j], symbols[j],
-                                                 fst::TropicalWeight::One(),
-                                                 next_state));
+                                         fst::TropicalWeight::One(),
+                                         next_state));
       }
       cur_state = next_state;
     }

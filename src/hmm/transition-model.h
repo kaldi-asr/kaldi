@@ -199,8 +199,8 @@ class TransitionModel {
   /// Returns the log-probability of a particular non-self-loop transition
   /// after subtracting the probability mass of the self-loop and renormalizing;
   /// will crash if called on a self-loop.  Specifically:
-  /// for non-self-loops it returns the log of that prob divided by (1 minus
-  /// self-loop-prob-for-that-state).
+  /// for non-self-loops it returns the log of (that prob divided by (1 minus
+  /// self-loop-prob-for-that-state)).
   BaseFloat GetTransitionLogProbIgnoringSelfLoops(int32 trans_id) const;
 
   /// Returns the log-prob of the non-self-loop probability

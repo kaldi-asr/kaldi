@@ -49,7 +49,7 @@ struct LanguageModelOptions {
 
   LanguageModelOptions():
       ngram_order(3), // you'll rarely want to change this.
-      num_extra_states(500) { }
+      num_extra_states(250) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "

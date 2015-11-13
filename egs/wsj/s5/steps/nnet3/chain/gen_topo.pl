@@ -32,8 +32,11 @@ print "</ForPhones>\n";
 # no self-loop, it happens exactly once.  And it can go either to state 1 (with
 # a self-loop) or to state 2, so we can have zero or more instances of state 1
 # following state 0.
-print "<State> 0 <PdfClass> 0 <Transition> 1 1.0 <Transition> 2 1.0 </State>\n";
-print "<State> 1 <PdfClass> 1 <Transition> 1 1.0 <Transition> 2 1.0 </State>\n";
-print "<State> 2\n";
-print "<TopologyEntry>\n";
+# We make the transition-probs 0.5 so they normalize, to keep the code happy.
+# In fact, we always set the transition probability scale to 0.0 in the 'chain'
+# code, so they are never used.
+print "<State> 0 <PdfClass> 0 <Transition> 1 0.5 <Transition> 2 0.5 </State>\n";
+print "<State> 1 <PdfClass> 1 <Transition> 1 0.5 <Transition> 2 0.5 </State>\n";
+print "<State> 2 </State>\n";
+print "</TopologyEntry>\n";
 print "</Topology>\n";

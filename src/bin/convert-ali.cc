@@ -32,9 +32,10 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Convert alignments from one decision-tree/model to another\n"
-        "Usage:  convert-ali  [options] old-model new-model new-tree old-alignments-rspecifier new-alignments-wspecifier\n"
+        "Usage:  convert-ali  [options] <old-model> <new-model> <new-tree> "
+        "<old-alignments-rspecifier> <new-alignments-wspecifier>\n"
         "e.g.: \n"
-        " convert-ali old.mdl new.mdl new.tree ark:old.ali ark:new.ali\n";
+        " convert-ali old/final.mdl new/0.mdl new/tree ark:old/ali.1 ark:new/ali.1\n";
 
     int32 frame_subsampling_factor = 1;
     bool reorder = true;

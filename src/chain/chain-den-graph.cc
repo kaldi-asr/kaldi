@@ -288,23 +288,23 @@ void CreateDenominatorGraph(const ContextDependency &ctx_dep,
             << context_dep_lm.NumStates();
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
-                                      // of H -- will be empty.
+  // of H -- will be empty.
   HTransducerConfig h_cfg;
   h_cfg.transition_scale = 0.0;  // we don't want transition probs.
   h_cfg.push_weights = false;  // there's nothing to push.
 
   StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
-                                            ctx_dep,
-                                            trans_model,
-                                            h_cfg,
-                                            &disambig_syms_h);
+                                       ctx_dep,
+                                       trans_model,
+                                       h_cfg,
+                                       &disambig_syms_h);
   KALDI_ASSERT(disambig_syms_h.empty());
   StdVectorFst transition_id_fst;
   TableCompose(*h_fst, context_dep_lm, &transition_id_fst);
   delete h_fst;
 
   BaseFloat self_loop_scale = 0.0;   // all transition-scales are 0.0; we aren't
-                                     // using transition-probs here.
+  // using transition-probs here.
   bool reorder = true;  // more efficient in general; won't affect results.
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,

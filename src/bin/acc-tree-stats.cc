@@ -27,7 +27,7 @@
 
 /** @brief Accumulate tree statistics for decision tree training. The
 program reads in a feature archive, and the corresponding alignments,
-and generats the sufficient statistics for the decision tree
+and generates the sufficient statistics for the decision tree
 creation. Context width and central phone position are used to
 identify the contexts.Transition model is used as an input to identify
 the PDF's and the phones.  */
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     opts.Register(&po);
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -59,9 +59,9 @@ int main(int argc, char *argv[]) {
         alignment_rspecifier = po.GetArg(3),
         accs_out_wxfilename = po.GetOptArg(4);
 
-    
+
     AccumulateTreeStatsInfo acc_tree_stats_info(opts);
-    
+
     TransitionModel trans_model;
     {
       bool binary;
@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
 
     BuildTreeStatsType stats;  // vectorized form.
 
-    for (std::map<EventType, GaussClusterable*>::const_iterator iter = tree_stats.begin();  
+    for (std::map<EventType, GaussClusterable*>::const_iterator iter = tree_stats.begin();
          iter != tree_stats.end();
          ++iter) {
       stats.push_back(std::make_pair(iter->first, iter->second));

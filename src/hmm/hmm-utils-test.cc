@@ -333,7 +333,7 @@ int main() {
 #endif
   for (int32 i = 0; i < 2; i++)
     kaldi::TestSplitToPhones();
-  for (int32 i = 0; i < 30; i++)
+  for (int32 i = 0; i < 5; i++)
     kaldi::TestConvertAlignment();
   std::cout << "Test OK.\n";
 }
