@@ -142,8 +142,8 @@ basic_filebuf<CharT, Traits>::basic_filebuf(basic_filebuf&& rhs)
         if (rhs.pbase() == rhs._M_intbuf)
             this->setp(_M_intbuf, _M_intbuf + (rhs. epptr() - rhs.pbase()));
         else
-            this->setp(reinterpret_cast<char_type*>_M_extbuf,
-                       reinterpret_cast<char_type*>_M_extbuf
+            this->setp(reinterpret_cast<char_type*>(_M_extbuf),
+                       reinterpret_cast<char_type*>(_M_extbuf)
                        + (rhs. epptr() - rhs.pbase()));
         this->pbump(rhs. pptr() - rhs.pbase());
     } else if (rhs.eback()) {
@@ -151,10 +151,10 @@ basic_filebuf<CharT, Traits>::basic_filebuf(basic_filebuf&& rhs)
             this->setg(_M_intbuf, _M_intbuf + (rhs.gptr() - rhs.eback()),
                                   _M_intbuf + (rhs.egptr() - rhs.eback()));
         else
-            this->setg(reinterpret_cast<char_type*>_M_extbuf,
-                       reinterpret_cast<char_type*>_M_extbuf +
+            this->setg(reinterpret_cast<char_type*>(_M_extbuf),
+                       reinterpret_cast<char_type*>(_M_extbuf) +
                        (rhs.gptr() - rhs.eback()),
-                       reinterpret_cast<char_type*>_M_extbuf +
+                       reinterpret_cast<char_type*>(_M_extbuf) +
                        (rhs.egptr() - rhs.eback()));
     }
     rhs._M_extbuf = nullptr;
@@ -245,7 +245,8 @@ basic_filebuf<CharT, Traits>::swap(basic_filebuf& rhs) {
         this->setg(reinterpret_cast<char_type*>(_M_extbuf_min),
                    reinterpret_cast<char_type*>(_M_extbuf_min) + n,
                    reinterpret_cast<char_type*>(_M_extbuf_min) + e);
-    } else if (this->pbase() == reinterpret_cast<char_type*>rhs._M_extbuf_min) {
+    } else if (this->pbase() ==
+	           reinterpret_cast<char_type*>(rhs._M_extbuf_min)) {
         ptrdiff_t n = this->pptr() - this->pbase();
         ptrdiff_t e = this->epptr() - this->pbase();
         this->setp(reinterpret_cast<char_type*>(_M_extbuf_min),
@@ -391,8 +392,7 @@ basic_filebuf<CharT, Traits>::close() {
     basic_filebuf<CharT, Traits>* rt = nullptr;
     if (_M_file) {
         rt = this;
-        std::unique_ptr<FILE, static_cast<int>(*)reinterpret_cast<FILE*>>
-          h(_M_file, fclose);
+        std::unique_ptr<FILE, int(*)(FILE*)> h(_M_file, fclose);
         if (sync())
             rt = nullptr;
         if (fclose(h.release()) == 0)
@@ -439,8 +439,9 @@ basic_filebuf<CharT, Traits>::underflow() {
                                     (_M_extbufend - _M_extbufnext));
             std::codecvt_base::result r;
             _M_st_last = _M_st;
-            size_t nr = fread(reinterpret_cast<void*>(_M_extbufnext),
-                 1, nmemb, _M_file);
+            size_t nr = fread(
+			    reinterpret_cast<void*>(const_cast<char_type*>(_M_extbufnext)),
+                1, nmemb, _M_file);
             if (nr != 0) {
                 if (!_M_cv)
                     throw std::bad_cast();
@@ -452,7 +453,7 @@ basic_filebuf<CharT, Traits>::underflow() {
                 if (r == std::codecvt_base::noconv) {
                     this->setg(reinterpret_cast<char_type*>(_M_extbuf),
                                reinterpret_cast<char_type*>(_M_extbuf),
-                               reinterpret_cast<char_type*>(_M_extbufend));
+                               const_cast<char_type*>(_M_extbufend));
                     c = traits_type::to_int_type(*this->gptr());
                 } else if (inext != this->eback() + unget_sz) {
                     this->setg(this->eback(), this->eback() + unget_sz, inext);
@@ -531,7 +532,7 @@ basic_filebuf<CharT, Traits>::overflow(int_type c) {
                     if (fwrite(_M_extbuf, 1, nmemb, _M_file) != nmemb)
                         return traits_type::eof();
                     if (r == std::codecvt_base::partial) {
-                        this->setp(reinterpret_cast<char_type*>(e),
+                        this->setp(const_cast<char_type*>(e),
                             this->pptr());
                         this->pbump(this->epptr() - this->pbase());
                     }
