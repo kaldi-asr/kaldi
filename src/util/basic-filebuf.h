@@ -440,7 +440,7 @@ basic_filebuf<CharT, Traits>::underflow() {
             std::codecvt_base::result r;
             _M_st_last = _M_st;
             size_t nr = fread(
-			    reinterpret_cast<void*>(const_cast<char_type*>(_M_extbufnext)),
+                reinterpret_cast<void*>(const_cast<char_type*>(_M_extbufnext)),
                 1, nmemb, _M_file);
             if (nr != 0) {
                 if (!_M_cv)
