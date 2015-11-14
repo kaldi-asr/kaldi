@@ -256,14 +256,38 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   fst::Decode(fst, encoder);
 }
 
-void CreateDenominatorGraph(const ContextDependency &ctx_dep,
-                            const TransitionModel &trans_model,
-                            const fst::StdVectorFst &phone_lm_in,
-                            fst::StdVectorFst *den_graph) {
+// Check that every pdf is seen, warn if some are not.
+static void CheckDenominatorFst(int32 num_pdfs,
+                                const fst::StdVectorFst &den_fst) {
+  std::vector<bool> pdf_seen(num_pdfs);
+  int32 num_states = den_fst.NumStates();
+  for (int32 s = 0; s < num_states; s++) {
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(den_fst, s);
+         !aiter.Done(); aiter.Next()) {
+      int32 pdf_id = aiter.Value().ilabel - 1;
+      KALDI_ASSERT(pdf_id >= 0 && pdf_id < num_pdfs);
+      pdf_seen[pdf_id] = true;
+    }
+  }
+  for (int32 pdf = 0; pdf < num_pdfs; pdf++) {
+    if (!pdf_seen[pdf]) {
+      KALDI_WARN << "Pdf-id " << pdf << " is not seen in denominator graph.";
+    }
+  }
+}
+
+void CreateDenominatorFst(const ContextDependency &ctx_dep,
+                          const TransitionModel &trans_model,
+                          const fst::StdVectorFst &phone_lm_in,
+                          fst::StdVectorFst *den_fst) {
   using fst::StdVectorFst;
   using fst::StdArc;
   KALDI_ASSERT(phone_lm_in.NumStates() != 0);
   fst::StdVectorFst phone_lm(phone_lm_in);
+
+  KALDI_LOG << "Number of states and arcs in phone-LM FST is "
+            << phone_lm.NumStates() << " and " << NumArcs(phone_lm);
+
 
   int32 subsequential_symbol = trans_model.GetPhones().back() + 1;
   if (ctx_dep.CentralPosition() != ctx_dep.ContextWidth() - 1) {
@@ -284,8 +308,8 @@ void CreateDenominatorGraph(const ContextDependency &ctx_dep,
   // output.  We don't need the phones, so we'll project.
   fst::Project(&context_dep_lm, fst::PROJECT_INPUT);
 
-  KALDI_LOG << "Number of states in context-dependent LM FST is "
-            << context_dep_lm.NumStates();
+  KALDI_LOG << "Number of states and arcs in context-dependent LM FST is "
+            << context_dep_lm.NumStates() << " and " << NumArcs(context_dep_lm);
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
   // of H -- will be empty.
@@ -316,19 +340,22 @@ void CreateDenominatorGraph(const ContextDependency &ctx_dep,
   fst::Project(&transition_id_fst, fst::PROJECT_INPUT);
 
   MapFstToPdfIdsPlusOne(trans_model, &transition_id_fst);
-  KALDI_LOG << "Number of states in transition-id FST is "
-            << transition_id_fst.NumStates();
+  KALDI_LOG << "Number of states and arcs in transition-id FST is "
+            << transition_id_fst.NumStates() << " and "
+            << NumArcs(transition_id_fst);
 
   fst::RmEpsilon(&transition_id_fst);
-  KALDI_LOG << "Number of states in transition-id FST after "
+  KALDI_LOG << "Number of states and arcs in transition-id FST after "
             << "removing epsilons is "
-            << transition_id_fst.NumStates();
+            << transition_id_fst.NumStates() << " and "
+            << NumArcs(transition_id_fst);
 
   MinimizeAcceptorNoPush(&transition_id_fst);
-  KALDI_LOG << "Number of states in transition-id FST after minimization is "
-            << transition_id_fst.NumStates();
-  *den_graph = transition_id_fst;
-
+  KALDI_LOG << "Number of states and arcs in transition-id FST after minimization is "
+            << transition_id_fst.NumStates() << " and "
+            << NumArcs(transition_id_fst);
+  *den_fst = transition_id_fst;
+  CheckDenominatorFst(trans_model.NumPdfs(), *den_fst);
 }
 
 

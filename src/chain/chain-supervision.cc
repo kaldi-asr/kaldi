@@ -517,6 +517,14 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</Supervision>");
 }
 
+void Supervision::Swap(Supervision *other) {
+  std::swap(weight, other->weight);
+  std::swap(num_sequences, other->num_sequences);
+  std::swap(frames_per_sequence, other->frames_per_sequence);
+  std::swap(label_dim, other->label_dim);
+  std::swap(fst, other->fst);
+}
+
 void Supervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Supervision>");
   ExpectToken(is, binary, "<Weight>");

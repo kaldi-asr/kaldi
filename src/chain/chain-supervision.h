@@ -76,7 +76,6 @@ struct SupervisionOptions {
 // (AlignmentToProtoSupervision or PhoneLatticeToProtoSupervision)
 // Then you would call MakeCctcSupervision.
 
-
 struct ProtoSupervision {
   // a list of (sorted, unique) lists of phones that are allowed
   // on each frame.  number of frames is allowed_phones.size(), which
@@ -229,6 +228,8 @@ struct Supervision {
                  label_dim(-1) { }
 
   Supervision(const Supervision &other);
+
+  void Swap(Supervision *other);
 
   bool operator == (const Supervision &other) const;
 

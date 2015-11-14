@@ -42,6 +42,12 @@ VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename) {
   return fst;
 }
 
+void ReadFstKaldi(std::string rxfilename, fst::StdVectorFst *ofst) {
+  fst::StdVectorFst *fst = ReadFstKaldi(rxfilename);
+  *ofst = *fst;
+  delete fst;
+}
+
 void WriteFstKaldi(const VectorFst<StdArc> &fst,
                    std::string wxfilename) {
   if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,

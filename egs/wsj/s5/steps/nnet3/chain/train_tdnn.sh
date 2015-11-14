@@ -55,7 +55,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # affect each others' gradients.
 
 add_layers_period=2 # by default, add new layers every 2 iterations.
-stage=-6
+stage=-7
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
@@ -169,7 +169,7 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
-if  [ $stage -le -6 ]; then
+if  [ $stage -le -7 ]; then
   echo "$0: creating phone language-model"
 
   $cmd $dir/log/make_phone_lm.log \
@@ -179,25 +179,18 @@ if  [ $stage -le -6 ]; then
      $dir/phone_lm.fst || exit 1
 fi
 
-
-exit 0;
-
-if  [ $stage -le -6 ]; then
-  echo "$0: creating CTC transition model"
-
-  num_phones=$(cat $lang/phones.txt | grep -v '^#' | tail -n +2 | wc -l) || exit 1;
-  # important not to mak
-  $cmd $dir/log/init_trans_model.log \
-    ctc-init-transition-model --num-phones=$num_phones \
-       --target-num-history-states=$target_num_history_states \
-       --ngram-order=$ngram_order \
-       $treedir/tree \
-      "ark:gunzip -c $treedir/ali.*.gz | ali-to-phones $treedir/final.mdl ark:- ark:- |" \
-       $dir/0.ctc_trans_mdl || exit 1;
+if [ $stage -le -6 ]; then
+  echo "$0: creating denominator FST"
+  copy-transition-model $treedir/final.mdl $dir/0.trans_mdl
+  $cmd $dir/log/make_den_fst.log \
+    chain-make-den-graph $dir/tree $dir/0.trans_mdl $dir/phone_lm.fst \
+       $dir/den.fst $dir/normalization.fst || exit 1;
 fi
 
+exit 1;
+
 # work out num-leaves
-num_leaves=$(ctc-transition-model-info $dir/0.ctc_trans_mdl | grep '^num-output-indexes' | awk '{print $2}') || exit 1;
+num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exit 1;
 [ $num_leaves -gt 0 ] || exit 1;
 
 if [ $stage -le -5 ]; then
@@ -215,7 +208,7 @@ if [ $stage -le -5 ]; then
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \
      $dim_opts \
-    --num-targets $num_leaves  \
+    --num-targets $num_leaves \
     --use-presoftmax-prior-scale false \
    $dir/configs || exit 1;
 
@@ -249,13 +242,13 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2])
   extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
   echo "$0: calling get_egs.sh"
-  steps/nnet3/ctc/get_egs.sh $egs_opts "${extra_opts[@]}" \
+  steps/nnet3/chain/get_egs.sh $egs_opts "${extra_opts[@]}" \
       --right-tolerance $right_tolerance \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
       --cmd "$cmd" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $lang $dir/0.ctc_trans_mdl $latdir $dir/egs || exit 1;
+      $data $lang $dir/0.trans_mdl $latdir $dir/egs || exit 1;
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs

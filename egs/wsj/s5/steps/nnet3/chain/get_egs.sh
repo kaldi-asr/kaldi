@@ -64,9 +64,11 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 5 ]; then
-  echo "Usage: $0 [opts] <data> <lang> <ctc-trans-model> <lattice-dir> <egs-dir>"
-  echo " e.g.: $0 data/train data/lang exp/tri4_nnet/0.ctc_trans_mdl exp/tri3_lats exp/tri4_nnet/egs"
+  echo "Usage: $0 [opts] <data> <lang> <chain-dir> <lattice-dir> <egs-dir>"
+  echo " e.g.: $0 data/train data/lang exp/tri4_nnet exp/tri3_lats exp/tri4_nnet/egs"
   echo "(note: topology in lang directory doesn't matter, only used for silence-phones)."
+  echo "From <chain-dir>, 0.trans_mdl (the transition-model), tree (the tree)"
+  echo "and phone_lm.fst (the phone language model) are read."
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -94,7 +96,7 @@ fi
 
 data=$1
 lang=$2
-trans_mdl=$3
+chaindir=$3
 latdir=$4
 dir=$5
 
@@ -102,7 +104,8 @@ dir=$5
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
-for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl $lang/phones.txt $trans_mdl $extra_files; do
+for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl $lang/phones.txt \
+         $chain_dir/{0.trans_mdl,tree,phone_lm.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -279,27 +282,29 @@ if [ $stage -le 3 ]; then
 
   $cmd $dir/log/create_valid_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
-    ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $valid_ivector_opt $valid_egs_opts "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
+    chain-get-supervision $ctc_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
+      ark:- ark:- \| \
+    nnet3-chain-get-egs $valid_ivector_opt $valid_egs_opts "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
-    ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
+    chain-get-supervision $ctc_supervision_all_opts \
+     $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
+    nnet3-chain-get-egs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
   $cmd $dir/log/create_valid_subset_combine.log \
-    nnet3-ctc-subset-egs --n=$num_valid_egs_combine ark:$dir/valid_all.cegs \
+    nnet3-chain-subset-egs --n=$num_valid_egs_combine ark:$dir/valid_all.cegs \
     ark:$dir/valid_combine.cegs || touch $dir/.error &
   $cmd $dir/log/create_valid_subset_diagnostic.log \
-    nnet3-ctc-subset-egs --n=$num_egs_diagnostic ark:$dir/valid_all.cegs \
+    nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/valid_all.cegs \
     ark:$dir/valid_diagnostic.cegs || touch $dir/.error &
 
   $cmd $dir/log/create_train_subset_combine.log \
-    nnet3-ctc-subset-egs --n=$num_train_egs_combine ark:$dir/train_subset_all.cegs \
+    nnet3-chain-subset-egs --n=$num_train_egs_combine ark:$dir/train_subset_all.cegs \
     ark:$dir/train_combine.cegs || touch $dir/.error &
   $cmd $dir/log/create_train_subset_diagnostic.log \
-    nnet3-ctc-subset-egs --n=$num_egs_diagnostic ark:$dir/train_subset_all.cegs \
+    nnet3-chain-subset-egs --n=$num_egs_diagnostic ark:$dir/train_subset_all.cegs \
     ark:$dir/train_diagnostic.cegs || touch $dir/.error &
   wait
   sleep 5  # wait for file system to sync.
@@ -324,9 +329,10 @@ if [ $stage -le 4 ]; then
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
-    ctc-get-supervision $ctc_supervision_all_opts "$trans_mdl" ark:- ark:- \| \
-    nnet3-ctc-get-egs $ivector_opt $egs_opts "$feats" ark,s,cs:- ark:- \| \
-    nnet3-ctc-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
+    chain-get-supervision $ctc_supervision_all_opts \
+      $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
+    nnet3-chain-get-egs $ivector_opt $egs_opts "$feats" ark,s,cs:- ark:- \| \
+    nnet3-chain-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
@@ -342,7 +348,7 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-ctc-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/cegs.JOB.ark  || exit 1;
+      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/cegs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -358,8 +364,8 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-ctc-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
-      nnet3-ctc-copy-egs ark:- $output_archives || exit 1;
+      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-chain-copy-egs ark:- $output_archives || exit 1;
   fi
 
 fi

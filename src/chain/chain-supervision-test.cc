@@ -63,7 +63,7 @@ void ComputeExampleDenFst(const ContextDependency &ctx_dep,
   StdVectorFst phone_lm;
   ComputeExamplePhoneLanguageModel(trans_model.GetPhones(), &phone_lm);
 
-  CreateDenominatorGraph(ctx_dep, trans_model, phone_lm, den_graph);
+  CreateDenominatorFst(ctx_dep, trans_model, phone_lm, den_graph);
 }
 
 
@@ -82,6 +82,10 @@ void TestSupervisionIo(const Supervision &supervision) {
   if (binary) {
     KALDI_ASSERT(supervision == supervision2);
   }
+  // also test swap and constructor
+  Supervision supervision3(supervision), supervision4;
+  supervision3.Swap(&supervision4);
+  KALDI_ASSERT(supervision == supervision4);
 }
 
 void TestSupervisionNumerator(const Supervision &supervision) {

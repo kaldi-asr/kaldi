@@ -53,7 +53,12 @@ namespace chain {
 class DenominatorGraph {
  public:
 
+  // the number of states in the HMM.
   int32 NumStates();
+
+  // the number of PDFs (the labels on the transitions are numbered from 0 to
+  // NumPdfs() - 1).
+  int32 NumPdfs();
 
   DenominatorGraph();
 
@@ -150,6 +155,8 @@ class DenominatorGraph {
   // whichever one has the greatest initial-prob.  It's set
   // in SetInitialProbs().
   int32 special_hmm_state_;
+
+  int32 num_pdfs_;
 };
 
 // returns the number of states from which there is a path to
@@ -174,10 +181,10 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
 // language model (with no disambiguation symbols), this funtion creates the
 // denominator-graph.  Note: there is similar code in chain-supervision.cc, when
 // creating the supervision graph.
-void CreateDenominatorGraph(const ContextDependency &ctx_dep,
-                            const TransitionModel &trans_model,
-                            const fst::StdVectorFst &phone_lm,
-                            fst::StdVectorFst *den_graph);
+void CreateDenominatorFst(const ContextDependency &ctx_dep,
+                          const TransitionModel &trans_model,
+                          const fst::StdVectorFst &phone_lm,
+                          fst::StdVectorFst *den_graph);
 
 
 }  // namespace chain
