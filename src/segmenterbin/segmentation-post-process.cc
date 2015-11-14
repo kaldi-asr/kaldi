@@ -27,14 +27,16 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Remove short segments from the segmentation and merge to neighbors\n"
+        "Post processing of segmentation such as merging labels, "
+        "widening segments, removing segments and merging segments\n"
         "\n"
         "Usage: segmentation-post-process [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) (segmentation-out-wspecifier|segmentation-out-wxfilename)\n"
         " e.g.: segmentation-post-process --binary=false foo -\n"
-        "   segmentation-copy ark:1.ali ark,t:-\n";
+        "       segmentation-post-process ark:1.ali ark,t:-\n"
+        "See also: segmentation-merge, segmentation-copy";
     
     bool binary = true;
-    int32 max_remove_length = -1;
+    int32 max_relabel_length = -1;
     int32 widen_length = -1;
     int32 widen_label = -1;
     int32 max_segment_length = -1;
@@ -55,7 +57,10 @@ int main(int argc, char *argv[]) {
                 "If --merge-labels is specified, then all of them would be removed instead.");
     po.Register("remove-labels", &remove_labels_csl, 
                 "Remove all segments of these labels.");
-    po.Register("max-remove-length", &max_remove_length, "The maximum length of segment in number of frames that will be removed");
+    po.Register("max-relabel-length", &max_relabel_length, 
+                "The maximum length of segment in number of frames that will "
+                "be relabeled to the class-id of the adjacent segments, "
+                "provided the adjacent segments both have the same class-id");
     po.Register("widen-label", &widen_label, "Widen segments of this label");
     po.Register("widen-length", &widen_length, "Widen by this amount of frames on either sides");
     po.Register("max-segment-length", &max_segment_length, 
@@ -129,8 +134,8 @@ int main(int argc, char *argv[]) {
 
       if (widen_length > 0)
         seg.WidenSegments(widen_label, widen_length);
-      if (max_remove_length >= 0)
-        seg.RemoveShortSegments(opts.merge_dst_label, max_remove_length);
+      if (max_relabel_length >= 0)
+        seg.RelabelShortSegments(opts.merge_dst_label, max_relabel_length);
 
       if (remove_labels_csl != "")
         seg.RemoveSegments(remove_labels);

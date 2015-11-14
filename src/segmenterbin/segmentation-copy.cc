@@ -36,9 +36,8 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
-
-    po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
+    po.Register("binary", &binary, 
+                "Write in binary mode (only relevant if output is a wxfilename)");
 
     opts.Register(&po);
 
@@ -49,20 +48,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
-
     std::string segmentation_in_fn = po.GetArg(1),
-        segmentation_out_fn = po.GetArg(2);
+                segmentation_out_fn = po.GetArg(2);
 
     // all these "fn"'s are either rspecifiers or filenames.
 
@@ -93,25 +80,7 @@ int main(int argc, char *argv[]) {
       SegmentationWriter writer(segmentation_out_fn); 
       SequentialSegmentationReader reader(segmentation_in_fn);
       for (; !reader.Done(); reader.Next(), num_done++) {
-        Segmentation seg(reader.Value());
-        std::string key = reader.Key();
-
-        if (opts.filter_rspecifier != "") {
-          if (!filter_reader.HasKey(key)) {
-            KALDI_WARN << "Could not find filter for utterance " << key;
-            num_err++;
-            continue;
-          }
-          const Segmentation &filter_segmentation = filter_reader.Value(key);
-          seg.IntersectSegments(filter_segmentation, opts.filter_label);
-        } else if (opts.filter_label != -1)
-          seg.IntersectSegments(seg, opts.filter_label);
-        
-        if (opts.merge_labels_csl != "") {
-          seg.MergeLabels(merge_labels, opts.merge_dst_label);
-        }
-
-        writer.Write(key, seg);
+        writer.Write(reader.Key(), reader.Value());
       }
 
       KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
@@ -123,6 +92,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
 

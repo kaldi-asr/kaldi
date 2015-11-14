@@ -27,9 +27,10 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Create subsegmentation of a segmentation based on another segmentation."
-        "The intersection of the segmentation are assiged a new label specified "
-        "by subsegment-label\n"
+        "Create sub-segmentation of a segmentation by intersecting with "
+        "segments from another segmentation. The regions where the other "
+        "segmentation has class_id 'filter-label' is labeled "
+        "'subsegment-label'\n"
         "\n"
         "Usage: segmentation-create-subsegments --subsegment-label=1000 --filter-label=10 [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) (filter-segmentation-in-rspecifier|filter-segmentation-out-rxfilename) (segmentation-out-wspecifier|segmentation-out-wxfilename)\n"
         " e.g.: segmentation-copy --binary=false foo -\n"
@@ -39,14 +40,17 @@ int main(int argc, char *argv[]) {
     int32 filter_label = -1, subsegment_label = -1;
     ParseOptions po(usage);
     
-    po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-    po.Register("filter-label", &filter_label, "The label on which the "
-                "filtering is done");
-    po.Register("subsegment-label", &subsegment_label, "If non-negative, "
-                "change the label of "
-                "the intersection of the two segmentations to this integer.");
+    po.Register("binary", &binary, 
+                "Write in binary mode (only relevant if output is a wxfilename)");
+    po.Register("filter-label", &filter_label, "The class_id on which the "
+                "filtering is done.");
+    po.Register("subsegment-label", &subsegment_label, 
+                "If non-negative, change the class_id of "
+                "the intersection of the two segmentations to this label.");
     po.Register("ignore-missing", &ignore_missing, "Ignore missing "
-                "segmentations in filter");
+                "segmentations in filter. If this is set true, then the "
+                "segmentations with missing key in filter are written "
+                "without any modification.");
 
     po.Read(argc, argv);
 
@@ -90,7 +94,8 @@ int main(int argc, char *argv[]) {
         secondary_seg.Read(ki.Stream(), binary_in);
       }
       Segmentation new_seg;
-      seg.CreateSubSegments(secondary_seg, filter_label, subsegment_label, &new_seg);
+      seg.CreateSubSegments(secondary_seg, filter_label, 
+                            subsegment_label, &new_seg);
       Output ko(segmentation_out_fn, binary);
       seg.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
@@ -114,7 +119,8 @@ int main(int argc, char *argv[]) {
         const Segmentation &secondary_segmentation = filter_reader.Value(key);
         
         Segmentation new_seg;
-        seg.CreateSubSegments(secondary_segmentation, filter_label, subsegment_label, &new_seg);
+        seg.CreateSubSegments(secondary_segmentation, filter_label,
+                              subsegment_label, &new_seg);
 
         writer.Write(key, new_seg);
       }

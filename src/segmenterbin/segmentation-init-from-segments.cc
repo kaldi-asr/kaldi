@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string segments_rxfilename = po.GetArg(1),
-        segmentation_wspecifier = po.GetArg(2);
+                segmentation_wspecifier = po.GetArg(2);
     
     Input ki(segments_rxfilename);
     SegmentationWriter writer(segmentation_wspecifier);

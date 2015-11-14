@@ -63,6 +63,8 @@ int main(int argc, char *argv[]) {
           // Change of state i.e. a different class id. 
           // So the previous segment has ended.
           if (state != -1) {
+            // state == -1 in the beginning of the alignment. That is just
+            // initialization step and hence no creation of segment.
             seg.Emplace(start_frame, i-1, state);
             num_segmentations++;
             if (frames_count_per_class.size() <= state) {
@@ -74,21 +76,21 @@ int main(int argc, char *argv[]) {
           state = alignment[i];
         }
       }
+
+      KALDI_ASSERT(state > 0 && start_frame < alignment.size());
       seg.Emplace(start_frame, alignment.size()-1, state);
+      num_segmentations++;
       if (frames_count_per_class.size() <= state) {
         frames_count_per_class.resize(state + 1, 0);
       }
       frames_count_per_class[state] += alignment.size() - start_frame;
-      
-      num_segmentations++;
       
       segmentation_writer.Write(key, seg);
       num_done++;
     }
 
     KALDI_LOG << "Processed " << num_done << " utterances; "
-              << "wrote "
-              << num_segmentations << " segmentations.";
+              << "wrote " << num_segmentations << " segmentations.";
     KALDI_LOG << "Number of frames for the different classes are : ";
     WriteIntegerVector(KALDI_LOG, false, frames_count_per_class);
 

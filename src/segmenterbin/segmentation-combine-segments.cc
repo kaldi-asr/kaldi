@@ -27,10 +27,11 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Combine utterance-level segmentations in archive to \n"
-        "file-level segmentations\n"
+        "Combine utterance-level segmentations in an archive to file-level "
+        "segmentations using the kaldi segments to map utterances to "
+        "file.\n"
         "\n"
-        "Usage: segmentation-combine-segments [options] segmentation-in-rspecifier segments-rxfilename segmentation-out-rspecifier\n"
+        "Usage: segmentation-combine-segments [options] <segmentation-in-rspecifier> <segments-rxfilename> <segmentation-out-rspecifier>\n"
         " e.g.: segmentation-combine-segments ark:utt.seg data/dev/segments ark:file.seg\n";
     
     bool binary = true;

@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
         Input ki(po.GetArg(i), &binary_in);
         Segmentation other_seg;
         other_seg.Read(ki.Stream(), binary_in);
-        seg.Merge(other_seg, false);
+        seg.Extend(other_seg, false);
       }
 
       Output ko(segmentation_out_fn, binary);
@@ -86,7 +86,8 @@ int main(int argc, char *argv[]) {
     } else {
       SegmentationWriter writer(segmentation_out_fn); 
       SequentialSegmentationReader reader(segmentation_in_fn);
-      std::vector<RandomAccessSegmentationReader*> other_readers(po.NumArgs()-2, static_cast<RandomAccessSegmentationReader*>(NULL));
+      std::vector<RandomAccessSegmentationReader*> other_readers(po.NumArgs()-2,
+          static_cast<RandomAccessSegmentationReader*>(NULL));
 
       for (size_t i = 0; i < po.NumArgs()-2; i++) {
         other_readers[i] = new RandomAccessSegmentationReader(po.GetArg(i+2));
@@ -99,11 +100,11 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < po.NumArgs()-2; i++) {
           if (!other_readers[i]->HasKey(key)) {
             KALDI_WARN << "Could not find segmentation for key " << key
-                       << "; in " << po.GetArg(i+2);
+                       << " in " << po.GetArg(i+2);
             num_err++;
           }
           const Segmentation &other_seg = other_readers[i]->Value(key);
-          seg.Merge(other_seg, false);
+          seg.Extend(other_seg, false);
         }
         seg.Sort();
 
@@ -120,7 +121,4 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
-
 
