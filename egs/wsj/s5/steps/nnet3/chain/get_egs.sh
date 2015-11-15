@@ -68,7 +68,8 @@ if [ $# != 5 ]; then
   echo " e.g.: $0 data/train data/lang exp/tri4_nnet exp/tri3_lats exp/tri4_nnet/egs"
   echo "(note: topology in lang directory doesn't matter, only used for silence-phones)."
   echo "From <chain-dir>, 0.trans_mdl (the transition-model), tree (the tree)"
-  echo "and phone_lm.fst (the phone language model) are read."
+  echo "and normalization.fst (the normalization FST, derived from the denominator FST)"
+  echo "are read."
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -105,7 +106,7 @@ dir=$5
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
 for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl $lang/phones.txt \
-         $chain_dir/{0.trans_mdl,tree,phone_lm.fst} $extra_files; do
+         $chain_dir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -284,12 +285,14 @@ if [ $stage -le 3 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
-    nnet3-chain-get-egs $valid_ivector_opt $valid_egs_opts "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
+    nnet3-chain-get-egs $valid_ivector_opt $valid_egs_opts $chaindir/normalization.fst \
+      "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
   $cmd $dir/log/create_train_subset.log \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:$dir/lat_special.scp ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
      $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $train_subset_ivector_opt $valid_egs_opts "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
+    nnet3-chain-get-egs $train_subset_ivector_opt $valid_egs_opts $chaindir/normalization.fst \
+       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
   wait;
   [ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
   echo "... Getting subsets of validation examples for diagnostics and combination."
@@ -331,7 +334,8 @@ if [ $stage -le 4 ]; then
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt $egs_opts "$feats" ark,s,cs:- ark:- \| \
+    nnet3-chain-get-egs $ivector_opt $egs_opts $chaindir/normalization.fst \
+     "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
 fi
 

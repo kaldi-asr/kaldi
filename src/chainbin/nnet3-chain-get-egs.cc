@@ -30,7 +30,8 @@ namespace kaldi {
 namespace nnet3 {
 
 
-static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
+static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
+                        const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         const chain::Supervision &supervision,
                         const std::string &utt_id,
@@ -42,14 +43,16 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                         int32 frame_subsampling_factor,
                         int64 *num_frames_written,
                         int64 *num_egs_written,
-                        NnetCctcExampleWriter *example_writer) {
+                        NnetChainExampleWriter *example_writer) {
+  KALDI_ASSERT(supervision.num_sequences == 1);
   int32 num_feature_frames = feats.NumRows(),
-      num_ctc_frames = cctc_supervision.num_frames,
+      num_output_frames = supervision.frames_per_sequence,
       num_feature_frames_subsampled = num_feature_frames /
       frame_subsampling_factor;
-  if (num_ctc_frames != num_feature_frames_subsampled)
-    KALDI_ERR << "Mismatch in num-frames: CTC supervision has "
-              << num_ctc_frames << " versus features/frame_subsampling_factor = "
+  if (num_output_frames != num_feature_frames_subsampled)
+    KALDI_ERR << "Mismatch in num-frames: chain supervision has "
+              << num_output_frames
+              << " versus features/frame_subsampling_factor = "
               << num_feature_frames << " / " << frame_subsampling_factor
               << ": check that --frame-subsampling-factor option is set "
               << "the same as to ctc-get-supervision.";
@@ -67,9 +70,10 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
   // Instead we select ranges of frames that fully fit within the file;  these
   // might slightly overlap with each other or have gaps.
   std::vector<int32> range_starts_subsampled;
-  ctc::SplitIntoRanges(num_feature_frames_subsampled - frames_overlap_subsampled,
-                       frames_shift_subsampled,
-                       &range_starts_subsampled);
+  chain::SplitIntoRanges(num_feature_frames_subsampled -
+                         frames_overlap_subsampled,
+                         frames_shift_subsampled,
+                         &range_starts_subsampled);
 
   if (range_starts_subsampled.empty()) {
     KALDI_WARN << "No output for utterance " << utt_id
@@ -78,26 +82,35 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
                << frames_per_eg;
     return false;
   }
-  ctc::CctcSupervisionSplitter splitter(cctc_supervision);
+  chain::SupervisionSplitter splitter(supervision);
 
   for (size_t i = 0; i < range_starts_subsampled.size(); i++) {
     int32 range_start_subsampled = range_starts_subsampled[i],
         range_start = range_start_subsampled * frame_subsampling_factor;
 
-    ctc::CctcSupervision supervision_part;
+    chain::Supervision supervision_part;
     splitter.GetFrameRange(range_start_subsampled,
                            frames_per_eg_subsampled,
                            &supervision_part);
+
+    if (!AddWeightToSupervisionFst(normalization_fst,
+                                   &supervision_part)) {
+      KALDI_WARN << "For utterance " << utt_id << ", frames "
+                 << range_start << " to " << (range_start + frames_per_eg)
+                 << ", FST was empty after composing with normalization FST. "
+                 << "This should be extremely rare (a few per corpus, at most)";
+      return false;
+    }
+
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
-    NnetCctcSupervision nnet_supervision(supervision_part,
-                                         "output", first_frame,
-                                         frame_subsampling_factor);
+    NnetChainSupervision nnet_supervision("output", supervision_part,
+                                          first_frame, frame_subsampling_factor);
 
-    NnetCctcExample nnet_cctc_eg;
-    nnet_cctc_eg.outputs.resize(1);
-    nnet_cctc_eg.outputs[0].Swap(&nnet_supervision);
-    nnet_cctc_eg.inputs.resize(ivector_feats != NULL ? 2 : 1);
+    NnetChainExample nnet_chain_eg;
+    nnet_chain_eg.outputs.resize(1);
+    nnet_chain_eg.outputs[0].Swap(&nnet_supervision);
+    nnet_chain_eg.inputs.resize(ivector_feats != NULL ? 2 : 1);
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
     Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
@@ -113,7 +126,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
     }
     NnetIo input_io("input", - left_context,
                     input_frames);
-    nnet_cctc_eg.inputs[0].Swap(&input_io);
+    nnet_chain_eg.inputs[0].Swap(&input_io);
 
     if (ivector_feats != NULL) {
       // if applicable, add the iVector feature.
@@ -126,11 +139,11 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
       Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
       ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
       NnetIo ivector_io("ivector", 0, ivector);
-      nnet_cctc_eg.inputs[1].Swap(&ivector_io);
+      nnet_chain_eg.inputs[1].Swap(&ivector_io);
     }
 
     if (compress)
-      nnet_cctc_eg.Compress();
+      nnet_chain_eg.Compress();
 
     std::ostringstream os;
     os << utt_id << "-" << range_start;
@@ -140,7 +153,7 @@ static bool ProcessFile(const MatrixBase<BaseFloat> &feats,
     *num_frames_written += frames_per_eg;
     *num_egs_written += 1;
 
-    example_writer->Write(key, nnet_cctc_eg);
+    example_writer->Write(key, nnet_chain_eg);
   }
   return true;
 }
@@ -166,11 +179,10 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
               << ", now --num-frames=" << new_num_frames_overlap;
     *num_frames_overlap = new_num_frames_overlap;
   }
-  if (num_frames_overlap < 0 || num_frames_overlap >= *num_frames) {
+  if (*num_frames_overlap < 0 || *num_frames_overlap >= *num_frames) {
     KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
               << "--num-frames=" << (*num_frames);
   }
-
 
 }
 
@@ -182,22 +194,21 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace kaldi::nnet3;
-    using namespace kaldi::ctc;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Get frame-by-frame examples of data for nnet3+CTC neural network\n"
+        "Get frame-by-frame examples of data for nnet3+chain neural network\n"
         "training.  This involves breaking up utterances into pieces of a\n"
-        "fixed size.  Input will come from ctc-get-supervision.\n"
+        "fixed size.  Input will come from chain-get-supervision.\n"
         "\n"
         "Usage:  nnet3-ctc-get-egs [options] <normalization-fst> <features-rspecifier> "
         "<ctc-supervision-rspecifier> <egs-wspecifier>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
-        "ctc-get-supervision [args] | \\\n"
-        "  nnet3-ctc-get-egs --left-context=25 --right-context=9 --num-frames=20 \"$feats\" ark,s,cs:- \\\n"
-        "  ark:cegs.1.ark\n"
+        "chain-get-supervision [args] | \\\n"
+        "  nnet3-chain-get-egs --left-context=25 --right-context=9 --num-frames=20 dir/normalization.fst \\\n"
+        "  \"$feats\" ark,s,cs:- ark:cegs.1.ark\n"
         "Note: the --frame-subsampling-factor option must be the same as given to\n"
         "ctc-get-supervision.\n";
 
@@ -227,12 +238,12 @@ int main(int argc, char *argv[]) {
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
     po.Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                "if the frame-rate in CTC will be less than the frame-rate "
-                "of the original alignment");
+                "if the frame-rate at the output will be less than the "
+                "frame-rate of the input");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -243,13 +254,19 @@ int main(int argc, char *argv[]) {
     RoundUpNumFrames(frame_subsampling_factor,
                      &num_frames, &num_frames_overlap);
 
-    std::string feature_rspecifier = po.GetArg(1),
-        supervision_rspecifier = po.GetArg(2),
-        examples_wspecifier = po.GetArg(3);
+    std::string
+        normalization_fst_rxfilename = po.GetArg(1),
+        feature_rspecifier = po.GetArg(2),
+        supervision_rspecifier = po.GetArg(3),
+        examples_wspecifier = po.GetArg(4);
+
+    fst::StdVectorFst normalization_fst;
+    ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
 
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
-    RandomAccessCctcSupervisionReader supervision_reader(supervision_rspecifier);
-    NnetCctcExampleWriter example_writer(examples_wspecifier);
+    chain::RandomAccessSupervisionReader supervision_reader(
+        supervision_rspecifier);
+    NnetChainExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
 
     int32 num_done = 0, num_err = 0;
@@ -262,7 +279,7 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "No pdf-level posterior for key " << key;
         num_err++;
       } else {
-        const ctc::CctcSupervision &supervision = supervision_reader.Value(key);
+        const chain::Supervision &supervision = supervision_reader.Value(key);
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
           if (!ivector_reader.HasKey(key)) {
@@ -284,8 +301,8 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        if (ProcessFile(feats, ivector_feats, supervision, key, compress,
-                        left_context, right_context, num_frames,
+        if (ProcessFile(normalization_fst, feats, ivector_feats, supervision,
+                        key, compress, left_context, right_context, num_frames,
                         num_frames_overlap, frame_subsampling_factor,
                         &num_frames_written, &num_egs_written,
                         &example_writer))
@@ -295,7 +312,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    KALDI_LOG << "Finished generating nnet3-ctc examples, "
+    KALDI_LOG << "Finished generating nnet3-chain examples, "
               << "successfully processed " << num_done
               << " feature files, wrote " << num_egs_written << " examples, "
               << " with " << num_frames_written << " egs in total; "

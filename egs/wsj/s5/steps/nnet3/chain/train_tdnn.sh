@@ -187,8 +187,6 @@ if [ $stage -le -6 ]; then
        $dir/den.fst $dir/normalization.fst || exit 1;
 fi
 
-exit 1;
-
 # work out num-leaves
 num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exit 1;
 [ $num_leaves -gt 0 ] || exit 1;
@@ -248,8 +246,10 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $lang $dir/0.trans_mdl $latdir $dir/egs || exit 1;
+      $data $lang $dir $latdir $dir/egs || exit 1;
 fi
+
+exit 1;  ## TEMP
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
