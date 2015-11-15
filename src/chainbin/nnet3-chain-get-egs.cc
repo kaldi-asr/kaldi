@@ -173,7 +173,7 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
   if (*num_frames_overlap % frame_subsampling_factor != 0) {
     int32 new_num_frames_overlap = frame_subsampling_factor *
         (*num_frames_overlap / frame_subsampling_factor + 1);
-    KALDI_LOG << "Rounding up --num-frames-overlap=" << num_frames_overlap
+    KALDI_LOG << "Rounding up --num-frames-overlap=" << (*num_frames_overlap)
               << " to a multiple of --frame-subsampling-factor="
               << frame_subsampling_factor
               << ", now --num-frames=" << new_num_frames_overlap;
@@ -315,7 +315,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Finished generating nnet3-chain examples, "
               << "successfully processed " << num_done
               << " feature files, wrote " << num_egs_written << " examples, "
-              << " with " << num_frames_written << " egs in total; "
+              << " with " << num_frames_written << " frames in total; "
               << num_err << " files had errors.";
     return (num_egs_written == 0 || num_err > num_done ? 1 : 0);
   } catch(const std::exception &e) {

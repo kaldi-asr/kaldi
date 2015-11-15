@@ -49,9 +49,11 @@ right_tolerance=  #CTC right tolerance == max label delay.
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
 stage=0
-nj=6         # This should be set to the maximum number of jobs you are
-             # comfortable to run in parallel; you can increase it if your disk
-             # speed is greater and you have more machines.
+nj=20         # This should be set to the maximum number of jobs you are
+              # comfortable to run in parallel; you can increase it if your disk
+              # speed is greater and you have more machines.  Note: the process of
+              # eg creation is a little more CPU intensive in this than with regular
+              # nnet training, so we make the default a little larger.
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -63,10 +65,10 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 
-if [ $# != 5 ]; then
-  echo "Usage: $0 [opts] <data> <lang> <chain-dir> <lattice-dir> <egs-dir>"
-  echo " e.g.: $0 data/train data/lang exp/tri4_nnet exp/tri3_lats exp/tri4_nnet/egs"
-  echo "(note: topology in lang directory doesn't matter, only used for silence-phones)."
+if [ $# != 4 ]; then
+  echo "Usage: $0 [opts] <data> <chain-dir> <lattice-dir> <egs-dir>"
+  echo " e.g.: $0 data/train exp/tri4_nnet exp/tri3_lats exp/tri4_nnet/egs"
+  echo ""
   echo "From <chain-dir>, 0.trans_mdl (the transition-model), tree (the tree)"
   echo "and normalization.fst (the normalization FST, derived from the denominator FST)"
   echo "are read."
@@ -96,17 +98,16 @@ if [ $# != 5 ]; then
 fi
 
 data=$1
-lang=$2
-chaindir=$3
-latdir=$4
-dir=$5
+chaindir=$2
+latdir=$3
+dir=$4
 
 # Check some files.
 [ ! -z "$online_ivector_dir" ] && \
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 
-for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl $lang/phones.txt \
-         $chain_dir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
+for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
+         $chaindir/{0.trans_mdl,tree,normalization.fst} $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
@@ -253,12 +254,14 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: copying training lattices"
-  for id in $(seq $num_lat_jobs); do gunzip -c $latdir/lat.$id.gz; done | \
-    lattice-copy ark:- ark,scp:$dir/lat.ark,$dir/lat.scp || exit 1;
+
+  $cmd --max-jobs-run 6 JOB=1:$num_lat_jobs $dir/log/lattice_copy.JOB.log \
+    lattice-copy "ark:gunzip -c $latdir/lat.JOB.gz|" ark,scp:$dir/lat.JOB.ark,$dir/lat.JOB.scp || exit 1;
+
+  for id in $(seq $num_lat_jobs); do cat $dir/lat.$id.scp; done > $dir/lat.scp
 fi
 
 
-silphones=$(cat $lang/phones/silence.csl) || exit 1;
 egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
 
@@ -267,7 +270,7 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 # don't do the overlap thing for the validation data.
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
-ctc_supervision_all_opts="--lattice-input=true --silence-phones=$silphones --frame-subsampling-factor=$frame_subsampling_factor --right-tolerance=$right_tolerance"
+ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$frame_subsampling_factor --right-tolerance=$right_tolerance"
 
 
 echo $left_context > $dir/info/left_context
@@ -387,9 +390,12 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
+  echo "$0: removing temporary lattices"
+  rm $dir/lat.*
   echo "$0: removing temporary alignments and transforms"
   # Ignore errors below because trans.* might not exist.
   rm $dir/{ali,trans}.{ark,scp} 2>/dev/null
+
 fi
 
 echo "$0: Finished preparing training examples"

@@ -49,6 +49,11 @@ void NnetChainSupervision::Read(std::istream &is, bool binary) {
 
 
 void NnetChainSupervision::CheckDim() const {
+  if (supervision.frames_per_sequence == -1) {
+    // this object has not been set up.
+    KALDI_ASSERT(indexes.empty());
+    return;
+  }
   KALDI_ASSERT(indexes.size() == supervision.num_sequences *
                supervision.frames_per_sequence && !indexes.empty() &&
                supervision.frames_per_sequence > 1);

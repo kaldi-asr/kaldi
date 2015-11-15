@@ -39,22 +39,40 @@
 namespace kaldi {
 namespace chain {
 
+struct ChainTrainingOptions {
+  BaseFloat pdf_boundary_penalty;
+
+  ChainTrainingOptions():
+      pdf_boundary_penalty(4.0);
+
+  void Register(OptionsItf *opts) {
+    opts->Register("pdf-boundary-penalty", &pdf_boundary_penalty,
+                   "Value subtracted from pdf pseudo-likelihoods at the "
+                   "first and last frames of chopped-up sequences, if "
+                   "the pdf is not in the numerator.  Intended to help "
+                   "reduce the inaccuracy of derivatives arising from breaking "
+                   "up the training utterances into fixed-size pieces.  This "
+                   "value should not be too large to avoid floating-point range "
+                   "issues.");
+};
+
+
 // This does forward-backward in parallel on a number of sequences, using a
 // single HMM.
-
 class DenominatorComputation {
  public:
   /*
     Constructor.  'nnet_output' is the raw nnet output (which we'll treat as
     pseudo-log-likelihoods).
 
+    @param [in] opts  The options.
     @param [in] graph  The HMM that we use for the denominator (like a decoding graph,
                        with pdf-ids on the transitions).
     @param [in] num_sequences The number of separate time sequences (all of the same length)
-                       that we are working with.
+                       that we are working with.  Must divide nnet_output.NumRows().
     @param [in] nnet_output  The output of the neural network for this minibatch.
-                       Organized as (first frame of all sequences) (second frame
-                       of all sequences)...
+                       The rows must be ordered as (first frame of all sequences)
+                       (second frame of all sequences), etc.
     @param [in] initial_pdf_ids Indexed by sequence, a list of the pdf-ids that
                       (in the numerator sequence) are active on the first frame.
                       Used to modify the nnet output, to limit sequences that
@@ -64,12 +82,12 @@ class DenominatorComputation {
                      Used to modify the nnet output, to limit sequences that
                      have that pdf-id as the final frame.
   */
-  DenominatorComputation(const DenominatorGraph &graph,
+  DenominatorComputation(const ChainTrainingOptions &opts,
+                         const DenominatorGraph &graph,
                          int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output,
                          const std::vector<std::vector<int32 > > &initial_pdf_ids,
                          const std::vector<std::vector<int32 > > &final_pdf_ids);
-
 
 
   // Does the forward computation, and returns the total negated log-like summed
@@ -78,13 +96,7 @@ class DenominatorComputation {
 
   void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
-
-private:
-  const CudaHmm &hmm_;
-  const Supervision &supervision_;
-  const CuMatrixBase<BaseFloat> &nnet_output_;
-
-
+ private:
   // sets up the alpha for frame t = 0.
   void AlphaFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
@@ -104,31 +116,50 @@ private:
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaGeneralFrame(int32 t);
 
-  // the transpose of the nnet output (more efficient).
+  const ChainTrainingOptions &opts_;
+  const DenominatorGraph &den_graph_;
+  const std::vector<std::vector<int32 > > &initial_pdf_ids_;
+  const std::vector<std::vector<int32 > > &final_pdf_ids_;
+
+  const CuMatrixBase<BaseFloat> &nnet_output_;
+
+  // number of separate frame sequences
+  int32 num_sequences_;
+  // number of frames per sequence.  nnet_output_.NumRows() equals
+  // num_sequences_ * frames_per_sequence.
+  int32 frames_per_sequence_;
+
+  // The transpose of the nnet output (more convenient for memory locality).
+  // Also, the first and last frames' pseudo-likelihooods are modified by
+  // subtracting opts_.pdf_boundary_penalty for all pdfs not listed as being
+  // initial/final in the supervision.
   CuMatrix<BaseFloat> nnet_output_transposed_;
 
-  // the derivs w.r.t. the nnet output-derivs.
+  // the derivs w.r.t. the nnet outputs (transposed)
   CuMatrix<BaseFloat> nnet_output_deriv_tranposed_;
 
-  // the alpha probabilities; dimension is num-time-steps + 1 by (num-hmm-states
+  // the alpha probabilities; dimension is (frames_per_sequence + 1) by (num-hmm-states
   // * num-sequences).  Note, they are not logs.
   CuMatrix<BaseFloat> alpha_;
 
   // the beta probabilities (rolling buffer); dimension is 2 * (num-hmm-states *
-  // num-sequences).  Note: for efficiency and simplification, these are actually
-  // the beta / tot_prob_.
+  // num-sequences).  Note: for efficiency and to simplify the equations, these
+  // are actually the beta / tot_prob_.
   CuMatrix<BaseFloat> beta_;
 
   // the total probability for each sequence, excluding the product of
   // correction terms.  we multiply on each frame by 1/alpha of hmm-state 0 of
   // the previous frame; the products
   CuVector<BaseFloat> tot_prob_;
+
   // the log of tot_prob_.
   CuVector<BaseFloat> tot_log_prob_;
 
-  // [once we start using correction terms, this will be:] the log of the total
-  // correction term for each sequence, which is the product of the alpha_[special hmm state] over
-  // all the frames.
+  // the log of the total correction term for each sequence, which is the
+  // product of the alpha_[special hmm state] over all the frames.  The
+  // 'correction terms' are terms that we divide the alphas and betas by in
+  // order to keep them in a good dynamic range.  The product of them
+  // must be included in the total likelihood.
   CuVector<BaseFloat> log_correction_term_;
 };
 

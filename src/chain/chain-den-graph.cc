@@ -118,6 +118,7 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
       avg_prob(num_states);
   cur_prob(fst.Start()) = 1.0;
   for (int32 iter = 0; iter < num_iters; iter++) {
+    avg_prob.AddVec(1.0 / num_iters, cur_prob);
     for (int32 s = 0; s < num_states; s++) {
       double prob = cur_prob(s) * normalizing_factor(s);
 
@@ -132,7 +133,6 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
     // Renormalize, beause the HMM won't sum to one even after the
     // previous normalization (due to final-probs).
     cur_prob.Scale(1.0 / cur_prob.Sum());
-    avg_prob.AddVec(1.0 / num_iters, cur_prob);
   }
 
   Vector<BaseFloat> avg_prob_float(avg_prob);
@@ -217,8 +217,10 @@ void DenominatorGraph::GetNormalizationFst(const fst::StdVectorFst &ifst,
     *ofst = ifst;
   int32 new_initial_state = ofst->AddState();
   Vector<BaseFloat> initial_probs(initial_probs_);
+
   for (int32 s = 0; s < initial_probs_.Dim(); s++) {
     BaseFloat initial_prob = initial_probs(s);
+    KALDI_ASSERT(initial_prob > 0.0);
     fst::StdArc arc(0, 0, fst::TropicalWeight(-log(initial_prob)), s);
     ofst->AddArc(new_initial_state, arc);
     ofst->SetFinal(s, fst::TropicalWeight::One());

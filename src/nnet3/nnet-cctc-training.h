@@ -113,49 +113,6 @@ class NnetCctcTrainer {
   unordered_map<std::string, CctcObjectiveFunctionInfo, StringHasher> objf_info_;
 };
 
-/**
-   This function computes the objective function, and if supply_deriv = true,
-   supplies its derivative to the NnetComputation object.
-   See also the function ComputeAccuracy(), declared in nnet-diagnostics.h.
-
-  @param [in]  supervision   A GeneralMatrix, typically derived from a NnetExample,
-                             containing the supervision posteriors or features.
-  @param [in] objective_type The objective function type: kLinear = output *
-                             supervision, or kQuadratic = -0.5 * (output -
-                             supervision)^2.  kLinear is used for softmax
-                             objectives; the network contains a LogSoftmax
-                             layer which correctly normalizes its output.
-  @param [in] output_name    The name of the output node (e.g. "output"), used to
-                             look up the output in the NnetComputer object.
-
-  @param [in] supply_deriv   If this is true, this function will compute the
-                             derivative of the objective function and supply it
-                             to the network using the function
-                             NnetComputer::AcceptOutputDeriv
-  @param [in,out] computer   The NnetComputer object, from which we get the
-                             output using GetOutput and to which we may supply
-                             the derivatives using AcceptOutputDeriv.
-  @param [out] tot_weight    The total weight of the training examples.  In the
-                             kLinear case, this is the sum of the supervision
-                             matrix; in the kQuadratic case, it is the number of
-                             rows of the supervision matrix.  In order to make
-                             it possible to weight samples with quadratic
-                             objective functions, we may at some point make it
-                             possible for the supervision matrix to have an
-                             extra column containing weights.  At the moment,
-                             this is not supported.
-  @param [out] tot_objf      The total objective function; divide this by the
-                             tot_weight to get the normalized objective function.
-*/
-void ComputeObjectiveFunction(const GeneralMatrix &supervision,
-                              ObjectiveType objective_type,
-                              const std::string &output_name,
-                              bool supply_deriv,
-                              NnetComputer *computer,
-                              BaseFloat *tot_weight,
-                              BaseFloat *tot_objf);
-
-
 
 } // namespace nnet3
 } // namespace kaldi

@@ -246,10 +246,8 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --cmd "$cmd" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
-      $data $lang $dir $latdir $dir/egs || exit 1;
+      $data $dir $latdir $dir/egs || exit 1;
 fi
-
-exit 1;  ## TEMP
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
 
@@ -291,9 +289,8 @@ if [ $stage -le -3 ]; then
 
   # Write stats with the same format as stats for LDA.
   $cmd JOB=1:$num_lda_jobs $dir/log/get_lda_stats.JOB.log \
-      nnet3-ctc-acc-lda-stats --rand-prune=$rand_prune \
-        $dir/0.ctc_trans_mdl $dir/init.raw "ark:$egs_dir/cegs.JOB.ark" \
-        $dir/JOB.lda_stats || exit 1;
+      nnet3-chain-acc-lda-stats --rand-prune=$rand_prune \
+         $dir/init.raw "ark:$egs_dir/cegs.JOB.ark" $dir/JOB.lda_stats || exit 1;
 
   all_lda_accs=$(for n in $(seq $num_lda_jobs); do echo $dir/$n.lda_stats; done)
   $cmd $dir/log/sum_transform_stats.log \
@@ -319,7 +316,7 @@ if [ $stage -le -1 ]; then
        nnet3-init --srand=-1 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 
 
-  # The model-format for a CTC acoustic model is just the CTC transition
+  # The model-format for a 'chain' acoustic model is just the transition
   # model and then the raw nnet, so we can use 'cat' to create this, as
   # long as they have the same mode (binary or not binary).
   # We ensure that they have the same mode (even if someone changed the
@@ -328,7 +325,7 @@ if [ $stage -le -1 ]; then
 
   echo "$0: creating initial model"
   $cmd $dir/log/init_model.log \
-    nnet3-ctc-copy --set-raw-nnet=$dir/0.raw $dir/0.ctc_trans_mdl $dir/0.mdl || exit 1;
+    nnet3-am-init $dir/0.trans_mdl $dir/0.raw $dir/0.mdl || exit 1;
 fi
 
 echo $frame_subsampling_factor >$dir/frame_subsampling_factor || exit 1;

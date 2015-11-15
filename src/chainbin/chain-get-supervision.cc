@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         "that have been converged to phone-level lattices with\n"
         "lattice-align-phones --replace-output-symbols=true.\n"
         "\n"
-        "Usage: chain-get-supervision [options] <transition-model> <tree> "
+        "Usage: chain-get-supervision [options] <tree> <transition-model> "
         "[<phones-with-lengths-rspecifier>|<phone-lattice-rspecifier>] <supervision-wspecifier>\n"
         "See steps/nnet3/chain/get_egs.sh for example\n";
 
@@ -89,8 +89,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string trans_model_rxfilename = po.GetArg(1),
-        tree_rxfilename = po.GetArg(2),
+    std::string tree_rxfilename = po.GetArg(1),
+        trans_model_rxfilename = po.GetArg(2),
         phone_durs_or_lat_rspecifier = po.GetArg(3),
         supervision_wspecifier = po.GetArg(4);
 

@@ -1,4 +1,4 @@
-// chainbin/chain-make-den-graph.cc
+// chainbin/chain-make-den-fst.cc
 
 // Copyright       2015  Johns Hopkins University (author:  Daniel Povey)
 
@@ -34,10 +34,10 @@ int main(int argc, char *argv[]) {
         "<normalization-fst-out> is a modified version of <denominator-fst> (w.r.t.\n"
         "initial and final probs) that is used in example generation.\n"
         "\n"
-        "Usage: chain-make-den-graph [options] <tree> <transition-model> <phone-lm-fst> "
+        "Usage: chain-make-den-fsth [options] <tree> <transition-model> <phone-lm-fst> "
         "<denominator-fst-out> <normalization-fst-out>\n"
         "e.g.:\n"
-        "chain-make-den-graph dir/tree dir/0.trans_mdl dir/phone_lm.fst dir/den.fst dir/normalization.fst\n";
+        "chain-make-den-fst dir/tree dir/0.trans_mdl dir/phone_lm.fst dir/den.fst dir/normalization.fst\n";
 
     ParseOptions po(usage);
 
