@@ -59,8 +59,14 @@ const BaseFloat kWaveSampleMax = 32768.0;
 /// This class's purpose is to read in Wave files.
 class WaveData {
  public:
+// initialize multi-channel data from a matrix 
   WaveData(BaseFloat samp_freq, const MatrixBase<BaseFloat> &data)
       : data_(data), samp_freq_(samp_freq) {}
+
+// initialize single channel data from a vector
+  WaveData(BaseFloat samp_freq, const Vector<BaseFloat> &data): samp_freq_(samp_freq) { 
+    data_.Resize(1,data.Dim()); data_.CopyRowFromVec(data,0);
+  }
 
   WaveData() : samp_freq_(0.0) {}
 

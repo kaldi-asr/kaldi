@@ -1854,6 +1854,67 @@ template<typename Real> static void UnitTestAddVecVec() {
   }
 }
 
+template<typename Real> static void UnitTestToeplitzSolve() {
+  for (int32 i = 0; i < 20; i++) {
+    int32 dimN = 5 + Rand() % 10;
+   
+    printf("Matrix dimension: %d\n", dimN);
+
+    Vector<Real> r(dimN), c(dimN), y(dimN), x(dimN), x2(dimN), y2(dimN), y3(dimN);
+    Matrix<Real> rmat(dimN,dimN),rcmat(dimN,dimN);
+    r.SetRandn();
+    c.SetRandn();
+    c(0)=r(0); // force them to be the same
+    y.SetRandn();
+    y2.SetZero();
+    toeplitz_solve<Real>(r,r,y,&x);
+    make_toeplitz_matrix<Real>(r,&rmat);
+    y2.AddMatVec(1, rmat, kNoTrans, x, 0);
+
+    toeplitz_solve<Real>(r,c,y,&x2);
+    make_nonsym_toeplitz_matrix<Real>(r,c,&rcmat);
+    y3.AddMatVec(1, rcmat, kNoTrans, x2, 0);
+    if (i == 0) {
+      printf("rmat");
+      for (int32 k=0;k<dimN;k++) {
+        printf("\n");
+        for (int32 l=0; l<dimN;l++)
+          printf("%.2f ",rmat(k,l));
+      }
+      printf("\nrcmat");
+      for (int32 k=0;k<dimN;k++) {
+        printf("\n");
+        for (int32 l=0; l<dimN;l++)
+          printf("%.2f ",rcmat(k,l));
+      }
+      printf("\nr\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",r(l));
+      printf("\nc\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",c(l));
+      printf("\nx\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",x(l));
+      printf("\nx2\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",x2(l));
+      printf("\ny\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",y(l));
+      printf("\nRx\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",y2(l));
+      printf("\nRCx2\n");
+      for (int32 l=0; l<dimN;l++)
+        printf("%.2f ",y3(l));
+      printf("\n-------\n");
+    }
+    AssertEqual(y,y2);
+    AssertEqual(y,y3);
+  }
+}
+
 
 template<typename Real> static void UnitTestVecmul() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
@@ -4677,6 +4738,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestPca2<Real>(full_test);
   UnitTestAddVecVec<Real>();
   UnitTestReplaceValue<Real>();
+  UnitTestToeplitzSolve<Real>();
   // The next one is slow.  The upshot is that Eig is up to ten times faster
   // than SVD.
   // UnitTestSvdSpeed<Real>();
