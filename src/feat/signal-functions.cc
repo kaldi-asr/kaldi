@@ -23,7 +23,7 @@
 
 namespace kaldi {
 
-  // find best filter h that linearly converts vector a to be closer to vector b, leading to vector outpout
+  // find best filter h that linearly converts vector a to be closer to vector b, leading to vector output
   void ChannelConvert(const VectorBase<BaseFloat> &a,
 		      const VectorBase<BaseFloat> &b,
 		      const int32 &taps,

@@ -149,7 +149,7 @@ void Istft::Compute(const Matrix<BaseFloat> &input,
             srfft_->Compute(temp.Data(), false);
         else  // An alternative algorithm that works for non-powers-of-two
             RealFft(&temp, false);
-        temp.Scale(scale_factor/static_cast<BaseFloat>(Nfft)); // inverse fft does not do 1/Nfft
+        temp.Scale(scale_factor/static_cast<BaseFloat>(Nfft)); // inverse fft does not do 1/Nfft, also use scale_factor for perfect reconstruction
         if (preemph_coeff != 0.0) // please give this as zero if you want perfect reconstruction
            Deemphasize(&temp, preemph_coeff); 
         int32 start = r*frame_shift_samp;
