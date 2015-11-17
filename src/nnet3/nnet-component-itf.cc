@@ -96,6 +96,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new MaxpoolingComponent();
   } else if (component_type == "PermuteComponent") {
     ans = new PermuteComponent();
+  } else if (component_type == "SparseLinearComponent") {
+    ans = new SparseLinearComponent();
   }
   return ans;
 }
@@ -129,11 +131,10 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
   return true;
 }
 
-
-
-void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {
+void UpdatableComponent::Init(BaseFloat lr, bool is_gradient, bool is_updatable) {
   learning_rate_ = lr;
   is_gradient_ = is_gradient;
+  is_updatable_ = is_updatable;
 }
 
 std::string UpdatableComponent::Info() const {
@@ -143,6 +144,7 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  stream << ", is-updatable=" << (is_updatable_ ? "true" : "false");
   return stream.str();
 }
 

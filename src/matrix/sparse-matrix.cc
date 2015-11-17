@@ -376,6 +376,25 @@ template
 void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
                                     MatrixTransposeType trans) const;
 
+
+template <typename Real>
+template <typename OtherReal>
+void SparseMatrix<Real>::CopyFromMat(const MatrixBase<OtherReal> &other) {
+  rows_.resize(other.NumRows());
+  if (rows_.size() == 0) return;
+  for (int32 r = 0; r < rows_.size(); r++) {
+    std::vector<std::pair<MatrixIndexT, Real> > mat_row(other.NumCols());
+    for(int32 c = 0; c < other.NumCols(); c++)
+      mat_row[c] = std::make_pair(c, other(r, c));
+    rows_[r].CopyFromSvec(SparseVector<Real>(other.NumCols(), mat_row));
+  }
+}
+template void SparseMatrix<float>::CopyFromMat(const MatrixBase<float> &other);
+template void SparseMatrix<float>::CopyFromMat(const MatrixBase<double> &other);
+template void SparseMatrix<double>::CopyFromMat(const MatrixBase<float> &other);
+template void SparseMatrix<double>::CopyFromMat(const MatrixBase<double> &other);
+
+
 template <typename Real>
 template <typename OtherReal>
 void SparseMatrix<Real>::CopyToVec(VectorBase<OtherReal> *other) const {
