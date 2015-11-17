@@ -100,6 +100,25 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixMatSmat(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), O(dim, dim);
+  SparseMatrix<Real> hN(dim, dim);
+  M.SetRandn();
+  hN.SetRandn(0.5);
+  CuRowSparseMatrix<Real> N(hN);
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    O.AddMatSmat(1.0, M, kNoTrans, N, kTrans, 0.0);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::AddMatSmat" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCount) {
   std::vector<CuMatrix<Real>* > a(batchCount), b(batchCount), c(batchCount);
   std::vector<CuSubMatrix<Real>* > A, B, C;
@@ -794,6 +813,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddMatBlocks<Real>(sizes[s], 3, 3);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMatSmat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMatBatched<Real>(sizes[s], 10);
   for (int32 s = 0; s < ns; s++) {

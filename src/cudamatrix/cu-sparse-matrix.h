@@ -48,7 +48,12 @@ class CuRowSparseMatrix {
   friend class CuMatrixBase<Real>;
   MatrixIndexT NumRows() const { return num_rows_; }
   MatrixIndexT NumCols() const { return num_cols_; }
-  MatrixIndexT NumElements() const { return num_rows_ * elements_per_row_; }
+  MatrixIndexT Stride() const { return stride_; }
+  MatrixIndexT NumElements() const { return num_rows_ * stride_; }
+
+  // returns pointer to size per row, or NULL if empty (use with NumElements()),
+  // const version. This should only be called when CUDA is enabled.
+  const MatrixIndexT* NumElementsPerRow() const;
 
   // returns pointer to element data, or NULL if empty (use with NumElements()).
   // This should only be called when CUDA is enabled.
@@ -61,7 +66,7 @@ class CuRowSparseMatrix {
   /// Copy from CPU-based matrix.
   CuRowSparseMatrix<Real> &operator = (const SparseMatrix<Real> &smat);
 
-  /// Copy from possibly-GPU-based matrix.
+  /// Copy from GPU-based (possibly-CPU-based) matrix.
   CuRowSparseMatrix<Real> &operator = (const CuRowSparseMatrix<Real> &smat);
 
   /// Copy from CPU-based matrix. We will add the transpose option later when it
@@ -114,9 +119,12 @@ class CuRowSparseMatrix {
 
   MatrixIndexT num_rows_;
   MatrixIndexT num_cols_;
-  MatrixIndexT elements_per_row_;
+  MatrixIndexT stride_;
+  CuArray<MatrixIndexT> elements_per_row_;
   CuArray<RowElement<Real> > data_; // pairs(column-index, value)
-  // dim = num_rows_ * elements_per_row_.
+  // dim = num_rows_ * stride_.
+  // if any row has fewer than 'stride_' elements, we pad with elements
+  // that have -1 as the row index and 0.0 as the value.
 };
 
 
