@@ -20,14 +20,15 @@
 #ifndef KALDI_UTIL_TEXT_UTILS_H_
 #define KALDI_UTIL_TEXT_UTILS_H_
 
+#include <errno.h>
+#include <string>
 #include <algorithm>
 #include <map>
 #include <set>
-#include <string>
 #include <vector>
-#include <errno.h>
-
+#include <limits>
 #include "base/kaldi-common.h"
+
 
 namespace kaldi {
 
@@ -68,7 +69,7 @@ bool SplitStringToIntegers(const std::string &full,
                            std::vector<I> *out) {
   KALDI_ASSERT(out != NULL);
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
-  if ( *(full.c_str()) == '\0') {
+  if (*(full.c_str()) == '\0') {
     out->clear();
     return true;
   }
@@ -78,14 +79,14 @@ bool SplitStringToIntegers(const std::string &full,
   for (size_t i = 0; i < split.size(); i++) {
     const char *this_str = split[i].c_str();
     char *end = NULL;
-    long long int j = 0;
+    int64 j = 0;
     j = KALDI_STRTOLL(this_str, &end);
     if (end == this_str || *end != '\0') {
       out->clear();
       return false;
     } else {
       I jI = static_cast<I>(j);
-      if (static_cast<long long int>(jI) != j) {
+      if (static_cast<int64>(jI) != j) {
         // output type cannot fit this integer.
         out->clear();
         return false;
@@ -100,7 +101,7 @@ bool SplitStringToIntegers(const std::string &full,
 template<class F>
 bool SplitStringToFloats(const std::string &full,
                          const char *delim,
-                         bool omit_empty_strings, // typically false
+                         bool omit_empty_strings,  // typically false
                          std::vector<F> *out);
 
 
@@ -116,13 +117,13 @@ bool ConvertStringToInteger(const std::string &str,
   const char *this_str = str.c_str();
   char *end = NULL;
   errno = 0;
-  long long int i = KALDI_STRTOLL(this_str, &end);
+  int64 i = KALDI_STRTOLL(this_str, &end);
   if (end != this_str)
     while (isspace(*end)) end++;
   if (end == this_str || *end != '\0' || errno != 0)
     return false;
   Int iInt = static_cast<Int>(i);
-  if (static_cast<long long int>(iInt) != i ||
+  if (static_cast<int64>(iInt) != i ||
       (i < 0 && !std::numeric_limits<Int>::is_signed)) {
     return false;
   }
@@ -131,9 +132,9 @@ bool ConvertStringToInteger(const std::string &str,
 }
 
 
-/// ConvertStringToReal converts a string into either float or double via strtod,
-/// and returns false if there was any kind of problem (i.e. the string was not a
-/// floating point number or contained extra non-whitespace junk.
+/// ConvertStringToReal converts a string into either float or double via
+/// strtod, and returns false if there was any kind of problem (i.e. the string
+/// was not a floating point number or contained extra non-whitespace junk.
 /// Be careful- this function will successfully read inf's or nan's.
 bool ConvertStringToReal(const std::string &str,
                          double *out);

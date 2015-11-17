@@ -61,7 +61,9 @@ class ContextDependency: public ContextDependencyInterface {
   virtual int32 CentralPosition() const { return P_; }
 
 
-  /// returns success or failure; outputs pdf to pdf_id
+  /// returns success or failure; outputs pdf to pdf_id For positions that were
+  /// outside the sequence (due to end effects), put zero.  Naturally
+  /// phoneseq[CentralPosition()] must be nonzero.
   virtual bool Compute(const std::vector<int32> &phoneseq,
                        int32 pdf_class, int32 *pdf_id) const;
 

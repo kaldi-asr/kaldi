@@ -39,7 +39,7 @@ if [ $stage -le 6 ]; then
 
   # Because we have a lot of data here and we don't want the training to take
   # too long, we reduce the number of epochs from the defaults (15 + 5) to (3 +
-  # 1).  The option "--io-opts '-tc 12'" is to have more than the default number
+  # 1).  The option "--io-opts '--max-jobs-run 12'" is to have more than the default number
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
 
@@ -52,7 +52,7 @@ if [ $stage -le 6 ]; then
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --num-jobs-nnet 6 \
     --num-hidden-layers 4 \
     --mix-up 12000 \

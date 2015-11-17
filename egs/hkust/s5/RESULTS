@@ -20,7 +20,7 @@ exp/lstm5e/decode/cer_10:%WER 37.61 [ 21121 / 56154, 1829 ins, 3941 del, 15351 s
 # nnet2 results
 exp/nnet2_5d/decode/cer_10:%WER 38.59 [ 21669 / 56154, 2498 ins, 3581 del, 15590 sub ]
 # ConvNet with 2 convolutional layers and 2 ReLU layers
-exp/nnet2_convnet/decode/cer_10:%WER 40.73 [ 22873 / 56154, 2609 ins, 3712 del, 16552 sub ]
+exp/nnet2_convnet/decode/cer_10:%WER 41.19 [ 23129 / 56154, 2599 ins, 3782 del, 16748 sub ]
 
 # nnet3 results (using speed perturbed data)
 exp/nnet3/tdnn_sp/decode_dev/cer_10:%WER 33.79 [ 18977 / 56154, 2027 ins, 3485 del, 13465 sub ]

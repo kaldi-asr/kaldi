@@ -442,7 +442,7 @@ std::string ErrorContext(const std::string &str) {
 static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
   if (fabs(f) < 10000.0 && fabs(f) >= 10.0) {
     os  << std::fixed << std::setprecision(0) << f;
-  } else if (fabs(f) >= 1.0) {
+  } else if (fabs(f) >= 0.995) {
     os  << std::fixed << std::setprecision(1) << f;
   } else if (fabs(f) >= 0.01) {
     os  << std::fixed << std::setprecision(2) << f;
@@ -470,14 +470,25 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
     // print out mean and standard deviation, and some selected values.
     BaseFloat mean = vec.Sum() / vec.Dim(),
         stddev = sqrt(VecVec(vec, vec) / vec.Dim() - mean * mean);
-    os << "[ " << std::setprecision(2);
-    for (int32 i = 0; i < 8; i++) {
-      PrintFloatSuccinctly(os, vec(i));
-      os << ' ';
+
+    std::string percentiles_str = "0,1,2,5 10,20,50,80,90 95,98,99,100";
+    std::vector<int32> percentiles;
+    bool ans = SplitStringToIntegers(percentiles_str, ", ", false,
+                                     &percentiles);
+    KALDI_ASSERT(ans);
+    os << "[percentiles(" << percentiles_str << ")=(";
+    Vector<BaseFloat> vec_sorted(vec);
+    std::sort(vec_sorted.Data(), vec_sorted.Data() + vec_sorted.Dim());
+    int32 n = vec.Dim() - 1;
+    for (size_t i = 0; i < percentiles.size(); i++) {
+      int32 percentile = percentiles[i];
+      BaseFloat value = vec_sorted((n * percentile) / 100);
+      PrintFloatSuccinctly(os, value);
+      if (i + 1 < percentiles.size())
+        os << (i == 3 || i == 8 ? ' ' : ',');
     }
-    os << "... ";
     os << std::setprecision(3);
-    os << "(mean=" << mean << ", stddev=" << stddev << ")]";
+    os << "), mean=" << mean << ", stddev=" << stddev << "]";
   }
   return os.str();
 }

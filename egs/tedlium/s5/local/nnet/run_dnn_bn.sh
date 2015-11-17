@@ -146,7 +146,7 @@ if [ $stage -le 5 ]; then
      --transform-dir $gmm/decode_$(basename $test_bn) \
      $test_bn_fmllr $test_bn $gmm $test_bn_fmllr/log $test_bn_fmllr/data || exit 1;
   # Training set
-  steps/nnet/make_fmllr_feats.sh --nj $njfea --cmd "$train_cmd -tc 10" \
+  steps/nnet/make_fmllr_feats.sh --nj $njfea --cmd "$train_cmd --max-jobs-run 10" \
      --transform-dir ${gmm}_ali \
      $train_bn_fmllr $train_bn $gmm $train_bn_fmllr/log $train_bn_fmllr/data || exit 1;
   # Split the training set

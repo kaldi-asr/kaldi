@@ -252,6 +252,15 @@ GitHub will automatically update the pull request web page.
 Then reply e. g. "Done" under the comments that you received, so that they know
 you followed up on their comments.
 
+If you are creating a pull request only for a review of an incomplete piece of
+work, which makes sense and is encouraged if you want early feedback on a
+proposed feature, begin the title of your pull request with the prefix
+<tt>WIP:</tt>. This will tell the maintainers not to merge the pull request
+yet. When you push more commits to your branch, they automatically show in the
+pull request. When you think the work is complete, edit the pull request title
+to remove the \c WIP prefix and then add a comment to this effect, so that the
+maintainers are notified.
+
     \ref tutorial "Up: Kaldi tutorial" <BR>
     \ref tutorial_setup "Previous: Getting started" <BR>
     \ref tutorial_looking "Next: Overview of the distribution" <BR>

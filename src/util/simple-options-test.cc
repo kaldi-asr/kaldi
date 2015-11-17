@@ -38,7 +38,7 @@ void UnitTestSimpleOptions() {
 
   rval = so.SetOption("num", 42);
   KALDI_ASSERT(rval);
-  so.SetOption("unum", (uint32)43);
+  so.SetOption("unum", static_cast<uint32>(43));
   KALDI_ASSERT(rval);
   rval = so.SetOption("str", (std::string)"foo");
   KALDI_ASSERT(rval);
@@ -60,10 +60,10 @@ void UnitTestSimpleOptions() {
   KALDI_ASSERT(unum == 44);
 
   // test automatic conversion between float and double
-  rval = so.SetOption("realnum", (float)0.2);
+  rval = so.SetOption("realnum", static_cast<float>(0.2));
   KALDI_ASSERT(rval);
   KALDI_ASSERT(realnum - 0.2 < 0.000001);
-  rval = so.SetOption("realnum", (double)0.3);
+  rval = so.SetOption("realnum", static_cast<double>(0.3));
   KALDI_ASSERT(rval);
   KALDI_ASSERT(realnum - 0.3 < 0.000001);
 
@@ -74,12 +74,10 @@ void UnitTestSimpleOptions() {
 
   rval = so.GetOptionType("xxxx", &type);
   KALDI_ASSERT(rval == false);
-
 }
 
 
-}// end namespace kaldi.
-
+}  // end namespace kaldi.
 
 int main() {
   using namespace kaldi;
