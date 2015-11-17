@@ -455,10 +455,6 @@ void SupervisionSplitter::CreateRangeFst(
   }
 }
 
-// HERE
-bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_graph,
-                               Supervision *supervision);
-
 
 // I couldn't figure out how to do this with OpenFST's native 'visitor' and
 // queue mechanisms so I'm just coding this myself.

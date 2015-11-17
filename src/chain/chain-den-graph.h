@@ -108,6 +108,10 @@ class DenominatorGraph {
   void GetNormalizationFst(const fst::StdVectorFst &ifst,
                            fst::StdVectorFst *ofst);
 
+  // This function is only used in testing code.
+  void ScaleInitialProbs(BaseFloat s) { initial_probs_.Scale(s); }
+
+  // Use default copy constructor and assignment operator.
  private:
   // functions called from the constructor
   void SetTransitions(const fst::StdVectorFst &fst, int32 num_pfds);

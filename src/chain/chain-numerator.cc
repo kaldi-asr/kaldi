@@ -225,6 +225,7 @@ static void ComputeAllowedInitialAndFinalPdfs(
   initial_pdfs->resize(num_sequences);
   final_pdfs->clear();
   final_pdfs->resize(num_sequences);
+  KALDI_ASSERT(frames_per_sequence > 1);
   for (int32 s = 0; s < num_states; s++) {
     int32 t = fst_state_times[s],
         sequence = t / frames_per_sequence,

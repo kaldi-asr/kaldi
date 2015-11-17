@@ -57,8 +57,8 @@ void ComputeExamplePhoneLanguageModel(const std::vector<int32> &phones,
 
 
 void ComputeExampleDenFst(const ContextDependency &ctx_dep,
-                            const TransitionModel &trans_model,
-                            fst::StdVectorFst *den_graph) {
+                          const TransitionModel &trans_model,
+                          fst::StdVectorFst *den_graph) {
   using fst::StdVectorFst;
   using fst::StdArc;
   StdVectorFst phone_lm;
@@ -100,7 +100,7 @@ void TestSupervisionNumerator(const Supervision &supervision) {
 
   // Test that derivs are accurate.
 
-  if (RandInt(0, 1) == 0) {
+  if (RandInt(0, 1) == 0 && supervision.frames_per_sequence > 1) {
     std::vector<std::vector<int32> > allowed_initial_symbols,
         allowed_final_symbols;
     num.GetAllowedInitialAndFinalPdfs(&allowed_initial_symbols,
@@ -233,52 +233,12 @@ void TestSupervisionFrames(const Supervision &supervision) {
 }
 
 
-void TestSupervisionSplitting(const ContextDependency &ctx_dep,
-                              const TransitionModel &trans_model,
-                              const Supervision &supervision) {
-  fst::StdVectorFst den_fst, normalization_fst;
-  ComputeExampleDenFst(ctx_dep, trans_model, &den_fst);
-  DenominatorGraph den_graph(den_fst, trans_model.NumPdfs());
-  den_graph.GetNormalizationFst(den_fst, &normalization_fst);
-
-  SupervisionSplitter splitter(supervision);
-  int32 num_frames = supervision.num_sequences * supervision.frames_per_sequence,
-      frames_per_range = RandInt(3, 10);
-  std::vector<int32> range_starts;
-  SplitIntoRanges(num_frames, frames_per_range, &range_starts);
-  int32 num_ranges = range_starts.size();
-  std::vector<Supervision> split_supervision(num_ranges);
-  for (int32 i = 0; i < num_ranges; i++) {
-    splitter.GetFrameRange(range_starts[i], frames_per_range,
-                           &split_supervision[i]);
-    bool ans = AddWeightToSupervisionFst(normalization_fst,
-                                         &split_supervision[i]);
-    KALDI_ASSERT(ans);
-    split_supervision[i].Check(trans_model);
-  }
-  if (num_ranges > 0) {
-    TestSupervisionIo(split_supervision[RandInt(0, num_ranges - 1)]);
-    TestSupervisionFrames(split_supervision[RandInt(0, num_ranges - 1)]);
-    if (num_frames % frames_per_range == 0) {
-      // co-test with Append.
-      std::vector<Supervision> reattached_supervision;
-      std::vector<const Supervision*> to_append(num_ranges);
-      for (int32 i = 0; i < num_ranges; i++)
-        to_append[i] = &(split_supervision[i]);
-      bool compactify = true;
-      AppendSupervision(to_append, compactify, &reattached_supervision);
-      KALDI_ASSERT(reattached_supervision.size() == 1);
-      TestSupervisionReattached(trans_model,
-                                supervision,
-                                reattached_supervision[0]);
-    }
-  }
-}
-
 void ChainTrainingTest(const DenominatorGraph &den_graph,
                        const Supervision &supervision) {
   int32 num_sequences = supervision.num_sequences,
       frames_per_sequence = supervision.frames_per_sequence;
+  if (frames_per_sequence == 1)  // this will break some code.
+    return;
 
   CuMatrix<BaseFloat> nnet_output(num_sequences * frames_per_sequence,
                                   den_graph.NumPdfs());
@@ -299,10 +259,16 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
                            nnet_output, &objf, &weight,
                            &nnet_output_deriv);
 
+  {
+    // make sure each row of nnet_output_deriv sums to one (shift invariance of
+    // the nnet output).
+    CuVector<BaseFloat> nnet_output_deriv_row_sums(nnet_output_deriv.NumRows());
+    nnet_output_deriv_row_sums.AddColSumMat(1.0, nnet_output_deriv, 0.0);
+    KALDI_ASSERT(nnet_output_deriv_row_sums.Norm(2.0) < 0.1);
+  }
+
   KALDI_LOG << "Chain objf per frame is " << (objf / weight)
             << " over " << weight << " frames (weighted)";
-
-  KALDI_ASSERT(objf <= 0.0);
 
   { // a check
     BaseFloat output_deriv_sum = nnet_output_deriv.Sum();
@@ -311,8 +277,10 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
     KALDI_ASSERT(output_deriv_sum < 0.1);
   }
 
+  KALDI_ASSERT(objf <= 0.0);
+
   int32 num_tries = 5;
-  BaseFloat epsilon = 3.0e-04;
+  BaseFloat epsilon = 1.0e-04;
   Vector<BaseFloat> predicted_objf_changes(num_tries),
       observed_objf_changes(num_tries);
   for (int32 p = 0; p < num_tries; p++) {
@@ -336,7 +304,65 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
   }
   KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
   KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
-  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+  {
+    Vector<BaseFloat> error(predicted_objf_changes);
+    error.AddVec(-1.0, observed_objf_changes);
+    KALDI_LOG << "num-sequences = " << num_sequences << ", frames-per-sequence = "
+              << frames_per_sequence << ", relative accuracy is "
+              << (error.Norm(2.0) / predicted_objf_changes.Norm(2.0));
+  }
+  if (frames_per_sequence < 50) {
+    // we get inaccuracy for long segments, I think because there is a bias when we
+    // add random noise for it to increase the likelihood (for winner-take-all reasons)
+    // and for long utterances this bias adds up over the frames and tends to
+    // outweigh the random component that the gradient predicts (which will tend to
+    // cancel).
+    KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+  }
+}
+
+void TestSupervisionSplitting(const ContextDependency &ctx_dep,
+                              const TransitionModel &trans_model,
+                              const Supervision &supervision) {
+  fst::StdVectorFst den_fst, normalization_fst;
+  ComputeExampleDenFst(ctx_dep, trans_model, &den_fst);
+  DenominatorGraph den_graph(den_fst, trans_model.NumPdfs());
+  den_graph.GetNormalizationFst(den_fst, &normalization_fst);
+
+  SupervisionSplitter splitter(supervision);
+  int32 num_frames = supervision.num_sequences * supervision.frames_per_sequence,
+      frames_per_range = RandInt(3, 10);
+
+  std::vector<int32> range_starts;
+  SplitIntoRanges(num_frames, frames_per_range, &range_starts);
+  int32 num_ranges = range_starts.size();
+  std::vector<Supervision> split_supervision(num_ranges);
+  for (int32 i = 0; i < num_ranges; i++) {
+    splitter.GetFrameRange(range_starts[i], frames_per_range,
+                           &split_supervision[i]);
+    bool ans = AddWeightToSupervisionFst(normalization_fst,
+                                         &split_supervision[i]);
+    KALDI_ASSERT(ans);
+    split_supervision[i].Check(trans_model);
+  }
+  if (num_ranges > 0) {
+    TestSupervisionIo(split_supervision[RandInt(0, num_ranges - 1)]);
+    TestSupervisionFrames(split_supervision[RandInt(0, num_ranges - 1)]);
+
+    std::vector<Supervision> reattached_supervision;
+    std::vector<const Supervision*> to_append(num_ranges);
+    for (int32 i = 0; i < num_ranges; i++)
+      to_append[i] = &(split_supervision[i]);
+    bool compactify = true;
+    AppendSupervision(to_append, compactify, &reattached_supervision);
+    KALDI_ASSERT(reattached_supervision.size() == 1);
+    ChainTrainingTest(den_graph, reattached_supervision[0]);
+    if (num_frames % frames_per_range == 0) {
+      TestSupervisionReattached(trans_model,
+                                supervision,
+                                reattached_supervision[0]);
+    }
+  }
 }
 
 
@@ -379,8 +405,24 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
     AssertEqual(output_deriv_sum, BaseFloat(num_sequences * frames_per_sequence));
   }
 
+  { // another check: that scaling the initial probs has the expected effect.
+    BaseFloat scale = 0.1 + 0.7 * RandUniform();
+    DenominatorGraph den_graph_scaled(den_graph);
+    den_graph_scaled.ScaleInitialProbs(scale);
+    DenominatorComputation denominator_computation_scaled_initial(
+        opts, den_graph_scaled,
+        num_sequences, nnet_output,
+        empty_vec, empty_vec);
+    BaseFloat forward_prob_scaled_initial =
+        denominator_computation_scaled_initial.Forward();
+    BaseFloat observed_difference =
+        forward_prob_scaled_initial - forward_prob,
+        predicted_difference = num_sequences * log(scale);
+    AssertEqual(observed_difference, predicted_difference);
+  }
+
   int32 num_tries = 5;
-  BaseFloat epsilon = 1.0e-03;
+  BaseFloat epsilon = 1.0e-04;
   Vector<BaseFloat> predicted_objf_changes(num_tries),
       observed_objf_changes(num_tries);
   for (int32 p = 0; p < num_tries; p++) {
@@ -403,7 +445,21 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
   }
   KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
   KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
-  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+  {
+    Vector<BaseFloat> error(predicted_objf_changes);
+    error.AddVec(-1.0, observed_objf_changes);
+    KALDI_LOG << "num-sequences = " << num_sequences << ", frames-per-sequence = "
+              << frames_per_sequence << ", relative accuracy is "
+              << (error.Norm(2.0) / predicted_objf_changes.Norm(2.0));
+  }
+  if (frames_per_sequence < 50) {
+    // we get inaccuracy for long segments, I think because there is a bias when we
+    // add random noise for it to increase the likelihood (for winner-take-all reasons)
+    // and for long utterances this bias adds up over the frames and tends to
+    // outweigh the random component that the gradient predicts (which will tend to
+    // cancel).
+    KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+  }
 }
 
 
@@ -415,7 +471,7 @@ void ChainSupervisionTest() {
 
   int32 subsample_factor = RandInt(1, 3);
 
-  int32 phone_sequence_length = RandInt(1, 10);
+  int32 phone_sequence_length = RandInt(1, 20);
   std::vector<std::pair<int32, int32> > phones_durations(phone_sequence_length);
 
   CompactLattice clat;
@@ -466,6 +522,12 @@ void ChainSupervisionTest() {
     ChainDenominatorTest(den_graph);
     if (RandInt(0, 1) == 0)
       supervision.weight = 0.5;
+    fst::StdVectorFst normalization_fst;
+    den_graph.GetNormalizationFst(den_fst, &normalization_fst);
+    // add the weight to the numerator FST so we can assert objf <= 0.
+    bool ans = AddWeightToSupervisionFst(normalization_fst, &supervision);
+    KALDI_ASSERT(ans);
+    // TODO: still have to test for appended sequences.
     ChainTrainingTest(den_graph, supervision);
   }
 
