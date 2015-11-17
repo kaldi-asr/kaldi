@@ -1072,11 +1072,11 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A, Mat
     dim3 dimBlock(CU1DBLOCK, 1);
     dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), n_blocks(NumCols(), 1));
     if (transA == kNoTrans)
-      cuda_add_mat_smat(dimGrid, dimBlock, this->data_, Stride(), alpha, A.data_, A.Stride(),
-                        B.Data(), B.elements_per_row_, beta);
+      cuda_add_mat_smat(dimGrid, dimBlock, this->data_, Dim(), alpha, A.data_, A.Stride(),
+                        B.Data(), B.NumElementsPerRow(), B.Stride(), beta);
     else
-      cuda_add_mat_trans_smat(dimGrid, dimBlock, this->data_, Stride(), alpha, A.data_, A.Stride(),
-                              B.Data(), B.elements_per_row_, beta);
+      cuda_add_mat_trans_smat(dimGrid, dimBlock, this->data_, Dim(), alpha, A.data_, A.Stride(),
+                              B.Data(), B.NumElementsPerRow(), B.Stride(), beta);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
