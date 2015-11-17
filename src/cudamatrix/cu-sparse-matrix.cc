@@ -55,10 +55,6 @@ const MatrixIndexT* CuRowSparseMatrix<Real>::NumElementsPerRow() const {
     return NULL;
   }
 }
-template
-const MatrixIndexT* CuRowSparseMatrix<float>::NumElementsPerRow() const;
-template
-const MatrixIndexT* CuRowSparseMatrix<double>::NumElementsPerRow() const;
 
 template <typename Real>
 RowElement<Real>* CuRowSparseMatrix<Real>::Data() {
@@ -105,8 +101,6 @@ CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     data_ = smat.data_;
-    num_rows_ = smat.num_rows_;
-    num_cols_ = smat.num_cols_;
     stride_ = smat.stride_;
     elements_per_row_ = smat.elements_per_row_;
   } else
@@ -217,6 +211,7 @@ CuRowSparseMatrix<Real>::CuRowSparseMatrix(const CuRowSparseMatrix<Real> &other)
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     data_ = other.data_;
+    stride_ = smat.stride_;
     elements_per_row_ = other.elements_per_row_;
   } else
 #endif

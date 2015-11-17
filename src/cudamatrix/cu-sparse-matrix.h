@@ -46,10 +46,11 @@ class CuRowSparseMatrix {
   friend class CuMatrixBase<float>;
   friend class CuMatrixBase<double>;
   friend class CuMatrixBase<Real>;
-  MatrixIndexT NumRows() const { return num_rows_; }
-  MatrixIndexT NumCols() const { return num_cols_; }
+  
+  MatrixIndexT NumRows() const;
+  MatrixIndexT NumCols() const;
   MatrixIndexT Stride() const { return stride_; }
-  MatrixIndexT NumElements() const { return num_rows_ * stride_; }
+  MatrixIndexT NumElements() const;
 
   // returns pointer to size per row, or NULL if empty (use with NumElements()),
   // const version. This should only be called when CUDA is enabled.
