@@ -114,7 +114,7 @@ void TestSupervisionNumerator(const Supervision &supervision) {
 
   int32 dim = 3;
   Vector<BaseFloat> predicted_objf_changes(dim),
-      measured_objf_changes(dim);
+      observed_objf_changes(dim);
   BaseFloat delta = 1.0e-04;
   for (int32 p = 0; p < dim; p++) {
     CuMatrix<BaseFloat> new_nnet_output(nnet_output.NumRows(),
@@ -125,13 +125,22 @@ void TestSupervisionNumerator(const Supervision &supervision) {
                                             kTrans);
     new_nnet_output.AddMat(1.0, nnet_output);
     NumeratorComputation num2(supervision, new_nnet_output);
-    measured_objf_changes(p) = num2.Forward() - forward_prob;
+    observed_objf_changes(p) = num2.Forward() - forward_prob;
   }
   KALDI_LOG << "Predicted objf changes are: "
             << predicted_objf_changes;
-  KALDI_LOG << "Measured objf changes are: "
-            << measured_objf_changes;
-  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(measured_objf_changes, 0.1));
+  KALDI_LOG << "Observed objf changes are: "
+            << observed_objf_changes;
+
+  {
+    BaseFloat correction = (predicted_objf_changes.Sum() - observed_objf_changes.Sum()) /
+        predicted_objf_changes.Dim();
+    observed_objf_changes.Add(correction);
+    KALDI_LOG << "Correcting observed objf changes for statistical effects, to "
+              << observed_objf_changes;
+    KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.1));
+  }
+
 
   {
     CuVector<BaseFloat> rand(nnet_output.NumRows());
@@ -277,6 +286,43 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
     KALDI_ASSERT(output_deriv_sum < 0.1);
   }
 
+  { // another check: that changing pdf-boundary penalty has the expected effect
+    ChainTrainingOptions opts2;
+    opts2.pdf_boundary_penalty = RandInt(0, 10);
+    if (objf > 0.0) {
+      KALDI_WARN << "Objf > 0.0, testing with no pdf-boundary-penalty.";
+      opts2.pdf_boundary_penalty = 0.0;
+    }
+
+    BaseFloat objf2, weight2;
+    ComputeChainObjfAndDeriv(opts2, den_graph, supervision,
+                             nnet_output, &objf2, &weight2, NULL);
+    // two factors of -1, one because the penalty is subtracted from the relevant likelihoods
+    // in the denominator (the ones not listed in the numerator for the 1st and last
+    // frames), and one because the denominator likelihood itself is negated in the
+    // objective function
+    BaseFloat max_likelihood_difference = supervision.num_sequences * 2 *
+        -1.0 * -1.0 * supervision.weight *
+        (opts2.pdf_boundary_penalty - opts.pdf_boundary_penalty),
+        observed_likelihood_difference = objf2 - objf;
+    KALDI_LOG << "Observed likelihood difference from pdf-boundary-penalty = "
+              << observed_likelihood_difference << ", should be between 0 and "
+              << max_likelihood_difference;
+    if (max_likelihood_difference >= 0.0) {
+      KALDI_ASSERT(observed_likelihood_difference >= 0.0 &&
+                   max_likelihood_difference >= observed_likelihood_difference);
+    } else {
+      KALDI_ASSERT(observed_likelihood_difference <= 0.0 &&
+                   max_likelihood_difference <= observed_likelihood_difference);
+    }
+    if (objf > 0.0) {
+      KALDI_LOG << "Objf is " << objf << ", objf with no pdf-boundary-penalty is "
+                << objf2;
+      KALDI_LOG << "Supervision object is: ";
+      supervision.Write(std::cerr, false);
+    }
+  }
+
   KALDI_ASSERT(objf <= 0.0);
 
   int32 num_tries = 5;
@@ -311,13 +357,26 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
               << frames_per_sequence << ", relative accuracy is "
               << (error.Norm(2.0) / predicted_objf_changes.Norm(2.0));
   }
-  if (frames_per_sequence < 50) {
+
+  {
     // we get inaccuracy for long segments, I think because there is a bias when we
     // add random noise for it to increase the likelihood (for winner-take-all reasons)
     // and for long utterances this bias adds up over the frames and tends to
     // outweigh the random component that the gradient predicts (which will tend to
-    // cancel).
-    KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+    // cancel).  Try to correct for this...
+    BaseFloat correction = (predicted_objf_changes.Sum() - observed_objf_changes.Sum()) /
+        predicted_objf_changes.Dim();
+    observed_objf_changes.Add(correction);
+    KALDI_LOG << "Correcting observed objf changes for statistical effects, to "
+              << observed_objf_changes;
+    if (frames_per_sequence > 2 &&
+        predicted_objf_changes.Norm(2.0) > 0.1 * epsilon) {
+      // if we only have the initial and final frames, due to the scaling-down
+      // of pdfs not in the numerator sequence the derivative might be zero,
+      // which would cause problems doing the comparison.
+      // note, epsilon = 1.0e-04.
+      KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+    }
   }
 }
 
@@ -449,7 +508,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
     Vector<BaseFloat> error(predicted_objf_changes);
     error.AddVec(-1.0, observed_objf_changes);
     KALDI_LOG << "num-sequences = " << num_sequences << ", frames-per-sequence = "
-              << frames_per_sequence << ", relative accuracy is "
+              << frames_per_sequence << ", relative error is "
               << (error.Norm(2.0) / predicted_objf_changes.Norm(2.0));
   }
   if (frames_per_sequence < 50) {
@@ -571,7 +630,7 @@ int main() {
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
-    for (int32 i = 0; i < 10; i++) {
+    for (int32 i = 0; i < 20; i++) {
       kaldi::chain::ChainSupervisionTest();
       kaldi::chain::BreadthFirstTest();
     }

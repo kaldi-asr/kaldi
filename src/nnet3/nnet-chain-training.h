@@ -37,7 +37,8 @@ namespace nnet3 {
 */
 class NnetChainTrainer {
  public:
-  NnetChainTrainer(const NnetTrainerOptions &config,
+  NnetChainTrainer(const NnetTrainerOptions &nnet_config,
+                   const chain::ChainTrainingOptions &chain_config,
                    const fst::StdVectorFst &den_fst,
                    Nnet *nnet);
 
@@ -52,7 +53,8 @@ class NnetChainTrainer {
   void ProcessOutputs(const NnetChainExample &eg,
                       NnetComputer *computer);
 
-  const NnetTrainerOptions config_;
+  const NnetTrainerOptions nnet_config_;
+  const chain::ChainTrainingOptions chain_config_;
   chain::ChainDenGraph den_graph_;
   CuMatrix<BaseFloat> cu_weights_;  // derived from trans_model_.
   Nnet *nnet_;

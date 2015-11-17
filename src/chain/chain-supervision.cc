@@ -645,9 +645,8 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   fst::Minimize(&(supervision->fst));
   // Make sure the states are numbered in increasing order of time.
   SortBreadthFirstSearch(&(supervision->fst));
-  KALDI_ASSERT(composed_fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
-  KALDI_ASSERT(composed_fst.Properties(fst::kIEpsilons, true) == 0);
-  supervision->fst = composed_fst;
+  KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
+  KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   return true;
 }
 

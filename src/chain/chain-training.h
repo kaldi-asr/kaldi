@@ -43,7 +43,7 @@ struct ChainTrainingOptions {
   BaseFloat pdf_boundary_penalty;
 
   ChainTrainingOptions():
-      pdf_boundary_penalty(10.0) { }
+      pdf_boundary_penalty(8.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("pdf-boundary-penalty", &pdf_boundary_penalty,

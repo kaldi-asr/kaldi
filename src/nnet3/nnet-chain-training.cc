@@ -23,10 +23,12 @@
 namespace kaldi {
 namespace nnet3 {
 
-NnetChainTrainer::NnetChainTrainer(const NnetTrainerOptions &config,
+NnetChainTrainer::NnetChainTrainer(const NnetTrainerOptions &nnet_config,
+                                   const chain::ChainTrainingOptions &chain_config,
                                    const fst::StdVectorFst &den_fst,
                                    Nnet *nnet):
-    config_(config),
+    nnet_config_(nnet_config),
+    chain_config_(chain_config),
     den_graph_(den_fst), hmm_(trans_model_),
     nnet_(nnet),
     compiler_(*nnet, config_.optimize_config),

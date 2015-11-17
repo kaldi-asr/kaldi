@@ -249,10 +249,7 @@ void DenominatorComputation::BetaLastFrame() {
   CuVector<BaseFloat> inv_tot_prob(tot_prob_);
   inv_tot_prob.InvertElements();
   // the beta values at the end of the file only vary with the sequence-index,
-  // not with the HMM-index.  There is no notion of final-prob; the sequence
-  // ends when it ends, and at that point we treat all states as having a
-  // final-prob of one (which we treat as p of being final given that it just
-  // ended, i.e. the probability of a sure thing, which is one).
+  // not with the HMM-index.  We treat all states as having a final-prob of one.
   beta_mat.CopyRowsFromVec(inv_tot_prob);
 }
 
