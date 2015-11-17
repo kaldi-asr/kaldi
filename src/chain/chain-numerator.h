@@ -78,7 +78,7 @@ class NumeratorComputation {
   // on split-up fixed-length pieces).
   void GetAllowedInitialAndFinalPdfs(
       std::vector<std::vector<int32> > *initial_pdf_ids,
-      std::vector<std::vector<int32> > *final_pdf_ids);
+      std::vector<std::vector<int32> > *final_pdf_ids) const;
 
   // Does the forward computation.  Returns the total log-prob multiplied
   // by supervision_.weight.

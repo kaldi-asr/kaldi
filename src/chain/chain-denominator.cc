@@ -47,8 +47,8 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined) {
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  exp_nnet_output_transposed_.ApplyExp();
   ModifyInitialAndFinalOutputs();
+  exp_nnet_output_transposed_.ApplyExp();
 }
 
 
@@ -86,7 +86,6 @@ void DenominatorComputation::ModifyInitialAndFinalOutputs() {
     }
   }
   exp_nnet_output_transposed_.AddElements(1.0, elements);
-  exp_nnet_output_transposed_.ApplyExp();
 }
 
 
@@ -219,7 +218,7 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
   BaseFloat penalty_correction_factor =
       (initial_pdf_ids_.empty() ? 0 : -2.0 * opts_.pdf_boundary_penalty);
   return tot_log_prob + log_inv_arbitrary_scales_product +
-      penalty_correction_factor;
+      penalty_correction_factor * num_sequences_;
 }
 
 

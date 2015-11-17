@@ -254,7 +254,7 @@ static void ComputeAllowedInitialAndFinalPdfs(
 
 void NumeratorComputation::GetAllowedInitialAndFinalPdfs(
     std::vector<std::vector<int32> > *initial_pdf_ids,
-    std::vector<std::vector<int32> > *final_pdf_ids) {
+    std::vector<std::vector<int32> > *final_pdf_ids) const {
   ComputeAllowedInitialAndFinalPdfs(supervision_,
                                     fst_state_times_,
                                     initial_pdf_ids,
