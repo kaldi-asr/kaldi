@@ -54,11 +54,11 @@ class DenominatorGraph {
  public:
 
   // the number of states in the HMM.
-  int32 NumStates();
+  int32 NumStates() const;
 
   // the number of PDFs (the labels on the transitions are numbered from 0 to
   // NumPdfs() - 1).
-  int32 NumPdfs();
+  int32 NumPdfs() const { return num_pdfs_; }
 
   DenominatorGraph();
 

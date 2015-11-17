@@ -9,7 +9,8 @@ LDLIBS += $(CUDA_LDLIBS)
 TESTFILES = chain-supervision-test language-model-test
 
 OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
-          language-model.o
+          language-model.o chain-denominator.o chain-kernels.o \
+          chain-training.o
 
 LIBNAME = kaldi-chain
 

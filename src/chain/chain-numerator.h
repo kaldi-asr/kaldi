@@ -71,30 +71,35 @@ class NumeratorComputation {
 
   // TODO: we could enable a Viterbi mode.
 
-  // this function, if called, must be called before Forward().  It computes
-  // vectors, indexed by sequence, containing lists of pdf-ids that may appear
-  // on the first and last frame of each sequence.  This will later be used as a
-  // constraint on the denominator-graph computation (it's intended to more
-  // approximate full-utterance training while training on split-up fixed-length
-  // pieces).
-  void GetAllowedInitialAndFinalSymbols(
+  // This function computes vectors, indexed by sequence, containing lists of
+  // pdf-ids that may appear on the first and last frame of each sequence.  This
+  // will later be used as a constraint on the denominator-graph computation
+  // (it's intended to more approximate full-utterance training while training
+  // on split-up fixed-length pieces).
+  void GetAllowedInitialAndFinalPdfs(
       std::vector<std::vector<int32> > *initial_pdf_ids,
       std::vector<std::vector<int32> > *final_pdf_ids);
 
-  // Does the forward computation.  Returns the total log-prob.
+  // Does the forward computation.  Returns the total log-prob multiplied
+  // by supervision_.weight.
   BaseFloat Forward();
 
-  // Does the backward computation and (efficiently) adds the derivative
-  // of the nnet output w.r.t. the log-prob to 'nnet_output_deriv'.
+  // Does the backward computation and (efficiently) adds the derivative of the
+  // nnet output w.r.t. the (log-prob times supervision_.weight) to
+  // 'nnet_output_deriv'.
   void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
-
 
  private:
 
   const Supervision &supervision_;
 
+  // state times of supervision_.fst.
+  std::vector<int32> fst_state_times_;
+
+
   // the exp of the neural net output.
   const CuMatrixBase<BaseFloat> &nnet_output_;
+
 
   // 'fst_output_indexes' contains an entry for each arc in the supervision FST, in
   // the order you'd get them if you visit each arc of each state in order.
@@ -127,15 +132,8 @@ class NumeratorComputation {
   // The log-beta value (backward probability) for each state in the lattice
   Vector<double> log_beta_;
 
-  // This function, called from GetAllowedInitialAndFinalSymbols() or from
-  // Forward(), creates fst_output_indexes_ and nnet_output_indexes_.
-  // initial_pdf_ids and final_pdf_ids may be NULL;
-  // they are only non-NULL if called from GetAllowedInitialAndFinalSymbols().
-  void ComputeLookupIndexes(std::vector<std::vector<int32> > *initial_pdf_ids,
-                            std::vector<std::vector<int32> > *final_pdf_ids);
-
-  // Computes derivatives (called from Backward()).
-  void ComputeDerivatives(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  // This function creates fst_output_indexes_ and nnet_output_indexes_.
+  void ComputeLookupIndexes();
 
   // convert time-index in the FST to a row-index in the nnet-output (to account
   // for the fact that the sequences are interleaved in the nnet-output).
@@ -147,16 +145,6 @@ class NumeratorComputation {
 
 };
 
-
-// This function is called from
-// NumeratorComputation::GetAllowedInitialAndFinalSymbols().
-// we do it like that instead of a separate function, so we don't
-// have to compute the FST state times twice.
-void ComputeAllowedInitialAndFinalSymbols(
-    const Supervision &supervision,
-    const std::vector<int32> &fst_state_times,
-    std::vector<std::vector<int32> > *initial_symbols,
-    std::vector<std::vector<int32> > *final_symbols);
 
 
 

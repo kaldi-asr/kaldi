@@ -1,4 +1,4 @@
-// ctc/cctc-kernels-ansi.h
+// chain/chain-kernels-ansi.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -18,49 +18,38 @@
 // limitations under the License.
 
 
-#ifndef KALDI_CHAIN_HMM_KERNELS_ANSI_H_
-#define KALDI_CHAIN_HMM_KERNELS_ANSI_H_
-#include "ctc/cctc-datastruct.h"
+#ifndef KALDI_CHAIN_CHAIN_KERNELS_ANSI_H_
+#define KALDI_CHAIN_CHAIN_KERNELS_ANSI_H_
+#include "chain/chain-datastruct.h"
 
 #if HAVE_CUDA == 1
 extern "C" {
 
-void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
-                               int32_cuda xstride_in, int32_cuda ystride_in,
-                               int32_cuda zstride_in, int32_cuda xstride_out,
-                               int32_cuda ystride_out, int32_cuda zstride_out,
-                               const float *src, float *dst);
+  void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
+                               const Int32Pair *forward_transitions,
+                               const DenominatorGraphTransition *transitions,
+                               int32_cuda t, int32_cuda num_sequences,
+                               int32_cuda special_hmm_state,
+                               const BaseFloat *probs,
+                               int32_cuda prob_stride,
+                               const BaseFloat *this_alpha,
+                               const BaseFloat *next_beta,
+                               BaseFloat *this_beta,
+                               BaseFloat *log_prob_deriv);
 
-void cudaD_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
-                               int32_cuda xstride_in, int32_cuda ystride_in,
-                               int32_cuda zstride_in, int32_cuda xstride_out,
-                               int32_cuda ystride_out, int32_cuda zstride_out,
-                               const double *src, double *dst);
-
-
-void cuda_ctc_hmm_backward(dim3 Gr, dim3 Bl,
-                           const Int32Pair *forward_transitions,
-                           const CctcHmmTransition *transitions,
-                           int32_cuda t, int32_cuda num_sequences,
-                           int32_cuda special_hmm_state,
-                           const BaseFloat *num_probs, const BaseFloat *den_probs,
-                           const BaseFloat *this_alpha, const BaseFloat *next_beta,
-                           BaseFloat *this_beta,
-                           BaseFloat *log_num_deriv, BaseFloat *den_deriv);
-
-void cuda_ctc_hmm_forward(dim3 Gr, dim3 Bl,
-                          const Int32Pair *backward_transitions,
-                          const CctcHmmTransition *transitions,
-                          int32_cuda t, int32_cuda num_sequences,
-                          int32_cuda special_hmm_state,
-                          const BaseFloat *num_probs,
-                          const BaseFloat *den_probs,
-                          const BaseFloat *prev_alpha,
-                          BaseFloat *this_alpha);
+  void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
+                              const Int32Pair *backward_transitions,
+                              const DenominatorGraphTransition *transitions,
+                              int32_cuda t, int32_cuda num_sequences,
+                              int32_cuda special_hmm_state,
+                              const BaseFloat *probs,
+                              int32_cuda prob_stride,
+                              const BaseFloat *prev_alpha,
+                              BaseFloat *this_alpha);
 
 } // extern "C"
 
 #endif  // HAVE_CUDA
 
 
-#endif  // KALDI_CHAIN_HMM_KERNELS_ANSI_H_
+#endif  // KALDI_CHAIN_CHAIN_KERNELS_ANSI_H_

@@ -26,7 +26,8 @@ namespace chain {
 
 
 DenominatorGraph::DenominatorGraph(const fst::StdVectorFst &fst,
-                                   int32 num_pdfs) {
+                                   int32 num_pdfs):
+    num_pdfs_(num_pdfs) {
   SetTransitions(fst, num_pdfs);
   SetInitialProbs(fst);
 }
@@ -361,5 +362,8 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 }
 
 
+int32 DenominatorGraph::NumStates() const {
+  return forward_transitions_.Dim();
+}
 }  // namespace chain
 }  // namespace kaldi

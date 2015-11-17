@@ -24,6 +24,7 @@
 #include "cudamatrix/cu-vector.h"
 #include "hmm/hmm-test-utils.h"
 #include "chain/chain-den-graph.h"
+#include "chain/chain-denominator.h"
 #include "hmm/hmm-utils.h"
 
 
@@ -102,8 +103,8 @@ void TestSupervisionNumerator(const Supervision &supervision) {
   if (RandInt(0, 1) == 0) {
     std::vector<std::vector<int32> > allowed_initial_symbols,
         allowed_final_symbols;
-    num.GetAllowedInitialAndFinalSymbols(&allowed_initial_symbols,
-                                         &allowed_final_symbols);
+    num.GetAllowedInitialAndFinalPdfs(&allowed_initial_symbols,
+                                      &allowed_final_symbols);
   }
   BaseFloat forward_prob = num.Forward();
 
@@ -274,6 +275,139 @@ void TestSupervisionSplitting(const ContextDependency &ctx_dep,
   }
 }
 
+void ChainTrainingTest(const DenominatorGraph &den_graph,
+                       const Supervision &supervision) {
+  int32 num_sequences = supervision.num_sequences,
+      frames_per_sequence = supervision.frames_per_sequence;
+
+  CuMatrix<BaseFloat> nnet_output(num_sequences * frames_per_sequence,
+                                  den_graph.NumPdfs());
+
+  bool zero_output = (RandInt(0, 3) == 0);
+  if (!zero_output)
+    nnet_output.SetRandn();
+
+  ChainTrainingOptions opts;
+
+  CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
+                                        nnet_output.NumCols(),
+                                        kUndefined);
+
+  BaseFloat objf, weight;
+
+  ComputeChainObjfAndDeriv(opts, den_graph, supervision,
+                           nnet_output, &objf, &weight,
+                           &nnet_output_deriv);
+
+  KALDI_LOG << "Chain objf per frame is " << (objf / weight)
+            << " over " << weight << " frames (weighted)";
+
+  KALDI_ASSERT(objf <= 0.0);
+
+  { // a check
+    BaseFloat output_deriv_sum = nnet_output_deriv.Sum();
+    KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
+              << " vs. expected 0.";
+    KALDI_ASSERT(output_deriv_sum < 0.1);
+  }
+
+  int32 num_tries = 5;
+  BaseFloat epsilon = 3.0e-04;
+  Vector<BaseFloat> predicted_objf_changes(num_tries),
+      observed_objf_changes(num_tries);
+  for (int32 p = 0; p < num_tries; p++) {
+    CuMatrix<BaseFloat> nnet_delta_output(nnet_output.NumRows(),
+                                          nnet_output.NumCols());
+    nnet_delta_output.SetRandn();
+    nnet_delta_output.Scale(epsilon);
+    predicted_objf_changes(p) = TraceMatMat(nnet_output_deriv,
+                                            nnet_delta_output, kTrans);
+    CuMatrix<BaseFloat> nnet_output_perturbed(nnet_delta_output);
+    nnet_output_perturbed.AddMat(1.0, nnet_output);
+
+    BaseFloat objf_modified, weight_modified;
+
+    ComputeChainObjfAndDeriv(opts, den_graph, supervision,
+                             nnet_output_perturbed,
+                             &objf_modified, &weight_modified,
+                             NULL);
+
+    observed_objf_changes(p) = objf_modified - objf;
+  }
+  KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
+  KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
+  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+}
+
+
+void ChainDenominatorTest(const DenominatorGraph &den_graph) {
+
+  int32 num_sequences = RandInt(1, 5),
+      frames_per_sequence = RandInt(10, 20);
+  if (RandInt(0, 3) == 0)
+    frames_per_sequence *= 30;  // test how it works on long sequences
+  CuMatrix<BaseFloat> nnet_output(num_sequences * frames_per_sequence,
+                                  den_graph.NumPdfs());
+
+  std::vector<std::vector<int32> > empty_vec;
+
+  bool zero_output = (RandInt(0, 3) == 0);
+  if (!zero_output)
+    nnet_output.SetRandn();
+
+  ChainTrainingOptions opts;
+
+  DenominatorComputation denominator_computation(opts, den_graph,
+                                                 num_sequences, nnet_output,
+                                                 empty_vec, empty_vec);
+
+  BaseFloat forward_prob = denominator_computation.Forward(),
+      per_frame = forward_prob / (num_sequences * frames_per_sequence);
+  KALDI_LOG << "Forward prob is " << forward_prob
+            << " = " << per_frame << " per frame.";
+
+  CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
+                                        nnet_output.NumCols());
+
+  denominator_computation.Backward(1.0, &nnet_output_deriv);
+
+
+  { // a check
+    BaseFloat output_deriv_sum = nnet_output_deriv.Sum();
+    KALDI_LOG << "Sum of nnet-output-deriv is " << output_deriv_sum
+              << " vs. expected " << (num_sequences * frames_per_sequence);
+    AssertEqual(output_deriv_sum, BaseFloat(num_sequences * frames_per_sequence));
+  }
+
+  int32 num_tries = 5;
+  BaseFloat epsilon = 1.0e-03;
+  Vector<BaseFloat> predicted_objf_changes(num_tries),
+      observed_objf_changes(num_tries);
+  for (int32 p = 0; p < num_tries; p++) {
+    CuMatrix<BaseFloat> nnet_delta_output(nnet_output.NumRows(),
+                                          nnet_output.NumCols());
+    nnet_delta_output.SetRandn();
+    nnet_delta_output.Scale(epsilon);
+    predicted_objf_changes(p) = TraceMatMat(nnet_output_deriv,
+                                            nnet_delta_output, kTrans);
+    CuMatrix<BaseFloat> nnet_output_perturbed(nnet_delta_output);
+    nnet_output_perturbed.AddMat(1.0, nnet_output);
+
+    DenominatorComputation denominator_computation_perturbed(opts, den_graph,
+                                                             num_sequences,
+                                                             nnet_output_perturbed,
+                                                             empty_vec, empty_vec);
+
+    BaseFloat forward_prob_perturbed = denominator_computation_perturbed.Forward();
+    observed_objf_changes(p) = forward_prob_perturbed - forward_prob;
+  }
+  KALDI_LOG << "Predicted objf changes are " << predicted_objf_changes;
+  KALDI_LOG << "Observed objf changes are " << observed_objf_changes;
+  KALDI_ASSERT(predicted_objf_changes.ApproxEqual(observed_objf_changes, 0.25));
+}
+
+
+
 void ChainSupervisionTest() {
   ContextDependency *ctx_dep;
   TransitionModel *trans_model = GenRandTransitionModel(&ctx_dep);
@@ -329,9 +463,12 @@ void ChainSupervisionTest() {
     fst::StdVectorFst den_fst;
     ComputeExampleDenFst(*ctx_dep, *trans_model, &den_fst);
     DenominatorGraph den_graph(den_fst, trans_model->NumPdfs());
+    ChainDenominatorTest(den_graph);
+    if (RandInt(0, 1) == 0)
+      supervision.weight = 0.5;
+    ChainTrainingTest(den_graph, supervision);
   }
 
-  // HERE
   delete ctx_dep;
   delete trans_model;
 }
@@ -365,8 +502,19 @@ void BreadthFirstTest() {
 
 int main() {
   using namespace kaldi;
-  for (int32 i = 0; i < 20; i++) {
-    kaldi::chain::ChainSupervisionTest();
-    kaldi::chain::BreadthFirstTest();
+  for (int32 loop = 0; loop < 2; loop++) {
+#if HAVE_CUDA == 1
+    if (loop == 0)
+      CuDevice::Instantiate().SelectGpuId("no");
+    else
+      CuDevice::Instantiate().SelectGpuId("yes");
+#endif
+    for (int32 i = 0; i < 10; i++) {
+      kaldi::chain::ChainSupervisionTest();
+      kaldi::chain::BreadthFirstTest();
+    }
+#if HAVE_CUDA == 1
+    CuDevice::Instantiate().PrintProfile();
+#endif
   }
 }

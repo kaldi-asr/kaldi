@@ -32,29 +32,13 @@
 #include "lat/kaldi-lattice.h"
 #include "matrix/kaldi-matrix.h"
 #include "hmm/transition-model.h"
-#include "chain/chain-supervision.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-array.h"
+#include "chain/chain-den-graph.h"
+#include "chain/chain-training.h"
 
 namespace kaldi {
 namespace chain {
-
-struct ChainTrainingOptions {
-  BaseFloat pdf_boundary_penalty;
-
-  ChainTrainingOptions():
-      pdf_boundary_penalty(4.0);
-
-  void Register(OptionsItf *opts) {
-    opts->Register("pdf-boundary-penalty", &pdf_boundary_penalty,
-                   "Value subtracted from pdf pseudo-likelihoods at the "
-                   "first and last frames of chopped-up sequences, if "
-                   "the pdf is not in the numerator.  Intended to help "
-                   "reduce the inaccuracy of derivatives arising from breaking "
-                   "up the training utterances into fixed-size pieces.  This "
-                   "value should not be too large to avoid floating-point range "
-                   "issues.");
-};
 
 
 // This does forward-backward in parallel on a number of sequences, using a
@@ -83,7 +67,7 @@ class DenominatorComputation {
                      have that pdf-id as the final frame.
   */
   DenominatorComputation(const ChainTrainingOptions &opts,
-                         const DenominatorGraph &graph,
+                         const DenominatorGraph &den_graph,
                          int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output,
                          const std::vector<std::vector<int32 > > &initial_pdf_ids,
@@ -91,10 +75,14 @@ class DenominatorComputation {
 
 
   // Does the forward computation, and returns the total negated log-like summed
-  // over all sequences.
+  // over all sequences.  You will have to scale this by any supervision
+  // weighting factor, manually.
   BaseFloat Forward();
 
-  void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
+  // nnet output), to 'nnet_output_deriv.
+  void Backward(BaseFloat deriv_weight,
+                CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
  private:
   // sets up the alpha for frame t = 0.
@@ -109,19 +97,23 @@ class DenominatorComputation {
   // from the Forward() computation).
   BaseFloat ComputeTotLogLike();
 
-  // backward computation without rearrangement.
-  void BackwardInternal();
-
   void BetaLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaGeneralFrame(int32 t);
+
+  // Modifiy the initial and final nnet-outputs in nnet_output_transposed_, by
+  // penalizing those pdfs that are not listed in initial_pdf_ids_ and
+  // final_pdf_ids_ Actually, for efficiency, instead of penalizing those not
+  // listed, we un-penalize (boost) those listed; and we'll then subtract double
+  // the penalty from the forward-backward likelihood before returning it, which
+  // will have the same effect as penalizing the non-listed ones and leaving the
+  // listed ones unaffected.
+  void ModifyInitialAndFinalOutputs();
 
   const ChainTrainingOptions &opts_;
   const DenominatorGraph &den_graph_;
   const std::vector<std::vector<int32 > > &initial_pdf_ids_;
   const std::vector<std::vector<int32 > > &final_pdf_ids_;
-
-  const CuMatrixBase<BaseFloat> &nnet_output_;
 
   // number of separate frame sequences
   int32 num_sequences_;
@@ -129,14 +121,19 @@ class DenominatorComputation {
   // num_sequences_ * frames_per_sequence.
   int32 frames_per_sequence_;
 
-  // The transpose of the nnet output (more convenient for memory locality).
-  // Also, the first and last frames' pseudo-likelihooods are modified by
-  // subtracting opts_.pdf_boundary_penalty for all pdfs not listed as being
-  // initial/final in the supervision.
-  CuMatrix<BaseFloat> nnet_output_transposed_;
+  // The transpose of the exp() of the nnet output (the transpose is more
+  // convenient for memory locality, and the exp() avoids us having to
+  // exponentiate in the forward-backward).  Also, the first and last frames'
+  // pseudo-likelihooods are modified before the exp(), by subtracting
+  // opts_.pdf_boundary_penalty for all pdfs not listed as being initial/final
+  // in the supervision.
+  //
+  // The row-index is the pdf-id; and the column index equals (frame_index *
+  // num_sequences + sequence_index).
+  CuMatrix<BaseFloat> exp_nnet_output_transposed_;
 
   // the derivs w.r.t. the nnet outputs (transposed)
-  CuMatrix<BaseFloat> nnet_output_deriv_tranposed_;
+  CuMatrix<BaseFloat> nnet_output_deriv_transposed_;
 
   // the alpha probabilities; dimension is (frames_per_sequence + 1) by (num-hmm-states
   // * num-sequences).  Note, they are not logs.
@@ -148,8 +145,10 @@ class DenominatorComputation {
   CuMatrix<BaseFloat> beta_;
 
   // the total probability for each sequence, excluding the product of
-  // correction terms.  we multiply on each frame by 1/alpha of hmm-state 0 of
-  // the previous frame; the products
+  // correction terms.  [the correction terms refer to the fact that we multiply
+  // on each frame by 1/alpha of hmm-state 0 of the previous frame.].
+  // After the correction terms the total probability is fairly close to 1,
+  // which is why we can store it as non-log.
   CuVector<BaseFloat> tot_prob_;
 
   // the log of tot_prob_.
