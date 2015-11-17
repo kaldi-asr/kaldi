@@ -332,6 +332,74 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
+class SparseLinearComponent: public UpdatableComponent {
+ public:
+
+  virtual int32 InputDim() const { return linear_params_.NumCols(); }
+  virtual int32 OutputDim() const {  return linear_params_.NumRows(); }
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  SparseLinearComponent():linear_params_transposed_() { } // use Init to really initialize.
+
+  virtual std::string Type() const { return "SparseLinearComponent"; }
+
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kLinearInInput|kBackpropNeedsInput|kBackpropAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+  explicit SparseLinearComponent(const SparseLinearComponent &other);
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat zero_prob, bool updatable = false);
+  void Init(BaseFloat learning_rate,
+            std::string matrix_filename, bool updatable = false);
+
+  void ComputeLinearParamsTransposedVersion() {
+    Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+    linear_params_.CopyToMat(&tmp);
+    tmp.Transpose();
+    linear_params_transposed_.CopyFromMat(tmp);
+  }
+
+ private:
+  const SparseLinearComponent &operator = (const SparseLinearComponent &other); // Disallow.
+
+  CuRowSparseMatrix<BaseFloat> linear_params_;
+
+  /// linear_params_transposed_ is only used in Backprop to
+  /// compute in_deriv until the kNoTrans-mode of AddMatSmat is implemented.
+  /// For now, it is only initialized once in Init.
+  CuRowSparseMatrix<BaseFloat> linear_params_transposed_; 
+
+};
+
 class SoftmaxComponent: public NonlinearComponent {
  public:
   explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }

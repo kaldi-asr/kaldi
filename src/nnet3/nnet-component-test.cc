@@ -78,7 +78,7 @@ void TestNnetComponentUpdatableFlag(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
   if(uc==NULL)
     return;
-  if(!(uc->Properties() & kUpdatableComponent)){
+  if(!(uc->Properties() & kUpdatableComponent) || (uc->NumParameters() == 0)){
     KALDI_ASSERT(uc->NumParameters() == 0);
     KALDI_ASSERT(uc->DotProduct(*uc) == 0);
     UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
@@ -89,6 +89,22 @@ void TestNnetComponentUpdatableFlag(Component *c) {
     KALDI_ASSERT(uc2->Info() == uc->Info());
     delete uc2;
   }
+}
+
+void TestNnetComponentScaleAddDotProduct(Component *c) {
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  if(uc==NULL)
+    return;
+  UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+  uc2->InitNonUpdatable(0.01); // make sure is_updatable_ is true
+  UpdatableComponent *uc3 = dynamic_cast<UpdatableComponent*>(uc2->Copy());
+  BaseFloat dotp = uc->DotProduct(*uc);
+  uc2->Scale(3.0);
+  ApproxEqual(uc2->DotProduct(*uc2), dotp * 9.0, 0.001);
+  uc3->Add(1.0, *uc);
+  ApproxEqual(uc3->DotProduct(*uc3), dotp * 4.0, 0.001);
+  delete uc2;
+  delete uc3;
 }
 
 // tests the properties kPropagateAdds, kBackpropAdds,
@@ -250,6 +266,8 @@ bool TestSimpleComponentModelDerivative(const Component &c,
   Component *c_copy = c.Copy();
 
   const UpdatableComponent *uc = dynamic_cast<const UpdatableComponent*>(&c);
+  if(uc->NumParameters() == 0)  // is_updatable_ is false
+    return true;
   UpdatableComponent *uc_copy = dynamic_cast<UpdatableComponent*>(c_copy);
   KALDI_ASSERT(uc != NULL && uc_copy != NULL);
   if (test_derivative) {
@@ -323,6 +341,7 @@ void UnitTestNnetComponent() {
     TestNnetComponentVectorizeUnVectorize(c);
     TestNnetComponentUpdatableFlag(c);
     TestSimpleComponentPropagateProperties(*c);
+    TestNnetComponentScaleAddDotProduct(c);
     if (!TestSimpleComponentDataDerivative(*c, 1.0e-04) &&
         !TestSimpleComponentDataDerivative(*c, 1.0e-03) &&
         !TestSimpleComponentDataDerivative(*c, 1.0e-05) &&

@@ -46,10 +46,11 @@ class CuRowSparseMatrix {
   friend class CuMatrixBase<float>;
   friend class CuMatrixBase<double>;
   friend class CuMatrixBase<Real>;
-  MatrixIndexT NumRows() const { return num_rows_; }
-  MatrixIndexT NumCols() const { return num_cols_; }
+  
+  MatrixIndexT NumRows() const;
+  MatrixIndexT NumCols() const;
   MatrixIndexT Stride() const { return stride_; }
-  MatrixIndexT NumElements() const { return num_rows_ * stride_; }
+  MatrixIndexT NumElements() const;
 
   // returns pointer to size per row, or NULL if empty (use with NumElements()),
   // const version. This should only be called when CUDA is enabled.
@@ -68,6 +69,12 @@ class CuRowSparseMatrix {
 
   /// Copy from GPU-based (possibly-CPU-based) matrix.
   CuRowSparseMatrix<Real> &operator = (const CuRowSparseMatrix<Real> &smat);
+
+  template <typename OtherReal>
+  void CopyToMat(MatrixBase<OtherReal> *other) const;
+
+  template <typename OtherReal>
+  void CopyFromMat(const MatrixBase<OtherReal> &other);
 
   /// Copy from CPU-based matrix. We will add the transpose option later when it
   /// is necessary.
@@ -94,6 +101,9 @@ class CuRowSparseMatrix {
 
   void Read(std::istream &is, bool binary);
 
+  CuRowSparseMatrix(): cpu_rows_(0), num_rows_(0), num_cols_(0) { }
+  
+  explicit CuRowSparseMatrix(const CuRowSparseMatrix<Real> &other);
   // Constructor from CPU-based sparse matrix.
   explicit CuRowSparseMatrix(const SparseMatrix<Real> &smat) {
     this->CopyFromSmat(smat);
@@ -105,6 +115,7 @@ class CuRowSparseMatrix {
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular sparse matrix.
+
   inline const SparseMatrix<Real> &Mat() const {
     return *(reinterpret_cast<const SparseMatrix<Real>* >(this));
   }

@@ -813,6 +813,226 @@ Component *AffineComponent::CollapseWithPrevious(
 }
 
 
+// Most methods in this class temporarily do their computations 
+// by copying linear_params_ into a CPU temp matrix. The commeneted lines
+// in each method show the function that could be implemented for
+// the CuRowSparseMatrix class.
+
+void SparseLinearComponent::Scale(BaseFloat scale) {
+  if(!is_updatable_)
+    return;    
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  tmp.Scale(scale);
+  linear_params_.CopyFromMat(tmp);
+  //linear_params_.Scale(scale);
+}
+
+void SparseLinearComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const SparseLinearComponent *other =
+      dynamic_cast<const SparseLinearComponent*>(&other_in);
+  if(!is_updatable_)
+    return;    
+  KALDI_ASSERT(other != NULL);
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols()),
+                   tmp2(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  other->linear_params_.CopyToMat(&tmp2);
+  tmp.AddMat(alpha, tmp2);
+  linear_params_.CopyFromMat(tmp);
+  //linear_params_.AddMat(alpha, other->linear_params_);
+}
+
+SparseLinearComponent::SparseLinearComponent(const SparseLinearComponent &component):
+    UpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    linear_params_transposed_(component.linear_params_transposed_) { }
+
+void SparseLinearComponent::SetZero(bool treat_as_gradient) {
+  if(!is_updatable_)
+    return;
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  linear_params_.SetRandn(1.0);
+}
+
+void SparseLinearComponent::PerturbParams(BaseFloat stddev) {
+  if(!is_updatable_)
+    return;
+  SparseMatrix<BaseFloat> stmp(linear_params_.NumRows(), linear_params_.NumCols());
+  stmp.SetRandn(0.01);
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols()), 
+    tmp2(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  stmp.CopyToMat(&tmp2);
+  tmp.AddMat(stddev, tmp2);
+  linear_params_.CopyFromMat(tmp);
+  //linear_params_.AddMat(stddev, temp_linear_params);
+}
+
+std::string SparseLinearComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  BaseFloat linear_stddev = std::sqrt(TraceMatMat(tmp, tmp, kTrans) /
+              linear_params_size);
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", linear-params-stddev=" << linear_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", is-updatable=" << (is_updatable_ ? "true" : "false")
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
+  return stream.str();
+}
+
+Component* SparseLinearComponent::Copy() const {
+  SparseLinearComponent *ans = new SparseLinearComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->linear_params_ = linear_params_;
+  ans->linear_params_transposed_ = linear_params_transposed_;
+  ans->is_gradient_ = is_gradient_;
+  ans->is_updatable_ = is_updatable_;  
+  return ans;
+}
+
+BaseFloat SparseLinearComponent::DotProduct(const UpdatableComponent &other_in) const {
+  if(!is_updatable_)
+    return 0.0;
+  const SparseLinearComponent *other =
+      dynamic_cast<const SparseLinearComponent*>(&other_in);
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols()),
+                    tmp2(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  other->linear_params_.CopyToMat(&tmp2);
+  return TraceMatMat(tmp, tmp2, kTrans);
+}
+
+void SparseLinearComponent::Init(BaseFloat learning_rate,
+                           int32 input_dim, int32 output_dim,
+                           BaseFloat zero_prob, bool is_updatable) {
+  UpdatableComponent::Init(learning_rate, is_gradient_, is_updatable);
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && zero_prob >= 0.0);
+  SparseMatrix<BaseFloat> tmp;
+  tmp.Resize(output_dim, input_dim);
+  tmp.SetRandn(zero_prob);
+  linear_params_.CopyFromSmat(tmp);
+  //linear_params_.SetRandn(zero_prob); // not usable unless we can resize it in advance
+  ComputeLinearParamsTransposedVersion();
+}
+
+void SparseLinearComponent::Init(BaseFloat learning_rate,
+                           std::string matrix_filename, bool is_updatable) {
+  UpdatableComponent::Init(learning_rate, is_gradient_, is_updatable);
+  /*Cu*/Matrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat);
+  KALDI_ASSERT(mat.NumCols() >= 1);
+  linear_params_.CopyFromMat(mat);
+  ComputeLinearParamsTransposedVersion();
+}
+
+void SparseLinearComponent::InitFromConfig(ConfigLine *cfl) {
+  BaseFloat learning_rate = learning_rate_;
+  bool is_updatable = false;
+  std::string matrix_filename;
+  int32 input_dim = -1, output_dim = -1;
+
+  cfl->GetValue("learning-rate", &learning_rate); // optional
+  cfl->GetValue("is-updatable", &is_updatable); // optional
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    Init(learning_rate, matrix_filename, is_updatable);
+    if (cfl->GetValue("input-dim", &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (cfl->GetValue("output-dim", &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    if(!cfl->GetValue("input-dim", &input_dim) || 
+                !cfl->GetValue("output-dim", &output_dim))
+    KALDI_ERR << "Either input-dim or output-dim not provided." << cfl->WholeLine();
+    BaseFloat zero_prob;
+    if(!cfl->GetValue("zero-prob", &zero_prob))
+      KALDI_ERR << "zero-prob (i.e. sparseness factor) not provided." << cfl->WholeLine();
+    Init(learning_rate, input_dim, output_dim,
+         zero_prob, is_updatable);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+}
+
+void SparseLinearComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+  out->AddMatSmat(1.0, in, kNoTrans, linear_params_, kTrans, 0.0);
+}
+
+void SparseLinearComponent::Backprop(const std::string &debug_info,
+                               const ComponentPrecomputedIndexes *indexes,
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_deriv,
+                               Component *to_update_in,
+                               CuMatrixBase<BaseFloat> *in_deriv) const {
+  SparseLinearComponent *to_update = dynamic_cast<SparseLinearComponent*>(to_update_in);
+  if (in_deriv)
+    in_deriv->AddMatSmat(1.0, out_deriv, kNoTrans, 
+  			 linear_params_transposed_, kTrans, 1.0);
+  if (is_updatable_ && (to_update != NULL)) {
+    KALDI_ERR << "Update feature is not yet supported for SparseLinearComponent.";
+  }
+}
+
+void SparseLinearComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<SparseLinearComponent>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "<IsUpdatable>");
+  ReadBasicType(is, binary, &is_updatable_);
+  ExpectToken(is, binary, "</SparseLinearComponent>");
+  ComputeLinearParamsTransposedVersion();
+}
+
+void SparseLinearComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SparseLinearComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<IsUpdatable>");
+  WriteBasicType(os, binary, is_updatable_);
+  WriteToken(os, binary, "</SparseLinearComponent>");
+}
+
+int32 SparseLinearComponent::NumParameters() const {
+  if(!is_updatable_)
+    return 0;
+  return InputDim() * OutputDim();
+}
+void SparseLinearComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+  linear_params_.CopyToMat(&tmp);
+  params->CopyRowsFromMat(tmp);
+  //params->CopyRowsFromMat(linear_params_);
+}
+void SparseLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+  tmp.CopyRowsFromVec(params);
+  linear_params_.CopyFromMat(tmp);
+  //linear_params_.CopyRowsFromVec(params);
+}
+
 void PerElementScaleComponent::Scale(BaseFloat scale) {
   scales_.Scale(scale);
 }

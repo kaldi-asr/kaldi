@@ -168,6 +168,11 @@ void UnitTestSparseMatrixAddToMat() {
     smat.AddToMat(0.7, &other_mat1);
     other_mat2.AddMat(0.7, mat);
     AssertEqual(other_mat1, other_mat2, 0.00001);
+
+    other_mat1.SetRandn();
+    smat.CopyFromMat(other_mat1);
+    smat.CopyToMat(&mat);
+    AssertEqual(other_mat1, mat, 0.00001);
   }
 }
 

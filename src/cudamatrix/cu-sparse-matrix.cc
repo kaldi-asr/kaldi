@@ -55,10 +55,6 @@ const MatrixIndexT* CuRowSparseMatrix<Real>::NumElementsPerRow() const {
     return NULL;
   }
 }
-template
-const MatrixIndexT* CuRowSparseMatrix<float>::NumElementsPerRow() const;
-template
-const MatrixIndexT* CuRowSparseMatrix<double>::NumElementsPerRow() const;
 
 template <typename Real>
 RowElement<Real>* CuRowSparseMatrix<Real>::Data() {
@@ -100,11 +96,11 @@ CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
 template <typename Real>
 CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
     const CuRowSparseMatrix<Real> &smat) {
+    num_rows_ = smat.num_rows_;
+    num_cols_ = smat.num_cols_;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     data_ = smat.data_;
-    num_rows_ = smat.num_rows_;
-    num_cols_ = smat.num_cols_;
     stride_ = smat.stride_;
     elements_per_row_ = smat.elements_per_row_;
   } else
@@ -113,6 +109,40 @@ CuRowSparseMatrix<Real>& CuRowSparseMatrix<Real>::operator = (
     this->Mat() = smat.Mat();
   }
   return *this;
+}
+
+template <typename Real>
+MatrixIndexT CuRowSparseMatrix<Real>::NumRows() const{
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    return num_rows_;
+  } else
+#endif
+  {
+    return this->Mat().NumRows();
+  }
+}
+template <typename Real>
+MatrixIndexT CuRowSparseMatrix<Real>::NumCols() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    return num_cols_;
+  } else
+#endif
+  {
+    return this->Mat().NumCols();
+  }
+}
+template <typename Real>
+MatrixIndexT CuRowSparseMatrix<Real>::NumElements() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    return num_rows_ * elements_per_row_;
+  } else
+#endif
+  {
+    return this->Mat().NumElements();
+  }
 }
 
 template <typename Real>
@@ -173,6 +203,57 @@ void CuRowSparseMatrix<Real>::Read(std::istream &is, bool binary) {
   tmp.Read(is, binary);
   this->Swap(&tmp);
 }
+
+template <typename Real>
+CuRowSparseMatrix<Real>::CuRowSparseMatrix(const CuRowSparseMatrix<Real> &other) {
+  num_rows_ = other.num_rows_;
+  num_cols_ = other.num_cols_;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    data_ = other.data_;
+    stride_ = smat.stride_;
+    elements_per_row_ = other.elements_per_row_;
+  } else
+#endif
+  {
+    this->Mat() = other.Mat();
+  }
+}
+
+template <typename Real>
+template <typename OtherReal>
+void CuRowSparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other) const {
+  SparseMatrix<Real> tmp;
+  this->CopyToSmat(&tmp);
+  tmp.CopyToMat(other);
+}
+
+template
+void CuRowSparseMatrix<float>::CopyToMat(MatrixBase<float> *other) const;
+template
+void CuRowSparseMatrix<float>::CopyToMat(MatrixBase<double> *other) const;
+template
+void CuRowSparseMatrix<double>::CopyToMat(MatrixBase<float> *other) const;
+template
+void CuRowSparseMatrix<double>::CopyToMat(MatrixBase<double> *other) const;
+
+template <typename Real>
+template <typename OtherReal>
+void CuRowSparseMatrix<Real>::CopyFromMat(const MatrixBase<OtherReal> &other) {
+  SparseMatrix<Real> tmp;
+  tmp.CopyFromMat(other);
+  this->CopyFromSmat(tmp);
+}
+
+template
+void CuRowSparseMatrix<float>::CopyFromMat(const MatrixBase<float> &other);
+template
+void CuRowSparseMatrix<float>::CopyFromMat(const MatrixBase<double> &other);
+template
+void CuRowSparseMatrix<double>::CopyFromMat(const MatrixBase<float> &other);
+template
+void CuRowSparseMatrix<double>::CopyFromMat(const MatrixBase<double> &other);
+
 
 template <typename Real>
 template <typename OtherReal>
@@ -676,6 +757,8 @@ void GeneralMatrix::AddToMat(BaseFloat alpha,
   }
 }
 
+template class CuRowSparseMatrix<float>;
+template class CuRowSparseMatrix<double>;
 
 
 }  // namespace kaldi

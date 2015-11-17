@@ -338,10 +338,15 @@ class UpdatableComponent: public Component {
  public:
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
-      is_gradient_(other.is_gradient_) { }
+      is_gradient_(other.is_gradient_),
+      is_updatable_(other.is_updatable_) { }
 
-  void Init(BaseFloat lr, bool is_gradient = false);
-
+  void Init(BaseFloat lr, bool is_gradient = false, bool is_updatable = true);
+  
+  void InitNonUpdatable(BaseFloat learning_rate, bool is_gradient = false) {
+    Init(learning_rate, is_gradient, false);
+  }
+  
   UpdatableComponent(BaseFloat learning_rate) {  Init(learning_rate); }
 
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
@@ -387,6 +392,7 @@ class UpdatableComponent: public Component {
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
+  bool is_updatable_;  ///< False if we want this component to be fixed.
  private:
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };

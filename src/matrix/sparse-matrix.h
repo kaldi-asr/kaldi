@@ -134,6 +134,9 @@ class SparseMatrix {
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
 
+  template <class OtherReal>
+  void CopyFromMat(const MatrixBase<OtherReal> &other);
+
   /// Copies the values of all the elements in SparseMatrix into a VectorBase
   /// object.
   template <class OtherReal>
