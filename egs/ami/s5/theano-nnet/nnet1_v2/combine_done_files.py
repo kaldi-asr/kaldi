@@ -55,7 +55,8 @@ out_nSamples = 0
 (out_cv_error, out_cv_accuracy) = (0.0, 0.0)
 (out_train_error, out_train_accuracy) = (0.0, 0.0)
 
-for inp_done_file in inp_done_files_list:
+#TODO: make it binary, make it soft
+for ii, inp_done_file in enumerate(inp_done_files_list):
   logging.info("   from file %s", inp_done_file)
   (inp_stats, a) = inp_po.parse_args(parse_config_dict(inp_done_file))
 

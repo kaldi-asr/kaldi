@@ -41,6 +41,7 @@ lda_dim=300        # LDA dimension (applies to `lda` feat_type)
 
 # strm options
 strm_indices=      # strm indices
+pvals=             # pvals for each strm combination
 
 # LABELS
 labels=            # use these labels to train (override deafault pdf alignments, has to be in 'Posterior' format, see ali-to-post) 
@@ -212,13 +213,12 @@ if [ -z "$nnet_proto" ]; then
   utils/nnet/make_nnet_proto.py $proto_opts \
     ${bn_dim:+ --bottleneck-dim=$bn_dim} \
     $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
-
-  ###### NNET INITIALIZE ######
-  echo "Initializing with $nnet_proto"
-  python theano-nnet/nnet1_v2/nnet_initialize.py  \
-    $nnet_proto $dir/nnet_initial.pklz 2>$dir/log/nnet_initialize.log || exit 1
-
 fi
+
+###### NNET INITIALIZE ######
+echo "Initializing with $nnet_proto"
+python theano-nnet/nnet1_v2/nnet_initialize.py  \
+  $nnet_proto $dir/nnet_initial.pklz 2>$dir/log/nnet_initialize.log || exit 1
 
 
 echo ""
@@ -243,9 +243,15 @@ theano-nnet/nnet1_v2/cross_validate.sh \
   --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts_cv --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
   $dir/cv.scp $labels_cv $nnet_best || exit 1;
 
+done_files_str=""
+for ((n=1; n<=tot_comb; n++)); do
+  done_files_str=$done_files_str" "$dir/.done_cv_iter${iter}_comb.$n
+done
 #Combine them to $cv_done_file
 python theano-nnet/nnet1_v2/combine_done_files.py \
-  $cv_done_file $dir/.done_cv_iter${iter}_comb.* 2>$dir/log/combine_done_files.log || exit 1;
+  $cv_done_file $done_files_str 2>$dir/log/combine_done_files.log || exit 1;
+# python theano-nnet/nnet1_v2/combine_done_files.py \
+#   $cv_done_file $dir/.done_cv_iter${iter}_comb.* 2>$dir/log/combine_done_files.log || exit 1;
 #clean-up
 rm $dir/.done_cv_iter${iter}_comb.*
 fi
@@ -278,7 +284,7 @@ for iter in $(seq -w $max_iters); do
     theano-nnet/nnet1_v2/train_1iter.sh \
       --train-tool $train_tool \
       --feat-preprocess $dir/feat_preprocess.pkl \
-      --tool-opts "$train_cv_tool_opts $train_tool_opts --strm-indices=$strm_indices --learn-rate=$learn_rate $feats_opts_tr --done-file=$train_done_file" \
+      --tool-opts "$train_cv_tool_opts $train_tool_opts --strm-indices=$strm_indices --learn-rate=$learn_rate $feats_opts_tr --done-file=$train_done_file ${pvals:+ --pvals=$pvals}" \
     $dir/train.scp $labels_tr $nnet_best $nnet_next || exit 1;
   else
     echo "Skipping training ITERATION $iter"
@@ -296,9 +302,15 @@ for iter in $(seq -w $max_iters); do
       --tool-opts "$train_cv_tool_opts $cv_tool_opts --strm-indices=$strm_indices --comb-num=JOB $feats_opts_cv --done-file=$dir/.done_cv_iter${iter}_comb.JOB" \
     $dir/cv.scp $labels_cv $nnet_next || exit 1;
 
+    done_files_str=""
+    for ((n=1; n<=tot_comb; n++)); do
+      done_files_str=$done_files_str" "$dir/.done_cv_iter${iter}_comb.$n
+    done
     #Combine them to $cv_done_file
     python theano-nnet/nnet1_v2/combine_done_files.py \
-      $cv_done_file $dir/.done_cv_iter${iter}_comb.* 2>$dir/log/combine_done_files.log || exit 1;
+      $cv_done_file $done_files_str 2>$dir/log/combine_done_files.log || exit 1;
+    # python theano-nnet/nnet1_v2/combine_done_files.py \
+    #   $cv_done_file $dir/.done_cv_iter${iter}_comb.* 2>$dir/log/combine_done_files.log || exit 1;
     #clean-up
     rm $dir/.done_cv_iter${iter}_comb.*
 

@@ -208,13 +208,12 @@ if [ -z "$nnet_proto" ]; then
   utils/nnet/make_nnet_proto.py $proto_opts \
     ${bn_dim:+ --bottleneck-dim=$bn_dim} \
     $num_fea $num_tgt $hid_layers $hid_dim >$nnet_proto || exit 1 
-
-  ###### NNET INITIALIZE ######
-  echo "Initializing with $nnet_proto"
-  python theano-nnet/nnet1_v2/nnet_initialize.py  \
-    $nnet_proto $dir/nnet_initial.pklz 2>$dir/log/nnet_initialize.log || exit 1
-
 fi
+###### NNET INITIALIZE ######
+echo "Initializing with $nnet_proto"
+python theano-nnet/nnet1_v2/nnet_initialize.py  \
+  $nnet_proto $dir/nnet_initial.pklz 2>$dir/log/nnet_initialize.log || exit 1
+
 
 
 echo ""
