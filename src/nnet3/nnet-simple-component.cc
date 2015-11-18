@@ -21,6 +21,7 @@
 #include <iterator>
 #include <sstream>
 #include <algorithm>
+#include <iomanip>  
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
 
@@ -186,7 +187,111 @@ const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
 // root-mean-square equals 1.0.  It's important that its square root
 // be exactly representable in float.
+void NormalizeComponent::Init(int32 dim, BaseFloat target_rms) {
+  KALDI_ASSERT(dim > 0);
+  KALDI_ASSERT(target_rms > 0);
+  dim_ = dim;
+  count_ = 0.0;
+  target_rms_ = target_rms;
+}
 
+void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 dim = 0;
+  BaseFloat target_rms = 1.0;
+  bool ok = cfl->GetValue("dim", &dim);
+  cfl->GetValue("target-rms", &target_rms);
+  if (!ok || cfl->HasUnusedValues() || dim <= 0) 
+    KALDI_ERR << "Invalid initializer for layer of type "           
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  Init(dim, target_rms);
+}
+void NormalizeComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; 
+  ostr_end << "</" << Type() << ">"; 
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
+  ReadBasicType(is, binary, &dim_); // Read dimension.
+  std::string tok; // TODO: remove back-compatibility code.
+  ReadToken(is, binary, &tok);
+
+  // read target_rms_ if it is available.
+  if (tok == "<TargetRms>") {
+    ReadBasicType(is, binary, &target_rms_);
+    ReadToken(is, binary, &tok);
+  }
+
+  if (tok == "<ValueSum>") {
+    // this branch is for back compatibility.  TODO: delete it
+    // after Dec 2015.
+    value_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<DerivSum>");
+    deriv_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    ReadBasicType(is, binary, &count_);
+    ExpectToken(is, binary, ostr_end.str());
+  } else {
+    // The new format is more readable as we write values that are normalized by
+    // the count.
+    KALDI_ASSERT(tok == "<ValueAvg>");
+    value_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<DerivAvg>");
+    deriv_sum_.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    ReadBasicType(is, binary, &count_);
+    value_sum_.Scale(count_);
+    deriv_sum_.Scale(count_);
+    ExpectToken(is, binary, ostr_end.str());
+  }
+}
+
+void NormalizeComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">";
+  ostr_end << "</" << Type() << ">"; 
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<TargetRms>");
+  WriteBasicType(os, binary, target_rms_); 
+  // Write the values and derivatives in a count-normalized way, for
+  // greater readability in text form.
+  WriteToken(os, binary, "<ValueAvg>");
+  Vector<BaseFloat> temp(value_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<DerivAvg>");
+
+  temp.Resize(deriv_sum_.Dim(), kUndefined);
+  temp.CopyFromVec(deriv_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+std::string NormalizeComponent::Info() const {
+  std::stringstream stream;
+  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
+  stream << Type() << ", dim=" << dim_ 
+         << ", target_rms=" << target_rms_;
+
+  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+    stream << ", count=" << std::setprecision(3) << count_
+           << std::setprecision(6);
+    Vector<double> value_avg_dbl(value_sum_);
+    Vector<BaseFloat> value_avg(value_avg_dbl);
+    value_avg.Scale(1.0 / count_);
+    stream << ", value-avg=" << SummarizeVector(value_avg);
+    Vector<double> deriv_avg_dbl(deriv_sum_);
+    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
+    deriv_avg.Scale(1.0 / count_);
+    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+  }
+  return stream.str();
+}
+// The output y_i = target_rms * x_i / rms(x), so rms(y) = target_rms,
+// where rms(x) =  1/sqrt(D) sqrt (sum_{i=1}^D  x_i^2 ), len(x) = D.
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
@@ -197,13 +302,14 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   in_norm.ApplyPow(-0.5);
   out->CopyFromMat(in);
   out->MulRowsVec(in_norm);
+  out->Scale(target_rms_);
 }
 
 /*
   A note on the derivative of NormalizeComponent...
   let both row_in and row_out be vectors of dimension D.
   Let p = row_in^T row_in / D, and let
-  f = 1 / sqrt(max(kNormFloor, p)), and we compute row_out as:
+  f = target_rms / sqrt(max(kNormFloor, p)), and we compute row_out as:
   row_out = f row_in.
   Suppose we have a quantity deriv_out which is the derivative
   of the objective function w.r.t. row_out.  We want to compute
@@ -212,12 +318,12 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   deriv_in = f deriv_out + ....
   next we have to take into account the derivative that gets back-propagated
   through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1 / sqrt(kNormFloor) ? 0.0 : -0.5 f^3),
+  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == target_rms / sqrt(kNormFloor) ? 0.0 : -0.5 f^3 target_rms^-2),
   and dp/d(row_in) = 2/D row_in. [it's vector_valued].
   So this term in dF/d(row_in) equals:
-  dF/df df/dp dp/d(row_in)   =    2/D (f == 1 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+  dF/df df/dp dp/d(row_in)   =    2/D (f == target_rms / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3 target_rms^-2) (deriv_out^T row_in) row_in
   So
-  deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 / D) (deriv_out^T row_in) row_in
+  deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 target_rms^-2 / D) (deriv_out^T row_in) row_in
 
 */
 void NormalizeComponent::Backprop(const std::string &debug_info,
@@ -235,6 +341,8 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                       in_value, kNoTrans, 0.0);
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
+  if (target_rms_ != 1.0) 
+    in_norm.Scale(target_rms_);
 
   if (in_deriv) {
     if (in_deriv->Data() != out_deriv.Data())
@@ -242,10 +350,10 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
     else
       in_deriv->MulRowsVec(in_norm);
   }
-  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
+  in_norm.ReplaceValue(target_rms_ / sqrt(kNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
   dot_products.MulElements(in_norm);
-  in_deriv->AddDiagVecMat(-1.0 / in_value.NumCols(),
+  in_deriv->AddDiagVecMat(-1.0 * pow(target_rms_, -2) / in_value.NumCols(),
                           dot_products, in_value,
                           kNoTrans, 1.0);
 }
