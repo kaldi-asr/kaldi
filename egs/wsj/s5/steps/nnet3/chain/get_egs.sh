@@ -54,6 +54,7 @@ nj=20         # This should be set to the maximum number of jobs you are
               # speed is greater and you have more machines.  Note: the process of
               # eg creation is a little more CPU intensive in this than with regular
               # nnet training, so we make the default a little larger.
+max_shuffle_jobs_run=6
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -354,7 +355,7 @@ if [ $stage -le 5 ]; then
   done
 
   if [ $archives_multiple == 1 ]; then # normal case.
-    $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/cegs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
@@ -370,7 +371,7 @@ if [ $stage -le 5 ]; then
         ln -sf egs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
       done
     done
-    $cmd --max-jobs-run $nj JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
   fi
@@ -379,12 +380,13 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: removing temporary archives"
-  for x in $(seq $nj); do
-    for y in $(seq $num_archives_intermediate); do
-      file=$dir/cegs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file)
-      rm $file
-    done
+  for y in $(seq $num_archives_intermediate); do
+    # For NFS caching reasons it's better to do a bunch of reads followed by a
+    # bunch of writes, rather than interleaving them, since the directory is
+    # large.
+    rm $(for x in $(seq $nj); do
+          file=$dir/cegs_orig.$x.$y.ark;
+          echo $(readlink -f $file) $file; done) 2>/dev/null
   done
   if [ $archives_multiple -gt 1 ]; then
     # there are some extra soft links that we should delete.

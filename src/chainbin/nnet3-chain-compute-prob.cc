@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-chain-train.cc
+// nnet3bin/nnet3-chain-compute-prob.cc
 
 // Copyright 2015  Johns Hopkins University (author: Daniel Povey)
 
@@ -19,55 +19,48 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-chain-training.h"
+#include "nnet3/nnet-chain-diagnostics.h"
 
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace kaldi::nnet3;
-    using namespace kaldi::chain;
     typedef kaldi::int32 int32;
     typedef kaldi::int64 int64;
 
     const char *usage =
-        "Train nnet3+chain neural network parameters with backprop and stochastic\n"
-        "gradient descent.  Minibatches are to be created by nnet3-chain-merge-egs in\n"
-        "the input pipeline.  This training program is single-threaded (best to\n"
-        "use it with a GPU).\n"
+        "Computes and prints to in logging messages the average log-prob per frame of\n"
+        "the given data with an nnet3+chain neural net.  The input of this is the output of\n"
+        "e.g. nnet3-chain-get-egs | nnet3-chain-merge-egs.\n"
         "\n"
-        "Usage:  nnet3-chain-train [options] <raw-nnet-in> <denominator-fst-in> <chain-training-examples-in> <raw-nnet-out>\n"
-        "\n"
-        "nnet3-chain-train 1.raw den.fst 'ark:nnet3-merge-egs 1.cegs ark:-|' 2.raw\n";
+        "Usage:  nnet3-chain-compute-prob [options] <raw-nnet3-model-in> <denominator-fst> <training-examples-in>\n"
+        "e.g.: nnet3-chain-compute-prob 0.mdl den.fst ark:valid.egs\n";
 
-    bool binary_write = true;
-    std::string use_gpu = "yes";
-    NnetTrainerOptions nnet_config;
-    chain::ChainTrainingOptions chain_config;
+
+    // This program doesn't support using a GPU, because these probabilities are
+    // used for diagnostics, and you can just compute them with a small enough
+    // amount of data that a CPU can do it within reasonable time.
+    // It wouldn't be hard to make it support GPU, though.
+
+    NnetComputeProbOptions nnet_opts;
+    chain::ChainTrainingOptions chain_opts;
 
     ParseOptions po(usage);
-    po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("use-gpu", &use_gpu,
-                "yes|no|optional|wait, only has effect if compiled with CUDA");
 
-    nnet_config.Register(&po);
-    chain_config.Register(&po);
+    nnet_opts.Register(&po);
+    chain_opts.Register(&po);
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
 
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu);
-#endif
-
     std::string nnet_rxfilename = po.GetArg(1),
         den_fst_rxfilename = po.GetArg(2),
-        examples_rspecifier = po.GetArg(3),
-        nnet_wxfilename = po.GetArg(4);
+        examples_rspecifier = po.GetArg(3);
 
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
@@ -75,23 +68,21 @@ int main(int argc, char *argv[]) {
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
-    NnetChainTrainer trainer(nnet_config, chain_config, den_fst, &nnet);
+    NnetChainComputeProb chain_prob_computer(nnet_opts, chain_opts, den_fst,
+                                            nnet);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
 
     for (; !example_reader.Done(); example_reader.Next())
-      trainer.Train(example_reader.Value());
+      chain_prob_computer.Compute(example_reader.Value());
 
-    bool ok = trainer.PrintTotalStats();
+    bool ok = chain_prob_computer.PrintTotalStats();
 
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
-#endif
-    WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
-    KALDI_LOG << "Wrote raw model to " << nnet_wxfilename;
     return (ok ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
+
+

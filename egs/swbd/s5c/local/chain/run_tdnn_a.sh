@@ -7,6 +7,7 @@ set -e
 # configs for 'chain'
 stage=9
 train_stage=-10
+get_egs_stage=-10
 speed_perturb=true
 dir=exp/chain/tdnn_a  # Note: _sp will get added to this if $speed_perturb == true.
 
@@ -16,8 +17,8 @@ splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
 # training options
 num_epochs=4
-initial_effective_lrate=0.0017
-final_effective_lrate=0.00017
+initial_effective_lrate=0.0002
+final_effective_lrate=0.00002
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=256
@@ -98,6 +99,7 @@ if [ $stage -le 12 ]; then
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
   steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --get-egs-stage $get_egs_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 10" \

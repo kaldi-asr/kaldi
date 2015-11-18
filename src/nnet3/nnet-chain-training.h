@@ -26,6 +26,8 @@
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-chain-example.h"
 #include "nnet3/nnet-training.h"
+#include "chain/chain-training.h"
+#include "chain/chain-den-graph.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -55,8 +57,7 @@ class NnetChainTrainer {
 
   const NnetTrainerOptions nnet_config_;
   const chain::ChainTrainingOptions chain_config_;
-  chain::ChainDenGraph den_graph_;
-  CuMatrix<BaseFloat> cu_weights_;  // derived from trans_model_.
+  chain::DenominatorGraph den_graph_;
   Nnet *nnet_;
   Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing
                       // accumulated parameter-change (we'd call this

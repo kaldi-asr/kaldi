@@ -18,8 +18,8 @@ num_epochs=10      # Number of epochs of training;
                    # Be careful with this: we actually go over the data
                    # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
-initial_effective_lrate=0.01
-final_effective_lrate=0.001
+initial_effective_lrate=0.0002
+final_effective_lrate=0.00002
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
@@ -410,18 +410,18 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-ctc-compute-prob $dir/$x.mdl \
-            "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+      nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
+            "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-ctc-compute-prob $dir/$x.mdl \
-           "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+      nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
+           "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
       $cmd $dir/log/progress.$x.log \
-        nnet3-show-progress --use-gpu=no "nnet3-ctc-copy --raw=true $dir/$[$x-1].mdl - |" \
-                  "nnet3-ctc-copy --raw=true $dir/$x.mdl - |" '&&' \
-        nnet3-ctc-info $dir/$x.mdl &
+        nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true $dir/$[$x-1].mdl - |" \
+                  "nnet3-am-copy --raw=true $dir/$x.mdl - |" '&&' \
+        nnet3-am-info $dir/$x.mdl &
     fi
 
     echo "Training neural net (pass $x)"
@@ -433,11 +433,11 @@ while [ $x -lt $num_iters ]; do
                        # best.
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
-      mdl="nnet3-ctc-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - | nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl - |"
+      mdl="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
-      mdl="nnet3-ctc-copy --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      mdl="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
@@ -467,9 +467,9 @@ while [ $x -lt $num_iters ]; do
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-ctc-train $parallel_train_opts $deriv_time_opts --denominator-scale=$denominator_scale \
-            --print-interval=10 --write-raw=true "$mdl" \
-          "ark:nnet3-ctc-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-ctc-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-ctc-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          nnet3-chain-train $parallel_train_opts $deriv_time_opts \
+            --print-interval=10 "$mdl" $dir/den.fst \
+          "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -488,7 +488,7 @@ while [ $x -lt $num_iters ]; do
       # average the output of the different jobs.
       $cmd $dir/log/average.$x.log \
         nnet3-average $nnets_list - \| \
-        nnet3-ctc-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-am-copy --set-raw-nnet=- $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     else
       # choose the best from the different jobs.
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
@@ -498,7 +498,7 @@ while [ $x -lt $num_iters ]; do
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
-        nnet3-ctc-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
+        nnet3-am-copy --set-raw-nnet=$dir/$[$x+1].$n.raw  $dir/$x.mdl $dir/$[$x+1].mdl || exit 1;
     fi
 
     rm $nnets_list
@@ -523,8 +523,8 @@ if [ $stage -le $num_iters ]; then
   nnets_list=()
   for n in $(seq 0 $[num_iters_combine-1]); do
     iter=$[$first_model_combine+$n]
-    mdl=$dir/$iter.mdl
-    [ ! -f $mdl ] && echo "Expected $mdl to exist" && exit 1;
+    [ ! -f $dir/$iter.mdl ] && echo "Expected $mdl to exist" && exit 1;
+    mdl="nnet3-am-copy --raw=true $dir/$iter.mdl - |"
     nnets_list[$n]="$mdl";
   done
 
@@ -533,20 +533,21 @@ if [ $stage -le $num_iters ]; then
   # num-threads to 8 to speed it up (this isn't ideal...)
 
   $cmd $combine_queue_opt $dir/log/combine.log \
-    nnet3-ctc-combine --num-iters=40 \
+    nnet3-chain-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-ctc-merge-egs --minibatch-size=256 ark:$egs_dir/combine.cegs ark:-|" \
-       $dir/final.mdl || exit 1;
+       --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=256 ark:$egs_dir/combine.cegs ark:-|" \
+       "|nnet3-am-copy --set-raw-nnet=- $dir/0.trans_mdl $dir/final.mdl" || exit 1;
+
 
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-ctc-compute-prob $dir/final.mdl \
-    "ark:nnet3-ctc-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+    nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
+    "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-ctc-compute-prob $dir/final.mdl \
-    "ark:nnet3-ctc-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+    nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
+    "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi
 
 if [ ! -f $dir/final.mdl ]; then
