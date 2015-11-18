@@ -128,9 +128,9 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
 
-    cuda_chain_hmm_forward(dimGrid, dimBlock, backward_transitions, transitions, t,
-                         num_sequences, special_hmm_state, prob_data,
-                         probs.Stride(), prev_alpha, this_alpha);
+    cuda_chain_hmm_forward(dimGrid, dimBlock, backward_transitions, transitions,
+                           num_sequences, special_hmm_state, prob_data,
+                           probs.Stride(), prev_alpha, this_alpha);
 
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -280,10 +280,10 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
     Timer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
-    cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions, t,
-                          num_sequences, special_hmm_state,
-                          probs.Data(), probs.Stride(), this_alpha, next_beta,
-                          this_beta, log_prob_deriv.Data());
+    cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
+                            num_sequences, special_hmm_state,
+                            probs.Data(), probs.Stride(), this_alpha, next_beta,
+                            this_beta, log_prob_deriv.Data());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
