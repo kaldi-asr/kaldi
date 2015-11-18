@@ -63,7 +63,7 @@ class NnetChainCombiner {
   ~NnetChainCombiner() { delete prob_computer_; }
  private:
   const NnetCombineConfig &combine_config_;
-  const chain::ChainTrainingConfig &chain_config_;
+  const chain::ChainTrainingOptions &chain_config_;
 
   const std::vector<NnetChainExample> &egs_;
 
