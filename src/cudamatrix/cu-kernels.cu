@@ -1335,6 +1335,23 @@ static void _apply_heaviside(Real* mat, MatrixDim d) {
 }
 
 
+// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
+// this is for no reason, really, I just happened to prefer this
+// at the time. [dan]
+template<typename Real>
+__global__
+static void _apply_signum(Real* mat, MatrixDim d) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int index = i * d.stride + j;
+
+  if (i < d.rows && j < d.cols) {
+    if (mat[index] > 0.0) mat[index] = 1.0;
+    else if (mat[index] < 0.0) mat[index] = -1.0;
+  }
+}
+
+
 template<typename Real>
 __global__
 static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
@@ -2232,7 +2249,10 @@ void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include
 
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
+}
 
+void cudaF_apply_signum(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
+  _apply_signum<<<Gr,Bl>>>(mat, d);
 }
 
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
@@ -2704,6 +2724,10 @@ void cudaD_apply_pow_abs(dim3 Gr, dim3 Bl, double* mat, double power, bool inclu
 
 void cudaD_apply_heaviside(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
+}
+
+void cudaD_apply_signum(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
+  _apply_signum<<<Gr,Bl>>>(mat, d);
 }
 
 void cudaD_copy_cols(dim3 Gr, dim3 Bl, double* dst, const double* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {

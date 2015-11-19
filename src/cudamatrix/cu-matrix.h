@@ -333,6 +333,7 @@ class CuMatrixBase {
   ///< multiply the result by the sign of the input.
   void ApplyPowAbs(Real power, bool include_sign=false);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
+  void ApplySignum(); ///< For each element, sets x = (1 if x > 0; 0 if x = 0; -1 if x < 0)
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();

@@ -2043,6 +2043,17 @@ void MatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::ApplySignum() {
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  for (MatrixIndexT i = 0; i < num_rows; i++) {
+    Real *data = this->RowData(i);
+    for (MatrixIndexT j = 0; j < num_cols; j++) {
+      if (data[j] > 0) data[j] = 1.0;
+      else if (data[j] < 0) data[j] = -1.0;
+    }
+  }
+}
 
 template<typename Real>
 bool MatrixBase<Real>::Power(Real power) {
