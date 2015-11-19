@@ -654,26 +654,27 @@ class TokenVectorHolder {
 };
 
 // Holder for segments
-class SegmentHolder {
+class UtteranceSegmentHolder {
   public:
-    typedef Segment T;
+    typedef UtteranceSegment T;
     
-    SegmentHolder() { }
+    UtteranceSegmentHolder() { }
     
     static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode.
       KALDI_ASSERT(IsToken(t.reco_id) && IsToken(t.channel_id) && 
           t.end_time > t.start_time);
       os << t.reco_id << ' ' << t.start_time << ' ' 
-        << t.end_time << ' ' << t.channel_id;
+        << t.end_time;
+
+      if (t.channel_id != "-1")
+        os << ' ' << t.channel_id;
+      
       os << '\n';
       return os.good();
     }
 
     void Clear() { 
-      t_.reco_id.clear();
-      t_.channel_id.clear();
-      t_.start_time = 0.0;
-      t_.end_time = 0.0;
+      t_.Reset();
     }
 
     // Reads into the holder.
@@ -684,7 +685,7 @@ class SegmentHolder {
       std::string line;
       getline(is, line);  // this will discard the \n, if present.
       if (is.fail()) {
-        KALDI_WARN << "SegmentHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
+        KALDI_WARN << "UtteranceSegmentHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
         return false;  // probably eof.  fail in any case.
       }
       const char *white_chars = " \t\n\r\f\v";
@@ -704,8 +705,16 @@ class SegmentHolder {
         KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
         return false;
       }
-      if (split.size() == 4)
+
+      if (t_.end_time < t_.start_time) {
+        KALDI_WARN << "Invalid start and end times in line: " << line;
+        return false;
+      }
+
+      if (split.size() == 4) {
         t_.channel_id = split[3];
+      } else 
+        t_.channel_id = "-1";
 
       return true;
     }
@@ -717,7 +726,7 @@ class SegmentHolder {
     const T &Value() const { return t_; }
 
   private:
-    KALDI_DISALLOW_COPY_AND_ASSIGN(SegmentHolder);
+    KALDI_DISALLOW_COPY_AND_ASSIGN(UtteranceSegmentHolder);
     T t_;
 };
 

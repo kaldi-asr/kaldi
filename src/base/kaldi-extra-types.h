@@ -24,15 +24,18 @@
 
 namespace kaldi {
 
-struct Segment {
+struct UtteranceSegment {
   std::string reco_id;
   BaseFloat start_time; 
   BaseFloat end_time;
   std::string channel_id;
 
+  UtteranceSegment() : start_time(-1), end_time(-1), channel_id("-1") { }
+
   void Reset() {
     start_time = end_time = -1;
-    reco_id = channel_id = "";
+    reco_id = "";
+    channel_id = "-1";
   }
 };
 
