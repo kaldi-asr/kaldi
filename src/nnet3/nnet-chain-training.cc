@@ -78,7 +78,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
         } else {
           scale *= nnet_config_.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "<--max-param-change=" << nnet_config_.max_param_change
+                    << "--max-param-change=" << nnet_config_.max_param_change
                     << ", scaling by "
                     << nnet_config_.max_param_change / param_delta;
         }
