@@ -806,8 +806,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 1: {
+      BaseFloat target_rms = ((Rand() % 200) / 100.0);
       *component_type = "NormalizeComponent";
-      os << "dim=" << RandInt(1, 50);
+      os << "dim=" << RandInt(1, 50)
+         << " target-rms=" << target_rms;
       break;
     }
     case 2: {

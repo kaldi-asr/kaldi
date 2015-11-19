@@ -121,14 +121,17 @@ class NormalizeComponent: public NonlinearComponent {
   // note: although we inherit from NonlinearComponent, we don't actually bohter
   // accumulating the stats that NonlinearComponent is capable of accumulating.
  public:
-  explicit NormalizeComponent(int32 dim): NonlinearComponent(dim) { }
-  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other) { }
+ void Init(int32 dim, BaseFloat target_rms);
+  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0) { Init(dim, target_rms); }
+  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other), 
+    target_rms_(other.target_rms_) { }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
         kBackpropInPlace;
   }
-  NormalizeComponent() { }
+  NormalizeComponent(): target_rms_(1.0) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
+  virtual void InitFromConfig(ConfigLine *cfl);    
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -140,9 +143,18 @@ class NormalizeComponent: public NonlinearComponent {
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
   static const BaseFloat kNormFloor;
+  BaseFloat target_rms_; // The target rms for outputs.
   // about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
