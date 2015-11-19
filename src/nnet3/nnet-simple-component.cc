@@ -219,29 +219,17 @@ void NormalizeComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &target_rms_);
     ReadToken(is, binary, &tok);
   }
-
-  if (tok == "<ValueSum>") {
-    // this branch is for back compatibility.  TODO: delete it
-    // after Dec 2015.
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivSum>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    ExpectToken(is, binary, ostr_end.str());
-  } else {
-    // The new format is more readable as we write values that are normalized by
-    // the count.
-    KALDI_ASSERT(tok == "<ValueAvg>");
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivAvg>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    value_sum_.Scale(count_);
-    deriv_sum_.Scale(count_);
-    ExpectToken(is, binary, ostr_end.str());
-  }
+  // The new format is more readable as we write values that are normalized by
+  // the count.
+  KALDI_ASSERT(tok == "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+  ExpectToken(is, binary, ostr_end.str());
 }
 
 void NormalizeComponent::Write(std::ostream &os, bool binary) const {
@@ -272,22 +260,8 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
 
 std::string NormalizeComponent::Info() const {
   std::stringstream stream;
-  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
-  stream << Type() << ", dim=" << dim_ 
-         << ", target_rms=" << target_rms_;
-
-  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
-    stream << ", count=" << std::setprecision(3) << count_
-           << std::setprecision(6);
-    Vector<double> value_avg_dbl(value_sum_);
-    Vector<BaseFloat> value_avg(value_avg_dbl);
-    value_avg.Scale(1.0 / count_);
-    stream << ", value-avg=" << SummarizeVector(value_avg);
-    Vector<double> deriv_avg_dbl(deriv_sum_);
-    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
-    deriv_avg.Scale(1.0 / count_);
-    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
-  }
+  stream << NonlinearComponent::Info();
+  stream << ", target_rms=" << target_rms_;
   return stream.str();
 }
 // The output y_i = target_rms * x_i / rms(x), so rms(y) = target_rms,
