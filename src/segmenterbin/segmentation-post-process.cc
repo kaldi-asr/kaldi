@@ -27,52 +27,36 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Post processing of segmentation such as merging labels, "
-        "widening segments, removing segments and merging segments\n"
-        "\n"
+        "Post processing of segmentation that does the following operations "
+        "in order: \n"
+        "1) Intersection or Filtering: Intersects the input segmentation with "
+        "segments from the segmentation in 'filter-rspecifier' and retains "
+        "only regions where the segment in the filter has the class-id "
+        "'filter-label'. See method IntersectSegments() for details.\n"
+        "2) Merge labels: Merge labels specified in 'merge-labels' into a "
+        "single label 'label'. Any segment that has class_id that is contained "
+        "in 'merge-labels' is assigned class_id 'label'. "
+        "See method MergeLabels() for details.\n"
+        "3) Widen segments: Widen segments of label 'widen-label' by "
+        "'widen-length' frames on either side of the segment. This process "
+        "also shrinks the adjacent segments so that it does not overlap with "
+        "the widened segment or merges the adjacent segment into a composite "
+        "segment if they both have the same class_id. "
+        "See method WidenSegment() for details.\n"
+        "4) with the \n"
         "Usage: segmentation-post-process [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) (segmentation-out-wspecifier|segmentation-out-wxfilename)\n"
         " e.g.: segmentation-post-process --binary=false foo -\n"
         "       segmentation-post-process ark:1.ali ark,t:-\n"
-        "See also: segmentation-merge, segmentation-copy";
+        "See also: segmentation-merge, segmentation-copy, segmentation-remove-segments\n";
     
     bool binary = true;
-    int32 max_relabel_length = -1;
-    int32 widen_length = -1;
-    int32 widen_label = -1;
-    int32 max_segment_length = -1;
-    int32 max_intersegment_length = 1;
-    int32 overlap_length = 0;
-    bool merge_adjacent_segments = false;
 
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
+    SegmentationPostProcessingOptions opts;
 
-    std::string remove_labels_csl;
-
-    int32 &remove_label = opts.merge_dst_label;
-
-    po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
-    po.Register("remove-label", &remove_label, "The label for which the short segments are to be removed. "
-                "If --merge-labels is specified, then all of them would be removed instead.");
-    po.Register("remove-labels", &remove_labels_csl, 
-                "Remove all segments of these labels.");
-    po.Register("max-relabel-length", &max_relabel_length, 
-                "The maximum length of segment in number of frames that will "
-                "be relabeled to the class-id of the adjacent segments, "
-                "provided the adjacent segments both have the same class-id");
-    po.Register("widen-label", &widen_label, "Widen segments of this label");
-    po.Register("widen-length", &widen_length, "Widen by this amount of frames on either sides");
-    po.Register("max-segment-length", &max_segment_length, 
-                "If segment is longer than this length, split it into "
-                "pieces with less than these many frames.");
-    po.Register("overlap-length", &overlap_length,
-                "When splitting segments longer than max-segment-length, "
-                "have the pieces overlap by these many frames");
-    po.Register("merge-adjacent-segments", &merge_adjacent_segments, 
-                "Merge adjacent segments of the same label if they are within max-intersegment-length distance");
-    po.Register("max-intersegment-length", &max_intersegment_length,  
-                "The maximum intersegment length that is allowed for two adjacent segments to be merged");
+    po.Register("binary", &binary, 
+                "Write in binary mode (only relevant if output is a wxfilename)");
 
     opts.Register(&po);
 
@@ -82,76 +66,59 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    if (merge_adjacent_segments) 
-      KALDI_LOG << "Merging adjacent segments...";
-
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
-
-    std::vector<int32> remove_labels;
-    if (remove_labels_csl != "") {
-      if (!SplitStringToIntegers(remove_labels_csl, ":",
-            false, &remove_labels)) {
-        KALDI_ERR << "Bad value for --remove-labels option: "
-                  << remove_labels_csl;
-      }
-      std::sort(remove_labels.begin(), remove_labels.end());
-    }
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-                  << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
-
+    SegmentationPostProcessor post_processor(opts);
     std::string segmentation_in_fn = po.GetArg(1),
-        segmentation_out_fn = po.GetArg(2);
+                segmentation_out_fn = po.GetArg(2);
 
-    int64  num_done = 0, num_err = 0;
+    bool in_is_rspecifier =
+        (ClassifyRspecifier(segmentation_in_fn, NULL, NULL)
+         != kNoRspecifier),
+        out_is_wspecifier =
+        (ClassifyWspecifier(segmentation_out_fn, NULL, NULL, NULL)
+         != kNoWspecifier);
+
+    if (in_is_rspecifier != out_is_wspecifier)
+      KALDI_ERR << "Cannot mix regular files and archives";
     
+    int64 num_done = 0, num_err = 0;
+    
+    if (!in_is_rspecifier) {
+      Segmentation seg;
+      {
+        bool binary_in;
+        Input ki(segmentation_in_fn, &binary_in);
+        seg.Read(ki.Stream(), binary_in);
+      }
+      if (post_processor.PostProcess(&seg)) {
+        Output ko(segmentation_out_fn, binary);
+        seg.Write(ko.Stream(), binary);
+        KALDI_LOG << "Post-processed segmentation " << segmentation_in_fn 
+                  << " and wrote " << segmentation_out_fn;
+        return 0;
+      } 
+      KALDI_LOG << "Failed post-processing segmentation " 
+                << segmentation_in_fn ;
+      return 1;
+    }
+
     SegmentationWriter writer(segmentation_out_fn); 
     SequentialSegmentationReader reader(segmentation_in_fn);
-    for (; !reader.Done(); reader.Next(), num_done++) {
+    for (; !reader.Done(); reader.Next()){
       Segmentation seg(reader.Value());
       std::string key = reader.Key();
 
-      if (opts.filter_rspecifier != "") {
-        if (!filter_reader.HasKey(key)) {
-          KALDI_WARN << "Could not find filter for utterance " << key;
-          num_err++;
-          continue;
-        }
-        const Segmentation &filter_segmentation = filter_reader.Value(key);
-        seg.IntersectSegments(filter_segmentation, opts.filter_label);
+      if (!post_processor.FilterAndPostProcess(&seg, &key)) {
+        num_err++;
+        continue;
       }
-
-      if (opts.merge_labels_csl != "") {
-        seg.MergeLabels(merge_labels, opts.merge_dst_label);
-      }
-
-      if (widen_length > 0)
-        seg.WidenSegments(widen_label, widen_length);
-      if (max_relabel_length >= 0)
-        seg.RelabelShortSegments(opts.merge_dst_label, max_relabel_length);
-
-      if (remove_labels_csl != "")
-        seg.RemoveSegments(remove_labels);
-
-      if (merge_adjacent_segments)
-        seg.MergeAdjacentSegments(max_intersegment_length);
-
-      if (max_segment_length >= 0)
-        seg.SplitSegments(max_segment_length, 
-                          max_segment_length/2, overlap_length);
-
+      
       writer.Write(key, seg);
+      num_done++;
     }
 
-    KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
-      << num_err << " segmentations";
+    KALDI_LOG << "Successfully post-processed " << num_done 
+              << " segmentations; "
+              << "failed with " << num_err << " segmentations";
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

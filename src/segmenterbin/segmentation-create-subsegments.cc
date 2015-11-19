@@ -93,11 +93,12 @@ int main(int argc, char *argv[]) {
         Input ki(secondary_segmentation_in_fn, &binary_in);
         secondary_seg.Read(ki.Stream(), binary_in);
       }
+      
       Segmentation new_seg;
-      seg.CreateSubSegments(secondary_seg, filter_label, 
+      seg.SubSegmentUsingSmallOverlapSegments(secondary_seg, filter_label, 
                             subsegment_label, &new_seg);
       Output ko(segmentation_out_fn, binary);
-      seg.Write(ko.Stream(), binary);
+      new_seg.Write(ko.Stream(), binary);
       KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
       return 0;
     } else {
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
       RandomAccessSegmentationReader filter_reader(secondary_segmentation_in_fn);
       for (; !reader.Done(); reader.Next(), num_done++) {
         const Segmentation &seg = reader.Value();
-        std::string key = reader.Key();
+        const std::string &key = reader.Key();
         
         if (!filter_reader.HasKey(key)) {
           KALDI_WARN << "Could not find filter for utterance " << key;
@@ -119,7 +120,7 @@ int main(int argc, char *argv[]) {
         const Segmentation &secondary_segmentation = filter_reader.Value(key);
         
         Segmentation new_seg;
-        seg.CreateSubSegments(secondary_segmentation, filter_label,
+        seg.SubSegmentUsingSmallOverlapSegments(secondary_segmentation, filter_label,
                               subsegment_label, &new_seg);
 
         writer.Write(key, new_seg);

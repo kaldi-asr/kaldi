@@ -144,30 +144,114 @@ struct HistogramEncoder {
  * filtering etc.
 **/
 
-struct SegmentationOptions {
+struct SegmentationPostProcessingOptions {
+  std::string filter_in_fn; 
+  int32 filter_label;
+  bool ignore_missing_filter_keys;
   std::string merge_labels_csl;
-  int32 merge_dst_label, filter_label, mask_label;
-  std::string filter_rspecifier, mask_rspecifier;
+  int32 merge_dst_label;
+  int32 widen_label;
+  int32 widen_length;
+  int32 relabel_short_segments_class; 
+  int32 max_relabel_length;
+  std::string remove_labels_csl;
+  bool merge_adjacent_segments;
+  int32 max_intersegment_length;
+  int32 max_segment_length;
+  int32 overlap_length;
+  int32 post_process_label;
 
-  SegmentationOptions() : merge_dst_label(-1), filter_label(-1), mask_label(-1) { }
+  SegmentationPostProcessingOptions() : 
+    filter_label(-1), ignore_missing_filter_keys(false), merge_dst_label(-1), 
+    widen_label(-1), widen_length(-1),
+    relabel_short_segments_class(-1), max_relabel_length(-1), 
+    merge_adjacent_segments(false), max_intersegment_length(0),
+    max_segment_length(-1), overlap_length(0), post_process_label(-1) { }
   
-  void Register(OptionsItf *po) {
-    po->Register("merge-labels", &merge_labels_csl, "Merge labels into a single "
-                "label defined by merge-dst-label. "
-                "The labels to be merged are to "
-                "be specified as a colon-separated list");
-    po->Register("merge-dst-label", &merge_dst_label, "Merge labels into this "
-                "label");
-    po->Register("filter-rspecifier", &filter_rspecifier, "Filter and select "
-                 "only those regions that have label filter-label in this "
-                 "filter segmentation");
-    po->Register("filter-label", &filter_label, "The label on which the "
-                 "filtering is done");
-    po->Register("mask-rspecifier", &mask_rspecifier, "Unselect "
-                 "those regions that have label mask-label in this "
-                 "mask-segmentation");
-    po->Register("mask-label", &mask_label, "The label on which the "
-                 "masking is done");
+  void Register(OptionsItf *opts) {
+    opts->Register("filter-in-fn", &filter_in_fn,
+                   "The segmentation that is used as a filter for the "
+                   "Intersection or Filtering post-processing operation. "
+                   "Refer to the IntersectSegments() code for details. "
+                   "Used in conjunction with the option --filter-label.");
+    //opts->Register("filter-label", &filter_label, "The label on which the "
+    //               "Intersection or Filtering operation is done. "
+    //               "Refer to the IntersectSegments() code for details. "
+    //               "Used in conjunction with the options --filter-in-fn.");
+    opts->Register("ignore-missing-filter-keys", &ignore_missing_filter_keys, 
+                   "If this is true and a key could not be found in the "
+                   "filter, the post-processing skips the Filtering operation. "
+                   "Otherwise, it counts it as an error. Applicable only when "
+                   "--filter-in-fn is an archive. "
+                   "Used in conjunction with the option --filter-in-fn.");
+    opts->Register("merge-labels", &merge_labels_csl, "Merge labels into a "
+                   "single label defined by merge-dst-label."
+                   "The labels are specified as a colon-separated list. "
+                   "Refer to the MergeLabels() code for details. "
+                   "Used in conjunction with the option --merge-dst-label");
+    opts->Register("merge-dst-label", &merge_dst_label, 
+                   "Merge labels into this label. "
+                   "Refer to the MergeLabels() code for details. "
+                   "Used in conjunction with the option --merge-labels.");
+    opts->Register("widen-label", &widen_label, 
+                   "Widen segments of this class_id "
+                   "by shrinking the adjacent segments of other class_ids or "
+                   "merging with adjacent segments of the same class_id. "
+                   "Refer to the WidenSegments() code for details. "
+                   "Used in conjunction with the option --widen-length.");
+    opts->Register("widen-length", &widen_length, "Widen segments by this many "
+                   "frames on either side. "
+                   "See option --widen-label for details. "
+                   "Refer to the WidenSegments() code for details. "
+                   "Used in conjunction with the option --widen-label.");
+    opts->Register("relabel-short-segments-class", &relabel_short_segments_class, 
+                   "The class_id for which the short segments are to be "
+                   "relabeled as the class_id of the neighboring segments. "
+                   "Refer to RelabelShortSegments() code for details. "
+                   "Used in conjunction with the option --max-relabel-length.");
+    opts->Register("max-relabel-length", &max_relabel_length, 
+                   "The maximum length of segment in number of frames that "
+                   "will be relabeled to the class-id of the adjacent "
+                   "segments, provided the adjacent segments both have the "
+                   "same class-id. "
+                   "Refer to RelabelShortSegments() code for details. "
+                   "Used in conjunction with the option "
+                   "--relabel-short-segments-class");
+    opts->Register("remove-labels", &remove_labels_csl, 
+                   "Remove any segment whose class_id is contained in "
+                   "remove_labels_csl. "
+                   "Refer to the RemoveLabels() code for details.");
+    opts->Register("merge-adjacent-segments", &merge_adjacent_segments, 
+                   "Merge adjacent segments of the same label if they are "
+                   "within max-intersegment-length distance. "
+                   "Refer to the MergeAdjacentSegments() code for details. "
+                   "Used in conjunction with the option "
+                   "--max-intersegment-length\n");
+    opts->Register("max-intersegment-length", &max_intersegment_length,  
+                   "The maximum intersegment length that is allowed for "
+                   "two adjacent segments to be merged. "
+                   "Refer to the MergeAdjacentSegments() code for details. "
+                   "Used in conjunction with the option "
+                   "--merge-adjacent-segments\n");
+    opts->Register("max-segment-length", &max_segment_length, 
+                   "If segment is longer than this length, split it into "
+                   "pieces with less than these many frames. "
+                   "Refer to the SplitSegments() code for details. "
+                   "Used in conjunction with the option --overlap-length.");
+    opts->Register("overlap-length", &overlap_length,
+                   "When splitting segments longer than max-segment-length, "
+                   "have the pieces overlap by these many frames. "
+                   "Refer to the SplitSegments() code for details. "
+                   "Used in conjunction with the option --max-segment-length.");
+    opts->Register("post-process-label", &post_process_label, 
+                   "Do post processing only on this label. This option is "
+                   "applicable to only a few operations including "
+                   "SplitSegments"); 
+    //opts->Register("mask-rspecifier", &mask_rspecifier, "Unselect "
+    //             "those regions that have label mask-label in this "
+    //             "mask-segmentation");
+    //opts->Register("mask-label", &mask_label, "The label on which the "
+    //             "masking is done");
   }
 };
 
@@ -182,14 +266,14 @@ struct HistogramOptions {
 
   HistogramOptions() : num_bins(100), select_above_mean(false), select_from_full_histogram(false) {}
   
-  void Register(OptionsItf *po) {
-    po->Register("num-bins", &num_bins, "Number of bins in the histogram "
-                 "created using the scores. Use larger number of bins to "
-                 "make a finer selection");
-    po->Register("select-above-mean", &select_above_mean, "If true, "
-                 "use mean as the reference instead of min");
-    po->Register("select-from-full-histogram", &select_from_full_histogram,
-                 "Do not restrict selection to one half");
+  void Register(OptionsItf *opts) {
+    opts->Register("num-bins", &num_bins, "Number of bins in the histogram "
+                   "created using the scores. Use larger number of bins to "
+                   "make a finer selection");
+    opts->Register("select-above-mean", &select_above_mean, "If true, "
+                   "use mean as the reference instead of min");
+    opts->Register("select-from-full-histogram", &select_from_full_histogram,
+                   "Do not restrict selection to one half");
 
   }
 
@@ -242,7 +326,8 @@ class Segmentation {
     // of overlapping frames specified by overlap.
     // Typically used to create 1s windows from 10 minute long chunks
     void SplitSegments(int32 segment_length,
-                       int32 min_remainder, int32 overlap = 0);
+                       int32 min_remainder, int32 overlap = 0,
+                       int32 label = -1);
 
     // Modify this segmentation to merge labels in merge_labels vector into a
     // single label dest_label.
@@ -306,9 +391,9 @@ class Segmentation {
     // 5 7 1
     // 8 10 2
     // 10 12 2
-    void IntersectSegments(const Segmentation &filter_segmentation,
-                           int32 filter_label);
-
+    void IntersectSegments(const Segmentation &secondary_segmentation, 
+                           Segmentation *out_seg, 
+                           int32 mismatch_label = -1) const;
 
     // Extend a segmentation by adding another one. By default, the
     // resultant segmentation would be sorted. If its known that the other
@@ -325,7 +410,19 @@ class Segmentation {
     // vector_value along with this segmentation's string_value
     void CreateSubSegments(const Segmentation &secondary_segmentation,
                            int32 secondary_label, int32 subsegment_label,
-                           Segmentation *new_segmentation) const;
+                           Segmentation *out_seg) const {
+      SubSegmentUsingNonOverlappingSegments(secondary_segmentation,
+                           secondary_label, subsegment_label,
+                           out_seg);
+    }
+
+    void SubSegmentUsingNonOverlappingSegments(const Segmentation &secondary_segmentation,
+                           int32 secondary_label, int32 subsegment_label,
+                           Segmentation *out_seg) const;
+    
+    void SubSegmentUsingSmallOverlapSegments(const Segmentation &secondary_segmentation,
+                           int32 secondary_label, int32 subsegment_label,
+                           Segmentation *out_seg) const;
 
     void CreateSubSegmentsOld(const Segmentation &filter_segmentation, 
                            int32 filter_label,
@@ -371,6 +468,16 @@ class Segmentation {
                             int32 default_label = 0, int32 length = -1,
                             int32 tolerance = 2) const;
 
+    // Insert segments created from alignment whose 0th frame corresponds to 
+    // start_time_offset
+    int32 InsertFromAlignment(const std::vector<int32> &alignment,
+                              int32 start_time_offset = 0, 
+                              std::vector<int64> *frame_counts_per_class = NULL);
+
+    int32 InsertFromSegmentation(const Segmentation &seg,
+                                 int32 start_time_offset = 0,
+                                 std::vector<int64> *frame_counts_per_class = NULL);
+
     // The following functions construct new segment in-place in the
     // segmentation and increments the dim_ of the segmentation. There's one
     // emplace for each constructor in Segment.
@@ -408,6 +515,12 @@ class Segmentation {
     // segments.
     void Check() const;
 
+    // Check if segmentation is non-overlapping.
+    bool IsNonOverlapping() const;
+    
+    // Check if segmentation does not have large overlaps.
+    bool HasSmallOverlap() const;
+
     // Sort the segments on the start_frame
     inline void Sort() { segments_.sort(SegmentComparator()); };
   
@@ -417,6 +530,8 @@ class Segmentation {
     SegmentList::const_iterator Begin() const { return segments_.cbegin(); }
     SegmentList::iterator End() { return segments_.end(); }
     SegmentList::const_iterator End() const { return segments_.cend(); }
+
+    const SegmentList* Data() const { return &segments_; }
 
   private: 
     // number of segments in the segmentation
@@ -428,12 +543,69 @@ class Segmentation {
     // the score for each segment in the segmentation. If it has a non-zero
     // size, then the size must equal dim_.
     std::vector<BaseFloat> mean_scores_;
+
+    friend class SegmentationPostProcessor;
 };
 
 typedef TableWriter<KaldiObjectHolder<Segmentation> > SegmentationWriter;
 typedef SequentialTableReader<KaldiObjectHolder<Segmentation> > SequentialSegmentationReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<Segmentation> > RandomAccessSegmentationReader;
 typedef RandomAccessTableReaderMapped<KaldiObjectHolder<Segmentation> >  RandomAccessBaseFloatMatrixReaderMapped;
+
+class SegmentationPostProcessor {
+ public:
+  explicit SegmentationPostProcessor(
+      const SegmentationPostProcessingOptions &opts);
+ 
+  bool FilterAndPostProcess(Segmentation *seg, const std::string *key = NULL);
+  bool PostProcess(Segmentation *seg) const;
+  
+  bool Filter(const std::string &key, Segmentation *seg);
+  void Filter(Segmentation *seg) const;
+  void MergeLabels(Segmentation *seg) const;
+  void WidenSegments(Segmentation *seg) const;
+  void RelabelShortSegments(Segmentation *seg) const;
+  void RemoveSegments(Segmentation *seg) const;
+  void MergeAdjacentSegments(Segmentation *seg) const;
+  void SplitSegments(Segmentation *seg) const;
+
+ private:
+  const SegmentationPostProcessingOptions &opts_;
+  std::vector<int32> merge_labels_;
+  std::vector<int32> remove_labels_;
+  Segmentation filter_segmentation_;
+  RandomAccessSegmentationReader filter_reader_;
+
+  inline bool IsFilteringToBeDone() const {
+    return (!opts_.filter_in_fn.empty());
+  }
+
+  inline bool IsMergingLabelsToBeDone() const { 
+    return (!opts_.merge_labels_csl.empty() || opts_.merge_dst_label != -1);
+  }
+
+  inline bool IsWideningSegmentsToBeDone() const {
+    return (opts_.widen_label != -1 || opts_.widen_length != -1);
+  }
+  
+  inline bool IsRelabelingShortSegmentsToBeDone() const {
+    return (opts_.relabel_short_segments_class != -1 || opts_.max_relabel_length != -1);
+  }
+
+  inline bool IsRemovingSegmentsToBeDone() const { 
+    return (!opts_.remove_labels_csl.empty()); 
+  }
+
+  inline bool IsMergingAdjacentSegmentsToBeDone() const {
+    return (opts_.merge_adjacent_segments);
+  }
+
+  inline bool IsSplittingSegmentsToBeDone() const {
+    return (opts_.max_segment_length != -1);
+  }
+
+  void Check() const;
+};
 
 }
 }

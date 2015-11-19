@@ -50,7 +50,8 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::segmenter;
 
-  UnitTestSegmentationIo();
+  for (int32 i = 0; i < 100; i++)
+    UnitTestSegmentationIo();
   return 0;
 }
   

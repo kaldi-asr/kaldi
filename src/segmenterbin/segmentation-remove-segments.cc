@@ -27,10 +27,12 @@ int main(int argc, char *argv[]) {
     using namespace segmenter;
 
     const char *usage =
-        "Remove segments of particular label (e.g silence or noise)"
+        "Remove segments of particular class_id (e.g silence or noise) "
+        "or a set of class_ids"
         "\n"
         "Usage: segmentation-remove-segments [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) (segmentation-out-wspecifier|segmentation-out-wxfilename)\n"
-        " e.g.: segmentation-remove-segments --remove-label=0 ark:foo.ark ark:foo.speech.ark\n";
+        " e.g.: segmentation-remove-segments --remove-label=0 ark:foo.ark ark:foo.speech.ark\n"
+        "See also: segmentation-post-process, segmentation-merge, segmentation-copy\n";
     
     bool binary = true;
     int32 remove_label = -1;

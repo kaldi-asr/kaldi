@@ -39,8 +39,6 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, 
                 "Write in binary mode (only relevant if output is a wxfilename)");
 
-    opts.Register(&po);
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {

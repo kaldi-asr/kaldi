@@ -108,11 +108,9 @@ int main(int argc, char *argv[]) {
           seg.Clear();
         }
         seg.Emplace(std::round(start / frame_shift), 
-                    std::round(end / frame_shift), label);
-      }
-
-      if (per_utt) {
-        seg.Emplace(0.0, std::round((end - start)/ frame_shift), label);
+                    std::round(end / frame_shift) - 1, label);
+      } else {
+        seg.Emplace(0, std::round((end - start)/ frame_shift), label);
         writer.Write(segment, seg);
         num_segmentations++;
         seg.Clear();

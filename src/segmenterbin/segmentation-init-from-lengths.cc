@@ -32,8 +32,11 @@ int main(int argc, char *argv[]) {
         "Usage: segmentation-init-from-lengths [options] <lengths-rspecifier> <segmentation-out-wspecifier> \n"
         " e.g.: segmentation-init-from-lengths \"ark:feat-to-len scp:feats.scp ark:- |\" ark:-\n";
     
-    ParseOptions po(usage);
+    int32 label = 1;
     
+    ParseOptions po(usage);
+ 
+    po.Register("label", &label, "Assign the segment this class_id");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -54,7 +57,7 @@ int main(int argc, char *argv[]) {
       const int32 &len = lengths_reader.Value();
       
       Segmentation seg;
-      seg.Emplace(0, len - 1, 1);
+      seg.Emplace(0, len - 1, label);
       
       segmentation_writer.Write(key, seg);
       num_done++;

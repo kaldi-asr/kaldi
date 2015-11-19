@@ -31,184 +31,72 @@ int main(int argc, char *argv[]) {
         "segmentations using the kaldi segments to map utterances to "
         "file.\n"
         "\n"
-        "Usage: segmentation-combine-segments [options] <segmentation-in-rspecifier> <segments-rxfilename> <segmentation-out-rspecifier>\n"
-        " e.g.: segmentation-combine-segments ark:utt.seg data/dev/segments ark:file.seg\n";
+        "Usage: segmentation-combine-segments [options] <segmentation-in-rspecifier> <segments-rspecifier> <reco2utt-rspecifier> <segmentation-out-rspecifier>\n"
+        " e.g.: segmentation-combine-segments ark:utt.seg ark,t:data/dev/segments ark,t:data/dev/reco2utt ark:file.seg\n";
     
     bool binary = true;
     BaseFloat frame_shift = 0.01;
-    std::string segments_rxfilename;
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
-
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("frame-shift", &frame_shift, "Frame shift in seconds");
 
-    opts.Register(&po);
-
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
     }
   
     std::string segmentation_rspecifier = po.GetArg(1),
-      segments_rxfilename = po.GetArg(2),
-      segmentation_wspecifier = po.GetArg(3);
+                segments_rspecifier = po.GetArg(2),
+                reco2utt_rspecifier = po.GetArg(3),
+                segmentation_wspecifier = po.GetArg(4);
 
-    RandomAccessSegmentationReader segmentation_reader(segmentation_rspecifier);
+    SequentialTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
+    RandomAccessUtteranceSegmentReader segments_reader(segments_rspecifier);
+    RandomAccessSegmentationReader  segmentation_reader(segmentation_rspecifier);
     SegmentationWriter segmentation_writer(segmentation_wspecifier);
 
-    Input ki(segments_rxfilename); // no binary argment: never binary.
-
-    int32 num_lines = 0, num_success = 0;
-
-    unordered_map<std::string, BaseFloat, StringHasher> utt2start;
-    unordered_map<std::string, std::vector<std::string> > file2utts;
-
-    std::string line;
-    /* read each line from segments file */
-    while (std::getline(ki.Stream(), line)) {
-      num_lines++;
-      std::vector<std::string> split_line;
-      // Split the line by space or tab and check the number of fields in each
-      // line. There must be 4 fields--segment name , reacording wav file name,
-      // start time, end time; 5th field (channel info) is optional.
-      SplitStringToVector(line, " \t\r", true, &split_line);
-      if (split_line.size() != 4 && split_line.size() != 5) {
-        KALDI_WARN << "Invalid line in segments file: " << line;
-        continue;
-      }
-      std::string segment = split_line[0],
-          utterance = split_line[1],
-          start_str = split_line[2],
-          end_str = split_line[3];
-
-      // Convert the start time and endtime to real from string. Segment is
-      // ignored if start or end time cannot be converted to real.
-      double start, end;
-      if (!ConvertStringToReal(start_str, &start)) {
-        KALDI_WARN << "Invalid line in segments file [bad start]: " << line;
-        continue;
-      }
-      if (!ConvertStringToReal(end_str, &end)) {
-        KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
-        continue;
-      }
-      // start time must not be negative; start time must not be greater than
-      // end time, except if end time is -1
-      if (start < 0 || end <= 0 || start >= end) {
-        KALDI_WARN << "Invalid line in segments file [empty or invalid segment]: "
-                   << line;
-        continue;
-      }
-      int32 channel = -1;  // means channel info is unspecified.
-      // if each line has 5 elements then 5th element must be channel identifier
-      if(split_line.size() == 5) {
-        if (!ConvertStringToInteger(split_line[4], &channel) || channel < 0) {
-          KALDI_WARN << "Invalid line in segments file [bad channel]: " << line;
+    int32 num_done = 0, num_segmentations = 0;
+    int64 num_segments = 0;
+    int64 num_err = 0;
+    
+    std::vector<int64> frame_counts_per_class;
+    
+    for (; !reco2utt_reader.Done(); reco2utt_reader.Next()) {
+      const std::vector<std::string> &utts = reco2utt_reader.Value();
+      const std::string &reco_id = reco2utt_reader.Key();
+        
+      Segmentation seg;
+        
+      for (std::vector<std::string>::const_iterator it = utts.begin();
+            it != utts.end(); ++it) {
+        if (!segments_reader.HasKey(*it)) {
+          KALDI_WARN << "Could not find utterance " << *it << " in " 
+                     << "segments " << segments_rspecifier;
+          num_err++;
           continue;
         }
-      }
-
-      utt2start.insert(std::make_pair(segment, start));
-
-      unordered_map<std::string, std::vector<std::string> > iterator it = file2utts.find(utterance);
-      if (it == file2utts.end()) {
-        auto ret = file2utts.insert(std::make_pair(utterance, std::vector<std::string>() ) );
-        it = ret.first;
-      }
-      (it->second).push_back(segment);
-
-      /* check whether a segment start time and end time exists in utterance 
-       * if fails , skips the segment.
-       */ 
-
-      utt
-      utt2file.insert(std::make_pair(
-
-        utt2file.insert(std::make_pair(segment, utterance));
-        utt2start_time.insert(std::make_pair(segment, start));
-      }
-    }
-
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
-
-    std::unordered_set<std::string, StringHasher> seen_files;
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
-
-    // all these "fn"'s are either rspecifiers or filenames.
-
-    bool in_is_rspecifier =
-        (ClassifyRspecifier(segmentation_in_fn, NULL, NULL)
-         != kNoRspecifier);
-
-    int64  num_done = 0, num_err = 0;
-    
-    if (!in_is_rspecifier) {
-      Segmentation seg;
-      {
-        bool binary_in;
-        Input ki(segmentation_in_fn, &binary_in);
-        seg.Read(ki.Stream(), binary_in);
-      }
-      Output ko(segmentation_out_fn, binary);
-      seg.Write(ko.Stream(), binary);
-      KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
-      return 0;
-    } else {
-      
-      Output ko(segmentation_out_fn, false);
-      SequentialSegmentationReader reader(segmentation_in_fn);
-      for (; !reader.Done(); reader.Next(), num_done++) {
-        Segmentation seg(reader.Value());
-        std::string key = reader.Key();
-
-        if (opts.filter_rspecifier != "") {
-          if (!filter_reader.HasKey(key)) {
-            KALDI_WARN << "Could not find filter for utterance " << key;
-            num_err++;
-            continue;
-          }
-          const Segmentation &filter_segmentation = filter_reader.Value(key);
-          seg.IntersectSegments(filter_segmentation, opts.filter_label);
-        }
         
-        if (opts.merge_labels_csl != "") {
-          seg.MergeLabels(merge_labels, opts.merge_dst_label);
+        if (!segmentation_reader.HasKey(*it)) {
+          KALDI_WARN << "Could not find utterance " << *it << " in " 
+                     << "segmentation " << segmentation_rspecifier;
+          num_err++;
+          continue;
         }
+        const UtteranceSegment &segment = segments_reader.Value(*it);
+        const Segmentation &utt_seg = segmentation_reader.Value(*it);
 
-        std::string file_id = key; 
-        BaseFloat start_time = 0.0;
-        if (segments_rxfilename != "") {
-          KALDI_ASSERT(utt2file.count(key) > 0 && utt2start_time.count(key) > 0);
-          file_id = utt2file.at(key);
-          start_time = utt2start_time.at(key);
-        }
-
-        if (seen_files.count(file_id) == 0) {
-          ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SILENCE <NA>\n";
-          ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SPEECH <NA>\n";
-          seen_files.insert(file_id);
-        }
-        seg.WriteRttm(ko.Stream(), file_id, frame_shift, start_time);
-
+        num_segments += seg.InsertFromSegmentation(utt_seg, 
+                                            segment.start_time / frame_shift, 
+                                            &frame_counts_per_class);
+        num_done++;
       }
-
-      KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
-                << num_err << " segmentations";
-      return (num_done != 0 ? 0 : 1);
+      segmentation_writer.Write(reco_id, seg);
+      num_segmentations++;
     }
+
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

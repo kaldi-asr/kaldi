@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     int32 window_size = 100, min_remainder = 50;
     bool remove_rejected_frames = false; 
 
-    SegmentationOptions opts;
+    SegmentationPostProcessingOptions opts;
     HistogramOptions hist_opts;
 
     int32 &src_label = opts.merge_dst_label;
@@ -74,17 +74,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
+    SegmentationPostProcessor post_processor(opts);
 
     std::string segmentation_rspecifier = po.GetArg(1),
                 scores_rspecifier = po.GetArg(2),
@@ -109,19 +99,8 @@ int main(int argc, char *argv[]) {
 
       Segmentation out_seg(in_seg); // Make a copy
 
-      if (opts.filter_rspecifier != "") {
-        if (!filter_reader.HasKey(key)) {
-          KALDI_WARN << "Could not find filter for utterance " << key;
-          num_err++;
-          continue;
-        }
-        const Segmentation &filter_segmentation = filter_reader.Value(key);
-        out_seg.IntersectSegments(filter_segmentation, opts.filter_label);
-      }
-      
-      if (opts.merge_labels_csl != "") {
-        out_seg.MergeLabels(merge_labels, opts.merge_dst_label);
-      }
+      post_processor.Filter(key, &out_seg);
+      post_processor.MergeLabels(&out_seg);
 
       out_seg.SplitSegments(window_size, min_remainder);
       

@@ -32,8 +32,22 @@ int main(int argc, char *argv[]) {
         "Usage: segmentation-init-from-ali [options] <ali-rspecifier> <segmentation-out-wspecifier> \n"
         " e.g.: segmentation-init-from-ali ark:1.ali ark:-\n";
     
+    std::string reco2utt_rspecifier;
+    std::string segments_rspecifier;
+    BaseFloat frame_shift = 0.01;
+
     ParseOptions po(usage);
-    
+
+    po.Register("reco2utt-rspecifier", &reco2utt_rspecifier, 
+                "Use reco2utt and segments files to create file-level "
+                "segmentations instead of utterance-level segmentations. "
+                "Works in conjunction with --segments-rspecifier option.");
+    po.Register("segments-rspecifier", &segments_rspecifier,
+                "Use reco2utt and segments files to create file-level "
+                "segmentations instead of utterance-level segmentations. "
+                "Works in conjunction with --segments-rspecifier option.");
+    po.Register("frame-shift", &frame_shift, "Frame shift in seconds");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -44,57 +58,82 @@ int main(int argc, char *argv[]) {
     std::string ali_rspecifier = po.GetArg(1),
         segmentation_wspecifier = po.GetArg(2);
     
-    SequentialInt32VectorReader alignment_reader(ali_rspecifier);
     SegmentationWriter segmentation_writer(segmentation_wspecifier);
     
-    int32 num_done = 0;
-    int64 num_segmentations = 0;
+    int32 num_done = 0, num_segmentations = 0;
+    int64 num_segments = 0;
+    int64 num_err = 0;
 
-    std::vector<int64> frames_count_per_class;
+    std::vector<int64> frame_counts_per_class;
 
-    for (; !alignment_reader.Done(); alignment_reader.Next()) {
-      std::string key = alignment_reader.Key();
-      const std::vector<int32> &alignment = alignment_reader.Value();
+    if (reco2utt_rspecifier.empty() && segments_rspecifier.empty()) {
+      SequentialInt32VectorReader alignment_reader(ali_rspecifier);
       
-      Segmentation seg;
-      int32 state = -1, start_frame = -1; 
-      for (int32 i = 0; i < alignment.size(); i++) {
-        if (alignment[i] != state) {  
-          // Change of state i.e. a different class id. 
-          // So the previous segment has ended.
-          if (state != -1) {
-            // state == -1 in the beginning of the alignment. That is just
-            // initialization step and hence no creation of segment.
-            seg.Emplace(start_frame, i-1, state);
-            num_segmentations++;
-            if (frames_count_per_class.size() <= state) {
-              frames_count_per_class.resize(state + 1, 0);
-            }
-            frames_count_per_class[state] += i - start_frame;
+      for (; !alignment_reader.Done(); alignment_reader.Next()) {
+        std::string key = alignment_reader.Key();
+        const std::vector<int32> &alignment = alignment_reader.Value();
+        
+        Segmentation seg;
+
+        num_segments += seg.InsertFromAlignment(alignment, 0, 
+                                &frame_counts_per_class);
+
+        segmentation_writer.Write(key, seg);
+        num_done++;
+        num_segmentations++;
+      }
+    } else {
+      if (reco2utt_rspecifier.empty() || segments_rspecifier.empty()) {
+        KALDI_ERR << "Require both --reco2utt-rspecifier and "
+                  << "--segments-rspecifier to be non-empty";
+      }
+      SequentialTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
+      RandomAccessUtteranceSegmentReader segments_reader(segments_rspecifier);
+      RandomAccessInt32VectorReader alignment_reader(ali_rspecifier);
+
+      for (; !reco2utt_reader.Done(); reco2utt_reader.Next()) {
+        const std::vector<std::string> &utts = reco2utt_reader.Value();
+        const std::string &reco_id = reco2utt_reader.Key();
+
+        Segmentation seg;
+        for (std::vector<std::string>::const_iterator it = utts.begin();
+              it != utts.end(); ++it) {
+          if (!segments_reader.HasKey(*it)) {
+            KALDI_WARN << "Could not find utterance " << *it << " in " 
+                       << "segments " << segments_rspecifier;
+            num_err++;
+            continue;
           }
-          start_frame = i;
-          state = alignment[i];
-        }
-      }
 
-      KALDI_ASSERT(state > 0 && start_frame < alignment.size());
-      seg.Emplace(start_frame, alignment.size()-1, state);
-      num_segmentations++;
-      if (frames_count_per_class.size() <= state) {
-        frames_count_per_class.resize(state + 1, 0);
+          if (!alignment_reader.HasKey(*it)) {
+            KALDI_WARN << "Could not find utterance " << *it << " in " 
+                       << "alignment " << ali_rspecifier;
+            num_err++;
+            continue;
+          }
+
+          const UtteranceSegment &segment = segments_reader.Value(*it);
+          const std::vector<int32> &alignment = alignment_reader.Value(*it);
+         
+          num_segments += seg.InsertFromAlignment(alignment,
+                                              segment.start_time / frame_shift, 
+                                              &frame_counts_per_class);
+
+          num_done++;
+        }
+        segmentation_writer.Write(reco_id, seg);
+        num_segmentations++;
       }
-      frames_count_per_class[state] += alignment.size() - start_frame;
-      
-      segmentation_writer.Write(key, seg);
-      num_done++;
     }
 
-    KALDI_LOG << "Processed " << num_done << " utterances; "
-              << "wrote " << num_segmentations << " segmentations.";
+    KALDI_LOG << "Processed " << num_done << " utterances; failed with "
+              << num_err << " utterances; "
+              << "wrote " << num_segmentations << " segmentations "
+              << "with a total of " << num_segments << " segments.";
     KALDI_LOG << "Number of frames for the different classes are : ";
-    WriteIntegerVector(KALDI_LOG, false, frames_count_per_class);
+    WriteIntegerVector(KALDI_LOG, false, frame_counts_per_class);
 
-    return (num_done > 0 ? 0 : 1); 
+    return (num_err < num_segmentations ? 0 : 1); 
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

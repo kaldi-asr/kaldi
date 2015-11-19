@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
     
     ParseOptions po(usage);
 
-    SegmentationOptions opts;
+    SegmentationPostProcessingOptions opts;
     int32 &select_label = opts.merge_dst_label;
     int32 selection_padding = 0;
 
@@ -53,16 +53,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::vector<int32> merge_labels;
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
+    SegmentationPostProcessor post_processor(opts);
 
     std::string feats_rspecifier = po.GetArg(1),
                 segmentation_rspecifier = po.GetArg(2),
@@ -86,9 +77,7 @@ int main(int argc, char *argv[]) {
       const Segmentation &in_seg = segmentation_reader.Value(key);
 
       Segmentation seg(in_seg);
-      if (opts.merge_labels_csl != "") {
-        seg.MergeLabels(merge_labels, opts.merge_dst_label);
-      }
+      post_processor.MergeLabels(&seg);
 
       Matrix<BaseFloat> feats_out(feats_in.NumRows(), feats_in.NumCols());
       int32 j = 0;

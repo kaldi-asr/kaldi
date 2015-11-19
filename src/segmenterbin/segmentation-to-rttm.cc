@@ -40,14 +40,10 @@ int main(int argc, char *argv[]) {
     std::string segments_rxfilename;
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
-
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("frame-shift", &frame_shift, "Frame shift in seconds");
     po.Register("segments", &segments_rxfilename, "Segments file");
     po.Register("map-to-speech-and-sil", &map_to_speech_and_sil, "Map all classes to SPEECH and SILENCE");
-
-    opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -110,19 +106,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
 
     std::unordered_set<std::string, StringHasher> seen_files;
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
 
     std::string segmentation_in_fn = po.GetArg(1),
         segmentation_out_fn = po.GetArg(2);
@@ -153,20 +138,6 @@ int main(int argc, char *argv[]) {
       for (; !reader.Done(); reader.Next(), num_done++) {
         Segmentation seg(reader.Value());
         std::string key = reader.Key();
-
-        if (opts.filter_rspecifier != "") {
-          if (!filter_reader.HasKey(key)) {
-            KALDI_WARN << "Could not find filter for utterance " << key;
-            num_err++;
-            continue;
-          }
-          const Segmentation &filter_segmentation = filter_reader.Value(key);
-          seg.IntersectSegments(filter_segmentation, opts.filter_label);
-        }
-        
-        if (opts.merge_labels_csl != "") {
-          seg.MergeLabels(merge_labels, opts.merge_dst_label);
-        }
 
         std::string file_id = key; 
         BaseFloat start_time = 0.0;

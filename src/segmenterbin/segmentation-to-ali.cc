@@ -37,8 +37,6 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     
-    SegmentationOptions opts;
-
     po.Register("lengths", &lengths_rspecifier, "Archive of frame lengths "
                 "of the utterances. Fills up any extra length with "
                 "the specified default-label");
@@ -46,8 +44,6 @@ int main(int argc, char *argv[]) {
                 "with this label");
     po.Register("frame-tolerance", &frame_tolerance, "Tolerate shortage of "
                 "this many frames in the specified lengths file");
-
-    opts.Register(&po);
    
     po.Read(argc, argv);
 
@@ -61,39 +57,13 @@ int main(int argc, char *argv[]) {
 
     RandomAccessInt32Reader lengths_reader(lengths_rspecifier);
 
-    std::vector<int32> merge_labels;
-    RandomAccessSegmentationReader filter_reader(opts.filter_rspecifier);
-    
     SequentialSegmentationReader segmentation_reader(segmentation_rspecifier);
     Int32VectorWriter alignment_writer(alignment_wspecifier);
-
-    if (opts.merge_labels_csl != "") {
-      if (!SplitStringToIntegers(opts.merge_labels_csl, ":", false,
-            &merge_labels)) {
-        KALDI_ERR << "Bad value for --merge-labels option: "
-          << opts.merge_labels_csl;
-      }
-      std::sort(merge_labels.begin(), merge_labels.end());
-    }
 
     int32 num_err = 0, num_done = 0;
     for (; !segmentation_reader.Done(); segmentation_reader.Next()) {
       Segmentation seg(segmentation_reader.Value());
       std::string key = segmentation_reader.Key();
-
-      if (opts.filter_rspecifier != "") {
-        if (!filter_reader.HasKey(key)) {
-          KALDI_WARN << "Could not find filter for utterance " << key;
-          num_err++;
-          continue;
-        }
-        const Segmentation &filter_segmentation = filter_reader.Value(key);
-        seg.IntersectSegments(filter_segmentation, opts.filter_label);
-      }
-
-      if (opts.merge_labels_csl != "") {
-        seg.MergeLabels(merge_labels, opts.merge_dst_label);
-      }
 
       int32 len = -1;
       if (lengths_rspecifier != "") {
