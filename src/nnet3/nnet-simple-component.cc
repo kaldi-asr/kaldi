@@ -21,7 +21,7 @@
 #include <iterator>
 #include <sstream>
 #include <algorithm>
-#include <iomanip>  
+#include <iomanip>
 #include "nnet3/nnet-simple-component.h"
 #include "nnet3/nnet-parse.h"
 
@@ -200,15 +200,15 @@ void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
   BaseFloat target_rms = 1.0;
   bool ok = cfl->GetValue("dim", &dim);
   cfl->GetValue("target-rms", &target_rms);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0) 
-    KALDI_ERR << "Invalid initializer for layer of type "           
+  if (!ok || cfl->HasUnusedValues() || dim <= 0 || target_rms <= 0.0)
+    KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
   Init(dim, target_rms);
 }
 void NormalizeComponent::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; 
-  ostr_end << "</" << Type() << ">"; 
+  ostr_beg << "<" << Type() << ">";
+  ostr_end << "</" << Type() << ">";
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
   std::string tok; // TODO: remove back-compatibility code.
@@ -235,12 +235,12 @@ void NormalizeComponent::Read(std::istream &is, bool binary) {
 void NormalizeComponent::Write(std::ostream &os, bool binary) const {
   std::ostringstream ostr_beg, ostr_end;
   ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">"; 
+  ostr_end << "</" << Type() << ">";
   WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<TargetRms>");
-  WriteBasicType(os, binary, target_rms_); 
+  WriteBasicType(os, binary, target_rms_);
   // Write the values and derivatives in a count-normalized way, for
   // greater readability in text form.
   WriteToken(os, binary, "<ValueAvg>");
@@ -264,26 +264,32 @@ std::string NormalizeComponent::Info() const {
   stream << ", target_rms=" << target_rms_;
   return stream.str();
 }
-// The output y_i = target_rms * x_i / rms(x), so rms(y) = target_rms,
-// where rms(x) =  1/sqrt(D) sqrt (sum_{i=1}^D  x_i^2 ), len(x) = D.
+
+// The output y_i = scale * x_i,
+// and we want to RMS value of the y_i to equal target_rms,
+// so y^t y = D * target_rms^2 (if y is one row of the input).
+// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+// there is also flooring involved, to avoid division-by-zero
+// problems.  It's important for the backprop, that the floor's
+// square root is exactly representable as float.
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
   CuVector<BaseFloat> in_norm(in.NumRows());
-  in_norm.AddDiagMat2(1.0 / in.NumCols(),
+  BaseFloat d_scaled = (in.NumCols() * target_rms_ * target_rms_);
+  in_norm.AddDiagMat2(1.0 / d_scaled,
                       in, kNoTrans, 0.0);
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
   out->CopyFromMat(in);
   out->MulRowsVec(in_norm);
-  out->Scale(target_rms_);
 }
 
 /*
   A note on the derivative of NormalizeComponent...
   let both row_in and row_out be vectors of dimension D.
-  Let p = row_in^T row_in / D, and let
-  f = target_rms / sqrt(max(kNormFloor, p)), and we compute row_out as:
+  Let p = row_in^T row_in / (D * target_rms^2), and let
+  f = 1.0 / sqrt(max(kNormFloor, p)), and we compute row_out as:
   row_out = f row_in.
   Suppose we have a quantity deriv_out which is the derivative
   of the objective function w.r.t. row_out.  We want to compute
@@ -292,12 +298,12 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   deriv_in = f deriv_out + ....
   next we have to take into account the derivative that gets back-propagated
   through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == target_rms / sqrt(kNormFloor) ? 0.0 : -0.5 f^3 target_rms^-2),
-  and dp/d(row_in) = 2/D row_in. [it's vector_valued].
+  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kNormFloor) ? 0.0 : -0.5 f^3),
+  and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
   So this term in dF/d(row_in) equals:
-  dF/df df/dp dp/d(row_in)   =    2/D (f == target_rms / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3 target_rms^-2) (deriv_out^T row_in) row_in
+  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
   So
-  deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3 target_rms^-2 / D) (deriv_out^T row_in) row_in
+  deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
 
 */
 void NormalizeComponent::Backprop(const std::string &debug_info,
@@ -311,12 +317,12 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
   CuVector<BaseFloat> dot_products(out_deriv.NumRows());
   dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
   CuVector<BaseFloat> in_norm(in_value.NumRows());
-  in_norm.AddDiagMat2(1.0 / in_value.NumCols(),
+  // dscaled == D * target_rms^2.
+  BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
+  in_norm.AddDiagMat2(1.0 / d_scaled,
                       in_value, kNoTrans, 0.0);
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
-  if (target_rms_ != 1.0) 
-    in_norm.Scale(target_rms_);
 
   if (in_deriv) {
     if (in_deriv->Data() != out_deriv.Data())
@@ -324,10 +330,10 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
     else
       in_deriv->MulRowsVec(in_norm);
   }
-  in_norm.ReplaceValue(target_rms_ / sqrt(kNormFloor), 0.0);
+  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
   dot_products.MulElements(in_norm);
-  in_deriv->AddDiagVecMat(-1.0 * pow(target_rms_, -2) / in_value.NumCols(),
+  in_deriv->AddDiagVecMat(-1.0 / d_scaled,
                           dot_products, in_value,
                           kNoTrans, 1.0);
 }

@@ -33,6 +33,42 @@ __device__ inline void atomic_add(Real* address, Real value) {
   }
 }
 
+template <typename Real>
+__device__ inline void atomic_add_thresholded(Real* address, Real value) {
+  // This function uses a randomized algorithm to only do atomic adds for values
+  // >=n a threshold, and if it's below the threshold, randomly add the
+  // threshold itself with probability (value / threshold).  This preserves
+  // expectations.  Note: we assume that value >= 0.
+
+  // you can chose any value for the threshold, but powers of 2 are nice
+  // because they will exactly preserve the precision of the value.
+  const Real threshold = 1.0 / (1 << 16);
+  if (value >= threshold) {
+    atomic_add(address, value);
+  } else {
+    // The intention here is to do:
+    // with probability(value / threshold), do:
+    //   atomic_add(address, threshold);
+    // We use the least significant bits of the value as a source of
+    // randomness.  It would probably be more efficient to extract these
+    // random bits directly from the float, but I don't want to have to
+    // deal with endian-ness issues.
+    //
+    // below, x is a fixed-point representation of (value / threshold); it would
+    // be 16777216 == 2^24 if value == threshold and 0 if value == 0.  We choose
+    // the power 24 because that's the number of binary digits in the mantissa
+    // in IEEE single precision floating point.
+    // Note: we parenthesize the expression like this so that the
+    // denominator can be precomputed as a constant expression.
+    int32_cuda x = value / (threshold / (1 << 24));
+    // in the line below, the expression (x >> 12) is a representation of (value /
+    // threshold) between 0 and 4096, with 4096 representing (value / threshold ==
+    // 1), while (x & 4095) is treated as a pseudorandom number between 0 and 4095.
+    if ((x >> 12) > (x & 4095))
+      atomic_add(address, threshold);
+  }
+
+}
 
 // one iteration of the forward computation in the 'tombstone' CTC HMM computation.
 // The grid y determines which HMM-state we handle.  [put this in the grid because
@@ -167,9 +203,11 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                     probs[pdf_id1 * prob_stride + s];
     tot_variable_factor += variable_factor0 + variable_factor1;
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
-    atomic_add(log_prob_deriv + (pdf_id0 * prob_stride + s), occupation_prob0);
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * prob_stride + s),
+                           occupation_prob0);
     BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
-    atomic_add(log_prob_deriv + (pdf_id1 * prob_stride + s), occupation_prob1);
+    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * prob_stride + s),
+                           occupation_prob1);
   }
   if (trans_iter != trans_end) {
     // mop up the odd transition.
@@ -181,7 +219,8 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                       probs[pdf_id0 * prob_stride + s];
     tot_variable_factor += variable_factor0;
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
-    atomic_add(log_prob_deriv + (pdf_id0 * prob_stride + s), occupation_prob0);
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * prob_stride + s),
+                           occupation_prob0);
   }
   this_beta[h * num_sequences + s] = tot_variable_factor / inv_arbitrary_scale;
 }

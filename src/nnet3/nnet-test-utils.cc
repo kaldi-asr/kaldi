@@ -66,7 +66,7 @@ void GenerateConfigSequenceSimpleContext(
       spliced_dim = input_dim * splice_context.size(),
       output_dim = (opts.output_dim > 0 ?
                     opts.output_dim :
-                    100 + Rand() % 200);  
+                    100 + Rand() % 200);
 
   os << "component name=affine1 type=AffineComponent input-dim="
      << spliced_dim << " output-dim=" << output_dim << std::endl;
@@ -820,7 +820,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 1: {
-      BaseFloat target_rms = ((Rand() % 200) / 100.0);
+      BaseFloat target_rms = (RandInt(1, 200) / 100.0);
       *component_type = "NormalizeComponent";
       os << "dim=" << RandInt(1, 50)
          << " target-rms=" << target_rms;

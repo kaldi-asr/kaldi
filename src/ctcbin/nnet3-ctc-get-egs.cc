@@ -166,7 +166,7 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
               << ", now --num-frames=" << new_num_frames_overlap;
     *num_frames_overlap = new_num_frames_overlap;
   }
-  if (num_frames_overlap < 0 || num_frames_overlap >= *num_frames) {
+  if (*num_frames_overlap < 0 || *num_frames_overlap >= *num_frames) {
     KALDI_ERR << "--num-frames-overlap=" << (*num_frames_overlap) << " < "
               << "--num-frames=" << (*num_frames);
   }
