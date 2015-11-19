@@ -315,11 +315,12 @@ class AffineComponent: public UpdatableComponent {
   friend class NaturalGradientAffineComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
-  virtual void Update(
+  virtual BaseFloat Update(
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
+    return 0.0;   // child classes may return local learning rate
   }
   // UpdateSimple is used when *this is a gradient.  Child classes may override
   // this if needed, but typically won't need to.
@@ -421,6 +422,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   NaturalGradientAffineComponent();
   virtual void ZeroStats();
 
+ protected:
+  friend class NaturalGradientPositiveAffineComponent;
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientAffineComponent);
 
@@ -463,10 +467,86 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // from the class variables.
   void SetNaturalGradientConfigs();
 
-  virtual void Update(
+  // returns the local learning rate used
+  virtual BaseFloat Update(
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
+};
+
+class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineComponent {
+ public:
+  enum PositivityMethod { kFloor, kAbsoluteValue };
+  virtual std::string Type() const { return "NaturalGradientPositiveAffineComponent"; }
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_init,
+            BaseFloat bias_mean, BaseFloat bias_stddev,
+            int32 rank_in, int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha,
+            BaseFloat max_change_per_sample, 
+            bool ensure_positive_linear_component,
+            BaseFloat sparsity_constant);
+
+  void Init(BaseFloat learning_rate, int32 rank_in,
+            int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_sample,
+            bool ensure_positive_linear_component,
+            BaseFloat sparsity_constant,
+            std::string matrix_filename);
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  NaturalGradientPositiveAffineComponent();
+
+  void Backprop(const std::string &debug_info,
+                const ComponentPrecomputedIndexes *indexes,
+                const CuMatrixBase<BaseFloat> &in_value,
+                const CuMatrixBase<BaseFloat> &, // out_value
+                const CuMatrixBase<BaseFloat> &out_deriv,
+                Component *to_update_in,
+                CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // Make the linear_params_ to be positive using the method defined by
+  // PositivityMethod.
+  // The normal way this is done is to apply flooring at 0.0 (kFloor).
+  // But during initialization, the parameters are made positive by taking
+  // the absolute value (kAbsoluteValue).
+  void SetPositive(PositivityMethod method = kFloor);
+  void SetSparsityConstant(BaseFloat sparsity_constant) {
+    sparsity_constant_ = sparsity_constant; }
+  bool PositiveLinearComponentEnsured() const {
+    return ensure_positive_linear_component_; }
+
+  int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds|
+        kSparsityPrior|kPositiveLinearParameters;
+  }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientPositiveAffineComponent);
+   
+  bool ensure_positive_linear_component_;
+  BaseFloat sparsity_constant_;
+
+  virtual BaseFloat Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv,
+      const CuMatrixBase<BaseFloat> &linear_params);
+  
+  // // Add L1 regularization penalty term. This is assumed to be called by the
+  // // Update method after the normal update without considering the L1 penalty is
+  // // done.
+  // void AddPenalty(BaseFloat sparsity_constant, BaseFloat local_lrate);
+
 };
 
 
@@ -1334,7 +1414,6 @@ class MaxpoolingComponent: public Component {
   int32 pool_size_;
   int32 pool_stride_;
 };
-
 
 } // namespace nnet3
 } // namespace kaldi

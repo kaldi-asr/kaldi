@@ -82,6 +82,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
     AddNnet(*delta_nnet_, scale, nnet_);
     ScaleNnet(config_.momentum, delta_nnet_);
   }
+  EffectPositivity(nnet_);
 }
 
 void NnetTrainer::ProcessOutputs(const NnetExample &eg,

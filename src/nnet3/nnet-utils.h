@@ -138,6 +138,7 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
 
+void EffectPositivity(Nnet *nnet);
 
 
 } // namespace nnet3

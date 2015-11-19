@@ -1274,7 +1274,7 @@ Component* NaturalGradientAffineComponent::Copy() const {
   return ans;
 }
 
-void NaturalGradientAffineComponent::Update(
+BaseFloat NaturalGradientAffineComponent::Update(
     const std::string &debug_info,
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
@@ -1325,6 +1325,7 @@ void NaturalGradientAffineComponent::Update(
                          precon_ones, 1.0);
   linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
                            in_value_precon_part, kNoTrans, 1.0);
+  return local_lrate;
 }
 
 void NaturalGradientAffineComponent::ZeroStats()  {
@@ -1350,6 +1351,273 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   active_scaling_count_ += alpha * other->active_scaling_count_;
   linear_params_.AddMat(alpha, other->linear_params_);
   bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+NaturalGradientPositiveAffineComponent::NaturalGradientPositiveAffineComponent(): 
+  NaturalGradientAffineComponent(), ensure_positive_linear_component_(false),
+  sparsity_constant_(0.0) { }
+
+void NaturalGradientPositiveAffineComponent::Read(std::istream &is, bool binary) {
+  // might not see the "<NaturalGradientAffineComponent>" part because
+  // of how ReadNew() works.
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<NaturalGradientPositiveAffineComponent>") {
+    ExpectToken(is, binary, "<EnsurePositiveLinearComponent>");
+    ReadBasicType(is, binary, &ensure_positive_linear_component_);
+    ReadToken(is, binary, &token);
+  } else if (token == "<NaturalGradientAffineComponent>") {
+    ReadToken(is, binary, &token);
+  } else if (token == "<EnsurePositiveLinearComponent>") {
+    ReadBasicType(is, binary, &ensure_positive_linear_component_);
+    ReadToken(is, binary, &token);
+  } // else KALDI_ASSERT(token == "<LearningRate>");
+  if (token == "<SparsityConstant>") {
+    ReadBasicType(is, binary, &sparsity_constant_);
+    ReadToken(is, binary, &token);
+  }
+  if (token != "<LearningRate>") {
+    KALDI_ERR << "Expecting token <LearningRate>; got " << token;
+  }
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<RankIn>");
+  ReadBasicType(is, binary, &rank_in_);
+  ExpectToken(is, binary, "<RankOut>");
+  ReadBasicType(is, binary, &rank_out_);
+  ExpectToken(is, binary, "<UpdatePeriod>");
+  ReadBasicType(is, binary, &update_period_);
+  ExpectToken(is, binary, "<NumSamplesHistory>");
+  ReadBasicType(is, binary, &num_samples_history_);
+  ExpectToken(is, binary, "<Alpha>");
+  ReadBasicType(is, binary, &alpha_);
+  ExpectToken(is, binary, "<MaxChangePerSample>");
+  ReadBasicType(is, binary, &max_change_per_sample_);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ReadToken(is, binary, &token);
+  if (token == "<UpdateCount>") {
+    ReadBasicType(is, binary, &update_count_);
+    ExpectToken(is, binary, "<ActiveScalingCount>");
+    ReadBasicType(is, binary, &active_scaling_count_);
+    ExpectToken(is, binary, "<MaxChangeScaleStats>");
+    ReadBasicType(is, binary, &max_change_scale_stats_);
+    ExpectToken(is, binary, "<NaturalGradientPositiveAffineComponent>");
+  } else {
+    if (token != "<NaturalGradientAffineComponent>")
+      KALDI_ERR << "Expected <NaturalGradientPositiveAffineComponent>, got " << token;
+  }
+  SetNaturalGradientConfigs();
+}
+
+void NaturalGradientPositiveAffineComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  std::string matrix_filename;
+  BaseFloat learning_rate = learning_rate_;
+  BaseFloat num_samples_history = 2000.0, alpha = 4.0,
+      max_change_per_sample = 0.0;
+  int32 input_dim = -1, output_dim = -1, rank_in = 20, rank_out = 80,
+      update_period = 4;
+  bool ensure_positive_linear_component = false;
+  BaseFloat sparsity_constant = 0.0;
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  cfl->GetValue("num-samples-history", &num_samples_history);
+  cfl->GetValue("alpha", &alpha);
+  cfl->GetValue("max-change-per-sample", &max_change_per_sample);
+  cfl->GetValue("rank-in", &rank_in);
+  cfl->GetValue("rank-out", &rank_out);
+  cfl->GetValue("update-period", &update_period);
+  cfl->GetValue("ensure-positive-linear-component", &ensure_positive_linear_component);
+  cfl->GetValue("sparsity-constant", &sparsity_constant);
+
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    Init(learning_rate, rank_in, rank_out, update_period,
+         num_samples_history, alpha, max_change_per_sample,
+         ensure_positive_linear_component, sparsity_constant,
+         matrix_filename);
+    if (cfl->GetValue("input-dim", &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+                   "input-dim mismatch vs. matrix.");
+    if (cfl->GetValue("output-dim", &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+                   "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
+    BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+        bias_stddev = 1.0, bias_mean = 0.0, bias_init = 0.0;
+    cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
+    cfl->GetValue("bias-mean", &bias_mean);
+    cfl->GetValue("bias-init", &bias_init);
+    Init(learning_rate, input_dim, output_dim, param_stddev,
+         bias_init, bias_mean, bias_stddev, rank_in, rank_out, update_period,
+         num_samples_history, alpha, max_change_per_sample, 
+         ensure_positive_linear_component, sparsity_constant);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+void NaturalGradientPositiveAffineComponent::Init(
+    BaseFloat learning_rate, int32 rank_in, int32 rank_out,
+    int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
+    BaseFloat max_change_per_sample, bool ensure_positive_linear_component,
+    BaseFloat sparsity_constant, std::string matrix_filename) {
+  NaturalGradientAffineComponent::Init(learning_rate, rank_in, rank_out, update_period, 
+        num_samples_history, alpha, max_change_per_sample, matrix_filename);
+  ensure_positive_linear_component_ = ensure_positive_linear_component;
+  sparsity_constant_ = sparsity_constant;
+  SetPositive(NaturalGradientPositiveAffineComponent::kFloor);
+}       
+
+void NaturalGradientPositiveAffineComponent::Init(
+    BaseFloat learning_rate,
+    int32 input_dim, int32 output_dim,
+    BaseFloat param_stddev, BaseFloat bias_init,
+    BaseFloat bias_mean, BaseFloat bias_stddev,
+    int32 rank_in, int32 rank_out, int32 update_period,
+    BaseFloat num_samples_history, BaseFloat alpha,
+    BaseFloat max_change_per_sample, 
+    bool ensure_positive_linear_component, BaseFloat sparsity_constant = 0.0) {
+  NaturalGradientAffineComponent::Init(learning_rate, input_dim, output_dim, param_stddev, bias_init,
+       bias_mean, bias_stddev, rank_in, rank_out, update_period,
+       num_samples_history, alpha, max_change_per_sample);
+  ensure_positive_linear_component_ = ensure_positive_linear_component;
+  sparsity_constant_ = sparsity_constant;
+  SetPositive(NaturalGradientPositiveAffineComponent::kAbsoluteValue);
+}       
+
+void NaturalGradientPositiveAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NaturalGradientPositiveAffineComponent>");
+  WriteToken(os, binary, "<EnsurePositiveLinearComponent>");
+  WriteBasicType(os, binary, ensure_positive_linear_component_);
+  WriteToken(os, binary, "<SparsityConstant>");
+  WriteBasicType(os, binary, sparsity_constant_);
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<RankIn>");
+  WriteBasicType(os, binary, rank_in_);
+  WriteToken(os, binary, "<RankOut>");
+  WriteBasicType(os, binary, rank_out_);
+  WriteToken(os, binary, "<UpdatePeriod>");
+  WriteBasicType(os, binary, update_period_);
+  WriteToken(os, binary, "<NumSamplesHistory>");
+  WriteBasicType(os, binary, num_samples_history_);
+  WriteToken(os, binary, "<Alpha>");
+  WriteBasicType(os, binary, alpha_);
+  WriteToken(os, binary, "<MaxChangePerSample>");
+  WriteBasicType(os, binary, max_change_per_sample_);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<UpdateCount>");
+  WriteBasicType(os, binary, update_count_);
+  WriteToken(os, binary, "<ActiveScalingCount>");
+  WriteBasicType(os, binary, active_scaling_count_);
+  WriteToken(os, binary, "<MaxChangeScaleStats>");
+  WriteBasicType(os, binary, max_change_scale_stats_);
+  WriteToken(os, binary, "<NaturalGradientPositiveAffineComponent>");
+}
+
+std::string NaturalGradientPositiveAffineComponent::Info() const {
+  std::stringstream stream;
+  stream << NaturalGradientAffineComponent::Info() 
+         << ", ensure-positive-linear-component=" 
+         << ensure_positive_linear_component_
+         << ", sparsity=constant=" << sparsity_constant_;
+  return stream.str();
+}
+
+Component* NaturalGradientPositiveAffineComponent::Copy() const {
+  NaturalGradientPositiveAffineComponent *ans = new NaturalGradientPositiveAffineComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->rank_in_ = rank_in_;
+  ans->rank_out_ = rank_out_;
+  ans->update_period_ = update_period_;
+  ans->num_samples_history_ = num_samples_history_;
+  ans->alpha_ = alpha_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->preconditioner_in_ = preconditioner_in_;
+  ans->preconditioner_out_ = preconditioner_out_;
+  ans->max_change_per_sample_ = max_change_per_sample_;
+  ans->is_gradient_ = is_gradient_;
+  ans->update_count_ = update_count_;
+  ans->active_scaling_count_ = active_scaling_count_;
+  ans->max_change_scale_stats_ = max_change_scale_stats_;
+  ans->ensure_positive_linear_component_ = ensure_positive_linear_component_;
+  ans->sparsity_constant_ = sparsity_constant_;
+  ans->SetNaturalGradientConfigs();
+  return ans;
+}
+
+void NaturalGradientPositiveAffineComponent::Backprop(
+                               const std::string &debug_info,
+                               const ComponentPrecomputedIndexes *indexes,
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_deriv,
+                               Component *to_update_in,
+                               CuMatrixBase<BaseFloat> *in_deriv) const {
+  NaturalGradientPositiveAffineComponent *to_update = 
+    dynamic_cast<NaturalGradientPositiveAffineComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv)
+    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans,
+                        1.0);
+
+  if (to_update != NULL) {
+    to_update->Update(debug_info, in_value, out_deriv, linear_params_);
+  }
+}
+
+BaseFloat NaturalGradientPositiveAffineComponent::Update(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    const CuMatrixBase<BaseFloat> &linear_params) {
+  BaseFloat local_lrate = NaturalGradientAffineComponent::Update(debug_info, in_value, out_deriv);
+  CuMatrix<BaseFloat> sign_linear_params(linear_params);
+  sign_linear_params.ApplySignum();
+  if (sparsity_constant_ > 0.0) 
+    linear_params_.AddMat(-sparsity_constant_ / in_value.NumRows() * local_lrate, sign_linear_params);
+  return local_lrate;
+}
+
+void NaturalGradientPositiveAffineComponent::Scale(BaseFloat scale) {
+  if (ensure_positive_linear_component_ && scale < 0)
+    KALDI_ERR << "Scaling a positive linear component by a negative value!";
+  NaturalGradientAffineComponent::Scale(scale);
+}
+
+void NaturalGradientPositiveAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const NaturalGradientPositiveAffineComponent *other =
+      dynamic_cast<const NaturalGradientPositiveAffineComponent*>(&other_in);
+  if (ensure_positive_linear_component_ && !other->PositiveLinearComponentEnsured()) {
+    KALDI_ERR << "Trying to add a positive linear component with a non-positive one"; 
+  }
+  NaturalGradientAffineComponent::Add(alpha, other_in);
+}
+
+void NaturalGradientPositiveAffineComponent::SetPositive(NaturalGradientPositiveAffineComponent::PositivityMethod method) {
+  if (ensure_positive_linear_component_) {
+    if (method == kFloor) linear_params_.ApplyFloor(0.0);
+    else if (method == kAbsoluteValue) linear_params_.ApplyPowAbs(1.0);
+  }
 }
 
 std::string FixedAffineComponent::Info() const {
