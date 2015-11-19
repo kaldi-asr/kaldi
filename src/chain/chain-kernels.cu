@@ -70,14 +70,37 @@ static void _cuda_chain_hmm_forward(const Int32Pair *backward_transitions,
   const DenominatorGraphTransition
       *trans_iter = transitions + backward_transitions[h].first,
       *trans_end = transitions + backward_transitions[h].second;
-  for (; trans_iter != trans_end; ++trans_iter) {
-    BaseFloat transition_prob = trans_iter->transition_prob;
-    int32_cuda pdf_id = trans_iter->pdf_id,
-        prev_hmm_state = trans_iter->hmm_state;
-    BaseFloat pseudo_loglike = probs[pdf_id * prob_stride + s],
-        this_prev_alpha = prev_alpha[prev_hmm_state * num_sequences + s];
-    this_tot_alpha += this_prev_alpha * transition_prob * pseudo_loglike;
+  // Note: regarding this loop unrolling, I tried the automatic unrolling using
+  // #pragma unroll 2 (after modifying the loop to have an integer index), but I
+  // did not see any performance improvement, it was slightly slower.  So the
+  // compiler must be doing something different than what I'm doing here.
+  const int loop_unroll = 2;  // don't change this without changing the code
+                              // below.
+  for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        prev_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat transition_prob1 = trans_iter[1].transition_prob;
+    int32_cuda pdf_id1 = trans_iter[1].pdf_id,
+        prev_hmm_state1 = trans_iter[1].hmm_state;
+    BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
+             this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s],
+              pseudo_loglike1 = probs[pdf_id1 * prob_stride + s],
+             this_prev_alpha1 = prev_alpha[prev_hmm_state1 * num_sequences + s];
+
+    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0 +
+                       this_prev_alpha1 * transition_prob1 * pseudo_loglike1;
   }
+  if (trans_iter != trans_end) {
+    // mop up the odd transition.
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+       prev_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat pseudo_loglike0 = probs[pdf_id0 * prob_stride + s],
+             this_prev_alpha0 = prev_alpha[prev_hmm_state0 * num_sequences + s];
+    this_tot_alpha += this_prev_alpha0 * transition_prob0 * pseudo_loglike0;
+  }
+
   // Let arbitrary_scale be the inverse of the alpha value for the
   // hmm-state indexed special_hmm_state_ on the previous frame (for this
   // sequence); we multiply this into all the transition-probabilities
@@ -127,16 +150,38 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
   const DenominatorGraphTransition
       *trans_iter = transitions + forward_transitions[h].first,
       *trans_end = transitions + forward_transitions[h].second;
-  for (; trans_iter != trans_end; ++trans_iter) {
-    BaseFloat transition_prob = trans_iter->transition_prob;
-    int32_cuda pdf_id = trans_iter->pdf_id,
-        next_hmm_state = trans_iter->hmm_state;
-    BaseFloat variable_factor = transition_prob *
-        next_beta[next_hmm_state * num_sequences + s] *
-        probs[pdf_id * prob_stride + s];
-    tot_variable_factor += variable_factor;
-    BaseFloat occupation_prob = variable_factor * occupation_factor;
-    atomic_add(log_prob_deriv + (pdf_id * prob_stride + s), occupation_prob);
+  const int loop_unroll = 2;  // don't change this without changing the code
+                              // below.
+  for (; trans_iter + loop_unroll <= trans_end; trans_iter += loop_unroll) {
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        next_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat transition_prob1 = trans_iter[1].transition_prob;
+    int32_cuda pdf_id1 = trans_iter[1].pdf_id,
+        next_hmm_state1 = trans_iter[1].hmm_state;
+    BaseFloat variable_factor0 = transition_prob0 *
+        next_beta[next_hmm_state0 * num_sequences + s] *
+                    probs[pdf_id0 * prob_stride + s],
+         variable_factor1 = transition_prob1 *
+        next_beta[next_hmm_state1 * num_sequences + s] *
+                    probs[pdf_id1 * prob_stride + s];
+    tot_variable_factor += variable_factor0 + variable_factor1;
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    atomic_add(log_prob_deriv + (pdf_id0 * prob_stride + s), occupation_prob0);
+    BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
+    atomic_add(log_prob_deriv + (pdf_id1 * prob_stride + s), occupation_prob1);
+  }
+  if (trans_iter != trans_end) {
+    // mop up the odd transition.
+    BaseFloat transition_prob0 = trans_iter[0].transition_prob;
+    int32_cuda pdf_id0 = trans_iter[0].pdf_id,
+        next_hmm_state0 = trans_iter[0].hmm_state;
+    BaseFloat variable_factor0 = transition_prob0 *
+        next_beta[next_hmm_state0 * num_sequences + s] *
+                      probs[pdf_id0 * prob_stride + s];
+    tot_variable_factor += variable_factor0;
+    BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
+    atomic_add(log_prob_deriv + (pdf_id0 * prob_stride + s), occupation_prob0);
   }
   this_beta[h * num_sequences + s] = tot_variable_factor / inv_arbitrary_scale;
 }
