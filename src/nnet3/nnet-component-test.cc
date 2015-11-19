@@ -93,7 +93,7 @@ void TestNnetComponentUpdatableFlag(Component *c) {
 
 void TestNnetComponentScaleAddDotProduct(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
-  if(uc==NULL)
+  if(uc==NULL || !(uc->Properties() & kUpdatableComponent))
     return;
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
   uc2->InitNonUpdatable(0.01); // make sure is_updatable_ is true

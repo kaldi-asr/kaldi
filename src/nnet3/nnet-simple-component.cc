@@ -878,11 +878,13 @@ std::string SparseLinearComponent::Info() const {
       * static_cast<BaseFloat>(linear_params_.NumCols());
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
   linear_params_.CopyToMat(&tmp);
-  BaseFloat linear_stddev = std::sqrt(TraceMatMat(tmp, tmp, kTrans) /
-              linear_params_size);
+  BaseFloat sample_var = TraceMatMat(tmp, tmp, kTrans) /
+    ((linear_params_size <= 1) ? 1 : ( linear_params_size - 1));
+  // Assuming nonzero elements are iid from standard normal distribution,
+  // zero-prob can be estimated as 1 - sample_var
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
-         << ", linear-params-stddev=" << linear_stddev
+         << ", sparseness=" << 1 - sample_var
          << ", learning-rate=" << LearningRate()
          << ", is-updatable=" << (is_updatable_ ? "true" : "false")
          << ", is-gradient=" << (is_gradient_ ? "true" : "false");

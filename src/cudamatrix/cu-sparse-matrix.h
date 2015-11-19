@@ -70,9 +70,12 @@ class CuRowSparseMatrix {
   /// Copy from GPU-based (possibly-CPU-based) matrix.
   CuRowSparseMatrix<Real> &operator = (const CuRowSparseMatrix<Real> &smat);
 
+  /// Copies data to a CPU-based full matrix. For testing purposes.
   template <typename OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other) const;
 
+  /// Copies data from a CPU-based full matrix. Resizes accordingly.
+  /// Mainly for testing purposes.
   template <typename OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> &other);
 
@@ -101,7 +104,7 @@ class CuRowSparseMatrix {
 
   void Read(std::istream &is, bool binary);
 
-  CuRowSparseMatrix(): cpu_rows_(0), num_rows_(0), num_cols_(0) { }
+  CuRowSparseMatrix(): num_rows_(0), num_cols_(0) { }
   
   explicit CuRowSparseMatrix(const CuRowSparseMatrix<Real> &other);
   // Constructor from CPU-based sparse matrix.
