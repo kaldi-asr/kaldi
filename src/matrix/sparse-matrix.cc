@@ -63,7 +63,10 @@ void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
   for (; iter != end; ++iter)
     other_data[iter->first] = iter->second;
 }
-
+template void SparseVector<float>::CopyToVec(VectorBase<float> *vec) const;
+template void SparseVector<float>::CopyToVec(VectorBase<double> *vec) const;
+template void SparseVector<double>::CopyToVec(VectorBase<float> *vec) const;
+template void SparseVector<double>::CopyToVec(VectorBase<double> *vec) const;
 
 template <typename Real>
 template <typename OtherReal>

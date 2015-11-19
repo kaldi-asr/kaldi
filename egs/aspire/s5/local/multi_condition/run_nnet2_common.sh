@@ -12,7 +12,7 @@ ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
                                       # only dbs used for ASpIRE submission system have been used here
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
-download_rirs=false # download the RIR databases from the urls or assume they are present in the RIR_home directory
+download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
 
 set -e
 . cmd.sh
@@ -39,11 +39,10 @@ if [ $stage -le 1 ]; then
     else
       num_reps=1
     fi
-    mkdir -p data/${data_dir}_rvb/wavs
     reverb_data_dirs=
     for i in `seq 1 $num_reps`; do
       cur_dest_dir=" data/temp_${data_dir}_${i}" 
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i --log-dir exp/make_reverb/log \
+      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
         --snrs "$snrs" --log-dir exp/make_corrupted_wav \
         data/${data_dir}  data/impulses_noises $cur_dest_dir
       reverb_data_dirs+=" $cur_dest_dir" 

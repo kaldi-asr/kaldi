@@ -54,7 +54,6 @@ struct RandFstOptions {
 /// Returns a random FST.  Useful for randomized algorithm testing.
 /// Only works if weight can be constructed from float.
 template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions() ) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -107,7 +106,6 @@ template<class Arc> VectorFst<Arc>* RandFst(RandFstOptions opts = RandFstOptions
 /// Returns a random FST.  Useful for randomized algorithm testing.
 /// Only works if weight can be constructed from a pair of floats
 template<class Arc> VectorFst<Arc>* RandPairFst(RandFstOptions opts = RandFstOptions() ) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
