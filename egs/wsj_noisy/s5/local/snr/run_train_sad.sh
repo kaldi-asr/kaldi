@@ -17,7 +17,8 @@ num_epochs=8
 splice_indexes=`seq -s',' -50 50`
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-relu_dim=50
+relu_dim=
+sigmoid_dim=50
 train_data_dir=data/train_si284_corrupted_hires
 snr_scp=data/train_si284_corrupted_hires/snr_targets.scp
 vad_scp=data/train_si284_corrupted_hires/vad.scp
@@ -31,6 +32,8 @@ splice_opts="--left-context=50 --right-context=50"
 max_param_change=1
 quantization_bins="-7.5:-2.5:2.5:7.5:12.5:17.5"
 feat_type=
+sparsity_constants=
+positivity_constraints=
 
 . cmd.sh
 . ./path.sh
@@ -171,6 +174,8 @@ if [ $stage -le 3 ]; then
         --egs-dir "$egs_dir" "${feats_opts[@]}" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
         --max-param-change $max_param_change \
+        --positivity-constraints "$positivity_constraints" \
+        --sparsity-constants "$sparsity_constants" \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --use-presoftmax-prior-scale false \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
@@ -188,12 +193,14 @@ if [ $stage -le 3 ]; then
         --splice-indexes "$splice_indexes" \
         --egs-dir "$egs_dir" ${feats_opts[@]} \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --max-change-per-sample $max_change_per_sample \
+        --max-param-change $max_param_change \
+        --positivity-constraints "$positivity_constraints" \
+        --sparsity-constants "$sparsity_constants" \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup false --use-presoftmax-prior-scale true \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
-        --num-targets 2 --cleanup false --max-param-change $max_param_change \
-        --relu-dim $relu_dim \
+        --num-targets 2 --max-param-change $max_param_change \
+        --cleanup false${relu_dim:+ --relu-dim $relu_dim}${sigmoid_dim:+ --sigmoid-dim $sigmoid_dim} \
         $datadir "$vad_scp" $dir || exit 1;
       ;;
     *)

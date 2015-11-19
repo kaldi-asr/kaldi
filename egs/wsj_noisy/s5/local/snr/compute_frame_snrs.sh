@@ -13,9 +13,9 @@ set -o pipefail
 
 cmd=run.pl
 nj=4
-use_gpu=no
+use_gpu=yes
 iter=final
-prediction_type="FbankMask"
+prediction_type="Snr"
 copy_opts= # Due to code change, the log(Irm) predicted might have previously been log(sqrt(Irm)). Hence use "matrix-scale --scale=2.0 ark:- ark:- \|". Also for log(Snr), it might have been log(sqrt(Snr)). 
 stage=0
 
@@ -78,7 +78,7 @@ if [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="Irm" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
         copy-feats --compress=true ark:- \
         ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;
@@ -88,21 +88,21 @@ if [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="FbankMask" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
         copy-feats --compress=true ark:- \
         ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;
     "FrameSnr")
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
-        extract-column 0 $dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp || exit 1
+        extract-column 0 $dir/nnet_pred.JOB.ark ark:- \| \
+        vector-to-feat ark:- ark:- \| copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp
       ;;
     "Snr")
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
         compute-frame-snrs --prediction-type="Snr" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp ark:- \| \
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
         copy-feats --compress=true ark:- \
         ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
       ;;

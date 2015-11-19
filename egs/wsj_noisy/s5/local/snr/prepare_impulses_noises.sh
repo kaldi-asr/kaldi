@@ -14,13 +14,16 @@
 # QMUL impulse response dataset : http://c4dm.eecs.qmul.ac.uk/rdr/handle/123456789/6
 # Impulse responses from Varechoic chamber at Bell Labs : http://www1.icsi.berkeley.edu/Speech/papers/gelbart-ms/pointers/
 # Concert Hall impulse responses, Aalto University : http://legacy.spa.aalto.fi/projects/poririrs/
- 
+set -e 
+set -o pipefail
+set -u
+
 stage=0 
 download_rirs=true # download the RIRs
 sampling_rate=16000 # sampling rate to be used for the RIRs
 log_dir=exp/make_reverb/log # directory to store the log files
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
-db_string="'aalto' 'air' 'rwcp' 'rvb2014' 'c4dm' 'varechoic' 'mardy' 'openair'" # RIR dbs to be used in the experiment
+db_string="'aalto' 'air' 'rwcp' 'rvb2014' 'c4dm' 'varechoic' 'mardy' 'openair' 'musan'" # RIR dbs to be used in the experiment
 
 . cmd.sh
 . path.sh
@@ -36,7 +39,6 @@ fi
 output_dir=$1
 mkdir -p $output_dir/info ${output_dir}_non_normalized/info
 mkdir -p $log_dir
-rm -f $log_dir/type*.list
 
 if [ -z "$db_string" ]; then
   echo "$0 : Please specify the db_string.";
@@ -75,7 +77,7 @@ if [ $stage -le 1 ]; then
     local/multi_condition/rirs/prep_\$\{db\[JOB\]\}.sh \
     --file-splitter "$log_dir/file_splitter.py 10 " \
     --download $download_rirs --sampling-rate $sampling_rate \
-    $RIR_home ${output_dir}_non_normalized $log_dir ||exit 1;
+    $RIR_home ${output_dir}_non_normalized/\$\{db\[JOB\]\} $log_dir/\${db\[JOB\]\} || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
@@ -83,7 +85,7 @@ if [ $stage -le 2 ]; then
   echo "Note: Due to wav-format mismatch between sox and scipy, there might be warnings generated during file normalization."
   echo "      'WavFileWarning: Unknown wave file format' warnings are benign."
   # normalizing the RIR files 
-  for i in `ls $log_dir/*type*.rir.list`; do
+  for i in `find ${output_dir}_non_normalized -name "*type*.rir.list"`; do
     echo "Processing files in $i"
     python local/multi_condition/normalize_wavs.py \
       --is-room-impulse-response true $i $i.normval || exit 1;
@@ -91,22 +93,8 @@ if [ $stage -le 2 ]; then
     echo "" > $i.normalized
     while read file_name; do
       if [ ! -z $file_name ]; then
-        output_file_name=${output_dir}/`basename $file_name`
-        sox --volume $norm_coefficient -t wav $file_name -t wav $output_file_name 2>/dev/null
-        echo $output_file_name >> $i.normalized
-      fi
-    done < $i
-  done
-
-  # normalizing the noise files  
-  for i in `ls $log_dir/*type*.noise.list`; do
-    echo "Processing files in $i"
-    python local/multi_condition/normalize_wavs.py --is-room-impulse-response false $i $i.normval || exit 1;
-    norm_coefficient=`cat $i.normval`
-    echo "" > $i.normalized
-    while read file_name; do
-      if [ ! -z $file_name ]; then
-        output_file_name=${output_dir}/`basename $file_name`
+        output_file_name=`echo $file_name | sed s:${output_dir}_non_normalized:${output_dir}:g`
+        mkdir -p `dirname $output_file_name`
         sox --volume $norm_coefficient -t wav $file_name -t wav $output_file_name 2>/dev/null
         echo $output_file_name >> $i.normalized
       fi
@@ -114,24 +102,97 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-# copying the noise-rir pairing files
-cp ${output_dir}_non_normalized/info/* $output_dir/info
+if [ $stage -le 3 ]; then
+  # normalizing the noise files  
+  for i in `find ${output_dir}_non_normalized -name "*type*.noise.list" -o -name "*.background.noise.list" -o -name "*.foreground.noise.list"`; do
+    echo "Processing files in $i"
+    python local/multi_condition/normalize_wavs.py --is-room-impulse-response false $i $i.normval || exit 1;
+    norm_coefficient=`cat $i.normval`
+    echo "" > $i.normalized
+    while read file_name; do
+      if [ ! -z $file_name ]; then
+        output_file_name=`echo $file_name | sed s:${output_dir}_non_normalized:${output_dir}:g`
+        mkdir -p `dirname $output_file_name`
+        sox --volume $norm_coefficient -t wav $file_name -t wav $output_file_name 2>/dev/null
+        echo $output_file_name >> $i.normalized
+      fi
+    done < $i
+  done
+fi
 
-# generating the rir-list with probabilities alloted for each rir
-db_string_python=$(echo $db_string|sed -e "s/'\s\+'/','/g")
+if [ $stage -le 4 ]; then
+  # copying the noise-rir pairing files
+  db_string_bash=($(echo $db_string|sed -e "s/'//g"))
+  for i in `seq 0 $[${#db_string_bash[@]}-1]`; do
+    x=${db_string_bash[i]}
+    mkdir -p $output_dir/$x/info
+    cp ${output_dir}_non_normalized/$x/info/* $output_dir/$x/info
+  done
+
+  # generating the rir-list 
+  db_string_python=$(echo $db_string|sed -e "s/'\s\+'/','/g")
 python -c "
-import glob, string, re
+import glob, string, re, sys
 dbs=[$db_string_python]
 rirs = []
 for db in dbs:
-  files = glob.glob('$log_dir/{0}*type*.rir.list.normalized'.format(string.upper(db)))
+  files = glob.glob('${output_dir}/{0}/info/{1}*type*.rir.list.normalized'.format(db,string.upper(db)))
   for file in files:
     for line in open(file).readlines():
       if len(line.strip()) > 0:
         rirs.append(line.strip())
+if len(rirs) == 0:
+  sys.stderr.write('Did not read any rirs')
+  sys.exit(1)
 final_rir_list_file = open('$output_dir/info/impulse_files', 'w')
 final_rir_list_file.write('\n'.join(rirs))
 final_rir_list_file.close()
 "
 
-wc -l  $output_dir/info/impulse_files
+  # generating the backgroud noise-list 
+  db_string_python=$(echo $db_string|sed -e "s/'\s\+'/','/g")
+  python -c "
+import glob, string, re, sys
+dbs=[$db_string_python]
+noises = []
+for db in dbs:
+  files = glob.glob('$output_dir/{0}/info/{1}*type*.noise.list.normalized'.format(db,string.upper(db)))
+  files.extend(glob.glob('$output_dir/{0}/info/{1}*.background.noise.list.normalized'.format(db,string.upper(db))))
+  for file in files:
+    sys.stderr.write(file)
+    for line in open(file).readlines():
+      if len(line.strip()) > 0:
+        noises.append(line.strip())
+if len(noises) == 0:
+  sys.stderr.write('Did not read any noises')
+  sys.exit(1)
+final_noise_list_file = open('$output_dir/info/background_noise_files', 'w')
+final_noise_list_file.write('\n'.join(noises))
+final_noise_list_file.close()
+"
+
+  # generating the foreground noise-list 
+  db_string_python=$(echo $db_string|sed -e "s/'\s\+'/','/g")
+  python -c "
+import glob, string, re, sys
+dbs=[$db_string_python]
+noises = []
+for db in dbs:
+  files = glob.glob('$output_dir/{0}/info/{1}*.foreground.noise.list.normalized'.format(db,string.upper(db)))
+  for file in files:
+    for line in open(file).readlines():
+      if len(line.strip()) > 0:
+        noises.append(line.strip())
+if len(noises) == 0:
+  sys.stderr.write('Did not read any noises')
+  sys.exit(1)
+final_noise_list_file = open('$output_dir/info/foreground_noise_files', 'w')
+final_noise_list_file.write('\n'.join(noises))
+final_noise_list_file.close()
+"
+
+  wc -l  $output_dir/info/impulse_files
+  wc -l  $output_dir/info/background_noise_files
+  wc -l  $output_dir/info/foreground_noise_files
+
+fi
