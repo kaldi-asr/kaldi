@@ -291,12 +291,13 @@ void WaveData::Read(std::istream &is) {
     // either ox00000000 or oxFFFFFFFF
     // we need to read in the stream differently in this case
     chunk_data_vec.clear();
-    char this_data_byte;
     num_bytes_read = 0;
-    // read it byte by byte since we don't know the exact size
-    while(is.get(this_data_byte)) {
-      chunk_data_vec.push_back(this_data_byte);
-      num_bytes_read++;
+    while (is.good()) {
+      char buffer[256];
+      is.read(buffer, sizeof buffer);
+      std::copy(buffer, buffer + is.gcount(),
+                std::back_inserter(chunk_data_vec));
+      num_bytes_read += is.gcount();
     }
   }
   if (num_bytes_read == 0)
