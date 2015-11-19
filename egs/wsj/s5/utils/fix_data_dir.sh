@@ -40,7 +40,7 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp reco2file_and_channel spk2gender utt2lang $utt_extra_files $spk_extra_files; do
+for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp reco2file_and_channel spk2gender utt2lang utt2uniq $utt_extra_files $spk_extra_files; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -126,6 +126,9 @@ function filter_utts {
   ! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
     echo "utt2spk is not in sorted order (fix this yourself)" && exit 1;
 
+  ! cat $data/utt2uniq | sort | cmp - $data/utt2uniq && \
+    echo "utt2uniq is not in sorted order (fix this yourself)" && exit 1;
+
   ! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
     echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
     echo "(fix this by making speaker-ids prefixes of utt-ids)" && exit 1;
@@ -156,7 +159,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk feats.scp vad.scp text segments utt2lang $maybe_wav $utt_extra_files; do
+  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang $maybe_wav $utt_extra_files; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then
@@ -172,8 +175,6 @@ filter_speakers
 filter_utts
 filter_speakers
 filter_recordings
-
-
 
 utils/utt2spk_to_spk2utt.pl $data/utt2spk > $data/spk2utt
 

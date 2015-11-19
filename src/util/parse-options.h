@@ -246,7 +246,8 @@ template<class C> void ReadConfigFromFile(const std::string config_filename,
 
 /// This variant of the template ReadConfigFromFile is for if you need to read
 /// two config classes from the same file.
-template<class C1, class C2> void ReadConfigsFromFile(const std::string config_filename,
+template<class C1, class C2> void ReadConfigsFromFile(const std::string
+                                                      config_filename,
                                                       C1 *c1, C2 *c2) {
   std::ostringstream usage_str;
   usage_str << "Parsing config from "

@@ -793,7 +793,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 20);
+  int32 n = RandInt(0, 21);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -982,6 +982,15 @@ static void GenerateRandomComponentConfig(std::string *component_type,
         buffer << column_map[i] << ",";
       buffer << column_map.back();
       os << "new-column-order=" << buffer.str();
+      break;
+    }
+    case 21: {
+      *component_type = "PerElementOffsetComponent";
+      std::string param_config = RandInt(0, 1)?
+                                 " param-mean=0.0 param-stddev=0.0":
+                                 " param-mean=0.0 param-stddev=1.0";
+      os << "dim=" << RandInt(1, 100)
+         << " learning-rate=" << learning_rate << param_config;
       break;
     }
 

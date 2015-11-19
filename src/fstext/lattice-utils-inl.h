@@ -36,7 +36,6 @@ void ConvertLattice(
     bool invert) {
   typedef ArcTpl<Weight> Arc;
   typedef typename Arc::StateId StateId;
-  typedef typename Arc::Label Label;
   typedef CompactLatticeWeightTpl<Weight, Int> CompactWeight;
   typedef ArcTpl<CompactWeight> CompactArc;
 
@@ -161,7 +160,6 @@ void ConvertLattice(
   typedef ArcTpl<WeightIn> ArcIn;
   typedef ArcTpl<WeightOut> ArcOut;
   typedef typename ArcIn::StateId StateId;
-  typedef typename ArcOut::Label Label;
   ofst->DeleteStates();
   // The states will be numbered exactly the same as the original FST.
   // Add the states to the new FST.
@@ -205,7 +203,6 @@ void ScaleLattice(
   typedef ArcTpl<Weight> Arc;
   typedef MutableFst<Arc> Fst;
   typedef typename Arc::StateId StateId;
-  typedef typename Arc::Label Label;
   StateId num_states = fst->NumStates();
   for (StateId s = 0; s < num_states; s++) {
     for (MutableArcIterator<Fst> aiter(fst, s);
@@ -228,7 +225,6 @@ void RemoveAlignmentsFromCompactLattice(
   typedef ArcTpl<W> Arc;
   typedef MutableFst<Arc> Fst;
   typedef typename Arc::StateId StateId;
-  typedef typename Arc::Label Label;
   StateId num_states = fst->NumStates();
   for (StateId s = 0; s < num_states; s++) {
     for (MutableArcIterator<Fst> aiter(fst, s);
@@ -251,7 +247,6 @@ bool CompactLatticeHasAlignment(
   typedef ArcTpl<W> Arc;
   typedef ExpandedFst<Arc> Fst;
   typedef typename Arc::StateId StateId;
-  typedef typename Arc::Label Label;
   StateId num_states = fst.NumStates();
   for (StateId s = 0; s < num_states; s++) {
     for (ArcIterator<Fst> aiter(fst, s);

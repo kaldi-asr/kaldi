@@ -365,7 +365,6 @@ inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
 
 template <class FloatType>
 inline ostream &operator <<(ostream &strm, const LatticeWeightTpl<FloatType> &w) {
-  typedef FloatType T;
   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value1());
   CHECK(FLAGS_fst_weight_separator.size() == 1);
   strm << FLAGS_fst_weight_separator[0]; // comma by default;
@@ -611,7 +610,6 @@ template<class WeightType, class IntType>
 inline CompactLatticeWeightTpl<WeightType, IntType> Times(
     const CompactLatticeWeightTpl<WeightType, IntType> &w1,
     const CompactLatticeWeightTpl<WeightType, IntType> &w2) {
-  typedef WeightType T;
   WeightType w = Times(w1.Weight(), w2.Weight());
   if (w == WeightType::Zero()) {
     return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
