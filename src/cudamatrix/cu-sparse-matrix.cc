@@ -137,7 +137,7 @@ template <typename Real>
 MatrixIndexT CuRowSparseMatrix<Real>::NumElements() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    return num_rows_ * elements_per_row_;
+    return num_rows_ * stride_;
   } else
 #endif
   {

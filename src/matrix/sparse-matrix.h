@@ -134,6 +134,8 @@ class SparseMatrix {
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
 
+  /// Copies data from a full matrix. This is mainly used for testing 
+  /// purposes and unlike other Copy funcions resizes automatically.
   template <class OtherReal>
   void CopyFromMat(const MatrixBase<OtherReal> &other);
 
