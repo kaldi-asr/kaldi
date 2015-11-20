@@ -34,7 +34,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),
+    log_priors_(am_nnet_.Priors()),
     feats_(feats),
     ivector_(ivector), online_ivector_feats_(online_ivectors),
     online_ivector_period_(online_ivector_period),
@@ -43,7 +43,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
-  priors_.ApplyLog();
+  log_priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
 }
 
@@ -57,14 +57,14 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),
+    log_priors_(am_nnet_.Priors()),
     feats_(feats),
     ivector_(NULL),
     online_ivector_feats_(&ivectors),
     online_ivector_period_(online_ivector_period),
     compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
     current_log_post_offset_(0) {
-  priors_.ApplyLog();
+  log_priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
 }
 
@@ -77,14 +77,14 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     opts_(opts),
     trans_model_(trans_model),
     am_nnet_(am_nnet),
-    priors_(am_nnet_.Priors()),
+    log_priors_(am_nnet_.Priors()),
     feats_(feats),
     ivector_(&ivector),
     online_ivector_feats_(NULL),
     online_ivector_period_(0),
     compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
     current_log_post_offset_(0) {
-  priors_.ApplyLog();
+  log_priors_.ApplyLog();
   PossiblyWarnForFramesPerChunk();
 }
 
@@ -243,7 +243,8 @@ void DecodableAmNnetSimple::DoNnetComputation(
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);
   // subtract log-prior (divide by prior)
-  cu_output.AddVecToRows(-1.0, priors_);
+  if (log_priors_.Dim() != 0)
+    cu_output.AddVecToRows(-1.0, log_priors_);
   // apply the acoustic scale
   cu_output.Scale(opts_.acoustic_scale);
   current_log_post_.Resize(0, 0);

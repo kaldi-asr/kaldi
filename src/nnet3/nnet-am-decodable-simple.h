@@ -33,7 +33,7 @@ namespace kaldi {
 namespace nnet3 {
 
 
-struct DecodableAmNnetSimpleOptions {
+struct NnetSimpleComputationOptions {
   int32 extra_left_context;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
@@ -41,7 +41,7 @@ struct DecodableAmNnetSimpleOptions {
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
 
-  DecodableAmNnetSimpleOptions():
+  NnetComputationOptions():
       extra_left_context(0),
       frames_per_chunk(50),
       acoustic_scale(0.1),
@@ -52,11 +52,11 @@ struct DecodableAmNnetSimpleOptions {
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context (may be useful in "
                    "recurrent setups");
+    opts->Register("acoustic-scale", &acoustic_scale,
+                   "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.");
-    opts->Register("acoustic-scale", &acoustic_scale,
-                   "Scaling factor for acoustic log-likelihoods");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
 
@@ -70,24 +70,37 @@ struct DecodableAmNnetSimpleOptions {
   }
 };
 
-/* DecodableAmNnetSimple is a decodable object that decodes with a neural net
-   acoustic model of type AmNnetSimple.  It can accept just input features, or
+/*
+  This base-class for DecodableAmNnetSimple handles just the nnet computation;
+  it can also be used if you just want the nnet output directly.
+
+   It can accept just input features, or
    input features plus iVectors.
 */
-class DecodableAmNnetSimple: public DecodableInterface {
+class NnetDecodableBase {
  public:
-  /// Constructor that just takes the features as input, but can also optionally
-  /// take batch-mode or online iVectors.  Note: it stores references to all
-  /// arguments to the constructor, so don't delete them till this goes out of
-  /// scope.
+  /**
+     This constructor takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     Note: it stores references to all arguments to the constructor, so don't
+     delete them till this goes out of scope.
+     @param [in] opts   The options class.  Warning: it includes an acoustic
+                        weight, whose default is 0.1; you may sometimes want to
+                        change this to 1.0.
+     @param [in] nnet   The neural net that we're going to do the computation with
+     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
+                        the log of these priors from the nnet output.
 
-  DecodableAmNnetSimple(const DecodableAmNnetSimpleOptions &opts,
-                        const TransitionModel &trans_model,
-                        const AmNnetSimple &am_nnet,
-                        const MatrixBase<BaseFloat> &feats,
-                        const VectorBase<BaseFloat> *ivector = NULL,
-                        const MatrixBase<BaseFloat> *online_ivectors = NULL,
-                        int32 online_ivector_period = 1);
+
+  */
+  NnetDecodableBase(const NnetSimpleComputationOptions &opts,
+                    const Nnet &nnet,
+                    const VectorBase<BaseFloat> &priors,
+                    const MatrixBase<BaseFloat> &feats,
+                    const VectorBase<BaseFloat> *ivector = NULL,
+                    const MatrixBase<BaseFloat> *online_ivectors = NULL,
+                    int32 online_ivector_period = 1);
 
   /// Constructor that also accepts iVectors estimated online;
   /// online_ivector_period is the time spacing between rows of the matrix.
@@ -112,15 +125,14 @@ class DecodableAmNnetSimple: public DecodableInterface {
 
   virtual int32 NumFramesReady() const { return feats_.NumRows(); }
 
-  // Note: these indices are one-based!  This is for compatibility with OpenFst.
+  // Note: these indices are transition-ids; they are one-based!  This is for
+  // compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
   }
-
-
 
  private:
   // This call is made to ensure that we have the log-probs for this frame
@@ -150,7 +162,8 @@ class DecodableAmNnetSimple: public DecodableInterface {
   const DecodableAmNnetSimpleOptions &opts_;
   const TransitionModel &trans_model_;
   const AmNnetSimple &am_nnet_;
-  CuVector<BaseFloat> priors_;
+  // the log priors (or the empty vector if the priors are not set in the model)
+  CuVector<BaseFloat> log_priors_;
   const MatrixBase<BaseFloat> &feats_;
 
   // ivector_ is the iVector if we're using iVectors that are estimated in batch
@@ -165,7 +178,6 @@ class DecodableAmNnetSimple: public DecodableInterface {
 
   CachingOptimizingCompiler compiler_;
 
-
   // The current log-posteriors that we got from the last time we
   // ran the computation.
   Matrix<BaseFloat> current_log_post_;
@@ -174,6 +186,29 @@ class DecodableAmNnetSimple: public DecodableInterface {
 
 
 };
+
+class DecodableAmNnetSimple: public NnetDecodableBase {
+
+  /// This constructor takes features as input, and you can either supply
+  /// a single iVector input, estimated in batch-mode ('ivector'), or
+  /// 'online' iVectors ('online_ivectors' and 'online_ivector_period', or
+  /// none at all.   Note: it stores references to all
+  /// arguments to the constructor, so don't delete them till this goes out of
+  /// scope.
+  DecodableAmNnetSimple(const DecodableAmNnetSimpleOptions &opts,
+                        const TransitionModel &trans_model,
+                        const AmNnetSimple &am_nnet,
+                        const MatrixBase<BaseFloat> &feats,
+                        const VectorBase<BaseFloat> *ivector = NULL,
+                        const MatrixBase<BaseFloat> *online_ivectors = NULL,
+                        int32 online_ivector_period = 1);
+
+
+ private:
+  const TransitionModel &trans_model_;
+
+};
+
 
 } // namespace nnet3
 } // namespace kaldi
