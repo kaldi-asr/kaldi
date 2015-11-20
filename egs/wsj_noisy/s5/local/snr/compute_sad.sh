@@ -4,6 +4,8 @@
 # Apache 2.0
 
 set -o pipefail
+set -e
+set -u
 
 . cmd.sh
 . path.sh 
@@ -17,6 +19,7 @@ model_dir=exp/nnet3_sad_snr/tdnn_train_si284_corrupted_splice21
 snr_pred_dir=exp/frame_snrs_lwr_snr_reverb_dev_aspire_whole/
 dir=exp/nnet3_sad_snr/sad_train_si284_corrupted
 quantization_bins=-2.5:2.5:7.5:12.5:17.5
+use_gpu=yes
 
 . utils/parse_options.sh 
 
@@ -35,9 +38,16 @@ if [ ! -s $snr_pred_dir/nnet_pred_snrs.scp ]; then
   exit 1
 fi
 
+mkdir -p $dir
+
 feat_type=`cat $model_dir/feat_type` || exit 1
 
 echo $nj > $dir/num_jobs
+
+gpu_opts=
+if [ $use_gpu == "yes" ]; then
+  gpu_opts="--gpu 1"
+fi
 
 if [ $stage -le 1 ]; then
   case $method in 
@@ -53,8 +63,8 @@ if [ $stage -le 1 ]; then
       model=$model_dir/$iter.raw
 
       if [ $feat_type != "sparse" ]; then
-        $decode_cmd --mem 8G JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
-          nnet3-compute --apply-exp=false --use-gpu=no "$model" \
+        $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
+          nnet3-compute --apply-exp=false --use-gpu=$use_gpu "$model" \
           "scp:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp |" \
           ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
       else 
@@ -69,8 +79,8 @@ if [ $stage -le 1 ]; then
           exit 1
         fi
 
-        $decode_cmd --mem 8G JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
-          nnet3-compute-from-sparse-input --apply-exp=false --use-gpu=no --sparse-input-dim=$sparse_input_dim "$model" \
+        $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
+          nnet3-compute-from-sparse-input --apply-exp=false --use-gpu=$use_gpu --sparse-input-dim=$sparse_input_dim "$model" \
           "ark:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp | quantize-feats scp:- $quantization_bins ark:- |" \
           ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
       fi

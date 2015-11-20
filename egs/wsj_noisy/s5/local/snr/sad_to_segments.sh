@@ -87,7 +87,7 @@ EOF
       --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
         segmentation-to-segments ark:- \
         ark,t:$dir/utt2spk.JOB \
-        $dir/segments.JOB || exit 1
+        ark,t:$dir/segments.JOB || exit 1
     fi
     ;;
   "Viterbi")
@@ -155,7 +155,7 @@ EOF
         segmentation-post-process --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
         segmentation-to-segments ark:- \
         ark,t:$dir/utt2spk.JOB \
-        $dir/segments.JOB || exit 1
+        ark,t:$dir/segments.JOB || exit 1
     fi
     ;;
   *)
