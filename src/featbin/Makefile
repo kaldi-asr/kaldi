@@ -17,7 +17,8 @@ BINFILES = compute-mfcc-feats compute-plp-feats compute-fbank-feats \
     wav-reverberate append-vector-to-feats detect-sinusoids \
     extract-column compute-zero-crossings \
 		extract-vector-segments	combine-vector-segments \
-		compute-snr-targets compute-frame-snrs vector-to-feat
+		compute-snr-targets compute-frame-snrs vector-to-feat \
+		corrupt-wav
 
 OBJFILES = 
 

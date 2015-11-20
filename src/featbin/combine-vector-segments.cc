@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     std::string vecs_wspecifier = po.GetArg(5); // output archive
     
     SequentialTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
-    RandomAccessSegmentReader segment_reader(segments_rspecifier);
+    RandomAccessUtteranceSegmentReader segment_reader(segments_rspecifier);
     RandomAccessBaseFloatVectorReader vector_reader(vecs_rspecifier);
     RandomAccessInt32Reader length_reader(lengths_rspecifier);
     BaseFloatVectorWriter vector_writer(vecs_wspecifier);
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
           continue;
         }
         
-        const Segment &segment = segment_reader.Value(*it);
+        const UtteranceSegment &segment = segment_reader.Value(*it);
         const Vector<BaseFloat> &vector = vector_reader.Value(*it);
         seg.Emplace(std::round(segment.start_time / frame_shift), 
                     std::round(segment.end_time / frame_shift), 1,
