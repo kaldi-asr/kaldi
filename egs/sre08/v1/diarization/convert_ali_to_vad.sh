@@ -7,6 +7,7 @@ nj=4
 stage=-1
 get_whole_vad=false
 phone_map=
+model=
 
 . parse_options.sh
 
@@ -25,7 +26,9 @@ else
   dir=$ali_dir/vad
 fi
 
-for f in $lang/phones/silence.int $lang/phones/nonsilence.int $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+[ -z "$model" ] && model=$ali_dir/final.mdl
+
+for f in $ali_dir/ali.1.gz $model; do
   [ ! -f $f ] && echo "$0: $f does not exist" && exit 1
 done 
 
@@ -50,7 +53,7 @@ fi
 
 if [ $stage -le 0 ]; then
   $cmd JOB=1:$num_jobs $dir/log/convert_ali_to_vad.JOB.log \
-    ali-to-phones --per-frame=true $ali_dir/final.mdl "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
+    ali-to-phones --per-frame=true $model "ark:gunzip -c $ali_dir/ali.JOB.gz |" \
     ark,t:- \| utils/apply_map.pl -f 2- $dir/phone_map \| \
     copy-int-vector ark,t:- "ark:| gzip -c > $tmpdir/vad.JOB.ark.gz" || exit 1
 fi

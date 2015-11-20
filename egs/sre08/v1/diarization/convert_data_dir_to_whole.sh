@@ -50,7 +50,7 @@ my %utt2spk = ();
 while (<TI>) {
   chomp;
   my @col = split;
-  @col >= 2 or die "bad line $_\n";
+  @col >= 1 or die "bad line $_\n";
 
   my $utt = shift @col;
   $text{$utt} = join(" ", @col);
