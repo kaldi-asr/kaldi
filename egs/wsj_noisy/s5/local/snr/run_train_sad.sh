@@ -4,6 +4,8 @@
 # call multi-splice.
 
 set -o pipefail
+set -e 
+set -u
 
 . cmd.sh
 
@@ -34,6 +36,8 @@ quantization_bins="-7.5:-2.5:2.5:7.5:12.5:17.5"
 feat_type=
 sparsity_constants=
 positivity_constraints=
+segments_file=
+seg2utt_file=
 
 . cmd.sh
 . ./path.sh
@@ -74,44 +78,84 @@ fi
   
 mkdir -p $dir
 
-if [ -z "$datadir" ]; then
+if [ ! -z "$seg2utt_file" ] || [ -z "$datadir" ]; then
   datadir=$dir/snr_data
   if [ $stage -le 0 ]; then
+    rm -rf $datadir
     utils/copy_data_dir.sh --extra-files utt2uniq \
       $train_data_dir $datadir
-    cp $snr_scp $datadir/feats.scp
+    if [ ! -f $train_data_dir/segments ]; then
+      if [ ! -z "$seg2utt_file" ]; then
+        [ -z "$segments_file" ] && echo "$0: segments file is needed if --seg2utt-file is specified" && exit 1
+
+        rm -f $datadir/{cmvn.scp,feats.scp,utt2spk,utt2uniq,spk2utt,text}
+        utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $segments_file > $datadir/segments.tmp
+        cat $datadir/segments.tmp | utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/segments
+        utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $seg2utt_file | \
+          utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/utt2spk
+        utils/utt2spk_to_spk2utt.pl $datadir/utt2spk > $datadir/spk2utt
+        
+        if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/snr_feats/storage ]; then
+          utils/create_split_dir.pl \
+            /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/snr_feats/storage $dir/snr_feats/storage
+        fi
+
+        $train_cmd JOB=1:$nj $dir/log/extract_feature_segments.JOB.log \
+          extract-feature-segments scp:$snr_scp \
+          "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
+          ark:- \| copy-feats --compress=true ark:- \
+          ark,scp:$dir/snr_feats/raw_snr.JOB.ark,$dir/snr_feats/raw_snr.JOB.scp
+
+        for n in `seq $nj`; do 
+          cat $dir/snr_feats/raw_snr.$n.scp
+        done | sort -k1,1 > $datadir/feats.scp 
+
+        utils/fix_data_dir.sh $datadir
+      else
+        cp $snr_scp $datadir/feats.scp
+      fi
+    else 
+      cp $snr_scp $datadir/feats.scp
+    fi
     steps/compute_cmvn_stats.sh --fake $datadir $datadir/log snr
   fi
 
   if [ $method != "Gmm" ]; then 
     if [ $stage -le 1 ]; then
-      mkdir -p $datadir/vad
-      vad_scp_splits=()
-      for n in `seq $nj`; do
-        vad_scp_splits+=($datadir/vad/vad.tmp.$n.scp)
-      done
-      utils/split_scp.pl $vad_scp ${vad_scp_splits[@]} || exit 1
+      mkdir -p $dir/vad/split$nj
+      if [ ! -z "$seg2utt_file" ]; then
+        utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $segments_file > $datadir/segments.tmp
+        $train_cmd JOB=1:$nj $dir/log/extract_vad_segments.JOB.log \
+          extract-int-vector-segments scp:$vad_scp \
+          "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
+          ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
+      else
+        vad_scp_splits=()
+        for n in `seq $nj`; do
+          vad_scp_splits+=($dir/vad/vad.tmp.$n.scp)
+        done
+        utils/split_scp.pl $vad_scp ${vad_scp_splits[@]} || exit 1
 
-      cat <<EOF > $datadir/vad/vad_map
+        cat <<EOF > $dir/vad/vad_map
 0 0
 1 1
 2 0
 3 0
 EOF
+        $train_cmd JOB=1:$nj $dir/vad/log/convert_vad.JOB.log \
+          copy-int-vector scp:$dir/vad/vad.tmp.JOB.scp ark,t:- \| \
+          utils/apply_map.pl -f 2- $dir/vad/vad_map \| \
+          copy-int-vector ark,t:- \
+          ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
+      fi
 
-      $train_cmd JOB=1:$nj $datadir/vad/log/convert_vad.JOB.log \
-        copy-int-vector scp:$datadir/vad/vad.tmp.JOB.scp ark,t:- \| \
-        utils/apply_map.pl -f 2- $datadir/vad/vad_map \| \
-        copy-int-vector ark,t:- \
-        ark,scp:$datadir/vad/vad.JOB.ark,$datadir/vad/vad.JOB.scp || exit 1
-
-      for n in `seq $nj`; do 
-        cat $datadir/vad/vad.$n.scp
-      done > $datadir/vad/vad.scp
+      for n in `seq $nj`; do
+        cat $dir/vad/split$nj/vad.$n.scp
+      done | sort -k1,1 > $dir/vad/vad.scp
     fi
-    vad_scp=$datadir/vad/vad.scp
+    vad_scp=$dir/vad/vad.scp
 
-    if [ -z "$vad_scp" ] || [ ! -s $vad_scp ]; then
+    if [ ! -s $vad_scp ]; then
       echo "$0: $vad_scp file is empty!" && exit 1
     fi
   fi 

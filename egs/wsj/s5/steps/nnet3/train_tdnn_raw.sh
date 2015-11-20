@@ -21,6 +21,7 @@ final_effective_lrate=0.001
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+sigmoid_dim=  # you can use this to make it use Sigmoid's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -81,6 +82,8 @@ skip_final_softmax=true
 max_change_per_sample=0.075
 max_param_change=1
 no_hidden_layers=false
+sparsity_constants=
+positivity_constraints=
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -183,8 +186,17 @@ fi
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim=$relu_dim"
+  if [ ! -z "$relu_dim" ] || [ ! -z "$sigmoid_dim" ]; then
+    if [ ! -z "$relu_dim" ]; then
+      dim_opts="--relu-dim=$relu_dim"
+    fi
+    if [ ! -z "$sigmoid_dim" ]; then
+      dim_opts="--sigmoid-dim=$sigmoid_dim"
+    fi
+    if [ ! -z "$relu_dim" ] && [ ! -z "$sigmoid_dim" ]; then
+      echo "$0: --relu-dim and --sigmoid-dim are both specified"
+      exit 1
+    fi
   else
     dim_opts="--pnorm-input-dim=$pnorm_input_dim --pnorm-output-dim=$pnorm_output_dim"
   fi
@@ -197,6 +209,14 @@ if [ $stage -le -5 ]; then
   raw_nnet_config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
   raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
+  
+  if [ ! -z "$sparsity_constants" ]; then
+    raw_nnet_config_opts+=(--sparsity-constant="$sparsity_constants")
+  fi
+
+  if [ ! -z "$positivity_constraints" ]; then
+    raw_nnet_config_opts+=(--positivity-constraints="$positivity_constraints")
+  fi
 
   input_dim=$feat_dim
   if [ "$feat_type" == "sparse" ]; then

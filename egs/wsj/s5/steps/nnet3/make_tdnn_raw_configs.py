@@ -21,6 +21,8 @@ parser.add_argument("--pnorm-output-dim", type=int,
                     help="output dimension of p-norm nonlinearities")
 parser.add_argument("--relu-dim", type=int,
                     help="dimension of ReLU nonlinearities")
+parser.add_argument("--sigmoid-dim", type=int,
+                    help="dimension of Sigmoid nonlinearities")
 parser.add_argument("--use-presoftmax-prior-scale", type=str,
                     help="if true, a presoftmax-prior-scale is added",
                     choices=['true', 'false'], default = "true")
@@ -42,7 +44,10 @@ parser.add_argument("config_dir",
 parser.add_argument("--no-hidden-layers", type=str,
                     help="Train the nnet with only the softmax layer",
                     choices=['true', 'false'], default = "false")
-
+parser.add_argument("--sparsity-constants", type=str,
+                    help="List of sparsity regularization constants for the affine components")
+parser.add_argument("--positivity-constraints", type=str,
+                    help="List of true/false to add positivity constraints for the affine components")
 print(' '.join(sys.argv))
 
 args = parser.parse_args()
@@ -58,14 +63,20 @@ if args.feat_dim is None or not (args.feat_dim > 0):
 if args.num_targets is None or not (args.feat_dim > 0):
     sys.exit("--feat-dim argument is required");
 if not args.relu_dim is None:
-    if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
+    if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None or not args.sigmoid_dim is None:
         sys.exit("--relu-dim argument not compatible with "
-                 "--pnorm-input-dim or --pnorm-output-dim options");
+                 "--pnorm-input-dim, --pnorm-output-dim and --sigmoid-dim options");
     nonlin_input_dim = args.relu_dim
     nonlin_output_dim = args.relu_dim
+elif not args.sigmoid_dim is None:
+    if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
+        sys.exit("--sigmoid-dim argument not compatible with "
+                 "--pnorm-input-dim and --pnorm-output-dim options");
+    nonlin_input_dim = args.sigmoid_dim
+    nonlin_output_dim = args.sigmoid_dim
 else:
     if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
-        sys.exit("--relu-dim not set, so expected --pnorm-input-dim and "
+        sys.exit("--relu-dim and --sigmoid-dim not set, so expected --pnorm-input-dim and "
                  "--pnorm-output-dim to be provided.");
     nonlin_input_dim = args.pnorm_input_dim
     nonlin_output_dim = args.pnorm_output_dim
@@ -89,7 +100,6 @@ if args.no_hidden_layers == "true":
     no_hidden_layers = True
 else:
     no_hidden_layers = False
-
 
 ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
 splice_array = []
@@ -131,6 +141,22 @@ right_context = max(0, right_context)
 num_hidden_layers = len(splice_array) if not no_hidden_layers else 0
 input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
 
+if args.sparsity_constants is not None:
+    sparsity_constants = [float(x) for x in args.sparsity_constants.strip().split()]
+
+    if len(sparsity_constants) != (num_hidden_layers + 1):
+        sys.exit("invalid --sparsity-constants option %s; sparsity-constants must have %d values".format(args.sparsity_constants, num_hidden_layers + 1))
+
+if args.positivity_constraints is not None:
+    splits = args.positivity_constraints.strip().split()
+    if len(splits) != (num_hidden_layers + 1):
+        sys.exit("invalid --positivity-constraints option $s; positivity-constraints must have %d values".format(args.positivity_constraints, num_hidden_layers + 1))
+    positivity_constraints = []
+    for x in splits:
+        assert (x in ["true", "false"])
+        positivity_constraints.append(True if (x == "true") else False)
+    assert(len(positivity_constraints) == len(splits))
+
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
 print('right_context=' + str(right_context), file=f)
@@ -162,21 +188,49 @@ for l in range(1, num_hidden_layers + 1):
     cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
-    print('component name=affine{0} type=NaturalGradientAffineComponent '
-          'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}'.
-        format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample), file=f)
+    sparsity_opts = ''
+    positivity_opts = ''
+
+    if args.positivity_constraints is not None and positivity_constraints[l-1]:
+        positivity_opts = ' ensure-positive-linear-component=true'
+    if args.sparsity_constants is not None and sparsity_constants[l-1] > 0.0:
+        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[l-1])
+
+    if positivity_opts != '' or sparsity_opts != '':
+        print('component name=affine{0} type=NaturalGradientPositiveAffineComponent '
+              'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}{4}{5}'.
+              format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
+    else:
+        print('component name=affine{0} type=NaturalGradientAffineComponent '
+              'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}'.
+              format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample), file=f)
     if args.relu_dim is not None:
         print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
               format(l, args.relu_dim), file=f)
+    elif args.sigmoid_dim is not None:
+        print('component name=nonlin{0} type=SigmoidComponent dim={1}'.
+              format(l, args.sigmoid_dim), file=f)
     else:
         print('# In nnet3 framework, p in P-norm is always 2.', file=f)
         print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
               format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
     print('component name=renorm{0} type=NormalizeComponent dim={1}'.format(
          l, nonlin_output_dim), file=f)
-    print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
-          nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
+
+    sparsity_opts = ''
+    positivity_opts = ''
+    if args.positivity_constraints is not None and positivity_constraints[-1]:
+        positivity_opts = ' ensure-positive-linear-component=true'
+    if args.sparsity_constants is not None and sparsity_constants[-1] > 0.0:
+        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[-1])
+    if positivity_opts != '' or sparsity_opts != '':
+        print('component name=final-affine type=NaturalGradientPositiveAffineComponent '
+              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}{3}{4}'.format(
+              nonlin_output_dim, args.num_targets, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
+    else:
+        print('component name=final-affine type=NaturalGradientAffineComponent '
+              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
+              nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
 
     if not skip_final_softmax:
       # printing out the next two, and their component-nodes, for l > 1 is not
@@ -236,9 +290,20 @@ if num_hidden_layers == 0:
               format(args.config_dir), file=f)
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
-    print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
-          input_dim, args.num_targets, args.max_change_per_sample), file=f)
+    sparsity_opts = ''
+    positivity_opts = ''
+    if args.positivity_constraints is not None and positivity_constraints[0]:
+        positivity_opts = ' ensure-positive-linear-component=true'
+    if args.sparsity_constants is not None and sparsity_constants[0] > 0.0:
+        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[0])
+    if positivity_opts != '' or sparsity_opts != '':
+        print('component name=final-affine type=NaturalGradientPositiveAffineComponent '
+              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}{3}{4}'.format(
+              input_dim, args.num_targets, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
+    else:
+        print('component name=final-affine type=NaturalGradientAffineComponent '
+              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
+              input_dim, args.num_targets, args.max_change_per_sample), file=f)
     if not skip_final_softmax:
       if use_presoftmax_prior_scale:
         print('component name=final-fixed-scale type=FixedScaleComponent '
