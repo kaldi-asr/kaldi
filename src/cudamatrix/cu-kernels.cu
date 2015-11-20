@@ -1121,25 +1121,10 @@ static void _cuda_comp_obj_deriv(MatrixElement<Real> *x, int s, const Real* z, M
 template<typename Real>
 __global__
 static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha, MatrixElement<Real>* x, int s) {
-  int i = threadIdx.x;
-  if (i >= s)
-    return;
-  int size = s / CU1DBLOCK; //the least size in a loop (later part)
-  int threshold = s - size * CU1DBLOCK; //any loop below this number would + 1
-
-  int loop_start;
-  int loop_end;
-  if(i < threshold) {
-    loop_start = i * (size + 1);
-    loop_end = (i+1) * (size + 1);
-  }
-  else {
-    loop_start = threshold + i*size;
-    loop_end = threshold + (i+1)*size;
-  }
-  for(int j = loop_start; j < loop_end; j++) {
-    *(data + x[j].row * dim.stride + x[j].column) += alpha * x[j].weight;
-  }
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= s)
+        return; 
+    *(data + x[i].row * dim.stride + x[i].column) += alpha * x[i].weight;    
 }
 
 template<typename Real>
