@@ -34,6 +34,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   # RWCP sound scene database
@@ -62,20 +65,20 @@ for base_dir_name in ${RWCP_dirs[@]}; do
   files_done=0
   total_files=$(echo ${leaf_directories[@]}|wc -w)
   echo "Found ${total_files} impulse responses in ${base_dir_name}."
-  echo "" > $log_dir/RWCP_type$type_num.rir.list
+  echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
   # create the list of commands to be executed
   for leaf_dir_name in  ${leaf_directories[@]}; do
     first_channel=$(ls $leaf_dir_name|sed -e"s/.*\.//g"|sort -n|head -1)
     last_channel=$(ls $leaf_dir_name|sed -e"s/.*\.//g"|sort -nr|head -1)
     file_base_name=$(basename $leaf_dir_name)
     output_file_name=`echo ${leaf_dir_name#$base_dir_name}| sed -e"s/[\/\]\+/_/g" | tr '[:upper:]' '[:lower:]'`    
-    output_file_name=RWCP_type${type_num}_rir_${output_file_name}.wav
+    output_file_name=${DBname}_type${type_num}_rir_${output_file_name}.wav
     channel_files=
     for i in `seq $first_channel $last_channel`; do
       channel_files="$channel_files -t raw -e float -b 32 -c 1 -r 48k  $leaf_dir_name/$file_base_name.$i ";
     done
     echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-    echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.rir.list
+    echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
     files_done=$((files_done + 1))
   done
 done
@@ -99,15 +102,15 @@ type_num=$((type_num + 1))
 data_files=( $(find $RWCP_home/robot/data/non -name '*.dat' -type f -print || exit -1) )
 files_done=0
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/RWCP_type$type_num.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${RWCP_home}/robot/data/non."
 # create the list of commands to be executed
 for data_file in ${data_files[@]}; do
   temp_file=$tempdir_robo/$files_done.wav
   python $tempdir_robo/raw_read.py $data_file $temp_file 
-  output_file_name=RWCP_type${type_num}_rir_`basename $data_file .dat | tr '[:upper:]' '[:lower:]'`.wav
+  output_file_name=${DBname}_type${type_num}_rir_`basename $data_file .dat | tr '[:upper:]' '[:lower:]'`.wav
   echo "sox -t wav $temp_file -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}"   >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   files_done=$((files_done + 1))
 done
 
@@ -117,21 +120,21 @@ base_dir_name=$RWCP_home/micarray/MICARRAY/data6/
 leaf_directories=( $(find $base_dir_name -type d -links 2 -print || exit -1) )
 files_done=0
 total_files=$(echo ${leaf_directories[@]}|wc -w)
-echo "" > $log_dir/RWCP_type$type_num.noise.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.noise.list
 echo "Found $total_files noises in ${base_dir_name}."
 for leaf_dir_name in  ${leaf_directories[@]}; do
   first_channel=$(ls $leaf_dir_name|sed -e"s/.*\.//g"|sort -n|head -1)
   last_channel=$(ls $leaf_dir_name|sed -e"s/.*\.//g"|sort -nr|head -1)
   file_base_name=$(basename $leaf_dir_name)
   output_file_name=`echo ${leaf_dir_name#$base_dir_name}| sed -e"s/[\/\]\+/_/g" | tr '[:upper:]' '[:lower:]'`
-  output_file_name=RWCP_type${type_num}_noise_${output_file_name}.wav
+  output_file_name=${DBname}_type${type_num}_noise_${output_file_name}.wav
   channel_files=
   for i in `seq $first_channel $last_channel`; do
     channel_files="$channel_files -t raw -e signed-integer -b 16 -c 1 -r 48k  $leaf_dir_name/$file_base_name.$i ";
   done
   echo "sox -M $channel_files -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
 
-  echo ${output_dir}/${output_file_name} >>  $log_dir/RWCP_type$type_num.noise.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.noise.list
   files_done=$((files_done + 1))
 done
 
@@ -159,10 +162,10 @@ time $decode_cmd --max-jobs-run 40 JOB=1:$num_jobs $job_log \
 
 # get the RWCP database noise mic and room settings to pair with corresponding impulse responses
 type_num=5
-noise_patterns=( $(ls ${output_dir}/RWCP_type${type_num}_noise*.wav | xargs -n1 basename | python -c"
+noise_patterns=( $(ls ${output_dir}/${DBname}_type${type_num}_noise*.wav | xargs -n1 basename | python -c"
 import sys
 for line in sys.stdin:
-  name = line.split('RWCP_type${type_num}_noise')[1]
+  name = line.split('${DBname}_type${type_num}_noise')[1]
   print '_'.join(name.split('_')[1:-1])
 "|sort -u) )
 

@@ -28,6 +28,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
@@ -85,7 +88,7 @@ echo "">$command_file
 type_num=1
 data_files=( $(find $RIR_home/c4dm/*/*/ -name '*.wav' -type f -print || exit -1) )
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${RIR_home}/c4dm/"
 tmpdir=`mktemp -d $log_dir/c4dm_XXXXXX`
 tmpdir=`readlink -e $tmpdir`
@@ -96,7 +99,7 @@ for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
   #echo "python local/multi_condition/read_rir.py --output-sampling-rate $sampling_rate wav ${tmpdir}/${file_count}.wav ${output_dir}/${output_file_name} || exit -1;" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   file_count=$((file_count + 1))
 done
 

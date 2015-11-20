@@ -27,6 +27,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   RIR_home_abs=`readlink -e $RIR_home`
@@ -428,7 +431,7 @@ echo "">$command_file
 type_num=1
 data_files=( $(find $RIR_home/open_air/ -name '*.wav' -type f -print || exit -1) )
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${RIR_home}/open_air/"
 file_count=1 # affix to ensure that files with same name are not overwritten
 for data_file in ${data_files[@]}; do
@@ -436,7 +439,7 @@ for data_file in ${data_files[@]}; do
 #  output_file_name=${DBname}_type${type_num}_${file_count}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   file_count=$((file_count + 1))
 done
 
