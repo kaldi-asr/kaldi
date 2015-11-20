@@ -1,55 +1,72 @@
 #!/bin/bash
-# Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2015.  Apache 2.0.
-# This script generates the ctm files for dev_aspire, test_aspire and eval_aspire 
+# Copyright 2015  Johns Hopkins University (Author: Daniel Povey), Vijayaditya Peddinti
+#           2015  Vimal Manohar
+# Apache 2.0.
+
+# This script generates the ctm files for dev_aspire, test_aspire and eval_aspire
 # for scoring with ASpIRE scoring server.
 # It also provides the WER for dev_aspire data.
 
 set -u
 set -o pipefail
-set -e 
+set -e
 
-use_icsi_method=false
-iter=final
-mfccdir=mfcc_reverb_submission
-stage=0
-decode_num_jobs=200
-num_jobs=30
+stage=-10
+
+graph_dir=exp/tri5a/graph_pp
+iter=final        # Acoustic model to be used for decoding
+mfccdir=mfcc_reverb_submission    # Dir to store MFCC features
+fbankdir=fbank_reverb_submission  # Dir to store Fbank features
+mfcc_config=conf/mfcc_hires.conf
+fbank_config=conf/fbank.conf
+
+nj=30             # number of parallel jobs for VAD and segmentation
+decode_nj=200     # number of parallel jobs for decoding
+
+# segmentation opts
+segmentation_config=
+segmentation_stage=-10
+segmentation_method=Viterbi
+quantization_bins=0:2.5:5:7.5:12.5
+
+# ivector extraction opts
+use_ivectors=false
+max_count=100 # parameter for extract_ivectors.sh
+sub_speaker_frames=1500
+ivector_scale=1.0
+weights_file=
+silence_weight=0.00001
+
+# Decoding and scoring opts
+acwt=0.1
 LMWT=12
 word_ins_penalty=0
 min_lmwt=9
 max_lmwt=20
 word_ins_penalties=0.0,0.25,0.5,0.75,1.0
 decode_mbr=true
-acwt=0.1
+
 lattice_beam=8
 ctm_beam=6
-do_segmentation=true
-max_count=100 # parameter for extract_ivectors.sh
-sub_speaker_frames=1500
-overlap=5
-window=30
-affix=
-ivector_scale=1.0
-pad_frames=0  # this did not seem to be helpful but leaving it as an option.
-tune_hyper=true
-pass2_decode_opts=
 filter_ctm=true
-weights_file=
-silence_weight=0.00001
+
+# output opts
+affix=                # append this to the directory names
 create_whole_dir=true
-use_vad_prob=false
-use_lats=true
-transform_weights=false
-speech_to_sil_ratio=1
-use_bootstrap_vad=false
-nj=30
+tune_hyper=true
+
+# stage opts
+input_frame_snrs_dir=
+input_vad_dir=
+
 . cmd.sh
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
-if [ $# -ne 4 ]; then
-  echo "Usage: $0 [options] <data-dir> <vad-model-dir> <lang-dir> <model-dir>"
+
+if [ $# -ne 5 ]; then
+  echo "Usage: $0 [options] <data-dir> <snr-predictor> <sad-model-dir> <lang-dir> <model-dir>"
   echo " Options:"
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
   echo "e.g.:"
@@ -57,48 +74,164 @@ if [ $# -ne 4 ]; then
   exit 1;
 fi
 
-data_dir=$1 #select from data/{dev_aspire,test_aspire,eval_aspire}
-vad_model_dir=$2
-lang=$3 # data/lang
-dir=$4 # exp/nnet2_multicondition/nnet_ms_a
+data_dir=$1 #select from data/{dev_aspire,test_aspire,eval_aspire}*
+snr_predictor=$2
+sad_model_dir=$3
+lang=$4 # data/lang
+dir=$5 # exp/nnet2_multicondition/nnet_ms_a
 
-data_id=`basename $data_dir`
-model_affix=`basename $dir`
-ivector_dir=`dirname $dir`
+data_id=`basename $data_dir`      # {dev,test,eval}_aspire*
+model_affix=`basename $dir`       # nnet_ms_*
+vad_affix=${affix:+_$affix}
+ivector_dir=`dirname $dir`        # exp/nnet2_multicondition
 ivector_affix=${affix:+_$affix}_$model_affix
-vad_dir=exp/vad_${data_id}_${affix}
-affix=_${affix}_iter${iter}
-act_data_id=${data_id}
-if [ "$data_id" == "test_aspire" ]; then
+frame_snrs_dir=exp/frame_snrs${vad_affix}_${data_id}
+vad_dir=exp/vad_${data_id}${vad_affix} # Temporary directory for VAD
+segmentation_dir=exp/segmentation_${data_id}${vad_affix}
+affix=_${affix}_iter${iter}         # affix to be specific to AM used
+act_data_id=${data_id}            # the original data_id before data_id gets
+                                  # modified to something else
+
+# Function to create mfcc features
+make_mfcc () {
+  if [ $# -lt 2 ] || [ $[$# % 2] -ne 0 ]; then
+    echo "$0: make_mfcc: Not enough arguments. Some variable is probably not set"
+    exit 1
+  fi
+  this_nj=$nj
+  mfcc_config=$mfcc_config
+
+  while [ $# -gt 0 ]; do
+    if [ $[$# % 2] -ne 0 ]; then
+      echo "$0: make_mfcc: Not enough arguments. Some variable is probably not set"
+      exit 1
+    fi
+    case $1 in
+      --nj)
+        this_nj=$2
+        shift; shift
+        ;;
+      --mfcc-config)
+        mfcc_config=$2
+        shift; shift
+        ;;
+      *)
+        if [ $# -eq 2 ]; then
+          break;
+        else
+          echo "$0: make_mfcc: Unknown arguments $*"
+          exit 1
+        fi
+        ;;
+    esac
+  done
+
+  if [ $# -ne 2 ]; then
+    echo "$0: make_mfcc: Not enough arguments. Some variable is probably not set"
+    exit 1
+  fi
+
+  data_dir=$1
+  mfccdir=$2
+
+  rm -rf ${data_dir}_hires
+  utils/copy_data_dir.sh ${data_dir} ${data_dir}_hires
+
+  data_dir=${data_dir}_hires
+  steps/make_mfcc.sh --nj $this_nj --cmd "$train_cmd" \
+    --mfcc-config $mfcc_config \
+    ${data_dir} exp/make_hires/${data_dir} $mfccdir || exit 1;
+  steps/compute_cmvn_stats.sh \
+    ${data_dir} exp/make_hires/${data_dir} $mfccdir || exit 1;
+  utils/fix_data_dir.sh ${data_dir}
+  utils/validate_data_dir.sh --no-text ${data_dir}
+}
+
+make_fbank () {
+  if [ $# -lt 2 ] || [ $[$# % 2] -ne 0 ]; then
+    echo "$0: make_fbank: Not enough arguments. Some variable is probably not set"
+    exit 1
+  fi
+  this_nj=$nj
+  fbank_config=conf/fbank_hires.conf
+
+  while [ $# -gt 0 ]; do
+    if [ $[$# % 2] -ne 0 ]; then
+      echo "$0: make_fbank: Not enough arguments. Some variable is probably not set"
+      exit 1
+    fi
+    case $1 in
+      --nj)
+        this_nj=$2
+        shift; shift
+        ;;
+      --fbank-config)
+        fbank_config=$2
+        shift; shift
+        ;;
+      *)
+        if [ $# -eq 2 ]; then
+          break;
+        else
+          echo "$0: make_fbank: Unknown arguments $*"
+          exit 1
+        fi
+        ;;
+    esac
+  done
+
+  if [ $# -ne 2 ]; then
+    echo "$0: make_fbank: Not enough arguments. Some variable is probably not set"
+    exit 1
+  fi
+
+
+  data_dir=$1
+  fbankdir=$2
+
+  rm -rf ${data_dir}_fbank
+  utils/copy_data_dir.sh ${data_dir} ${data_dir}_fbank
+
+  data_dir=${data_dir}_fbank
+  steps/make_fbank.sh --nj $this_nj --cmd "$train_cmd" \
+    --fbank-config $fbank_config \
+    ${data_dir} exp/make_fbank/${data_dir} $fbankdir || exit 1;
+  steps/compute_cmvn_stats.sh --fake \
+    ${data_dir} exp/make_fbank/${data_dir} $fbankdir || exit 1;
+  utils/fix_data_dir.sh ${data_dir}
+  utils/validate_data_dir.sh --no-text ${data_dir}
+}
+
+if [[ "$data_id" =~ "test_aspire" ]]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
   if [ $stage -le 0 ]; then
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc_hires.conf ${data_dir} exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh $data_dir exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+    make_mfcc --nj $nj --mfcc-config $mfcc_config $data_dir $mfccdir
+    make_fbank --nj $nj --fbank-config $fbank_config $data_dir $fbankdir
   fi
-elif [ "$data_id" == "eval_aspire" ]; then
+elif [[ "$data_id" =~ "eval_aspire" ]]; then
   out_file=single_eval${affix}_$model_affix.ctm
   if [ $stage -le 0 ]; then
-    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc_hires.conf ${data_dir} exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh $data_dir exp/make_mfcc_reverb/${data_dir} $mfccdir || exit 1;
+    make_mfcc --nj $nj --mfcc-config $mfcc_config $data_dir $mfcc_dir
+    make_fbank --nj $nj --fbank-config $fbank_config $data_dir $fbankdir
   fi
 else
   if $create_whole_dir; then
     if [ $stage -le 0 ]; then
       echo "Creating the data dir with whole recordings without segmentation"
-      # create a whole directory without the segments
-      unseg_dir=data/${data_id}_whole
-      src_dir=data/$data_id
-      mkdir -p $unseg_dir
-      echo "Creating the $unseg_dir/wav.scp file"
-      cp $src_dir/wav.scp $unseg_dir
+      # create a whole directory without the segments for the
+      # purposes of recreating the eval setting on dev set
+      whole_dir=data/${data_id}_whole   # unsegmented_dir
+      mkdir -p $whole_dir
+      cp $data_dir/wav.scp $whole_dir    # same as before
+      cat $whole_dir/wav.scp | \
+        awk '{print $1, $1, "A";}' > $whole_dir/reco2file_and_channel
 
-      echo "Creating the $unseg_dir/reco2file_and_channel file"
-      cat $unseg_dir/wav.scp | awk '{print $1, $1, "A";}' > $unseg_dir/reco2file_and_channel
-      cat $unseg_dir/wav.scp | awk '{print $1, $1;}' > $unseg_dir/utt2spk
-      utils/utt2spk_to_spk2utt.pl $unseg_dir/utt2spk > $unseg_dir/spk2utt
+      cat $whole_dir/wav.scp | awk '{print $1, $1;}' > $whole_dir/utt2spk
+      utils/utt2spk_to_spk2utt.pl $whole_dir/utt2spk > $whole_dir/spk2utt
 
-      steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" --mfcc-config conf/mfcc_hires.conf $unseg_dir exp/make_mfcc_reverb/${data_id}_whole $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh $unseg_dir exp/make_mfcc_reverb/${data_id}_whole $mfccdir || exit 1;
+      make_mfcc --nj $nj --mfcc-config $mfcc_config $whole_dir $mfccdir
+
+      make_fbank --nj $nj --fbank-config $fbank_config $whole_dir $fbankdir
     fi
     data_id=${data_id}_whole
   fi
@@ -106,194 +239,61 @@ else
 fi
 
 if [ $stage -le 1 ]; then
-  echo "Generating uniform segments for VAD with length 600"
-  mkdir -p ${vad_dir}
-  rm -rf ${vad_dir}/data_uniform_windows600
-  copy_data_dir.sh --validate-opts "--no-text" data/$data_id ${vad_dir}/data_uniform_windows600 || exit 1
-  cp data/$data_id/reco2file_and_channel ${vad_dir}/data_uniform_windows600 || exit 1
-  python local/multi_condition/create_uniform_segments.py --overlap 0 --window 600 ${vad_dir}/data_uniform_windows600 || exit 1
-  for file in cmvn.scp feats.scp; do
-    rm -f ${vad_dir}/data_uniform_windows600/$file
-  done
-  utils/validate_data_dir.sh --no-text --no-feats ${vad_dir}/data_uniform_windows600 || exit 1
+  # Compute sub-band SNR
+  local/snr/compute_frame_snrs.sh --cmd "$train_cmd" \
+    --use-gpu no --nj $nj --prediction-type "Snr" $snr_predictor \
+    data/${data_id}_hires data/${data_id}_fbank \
+    $frame_snrs_dir || exit 1
 fi
+
+compute_sad_opts=(--quantization-bins $quantization_bins)
+
+if [ ! -z "$frame_snrs_dir" ] && [ $stage -ge 2 ]; then
+  frame_snrs_dir=$input_frame_snrs_dir
+fi
+
 if [ $stage -le 2 ]; then
-  diarization/prepare_data.sh --nj $nj --cmd "$train_cmd" ${vad_dir}/data_uniform_windows600 ${vad_dir} ${vad_dir}/mfcc || exit 1
+  local/snr/compute_sad.sh \
+    --nj $nj "${compute_sad_opts[@]}" \
+    $sad_model_dir $frame_snrs_dir ${vad_dir} || exit 1
 fi
 
-split_data.sh ${vad_dir}/data_uniform_windows600 $nj
+segmented_data_dir=data/${data_id}_seg${vad_affix}
+segmented_data_id=`basename $segmented_data_dir`
 
-noise_model_found=false
-if [ -f $vad_model_dir/noise.11.mdl ]; then
-  noise_model_found=true
+if [ ! -z "$input_vad_dir" ] && [ $stage -ge 3 ]; then
+  vad_dir=$input_vad_dir
 fi
 
 if [ $stage -le 3 ]; then
-  if $noise_model_found; then
-    $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
-      diarization/vad_gmm_3models.sh --config conf/vad_icsi_babel_3models.conf \
-      --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
-      --speech-to-sil-ratio $speech_to_sil_ratio --use-bootstrap-vad $use_bootstrap_vad \
-      ${vad_dir}/data_uniform_windows600/split$nj/JOB \
-      $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
-      $vad_model_dir/noise.11.mdl ${vad_dir}/JOB || exit 1
-  else
-    if ! $use_icsi_method; then
-      $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
-        diarization/vad_gmm_2models.sh --config conf/vad_icsi_babel_3models.conf \
-        --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
-        --speech-to-sil-ratio $speech_to_sil_ratio \
-        ${vad_dir}/data_uniform_windows600/split$nj/JOB \
-        $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
-        ${vad_dir}/JOB || exit 1
-    else
-      $train_cmd JOB=1:$nj ${vad_dir}/do_vad.JOB.log \
-        diarization/vad_gmm_icsi.sh --config conf/vad_icsi_babel.conf \
-        --try-merge-speech-noise true --output-lattice $use_lats --write-feats true \
-        --speech-to-sil-ratio $speech_to_sil_ratio \
-        ${vad_dir}/data_uniform_windows600/split$nj/JOB \
-        $vad_model_dir/silence.11.mdl $vad_model_dir/speech.11.mdl \
-        ${vad_dir}/JOB || exit 1
-    fi
-  fi
-
-  for n in `seq $nj`; do
-    for x in `cat ${vad_dir}/data_uniform_windows600/split$nj/$n/utt2spk | awk '{print $1}'`; do
-      cat ${vad_dir}/$n/$x.vad.final.scp
-    done
-  done | sort -k1,1 > ${vad_dir}/vad.scp
+  local/snr/sad_to_segments.sh --cmd "$train_cmd" \
+    --method $segmentation_method --stage $segmentation_stage ${segmentation_config:+--config $segmentation_config} \
+    data/${data_id}_hires ${vad_dir} $segmentation_dir $segmented_data_dir
 fi
-
-segmented_data_dir=data/${data_id}_uniformsegmented_win${window}_over${overlap}
 
 if [ $stage -le 4 ]; then
-  if $use_bootstrap_vad || ! $use_vad_prob; then
-    $train_cmd ${vad_dir}/get_vad_per_file.log \
-      segmentation-to-rttm \
-      --segments=${vad_dir}/data_uniform_windows600/segments \
-      scp:${vad_dir}/vad.scp - \| grep SPEECH \| \
-      rttmSort.pl \| diarization/convert_rttm_to_segments.pl \| \
-      segmentation-init-from-segments - ark:${vad_dir}/vad_per_file.ark
-  else 
-    if $use_lats; then
-      for n in `seq $nj`; do
-        for x in `cat ${vad_dir}/data_uniform_windows600/split$nj/$n/utt2spk | awk '{print $1}'`; do
-          cat ${vad_dir}/$n/$x.lat.scp
-        done | tee ${vad_dir}/$n/lats.scp
-      done | sort -k1,1 > ${vad_dir}/lats.scp
-
-      $train_cmd JOB=1:$nj ${vad_dir}/log/get_vad_weights.JOB.log \
-        lattice-to-post scp:${vad_dir}/JOB/lats.scp ark:- \| \
-        post-to-pdf-post ${vad_dir}/JOB/trans.mdl ark:- ark:- \| \
-        weight-pdf-post $silence_weight 0:2 ark:- ark:- \| \
-        post-to-weights ark:- ark,t:- \| \
-        copy-vector ark,t:- ark:${vad_dir}/weights.JOB.ark
-    else
-      for n in `seq $nj`; do
-        for x in `cat ${vad_dir}/data_uniform_windows600/split$nj/$n/utt2spk | awk '{print $1}'`; do
-          gmm-compute-likes ${vad_dir}/$n/$x.final.mdl ark:${vad_dir}/$n/$x.feat.ark ark:- | \
-            loglikes-to-post ark:- ark:- | \
-            weight-pdf-post $silence_weight 0:2 ark:- ark:- | \
-            post-to-weights ark:- ark,t:- | \
-            copy-vector ark,t:- ark:-
-        done > ${vad_dir}/weights.$n.ark
-      done 
-    fi
-  fi
+  make_mfcc --nj $nj --mfcc-config $mfcc_config \
+    $segmented_data_dir $mfccdir
 fi
 
-if [ $stage -le 5 ]; then
-  echo "Generating uniform segments with length $window and overlap $overlap."
-  rm -rf $segmented_data_dir
-  copy_data_dir.sh --validate-opts "--no-text" data/$data_id $segmented_data_dir || exit 1;
-  cp data/$data_id/reco2file_and_channel $segmented_data_dir/ || exit 1;
-  python local/multi_condition/create_uniform_segments.py --overlap $overlap --window $window $segmented_data_dir  || exit 1;
-  for file in cmvn.scp feats.scp; do
-    rm -f $segmented_data_dir/$file
-  done
-  utils/validate_data_dir.sh --no-text --no-feats $segmented_data_dir || exit 1;
-fi
-
-segmented_data_id=`basename $segmented_data_dir`
-if [ $stage -le 6 ]; then
-  echo "Extracting features for the segments"
-  # extract the features/i-vectors once again so that they are indexed by utterance and not by recording
-  rm -rf data/${segmented_data_id}_hires
-  copy_data_dir.sh --validate-opts "--no-text " data/${segmented_data_id} data/${segmented_data_id}_hires || exit 1;
-  steps/make_mfcc.sh --nj 10 --mfcc-config conf/mfcc_hires.conf \
-    --cmd "$train_cmd" data/${segmented_data_id}_hires \
-    exp/make_reverb_hires/${segmented_data_id} $mfccdir || exit 1;
-  steps/compute_cmvn_stats.sh data/${segmented_data_id}_hires exp/make_reverb_hires/${segmented_data_id} $mfccdir || exit 1;
-  utils/fix_data_dir.sh data/${segmented_data_id}_hires
-  utils/validate_data_dir.sh --no-text data/${segmented_data_id}_hires
-fi
-
-if [ ! -z $weights_file ]; then
-  echo "$0: Using provided weights file $weights_file"
-  ivector_extractor_input=$weights_file
-else
-  if [ $stage -le 7 ]; then
+if $use_ivectors; then
+  if [ ! -z "$weights_file" ]; then
+    echo "$0: Using provided weights file $weights_file"
+    ivector_extractor_input=$weights_file
+  else
     mkdir -p $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
-    $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/get_file_lengths.log \
-      feat-to-len scp:data/${data_id}/feats.scp \
-      ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark
 
-    if ! $use_vad_prob; then
-      segmentation-to-ali --default-label=0 \
-        --lengths=ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark \
-        ark:${vad_dir}/vad_per_file.ark ark,t:- | \
-        perl -e '
-      my $silence_weight = shift @ARGV;
-      while (<STDIN>) {
-        chomp;
-        @A = split;
-        $utt = shift @A;
-        print STDOUT "$utt [";
-        for ($i = 0; $i <= $#A; $i++) {
-          if ($A[$i] == 0) {
-            print STDOUT " $silence_weight";
-          } else {
-          print STDOUT " $A[$i]";
-        }
-      }
-      print STDOUT " ]\n";
-    }' $silence_weight | copy-vector ark,t:- "ark:| gzip -c > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz"
-    else 
-      weight_vecs=
-      for n in `seq $nj`; do 
-        weight_vecs="${weight_vecs}${vad_dir}/weights.$n.ark "
-      done
-
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/get_vad_file_weights.log \
-        combine-vector-segments --max-overshoot=2 "ark:cat $weight_vecs|" \
-        ${vad_dir}/data_uniform_windows600/segments \
-        ark,t:$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_lengths.ark \
-        "ark:| gzip -c > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz"
+    if [ $stage -le 4 ]; then
+      local/snr/get_weights_for_ivector_extraction.sh ${data_dir} \
+        ${segmented_data_dir} ${vad}_dir \
+        $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
+      ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
     fi
   fi
-
-  cat $segmented_data_dir/segments | awk '{print $1" "$2" "$3" "$4-0.02}' > $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments
-
-  x_th=0.8
-  if [ $stage -le 8 ]; then
-    if $transform_weights; then
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
-        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz |" \
-        $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments ark,t:- \| \
-        awk -v x_th=$x_th '{printf $1" [ "; for(i=3;i<=NF-1;i++) printf 1/sqrt(1+2*exp(-20*($i-x_th)))" " ; print "]"}' \| \
-        copy-vector ark,t:- "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
-    else 
-      $train_cmd $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/log/extract_weights.log \
-        extract-vector-segments "ark:gunzip -c $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/file_weights.gz |" \
-        $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/truncated_segments \
-        "ark:| gzip -c >$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz"
-    fi
-  fi
-  ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
 fi
 
-if [ $stage -le 9 ]; then
-  echo "Extracting i-vectors, stage 2 with input $ivector_extractor_input"
+if $use_ivectors && [ $stage -le 9 ]; then
+  echo "Extracting i-vectors, with weights from $ivector_extractor_input"
   # this does offline decoding, except we estimate the iVectors per
   # speaker, excluding silence (based on alignments from a GMM decoding), with a
   # different script.  This is just to demonstrate that script.
@@ -309,11 +309,18 @@ fi
 
 decode_dir=$dir/decode_${segmented_data_id}${affix}_pp
 if [ $stage -le 10 ]; then
-  echo "Generating lattices, stage 2 with --acwt $acwt"
-  local/multi_condition/decode.sh --nj $decode_num_jobs --cmd "$decode_cmd" --config conf/decode.config $pass2_decode_opts \
+  echo "Generating lattices, with --acwt $acwt"
+
+  ivector_opts=(--online-ivector-dir "")
+  if $use_ivectors; then
+    ivector_opts=(--online-ivector-dir $ivector_dir/ivectors_${segmented_data_id}${ivector_affix})
+  fi
+
+  local/multi_condition/decode.sh --nj $decode_nj --cmd "$decode_cmd" \
+    --config conf/decode.config \
     --skip-scoring true --iter $iter --acwt $acwt --lattice-beam $lattice_beam \
-    --online-ivector-dir $ivector_dir/ivectors_${segmented_data_id}${ivector_affix} \
-    exp/tri5a/graph_pp data/${segmented_data_id}_hires ${decode_dir}_tg || \
+    "${ivector_opts[@]}" \
+    $graph_dir data/${segmented_data_id}_hires ${decode_dir}_tg || \
     { echo "$0: Error decoding";  exit 1; }
 fi
 
@@ -350,7 +357,7 @@ print '|'.join(patterns)
 " > $decode_dir/scoring/glm_ignore_patterns || exit 1;
 
 ignore_patterns=$(cat $decode_dir/scoring/glm_ignore_patterns)
-echo "$0: Ignoring these patterns from the ctm ", $ignore_patterns 
+echo "$0: Ignoring these patterns from the ctm ", $ignore_patterns
 cat << EOF > $decode_dir/scoring/filter_ctm.py
 import sys
 file = open(sys.argv[1])
@@ -381,18 +388,19 @@ if  $tune_hyper ; then
         wips=\(0 $wip_string\) \&\& \
         wip=\${wips[WIP]} \&\& \
         echo \$wip \&\& \
-        $decode_cmd LMWT=$min_lmwt:$max_lmwt $decode_dir/scoring/log/score.LMWT.\$wip.log \
-          local/multi_condition/get_ctm.sh --filter-ctm-command "$filter_ctm_command" \
-            --window $window --overlap $overlap \
-            --beam $ctm_beam --decode-mbr $decode_mbr \
-            --glm data/${act_data_id}/glm --stm data/${act_data_id}/stm \
-          LMWT \$wip $lang data/${segmented_data_id}_hires $model $decode_dir || exit 1; 
-      
-      local/multi_condition/get_ctm_conf.sh --cmd "$decode_cmd" \
-        --use-segments true \
-        data/${segmented_data_id}_hires \
-        ${lang} \
-        ${decode_dir} || exit 1;
+        $decode_cmd LMWT=$min_lmwt:$max_lmwt \
+        $decode_dir/scoring/log/score.LMWT.\$wip.log \
+          local/multi_condition/get_ctm.sh \
+          --filter-ctm-command "$filter_ctm_command" \
+          --beam $ctm_beam --decode-mbr $decode_mbr \
+          --glm data/${act_data_id}/glm --stm data/${act_data_id}/stm \
+          LMWT \$wip $lang data/${segmented_data_id}_hires \
+          $model $decode_dir || exit 1;
+
+      #local/multi_condition/get_ctm_conf.sh --cmd "$decode_cmd" \
+      #  --use-segments true \
+      #  data/${segmented_data_id}_hires \
+      #  ${lang} ${decode_dir} || exit 1;
 
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys"|utils/best_wer.sh 2>/dev/null
       eval "grep Sum $decode_dir/score_{${min_lmwt}..${max_lmwt}}/penalty_{$word_ins_penalties}/*.sys" | \
@@ -413,7 +421,7 @@ wipfile.close()
         word_ins_penalty=$(cat $decode_dir/scoring/bestWIP)
     fi
   fi
-  if [ "$act_data_id" == "test_aspire" ] || [ "$act_data_id" == "eval_aspire" ]; then
+  if [[ "$act_data_id" =~ "test_aspire" ]] || [[ "$act_data_id" =~ "eval_aspire" ]]; then
     dev_decode_dir=$(echo $decode_dir|sed "s/test_aspire/dev_aspire_whole/g; s/eval_aspire/dev_aspire_whole/g")
     if [ -f $dev_decode_dir/scoring/bestLMWT ]; then
       LMWT=$(cat $dev_decode_dir/scoring/bestLMWT)
@@ -444,7 +452,7 @@ fi
 
 if [ $stage -le 14 ]; then
   cat $decode_dir/score_$LMWT/penalty_$word_ins_penalty/ctm.filt | awk '{split($1, parts, "-"); printf("%s 1 %s %s %s\n", parts[1], $3, $4, $5)}' > $out_file
-  cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names 
+  cat ${segmented_data_dir}_hires/wav.scp | awk '{split($1, parts, "-"); printf("%s\n", parts[1])}' > $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names
   python local/multi_condition/fill_missing_recordings.py $out_file $out_file.submission $decode_dir/score_$LMWT/penalty_$word_ins_penalty/recording_names
   echo "Generated the ctm @ $out_file.submission from the ctm file $decode_dir/score_${LMWT}/penalty_$word_ins_penalty/ctm.filt"
 fi

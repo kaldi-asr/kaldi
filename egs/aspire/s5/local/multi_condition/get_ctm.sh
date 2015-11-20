@@ -5,8 +5,7 @@ decode_mbr=true
 filter_ctm_command=cp
 glm=
 stm=
-window=10
-overlap=5
+
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -47,12 +46,8 @@ lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true --ma
 lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping || exit 1;
 
 # combine the segment-wise ctm files, while resolving overlaps 
-if [ $window -gt 0 ]; then
-  python local/multi_condition/resolve_ctm_overlaps.py --overlap $overlap --window-length $window $data_dir/utt2spk $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1; 
-  merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged 
-else
-  merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping
-fi
+python local/multi_condition/resolve_ctm_overlaps.py --segments $data_dir/segments $data_dir/utt2spk $decode_dir/score_$LMWT/penalty_$wip/ctm.overlapping $decode_dir/score_$LMWT/penalty_$wip/ctm.merged || exit 1; 
+merged_ctm=$decode_dir/score_$LMWT/penalty_$wip/ctm.merged 
 
 cat $merged_ctm | utils/int2sym.pl -f 5 $lang/words.txt | \
 utils/convert_ctm.pl $data_dir/segments $data_dir/reco2file_and_channel | \
