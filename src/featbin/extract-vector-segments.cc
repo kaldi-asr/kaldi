@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation;  Govivace Inc.
 //           2012-2013  Mirko Hannemann;  Arnab Ghoshal
+//           2015       Tanel Alumae
 //           2015       Vimal Manohar (Johns Hopkins University)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -26,7 +27,7 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    
+
     const char *usage =
         "Extract vectors corresponding to segments from whole vectors\n"
         "Usage:  extract-vector-segments [options...] <vecs-rspecifier> <segments-rxfilename> <vecs-wspecifier>\n";
@@ -36,20 +37,29 @@ int main(int argc, char *argv[]) {
 
     BaseFloat min_segment_length = 0.1,  // Minimum segment length in seconds.
               max_overshoot = 0.0;  // max time by which last segment can overshoot
-    int32 trim_last_frames = 0;
-    BaseFloat frame_shift = 0.01;
+    int32 frame_shift = 10;
+    int32 frame_length = 25;
+    bool snip_edges = true;
 
     // Register the options
     po.Register("min-segment-length", &min_segment_length,
                 "Minimum segment length in seconds (reject shorter segments)");
-    po.Register("frame-shift", &frame_shift,
-                "Frame shift in second");
+    po.Register("frame-length", &frame_length, "Frame length in milliseconds");
+    po.Register("frame-shift", &frame_shift, "Frame shift in milliseconds");
     po.Register("max-overshoot", &max_overshoot,
                 "End segments overshooting by less (in seconds) are truncated,"
                 " else rejected.");
-    po.Register("trim-last-frames", &trim_last_frames,
-                "Remove last few frames so that the extracted vector is "
-                "consistent with the features");
+    po.Register("snip-edges", &snip_edges,
+        "If true, n_frames frames will be snipped from the beginning of each "
+        "extracted feature matrix, "
+        "where n_frames = ceil((frame_length - frame_shift) / frame_shift), "
+        "except for the segments at the beginning of a file, where "
+        "the snipping is done from the end. "
+        "This ensures that only the feature vectors that "
+        "completely fit in the segment are extracted. "
+        "This makes the extracted segment lengths match the lengths of the "
+        "features that have been extracted from already segmented audio.");
+
 
     po.Read(argc, argv);
     
@@ -59,83 +69,55 @@ int main(int argc, char *argv[]) {
     }
 
     std::string rspecifier = po.GetArg(1); // get script file/vector archive
-    std::string segments_rxfilename = po.GetArg(2);// get segment file
+    std::string segments_rspecifier = po.GetArg(2);// get segment file
     std::string wspecifier = po.GetArg(3); // get written archive name
 
     BaseFloatVectorWriter vector_writer(wspecifier);
+
+    SequentialUtteranceSegmentReader segments_reader(segments_rspecifier);
     RandomAccessBaseFloatVectorReader vector_reader(rspecifier); 
 
-    Input ki(segments_rxfilename); // no binary argment: never binary.
+    int32 num_done = 0, num_err = 0;
 
-    int32 num_lines = 0, num_success = 0;
+    int32 snip_length = 0;
+    if (snip_edges) {
+      snip_length = static_cast<int32>(ceil(
+          1.0 * (frame_length - frame_shift) / frame_shift));
+    }
     
-    std::string line;
-    /* read each line from segments file */
-    while (std::getline(ki.Stream(), line)) {
-      num_lines++;
-      std::vector<std::string> split_line;
-      // Split the line by space or tab and check the number of fields in each
-      // line. There must be 4 fields--segment name , reacording wav file name,
-      // start time, end time; 5th field (channel info) is optional.
-      SplitStringToVector(line, " \t\r", true, &split_line);
-      if (split_line.size() != 4 && split_line.size() != 5) {
-        KALDI_WARN << "Invalid line in segments file: " << line;
-        continue;
-      }
-      std::string segment = split_line[0],
-          utterance = split_line[1],
-          start_str = split_line[2],
-          end_str = split_line[3];
+    for (; !segments_reader.Done(); segments_reader.Next()) {
+      const std::string &seg_id = segments_reader.Key();
+      const UtteranceSegment &segment = segments_reader.Value();
 
-      // Convert the start time and endtime to real from string. Segment is
-      // ignored if start or end time cannot be converted to real.
-      double start, end;
-      if (!ConvertStringToReal(start_str, &start)) {
-        KALDI_WARN << "Invalid line in segments file [bad start]: " << line;
+      if (!vector_reader.HasKey(segment.reco_id)) {
+        KALDI_WARN << "Did not find vector for utterance " << segment.reco_id 
+                   << ", skipping segment " << segment.reco_id;
         continue;
       }
-      if (!ConvertStringToReal(end_str, &end)) {
-        KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
-        continue;
-      }
-      // start time must not be negative; start time must not be greater than
-      // end time, except if end time is -1
-      if (start < 0 || end <= 0 || start >= end) {
-        KALDI_WARN << "Invalid line in segments file [empty or invalid segment]: "
-                   << line;
-        continue;
-      }
-      int32 channel = -1;  // means channel info is unspecified.
-      // if each line has 5 elements then 5th element must be channel identifier
-      if(split_line.size() == 5) {
-        if (!ConvertStringToInteger(split_line[4], &channel) || channel < 0) {
-          KALDI_WARN << "Invalid line in segments file [bad channel]: " << line;
-          continue;
-        }
-      }
+      const Vector<BaseFloat> &vector = vector_reader.Value(segment.reco_id);
 
-      /* check whether a segment start time and end time exists in utterance 
-       * if fails , skips the segment.
-       */ 
-      if (!vector_reader.HasKey(utterance)) {
-        KALDI_WARN << "Did not find vector for utterance " << utterance
-                   << ", skipping segment " << segment;
-        continue;
-      }
-      const Vector<BaseFloat> &vector = vector_reader.Value(utterance);
-
+      // total number of samples present in features
       int32 num_samp = vector.Dim();
       // Convert start & end times of the segment to corresponding sample number
-      int32 start_samp = static_cast<int32>(start / frame_shift);
-      int32 end_samp = static_cast<int32>(end / frame_shift);
+      int32 start_samp = static_cast<int32>(std::round(
+          (segment.start_time * 1000.0 / frame_shift)));
+      int32 end_samp = static_cast<int32>(std::round(segment.end_time * 1000.0 / frame_shift + 0.0495));
+      
+      if (snip_edges) {
+        // snip the edge at the end of the segment (usually 2 frames),
+        end_samp -= snip_length;
+      }
+
       /* start sample must be less than total number of samples 
        * otherwise skip the segment
        */
       if (start_samp < 0 || start_samp >= num_samp) {
         KALDI_WARN << "Start sample out of range " << start_samp << " [length:] "
-                   << num_samp << ", skipping segment " << segment;
+                   << num_samp << ", skipping segment " << seg_id;
+        num_err++;
         continue;
       }
+
       /* end sample must be less than total number samples 
        * otherwise skip the segment
        */
@@ -143,25 +125,37 @@ int main(int argc, char *argv[]) {
         if (end_samp >
             num_samp + static_cast<int32>(max_overshoot / frame_shift)) {
           KALDI_WARN << "End sample too far out of range " << end_samp
-                     << " [overshooted length:] " << num_samp + static_cast<int32>(max_overshoot / frame_shift) << ", skipping segment "
-                     << segment;
+                     << " [overshooted length:] " 
+                     << num_samp + static_cast<int32>(max_overshoot / frame_shift) 
+                     << ", skipping segment " << seg_id;
+          num_err++;
           continue;
         }
         end_samp = num_samp; // for small differences, just truncate.
       }
+
       /* check whether the segment size is less than minimum segment length(default 0.1 sec)
        * if yes, skip the segment
        */
+      if (end_samp
+          <= start_samp
+              + static_cast<int32>(round(
+                  (min_segment_length * 1000.0 / frame_shift)))) {
+        KALDI_WARN<< "Segment " << seg_id << " too short, skipping it.";
+        num_err++;
+        continue;
+      }
 
-      SubVector<BaseFloat> segment_vector(vector, start_samp, end_samp-start_samp-trim_last_frames);
+      SubVector<BaseFloat> segment_vector(vector, start_samp,
+                                          end_samp-start_samp);
       Vector<BaseFloat> out_vector(segment_vector);
-      vector_writer.Write(segment, out_vector);  // write segment in feature archive.
-      num_success++;
+      vector_writer.Write(seg_id, out_vector);  // write segment in feature archive.
+      num_done++;
     }
-    KALDI_LOG << "Successfully processed " << num_success << " lines out of "
-              << num_lines << " in the segments file. ";
+    KALDI_LOG << "Successfully processed " << num_done << " segments; failed "
+              << num_err << " segments.";
     /* prints number of segments processed */
-    if (num_success == 0) return -1;
+    if (num_done == 0) return -1;
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
