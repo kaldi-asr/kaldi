@@ -159,7 +159,7 @@ elif $perspk; then
   do_filtering; # bash function.
   exit 0;
 else
-  if [ $numutt -gt `cat $srcdir/feats.scp | wc -l` ]; then
+  if [ $numutt -gt `cat $srcdir/utt2spk | wc -l` ]; then
     echo "subset_data_dir.sh: cannot subset to more utterances than you originally had."
     exit 1;
   fi 

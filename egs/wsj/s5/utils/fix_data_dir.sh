@@ -126,8 +126,10 @@ function filter_utts {
   ! cat $data/utt2spk | sort | cmp - $data/utt2spk && \
     echo "utt2spk is not in sorted order (fix this yourself)" && exit 1;
 
-  ! cat $data/utt2uniq | sort | cmp - $data/utt2uniq && \
-    echo "utt2uniq is not in sorted order (fix this yourself)" && exit 1;
+  if [ -f $data/utt2uniq ]; then
+    ! cat $data/utt2uniq | sort | cmp - $data/utt2uniq && \
+      echo "utt2uniq is not in sorted order (fix this yourself)" && exit 1;
+  fi
 
   ! cat $data/utt2spk | sort -k2 | cmp - $data/utt2spk && \
     echo "utt2spk is not in sorted order when sorted first on speaker-id " && \
