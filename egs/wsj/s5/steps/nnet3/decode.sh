@@ -12,6 +12,8 @@ stage=1
 transform_dir=    # dir to find fMLLR transforms.
 nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
+post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 so the
+                      # regular scoring script works.
 cmd=run.pl
 beam=15.0
 frames_per_chunk=50
@@ -129,6 +131,12 @@ if [ ! -z "$online_ivector_dir" ]; then
   ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector_period=$ivector_period"
 fi
 
+if [ "$post_decode_acwt" == 1.0 ]; then
+  lat_wspecifier="ark|gzip -c >$dir/lat.JOB.gz"
+else
+  lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
+fi
+
 if [ $stage -le 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     nnet3-latgen-faster$thread_string $ivector_opts \
@@ -136,7 +144,7 @@ if [ $stage -le 1 ]; then
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \
-     $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+     $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
 fi
 
 # The output of this script is the files "lat.*.gz"-- we'll rescore this at

@@ -88,9 +88,9 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# != 5 ]; then
-  echo "Usage: $0 [opts] <data> <lang> <tree-dir> <phone-lattice-dir> <exp-dir>"
-  echo " e.g.: $0 data/train data/lang exp/tri3_ali exp/tri4_nnet"
+if [ $# != 4 ]; then
+  echo "Usage: $0 [opts] <data> <tree-dir> <phone-lattice-dir> <exp-dir>"
+  echo " e.g.: $0 data/train exp/chain/tri3b_tree exp/tri3_latali exp/chain/tdnn_a"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
@@ -127,14 +127,13 @@ if [ $# != 5 ]; then
 fi
 
 data=$1
-lang=$2
-treedir=$3
-latdir=$4
-dir=$5
+treedir=$2
+latdir=$3
+dir=$4
 
 
 # Check some files.
-for f in $data/feats.scp $lang/L.fst $treedir/ali.1.gz $treedir/final.mdl $treedir/tree \
+for f in $data/feats.scp $treedir/ali.1.gz $treedir/final.mdl $treedir/tree \
     $latdir/lat.1.gz $latdir/final.mdl $latdir/num_jobs $latdir/splice_opts; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
@@ -536,7 +535,7 @@ if [ $stage -le $num_iters ]; then
     nnet3-chain-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=256 ark:$egs_dir/combine.cegs ark:-|" \
-       "|nnet3-am-copy --set-raw-nnet=- $dir/0.trans_mdl $dir/final.mdl" || exit 1;
+       "|nnet3-am-copy --set-raw-nnet=- $dir/$first_model_combine.mdl $dir/final.mdl" || exit 1;
 
 
   # Compute the probability of the final, combined model with

@@ -98,7 +98,7 @@ if [ $stage -le 12 ]; then
 
   # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
   # script must have had a different default at that time.
-  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+ steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --get-egs-stage $get_egs_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
@@ -114,12 +114,14 @@ if [ $stage -le 12 ]; then
     --relu-dim 1024 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires data/lang_ctc $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
+    data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
 if [ $stage -le 13 ]; then
-  steps/nnet3/ctc/mkgraph.sh --phone-lm-weight 0.0 \
-      data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  # Note: it might appear that this $lang directory is mismatched, and it is as
+  # far as the 'topo'
+  utils/mkgraph.sh --transition-scale 0.0 \
+      --self-loop-scale 0.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg
@@ -127,8 +129,8 @@ graph_dir=$dir/graph_sw1_tg
 if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
-      num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/ctc/decode.sh --stage 2 --nj 50 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --iter 298_cached \
+          --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
@@ -136,7 +138,7 @@ if [ $stage -le 14 ]; then
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
-      ) &
+      ) # &
   done
 fi
 wait;
