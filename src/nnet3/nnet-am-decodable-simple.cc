@@ -18,28 +18,31 @@
 // limitations under the License.
 
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
 
 
-DecodableAmNnetSimple::DecodableAmNnetSimple(
-    const DecodableAmNnetSimpleOptions &opts,
-    const TransitionModel &trans_model,
-    const AmNnetSimple &am_nnet,
+NnetDecodableBase::NnetDecodableBase(
+    const NnetSimpleComputationOptions &opts,
+    const Nnet &nnet,
+    const VectorBase<BaseFloat> &priors,
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
     opts_(opts),
-    trans_model_(trans_model),
-    am_nnet_(am_nnet),
-    log_priors_(am_nnet_.Priors()),
+    nnet_(nnet),
+    output_dim_(nnet_.OutputDim("output")),
+    log_priors_(priors),
     feats_(feats),
     ivector_(ivector), online_ivector_feats_(online_ivectors),
     online_ivector_period_(online_ivector_period),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
+    compiler_(nnet_, opts_.optimize_config),
     current_log_post_offset_(0) {
+  KALDI_ASSERT(IsSimpleNnet(nnet));
+  ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
@@ -47,59 +50,31 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
   PossiblyWarnForFramesPerChunk();
 }
 
-DecodableAmNnetSimple::DecodableAmNnetSimple(
-    const DecodableAmNnetSimpleOptions &opts,
-    const TransitionModel &trans_model,
-    const AmNnetSimple &am_nnet,
-    const MatrixBase<BaseFloat> &feats,
-    const MatrixBase<BaseFloat> &ivectors,
-    int32 online_ivector_period):
-    opts_(opts),
-    trans_model_(trans_model),
-    am_nnet_(am_nnet),
-    log_priors_(am_nnet_.Priors()),
-    feats_(feats),
-    ivector_(NULL),
-    online_ivector_feats_(&ivectors),
-    online_ivector_period_(online_ivector_period),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
-    current_log_post_offset_(0) {
-  log_priors_.ApplyLog();
-  PossiblyWarnForFramesPerChunk();
-}
 
 DecodableAmNnetSimple::DecodableAmNnetSimple(
-    const DecodableAmNnetSimpleOptions &opts,
+    const NnetSimpleComputationOptions &opts,
     const TransitionModel &trans_model,
     const AmNnetSimple &am_nnet,
     const MatrixBase<BaseFloat> &feats,
-    const VectorBase<BaseFloat> &ivector):
-    opts_(opts),
-    trans_model_(trans_model),
-    am_nnet_(am_nnet),
-    log_priors_(am_nnet_.Priors()),
-    feats_(feats),
-    ivector_(&ivector),
-    online_ivector_feats_(NULL),
-    online_ivector_period_(0),
-    compiler_(am_nnet_.GetNnet(), opts_.optimize_config),
-    current_log_post_offset_(0) {
-  log_priors_.ApplyLog();
-  PossiblyWarnForFramesPerChunk();
-}
+    const VectorBase<BaseFloat> *ivector,
+    const MatrixBase<BaseFloat> *online_ivectors,
+    int32 online_ivector_period):
+    NnetDecodableBase(opts, am_nnet.GetNnet(), am_nnet.Priors(),
+                      feats, ivector, online_ivectors,
+                      online_ivector_period),
+    trans_model_(trans_model) { }
+
+
+
 
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                                                int32 transition_id) {
-  if (frame < current_log_post_offset_ ||
-      frame >= current_log_post_offset_ + current_log_post_.NumRows())
-    EnsureFrameIsComputed(frame);
   int32 pdf_id = trans_model_.TransitionIdToPdf(transition_id);
-  return current_log_post_(frame - current_log_post_offset_,
-                           pdf_id);
+  return GetOutput(frame, pdf_id);
 }
 
-int32 DecodableAmNnetSimple::GetIvectorDim() const {
+int32 NnetDecodableBase::GetIvectorDim() const {
   if (ivector_ != NULL)
     return ivector_->Dim();
   else if (online_ivector_feats_ != NULL)
@@ -108,19 +83,18 @@ int32 DecodableAmNnetSimple::GetIvectorDim() const {
     return 0;
 }
 
-void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
+void NnetDecodableBase::EnsureFrameIsComputed(int32 frame) {
   KALDI_ASSERT(frame >= 0 && frame  < feats_.NumRows());
 
-  const Nnet &nnet = am_nnet_.GetNnet();
   int32 feature_dim = feats_.NumCols(),
       ivector_dim = GetIvectorDim(),
-      nnet_input_dim = nnet.InputDim("input"),
-      nnet_ivector_dim = std::max<int32>(0, nnet.InputDim("ivector"));
+      nnet_input_dim = nnet_.InputDim("input"),
+      nnet_ivector_dim = std::max<int32>(0, nnet_.InputDim("ivector"));
   if (feature_dim != nnet_input_dim)
     KALDI_ERR << "Neural net expects 'input' features with dimension "
               << nnet_input_dim << " but you provided "
               << feature_dim;
-  if (ivector_dim != std::max<int32>(0, nnet.InputDim("ivector")))
+  if (ivector_dim != std::max<int32>(0, nnet_.InputDim("ivector")))
     KALDI_ERR << "Neural net expects 'ivector' features with dimension "
               << nnet_ivector_dim << " but you provided " << ivector_dim;
 
@@ -134,10 +108,10 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
                                           opts_.frames_per_chunk);
   KALDI_ASSERT(num_output_frames > 0);
   KALDI_ASSERT(opts_.extra_left_context >= 0);
-  int32 left_context = am_nnet_.LeftContext() + opts_.extra_left_context;
+  int32 left_context = nnet_left_context_ + opts_.extra_left_context;
   int32 first_input_frame = start_output_frame - left_context,
-      num_input_frames = left_context + num_output_frames +
-                         am_nnet_.RightContext();
+      num_input_frames = nnet_left_context_ + num_output_frames +
+      nnet_right_context_;
   Vector<BaseFloat> ivector;
   GetCurrentIvector(start_output_frame, num_output_frames, &ivector);
 
@@ -164,7 +138,15 @@ void DecodableAmNnetSimple::EnsureFrameIsComputed(int32 frame) {
   }
 }
 
-void DecodableAmNnetSimple::GetCurrentIvector(int32 output_t_start,
+void NnetDecodableBase::GetOutputForFrame(int32 frame,
+                                          VectorBase<BaseFloat> *output) {
+  if (frame < current_log_post_offset_ ||
+      frame >= current_log_post_offset_ + current_log_post_.NumRows())
+    EnsureFrameIsComputed(frame);
+  output->CopyFromVec(current_log_post_.Row(frame - current_log_post_offset_));
+}
+
+void NnetDecodableBase::GetCurrentIvector(int32 output_t_start,
                                               int32 num_output_frames,
                                               Vector<BaseFloat> *ivector) {
   if (ivector_ != NULL) {
@@ -198,7 +180,7 @@ void DecodableAmNnetSimple::GetCurrentIvector(int32 output_t_start,
 }
 
 
-void DecodableAmNnetSimple::DoNnetComputation(
+void NnetDecodableBase::DoNnetComputation(
     int32 input_t_start,
     const MatrixBase<BaseFloat> &input_feats,
     const VectorBase<BaseFloat> &ivector,
@@ -229,7 +211,7 @@ void DecodableAmNnetSimple::DoNnetComputation(
   const NnetComputation *computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
-                        am_nnet_.GetNnet(), nnet_to_update);
+                        nnet_, nnet_to_update);
 
   CuMatrix<BaseFloat> input_feats_cu(input_feats);
   computer.AcceptInput("input", &input_feats_cu);
@@ -253,9 +235,9 @@ void DecodableAmNnetSimple::DoNnetComputation(
   current_log_post_offset_ = output_t_start;
 }
 
-void DecodableAmNnetSimple::PossiblyWarnForFramesPerChunk() const {
+void NnetDecodableBase::PossiblyWarnForFramesPerChunk() const {
   static bool warned = false;
-  int32 nnet_modulus = am_nnet_.GetNnet().Modulus();
+  int32 nnet_modulus = nnet_.Modulus();
   if (opts_.frames_per_chunk % nnet_modulus != 0 && !warned) {
     warned = true;
     KALDI_WARN << "It may be more efficient to set the --frames-per-chunk "
