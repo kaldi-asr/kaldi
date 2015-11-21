@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
 
     NnetSimpleComputationOptions opts;
+    opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
     bool apply_exp = false;
     std::string use_gpu = "yes";
