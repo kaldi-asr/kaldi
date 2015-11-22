@@ -18,7 +18,6 @@ parser.add_argument("--ivector-dim", type=int,
 parser.add_argument("--final-layer-normalize-target", type=float,
                     help="RMS target for final layer (set to <1 if final layer learns too fast",
                     default=1.0)
-                    help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--pnorm-input-dim", type=int,
                     help="input dimension to p-norm nonlinearities")
 parser.add_argument("--pnorm-output-dim", type=int,

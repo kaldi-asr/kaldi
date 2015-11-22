@@ -117,7 +117,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --final-layer-normalize-target $final_layer_normalize_target \
-    --final-layer
     --relu-dim 1024 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
