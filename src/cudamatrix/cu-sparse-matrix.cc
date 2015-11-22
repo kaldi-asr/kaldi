@@ -211,7 +211,7 @@ CuRowSparseMatrix<Real>::CuRowSparseMatrix(const CuRowSparseMatrix<Real> &other)
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     data_ = other.data_;
-    stride_ = smat.stride_;
+    stride_ = other.stride_;
     elements_per_row_ = other.elements_per_row_;
   } else
 #endif
@@ -315,7 +315,7 @@ void CuRowSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
     data_.CopyToVec(&cpu_data);
     std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(num_rows_);
     for (int32 i = 0; i < cpu_data.size(); ++i) {
-      pairs[i].push_back(std::make_pair(cpu_data[i].column, cpu_data[i].weight));
+      pairs[i/stride_].push_back(std::make_pair(cpu_data[i].column, cpu_data[i].weight));
     }
     SparseMatrix<Real> tmp(num_cols_, pairs);
     smat->CopyFromSmat(tmp);
