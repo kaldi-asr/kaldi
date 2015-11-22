@@ -53,10 +53,13 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # (the point of this is to get data in different minibatches on different iterations,
                 # since in the preconditioning method, 2 samples in the same minibatch can
                 # affect each others' gradients.
-
+final_layer_normalize_target=1.0  # you can set this to less than one if you
+                                  # think the final layer is learning too fast
+                                  # compared with the other layers.
 add_layers_period=2 # by default, add new layers every 2 iterations.
 stage=-7
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
+
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
@@ -201,6 +204,7 @@ if [ $stage -le -5 ]; then
 
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_configs.py  \
+    --final-layer-normalize-target $final_layer_normalize_target \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
     --ivector-dim $ivector_dim  \

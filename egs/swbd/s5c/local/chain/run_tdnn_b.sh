@@ -1,24 +1,26 @@
 #!/bin/bash
 
-
+# _b is as as _a except for configuration changes: using 12k num-leaves instead of
+# 5k; using 5 times larger learning rate, and --final-layer-normalize-target=0.5,
+# which will make the final layer learn less fast compared with other layers.
 
 set -e
 
 # configs for 'chain'
-stage=9
+stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_a  # Note: _sp will get added to this if $speed_perturb == true.
-
+dir=exp/chain/tdnn_b  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
 # training options
 num_epochs=4
-initial_effective_lrate=0.0002
-final_effective_lrate=0.00002
+initial_effective_lrate=0.001
+final_effective_lrate=0.0001
+final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=256
@@ -60,7 +62,18 @@ local/nnet3/run_ivector_common.sh --stage $stage \
   --speed-perturb $speed_perturb \
   --generate-alignments $speed_perturb || exit 1;
 
+
 if [ $stage -le 9 ]; then
+  # Get the alignments as lattices (gives the CTC training more freedom).
+  # use the same num-jobs as the alignments
+  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
+    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
+  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+fi
+
+
+if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
@@ -74,19 +87,10 @@ if [ $stage -le 9 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --cmd "$train_cmd" 5000 data/$train_set data/lang_chain $ali_dir $treedir
-fi
-
-if [ $stage -le 11 ]; then
-  # Get the alignments as lattices (gives the CTC training more freedom).
-  # use the same num-jobs as the alignments
-  nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
-  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
+      --cmd "$train_cmd" 12000 data/$train_set data/lang_chain $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -112,6 +116,8 @@ if [ $stage -le 12 ]; then
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --final-layer-normalize-target $final_layer_normalize_target \
+    --final-layer
     --relu-dim 1024 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \

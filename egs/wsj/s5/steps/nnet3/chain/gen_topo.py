@@ -33,7 +33,6 @@ print("<Topology>")
 print("<TopologyEntry>")
 print("<ForPhones>")
 print(" ".join([str(x) for x in all_phones]))
-print("$nonsil_phones $sil_phones")
 print("</ForPhones>")
 # The next two lines may look like a bug, but they are as intended.  State 0 has
 # no self-loop, it happens exactly once.  And it can go either to state 1 (with
