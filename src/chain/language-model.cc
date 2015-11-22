@@ -293,6 +293,7 @@ void LanguageModelEstimator::OutputToFst(
   int64 tot_den = std::accumulate(den_counts.begin(),
                                   den_counts.end(), 0),
       tot_num = 0;  // for self-testing code.
+  double tot_logprob = 0.0;
 
   PairMapType::const_iterator
       iter = num_counts.begin(), end = num_counts.end();
@@ -304,6 +305,7 @@ void LanguageModelEstimator::OutputToFst(
     int32 den_count = den_counts[this_state];
     KALDI_ASSERT(den_count >= num_count);
     BaseFloat prob = num_count / static_cast<BaseFloat>(den_count);
+    tot_logprob += num_count * log(prob);
     if (phone > 0) {
       // it's a real phone.  find out where the transition is to.
       PairMapType::const_iterator
@@ -320,9 +322,15 @@ void LanguageModelEstimator::OutputToFst(
   }
   KALDI_ASSERT(tot_num == tot_den);
   KALDI_LOG << "Total number of phone instances seen was " << tot_num;
+  BaseFloat perplexity = exp(-(tot_logprob / tot_num));
+  KALDI_LOG << "Perplexity on training data is: " << perplexity;
+  KALDI_LOG << "Note: perplexity on unseen data will be infinity as there is "
+            << "no smoothing.  This is by design, to reduce the number of arcs.";
   fst::Connect(fst);
   // Make sure that Connect does not delete any states.
   KALDI_ASSERT(fst->NumStates() == num_states);
+  // arc-sort.  ilabel or olabel doesn't matter, it's an acceptor.
+  fst::ArcSort(fst, fst::ILabelCompare<fst::StdArc>());
   KALDI_LOG << "Created phone language model with " << num_states << " states.";
 }
 

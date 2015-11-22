@@ -58,7 +58,7 @@ bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
   std::vector<int32> labels(phones.size());
   int32 num_frames = std::accumulate(durations.begin(), durations.end(), 0),
       factor = opts.frame_subsampling_factor,
-      num_frames_subsampled = num_frames / factor;
+      num_frames_subsampled = (num_frames + factor - 1) / factor;
   proto_supervision->allowed_phones.clear();
   proto_supervision->allowed_phones.resize(num_frames_subsampled);
   proto_supervision->fst.DeleteStates();
@@ -69,14 +69,15 @@ bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
   for (int32 i = 0; i < num_phones; i++) {
     int32 phone = phones[i], duration = durations[i];
     KALDI_ASSERT(phone > 0 && duration > 0);
-    int32 t_start_subsampled =
-        std::max<int32>(0,
-                        (current_frame - opts.left_tolerance) / factor),
-        t_end_subsampled = std::min<int32>(
-            num_frames_subsampled,
-            (current_frame + duration + opts.right_tolerance) / factor);
+    int32 t_start = std::max<int32>(0, (current_frame - opts.left_tolerance)),
+            t_end = std::min<int32>(num_frames,
+                                    (current_frame + duration + opts.right_tolerance)),
+       t_start_subsampled = (t_start + factor - 1) / factor,
+       t_end_subsampled = (t_end + factor - 1) / factor;
+
     // note: if opts.Check() passed, the following assert should pass too.
-    KALDI_ASSERT(t_end_subsampled > t_start_subsampled);
+    KALDI_ASSERT(t_end_subsampled > t_start_subsampled &&
+                 t_end_subsampled <= num_frames_subsampled);
     for (int32 t_subsampled = t_start_subsampled;
          t_subsampled < t_end_subsampled; t_subsampled++)
       proto_supervision->allowed_phones[t_subsampled].push_back(phone);
@@ -127,13 +128,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   std::vector<int32> state_times;
   int32 num_frames = CompactLatticeStateTimes(lat, &state_times),
       factor = opts.frame_subsampling_factor,
-      num_frames_subsampled = num_frames / factor;
-  if (num_frames < opts.frame_subsampling_factor) {
-    KALDI_WARN << "Number of frames in lattice " << num_frames
-               << " is less than --frame-subsampling-factor="
-               << opts.frame_subsampling_factor;
-    return false;
-  }
+    num_frames_subsampled = (num_frames + factor - 1) / factor;
   for (int32 state = 0; state < num_states; state++)
     proto_supervision->fst.AddState();
   proto_supervision->fst.SetStart(lat.Start());
@@ -156,12 +151,11 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
                                     fst::StdArc(phone, phone,
                                                 fst::TropicalWeight::One(),
                                                 lat_arc.nextstate));
-      int32 t_begin_subsampled =
-          std::max<int32>(0,
-                          (state_time - opts.left_tolerance) / factor),
-          t_end_subsampled = std::min<int32>(
-              num_frames_subsampled,
-              (next_state_time + opts.right_tolerance) / factor);
+      int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
+              t_end = std::min<int32>(num_frames,
+                                      (next_state_time + opts.right_tolerance)),
+ t_begin_subsampled = (t_begin + factor - 1)/ factor,
+   t_end_subsampled = (t_end + factor - 1)/ factor;
     for (int32 t_subsampled = t_begin_subsampled;
          t_subsampled < t_end_subsampled; t_subsampled++)
       proto_supervision->allowed_phones[t_subsampled].push_back(phone);

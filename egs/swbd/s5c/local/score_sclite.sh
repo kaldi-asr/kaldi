@@ -51,18 +51,16 @@ nnet3-ctc-info --print-args=false $model  1>/dev/null 2>&1;
 [ $? -eq 0 ] && is_ctc=true;
 [ -z $is_ctc ] && echo "Unknown model type, verify if $model exists" && exit -1;
 align_word=
-reorder=
+reorder_opt=
 if $reverse; then
   align_word="lattice-reverse ark:- ark:- |"
-  reorder="--reorder=false"
+  reorder_opt="--reorder=false"
 fi
 
 if $is_ctc ; then
-  echo "Warning : This is a CTC model, using corresponding scoring pipeline."
+  echo "Warning : This is a 'chain' model, using corresponding scoring pipeline."
   factor=$(cat $dir/../frame_subsampling_factor) || exit 1
   frame_shift_opt="--frame-shift=0.0$factor"
-else
-  align_word="$align_word lattice-align-words $reorder $lang/phones/word_boundary.int $model ark:- ark:- |"
 fi
 
 name=`basename $data`; # e.g. eval2000
@@ -75,7 +73,8 @@ if [ $stage -le 0 ]; then
       mkdir -p $dir/score_LMWT_${wip}/ '&&' \
       lattice-scale --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-add-penalty --word-ins-penalty=$wip ark:- ark:- \| \
-      lattice-1best ark:- ark:- \| $align_word \
+      lattice-1best ark:- ark:- \| \
+      lattice-align-words $reorder_opt $lang/phones/word_boundary.int $model ark:- ark:- \| \
       nbest-to-ctm $frame_shift_opt ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \

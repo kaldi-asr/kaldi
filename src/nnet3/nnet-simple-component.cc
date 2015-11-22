@@ -261,7 +261,7 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
 std::string NormalizeComponent::Info() const {
   std::stringstream stream;
   stream << NonlinearComponent::Info();
-  stream << ", target_rms=" << target_rms_;
+  stream << ", target-rms=" << target_rms_;
   return stream.str();
 }
 

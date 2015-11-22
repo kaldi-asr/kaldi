@@ -182,7 +182,7 @@ if [ $stage -le -6 ]; then
   echo "$0: creating denominator FST"
   copy-transition-model $treedir/final.mdl $dir/0.trans_mdl
   $cmd $dir/log/make_den_fst.log \
-    chain-make-den-graph $dir/tree $dir/0.trans_mdl $dir/phone_lm.fst \
+    chain-make-den-fst $dir/tree $dir/0.trans_mdl $dir/phone_lm.fst \
        $dir/den.fst $dir/normalization.fst || exit 1;
 fi
 

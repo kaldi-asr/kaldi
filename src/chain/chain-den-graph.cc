@@ -291,7 +291,6 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   KALDI_LOG << "Number of states and arcs in phone-LM FST is "
             << phone_lm.NumStates() << " and " << NumArcs(phone_lm);
 
-
   int32 subsequential_symbol = trans_model.GetPhones().back() + 1;
   if (ctx_dep.CentralPosition() != ctx_dep.ContextWidth() - 1) {
     // note: this function only adds the subseq symbol to the input of what was
@@ -316,14 +315,14 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
   // of H -- will be empty.
-  HTransducerConfig h_cfg;
-  h_cfg.transition_scale = 0.0;  // we don't want transition probs.
-  h_cfg.push_weights = false;  // there's nothing to push.
+  HTransducerConfig h_config;
+  h_config.transition_scale = 0.0;  // we don't want transition probs.
+  h_config.push_weights = false;  // there's nothing to push.
 
   StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
                                        ctx_dep,
                                        trans_model,
-                                       h_cfg,
+                                       h_config,
                                        &disambig_syms_h);
   KALDI_ASSERT(disambig_syms_h.empty());
   StdVectorFst transition_id_fst;

@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &phone_seq = phones_reader.Value();
       lm_estimator.AddCounts(phone_seq);
     }
+    KALDI_LOG << "Estimating phone LM";
     fst::StdVectorFst fst;
     lm_estimator.Estimate(&fst);
 

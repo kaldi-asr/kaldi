@@ -40,9 +40,9 @@ __device__ inline void atomic_add_thresholded(Real* address, Real value) {
   // threshold itself with probability (value / threshold).  This preserves
   // expectations.  Note: we assume that value >= 0.
 
-  // you can chose any value for the threshold, but powers of 2 are nice
+  // you can choose any value for the threshold, but powers of 2 are nice
   // because they will exactly preserve the precision of the value.
-  const Real threshold = 1.0 / (1 << 16);
+  const Real threshold = 1.0 / (1 << 14);
   if (value >= threshold) {
     atomic_add(address, value);
   } else {
