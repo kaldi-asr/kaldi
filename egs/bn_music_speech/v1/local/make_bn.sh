@@ -22,7 +22,6 @@ tmp_dir=local/bn.tmp
 frames_per_sec=100
 min_seg=0.5
 
-#if [ 0 = 1 ]; then
 rm -rf local/bn.tmp
 mkdir local/bn.tmp
 
@@ -30,7 +29,6 @@ echo "$0: preparing annotations..."
 python local/make_annotations_bn.py ${transcript_dir} ${tmp_dir}
 echo "$0: Removing overlapping annotations..."
 python local/refine_annotations_bn.py ${tmp_dir} ${frames_per_sec} ${min_seg}
-#fi
 echo "$0: Preparing broadcast news data directories ${data_dir}/bn..."
 python local/make_bn.py ${sph_dir} ${tmp_dir}
 
