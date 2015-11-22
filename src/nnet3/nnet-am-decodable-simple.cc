@@ -110,7 +110,7 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 frame) {
   KALDI_ASSERT(opts_.extra_left_context >= 0);
   int32 left_context = nnet_left_context_ + opts_.extra_left_context;
   int32 first_input_frame = start_output_frame - left_context,
-      num_input_frames = nnet_left_context_ + num_output_frames +
+      num_input_frames = left_context + num_output_frames +
       nnet_right_context_;
   Vector<BaseFloat> ivector;
   GetCurrentIvector(start_output_frame, num_output_frames, &ivector);
