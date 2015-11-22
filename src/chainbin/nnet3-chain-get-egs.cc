@@ -47,8 +47,9 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   KALDI_ASSERT(supervision.num_sequences == 1);
   int32 num_feature_frames = feats.NumRows(),
       num_output_frames = supervision.frames_per_sequence,
-      num_feature_frames_subsampled = num_feature_frames /
-      frame_subsampling_factor;
+      num_feature_frames_subsampled =
+                             (num_feature_frames + frame_subsampling_factor - 1)/
+                             frame_subsampling_factor;
   if (num_output_frames != num_feature_frames_subsampled)
     KALDI_ERR << "Mismatch in num-frames: chain supervision has "
               << num_output_frames
