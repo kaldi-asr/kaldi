@@ -1349,6 +1349,34 @@ static void UnitTestCuMatrixAddVecVec() {
   AssertEqual(A,A2);
 }
 
+template<typename Real>
+static void UnitTestCuMatrixAddMatSmat() {
+
+  Matrix<Real> Ha(200, 100);
+  SparseMatrix<Real> Hsb(200, 100);
+  Ha.SetRandn();
+  Hsb.SetRandn(0.5f);
+  Matrix<Real> Hb(200, 100);
+  Hsb.CopyToMat(&Hb, kNoTrans);
+
+  CuMatrix<Real> Da(200, 100);
+  CuMatrix<Real> Dat(100, 200);
+  CuMatrix<Real> Db(200, 100);
+  Da.CopyFromMat(Ha);
+  Dat.CopyFromMat(Ha, kTrans);
+  Db.CopyFromMat(Hb);
+  CuRowSparseMatrix<Real> Dsb(Hsb);
+  CuMatrix<Real> Dc1(200, 200);
+  CuMatrix<Real> Dc2(200, 200);
+
+  Dc1.AddMatMat(0.5f, Da, kNoTrans, Db, kTrans, 0.0f);
+  Dc2.AddMatSmat(0.5f, Da, kNoTrans, Dsb, kTrans, 0.0f);
+  AssertEqual(Dc1, Dc2);
+
+  Dc1.AddMatMat(0.5f, Dat, kTrans, Db, kTrans, 0.0f);
+  Dc2.AddMatSmat(0.5f, Dat, kTrans, Dsb, kTrans, 0.0f);
+  AssertEqual(Dc1, Dc2);
+}
 
 template<typename Real>
 static void UnitTestCuMatrixAddMatMatBatched() {
@@ -2459,6 +2487,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddMatMat<Real>();
   UnitTestCuMatrixAddVecVec<Real>();
   UnitTestCuMatrixSymAddMat2<Real>();
+  UnitTestCuMatrixAddMatSmat<Real>();
   UnitTestCuMatrixAddMatMatBatched<Real>();
   UnitTestCuMatrixSymInvertPosDef<Real>();
   UnitTestCuMatrixCopyFromMat<Real>();

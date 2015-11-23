@@ -242,8 +242,16 @@ inline void cuda_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_dat
                           C_row_stride, C_col_stride, D_data, D_row_stride,
                           D_col_stride, alpha, beta);
 }
-
-
+inline void cuda_add_mat_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                              float alpha, const float *srcA_data, const int srcA_stride,
+                              const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta) {
+  cudaF_add_mat_smat(Gr, Bl, data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
+inline void cuda_add_mat_trans_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                                    float alpha, const float *srcA_data, const int srcA_stride,
+                                    const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta) {
+  cudaF_add_mat_trans_smat(Gr, Bl, data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
 
 /*
  * cu::
@@ -379,6 +387,16 @@ inline void cuda_transpose_matrix(dim3 Gr, dim3 Bl, double *mat, MatrixDim d) { 
 inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim, double *S, MatrixDim sdim) { cudaD_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim); }
 inline void cuda_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim, const double *mat2, int mat2_row_stride, int mat2_col_stride, const double *vec,  double beta) { cudaD_add_mat_diag_vec(Gr, Bl, alpha, mat, mat_dim, mat2, mat2_row_stride, mat2_col_stride, vec, beta); }
 inline void cuda_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta) { cudaD_add_mat_mat_elements(Gr, Bl, data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta); }
+inline void cuda_add_mat_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                              double alpha, const double *srcA_data, const int srcA_stride,
+                              const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta) {
+  cudaD_add_mat_smat(Gr, Bl, data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
+inline void cuda_add_mat_trans_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                                    double alpha, const double *srcA_data, const int srcA_stride,
+                                    const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta) {
+  cudaD_add_mat_trans_smat(Gr, Bl, data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
 
 /*
  * CuVector

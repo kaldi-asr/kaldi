@@ -748,6 +748,45 @@ static void _add_mat_mat_elements(Real *data, const Real *srcA_data, const Real 
     }
 }
 
+template<typename Real>
+__global__
+static void _add_mat_smat(Real *data, MatrixDim dim, Real alpha, const Real *srcA_data, const int srcA_stride, const RowElement<Real>* srcB_data, const int *srcB_epr, const int srcB_stride, Real beta) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index of output matrix
+  int32_cuda j = blockIdx.y; // column index of output matrix
+                             // use 1D block for this kernel, all threads share same j
+  if (i < dim.rows && j < dim.cols) {
+    int32_cuda tgt_index = i * dim.stride + j; // actual index of data
+    Real tgt_value = beta * data[tgt_index];
+    int32_cuda epr = srcB_epr[j];
+    for (int k = 0; k < epr; k++) {
+      int32_cuda srcB_index = j * srcB_stride + k;
+      int32_cuda row_sparse_index = srcB_data[srcB_index].column;
+      int32_cuda srcA_index = i * srcA_stride + row_sparse_index;
+      tgt_value += alpha * srcA_data[srcA_index] * srcB_data[srcB_index].weight;
+    }
+    data[tgt_index] = tgt_value;
+  }
+}
+
+template<typename Real>
+__global__
+static void _add_mat_trans_smat(Real *data, MatrixDim dim, Real alpha, const Real *srcA_data, const int srcA_stride, const RowElement<Real>* srcB_data, const int *srcB_epr, const int srcB_stride, Real beta) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index of output matrix
+  int32_cuda j = blockIdx.y; // column index of output matrix
+                             // use 1D block for this kernel, all threads share same j
+  if (i < dim.rows && j < dim.cols) {
+    int32_cuda tgt_index = i * dim.stride + j; // actual index of data
+    Real tgt_value = beta * data[tgt_index];
+    int32_cuda epr = srcB_epr[j];
+    for (int k = 0; k < epr; k++) {
+      int32_cuda srcB_index = j * srcB_stride + k;
+      int32_cuda row_sparse_index = srcB_data[srcB_index].column;
+      int32_cuda srcA_index = row_sparse_index * dim.stride + i;
+      tgt_value += alpha * srcA_data[srcA_index] * srcB_data[srcB_index].weight;
+    }
+    data[tgt_index] = tgt_value;
+  }
+}
 
 /*
  * CuVector
@@ -2379,6 +2418,13 @@ void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA
     _add_mat_mat_elements<<<Gr, Bl>>>(data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta);
 }
 
+void cudaF_add_mat_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, const float *srcA_data, const int srcA_stride, const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta) {
+  _add_mat_smat<<<Gr, Bl>>>(data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
+
+void cudaF_add_mat_trans_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim, float alpha, const float *srcA_data, const int srcA_stride, const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta) {
+  _add_mat_trans_smat<<<Gr, Bl>>>(data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
 
 // CURRENTLY UNUSED...
 void cudaF_apply_mask(dim3 Gr, dim3 Bl, float* mat, const char* mask, MatrixDim dmat, MatrixDim dmask) {
@@ -2847,6 +2893,14 @@ void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixD
 
 void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta) {
     _add_mat_mat_elements<<<Gr, Bl>>>(data, srcA_data, srcB_data, dim, srcA_stride, srcB_stride, alpha, beta);
+}
+
+void cudaD_add_mat_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, const double *srcA_data, const int srcA_stride, const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta) {
+  _add_mat_smat<<<Gr, Bl>>>(data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
+}
+
+void cudaD_add_mat_trans_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim, double alpha, const double *srcA_data, const int srcA_stride, const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta) {
+  _add_mat_trans_smat<<<Gr, Bl>>>(data, dim, alpha, srcA_data, srcA_stride, srcB_data, srcB_epr, srcB_stride, beta);
 }
 
 // CURRENTLY UNUSED...

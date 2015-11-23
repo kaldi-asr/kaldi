@@ -179,7 +179,14 @@ void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
 void cudaF_equal_element_mask(dim3 Gr, dim3 Bl, const float *mat1,
                               const float *mat2, float *mask, MatrixDim mat1_dim,
                               int mat2_stride, int mask_stride);
-  
+
+void cudaF_add_mat_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                        float alpha, const float *srcA_data, const int srcA_stride,
+                        const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta);
+void cudaF_add_mat_trans_smat(dim3 Gr, dim3 Bl, float *data, MatrixDim dim,
+                             float alpha, const float *srcA_data, const int srcA_stride,
+                             const RowElement<float>* srcB_data, const int *srcB_epr, const int srcB_stride, float beta);
+
 /*********************************************************
  * double CUDA kernel calls
  */
@@ -237,6 +244,12 @@ void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, do
 void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d);
 void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim, const double *mat2, int mat2_row_stride, int mat2_col_stride, const double *vec, double beta);
 void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta);
+void cudaD_add_mat_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                        double alpha, const double *srcA_data, const int stcA_stride,
+                        const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta);
+void cudaD_add_mat_trans_smat(dim3 Gr, dim3 Bl, double *data, MatrixDim dim,
+                              double alpha, const double *srcA_data, const int stcA_stride,
+                              const RowElement<double>* srcB_data, const int *srcB_epr, const int srcB_stride, double beta);
 
 /*
  * CuVector
