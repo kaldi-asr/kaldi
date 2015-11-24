@@ -124,9 +124,8 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
   KALDI_ASSERT(opts_.extra_left_context >= 0);
   int32 left_context = nnet_left_context_ + opts_.extra_left_context;
   int32 first_input_frame = first_output_frame - left_context,
-      last_input_frame = last_output_frame + nnet_right_context_,
-      num_input_frames = last_input_frame + 1 - first_input_frame;
-
+         last_input_frame = last_output_frame + nnet_right_context_,
+         num_input_frames = last_input_frame + 1 - first_input_frame;
   Vector<BaseFloat> ivector;
   GetCurrentIvector(first_output_frame,
                     last_output_frame - first_output_frame,
