@@ -565,28 +565,6 @@ class OnlineNaturalGradient {
 
 };
 
-
-/**
-  This function finds the approximate top eigenvectors and eigenvalues of S = beta M
-  M^T (if trans == kNoTrans) or S = beta M^T M (if trans == kTrans).
-  Each row p of P will be set to an approximate
-  eigenvector of S, and the corresponding value in s will exactly equal p^T S p.
-  (note: it will actually be those with the largest absolute value that we return,
-  which makes a difference only if S has negative eigenvalues).
-  We do the eigenvalue computation on the CPU, mainly to avoid the hassle of
-  coding a version of it for CUDA.
-  Caution: most of the other eigenvalue or SVD code puts the eigenvalues in the
-  columns, not the rows.
-  This function is used by class OnlineNaturalGradient; we declare it separately
-  for ease of testing.
- */
-void ApproxEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
-                         MatrixTransposeType trans,
-                         CuMatrixBase<BaseFloat> *P,
-                         CuVectorBase<BaseFloat> *s);
-
-
-
 } // namespace nnet3
 } // namespace kaldi
 
