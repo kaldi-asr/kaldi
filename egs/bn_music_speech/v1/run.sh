@@ -17,6 +17,7 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
+if [ 0 = 1 ]; then
 local/make_bn.sh /export/corpora/NIST/96HUB4/h4eng_sp \
   /export/corpora/LDC/LDC97T22/ data
 local/make_musan.sh /export/corpora/JHU/musan data
@@ -63,6 +64,7 @@ sid/train_full_ubm.sh --nj 20 --cmd "$train_cmd" \
     exp/diag_ubm_music exp/full_ubm_music
 wait;
 
+fi
 sid/music_id.sh --cmd "$train_cmd" --nj 40 \
   exp/full_ubm_music exp/full_ubm_speech \
   data/bn exp/bn_music_speech
@@ -76,3 +78,13 @@ compute-eer <(python local/print_scores.py exp/bn_music_speech/ratio)
 printf "\nEER using GMM trained on noise instead of music"
 compute-eer <(python local/print_scores.py exp/bn_noise_speech/ratio)
 # Equal error rate is 0.860585%, at threshold 0.123218
+
+# The following script replaces the VAD decisions originally computed by
+# the energy-based VAD.  It uses the GMMs trained earlier in the script
+# to make frame-level decisions. Due to the mapping provided in
+# conf/merge_vad.conf, "0" corresponds to silence, "1" to speech, and
+# "2" to music.
+sid/compute_vad_decision_gmm.sh --nj 40 --cmd "$train_cmd" \
+  --merge-map-config conf/merge_vad.conf --use-energy-vad true \
+  data/bn exp/full_ubm_noise exp/full_ubm_speech/ \
+  exp/full_ubm_music/ exp/vad_gmm exp/vad_gmm/

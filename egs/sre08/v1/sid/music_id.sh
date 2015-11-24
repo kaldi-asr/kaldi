@@ -75,8 +75,7 @@ if [ $stage -le -1 ]; then
     gmm-gselect --n=$num_gselect $dir/music_final.dubm "$feats" ark:- \| \
     fgmm-gselect --gselect=ark,s,cs:- --n=$num_gselect $music_ubmdir/final.ubm \
       "$feats" "ark:|gzip -c >$dir/music_gselect.JOB.gz" || exit 1;
-fi
-if [ $stage -le -1 ]; then
+
   echo $nj > $dir/num_jobs
   echo "$0: doing Gaussian selection for speech UBM"
   $cmd JOB=1:$nj $dir/log/speech_gselect.JOB.log \
