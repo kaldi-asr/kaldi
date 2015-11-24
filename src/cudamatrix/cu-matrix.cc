@@ -2667,7 +2667,7 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 
     Timer tim;
     int dimBlock(CU1DBLOCK);
-    int dimGrid = 1;// only 1 block here. we have loops in each thread  //(n_blocks(dim_, CU1DBLOCK));
+    int dimGrid(n_blocks(input.size(), CU1DBLOCK));
 
     cuda_matrix_add_elements(dimGrid, dimBlock, this->data_, this->Dim(),
                              alpha, (MatrixElement<Real>*)addr, input.size());

@@ -372,7 +372,6 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
   
 
 void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
-  typedef KwsProductFst::Arc::Label Label;
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
   Map(product_transducer, &index_transducer, KwsProductFstToKwsLexicographicFstMapper());

@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-simple-computer.h"
+#include "nnet3/nnet-am-decodable-simple.h"
 #include "base/timer.h"
 #include "nnet3/nnet-utils.h"
 
@@ -46,7 +46,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
 
-    NnetSimpleComputerOptions opts;
+    NnetSimpleComputationOptions opts;
+    opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
     bool apply_exp = false;
     std::string use_gpu = "yes";
@@ -104,9 +105,6 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-    int32 left_context = 0, right_context = 0;
-    ComputeSimpleNnetContext(nnet, &left_context, &right_context);
-
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       const Matrix<BaseFloat> &features (feature_reader.Value());
@@ -136,15 +134,19 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      NnetSimpleComputer nnet_computer(
-          opts, nnet,
+      Vector<BaseFloat> priors;
+      NnetDecodableBase nnet_computer(
+          opts, nnet, priors,
           features,
-          left_context, right_context,
           ivector, online_ivectors,
           online_ivector_period);
 
-      Matrix<BaseFloat> matrix;
-      nnet_computer.GetOutput(&matrix);
+      Matrix<BaseFloat> matrix(nnet_computer.NumFrames(),
+                               nnet_computer.OutputDim());
+      for (int32 t = 0; t < nnet_computer.NumFrames(); t++) {
+        SubVector<BaseFloat> row(matrix, t);
+        nnet_computer.GetOutputForFrame(t, &row);
+      }
 
       if (apply_exp)
         matrix.ApplyExp();
