@@ -1,6 +1,9 @@
 #!/bin/bash
 
-
+# caution: the egs for this were dumped with a bug in the numerator lattices,
+# you can subtract 0.0152 from the likelihoods to correct for this.  (compare
+# exp/chain/tdnn_a_sp/log/compute_prob_valid.final.log.new and
+# exp/chain/tdnn_a_sp/log/compute_prob_valid.final.log for an explanation).
 
 set -e
 
@@ -97,14 +100,11 @@ if [ $stage -le 12 ]; then
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
-  # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
-  # script must have had a different default at that time.
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --get-egs-stage $get_egs_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 10" \
-    --target-num-history-states 2000 \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# _d is as _c but with a modified topology (with 4 distinct states per phone
+# instead of 2), and a slightly larger num-states (8000) to compensate for the
+# different topology, which has more states.
+
+# _c is as _a but getting rid of the final-layer-normalize-target (making it 1.0
+# as the default) as it's not clear that it was helpful; using the old learning-rates;
+# and modifying the target-num-states to 7000.
+
 # _b is as as _a except for configuration changes: using 12k num-leaves instead of
 # 5k; using 5 times larger learning rate, and --final-layer-normalize-target=0.5,
 # which will make the final layer learn less fast compared with other layers.
@@ -11,16 +19,17 @@ stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_d  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
 # training options
 num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-final_layer_normalize_target=0.5
+initial_effective_lrate=0.0002
+final_effective_lrate=0.00002
+max_param_change=1.0
+final_layer_normalize_target=1.0
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=256
@@ -54,7 +63,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5b_tree$suffix
+treedir=exp/chain/tri5d_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -77,30 +86,32 @@ if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  lang=data/lang_chain
+  lang=data/lang_chain_d
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
   # topology.
-  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+  steps/nnet3/chain/gen_topo2.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --cmd "$train_cmd" 12000 data/$train_set data/lang_chain $ali_dir $treedir
+      --cmd "$train_cmd" 8000 data/$train_set data/lang_chain_d $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
+ # adding --target-num-history-states 500 to match the egs of run_lstm_a.sh.  The
+ # script must have had a different default at that time.
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --get-egs-stage $get_egs_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
@@ -113,6 +124,7 @@ if [ $stage -le 12 ]; then
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --max-param-change $max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 1024 \
     --cmd "$decode_cmd" \

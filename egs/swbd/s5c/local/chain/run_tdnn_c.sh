@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# _c is as _a but getting rid of the final-layer-normalize-target (making it 1.0
+# as the default) as it's not clear that it was helpful; using the old learning-rates;
+# and modifying the target-num-states to 7000.
+# also setting max-param-change=1, which it seems is what the 'a' one was run with
+# (it was the default in the code at that time).
+
 # _b is as as _a except for configuration changes: using 12k num-leaves instead of
 # 5k; using 5 times larger learning rate, and --final-layer-normalize-target=0.5,
 # which will make the final layer learn less fast compared with other layers.
@@ -11,16 +17,17 @@ stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_c  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
 
 # training options
 num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-final_layer_normalize_target=0.5
+initial_effective_lrate=0.0002
+final_effective_lrate=0.00002
+max_param_change=1.0
+final_layer_normalize_target=1.0
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=256
@@ -54,7 +61,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5b_tree$suffix
+treedir=exp/chain/tri5c_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -90,7 +97,7 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --cmd "$train_cmd" 12000 data/$train_set data/lang_chain $ali_dir $treedir
+      --cmd "$train_cmd" 7000 data/$train_set data/lang_chain $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -113,6 +120,7 @@ if [ $stage -le 12 ]; then
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+    --max-param-change $max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 1024 \
     --cmd "$decode_cmd" \

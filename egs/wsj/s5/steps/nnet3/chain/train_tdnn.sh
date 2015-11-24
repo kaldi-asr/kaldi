@@ -37,12 +37,12 @@ num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of 
 frame_subsampling_factor=3  # controls reduced frame-rate at the output.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
+max_param_change=2.0
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
   # iteration-number ranges.
-target_num_history_states=1000
 ngram_order=3
 
 shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of the samples
@@ -470,7 +470,7 @@ while [ $x -lt $num_iters ]; do
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-chain-train $parallel_train_opts $deriv_time_opts \
+          nnet3-chain-train $parallel_train_opts $deriv_time_opts --max-param-change=$max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
           "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &

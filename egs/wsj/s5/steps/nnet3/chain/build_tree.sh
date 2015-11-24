@@ -130,10 +130,11 @@ fi
 if [ $stage -le -3 ] && $train_tree; then
   echo "$0: Getting questions for tree clustering."
   # preparing questions, roots file...
-  cluster-phones $cluster_phones_opts $context_opts $dir/treeacc \
-     $lang/phones/sets.int $dir/questions.int 2>$dir/log/questions.log || exit 1;
+  $cmd $dir/log/questions.log \
+     cluster-phones $cluster_phones_opts $context_opts $dir/treeacc \
+     $lang/phones/sets.int $dir/questions.int || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
-  $cmd $dir/log/compile_questions.log
+  $cmd $dir/log/compile_questions.log \
     compile-questions --leftmost-questions-truncate=$leftmost_questions_truncate \
       $context_opts $lang/topo $dir/questions.int $dir/questions.qst || exit 1;
 
