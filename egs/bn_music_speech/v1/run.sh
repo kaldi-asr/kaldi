@@ -17,7 +17,6 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-if [ 0 = 1 ]; then
 local/make_bn.sh /export/corpora/NIST/96HUB4/h4eng_sp \
   /export/corpora/LDC/LDC97T22/ data
 local/make_musan.sh /export/corpora/JHU/musan data
@@ -64,7 +63,6 @@ sid/train_full_ubm.sh --nj 20 --cmd "$train_cmd" \
     exp/diag_ubm_music exp/full_ubm_music
 wait;
 
-fi
 sid/music_id.sh --cmd "$train_cmd" --nj 40 \
   exp/full_ubm_music exp/full_ubm_speech \
   data/bn exp/bn_music_speech
