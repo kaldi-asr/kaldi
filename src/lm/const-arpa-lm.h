@@ -173,7 +173,7 @@ class ConstArpaLm {
   int32 overflow_buffer_size_;
 
   // Size of the <lm_states_> array, which will be needed by I/O.
-  int32 lm_states_size_;
+  int64 lm_states_size_;
 
   // Points to the end of <lm_states_>. We use this information to check if
   // there is any illegal visit to the un-reserved memory.

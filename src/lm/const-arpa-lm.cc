@@ -29,6 +29,36 @@
 
 namespace kaldi {
 
+
+// this is like ReadBasicType, but converts from int32 to int64 for you.
+void ReadInt64Converting(std::istream &is,
+                         bool binary, int64 *output) {
+  if (binary) {
+    int len_c_in = is.get();
+    if (len_c_in == -1)
+      KALDI_ERR << "ReadBasicType: encountered end of stream.";
+    char len_c = static_cast<char>(len_c_in);
+    // assume positive -> signed.
+    if (len_c == 4) {  // reading int32
+      int32 temp;
+      is.read(reinterpret_cast<char *>(&temp), 4);
+      *output = temp;
+    } else if (len_c == 8) {  // reading int64
+      is.read(reinterpret_cast<char *>(output), 4);
+    } else {
+      KALDI_ERR << "Error reading int64 from stream, got size "
+                << len_c;
+    }
+  } else {
+    is >> *output;
+  }
+  if (is.fail()) {
+    KALDI_ERR << "Read failure in ReadBasicType, file position is "
+              << is.tellg() << ", next char is " << is.peek();
+  }
+}
+
+
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
 struct ArpaLine {
@@ -262,7 +292,7 @@ class ConstArpaLmBuilder {
   int32 overflow_buffer_size_;
 
   // Size of the <lm_states_> array, which will be needed by I/O.
-  int32 lm_states_size_;
+  int64 lm_states_size_;
 
   // Memory blcok for storing LmStates.
   int32* lm_states_;
@@ -532,7 +562,7 @@ void ConstArpaLmBuilder::Build() {
 
   // STEP 3: creating memory block to store LmStates.
   // Reserves a memory block for LmStates.
-  int32 lm_states_index = 0;
+  int64 lm_states_index = 0;
   try {
     lm_states_ = new int32[lm_states_size_];
   } catch(const std::exception &e) {
@@ -656,7 +686,7 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
 
   // LmStates section.
   WriteBasicType(os, binary, lm_states_size_);
-  for (int32 i = 0; i < lm_states_size_; ++i) {
+  for (int64 i = 0; i < lm_states_size_; ++i) {
     WriteBasicType(os, binary, lm_states_[i]);
   }
 
@@ -704,9 +734,12 @@ void ConstArpaLm::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &ngram_order_);
 
   // LmStates section.
-  ReadBasicType(is, binary, &lm_states_size_);
+  // Note: the only reason the following line says ReadInt64Converting
+  // instead of ReadInt64 is that lm_states_size_ used to be int32.  It was
+  // a bug, but we need to be able to read the old format.
+  ReadInt64Converting(is, binary, &lm_states_size_);
   lm_states_ = new int32[lm_states_size_];
-  for (int32 i = 0; i < lm_states_size_; ++i) {
+  for (int64 i = 0; i < lm_states_size_; ++i) {
     ReadBasicType(is, binary, &lm_states_[i]);
   }
 
