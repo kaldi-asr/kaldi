@@ -239,20 +239,22 @@ void OnlineNaturalGradient::ReorthogonalizeXt1(
   TpMatrix<BaseFloat> C(R);
   try {
     C.Cholesky(O);
+    C.Invert();  // Now it's C^{-1}.
   } catch (...) {
     // It would be very strange to reach this point, but we try to handle it
-    // gracefully anyway.
-    KALDI_WARN << "Cholesky failed while re-orthogonalizing R_t. "
-               << "Re-initializing as arbitrary orthogonal matrix.";
-    // set R_t to [I; 0] which is orthogonal.
-    W_t1->SetZero();
-    W_t1->AddToDiag(1.0);
-    // W_{t+1} = E_{t+1}^{0.5} R_{t+1}
+    // gracefully anyway.  We do a Gram-Schmidt orthogonalization, which is
+    // a bit less efficient but more robust.
+    KALDI_WARN << "Cholesky or Invert() failed while re-orthogonalizing R_t. "
+               << "Re-orthogonalizing on CPU.";
+    Matrix<BaseFloat> cpu_W_t1(*W_t1);
+    cpu_W_t1.OrthogonalizeRows();
+    W_t1->CopyFromMat(cpu_W_t1);
+    // at this point cpu_W_t1 represents R_{t+1}- it has orthonormal
+    // rows.  Do: W_{t+1} = E_{t+1}^{0.5} R_{t+1}
     CuVector<BaseFloat> sqrt_e_t1_gpu(sqrt_e_t1);
     W_t1->MulRowsVec(sqrt_e_t1_gpu);
     return;
   }
-  C.Invert();  // Now it's C^{-1}.
   // Next, compute (E_t^{0.5} C^{-1} E_t^{-0.5})
   // but it's really t+1, not t.
   for (int32 i = 0; i < R; i++) {
