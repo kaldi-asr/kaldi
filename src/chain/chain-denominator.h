@@ -80,7 +80,7 @@ class DenominatorComputation {
   BaseFloat Forward();
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
-  // nnet output), to 'nnet_output_deriv.
+  // nnet output), to 'nnet_output_deriv'.
   void Backward(BaseFloat deriv_weight,
                 CuMatrixBase<BaseFloat> *nnet_output_deriv);
 

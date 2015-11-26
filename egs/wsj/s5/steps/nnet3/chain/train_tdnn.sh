@@ -204,7 +204,7 @@ if [ $stage -le -5 ]; then
   fi
 
   # create the config files for nnet initialization
-  python steps/nnet3/make_tdnn_configs.py  \
+  python steps/nnet3/make_tdnn_configs.py \
     --final-layer-normalize-target $final_layer_normalize_target \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
@@ -544,7 +544,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-chain-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=256 ark:$egs_dir/combine.cegs ark:-|" \
+       --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:$egs_dir/combine.cegs ark:-|" \
        "|nnet3-am-copy --set-raw-nnet=- $dir/$first_model_combine.mdl $dir/final.mdl" || exit 1;
 
 

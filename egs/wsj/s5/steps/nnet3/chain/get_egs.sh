@@ -380,14 +380,10 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: removing temporary archives"
-  for y in $(seq $num_archives_intermediate); do
-    # For NFS caching reasons it's better to do a bunch of reads followed by a
-    # bunch of writes, rather than interleaving them, since the directory is
-    # large.
-    rm $(for x in $(seq $nj); do
-          file=$dir/cegs_orig.$x.$y.ark;
-          echo $(readlink -f $file) $file; done) 2>/dev/null
-  done
+  (
+    cd $dir
+    for f in $(ls -l . | grep 'cegs_orig' | awk '{ X=NF-1; Y=NF-2; if ($X == "->")  print $Y, $NF; }'); do rm $f; done
+  )
   if [ $archives_multiple -gt 1 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done

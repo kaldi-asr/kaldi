@@ -1,17 +1,15 @@
 #!/bin/bash
 
+# _l is as _k but even longer chunk size: 200 instead of 150.  having to halve
+#  minibatch size to save memory.  I correspondingly changed max-param-change.
+
+# _k is as _i but reverting the g->h change, removing the --scale-max-param-change
+# option and setting max-param-change to 1..  Using the same egs.
+
+# _i is as _h but longer egs: 150 frames instead of 75, and
+# 128 elements per minibatch instead of 256.
+
 # _h is as _g but different application of max-param-change (use --scale-max-param-change true)
-# The WER is quite a bit worse.
-# b01:s5c: grep Sum exp/chain/tdnn_g_sp/decode_eval2000_sw1_fsh_fg/score*/*ys |  utils/best_wer.sh
-# %WER 13.1 | 1831 21395 | 88.6 8.1 3.4 1.7 13.1 50.0 | exp/chain/tdnn_g_sp/decode_eval2000_sw1_fsh_fg/score_11_0.5/eval2000_hires.ctm.swbd.filt.sys
-# b01:s5c: grep Sum exp/chain/tdnn_h_sp/decode_eval2000_sw1_fsh_fg/score*/*ys |  utils/best_wer.sh
-# %WER 14.9 | 1831 21395 | 87.1 9.0 3.9 2.0 14.9 52.3 | exp/chain/tdnn_h_sp/decode_eval2000_sw1_fsh_fg/score_14_0.0/eval2000_hires.ctm.swbd.filt.sys
-
-# the train objf is a bit better.  The valid objf is about the same but can't really be trusted as
-# we had the bug where there was no utt2uniq file.
-# exp/chain/tdnn_h_sp/log/compute_prob_train.final.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:131) Overall log-probability for 'output' is -0.0788236 per frame, over 10000 frames.
-#exp/chain/tdnn_g_sp/log/compute_prob_train.final.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:131) Overall log-probability for 'output' is -0.08124 per frame, over 10000 frames.
-
 
 # _g is as _f but more splicing at last layer.
 
@@ -43,7 +41,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_h  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_l  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -9,0,9 0"
@@ -53,13 +51,12 @@ num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=30
-max_param_change=0.3333
-scale_max_param_change=true
+max_param_change=0.666
 final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
-minibatch_size=256
-frames_per_eg=75
+minibatch_size=64
+frames_per_eg=200
 remove_egs=false
 
 # End configuration section.
@@ -132,13 +129,12 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_g_sp/egs \
     --get-egs-stage $get_egs_stage \
     --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
@@ -151,7 +147,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --scale-max-param-change $scale_max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 1024 \
     --cmd "$decode_cmd" \
