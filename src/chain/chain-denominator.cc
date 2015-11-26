@@ -177,7 +177,7 @@ BaseFloat DenominatorComputation::Forward() {
 
 BaseFloat DenominatorComputation::ComputeTotLogLike() {
   tot_prob_.Resize(num_sequences_);
-  // View the last alpha as a matrix of size num-time-steps by num-sequences.
+  // View the last alpha as a matrix of size num-hmm-states by num-sequences.
   CuSubMatrix<BaseFloat> last_alpha(alpha_.RowData(frames_per_sequence_),
                                     den_graph_.NumStates(),
                                     num_sequences_,

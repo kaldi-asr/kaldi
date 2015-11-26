@@ -562,7 +562,6 @@ class OnlineNaturalGradient {
   // parameters, in multi-threaded code.
   Mutex update_mutex_;
 
-
 };
 
 } // namespace nnet3

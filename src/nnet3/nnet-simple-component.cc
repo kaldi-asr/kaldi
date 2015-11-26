@@ -1486,7 +1486,7 @@ std::string NaturalGradientAffineComponent::Info() const {
          << ", update_period=" << update_period_
          << ", alpha=" << alpha_
          << ", max-change-per-sample=" << max_change_per_sample_;
-  if (update_count_ > 0.0) {
+  if (update_count_ > 0.0 && max_change_per_sample_ > 0.0) {
     stream << ", avg-scaling-factor=" << max_change_scale_stats_ / update_count_
            << ", active-scaling-portion="
            << active_scaling_count_ / update_count_;
