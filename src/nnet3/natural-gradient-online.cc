@@ -67,6 +67,17 @@ OnlineNaturalGradient::OnlineNaturalGradient():
     num_updates_skipped_(0), self_debug_(false) { }
 
 
+/**
+  This function creates a matrix with orthonormal rows that is like the
+  following matrix, except with each row normalized to have unit 2-norm:
+  [  1.1 0   1   0   1   0
+     0   1.1 0   1   0   1  ]
+  The reason why the first element in each row is 1.1 and not 1, is for
+  symmetry-breaking... we don't want any weighted sum of all these rows to be
+  all ones, because the derivative in that direction can be zero in some
+  architectures and it causes us to have to do an inefficient CPU-based
+  renormalization.
+ */
 // static
 void OnlineNaturalGradient::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
   int32 num_rows = R->NumRows(), num_cols = R->NumCols();
@@ -74,15 +85,19 @@ void OnlineNaturalGradient::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
   R->SetZero();
   std::vector<MatrixElement<BaseFloat> > elems;
   elems.reserve(num_cols);
+  BaseFloat first_elem = 1.1;
   for (int32 r = 0; r < num_rows; r++) {
     std::vector<int32> cols;  // columns that have an entry for this row
     for (int32 c = r; c < num_cols; c += num_rows)
       cols.push_back(c);
-    BaseFloat val = 1.0 / sqrt(cols.size());
+    BaseFloat normalizer = 1.0 / sqrt(first_elem * first_elem +
+                                      cols.size() - 1);
     for (size_t i = 0; i < cols.size(); i++) {
       int32 c = cols[i];
-      MatrixElement<BaseFloat> elem = { r, c, val };
-      elems.push_back(elem);
+      MatrixElement<BaseFloat> e = { r, c,
+                                     normalizer * (i == 0 ? first_elem :
+                                                   BaseFloat(1.0)) };
+      elems.push_back(e);
     }
   }
   R->AddElements(1.0, elems);
