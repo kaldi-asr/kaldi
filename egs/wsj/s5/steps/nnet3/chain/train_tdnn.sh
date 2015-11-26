@@ -38,6 +38,7 @@ frame_subsampling_factor=3  # controls reduced frame-rate at the output.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 max_param_change=2.0
+scale_max_param_change=false # if this option is used, scale it by num-jobs.
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -469,8 +470,13 @@ while [ $x -lt $num_iters ]; do
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
+        if $scale_max_param_change; then
+          this_max_param_change=$(perl -e "print ($max_param_change * $this_num_jobs);")
+        else
+          this_max_param_change=$max_param_change
+        fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-chain-train $parallel_train_opts $deriv_time_opts --max-param-change=$max_param_change \
+          nnet3-chain-train $parallel_train_opts $deriv_time_opts --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
           "ark:nnet3-chain-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
