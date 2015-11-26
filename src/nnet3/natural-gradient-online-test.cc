@@ -96,7 +96,8 @@ void OnlineNaturalGradientSimple::InitDefault(int32 D) {
       cols.push_back(c);
     for (int32 i = 0; i < cols.size(); i++) {
       int32 c = cols[i];
-      R_t_(r, c) = 1.0 / sqrt(cols.size());
+      R_t_(r, c) = (i == 0 ? 1.1 : 1.0) /
+          sqrt(1.1 * 1.1 + cols.size() - 1);
     }
   }
   d_t_.Resize(R);
