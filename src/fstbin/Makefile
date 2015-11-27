@@ -15,7 +15,7 @@ BINFILES = fstdeterminizestar  \
            fstmakecontextsyms fstaddsubsequentialloop fstaddselfloops  \
            fstrmepslocal fstcomposecontext fsttablecompose fstrand fstfactor \
            fstdeterminizelog fstphicompose fstrhocompose fstpropfinal fstcopy \
-	       fstpushspecial fsts-to-transcripts
+	         fstpushspecial fsts-to-transcripts fsts-project
 
 OBJFILES =
 
