@@ -20,6 +20,7 @@
 
 #include "chain/chain-den-graph.h"
 #include "hmm/hmm-utils.h"
+#include "fstext/push-special.h"
 
 namespace kaldi {
 namespace chain {
@@ -250,7 +251,8 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
 }
 
 void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
-  BaseFloat delta = 1.0e-05;
+  BaseFloat delta = fst::kDelta * 10.0;  // use fairly loose delta for
+                                         // aggressive minimimization.
   fst::ArcMap(fst, fst::QuantizeMapper<fst::StdArc>(delta));
   fst::EncodeMapper<fst::StdArc> encoder(fst::kEncodeLabels | fst::kEncodeWeights,
                                          fst::ENCODE);
@@ -258,6 +260,31 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   fst::AcceptorMinimize(fst);
   fst::Decode(fst, encoder);
 }
+
+void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
+  for (int32 i = 1; i <= 3; i++) {
+    fst::PushSpecial(fst, fst::kDelta * 0.01);
+    MinimizeAcceptorNoPush(fst);
+    KALDI_LOG << "Number of states and arcs in transition-id FST after regular "
+              << "minimization is " << fst->NumStates() << " and "
+              << NumArcs(*fst) << " (pass " << i << ")";
+    fst::StdVectorFst fst_reversed;
+    fst::Reverse(*fst, &fst_reversed);
+    fst::PushSpecial(&fst_reversed, fst::kDelta * 0.01);
+    MinimizeAcceptorNoPush(&fst_reversed);
+    fst::Reverse(fst_reversed, fst);
+    KALDI_LOG << "Number of states and arcs in transition-id FST after reversed "
+              << "minimization is " << fst->NumStates() << " and "
+              << NumArcs(*fst) << " (pass " << i << ")";
+  }
+  fst::RmEpsilon(fst);
+  KALDI_LOG << "Number of states and arcs in transition-id FST after "
+            << "removing any epsilons introduced by reversal is "
+            << fst->NumStates() << " and "
+            << NumArcs(*fst);
+  fst::PushSpecial(fst, fst::kDelta * 0.01);
+}
+
 
 // Check that every pdf is seen, warn if some are not.
 static void CheckDenominatorFst(int32 num_pdfs,
@@ -352,10 +379,8 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
             << transition_id_fst.NumStates() << " and "
             << NumArcs(transition_id_fst);
 
-  MinimizeAcceptorNoPush(&transition_id_fst);
-  KALDI_LOG << "Number of states and arcs in transition-id FST after minimization is "
-            << transition_id_fst.NumStates() << " and "
-            << NumArcs(transition_id_fst);
+  DenGraphMinimizeWrapper(&transition_id_fst);
+
   *den_fst = transition_id_fst;
   CheckDenominatorFst(trans_model.NumPdfs(), *den_fst);
 }

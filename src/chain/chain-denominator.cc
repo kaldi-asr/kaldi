@@ -38,8 +38,11 @@ DenominatorComputation::DenominatorComputation(
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
     exp_nnet_output_transposed_(nnet_output, kTrans),
-    nnet_output_deriv_transposed_(exp_nnet_output_transposed_.NumRows(),
-                                  exp_nnet_output_transposed_.NumCols()),
+    nnet_output_deriv_transposed_(
+        exp_nnet_output_transposed_.NumRows(),
+        std::min<int32>(exp_nnet_output_transposed_.NumCols(),
+                        static_cast<int32>(kMaxDerivTimeSteps) *
+                        num_sequences_)),
     alpha_(frames_per_sequence_ + 1, den_graph_.NumStates() * num_sequences_,
            kUndefined),
     beta_(2, den_graph_.NumStates() * num_sequences_, kUndefined),
@@ -227,10 +230,28 @@ void DenominatorComputation::Backward(
     BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   BetaLastFrame();
-  for (int32 t = frames_per_sequence_ - 1; t >= 0; t--)
+  for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
     BetaGeneralFrame(t);
-  nnet_output_deriv->AddMat(deriv_weight, nnet_output_deriv_transposed_,
-                            kTrans);
+    if (t % kMaxDerivTimeSteps == 0) {
+      // commit the derivative stored in exp_nnet_output_transposed_ by adding
+      // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
+      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
+                                           frames_per_sequence_ - t),
+                num_pdfs = exp_nnet_output_transposed_.NumRows();
+      CuSubMatrix<BaseFloat> transposed_deriv_part(
+          nnet_output_deriv_transposed_,
+          0, num_pdfs,
+          0, chunk_frames * num_sequences_);
+      CuSubMatrix<BaseFloat> output_deriv_part(
+          *nnet_output_deriv,
+          t * num_sequences_, chunk_frames * num_sequences_,
+          0, num_pdfs);
+      output_deriv_part.AddMat(deriv_weight, transposed_deriv_part,
+                               kTrans);
+      if (t != 0)
+        transposed_deriv_part.SetZero();
+    }
+  }
 }
 
 void DenominatorComputation::BetaLastFrame() {
@@ -256,6 +277,11 @@ void DenominatorComputation::BetaLastFrame() {
 void DenominatorComputation::BetaGeneralFrame(int32 t) {
   KALDI_ASSERT(t >= 0 && t < frames_per_sequence_);
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
+  // t_wrapped gives us the time-index we use when indexing
+  // nnet_output_deriv_transposed_; to save memory we limit the size of the
+  // matrix, storing only chunks of frames at a time, and we add it to the
+  // non-transposed output whenever we finish a chunk.
+  int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps);
   const BaseFloat *this_alpha = alpha_.RowData(t),
       *next_beta = beta_.RowData((t + 1) % 2);
   BaseFloat *this_beta = beta_.RowData(t % 2);
@@ -265,11 +291,7 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
                                t * num_sequences_, num_sequences_),
       log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
-                     t * num_sequences_, num_sequences_);
-  // we assume that if two matrices have been allocated with the same dimension,
-  // they have the same stride.  If this is found later on to not be the case, we
-  // can change the CUDA kernel.
-  KALDI_ASSERT(probs.Stride() == log_prob_deriv.Stride());
+                     t_wrapped * num_sequences_, num_sequences_);
 
   int32 num_hmm_states = den_graph_.NumStates(),
       num_sequences = num_sequences_,
@@ -283,13 +305,15 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
     cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
                             num_sequences, special_hmm_state,
                             probs.Data(), probs.Stride(), this_alpha, next_beta,
-                            this_beta, log_prob_deriv.Data());
+                            this_beta, log_prob_deriv.Data(),
+                            log_prob_deriv.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
-    int32 prob_stride = probs.Stride();
+    int32 prob_stride = probs.Stride(),
+         deriv_stride = log_prob_deriv.Stride();
     const BaseFloat *prob_data = probs.Data();
     BaseFloat *log_prob_deriv_data = log_prob_deriv.Data();
     for (int32 h = 0; h < num_hmm_states; h++) {
@@ -312,7 +336,7 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
               prob_data[pdf_id * prob_stride + s];
           tot_variable_factor += variable_factor;
           BaseFloat occupation_prob = variable_factor * occupation_factor;
-          log_prob_deriv_data[pdf_id * prob_stride + s] += occupation_prob;
+          log_prob_deriv_data[pdf_id * deriv_stride + s] += occupation_prob;
         }
         this_beta[h * num_sequences + s] =
             tot_variable_factor / inv_arbitrary_scale;

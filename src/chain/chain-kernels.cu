@@ -157,7 +157,8 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                                      int32_cuda special_hmm_state,
                                      const BaseFloat *probs, int32_cuda prob_stride,
                                      const BaseFloat *this_alpha, const BaseFloat *next_beta,
-                                     BaseFloat *this_beta, BaseFloat *log_prob_deriv) {
+                                     BaseFloat *this_beta, BaseFloat *log_prob_deriv,
+                                     int32_cuda log_prob_deriv_stride) {
   // 'state_info', indexed by hmm-state, consists of [start, end] indexes into
   // the 'transition_info' array.  The state_info supplied to this function consists of
   // indexes for transitions *out of* this state.
@@ -203,10 +204,10 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                     probs[pdf_id1 * prob_stride + s];
     tot_variable_factor += variable_factor0 + variable_factor1;
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
-    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * prob_stride + s),
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            occupation_prob0);
     BaseFloat occupation_prob1 = variable_factor1 * occupation_factor;
-    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * prob_stride + s),
+    atomic_add_thresholded(log_prob_deriv + (pdf_id1 * log_prob_deriv_stride + s),
                            occupation_prob1);
   }
   if (trans_iter != trans_end) {
@@ -219,7 +220,7 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
                       probs[pdf_id0 * prob_stride + s];
     tot_variable_factor += variable_factor0;
     BaseFloat occupation_prob0 = variable_factor0 * occupation_factor;
-    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * prob_stride + s),
+    atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            occupation_prob0);
   }
   this_beta[h * num_sequences + s] = tot_variable_factor / inv_arbitrary_scale;
@@ -247,10 +248,12 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                              const BaseFloat *probs, int32_cuda prob_stride,
                              const BaseFloat *this_alpha, const BaseFloat *next_beta,
                              BaseFloat *this_beta,
-                             BaseFloat *log_prob_deriv) {
+                             BaseFloat *log_prob_deriv,
+                             int32_cuda log_prob_deriv_stride) {
   _cuda_chain_hmm_backward<<<Gr,Bl>>>(forward_transitions, transitions,
                                       num_sequences, special_hmm_state,
                                       probs, prob_stride, this_alpha, next_beta,
-                                      this_beta, log_prob_deriv);
+                                      this_beta, log_prob_deriv,
+                                      log_prob_deriv_stride);
 }
 

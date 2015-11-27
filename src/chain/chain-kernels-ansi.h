@@ -35,7 +35,8 @@ extern "C" {
                                const BaseFloat *this_alpha,
                                const BaseFloat *next_beta,
                                BaseFloat *this_beta,
-                               BaseFloat *log_prob_deriv);
+                               BaseFloat *log_prob_deriv,
+                               int32_cuda log_prob_deriv_stride);
 
   void cuda_chain_hmm_forward(dim3 Gr, dim3 Bl,
                               const Int32Pair *backward_transitions,

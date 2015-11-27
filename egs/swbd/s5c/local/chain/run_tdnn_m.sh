@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# _j is as _i and using the same egs, but setting
-# --left-deriv-truncate and --right-deriv-truncate to 10
-# instead of 5.
-# This does not seem to be helpful at all: WERs are the same or even worse.  With
-# the trigram model and evaluating on all of eval2000, the WER with the 'i'
-# model is 21.1, and of this model is 21.3.
-# However, it probably would have made sense to set --frames-overlap-per-eg
-# to a larger number - at least 20 - in this setup.
+# _m is as _k but after a code change that makes the denominator FST more
+# compact.  I am rerunning in order to verify that the WER is not changed (since
+# it's possible in principle that due to edge effects related to weight-pushing,
+# the results could be a bit different).
+
+# _k is as _i but reverting the g->h change, removing the --scale-max-param-change
+# option and setting max-param-change to 1..  Using the same egs.
 
 # _i is as _h but longer egs: 150 frames instead of 75, and
 # 128 elements per minibatch instead of 256.
@@ -44,7 +43,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_j  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_m  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -9,0,9 0"
@@ -54,8 +53,7 @@ num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=30
-max_param_change=0.3333
-scale_max_param_change=true
+max_param_change=1.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
@@ -133,15 +131,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_i_sp/egs \
     --get-egs-stage $get_egs_stage \
-    --left-deriv-truncate 10  --right-deriv-truncate 10  --right-tolerance 5 \
+    --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 10 --nj 40" \
     --frames-per-eg $frames_per_eg \
@@ -152,7 +149,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --scale-max-param-change $scale_max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 1024 \
     --cmd "$decode_cmd" \

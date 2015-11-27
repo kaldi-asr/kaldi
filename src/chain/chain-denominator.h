@@ -85,6 +85,12 @@ class DenominatorComputation {
                 CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
  private:
+  // Defining this constant as an enum is easier.  it controls a memory/speed
+  // tradeoff, determining how many frames' worth of the transposed derivative
+  // we store at a time.  It's not very critical; the only disadvantage from
+  // setting it small is that we have to invoke an AddMat kernel more times.
+  enum { kMaxDerivTimeSteps = 8 };
+
   // sets up the alpha for frame t = 0.
   void AlphaFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
