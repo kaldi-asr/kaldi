@@ -44,7 +44,7 @@ void ReadInt64Converting(std::istream &is,
       is.read(reinterpret_cast<char *>(&temp), 4);
       *output = temp;
     } else if (len_c == 8) {  // reading int64
-      is.read(reinterpret_cast<char *>(output), 4);
+      is.read(reinterpret_cast<char *>(output), 8);
     } else {
       KALDI_ERR << "Error reading int64 from stream, got size "
                 << len_c;
