@@ -65,6 +65,7 @@ norm_based_clipping=true  # if true norm_based_clipping is used.
 clipping_threshold=30     # if norm_based_clipping is true this would be the maximum value of the row l2-norm,
                           # else this is the max-absolute value of each element in Jacobian.
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
+                # Caution: if you double this you should halve --samples-per-iter.
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
 label_delay=5  # the lstm output is used to predict the label with the specified delay
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
@@ -162,6 +163,7 @@ if [ $# != 4 ]; then
   echo "  --non-recurrent-projection-dim  <int|256>        # the output dimension of the non-recurrent-projection-matrix"
   echo "  --chunk-left-context <int|40>                    # number of time-steps used in the estimation of the first LSTM state"
   echo "  --chunk-width <int|20>                           # number of output labels in the sequence used to train an LSTM"
+  echo "                                                   # Caution: if you double this you should halve --samples-per-iter."
   echo "  --norm-based-clipping <bool|true>                # if true norm_based_clipping is used."
   echo "                                                   # In norm-based clipping the activation Jacobian matrix"
   echo "                                                   # for the recurrent connections in the network is clipped"
