@@ -182,6 +182,17 @@ template<class T> inline void WriteIntegerVector(std::ostream &os, bool binary,
 template<class T> inline void ReadIntegerVector(std::istream &is, bool binary,
                                                 std::vector<T> *v);
 
+/// Function for writing array of integer types.
+template<class T> inline void WriteIntegerArray(std::ostream &os, bool binary,
+                                                const int64 array_sz,
+                                                const T* const array);
+
+/// Function for reading array of integer types. We assume it is the caller's
+/// responsibility to create <array> with size <array_sz>.
+template<class T> inline void ReadIntegerArray(std::istream &is, bool binary,
+                                               const int64 array_sz,
+                                               T* const array);
+
 /// The WriteToken functions are for writing nonempty sequences of non-space
 /// characters. They are not for general strings.
 void WriteToken(std::ostream &os, bool binary, const char *token);
