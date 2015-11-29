@@ -24,18 +24,65 @@
 namespace kaldi {
 namespace nnet3 {
 
+
+// writes compressed as unsigned char a vector 'vec' that is required to have
+// values between 0 and 1.
+static inline void WriteVectorAsChar(std::ostream &os,
+                                     bool binary,
+                                     const VectorBase<BaseFloat> &vec) {
+  if (binary) {
+    int32 dim = vec.Dim();
+    std::vector<unsigned char> char_vec(dim);
+    const BaseFloat *data = vec.Data();
+    for (int32 i = 0; i < dim; i++) {
+      BaseFloat value = data[i];
+      KALDI_ASSERT(value >= 0.0 && value <= 1.0);
+      // below, the adding 0.5 is done so that we round to the closest integer
+      // rather than rounding down (since static_cast will round down).
+      char_vec[i] = static_cast<unsigned char>(255.0 * value + 0.5);
+    }
+    WriteIntegerVector(os, binary, char_vec);
+  } else {
+    // the regular floating-point format will be more readable for text mode.
+    vec.Write(os, binary);
+  }
+}
+
+// reads data written by WriteVectorAsChar.
+static inline void ReadVectorAsChar(std::istream &is,
+                                    bool binary,
+                                    Vector<BaseFloat> *vec) {
+  if (binary) {
+    BaseFloat scale = 1.0 / 255.0;
+    std::vector<unsigned char> char_vec;
+    ReadIntegerVector(is, binary, &char_vec);
+    int32 dim = char_vec.size();
+    vec->Resize(dim, kUndefined);
+    BaseFloat *data = vec->Data();
+    for (int32 i = 0; i < dim; i++)
+      data[i] = scale * char_vec[i];
+  } else {
+    vec->Read(is, binary);
+  }
+}
+
+
+
 void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
   CheckDim();
   WriteToken(os, binary, "<NnetChainSup>");
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   supervision.Write(os, binary);
+  WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
+  WriteVectorAsChar(os, binary, deriv_weights);
   WriteToken(os, binary, "</NnetChainSup>");
 }
 
 bool NnetChainSupervision::operator == (const NnetChainSupervision &other) const {
   return name == other.name && indexes == other.indexes &&
-      supervision == other.supervision;
+      supervision == other.supervision &&
+      deriv_weights.ApproxEqual(other.deriv_weights);
 }
 
 void NnetChainSupervision::Read(std::istream &is, bool binary) {
@@ -43,7 +90,14 @@ void NnetChainSupervision::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &name);
   ReadIndexVector(is, binary, &indexes);
   supervision.Read(is, binary);
-  ExpectToken(is, binary, "</NnetChainSup>");
+  std::string token;
+  ReadToken(is, binary, &token);
+  // in the future this back-compatibility code can be reworked.
+  if (token != "</NnetChainSup>") {
+    KALDI_ASSERT(token == "<DW>");
+    ReadVectorAsChar(is, binary, &deriv_weights);
+    ExpectToken(is, binary, "</NnetChainSup>");
+  }
   CheckDim();
 }
 
@@ -69,17 +123,24 @@ void NnetChainSupervision::CheckDim() const {
       KALDI_ASSERT(indexes[k] == index);
     }
   }
+  if (deriv_weights.Dim() != 0) {
+    KALDI_ASSERT(deriv_weights.Dim() == indexes.size());
+    KALDI_ASSERT(deriv_weights.Min() >= 0.0 &&
+                 deriv_weights.Max() <= 1.0);
+  }
 }
 
 NnetChainSupervision::NnetChainSupervision(const NnetChainSupervision &other):
     name(other.name),
     indexes(other.indexes),
-    supervision(other.supervision) { CheckDim(); }
+    supervision(other.supervision),
+    deriv_weights(other.deriv_weights) { CheckDim(); }
 
 void NnetChainSupervision::Swap(NnetChainSupervision *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
   supervision.Swap(&(other->supervision));
+  deriv_weights.Swap(&(other->deriv_weights));
   if (RandInt(0, 5) == 0)
     CheckDim();
 }
@@ -87,10 +148,12 @@ void NnetChainSupervision::Swap(NnetChainSupervision *other) {
 NnetChainSupervision::NnetChainSupervision(
     const std::string &name,
     const chain::Supervision &supervision,
+    const Vector<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
     name(name),
-    supervision(supervision) {
+    supervision(supervision),
+    deriv_weights(deriv_weights) {
   // note: this will set the 'x' index to zero.
   indexes.resize(supervision.num_sequences *
                  supervision.frames_per_sequence);
@@ -215,6 +278,23 @@ static void MergeSupervision(
   // because they should be first sorted by 't' and next by 'n'.
   // 'sort' will fix this, due to the operator < on type Index.
   std::sort(output->indexes.begin(), output->indexes.end());
+
+  // merge the deriv_weights.
+  if (inputs[0]->deriv_weights.Dim() != 0) {
+    int32 frames_per_sequence = inputs[0]->deriv_weights.Dim();
+    output->deriv_weights.Resize(output->indexes.size(), kUndefined);
+    KALDI_ASSERT(output->deriv_weights.Dim() ==
+                 frames_per_sequence * num_inputs);
+    for (int32 n = 0; n < num_inputs; n++) {
+      const Vector<BaseFloat> &src_deriv_weights = inputs[n]->deriv_weights;
+      KALDI_ASSERT(src_deriv_weights.Dim() == frames_per_sequence);
+      // the ordering of the deriv_weights corresponds to the ordering of the
+      // Indexes, where the time dimension has the greater stride.
+      for (int32 t = 0; t < frames_per_sequence; t++) {
+        output->deriv_weights(t * num_inputs + n) = src_deriv_weights(t);
+      }
+    }
+  }
   output->CheckDim();
 }
 

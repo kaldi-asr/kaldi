@@ -1,27 +1,21 @@
 #!/bin/bash
 
-# _o is as _n, but reducing the number of parameters to try to reduce
-# over-training: reducing relu-dim from 1024 to 850 and target num-states
-# from 12k to 9k.  Also modifying the splicing setup in a way that shouldn't
-# affect num-params, from "-2,-1,0,1,2 -1,2 -3,3 -9,0,9 0" to
-# "-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3".
-#
-# There seems to be a slight improvement: on train_dev, WER changes 19.04->18.99 before
-# rescoring, and 17.45->17.29 after.   On all of eval2000 the WER changes
-# from 20.8->20.6 before fg rescoring, and 18.7->18.5 after.
-
-# _n is as _m but changing the egs configuration to get better and more even
-# coverage of the data: increasing frames_per_eg from 150 to 200,
-# and increasing --frames-overlap-per-eg from 10 to 30.
-# I am also testing out some script changes in the get_egs.sh script that
-# aims to reduce the number of small files (and some accompanying code changes
-# that allow us to put the CPU-intensive phase of egs preparation with the
-# 'shuffle' jobs).
+# _p is as _m except with a code change in which we switch to a different, more
+# exact mechanism to deal with the edges of the egs, and correspondingly
+# different script options... we now dump weights with the egs, and apply the
+# weights to the derivative w.r.t. the output instead of using the
+# --min-deriv-time and --max-deriv-time options.  Increased the frames-overlap
+# to 30 also.  This wil.  give 10 frames on each side with zero derivs, then
+# ramping up to a weight of 1.0 over 10 frames.
 
 # _m is as _k but after a code change that makes the denominator FST more
 # compact.  I am rerunning in order to verify that the WER is not changed (since
 # it's possible in principle that due to edge effects related to weight-pushing,
 # the results could be a bit different).
+#  The results are inconsistently different but broadly the same.  On all of eval2000,
+#  the change k->m is 20.7->20.9 with tg LM and 18.9->18.6 after rescoring.
+#  On the train_dev data, the change is  19.3->18.9 with tg LM and 17.6->17.6 after rescoring.
+
 
 # _k is as _i but reverting the g->h change, removing the --scale-max-param-change
 # option and setting max-param-change to 1..  Using the same egs.
@@ -57,14 +51,14 @@
 set -e
 
 # configs for 'chain'
-stage=11
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_p  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
-splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
+splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -9,0,9 0"
 
 # training options
 num_epochs=4
@@ -76,7 +70,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=200
+frames_per_eg=150
 remove_egs=false
 
 # End configuration section.
@@ -106,7 +100,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5f_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -143,20 +137,19 @@ if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_d $ali_dir $treedir
+      --cmd "$train_cmd" 12000 data/$train_set data/lang_chain_d $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --get-egs-stage $get_egs_stage \
-    --left-deriv-truncate 5  --right-deriv-truncate 5  --right-tolerance 5 \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 30" \
     --frames-per-eg $frames_per_eg \
@@ -168,7 +161,7 @@ if [ $stage -le 12 ]; then
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
-    --relu-dim 850 \
+    --relu-dim 1024 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
     data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;

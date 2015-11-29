@@ -80,7 +80,7 @@ cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
 frames_per_eg=25   # number of frames of output per chunk.  To be passed on to get_egs.sh.
-left_deriv_truncate=   # number of time-steps to avoid using the deriv of, on the lefr.
+left_deriv_truncate=   # number of time-steps to avoid using the deriv of, on the left.
 right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on the right.
 
 # End configuration section.
@@ -245,7 +245,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
   echo "$0: calling get_egs.sh"
   steps/nnet3/chain/get_egs.sh $egs_opts "${extra_opts[@]}" \
-      --right-tolerance $right_tolerance \
       --frames-per-iter $frames_per_iter --stage $get_egs_stage \
       --cmd "$cmd" \
       --frames-per-eg $frames_per_eg \

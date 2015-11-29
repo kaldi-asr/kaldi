@@ -54,9 +54,22 @@ struct NnetChainSupervision {
   /// locality), as well as to match the ordering inside the neural net.
   std::vector<Index> indexes;
 
+
   /// The supervision object, containing the FST.
   chain::Supervision supervision;
 
+  /// This is a vector of per-frame weights, required to be between 0 and 1,
+  /// that is applied to the derivative during training (but not during model
+  /// combination, where the derivatives need to agree with the computed objf
+  /// values for the optimization code to work).  The reason for this is to more
+  /// exactly handle edge effects and to ensure that no frames are
+  /// 'double-counted'.  The order of this vector corresponds to the order of
+  /// the 'indexes' (i.e. all the first frames, then all the second frames,
+  /// etc.)
+  /// If this vector is empty it means we're not applying per-frame weights,
+  /// so it's equivalent to a vector of all ones.  This vector is written
+  /// to disk compactly as unsigned char.
+  Vector<BaseFloat> deriv_weights;
 
   // Use default assignment operator
 
@@ -70,6 +83,7 @@ struct NnetChainSupervision {
   /// is slower than the input, so in this case it might be 2 or 3.
   NnetChainSupervision(const std::string &name,
                        const chain::Supervision &supervision,
+                       const Vector<BaseFloat> &deriv_weights,
                        int32 first_frame,
                        int32 frame_skip);
 

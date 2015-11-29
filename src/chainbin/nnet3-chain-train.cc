@@ -42,16 +42,14 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     std::string use_gpu = "yes";
-    NnetTrainerOptions nnet_config;
-    chain::ChainTrainingOptions chain_config;
+    NnetChainTrainingOptions opts;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
-    nnet_config.Register(&po);
-    chain_config.Register(&po);
+    opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -75,7 +73,7 @@ int main(int argc, char *argv[]) {
     fst::StdVectorFst den_fst;
     ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
-    NnetChainTrainer trainer(nnet_config, chain_config, den_fst, &nnet);
+    NnetChainTrainer trainer(opts, den_fst, &nnet);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
 

@@ -717,7 +717,50 @@ void Supervision::Check(const TransitionModel &trans_mdl) const {
     KALDI_ERR << "Num-frames does not match fst.";
 }
 
+void GetWeightsForRanges(int32 range_length,
+                         const std::vector<int32> &range_starts,
+                         std::vector<Vector<BaseFloat> > *weights) {
+  KALDI_ASSERT(range_length > 0);
+  int32 num_ranges = range_starts.size();
+  weights->resize(num_ranges);
+  for (int32 i = 0; i < num_ranges; i++) {
+    (*weights)[i].Resize(range_length);
+    (*weights)[i].Set(1.0);
+  }
+  for (int32 i = 0; i + 1 < num_ranges; i++) {
+    int32 j = i + 1;
+    int32 i_start = range_starts[i], i_end = i_start + range_length,
+          j_start = range_starts[j];
+    KALDI_ASSERT(j_start > i_start);
+    if (i_end > j_start) {
+      Vector<BaseFloat> &i_weights = (*weights)[i], &j_weights = (*weights)[j];
 
+      int32 overlap_length = i_end - j_start;
+      // divide the overlapping piece of the 2 ranges into 3 regions of
+      // approximately equal size, called the left, middle and right region.
+      int32 left_length = overlap_length / 3,
+          middle_length = (overlap_length - left_length) / 2,
+           right_length = overlap_length - left_length - middle_length;
+      KALDI_ASSERT(left_length >= 0 && middle_length >= 0 && right_length >= 0 &&
+                   left_length + middle_length + right_length == overlap_length);
+      // set the weight of the left region to be zero for the right (j) range.
+      for (int32 k = 0; k < left_length; k++)
+        j_weights(k) = 0.0;
+      // set the weight of the right region to be zero for the left (i) range.
+      for (int32 k = 0; k < right_length; k++)
+        i_weights(range_length - 1 - k) = 0.0;
+      // for the middle range, linearly interpolate between the 0's and 1's.
+      // note: we multiply with existing weights instead of set in order to get
+      // more accurate behavior in the unexpected case where things triply
+      // overlap.
+      for (int32 k = 0; k < middle_length; k++) {
+        BaseFloat weight = (0.5 + k) / middle_length;
+        j_weights(left_length + k) = weight;
+        i_weights(range_length - 1 - right_length - k) = weight;
+      }
+    }
+  }
+}
 
 }  // namespace chain
 }  // namespace kaldi

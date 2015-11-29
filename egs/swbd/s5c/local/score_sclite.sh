@@ -42,14 +42,7 @@ done
 name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
-# check if this is a ctc model, we check for both cases as
-# the *info bins could fail due to other reasons too
-is_ctc=
-am-info --print-args=false $model  1>/dev/null 2>&1;
-[ $? -eq 0 ] && is_ctc=false;
-nnet3-ctc-info --print-args=false $model  1>/dev/null 2>&1;
-[ $? -eq 0 ] && is_ctc=true;
-[ -z $is_ctc ] && echo "Unknown model type, verify if $model exists" && exit -1;
+
 align_word=
 reorder_opt=
 if $reverse; then
@@ -57,10 +50,10 @@ if $reverse; then
   reorder_opt="--reorder=false"
 fi
 
-if $is_ctc ; then
-  echo "Warning : This is a 'chain' model, using corresponding scoring pipeline."
+if [ -f $dir/../frame_subsampling_factor ]; then
   factor=$(cat $dir/../frame_subsampling_factor) || exit 1
   frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
 fi
 
 name=`basename $data`; # e.g. eval2000

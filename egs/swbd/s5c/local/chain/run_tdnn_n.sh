@@ -7,6 +7,12 @@
 # aims to reduce the number of small files (and some accompanying code changes
 # that allow us to put the CPU-intensive phase of egs preparation with the
 # 'shuffle' jobs).
+#
+# This doesn't seem to have made any consistent difference at all (although on
+# average the change was slightly beneficial): on all of eval2000, m->n changed
+# 20.9->20.8 with trigram and 18.6->18.7 after 4g rescoring; on train_dev it
+# changed 19.31->19.04 with trigram, and 17.58->17.45 after 4g rescoring.
+
 
 # _m is as _k but after a code change that makes the denominator FST more
 # compact.  I am rerunning in order to verify that the WER is not changed (since

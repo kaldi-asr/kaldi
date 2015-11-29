@@ -32,6 +32,21 @@
 namespace kaldi {
 namespace nnet3 {
 
+struct NnetChainTrainingOptions {
+  NnetTrainerOptions nnet_config;
+  chain::ChainTrainingOptions chain_config;
+  bool apply_deriv_weights;
+  NnetChainTrainingOptions(): apply_deriv_weights(true) { }
+
+  void Register(OptionsItf *opts) {
+    nnet_config.Register(opts);
+    chain_config.Register(opts);
+    opts->Register("apply-deriv-weights", &apply_deriv_weights,
+                   "If true, apply the per-frame derivative weights stored with "
+                   "the example (you'll normally want to leave this as true.");
+  }
+};
+
 
 /**
    This class is for single-threaded training of neural nets using the 'chain'
@@ -39,8 +54,7 @@ namespace nnet3 {
 */
 class NnetChainTrainer {
  public:
-  NnetChainTrainer(const NnetTrainerOptions &nnet_config,
-                   const chain::ChainTrainingOptions &chain_config,
+  NnetChainTrainer(const NnetChainTrainingOptions &config,
                    const fst::StdVectorFst &den_fst,
                    Nnet *nnet);
 
@@ -55,8 +69,8 @@ class NnetChainTrainer {
   void ProcessOutputs(const NnetChainExample &eg,
                       NnetComputer *computer);
 
-  const NnetTrainerOptions nnet_config_;
-  const chain::ChainTrainingOptions chain_config_;
+  const NnetChainTrainingOptions opts_;
+
   chain::DenominatorGraph den_graph_;
   Nnet *nnet_;
   Nnet *delta_nnet_;  // Only used if momentum != 0.0.  nnet representing

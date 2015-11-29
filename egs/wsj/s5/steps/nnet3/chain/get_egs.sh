@@ -271,7 +271,9 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 # don't do the overlap thing for the validation data.
 valid_egs_opts="--left-context=$valid_left_context --right-context=$valid_right_context --num-frames=$frames_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
 
-ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$frame_subsampling_factor --right-tolerance=$right_tolerance"
+ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$frame_subsampling_factor"
+[ ! -z $right_tolerance ] && \
+  ctc_supervision_all_opts="$ctc_supervision_all_opts --right-tolerance=$right_tolerance"
 
 
 echo $left_context > $dir/info/left_context

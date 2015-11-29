@@ -117,7 +117,7 @@ template<class T> inline void WriteIntegerVector(std::ostream &os, bool binary,
     os << "]\n";
   }
   if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteIntegerType.");
+    throw std::runtime_error("Write failure in WriteIntegerVector.");
   }
 }
 

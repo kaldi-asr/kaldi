@@ -23,23 +23,22 @@
 namespace kaldi {
 namespace nnet3 {
 
-NnetChainTrainer::NnetChainTrainer(const NnetTrainerOptions &nnet_config,
-                                   const chain::ChainTrainingOptions &chain_config,
+NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
                                    const fst::StdVectorFst &den_fst,
                                    Nnet *nnet):
-    nnet_config_(nnet_config),
-    chain_config_(chain_config),
+    opts_(opts),
     den_graph_(den_fst, nnet->OutputDim("output")),
     nnet_(nnet),
-    compiler_(*nnet, nnet_config_.optimize_config),
+    compiler_(*nnet, opts_.nnet_config.optimize_config),
     num_minibatches_processed_(0) {
-  if (nnet_config.zero_component_stats)
+  if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (nnet_config.momentum == 0.0 && nnet_config.max_param_change == 0.0) {
+  if (opts.nnet_config.momentum == 0.0 &&
+      opts.nnet_config.max_param_change == 0.0) {
     delta_nnet_= NULL;
   } else {
-    KALDI_ASSERT(nnet_config.momentum >= 0.0 &&
-                 nnet_config.max_param_change >= 0.0);
+    KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
+                 opts.nnet_config.max_param_change >= 0.0);
     delta_nnet_ = nnet_->Copy();
     bool is_gradient = false;  // setting this to true would disable the
                                // natural-gradient updates.
@@ -50,13 +49,14 @@ NnetChainTrainer::NnetChainTrainer(const NnetTrainerOptions &nnet_config,
 
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   bool need_model_derivative = true;
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   ComputationRequest request;
   GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
-                             nnet_config_.store_component_stats,
+                             nnet_config.store_component_stats,
                              &request);
   const NnetComputation *computation = compiler_.Compile(request);
 
-  NnetComputer computer(nnet_config_.compute_config, *computation,
+  NnetComputer computer(nnet_config.compute_config, *computation,
                         *nnet_,
                         (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
@@ -67,25 +67,25 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   computer.Backward();
 
   if (delta_nnet_ != NULL) {
-    BaseFloat scale = (1.0 - nnet_config_.momentum);
-    if (nnet_config_.max_param_change != 0.0) {
+    BaseFloat scale = (1.0 - nnet_config.momentum);
+    if (nnet_config.max_param_change != 0.0) {
       BaseFloat param_delta =
           std::sqrt(DotProduct(*delta_nnet_, *delta_nnet_)) * scale;
-      if (param_delta > nnet_config_.max_param_change) {
+      if (param_delta > nnet_config.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
           SetZero(false, delta_nnet_);
         } else {
-          scale *= nnet_config_.max_param_change / param_delta;
+          scale *= nnet_config.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "--max-param-change=" << nnet_config_.max_param_change
+                    << "--max-param-change=" << nnet_config.max_param_change
                     << ", scaling by "
-                    << nnet_config_.max_param_change / param_delta;
+                    << nnet_config.max_param_change / param_delta;
         }
       }
     }
     AddNnet(*delta_nnet_, scale, nnet_);
-    ScaleNnet(nnet_config_.momentum, delta_nnet_);
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
   }
 }
 
@@ -110,14 +110,19 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     BaseFloat tot_objf, tot_weight;
 
-    ComputeChainObjfAndDeriv(chain_config_, den_graph_,
+    ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
                              sup.supervision, nnet_output,
                              &tot_objf, &tot_weight,
                              &nnet_output_deriv);
 
+    if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
+      CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
+      nnet_output_deriv.MulRowsVec(cu_deriv_weights);
+    }
+
     computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
-    objf_info_[sup.name].UpdateStats(sup.name, nnet_config_.print_interval,
+    objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
                                      tot_weight, tot_objf);
   }

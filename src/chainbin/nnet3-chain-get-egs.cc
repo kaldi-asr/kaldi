@@ -82,6 +82,15 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                          frames_overlap_subsampled,
                          frames_shift_subsampled,
                          &range_starts_subsampled);
+  // The 'deriv_weights' make sure we don't count frames twice, and also ensure
+  // that we tend to avoid having nonzero weights on the derivatives that are
+  // too close to the edge of the corresponding 'range' (these derivatives close
+  // to the edge are not as accurate as they could be, because when we split we
+  // don't know the correct alphas and betas).
+  std::vector<Vector<BaseFloat> > deriv_weights;
+  chain::GetWeightsForRanges(frames_per_eg_subsampled,
+                             range_starts_subsampled,
+                             &deriv_weights);
 
   if (range_starts_subsampled.empty()) {
     KALDI_WARN << "No output for utterance " << utt_id
@@ -114,6 +123,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
     NnetChainSupervision nnet_supervision("output", supervision_part,
+                                          deriv_weights[i],
                                           first_frame, frame_subsampling_factor);
 
     NnetChainExample nnet_chain_eg;
