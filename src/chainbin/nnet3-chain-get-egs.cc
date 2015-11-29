@@ -30,6 +30,13 @@ namespace kaldi {
 namespace nnet3 {
 
 
+/**
+   This function does all the processing for one utterance, and outputs the
+   supervision objects to 'example_writer'.  Note: if normalization_fst is the
+   empty FST (with no states), it skips the final stage of egs preparation and
+   you should do it later with nnet3-chain-normalize-egs.
+*/
+
 static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
@@ -94,7 +101,8 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                            frames_per_eg_subsampled,
                            &supervision_part);
 
-    if (!AddWeightToSupervisionFst(normalization_fst,
+    if (normalization_fst.NumStates() > 0 &&
+        !AddWeightToSupervisionFst(normalization_fst,
                                    &supervision_part)) {
       KALDI_WARN << "For utterance " << utt_id << ", frames "
                  << range_start << " to " << (range_start + frames_per_eg)
@@ -202,8 +210,11 @@ int main(int argc, char *argv[]) {
         "Get frame-by-frame examples of data for nnet3+chain neural network\n"
         "training.  This involves breaking up utterances into pieces of a\n"
         "fixed size.  Input will come from chain-get-supervision.\n"
+        "Note: if <normalization-fst> is not supplied the egs will not be\n"
+        "ready for training; in that case they should later be processed\n"
+        "with nnet3-chain-normalize-egs\n"
         "\n"
-        "Usage:  nnet3-ctc-get-egs [options] <normalization-fst> <features-rspecifier> "
+        "Usage:  nnet3-ctc-get-egs [options] [<normalization-fst>] <features-rspecifier> "
         "<ctc-supervision-rspecifier> <egs-wspecifier>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
@@ -244,7 +255,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -256,13 +267,27 @@ int main(int argc, char *argv[]) {
                      &num_frames, &num_frames_overlap);
 
     std::string
-        normalization_fst_rxfilename = po.GetArg(1),
-        feature_rspecifier = po.GetArg(2),
-        supervision_rspecifier = po.GetArg(3),
-        examples_wspecifier = po.GetArg(4);
+        normalization_fst_rxfilename,
+        feature_rspecifier,
+        supervision_rspecifier,
+        examples_wspecifier;
+    if (po.NumArgs() == 3) {
+      feature_rspecifier = po.GetArg(1);
+      supervision_rspecifier = po.GetArg(2);
+      examples_wspecifier = po.GetArg(3);
+    } else {
+      normalization_fst_rxfilename = po.GetArg(1);
+      KALDI_ASSERT(!normalization_fst_rxfilename.empty());
+      feature_rspecifier = po.GetArg(2);
+      supervision_rspecifier = po.GetArg(3);
+      examples_wspecifier = po.GetArg(4);
+    }
 
     fst::StdVectorFst normalization_fst;
-    ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
+    if (!normalization_fst_rxfilename.empty()) {
+      ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
+      KALDI_ASSERT(normalization_fst.NumStates() > 0);
+    }
 
     SequentialBaseFloatMatrixReader feat_reader(feature_rspecifier);
     chain::RandomAccessSupervisionReader supervision_reader(

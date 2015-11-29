@@ -274,7 +274,12 @@ void SortBreadthFirstSearch(fst::StdVectorFst *fst);
 class SupervisionSplitter {
  public:
   SupervisionSplitter(const Supervision &supervision);
-  // Extracts a frame range of the supervision into "supervision".
+
+  // Extracts a frame range of the supervision into 'supervision'.  Note: the
+  // supervision object should not be used for training before you do
+  // 'AddWeightToSupervisionFst', which not only adds the weights from the
+  // normalization graph (derived from the normalization FST), but also removes
+  // epsilons and ensures the states are sorted on time.
   void GetFrameRange(int32 begin_frame, int32 frames_per_sequence,
                      Supervision *supervision) const;
  private:
@@ -312,6 +317,9 @@ class SupervisionSplitter {
 /// an empty result (this shouldn't happen unless there were alignment errors in
 /// the alignments used to train the phone language model leading to unseen
 /// 3-grams that occur in the training sequences).
+/// This function also removes epsilons and makes sure supervision->fst has the
+/// required sorting of states.  Think of it as the final stage in preparation
+/// of the supervision FST.
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision);
 

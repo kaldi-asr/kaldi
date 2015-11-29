@@ -4,6 +4,10 @@
 # compact.  I am rerunning in order to verify that the WER is not changed (since
 # it's possible in principle that due to edge effects related to weight-pushing,
 # the results could be a bit different).
+#  The results are inconsistently different but broadly the same.  On all of eval2000,
+#  the change k->m is 20.7->20.9 with tg LM and 18.9->18.6 after rescoring.
+#  On the train_dev data, the change is  19.3->18.9 with tg LM and 17.6->17.6 after rescoring.
+
 
 # _k is as _i but reverting the g->h change, removing the --scale-max-param-change
 # option and setting max-param-change to 1..  Using the same egs.

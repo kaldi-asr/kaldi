@@ -2,6 +2,9 @@
 
 # _k is as _i but reverting the g->h change, removing the --scale-max-param-change
 # option and setting max-param-change to 1..  Using the same egs.
+# [only] after 4gram rescoring, only 0.1% better than _i. :-(
+# %WER 12.7 | 1831 21395 | 89.0 7.8 3.3 1.7 12.7 49.2 | exp/chain/tdnn_k_sp/decode_eval2000_sw1_fsh_fg/score_12_1.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 12.8 | 1831 21395 | 88.8 7.8 3.4 1.6 12.8 49.3 | exp/chain/tdnn_i_sp/decode_eval2000_sw1_fsh_fg/score_14_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 # _i is as _h but longer egs: 150 frames instead of 75, and
 # 128 elements per minibatch instead of 256.

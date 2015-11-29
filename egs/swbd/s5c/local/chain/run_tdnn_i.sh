@@ -2,6 +2,9 @@
 
 # _i is as _h but longer egs: 150 frames instead of 75, and
 # 128 elements per minibatch instead of 256.
+# be cautious comparing the valid probs with h though, because
+# we fixed the utt2uniq bug at this point, so from h on, the valid probs
+# are properly held out.
 
 # _h is as _g but different application of max-param-change (use --scale-max-param-change true)
 

@@ -49,12 +49,12 @@ right_tolerance=  #CTC right tolerance == max label delay.
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
 stage=0
-nj=20         # This should be set to the maximum number of jobs you are
+nj=15         # This should be set to the maximum number of jobs you are
               # comfortable to run in parallel; you can increase it if your disk
-              # speed is greater and you have more machines.  Note: the process of
-              # eg creation is a little more CPU intensive in this than with regular
-              # nnet training, so we make the default a little larger.
-max_shuffle_jobs_run=6
+              # speed is greater and you have more machines.
+max_shuffle_jobs_run=50  # the shuffle jobs now include the nnet3-chain-normalize-egs command,
+                         # which is fairly CPU intensive, so we can run quite a few at once
+                         # without overloading the disks.
 online_ivector_dir=  # can be used if we are including speaker information as iVectors.
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -332,13 +332,21 @@ if [ $stage -le 4 ]; then
     egs_list="$egs_list ark:$dir/cegs_orig.JOB.$n.ark"
   done
   echo "$0: Generating training examples on disk"
-  # The examples will go round-robin to egs_list.
+
+  # The examples will go round-robin to egs_list.  Note: we omit the
+  # 'normalization.fst' argument while creating temporary egs: the phase of egs
+  # preparation that involves the normalization FST is quite CPU-intensive and
+  # it's more convenient to do it later, in the 'shuffle' stage.  Otherwise to
+  # make it efficient we need to use a large 'nj', like 40, and in that case
+  # there can be too many small files to deal with, because the total number of
+  # files is the product of 'nj' by 'num_archives_intermediate', which might be
+  # quite large.
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $ctc_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
-    nnet3-chain-get-egs $ivector_opt $egs_opts $chaindir/normalization.fst \
+    nnet3-chain-get-egs $ivector_opt $egs_opts \
      "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=JOB ark:- $egs_list || exit 1;
 fi
@@ -356,7 +364,8 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:$dir/cegs.JOB.ark  || exit 1;
+      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:$dir/cegs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -373,9 +382,9 @@ if [ $stage -le 5 ]; then
     done
     $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
+      nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
   fi
-
 fi
 
 if [ $stage -le 6 ]; then

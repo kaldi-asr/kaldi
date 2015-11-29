@@ -378,14 +378,7 @@ void SupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
   CreateRangeFst(begin_frame, end_frame,
                  begin_state, end_state, &(out_supervision->fst));
 
-  fst::RmEpsilon(&(out_supervision->fst));
-  fst::StdVectorFst det_fst;
-  // Determinization will make sure that there are no duplicate paths with
-  // the same label sequence; it will reduce the size of the FST.
-  fst::Determinize(out_supervision->fst, &det_fst);
-  out_supervision->fst = det_fst;  // shallow copy.
   KALDI_ASSERT(out_supervision->fst.NumStates() > 0);
-  SortBreadthFirstSearch(&(out_supervision->fst));
   KALDI_ASSERT(supervision_.num_sequences == 1);
   out_supervision->num_sequences = 1;
   out_supervision->weight = supervision_.weight;
@@ -627,10 +620,14 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
+  // remove epsilons before componing.  'normalization_fst' has noepsilons so
+  // the composed result will be epsilon free.
+  fst::StdVectorFst supervision_fst_noeps(supervision->fst);
+  fst::RmEpsilon(&supervision_fst_noeps);
   fst::StdVectorFst composed_fst;
   // note: by default, 'Compose' will call 'Connect', so if the
   // resulting FST is not connected, it will end up empty.
-  fst::Compose(supervision->fst, normalization_fst, &composed_fst);
+  fst::Compose(supervision_fst_noeps, normalization_fst, &composed_fst);
   if (composed_fst.NumStates() == 0)
     return false;
   // projection should not be necessary, as both FSTs are acceptors.
