@@ -72,19 +72,8 @@ nnet2::Component *ConvertSpliceComponent(
   std::istringstream istr(ostr.str());
   ReadIntegerVector(istr, false, &frame_offsets);
 
-  for (size_t i = 1; i < frame_offsets.size(); i++) {
-    KALDI_ASSERT(frame_offsets[i-1] + 1 == frame_offsets[i]);
-  }
-
-  low = frame_offsets[0];
-  high = frame_offsets[frame_offsets.size() - 1];
-
   nnet2::SpliceComponent *res = new nnet2::SpliceComponent();
-  std::vector<int32> context(high - low + 1);
-  for (int32 i = low; i <= high; i++)  {
-    context[i - low] = i;
-  }
-  res->Init(splice->InputDim(), context);
+  res->Init(splice->InputDim(), frame_offsets);
   return res;
 }
 
