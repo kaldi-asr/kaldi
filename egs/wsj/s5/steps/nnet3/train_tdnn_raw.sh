@@ -30,6 +30,8 @@ samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
+prior_subset_size=20000 # 20k samples per job, for computing priors.
+num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 presoftmax_prior_scale_power=-0.25
@@ -396,6 +398,8 @@ if $use_gpu; then
   parallel_suffix=""
   train_queue_opt="--gpu 1"
   combine_queue_opt="--gpu 1"
+  prior_gpu_opt="--use-gpu=yes"
+  prior_queue_opt="--gpu 1"
   parallel_train_opts=
   if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
@@ -409,6 +413,8 @@ else
   combine_queue_opt=""  # the combine stage will be quite slow if not using
                         # GPU, as we didn't enable that program to use
                         # multiple threads.
+  prior_gpu_opt="--use-gpu=no"
+  prior_queue_opt=""
 fi
 
 
@@ -597,6 +603,33 @@ if [ $stage -le $num_iters ]; then
 fi
 
 sleep 2
+
+if ! $skip_final_softmax && [ $stage -le $[$num_iters+1] ]; then
+  echo "Getting average posterior for purposes of adjusting the priors."
+  # Note: this just uses CPUs, using a smallish subset of data.
+  if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
+  else egs_part=JOB; fi
+  rm $dir/post.$x.*.vec 2>/dev/null
+  $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
+    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
+    nnet3-merge-egs ark:- ark:- \| \
+    nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
+      $dir/final.raw ark:- ark:- \| \
+    matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;
+
+  sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
+
+  $cmd $dir/log/vector_sum.$x.log \
+   vector-sum $dir/post.$x.*.vec $dir/post.$x.vec || exit 1;
+
+  rm -f $dir/post.vec
+  ln -s post.$x.vec $dir/post.vec
+
+  rm -f $dir/post.$x.*.vec;
+
+  echo "Computed average posterior vector"
+fi
 
 if [ ! -f $dir/final.raw ]; then
   echo "$0: $dir/final.raw does not exist."
