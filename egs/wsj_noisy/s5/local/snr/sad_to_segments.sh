@@ -13,9 +13,9 @@ stage=-10
 # General segmentation options
 max_intersegment_length=50  # Merge nearby speech segments if the silence
                             # between them is less than this many frames.
-max_remove_length=10  # maximum duration of speech that will be removed as part
-                      # of smoothing process. This is only if there are no other
-                      # speech segments nearby.
+max_relabel_length=10  # maximum duration of speech that will be removed as part
+                       # of smoothing process. This is only if there are no other
+                       # speech segments nearby.
 pad_length=50         # Pad speech segments by this many frames on either side
 max_segment_length=1000   # Segments that are longer than this are split into
                           # overlapping frames.
@@ -77,14 +77,14 @@ EOF
         awk -f $dir/prob_to_ali.awk \| \
         segmentation-init-from-ali ark,t:- ark:- \| \
         segmentation-post-process --remove-labels=0 ark:- ark:- \| \
-        segmentation-post-process --merge-adjacent-segments=true
-      --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
-        segmentation-post-process --max-remove-length=$max_remove_length --remove-label=1 ark:- ark:- \| \
+        segmentation-post-process --merge-adjacent-segments=true \
+        --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
+        segmentation-post-process --max-relabel-length=$max_relabel_length --relabel-short-segments-class=1 ark:- ark:- \| \
         segmentation-post-process --widen-label=1 --widen-length=$pad_length ark:- ark:- \| \
-        segmentation-post-process --merge-adjacent-segments=true
-      --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
-        segmentation-post-process
-      --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
+        segmentation-post-process --merge-adjacent-segments=true \
+        --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
+        segmentation-post-process \
+        --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
         segmentation-to-segments ark:- \
         ark,t:$dir/utt2spk.JOB \
         ark,t:$dir/segments.JOB || exit 1
@@ -132,7 +132,7 @@ EOF
         $lang $dir $dir/graph_test_${t}x || exit 1
     fi
 
-    log_likes=ark:$vad_dir/log_posteriors.JOB.ark
+    log_likes=ark:$vad_dir/log_likes.JOB.ark
 
     decoder_opts+=(--acoustic-scale=$acwt --beam=$beam --max-active=$max_active)
 

@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Copyright 2015  Vimal Manohar
-# Apache 2.0
-
+# Apache 2.0 
 set -o pipefail
 set -e
 set -u
@@ -20,6 +19,8 @@ snr_pred_dir=exp/frame_snrs_lwr_snr_reverb_dev_aspire_whole/
 dir=exp/nnet3_sad_snr/sad_train_si284_corrupted
 quantization_bins=-2.5:2.5:7.5:12.5:17.5
 use_gpu=yes
+sil_prior=0.5
+speech_prior=0.5
 
 . utils/parse_options.sh 
 
@@ -57,7 +58,7 @@ if [ $stage -le 1 ]; then
       $decode_cmd --mem 8G JOB=1:$nj $dir/log/eval_logistic_regression.JOB.log \
         logistic-regression-eval-on-feats "$model" \
         "ark:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp | splice-feats $splice_opts scp:- ark:- |" \
-        ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
+        ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       ;;
     "LogisticRegression"|"Dnn")
       model=$model_dir/$iter.raw
@@ -66,7 +67,7 @@ if [ $stage -le 1 ]; then
         $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
           nnet3-compute --apply-exp=false --use-gpu=$use_gpu "$model" \
           "scp:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp |" \
-          ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
+          ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       else 
         num_bins=`echo $quantization_bins | awk -F ':' '{print NF + 1}' 2>/dev/null` || exit 1
         feat_dim=`head -n 1 $snr_pred_dir/nnet_pred_snrs.scp | feat-to-dim scp:- - 2>/dev/null` || exit 1
@@ -82,7 +83,7 @@ if [ $stage -le 1 ]; then
         $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
           nnet3-compute-from-sparse-input --apply-exp=false --use-gpu=$use_gpu --sparse-input-dim=$sparse_input_dim "$model" \
           "ark:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp | quantize-feats scp:- $quantization_bins ark:- |" \
-          ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
+          ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       fi
       ;;
     *)
@@ -92,13 +93,32 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then 
+  if [ ! -f $model_dir/post.$iter.vec ]; then
+    echo "Could not find $model_dir/post.$iter.vec. Usually computed by averaging the nnet posteriors"
+    exit 1
+  fi
+
+  cat $model_dir/post.$iter.vec | awk '{if (NF != 4) { print "posterior vector must have dimension two; but has dimension "NF-2; exit 1;} else { printf ("[ %f %f ]\n", log($2/($2+$3)),  log($3/($2+$3)));}}' > $dir/nnet_log_priors
+
+  $decode_cmd JOB=1:$nj $dir/log/get_likes.JOB.log \
+    matrix-add-offset ark:$dir/log_nnet_posteriors.JOB.ark "vector-scale --scale=-1.0 --binary=false $dir/nnet_log_priors - |" \
+    ark,scp:$dir/log_likes.JOB.ark,$dir/log_likes.JOB.scp || exit 1
+
+  cat $dir/nnet_log_priors | awk -v sil_prior=$sil_prior -v speech_prior=$speech_prior '{sum_prior = speech_prior + sil_prior; printf ("[ %f %f ]", -$2+log(sil_prior)-log(sum_prior), -$3+log(speech_prior)-log(sum_prior));}' > $dir/log_priors
+
+  $decode_cmd JOB=1:$nj $dir/log/adjust_priors.JOB.log \
+    matrix-add-offset ark:$dir/log_nnet_posteriors.JOB.ark $dir/log_priors \
+    ark,scp:$dir/log_posteriors.JOB.ark,$dir/log_posteriors.JOB.scp || exit 1
+
   $decode_cmd JOB=1:$nj $dir/log/extract_logits.JOB.log \
     vector-sum "ark:extract-column --column-index=1 scp:$dir/log_posteriors.JOB.scp ark:- |" \
     "ark:extract-column --column-index=0 scp:$dir/log_posteriors.JOB.scp ark:- | vector-scale --scale=-1 ark:- ark:- |" \
     ark,scp:$dir/logits.JOB.ark,$dir/logits.JOB.scp || exit 1
+fi
 
+if [ $stage -le 3 ]; then
   $decode_cmd JOB=1:$nj $dir/log/extract_prob.JOB.log \
-    vector-apply-log --invert=true \
-    "ark:extract-column --column-index=1 scp:$dir/log_posteriors.JOB.scp ark:- |" \
+    loglikes-to-post scp:$dir/log_posteriors.JOB.scp ark:- \| \
+    weight-pdf-post 0 0 ark:- ark:- \| post-to-weights ark:- \
     ark,scp:$dir/speech_prob.JOB.ark,$dir/speech_prob.JOB.scp || exit 1
 fi

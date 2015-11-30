@@ -21,19 +21,24 @@ stage=0
 
 . utils/parse_options.sh
 
-if [ $# -ne 4 ]; then
+if [ $# -ne 4 ] && [ $# -ne 3 ]; then
   echo "Usage: $0 <snr-nnet-dir> <corrupted-data-dir> <corrupted-fbank-dir> <dir>"
   echo " e.g.: $0 exp/nnet3_snr_predictor/nnet_tdnn_a data/train_si284_corrupted_hires data/train_si284_corrupted_fbank exp/frame_snrs_train_si284_corrupted"
   exit 1
 fi
 
 snr_predictor_nnet_dir=$1
-corrupted_data_dir=$2
-corrupted_fbank_dir=$3
-dir=$4
+if [ $# -eq 4 ]; then
+  corrupted_data_dir=$2
+  corrupted_fbank_dir=$3
+  dir=$4
+  split_data.sh $corrupted_fbank_dir $nj
+else
+  corrupted_data_dir=$2
+  dir=$3
+fi
 
 split_data.sh $corrupted_data_dir $nj
-split_data.sh $corrupted_fbank_dir $nj
 
 sdata=$corrupted_data_dir/split$nj
 
@@ -70,7 +75,11 @@ if [ $stage -le 0 ]; then
     ark,scp:$dir/nnet_pred.JOB.ark,$dir/nnet_pred.JOB.scp || exit 1
 fi
 
-if [ $stage -le 1 ]; then
+for n in `seq $nj`; do
+  cat $dir/nnet_pred.$n.scp
+done > $dir/nnet_pred_snrs.scp
+
+if [ $# -eq 4 ] && [ $stage -le 1 ]; then
   case $prediction_type in 
     "Irm")
       # nnet_pred is log (clean energy / (clean energy + noise energy) )
@@ -109,12 +118,10 @@ if [ $stage -le 1 ]; then
     *)
       echo "Unknown prediction-type '$prediction_type'" && exit 1
   esac
+  
+  for n in `seq $nj`; do
+    cat $dir/frame_snrs.$n.scp
+  done > $dir/frame_snrs.scp
 fi
 
-for n in `seq $nj`; do
-  cat $dir/frame_snrs.$n.scp
-done > $dir/frame_snrs.scp
 
-for n in `seq $nj`; do
-  cat $dir/nnet_pred.$n.scp
-done > $dir/nnet_pred_snrs.scp

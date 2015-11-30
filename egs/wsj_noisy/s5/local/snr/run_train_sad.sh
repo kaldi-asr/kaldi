@@ -24,6 +24,7 @@ sigmoid_dim=50
 train_data_dir=data/train_si284_corrupted_hires
 snr_scp=data/train_si284_corrupted_hires/snr_targets.scp
 vad_scp=data/train_si284_corrupted_hires/vad.scp
+final_vad_scp=
 max_change_per_sample=0.075
 datadir=
 egs_dir=
@@ -78,7 +79,7 @@ fi
   
 mkdir -p $dir
 
-if [ ! -z "$seg2utt_file" ] || [ -z "$datadir" ]; then
+if [ -z "$datadir" ]; then
   datadir=$dir/snr_data
   if [ $stage -le 0 ]; then
     rm -rf $datadir
@@ -86,31 +87,38 @@ if [ ! -z "$seg2utt_file" ] || [ -z "$datadir" ]; then
       $train_data_dir $datadir
     if [ ! -f $train_data_dir/segments ]; then
       if [ ! -z "$seg2utt_file" ]; then
-        [ -z "$segments_file" ] && echo "$0: segments file is needed if --seg2utt-file is specified" && exit 1
+        local/snr/create_segmented_data_dir_from_vad.sh \
+          --cmd "$train_cmd" --nj $nj --feats $snr_scp \
+          $train_data_dir $segments_file $seg2utt_file \
+          $dir/snr_data/log $dir/snr_feats $datadir || exit 1
 
-        rm -f $datadir/{cmvn.scp,feats.scp,utt2spk,utt2uniq,spk2utt,text}
-        utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $segments_file > $datadir/segments.tmp
-        cat $datadir/segments.tmp | utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/segments
-        utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $seg2utt_file | \
-          utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/utt2spk
-        utils/utt2spk_to_spk2utt.pl $datadir/utt2spk > $datadir/spk2utt
-        
-        if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/snr_feats/storage ]; then
-          utils/create_split_dir.pl \
-            /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/snr_feats/storage $dir/snr_feats/storage
-        fi
+        steps/compute_cmvn_stats.sh --fake $datadir $dir/snr_data/log $dir/snr_feats
 
-        $train_cmd JOB=1:$nj $dir/log/extract_feature_segments.JOB.log \
-          extract-feature-segments scp:$snr_scp \
-          "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
-          ark:- \| copy-feats --compress=true ark:- \
-          ark,scp:$dir/snr_feats/raw_snr.JOB.ark,$dir/snr_feats/raw_snr.JOB.scp
+        #[ -z "$segments_file" ] && echo "$0: segments file is needed if --seg2utt-file is specified" && exit 1
 
-        for n in `seq $nj`; do 
-          cat $dir/snr_feats/raw_snr.$n.scp
-        done | sort -k1,1 > $datadir/feats.scp 
+        #rm -f $datadir/{cmvn.scp,feats.scp,utt2spk,utt2uniq,spk2utt,text}
+        #utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $segments_file > $datadir/segments.tmp
+        #cat $datadir/segments.tmp | utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/segments
+        #utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $seg2utt_file | \
+        #  utils/apply_map.pl -f 2 $train_data_dir/utt2spk > $datadir/utt2spk
+        #utils/utt2spk_to_spk2utt.pl $datadir/utt2spk > $datadir/spk2utt
+        #
+        #if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/snr_feats/storage ]; then
+        #  utils/create_split_dir.pl \
+        #    /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/snr_feats/storage $dir/snr_feats/storage
+        #fi
 
-        utils/fix_data_dir.sh $datadir
+        #$train_cmd JOB=1:$nj $dir/log/extract_feature_segments.JOB.log \
+        #  extract-feature-segments scp:$snr_scp \
+        #  "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
+        #  ark:- \| copy-feats --compress=true ark:- \
+        #  ark,scp:$dir/snr_feats/raw_snr.JOB.ark,$dir/snr_feats/raw_snr.JOB.scp
+
+        #for n in `seq $nj`; do 
+        #  cat $dir/snr_feats/raw_snr.$n.scp
+        #done | sort -k1,1 > $datadir/feats.scp 
+
+        #utils/fix_data_dir.sh $datadir
       else
         cp $snr_scp $datadir/feats.scp
       fi
@@ -120,7 +128,7 @@ if [ ! -z "$seg2utt_file" ] || [ -z "$datadir" ]; then
     steps/compute_cmvn_stats.sh --fake $datadir $datadir/log snr
   fi
 
-  if [ $method != "Gmm" ]; then 
+  if [ -z "$final_vad_scp" ] && [ $method != "Gmm" ]; then 
     if [ $stage -le 1 ]; then
       mkdir -p $dir/vad/split$nj
       if [ ! -z "$seg2utt_file" ]; then
@@ -128,7 +136,9 @@ if [ ! -z "$seg2utt_file" ] || [ -z "$datadir" ]; then
         $train_cmd JOB=1:$nj $dir/log/extract_vad_segments.JOB.log \
           extract-int-vector-segments scp:$vad_scp \
           "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
-          ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
+          ark:- \| segmentation-init-from-ali ark:- ark:- \| \
+          segmentation-post-process --merge-labels=0:2 --merge-dst-label=0 ark:- ark:- \| \
+          segmentation-to-ali ark:- ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
       else
         vad_scp_splits=()
         for n in `seq $nj`; do
@@ -153,12 +163,12 @@ EOF
         cat $dir/vad/split$nj/vad.$n.scp
       done | sort -k1,1 > $dir/vad/vad.scp
     fi
-    vad_scp=$dir/vad/vad.scp
-
-    if [ ! -s $vad_scp ]; then
-      echo "$0: $vad_scp file is empty!" && exit 1
-    fi
+    final_vad_scp=$dir/vad/vad.scp
   fi 
+fi
+
+if [ ! -s $final_vad_scp ]; then
+  echo "$0: $final_vad_scp file is empty!" && exit 1
 fi
 
 feats_opts=(--feat-type $feat_type)
@@ -198,13 +208,13 @@ if [ $stage -le 3 ]; then
         --ignore-energy false --add-zero-crossing-feats false \
         --add-frame-snrs false \
         --nj $nj --cmd "$train_cmd" \
-        $datadir $vad_scp $dir || exit 1
+        $datadir $final_vad_scp $dir || exit 1
       ;;
     "LogisticRegressionSubsampled")
       $train_cmd --mem 8G $dir/log/train_logistic_regression.log \
         logistic-regression-train-on-feats --num-frames=8000000 --num-targets=2 \
         "ark:cat $datadir/feats.scp | splice-feats $splice_opts scp:- ark:- |" \
-        scp:$vad_scp $dir/0.mdl || exit 1
+        scp:$final_vad_scp $dir/0.mdl || exit 1
       ;;
     "LogisticRegression")
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -224,7 +234,7 @@ if [ $stage -le 3 ]; then
         --cmd "$decode_cmd" --nj 40 --objective-type linear --use-presoftmax-prior-scale false \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
         --num-targets 2 --cleanup false --max-param-change $max_param_change \
-        $datadir "$vad_scp" $dir || exit 1;
+        $datadir "$final_vad_scp" $dir || exit 1;
       ;;
     "Dnn")
       if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -245,7 +255,7 @@ if [ $stage -le 3 ]; then
         --skip-final-softmax false --skip-lda true --posterior-targets true \
         --num-targets 2 --max-param-change $max_param_change \
         --cleanup false${relu_dim:+ --relu-dim $relu_dim}${sigmoid_dim:+ --sigmoid-dim $sigmoid_dim} \
-        $datadir "$vad_scp" $dir || exit 1;
+        $datadir "$final_vad_scp" $dir || exit 1;
       ;;
     *)
       echo "Unknown method $method" 
