@@ -28,6 +28,8 @@ segmentation_config=
 segmentation_stage=-10
 segmentation_method=Viterbi
 quantization_bins=0:2.5:5:7.5:12.5
+snr_predictor_iter=final
+sad_model_iter=final
 
 # ivector extraction opts
 use_ivectors=false
@@ -241,12 +243,13 @@ fi
 if [ $stage -le 1 ]; then
   # Compute sub-band SNR
   local/snr/compute_frame_snrs.sh --cmd "$train_cmd" \
-    --use-gpu no --nj $nj --prediction-type "Snr" $snr_predictor \
+    --use-gpu yes --nj $nj --prediction-type "Snr" --iter $snr_predictor_iter \
+    $snr_predictor \
     data/${data_id}_hires data/${data_id}_fbank \
     $frame_snrs_dir || exit 1
 fi
 
-compute_sad_opts=(--quantization-bins $quantization_bins)
+compute_sad_opts=(--quantization-bins $quantization_bins --iter $sad_model_iter)
 
 if [ ! -z "$frame_snrs_dir" ] && [ $stage -ge 2 ]; then
   frame_snrs_dir=$input_frame_snrs_dir
@@ -254,7 +257,7 @@ fi
 
 if [ $stage -le 2 ]; then
   local/snr/compute_sad.sh \
-    --nj $nj "${compute_sad_opts[@]}" \
+    --nj $nj --use-gpu yes "${compute_sad_opts[@]}" \
     $sad_model_dir $frame_snrs_dir ${vad_dir} || exit 1
 fi
 
