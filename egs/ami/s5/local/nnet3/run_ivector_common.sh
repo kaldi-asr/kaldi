@@ -96,20 +96,20 @@ if [ $stage -le 5 ] && [ "$speed_perturb" == "true" ]; then
 
   mfccdir=mfcc_${mic}_perturbed
   for x in train_sp; do
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 \
       data/$mic/$x exp/make_${mic}_mfcc/$x $mfccdir || exit 1;
     steps/compute_cmvn_stats.sh data/$mic/$x exp/make_${mic}_mfcc/$x $mfccdir || exit 1;
   done
   utils/fix_data_dir.sh data/$mic/train_sp
 
-  $align_script --nj $nj --cmd "$train_cmd" \
+  $align_script --nj 10 --cmd "$train_cmd" \
     data/$mic/train_sp data/lang $gmm_dir ${gmm_dir}_sp_ali || exit 1
 
   #Now perturb the high resolution daa
   utils/copy_data_dir.sh data/$mic/train_sp data/$mic/train_sp_hires
   mfccdir=mfcc_${mic}_perturbed_hires
   for x in train_sp_hires; do
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config conf/mfcc_hires.conf \
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 --mfcc-config conf/mfcc_hires.conf \
       data/$mic/$x exp/make_${mic}_hires/$x $mfccdir || exit 1;
     steps/compute_cmvn_stats.sh data/$mic/$x exp/make_${mic}_hires/$x $mfccdir || exit 1;
   done
@@ -123,7 +123,7 @@ else
 fi
 
 if [ $stage -le 6 ]; then
-  rm exp/$mic/nnet3/.error 2>/dev/null
+  rm -f exp/$mic/nnet3/.error 2>/dev/null
   ivectordir=exp/$mic/nnet3/ivectors_${train_set}_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
