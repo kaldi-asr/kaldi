@@ -80,4 +80,8 @@ sort -u $dir/utt2spk > $dir/utt2spk.tmp
 mv $dir/utt2spk.tmp $dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 
+if [ -f $data/cmvn.scp ]; then
+  cp $data/cmvn.scp $dir
+fi
+
 utils/fix_data_dir.sh $dir
