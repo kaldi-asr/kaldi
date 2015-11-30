@@ -85,10 +85,6 @@ else # no segments->wav indexed by utt.
   fi
 fi
 
-if [ -f $srcdir/reco2file_and_channel ]; then
-  cp $srcdir/reco2file_and_channel $destdir/
-fi
-
 if [ -f $srcdir/text ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/text >$destdir/text
 fi
