@@ -152,6 +152,8 @@ struct SegmentationPostProcessingOptions {
   int32 merge_dst_label;
   int32 widen_label;
   int32 widen_length;
+  int32 shrink_label;
+  int32 shrink_length;
   int32 relabel_short_segments_class; 
   int32 max_relabel_length;
   std::string remove_labels_csl;
@@ -164,6 +166,7 @@ struct SegmentationPostProcessingOptions {
   SegmentationPostProcessingOptions() : 
     filter_label(-1), ignore_missing_filter_keys(false), merge_dst_label(-1), 
     widen_label(-1), widen_length(-1),
+    shrink_label(-1), shrink_length(-1),
     relabel_short_segments_class(-1), max_relabel_length(-1), 
     merge_adjacent_segments(false), max_intersegment_length(0),
     max_segment_length(-1), overlap_length(0), post_process_label(-1) { }
@@ -204,6 +207,17 @@ struct SegmentationPostProcessingOptions {
                    "See option --widen-label for details. "
                    "Refer to the WidenSegments() code for details. "
                    "Used in conjunction with the option --widen-label.");
+    opts->Register("shrink-label", &shrink_label, 
+                   "Shrink segments of this class_id "
+                   "by shrinking the adjacent segments of other class_ids or "
+                   "merging with adjacent segments of the same class_id. "
+                   "Refer to the ShrinkSegments() code for details. "
+                   "Used in conjunction with the option --widen-length.");
+    opts->Register("shrink-length", &shrink_length, "Shrink segments by this many "
+                   "frames on either side. "
+                   "See option --shrink-label for details. "
+                   "Refer to the ShrinkSegments() code for details. "
+                   "Used in conjunction with the option --shrink-label.");
     opts->Register("relabel-short-segments-class", &relabel_short_segments_class, 
                    "The class_id for which the short segments are to be "
                    "relabeled as the class_id of the neighboring segments. "
@@ -435,6 +449,7 @@ class Segmentation {
     // shortened to fix the boundary betten the segment and the 
     // neighbor
     void WidenSegments(int32 label, int32 length);
+    void ShrinkSegments(int32 label, int32 length);
 
     // Relabel segments of label "label" if they have a length
     // less than "max_length", label "label" and the previous
@@ -564,6 +579,7 @@ class SegmentationPostProcessor {
   void Filter(Segmentation *seg) const;
   void MergeLabels(Segmentation *seg) const;
   void WidenSegments(Segmentation *seg) const;
+  void ShrinkSegments(Segmentation *seg) const;
   void RelabelShortSegments(Segmentation *seg) const;
   void RemoveSegments(Segmentation *seg) const;
   void MergeAdjacentSegments(Segmentation *seg) const;
@@ -586,6 +602,10 @@ class SegmentationPostProcessor {
 
   inline bool IsWideningSegmentsToBeDone() const {
     return (opts_.widen_label != -1 || opts_.widen_length != -1);
+  }
+  
+  inline bool IsShrinkingSegmentsToBeDone() const {
+    return (opts_.shrink_label != -1 || opts_.shrink_length != -1);
   }
   
   inline bool IsRelabelingShortSegmentsToBeDone() const {

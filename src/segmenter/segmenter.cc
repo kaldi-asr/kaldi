@@ -963,6 +963,23 @@ void Segmentation::WidenSegments(int32 label, int32 length) {
   }
 }
 
+void Segmentation::ShrinkSegments(int32 label, int32 length) {
+  for (SegmentList::iterator it = segments_.begin();
+        it != segments_.end();) {
+    if (it->Label() == label) {
+      if (it->Length() <= 2 * length) {
+        it = segments_.erase(it);
+        dim_--;
+      } else {
+        it->start_frame += length;
+        it->end_frame -= length;
+        ++it;
+      }
+    } else 
+      ++it;
+  }
+}
+
 /**
  * This function relabels segments of class_id "label" that are shorter than
  * max_length frames, provided the segments before and after it are of the same
@@ -1379,6 +1396,11 @@ void SegmentationPostProcessor::Check() const {
               << "--widen-length. It must be positive.";
   }
 
+  if (IsShrinkingSegmentsToBeDone() && opts_.shrink_length <= 0) {
+    KALDI_ERR << "Invalid value " << opts_.shrink_length << " for option "
+              << "--shrink-length. It must be positive.";
+  }
+
   if (IsRelabelingShortSegmentsToBeDone() && 
       opts_.relabel_short_segments_class < 0) {
     KALDI_ERR << "Invalid value " << opts_.relabel_short_segments_class 
@@ -1430,6 +1452,7 @@ bool SegmentationPostProcessor::FilterAndPostProcess(Segmentation *seg, const
 bool SegmentationPostProcessor::PostProcess(Segmentation *seg) const { 
   MergeLabels(seg);
   WidenSegments(seg);
+  ShrinkSegments(seg);
   RelabelShortSegments(seg);
   RemoveSegments(seg);
   MergeAdjacentSegments(seg);
@@ -1470,6 +1493,11 @@ void SegmentationPostProcessor::MergeLabels(Segmentation *seg) const {
 void SegmentationPostProcessor::WidenSegments(Segmentation *seg) const {
   if (!IsWideningSegmentsToBeDone()) return;
   seg->WidenSegments(opts_.widen_label, opts_.widen_length);
+}
+
+void SegmentationPostProcessor::ShrinkSegments(Segmentation *seg) const {
+  if (!IsShrinkingSegmentsToBeDone()) return;
+  seg->ShrinkSegments(opts_.widen_label, opts_.shrink_length);
 }
 
 void SegmentationPostProcessor::RelabelShortSegments(Segmentation *seg) const {
