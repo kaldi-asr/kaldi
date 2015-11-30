@@ -365,7 +365,7 @@ if [ $stage -le 5 ]; then
   done
 
   if [ $archives_multiple == 1 ]; then # normal case.
-    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:$dir/cegs.JOB.ark  || exit 1;
   else
@@ -382,7 +382,7 @@ if [ $stage -le 5 ]; then
         ln -sf egs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
       done
     done
-    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
