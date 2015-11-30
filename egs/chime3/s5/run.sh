@@ -78,4 +78,10 @@ if [ $stage -le 3 ]; then
   local/run_dnn.sh $enhancement_method $enhancement_data
 fi
 
+# LM-rescoring experiment with 5-gram and RNN LMs
+# It takes a few days to train a RNNLM.
+if [ $stage -le 4 ]; then
+  local/run_lmrescore.sh $chime3_data $enhancement_method
+fi
+
 echo "Done."
