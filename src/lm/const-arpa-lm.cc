@@ -29,6 +29,7 @@
 
 namespace kaldi {
 
+
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
 struct ArpaLine {
@@ -262,7 +263,7 @@ class ConstArpaLmBuilder {
   int32 overflow_buffer_size_;
 
   // Size of the <lm_states_> array, which will be needed by I/O.
-  int32 lm_states_size_;
+  int64 lm_states_size_;
 
   // Memory blcok for storing LmStates.
   int32* lm_states_;
@@ -532,7 +533,7 @@ void ConstArpaLmBuilder::Build() {
 
   // STEP 3: creating memory block to store LmStates.
   // Reserves a memory block for LmStates.
-  int32 lm_states_index = 0;
+  int64 lm_states_index = 0;
   try {
     lm_states_ = new int32[lm_states_size_];
   } catch(const std::exception &e) {
@@ -648,21 +649,31 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     KALDI_ERR << "text-mode writing is not implemented for ConstArpaLm.";
   }
 
+  WriteToken(os, binary, "<ConstArpaLm>");
+
   // Misc info.
+  WriteToken(os, binary, "<LmInfo>");
   WriteBasicType(os, binary, bos_symbol_);
   WriteBasicType(os, binary, eos_symbol_);
   WriteBasicType(os, binary, unk_symbol_);
   WriteBasicType(os, binary, ngram_order_);
+  WriteToken(os, binary, "</LmInfo>");
 
   // LmStates section.
+  WriteToken(os, binary, "<LmStates>");
   WriteBasicType(os, binary, lm_states_size_);
-  for (int32 i = 0; i < lm_states_size_; ++i) {
-    WriteBasicType(os, binary, lm_states_[i]);
+  os.write(reinterpret_cast<char *>(lm_states_),
+           sizeof(int32) * lm_states_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section writing failed.";
   }
+  WriteToken(os, binary, "</LmStates>");
 
   // Unigram section. We write memory offset to disk instead of the absolute
   // pointers.
+  WriteToken(os, binary, "<LmUnigram>");
   WriteBasicType(os, binary, num_words_);
+  int64* tmp_unigram_address = new int64[num_words_];
   for (int32 i = 0; i < num_words_; ++i) {
     // The relative address here is a little bit tricky:
     // 1. If the original address is NULL, then we set the relative address to
@@ -670,14 +681,23 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     // 2. If the original address is not NULL, we set it to the following:
     //      unigram_states_[i] - lm_states_ + 1
     //    we plus 1 to ensure that the above value is positive.
-    int64 tmp_address = (unigram_states_[i] == NULL) ? 0 :
+    tmp_unigram_address[i] = (unigram_states_[i] == NULL) ? 0 :
         unigram_states_[i] - lm_states_ + 1;
-    WriteBasicType(os, binary, tmp_address);
   }
+  os.write(reinterpret_cast<char *>(tmp_unigram_address),
+           sizeof(int64) * num_words_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section writing failed.";
+  }
+  delete[] tmp_unigram_address;   // Releases the memory.
+  tmp_unigram_address = NULL;
+  WriteToken(os, binary, "</LmUnigram>");
 
   // Overflow section. We write memory offset to disk instead of the absolute
   // pointers.
+  WriteToken(os, binary, "<LmOverflow>");
   WriteBasicType(os, binary, overflow_buffer_size_);
+  int64* tmp_overflow_address = new int64[overflow_buffer_size_];
   for (int32 i = 0; i < overflow_buffer_size_; ++i) {
     // The relative address here is a little bit tricky:
     // 1. If the original address is NULL, then we set the relative address to
@@ -685,13 +705,113 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     // 2. If the original address is not NULL, we set it to the following:
     //      overflow_buffer_[i] - lm_states_ + 1
     //    we plus 1 to ensure that the above value is positive.
-    int64 tmp_address = (overflow_buffer_[i] == NULL) ? 0 :
+    tmp_overflow_address[i] = (overflow_buffer_[i] == NULL) ? 0 :
         overflow_buffer_[i] - lm_states_ + 1;
-    WriteBasicType(os, binary, tmp_address);
   }
+  os.write(reinterpret_cast<char *>(tmp_overflow_address),
+           sizeof(int64) * overflow_buffer_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section writing failed.";
+  }
+  delete[] tmp_overflow_address;
+  tmp_overflow_address = NULL;
+  WriteToken(os, binary, "</LmOverflow>");
+  WriteToken(os, binary, "</ConstArpaLm>");
 }
 
 void ConstArpaLm::Read(std::istream &is, bool binary) {
+  KALDI_ASSERT(!initialized_);
+  if (!binary) {
+    KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
+  }
+
+  int first_char = is.peek();
+  if (first_char == 4) {  // Old on-disk format starts with length of int32.
+    ReadInternalOldFormat(is, binary);
+  } else {                // New on-disk format starts with token <ConstArpaLm>.
+    ReadInternal(is, binary);
+  }
+}
+
+void ConstArpaLm::ReadInternal(std::istream &is, bool binary) {
+  KALDI_ASSERT(!initialized_);
+  if (!binary) {
+    KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
+  }
+
+  ExpectToken(is, binary, "<ConstArpaLm>");
+
+  // Misc info.
+  ExpectToken(is, binary, "<LmInfo>");
+  ReadBasicType(is, binary, &bos_symbol_);
+  ReadBasicType(is, binary, &eos_symbol_);
+  ReadBasicType(is, binary, &unk_symbol_);
+  ReadBasicType(is, binary, &ngram_order_);
+  ExpectToken(is, binary, "</LmInfo>");
+
+  // LmStates section.
+  ExpectToken(is, binary, "<LmStates>");
+  ReadBasicType(is, binary, &lm_states_size_);
+  lm_states_ = new int32[lm_states_size_];
+  is.read(reinterpret_cast<char *>(lm_states_),
+          sizeof(int32) * lm_states_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section reading failed.";
+  }
+  ExpectToken(is, binary, "</LmStates>");
+
+  // Unigram section. We write memory offset to disk instead of the absolute
+  // pointers.
+  ExpectToken(is, binary, "<LmUnigram>");
+  ReadBasicType(is, binary, &num_words_);
+  unigram_states_ = new int32*[num_words_];
+  int64* tmp_unigram_address = new int64[num_words_];
+  is.read(reinterpret_cast<char *>(tmp_unigram_address),
+          sizeof(int64) * num_words_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section reading failed.";
+  }
+  for (int32 i = 0; i < num_words_; ++i) {
+    // Check out how we compute the relative address in ConstArpaLm::Write().
+    unigram_states_[i] = (tmp_unigram_address[i] == 0) ? NULL
+        : lm_states_ + tmp_unigram_address[i] - 1;
+  }
+  delete[] tmp_unigram_address;
+  tmp_unigram_address = NULL;
+  ExpectToken(is, binary, "</LmUnigram>");
+
+  // Overflow section. We write memory offset to disk instead of the absolute
+  // pointers.
+  ExpectToken(is, binary, "<LmOverflow>");
+  ReadBasicType(is, binary, &overflow_buffer_size_);
+  overflow_buffer_ = new int32*[overflow_buffer_size_];
+  int64* tmp_overflow_address = new int64[overflow_buffer_size_];
+  is.read(reinterpret_cast<char *>(tmp_overflow_address),
+          sizeof(int64) * overflow_buffer_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section reading failed.";
+  }
+  for (int32 i = 0; i < overflow_buffer_size_; ++i) {
+    // Check out how we compute the relative address in ConstArpaLm::Write().
+    overflow_buffer_[i] = (tmp_overflow_address[i] == 0) ? NULL
+        : lm_states_ + tmp_overflow_address[i] - 1;
+  }
+  delete[] tmp_overflow_address;
+  tmp_overflow_address = NULL;
+  ExpectToken(is, binary, "</LmOverflow>");
+  ExpectToken(is, binary, "</ConstArpaLm>");
+
+  KALDI_ASSERT(ngram_order_ > 0);
+  KALDI_ASSERT(bos_symbol_ < num_words_ && bos_symbol_ > 0);
+  KALDI_ASSERT(eos_symbol_ < num_words_ && eos_symbol_ > 0);
+  KALDI_ASSERT(unk_symbol_ < num_words_ &&
+               (unk_symbol_ > 0 || unk_symbol_ == -1));
+  lm_states_end_ = lm_states_ + lm_states_size_ - 1;
+  memory_assigned_ = true;
+  initialized_ = true;
+}
+
+void ConstArpaLm::ReadInternalOldFormat(std::istream &is, bool binary) {
   KALDI_ASSERT(!initialized_);
   if (!binary) {
     KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
@@ -704,9 +824,13 @@ void ConstArpaLm::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &ngram_order_);
 
   // LmStates section.
-  ReadBasicType(is, binary, &lm_states_size_);
+  // In the deprecated version, <lm_states_size_> used to be type of int32,
+  // which was a bug. We therefore use int32 for read for back-compatibility.
+  int32 lm_states_size_int32;
+  ReadBasicType(is, binary, &lm_states_size_int32);
+  lm_states_size_ = static_cast<int64>(lm_states_size_int32);
   lm_states_ = new int32[lm_states_size_];
-  for (int32 i = 0; i < lm_states_size_; ++i) {
+  for (int64 i = 0; i < lm_states_size_; ++i) {
     ReadBasicType(is, binary, &lm_states_[i]);
   }
 
