@@ -29,109 +29,6 @@
 
 namespace kaldi {
 
-// Function for writing array of integer types.
-template<class T> inline void WriteIntegerArray(std::ostream &os, bool binary,
-                                                const int64 array_sz,
-                                                const T* const array) {
-  // Compile time assertion that this is not called with a wrong type.
-  KALDI_ASSERT_IS_INTEGER_TYPE(T);
-  KALDI_ASSERT(array != NULL);
-  if (binary) {
-    char sz = sizeof(T);
-    os.write(&sz, 1);  // this is currently just a check.
-    os.write(reinterpret_cast<const char *>(&array_sz), sizeof(array_sz));
-    if (array_sz != 0) {
-      os.write(reinterpret_cast<const char *>(array),
-               sizeof(T) * array_sz);
-    }
-  } else {
-    // focus here is on prettiness of text form rather than efficiency of
-    // reading-in. reading-in is dominated by low-level operations anyway:
-    // for efficiency use binary.
-    os << "[ ";
-    for (int64 i = 0; i < array_sz; ++i) {
-      if (sizeof(T) == 1) { // To be consistent with WriteIntegerVector().
-        os << static_cast<int16>(array[i]) << " ";
-      } else {
-        os << array[i] << " ";
-      }
-    }
-    os << "]\n";
-  }
-  if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteIntegerType.");
-  }
-}
-
-// Function for reading array of integer types. We assume it is the caller's
-// responsibility to create <array> with size <array_sz>.
-template<class T> inline void ReadIntegerArray(std::istream &is, bool binary,
-                                               const int64 array_sz,
-                                               T* const array) {
-  KALDI_ASSERT_IS_INTEGER_TYPE(T);
-  KALDI_ASSERT(array != NULL);
-  if (binary) {
-    int sz = is.peek();
-    if (sz == sizeof(T)) {
-      is.get();
-    } else {  // this is currently just a check.
-      KALDI_ERR << "ReadIntegerArray: expected to see type of size "
-                << sizeof(T) << ", saw instead " << sz << ", at file position "
-                << is.tellg();
-    }
-
-    int64 this_array_sz;
-    is.read(reinterpret_cast<char *>(&this_array_sz), sizeof(this_array_sz));
-    if (this_array_sz != array_sz) {
-      KALDI_ERR << "ReadIntegerArray: expected to see array size of "
-                << array_sz << ", saw instead " << this_array_sz;
-    }
-
-    if (is.fail()) {
-      goto bad;
-    }
-    if (array_sz > 0) {
-      is.read(reinterpret_cast<char *>(array), sizeof(T) * array_sz);
-    }
-  } else {
-    is >> std::ws;
-    if (is.peek() != static_cast<int>('[')) {
-      KALDI_ERR << "ReadIntegerInteger: expected to see [, saw "
-                << is.peek() << ", at file position " << is.tellg();
-    }
-    is.get();  // consume the '['.
-    is >> std::ws;  // consume whitespace.
-    T* array_pointer = array;
-    while (is.peek() != static_cast<int>(']')) {
-      if (sizeof(T) == 1) {  // read/write chars as numbers.
-        int16 next_t;
-        is >> next_t >> std::ws;
-        if (is.fail()) {
-          goto bad;
-        } else {
-          *array_pointer = (T)next_t;
-          array_pointer++;
-        }
-      } else {
-        T next_t;
-        is >> next_t >> std::ws;
-        if (is.fail()) {
-          goto bad;
-        } else {
-          *array_pointer = next_t;
-          array_pointer++;
-        }
-      }
-    }
-    is.get();  // get the final ']'.
-  }
-  if (!is.fail()) {
-    return;
-  }
- bad:
-  KALDI_ERR << "ReadIntegerArray: read failure at file position "
-            << is.tellg();
-}
 
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
@@ -765,7 +662,11 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
   // LmStates section.
   WriteToken(os, binary, "<LmStates>");
   WriteBasicType(os, binary, lm_states_size_);
-  WriteIntegerArray(os, binary, lm_states_size_, lm_states_);
+  os.write(reinterpret_cast<char *>(lm_states_),
+           sizeof(int32) * lm_states_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section writing failed.";
+  }
   WriteToken(os, binary, "</LmStates>");
 
   // Unigram section. We write memory offset to disk instead of the absolute
@@ -783,7 +684,11 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     tmp_unigram_address[i] = (unigram_states_[i] == NULL) ? 0 :
         unigram_states_[i] - lm_states_ + 1;
   }
-  WriteIntegerArray(os, binary, num_words_, tmp_unigram_address);
+  os.write(reinterpret_cast<char *>(tmp_unigram_address),
+           sizeof(int64) * num_words_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section writing failed.";
+  }
   delete[] tmp_unigram_address;   // Releases the memory.
   tmp_unigram_address = NULL;
   WriteToken(os, binary, "</LmUnigram>");
@@ -803,7 +708,11 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     tmp_overflow_address[i] = (overflow_buffer_[i] == NULL) ? 0 :
         overflow_buffer_[i] - lm_states_ + 1;
   }
-  WriteIntegerArray(os, binary, overflow_buffer_size_, tmp_overflow_address);
+  os.write(reinterpret_cast<char *>(tmp_overflow_address),
+           sizeof(int64) * overflow_buffer_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section writing failed.";
+  }
   delete[] tmp_overflow_address;
   tmp_overflow_address = NULL;
   WriteToken(os, binary, "</LmOverflow>");
@@ -844,7 +753,11 @@ void ConstArpaLm::ReadInternal(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LmStates>");
   ReadBasicType(is, binary, &lm_states_size_);
   lm_states_ = new int32[lm_states_size_];
-  ReadIntegerArray(is, binary, lm_states_size_, lm_states_);
+  is.read(reinterpret_cast<char *>(lm_states_),
+          sizeof(int32) * lm_states_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section reading failed.";
+  }
   ExpectToken(is, binary, "</LmStates>");
 
   // Unigram section. We write memory offset to disk instead of the absolute
@@ -853,7 +766,11 @@ void ConstArpaLm::ReadInternal(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &num_words_);
   unigram_states_ = new int32*[num_words_];
   int64* tmp_unigram_address = new int64[num_words_];
-  ReadIntegerArray(is, binary, num_words_, tmp_unigram_address);
+  is.read(reinterpret_cast<char *>(tmp_unigram_address),
+          sizeof(int64) * num_words_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section reading failed.";
+  }
   for (int32 i = 0; i < num_words_; ++i) {
     // Check out how we compute the relative address in ConstArpaLm::Write().
     unigram_states_[i] = (tmp_unigram_address[i] == 0) ? NULL
@@ -869,7 +786,11 @@ void ConstArpaLm::ReadInternal(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &overflow_buffer_size_);
   overflow_buffer_ = new int32*[overflow_buffer_size_];
   int64* tmp_overflow_address = new int64[overflow_buffer_size_];
-  ReadIntegerArray(is, binary, overflow_buffer_size_, tmp_overflow_address);
+  is.read(reinterpret_cast<char *>(tmp_overflow_address),
+          sizeof(int64) * overflow_buffer_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section reading failed.";
+  }
   for (int32 i = 0; i < overflow_buffer_size_; ++i) {
     // Check out how we compute the relative address in ConstArpaLm::Write().
     overflow_buffer_[i] = (tmp_overflow_address[i] == 0) ? NULL
