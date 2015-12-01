@@ -289,14 +289,25 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 %WER 9.78 [ 805 / 8234, 167 ins, 72 del, 566 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_10_0.0
 %WER 6.40 [ 361 / 5643, 87 ins, 16 del, 258 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/wer_10_1.0
 
-# LSTM results: cell_dim=1024, recurrent_projection_dim=non_recurrent_projection_dim=256,lstm_delay=-1 -2 -3, label_delay=5
+# local/nnet3/run_lstm.sh
+# LSTM results: cell_dim=1024, recurrent_projection_dim=non_recurrent_projection_dim=256,lstm_delay=-1 -2 -3, label_delay=5, num_params=11894059
 %WER 7.32 exp/nnet3/lstm_ld5/decode_bd_tgpr_dev93/wer_11_0.0
 %WER 4.24 exp/nnet3/lstm_ld5/decode_bd_tgpr_eval92/wer_10_1.0
 %WER 9.57 exp/nnet3/lstm_ld5/decode_tgpr_dev93/wer_9_1.0
 %WER 6.86 exp/nnet3/lstm_ld5/decode_tgpr_eval92/wer_10_1.0
 
-# Bidirectional LSTM cell_dim=640, recurrent_projection_dim=non_recurrent_projection_dim=128,lstm_delay=[-1,1] [-2,2] [-3,3], label_delay=0
-%WER 6.81 exp/nnet3/blstm_640_123_ld0/decode_bd_tgpr_dev93/wer_11_0.0
-%WER 4.27 exp/nnet3/blstm_640_123_ld0/decode_bd_tgpr_eval92/wer_11_0.0
-%WER 9.29 exp/nnet3/blstm_640_123_ld0/decode_tgpr_dev93/wer_11_0.5
-%WER 6.61 exp/nnet3/blstm_640_123_ld0/decode_tgpr_eval92/wer_11_1.0
+# bidirectional LSTM
+# -----------------------
+# local/nnet3/run_lstm.sh --affix bidirectional \ 
+#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#	                  --label-delay 0 \
+#                         --cell-dim 640 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+# num_params=11485739
+%WER 6.81 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 4.27 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_eval92/wer_11_0.0
+%WER 9.29 exp/nnet3/lstm_bidirectional/decode_tgpr_dev93/wer_11_0.5
+%WER 6.61 exp/nnet3/lstm_bidirectional/decode_tgpr_eval92/wer_11_1.0
