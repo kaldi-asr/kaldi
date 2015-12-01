@@ -201,6 +201,11 @@ if [ $stage -le 14 ]; then
 fi
 
 # Running another decode with tighter beam.
+# time is about twice faster-- easily within real-time even on fairly old machines.
+# degradation on eval2000 is 14.2->14.4 before rescoring and 12.2->12.5 after;
+# on train_dev is's 18.99->19.09 before rescoring, and 17.29->17.55 after.  Probably
+# the greater degradation after rescoring is due to the lattice-beam being too tight,
+# which might not even affect the speed much (could easily make it 7.0).
 if [ $stage -le 15 ]; then
   for decode_set in train_dev eval2000; do
       (
