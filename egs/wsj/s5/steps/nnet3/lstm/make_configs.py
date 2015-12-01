@@ -14,7 +14,7 @@ def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
-    f.write("\n".join(config_lines['component-nodes']))
+    f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
 def ParseSpliceString(splice_indexes, label_delay=None):
@@ -66,10 +66,11 @@ def ParseLstmDelayString(lstm_delay):
     try:
         for i in range(len(split1)):
             indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
-            print(indexes)
             if len(indexes) < 1:
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
+	    elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
+                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
             lstm_delay_array.append(indexes)
     except ValueError as e:
         raise ValueError("invalid --lstm-delay argument " + lstm_delay + str(e))
@@ -189,17 +190,12 @@ if __name__ == "__main__":
 
     for i in range(args.num_lstm_layers):
 	if len(lstm_delay[i]) == 2: # BLSTM layer case, add both forward and backward
-	    try:
-	        if not (lstm_delay[i][0] < 0 and lstm_delay[i][1] > 0):
-	            raise ValueError('Warning: ' + str(lstm_delay[i]) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
-	    except ValueError as e:
-		print(str(e))
-            prev_layer_output1 = nodes.AddLstmLayer(config_lines, "Lstm{0}f".format(i+1), prev_layer_output, args.cell_dim,
+            prev_layer_output1 = nodes.AddLstmLayer(config_lines, "BLstm{0}_forward".format(i+1), prev_layer_output, args.cell_dim,
                                              args.recurrent_projection_dim, args.non_recurrent_projection_dim,
                                              args.clipping_threshold, args.norm_based_clipping,
                                              args.ng_per_element_scale_options, args.ng_affine_options,
                                              lstm_delay = lstm_delay[i][0])
-            prev_layer_output2 = nodes.AddLstmLayer(config_lines, "Lstm{0}b".format(i+1), prev_layer_output, args.cell_dim,
+            prev_layer_output2 = nodes.AddLstmLayer(config_lines, "BLstm{0}_backward".format(i+1), prev_layer_output, args.cell_dim,
                                              args.recurrent_projection_dim, args.non_recurrent_projection_dim,
                                              args.clipping_threshold, args.norm_based_clipping,
                                              args.ng_per_element_scale_options, args.ng_affine_options,
@@ -218,11 +214,12 @@ if __name__ == "__main__":
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 	if len(lstm_delay[i]) == 2:
-	    # strip off 'Append()'
+	    # since the form 'Append(Append(xx, yy), zz)' is not allowed, here we don't wrap the descriptor with 'Append()' so that we would have the form
+	    # 'Append(xx, yy, zz)' in the next lstm layer
 	    prev_layer_output['descriptor'] = '{0}, {1}'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 
     if len(lstm_delay[i]) == 2:
-        # wrapped with 'Append()'
+        # since there is no 'Append' in 'AffRelNormLayer', here we wrap the descriptor with 'Append()'
         prev_layer_output['descriptor'] = 'Append({0})'.format(prev_layer_output['descriptor'])
     for i in range(args.num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),

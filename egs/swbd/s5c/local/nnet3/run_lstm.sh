@@ -26,10 +26,10 @@ splice_indexes="-2,-1,0,1,2 0 0"
 lstm_delay=" -1 -2 -3 "
 label_delay=5
 num_lstm_layers=3
-cell_dim=1024
+cell_dim=1280
 hidden_dim=1024
-recurrent_projection_dim=256
-non_recurrent_projection_dim=256
+recurrent_projection_dim=384
+non_recurrent_projection_dim=384
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
@@ -129,6 +129,7 @@ if [ $stage -le 10 ]; then
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
+	  --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
