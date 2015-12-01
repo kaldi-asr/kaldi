@@ -15,7 +15,7 @@ stage=0 # resume training with --stage=N
 
 . utils/parse_options.sh || exit 1;
 
-# check BeamformIt and IRSTLM are installed or not
+# check BeamformIt, IRSTLM, SRILM, and RNNLM are installed or not
 if [ -z $BEAMFORMIT ] ; then
   export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
 fi
@@ -33,6 +33,17 @@ if ! command -v prune-lm >/dev/null 2>&1 ; then
   echo "$0: Error: and run extras/install_irstlm.sh" >&2
   exit 1
 fi
+if [ -z $SRILM ] ; then
+  export SRILM=$KALDI_ROOT/tools/srilm/
+fi
+export PATH=${PATH}:$SRILM/bin/i686-m64
+! hash ngram-count && echo "Missing srilm, run 'cd ../../../tools/; extras/install_srilm.sh;'" && exit 1
+
+if [ -z $RNNLM ] ; then
+  export RNNLM=$KALDI_ROOT/tools/rnnlm-0.3e
+fi
+export PATH=${PATH}:$RNNLM
+! hash rnnlm && echo "Missing rnnlm, run 'cd ../../../tools/; extras/install_mikolov_rnnlm.sh rnnlm-0.3e;'" && exit 1
 
 # You can execute run_init.sh only "once"
 # This creates LMs, basic task files, basic models,
