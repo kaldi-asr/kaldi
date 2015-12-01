@@ -254,7 +254,7 @@ class ConstArpaLm {
   }
 
   // Reads the ConstArpaLm format language model. It calls ReadInternal() or
-  // ReadInternalDeprecated() to do the actual reading.
+  // ReadInternalOldFormat() to do the actual reading.
   void Read(std::istream &is, bool binary);
 
   // Writes the language model in ConstArpaLm format.
@@ -285,7 +285,7 @@ class ConstArpaLm {
   // that handles the old on-disk format. We keep this for back-compatibility
   // purpose. We have modified the Write() function so for all the new on-disk
   // format, ReadInternal() will be called.
-  void ReadInternalDeprecated(std::istream &is, bool binary);
+  void ReadInternalOldFormat(std::istream &is, bool binary);
 
   // Loops up n-gram probability for given word sequence. Backoff is handled by
   // recursively calling this function.
