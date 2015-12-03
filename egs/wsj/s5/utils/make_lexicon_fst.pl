@@ -135,7 +135,7 @@ if ( $silprob == 0.0 ) { # No optional silences: just have one (loop+final) stat
         $word_or_eps = "<eps>";
         $pron_cost_string = ""; $pron_cost = 0.0; # so we only print it the 1st time.
         $s = $ns;
-      } elsif ($p ne $silphone) {
+      } elsif (!defined($silphone) || $p ne $silphone) {
         # This is non-deterministic but relatively compact,
         # and avoids epsilons.
         $local_nosilcost = $nosilcost + $pron_cost;
