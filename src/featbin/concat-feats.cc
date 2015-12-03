@@ -1,4 +1,4 @@
-// featbin/paste-feats.cc
+// featbin/concat-feats.cc
 
 // Copyright 2013 Johns Hopkins University (Author: Daniel Povey)
 //           2015 Tom Ko
@@ -25,11 +25,20 @@
 
 namespace kaldi {
 
+/*
+   This function concatenates several sets of feature vectors 
+   to form a longer set. The length of the output will be equal
+   to the sum of lengths of the inputs but the dimension will be
+   the same to the inputs.
+*/
+
 void ConcatFeats(const std::vector<Matrix<BaseFloat> > &in,
                  Matrix<BaseFloat> *out) {
+  KALDI_ASSERT(in.size() >= 1);
   int32 tot_len = in[0].NumRows(),
       dim = in[0].NumCols();
   for (int32 i = 1; i < in.size(); i++) {
+    KALDI_ASSERT(in[i].NumCols() == dim);
     tot_len += in[i].NumRows();
   }
   out->Resize(tot_len, dim);
