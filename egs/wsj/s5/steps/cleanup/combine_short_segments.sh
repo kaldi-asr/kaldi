@@ -13,7 +13,7 @@ frame_shift=10
 . parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "This script truncates the long audio into smaller overlapping segments"
+  echo "This script concatenates segments with length shorter than the specified length in seconds."
   echo ""
   echo "Usage: steps/cleanup/combine_short_segments.sh [options] <minimum-length> <data-in> <data-out>"
   echo "e.g.:  steps/cleanup/combine_short_segments.sh 2.0 data/train data/train_min2sec"
