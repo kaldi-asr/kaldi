@@ -21,6 +21,7 @@ num_epochs=10      # Number of epochs of training;
 pdf_boundary_penalty=8
 truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
                           # near the edges.  (counts subsampled frames).
+apply_deriv_weights=true
 initial_effective_lrate=0.0002
 final_effective_lrate=0.00002
 pnorm_input_dim=3000
@@ -416,11 +417,15 @@ while [ $x -lt $num_iters ]; do
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
-      nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
-            "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+      nnet3-chain-compute-prob  \
+       --pdf-boundary-penalty=$pdf_boundary_penalty \
+          "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
+          "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
-      nnet3-chain-compute-prob "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
-           "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
+      nnet3-chain-compute-prob \
+       --pdf-boundary-penalty=$pdf_boundary_penalty \
+          "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
+          "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
@@ -478,7 +483,7 @@ while [ $x -lt $num_iters ]; do
           this_max_param_change=$max_param_change
         fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-chain-train \
+          nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
              --pdf-boundary-penalty=$pdf_boundary_penalty $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \

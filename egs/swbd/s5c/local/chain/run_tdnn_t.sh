@@ -1,21 +1,24 @@
 #!/bin/bash
 
 
+# _t is as _s but setting pdf-boundary-penalty to 2.0
+#  This makes things slightly worse: 18.0->18.2 on eval2000 after fg rescoring (20.1->20.1 before)
+# and  16.96->17.26 on train_dev after fg rescoring (18.45->18.68 before).
+
+# _s is as _q but setting pdf-boundary-penalty to 0.0
+
 # _q is as _p except making the same change as from n->o, which
 # reduces the parameters to try to reduce over-training.  We reduce
 # relu-dim from 1024 to 850, and target num-states from 12k to 9k,
 # and modify the splicing setup.
 # note: I don't rerun the tree-building, I just use the '5o' treedir.
-#  This reduction in parameters seems to be helpful: on train_dev (fg),
-#  change is 18.45 -> 18.07, and on all of eval2000 (fg), from 20.0 -> 19.8.
-
 
 # _p is as _m except with a code change in which we switch to a different, more
 # exact mechanism to deal with the edges of the egs, and correspondingly
 # different script options... we now dump weights with the egs, and apply the
 # weights to the derivative w.r.t. the output instead of using the
 # --min-deriv-time and --max-deriv-time options.  Increased the frames-overlap
-# to 30 also.  This will.  give 10 frames on each side with zero derivs, then
+# to 30 also.  This wil.  give 10 frames on each side with zero derivs, then
 # ramping up to a weight of 1.0 over 10 frames.
 
 # _m is as _k but after a code change that makes the denominator FST more
@@ -65,7 +68,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_q  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_t  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -159,6 +162,8 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --pdf-boundary-penalty 2.0 \
+    --egs-dir exp/chain/tdnn_q_sp/egs \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 30" \

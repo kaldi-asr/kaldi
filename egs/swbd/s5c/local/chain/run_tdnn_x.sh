@@ -1,21 +1,25 @@
 #!/bin/bash
 
+# _x is as _s but setting     --lm-opts "--num-extra-states=0".
+#  this is a kind of repeat of the u->v experiment, where it seemed to make things
+#  worse, but there were other factors involved in that so I want to be sure.
+
+# _s is as _q but setting pdf-boundary-penalty to 0.0
+# This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
+# and 18.07 -> 16.96 on train_dev, after fg rescoring.
 
 # _q is as _p except making the same change as from n->o, which
 # reduces the parameters to try to reduce over-training.  We reduce
 # relu-dim from 1024 to 850, and target num-states from 12k to 9k,
 # and modify the splicing setup.
 # note: I don't rerun the tree-building, I just use the '5o' treedir.
-#  This reduction in parameters seems to be helpful: on train_dev (fg),
-#  change is 18.45 -> 18.07, and on all of eval2000 (fg), from 20.0 -> 19.8.
-
 
 # _p is as _m except with a code change in which we switch to a different, more
 # exact mechanism to deal with the edges of the egs, and correspondingly
 # different script options... we now dump weights with the egs, and apply the
 # weights to the derivative w.r.t. the output instead of using the
 # --min-deriv-time and --max-deriv-time options.  Increased the frames-overlap
-# to 30 also.  This will.  give 10 frames on each side with zero derivs, then
+# to 30 also.  This wil.  give 10 frames on each side with zero derivs, then
 # ramping up to a weight of 1.0 over 10 frames.
 
 # _m is as _k but after a code change that makes the denominator FST more
@@ -65,7 +69,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_q  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_x  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -153,12 +157,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --pdf-boundary-penalty 0.0 \
+    --lm-opts "--num-extra-states=0" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 30" \
