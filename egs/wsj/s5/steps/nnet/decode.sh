@@ -131,9 +131,9 @@ if [ ! -z "$blocksoftmax_dims" ]; then
   # blocksoftmax_active is a csl! dim1,dim2,dim3,...
   [ -z "$blocksoftmax_active" ] && echo "$0 Missing option --blocksoftmax-active N" && exit 1
   # getting dims,
-  dim_total=$(awk -F',' '{ for(i=1;i<=NF;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
-  dim_block=$(awk -F',' -v active=$blocksoftmax_active '{ print $active; }' <(echo $blocksoftmax_dims))
-  offset=$(awk -F',' -v active=$blocksoftmax_active '{ sum=0; for(i=1;i<active;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
+  dim_total=$(awk -F'[:,]' '{ for(i=1;i<=NF;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
+  dim_block=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ print $active; }' <(echo $blocksoftmax_dims))
+  offset=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ sum=0; for(i=1;i<active;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
   # create components which select a block,
   nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>"; 
                     echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet 

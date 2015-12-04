@@ -22,6 +22,9 @@
 #define KALDI_UTIL_KALDI_HOLDER_INL_H_
 
 #include <algorithm>
+#include <vector>
+#include <utility>
+#include <string>
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-matrix.h"
@@ -47,7 +50,7 @@ template<class KaldiType> class KaldiObjectHolder {
     try {
       t.Write(os, binary);
       return os.good();
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught writing Table object: " << e.what();
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // Write failure.
@@ -65,7 +68,8 @@ template<class KaldiType> class KaldiObjectHolder {
   bool Read(std::istream &is) {
     delete t_;
     t_ = new T;
-    // Don't want any existing state to complicate the read functioN: get new object.
+    // Don't want any existing state to complicate the read functioN: get new
+    // object.
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
       KALDI_WARN << "Reading Table object, failed reading binary header\n";
@@ -74,7 +78,7 @@ template<class KaldiType> class KaldiObjectHolder {
     try {
       t_->Read(is, is_binary);
       return true;
-    } catch (std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught reading Table object ";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       delete t_;
@@ -118,7 +122,7 @@ template<class BasicType> class BasicHolder {
       if (!binary) os << '\n';  // Makes output format more readable and
       // easier to manipulate.
       return os.good();
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught writing Table object: " << e.what();
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // Write failure.
@@ -131,27 +135,34 @@ template<class BasicType> class BasicHolder {
   bool Read(std::istream &is) {
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
-      KALDI_WARN << "Reading Table object [integer type], failed reading binary header\n";
+      KALDI_WARN << "Reading Table object [integer type], failed reading binary"
+        " header\n";
       return false;
     }
     try {
       int c;
-      if (!is_binary) {  // This is to catch errors, the class would work without it..
+      if (!is_binary) {  // This is to catch errors, the class would work
+        // without it..
         // Eat up any whitespace and make sure it's not newline.
-        while (isspace((c = is.peek())) && c != static_cast<int>('\n')) is.get();
+        while (isspace((c = is.peek())) && c != static_cast<int>('\n')) {
+          is.get();
+        }
         if (is.peek() == '\n') {
           KALDI_WARN << "Found newline but expected basic type.";
           return false;  // This is just to catch a more-
-          // likely-than average type of error (empty line before the token), since
-          // ReadBasicType will eat it up.
+          // likely-than average type of error (empty line before the token),
+          // since ReadBasicType will eat it up.
         }
       }
 
       ReadBasicType(is, is_binary, &t_);
 
-      if (!is_binary) {  // This is to catch errors, the class would work without it..
+      if (!is_binary) {  // This is to catch errors, the class would work
+        // without it..
         // make sure there is a newline.
-        while (isspace((c = is.peek())) && c != static_cast<int>('\n')) is.get();
+        while (isspace((c = is.peek())) && c != static_cast<int>('\n')) {
+          is.get();
+        }
         if (is.peek() != '\n') {
           KALDI_WARN << "BasicHolder::Read, expected newline, got "
                      << CharToString(is.peek()) << ", position " << is.tellg();
@@ -160,7 +171,7 @@ template<class BasicType> class BasicHolder {
         is.get();  // Consume the newline.
       }
       return true;
-    } catch (std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught reading Table object";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;
@@ -198,7 +209,8 @@ template<class BasicType> class BasicVectorHolder {
     InitKaldiOutputStream(os, binary);  // Puts binary header if binary mode.
     try {
       if (binary) {  // need to write the size, in binary mode.
-        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) == t.size());
+        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
+            t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
@@ -212,11 +224,11 @@ template<class BasicType> class BasicVectorHolder {
             iter != t.end(); ++iter)
           WriteBasicType(os, binary, *iter);
         os << '\n';  // Makes output format more readable and
-        // easier to manipulate.  In text mode, this function writes something like
-        // "1 2 3\n".
+        // easier to manipulate.  In text mode, this function writes something
+        // like "1 2 3\n".
       }
       return os.good();
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught writing Table object (BasicVector). ";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // Write failure.
@@ -230,7 +242,8 @@ template<class BasicType> class BasicVectorHolder {
     t_.clear();
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
-      KALDI_WARN << "Reading Table object [integer type], failed reading binary header\n";
+      KALDI_WARN << "Reading Table object [integer type], failed reading binary"
+        " header\n";
       return false;
     }
     if (!is_binary) {
@@ -238,7 +251,8 @@ template<class BasicType> class BasicVectorHolder {
       std::string line;
       getline(is, line);  // this will discard the \n, if present.
       if (is.fail()) {
-        KALDI_WARN << "BasicVectorHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
+        KALDI_WARN << "BasicVectorHolder::Read, error reading line " <<
+          (is.eof() ? "[eof]" : "");
         return false;  // probably eof.  fail in any case.
       }
       std::istringstream line_is(line);
@@ -251,8 +265,9 @@ template<class BasicType> class BasicVectorHolder {
           t_.push_back(bt);
         }
         return true;
-      } catch(std::exception &e) {
-        KALDI_WARN << "BasicVectorHolder::Read, could not interpret line: " << line;
+      } catch(const std::exception &e) {
+        KALDI_WARN << "BasicVectorHolder::Read, could not interpret line: "
+                   << line;
         if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
         return false;
       }
@@ -268,8 +283,9 @@ template<class BasicType> class BasicVectorHolder {
           ReadBasicType(is, true, &(*iter));
         }
         return true;
-      } catch (...) {
-        KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data at archive entry beginning at file position " << filepos;
+      } catch(...) {
+        KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data"
+          " at archive entry beginning at file position " << filepos;
         return false;
       }
     }
@@ -303,16 +319,20 @@ template<class BasicType> class BasicVectorVectorHolder {
     InitKaldiOutputStream(os, binary);  // Puts binary header if binary mode.
     try {
       if (binary) {  // need to write the size, in binary mode.
-        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) == t.size());
+        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
+            t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
         WriteBasicType(os, binary, static_cast<int32>(t.size()));
-        for (typename std::vector<std::vector<BasicType> >::const_iterator iter = t.begin();
+        for (typename std::vector<std::vector<BasicType> >::const_iterator
+            iter = t.begin();
             iter != t.end(); ++iter) {
-          KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(iter->size())) == iter->size());
+          KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(iter->size()))
+              == iter->size());
           WriteBasicType(os, binary, static_cast<int32>(iter->size()));
-          for (typename std::vector<BasicType>::const_iterator iter2=iter->begin();
+          for (typename std::vector<BasicType>::const_iterator
+              iter2 = iter->begin();
               iter2 != iter->end(); ++iter2) {
             WriteBasicType(os, binary, *iter2);
           }
@@ -323,10 +343,12 @@ template<class BasicType> class BasicVectorVectorHolder {
         // where the semicolon is a terminator, not a separator
         // (a separator would cause ambiguity between an
         // empty list, and a list containing a single empty list).
-        for (typename std::vector<std::vector<BasicType> >::const_iterator iter = t.begin();
+        for (typename std::vector<std::vector<BasicType> >::const_iterator
+            iter = t.begin();
             iter != t.end();
              ++iter) {
-          for (typename std::vector<BasicType>::const_iterator iter2=iter->begin();
+          for (typename std::vector<BasicType>::const_iterator
+               iter2 = iter->begin();
                iter2 != iter->end(); ++iter2)
             WriteBasicType(os, binary, *iter2);
           os << "; ";
@@ -334,7 +356,7 @@ template<class BasicType> class BasicVectorVectorHolder {
         os << '\n';
       }
       return os.good();
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught writing Table object. ";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // Write failure.
@@ -364,7 +386,10 @@ template<class BasicType> class BasicVectorVectorHolder {
             if (!v.empty()) {
               KALDI_WARN << "No semicolon before newline (wrong format)";
               return false;
-            } else { is.get(); return true; }
+            } else {
+              is.get();
+              return true;
+            }
           } else if (std::isspace(i)) {
             is.get();
           } else if (static_cast<char>(i) == ';') {
@@ -377,7 +402,7 @@ template<class BasicType> class BasicVectorVectorHolder {
             v.push_back(b);
           }
         }
-      } catch(std::exception &e) {
+      } catch(const std::exception &e) {
         KALDI_WARN << "BasicVectorVectorHolder::Read, read error";
         if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
         return false;
@@ -388,7 +413,8 @@ template<class BasicType> class BasicVectorVectorHolder {
         int32 size;
         ReadBasicType(is, true, &size);
         t_.resize(size);
-        for (typename std::vector<std::vector<BasicType> >::iterator iter = t_.begin();
+        for (typename std::vector<std::vector<BasicType> >::iterator
+            iter = t_.begin();
             iter != t_.end();
             ++iter) {
           int32 size2;
@@ -400,8 +426,9 @@ template<class BasicType> class BasicVectorVectorHolder {
             ReadBasicType(is, true, &(*iter2));
         }
         return true;
-      } catch (...) {
-        KALDI_WARN << "Read error or unexpected data at archive entry beginning at file position " << filepos;
+      } catch(...) {
+        KALDI_WARN << "Read error or unexpected data at archive entry beginning"
+          " at file position " << filepos;
         return false;
       }
     }
@@ -430,12 +457,13 @@ template<class BasicType> class BasicPairVectorHolder {
   typedef std::vector<std::pair<BasicType, BasicType> > T;
 
   BasicPairVectorHolder() { }
-  
+
   static bool Write(std::ostream &os, bool binary, const T &t) {
     InitKaldiOutputStream(os, binary);  // Puts binary header if binary mode.
     try {
       if (binary) {  // need to write the size, in binary mode.
-        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) == t.size());
+        KALDI_ASSERT(static_cast<size_t>(static_cast<int32>(t.size())) ==
+            t.size());
         // Or this Write routine cannot handle such a large vector.
         // use int32 because it's fixed size regardless of compilation.
         // change to int64 (plus in Read function) if this becomes a problem.
@@ -460,13 +488,13 @@ template<class BasicType> class BasicPairVectorHolder {
         os << '\n';
       }
       return os.good();
-    } catch (const std::exception &e) {
+    } catch(const std::exception &e) {
       KALDI_WARN << "Exception caught writing Table object. ";
       if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
       return false;  // Write failure.
     }
   }
-  
+
   void Clear() { t_.clear(); }
 
   // Reads into the holder.
@@ -474,7 +502,8 @@ template<class BasicType> class BasicPairVectorHolder {
     t_.clear();
     bool is_binary;
     if (!InitKaldiInputStream(is, &is_binary)) {
-      KALDI_WARN << "Reading Table object [integer type], failed reading binary header\n";
+      KALDI_WARN << "Reading Table object [integer type], failed reading binary"
+        " header\n";
       return false;
     }
     if (!is_binary) {
@@ -516,7 +545,7 @@ template<class BasicType> class BasicPairVectorHolder {
             v.push_back(b);
           }
         }
-      } catch(std::exception &e) {
+      } catch(const std::exception &e) {
         KALDI_WARN << "BasicPairVectorHolder::Read, read error";
         if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
         return false;
@@ -534,8 +563,9 @@ template<class BasicType> class BasicPairVectorHolder {
           ReadBasicType(is, true, &(iter->second));
         }
         return true;
-      } catch (...) {
-        KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data at archive entry beginning at file position " << filepos;
+      } catch(...) {
+        KALDI_WARN << "BasicVectorHolder::Read, read error or unexpected data"
+          " at archive entry beginning at file position " << filepos;
         return false;
       }
     }
@@ -565,7 +595,7 @@ class TokenHolder {
 
   TokenHolder() {}
 
-  static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode.
+  static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode
     KALDI_ASSERT(IsToken(t));
     os << t << '\n';
     return os.good();
@@ -580,7 +610,8 @@ class TokenHolder {
     char c;
     while (isspace(c = is.peek()) && c!= '\n') is.get();
     if (is.peek() != '\n') {
-      KALDI_ERR << "TokenHolder::Read, expected newline, got char " << CharToString(is.peek())
+      KALDI_ERR << "TokenHolder::Read, expected newline, got char " <<
+        CharToString(is.peek())
                 << ", at stream pos " << is.tellg();
       return false;
     }
@@ -609,11 +640,12 @@ class TokenVectorHolder {
 
   TokenVectorHolder() { }
 
-  static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode.
+  static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode
     for (std::vector<std::string>::const_iterator iter = t.begin();
         iter != t.end();
         ++iter) {
-      KALDI_ASSERT(IsToken(*iter));  // make sure it's whitespace-free, printable and nonempty.
+      KALDI_ASSERT(IsToken(*iter));  // make sure it's whitespace-free,
+     // printable and nonempty.
       os << *iter << ' ';
     }
     os << '\n';
@@ -632,17 +664,18 @@ class TokenVectorHolder {
     std::string line;
     getline(is, line);  // this will discard the \n, if present.
     if (is.fail()) {
-      KALDI_WARN << "BasicVectorHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
+      KALDI_WARN << "BasicVectorHolder::Read, error reading line " << (is.eof()
+          ? "[eof]" : "");
       return false;  // probably eof.  fail in any case.
     }
     const char *white_chars = " \t\n\r\f\v";
-    SplitStringToVector(line, white_chars, true, &t_);  // true== omit empty strings e.g.
-    // between spaces.
+    SplitStringToVector(line, white_chars, true, &t_);  // true== omit
+    // empty strings e.g. between spaces.
     return true;
   }
 
-  // Read in text format since it's basically a text-mode thing.. doesn't really matter,
-  // it would work either way since we ignore the extra '\r'.
+  // Read in text format since it's basically a text-mode thing.. doesn't really
+  // matter, it would work either way since we ignore the extra '\r'.
   static bool IsReadInBinary() { return false; }
 
   const T &Value() const { return t_; }
@@ -721,18 +754,19 @@ template<int kFeatDim> class SphinxMatrixHolder {
     int32 size = m.NumRows() * m.NumCols();
     if (MachineIsLittleEndian())
       KALDI_SWAP4(size);
-    os.write((char*) &size, sizeof(size)); // write the header
+    os.write(reinterpret_cast<char*> (&size), sizeof(size));  // write the
+                                                              // header
 
     for (MatrixIndexT i = 0; i < m.NumRows(); i++) {
-      float32 tmp[m.NumCols()];
+      std::vector<float32> tmp(m.NumCols());
       for (MatrixIndexT j = 0; j < m.NumCols(); j++) {
         tmp[j] = static_cast<float32>(m(i, j));
         if (MachineIsLittleEndian())
           KALDI_SWAP4(tmp[j]);
       }
-      os.write((char*) tmp, sizeof(tmp));
+      os.write(reinterpret_cast<char*>(&(tmp[0])),
+               tmp.size() * 4);
     }
-
     return true;
   }
 
@@ -740,7 +774,7 @@ template<int kFeatDim> class SphinxMatrixHolder {
   bool Read(std::istream &is) {
     int32 nmfcc;
 
-    is.read((char*) &nmfcc, sizeof(nmfcc));
+    is.read(reinterpret_cast<char*> (&nmfcc), sizeof(nmfcc));
     if (MachineIsLittleEndian())
       KALDI_SWAP4(nmfcc);
     KALDI_VLOG(2) << "#feats: " << nmfcc;
@@ -753,23 +787,24 @@ template<int kFeatDim> class SphinxMatrixHolder {
     feats_.Resize(nfvec, kFeatDim);
     for (MatrixIndexT i = 0; i < feats_.NumRows(); i++) {
       if (sizeof(BaseFloat) == sizeof(float32)) {
-        is.read((char*) feats_.RowData(i), kFeatDim * sizeof(float32));
+        is.read(reinterpret_cast<char*> (feats_.RowData(i)),
+            kFeatDim * sizeof(float32));
         if (!is.good()) {
           KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
           return false;
         }
         if (MachineIsLittleEndian()) {
-          for (MatrixIndexT j=0; j < kFeatDim; j++)
+          for (MatrixIndexT j = 0; j < kFeatDim; j++)
             KALDI_SWAP4(feats_(i, j));
         }
-      } else { // KALDI_DOUBLEPRECISION=1
+      } else {  // KALDI_DOUBLEPRECISION=1
         float32 tmp[kFeatDim];
-        is.read((char*) tmp, sizeof(tmp));
+        is.read(reinterpret_cast<char*> (tmp), sizeof(tmp));
         if (!is.good()) {
           KALDI_WARN << "Unexpected error/EOF while reading Sphinx features ";
           return false;
         }
-        for (MatrixIndexT j=0; j < kFeatDim; j++) {
+        for (MatrixIndexT j = 0; j < kFeatDim; j++) {
           if (MachineIsLittleEndian())
             KALDI_SWAP4(tmp[j]);
           feats_(i, j) = static_cast<BaseFloat>(tmp[j]);
@@ -793,8 +828,8 @@ template<int kFeatDim> class SphinxMatrixHolder {
 
 /// @} end "addtogroup holders"
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
 
 
-#endif
+#endif  // KALDI_UTIL_KALDI_HOLDER_INL_H_

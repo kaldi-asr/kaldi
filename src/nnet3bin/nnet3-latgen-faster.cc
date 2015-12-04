@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
     bool allow_partial = false;
     LatticeFasterDecoderConfig config;
-    DecodableAmNnetSimpleOptions decodable_opts;
+    NnetSimpleComputationOptions decodable_opts;
 
     std::string word_syms_filename;
     std::string ivector_rspecifier,

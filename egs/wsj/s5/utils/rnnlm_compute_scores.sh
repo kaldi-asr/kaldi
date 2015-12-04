@@ -62,8 +62,16 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # OK, now we compute the scores on the text with OOVs replaced
 # with <RNN_UNK>
 
-$rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
-   awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+if [ $rnnlm_ver == "faster-rnnlm" ]; then
+  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
+     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+else
+  # add the utterance_id as required by Mikolove's rnnlm
+  paste $tempdir/ids $tempdir/text.nounk > $tempdir/id_text.nounk
+
+  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/id_text.nounk -nbest -debug 0 | \
+     awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
+fi
 
 [ `cat $tempdir/loglikes.rnn | wc -l` -ne `cat $tempdir/loglikes.oov | wc -l` ] && \
   echo "rnnlm rescoring failed" && exit 1;

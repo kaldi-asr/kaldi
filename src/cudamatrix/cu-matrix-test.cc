@@ -1327,6 +1327,30 @@ static void UnitTestCuMatrixAddMatMat() {
 
 
 template<typename Real>
+static void UnitTestCuMatrixAddVecVec() {
+  Vector<Real> x(100);
+  Vector<Real> y(200);
+  x.SetRandn();
+  y.SetRandn();
+
+  CuVector<Real> Cux(100);
+  CuVector<Real> Cuy(200);
+  Cux.CopyFromVec(x);
+  Cuy.CopyFromVec(y);
+
+  Matrix<Real> A(100,200);
+  CuMatrix<Real> CuA(100,200);
+
+  A.AddVecVec(0.5f, x, y);
+  CuA.AddVecVec(0.5f, Cux, Cuy);
+  Matrix<Real> A2(100, 200);
+  CuA.CopyToMat(&A2);
+
+  AssertEqual(A,A2);
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixAddMatMatBatched() {
   const int32 batchCount = 10;
   std::vector<Matrix<Real>* > Ha(batchCount), Hb(batchCount), Hc1(batchCount), Hc2(batchCount);
@@ -2433,6 +2457,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddVecToCols<Real>();
   UnitTestCuMatrixAddVecToRows<Real>();
   UnitTestCuMatrixAddMatMat<Real>();
+  UnitTestCuMatrixAddVecVec<Real>();
   UnitTestCuMatrixSymAddMat2<Real>();
   UnitTestCuMatrixAddMatMatBatched<Real>();
   UnitTestCuMatrixSymInvertPosDef<Real>();

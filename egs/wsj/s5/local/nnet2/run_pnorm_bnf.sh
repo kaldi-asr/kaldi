@@ -79,7 +79,7 @@ steps/nnet2/dump_bottleneck_features.sh --nj 10 \
 
 
 if [ ! data_bnf/train/.done -nt data_bnf/train_bnf/.done ]; then
-  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
+  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd --max-jobs-run 10" \
      --transform-dir $align_dir  data_bnf/train_sat data/train_si284 \
     exp/tri4b exp_bnf/make_fmllr_feats/log param_bnf/ 
 

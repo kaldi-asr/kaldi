@@ -35,8 +35,9 @@ bool ContextDependency::Compute(const std::vector<int32> &phoneseq,
   KALDI_COMPILE_TIME_ASSERT(kPdfClass < 0);  // or it would not be sorted.
   for (int32 i = 0;i < N_;i++) {
     event_vec.push_back(std::make_pair
-                        (static_cast<EventKeyType>(i), static_cast<EventValueType>(phoneseq[i])));
-    KALDI_ASSERT(static_cast<EventAnswerType>(phoneseq[i]) != -1);  // >=0 ?
+                        (static_cast<EventKeyType>(i),
+                         static_cast<EventValueType>(phoneseq[i])));
+    KALDI_ASSERT(static_cast<EventAnswerType>(phoneseq[i]) >= 0);
   }
   KALDI_ASSERT(pdf_id != NULL);
   return to_pdf_->Map(event_vec, pdf_id);
@@ -176,7 +177,7 @@ void ContextDependency::Read (std::istream &is, bool binary) {
 
 void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
                                    const std::vector<int32> &num_pdf_classes,  // indexed by phone,
-                                   std::vector<std::vector<std::pair<int32, int32> > > *pdf_info) const {  
+                                   std::vector<std::vector<std::pair<int32, int32> > > *pdf_info) const {
 
   EventType vec;
   KALDI_ASSERT(pdf_info != NULL);

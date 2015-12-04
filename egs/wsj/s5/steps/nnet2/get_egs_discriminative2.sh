@@ -81,28 +81,29 @@ nj=$(cat $denlatdir/num_jobs) || exit 1; # $nj is the number of
                                          # splits of the denlats and alignments.
 
 
+[ "$(readlink /bin/sh)" == dash ] && \
+  echo "This script won't work if /bin/sh points to dash.  make it point to bash." && exit 1
+
 nj_ali=$(cat $alidir/num_jobs) || exit 1;
 
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
 
-
-
-
 if [ $nj_ali -eq $nj ]; then
   ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz |"
-  prior_ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.JOB.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
+  all_ids=$(seq -s, $nj)
+  prior_ali_rspecifier="ark,s,cs:gunzip -c $alidir/ali.{$all_ids}.gz | copy-int-vector ark:- ark,t:- | utils/filter_scp.pl $dir/priors_uttlist | ali-to-pdf $alidir/final.mdl ark,t:- ark:- |"
 else
   ali_rspecifier="scp:$dir/ali.scp"
   prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
     all_ids=$(seq -s, $nj_ali)
-    copy-int-vector --print-args=false \
-      "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
+    $cmd $dir/log/copy_alignments.log \
+      copy-int-vector "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" \
+      ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
   fi
 fi
-
 
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
@@ -124,7 +125,7 @@ else
   echo 0 > $dir/info/ivector_dim
 fi
 
-# Get list of validation utterances. 
+# Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/priors_uttlist || exit 1;
 
@@ -137,13 +138,13 @@ echo "$0: feature type is $feat_type"
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
+    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
    ;;
-  lda) 
+  lda)
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+    priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -159,7 +160,7 @@ if [ ! -z "$transform_dir" ]; then
   [ ! -s $transform_dir/num_jobs ] && \
     echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
-  
+
   if [ $feat_type == "raw" ]; then trans=raw_trans;
   else trans=trans; fi
   if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $alidir/final.mat; then
@@ -173,19 +174,20 @@ if [ ! -z "$transform_dir" ]; then
   if [ $nj -ne $nj_orig ]; then
     # Copy the transforms into an archive with an index.
     for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
+      copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
-    priors_feats="$priors_feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
+    priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
   else
     # number of jobs matches with alignment dir.
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
-    priors_feats="$priors_feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
+    all_ids=`seq -s, $nj`
+    priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk 'ark:cat $transform_dir/$trans.{$all_ids} |' ark:- ark:- |"
   fi
 fi
 if [ ! -z $online_ivector_dir ]; then
   # add iVectors to the features.
   feats="$feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
-  priors_feats="$priors_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $sdata/JOB/utt2spk $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
+  priors_feats="$priors_feats paste-feats --length-tolerance=$ivector_period ark:- 'ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $online_ivector_dir/ivector_online.scp | subsample-feats --n=-$ivector_period scp:- ark:- |' ark:- |"
 fi
 
 
@@ -193,7 +195,7 @@ if [ $stage -le 2 ]; then
   echo "$0: working out number of frames of training data"
   num_frames=$(steps/nnet2/get_num_frames.sh $data)
 
-  echo $num_frames > $dir/info/num_frames 
+  echo $num_frames > $dir/info/num_frames
 
   # Working out total number of archives. Add one on the assumption the
   # num-frames won't divide exactly, and we want to round up.
@@ -210,7 +212,7 @@ if [ $stage -le 2 ]; then
 
   echo $num_archives >$dir/info/num_archives || exit 1
   echo $num_archives_temp >$dir/info/num_archives_temp || exit 1
-  
+
   frames_per_archive=$[$num_frames/$num_archives]
 
   # note, this is the number of frames per archive prior to discarding frames.
@@ -256,38 +258,22 @@ if [ $stage -le 10 ]; then
 priors_egs_list=
 for y in `seq $num_archives_priors`; do
   utils/create_data_link.pl $dir/priors_egs.$y.ark
-  for x in `seq $nj`; do
-    utils/create_data_link.pl $dir/priors_egs_orig.$x.$y.ark
-  done
-  priors_egs_list="$priors_egs_list ark:$dir/priors_egs_orig.JOB.$y.ark"
+  priors_egs_list="$priors_egs_list ark:$dir/priors_egs.$y.ark"
 done
- 
+
 nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 
 echo "$0: dumping egs for prior adjustment in the background."
 
-$cmd JOB=1:$nj $dir/log/create_priors_subset.JOB.log \
+$cmd $dir/log/create_priors_subset.log \
   nnet-get-egs $ivectors_opt $nnet_context_opts "$priors_feats" \
   "$prior_ali_rspecifier ali-to-post ark:- ark:- |" \
   ark:- \| nnet-copy-egs ark:- $priors_egs_list || \
-  { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.*.log"; exit 1; }
+  { touch $dir/.error; echo "Error in creating priors subset. See $dir/log/create_priors_subset.log"; exit 1; }
 
 sleep 3;
 
-echo "$0: recombining archives on disk"
-# combine all the "priors_egs_orig.JOB.*.scp" (over the $nj splits of the data) and
-# writing to the priors_egs.JOB.ark
-
-priors_egs_list=
-for n in $(seq $nj); do 
-  priors_egs_list="$priors_egs_list $dir/priors_egs_orig.$n.JOB.ark"
-done
-
-echo $num_archives_priors >$dir/info/num_archives_priors 
-
-$cmd JOB=1:$num_archives_priors $dir/log/copy_priors_egs.JOB.log \
-  nnet-copy-egs "ark:cat $priors_egs_list|"  ark:$dir/priors_egs.JOB.ark || \
-  { touch $dir/.error; echo "Error in creating priors_egs. See $dir/log/copy_priors_egs.*.log"; exit 1; }
+echo $num_archives_priors >$dir/info/num_archives_priors
 
 fi
 
@@ -306,12 +292,12 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  
+
   degs_list=$(for n in $(seq $nj); do echo $dir/degs_orig.$n.JOB.ark; done)
 
   if [ $num_archives -eq $num_archives_temp ]; then
     echo "$0: combining data into final archives and shuffling it"
-    
+
     $cmd JOB=1:$num_archives $dir/log/shuffle.JOB.log \
       cat $degs_list \| nnet-shuffle-egs-discriminative --srand=JOB ark:- \
        ark:$dir/degs.JOB.ark || exit 1;
@@ -352,10 +338,6 @@ if $cleanup; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_temp); do
       file=$dir/degs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
-    done
-    for y in $(seq $num_archives_priors); do
-      file=$dir/priors_egs_orig.$x.$y.ark
       [ -L $file ] && rm $(readlink -f $file); rm $file
     done
   done

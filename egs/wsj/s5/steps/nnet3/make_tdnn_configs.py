@@ -41,8 +41,8 @@ if args.splice_indexes is None:
     sys.exit("--splice-indexes argument is required");
 if args.feat_dim is None or not (args.feat_dim > 0):
     sys.exit("--feat-dim argument is required");
-if args.num_targets is None or not (args.feat_dim > 0):
-    sys.exit("--feat-dim argument is required");
+if args.num_targets is None or not (args.num_targets > 0):
+    sys.exit("--num-targets argument is required");
 if not args.relu_dim is None:
     if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
         sys.exit("--relu-dim argument not compatible with "

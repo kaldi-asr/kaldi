@@ -1,6 +1,7 @@
 // hmm/hmm-topology-test.cc
 
-// Copyright 2009-2011 Microsoft Corporation
+// Copyright 2009-2011  Microsoft Corporation
+//                2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -18,6 +19,7 @@
 // limitations under the License.
 
 #include "hmm/hmm-topology.h"
+#include "hmm/hmm-test-utils.h"
 
 namespace kaldi {
 
@@ -58,9 +60,13 @@ void TestHmmTopology() {
 
   HmmTopology topo;
 
-  std::istringstream iss(input_str);
-  topo.Read(iss, false);
-  
+  if (RandInt(0, 1) == 0) {
+    topo = GenRandTopology();
+  } else {
+    std::istringstream iss(input_str);
+    topo.Read(iss, false);
+  }
+
   std::ostringstream oss;
   topo.Write(oss, binary);
 
