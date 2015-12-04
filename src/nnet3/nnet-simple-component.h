@@ -1068,7 +1068,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 class ConvolutionComponent: public UpdatableComponent {
  public:
   enum TensorVectorizationType  {
-    kYzx= 0,
+    kYzx = 0,
     kZyx = 1
   };
 

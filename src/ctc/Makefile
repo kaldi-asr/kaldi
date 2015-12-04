@@ -11,7 +11,10 @@ TESTFILES = language-model-test cctc-transition-model-test \
 
 OBJFILES = language-model.o cctc-transition-model.o cctc-graph.o \
            cctc-supervision.o cctc-training.o cctc-test-utils.o \
-           cctc-decoder-wrappers.o cctc-tombstone.o cctc-kernels.o
+           cctc-decoder-wrappers.o cctc-tombstone.o 
+ifeq ($(CUDA), true)
+  OBJFILES += cctc-kernels.o
+endif
 
 LIBNAME = kaldi-ctc
 
