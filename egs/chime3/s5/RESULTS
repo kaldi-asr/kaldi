@@ -1,6 +1,7 @@
-# The result of Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
+# The result based on Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
 # robust feature extraction, and advanced speech recognition," in Proc. ASRU'15
-# The results of SRI's robust features and system combination are excluded
+# Note that the following result is different from that in the paper since we don't include
+# SRI's robust features and system combination
 
 GMM multi-condition
 exp/tri3b_tr05_multi_noisy/best_wer_noisy.result
