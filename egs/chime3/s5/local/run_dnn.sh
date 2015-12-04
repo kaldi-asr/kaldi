@@ -28,7 +28,7 @@ if [ $# -ne 2 ]; then
   exit 1;
 fi
 
-# enhan data
+# set enhanced data
 enhan=$1
 enhan_data=$2
 
@@ -82,7 +82,7 @@ if [ $stage -le 2 ]; then
   done
 fi
 
-# make mixed training set from real and simulation enhancement training data
+# make mixed training set from real and simulation enhanced data
 # multi = simu + real
 if [ $stage -le 3 ]; then
   utils/combine_data.sh $data_fmllr/tr05_multi_$enhan $data_fmllr/tr05_simu_$enhan $data_fmllr/tr05_real_$enhan
@@ -109,7 +109,7 @@ if [ $stage -le 5 ]; then
     $data_fmllr/tr05_multi_$enhan $data_fmllr/dt05_multi_$enhan data/lang $ali $ali_dev $dir
 fi
 
-# decode enhan speech
+# decode enhanced speech
 if [ $stage -le 6 ]; then
   utils/mkgraph.sh data/lang_test_tgpr_5k $dir $dir/graph_tgpr_5k
   steps/nnet/decode.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" --acwt 0.10 --config conf/decode_dnn.config \
@@ -204,10 +204,10 @@ fi
 
 # scoring
 if [ $stage -le 13 ]; then
-  # decoded results of enhan speech using enhan DNN AMs
+  # decoded results of enhanced speech using DNN AMs trained with enhanced data
   local/chime3_calc_wers.sh exp/tri4a_dnn_tr05_multi_$enhan $enhan > exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result
   head -n 15 exp/tri4a_dnn_tr05_multi_$enhan/best_wer_$enhan.result
-  # decoded results of enhan speech using enhan DNN AMs with sequence training
+  # decoded results of enhanced speech using sequence-training DNN
   ./local/chime3_calc_wers_smbr.sh exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats ${enhan} exp/tri4a_dnn_tr05_multi_${enhan}/graph_tgpr_5k \
     > exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result
   head -n 15 exp/tri4a_dnn_tr05_multi_${enhan}_smbr_i1lats/best_wer_${enhan}.result

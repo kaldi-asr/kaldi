@@ -28,7 +28,7 @@ if [ $# -ne 2 ]; then
   exit 1;
 fi
 
-# enhan data
+# set enhanced data
 enhan=$1
 enhan_data=$2
 
@@ -45,10 +45,10 @@ if [ ! -d data/lang ]; then
   exit 1;
 fi
 
-# process for enhan data
+# process for enhanced data
 if [ $stage -le 0 ]; then
-  local/real_enhan_chime3_data_prep.sh $enhan $enhan_data 
-  local/simu_enhan_chime3_data_prep.sh $enhan $enhan_data 
+  local/real_enhan_chime3_data_prep.sh $enhan $enhan_data
+  local/simu_enhan_chime3_data_prep.sh $enhan $enhan_data
 fi
 
 # Now make MFCC features for clean, close, and noisy data
@@ -56,14 +56,14 @@ fi
 # want to store MFCC features.
 mfccdir=mfcc/$enhan
 if [ $stage -le 1 ]; then
-  for x in dt05_real_$enhan et05_real_$enhan tr05_real_$enhan dt05_simu_$enhan et05_simu_$enhan tr05_simu_$enhan; do 
+  for x in dt05_real_$enhan et05_real_$enhan tr05_real_$enhan dt05_simu_$enhan et05_simu_$enhan tr05_simu_$enhan; do
     steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" \
-      data/$x exp/make_mfcc/$x $mfccdir 
-    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir 
+      data/$x exp/make_mfcc/$x $mfccdir
+    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
   done
 fi
 
-# make mixed training set from real and simulation enhancement training data
+# make mixed training set from real and simulation enhanced data
 # multi = simu + real
 if [ $stage -le 2 ]; then
   utils/combine_data.sh data/tr05_multi_$enhan data/tr05_simu_$enhan data/tr05_real_$enhan
@@ -71,7 +71,7 @@ if [ $stage -le 2 ]; then
   utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
 fi
 
-# decode enhan speech using clean AMs
+# decode enhanced speech using clean AMs
 if [ $stage -le 3 ]; then
   steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
     exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_dt05_real_$enhan &
@@ -83,41 +83,41 @@ if [ $stage -le 3 ]; then
     exp/tri3b_tr05_orig_clean/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_orig_clean/decode_tgpr_5k_et05_simu_$enhan &
 fi
 
-# training models using enhan data
+# training models using enhanced data
 # training monophone model
 if [ $stage -le 4 ]; then
   steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
-    data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan 
+    data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan
 
   steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
-    data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan exp/mono0a_ali_tr05_multi_$enhan 
+    data/tr05_multi_$enhan data/lang exp/mono0a_tr05_multi_$enhan exp/mono0a_ali_tr05_multi_$enhan
 fi
 
 # training triphone model with delta, delta+delta features
 if [ $stage -le 5 ]; then
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/tr05_multi_$enhan data/lang exp/mono0a_ali_tr05_multi_$enhan exp/tri1_tr05_multi_$enhan 
+    2000 10000 data/tr05_multi_$enhan data/lang exp/mono0a_ali_tr05_multi_$enhan exp/tri1_tr05_multi_$enhan
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    data/tr05_multi_$enhan data/lang exp/tri1_tr05_multi_$enhan exp/tri1_ali_tr05_multi_$enhan 
+    data/tr05_multi_$enhan data/lang exp/tri1_tr05_multi_$enhan exp/tri1_ali_tr05_multi_$enhan
 fi
 
 # training triphone model with lad mllt features
 if [ $stage -le 6 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
-    2500 15000 data/tr05_multi_$enhan data/lang exp/tri1_ali_tr05_multi_$enhan exp/tri2b_tr05_multi_$enhan 
+    2500 15000 data/tr05_multi_$enhan data/lang exp/tri1_ali_tr05_multi_$enhan exp/tri2b_tr05_multi_$enhan
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-    --use-graphs true data/tr05_multi_$enhan data/lang exp/tri2b_tr05_multi_$enhan exp/tri2b_ali_tr05_multi_$enhan  
+    --use-graphs true data/tr05_multi_$enhan data/lang exp/tri2b_tr05_multi_$enhan exp/tri2b_ali_tr05_multi_$enhan
 fi
 
 # training triphone model with SAT
 if [ $stage -le 7 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
-    2500 15000 data/tr05_multi_$enhan data/lang exp/tri2b_ali_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan 
-  utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k 
+    2500 15000 data/tr05_multi_$enhan data/lang exp/tri2b_ali_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan
+  utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_tr05_multi_$enhan exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k
 fi
 
-# decode enhan speech using enhan AMs
+# decode enhanced speech using AMs trained with enhanced data
 if [ $stage -le 8 ]; then
   steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
     exp/tri3b_tr05_multi_$enhan/graph_tgpr_5k data/dt05_real_$enhan exp/tri3b_tr05_multi_$enhan/decode_tgpr_5k_dt05_real_$enhan &
@@ -132,10 +132,10 @@ fi
 
 # scoring
 if [ $stage -le 9 ]; then
-  # decoded results of enhan speech using clean AMs
+  # decoded results of enhanced speech using clean AMs
   local/chime3_calc_wers.sh exp/tri3b_tr05_orig_clean $enhan > exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
   head -n 15 exp/tri3b_tr05_orig_clean/best_wer_$enhan.result
-  # decoded results of enhan speech using enhan AMs
+  # decoded results of enhanced speech using AMs trained with enhanced data
   local/chime3_calc_wers.sh exp/tri3b_tr05_multi_$enhan $enhan > exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result
   head -n 15 exp/tri3b_tr05_multi_$enhan/best_wer_$enhan.result
 fi
