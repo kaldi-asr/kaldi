@@ -671,7 +671,9 @@ Output::~Output() {
     impl_ = NULL;
     if (!ok)
       KALDI_ERR << "Error closing output file "
-                << PrintableWxfilename(filename_);
+                << PrintableWxfilename(filename_)
+                << (ClassifyWxfilename(filename_) == kFileOutput ?
+                    " (disk full?)" : "");
   }
 }
 
