@@ -301,5 +301,18 @@ fi
 # demonstration script for raw-fMLLR.  You should probably ignore this.
 # local/run_raw_fmllr.sh
 
+# nnet3 LSTM recipe
+# local/nnet3/run_lstm.sh
+
+# nnet3 BLSTM recipe
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 1024 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+
 # getting results (see RESULTS file)
 # for x in 1 2 3a 3b 4a; do grep 'Percent Total Error' exp/tri$x/decode_eval2000_sw1_tg/score_*/eval2000.ctm.filt.dtl | sort -k5 -g | head -1; done

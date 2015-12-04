@@ -178,6 +178,7 @@ template<class T> inline void ReadIntegerVector(std::istream &is,
             << is.tellg();
 }
 
+
 // Initialize an opened stream for writing by writing an optional binary
 // header and modifying the floating-point precision.
 inline void InitKaldiOutputStream(std::ostream &os, bool binary) {

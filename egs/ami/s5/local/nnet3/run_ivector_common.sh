@@ -10,6 +10,7 @@ mic=ihm
 num_threads_ubm=32
 speed_perturb=true
 use_sat_alignments=true
+nj=10
 
 set -e
 . cmd.sh
@@ -123,7 +124,7 @@ else
 fi
 
 if [ $stage -le 6 ]; then
-  rm exp/$mic/nnet3/.error 2>/dev/null
+  rm -f exp/$mic/nnet3/.error 2>/dev/null
   ivectordir=exp/$mic/nnet3/ivectors_${train_set}_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage

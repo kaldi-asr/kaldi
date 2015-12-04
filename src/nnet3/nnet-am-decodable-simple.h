@@ -37,6 +37,7 @@ namespace nnet3 {
 // for which IsSimpleNnet(nnet) would return true.
 struct NnetSimpleComputationOptions {
   int32 extra_left_context;
+  int32 extra_right_context;
   int32 frame_subsampling_factor;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
@@ -46,6 +47,7 @@ struct NnetSimpleComputationOptions {
 
   NnetSimpleComputationOptions():
       extra_left_context(0),
+      extra_right_context(0),      
       frame_subsampling_factor(1),
       frames_per_chunk(50),
       acoustic_scale(0.1),
@@ -60,6 +62,10 @@ struct NnetSimpleComputationOptions {
                    "Required if the frame-rate of the output (e.g. in 'chain' "
                    "models) is less than the frame-rate of the original "
                    "alignment.");
+    opts->Register("extra-right-context", &extra_right_context,
+                   "Number of frames of additional right-context to add on top "
+                   "of the neural net's inherent right context (may be useful in "
+                   "recurrent setups");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,

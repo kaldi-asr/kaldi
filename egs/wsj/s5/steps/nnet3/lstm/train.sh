@@ -65,11 +65,16 @@ norm_based_clipping=true  # if true norm_based_clipping is used.
 clipping_threshold=30     # if norm_based_clipping is true this would be the maximum value of the row l2-norm,
                           # else this is the max-absolute value of each element in Jacobian.
 chunk_width=20  # number of output labels in the sequence used to train an LSTM
+                # Caution: if you double this you should halve --samples-per-iter.
 chunk_left_context=40  # number of steps used in the estimation of LSTM state before prediction of the first label
+chunk_right_context=0  # number of steps used in the estimation of LSTM state before prediction of the first label (usually used in bi-directional LSTM case)
 label_delay=5  # the lstm output is used to predict the label with the specified delay
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
+			 # "[-1,1] [-2,2] [-3,3]" means a three layer stacked bi-directional LSTM would use recurrence
+			 # connections with delay -1 for the forward, 1 for the backward at layer1, 
+			 # -2 for the forward, 2 for the backward at layer2, and so on at layer3
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 
@@ -162,6 +167,7 @@ if [ $# != 4 ]; then
   echo "  --non-recurrent-projection-dim  <int|256>        # the output dimension of the non-recurrent-projection-matrix"
   echo "  --chunk-left-context <int|40>                    # number of time-steps used in the estimation of the first LSTM state"
   echo "  --chunk-width <int|20>                           # number of output labels in the sequence used to train an LSTM"
+  echo "                                                   # Caution: if you double this you should halve --samples-per-iter."
   echo "  --norm-based-clipping <bool|true>                # if true norm_based_clipping is used."
   echo "                                                   # In norm-based clipping the activation Jacobian matrix"
   echo "                                                   # for the recurrent connections in the network is clipped"
@@ -276,7 +282,7 @@ fi
 # num_hidden_layers=(something)
 . $dir/configs/vars || exit 1;
 left_context=$((chunk_left_context + model_left_context))
-right_context=$model_right_context
+right_context=$((chunk_right_context + model_right_context))
 context_opts="--left-context=$left_context --right-context=$right_context"
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
@@ -293,6 +299,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
   extra_opts+=(--valid-left-context $((chunk_width + left_context)))
+  extra_opts+=(--valid-right-context $((chunk_width + right_context)))
 
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
@@ -685,7 +692,7 @@ if [ $stage -le $[$num_iters+1] ]; then
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
     nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs ark:- ark:- \| \
+    nnet3-merge-egs  ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
       "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

@@ -101,6 +101,7 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
     KALDI_ERR << "Neural net expects 'ivector' features with dimension "
               << nnet_ivector_dim << " but you provided " << ivector_dim;
 
+<<<<<<< HEAD
   int32 current_subsampled_frames_computed = current_log_post_.NumRows(),
       current_subsampled_offset = current_log_post_subsampled_offset_;
   KALDI_ASSERT(subsampled_frame < current_subsampled_offset ||
@@ -121,11 +122,12 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
   int32 first_output_frame = start_subsampled_frame * subsampling_factor,
       last_output_frame = last_subsampled_frame * subsampling_factor;
 
-  KALDI_ASSERT(opts_.extra_left_context >= 0);
-  int32 left_context = nnet_left_context_ + opts_.extra_left_context;
+  KALDI_ASSERT(opts_.extra_left_context >= 0 && opts_.extra_right_context >= 0);
+  int32 left_context = nnet_left_context_ + opts_.extra_left_context,
+      right_context = nnet_right_context_ + opts_.extra_right_context;
   int32 first_input_frame = first_output_frame - left_context,
-         last_input_frame = last_output_frame + nnet_right_context_,
-         num_input_frames = last_input_frame + 1 - first_input_frame;
+      last_input_frame = last_output_frame + right_context,
+      num_input_frames = last_input_frame + 1 - first_input_frame;
   Vector<BaseFloat> ivector;
   GetCurrentIvector(first_output_frame,
                     last_output_frame - first_output_frame,

@@ -281,3 +281,33 @@ for x in exp/nnet2_online/nnet_ms_a_online/decode_*rnnlm-hs.nce20.h400.voc40k; d
 %WER 2.91 [ 164 / 5643, 24 ins, 9 del, 131 sub ] exp/nnet2_online/nnet_ms_a_online/decode_bd_tgpr_eval92_rnnlm-hs.nce20.h400.voc40k/wer_10_0.0
 %WER 7.83 [ 645 / 8234, 159 ins, 50 del, 436 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_dev93_rnnlm-hs.nce20.h400.voc40k/wer_11_0.0
 %WER 5.40 [ 305 / 5643, 77 ins, 16 del, 212 sub ] exp/nnet2_online/nnet_ms_a_online/decode_tgpr_eval92_rnnlm-hs.nce20.h400.voc40k/wer_13_1.0
+
+# TDNN results:
+for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 7.19 [ 592 / 8234, 51 ins, 109 del, 432 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_dev93/wer_13_0.5
+%WER 3.93 [ 222 / 5643, 23 ins, 20 del, 179 sub ] exp/nnet3/nnet_tdnn_a/decode_bd_tgpr_eval92/wer_10_1.0
+%WER 9.78 [ 805 / 8234, 167 ins, 72 del, 566 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_dev93/wer_10_0.0
+%WER 6.40 [ 361 / 5643, 87 ins, 16 del, 258 sub ] exp/nnet3/nnet_tdnn_a/decode_tgpr_eval92/wer_10_1.0
+
+# local/nnet3/run_lstm.sh
+# LSTM results: cell_dim=1024, recurrent_projection_dim=non_recurrent_projection_dim=256,lstm_delay=-1 -2 -3, label_delay=5, num_params=11894059
+%WER 7.32 exp/nnet3/lstm_ld5/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 4.24 exp/nnet3/lstm_ld5/decode_bd_tgpr_eval92/wer_10_1.0
+%WER 9.57 exp/nnet3/lstm_ld5/decode_tgpr_dev93/wer_9_1.0
+%WER 6.86 exp/nnet3/lstm_ld5/decode_tgpr_eval92/wer_10_1.0
+
+# bidirectional LSTM
+# -----------------------
+# local/nnet3/run_lstm.sh --affix bidirectional \ 
+#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#	                  --label-delay 0 \
+#                         --cell-dim 640 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+# num_params=11485739
+%WER 6.81 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_dev93/wer_11_0.0
+%WER 4.27 exp/nnet3/lstm_bidirectional/decode_bd_tgpr_eval92/wer_11_0.0
+%WER 9.29 exp/nnet3/lstm_bidirectional/decode_tgpr_dev93/wer_11_0.5
+%WER 6.61 exp/nnet3/lstm_bidirectional/decode_tgpr_eval92/wer_11_1.0
