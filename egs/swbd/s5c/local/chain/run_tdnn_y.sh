@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# _y is as _s but trying --apply-deriv-weights false.
+# _y is as _s but trying --apply-deriv-weights false. (note: in the
+# interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0
+# and are no longer comparable with the ones in _s.
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,

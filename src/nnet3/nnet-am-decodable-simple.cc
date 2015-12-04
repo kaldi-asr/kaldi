@@ -101,7 +101,6 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
     KALDI_ERR << "Neural net expects 'ivector' features with dimension "
               << nnet_ivector_dim << " but you provided " << ivector_dim;
 
-<<<<<<< HEAD
   int32 current_subsampled_frames_computed = current_log_post_.NumRows(),
       current_subsampled_offset = current_log_post_subsampled_offset_;
   KALDI_ASSERT(subsampled_frame < current_subsampled_offset ||
