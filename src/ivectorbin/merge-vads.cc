@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "This program merges two archives of per-frame weights representing\n"
       "voice activity decisions.  By default, the program assumes that the\n"
-      "input vectors consist of integers that are 0.0 if a frame is judged\n"
+      "input vectors consist of floats that are 0.0 if a frame is judged\n"
       "as nonspeech and 1.0 if it is considered speech.  The default\n"
       "behavior produces a frame-level decision of 1.0 if both input frames\n"
       "are 1.0, and 0.0 otherwise.  Additional classes (e.g., 2.0 for music)\n"
