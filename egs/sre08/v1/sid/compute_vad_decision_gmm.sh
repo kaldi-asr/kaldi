@@ -10,7 +10,7 @@ nj=10
 cmd=run.pl
 map_config=
 merge_map_config=
-priors_config=
+priors=
 use_energy_vad=false
 num_gselect=20
 norm_vars=false
@@ -27,7 +27,7 @@ if [ $# -lt 5 ]; then
    echo "e.g.: $0 data/train exp/music_gmm exp/speech_gmm exp/noise_gmm exp/gmm_vad exp/gmm_vad"
    echo " Options:"
    echo "  --map-config <config-file>                       # config passed to compute-vad-from-frame-likes"
-   echo "  --prior-config <config-file>                     # config passed to compute-vad-from-frame-likes"
+   echo "  --priors <comma-separated-floats>                # list passed to compute-vad-from-frame-likes"
    echo "  --merge-map-config <config-file>                 # config passed to merge-vads"
    echo "  --use-energy-vad <true,false>                    # If true, look for a vad.scp file and combine it with this VAD"
    echo "  --nj <nj>                                        # number of parallel jobs"
@@ -78,7 +78,7 @@ fi
 ## Set up features.
 feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=$norm_vars --center=$center --cmn-window=300 ark:- ark:- |"
 
-if [ $stage -le -3 ]; then
+if [ $stage -le -2 ]; then
   for gmm_dir in "${gmm_dirs[@]}";
   do
     gmm_name=`basename $gmm_dir`
@@ -87,7 +87,7 @@ if [ $stage -le -3 ]; then
   done
 fi
 
-if [ $stage -le -2 ]; then
+if [ $stage -le -1 ]; then
   echo "$0: doing Gaussian selection"
   for gmm_dir in "${gmm_dirs[@]}";
   do
@@ -111,12 +111,10 @@ if [ $stage -le 0 ]; then
       "--gselect=ark,s,cs:gunzip -c ${vad_dir}/${gmm_name}_gselect.JOB.gz|" ${gmm_dir}/final.ubm \
       "$feats" ark:${vad_dir}/${gmm_name}_logprob.JOB.ark || exit 1;
   done
-fi
 
-if [ $stage -le 1 ]; then
   echo "$0: computing VAD decisions from frame likelihoods"
   $cmd JOB=1:$nj ${log_dir}/log/make_vad_gmm_${name}.JOB.log \
-    compute-vad-from-frame-likes $frame_likes \
+    compute-vad-from-frame-likes --map=${map_config} --priors=$priors $frame_likes \
     ark,scp:${vad_dir}/vad_gmm_${name}.JOB.ark,${vad_dir}/vad_gmm_${name}.JOB.scp \
     || exit 1;
 

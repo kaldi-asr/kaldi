@@ -20,11 +20,25 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
+#include "util/parse-options.h"
 #include "util/stl-utils.h"
 
-using namespace kaldi;
-using kaldi::int32;
+namespace kaldi {
 
+/**
+   PrepareMap creates a map that specifies the mapping between the input
+   and output class labels.  If the string map_rxfilename is empty, then
+   the mapping is the identity map (e.g., 0 maps to 0, 1 maps to 1, etc),
+   based on the number of classes num_classes.  If map_rxfilename is not
+   empty, the mapping is created from that file.  The file is expected to
+   be two columns of integers with up to num_classes rows.  If an input
+   class is not specified in the file, then the output class label is the
+   same as the input.  The first column is the input class and the second
+   column is the output class.  For example:
+       0 0
+       1 1
+       2 0
+*/
 void PrepareMap(const std::string &map_rxfilename, int32 num_classes,
                 unordered_map<int32, int32> *map) {
   Input map_input(map_rxfilename);
@@ -34,8 +48,15 @@ void PrepareMap(const std::string &map_rxfilename, int32 num_classes,
   if (!map_rxfilename.empty()) {
     std::string line;
     while (std::getline(map_input.Stream(), line)) {
+      if (line.size() == 0) continue;
+      int32 start = line.find_first_not_of(" \t");
+      int32 end = line.find_first_of('#'); // Ignore trailing comments
+      if (start == std::string::npos || start == end) continue;
+      end = line.find_last_not_of(" \t", end - 1);
+      KALDI_ASSERT(end >= start);
       std::vector<std::string> fields;
-      SplitStringToVector(line, " \t\n\r", true, &fields);
+      SplitStringToVector(line.substr(start, end - start + 1),
+         " \t\n\r", true, &fields);
       if (fields.size() != 2) {
         KALDI_ERR << "Bad line. Expected two fields, got: "
                   << line;
@@ -49,39 +70,44 @@ void PrepareMap(const std::string &map_rxfilename, int32 num_classes,
               << "Expected " << num_classes << " or fewer";
 }
 
-void PreparePriors(const std::string &priors_rxfilename, int32 num_classes,
-                unordered_map<int32, BaseFloat> *priors) {
-  Input priors_input(priors_rxfilename);
-  if (priors_rxfilename.empty()) {
+/**
+   PreparePriors creates a table specifying the priors for each class.
+   If priors_str is empty, uniform priors are assumed.  If priors_str is
+   nonempty, the comma-separated floats are parsed out.  If present, the
+   input of priors_str is of the form:
+      0.5,0.25,0.25
+*/
+void PreparePriors(const std::string &priors_str, int32 num_classes,
+                std::vector<BaseFloat> *priors) {
+  if (priors_str.empty()) {
     for (int32 i = 0; i < num_classes; i++)
-      (*priors)[i] = 0;
+      priors->push_back(log(1.0/num_classes)); // Uniform priors
   } else {
-    std::string line;
-    while (std::getline(priors_input.Stream(), line)) {
-      std::vector<std::string> fields;
-      SplitStringToVector(line, " \t\n\r", true, &fields);
-      if (fields.size() != 2) {
-        KALDI_ERR << "Bad line. Expected two fields, got: "
-                  << line;
-      }
-        (*priors)[std::atoi(fields[0].c_str())] =
-          std::atof(fields[1].c_str());
-    }
+    SplitStringToFloats(priors_str, ",", false, priors);
+    for (int32 i = 0; i < priors->size(); i++)
+      (*priors)[i] = log((*priors)[i]);
   }
+
   if (priors->size() != num_classes)
     KALDI_ERR << "Prior table has " << priors->size() << " classes.  "
               << "Expected " << num_classes;
 }
 
+}
+
 int main(int argc, char *argv[]) {
+  using namespace kaldi;
+  typedef kaldi::int32 int32;
   try {
     const char *usage =
       "This program computes frame-level voice activity decisions from a\n"
-      "set of input frame-level log-likelihoods.  Frames are assigned labels\n"
-      "according to the class for which the log-likelihood (optionally\n"
-      "weighted by a prior) is maximal.  The class labels are determined\n"
-      "by the order of inputs on the command line. See options for more\n"
-      "details.\n"
+      "set of input frame-level log-likelihoods.  Frames are assigned\n"
+      "labels according to the class for which the log-likelihood\n"
+      "(optionally weighted by a prior) is maximal.  The class labels are\n"
+      "determined by the order of inputs on the command line.  See options\n"
+      "for more details.\n"
+      "See also: fgmm-global-get-frame-likes, compute-vad, merge-vads\n"
+      "\n"
       "Usage: compute-vad-from-frame-likes [options] <likes-rspecifier-1>\n"
       "    ... <likes-rspecifier-n> <vad-wspecifier>\n"
       "e.g.: compute-vad-from-frame-likes --map=label_map.txt\n"
@@ -89,17 +115,16 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     std::string map_rxfilename;
-    std::string priors_rxfilename;
+    std::string priors_str;
 
     po.Register("map", &map_rxfilename, "Table that defines the frame-level"
     " labels.  For each row, the first field is the zero-based index of the"
     " input likelihood archive and the second field is the associated"
     " integer label.");
 
-    po.Register("priors", &priors_rxfilename, "Table that specifies"
-    " log-priors for each class. For each row, the first field is the"
-    " zero-based index of the input likelihood archive and the second"
-    " field is the log-prior.");
+    po.Register("priors", &priors_str, "Comma-separated list that specifies"
+    " the priors for each class.  The order of the floats corresponds to the"
+    " index of the input archives.  E.g., --priors=0.5,0.2,0.3");
 
     po.Read(argc, argv);
     if (po.NumArgs() < 3) {
@@ -108,10 +133,10 @@ int main(int argc, char *argv[]) {
     }
 
     unordered_map<int32, int32> map;
-    unordered_map<int32, BaseFloat> priors;
+    std::vector<BaseFloat> priors;
     int32 num_classes = po.NumArgs() - 1;
     PrepareMap(map_rxfilename, num_classes, &map);
-    PreparePriors(priors_rxfilename, num_classes, &priors);
+    PreparePriors(priors_str, num_classes, &priors);
 
     SequentialBaseFloatVectorReader first_reader(po.GetArg(1));
     std::vector<RandomAccessBaseFloatVectorReader *> readers;
@@ -161,14 +186,15 @@ int main(int argc, char *argv[]) {
             max_post = other_post;
           }
         }
-        if (map.find(max_indx) == map.end())
+        unordered_map<int32, int32>::const_iterator iter = map.find(max_indx);
+        if (iter == map.end()) {
           KALDI_ERR << "Missing label " << max_indx  << " in map";
-        vad_result(i) = map[max_indx];
+        } else {
+          vad_result(i) = iter->second;
+        }
       }
-      if (vad_result.Dim() > 0) {
-        vad_writer.Write(utt, vad_result);
-        num_done++;
-      }
+      vad_writer.Write(utt, vad_result);
+      num_done++;
     }
 
     for (int32 i = 0; i < num_classes - 1; i++)

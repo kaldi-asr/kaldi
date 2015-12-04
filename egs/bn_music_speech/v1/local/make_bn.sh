@@ -26,11 +26,11 @@ rm -rf local/bn.tmp
 mkdir local/bn.tmp
 
 echo "$0: preparing annotations..."
-python local/make_annotations_bn.py ${transcript_dir} ${tmp_dir}
+local/make_annotations_bn.py ${transcript_dir} ${tmp_dir}
 echo "$0: Removing overlapping annotations..."
-python local/refine_annotations_bn.py ${tmp_dir} ${frames_per_sec} ${min_seg}
+local/refine_annotations_bn.py ${tmp_dir} ${frames_per_sec} ${min_seg}
 echo "$0: Preparing broadcast news data directories ${data_dir}/bn..."
-python local/make_bn.py ${sph_dir} ${tmp_dir}
+local/make_bn.py ${sph_dir} ${tmp_dir}
 
 mkdir -p ${data_dir}/bn
 cp ${tmp_dir}/wav.scp ${data_dir}/bn/

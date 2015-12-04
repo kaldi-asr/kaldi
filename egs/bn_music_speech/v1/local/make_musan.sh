@@ -16,7 +16,7 @@ mkdir local/musan.tmp
 
 echo "Preparing ${data_dir}/musan..."
 mkdir -p ${data_dir}/musan
-python local/make_musan.py ${in_dir} ${data_dir}/musan ${use_vocals}
+local/make_musan.py ${in_dir} ${data_dir}/musan ${use_vocals}
 utils/fix_data_dir.sh ${data_dir}/musan
 
 grep "music" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_music

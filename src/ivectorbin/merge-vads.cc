@@ -22,9 +22,26 @@
 #include "matrix/kaldi-matrix.h"
 #include "util/stl-utils.h"
 
-using namespace kaldi;
-using kaldi::int32;
+namespace kaldi {
 
+/**
+   PrepareMap creates a mapping between the pairs of VAD decisions and
+   the output label.  If map_rxfilename is empty, we create a mapping
+   in which a frame is only classified as speech (represented as "1") if
+   both VAD decisions agree on speech, and nonspeech (represented as "0")
+   otherwise.  If map_rxfilename is not empty, then that table provides
+   the mapping.  If the first set of VAD decisions has N classes and the
+   second has M classes, then the table needs to have NxM rows, and three
+   columns.  The first two columns correspond to the labels in the first
+   and second VAD decisions respectively, and the last column is the
+   resultant output label. For example:
+     0 0 0
+     0 1 0
+     0 2 0
+     1 0 0
+     1 1 1
+     1 2 1
+*/
 void PrepareMap(const std::string map_rxfilename,
   unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > *map) {
   Input map_input(map_rxfilename);
@@ -42,8 +59,15 @@ void PrepareMap(const std::string map_rxfilename,
   } else {
     std::string line;
     while (std::getline(map_input.Stream(), line)) {
+      if (line.size() == 0) continue;
+      int32 start = line.find_first_not_of(" \t");
+      int32 end = line.find_first_of('#');
+      if (start == std::string::npos || start == end) continue;
+      end = line.find_last_not_of(" \t", end - 1);
+      KALDI_ASSERT(end >= start);
       std::vector<std::string> fields;
-      SplitStringToVector(line, " \t\n\r", true, &fields);
+      SplitStringToVector(line.substr(start, end - start + 1),
+         " \t\n\r", true, &fields);
       if (fields.size() != 3) {
         KALDI_ERR << "Bad line. Expected three fields, got: "
                   << line;
@@ -56,16 +80,23 @@ void PrepareMap(const std::string map_rxfilename,
   }
 }
 
+}
+
 int main(int argc, char *argv[]) {
+  using namespace kaldi;
+  typedef kaldi::int32 int32;
   try {
     const char *usage =
-      "This program merges two Vector archives of frame-level voice\n"
-      "activity decisions. By default, the program assumes that the\n"
-      "input vectors consist of floats that are 0.0 if a frame is judged\n"
-      "as nonspeech and 1.0 if it is considered speech. The default\n"
-      "produces an output Vector that is 1.0 if both inputs are 1.0\n"
-      "and 0.0 otherwise. Additional classes (e.g., 2.0 for music) \n"
+      "This program merges two archives of per-frame weights representing\n"
+      "voice activity decisions.  By default, the program assumes that the\n"
+      "input vectors consist of integers that are 0.0 if a frame is judged\n"
+      "as nonspeech and 1.0 if it is considered speech.  The default\n"
+      "behavior produces a frame-level decision of 1.0 if both input frames\n"
+      "are 1.0, and 0.0 otherwise.  Additional classes (e.g., 2.0 for music)\n"
       "can be handled using the \"map\" option.\n"
+      "See also: compute-vad-from-frame-likes, compute-vad, ali-to-post,\n"
+      "post-to-weights\n"
+      "\n"
       "Usage: merge-vads [options] <vad-rspecifier-1> <vad-rspecifier-2>\n"
       "    <vad-wspecifier>\n"
       "e.g.: merge-vads [options] scp:vad_energy.scp scp:vad_gmm.scp\n"
@@ -108,17 +139,18 @@ int main(int argc, char *argv[]) {
       for (int32 i = 0; i < vad1.Dim(); i++) {
         std::pair<int32, int32> key(static_cast<int32>(vad1(i)),
           static_cast<int32>(vad2(i)));
-        if (map.find(key) == map.end()) {
+        unordered_map<std::pair<int32, int32>, int32>::const_iterator iter
+          = map.find(key);
+        if (iter == map.end()) {
           KALDI_ERR << "Map is missing combination "
                     << vad1(i) << " and " << vad2(i);
+        } else {
+          vad_result(i) = iter->second;
         }
-        vad_result(i) = map[key];
       }
 
-      if (vad_result.Dim() > 0) {
-        vad_writer.Write(utt, vad_result);
-        num_done++;
-      }
+      vad_writer.Write(utt, vad_result);
+      num_done++;
     }
     KALDI_LOG << "Merged voice activity detection decisions; "
               << "processed " << num_done << " utterances successfully; "

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # Copyright 2015   David Snyder
 # Apache 2.0.
 #

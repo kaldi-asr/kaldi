@@ -71,18 +71,18 @@ sid/music_id.sh --cmd "$train_cmd" --nj 40 \
   data/bn exp/bn_noise_speech
 
 printf "EER using GMMs trained on music and speech"
-compute-eer <(python local/print_scores.py exp/bn_music_speech/ratio)
+compute-eer <(local/print_scores.py exp/bn_music_speech/ratio)
 # Equal error rate is 0.344234%, at threshold 0.525752
 printf "\nEER using GMM trained on noise instead of music"
-compute-eer <(python local/print_scores.py exp/bn_noise_speech/ratio)
+compute-eer <(local/print_scores.py exp/bn_noise_speech/ratio)
 # Equal error rate is 0.860585%, at threshold 0.123218
 
 # The following script replaces the VAD decisions originally computed by
 # the energy-based VAD.  It uses the GMMs trained earlier in the script
 # to make frame-level decisions. Due to the mapping provided in
-# conf/merge_vad.conf, "0" corresponds to silence, "1" to speech, and
+# conf/merge_vad_map.txt, "0" corresponds to silence, "1" to speech, and
 # "2" to music.
 sid/compute_vad_decision_gmm.sh --nj 40 --cmd "$train_cmd" \
-  --merge-map-config conf/merge_vad.conf --use-energy-vad true \
+  --merge-map-config conf/merge_vad_map.txt --use-energy-vad true \
   data/bn exp/full_ubm_noise exp/full_ubm_speech/ \
   exp/full_ubm_music/ exp/vad_gmm exp/vad_gmm/
