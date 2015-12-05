@@ -89,8 +89,8 @@ void PreparePriors(const std::string &priors_str, int32 num_classes,
   }
 
   if (priors->size() != num_classes)
-    KALDI_ERR << "Prior table has " << priors->size() << " classes.  "
-              << "Expected " << num_classes;
+    KALDI_ERR << priors->size() << " priors specified.  Expected "
+              << num_classes;
 }
 
 }
@@ -101,30 +101,31 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
       "This program computes frame-level voice activity decisions from a\n"
-      "set of input frame-level log-likelihoods.  Frames are assigned\n"
-      "labels according to the class for which the log-likelihood\n"
-      "(optionally weighted by a prior) is maximal.  The class labels are\n"
-      "determined by the order of inputs on the command line.  See options\n"
-      "for more details.\n"
-      "See also: fgmm-global-get-frame-likes, compute-vad, merge-vads\n"
+      "set of input frame-level log-likelihoods.  Usually, these\n"
+      "log-likelihoods are the output of fgmm-global-get-frame-likes.\n"
+      "Frames are assigned labels according to the class for which the\n"
+      "log-likelihood (optionally weighted by a prior) is maximal.  The\n"
+      "class labels are determined by the order of inputs on the command\n"
+      "line.  See options for more details.\n"
       "\n"
       "Usage: compute-vad-from-frame-likes [options] <likes-rspecifier-1>\n"
       "    ... <likes-rspecifier-n> <vad-wspecifier>\n"
       "e.g.: compute-vad-from-frame-likes --map=label_map.txt\n"
-      "    scp:likes1.scp scp:likes2.scp ark:vad.ark\n";
+      "    scp:likes1.scp scp:likes2.scp ark:vad.ark\n"
+      "See also: fgmm-global-get-frame-likes, compute-vad, merge-vads\n";
 
     ParseOptions po(usage);
     std::string map_rxfilename;
     std::string priors_str;
 
-    po.Register("map", &map_rxfilename, "Table that defines the frame-level"
-    " labels.  For each row, the first field is the zero-based index of the"
-    " input likelihood archive and the second field is the associated"
-    " integer label.");
+    po.Register("map", &map_rxfilename, "Table that defines the frame-level "
+      "labels.  For each row, the first field is the zero-based index of the "
+      "input likelihood archive and the second field is the associated "
+      "integer label.");
 
-    po.Register("priors", &priors_str, "Comma-separated list that specifies"
-    " the priors for each class.  The order of the floats corresponds to the"
-    " index of the input archives.  E.g., --priors=0.5,0.2,0.3");
+    po.Register("priors", &priors_str, "Comma-separated list that specifies "
+      "the priors for each class.  The order of the floats corresponds to "
+      "the index of the input archives.  E.g., --priors=0.5,0.2,0.3");
 
     po.Read(argc, argv);
     if (po.NumArgs() < 3) {
@@ -169,8 +170,10 @@ int main(int argc, char *argv[]) {
         }
         Vector<BaseFloat> other_like(readers[i]->Value(utt));
         if (like_dim != other_like.Dim()) {
-          KALDI_ERR << "Dimension mismatch in input vectors in " << utt
+          KALDI_WARN << "Dimension mismatch in input vectors in " << utt
                     << ": " << like_dim << " vs. " << other_like.Dim();
+          num_err++;
+          continue;
         }
         likes.push_back(other_like);
       }

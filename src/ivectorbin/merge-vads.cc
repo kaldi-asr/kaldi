@@ -94,19 +94,19 @@ int main(int argc, char *argv[]) {
       "behavior produces a frame-level decision of 1.0 if both input frames\n"
       "are 1.0, and 0.0 otherwise.  Additional classes (e.g., 2.0 for music)\n"
       "can be handled using the \"map\" option.\n"
-      "See also: compute-vad-from-frame-likes, compute-vad, ali-to-post,\n"
-      "post-to-weights\n"
       "\n"
       "Usage: merge-vads [options] <vad-rspecifier-1> <vad-rspecifier-2>\n"
       "    <vad-wspecifier>\n"
       "e.g.: merge-vads [options] scp:vad_energy.scp scp:vad_gmm.scp\n"
-      "    ark:vad.ark\n";
+      "    ark:vad.ark\n"
+      "See also: compute-vad-from-frame-likes, compute-vad, ali-to-post,\n"
+      "post-to-weights\n";
 
     ParseOptions po(usage);
     std::string map_rxfilename;
-    po.Register("map", &map_rxfilename, "This table specifies a mapping"
-    " between the labels of the frame-level decisions in the first and"
-    " second input archives to the integer output label.");
+    po.Register("map", &map_rxfilename, "This table specifies a mapping "
+      "between the labels of the frame-level decisions in the first and "
+      "second input archives to the integer output label.");
 
     po.Read(argc, argv);
     if (po.NumArgs() != 3) {
