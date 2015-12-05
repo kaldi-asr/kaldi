@@ -3,6 +3,19 @@
 # _y is as _s but trying --apply-deriv-weights false. (note: in the
 # interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0
 # and are no longer comparable with the ones in _s.
+#
+#   Compared to s, the results are improved: on train_dev, 18.45->18.04 with tg
+# and 16.96->16.57 with fg; on all of eval2000, 20.1->19.8 with tg and 18.0 to
+# 17.9 with fg.
+#
+#
+#  I recomputed the train and valid probs using the .486 model and no --pdf-boundary-penalty option, to
+# be able to compre with the _s ones.  In _s the (train,valid) probs at iter 485 were (-0.0691, -0.0997),
+# in _y the (train,valid) probs at iter 486 were (-0.0655,-0.0998).  So better on train, essentially
+# the same on valid.  It makes sense it would be better on train, since its overtraining is more
+# closely aligned with the distribution of training segments on which we compute the objf-- also because
+# we've simply trained more, i.e. equivalent to slightly more epochs.
+
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,

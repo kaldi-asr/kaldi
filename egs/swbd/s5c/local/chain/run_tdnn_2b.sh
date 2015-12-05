@@ -1,11 +1,24 @@
 #!/bin/bash
 
-# _x is as _s but setting     --lm-opts "--num-extra-states=0".
-#  this is a kind of repeat of the u->v experiment, where it seemed to make things
-#  worse, but there were other factors involved in that so I want to be sure.
-#   It's worse by about 0.3: on train_dev,
-#   before rescoring 16.96->17.22, after rescoring 18.45->18.67; on all of
-# eval2000, before rescoring 20.1->20.4, after rescoring 18.0->18.4
+# _2b is as _y but --frames-overlap-per-eg 75.  This is not very efficient in terms of
+# disk space but I want to see the effect on results.
+
+# _y is as _s but trying --apply-deriv-weights false. (note: in the
+# interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0
+# and are no longer comparable with the ones in _s.
+#
+#   Compared to s, the results are improved: on train_dev, 18.45->18.04 with tg
+# and 16.96->16.57 with fg; on all of eval2000, 20.1->19.8 with tg and 18.0 to
+# 17.9 with fg.
+#
+#
+#  I recomputed the train and valid probs using the .486 model and no --pdf-boundary-penalty option, to
+# be able to compre with the _s ones.  In _s the (train,valid) probs at iter 485 were (-0.0691, -0.0997),
+# in _y the (train,valid) probs at iter 486 were (-0.0655,-0.0998).  So better on train, essentially
+# the same on valid.  It makes sense it would be better on train, since its overtraining is more
+# closely aligned with the distribution of training segments on which we compute the objf-- also because
+# we've simply trained more, i.e. equivalent to slightly more epochs.
+
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
@@ -72,7 +85,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_x  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2b  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -166,11 +179,11 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --apply-deriv-weights false \
     --pdf-boundary-penalty 0.0 \
-    --lm-opts "--num-extra-states=0" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 30" \
+    --egs-opts "--frames-overlap-per-eg 75" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \

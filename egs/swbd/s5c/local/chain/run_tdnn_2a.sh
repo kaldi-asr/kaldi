@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# _x is as _s but setting     --lm-opts "--num-extra-states=0".
+# _2a is as _z but setting --lm-opts "--num-extra-states=8000".
+
+# _z is as _x but setting  --lm-opts "--num-extra-states=2000".
+# (see also y, which has --num-extra-states=500).
+
+# _x is as _s but setting  --lm-opts "--num-extra-states=0".
 #  this is a kind of repeat of the u->v experiment, where it seemed to make things
 #  worse, but there were other factors involved in that so I want to be sure.
-#   It's worse by about 0.3: on train_dev,
-#   before rescoring 16.96->17.22, after rescoring 18.45->18.67; on all of
-# eval2000, before rescoring 20.1->20.4, after rescoring 18.0->18.4
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
@@ -72,7 +74,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_x  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2a  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -160,14 +162,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --pdf-boundary-penalty 0.0 \
-    --lm-opts "--num-extra-states=0" \
+    --lm-opts "--num-extra-states=8000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 30" \
