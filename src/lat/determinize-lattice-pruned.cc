@@ -538,6 +538,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
                    << forward_cost << ", "
                    << state.forward_cost;
       }
+      return state_id;
     }
     OutputStateId state_id = static_cast<OutputStateId>(output_states_.size());
     OutputState *new_state = new OutputState(subset, forward_cost);
