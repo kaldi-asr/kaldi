@@ -3,6 +3,7 @@
 # _x is as _s but setting     --lm-opts "--num-extra-states=0".
 #  this is a kind of repeat of the u->v experiment, where it seemed to make things
 #  worse, but there were other factors involved in that so I want to be sure.
+# See the top of run_tdnn_2a.sh for more detailed WER comparisons for this experiment.
 #   It's worse by about 0.3: on train_dev,
 #   before rescoring 16.96->17.22, after rescoring 18.45->18.67; on all of
 # eval2000, before rescoring 20.1->20.4, after rescoring 18.0->18.4

@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# _w is as _s (with --pdf-boundary-penalty 0 0.0) but setting
+# _w is as _s (with --pdf-boundary-penalty 0.0) but setting
 #   --lm-opts "--num-extra-states=500" (like the opposite of
 # the u->v change, which was very unhelpful).  Also making a script change
 # to set the same --pdf-boundary-penalty value on the train and valid egs for
 # diagnostics (this won't affect WERs).
+# See the top of run_tdnn_2a.sh for the WER comparisons for this experiment.
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,

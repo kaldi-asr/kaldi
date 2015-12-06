@@ -343,8 +343,10 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
   // of H -- will be empty.
   HTransducerConfig h_config;
-  h_config.transition_scale = 0.0;  // we don't want transition probs.
-  h_config.push_weights = false;  // there's nothing to push.
+  // the default is 1, but just document that we want this to stay as one.
+  // we'll use the same value in test time.  Consistency is the key here.
+  h_config.transition_scale = 1.0;
+  h_config.push_weights = true;
 
   StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
                                        ctx_dep,
@@ -356,8 +358,8 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   TableCompose(*h_fst, context_dep_lm, &transition_id_fst);
   delete h_fst;
 
-  BaseFloat self_loop_scale = 0.0;   // all transition-scales are 0.0; we aren't
-  // using transition-probs here.
+  BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
+                                    // value in test time.
   bool reorder = true;  // more efficient in general; won't affect results.
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,

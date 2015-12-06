@@ -180,8 +180,8 @@ if  [ $stage -le -7 ]; then
   echo "$0: creating phone language-model"
 
   $cmd $dir/log/make_phone_lm.log \
-    chain-est-phone-lm $lm_opts \
-     --leftmost-context-questions=$treedir/questions_truncated.int \
+    chain-est-phone-lm --leftmost-context-questions=$treedir/questions_truncated.int \
+     $lm_opts \
      "ark:gunzip -c $treedir/ali.*.gz | ali-to-phones $treedir/final.mdl ark:- ark:- |" \
      $dir/phone_lm.fst || exit 1
 fi

@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # _z is as _x but setting  --lm-opts "--num-extra-states=2000".
-# (see also y, which has --num-extra-states=500).
+# (see also w, which has --num-extra-states=500, and 2a, which has 8000).
+# See the top of un_tdnn_2a.sh for the WER comparisons for this experiment.
 
 # _x is as _s but setting  --lm-opts "--num-extra-states=0".
 #  this is a kind of repeat of the u->v experiment, where it seemed to make things

@@ -1,32 +1,26 @@
 #!/bin/bash
 
-# _2b is as _y but --frames-overlap-per-eg 75 (was 30 before).  This is not very
-# efficient in terms of disk space but I want to see the effect on results.
+# _2d is as _2c but with different LM options:
+# --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"
+# ... this gives us a kind of pruned 4-gram language model, instead of a 3-gram.
+# the --leftmost-context-questions=/dev/null option overrides the leftmost-context-questions
+# provided from the tree-building, and effectively puts the leftmost context position as a single
+# set.
 
-# In terms of the objf, the training is a lot better, -0.0879->-0.0779, and validation is
-#  slightly better: -0.126 -> -0.123.
-# But the WERs are 0.3 worse across the board: on train_dev, with tg 18.04->18.15, with fg
-#   16.57->16.83; on all of eval2000, with tg 13.2->13.7, and with fg 11.7->12.0.
-# I'm a little at a loss how to interpret these.
-#   Note: I decode an earlier iter (300) but the results were not much better: final->300,
-#   13.7->13.7 on all of eval2000 with tg, and 18.15->18.10 on all of train_dev with tg.
+# _2c is as _2a but after a code change in which we start using transition-scale
+# and self-loop-scale of 1 instead of zero in training; we change the options to
+# mkgraph used in testing, to set the scale to 1.0.  This shouldn't affect
+# results at all; it's is mainly for convenience in pushing weights in graphs,
+# and checking that graphs are stochastic.
 
-# _y is as _s but trying --apply-deriv-weights false. (note: in the
-# interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0
-# and are no longer comparable with the ones in _s.
-#
-#   Compared to s, the results are improved: on train_dev, 18.45->18.04 with tg
-# and 16.96->16.57 with fg; on all of eval2000, 20.1->19.8 with tg and 18.0 to
-# 17.9 with fg.
-#
-#
-#  I recomputed the train and valid probs using the .486 model and no --pdf-boundary-penalty option, to
-# be able to compre with the _s ones.  In _s the (train,valid) probs at iter 485 were (-0.0691, -0.0997),
-# in _y the (train,valid) probs at iter 486 were (-0.0655,-0.0998).  So better on train, essentially
-# the same on valid.  It makes sense it would be better on train, since its overtraining is more
-# closely aligned with the distribution of training segments on which we compute the objf-- also because
-# we've simply trained more, i.e. equivalent to slightly more epochs.
+# _2a is as _z but setting --lm-opts "--num-extra-states=8000".
 
+# _z is as _x but setting  --lm-opts "--num-extra-states=2000".
+# (see also y, which has --num-extra-states=500).
+
+# _x is as _s but setting  --lm-opts "--num-extra-states=0".
+#  this is a kind of repeat of the u->v experiment, where it seemed to make things
+#  worse, but there were other factors involved in that so I want to be sure.
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
@@ -93,7 +87,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2b  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2d  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -187,11 +181,11 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --apply-deriv-weights false \
     --pdf-boundary-penalty 0.0 \
+    --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 75" \
+    --egs-opts "--frames-overlap-per-eg 30" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
@@ -211,8 +205,7 @@ if [ $stage -le 13 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --transition-scale 0.0 \
-      --self-loop-scale 0.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg
@@ -232,24 +225,5 @@ if [ $stage -le 14 ]; then
       ) &
   done
 fi
-wait;
-
-if [ $stage -le 15 ]; then
-  for decode_set in train_dev eval2000; do
-      (
-      iter=300
-      steps/nnet3/decode.sh --iter $iter --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj 50 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff}_it$iter || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_it$iter || exit 1;
-      fi
-      ) &
-  done
-fi
-
 wait;
 exit 0;

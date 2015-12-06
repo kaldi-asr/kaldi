@@ -1,6 +1,25 @@
 #!/bin/bash
 
 # _2a is as _z but setting --lm-opts "--num-extra-states=8000".
+#  Note, this leads to a cutoff of zero, so it's the same as infinite --num-extra-states.
+#  The table below compares a sequence of experiments {x,s,w,z,2a} where only
+#  the --num-extra-states is varied.
+#  here I'll compare with 's' which has the default --num-extra-states:
+#  With trigram, the WER on train_dev changed (s->2a) 18.45->18.20, and after rescoring from 16.96->16.59,
+#  and on all of eval2000 from 20.1 -> 19.8, and after rescoring from 18.0->17.7.  So about 0.3 abs improvement.
+#
+#  Comparing the --num-extra-states:
+#
+#  --num-extra-states:   0       200     500    2000    8000
+#  experiment:           x       s       w      z       2a
+# WER (train_dev,tg)     18.67   18.45  *18.02  18.06   18.20
+# WER (train_dev,fg)     17.22   16.96   16.70 *16.46   16.59
+# WER (eval2000,tg)      20.4    20.1    19.9  *19.7    19.8
+# WER (eval2000,fg)      18.4    18.0    17.9   18.0   *17.7
+# #states in den.fst     29384   30064   30744  31487   31729
+# #arcs in den.fst       249524  252690  255242 251118  238678
+# LM perplexity          8.78    8.07    7.76   7.39    7.37
+# # phone-lm states      2644    2864    3092   4321    6438
 
 # _z is as _x but setting  --lm-opts "--num-extra-states=2000".
 # (see also y, which has --num-extra-states=500).
