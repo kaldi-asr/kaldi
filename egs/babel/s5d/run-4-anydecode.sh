@@ -18,6 +18,12 @@ vocab_kws=false
 tri5_only=false
 wip=0.5
 
+nnet3_model=nnet3/tdnn_sp
+is_rnn=false
+extra_left_context=40
+extra_right_context=0
+frames_per_chunk=20
+
 echo "run-4-test.sh $@"
 
 . utils/parse_options.sh
@@ -361,6 +367,8 @@ if [ -f exp/sgmm5/.done ]; then
   done
 fi
 
+
+
 ####################################################################
 ##
 ## DNN ("compatibility") decoding -- also, just decode the "default" net
@@ -385,6 +393,38 @@ if [ -f exp/tri6_nnet/.done ]; then
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/lang $decode
 fi
+
+####################################################################
+##
+## nnet3 model decoding
+##
+####################################################################
+if [ -f exp/$nnet3_model/.done ]; then
+  decode=exp/$nnet3_model/decode_${dataset_id}
+  rnn_opts=
+  decode_script=steps/nnet3/decode.sh
+  if [ "$is_rnn" == "true" ]; then
+    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk " 
+    decode_script=steps/nnet3/lstm/decode.sh
+  fi
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+    
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/lang $decode
+fi
+
 
 
 ####################################################################
