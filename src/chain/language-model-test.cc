@@ -75,37 +75,12 @@ void LanguageModelTest() {
   GetTestingData(&vocab_size, &data);
 
   LanguageModelOptions opts;
-  opts.ngram_order = RandInt(1, 4);
-  if (RandInt(0, 1) == 0)
-    opts.num_extra_states = 0;
-  else
-    opts.num_extra_states = RandInt(1, 30);
-
-  // the 'echo' stuff won't work on Windows; just skip that part of the test.
-#ifndef _MSC_VER
-  if (RandInt(0, 1) == 0) {
-    std::vector<std::vector<int32> > leftmost_context_questions;
-    int32 num_questions = RandInt(3, 10);
-    std::ostringstream os;
-    for (int32 i = 0; i < num_questions; i++) {
-      std::vector<int32> question;
-      for (int32 j = 1; j <= vocab_size; j++)
-        if (RandInt(0, 3) == 0)
-          question.push_back(j);
-      if (!question.empty()) {
-        os << "echo ";
-        for (size_t i = 0; i < question.size(); i++)
-          os << question[i] << " ";
-        os << ";";
-      }
-    }
-    os << "|";
-    // os will look like 'echo 1 2; echo 3 8; echo 9 2 1; |' which doesn't look
-    // great but should work fine (the | gets stripped out before invoking the
-    // shell)
-    opts.leftmost_context_questions_rxfilename = os.str();
-  }
-#endif
+  opts.ngram_order = RandInt(2, 4);
+  opts.num_lm_states = RandInt(1, 200);
+  if (RandInt(1, 2) == 1)
+    opts.num_lm_states *= 10;
+  if (RandInt(1, 2) == 1)
+    opts.num_lm_states *= 10;
 
   LanguageModelEstimator estimator(opts);
   for (size_t i = 0; i < data.size(); i++) {

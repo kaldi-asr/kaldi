@@ -6,6 +6,10 @@
 # results at all; it's is mainly for convenience in pushing weights in graphs,
 # and checking that graphs are stochastic.
 
+# As expected the results are consistent with randomness: 2a->2c, on all of eval2000,
+# before rescoring 19.8->19.8 and after rescoring 17.7->17.8; on train_dev,
+# before rescoring 18.20->18.12, and after rescoring 16.59->16.73.
+
 # _2a is as _z but setting --lm-opts "--num-extra-states=8000".
 
 # _z is as _x but setting  --lm-opts "--num-extra-states=2000".

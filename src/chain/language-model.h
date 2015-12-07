@@ -2,7 +2,6 @@
 
 // Copyright      2015  Johns Hopkins University (Author: Daniel Povey)
 
-
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,58 +34,42 @@ namespace kaldi {
 
 namespace chain {
 
-// Options for phone language model estimation.  In the simplest form this is
-// an un-smoothed language model of a certain order (e.g. triphone).  We won't
-// be actually decoding with this, we'll just use it as the 'denominator graph'
-// in acoustic model estimation.   The reason for avoiding smoothing is to
-// reduce the number of transitions in the language model, which will improve
+// Options for phone language model estimation.  This is similar to an
+// un-smoothed language model of a certain order (e.g. triphone).  We won't be
+// actually decoding with this, we'll just use it as the 'denominator graph' in
+// acoustic model estimation.  The reason for avoiding smoothing is to reduce
+// the number of transitions in the language model, which will improve
 // efficiency of training.
 
 struct LanguageModelOptions {
-  int32 ngram_order;
-  std::string leftmost_context_questions_rxfilename;
-  int32 num_extra_states;
+  int32 ngram_order;  // you might want to tune this
+  int32 num_lm_states;  // you also might want to tune this
 
   LanguageModelOptions():
-      ngram_order(3), // you'll rarely want to change this.
-      num_extra_states(250) { }
+      ngram_order(4),
+      num_lm_states(10000) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
                    "language model used for the 'denominator model'");
-    opts->Register("leftmost-context-questions",
-                   &leftmost_context_questions_rxfilename,
-                   "In order to reduce the number of states in the compiled graph, "
-                   "you can limit the number of questions for the left-most context "
-                   "position; if so you should supply them here so we can merge "
-                   "language-model states where appropriate.  Only makes sense "
-                   "if the --ngram-order is the same as the --context-width for "
-                   "tree building.");
-    opts->Register("num-extra-states", &num_extra_states, "Only applicable if the "
-                   "--leftmost-context-questions option is used.  Controls how "
-                   "many language-model setates we can add that are 'more specific' "
-                   "than dictated by the sets defined by the "
-                   "--leftmost-context-questions.  This helps get a more accurate "
-                   "language model, at the cost of some extra LM states.");
+    opts->Register("num-lm-states", &num_lm_states, "Maximum number of language "
+                   "model states allowed.  We do hard backoff to lower-order "
+                   "n-gram to limit the num-states; pruning of states is based "
+                   "on data-count.");
   }
 };
 
 /**
-   This LanguageModelEstimator class estimates an unsmoothed n-gram language
-   model (typically trigram); it's intended for use on phones.  It's intentional
-   that we use an un-smoothed n-gram: this limits the number of transitions in
-   the compiled denominator graph by not including unseen triphones.
+   This LanguageModelEstimator class estimates an n-gram language model
+   with a kind of 'hard' backoff that is intended to reduce the number of
+   arcs in the final compiled FST.  Basically, we never back off to the lower-order
+   n-gram state, but we sometimes do just say, "this state's count is too small
+   so we won't have this state at all", and this LM state disappears and
+   transitions to it go to the lower-order n-gram's state.
 
-   It also supports merging together some of the history-states, using the
-   'leftmost-context-questions', in a way that coincides with how history-states
-   can be merged in the tree; this keeps the decoding graph small.  Basically,
-   if a set of phones cannot be distinguished by the leftmost-context-questions,
-   we merge their history-states, e.g. if x b and y b  are history-states and
-   x and y are in the same class, we make a single history-state for (x or y) b.
-   However, the 'num-extra-states' option allows us to pick some of the highest
-   count history-states of individual phones, and take them out of the 'shared'
-   history states, to form more specific states.  This allows us to build
-   a stronger language model despite that constraint.
+   Note: we always maintain at least bigram history (i.e. one phone of left
+   context), i.e. we never back off to a unigram state.  This is intended to
+   reduce the number of arcs in the final FST.
 
    This language model is implemented as a set of states, and transitions
    between these states; there is no concept of a backoff transition here.
@@ -94,8 +77,9 @@ struct LanguageModelOptions {
  */
 class LanguageModelEstimator {
  public:
-  LanguageModelEstimator(LanguageModelOptions &opts): opts_(opts),
-                                                      max_phone_(-1) { }
+  LanguageModelEstimator(LanguageModelOptions &opts): opts_(opts) {
+    KALDI_ASSERT(opts.ngram_order >= 2);
+  }
 
   // Adds counts for this sentence.  Basically does: for each n-gram in the
   // sentence, count[n-gram] += 1.  The only constraint on 'sentence' is that it
@@ -108,49 +92,69 @@ class LanguageModelEstimator {
 
  protected:
   typedef unordered_map<std::vector<int32>, int32, VectorHasher<int32> > MapType;
+  typedef unordered_set<std::vector<int32>, VectorHasher<int32> > SetType;
+
   typedef unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > PairMapType;
   LanguageModelOptions opts_;
   MapType counts_;
-  int32 max_phone_;  // highest-numbered phone seen.
+
 
   // does counts_[ngram]++.
   inline void IncrementCount(const std::vector<int32> &ngram);
 
-  // used inside Estimate:
+  inline static void AddCountToMap(const std::vector<int32> &key,
+                                   int32 value,
+                                   MapType *map);
 
-  // If leftmost_context_questions_rxfilename is non-empty, this function reads
-  // the extra questions and works out the phone sets that are distinguishable
-  // by these questions.  the 'phone_to_set' vector maps for each phone to a set
-  // identifier which is an integer > 0.  It also maps from phone zero to zero,
-  // as a special case.
-  // Modifies max_phone_.
-  // If leftmost_context_questions_rxfilename is empty, this function makes
-  // 'phone_to_set' a map from each phone to itself.
-  void ComputePhoneSets(std::vector<int32> *phone_to_set) const;
+  // copies elements of map to a vector.
+  inline static void CopyMapToVector(
+      const MapType &map,
+      std::vector<std::pair<int32, std::vector<int32> > > *vec);
+  // copies keys of a map to a set.
+  inline static void CopyMapKeysToSet(
+      const MapType &map,
+      SetType *set);
 
-  // Gets total count for each history (each history is a sequence of
-  // phones of length n-1).
+
+  // Gets total count for each history (each history is a sequence of phones of
+  // length n-1).
   void GetHistoryCounts(MapType *hist_counts) const;
 
+  // Augment 'hist_counts' with counts for all backed-off history states
+  // down to history states of length 1: basically,
+  // for key in keys(*hist_counts) {
+  //   count = (*hist_counts)[key];
+  //   while (key.size() > 1) { key.shift(); (*hist_counts)[key] += count; }
+  void AugmentHistoryCountsWithBackoff(MapType *hist_counts) const;
 
-  // This function returns the count cutoff value that will give us the number
-  // of 'special' histories (those which are not merged into the history-states
-  // defined by the extra questions).  If --num-extra-states == 0 or
-  // --leftmost-context-questions is not defined, it returns the maximum integer
-  // representable in int32;
-  // otherwise it sorts the history-state counts, and returns the value of the
-  // --num-extra-states'th largest count.
-  int32 GetHistoryCountCutoff(const MapType &hist_counts) const;
+  // comparator object used in GetHistoryStates.  Used to sort history counts
+  // from least to greatest.  If count is the same, treats longer histories as
+  // having smaller counts (so they will be deleted first).
+  struct HistoryCountCompare {
+    // this is treated as an operator <.
+    bool operator () (const std::pair<int32, std::vector<int32> > &a,
+                      const std::pair<int32, std::vector<int32> > &b) {
+      // we primarily compare on the data-count (the .first), but if the
+      // data-count is the same, if a has a longer .second vector, which means
+      // it's a higher order n-gram, we return true (interpreted as a < b),
+      // meaning a is considered as having a lower count; this will ensure that if
+      // counts are the same, higher-order states get deleted first, to ensure
+      // that backoff states of existing states still exist.
+      if (a.first < b.first) return true;
+      else if (a.first > b.first) return false;
+      else return a.second.size() > b.second.size();
+    }
+  };
+
+  // Works out the set of history-states that will be included in the LM.
+  void GetHistoryStates(SetType *history_states) const;
 
 
   // This function gets a map from a 'history' (i.e. a sequence of phones of
-  // length n-1) to a history-state.  All histories with counts above the count
-  // cutoff map uniquely to a state; for histories below that cutoff, histories
-  // whose leftmost phone is in the same 'set' are merged into one.  Returns the
-  // number of (integer) history-states.  history-states are zero-based.
-  int32 GetHistoryToStateMap(const MapType &hist_counts,
-                             int32 count_cutoff,
-                             const std::vector<int32> &phone_to_set,
+  // length >= 0 and <= opts.ngram_order - 1) to a history-state; each element of
+  // 'hist_states' gets its own integer.  Returns the number of history-states,
+  // which are numbered from zero.
+  int32 GetHistoryToStateMap(const SetType &hist_states,
                              MapType *hist_to_state) const;
 
   // This function creates a map 'state_transitions' that maps the
@@ -161,8 +165,15 @@ class LanguageModelEstimator {
   // Returns the initial state.
   int32 GetStateTransitions(
       const MapType &hist_to_state,
-      unordered_map<std::pair<int32, int32>, int32,
-                    PairHasher<int32> > *transitions) const;
+      PairMapType *transitions) const;
+
+
+  // Given a 'hist_to_state' map, and a history vector (representing some words
+  // of context), this function returns the state corresponding to a given
+  // history vector.  This may involve backoff.  The vector 'hist' must be
+  // nonempty.  If there is no such state, we'll throw an exception.
+  static int32 GetStateForHist(const MapType &hist_to_state,
+                               std::vector<int32> hist);
 
 
   // Creates the counts, in the format:

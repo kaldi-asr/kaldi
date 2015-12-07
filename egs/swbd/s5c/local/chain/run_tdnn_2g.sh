@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# _2g is as _2f but reducing the --num-lm-states from 10k to 7k.
+
+# _2f is as _2d but following a code change, and with different LM options:
+#  --ngram-order=5 --num-lm-states=10000
+# Now the extra questions are not needed.
+# LM perplexity changes from 6.34 to 5.75.
+
 # _2d is as _2c but with different LM options:
 # --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"
 # ... this gives us a kind of pruned 4-gram language model, instead of a 3-gram.
@@ -89,7 +96,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2d  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2g  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -177,14 +184,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --pdf-boundary-penalty 0.0 \
-    --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000" \
+    --lm-opts "--ngram-order=5 --num-lm-states=7000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
     --egs-opts "--frames-overlap-per-eg 30" \

@@ -33,16 +33,14 @@ void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
   std::vector<int32> history(order - 1, 0);
   std::vector<int32>::const_iterator iter = sentence.begin(),
       end = sentence.end();
-  int32 max_phone = 0;
   for (; iter != end; ++iter) {
     KALDI_ASSERT(*iter != 0);
     history.push_back(*iter);
-    max_phone = std::max(max_phone, *iter);
     IncrementCount(history);
     history.erase(history.begin());
   }
-  max_phone_ = std::max(max_phone_, max_phone);
-  // Probability of end of sentence.  This will end up getting ignored later.
+  // Probability of end of sentence.  This will end up getting ignored later, but
+  // it still makes a difference for probability-normalization reasons.
   history.push_back(0);
   IncrementCount(history);
 }
@@ -57,57 +55,15 @@ void LanguageModelEstimator::IncrementCount(const std::vector<int32> &ngram) {
 }
 
 
-void LanguageModelEstimator::ComputePhoneSets(
-    std::vector<int32> *phone_to_set) const {
-  KALDI_ASSERT(max_phone_ > 0 && "Saw no data.");
-  phone_to_set->resize(max_phone_ + 1);
-  (*phone_to_set)[0] = 0;
-  if (opts_.leftmost_context_questions_rxfilename.empty()) {
-    for (int32 p = 1; p <= max_phone_; p++)
-      (*phone_to_set)[p] = p;
-  } else {
-
-    std::vector<std::vector<int32> > questions;  // sets of phones.
-    ReadIntegerVectorVectorSimple(opts_.leftmost_context_questions_rxfilename,
-                                  &questions);
-    for (size_t i = 0; i < questions.size(); i++) {
-      SortAndUniq(&(questions[i]));
-    }
-
-    // note, by 'set' here we mean the integer identifier assigned to
-    // a set of phones that is split the same way by the questions.
-    int32 cur_set = 0;
-    std::map<vector<bool>, int32> answers_to_set;
-    std::map<vector<bool>, int32>::iterator iter;
-    for (int32 p = 1; p <= max_phone_; p++) {
-      std::vector<bool> answers(questions.size());
-      for (int32 i = 0; i < questions.size(); i++)
-        answers[i] = std::binary_search(questions[i].begin(),
-                                        questions[i].end(), p);
-      if ((iter = answers_to_set.find(answers)) == answers_to_set.end()) {
-        cur_set++;
-        (*phone_to_set)[p] = cur_set;
-        answers_to_set[answers] = cur_set;
-      } else {
-        (*phone_to_set)[p] = iter->second;
-      }
-    }
-    KALDI_LOG << "Reduced " << (max_phone_ + 1) << " phones to "
-              << cur_set << " sets (when appearing in left-most position)";
-  }
-}
 
 void LanguageModelEstimator::Estimate(fst::StdVectorFst *fst) const {
 
-  std::vector<int32> phone_to_set;
-  ComputePhoneSets(&phone_to_set);
-  MapType hist_counts;
-  GetHistoryCounts(&hist_counts);
-  int32 count_cutoff = GetHistoryCountCutoff(hist_counts);
+  SetType hist_states;
+  GetHistoryStates(&hist_states);
+
   MapType hist_to_state;
-  int32 num_history_states = GetHistoryToStateMap(hist_counts, count_cutoff,
-                                                  phone_to_set, &hist_to_state);
-  { MapType temp; temp.swap(hist_counts); }  // this won't be needed from this
+  int32 num_history_states = GetHistoryToStateMap(hist_states, &hist_to_state);
+  { SetType temp; temp.swap(hist_states); }  // this won't be needed from this
                                              // point; free memory.
   PairMapType transitions;
   int32 initial_state = GetStateTransitions(hist_to_state, &transitions);
@@ -125,15 +81,14 @@ void LanguageModelEstimator::GetCounts(
     std::vector<int32> *den_counts) const {
   den_counts->clear();
   den_counts->resize(num_history_states, 0);
+  num_counts->clear();
   MapType::const_iterator iter = counts_.begin(), end = counts_.end();
   for (; iter != end; ++iter) {
     std::vector<int32> hist = iter->first;  // at this point it's an ngram.
     int32 count = iter->second;
     int32 phone = hist.back();
     hist.pop_back();  // now it's a history.
-    MapType::const_iterator hist_to_state_iter = hist_to_state.find(hist);
-    KALDI_ASSERT(hist_to_state_iter != hist_to_state.end());
-    int32 hist_state = hist_to_state_iter->second;
+    int32 hist_state = GetStateForHist(hist_to_state, hist);
     den_counts->at(hist_state) += count;
     std::pair<int32,int32> p(hist_state, phone);
     PairMapType::iterator iter = num_counts->find(p);
@@ -145,79 +100,101 @@ void LanguageModelEstimator::GetCounts(
   }
 }
 
-int32 LanguageModelEstimator::GetHistoryCountCutoff(
-    const LanguageModelEstimator::MapType &hist_counts) const {
-  int32 ans;
-  if (opts_.num_extra_states == 0 ||
-      opts_.leftmost_context_questions_rxfilename.empty()) {
-    ans = std::numeric_limits<int32>::max();
-  } else if (hist_counts.size() <= opts_.num_extra_states) {
-    ans = 0;
-  } else {
-    std::vector<int32> counts;
-    counts.reserve(hist_counts.size());
-    for (MapType::const_iterator iter = hist_counts.begin(),
-             end = hist_counts.end(); iter != end; ++iter) {
-      int32 count = iter->second;
-      counts.push_back(count);
-    }
-    std::vector<int32>::iterator mid = counts.end() -
-        opts_.num_extra_states + 1;
-    std::nth_element(counts.begin(), mid, counts.end());
-    ans = *mid;
+// inline static
+void LanguageModelEstimator::AddCountToMap(const std::vector<int32> &key,
+                                           int32 value,
+                                           MapType *map) {
+  MapType::iterator iter = map->find(key);
+  if (iter == map->end())
+    (*map)[key] = value;
+  else
+    iter->second += value;
+}
+
+// inline static
+void LanguageModelEstimator::CopyMapToVector(
+    const MapType &map,
+    std::vector<std::pair<int32, std::vector<int32> > > *vec) {
+  vec->clear();
+  vec->reserve(map.size());
+  MapType::const_iterator iter = map.begin(), end = map.end();
+  for (; iter != end; ++iter) {
+    vec->push_back(std::pair<int32, std::vector<int32> >(
+        iter->second, iter->first));
   }
-  KALDI_LOG << "For --ngram-order=" << opts_.ngram_order
-            << ", --num-extra-states=" << opts_.num_extra_states
-            << " and --leftmost-context-uestions='"
-            << opts_.leftmost_context_questions_rxfilename
-            << "', count cutoff to control state merging is "
-            << ans;
-  return ans;
+}
+// inline static
+void LanguageModelEstimator::CopyMapKeysToSet(
+    const MapType &map,
+    SetType *set) {
+  set->clear();
+  // in c++11 would do: set->reserve(map.size());
+  MapType::const_iterator iter = map.begin(), end = map.end();
+  for (; iter != end; ++iter)
+    set->insert(iter->first);
+}
+
+
+void LanguageModelEstimator::AugmentHistoryCountsWithBackoff(
+    MapType *hist_counts) const {
+  std::vector<std::pair<int32, vector<int32> > > keys_and_counts;
+  CopyMapToVector(*hist_counts, &keys_and_counts);
+
+  for (std::vector<std::pair<int32, vector<int32> > >::const_iterator
+           iter = keys_and_counts.begin(), end = keys_and_counts.end();
+       iter != end; ++iter) {
+    int32 count = iter->first;
+    std::vector<int32> hist = iter->second;
+    while (hist.size() > 1) {
+      hist.erase(hist.begin());
+      AddCountToMap(hist, count, hist_counts);
+    }
+  }
+}
+
+void LanguageModelEstimator::GetHistoryStates(SetType *hist_set) const {
+  MapType history_counts;
+  GetHistoryCounts(&history_counts);
+  CopyMapKeysToSet(history_counts, hist_set);
+  int32 orig_num_lm_states = hist_set->size();
+  AugmentHistoryCountsWithBackoff(&history_counts);
+  std::vector<std::pair<int32, std::vector<int32> > > counts_vec;
+  CopyMapToVector(history_counts, &counts_vec);
+  std::sort(counts_vec.begin(), counts_vec.end(), HistoryCountCompare());
+
+  int32 size = counts_vec.size();
+  for (int32 i = 0; i < size && hist_set->size() > opts_.num_lm_states; i++) {
+    const std::vector<int32> &hist_state = counts_vec[i].second;
+    if (hist_state.size() <= 1)
+      continue;  // we never prune bigram history-states.
+                 // this keeps the transitions between states sparse.
+    SetType::iterator iter = hist_set->find(hist_state);
+    if (iter != hist_set->end()) {
+      // if this history-state is actually in the set...
+      std::vector<int32> backoff_state(hist_state.begin() + 1,
+                                       hist_state.end());
+      hist_set->erase(iter);  // erase this history-state.
+      hist_set->insert(backoff_state);  // ensure the relevant backoff state
+                                           // is present in 'hist_set'.
+    } else {
+      // we don't expect this line to be reached.
+      KALDI_WARN << "History-state not found in the set (unexpected)";
+    }
+  }
+  KALDI_LOG << "Reduced number of LM history-states from "
+            << orig_num_lm_states << " to " << hist_set->size();
 }
 
 int32 LanguageModelEstimator::GetHistoryToStateMap(
-    const LanguageModelEstimator::MapType &hist_counts,
-    int32 count_cutoff,
-    const std::vector<int32> &phone_to_set,
+    const LanguageModelEstimator::SetType &hist_set,
     LanguageModelEstimator::MapType *hist_to_state) const {
-  if (opts_.ngram_order == 1) {
-    // special case for order = 1.
-    (*hist_to_state)[ std::vector<int32>() ] = 0;
-    return 1;
-  } else {
-    // mapped_hist_to_state maps the history *after mapping its leftmost phone
-    // to its equivalence class* to the state.
-    MapType mapped_hist_to_state;
-    int32 num_states = 0;
-    MapType::const_iterator iter = hist_counts.begin(),
-        end = hist_counts.end();
-    for (; iter != end; ++iter) {
-      const std::vector<int32> &hist = iter->first;
-      int32 count = iter->second,
-          this_state;
-      if (count >= count_cutoff) {
-        // give it its own state.
-        KALDI_ASSERT((*hist_to_state).find(hist) == hist_to_state->end());
-        this_state = num_states++;
-      } else {
-        // map the leftmost phone to the equivalence class...
-        std::vector<int32> mapped_hist(hist);
-        mapped_hist[0] = phone_to_set.at(mapped_hist[0]);
-        // and see if we already have a state allocated for this
-        // equivalence-class of histories.
-        MapType::const_iterator map_iter =
-            mapped_hist_to_state.find(mapped_hist);
-        if (map_iter == mapped_hist_to_state.end()) {
-          this_state = num_states++;
-          mapped_hist_to_state[mapped_hist] = this_state;
-        } else {
-          this_state = map_iter->second;
-        }
-      }
-      (*hist_to_state)[hist] = this_state;
-    }
-    return num_states;
-  }
+
+  SetType::const_iterator iter = hist_set.begin(), end = hist_set.end();
+  hist_to_state->clear();
+  int32 cur_state = 0;
+  for (; iter != end; ++iter)
+    (*hist_to_state)[*iter] = cur_state++;
+  return cur_state;
 }
 
 
@@ -254,29 +231,45 @@ int32 LanguageModelEstimator::GetStateTransitions(
         next_hist(counts_iter->first);
     this_hist.pop_back();
     int32 phone = next_hist.back();
-    next_hist.erase(next_hist.begin());
     if (phone == 0)
       continue;
-    int32 this_state, next_state;
-    MapType::const_iterator hist_to_state_iter = hist_to_state.find(this_hist);
-    KALDI_ASSERT(hist_to_state_iter != hist_to_state.end());
-    this_state = hist_to_state_iter->second;
-    hist_to_state_iter = hist_to_state.find(next_hist);
-    KALDI_ASSERT(hist_to_state_iter != hist_to_state.end());
-    next_state = hist_to_state_iter->second;
+    int32 this_state = GetStateForHist(hist_to_state, this_hist),
+          next_state = GetStateForHist(hist_to_state, next_hist);
+
     // do (*transitions)[std::pair(this_state, phone)] = next_state.
     std::pair<const std::pair<int32, int32>, int32> entry(
         std::pair<int32,int32>(this_state, phone), next_state);
     std::pair<PairMapType::iterator, bool> ret = transitions->insert(entry);
-    // make sure that either it was inserted, or was already there but
-    // the transition goes to the same place.
+    // make sure that either it was inserted, or was already there but the
+    // transition goes to the same place.  Failure could possibly mean an issue
+    // where deleted history-states in a 'disallowed' way, e.g.  deleting a
+    // state that was the successor-state for some other state that has not yet
+    // been deleted; but the approach of sorting on counts (and if the counts
+    // are the same, then deleting the longest history-state first, i.e. with
+    // the most words) should prevent this from happening.
     KALDI_ASSERT(ret.second == true || *(ret.first) == entry);
   }
   std::vector<int32> zeros(opts_.ngram_order - 1, 0);
-  MapType::const_iterator hist_iter = hist_to_state.find(zeros);
-  KALDI_ASSERT(hist_iter != hist_to_state.end());
-  return hist_iter->second;
+  int32 zero_state = GetStateForHist(hist_to_state, zeros);
+  return zero_state;
 }
+
+// static
+int32 LanguageModelEstimator::GetStateForHist(const MapType &hist_to_state,
+                                              std::vector<int32> hist) {
+
+  while (true) {
+    if (hist.size() == 0)  // you'll have to figure out the sequence from the
+                           // stack.
+      KALDI_ERR << "Error getting state for history.  Code error in LM code.";
+    MapType::const_iterator iter = hist_to_state.find(hist);
+    if (iter == hist_to_state.end())
+      hist.erase(hist.begin());  // back off.
+    else
+      return iter->second;
+  }
+}
+
 
 void LanguageModelEstimator::OutputToFst(
     int32 initial_state,
