@@ -7,7 +7,7 @@
 frame_shift=10
 # End configuration section.
 
-#echo "$0 $@"
+echo "$0 $@"
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
@@ -25,6 +25,7 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
+#This script works in the unit of frames
 frame_per_sec=$(( 1000/$frame_shift ))
 min_seg_len=$(echo $1*$frame_per_sec | bc)
 input_dir=$2
@@ -36,46 +37,105 @@ done
 
 export LC_ALL=C
 
-function check_and_find_match_utt {
-  j=$1
-  if [ $(echo ${len_list[$j]} "< $min_seg_len" | bc) -eq 1 ]; then
-    localmin=100000000
-    target=-1
-    for k in `seq 0 $(( $uttsno - 1 ))`; do
-      sum=$(( ${len_list[$k]} + ${len_list[$j]} ))
-      if [ $(echo "$sum >= $min_seg_len" | bc) -eq 1 ] && [ $sum -lt $localmin ] && [ $j != $k ]; then
-        target=$k
-        localmin=$sum
-      fi
-    done
-    if [ $target -eq -1 ]; then
-      echo "$0: no combination of segments has length larger than $min_seg_len"
-      exit 1;
-    fi
+# This is the main function, to look for segments with length shorter than the specified length
+# and concatenates them with other segments to make sure every combined segments are 
+# with enough length. Here, after the search of the under-length segment, it looks for
+# another segment where the combined length is the closest to the specified length.
 
-    utt_list[$target]+=${utt_list[$j]}
-    ark_list[$target]+=${ark_list[$j]}
-    text_list[$target]+=${text_list[$j]}
-    len_list[$target]=$localmin
-    len_list[$j]=-1
-  fi
+function check_and_combine_utt {
+
+echo $min_seg_len |  perl -e '
+  $min_seg_len = <STDIN>;
+  ($u2s_in, $s2u_in, $feat_in, $len_in, $text_in, 
+    $u2s_out, $feat_out, $text_out) = @ARGV;
+  open(UI, "<$u2s_in") || die "Error: fail to open $u2s_in\n";
+  open(SI, "<$s2u_in") || die "Error: fail to open $s2u_in\n";
+  open(FI, "<$feat_in") || die "Error: fail to open $feat_in\n";
+  open(LI, "<$len_in") || die "Error: fail to open $len_in\n";
+  open(TI, "<$text_in") || die "Error: fail to open $text_in\n";
+  open(UO, ">$u2s_out") || die "Error: fail to open $u2s_out\n";
+  open(FO, ">$feat_out") || die "Error: fail to open $feat_out\n";
+  open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
+  while (<UI>) {
+    chomp;
+    @col = split;
+    @col == 2 || die "Error: bad line $_\n";
+    ($utt_id, $spk) = @col;
+    $utt2spk{$utt_id} = $spk;
+  }
+  while (<SI>) {
+    chomp;
+    @col = split;
+    $spks = join(" ", @col[1..@col-1]);
+    $spk2utt{$col[0]} = $spks;
+  }
+  while (<FI>) {
+    chomp;
+    @col = split;
+    @col == 2 || die "Error: bad line $_\n";
+    ($utt_id, $feat) = @col;
+    $uttlist{$utt_id} = $utt_id;
+    $utt2feat{$utt_id} = $feat;
+  }
+  while (<LI>) {
+    chomp;
+    @col = split;
+    @col == 2 || die "Error: bad line $_\n";
+    ($utt_id, $len) = @col;
+    $utt2len{$utt_id} = $len;
+    $utt2item{$utt_id} = 1;
+  }
+  while (<TI>) {
+    chomp;
+    @col = split;
+    $text = join(" ", @col[1..@col-1]);
+    $utt2text{$col[0]} = $text;
+  }
+
+  foreach $seg (sort keys %uttlist) {
+    if ($utt2len{$seg} < $min_seg_len) {
+      $localmin = inf;
+      $target = $seg;
+      @utts = split(" ",$spk2utt{$utt2spk{$seg}});
+      foreach $seg2 (@utts) {
+        $sum = $utt2len{$seg} + $utt2len{$seg2};
+        if (($sum >= $min_seg_len) && ($sum < $localmin) && ($seg ne $seg2)) {
+          $localmin = $sum;
+          $target = $seg2;
+        }
+      }
+      if ($target eq $seg) { die "Error: fail to have combined segment with enough length\n"; }
+      $utt2len{$seg} = -1;
+      $uttlist{$target} = $uttlist{$target} . "-" . $uttlist{$seg};
+      $utt2len{$target} = $localmin;
+      $utt2feat{$target} = $utt2feat{$target} . " " . $utt2feat{$seg};
+      $utt2item{$target} = $utt2item{$target} + $utt2item{$seg};
+      $utt2item{$seg} = 0;
+      $utt2text{$target} = $utt2text{$target} . " " . $utt2text{$seg};
+    }
+  }
+
+  foreach $seg (sort keys %uttlist) {
+    if ($utt2item{$seg} > 1) {
+      print UO "$uttlist{$seg}-appended $utt2spk{$seg}\n";
+      print FO "$uttlist{$seg}-appended concat-feats $utt2feat{$seg} - |\n";
+      print TO "$uttlist{$seg}-appended $utt2text{$seg}\n";
+    } elsif ($utt2item{$seg} == 1) {
+      print UO "$uttlist{$seg} $utt2spk{$seg}\n";
+      print FO "$uttlist{$seg} $utt2feat{$seg}\n" ;
+      print TO "$uttlist{$seg} $utt2text{$seg}\n";
+    }
+  }
+
+' $input_dir/utt2spk \
+$input_dir/spk2utt \
+$input_dir/feats.scp \
+$output_dir/feats.length \
+$input_dir/text \
+$output_dir/utt2spk \
+$output_dir/feats.scp \
+$output_dir/text 
 }
-
-function print_files {
-  j=$1
-  if [ ${len_list[$j]} -gt ${len_list_bak[$j]} ]; then
-    utt=$(echo ${utt_list[$j]} "appended" | sed 's/ /-/g')
-    echo $utt $spk >> $output_dir/utt2spk
-    echo $utt ${text_list[$j]} >> $output_dir/text
-    echo $utt "concat-feats" ${ark_list[$j]} "- |" >> $output_dir/feats.scp
-  elif [ ${len_list[$j]} -eq ${len_list_bak[$j]} ]; then
-    utt=${utt_list[$j]}
-    echo $utt $spk >> $output_dir/utt2spk
-    echo $utt ${text_list[$j]} >> $output_dir/text
-    echo $utt ${ark_list[$j]} >> $output_dir/feats.scp
-  fi
-}
-
 
 mkdir -p $output_dir
 
@@ -90,37 +150,16 @@ else
   feat-to-len --print-args=false scp:$input_dir/feats.scp ark,t:$output_dir/feats.length
 fi
 
-> $output_dir/utt2spk
-> $output_dir/feats.scp
-> $output_dir/text
+check_and_combine_utt
 
-for spk in `cat $input_dir/spk2utt | awk '{print $1}'`; do
-  echo speaker $i $spk
-
-  echo $spk | utils/filter_scp.pl - $input_dir/spk2utt | awk '{ for(i=2;i<=NF;i++){print $i}}' > $output_dir/uttlist.tmp
-  utils/filter_scp.pl $output_dir/uttlist.tmp $input_dir/feats.scp | awk '{print $2}' > $output_dir/ark.tmp
-  utils/filter_scp.pl $output_dir/uttlist.tmp $output_dir/feats.length | awk '{print $2}' > $output_dir/length.tmp
-
-  readarray ark_list < $output_dir/ark.tmp
-  readarray text_list < <(utils/filter_scp.pl $output_dir/uttlist.tmp $input_dir/text | awk '{$1=""; print $_}') 
-  readarray utt_list < $output_dir/uttlist.tmp
-  readarray len_list < $output_dir/length.tmp
-  readarray len_list_bak < $output_dir/length.tmp
-
-  uttsno=$(wc $output_dir/uttlist.tmp | awk '{print $1}')
-  for j in `seq 0 $(( $uttsno - 1 ))`; do
-    check_and_find_match_utt $j
-  done
-
-  for j in `seq 0 $(( $uttsno - 1 ))`; do
-    print_files $j
-  done
-done
 utils/utt2spk_to_spk2utt.pl $output_dir/utt2spk > $output_dir/spk2utt
 
 if [ -f $input_dir/cmvn.scp ]; then
   cp $input_dir/cmvn.scp $output_dir/
 fi
 
-rm $output_dir/*.tmp
+rm $output_dir/feats.length
 
+utils/fix_data_dir.sh $output_dir
+
+exit 0
