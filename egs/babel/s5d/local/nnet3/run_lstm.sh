@@ -38,8 +38,8 @@ chunk_right_context=0
 num_epochs=8
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-num_jobs_initial=3
-num_jobs_final=15
+num_jobs_initial=2
+num_jobs_final=6
 momentum=0.5
 num_chunk_per_minibatch=100
 samples_per_iter=20000
@@ -108,6 +108,7 @@ if [ $stage -le 9 ]; then
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+  touch $dir/.done
 fi
 
 wait;

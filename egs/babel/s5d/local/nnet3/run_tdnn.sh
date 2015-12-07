@@ -13,6 +13,11 @@
 stage=0
 train_stage=-10
 speed_perturb=true
+affix=
+splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -7,2 0"
+common_egs_dir=
+relu_dim=850
+remove_egs=true
 
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
 [ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
@@ -59,15 +64,20 @@ if [ $stage -le 9 ]; then
   fi
 
   steps/nnet3/train_tdnn.sh --stage $train_stage \
-    --num-epochs 3 --num-jobs-initial 2 --num-jobs-final 12 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0" \
+    --num-epochs 5 --num-jobs-initial 2 --num-jobs-final 6 \
+    --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate 0.0017 --final-effective-lrate 0.00017 \
     --cmd "$decode_cmd" \
-    --relu-dim 1024 \
+    --egs-dir "$common_egs_dir" \
+    --relu-dim $relu_dim \
+    --remove-egs $remove_egs \
     data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+  touch $dir/.done
 fi
+
+
 exit 0;
 
