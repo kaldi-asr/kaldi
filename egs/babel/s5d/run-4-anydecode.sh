@@ -20,9 +20,9 @@ wip=0.5
 
 nnet3_model=nnet3/tdnn_sp
 is_rnn=false
-extra_left_context=40
+extra_left_context=0
 extra_right_context=0
-frames_per_chunk=20
+frames_per_chunk=0
 
 echo "run-4-test.sh $@"
 
@@ -235,6 +235,31 @@ if [ ! -f  $dataset_dir/.done ] ; then
     make_plp ${dataset_dir} exp/make_plp/${dataset_id} plp
     touch ${dataset_dir}/.plp.done
   fi
+
+
+  
+  if [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
+    dataset=$(basename $dataset_dir)
+    echo ---------------------------------------------------------------------
+    echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
+    echo ---------------------------------------------------------------------
+    if [ ! -d ${dataset_dir}_hires ]; then
+      utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
+    fi
+
+    mfccdir=mfcc_hires
+    steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
+        --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+    utils/fix_data_dir.sh ${dataset_dir}_hires;
+    touch ${dataset_dir}_hires/.mfcc.done
+    
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
+      ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
+   
+    touch ${dataset_dir}_hires/.done
+  fi
+  
   touch $dataset_dir/.done
 fi
 #####################################################################
