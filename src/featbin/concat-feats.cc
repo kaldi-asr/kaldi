@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         "Concatenate feature files (assuming they have the same dimensions)\n"
         "Usage: concat-feats <in-rxfilename1> <in-rxfilename2> [<in-rxfilename3> ...] <out-wxfilename>\n"
         " e.g. concat-feats mfcc/foo.ark:12343 mfcc/foo.ark:56789 -\n"
-        "See also: copy-feats, copy-matrix, append-vector-to-feats, paste-feats\n";
+        "See also: copy-feats, append-vector-to-feats, paste-feats\n";
     
     ParseOptions po(usage);
 
