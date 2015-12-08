@@ -25,7 +25,8 @@
 
 #BLSTM 
   local/nnet3/run_blstm.sh 
-
   ./run-4-anydecode.sh --skip-kws true --dir dev10h.seg --is-rnn true --nnet3-model nnet3/lstm_bidirectional_sp --extra-left-context 40 --extra-right-context 40 --frames-per-chunk 20
+  #%WER 67.1 | 22131 40145 | 38.8 44.9 16.3 5.9 67.1 33.6 | -1.737 | exp/nnet3/lstm_birectional_cell512_sp/decode_dev10h.seg/score_10/dev10h.seg.ctm.sys
   ./run-4-anydecode.sh --skip-kws true --dir dev10h.pem --is-rnn true --nnet3-model nnet3/lstm_bidirectional_sp --extra-left-context 40 --extra-right-context 40 --frames-per-chunk 20
+  #%WER 64.2 | 22131 40145 | 39.8 46.0 14.2 4.0 64.2 29.0 | -1.548 | exp/nnet3/lstm_birectional_cell512_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
 
