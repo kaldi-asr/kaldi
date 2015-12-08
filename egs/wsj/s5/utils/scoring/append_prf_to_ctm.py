@@ -27,15 +27,17 @@ with open(prf_file) as f:
     # Store the data,
     if l[:5] == 'File:':
       file_id = l.split()[1]
+    if l[:8] == 'Channel:':
+      chan = l.split()[1]
     if l[:5] == 'H_T1:':
       h_t1 = l
     if l[:5] == 'Eval:':
       evl = l
-      prf.append((file_id,h_t1,evl))
+      prf.append((file_id,chan,h_t1,evl))
 
 # Parse the prf records into dictionary,
 prf_dict = dict()
-for (f,t,e) in prf:
+for (f,c,t,e) in prf:
   t_pos = 0
   while t_pos < len(t):
     t1 = t[t_pos:].split(' ',1)[0]
@@ -43,8 +45,9 @@ for (f,t,e) in prf:
       t1f = float(t1)
       evl = e[t_pos] if e[t_pos] != ' ' else 'C'
       # add to dictionary,
-      if f not in prf_dict: prf_dict[f] = dict()
-      prf_dict[f][t1f] = evl
+      key='%s,%s' % (f,c) # file,channel
+      if key not in prf_dict: prf_dict[key] = dict()
+      prf_dict[key][t1f] = evl
     except ValueError:
       pass
     t_pos += len(t1)+1
@@ -58,7 +61,7 @@ for (f, chan, beg, dur, wrd, conf) in ctm:
   # U = unknown, C = correct, S = substitution, I = insertion,
   sclite_tag = 'U' 
   try:
-    sclite_tag = prf_dict[f.lower()][beg]
+    sclite_tag = prf_dict[('%s,%s'%(f,chan)).lower()][beg]
   except KeyError:
     pass
   ctm2.append((f,chan,beg,dur,wrd,conf,sclite_tag))

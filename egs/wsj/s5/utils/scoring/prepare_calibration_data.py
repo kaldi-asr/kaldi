@@ -33,7 +33,7 @@ or to prepare input features for forwarding through trained model.
 usage = "%prog [opts] ctm segments depth-per-frame-ascii.ark arpa-lm.gz words.txt logreg_inputs"
 parser = OptionParser(usage=usage, description=desc)
 parser.add_option("--segments", help="Mapping of sentence-relative times to absolute times, for lattice-depths. Use for ctm with absolute times. [default %default]", default='')
-parser.add_option("--wav-map", help="Mapping file for case when wav-labels in 'segments' differ from 'stm' [default %default]", default='')
+parser.add_option("--reco2file-and-channel", help="Mapping of recording to file and channel in 'stm' [default %default]", default='')
 parser.add_option("--conf-targets", help="Targets file for logistic regression (no targets generated if '') [default %default]", default='')
 parser.add_option("--conf-feats", help="Feature file for logistic regression. [default %default]", default='')
 (o, args) = parser.parse_args()
@@ -61,7 +61,7 @@ if o.conf_targets != '':
     # Skip words we don't know if being correct, 
     if score_tag == 'U': continue 
     # Build the key,
-    key = "%s'%s'%.2f'%.2f'%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
+    key = "%s^%s^%.2f^%.2f^%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
     # Build the target,
     tgt = 1 if score_tag == 'C' else 0 # Correct = 1, else 0,
     # Add to list,
@@ -71,12 +71,13 @@ if o.conf_targets != '':
 
 # Segments dicionart is indexed by utterance,
 if o.segments != '':
-  segments = { utt:(wav,beg,end) for (utt,wav,beg,end) in np.loadtxt(o.segments,dtype='object,object,f8,f8') }
-  # If wav-labels in 'segments' and 'stm' differ, we use this mapping,
-  if o.wav_map != '':
-    wavmap = { wav_seg:wav_stm for (wav_seg,wav_stm,wav_file) in np.loadtxt(o.wav_map,dtype='object,object,object') }
+  segments = { utt:(reco,beg,end) for (utt,reco,beg,end) in np.loadtxt(o.segments,dtype='object,object,f8,f8') }
+  # Optionally apply 'reco2file_and_channel' mapping,
+  if o.reco2file_and_channel != '':
+    reco2file_and_channel = { reco:(file,chan) for (reco,file,chan) in np.loadtxt(o.reco2file_and_channel,dtype='object,object,object') }
   else:
-    wavmap = { wav:wav for wav in np.unique(np.array(segments.values())['f0']) } # Or trivial self-mapping from 'segments',
+    # Or trivial self-mapping using 2nd column in 'segments', (default channel is '1'),
+    reco2file_and_channel = { reco:(reco,'1') for reco in np.unique(np.array(segments.values())['f0']) } 
 
 ### Load the per-frame lattice-depth,
 depths = dict()
@@ -85,23 +86,23 @@ if o.segments == '':
   with open(depths_file,'r') as f:
     for l in f:
       utt,d = l.split(' ',1)
-      depths[utt] = np.array(d.split(),dtype='int')
+      depths[(utt,'1')] = np.array(d.split(),dtype='int')
 else:
   # The depths from 'segments' get pasted into 'long' vectors covering complete unsegmented audio,
-  # Getting last segment for each wav,
-  wav_beg_end_sort = np.sort(np.array(segments.values(),dtype='object,f8,f8'), order=['f0','f2'])
-  wav_beg_end_lastseg = wav_beg_end_sort[np.append(wav_beg_end_sort['f0'][1:] != wav_beg_end_sort['f0'][:-1],[True])]
+  # Getting last segment for each 'reco',
+  reco_beg_end_sort = np.sort(np.array(segments.values(),dtype='object,f8,f8'), order=['f0','f2'])
+  reco_beg_end_lastseg = reco_beg_end_sort[np.append(reco_beg_end_sort['f0'][1:] != reco_beg_end_sort['f0'][:-1],[True])]
   # Create buffer with zero depths,
-  for (wav,beg,end) in wav_beg_end_lastseg:
+  for (reco,beg,end) in reco_beg_end_lastseg:
     frame_total = 1 + int(np.rint(100*end))
-    depths[wavmap[wav]] = np.zeros(frame_total, dtype='int')
-  # Load the depths in ASCII, fill the buffer with the depths,
+    depths[reco2file_and_channel[reco]] = np.zeros(frame_total, dtype='int')
+  # Load the depths (ASCII), fill the buffer with the depths,
   with open(depths_file,'r') as f:
     for l in f:
       utt,d = l.split(' ',1)
       d = np.array(d.split(),dtype='int')
       frame_begin = int(np.rint(100*segments[utt][1]))
-      depths[wavmap[segments[utt][0]]][frame_begin:frame_begin+len(d)] = d
+      depths[reco2file_and_channel[segments[utt][0]]][frame_begin:frame_begin+len(d)] = d
 
 # Load the unigram probabilities in 10log from ARPA,
 import gzip, re
@@ -123,7 +124,7 @@ wrd_num = np.max(np.array(wrd_to_int.values(),dtype='int')) + 1
 with open(o.conf_feats,'w') as inputs:
   for (f, chan, beg, dur, wrd, conf, score_tag) in ctm:
     # Build the key, same as previous,
-    key = "%s'%s'%.2f'%.2f'%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
+    key = "%s^%s^%.2f^%.2f^%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
     # Build input features,
     # - logit of MBR posterior, 
     damper = 0.001 # avoid -inf,+inf from log,
@@ -131,7 +132,7 @@ with open(o.conf_feats,'w') as inputs:
     # - log of word-length in characters,
     log_lenwrd = np.log(len(wrd)) 
     # - log of average-depth of lattice,
-    log_avg_depth = np.log(np.mean(depths[f][int(np.rint(100.0*beg)):int(np.rint(100.0*(beg+dur)))]))
+    log_avg_depth = np.log(np.mean(depths[(f,chan)][int(np.rint(100.0*beg)):int(np.rint(100.0*(beg+dur)))]))
     # - log of frame-per-letter ratio,
     log_frame_per_letter = np.log(100.0*dur/len(wrd))
     
