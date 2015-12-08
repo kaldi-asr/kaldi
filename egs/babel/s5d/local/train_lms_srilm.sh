@@ -81,11 +81,11 @@ elif [ ! -z "$train_text" ] && [ ! -z "$dev_text" ] ; then
   train_text=$train_text
   dev_text=$dev_text
 else
+  train_text=$datadir/train/text
+  dev_text=$datadir/dev2h/text
   echo "Using words file: $words_file"
   echo "Using train text: $train_text"
   echo "Using dev text  : $dev_text"
-  train_text=$datadir/train/text
-  dev_text=$datadir/dev2h/text
 fi
 
 
