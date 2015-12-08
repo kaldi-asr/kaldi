@@ -50,7 +50,7 @@ dnn_update_egs_opts=(--weight-threshold 0.7 --splice-width 4 --samples-per-iter 
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
   sgmm_train_extra_opts=( --num-iters 25 )
-  sgmm_group_extra_opts=( ) 
+  sgmm_group_extra_opts=( )
   sgmm_denlats_extra_opts=( --num-threads 1 )
   dnn_denlats_extra_opts=( --num-threads 1 )
 
@@ -65,7 +65,7 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=4.0G")
   sgmm_train_extra_opts=( --num-iters 25 )
-  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=7.0G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G") 
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=7.0G" --cmd "queue.pl -l arch=*64 -l mem_free=2.0G,ram_free=2.0G")
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2.0G")
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=1.5G,ram_free=1.5G")
   dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=2.0G")
@@ -80,7 +80,7 @@ else
 
   dnn_update_parallel_opts=( --num-epochs 15 --num-epochs-extra 5 --num-iters-final 20 )
 fi
- 
+
 icu_transform="Any-Lower"
 case_insensitive=true
 
@@ -102,3 +102,27 @@ extlex_proxy_phone_beam=5
 extlex_proxy_phone_nbest=300
 extlex_proxy_beam=-1
 extlex_proxy_nbest=-1
+
+
+# Acoustic model parameters
+numLeavesTri1=1000
+numGaussTri1=10000
+numLeavesTri2=2500
+numGaussTri2=36000
+numLeavesTri3=2500
+numGaussTri3=36000
+numLeavesMLLT=2500
+numGaussMLLT=36000
+numLeavesSAT=2500
+numGaussSAT=36000
+numGaussUBM=750
+numLeavesSGMM=5000
+numGaussSGMM=18000
+
+# Lexicon and Language Model parameters
+oovSymbol="<unk>"
+lexiconFlags="--oov <unk>"
+
+#keyword search settings
+duptime=0.5
+case_insensitive=true

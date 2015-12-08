@@ -74,6 +74,12 @@ if [ ! -z "$train_text" ] && [ -z "$dev_text" ] ; then
   echo "Using words file: $words_file"
   echo "Using train text: 9/10 of $orig_train_text"
   echo "Using dev text  : 1/10 of $orig_train_text"
+elif [ ! -z "$train_text" ] && [ ! -z "$dev_text" ] ; then
+  echo "Using words file: $words_file"
+  echo "Using train text: $train_text"
+  echo "Using dev text  : $dev_text"
+  train_text=$train_text
+  dev_text=$dev_text
 else
   echo "Using words file: $words_file"
   echo "Using train text: $train_text"

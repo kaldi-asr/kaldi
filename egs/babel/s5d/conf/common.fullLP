@@ -47,7 +47,7 @@ icu_opt=(--use-icu true --icu-transform Any-Lower)
 if [[ `hostname` == *.tacc.utexas.edu ]] ; then
   decode_extra_opts=( --num-threads 4 --parallel-opts "-pe smp 4" )
   sgmm_train_extra_opts=( )
-  sgmm_group_extra_opts=( --num_iters 25 ) 
+  sgmm_group_extra_opts=( --num_iters 25 )
   sgmm_denlats_extra_opts=( --num-threads 2 )
   sgmm_mmi_extra_opts=(--cmd "local/lonestar.py -pe smp 2")
   dnn_denlats_extra_opts=( --num-threads 2 )
@@ -62,7 +62,7 @@ if [[ `hostname` == *.tacc.utexas.edu ]] ; then
 else
   decode_extra_opts=(--num-threads 6 --parallel-opts "-pe smp 6 -l mem_free=4G,ram_free=0.7G")
   sgmm_train_extra_opts=( --num-iters 25 )
-  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.75G" --cmd "queue.pl -l arch=*64 -l mem_free=3.0G,ram_free=3.0G") 
+  sgmm_group_extra_opts=(--group 3 --parallel-opts "-pe smp 3 -l mem_free=7G,ram_free=2.75G" --cmd "queue.pl -l arch=*64 -l mem_free=3.0G,ram_free=3.0G")
   sgmm_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
   sgmm_mmi_extra_opts=(--cmd "queue.pl -l arch=*64 -l mem_free=3.2G,ram_free=3.2G")
   dnn_denlats_extra_opts=(--num-threads 4 --parallel-opts "-pe smp 4" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=0.8G")
@@ -75,7 +75,7 @@ else
   dnn_gpu_mpe_parallel_opts=(--num-jobs-nnet 8 --num-threads 1 \
                              --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
 fi
- 
+
 icu_transform="Any-Lower"
 case_insensitive=true
 
@@ -97,3 +97,27 @@ extlex_proxy_phone_beam=5
 extlex_proxy_phone_nbest=300
 extlex_proxy_beam=-1
 extlex_proxy_nbest=-1
+
+
+# Acoustic model parameters
+numLeavesTri1=1000
+numGaussTri1=10000
+numLeavesTri2=1000
+numGaussTri2=20000
+numLeavesTri3=6000
+numGaussTri3=75000
+numLeavesMLLT=6000
+numGaussMLLT=75000
+numLeavesSAT=6000
+numGaussSAT=75000
+numGaussUBM=800
+numLeavesSGMM=10000
+numGaussSGMM=80000
+
+# Lexicon and Language Model parameters
+oovSymbol="<unk>"
+lexiconFlags="--oov <unk>"
+
+#keyword search settings
+duptime=0.5
+case_insensitive=true

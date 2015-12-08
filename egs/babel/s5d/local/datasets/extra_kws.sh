@@ -4,10 +4,10 @@
 #variables as well as certain directory structure.
 
 if [ "${dataset_kind}" == "supervised" ] ; then
-  mandatory_variables="my_ecf_file my_kwlist_file my_rttm_file"
+  mandatory_variables="my_ecf_file my_kwlists my_rttm_file"
   optional_variables="my_subset_ecf"
 else
-  mandatory_variables="my_ecf_file my_kwlist_file"
+  mandatory_variables="my_ecf_file my_kwlists"
   optional_variables="my_subset_ecf"
 fi
 
@@ -22,7 +22,7 @@ function register_extraid {
 }
 
 function setup_oov_search {
-  local phone_cutoff=5
+  local phone_cutoff=0
 
   local g2p_nbest=10
   local g2p_mass=0.95
@@ -36,11 +36,10 @@ function setup_oov_search {
 
   mkdir -p $kwsdatadir
 
-  if [ "${dataset_kind}" == "supervised" ] ; then
-    for file in $source_dir/rttm ; do
-      cp -f $file $kwsdatadir
-    done
-  fi
+  for file in $source_dir/rttm ; do
+    [ -f $file ] &&  cp -f $file $kwsdatadir
+  done
+
   for file in $source_dir/utter_* $source_dir/kwlist*.xml $source_dir/ecf.xml ; do
     cp -f $file $kwsdatadir
   done
@@ -95,7 +94,7 @@ function setup_oov_search {
 
 
 kws_flags=( --use-icu true )
-if [  "${dataset_kind}" == "supervised"  ] ; then
+if [  "${dataset_kind}" == "supervised"  ] || [ ! -z "$my_rttm_file" ]; then
   #The presence of the file had been already verified, so just
   #add the correct switches
   kws_flags+=(--rttm-file $my_rttm_file )
@@ -104,21 +103,16 @@ if $my_subset_ecf ; then
   kws_flags+=(--subset-ecf $my_data_list)
 fi
 
-if [ ! -f $dataset_dir/.done.kws.oov ] ; then
-  setup_oov_search $dataset_dir $dataset_dir/kws oov || exit 1
-  register_extraid $dataset_dir oov
-  touch $dataset_dir/.done.kws.oov
-fi
-if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
+if [ ${#my_kwlists[@]} -ne 0  ] ; then
 
   touch $dataset_dir/extra_kws_tasks
 
-  for extraid in "${!my_more_kwlists[@]}" ; do
+  for extraid in "${!my_kwlists[@]}" ; do
     #The next line will help us in running only one. We don't really
     #know in which directory the KWS setup will reside in, so we will
     #place  the .done file directly into the data directory
     [ -f $dataset_dir/.done.kws.$extraid ] && continue;
-    kwlist=${my_more_kwlists[$extraid]}
+    kwlist=${my_kwlists[$extraid]}
 
     local/kws_setup.sh  --extraid $extraid --case_insensitive $case_insensitive \
       "${kws_flags[@]}" "${icu_opt[@]}" \
@@ -130,7 +124,7 @@ if [ ${#my_more_kwlists[@]} -ne 0  ] ; then
     register_extraid $dataset_dir $extraid
     touch $dataset_dir/.done.kws.$extraid
   done
-  for extraid in "${!my_more_kwlists[@]}" ; do
+  for extraid in "${!my_kwlists[@]}" ; do
     #The next line will help us in running only one. We don't really
     #know in which directory the KWS setup will reside in, so we will
     #place  the .done file directly into the data directory

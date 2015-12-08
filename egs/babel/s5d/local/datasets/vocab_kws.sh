@@ -19,7 +19,7 @@ if [ "$dataset_kind" == "shadow" ]; then
 elif [ ! -f $dataset_dir/.done.kws.fullvocab ] ; then
   #a This will work for both supervised and unsupervised dataset kinds
   kws_flags=()
-  if [ "$dataset_kind" == "supervised" ] ; then
+  if [ "$dataset_kind" == "supervised" ] || [ ! -z "$my_rttm_file" ] ; then
     kws_flags+=(--rttm-file $my_rttm_file )
   fi
   if $my_subset_ecf ; then
