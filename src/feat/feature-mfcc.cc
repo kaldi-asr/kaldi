@@ -41,9 +41,9 @@ Mfcc::Mfcc(const MfccOptions &opts)
   if (opts.energy_floor > 0.0)
     log_energy_floor_ = Log(opts.energy_floor);
 
-  int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
-  if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two...
-    srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
+  int32 num_fft_bins = opts.frame_opts.NumFftBins();
+  if ((num_fft_bins & (num_fft_bins-1)) == 0)  // Is a power of two...
+    srfft_ = new SplitRadixRealFft<BaseFloat>(num_fft_bins);
   
   // We'll definitely need the filterbanks info for VTLN warping factor 1.0.
   // [note: this call caches it.]  The reason we call this here is to
@@ -143,6 +143,10 @@ void Mfcc::ComputeInternal(const VectorBase<BaseFloat> &wave,
     if (opts_.use_energy && !opts_.raw_energy)
       log_energy = Log(std::max(VecVec(window, window),
                                 std::numeric_limits<BaseFloat>::min()));
+
+    int32 num_fft_bins = opts_.frame_opts.NumFftBins();
+    KALDI_ASSERT(window.Dim() <= num_fft_bins);
+    window.Resize(num_fft_bins, kCopyData);
 
     if (srfft_ != NULL)  // Compute FFT using the split-radix algorithm.
       srfft_->Compute(window.Data(), true, &temp_buffer);

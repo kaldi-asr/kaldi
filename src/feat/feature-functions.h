@@ -79,6 +79,7 @@ struct FrameExtractionOptions {
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   bool round_to_power_of_two;
+  int32 num_fft_bins;
   bool snip_edges;
   // Maybe "hamming", "rectangular", "povey", "hanning"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
@@ -93,6 +94,7 @@ struct FrameExtractionOptions {
       remove_dc_offset(true),
       window_type("povey"),
       round_to_power_of_two(true),
+      num_fft_bins(128),
       snip_edges(true){ }
 
   void Register(OptionsItf *opts) {
@@ -110,6 +112,8 @@ struct FrameExtractionOptions {
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
     opts->Register("round-to-power-of-two", &round_to_power_of_two,
                    "If true, round window size to power of two.");
+    opts->Register("num-fft-bins", &num_fft_bins,
+                   "Number of FFT bins to compute spectrogram");
     opts->Register("snip-edges", &snip_edges,
                    "If true, end effects will be handled by outputting only frames that "
                    "completely fit in the file, and the number of frames depends on the "
@@ -126,6 +130,15 @@ struct FrameExtractionOptions {
     return (round_to_power_of_two ? RoundUpToNearestPowerOfTwo(WindowSize()) :
                                     WindowSize());
   }
+  
+  int32 NumFftBins() const {
+    int32 padded_window_size = PaddedWindowSize();
+    if (num_fft_bins > padded_window_size)
+      return (round_to_power_of_two ? RoundUpToNearestPowerOfTwo(num_fft_bins) :
+                                      num_fft_bins);
+    return padded_window_size;
+  }
+
 };
 
 
