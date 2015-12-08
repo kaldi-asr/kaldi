@@ -44,10 +44,16 @@ namespace chain {
 struct LanguageModelOptions {
   int32 ngram_order;  // you might want to tune this
   int32 num_lm_states;  // you also might want to tune this
+  int32 no_prune_ngram_order;  // e.g. set this to 3 and it won't prune the
+                               // trigram contexts (note: a trigram
+                               // history-state has 2 known left phones)... this
+                               // tends to make for a more compact graph (since
+                               // the context FST anyway expands to trigram).
 
   LanguageModelOptions():
-      ngram_order(4),
-      num_lm_states(10000) { }
+      ngram_order(5),
+      num_lm_states(10000),
+      no_prune_lm_order(3) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
@@ -56,6 +62,11 @@ struct LanguageModelOptions {
                    "model states allowed.  We do hard backoff to lower-order "
                    "n-gram to limit the num-states; pruning of states is based "
                    "on data-count.");
+    opts->Register("no-prune-ngram-order", &no_prune_ngram_order, "n-gram order "
+                   "below which the language model is not pruned (should "
+                   "probably be set the same as your --context-width for phone "
+                   "context in tree building, to make the graph as compact as "
+                   "possible)");
   }
 };
 
@@ -66,10 +77,6 @@ struct LanguageModelOptions {
    n-gram state, but we sometimes do just say, "this state's count is too small
    so we won't have this state at all", and this LM state disappears and
    transitions to it go to the lower-order n-gram's state.
-
-   Note: we always maintain at least bigram history (i.e. one phone of left
-   context), i.e. we never back off to a unigram state.  This is intended to
-   reduce the number of arcs in the final FST.
 
    This language model is implemented as a set of states, and transitions
    between these states; there is no concept of a backoff transition here.
@@ -91,16 +98,61 @@ class LanguageModelEstimator {
   void Estimate(fst::StdVectorFst *fst) const;
 
  protected:
+  struct LmState {
+    // the phone history associated with this state (length can vary).
+    std::vector<int32> history;
+    // maps from
+    std::map<int32, int32> phone_to_count;
+    // total count of this state.
+    int32 tot_count;
+    // LM-state index of the backoff LM state (if it exists, else -1)...
+    // provided for convenience.
+    int32 backoff_lmstate_index;
+
+    // this is only set after we decide on the FST state numbering (at the end).
+    // If not set, it's -1.
+    int32 fst_state;
+
+    void AddCount(int32 phone, int32 count);
+
+    // Log-likelihood of data in this case, summed, not averaged:
+    // i.e. sum(phone in phones) count(phone) * log-prob(phone | this state).
+    BaseFloat LogLike();
+    // Add the contents of another LmState.
+    void Add(const LmState &other);
+
+    LmState(): tot_count(0), backoff_lmstate_index(-1), fst_state(-1) { }
+    LmState(const LmState &other):
+      history(other.history), phone_to_count(other.phone_to_count),
+      tot_count(other.tot_count), backoff_lmstate_index(other.backoff_lmstate_index),
+      fst_state(other.fst_state) { }
+  };
+
+  // maps from history to int32
   typedef unordered_map<std::vector<int32>, int32, VectorHasher<int32> > MapType;
-  typedef unordered_set<std::vector<int32>, VectorHasher<int32> > SetType;
 
-  typedef unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > PairMapType;
   LanguageModelOptions opts_;
-  MapType counts_;
 
+  MapType hist_to_lmstate_index_;
+  std::vector<LmState> lm_states_;  // indexed by lmstate_index, the LmStates.
 
-  // does counts_[ngram]++.
+  // adds the counts for this ngram (called from AddCounts()).
   inline void IncrementCount(const std::vector<int32> &ngram);
+
+  // Computes the cost, in log-likelihood, of backing off lm_state to its
+  // backoff state, i.e. combining its counts with those of its backoff state.
+  // As some special cases: if this state has a zero count, the cost is infinity
+  // (no point backing off a state that doesn't exist yet), and if the backoff
+  // state has a zero count but this state has a nonzero count, we set the cost
+  // to 1e-15 * (count of this state).  Before the backoff states have any
+  // counts, this encourages the lowest-count states to get backed-off first.
+  BaseFloat ComputeBackoffCost(int32 lm_state);
+
+
+  // For each history-state, makes sure that all backoff history states down to
+  // the history state of length determined by no_prune_ngram_order exist.
+  // (They won't have any counts).
+  void AugmentHistories();
 
   inline static void AddCountToMap(const std::vector<int32> &key,
                                    int32 value,
