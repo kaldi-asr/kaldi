@@ -26,7 +26,7 @@ eval_ctm=$eval_latdir/ascore_${lmwt}/eval.ctm
 set -euxo pipefail
 
 # Main directory for the calibration,
-caldir=$dev_latdir/calibration_${lmwt}
+caldir=${dev_latdir}/../calibration_${lmwt}
 [ -d $caldir ] || mkdir -p $caldir
 
 # Extract per-frame lattice-depth, 
@@ -42,23 +42,23 @@ eval_latdepth=$eval_latdir/lattice_frame_depth.ark
 ###
 
 # Add column to ctm, obtained from scoring alignment,
-utils/scoring/append_prf_to_ctm.py $dev_prf $dev_ctm $caldir/train.ctm
+utils/scoring/append_prf_to_ctm.py $dev_prf $dev_ctm $caldir/dev.ctm
 
 # Prepare training data for calibration model,
 utils/scoring/prepare_calibration_data.py \
-  --conf-targets $caldir/train_targets.ark --conf-feats $caldir/train_feats.ark \
+  --conf-targets $caldir/dev_train_targets.ark --conf-feats $caldir/dev_train_feats.ark \
   --segments $dev/segments --reco2file-and-channel $dev/reco2file_and_channel \
-  $caldir/train.ctm $dev_latdepth $arpa_gz $lang/words.txt
+  $caldir/dev.ctm $dev_latdepth $arpa_gz $lang/words.txt
 
 # Train the calibration model,
-logistic-regression-train --binary=false ark:$caldir/train_feats.ark \
-  ark:$caldir/train_targets.ark $caldir/calibration.mdl
+logistic-regression-train --binary=false ark:$caldir/dev_train_feats.ark \
+  ark:$caldir/dev_train_targets.ark $caldir/calibration.mdl
 
 # Apply calibration model to dev,
 logistic-regression-eval --apply-log=false $caldir/calibration.mdl \
-  ark:$caldir/train_feats.ark ark,t:- | \
+  ark:$caldir/dev_train_feats.ark ark,t:- | \
   awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' \
-  >$caldir/train.ctm.calibrated
+  >$caldir/dev.ctm.calibrated
 
 ###
 ### We apply the calibration to eval set,
@@ -73,7 +73,7 @@ utils/scoring/prepare_calibration_data.py --conf-feats $caldir/eval_feats.ark \
 logistic-regression-eval --apply-log=false $caldir/calibration.mdl \
   ark:$caldir/eval_feats.ark ark,t:- | \
   awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' \
-  >${eval_ctm}.calibrated
+  >$caldir/eval.ctm.calibrated
 
 ###
 ### Run scoring, 
@@ -82,20 +82,20 @@ logistic-regression-eval --apply-log=false $caldir/calibration.mdl \
 hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
 hubdir=`dirname $hubscr`
 # dev,
-$hubscr -p $hubdir -V -l english -h hub5 -g $dev/glm -r $dev/stm $caldir/train.ctm.calibrated
+$hubscr -p $hubdir -V -l english -h hub5 -g $dev/glm -r $dev/stm $caldir/dev.ctm.calibrated
 # eval,
-$hubscr -p $hubdir -V -l english -h hub5 -g $eval/glm -r $eval/stm ${eval_ctm}.calibrated
+$hubscr -p $hubdir -V -l english -h hub5 -g $eval/glm -r $eval/stm $caldir/eval.ctm.calibrated
 
 # Show the NCE improvement,
 echo "# DEV #"
 echo "Original NCE:"
 egrep 'NCE|Sum' $dev_latdir/ascore_$lmwt/dev.ctm.filt.sys
 echo "Calibrated NCE:"
-egrep 'NCE|Sum' $caldir/train.ctm.calibrated.filt.sys
+egrep 'NCE|Sum' $caldir/dev.ctm.calibrated.filt.sys
 echo
 echo "# EVAL #"
 echo "Original NCE:"
 egrep 'NCE|Sum' $eval_latdir/ascore_$lmwt/eval.ctm.filt.sys
 echo "Calibrated NCE:"
-egrep 'NCE|Sum' ${eval_ctm}.calibrated.filt.sys
+egrep 'NCE|Sum' $caldir/eval.ctm.calibrated.filt.sys
 
