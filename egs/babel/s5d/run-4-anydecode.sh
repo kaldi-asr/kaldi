@@ -12,7 +12,7 @@ data_only=false
 fast_path=true
 skip_kws=false
 skip_stt=false
-skip_scoring=false
+skip_scoring=
 extra_kws=true
 vocab_kws=false
 tri5_only=false
@@ -55,7 +55,7 @@ dataset_type=${dir%%.*}
 #By default, we want the script to accept how the dataset should be handled,
 #i.e. of  what kind is the dataset
 if [ -z ${kind} ] ; then
-  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ] ; then
+  if [ "$dataset_type" == "dev2h" ] || [ "$dataset_type" == "dev10h" ]; then
     dataset_kind=supervised
   else
     dataset_kind=unsupervised
@@ -74,8 +74,12 @@ if [ -z $dataset_segments ]; then
   echo "\tseg   #UEM segmentation (kaldi-native)"
 fi
 
-if [ "$dataset_kind" == "unsupervised" ]; then
-  skip_scoring=true
+if [ -z "${skip_scoring}" ] ; then
+  if [ "$dataset_kind" == "unsupervised" ]; then
+    skip_scoring=true
+  else
+    skip_scoring=false
+  fi
 fi
 
 #The $dataset_type value will be the dataset name without any extrension
@@ -88,9 +92,13 @@ fi
 
 eval my_stm_file=\$${dataset_type}_stm_file
 eval my_ecf_file=\$${dataset_type}_ecf_file
-eval my_kwlist_file=\$${dataset_type}_kwlist_file
 eval my_rttm_file=\$${dataset_type}_rttm_file
 eval my_nj=\$${dataset_type}_nj  #for shadow, this will be re-set when appropriate
+
+if [ -z "$my_nj" ]; then
+  echo >&2 "You didn't specify the number of jobs -- variable \"${dataset_type}_nj\" not defined."
+  exit 1
+fi
 
 my_subset_ecf=false
 eval ind=\${${dataset_type}_subset_ecf+x}
@@ -98,12 +106,12 @@ if [ "$ind" == "x" ] ; then
   eval my_subset_ecf=\$${dataset_type}_subset_ecf
 fi
 
-declare -A my_more_kwlists
-eval my_more_kwlist_keys="\${!${dataset_type}_more_kwlists[@]}"
-for key in $my_more_kwlist_keys  # make sure you include the quotes there
+declare -A my_kwlists=()
+eval my_kwlist_keys="\${!${dataset_type}_kwlists[@]}"
+for key in $my_kwlist_keys  # make sure you include the quotes there
 do
-  eval my_more_kwlist_val="\${${dataset_type}_more_kwlists[$key]}"
-  my_more_kwlists["$key"]="${my_more_kwlist_val}"
+  eval my_kwlist_val="\${${dataset_type}_kwlists[$key]}"
+  my_kwlists["$key"]="${my_kwlist_val}"
 done
 
 #Just a minor safety precaution to prevent using incorrect settings
@@ -130,13 +138,12 @@ function make_plp {
 
 function check_variables_are_set {
   for variable in $mandatory_variables ; do
-    eval my_variable=\$${variable}
-    if [ -z $my_variable ] ; then
-      echo "Mandatory variable ${variable/my/$dataset_type} is not set! " \
-           "You should probably set the variable in the config file "
+    if ! declare -p $variable ; then
+      echo "Mandatory variable ${variable/my/$dataset_type} is not set! "
+      echo "You should probably set the variable in the config file "
       exit 1
     else
-      echo "$variable=$my_variable"
+      declare -p $variable
     fi
   done
 
@@ -271,9 +278,7 @@ echo ---------------------------------------------------------------------
 echo "Preparing kws data files in ${dataset_dir} on" `date`
 echo ---------------------------------------------------------------------
 lang=data/lang
-set -x
 if ! $skip_kws ; then
-  . ./local/datasets/basic_kws.sh || exit 1
   if  $extra_kws ; then
     L1_lex=data/local/lexiconp.txt
     . ./local/datasets/extra_kws.sh || exit 1

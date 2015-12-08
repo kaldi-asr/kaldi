@@ -1,4 +1,4 @@
-#This script is not really supposed to be run directly 
+#This script is not really supposed to be run directly
 #Instead, it should be sourced from the decoding script
 #It makes many assumption on existence of certain environmental
 #variables as well as certain directory structure.
@@ -57,7 +57,7 @@ echo "Creating the $unseg_dir/reco2file_and_channel file"
 cat $unseg_dir/wav.scp | awk '{print $1, $1, "A";}' > $unseg_dir/reco2file_and_channel
 cat $unseg_dir/wav.scp | awk '{print $1, $1;}' > $unseg_dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $unseg_dir/utt2spk > $unseg_dir/spk2utt
-  
+
 make_plp $unseg_dir $workdir/make_plp  $workdir/plp || exit 1
 
 local/resegment/generate_segments.sh --nj $my_nj --cmd "$decode_cmd" \
@@ -72,12 +72,19 @@ echo "Number of hours of the newly segmented data: $num_hours"
 
 if [ "$dataset_kind" == "supervised" ]; then
   echo ---------------------------------------------------------------------
-  echo "Preparing ${dataset_id} stm files in ${dataset_dir} on" `date`
+  echo "preparing ${dataset_id} stm files in ${dataset_dir} on" `date`
   echo ---------------------------------------------------------------------
   if [ ! -z $my_stm_file ] ; then
     local/augment_original_stm.pl $my_stm_file ${dataset_dir}
   else
-    local/prepare_stm.pl --fragmentMarkers \-\*\~ ${dataset_dir}
+    local/prepare_stm.pl --fragmentmarkers \-\*\~ ${dataset_dir}
+  fi
+else
+  echo ---------------------------------------------------------------------
+  echo "preparing ${dataset_id} stm files in ${dataset_dir} on" `date`
+  echo ---------------------------------------------------------------------
+  if [ ! -z $my_stm_file ] ; then
+    local/augment_original_stm.pl $my_stm_file ${dataset_dir}
   fi
 fi
 
