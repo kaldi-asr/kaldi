@@ -41,6 +41,7 @@
 #include "base/kaldi-error.h"
 #include "base/kaldi-utils.h"
 #include "util/common-utils.h"
+#include "util/kaldi-io.h"
 
 namespace kaldi {
 
@@ -131,6 +132,10 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       Sleep(sec_sleep);
       if (!GetCudaContext(num_gpus)) {
         if (use_gpu == "yes") {
+          {
+            Input input;
+            input.Open("nvidia-smi 1>&2 |");
+          }
           KALDI_ERR << "Failed to create CUDA context, no more unused GPUs?";
         }
         if (use_gpu == "optional") {
