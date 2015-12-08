@@ -16,17 +16,25 @@
 # limitations under the License.
 #===============================================================================
 
+# This script takes the search output (alignment.csv and the statistics)
+# And for each keyword it tries to work out if the given path 
+# increases the ATWV or decreases it.
+# Those which decrease the ATWV can be subsequently removed from the FST
+# graph of the keyword
+#
 use strict;
 use warnings;
 use utf8;
 use Data::Dumper;
+use GetOpt::Long;
 
 my $T = 36212.6725;
+
+GetOptions ("length=i" => \$T);
 
 my $data = $ARGV[0];
 my $align = $ARGV[1];
 my $keywords = $ARGV[2];
-my $weights = $ARGV[3];
 
 my %SEGMENTS;
 open(my $seg_file, "$data/segments") or 

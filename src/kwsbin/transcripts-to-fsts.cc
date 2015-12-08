@@ -23,6 +23,20 @@
 #include "fstext/kaldi-fst-io.h"
 #include "fstext/fstext-utils.h"
 
+namespace kaldi {
+void SetLinearAcceptorWeight(double weight, fst::VectorFst<fst::StdArc> *fst) {
+  typedef typename fst::StdArc::Label Label;
+  typedef typename fst::StdArc::Weight Weight;
+  typedef typename fst::StdArc::StateId StateId;
+  
+  StateId start = fst->Start();
+  fst::MutableArcIterator<fst::VectorFst<fst::StdArc> > aiter(fst, start);
+  fst::StdArc arc = aiter.Value();
+  arc.weight = weight;
+  aiter.SetValue(arc);
+}
+}  // namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -46,21 +60,34 @@ int main(int argc, char *argv[]) {
 
     po.Register("left-compose", &left_compose, "Compose the given FST to the left");
     po.Register("right-compose", &right_compose, "Compose the given FST to the right");
-    po.Register("project-input", &project_input, "Project input labels if true");
-    po.Register("project-output", &project_output, "Project input labels if true");
+    po.Register("project-input", &project_input, "Project input labels if true "
+        "(makes sense only with connection to left|right composition)");
+    po.Register("project-output", &project_output, "Project output labels if true"
+        "(makes sense only with connection to left|right composition)");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
+    if (po.NumArgs() < 2 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string transcript_rspecifier = po.GetArg(1),
-        fst_wspecifier = po.GetOptArg(2);
+    std::string transcript_rspecifier,
+                weights_rspecifier,
+                fst_wspecifier;
+    
+    if ( po.NumArgs() == 2 ) {
+      transcript_rspecifier  = po.GetArg(1);
+      fst_wspecifier = po.GetArg(2);
+    } else {
+      transcript_rspecifier  = po.GetArg(1);
+      weights_rspecifier = po.GetArg(2);
+      fst_wspecifier = po.GetArg(3);
+    }
 
 
     SequentialInt32VectorReader transcript_reader(transcript_rspecifier);
+    SequentialDoubleReader weights_reader(weights_rspecifier);
     TableWriter<VectorFstHolder> fst_writer(fst_wspecifier);
 
     // Read the possible given FSTs
@@ -81,6 +108,15 @@ int main(int argc, char *argv[]) {
 
       VectorFst<StdArc> fst;
       MakeLinearAcceptor(transcript, &fst);
+      if (weights_rspecifier != "" ) {
+        std::string weights_key = weights_reader.Key();
+        double weight = weights_reader.Value();
+        weights_reader.Next();
+
+        KALDI_ASSERT(weights_key == key);
+
+        SetLinearAcceptorWeight(weight, &fst);
+      }
 
       if (lfst != NULL) {
         VectorFst<StdArc> composed_fst;

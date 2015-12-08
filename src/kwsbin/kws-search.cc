@@ -1,6 +1,8 @@
 // kwsbin/kws-search.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+// Copyright 2012-2015  Johns Hopkins University (Authors: Guoguo Chen,
+//                                                         Daniel Povey.
+//                                                         Yenda Trmal)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,15 +31,13 @@ typedef KwsLexicographicArc Arc;
 typedef Arc::Weight Weight;
 typedef Arc::StateId StateId;
 
-uint64 EncodeLabel(StateId ilabel,
-                   StateId olabel) {
-  return (((int64)olabel)<<32)+((int64)ilabel);
-
+uint64 EncodeLabel(StateId ilabel, StateId olabel) {
+  return (static_cast<int64>(olabel) << 32) + static_cast<int64>(ilabel);
 }
 
 StateId DecodeLabelUid(uint64 osymbol) {
   // We only need the utterance id
-  return ((StateId)(osymbol>>32));
+  return static_cast<StateId>(osymbol >> 32);
 }
 
 class VectorFstToKwsLexicographicFstMapper {
@@ -59,16 +59,97 @@ class VectorFstToKwsLexicographicFstMapper {
                  arc.nextstate);
   }
 
-  fst::MapFinalAction FinalAction() const { return fst::MAP_NO_SUPERFINAL; }
+  fst::MapFinalAction FinalAction() const {
+    return fst::MAP_NO_SUPERFINAL;
+  }
 
-  fst::MapSymbolsAction InputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS; }
+  fst::MapSymbolsAction InputSymbolsAction() const {
+    return fst::MAP_COPY_SYMBOLS;
+  }
 
-  fst::MapSymbolsAction OutputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS;}
+  fst::MapSymbolsAction OutputSymbolsAction() const {
+    return fst::MAP_COPY_SYMBOLS;
+  }
 
   uint64 Properties(uint64 props) const { return props; }
 };
 
+struct ActivePath {
+  vector<KwsLexicographicArc::Label> path;
+  KwsLexicographicArc::Weight weight;
+  KwsLexicographicArc::Label last;
+};
+
+bool GenerateActivePaths(const KwsLexicographicFst &proxy,
+                       vector<ActivePath> *paths,
+                       KwsLexicographicFst::StateId cur_state,
+                       vector<KwsLexicographicArc::Label> cur_path,
+                       KwsLexicographicArc::Weight cur_weight) {
+  for (fst::ArcIterator<KwsLexicographicFst> aiter(proxy, cur_state);
+       !aiter.Done(); aiter.Next()) {
+    const Arc &arc = aiter.Value();
+    Weight temp_weight = Times(arc.weight, cur_weight);
+
+    cur_path.push_back(arc.ilabel);
+    if (arc.ilabel == 1134) {
+      std::cerr << "Tu!\n" ;
+    }
+
+    if ( arc.olabel != 0 ) {
+      ActivePath path;
+      path.path = cur_path;
+      path.weight = temp_weight;
+      path.last = arc.olabel;
+      paths->push_back(path);
+    } else {
+      GenerateActivePaths(proxy, paths,
+                        arc.nextstate, cur_path, temp_weight);
+    }
+    cur_path.pop_back();
+  }
+
+  return true;
 }
+}  // namespace kaldi
+
+void OutputDetailedStatistics(const std::string &kwid,
+                        const kaldi::KwsLexicographicFst &keyword,
+                        const unordered_map<uint32, uint64> &label_decoder,
+                        kaldi::TableWriter< kaldi::BasicVectorHolder<double> > *output ) {
+  vector<kaldi::ActivePath> paths;
+
+  if (keyword.Start() == fst::kNoStateId)
+    return;
+
+  kaldi::GenerateActivePaths(keyword, &paths, keyword.Start(),
+                  vector<kaldi::KwsLexicographicArc::Label>(),
+                  kaldi::KwsLexicographicArc::Weight::One());
+
+  for (int i = 0; i < paths.size(); ++i) {
+    vector<double> out;
+    double score;
+    int32 tbeg, tend, uid;
+
+    uint64 osymbol = label_decoder.find(paths[i].last)->second;
+    uid = kaldi::DecodeLabelUid(osymbol);
+    tbeg = paths[i].weight.Value2().Value1().Value();
+    tend = paths[i].weight.Value2().Value2().Value();
+    score = paths[i].weight.Value1().Value();
+
+    out.push_back(uid);
+    out.push_back(tbeg);
+    out.push_back(tend);
+    out.push_back(score);
+
+    //KALDI_ASSERT(paths[i].path[0] == 0);
+    //KALDI_ASSERT(paths[i].path[paths[i].path.size() - 1] == 0);
+    for (int j = 0; j < paths[i].path.size(); ++j) {
+      out.push_back(paths[i].path[j]);
+    }
+    output->Write(kwid, out);
+  }
+}
+
 
 int main(int argc, char *argv[]) {
   try {
@@ -77,20 +158,29 @@ int main(int argc, char *argv[]) {
     typedef kaldi::int32 int32;
     typedef kaldi::uint32 uint32;
     typedef kaldi::uint64 uint64;
-    typedef KwsLexicographicArc Arc;
-    typedef Arc::Weight Weight;
-    typedef Arc::StateId StateId;
 
     const char *usage =
-        "Search the keywords over the index. This program can be executed parallely, either\n"
-        "on the index side or the keywords side; we use a script to combine the final search\n"
-        "results. Note that the index archive has a only key \"global\".\n"
-        "The output file is in the format:\n"
+        "Search the keywords over the index. This program can be executed\n"
+        "parallely, either on the index side or the keywords side; we use\n"
+        "a script to combine the final search results. Note that the index\n"
+        "archive has a only key \"global\".\n\n"
+        "Search has one or two outputs. The first one, is mandatory and will\n"
+        "contain the seach output, i.e. list of all found keyword instances\n" 
+        "The file is in the following format:\n"
         "kw utterance_id beg_frame end_frame negated_log_probs\n"
-        " e.g.: KW1 1 23 67 0.6074219\n"
+        " e.g.: \n"
+        "KW1 1 23 67 0.6074219\n\n"
+        "The second parameter is voluntary and allows the user to gather more\n"
+        "statistics about the individual instances from the posting list.\n"
+        "The format is as follows:\n"
+        "kw_id utt_id beg_frame end_frame neg_logprob 0 w_id1 w_id2 ... 0\n"
+        " e.g.: \n"
+        "KW105-0198 32236_B_038741 335 376 16.01254 0 5766 5659 0\n"
         "\n"
-        "Usage: kws-search [options]  index-rspecifier keywords-rspecifier results-wspecifier\n"
-        " e.g.: kws-search ark:index.idx ark:keywords.fsts ark:results\n";
+        "Usage: kws-search [options]  index-rspecifier keywords-rspecifier "
+        "results-wspecifier\n"
+        " e.g.: kws-search ark:index.idx ark:keywords.fsts "
+                           "ark:results ark:stats\n";
 
     ParseOptions po(usage);
 
@@ -102,41 +192,49 @@ int main(int argc, char *argv[]) {
 
     po.Register("nbest", &n_best, "Return the best n hypotheses.");
     po.Register("keyword-nbest", &keyword_nbest,
-                "Pick the best n keywords if the FST contains multiple keywords.");
+                "Pick the best n keywords if the FST contains "
+                "multiple keywords.");
     po.Register("strict", &strict, "Affects the return status of the program.");
     po.Register("negative-tolerance", &negative_tolerance,
-                "The program will print a warning if we get negative score smaller "
-                "than this tolerance.");
+                "The program will print a warning if we get negative score "
+                "smaller than this tolerance.");
     po.Register("keyword-beam", &keyword_beam,
-                "Prune the FST with the given beam if the FST contains multiple keywords.");
+                "Prune the FST with the given beam if the FST contains "
+                "multiple keywords.");
 
     if (n_best < 0 && n_best != -1) {
       KALDI_ERR << "Bad number for nbest";
-      exit (1);
+      exit(1);
     }
     if (keyword_nbest < 0 && keyword_nbest != -1) {
       KALDI_ERR << "Bad number for keyword-nbest";
-      exit (1);
+      exit(1);
     }
     if (keyword_beam < 0 && keyword_beam != -1) {
       KALDI_ERR << "Bad number for keyword-beam";
-      exit (1);
+      exit(1);
     }
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string index_rspecifier = po.GetArg(1),
         keyword_rspecifier = po.GetOptArg(2),
-        result_wspecifier = po.GetOptArg(3);
+        result_wspecifier = po.GetOptArg(3),
+        stats_wspecifier = po.GetOptArg(4);
 
-    RandomAccessTableReader< VectorFstTplHolder<Arc> > index_reader(index_rspecifier);
+    RandomAccessTableReader< VectorFstTplHolder<KwsLexicographicArc> >
+                                                index_reader(index_rspecifier);
     SequentialTableReader<VectorFstHolder> keyword_reader(keyword_rspecifier);
-    TableWriter<BasicVectorHolder<double> > result_writer(result_wspecifier);
+    TableWriter< BasicVectorHolder<double> > result_writer(result_wspecifier);
+    TableWriter< BasicVectorHolder<double> > stats_writer(stats_wspecifier);
+
+    TableWriter< VectorFstTplHolder<KwsLexicographicArc> >
+                                                match_writer("ark,t:-");
 
     // Index has key "global"
     KwsLexicographicFst index = index_reader.Value("global");
@@ -152,7 +250,8 @@ int main(int argc, char *argv[]) {
     int32 label_count = 1;
     unordered_map<uint64, uint32> label_encoder;
     unordered_map<uint32, uint64> label_decoder;
-    for (StateIterator<KwsLexicographicFst> siter(index); !siter.Done(); siter.Next()) {
+    for (StateIterator<KwsLexicographicFst> siter(index);
+                                           !siter.Done(); siter.Next()) {
       StateId state_id = siter.Value();
       for (MutableArcIterator<KwsLexicographicFst>
            aiter(&index, state_id); !aiter.Done(); aiter.Next()) {
@@ -175,7 +274,7 @@ int main(int argc, char *argv[]) {
         aiter.SetValue(arc);
       }
     }
-    ArcSort(&index, fst::ILabelCompare<Arc>());
+    ArcSort(&index, fst::ILabelCompare<KwsLexicographicArc>());
 
     int32 n_done = 0;
     int32 n_fail = 0;
@@ -198,6 +297,17 @@ int main(int argc, char *argv[]) {
       KwsLexicographicFst result_fst;
       Map(keyword, &keyword_fst, VectorFstToKwsLexicographicFstMapper());
       Compose(keyword_fst, index, &result_fst);
+
+      if (stats_wspecifier != "") {
+        //match_writer.Write(key, result_fst);
+
+        KwsLexicographicFst matched_seq(result_fst);
+        OutputDetailedStatistics(key, 
+                                 matched_seq, 
+                                 label_decoder, 
+                                 &stats_writer);
+      }
+
       Project(&result_fst, PROJECT_OUTPUT);
       Minimize(&result_fst);
       ShortestPath(result_fst, &result_fst, n_best);
@@ -216,13 +326,14 @@ int main(int argc, char *argv[]) {
 
         // We're expecting a two-state FST
         if (result_fst.Final(arc.nextstate) != Weight::One()) {
-          KALDI_WARN << "The resulting FST does not have the expected structure for key " << key;
+          KALDI_WARN << "The resulting FST does not have "
+                     << "the expected structure for key " << key;
           n_fail++;
           continue;
         }
 
         uint64 osymbol = label_decoder[arc.olabel];
-        uid = (int32)DecodeLabelUid(osymbol);
+        uid = static_cast<int32>(DecodeLabelUid(osymbol));
         tbeg = arc.weight.Value2().Value1().Value();
         tend = arc.weight.Value2().Value2().Value();
         score = arc.weight.Value1().Value();
