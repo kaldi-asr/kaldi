@@ -104,7 +104,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
     fst->DeleteStates();
     string line;
     size_t nline = 0;
-    string separator = FLAGS_fst_field_separator + "\r\n";      
+    string separator = FLAGS_fst_field_separator + "\r\n";
     while (std::getline(is, line)) {
       nline++;
       vector<string> col;
@@ -166,14 +166,14 @@ void ReadFstKaldi(std::istream &is, bool binary,
         KALDI_ERR << "Bad line in FST: " << line;
     }
   }
-}  
+}
 
 
 
 
 template<class Arc> // static
 bool VectorFstTplHolder<Arc>::Write(std::ostream &os, bool binary, const T &t) {
-  try { 
+  try {
     WriteFstKaldi(os, binary, t);
     return true;
   } catch (...) {
@@ -200,8 +200,8 @@ bool VectorFstTplHolder<Arc>::Read(std::istream &is) {
       return false;
     }
   } else {  // reading a binary FST.
-    try { 
-      t_ = new VectorFst<Arc>();      
+    try {
+      t_ = new VectorFst<Arc>();
       ReadFstKaldi(is, true, t_);
     } catch (...) {
       Clear();
