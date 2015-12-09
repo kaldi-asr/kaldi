@@ -412,6 +412,10 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     bool operator > (const Element &other) const {
       return state > other.state;
     }
+    // This operator is only intended to support sorting in EpsilonClosure()
+    bool operator < (const Element &other) const {
+      return state < other.state;
+    }
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -733,12 +737,13 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
       }
     }
 
-    {  // copy cur_subset to subset.
-      // sorted order is automatic.
+    { // copy cur_subset to subset.
       subset->clear();
       subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
       for (; iter != end; ++iter) subset->push_back(iter->second);
+      // sort by state ID, because the subset hash function is order-dependent(see SubsetKey)
+      std::sort(subset->begin(), subset->end());
     }
   }
 
