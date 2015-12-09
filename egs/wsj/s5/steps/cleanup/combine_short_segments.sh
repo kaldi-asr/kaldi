@@ -25,9 +25,7 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
-#This script works in the unit of frames
-frame_per_sec=$(( 1000/$frame_shift ))
-min_seg_len=$(echo $1*$frame_per_sec | bc)
+min_seg_len=$1
 input_dir=$2
 output_dir=$3
 
@@ -37,12 +35,28 @@ done
 
 export LC_ALL=C
 
-# This is the main function, to look for segments with length shorter than the specified length
+mkdir -p $output_dir
+
+if [ -f $input_dir/segments ]; then
+  awk '{
+    len=$4 - $3;
+    if (len > 0) {
+      printf("%s %.2f\n", $1, len);
+    }
+  }' $input_dir/segments >$output_dir/feats.length
+else
+  feat-to-len --print-args=false scp:$input_dir/feats.scp ark,t:- | \
+  awk -v fs=$frame_shift '{
+    len=$2 * fs / 1000;
+    printf("%s %.2f\n", $1, len);
+  }' >$output_dir/feats.length
+fi
+
+# The following perl script is the core part.
+# It looks for segments with length shorter than the specified length
 # and concatenates them with other segments to make sure every combined segments are 
 # with enough length. Here, after the search of the under-length segment, it looks for
 # another segment where the combined length is the closest to the specified length.
-
-function check_and_combine_utt {
 
 echo $min_seg_len |  perl -e '
   $min_seg_len = <STDIN>;
@@ -101,7 +115,7 @@ echo $min_seg_len |  perl -e '
       $backward_combining = 0;
       @utts = split(" ", $spk2utt{$utt2spk{$seg}});
       foreach $seg2 (sort @utts) {
-        if ($seg2 gt $seg) {
+        if ($seg2 gt $seg && $utt2item{$seg2} > 0) {
           $sum = $utt2len{$seg} + $utt2len{$seg2};
           $utt2len{$seg} = $sum;
           $utt2len{$seg2} = -1;
@@ -118,7 +132,7 @@ echo $min_seg_len |  perl -e '
       }
       if ($forward_combining == 0) {
         foreach $seg2 (reverse sort @utts) {
-          if ($seg2 lt $seg) {
+          if ($seg2 lt $seg && $utt2item{$seg2} > 0) {
             $sum = $utt2len{$seg} + $utt2len{$seg2};
             $utt2len{$seg} = $sum;
             $utt2len{$seg2} = -1;
@@ -153,30 +167,8 @@ echo $min_seg_len |  perl -e '
     }
   }
 
-' $input_dir/utt2spk \
-$input_dir/spk2utt \
-$input_dir/text \
-$input_dir/feats.scp \
-$output_dir/feats.length \
-$output_dir/utt2spk \
-$output_dir/text \
-$output_dir/feats.scp
-}
-
-mkdir -p $output_dir
-
-if [ -f $input_dir/segments ]; then
-  awk -v l=$frame_per_sec '{
-    len=($4 - $3) * l;
-    if (len > 0) {
-      printf("%s %d \n", $1, len);
-    }
-  }' $input_dir/segments >$output_dir/feats.length
-else
-  feat-to-len --print-args=false scp:$input_dir/feats.scp ark,t:$output_dir/feats.length
-fi
-
-check_and_combine_utt
+' $input_dir/utt2spk $input_dir/spk2utt $input_dir/text $input_dir/feats.scp \
+$output_dir/feats.length $output_dir/utt2spk $output_dir/text $output_dir/feats.scp
 
 utils/utt2spk_to_spk2utt.pl $output_dir/utt2spk > $output_dir/spk2utt
 
