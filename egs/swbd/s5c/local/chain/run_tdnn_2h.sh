@@ -1,49 +1,37 @@
 #!/bin/bash
 
-# _2e is as _2b, but --frames-overlap-per-eg 0 (also compare with _y, which has
-# an overlap of 30; _2b has 75).  BUT we also made a code change as in 2a->2c, where we use
-# transition-scale and self-loop-scale of 1, so we are making the same change in
-# 2b->2e; it requires a script change too, to match.  we'll have to correct the
-# results for this.  (note: this won't matter as the results did not change)
-#
-#  Comparing results:
-#      expt:                _2b      _y     _2e
-# --frames-overlap-per-eg   75      30       0
-#  all of eval2000 (tg)     20.1    19.8    19.7
-#  all of eval2000 (fg)     18.0    17.9    17.8
-#        train_dev (tg)     18.15   18.04   17.85
-#        train_dev (fg)     16.83   16.57   16.52
-#  ... on all of these tests, results are consistently better towards smaller
-#   --frames-overlap-per-eg.
+# _2h is as _2g but --ngram-order=4, and --num-lm-states=5k
 
+# _2g is as _2f but reducing the --num-lm-states from 10k to 7k.
 
-# _2b is as _y but --frames-overlap-per-eg 75 (was 30 before).  This is not very
-# efficient in terms of disk space but I want to see the effect on results.
+# _2f is as _2d but following a code change, and with different LM options:
+#  --ngram-order=5 --num-lm-states=10000
+# Now the extra questions are not needed.
+# LM perplexity changes from 6.34 to 5.75.
 
-# In terms of the objf, the training is a lot better, -0.0879->-0.0779, and validation is
-#  slightly better: -0.126 -> -0.123.
-# But the WERs are 0.3 worse across the board: on train_dev, with tg 18.04->18.15, with fg
-#   16.57->16.83; on all of eval2000, with tg 13.2->13.7, and with fg 11.7->12.0.
-# I'm a little at a loss how to interpret these.
-#   Note: I decode an earlier iter (300) but the results were not much better: final->300,
-#   13.7->13.7 on all of eval2000 with tg, and 18.15->18.10 on all of train_dev with tg.
+# _2d is as _2c but with different LM options:
+# --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"
+# ... this gives us a kind of pruned 4-gram language model, instead of a 3-gram.
+# the --leftmost-context-questions=/dev/null option overrides the leftmost-context-questions
+# provided from the tree-building, and effectively puts the leftmost context position as a single
+# set.
+#   This seems definitely helpful: on train_dev, with tg improvement is 18.12->17.55 and with fg
+#  from 16.73->16.14; and on eval2000, with tg from 19.8->19.5 and with fg from 17.8->17.6.
 
-# _y is as _s but trying --apply-deriv-weights false. (note: in the
-# interim, the script was changed so the train and valid probs have --pdf-boundary-penalty 0
-# and are no longer comparable with the ones in _s.
-#
-#   Compared to s, the results are improved: on train_dev, 18.45->18.04 with tg
-# and 16.96->16.57 with fg; on all of eval2000, 20.1->19.8 with tg and 18.0 to
-# 17.9 with fg.
-#
-#
-#  I recomputed the train and valid probs using the .486 model and no --pdf-boundary-penalty option, to
-# be able to compre with the _s ones.  In _s the (train,valid) probs at iter 485 were (-0.0691, -0.0997),
-# in _y the (train,valid) probs at iter 486 were (-0.0655,-0.0998).  So better on train, essentially
-# the same on valid.  It makes sense it would be better on train, since its overtraining is more
-# closely aligned with the distribution of training segments on which we compute the objf-- also because
-# we've simply trained more, i.e. equivalent to slightly more epochs.
+# _2c is as _2a but after a code change in which we start using transition-scale
+# and self-loop-scale of 1 instead of zero in training; we change the options to
+# mkgraph used in testing, to set the scale to 1.0.  This shouldn't affect
+# results at all; it's is mainly for convenience in pushing weights in graphs,
+# and checking that graphs are stochastic.
 
+# _2a is as _z but setting --lm-opts "--num-extra-states=8000".
+
+# _z is as _x but setting  --lm-opts "--num-extra-states=2000".
+# (see also y, which has --num-extra-states=500).
+
+# _x is as _s but setting  --lm-opts "--num-extra-states=0".
+#  this is a kind of repeat of the u->v experiment, where it seemed to make things
+#  worse, but there were other factors involved in that so I want to be sure.
 
 # _s is as _q but setting pdf-boundary-penalty to 0.0
 # This is helpful: 19.8->18.0 after fg rescoring on all of eval2000,
@@ -110,7 +98,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2e  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2h  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -198,17 +186,17 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --apply-deriv-weights false \
     --pdf-boundary-penalty 0.0 \
+    --lm-opts "--ngram-order=4 --num-lm-states=5000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 0" \
+    --egs-opts "--frames-overlap-per-eg 30" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
@@ -249,29 +237,4 @@ if [ $stage -le 14 ]; then
   done
 fi
 wait;
-
 exit 0;
-
-
-# BROKEN results where I had overlap of 75, so it was mostly just a repetition of _2b, except with
-# that 2a->2c change.
-
-b01:s5c: for l in y 2b 2e; do grep Sum exp/chain/tdnn_${l}_sp/decode_eval2000_sw1_tg/score*/*ys | utils/best_wer.sh ; done
-%WER 13.2 | 1831 21395 | 88.4 8.0 3.6 1.6 13.2 50.6 | exp/chain/tdnn_y_sp/decode_eval2000_sw1_tg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 13.7 | 1831 21395 | 88.1 8.2 3.7 1.8 13.7 51.0 | exp/chain/tdnn_2b_sp/decode_eval2000_sw1_tg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 13.4 | 1831 21395 | 88.4 8.2 3.4 1.8 13.4 50.8 | exp/chain/tdnn_2e_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
-b01:s5c: for l in y 2b 2e; do grep Sum exp/chain/tdnn_${l}_sp/decode_eval2000_sw1_fsh_fg/score*/*ys | utils/best_wer.sh ; done
-On iteration 368, learning rate is 0.00304840891076219.
-Training neural net (pass 368)
-%WER 11.7 | 1831 21395 | 89.7 7.0 3.2 1.4 11.7 47.8 | exp/chain/tdnn_y_sp/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 12.0 | 1831 21395 | 89.5 7.1 3.4 1.5 12.0 49.4 | exp/chain/tdnn_2b_sp/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 12.1 | 1831 21395 | 89.4 7.5 3.1 1.5 12.1 48.4 | exp/chain/tdnn_2e_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
-b01:s5c:
-b01:s5c: for l in y 2b 2e; do grep WER exp/chain/tdnn_${l}_sp/decode_train_dev_sw1_tg/wer_* | utils/best_wer.sh ; done
-%WER 18.04 [ 8877 / 49204, 1125 ins, 2296 del, 5456 sub ] exp/chain/tdnn_y_sp/decode_train_dev_sw1_tg/wer_12_0.0
-%WER 18.15 [ 8930 / 49204, 1121 ins, 2244 del, 5565 sub ] exp/chain/tdnn_2b_sp/decode_train_dev_sw1_tg/wer_12_0.0
-%WER 18.24 [ 8975 / 49204, 1242 ins, 2064 del, 5669 sub ] exp/chain/tdnn_2e_sp/decode_train_dev_sw1_tg/wer_11_0.0
-b01:s5c: for l in y 2b 2e; do grep WER exp/chain/tdnn_${l}_sp/decode_train_dev_sw1_fsh_fg/wer_* | utils/best_wer.sh ; done
-%WER 16.57 [ 8155 / 49204, 1144 ins, 1988 del, 5023 sub ] exp/chain/tdnn_y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
-%WER 16.83 [ 8282 / 49204, 1106 ins, 2115 del, 5061 sub ] exp/chain/tdnn_2b_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
-%WER 16.79 [ 8260 / 49204, 1090 ins, 2138 del, 5032 sub ] exp/chain/tdnn_2e_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
