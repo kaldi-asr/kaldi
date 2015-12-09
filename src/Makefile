@@ -169,7 +169,7 @@ lat: base util hmm tree matrix
 cudamatrix: base util matrix
 nnet: base util matrix cudamatrix
 nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
-nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix ctc
+nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix ctc chain
 ctc: lat hmm tree matrix cudamatrix util base
 ivector: base util matrix thread transform tree gmm
 #3)Dependencies for optional parts of Kaldi

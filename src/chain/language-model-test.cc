@@ -75,12 +75,13 @@ void LanguageModelTest() {
   GetTestingData(&vocab_size, &data);
 
   LanguageModelOptions opts;
-  opts.ngram_order = RandInt(2, 4);
-  opts.num_lm_states = RandInt(1, 200);
+  opts.no_prune_ngram_order = RandInt(1, 3);
+  opts.ngram_order = opts.no_prune_ngram_order + RandInt(0, 3);
+  opts.num_extra_lm_states = RandInt(1, 200);
+  if (opts.ngram_order < 2)
+    opts.ngram_order = 2;
   if (RandInt(1, 2) == 1)
-    opts.num_lm_states *= 10;
-  if (RandInt(1, 2) == 1)
-    opts.num_lm_states *= 10;
+    opts.num_extra_lm_states *= 10;
 
   LanguageModelEstimator estimator(opts);
   for (size_t i = 0; i < data.size(); i++) {
@@ -105,6 +106,7 @@ void LanguageModelTest() {
 }  // namespace kaldi
 
 int main() {
+  //  kaldi::SetVerboseLevel(2);
   for (int32 i = 0; i < 30; i++)
     kaldi::chain::LanguageModelTest();
 }

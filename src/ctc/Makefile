@@ -52,9 +52,9 @@ endif
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
 
 
-ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
-           ../matrix/kaldi-matrix.a ../cudamatrix/kaldi-cudamatrix.a \
-          ../util/kaldi-util.a ../base/kaldi-base.a
+ADDLIBS =  ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
+          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../matrix/kaldi-matrix.a \
+          ../cudamatrix/kaldi-cudamatrix.a ../util/kaldi-util.a ../base/kaldi-base.a
 
 
 include ../makefiles/default_rules.mk

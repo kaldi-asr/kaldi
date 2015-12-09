@@ -43,7 +43,7 @@ namespace chain {
 
 struct LanguageModelOptions {
   int32 ngram_order;  // you might want to tune this
-  int32 num_lm_states;  // you also might want to tune this
+  int32 num_extra_lm_states;  // you also might want to tune this
   int32 no_prune_ngram_order;  // e.g. set this to 3 and it won't prune the
                                // trigram contexts (note: a trigram
                                // history-state has 2 known left phones)... this
@@ -51,17 +51,16 @@ struct LanguageModelOptions {
                                // the context FST anyway expands to trigram).
 
   LanguageModelOptions():
-      ngram_order(5),
-      num_lm_states(10000),
-      no_prune_lm_order(3) { }
+      ngram_order(4),
+      num_extra_lm_states(1000),
+      no_prune_ngram_order(3) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
                    "language model used for the 'denominator model'");
-    opts->Register("num-lm-states", &num_lm_states, "Maximum number of language "
-                   "model states allowed.  We do hard backoff to lower-order "
-                   "n-gram to limit the num-states; pruning of states is based "
-                   "on data-count.");
+    opts->Register("num-extra-lm-states", &num_extra_lm_states, "Number of LM "
+                   "states desired on top of the nubmer determined by the "
+                   "--no-prune-ngram-order option.");
     opts->Register("no-prune-ngram-order", &no_prune_ngram_order, "n-gram order "
                    "below which the language model is not pruned (should "
                    "probably be set the same as your --context-width for phone "
@@ -84,8 +83,9 @@ struct LanguageModelOptions {
  */
 class LanguageModelEstimator {
  public:
-  LanguageModelEstimator(LanguageModelOptions &opts): opts_(opts) {
-    KALDI_ASSERT(opts.ngram_order >= 2);
+  LanguageModelEstimator(LanguageModelOptions &opts): opts_(opts),
+                                                      num_active_lm_states_(0) {
+    KALDI_ASSERT(opts.ngram_order >= 1 && opts.no_prune_ngram_order >= 1);
   }
 
   // Adds counts for this sentence.  Basically does: for each n-gram in the
@@ -95,7 +95,7 @@ class LanguageModelEstimator {
 
   // Estimates the LM and outputs it as an FST.  Note: there is
   // no concept here of backoff arcs.
-  void Estimate(fst::StdVectorFst *fst) const;
+  void Estimate(fst::StdVectorFst *fst);
 
  protected:
   struct LmState {
@@ -103,31 +103,56 @@ class LanguageModelEstimator {
     std::vector<int32> history;
     // maps from
     std::map<int32, int32> phone_to_count;
-    // total count of this state.
+    // total count of this state.  As we back off states to lower-order states
+    // (and note that this is a hard backoff where we completely remove un-needed
+    // states) this tot_count may become zero.
     int32 tot_count;
+
+    // total count of this state plus all states that back off to this state.
+    // only valid after SetParentCounts() is called.
+    int32 tot_count_with_parents;
+
     // LM-state index of the backoff LM state (if it exists, else -1)...
-    // provided for convenience.
+    // provided for convenience.  The backoff state exist if and only
+    // if history.size() >= no_prune_ngram_order
     int32 backoff_lmstate_index;
+
+    // keeps track of the number of other LmStates 'other' for whom
+    // (other.tot_count > 0 or other.num_parents > 0) and
+    // other.backoff_lmstate_index is the index of this LM state.
+    // This lets us know whether this state has a chance, in the future,
+    // of getting a nonzero count, which in turn is used in the
+    // BackoffAllowed() function.
+    int32 num_parents;
 
     // this is only set after we decide on the FST state numbering (at the end).
     // If not set, it's -1.
     int32 fst_state;
 
+    // True if backoff of this state is allowed (which implies it's in the queue).
+    // Backoff of this state is allowed (i.e. we will consider removing this state)
+    // if its history length is >= opts.no_prune_ngram_order, and it has nonzero
+    // count, and 
+    bool backoff_allowed;
+
     void AddCount(int32 phone, int32 count);
 
     // Log-likelihood of data in this case, summed, not averaged:
     // i.e. sum(phone in phones) count(phone) * log-prob(phone | this state).
-    BaseFloat LogLike();
+    BaseFloat LogLike() const;
     // Add the contents of another LmState.
     void Add(const LmState &other);
-
-    LmState(): tot_count(0), backoff_lmstate_index(-1), fst_state(-1) { }
+    // Clear all counts from this state.
+    void Clear();
+    LmState(): tot_count(0), tot_count_with_parents(0),  backoff_lmstate_index(-1),
+               fst_state(-1), backoff_allowed(false) { }
     LmState(const LmState &other):
-      history(other.history), phone_to_count(other.phone_to_count),
-      tot_count(other.tot_count), backoff_lmstate_index(other.backoff_lmstate_index),
-      fst_state(other.fst_state) { }
+        history(other.history), phone_to_count(other.phone_to_count),
+        tot_count(other.tot_count), tot_count_with_parents(other.tot_count_with_parents),
+        backoff_lmstate_index(other.backoff_lmstate_index),
+        fst_state(other.fst_state), backoff_allowed(other.backoff_allowed) { }
   };
-
+  
   // maps from history to int32
   typedef unordered_map<std::vector<int32>, int32, VectorHasher<int32> > MapType;
 
@@ -136,113 +161,101 @@ class LanguageModelEstimator {
   MapType hist_to_lmstate_index_;
   std::vector<LmState> lm_states_;  // indexed by lmstate_index, the LmStates.
 
+  // Keeps track of the number of lm states that have nonzero counts.
+  int32 num_active_lm_states_;
+
+  // The number of LM states that we would have due to the
+  // no_prune_ngram_order_.  Equals the number of history-states of length
+  // no_prune_ngram_order_ - 1.  Used to compute the total number of desired
+  // state (by adding opts_.num_extra_lm_states).
+  int32 num_basic_lm_states_;
+
+  // Queue of pairs: (likelihood change [which is negative], lm_state_index).
+  // We always pick the one with the highest (least negative) likelihood change
+  // to merge.  Note: elements in the queue can get out of date, so it's
+  // necessary to check that something is up-to-date (i.e. the likelihood change
+  // is accurate) before backing off a state.
+  // Note: after InitializeQueue() is called, any state that has nonzero count
+  // and history-length >= no_prune_ngram_order, will be in the queue.
+  //
+  // This whole algorithm is slightly approximate (i.e. it may not always back
+  // off the absolutely lowest-cost states), because we don't force
+  // recomputation of all the costs each time we back something off.  Generally
+  // speaking, these costs will only increase as we back off more states, so the
+  // approximation is not such a big deal.
+  std::priority_queue<std::pair<BaseFloat, int32> > queue_;
+
+  
   // adds the counts for this ngram (called from AddCounts()).
-  inline void IncrementCount(const std::vector<int32> &ngram);
-
-  // Computes the cost, in log-likelihood, of backing off lm_state to its
-  // backoff state, i.e. combining its counts with those of its backoff state.
-  // As some special cases: if this state has a zero count, the cost is infinity
-  // (no point backing off a state that doesn't exist yet), and if the backoff
-  // state has a zero count but this state has a nonzero count, we set the cost
-  // to 1e-15 * (count of this state).  Before the backoff states have any
-  // counts, this encourages the lowest-count states to get backed-off first.
-  BaseFloat ComputeBackoffCost(int32 lm_state);
+  inline void IncrementCount(const std::vector<int32> &history,
+                             int32 next_phone);
 
 
-  // For each history-state, makes sure that all backoff history states down to
-  // the history state of length determined by no_prune_ngram_order exist.
-  // (They won't have any counts).
-  void AugmentHistories();
+  // Computes whether backoff should be allowed for this lm_state.  (the caller
+  // can set the backoff_allowed variable to match).  Backoff is allowed if the
+  // history length is >= opts_.no_prune_ngram_order, and tot_count ==
+  // tot_count_with_parents (i.e. there are no parents that are not yet backed
+  // off), and the total count is nonzero, and all transitions from this state
+  // involve backoff.  (i.e. backoff is disallowed if the the history-state
+  // (this history-state + next-phone) exists.
+  bool BackoffAllowed(int32 lm_state) const;
 
-  inline static void AddCountToMap(const std::vector<int32> &key,
-                                   int32 value,
-                                   MapType *map);
+  // sets up tot_count_with_parents in all the lm-states
+  void SetParentCounts();
+  
+  // Computes the change, in log-likelihood caused by backing off this lm state
+  // to its backoff state, i.e. combining its counts with those of its backoff
+  // state.  This lm state must have backoff_allowed set to true.  This function
+  // returns what can be interpreted as a negated cost.  As a special case, if
+  // the backoff state has a zero count but this state has a nonzero count, we
+  // set the like-change to -1e-15 * (count of this state).  Before the backoff
+  // states have any counts, this encourages the lowest-count states to get
+  // backed-off first.
+  BaseFloat BackoffLogLikelihoodChange(int32 lmstate_index) const;
+  
+  // Adds to the queue, all LmStates that have nonzero count and history-length is
+  // >= no_prune_ngram_order.
+  void InitializeQueue();
 
-  // copies elements of map to a vector.
-  inline static void CopyMapToVector(
-      const MapType &map,
-      std::vector<std::pair<int32, std::vector<int32> > > *vec);
-  // copies keys of a map to a set.
-  inline static void CopyMapKeysToSet(
-      const MapType &map,
-      SetType *set);
+  // does the logic of pruning/backing-off states.
+  void DoBackoff();
 
+  // This function, will back off the counts of this lm_state to its
+  // backoff state, and update num_active_lm_states_ as appropriate.
+  // If the count of the backoff state was previously zero, and the backoff
+  // state's history-length is >= no_prune_ngram_order, the backoff
+  // state will get added to the queue.
+  void BackOffState(int32 lm_state);
 
-  // Gets total count for each history (each history is a sequence of phones of
-  // length n-1).
-  void GetHistoryCounts(MapType *hist_counts) const;
+  // Check, that num_active_lm_states_ is accurate, and returns
+  // the number of 'basic' LM-states (i.e. the number of lm-states whose history
+  // is of length no_prune_ngram_order - 1).
+  int32 CheckActiveStates() const;
 
-  // Augment 'hist_counts' with counts for all backed-off history states
-  // down to history states of length 1: basically,
-  // for key in keys(*hist_counts) {
-  //   count = (*hist_counts)[key];
-  //   while (key.size() > 1) { key.shift(); (*hist_counts)[key] += count; }
-  void AugmentHistoryCountsWithBackoff(MapType *hist_counts) const;
+  // Finds and returns an LM-state index for a history -- or -1 if it doesn't
+  // exist.  No backoff is done.
+  int32 FindLmStateIndexForHistory(const std::vector<int32> &hist) const;
 
-  // comparator object used in GetHistoryStates.  Used to sort history counts
-  // from least to greatest.  If count is the same, treats longer histories as
-  // having smaller counts (so they will be deleted first).
-  struct HistoryCountCompare {
-    // this is treated as an operator <.
-    bool operator () (const std::pair<int32, std::vector<int32> > &a,
-                      const std::pair<int32, std::vector<int32> > &b) {
-      // we primarily compare on the data-count (the .first), but if the
-      // data-count is the same, if a has a longer .second vector, which means
-      // it's a higher order n-gram, we return true (interpreted as a < b),
-      // meaning a is considered as having a lower count; this will ensure that if
-      // counts are the same, higher-order states get deleted first, to ensure
-      // that backoff states of existing states still exist.
-      if (a.first < b.first) return true;
-      else if (a.first > b.first) return false;
-      else return a.second.size() > b.second.size();
-    }
-  };
+  // Finds and returns an LM-state index for a history -- and creates one if
+  // it doesn't exist -- and also creates any backoff states needed, down
+  // to history-length no_prune_ngram_order - 1.
+  int32 FindOrCreateLmStateIndexForHistory(const std::vector<int32> &hist);
 
-  // Works out the set of history-states that will be included in the LM.
-  void GetHistoryStates(SetType *history_states) const;
+  // Finds and returns the most specific LM-state index for a history or
+  // backed-off versions of it, that exists and has nonzero count.  Will die if
+  // there is no such history.  [e.g. if there is no unigram backoff state,
+  // which generally speaking there won't be.]
+  int32 FindNonzeroLmStateIndexForHistory(std::vector<int32> hist) const;
 
-
-  // This function gets a map from a 'history' (i.e. a sequence of phones of
-  // length >= 0 and <= opts.ngram_order - 1) to a history-state; each element of
-  // 'hist_states' gets its own integer.  Returns the number of history-states,
-  // which are numbered from zero.
-  int32 GetHistoryToStateMap(const SetType &hist_states,
-                             MapType *hist_to_state) const;
-
-  // This function creates a map 'state_transitions' that maps the
-  // pair (history-state, phone) to the next history state that we transition to
-  // after seeing that phone.  If the phone is 0, we don't add an entry
-  // (it becomes a final-prob).
-  // Note: it also reads the raw counts from counts_.
-  // Returns the initial state.
-  int32 GetStateTransitions(
-      const MapType &hist_to_state,
-      PairMapType *transitions) const;
-
-
-  // Given a 'hist_to_state' map, and a history vector (representing some words
-  // of context), this function returns the state corresponding to a given
-  // history vector.  This may involve backoff.  The vector 'hist' must be
-  // nonempty.  If there is no such state, we'll throw an exception.
-  static int32 GetStateForHist(const MapType &hist_to_state,
-                               std::vector<int32> hist);
-
-
-  // Creates the counts, in the format:
-  //   num-count = (history-state, symbol) -> count,
-  //   den-count = history-state -> count
-  // where a particular LM probability will be written as
-  //  num-count / den-count.
-  void GetCounts(const MapType &hist_to_state,
-                 int32 num_history_states,
-                 PairMapType *num_counts,
-                 std::vector<int32> *den_counts) const;
-
+  // after all backoff has been done, assigns FST state indexes to all states
+  // that exist and have nonzero count.  Returns the number of states.
+  int32 AssignFstStates();
+  
+  // find the FST index of the initial-state, and returns it.
+  int32 FindInitialFstState() const;
+  
   void OutputToFst(
-      int32 initial_state,
-      const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &num_counts,
-      const std::vector<int32> &den_counts,
-      const unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> > &transitions,
+      int32 num_fst_states,
       fst::StdVectorFst *fst) const;
 
 };

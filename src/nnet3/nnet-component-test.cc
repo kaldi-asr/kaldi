@@ -66,7 +66,11 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   uc->Vectorize(&params);
   uc2->UnVectorize(params);
   KALDI_ASSERT(uc2->Info() == uc->Info());
-  KALDI_ASSERT(uc2->DotProduct(*uc2) == uc->DotProduct(*uc));
+  BaseFloat dot_prod1 = uc->DotProduct(*uc),
+      dot_prod2 = uc2->DotProduct(*uc2);
+  if (!ApproxEqual(dot_prod1, dot_prod2))
+    KALDI_ERR << "Dot products differ "
+              << dot_prod1 << " versus " << dot_prod2;
   Vector<BaseFloat> params2(uc2->NumParameters());
   uc2->Vectorize(&params2);
   for(int i = 0; i < params.Dim(); i++)
