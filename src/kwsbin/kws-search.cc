@@ -91,9 +91,6 @@ bool GenerateActivePaths(const KwsLexicographicFst &proxy,
     Weight temp_weight = Times(arc.weight, cur_weight);
 
     cur_path.push_back(arc.ilabel);
-    if (arc.ilabel == 1134) {
-      std::cerr << "Tu!\n" ;
-    }
 
     if ( arc.olabel != 0 ) {
       ActivePath path;
