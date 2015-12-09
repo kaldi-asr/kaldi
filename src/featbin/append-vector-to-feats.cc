@@ -49,7 +49,8 @@ int main(int argc, char *argv[]) {
         "Append a vector to each row of input feature files\n"
         "\n"
         "Usage: append-vector-to-feats <in-rspecifier1> <in-rspecifier2> <out-wspecifier>\n"
-        " or: append-vector-to-feats <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n";
+        " or: append-vector-to-feats <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n"
+        "See also: paste-feats, concat-feats\n";
 
     ParseOptions po(usage);
 
