@@ -139,8 +139,8 @@ int main(int argc, char *argv[]) {
       for (int32 i = 0; i < vad1.Dim(); i++) {
         std::pair<int32, int32> key(static_cast<int32>(vad1(i)),
           static_cast<int32>(vad2(i)));
-        unordered_map<std::pair<int32, int32>, int32, PairHasher<int32> >::const_iterator iter
-          = map.find(key);
+        unordered_map<std::pair<int32, int32>, int32,
+          PairHasher<int32> >::const_iterator iter = map.find(key);
         if (iter == map.end()) {
           KALDI_ERR << "Map is missing combination "
                     << vad1(i) << " and " << vad2(i);
