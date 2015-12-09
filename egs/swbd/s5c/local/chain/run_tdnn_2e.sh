@@ -1,9 +1,11 @@
 #!/bin/bash
 
-# _2e is as _2b, but --frames-overlap-per-eg 0.  BUT we also made a code change
-# as in 2a->2c, where we use transition-scale and self-loop-scale of 1, so we
-# are making the same change in 2b->2e; it requires a script change too, to match.
-# we'll have to correct the results for this.
+# _2e is as _2b, but --frames-overlap-per-eg 0 (also compare with _y, which has
+# an overlap of 30).  BUT we also made a code change as in 2a->2c, where we use
+# transition-scale and self-loop-scale of 1, so we are making the same change in
+# 2b->2e; it requires a script change too, to match.  we'll have to correct the
+# results for this.  (note: this won't matter as the results did not change)
+
 
 # _2b is as _y but --frames-overlap-per-eg 75 (was 30 before).  This is not very
 # efficient in terms of disk space but I want to see the effect on results.
@@ -196,7 +198,7 @@ if [ $stage -le 12 ]; then
     --pdf-boundary-penalty 0.0 \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 75" \
+    --egs-opts "--frames-overlap-per-eg 0" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
@@ -239,3 +241,27 @@ fi
 wait;
 
 exit 0;
+
+
+# BROKEN results where I had overlap of 75, so it was mostly just a repetition of _2b, except with
+# that 2a->2c change.
+
+b01:s5c: for l in y 2b 2e; do grep Sum exp/chain/tdnn_${l}_sp/decode_eval2000_sw1_tg/score*/*ys | utils/best_wer.sh ; done
+%WER 13.2 | 1831 21395 | 88.4 8.0 3.6 1.6 13.2 50.6 | exp/chain/tdnn_y_sp/decode_eval2000_sw1_tg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.7 | 1831 21395 | 88.1 8.2 3.7 1.8 13.7 51.0 | exp/chain/tdnn_2b_sp/decode_eval2000_sw1_tg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.4 | 1831 21395 | 88.4 8.2 3.4 1.8 13.4 50.8 | exp/chain/tdnn_2e_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+b01:s5c: for l in y 2b 2e; do grep Sum exp/chain/tdnn_${l}_sp/decode_eval2000_sw1_fsh_fg/score*/*ys | utils/best_wer.sh ; done
+On iteration 368, learning rate is 0.00304840891076219.
+Training neural net (pass 368)
+%WER 11.7 | 1831 21395 | 89.7 7.0 3.2 1.4 11.7 47.8 | exp/chain/tdnn_y_sp/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.0 | 1831 21395 | 89.5 7.1 3.4 1.5 12.0 49.4 | exp/chain/tdnn_2b_sp/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.1 | 1831 21395 | 89.4 7.5 3.1 1.5 12.1 48.4 | exp/chain/tdnn_2e_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+b01:s5c:
+b01:s5c: for l in y 2b 2e; do grep WER exp/chain/tdnn_${l}_sp/decode_train_dev_sw1_tg/wer_* | utils/best_wer.sh ; done
+%WER 18.04 [ 8877 / 49204, 1125 ins, 2296 del, 5456 sub ] exp/chain/tdnn_y_sp/decode_train_dev_sw1_tg/wer_12_0.0
+%WER 18.15 [ 8930 / 49204, 1121 ins, 2244 del, 5565 sub ] exp/chain/tdnn_2b_sp/decode_train_dev_sw1_tg/wer_12_0.0
+%WER 18.24 [ 8975 / 49204, 1242 ins, 2064 del, 5669 sub ] exp/chain/tdnn_2e_sp/decode_train_dev_sw1_tg/wer_11_0.0
+b01:s5c: for l in y 2b 2e; do grep WER exp/chain/tdnn_${l}_sp/decode_train_dev_sw1_fsh_fg/wer_* | utils/best_wer.sh ; done
+%WER 16.57 [ 8155 / 49204, 1144 ins, 1988 del, 5023 sub ] exp/chain/tdnn_y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+%WER 16.83 [ 8282 / 49204, 1106 ins, 2115 del, 5061 sub ] exp/chain/tdnn_2b_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+%WER 16.79 [ 8260 / 49204, 1090 ins, 2138 del, 5032 sub ] exp/chain/tdnn_2e_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
