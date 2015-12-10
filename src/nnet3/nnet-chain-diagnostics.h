@@ -34,7 +34,7 @@ namespace nnet3 {
 
 
 
-/** This class is for computing objective-function values in a nnet3+ctc setup,
+/** This class is for computing objective-function values in a nnet3+chain setup,
     for diagnostics.  It also supports computing model derivatives.
  */
 class NnetChainComputeProb {

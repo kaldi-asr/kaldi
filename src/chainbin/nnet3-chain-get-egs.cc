@@ -63,7 +63,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
               << " versus features/frame_subsampling_factor = "
               << num_feature_frames << " / " << frame_subsampling_factor
               << ": check that --frame-subsampling-factor option is set "
-              << "the same as to ctc-get-supervision.";
+              << "the same as to chain-get-supervision.";
 
   KALDI_ASSERT(frames_per_eg % frame_subsampling_factor == 0);
 
@@ -74,7 +74,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   if (num_feature_frames_subsampled < frames_per_eg_subsampled)
     return false;
 
-  // we don't do any padding, as it would be a bit tricky to pad the CTC supervision.
+  // we don't do any padding, as it would be a bit tricky to pad the 'chain' supervision.
   // Instead we select ranges of frames that fully fit within the file;  these
   // might slightly overlap with each other or have gaps.
   std::vector<int32> range_starts_subsampled;
@@ -224,15 +224,15 @@ int main(int argc, char *argv[]) {
         "ready for training; in that case they should later be processed\n"
         "with nnet3-chain-normalize-egs\n"
         "\n"
-        "Usage:  nnet3-ctc-get-egs [options] [<normalization-fst>] <features-rspecifier> "
-        "<ctc-supervision-rspecifier> <egs-wspecifier>\n"
+        "Usage:  nnet3-chain-get-egs [options] [<normalization-fst>] <features-rspecifier> "
+        "<chain-supervision-rspecifier> <egs-wspecifier>\n"
         "\n"
         "An example [where $feats expands to the actual features]:\n"
         "chain-get-supervision [args] | \\\n"
         "  nnet3-chain-get-egs --left-context=25 --right-context=9 --num-frames=20 dir/normalization.fst \\\n"
         "  \"$feats\" ark,s,cs:- ark:cegs.1.ark\n"
         "Note: the --frame-subsampling-factor option must be the same as given to\n"
-        "ctc-get-supervision.\n";
+        "chain-get-supervision.\n";
 
     bool compress = true;
     int32 left_context = 0, right_context = 0, num_frames = 1,

@@ -71,15 +71,6 @@ class NumeratorComputation {
 
   // TODO: we could enable a Viterbi mode.
 
-  // This function computes vectors, indexed by sequence, containing lists of
-  // pdf-ids that may appear on the first and last frame of each sequence.  This
-  // will later be used as a constraint on the denominator-graph computation
-  // (it's intended to more approximate full-utterance training while training
-  // on split-up fixed-length pieces).
-  void GetAllowedInitialAndFinalPdfs(
-      std::vector<std::vector<int32> > *initial_pdf_ids,
-      std::vector<std::vector<int32> > *final_pdf_ids) const;
-
   // Does the forward computation.  Returns the total log-prob multiplied
   // by supervision_.weight.
   BaseFloat Forward();

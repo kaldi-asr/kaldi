@@ -28,13 +28,9 @@ DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
     int32 num_sequences,
-    const CuMatrixBase<BaseFloat> &nnet_output,
-    const std::vector<std::vector<int32 > > &initial_pdf_ids,
-    const std::vector<std::vector<int32 > > &final_pdf_ids):
+    const CuMatrixBase<BaseFloat> &nnet_output):
     opts_(opts),
     den_graph_(den_graph),
-    initial_pdf_ids_(initial_pdf_ids),
-    final_pdf_ids_(final_pdf_ids),
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
     exp_nnet_output_transposed_(nnet_output, kTrans),
@@ -50,45 +46,7 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined) {
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  ModifyInitialAndFinalOutputs();
   exp_nnet_output_transposed_.ApplyExp();
-}
-
-
-void DenominatorComputation::ModifyInitialAndFinalOutputs() {
-  if (initial_pdf_ids_.empty() && final_pdf_ids_.empty())
-    return;
-  KALDI_ASSERT(initial_pdf_ids_.size() == num_sequences_ &&
-               final_pdf_ids_.size() == num_sequences_);
-  std::vector<MatrixElement<BaseFloat> > elements;
-  elements.reserve(num_sequences_ * 10);  // just a guess.
-  int32 num_sequences = num_sequences_,
-      frames_per_sequence = frames_per_sequence_;
-  // note: conceptually we are adding the negative of this penalty to all
-  // initial/final pdf-ids which are *not* listed for their respective sequence;
-  // in practice we add this penalty to those listed, and then subtract twice
-  // this penalty from the overall log-likelihood; this is more efficient.
-  BaseFloat penalty = opts_.pdf_boundary_penalty;
-  for (int32 seq = 0; seq < num_sequences; seq++) {
-
-    for (int32 i = 0; i < 2; i++) {
-      const std::vector<int32> &vec = (i == 0 ?
-                                       initial_pdf_ids_[seq] :
-                                       final_pdf_ids_[seq]);
-      std::vector<int32>::const_iterator iter = vec.begin(),
-          end = vec.end();
-      int32 frame_index = (i == 0 ? 0 : frames_per_sequence - 1);
-      for (; iter != end; ++iter) {
-        int32 pdf_id = *iter;
-        MatrixElement<BaseFloat> elem;
-        elem.row = pdf_id;
-        elem.column = frame_index * num_sequences + seq;
-        elem.weight = penalty;
-        elements.push_back(elem);
-      }
-    }
-  }
-  exp_nnet_output_transposed_.AddElements(1.0, elements);
 }
 
 
@@ -207,21 +165,7 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
   log_inv_arbitrary_scales.ApplyLog();
   BaseFloat log_inv_arbitrary_scales_product =
       log_inv_arbitrary_scales.Sum();
-  // penalty_correction_factor relates to how we apply 'pdf_boundary_penalty'.
-  // The aim here is to penalize all pdfs in the initial and final frame that
-  // are not present in the initial and final frame respectively of the
-  // numerator FST, by subtracting opts_.pdf_boundary_penalty from them.  This
-  // helps to simulate the effect of actually seeing context.  The way we apply
-  // this is we *add* 'pdf_boundary_penalty' to the log-probs that are *in* the
-  // numerator FST, and then add -2.0 * opts_.pdf_boundary_penalty to the
-  // overall likelihood we return (one for the initial frame, and one for the
-  // final); this is more efficient.  We also have to handle the case where
-  // initial_pdf_ids_ is empty, which may be encountered in test code: in this
-  // case, the user did not supply that information.
-  BaseFloat penalty_correction_factor =
-      (initial_pdf_ids_.empty() ? 0 : -2.0 * opts_.pdf_boundary_penalty);
-  return tot_log_prob + log_inv_arbitrary_scales_product +
-      penalty_correction_factor * num_sequences_;
+  return tot_log_prob + log_inv_arbitrary_scales_product;
 }
 
 

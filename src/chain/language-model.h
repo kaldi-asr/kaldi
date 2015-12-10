@@ -132,7 +132,7 @@ class LanguageModelEstimator {
     // True if backoff of this state is allowed (which implies it's in the queue).
     // Backoff of this state is allowed (i.e. we will consider removing this state)
     // if its history length is >= opts.no_prune_ngram_order, and it has nonzero
-    // count, and 
+    // count, and
     bool backoff_allowed;
 
     void AddCount(int32 phone, int32 count);
@@ -152,7 +152,7 @@ class LanguageModelEstimator {
         backoff_lmstate_index(other.backoff_lmstate_index),
         fst_state(other.fst_state), backoff_allowed(other.backoff_allowed) { }
   };
-  
+
   // maps from history to int32
   typedef unordered_map<std::vector<int32>, int32, VectorHasher<int32> > MapType;
 
@@ -185,7 +185,7 @@ class LanguageModelEstimator {
   // approximation is not such a big deal.
   std::priority_queue<std::pair<BaseFloat, int32> > queue_;
 
-  
+
   // adds the counts for this ngram (called from AddCounts()).
   inline void IncrementCount(const std::vector<int32> &history,
                              int32 next_phone);
@@ -202,7 +202,7 @@ class LanguageModelEstimator {
 
   // sets up tot_count_with_parents in all the lm-states
   void SetParentCounts();
-  
+
   // Computes the change, in log-likelihood caused by backing off this lm state
   // to its backoff state, i.e. combining its counts with those of its backoff
   // state.  This lm state must have backoff_allowed set to true.  This function
@@ -212,7 +212,7 @@ class LanguageModelEstimator {
   // states have any counts, this encourages the lowest-count states to get
   // backed-off first.
   BaseFloat BackoffLogLikelihoodChange(int32 lmstate_index) const;
-  
+
   // Adds to the queue, all LmStates that have nonzero count and history-length is
   // >= no_prune_ngram_order.
   void InitializeQueue();
@@ -250,10 +250,10 @@ class LanguageModelEstimator {
   // after all backoff has been done, assigns FST state indexes to all states
   // that exist and have nonzero count.  Returns the number of states.
   int32 AssignFstStates();
-  
+
   // find the FST index of the initial-state, and returns it.
   int32 FindInitialFstState() const;
-  
+
   void OutputToFst(
       int32 num_fst_states,
       fst::StdVectorFst *fst) const;
@@ -262,7 +262,7 @@ class LanguageModelEstimator {
 
 
 
-}  // namespace ctc
+}  // namespace chain
 }  // namespace kaldi
 
 #endif

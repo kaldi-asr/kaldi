@@ -57,22 +57,11 @@ class DenominatorComputation {
     @param [in] nnet_output  The output of the neural network for this minibatch.
                        The rows must be ordered as (first frame of all sequences)
                        (second frame of all sequences), etc.
-    @param [in] initial_pdf_ids Indexed by sequence, a list of the pdf-ids that
-                      (in the numerator sequence) are active on the first frame.
-                      Used to modify the nnet output, to limit sequences that
-                      have that pdf-id as the initial frame.
-    @param [in] final_pdf_ids Indexed by sequence, a list of the pdf-ids that
-                     (in the numerator sequence) are active on the final frame.
-                     Used to modify the nnet output, to limit sequences that
-                     have that pdf-id as the final frame.
   */
   DenominatorComputation(const ChainTrainingOptions &opts,
                          const DenominatorGraph &den_graph,
                          int32 num_sequences,
-                         const CuMatrixBase<BaseFloat> &nnet_output,
-                         const std::vector<std::vector<int32 > > &initial_pdf_ids,
-                         const std::vector<std::vector<int32 > > &final_pdf_ids);
-
+                         const CuMatrixBase<BaseFloat> &nnet_output);
 
   // Does the forward computation, and returns the total negated log-like summed
   // over all sequences.  You will have to scale this by any supervision
@@ -107,19 +96,8 @@ class DenominatorComputation {
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaGeneralFrame(int32 t);
 
-  // Modifiy the initial and final nnet-outputs in nnet_output_transposed_, by
-  // penalizing those pdfs that are not listed in initial_pdf_ids_ and
-  // final_pdf_ids_ Actually, for efficiency, instead of penalizing those not
-  // listed, we un-penalize (boost) those listed; and we'll then subtract double
-  // the penalty from the forward-backward likelihood before returning it, which
-  // will have the same effect as penalizing the non-listed ones and leaving the
-  // listed ones unaffected.
-  void ModifyInitialAndFinalOutputs();
-
   const ChainTrainingOptions &opts_;
   const DenominatorGraph &den_graph_;
-  const std::vector<std::vector<int32 > > &initial_pdf_ids_;
-  const std::vector<std::vector<int32 > > &final_pdf_ids_;
 
   // number of separate frame sequences
   int32 num_sequences_;
@@ -129,10 +107,7 @@ class DenominatorComputation {
 
   // The transpose of the exp() of the nnet output (the transpose is more
   // convenient for memory locality, and the exp() avoids us having to
-  // exponentiate in the forward-backward).  Also, the first and last frames'
-  // pseudo-likelihooods are modified before the exp(), by subtracting
-  // opts_.pdf_boundary_penalty for all pdfs not listed as being initial/final
-  // in the supervision.
+  // exponentiate in the forward-backward).
   //
   // The row-index is the pdf-id; and the column index equals (frame_index *
   // num_sequences + sequence_index).

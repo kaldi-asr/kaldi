@@ -32,15 +32,11 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *tot_objf,
                               BaseFloat *tot_weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  std::vector<std::vector<int32> > initial_pdf_ids, final_pdf_ids;
   BaseFloat num_logprob_weighted;
   if (nnet_output_deriv)
     nnet_output_deriv->SetZero();
   {
     NumeratorComputation numerator(supervision, nnet_output);
-    if (opts.pdf_boundary_penalty != 0)
-      numerator.GetAllowedInitialAndFinalPdfs(
-          &initial_pdf_ids, &final_pdf_ids);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, and the logprob too.
     num_logprob_weighted = numerator.Forward();
@@ -49,9 +45,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   }
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,
-                                     nnet_output,
-                                     initial_pdf_ids,
-                                     final_pdf_ids);
+                                     nnet_output);
 
   BaseFloat den_logprob = denominator.Forward();
   if (nnet_output_deriv)

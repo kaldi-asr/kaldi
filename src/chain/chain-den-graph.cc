@@ -1,4 +1,4 @@
-// ctc/chain-den-graph.cc
+// chain/chain-den-graph.cc
 
 // Copyright      2015   Johns Hopkins University (author: Daniel Povey)
 

@@ -40,9 +40,10 @@ struct AccumulateTreeStatsOptions {
   bool collapse_pdf_classes;
   int context_width;
   int central_position;
-  AccumulateTreeStatsOptions(): var_floor(0.01), collapse_pdf_classes(false),
-                                context_width(3), central_position(1) { }
-                                
+  AccumulateTreeStatsOptions(): var_floor(0.01), context_width(3),
+                                central_position(1) { }
+
+
   void Register(OptionsItf *opts) {
     opts->Register("var-floor", &var_floor, "Variance floor for tree "
                    "clustering.");
@@ -55,10 +56,6 @@ struct AccumulateTreeStatsOptions {
     opts->Register("phone-map", &phone_map_rxfilename,
                    "File name containing old->new phone mapping (each line is: "
                    "old-integer-id new-integer-id)");
-    opts->Register("collapse-pdf-classes", &collapse_pdf_classes,
-                   "If true, all pdf-class values will be set to zero while "
-                   "accumulating stats (useful for building single-HMM-state "
-                   "systems, e.g. for CTC)");
   }
 };
 
@@ -68,7 +65,6 @@ struct AccumulateTreeStatsInfo {
   std::vector<int32> ci_phones;  // sorted, uniq vector of context-independent
                                  // phones.
   std::vector<int32> phone_map;  // if nonempty, maps old phones to new phones.
-  bool collapse_pdf_classes;
   int32 context_width;
   int32 central_position;
   AccumulateTreeStatsInfo(const AccumulateTreeStatsOptions &opts);
@@ -92,7 +88,7 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
  invalid, e.g. there are multiple inconsistent entries for the same old phone.
  The output vector "phone_map" will be indexed by old-phone and will contain
  the corresponding new-phone, or -1 for any entry that was not defined. */
- 
+
 void ReadPhoneMap(std::string phone_map_rxfilename,
                   std::vector<int32> *phone_map);
 

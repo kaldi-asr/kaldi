@@ -40,20 +40,11 @@ namespace chain {
 
 
 struct ChainTrainingOptions {
-  BaseFloat pdf_boundary_penalty;
+  // Currently empty.
 
-  ChainTrainingOptions():
-      pdf_boundary_penalty(8.0) { }
+  ChainTrainingOptions() { }
 
   void Register(OptionsItf *opts) {
-    opts->Register("pdf-boundary-penalty", &pdf_boundary_penalty,
-                   "Value subtracted from pdf pseudo-likelihoods at the "
-                   "first and last frames of chopped-up sequences, if "
-                   "the pdf is not in the numerator.  Intended to help "
-                   "reduce the inaccuracy of derivatives arising from breaking "
-                   "up the training utterances into fixed-size pieces.  This "
-                   "value should not be too large to avoid floating-point range "
-                   "issues.");
   }
 };
 
@@ -62,8 +53,8 @@ struct ChainTrainingOptions {
    This function does both the numerator and denominator parts of the 'chain'
    computation in one call.
 
-   @param [in] opts  Struct containing options
-   @param [in] den_graph  The denominator graph, derived from denominator fst.
+   @param [in] opts        Struct containing options
+   @param [in] den_graph   The denominator graph, derived from denominator fst.
    @param [in] supervision  The supervision object, containing the supervision
                             paths and constraints on the alignment as an FST
    @param [in] nnet_output  The output of the neural net; dimension must equal

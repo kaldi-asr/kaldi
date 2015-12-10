@@ -209,57 +209,5 @@ void NumeratorComputation::Backward(
 }
 
 
-// This function is called from
-// NumeratorComputation::GetAllowedInitialAndFinalPdfs().  we do it like that
-// instead of a function that the user can call, so we don't have to compute the
-// FST state times twice.
-static void ComputeAllowedInitialAndFinalPdfs(
-    const Supervision &supervision,
-    const std::vector<int32> &fst_state_times,
-    std::vector<std::vector<int32> > *initial_pdfs,
-    std::vector<std::vector<int32> > *final_pdfs) {
-  int32 frames_per_sequence = supervision.frames_per_sequence,
-      num_sequences = supervision.num_sequences,
-      num_states = fst_state_times.size();
-  initial_pdfs->clear();
-  initial_pdfs->resize(num_sequences);
-  final_pdfs->clear();
-  final_pdfs->resize(num_sequences);
-  KALDI_ASSERT(frames_per_sequence > 1);
-  for (int32 s = 0; s < num_states; s++) {
-    int32 t = fst_state_times[s],
-        sequence = t / frames_per_sequence,
-        frame = t % frames_per_sequence;
-    std::vector<int32> *target;
-    if (frame == 0) {
-      target = &((*initial_pdfs)[sequence]);
-    } else if (frame == frames_per_sequence - 1) {
-      target = &((*final_pdfs)[sequence]);
-    } else {
-      continue;
-    }
-    for (fst::ArcIterator<fst::StdVectorFst> aiter(supervision.fst, s);
-         !aiter.Done(); aiter.Next()) {
-      int32 pdf_id = aiter.Value().ilabel - 1;
-      target->push_back(pdf_id);
-    }
-  }
-  for (int32 seq = 0; seq < num_sequences; seq++) {
-    KALDI_ASSERT(!(*initial_pdfs)[seq].empty() &&
-                 !(*final_pdfs)[seq].empty());
-    SortAndUniq(&((*initial_pdfs)[seq]));
-    SortAndUniq(&((*final_pdfs)[seq]));
-  }
-}
-
-void NumeratorComputation::GetAllowedInitialAndFinalPdfs(
-    std::vector<std::vector<int32> > *initial_pdf_ids,
-    std::vector<std::vector<int32> > *final_pdf_ids) const {
-  ComputeAllowedInitialAndFinalPdfs(supervision_,
-                                    fst_state_times_,
-                                    initial_pdf_ids,
-                                    final_pdf_ids);
-}
-
 }  // namespace chain
 }  // namespace kaldi

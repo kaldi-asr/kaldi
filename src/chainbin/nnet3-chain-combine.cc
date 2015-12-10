@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "'chain' objective function.  See documentation of options for more details.\n"
         "Inputs and outputs are nnet3 raw nnets.\n"
         "\n"
-        "Usage:  nnet3-chain-combine [options] <den-fst> <raw-nnet-in1> <raw-nnet-in2> ... <raw-nnet-inN> <ctc-examples-in> <raw-nnet-out>\n"
+        "Usage:  nnet3-chain-combine [options] <den-fst> <raw-nnet-in1> <raw-nnet-in2> ... <raw-nnet-inN> <chain-examples-in> <raw-nnet-out>\n"
         "\n"
         "e.g.:\n"
         " nnet3-combine den.fst 35.raw 36.raw 37.raw 38.raw ark:valid.cegs final.raw\n";

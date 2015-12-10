@@ -100,12 +100,6 @@ void TestSupervisionNumerator(const Supervision &supervision) {
 
   // Test that derivs are accurate.
 
-  if (RandInt(0, 1) == 0 && supervision.frames_per_sequence > 1) {
-    std::vector<std::vector<int32> > allowed_initial_symbols,
-        allowed_final_symbols;
-    num.GetAllowedInitialAndFinalPdfs(&allowed_initial_symbols,
-                                      &allowed_final_symbols);
-  }
   BaseFloat forward_prob = num.Forward();
 
   CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
@@ -286,43 +280,6 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
     KALDI_ASSERT(output_deriv_sum < 0.2);
   }
 
-  { // another check: that changing pdf-boundary penalty has the expected effect
-    ChainTrainingOptions opts2;
-    opts2.pdf_boundary_penalty = RandInt(0, 10);
-    if (objf > 0.0) {
-      KALDI_WARN << "Objf > 0.0, testing with no pdf-boundary-penalty.";
-      opts2.pdf_boundary_penalty = 0.0;
-    }
-
-    BaseFloat objf2, weight2;
-    ComputeChainObjfAndDeriv(opts2, den_graph, supervision,
-                             nnet_output, &objf2, &weight2, NULL);
-    // two factors of -1, one because the penalty is subtracted from the relevant likelihoods
-    // in the denominator (the ones not listed in the numerator for the 1st and last
-    // frames), and one because the denominator likelihood itself is negated in the
-    // objective function
-    BaseFloat max_likelihood_difference = supervision.num_sequences * 2 *
-        -1.0 * -1.0 * supervision.weight *
-        (opts2.pdf_boundary_penalty - opts.pdf_boundary_penalty),
-        observed_likelihood_difference = objf2 - objf;
-    KALDI_LOG << "Observed likelihood difference from pdf-boundary-penalty = "
-              << observed_likelihood_difference << ", should be between 0 and "
-              << max_likelihood_difference;
-    if (max_likelihood_difference >= 0.0) {
-      KALDI_ASSERT(observed_likelihood_difference >= 0.0 &&
-                   max_likelihood_difference >= observed_likelihood_difference);
-    } else {
-      KALDI_ASSERT(observed_likelihood_difference <= 0.0 &&
-                   max_likelihood_difference <= observed_likelihood_difference);
-    }
-    if (objf > 0.0) {
-      KALDI_LOG << "Objf is " << objf << ", objf with no pdf-boundary-penalty is "
-                << objf2;
-      KALDI_LOG << "Supervision object is: ";
-      supervision.Write(std::cerr, false);
-    }
-  }
-
   KALDI_ASSERT(objf <= 0.0);
 
   int32 num_tries = 5;
@@ -434,8 +391,6 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
   CuMatrix<BaseFloat> nnet_output(num_sequences * frames_per_sequence,
                                   den_graph.NumPdfs());
 
-  std::vector<std::vector<int32> > empty_vec;
-
   bool zero_output = (RandInt(0, 3) == 0);
   if (!zero_output)
     nnet_output.SetRandn();
@@ -443,8 +398,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
   ChainTrainingOptions opts;
 
   DenominatorComputation denominator_computation(opts, den_graph,
-                                                 num_sequences, nnet_output,
-                                                 empty_vec, empty_vec);
+                                                 num_sequences, nnet_output);
 
   BaseFloat forward_prob = denominator_computation.Forward(),
       per_frame = forward_prob / (num_sequences * frames_per_sequence);
@@ -471,8 +425,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
     den_graph_scaled.ScaleInitialProbs(scale);
     DenominatorComputation denominator_computation_scaled_initial(
         opts, den_graph_scaled,
-        num_sequences, nnet_output,
-        empty_vec, empty_vec);
+        num_sequences, nnet_output);
     BaseFloat forward_prob_scaled_initial =
         denominator_computation_scaled_initial.Forward();
     BaseFloat observed_difference =
@@ -497,8 +450,7 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
 
     DenominatorComputation denominator_computation_perturbed(opts, den_graph,
                                                              num_sequences,
-                                                             nnet_output_perturbed,
-                                                             empty_vec, empty_vec);
+                                                             nnet_output_perturbed);
 
     BaseFloat forward_prob_perturbed = denominator_computation_perturbed.Forward();
     observed_objf_changes(p) = forward_prob_perturbed - forward_prob;

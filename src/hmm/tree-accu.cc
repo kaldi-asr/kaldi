@@ -84,16 +84,15 @@ void AccumulateTreeStats(const TransitionModel &trans_model,
       for (int32 j = 0; j < static_cast<int32>(split_alignment[i+info.central_position].size());j++) {
         // for central phone of this window...
         EventType evec_more(evec);
-        int32 pdf_class = (info.collapse_pdf_classes ? 0 :
-            trans_model.TransitionIdToPdfClass(
-                split_alignment[i+info.central_position][j]));
+        int32 pdf_class = trans_model.TransitionIdToPdfClass(
+            split_alignment[i+info.central_position][j]);
         // pdf_class will normally by 0, 1 or 2 for 3-state HMM.
         std::pair<EventKeyType, EventValueType> pr(kPdfClass, pdf_class);
         evec_more.push_back(pr);
         std::sort(evec_more.begin(), evec_more.end());  // these must be sorted!
         if (stats->count(evec_more) == 0)
           (*stats)[evec_more] = new GaussClusterable(dim, info.var_floor);
-        
+
         BaseFloat weight = 1.0;
         (*stats)[evec_more]->AddStats(features.Row(cur_pos), weight);
         cur_pos++;
@@ -138,7 +137,6 @@ void ReadPhoneMap(std::string phone_map_rxfilename,
 AccumulateTreeStatsInfo::AccumulateTreeStatsInfo(
     const AccumulateTreeStatsOptions &opts):
     var_floor(opts.var_floor),
-    collapse_pdf_classes(opts.collapse_pdf_classes),
     context_width(opts.context_width),
     central_position(opts.central_position) {
   if (central_position < 0 || context_width <= central_position)
@@ -154,5 +152,5 @@ AccumulateTreeStatsInfo::AccumulateTreeStatsInfo(
       KALDI_ERR << "Invalid --ci-phones option: " << opts.ci_phones_str;
   }
 }
-  
+
 }  // end namespace kaldi

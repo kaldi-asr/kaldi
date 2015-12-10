@@ -61,20 +61,20 @@ struct SupervisionOptions {
     opts->Register("right-tolerance", &left_tolerance, "Right tolerance for "
                    "shift in phone position relative to the alignment");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                   "if the frame-rate in CTC will be less than the frame-rate "
-                   "of the original alignment.  Applied after left-tolerance "
-                   "and right-tolerance are applied (so they are in terms of "
-                   "the original num-frames.");
+                   "if the frame-rate for the chain model will be less than the "
+                   "frame-rate of the original alignment.  Applied after "
+                   "left-tolerance and right-tolerance are applied (so they are "
+                   "in terms of the original num-frames.");
   }
   void Check() const;
 };
 
 
-// This is the form of the supervision information for CTC that it takes before
-// we compile it to CctcSupervision.
+// This is the form that the supervision information for 'chain' models takes
+// we compile it to Supervision.
 //  The normal compilation sequence is:
 // (AlignmentToProtoSupervision or PhoneLatticeToProtoSupervision)
-// Then you would call MakeCctcSupervision.
+// Then you would call ProtoSupervisionToSupervision.
 
 struct ProtoSupervision {
   // a list of (sorted, unique) lists of phones that are allowed

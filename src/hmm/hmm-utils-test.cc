@@ -190,7 +190,6 @@ void TestAccumulateTreeStatsOptions() {
   opts.var_floor = RandInt(0, 10);
   opts.ci_phones_str = "3:2:1";
   opts.phone_map_rxfilename = "echo 1 2; echo 2 5 |";
-  opts.collapse_pdf_classes = (RandInt(0, 1) == 0);
   opts.context_width = RandInt(3, 4);
   opts.central_position = RandInt(0, 2);
   AccumulateTreeStatsInfo info(opts);
