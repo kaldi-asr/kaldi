@@ -1,5 +1,4 @@
-// doc/ctc.dox
-
+// doc/chain.dox
 
 // Copyright 2015   Johns Hopkins University (author: Daniel Povey)
 
@@ -21,9 +20,72 @@
 namespace kaldi {
 
 /**
-  \page ctc  Connectionist Temporal Classifiction
+  \page chain 'Chain' models
 
-  \section ctc_intro Introduction
+  \section chain_intro Introduction to 'chain' models
+
+  The 'chain' models are a type of DNN-HMM model, and differ from the
+  conventional model in various ways; you can think of them as a different
+  design point in the space of acoustic models.
+
+   - We use a 3 times smaller frame rate at the output of the neural net,
+     This significantly reduces the amount of computation required in
+     test time, making real-time decoding much easier.
+   - The models are trained right from the start with a sequence-level
+     objective function-- namely, the log probability of the correct sequence.  It is
+     essentially MMI implemented without lattices on the GPU, by doing a full
+     forward-backward on a decoding graph derived from a phone n-gram language
+     model.
+   - Because of the reduced frame rate, we need to use unconventional
+     HMM topologies (allowing the traversal of the HMM in one state).
+   - We don't use any transition probabilities in the HMMs other than those
+     derived from the language model (the transition probabilities
+     can just be folded into the neural-net output probabilities, so there
+     is no need for them).
+   - Currently, only nnet3 DNNs are supported (see \ref dnn3), and
+     online decoding has not yet been implemented.
+   - Currently the results are about the same as those of conventional
+     DNN-HMMs, but the system is about 3 times faster to decode.
+
+  \section chain_scripts  Where to find scripts for the 'chain' models
+
+  The current best scripts for the 'chain' models can be found in the
+  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_q.sh is the
+  current best one.  This is currently available in the 'chain' branch of Dan's
+  git repository (git@github.com:/danpovey/kaldi.git) but will soon be pushed to
+  the 'chain' branch of the official Kaldi git repository
+  (https://github.com/kaldi-asr/kaldi.git) and eventually will be merged to the
+  master.
+
+  This script uses TDNNs as the neural net (we've been doing the development
+  with TDNNs because they are easier to tune then LSTMs), and gives almost the same
+  WER as the baseline TDNN: 12.1\%, versus 11.8\% for the best TDNN baseline 
+  (on the Switchboard-only portion of eval2000).
+
+  \section chain_model  The chain model
+
+  The chain model itself is no different from a conventional DNN-HMM, except we
+  don't make use of the transition probabilities in the HMMs (imagine that the
+  transition probabilities are always 1.0).  The difference is the objective
+  function used to train it: instead of a frame-level objective, we use the
+  log-probability of the correct phone sequence as the objective function.  The
+  training process is quite similar to MMI training, in which we compute numerator
+  and denominator 'occupation probabilities' and the difference between the two
+  is used in the derivative computation.  There is no need to normalize the DNN
+  outputs to sum to one on each frame any more.
+
+
+  As mentioned, we configure the model differently from normal: we use a 3 times
+  reduced frame rate (so one frame every 30 ms), and modified HMM topologies (we
+  are still experimenting with this, so details later).
+
+ 
+
+  
+
+
+     
+  
 
   This page describes the support for Connectionist Temporal Classifiction (CTC)
   in Kaldi.  At the current time CTC is only supported in the nnet3 setup, but
