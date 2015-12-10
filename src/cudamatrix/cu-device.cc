@@ -57,15 +57,21 @@ namespace kaldi {
    harmless even if the problem was specific to the CLSP grid.
 */
 
-static bool GetCudaContext(int32 num_gpus) {
+static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
+  std::ostringstream debug_stream;
+  debug_stream << "num-gpus=" << num_gpus << ". ";
   for (int32 device = 0; device < num_gpus; device++) {
     cudaSetDevice(device);
     cudaError_t e = cudaDeviceSynchronize(); // << CUDA context gets created here.
-    if (e == cudaSuccess)
+    if (e == cudaSuccess) {
+      *debug_str = debug_stream.str();
       return true;
+    }
+    debug_stream << "Device " << device << ": " << cudaGetErrorString(e) << ".  ";
     cudaGetLastError();  // Make sure the error state doesn't get returned in
-    // the next cudaGetLastError().
+                         // the next cudaGetLastError().
   }
+  *debug_str = debug_stream.str();
   return false;
 }
 
@@ -121,7 +127,8 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   }
 
   // Create a CUDA context.
-  bool got_context = GetCudaContext(num_gpus);
+  std::string debug_str;
+  bool got_context = GetCudaContext(num_gpus, &debug_str);
 
   if (use_gpu != "wait") {
     if (!got_context) {
@@ -130,13 +137,14 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       KALDI_WARN << "Will try again to get a GPU after " << sec_sleep
                  << " seconds.";
       Sleep(sec_sleep);
-      if (!GetCudaContext(num_gpus)) {
+      if (!GetCudaContext(num_gpus, &debug_str)) {
         if (use_gpu == "yes") {
           {
             Input input;
             input.Open("nvidia-smi 1>&2 |");
           }
-          KALDI_ERR << "Failed to create CUDA context, no more unused GPUs?";
+          KALDI_LOG << debug_str;
+          KALDI_ERR << "Failed to create CUDA context, no more unused GPUs? ";
         }
         if (use_gpu == "optional") {
           KALDI_WARN << "Running on CPU!!! No more unused CUDA GPUs?";
@@ -155,7 +163,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       num_times++;
       wait_time += sec_sleep;
       Sleep(sec_sleep);
-      got_context = GetCudaContext(num_gpus);
+      got_context = GetCudaContext(num_gpus, &debug_str);
     }
 
     KALDI_WARN << "Waited " << wait_time

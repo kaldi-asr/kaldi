@@ -44,7 +44,7 @@ struct NnetComputeOptions {
                    "debug for the neural net computation (very verbose!) "
                    "Will be turned on regardless if --verbose >= 5");
   }
-  
+
 };
 
 
@@ -83,10 +83,10 @@ class NnetComputer {
   void AcceptInputs(const Nnet &nnet,
                     const std::vector<NnetIo> &io);
 
-  
+
   // Does the forward computation.
   void Forward();
-  
+
   // e.g. GetOutput ("output").  Will crash if no such output.
   const CuMatrixBase<BaseFloat> &GetOutput(const std::string &output_name) const;
 
@@ -99,7 +99,7 @@ class NnetComputer {
   /// e.g. AcceptOutputDeriv("output", &output_deriv_mat).
   void AcceptOutputDeriv(const std::string &output_name,
                          CuMatrix<BaseFloat> *output_deriv);
-  
+
 
   // Does the backward computation.
   void Backward();
@@ -109,13 +109,12 @@ class NnetComputer {
   // ComputationRequest.
   const CuMatrixBase<BaseFloat> &GetInputDeriv(
       const std::string &input_name) const;
-  
+
  private:
   const NnetComputeOptions &options_;
   const NnetComputation &computation_;
   const Nnet &nnet_;
   Nnet *nnet_to_update_;
-  bool forward_done_;
   bool debug_;
   // command_attributes_ is only used if debug_=true.
   std::vector<CommandAttributes> command_attributes_;
@@ -123,7 +122,7 @@ class NnetComputer {
   std::vector<std::string> submatrix_strings_;
   // command_strings_ is only used if debug_=true, or in case of error.
   std::vector<std::string> command_strings_;
-  
+
   // The matrices used in the computation.
   std::vector<CuMatrix<BaseFloat> > matrices_;
 
@@ -143,7 +142,7 @@ class NnetComputer {
                    int32 num_cols,
                    CuArray<BaseFloat*> *pointers);
   void GetPointers(int32 indexes_multi_index,
-                   int32 num_cols,                   
+                   int32 num_cols,
                    CuArray<const BaseFloat*> *pointers);
 
   // with check_output_deriv = false, checks we have all inputs.
@@ -169,15 +168,15 @@ class NnetComputer {
   static BaseFloat MatrixStddev(const CuMatrixBase<BaseFloat> &m);
   // Used in debugging code
   static BaseFloat ParameterStddev(const Component &c);
-  
+
   // only non-const because of the way GetSubMatrix works.
   void DebugBeforeExecute(int32 command,
                           CommandDebugInfo *info);
-  // only non-const because of the way GetSubMatrix works.  
+  // only non-const because of the way GetSubMatrix works.
   void DebugAfterExecute(int32 command,
                          const CommandDebugInfo &info);
 
-  
+
 };
 
 
