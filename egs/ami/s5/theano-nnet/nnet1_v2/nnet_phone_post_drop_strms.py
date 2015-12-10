@@ -28,6 +28,17 @@ numexpr.set_num_threads(1)
 np.random.seed(42)
 ##################################
 
+def AdditiveSmoothing(Y, floor=1e-10):
+
+  Y = Y + floor
+  S = np.sum(Y, axis=1)
+  Y = Y / S[:, np.newaxis]
+  
+  return Y
+
+
+##################################
+
 def apply_strm_mask(data_it, strm_indices, comb_num):
 
   # bin_func = lambda x : ''.join(reversed( [str((x >> i) & 1) for i in range(nstrms)] ) )
@@ -216,6 +227,7 @@ with kaldi_io.KaldiScpReader(data_scp, feature_preprocess.full_preprocess, reade
     if o.apply_log == "true":
       Y = np.log(Y)
     elif o.apply_logit == "true":
+      Y = AdditiveSmoothing(Y, 1e-5)
       Y = logit(Y)
 
     kaldi_io.write_stdout_ascii(Y, utt)
