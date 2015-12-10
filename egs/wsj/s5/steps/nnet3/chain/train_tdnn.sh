@@ -18,7 +18,6 @@ num_epochs=10      # Number of epochs of training;
                    # Be careful with this: we actually go over the data
                    # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
-pdf_boundary_penalty=8
 truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
                           # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
@@ -417,12 +416,10 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-chain-compute-prob  \
-       --pdf-boundary-penalty=$pdf_boundary_penalty \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
           "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-chain-compute-prob \
-       --pdf-boundary-penalty=$pdf_boundary_penalty \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
           "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
@@ -483,7 +480,7 @@ while [ $x -lt $num_iters ]; do
         fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
-             --pdf-boundary-penalty=$pdf_boundary_penalty $parallel_train_opts $deriv_time_opts \
+              $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
           "ark:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
@@ -551,7 +548,6 @@ if [ $stage -le $num_iters ]; then
 
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-chain-combine --num-iters=40 \
-       --pdf-boundary-penalty=$pdf_boundary_penalty \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
        --verbose=3 $dir/den.fst "${nnets_list[@]}" "ark:nnet3-chain-merge-egs --minibatch-size=$minibatch_size ark:$egs_dir/combine.cegs ark:-|" \
        "|nnet3-am-copy --set-raw-nnet=- $dir/$first_model_combine.mdl $dir/final.mdl" || exit 1;
@@ -561,11 +557,11 @@ if [ $stage -le $num_iters ]; then
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
-    nnet3-chain-compute-prob  --pdf-boundary-penalty=$pdf_boundary_penalty \
+    nnet3-chain-compute-prob \
            "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
     "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
-    nnet3-chain-compute-prob  --pdf-boundary-penalty=$pdf_boundary_penalty \
+    nnet3-chain-compute-prob \
       "nnet3-am-copy --raw=true $dir/final.mdl - |" $dir/den.fst \
     "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 fi
