@@ -86,6 +86,10 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 %WER 44.4 | 14208 94318 | 61.2 25.7 13.1 5.5 44.4 70.1 | -24.197 | exp/sdm1/nnet3/lstm_sp_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 47.9 | 14766 89956 | 56.0 25.7 18.2 3.9 47.9 64.1 | -23.997 | exp/sdm1/nnet3/lstm_sp_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+# BLSTM
+# local/nnet3/run_blstm.sh
+%WER 42.8 | 14948 94501 | 62.2 25.2 12.6 5.1 42.8 65.8 | -24.499 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 46.1 | 13760 89981 | 57.8 25.9 16.3 3.9 46.1 68.2 | -24.143 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)
