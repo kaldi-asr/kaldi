@@ -6,6 +6,8 @@
 # default it estimates a 4-gram, with 3-gram as the no-prune order.  So the configuration
 # is quite similar to 2d, except new/more-exact code is used.
 
+# see table in run_tdnn_2a.sh for results
+
 # _2d is as _2c but with different LM options:
 # --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"
 # ... this gives us a kind of pruned 4-gram language model, instead of a 3-gram.

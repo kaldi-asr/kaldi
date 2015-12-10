@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# _2g is as _2f but reducing the --num-lm-states from 10k to 7k.
+# _2g is as _2f but reducing the --num-lm-states from 10k to 7k
+# see table in run_tdnn_2a.sh for results.
 
 # _2f is as _2d but following a code change, and with different LM options:
 #  --ngram-order=5 --num-lm-states=10000

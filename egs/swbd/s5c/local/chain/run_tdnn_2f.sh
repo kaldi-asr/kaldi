@@ -3,7 +3,7 @@
 # _2f is as _2d but following a code change, and with different LM options:
 #  --ngram-order=5 --num-lm-states=10000
 # Now the extra questions are not needed.
-# LM perplexity changes from 6.34 to 5.75.
+# see table in run_tdnn_2a.sh for results
 
 # _2d is as _2c but with different LM options:
 # --lm-opts "--ngram-order=4 --leftmost-context-questions=/dev/null --num-extra-states=2000"

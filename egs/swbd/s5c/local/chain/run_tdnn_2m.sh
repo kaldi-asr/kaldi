@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# _2j is as _2i but with --num-extra-lm-states=1000, not 2000.
-# see table in run_tdnn_2a.sh for results
+# _2m is as _2k, but setting --leftmost-questions-truncate=-1, i.e. disabling
+# that mechanism.
+
+# _2k is as _2i, but doing the same change as in _s -> _2e, in which we
+#  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
 
 # _2i is as _2d but with a new set of code for estimating the LM, in which we compute
 # the log-like change when deciding which states to back off.  The code is not the same
@@ -94,11 +97,11 @@
 set -e
 
 # configs for 'chain'
-stage=12
+stage=11
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2j  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2m  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -107,7 +110,7 @@ splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-leftmost_questions_truncate=30
+leftmost_questions_truncate=-1
 max_param_change=1.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
@@ -143,7 +146,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5m_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -186,17 +189,18 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --pdf-boundary-penalty 0.0 \
-    --lm-opts "--num-extra-lm-states=1000" \
+    --apply-deriv-weights false \
+    --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 30" \
+    --egs-opts "--frames-overlap-per-eg 0" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \

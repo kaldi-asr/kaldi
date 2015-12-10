@@ -1,7 +1,12 @@
 #!/bin/bash
 
-# _2j is as _2i but with --num-extra-lm-states=1000, not 2000.
-# see table in run_tdnn_2a.sh for results
+# _2l is as _2k, but using 100 frames per eg instead of 150.
+#  Previously we had found 150 better than 75, but this may have changed as we
+#  are no longer treating the edges in the same way (e.g. we now use
+#  --pdf-boundary-penalty=0.0).  So re-tuning.
+
+# _2k is as _2i, but doing the same change as in _s -> _2e, in which we
+#  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
 
 # _2i is as _2d but with a new set of code for estimating the LM, in which we compute
 # the log-like change when deciding which states to back off.  The code is not the same
@@ -98,7 +103,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2j  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2l  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -113,7 +118,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=150
+frames_per_eg=100
 remove_egs=false
 
 # End configuration section.
@@ -193,10 +198,11 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --pdf-boundary-penalty 0.0 \
-    --lm-opts "--num-extra-lm-states=1000" \
+    --apply-deriv-weights false \
+    --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
-    --egs-opts "--frames-overlap-per-eg 30" \
+    --egs-opts "--frames-overlap-per-eg 0" \
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \

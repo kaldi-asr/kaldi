@@ -4,22 +4,31 @@
 #  Note, this leads to a cutoff of zero, so it's the same as infinite --num-extra-states.
 #  The table below compares a sequence of experiments {x,s,w,z,2a} where only
 #  the --num-extra-states is varied.
-#  here I'll compare with 's' which has the default --num-extra-states:
-#  With trigram, the WER on train_dev changed (s->2a) 18.45->18.20, and after rescoring from 16.96->16.59,
-#  and on all of eval2000 from 20.1 -> 19.8, and after rescoring from 18.0->17.7.  So about 0.3 abs improvement.
+
+#    I'm also adding to this table some other experiments: 2d, which also had
+#   --num-extra-states=2000 --ngram-order=4 --leftmost-context-questions=/dev/null [so
+#     there was no concept of sets of phones for the 3-gram, plus we could go to 4-gram].
+#    [note that the actual baseline for 2d was 2c, which was as 2a but with
+#      a code change RE transition-scale, but that made no consistent difference, so
+#      acting as if that was a no-op.]
+#
 #
 #  Comparing the --num-extra-states:
 #
-#  --num-extra-states:   0       200     500    2000    8000
-#  experiment:           x       s       w      z       2a
-# WER (train_dev,tg)     18.67   18.45  *18.02  18.06   18.20
-# WER (train_dev,fg)     17.22   16.96   16.70 *16.46   16.59
-# WER (eval2000,tg)      20.4    20.1    19.9  *19.7    19.8
-# WER (eval2000,fg)      18.4    18.0    17.9   18.0   *17.7
-# #states in den.fst     29384   30064   30744  31487   31729
-# #arcs in den.fst       249524  252690  255242 251118  238678
-# LM perplexity          8.78    8.07    7.76   7.39    7.37
-# # phone-lm states      2644    2864    3092   4321    6438
+#  --num-extra-states:   0       200     500    2000    8000         *these all had the default --leftmost-context-questions, splitting to ~23 sets.]
+#  --num-extra-states:                                         2000   *plus: --ngram-order=4 --leftmost-context-questions=/dev/null [so 3gram and 4gram all in one set, and 4gram allowed.]
+# new code, --num-lm-states,--ngram-order:                             10k,5  7k,5   5k,4  (this pruned on state count and only left bigrams unpruned)
+# newer code, --num-extra-lm-states (note, ngram-order=5,no-prune-order=3)                    2000    1000   (prune on perplexity, no-prune default=3gram).
+#  experiment:           x       s       w      z       2a    | 2d    | 2f    2g      2h     |  2i      2j
+# WER (train_dev,tg)     18.67   18.45  *18.02  18.06   18.20 |*17.55 | 17.49*17.28   17.46  |*17.44  17.54
+# WER (train_dev,fg)     17.22   16.96   16.70 *16.46   16.59 |*16.14 | 16.21 16.14  *16.08  |*16.09  16.20
+# WER (eval2000,tg)      20.4    20.1    19.9  *19.7    19.8  |*19.5  | 19.6 *19.4    19.5   |*19.2   *19.2
+# WER (eval2000,fg)      18.4    18.0    17.9   18.0   *17.7  |*17.6  | 17.8  17.7   *17.6   | 17.3   *17.2
+# #states in den.fst     29384   30064   30744  31487   31729 | 37451 | 48591 42804   38818  | 35460   33272
+# #arcs in den.fst       249524  252690  255242 251118  238678| 342831|618289 515353  428241 | 299068  267092
+# LM perplexity          8.78    8.07    7.76   7.39    7.37  | 6.34  | 5.75  6.04    6.27   | 6.07    6.35
+# # phone-lm states      2644    2864    3092   4321    6438  | 7437  | 10000 7000    5000   | 8437    7437
+# # phone-lm arcs        44581   50007   54167  68044   73839 | 118699|192690 146938  110505 | 100969  88520
 
 # _z is as _x but setting  --lm-opts "--num-extra-states=2000".
 # (see also y, which has --num-extra-states=500).
