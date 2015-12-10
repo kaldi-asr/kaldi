@@ -34,7 +34,9 @@ recurrent_projection_dim=256
 non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
-
+chunk_right_context=0
+shrink=0.99
+max_param_change=2.0
 
 # training options
 num_epochs=10
@@ -52,6 +54,7 @@ use_ivectors=true
 
 #decode options
 extra_left_context=
+extra_right_context=
 frames_per_chunk=
 
 # End configuration section.
@@ -121,7 +124,9 @@ if [ $stage -le 8 ]; then
     --cmvn-opts "$cmvn_opts" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --momentum $momentum \
+    --max-param-change $max_param_change \
     --lstm-delay "$lstm_delay" \
+    --shrink $shrink \
     --cmd "$decode_cmd" \
     --num-lstm-layers $num_lstm_layers \
     --cell-dim $cell_dim \
@@ -130,6 +135,7 @@ if [ $stage -le 8 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/$mic/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
@@ -138,6 +144,9 @@ fi
 if [ $stage -le 9 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
+  fi
+  if [ -z $extra_right_context ]; then
+    extra_right_context=$chunk_right_context
   fi
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
@@ -153,6 +162,7 @@ if [ $stage -le 9 ]; then
       fi
       steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" $ivector_opts \
           --extra-left-context $extra_left_context  \
+	        --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
          $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
