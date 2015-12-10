@@ -3079,7 +3079,7 @@ template<typename Real> static void UnitTestSolve() {
     AssertEqual(observed_impr3, ans3);
     KALDI_ASSERT(ans2 >= 0);
     KALDI_ASSERT(ans3 >= 0);
-    KALDI_ASSERT(abs(ans2 - ans3) / std::max(ans2, ans3) < 0.01);
+    KALDI_ASSERT(std::abs(ans2 - ans3) / std::max(ans2, ans3) < 0.01);
     //AssertEqual(x2, x3);
     //AssertEqual(ans1, ans2);
   }
