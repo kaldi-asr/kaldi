@@ -38,19 +38,21 @@ namespace kaldi {
      model.
    - Because of the reduced frame rate, we need to use unconventional
      HMM topologies (allowing the traversal of the HMM in one state).
-   - We don't use any transition probabilities in the HMMs other than those
-     derived from the language model (the transition probabilities
-     can just be folded into the neural-net output probabilities, so there
-     is no need for them).
+   - We use fixed transition probabilities in the HMM, and don't train
+     them (we may train them in future, but for the most part the neural-net
+     output probabilities can do the same job as the transition probabilities,
+     depending on the topology).
    - Currently, only nnet3 DNNs are supported (see \ref dnn3), and
      online decoding has not yet been implemented.
-   - Currently the results are about the same as those of conventional
-     DNN-HMMs, but the system is about 3 times faster to decode.
+   - Currently the results are a bit better then those of conventional
+     DNN-HMMs (about 5\% relative better), but the system is about 3 times
+     faster to decode; training time is probably a bit faster too, but
+     we haven't compared it exactly.
 
   \section chain_scripts  Where to find scripts for the 'chain' models
 
   The current best scripts for the 'chain' models can be found in the
-  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_q.sh is the
+  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_2m.sh is the
   current best one.  This is currently available in the 'chain' branch of Dan's
   git repository (git@github.com:/danpovey/kaldi.git) but will soon be pushed to
   the 'chain' branch of the official Kaldi git repository
@@ -58,21 +60,21 @@ namespace kaldi {
   master.
 
   This script uses TDNNs as the neural net (we've been doing the development
-  with TDNNs because they are easier to tune then LSTMs), and gives almost the same
-  WER as the baseline TDNN: 12.1\%, versus 11.8\% for the best TDNN baseline 
+  with TDNNs because they are easier to tune then LSTMs), and gives a better WER
+  WER than the baseline TDNN: 12.1\%, versus 11.4\% for the best TDNN baseline 
   (on the Switchboard-only portion of eval2000).
 
   \section chain_model  The chain model
 
-  The chain model itself is no different from a conventional DNN-HMM, except we
-  don't make use of the transition probabilities in the HMMs (imagine that the
-  transition probabilities are always 1.0).  The difference is the objective
-  function used to train it: instead of a frame-level objective, we use the
-  log-probability of the correct phone sequence as the objective function.  The
-  training process is quite similar to MMI training, in which we compute numerator
-  and denominator 'occupation probabilities' and the difference between the two
-  is used in the derivative computation.  There is no need to normalize the DNN
-  outputs to sum to one on each frame any more.
+  The chain model itself is no different from a conventional DNN-HMM.  The
+  difference is the objective function used to train it: instead of a
+  frame-level objective, we use the log-probability of the correct phone
+  sequence as the objective function.  The training process is quite similar to
+  MMI training, in which we compute numerator and denominator 'occupation
+  probabilities' and the difference between the two is used in the derivative
+  computation.  There is no need to normalize the DNN outputs to sum to one on
+  each frame any more (actually we currently still do normalize them so that 
+  the sum(exp()) of all the outputs sums to one, but this is just because
 
 
   As mentioned, we configure the model differently from normal: we use a 3 times
