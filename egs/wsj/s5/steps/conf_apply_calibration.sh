@@ -31,7 +31,7 @@ dir=$6
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 calibration=$caldir/calibration.mdl
 
-for f in $lang/words.txt $latdir/lat.1.gz $calibration $model; do
+for f in $lang/words.txt $arpa_gz $latdir/lat.1.gz $calibration $model; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
 done
 [ -z "$cmd" ] && echo "$0: Missing --cmd '...'" && exit 1

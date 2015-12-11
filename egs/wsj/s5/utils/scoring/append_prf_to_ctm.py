@@ -6,9 +6,10 @@
 import sys
 import numpy as np
 
-# Append sclite alignment-tags to the ctm as last column. 
-#
-# The tags are:
+# Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
+# (parsed from the 'prf' output of 'sclite')
+
+# The tags in appended column are:
 #  'C' = correct
 #  'S' = substitution
 #  'I' = insertion
@@ -38,21 +39,22 @@ with open(prf_file) as f:
 # Parse the prf records into dictionary,
 prf_dict = dict()
 for (f,c,t,e) in prf:
-  t_pos = 0
+  t_pos = 0 # position in the 't' string,
   while t_pos < len(t):
-    t1 = t[t_pos:].split(' ',1)[0]
+    t1 = t[t_pos:].split(' ',1)[0] # get 1st token at 't_pos'
     try:
       t1f = float(t1)
-      evl = e[t_pos] if e[t_pos] != ' ' else 'C'
+      # get word evaluation letter 'C,S,I',
+      evl = e[t_pos] if e[t_pos] != ' ' else 'C' 
       # add to dictionary,
       key='%s,%s' % (f,c) # file,channel
       if key not in prf_dict: prf_dict[key] = dict()
       prf_dict[key][t1f] = evl
     except ValueError:
       pass
-    t_pos += len(t1)+1
+    t_pos += len(t1)+1 # advance position for parsing,
 
-# Load the ctm file,
+# Load the ctm file (with confidences),
 ctm = np.loadtxt(ctm_file, dtype='object,object,f8,f8,object,f8')
 
 # Append the sclite alignment tags to ctm,
@@ -65,8 +67,8 @@ for (f, chan, beg, dur, wrd, conf) in ctm:
   except KeyError:
     pass
   ctm2.append((f,chan,beg,dur,wrd,conf,sclite_tag))
-ctm3 = np.array(ctm2, dtype='object,object,f8,f8,object,f8,object')
 
 # Save the augmented ctm file,
+ctm3 = np.array(ctm2, dtype='object,object,f8,f8,object,f8,object')
 np.savetxt(ctm_out_file, ctm3, fmt='%s %s %.2f %.2f %s %.2f %s')
 

@@ -1,25 +1,34 @@
 #!/bin/bash
 # Copyright 2015, Brno University of Technology (Author: Karel Vesely). Apache 2.0.
 
-# Trains logistic regression, which calibrates the per-word confidences,
-# which are extracted by the Minimum Bayes Risk decoding.
+# Trains logistic regression, which calibrates the per-word confidences in 'CTM'.
+# The 'raw' confidences are obtained by Minimum Bayes Risk decoding.
+
+# The input features of logistic regression are:
+# - logit of Minumum Bayer Risk posterior
+# - log of word-length in characters
+# - log of average-depth depth of a lattice at words' position
+# - log of frames per character ratio
+# (- categorical distribution of 'lang/words.txt', DISABLED)
 
 # begin configuration section.
 cmd=
 lmwt=12
 decode_mbr=true
 stage=0
-grep_filter=
+grep_filter= # hesitations, format: "word1|word2|...|wordN"
 # end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
 if [ $# -ne 5 ]; then
-  echo "Usage: local/score_basic.sh [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <arpa-gz> <decode-dir> <calibration-dir>"
+  echo "Usage: $0 [opts] <data-dir> <lang-dir|graph-dir> <arpa-gz> <decode-dir> <calibration-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --lmwt <int>                    # scaling for confidence extraction"
+  echo "    --decode-mbr <bool>             # use Minimum Bayes Risk decoding"
+  echo "    --grep-filter <str>             # remove words from calibration targets"
   exit 1;
 fi
 
@@ -33,7 +42,7 @@ dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 
-for f in $data/text $lang/words.txt $latdir/lat.1.gz; do
+for f in $data/text $lang/words.txt $arpa_gz $latdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
 done
 [ -z "$cmd" ] && echo "$0: Missing --cmd '...'" && exit 1
@@ -64,7 +73,7 @@ fi
 
 # Get evaluation of the 'ctm' using the 'text' reference,
 if [ $stage -le 1 ]; then
-  utils/scoring/ctm_to_tra.py $dir/ctm - | \
+  utils/scoring/convert_ctm_to_tra.py $dir/ctm - | \
   align-text --special-symbol="<eps>" ark:$data/text ark:- ark,t:- | \
   utils/scoring/wer_per_utt_details.pl --special-symbol "<eps>" \
   >$dir/align_text 
@@ -87,7 +96,7 @@ fi
 
 # Filter the targets,
 if [ $stage -le 4 ]; then
-  # TODO: Filter out from ctm tokens [...], <...>, %..., ???
+  # Removing words with format: [...], <...>, %..., ...-, and '$grep_filter',
   grep -i -v -E "\^(\[.*\]|<.*>|%[^,]*|[^,]*-|$grep_filter)," $dir/train_targets.ark >$dir/train_targets_filt.ark
 fi
 

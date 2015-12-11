@@ -6,9 +6,10 @@
 import sys
 import numpy as np
 
-# Append evaluation of alignment to the reference,
-#
-# The tags are:
+# Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
+# (i.e. the output of 'align-text' post-processed by 'wer_per_utt_details.pl')
+
+# The tags in the appended column are:
 #  'C' = correct
 #  'S' = substitution
 #  'I' = insertion
@@ -38,7 +39,7 @@ with open(eval_in, 'r') as f:
     assert(tag == 'op')
     eval_vec[utt] = np.array(op_vec.split())[np.array(hyp_vec.split()) != '<eps>']
 
-# Read the ctm,
+# Read the CTM (contains confidences),
 ctm = np.loadtxt(ctm_in, dtype='object,object,f8,f8,object,f8')
 ctm = np.sort(ctm, order=['f0','f1','f2'])
 # Split CTM per keys from 1st column,
@@ -48,11 +49,13 @@ ctm_parts = np.split(ctm, np.nonzero(ctm['f0'][1:] != ctm['f0'][:-1])[0]+1)
 ctm_eval = []
 for part in ctm_parts:
   utt = part[0][0]
+  # extending the 'tuple' by '+':
   merged = [ tuple(tup) + (evl,) for tup,evl in zip(part,eval_vec[utt]) ]
   ctm_eval.append(merged)
   
 # Store,
 import operator
-ctm_eval = np.array(reduce(operator.add, ctm_eval), dtype='object,object,f8,f8,object,f8,object')
+ctm_eval = reduce(operator.add, ctm_eval) # Flattening the array of arrays,
+ctm_eval = np.array(ctm_eval, dtype='object,object,f8,f8,object,f8,object')
 np.savetxt(ctm_eval_out, ctm_eval, fmt=['%s','%s','%f','%f','%s','%f','%s'])
 

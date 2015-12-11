@@ -6,12 +6,13 @@
 import sys
 import numpy as np
 
-# This scripts loads a 'ctm' file and converts it into the 'tra' format,
-# while keeping only the word sequence, the info about time, channel
-# and confidence is discarded.
+# This scripts loads a 'ctm' file and converts it into the 'tra' format:
+# "utt-key word1 word2 word3 ... wordN"
+# The 'utt-key' is the 1st column in the CTM.
 
-# The CTM must have timing relative to the speech segment.
-# So that it matches with the reference in the 'data/*/text' file.
+# Typically the CTM contains:
+# - utterance-relative timimng (i.e. prepared without 'utils/convert_ctm.pl')
+# - confidences 
 
 if len(sys.argv) != 3:
   print 'Usage: %s ctm-in tra-out' % __file__

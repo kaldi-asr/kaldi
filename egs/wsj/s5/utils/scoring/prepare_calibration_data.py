@@ -82,17 +82,21 @@ if o.segments != '':
 ### Load the per-frame lattice-depth,
 depths = dict()
 if o.segments == '':
-  # The depths are stored normally,
+  # In simpler case, the 1st column of 'CTM' are the utterance keys,
+  # which simplifies the lookup of the lattice-dephts.
   with open(depths_file,'r') as f:
     for l in f:
       utt,d = l.split(' ',1)
       depths[(utt,'1')] = np.array(d.split(),dtype='int')
 else:
-  # The depths from 'segments' get pasted into 'long' vectors covering complete unsegmented audio,
-  # Getting last segment for each 'reco',
+  # In difficult case, the 'CTM' was mapped by 'utils/convert_ctm.pl'.
+  # The depth keys are the utterance-id's, so we fit the depths into 'long' 
+  # vectors covering the complete unsegmented audio channel.
+  #
+  # Getting lengths of unsegmented audio channels (i.e. the end of last segment),
   reco_beg_end_sort = np.sort(np.array(segments.values(),dtype='object,f8,f8'), order=['f0','f2'])
   reco_beg_end_lastseg = reco_beg_end_sort[np.append(reco_beg_end_sort['f0'][1:] != reco_beg_end_sort['f0'][:-1],[True])]
-  # Create buffer with zero depths,
+  # Create buffers for the depths,
   for (reco,beg,end) in reco_beg_end_lastseg:
     frame_total = 1 + int(np.rint(100*end))
     depths[reco2file_and_channel[reco]] = np.zeros(frame_total, dtype='int')
@@ -131,9 +135,9 @@ with open(o.conf_feats,'w') as inputs:
     logit = np.log(conf+damper) - np.log(1.0 - conf+damper)
     # - log of word-length in characters,
     log_lenwrd = np.log(len(wrd)) 
-    # - log of average-depth of lattice,
+    # - log of average-depth of lattice at the word position,
     log_avg_depth = np.log(np.mean(depths[(f,chan)][int(np.rint(100.0*beg)):int(np.rint(100.0*(beg+dur)))]))
-    # - log of frame-per-letter ratio,
+    # - log of frames per character ratio,
     log_frame_per_letter = np.log(100.0*dur/len(wrd))
     
     # - categorical distribution of words (DISABLED!!!, needs a lot of memory, but gave 0.015 NCE improvement),
