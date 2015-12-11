@@ -150,7 +150,7 @@ echo $min_seg_len |  perl -e '
       }
 
       if ($forward_combining == 0 && $backward_combining == 0) { 
-        die "Error: fail to have combined segment with enough length\n"; 
+        print "Warning: speaker $utt2spk{$seg} has no enough segments to reach the specified length.\n"; 
       }
     }
   }
