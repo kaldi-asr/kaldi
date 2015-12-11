@@ -39,26 +39,36 @@ dataset=dev10h
 dev10h_dir=$(find $corpusdir -ipath "*/conversational/*" -name "dev" -type d) || exit 1
 indusdev10=$(find $indus/ -maxdepth 1 -name "$indusid*dev" -type d)
 if [ -z "$indusdev10" ] ; then
+  echo >&2  "IndusDB entry \"$indusid*dev\" not found -- removing the version and retrying"
+  indusid=${indusid%%-v*}
+  indusdev10=$(find $indus/ -maxdepth 1 -name "$indusid*dev" -type d)
+fi
+
+if [ -z "$indusdev10" ] ; then
   echo ""
 else
   dev10h_rttm=$(find $indusdev10/ -name "*mitllfa3.rttm" )
   dev10h_ecf=$(find $indusdev10/ -name "*ecf.xml" )
   dev10h_stm=$(find $indusdev10/ -name "*stm" -not -name "*cond-speaker*" )
-  kwlists=$(find $indusdev10/ -name "*.kwlist*.xml")
+  kwlists1=$(find $indusdev10/ -name "*.kwlist.xml" | sort -V )
+  kwlists2=$(find $indusdev10/ -name "*.kwlist?*.xml" | sort -V )
+  kwlists="$kwlists1 $kwlists2"
 fi
 
 echo "#Radical reduced DEV corpora files location"
 echo "dev2h_data_dir=$dev10h_dir"
 echo "dev2h_data_list=$lists/dev.2h.list"
-echo "dev2h_rttm_file=$dev10h_rttm"
-echo "dev2h_ecf_file=$dev10h_ecf"
-echo "dev2h_stm_file=$dev10h_stm"
-echo "dev2h_kwlists=("
-for list in $kwlists; do
-  id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-  echo "    [$id]=$list"
-done
-echo ")  # dev2h_kwlists"
+[ ! -z ${dev10h_rttm:-}  ] && echo "dev2h_rttm_file=$dev10h_rttm"
+[ ! -z ${dev10h_ecf:-} ] && echo "dev2h_ecf_file=$dev10h_ecf"
+[ ! -z ${dev10h_stm:-} ] && echo "dev2h_stm_file=$dev10h_stm"
+if [ ! -z "${kwlists:-}" ] ; then
+  echo "dev2h_kwlists=("
+  for list in $kwlists; do
+    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+    echo "    [$id]=$list"
+  done
+  echo ")  # dev2h_kwlists"
+fi
 echo "dev2h_nj=16"
 echo "dev2h_subset_ecf=true"
 echo -e "\n"
@@ -66,90 +76,100 @@ echo -e "\n"
 echo "#Official DEV corpora files location"
 echo "dev10h_data_dir=$dev10h_dir"
 echo "dev10h_data_list=$lists/dev.list"
-echo "dev10h_rttm_file=$dev10h_rttm"
-echo "dev10h_ecf_file=$dev10h_ecf"
-echo "dev10h_stm_file=$dev10h_stm"
-echo "dev10h_kwlists=("
-for list in $kwlists; do
-  id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-  echo "    [$id]=$list"
-done
-echo ")  # dev10h_kwlists"
+[ ! -z ${dev10h_rttm:-} ] && echo "dev10h_rttm_file=$dev10h_rttm"
+[ ! -z ${dev10h_ecf:-} ]  && echo "dev10h_ecf_file=$dev10h_ecf"
+[ ! -z ${dev10h_stm:-} ]  && echo "dev10h_stm_file=$dev10h_stm"
+if [ ! -z "${kwlists:-}" ] ; then
+  echo "dev10h_kwlists=("
+  for list in $kwlists; do
+    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+    echo "    [$id]=$list"
+  done
+  echo ")  # dev10h_kwlists"
+fi
 echo "dev10h_nj=32"
 echo -e "\n"
 
 dataset="eval"
 eval_dir=$(find $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d) || exit 1
-indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
-if [ -z "$indus_set" ] ; then
-  eval_ecf=$(find $indus/ -maxdepth 1 -type f  -name "*$indusid*${dataset}.ecf.xml" )
-  eval_kwlists=$(find $indus/ -maxdepth 1 -type f -name "*$indusid*${dataset}.kwlist*.xml")
-else
-  eval_rttm=$(find $indus_set/ -name "*mitllfa3.rttm" )
-  eval_ecf=$(find $indus_set/ -name "*ecf.xml" )
-  eval_stm=$(find $indus_set/ -name "*stm" -not -name "*cond-speaker*" )
-  eval_kwlists=$(find $indus_set/ -name "*.kwlist*.xml")
+if [ ! -z "$eval_dir" ] ; then
+  indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
+  if [ -z "$indus_set" ] ; then
+    eval_ecf=$(find $indus/ -maxdepth 1 -type f  -name "*$indusid*${dataset}.ecf.xml" )
+    eval_kwlists1=$(find $indus -name "*$indusid*${dataset}.kwlist*.xml" | sort -V)
+    eval_kwlists2=$(find $indus -name "*$indusid*${dataset}.kwlist?*.xml" | sort -V)
+    eval_kwlists="$kwlists1 $kwlists2"
+  else
+    eval_rttm=$(find $indus_set/ -name "*mitllfa3.rttm" )
+    eval_ecf=$(find $indus_set/ -name "*ecf.xml" )
+    eval_stm=$(find $indus_set/ -name "*stm" -not -name "*cond-speaker*" )
+    eval_kwlists1=$(find $indus -name "*.kwlist.xml" | sort -V)
+    eval_kwlists2=$(find $indus -name "*.kwlist?*.xml" | sort -V)
+    eval_kwlists="$kwlist1 $kwlist2"
+  fi
+  echo "#Official EVAL period evaluation data files"
+  echo "eval_data_dir=$eval_dir"
+  echo "eval_data_list=$lists/eval.list"
+  echo "${dataset}_ecf_file=$eval_ecf"
+  echo "${dataset}_kwlists=("
+  for list in $eval_kwlists; do
+    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+    echo "    [$id]=$list"
+  done
+  echo ")  # ${dataset}_kwlists"
+  echo "eval_nj=32"
+  echo -e "\n"
+
+  dataset=evalpart1
+  indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
+  if [ -z "$indus_set" ] ; then
+    echo ""
+  else
+    evalpart1_rttm=$(find $indus_set/ -name "*mitllfa3.rttm" )
+    evalpart1_ecf=$(find $indus_set/ -name "*ecf.xml" )
+    evalpart1_stm=$(find $indus_set/ -name "*stm" -not -name "*cond-speaker*" )
+    kwlists1=$(find $indus_set/ -name "*.kwlist.xml" | sort -V)
+    kwlists2=$(find $indus_set/ -name "*.kwlist?*.xml" | sort -V)
+    kwlists="$kwlists1 $kwlists2"
+  fi
+  echo "#Official post-EVAL period data files"
+  echo "${dataset}_data_dir=$eval_dir"
+  echo "${dataset}_data_list=$lists/${dataset}.list"
+  echo "${dataset}_rttm_file=$evalpart1_rttm"
+  echo "${dataset}_ecf_file=$evalpart1_ecf"
+  echo "${dataset}_stm_file=$evalpart1_stm"
+  echo "${dataset}_kwlists=("
+  for list in $kwlists; do
+    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+    echo "    [$id]=$list"
+  done
+  echo ")  # ${dataset}_kwlists"
+  echo "${dataset}_nj=32"
+  echo -e "\n"
+
+
+  dataset=shadow
+  echo "#Shadow data files"
+  echo "shadow_data_dir=("
+  echo "    $dev10h_dir"
+  echo "    $eval_dir"
+  echo ") # shadow_data_dir"
+  echo "shadow_data_list=("
+  echo "    $lists/dev.list"
+  echo "    $lists/eval.lists"
+  echo ") # shadow_data_dir"
+  echo "shadow_ecf_file=$dev10h_ecf"
+  echo "shadow_rttm_file=$dev10h_rttm"
+  echo "shadow_stm_file=$dev10h_stm"
+  echo "shadow_kwlists=("
+  for list in $eval_kwlists; do
+    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+    echo "    [$id]=$list"
+  done
+  echo ")  # shadow_kwlists"
+  echo "shadow_nj=32"
+  echo -e "\n"
 fi
-echo "#Official EVAL period evaluation data files"
-echo "eval_data_dir=$eval_dir"
-echo "eval_data_list=$lists/eval.list"
-echo "${dataset}_ecf_file=$eval_ecf"
-echo "${dataset}_kwlists=("
-for list in $eval_kwlists; do
-  id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-  echo "    [$id]=$list"
-done
-echo ")  # ${dataset}_kwlists"
-echo "eval_nj=32"
-echo -e "\n"
-
-dataset=evalpart1
-indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
-if [ -z "$indus_set" ] ; then
-  echo ""
-else
-  evalpart1_rttm=$(find $indus_set/ -name "*mitllfa3.rttm" )
-  evalpart1_ecf=$(find $indus_set/ -name "*ecf.xml" )
-  evalpart1_stm=$(find $indus_set/ -name "*stm" -not -name "*cond-speaker*" )
-  kwlists=$(find $indus_set/ -name "*.kwlist*.xml")
-fi
-echo "#Official post-EVAL period data files"
-echo "${dataset}_data_dir=$eval_dir"
-echo "${dataset}_data_list=$lists/${dataset}.list"
-echo "${dataset}_rttm_file=$evalpart1_rttm"
-echo "${dataset}_ecf_file=$evalpart1_ecf"
-echo "${dataset}_stm_file=$evalpart1_stm"
-echo "${dataset}_kwlists=("
-for list in $kwlists; do
-  id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-  echo "    [$id]=$list"
-done
-echo ")  # ${dataset}_kwlists"
-echo "${dataset}_nj=32"
-echo -e "\n"
-
-
-dataset=shadow
-echo "#Shadow data files"
-echo "shadow_data_dir=("
-echo "    $dev10h_dir"
-echo "    $eval_dir"
-echo ") # shadow_data_dir"
-echo "shadow_data_list=("
-echo "    $lists/dev.list"
-echo "    $lists/eval.lists"
-echo ") # shadow_data_dir"
-echo "shadow_ecf_file=$dev10h_ecf"
-echo "shadow_rttm_file=$dev10h_rttm"
-echo "shadow_stm_file=$dev10h_stm"
-echo "shadow_kwlists=("
-for list in $eval_kwlists; do
-  id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-  echo "    [$id]=$list"
-done
-echo ")  # shadow_kwlists"
-echo "shadow_nj=32"
-echo -e "\n"
 
 dataset=untranscribed-training
 unsup_dir=$(find $corpusdir -ipath "*/conversational/*" -name "$dataset" -type d) || exit 1
