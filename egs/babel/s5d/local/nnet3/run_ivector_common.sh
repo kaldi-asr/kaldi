@@ -7,9 +7,15 @@ train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
 
-. ./path.sh
-. ./utils/parse_options.sh
+[ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+[ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
 
+. conf/common_vars.sh || exit 1;
+. ./lang.conf || exit 1;
+
+[ -f local.conf ] && . ./local.conf
+
+. ./utils/parse_options.sh
 
 mkdir -p nnet3
 # perturbed data preparation

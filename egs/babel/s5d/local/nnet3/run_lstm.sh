@@ -53,9 +53,16 @@ frames_per_chunk=
 
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
-. ./path.sh
+[ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
+[ ! -f ./conf/common_vars.sh ] && echo 'the file conf/common_vars.sh does not exist!' && exit 1
+
+. conf/common_vars.sh || exit 1;
+. ./lang.conf || exit 1;
+
+[ -f local.conf ] && . ./local.conf
+
 . ./utils/parse_options.sh
+. ./cmd.sh
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
