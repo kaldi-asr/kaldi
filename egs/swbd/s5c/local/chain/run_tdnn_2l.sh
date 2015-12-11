@@ -5,6 +5,19 @@
 #  are no longer treating the edges in the same way (e.g. we now use
 #  --pdf-boundary-penalty=0.0).  So re-tuning.
 
+#  This is: [better by 0.1, better by 0.1, the same, worse by 0.1].  So
+#  I guess it's either not sensitive to this, or the optimal value lies
+#  somewhere in between.   I'm leaving it at 150 in the scripts for
+#  now, but if we have memory problems in the future, we can reduce to 100.
+#
+#                        2k       2l
+#  --frames-per-eg     150       100
+# train_dev,tg         17.08     16.99
+# train_dev,fg         15.79     15.67
+# eval2000,tg          19.3      19.3
+# eval2000,fg          17.3      17.4
+
+
 # _2k is as _2i, but doing the same change as in _s -> _2e, in which we
 #  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
 

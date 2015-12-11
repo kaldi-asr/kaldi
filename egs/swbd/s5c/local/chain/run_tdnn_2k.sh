@@ -2,6 +2,14 @@
 
 # _2k is as _2i, but doing the same change as in _s -> _2e, in which we
 #  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
+#
+#  This is helpful more often than not (but it doesn't seem to make as much
+#  of a difference as it did before).
+#                  2i         2k
+# train_dev,tg  17.44        17.08
+# train_dev,fg  16.09        15.79
+# eval2000,tg    19.2        19.3
+# eval2000,fg    17.3        17.3
 
 # _2i is as _2d but with a new set of code for estimating the LM, in which we compute
 # the log-like change when deciding which states to back off.  The code is not the same
@@ -191,8 +199,8 @@ if [ $stage -le 12 ]; then
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
+ # note, I removed the --pdf-boundary 0.0 option after taking it out of the script
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --pdf-boundary-penalty 0.0 \
     --apply-deriv-weights false \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \

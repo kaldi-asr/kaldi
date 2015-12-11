@@ -7,14 +7,15 @@
 # results for this.  (note: this won't matter as the results did not change)
 #
 #  Comparing results:
-#      expt:                _2b      _y     _2e
-# --frames-overlap-per-eg   75      30       0
-#  all of eval2000 (tg)     20.1    19.8    19.7
-#  all of eval2000 (fg)     18.0    17.9    17.8
-#        train_dev (tg)     18.15   18.04   17.85
-#        train_dev (fg)     16.83   16.57   16.52
+#      expt:                _2b      _y     _2e     _s
+# --frames-overlap-per-eg   75      30       0      30
+# --apply-deriv-weights     f       f        f      t
+#  all of eval2000 (tg)     20.1    19.8    19.7   20.1
+#  all of eval2000 (fg)     18.0    17.9    17.8   18.0
+#        train_dev (tg)     18.15   18.04   17.85  18.45
+#        train_dev (fg)     16.83   16.57   16.52  16.96
 #  ... on all of these tests, results are consistently better towards smaller
-#   --frames-overlap-per-eg.
+#   --frames-overlap-per-eg.  and apply-deriv-weights=f seems better.
 #
 
 

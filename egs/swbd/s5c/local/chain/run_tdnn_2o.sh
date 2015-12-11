@@ -1,24 +1,10 @@
 #!/bin/bash
 
+# _2o is as _2m, but going back to our original 1-state topology, which it turns
+# out that I never tested.
+
 # _2m is as _2k, but setting --leftmost-questions-truncate=-1, i.e. disabling
 # that mechanism.
-# Caution: I accidentally overwrote its treedir with the '2o' experiment, so I
-# moved it to '2o'.  But the 2m experiment was done by then.
-
-# So it's [0.1 worse, 0.1 worse, 0.6 better, 0.3 better]: better on average.
-# Which kind of makes sense
-#
-#                                  2k       2m
-#  --leftmost-questions-truncate   30       -1
-#           train_dev,tg         17.08     17.22
-#           train_dev,fg         15.79     15.87
-#           eval2000,tg          19.3      18.7
-#           eval2000,fg          17.3      17.0
-# in tree-building,
-#           like-impr           4.9099     5.33844
-#    Den-fst num-states          35460     299068
-#    Den-fst num-arcs            47036     331403
-
 
 # _2k is as _2i, but doing the same change as in _s -> _2e, in which we
 #  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
@@ -114,11 +100,11 @@
 set -e
 
 # configs for 'chain'
-stage=11
+stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2m  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2o  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -163,7 +149,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5m_tree$suffix
+treedir=exp/chain/tri5o_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -186,21 +172,21 @@ if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  lang=data/lang_chain_d
+  lang=data/lang_chain_o
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
   # topology.
-  steps/nnet3/chain/gen_topo2.py $nonsilphonelist $silphonelist >$lang/topo
+  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_d $ali_dir $treedir
+      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_o $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -212,7 +198,6 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --pdf-boundary-penalty 0.0 \
     --apply-deriv-weights false \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
