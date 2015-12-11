@@ -54,7 +54,7 @@ fi
 
 # The following perl script is the core part.
 # It looks for segments with length shorter than the specified length
-# and concatenates them with other segments to make sure every combined segments are 
+# and concatenates them with other segments to make sure every combined segments are
 # with enough length. Here, after the search of the under-length segment, it looks for
 # another segment where the combined length is the closest to the specified length.
 
@@ -149,8 +149,8 @@ echo $min_seg_len |  perl -e '
         }
       }
 
-      if ($forward_combining == 0 && $backward_combining == 0) { 
-        print "Warning: speaker $utt2spk{$seg} has no enough segments to reach the specified length.\n"; 
+      if ($forward_combining == 0 && $backward_combining == 0) {
+        print "Warning: speaker $utt2spk{$seg} has no enough segments to reach the specified length.\n";
       }
     }
   }
@@ -158,7 +158,7 @@ echo $min_seg_len |  perl -e '
   foreach $seg (sort keys %uttlist) {
     if ($utt2item{$seg} > 1) {
       print UO "$uttlist{$seg}-appended $utt2spk{$seg}\n";
-      print FO "$uttlist{$seg}-appended concat-feats $utt2feat{$seg} - |\n";
+      print FO "$uttlist{$seg}-appended concat-feats --print-args=false $utt2feat{$seg} - |\n";
       print TO "$uttlist{$seg}-appended $utt2text{$seg}\n";
     } elsif ($utt2item{$seg} == 1) {
       print UO "$uttlist{$seg} $utt2spk{$seg}\n";
