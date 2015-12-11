@@ -15,6 +15,9 @@ parser.add_argument('-o','--output',help='Output ctm file', required=True)
 parser.add_argument('-M','--Map',help='Input acronyms map', required=True)
 args = parser.parse_args()
 
+if args.input == '-': args.input = '/dev/stdin'
+if args.output == '-': args.output = '/dev/stdout'
+
 dict_acronym_back = {}
 fin_map = open(args.Map, "r")
 for line in fin_map:
