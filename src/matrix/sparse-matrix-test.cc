@@ -173,6 +173,12 @@ void UnitTestSparseMatrixAddToMat() {
     smat.CopyFromMat(other_mat1);
     smat.CopyToMat(&mat);
     AssertEqual(other_mat1, mat, 0.00001);
+
+    smat.Transpose();
+    mat.Resize(smat.NumRows(), smat.NumCols(), kUndefined);
+    smat.CopyToMat(&mat);
+    mat.Transpose();
+    AssertEqual(other_mat1, mat, 0.00001);
   }
 }
 
