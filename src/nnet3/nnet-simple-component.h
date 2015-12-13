@@ -345,8 +345,9 @@ class SparseLinearComponent: public UpdatableComponent {
   virtual std::string Type() const { return "SparseLinearComponent"; }
 
   virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-        kLinearInInput|kBackpropNeedsInput|kBackpropAdds;
+    int32 extra_bits = is_updatable_ ? kBackpropNeedsInput|kUpdatableComponent : 0;
+    return kSimpleComponent|extra_bits|kLinearInParameters|
+        kLinearInInput|kBackpropAdds|kPropagateAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -382,10 +383,10 @@ class SparseLinearComponent: public UpdatableComponent {
             std::string matrix_filename, bool updatable = false);
 
   void ComputeLinearParamsTransposedVersion() {
-    Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
-    linear_params_.CopyToMat(&tmp);
+    SparseMatrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
+    linear_params_.CopyToSmat(&tmp);
     tmp.Transpose();
-    linear_params_transposed_.CopyFromMat(tmp);
+    linear_params_transposed_.CopyFromSmat(tmp);
   }
 
  private:

@@ -37,6 +37,7 @@ namespace kaldi {
 
 template <typename Real>
 class SparseVector {
+  friend class SparseMatrix<Real>;
  public:
   MatrixIndexT Dim() const { return dim_; }
 
@@ -148,6 +149,8 @@ class SparseMatrix {
   /// later when it is necessary.
   template <class OtherReal>
   void CopyFromSmat(const SparseMatrix<OtherReal> &other);
+  
+  void CopyFromPosterior(MatrixIndexT dim, const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs);
 
   /// Does *other = *other + alpha * *this.
   void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
@@ -156,7 +159,9 @@ class SparseMatrix {
   SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other);
 
   SparseMatrix(const SparseMatrix<Real> &other) { *this = other; }
-
+  
+  void Transpose();
+  
   void Swap(SparseMatrix<Real> *other);
 
   // returns pointer to element data, or NULL if empty (use with NumElements()).

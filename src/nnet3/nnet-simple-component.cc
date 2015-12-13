@@ -970,7 +970,7 @@ void SparseLinearComponent::InitFromConfig(ConfigLine *cfl) {
 void SparseLinearComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                 const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
-  out->AddMatSmat(1.0, in, kNoTrans, linear_params_, kTrans, 0.0);
+  out->AddMatSmat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);
 }
 
 void SparseLinearComponent::Backprop(const std::string &debug_info,

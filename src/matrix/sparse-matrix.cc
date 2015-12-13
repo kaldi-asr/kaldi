@@ -336,6 +336,22 @@ Real SparseMatrix<Real>::FrobeniusNorm() const {
   return std::sqrt(squared_sum);
 }
 
+template<typename Real>
+void SparseMatrix<Real>::Transpose() {
+  if(rows_.empty())
+    return;
+  std::vector<SparseVector<Real> > trows(NumCols(), SparseVector<Real>(NumRows()));
+  for (int32 i = 0; i < rows_.size(); ++i) {
+    const std::pair<MatrixIndexT, Real> *row_data = rows_[i].Data();
+    for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
+      trows[row_data[j].first].pairs_.push_back(std::make_pair(
+				      i,
+				      row_data[j].second));
+    }
+  }
+  rows_.swap(trows);
+}
+
 template <typename Real>
 template <typename OtherReal>
 void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
@@ -383,10 +399,11 @@ void SparseMatrix<Real>::CopyFromMat(const MatrixBase<OtherReal> &other) {
   rows_.resize(other.NumRows());
   if (rows_.size() == 0) return;
   for (int32 r = 0; r < rows_.size(); r++) {
-    std::vector<std::pair<MatrixIndexT, Real> > mat_row(other.NumCols());
+    SparseVector<Real> row(other.NumCols());
     for(int32 c = 0; c < other.NumCols(); c++)
-      mat_row[c] = std::make_pair(c, other(r, c));
-    rows_[r].CopyFromSvec(SparseVector<Real>(other.NumCols(), mat_row));
+      row.pairs_.push_back(std::make_pair(c, other(r, c)));
+    rows_[r].Swap(&row);
+    //    rows_[r].CopyFromSvec(row);
   }
 }
 template void SparseMatrix<float>::CopyFromMat(const MatrixBase<float> &other);
@@ -568,6 +585,21 @@ SparseMatrix<Real>::SparseMatrix(
     rows_[row].Swap(&svec);
   }
 }
+
+template<typename Real>
+void SparseMatrix<Real>::CopyFromPosterior(
+		   MatrixIndexT dim,
+		   const std::vector<std::vector<std::pair<MatrixIndexT, Real> > > &pairs) {
+  rows_.clear();
+  rows_.resize(pairs.size());
+  MatrixIndexT num_rows = pairs.size();
+  for (MatrixIndexT row = 0; row < num_rows; row++) {
+    SparseVector<Real> svec(dim);
+    svec.pairs_ = pairs[row];
+    rows_[row].Swap(&svec);
+  }
+}
+
 
 template <typename Real>
 void SparseMatrix<Real>::SetRandn(BaseFloat zero_prob) {
