@@ -20,7 +20,6 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
 
 /*! @brief This is the main program for extracting segments from a wav file
@@ -123,7 +122,7 @@ int main(int argc, char *argv[]) {
       /* check whether a segment start time and end time exists in recording 
        * if fails , skips the segment.
        */ 
-     if (!reader.HasKey(recording)) {
+      if (!reader.HasKey(recording)) {
         KALDI_WARN << "Could not find recording " << recording
                    << ", skipping segment " << segment;
         continue;

@@ -218,6 +218,56 @@ void UnitTestHasContiguousProperty() {
   }
 }
 
+
+void UnitTestEnsureContiguousProperty() {
+  for (int32 k = 0; k < 10; k++) {
+    int32 size = RandInt(0, 5);
+    std::vector<int32> indexes(size);
+    for (int32 i = 0; i < size; i++)
+      indexes[i] = RandInt(-1, 4);
+    std::vector<std::pair<int32, int32> > reverse_indexes;
+    bool ans = HasContiguousProperty(indexes, &reverse_indexes);
+    if (ans) { // has contiguous property -> EnsureContiguousProperty should do
+               // nothing.
+      std::vector<std::vector<int32> > indexes_split;
+      EnsureContiguousProperty(indexes, &indexes_split);
+      if (indexes.size() == 0 ||
+          *std::max_element(indexes.begin(), indexes.end()) == -1) {
+        KALDI_ASSERT(indexes_split.size() == 0);
+      } else {
+        KALDI_ASSERT(indexes_split.size() == 1 &&
+                     indexes_split[0] == indexes);
+      }
+    } else {
+      std::vector<std::vector<int32> > indexes_split;
+      EnsureContiguousProperty(indexes, &indexes_split);
+      KALDI_ASSERT(indexes_split.size() > 1);
+      for (int32 i = 0; i < indexes.size(); i++) {
+        int32 this_val = indexes[i];
+        bool found = (this_val == -1);  // not looking for anything if
+                                        // this_val is -1.
+        for (int32 j = 0; j < indexes_split.size(); j++) {
+          if (found) {
+            KALDI_ASSERT(indexes_split[j][i] == -1);
+          } else {
+            if (indexes_split[j][i] == this_val) {
+              found = true;
+            } else {
+              KALDI_ASSERT(indexes_split[j][i] == -1);
+            }
+          }
+        }
+        KALDI_ASSERT(found);
+        for (int32 j = 0; j < indexes_split.size(); j++) {
+          KALDI_ASSERT(indexes_split[j].size() == indexes.size() &&
+                       HasContiguousProperty(indexes_split[j], &reverse_indexes));
+        }
+      }
+    }
+  }
+}
+
+
 // Function to check SplitLocations() method
 // checks if the submat_lists and split_lists have the same non-dummy elements
 // checks if the submat_lists are split into same first_element lists wherever
@@ -316,6 +366,7 @@ int main()  {
     UnitTestSplitLocations(verbose);
     UnitTestSplitLocationsBackward(verbose);
     UnitTestHasContiguousProperty();
+    UnitTestEnsureContiguousProperty();
   }
   KALDI_LOG << "Tests passed.";
   return 0;

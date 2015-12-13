@@ -42,7 +42,7 @@ if [ $stage -le 8 ]; then
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
     --cmd "$decode_cmd" \
     --pnorm-input-dim 2000 \

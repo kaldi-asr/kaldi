@@ -82,7 +82,7 @@ if [ $stage -le 8 ]; then
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 -3,3 0 0" \
     --feat-type raw --get-egs-stage 5 \
     --cmvn-opts "$cmvn_opts" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --cmd "$decode_cmd" \
     --relu-dim 850 \

@@ -58,7 +58,7 @@ if [ $stage -le 7 ]; then
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --initial-learning-rate 0.01 --final-learning-rate 0.001 \
     --cmd "$decode_cmd" \
     --pnorm-input-dim 3500 \

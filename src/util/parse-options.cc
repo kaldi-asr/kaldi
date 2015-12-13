@@ -632,8 +632,8 @@ template void ParseOptions::RegisterTmpl(const std::string &name, float *ptr,
                             const std::string &doc);
 template void ParseOptions::RegisterTmpl(const std::string &name, double *ptr,
                             const std::string &doc);
-template void ParseOptions::RegisterTmpl(const std::string &name, std::string *ptr,
-                            const std::string &doc);
+template void ParseOptions::RegisterTmpl(const std::string &name,
+                            std::string *ptr, const std::string &doc);
 
 template void ParseOptions::RegisterStandard(const std::string &name,
                             bool *ptr,

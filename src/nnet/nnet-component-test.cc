@@ -347,7 +347,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet1;
 
-  for (int32 loop = 0; loop < 2; loop++) {
+  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // use no GPU

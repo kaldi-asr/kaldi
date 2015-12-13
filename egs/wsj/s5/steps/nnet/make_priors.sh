@@ -46,6 +46,9 @@ sdata=$data/split$nj
 
 echo "Accumulating prior stats by forwarding '$data' with '$nndir'"
 
+# We estimate priors on 10k utterances, selected randomly from the splitted data,
+N=$((10000/nj))
+
 # PREPARE FEATURE EXTRACTION PIPELINE
 # import config,
 cmvn_opts=
@@ -57,7 +60,7 @@ D=$nndir
 [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
 #
 # Create the feature stream,
-feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
+feats="ark:cat $sdata/JOB/feats.scp | utils/shuffle_list.pl --srand 777 | head -n$N | copy-feats scp:- ark:- |"
 # apply-cmvn (optional),
 [ ! -z "$cmvn_opts" -a ! -f $sdata/1/cmvn.scp ] && echo "$0: Missing $sdata/1/cmvn.scp" && exit 1
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"

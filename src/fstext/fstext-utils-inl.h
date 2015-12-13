@@ -179,7 +179,6 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
                              vector<I> *isymbols_out,
                              vector<I> *osymbols_out,
                              typename Arc::Weight *tot_weight_out) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -222,7 +221,6 @@ bool GetLinearSymbolSequences(const Fst<Arc> &fst,
                               vector<vector<I> > *isymbols_out,
                               vector<vector<I> > *osymbols_out,
                               vector<typename Arc::Weight> *weights_out) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -361,7 +359,6 @@ void NbestAsFsts(const Fst<Arc> &fst,
 template<class Arc, class I>
 void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
                                         MutableFst<Arc> *ofst) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -382,7 +379,6 @@ void MakeLinearAcceptorWithAlternatives(const vector<vector<I> > &labels,
 
 template<class Arc, class I>
 void MakeLinearAcceptor(const vector<I> &labels, MutableFst<Arc> *ofst) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -506,7 +502,6 @@ void SafeDeterminizeWrapperInLog(VectorFst<StdArc> *ifst, VectorFst<StdArc> *ofs
 
 template<class Arc>
 void RemoveWeights(MutableFst<Arc> *ifst) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -539,7 +534,6 @@ bool PrecedingInputSymbolsAreSame(bool start_is_epsilon, const Fst<Arc> &fst) {
 
 template<class Arc, class F> // F is functor type from labels to classes.
 bool PrecedingInputSymbolsAreSameClass(bool start_is_epsilon, const Fst<Arc> &fst, const F &f) {
-  typedef typename Arc::Label Label;
   typedef typename F::Result ClassType;
   typedef typename Arc::StateId StateId;
   vector<ClassType> classes;
@@ -578,7 +572,6 @@ bool FollowingInputSymbolsAreSame(bool end_is_epsilon, const Fst<Arc> &fst) {
 
 template<class Arc, class F>
 bool FollowingInputSymbolsAreSameClass(bool end_is_epsilon, const Fst<Arc> &fst, const F &f) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   typedef typename F::Result ClassType;
@@ -610,7 +603,6 @@ void MakePrecedingInputSymbolsSame(bool start_is_epsilon, MutableFst<Arc> *fst) 
 template<class Arc, class F>
 void MakePrecedingInputSymbolsSameClass(bool start_is_epsilon, MutableFst<Arc> *fst, const F &f) {
   typedef typename F::Result ClassType;
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   vector<ClassType> classes;
@@ -692,7 +684,6 @@ void MakeFollowingInputSymbolsSame(bool end_is_epsilon, MutableFst<Arc> *fst) {
 
 template<class Arc, class F>
 void MakeFollowingInputSymbolsSameClass(bool end_is_epsilon, MutableFst<Arc> *fst, const F &f) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   typedef typename F::Result ClassType;
@@ -890,7 +881,6 @@ bool EqualAlign(const Fst<Arc> &ifst,
   // infinite loop.
   KALDI_ASSERT(ifst.Properties(kCoAccessible, true) == kCoAccessible);
 
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -1304,7 +1294,6 @@ bool IsStochasticFst(const Fst<Arc> &fst,
                      float delta,
                      typename Arc::Weight *min_sum,
                      typename Arc::Weight *max_sum) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   NaturalLess<Weight> nl;
@@ -1342,7 +1331,6 @@ bool IsStochasticFst(const Fst<LogArc> &fst,
                      LogArc::Weight *min_sum,
                      LogArc::Weight *max_sum) {
   typedef LogArc Arc;
-  typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
   bool first_time = true;

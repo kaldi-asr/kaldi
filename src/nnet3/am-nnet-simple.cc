@@ -67,7 +67,8 @@ void AmNnetSimple::SetNnet(const Nnet &nnet) {
 
 void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
   priors_ = priors;
-  if (priors_.Dim() != nnet_.OutputDim("output")) {
+  if (priors_.Dim() != nnet_.OutputDim("output") &&
+      priors_.Dim() != 0) {
     KALDI_ERR << "Dimension mismatch when setting priors: priors have dim "
               << priors.Dim() << ", model expects "
               << nnet_.OutputDim("output");

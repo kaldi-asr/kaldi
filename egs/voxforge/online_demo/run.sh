@@ -3,6 +3,8 @@
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
+# Note: you have to do 'make ext' in ../../../src/ before running this.
+
 # Set the paths to the binaries and scripts needed
 KALDI_ROOT=`pwd`/../../..
 export PATH=$PWD/../s5/utils/:$KALDI_ROOT/src/onlinebin:$KALDI_ROOT/src/bin:$PATH
@@ -29,7 +31,7 @@ audio=${data_file}/audio
 if [ ! -s ${data_file}.tar.bz2 ]; then
     echo "Downloading test models and data ..."
     wget -T 10 -t 3 $data_url;
-    
+
     if [ ! -s ${data_file}.tar.bz2 ]; then
         echo "Download of $data_file has failed!"
         exit 1
@@ -53,11 +55,11 @@ case $test_mode in
         echo "  estimated on an audio book's text. The text in question is"
         echo "  \"King Solomon's Mines\" (http://www.gutenberg.org/ebooks/2166)."
         echo "  You may want to read some sentences from this book first ..."
-        echo 
+        echo
         online-gmm-decode-faster --rt-min=0.5 --rt-max=0.7 --max-active=4000 \
            --beam=12.0 --acoustic-scale=0.0769 $ac_model/model $ac_model/HCLG.fst \
            $ac_model/words.txt '1:2:3:4:5' $trans_matrix;;
-    
+
     simulated)
         echo
         echo -e "  SIMULATED ONLINE DECODING - pre-recorded audio is used\n"
@@ -70,7 +72,7 @@ case $test_mode in
         echo "  NOTE: Using utterances from the book, on which the LM was estimated"
         echo "        is considered to be \"cheating\" and we are doing this only for"
         echo "        the purposes of the demo."
-        echo 
+        echo
         echo "  You can type \"./run.sh --test-mode live\" to try it using your"
         echo "  own voice!"
         echo
@@ -87,7 +89,7 @@ case $test_mode in
             scp:$decode_dir/input.scp $ac_model/model $ac_model/HCLG.fst \
             $ac_model/words.txt '1:2:3:4:5' ark,t:$decode_dir/trans.txt \
             ark,t:$decode_dir/ali.txt $trans_matrix;;
-    
+
     *)
         echo "Invalid test mode! Should be either \"live\" or \"simulated\"!";
         exit 1;;
@@ -97,7 +99,7 @@ esac
 if [ $test_mode == "simulated" ]; then
     # Convert the reference transcripts from symbols to word IDs
     sym2int.pl -f 2- $ac_model/words.txt < $audio/trans.txt > $decode_dir/ref.txt
-    
+
     # Compact the hypotheses belonging to the same test utterance
     cat $decode_dir/trans.txt |\
         sed -e 's/^\(test[0-9]\+\)\([^ ]\+\)\(.*\)/\1 \3/' |\

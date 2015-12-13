@@ -192,7 +192,7 @@ if [ ! -f  $dataset_dir/.done ] ; then
     elif [ "$dataset_segments" == "uem" ]; then
       . ./local/datasets/supervised_uem.sh || exit 1
     elif [ "$dataset_segments" == "pem" ]; then
-      . ./local/datasets/supervised_pem.sh || exist 1
+      . ./local/datasets/supervised_pem.sh || exit 1
     else
       echo "Unknown type of the dataset: \"$dataset_segments\"!";
       echo "Valid dataset types are: seg, uem, pem";

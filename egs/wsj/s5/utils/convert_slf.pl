@@ -115,7 +115,7 @@ while(<FI>) {
     $ss = scalar split(/_/, $ss);
     
     # update the end time
-    die "Node $s not yet visited, is lattice sorted topologically? $utt" unless exists $nodes{$s};
+    die "Node $s not yet visited, is lattice sorted topologically? $utt" unless exists $nodes{$s}{t};
     $time_end = $nodes{$s}{t} + $ss;
     if ($latest_time < $time_end) { $latest_time = $time_end; }
 

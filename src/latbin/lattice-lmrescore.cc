@@ -40,18 +40,18 @@ int main(int argc, char *argv[]) {
         "Add lm_scale * [cost of best path through LM FST] to graph-cost of\n"
         "paths through lattice.  Does this by composing with LM FST, then\n"
         "lattice-determinizing (it has to negate weights first if lm_scale<0)\n"
-        "Usage: lattice-lmrescore [options] lattice-rspecifier lm-fst-in lattice-wspecifier\n"
+        "Usage: lattice-lmrescore [options] <lattice-rspecifier> <lm-fst-in> <lattice-wspecifier>\n"
         " e.g.: lattice-lmrescore --lm-scale=-1.0 ark:in.lats 'fstproject --project_output=true data/lang/G.fst|' ark:out.lats\n";
-      
+
     ParseOptions po(usage);
     BaseFloat lm_scale = 1.0;
     int32 num_states_cache = 50000;
-    
+
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model costs; frequently 1.0 or -1.0");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
                 "More -> more memory but faster.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 
 
 
-    VectorFst<StdArc> *std_lm_fst = ReadFstKaldi(fst_rxfilename);    
+    VectorFst<StdArc> *std_lm_fst = ReadFstKaldi(fst_rxfilename);
     if (std_lm_fst->Properties(fst::kILabelSorted, true) == 0) {
       // Make sure LM is sorted on ilabel.
       fst::ILabelCompare<StdArc> ilabel_comp;
@@ -75,12 +75,12 @@ int main(int argc, char *argv[]) {
     // mapped_fst is the LM fst interpreted using the LatticeWeight semiring,
     // with all the cost on the first member of the pair (since it's a graph
     // weight).
-    fst::CacheOptions cache_opts(true, num_states_cache);    
+    fst::CacheOptions cache_opts(true, num_states_cache);
     fst::StdToLatticeMapper<BaseFloat> mapper;
     fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
         lm_fst(*std_lm_fst, mapper, cache_opts);
     delete std_lm_fst;
-    
+
     // The next fifteen or so lines are a kind of optimization and
     // can be ignored if you just want to understand what is going on.
     // Change the options for TableCompose to match the input
@@ -89,21 +89,21 @@ int main(int argc, char *argv[]) {
     fst::TableComposeOptions compose_opts(fst::TableMatcherOptions(),
                                           true, fst::SEQUENCE_FILTER,
                                           fst::MATCH_INPUT);
-    
+
     // The following is an optimization for the TableCompose
     // composition: it stores certain tables that enable fast
     // lookup of arcs during composition.
     fst::TableComposeCache<fst::Fst<LatticeArc> > lm_compose_cache(compose_opts);
-    
+
     // Read as regular lattice-- this is the form we need it in for efficient
     // composition and determinization.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
-    
+
     // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
+    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
-    
+
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
@@ -115,9 +115,9 @@ int main(int argc, char *argv[]) {
         // We do it this way so we can determinize and it will give the
         // right effect (taking the "best path" through the LM) regardless
         // of the sign of lm_scale.
-        fst::ScaleLattice(fst::GraphLatticeScale(1.0/lm_scale), &lat);
+        fst::ScaleLattice(fst::GraphLatticeScale(1.0 / lm_scale), &lat);
         ArcSort(&lat, fst::OLabelCompare<LatticeArc>());
-        
+
         Lattice composed_lat;
         // Could just do, more simply: Compose(lat, lm_fst, &composed_lat);
         // and not have lm_compose_cache at all.
