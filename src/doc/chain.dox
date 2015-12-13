@@ -51,35 +51,45 @@ namespace kaldi {
 
   \section chain_scripts  Where to find scripts for the 'chain' models
 
+
   The current best scripts for the 'chain' models can be found in the
-  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_2m.sh is the
+  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_2o.sh is the
   current best one.  This is currently available in the 'chain' branch of Dan's
-  git repository (git@github.com:/danpovey/kaldi.git) but will soon be pushed to
+  git repository (%git@github.com:/danpovey/kaldi.git) but will soon be pushed to
   the 'chain' branch of the official Kaldi git repository
   (https://github.com/kaldi-asr/kaldi.git) and eventually will be merged to the
   master.
 
   This script uses TDNNs as the neural net (we've been doing the development
   with TDNNs because they are easier to tune then LSTMs), and gives a better WER
-  WER than the baseline TDNN: 12.1\%, versus 11.4\% for the best TDNN baseline 
+  WER than the baseline TDNN: 11.4\%, versus 12.1\% for the best TDNN baseline 
   (on the Switchboard-only portion of eval2000).
 
-  \section chain_model  The chain model, and modified topologies
+  \section chain_model  The chain model
 
-  The chain model itself is no different from a conventional DNN-HMM.  The
-  difference is the objective function used to train it: instead of a
-  frame-level objective, we use the log-probability of the correct phone
-  sequence as the objective function.  The training process is quite similar in
-  principle to MMI training, in which we compute numerator and denominator
-  'occupation probabilities' and the difference between the two is used in the
-  derivative computation.  There is no need to normalize the DNN outputs to sum
-  to one on each frame any more.
+  The chain model itself is no different from a conventional DNN-HMM, used with
+  a (currently) 3-fold reduced frame rate at the output of the DNN.  The input
+  features of the DNN are at the original frame rate of 100 per second; this makes
+  sense because all the neural nets we are currently using (LSTMs, TDNNs) have some kind
+  of recurrent connections or splicing inside them, i.e. they are not purely feedforward
+  nets.
+  
+  The difference from a normal model is the objective function used to train it:
+  instead of a frame-level objective, we use the log-probability of the correct
+  phone sequence as the objective function.  The training process is quite
+  similar in principle to MMI training, in which we compute numerator and
+  denominator 'occupation probabilities' and the difference between the two is
+  used in the derivative computation.  There is no need to normalize the DNN
+  outputs to sum to one on each frame any more- such normalization makes no difference.
 
-  As mentioned, we configure the model differently from normal: we use a 3 times
-  reduced frame rate (so one frame every 30 ms), and modified HMM topologies.
-  We require that the HMM be traversable in one transition, which is why we need
-  a different topology.  The currently favored topology has a state that
-  can only occur once, and then another state that can appear zero or more times.
+  Because of the reduced frame rate (one frame every 30 ms), we need to use a
+  modified HMM topology.  We would like the HMM to be traversable in one
+  transition (as opposed to the 3 transitions of a model mat the normal frame
+  rate).  The currently favored topology has a state that can only occur once,
+  and then another state that can appear zero or more times.  The state-clustering
+  is obtained using the same procedure as for GMM-based models, although
+  of course with a different topology (we convert the alignments to the new topology
+  and frame-rate).
 
   \section chain_training The training procedure for 'chain' models
 
@@ -98,7 +108,7 @@ namespace kaldi {
   \subsection chain_training_denominator  The denominator FST
 
   For the denominator part of the computation we do forward-backward over a HMM.
- Actually, because we represent it as a finite state acceptor the labels
+ Actually, because we represent it as a finite state acceptor, the labels
  (pdf-ids) are associated with the arcs and not the states, so it's not really a
  HMM in the normal formulation, but it's easier think of it as a HMM because
  we use the forward-backward algorithm to get posteriors.
@@ -111,20 +121,34 @@ namespace kaldi {
   alignments.  This is an un-smoothed language model, meaning that we never do
   backoff to lower order n-grams.  However, some language-model states are
   removed entirely, so transitions to those states go instead to the lower-order
-  n-gram.  The configuration that we settled on is to estimate a 4-gram language
-  model, and to never prune LM states below trigram (so we always maintain at
-  least a 2-phone history).  On top of the number of states dictated by the
-  no-prune trigram rule, we have a specifiable number (e.g. 2000) of 4-gram
-  language model states, and the ones we choose to retain are determined in a
-  way that maximizes the training-data likelihood.  All probabilities are
+  n-gram's state.   The reason we avoid smoothing is to reduce the number of
+  arcs that there will be in the compiled graph after phonetic context expansion.
+
+ The configuration that we settled on is to estimate a 4-gram language model,
+  and to never prune LM states below trigram (so we always maintain at least a
+  2-phone history).  On top of the number of states dictated by the no-prune
+  trigram rule, we have a specifiable number (e.g. 2000) of 4-gram language
+  model states which are to be retained (all the rest are identified with the
+  corresponding trigram state), and the ones we choose to retain are determined
+  in a way that maximizes the training-data likelihood.  All probabilities are
   estimated to maximize the training-data likelihood.  The reason not to prune
   the trigrams is that any sparsity of which trigrams are allowed, will tend to
   minimize the size of the compiled graph.  Note that if our phone LM was just a
-  simple phone loop (i.e. a unigram), it would get expanded to triphones due to
-  phonetic context effects.  Empirically, an un-smoothed trigram LM is what
-  expands to the smallest possible FST; and pruning some of the trigrams results
-  in little or no WER improvement (at least on 300 hours of data expanded 3-fold with
-  speed perturbation; on less data it might help).
+  simple phone loop (i.e. a unigram), it would get expanded to triphones anyway
+  due to phonetic context effects, but it would have arcs for all possible
+  trigrams in it.  So any sparsity we get from using the un-pruned trigram model
+  is a bonus.  Empirically, an un-smoothed trigram LM is what expands to the
+  smallest possible FST; and pruning some of the trigrams, while it increases
+  the size of the compiled FST, results in little or no WER improvement (at
+  least on 300 hours of data expanded 3-fold with speed perturbation; on less
+  data it might help).
+
+  On the Switchboard setups the phone-LM perplexities for the various models we
+  tried were in the range 5 to 7; the phone-LM perplexity with our chosen
+  configuration (4-gram, pruned to trigram for all but 2000 states) was about 6.
+  It was not the case that lower phone-LM perplexity always led to better WER
+  of the trained system; as for conventional (word-based) MMI training, an
+  intermediate strength of language model seemed to work best.
 
  \subsubsection chain_training_denominator_compilation  Compilation of the denominator FST
 
@@ -143,7 +167,7 @@ namespace kaldi {
   swapping initial and final states.
 
 
- \subsubsection chain_training_denominator_compilation  Initial and final probabilities, and 'normalization FST'
+ \subsubsection chain_training_denominator_normalization Initial and final probabilities, and 'normalization FST'
 
   The graph-creation process mentioned above naturally gives us an initial
   state, and final probabilities for each state; but these are not the ones we
