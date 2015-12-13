@@ -1,7 +1,17 @@
 #!/bin/bash
 
-# _2o is as _2m, but going back to our original 1-state topology, which it turns
-# out that I never tested.
+# _2o is as _2m, but going back to our original 2-state topology, which it turns
+# out that I never tested to WER.
+# hm--- it's about the same, or maybe slightly better!
+
+# WER on          2m        2o
+# train_dev,tg    17.22     17.24       no diff
+# train_dev,fg    15.87     15.93       no diff
+# eval2000,tg     18.7      18.7        no diff
+# eval2000,fg     17.0      16.9        0.1 better
+
+# train-prob,final  -0.0803   -0.0835
+# valid-prob,final  -0.0116   -0.0122
 
 # _2m is as _2k, but setting --leftmost-questions-truncate=-1, i.e. disabling
 # that mechanism.

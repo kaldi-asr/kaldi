@@ -2,12 +2,11 @@
 
 # _2m is as _2k, but setting --leftmost-questions-truncate=-1, i.e. disabling
 # that mechanism.
-# Caution: I accidentally overwrote its treedir with the '2o' experiment, so I
-# moved it to '2o'.  But the 2m experiment was done by then.
 
 # So it's [0.1 worse, 0.1 worse, 0.6 better, 0.3 better]: better on average.
-# Which kind of makes sense
-#
+# Which kind of makes sense (we expected that the previous limitation on how the
+# tree was built would not be helpful).
+
 #                                  2k       2m
 #  --leftmost-questions-truncate   30       -1
 #           train_dev,tg         17.08     17.22

@@ -1,30 +1,38 @@
 #!/bin/bash
 
-# _2n is as _2m, but using the combine-data script to ensure that we don't have
-# very short segments (this can cause an excessive amount of either missing or
-# overlapped data in the egs).
+# _2p is as _2m, but 6500 instead of 9000 as the target for num-leaves.
 
-# (m->n) This doesn't seem to make a consistent difference, but maybe a little worse.
-# Note, the tree-split improvement was more in 2n.  I suspect this it's because we
-# did the alignments after the 'max1' thing, and the fMLLR was somehow more
-# utterance-specific.
+# consistently slightly worse.
 
-# WER on          2m        2n
-# train_dev,tg    17.22     17.11       0.1 better
-# train_dev,fg    15.87     15.75       0.1 better
-# eval2000,tg     18.7      19.2        0.5 worse
-# eval2000,fg     17.0      17.2        0.2 worse
+# WER on          2m        2p
+# train_dev,tg    17.22     17.42       0.2 worse
+# train_dev,fg    15.87     16.07       0.2 worse
+# eval2000,tg     18.7      19.0        0.3 worse
+# eval2000,fg     17.0      17.1        0.1 worse
 #
-# tree-split impr  5.34      5.78
-# train-prob,final -0.080     -0.090
-# valid-prob,final -0.116     -0.1006   # note, the 2n valid prob is not correct, because
-#                                       # the combine_data.sh script doesn't preserve utt2uniq info.
-
-# (note: I removed the --pdf-boundary-penalty 0.0 option from the script as it's
-#  now the default, and no longer supported.)
+# oddly, the final train and valid probs were better.
+# final-train    -0.0803   -0.0791
+# final-valid    -0.0116   -0.0115
 
 # _2m is as _2k, but setting --leftmost-questions-truncate=-1, i.e. disabling
 # that mechanism.
+# Caution: I accidentally overwrote its treedir with the '2o' experiment, so I
+# moved it to '2o'.  But the 2m experiment was done by then.
+
+# So it's [0.1 worse, 0.1 worse, 0.6 better, 0.3 better]: better on average.
+# Which kind of makes sense
+#
+#                                  2k       2m
+#  --leftmost-questions-truncate   30       -1
+#           train_dev,tg         17.08     17.22
+#           train_dev,fg         15.79     15.87
+#           eval2000,tg          19.3      18.7
+#           eval2000,fg          17.3      17.0
+# in tree-building,
+#           like-impr           4.9099     5.33844
+#    Den-fst num-states          35460     299068
+#    Den-fst num-arcs            47036     331403
+
 
 # _2k is as _2i, but doing the same change as in _s -> _2e, in which we
 #  set --apply-deriv-weights false and --frames-overlap-per-eg 0.
@@ -120,12 +128,11 @@
 set -e
 
 # configs for 'chain'
-stage=9
+stage=11
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2n  # Note: _sp will get added to this if $speed_perturb == true.
-
+dir=exp/chain/tdnn_2p  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -141,8 +148,7 @@ num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
-remove_egs=true
-min_segment_length=8 # min length in seconds, for combining data.
+remove_egs=false
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -168,14 +174,10 @@ if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
 
-# the following two variables can't be set to arbitrary values, you'd have
-# to change other things in the script below.
-train_set_hires=train_nodup${suffix}_hires_ml${min_segment_length}_max1
-train_set=train_nodup${suffix}_ml${min_segment_length}_max1
-
 dir=${dir}$suffix
-ali_dir=exp/chain/tri4_ali_${train_set}
-treedir=exp/chain/tri5n_tree$suffix
+train_set=train_nodup$suffix
+ali_dir=exp/tri4_ali_nodup$suffix
+treedir=exp/chain/tri5_2p_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -185,47 +187,19 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 
 if [ $stage -le 9 ]; then
-  echo "$0: combining segments"
-  # Get rid of short segments by combining them; and make 1 utterance per speaker to
-  # get more iVector diversity.
-  for s in "${suffix}" "${suffix}_hires"; do
-
-    steps/cleanup/combine_short_segments.sh ${min_segment_length} data/train_nodup${s} \
-      data/train_nodup${s}_ml${min_segment_length}
-
-    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 1 data/train_nodup${s}_ml${min_segment_length} \
-      data/train_nodup${s}_ml${min_segment_length}_max1
-  done
-fi
-
-if [ $stage -le 10 ]; then
-  echo "$0: extracting iVectors for training set "
-
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    data/${train_set_hires} exp/nnet3/extractor exp/chain/ivectors_${train_set}   || exit 1;
-
-fi
-
-if [ $stage -le 11 ]; then
-  # obtain the alignment of the perturbed and segment-combined data
-  steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-    data/${train_set} data/lang_nosp exp/tri4 ${ali_dir} || exit 1
-fi
-
-
-if [ $stage -le 12 ]; then
   # Get the alignments as lattices (gives the CTC training more freedom).
   # use the same num-jobs as the alignments
   nj=$(cat exp/tri4_ali_nodup$suffix/num_jobs) || exit 1;
   steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" data/$train_set \
-    data/lang exp/tri4 exp/tri4_lats_${train_set}
-  rm exp/tri4_lats_${train_set}/fsts.*.gz # save space
+    data/lang exp/tri4 exp/tri4_lats_nodup$suffix
+  rm exp/tri4_lats_nodup$suffix/fsts.*.gz # save space
 fi
 
 
-if [ $stage -le 13 ]; then
-  # Create a version of the lang/ directory that has a different topology than before,
-  # allowing transition of the HMM in one frame.
+if [ $stage -le 10 ]; then
+  # Create a version of the lang/ directory that has one state per phone in the
+  # topo file. [note, it really has two states.. the first one is only repeated
+  # once, the second one has zero or more repeats.]
   lang=data/lang_chain_d
   rm -rf $lang
   cp -r data/lang $lang
@@ -236,14 +210,14 @@ if [ $stage -le 13 ]; then
   steps/nnet3/chain/gen_topo2.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_d $ali_dir $treedir
+      --cmd "$train_cmd" 6500 data/$train_set data/lang_chain_d $ali_dir $treedir
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -261,7 +235,7 @@ if [ $stage -le 15 ]; then
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
-    --online-ivector-dir exp/chain/ivectors_${train_set} \
+    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
@@ -269,10 +243,10 @@ if [ $stage -le 15 ]; then
     --relu-dim 850 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/$train_set_hires $treedir exp/tri4_lats_${train_set} $dir || exit 1;
+    data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 13 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -281,7 +255,7 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 17 ]; then
+if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
