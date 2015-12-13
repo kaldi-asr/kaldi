@@ -24,7 +24,7 @@ namespace kaldi {
 
   \section chain_intro Introduction to 'chain' models
 
-  The 'chain' models are a type of DNN-HMM model, and differ from the
+  The 'chain' models are a type of DNN-HMM model, implemented using \ref dnn3 "nnet3", and differ from the
   conventional model in various ways; you can think of them as a different
   design point in the space of acoustic models.
 
@@ -39,11 +39,11 @@ namespace kaldi {
    - Because of the reduced frame rate, we need to use unconventional
      HMM topologies (allowing the traversal of the HMM in one state).
    - We use fixed transition probabilities in the HMM, and don't train
-     them (we may train them in future, but for the most part the neural-net
+     them (we may decide train them in future; but for the most part the neural-net
      output probabilities can do the same job as the transition probabilities,
      depending on the topology).
    - Currently, only nnet3 DNNs are supported (see \ref dnn3), and
-     online decoding has not yet been implemented.
+     online decoding has not yet been implemented (we're aiming for April to June 2016).
    - Currently the results are a bit better then those of conventional
      DNN-HMMs (about 5\% relative better), but the system is about 3 times
      faster to decode; training time is probably a bit faster too, but
@@ -64,369 +64,205 @@ namespace kaldi {
   WER than the baseline TDNN: 12.1\%, versus 11.4\% for the best TDNN baseline 
   (on the Switchboard-only portion of eval2000).
 
-  \section chain_model  The chain model
+  \section chain_model  The chain model, and modified topologies
 
   The chain model itself is no different from a conventional DNN-HMM.  The
   difference is the objective function used to train it: instead of a
   frame-level objective, we use the log-probability of the correct phone
-  sequence as the objective function.  The training process is quite similar to
-  MMI training, in which we compute numerator and denominator 'occupation
-  probabilities' and the difference between the two is used in the derivative
-  computation.  There is no need to normalize the DNN outputs to sum to one on
-  each frame any more (actually we currently still do normalize them so that 
-  the sum(exp()) of all the outputs sums to one, but this is just because
-
+  sequence as the objective function.  The training process is quite similar in
+  principle to MMI training, in which we compute numerator and denominator
+  'occupation probabilities' and the difference between the two is used in the
+  derivative computation.  There is no need to normalize the DNN outputs to sum
+  to one on each frame any more.
 
   As mentioned, we configure the model differently from normal: we use a 3 times
-  reduced frame rate (so one frame every 30 ms), and modified HMM topologies (we
-  are still experimenting with this, so details later).
+  reduced frame rate (so one frame every 30 ms), and modified HMM topologies.
+  We require that the HMM be traversable in one transition, which is why we need
+  a different topology.  The currently favored topology has a state that
+  can only occur once, and then another state that can appear zero or more times.
 
+  \section chain_training The training procedure for 'chain' models
+
+  The training procedure for chain models is a lattice-free version of 
+  MMI, where the denominator state posteriors are obtained by the
+  forward-backward algorithm over a HMM formed from a phone-level decoding graph,
+  and the numerator state posteriors are obtained by a similar forward-backward
+  algorithm but limited to sequences corresponding to the transcript.
+
+  For each output index of the neural net (i.e. for each pdf-id), we 
+  compute a derivative of of the form (numerator occupation probability -
+  denominator occupation probability), and these are propagated back to the
+  network.
+
+  
+  \subsection chain_training_denominator  The denominator FST
+
+  For the denominator part of the computation we do forward-backward over a HMM.
+ Actually, because we represent it as a finite state acceptor the labels
+ (pdf-ids) are associated with the arcs and not the states, so it's not really a
+ HMM in the normal formulation, but it's easier think of it as a HMM because
+ we use the forward-backward algorithm to get posteriors.
+ In the code and scripts we refer to it as the 'denominator FST'.  
+
+  \subsubsection chain_training_denominator_phone_lm Phone language model for the denominator FST
+
+  The first stage in constructing the denominator FST is to create a phone
+  language model.  This language model is learned from the training-data phone
+  alignments.  This is an un-smoothed language model, meaning that we never do
+  backoff to lower order n-grams.  However, some language-model states are
+  removed entirely, so transitions to those states go instead to the lower-order
+  n-gram.  The configuration that we settled on is to estimate a 4-gram language
+  model, and to never prune LM states below trigram (so we always maintain at
+  least a 2-phone history).  On top of the number of states dictated by the
+  no-prune trigram rule, we have a specifiable number (e.g. 2000) of 4-gram
+  language model states, and the ones we choose to retain are determined in a
+  way that maximizes the training-data likelihood.  All probabilities are
+  estimated to maximize the training-data likelihood.  The reason not to prune
+  the trigrams is that any sparsity of which trigrams are allowed, will tend to
+  minimize the size of the compiled graph.  Note that if our phone LM was just a
+  simple phone loop (i.e. a unigram), it would get expanded to triphones due to
+  phonetic context effects.  Empirically, an un-smoothed trigram LM is what
+  expands to the smallest possible FST; and pruning some of the trigrams results
+  in little or no WER improvement (at least on 300 hours of data expanded 3-fold with
+  speed perturbation; on less data it might help).
+
+ \subsubsection chain_training_denominator_compilation  Compilation of the denominator FST
+
+  The phone language model described in the previous section is expanded into a
+  FST with 'pdf-ids' as the arcs, in a process that mirrors the process of
+  decoding-graph compilation in normal Kaldi decoding (see \ref
+  graph_recipe_test), except that there is no lexicon is involved, and at the
+  end we convert the transition-ids to pdf-ids.
+
+  One difference lies in how we minimize the size of the graph.  The normal
+  recipe involves determinization and minimization.  We were not able to
+  reduce the size of the graph using this procedure, or variants of it with
+  disambiguation symbols.  Instead, our graph-minimization process can be described
+  compactly as follows: "Repeat 3 times: push, minimize, reverse; push, minimize reverse.".
+  'push' refers to weight-pushing; 'reverse' refers to reversing the directions of arcs, and
+  swapping initial and final states.
+
+
+ \subsubsection chain_training_denominator_compilation  Initial and final probabilities, and 'normalization FST'
+
+  The graph-creation process mentioned above naturally gives us an initial
+  state, and final probabilities for each state; but these are not the ones we
+  use in the forward-backward.  The reason is that these probabilities are
+  applicable to utterance boundaries, but we train on split-up chunks of
+  utterance of a fixed length (e.g. 1.5 seconds).  Constraining the HMM at these
+  arbitrarily chosen cut points to the initial and final states is not
+  appropriate.  Instead, we use initial probabilities derived from 'running the HMM' for
+  a fixed number of iterations and averaging the probabilities; and final probabilities
+  equal to 1.0 for each state.  We have a justification for this but don't have time to
+  explain it right now.  In the denominator forward-backward process we apply these initial and
+  final probabilities to the initial and final frame as part of the computation.  However, we also
+  write out a version of the denominator FST that has these initial and final probabilities, and we refer to
+  this as the 'normalization FST.'  (The initial probabilities are emulated using epsilon arcs, because
+  FSTs do not support initial probabilities).  This 'normalization FST' will be used to add probabilities to the
+ numerator FSTs in a way that we'll describe later. 
+%% REF?
+  
+  \subsection chain_training_numerator  The numerator FSTs
+
+ As part of our preparation for the training process we produce something
+ called a 'numerator FST' for each utterance.  The numerator FST encodes the
+ supervision transcript, and also encodes an alignment of that transcript
+ (i.e. forces similarity to a reference alignment obtained from a baseline
+ system), but it allows a little 'wiggle room' to vary from that reference.
+ Incorporating the alignment information is important because of the way we
+ train not on entire utterances but on split-up fixed-length pieces of
+ utterances (which, in turn, is important for GPU-based training).
+ By default we allow a phone to occur 0.05 seconds before or after its
+ begin and end position respectively, in the lattice alignment.
+
+ Instead of enforcing a particular pronunciation of the training data, we use as
+ our reference a lattice of alternative pronunciations of the training data,
+ generated by a lattice-generating decoding procedure using an
+ utterance-specific graph as the decoding graph. 
+
+  \subsubsection chain_training_numerator_splitting Splitting the numerator FSTs
+
+ As mentioned, we train on fixed sized pieces of utterances (e.g. 1.5 seconds in
+ length).  This requires that we split up the numerator FSTs up into fixed-size
+ pieces.  This isn't hard, since the numerator FSTs (which, remember, encode
+ time-alignment information), naturally have a structure where we can identify
+ any state with a particular frame index.  Note: at the stage where we do this
+ splitting, there are no costs in the numerator FST-- it's just viewed as
+ encoding a constraint on paths-- so how to distribute the costs is not an
+ issue.
+  
+  \subsubsection chain_training_numerator_normalization Normalizing the numerator FSTs
+
+ Above (\ref chain_training_denominator_compilation) we mentioned how we compute
+ initial and final probabilities for denominator FST that are suitable to use on
+ split-up chunks of data, and how we encode these in a 'normalization FST'.  We
+ compose the split-up pieces of numerator FST with this this 'normalization FST' to
+ ensure that the costs from the denominator FST are reflected in the numerator FST.
+ This ensures that objective functions can never be positive (which makes them easier
+ to interpret), and also guards against the possibility that the numerator FST could
+ contain state sequences not allowed by the denominator FST, which in principle could allow
+ the objective function to increase without bound.  The reason why this could happen
+ is that the phone LM lacks smoothing, and is estimated from 1-best alignments, so
+ the lattices could contain phone n-grams sequences not seen in training.
+
+  \subsubsection chain_training_numerator_normalization Format of the numerator FSTs
+  
+  The numerator FSTs are weighted acceptors where the labels correspond to
+  pdf-ids plus one.  We can't use pdf-ids, because they could be zero, and zero
+  is treated specially (as epsilon) by OpenFst.  When we form minibatches, instead
+  of storing an array of separate numerator FSTs we append them together to form a longer FST;
+  this enables us to do a single forward-backward over all utterances in the minibatch,
+  which directly computes the total numerator log-probability.
+
+  \subsection chain_training_splitting  Fixed-length chunks, and minibatches
+
+  In order to train on minibatches, we split up our utterances into fixed-length
+  chunks of speech (of length 1.5 seconds in our current scripts).  Utterances
+  shorter than this are discarded; those longer, are split into chunks with
+  either overlaps between the chunks, or small gaps between the chunks.  Note
+  our acoustic models typically require left or right frames for acoustic
+  context; we add that, but this is separate issue; the context is added after
+  the chunks are decided on.
+
+  Our minibatch size is a power of 2 that ends up being limited by GPU memory
+  considerations; our latest scripts use 128 chunks per minibatch.  The main
+  consumer of GPU memory is the alpha probabilities in the forward-backward
+  computation.  For instance, with 1.5 second chunk, we have 50 time
+  steps after the 3-fold subsampling.  Suppose the denominator FST has 30,000
+  states in it.  We use single-precision floating point for the alphas, so
+  the memory used in gigabytes is (128 * 50 * 30000 * 4) / 10^9 = 0.768G.
+
+  This won't use up all the GPU memory, but there are other sources of memory,
+  e.g. we keep around two copies of the nnet outputs in memory, which takes a
+  fair amount of memory depending on the configuration-- e.g. replace the 30000
+  above with about 10000 and it will give you the amount of memory used for one
+  copy of the nnet outputs in a reasonable configuration.
+
+
+  \subsection chain_training_gpu GPU issues in training
+
+ The parts of the computation that are specific to the 'chain' computation are
+ the forward-backward over the numerator FST and the denominator HMM.  The
+ numerator part of this is very fast.  The denominator forward-backward takes
+ quite a lot of time, because there can be a lot of arcs in the
+ denominator FST (e.g. 200,000 arcs and 30,000 states in a typical Switchboard setup).
+ The time taken can be almost as much as the time taken in the neural-net
+ parts of the computation.  We were quite careful to ensure memory locality.
+ The next step is probably to implement a pruned Viterbi computation.
  
-
-  
-
-
-     
-  
-
-  This page describes the support for Connectionist Temporal Classifiction (CTC)
-  in Kaldi.  At the current time CTC is only supported in the nnet3 setup, but
-  the non-neural-net parts of the CTC code are designed to be independent of the
-  neural net implementation so porting it to other setups such as nnet1 and nnet2
-  should be possible.
-
-  The original CTC paper is "Connectionist temporal classification: labelling
-  unsegmented sequence data with recurrent neural networks" by Alex Graves et
-  al.  The core of CTC is indepenent of of the exact network topology but it has
-  traditionally been implemented with recurrent networks such as LSTMs.
-  Originally the idea of CTC was to have the network output words directly, but
-  more recent work by Google, e.g.  "Fast and Accurate Recurrent Neural Network
-  Acoustic Models for Speech Recognition" by Hasim Sak, Andrew Senior et al. has
-  made the network output phones, and that's how we are doing it in our
-  implementation.  (Our goal is to support applications of speech recognition, and
-  while building applications it is generally essential to be able to control the
-  language model and vocabulary without rebuilding the model.)
-
-  \section ctc_cctc Context-dependent CTC (CCTC)
-
-  What we have implemented is something we are calling Context-dependent CTC
-  (CCTC).  This is not the same as the CD-CTC that already exists in the
-  literature, although it does stand for the same sequence of words.
-  CCTC is different from phone-level (or triphone-level) CTC in two ways:
-
-    - In CCTC, we get to 'see' the immediate left phonetic context as we
-      predict the next phone.
-    - In CCTC, in order to force the model to learn only the acoustic
-      probabilities we 'train against' a phone-level language model;
-      in test time, this is replaced by the probabilities from
-      a phone-level decoding graph.
-
-  The reader might object that normal CTC already knows the left phonetic
-  context, if it is using a recurrent netowork, so what is different here?
-  The difference is that CTC only knows what probabilities it has output;
-  it doesn't know for sure what phone was chosen.
-
-  Below, we will explain what CCTC is by working in baby steps from a simpler to a more
-  complex system, explaining CTC on the way.
-
-  \subsection ctc_cctc_baseline1 Baseline 1: monophone phone-level neural network
-
-  The simplest starting point is a neural network that outputs monophone
-  labels (so the output dimension of the network is the same as the number of phones).  Imagine
-  that the network predicts \f$p(q | x)\f$ where q is a phone symbol and x is the acoustic
-  features.  When decoding, we use Bayes' rule to write  \f$p(x | q) = p(q | x) p(x) / p(q)\f$,
-  and we ignore \f$p(x)\f$ because it won't affect the decoding result, so that the quantity
-  we use from the network is $p(q | x) / p(q)$, which can be thought of
-  as the posterior of the phone $q$ corrected for the overall frequency of that phone.  This
-  gets combined with the language-model probability of the word-sequence, and the language
-  model log-probability of the sequence gets scaled by a constant (typically around 10).
-  This is a conventional 'hybrid' DNN-HMM speech recognition system, except without
-  phonetic context-dependency and using a 1-state HMM for each phone instead of a 3-state HMM.
-  Note: in principle the neural network could be any kind of neural network, but it's best
-  to imagine that it's an LSTM or bi-directional LSTM (BLSTM).
-
-  \subsection ctc_cctc_baseline2 Baseline 2: monophone badly-tuned CTC system
-
-  Imagine that we took the system from Baseline 1 and added one more label to the neural
-  network's output, called 'blank'.  Then imagine that we changed the HMM topology so that
-  each phone can generate exactly one copy of its phone symbol, with any number of 'blank'
-  symbols allowed between phones.  Also imagine that we decimate the output frames of the
-  neural network so that we only have one frame every 30ms, instead of every 10ms (the network
-  still gets to see the input at the 10ms frame rate, since we stack the input features; see Sak
-  et al.).  When decoding, we don't divide by the phone-level priors.  When training,
-  we do forward-backward rather than Viterbi (note: this requires training on whole utterances).
-
-  \subsection ctc_cctc_baseline2alt Baseline 2(alt): monophone better-tuned CTC system
-
-  Baseline 2(alt) is as Baseline 2 except tuning it slightly better.  We separate this
-  from Baseline 2 because the problems that are being addressed here are solved in a different
-  way in CCTC, so Baseline 2) remains the shortest path to CCTC.
-  The tuning improvemets (see Sak et al.) are:
-    - Instead of forcing exactly one non-blank symbol per phone, we allow repeats of the
-      symbol, as long as there are no blanks between the repeats.
-    - We still don't divide by the phone-level priors, but in test time we do
-      scale down the probability of the blank symbol by factor that is tuned (e.g. around 10).
-
-  \subsection ctc_cctc_baseline3alt Baseline 3(alt): triphone better-tuned CTC system
-
-  Baseline 3(alt) is as Baseline 2(alt) except it uses context-dependent triphones as targets
-  rather than context-dependent phones, and it also reintroduces the language
-  model scaling factor (but of around 2, rather than around 10 for a conventional
-  HMM-based system).  This is the best system in the Sak et al. paper- but note that
-  the triphone context-dependency only gives a very small improvement compared with the monophone
-  system: 12.7% to 12.2% word error.
-
-  \subsection ctc_cctc_baseline3  Baseline 3: left-context CTC system
-
-  Baseline 3 is as Baseline 2, but the labels are clustered context-dependent phones
-  with only left context-- for example, clustered biphones.  We can get the clustering
-  from the same Gaussian-based clustering process that we use for a GMM-based system.
-
-  \subsection ctc_cctc_baseline4  Baseline 4: left-context CTC system with `correct normalization'
-
-  Baseline 4 is as Baseline 3, except it differs in how we normalize the
-  probabilities.  In all previous baselines, there was just one space over which
-  we normalized the probabilities to sum to one.  Here, we normalize only over those
-  phones-in-context that are allowed given the left context.  The left context is obtained
-  in decoding time by using a context-dependent decoding graph; in training time it's known from
-  the reference phone sequence.  Suppose it's an n-phone left-context system (e.g. n=2 means
-  a biphone system).  Let h represent the left-context history, which will be a sequence of
-  n-1 phones.  For each phone q we can work out which clustered biphone corresponds to the pair
-  (h, q); and the probability of each phone q given that history is normalized over that set.
-  In practice, the neural network itself would output the un-normalized log-probabilities, and
-  the CTC code would compute the normalized phone probabilities.  Any
-  probability \f$p(q | h)\f$ can be written as
-    \f[ p(q | h) = p(q, h) / \sum_{q'} p(q', h) \f]
-   where the un-normalized log-probabilities \f$ \mathrm{log} p(q, h) \f$ are obtained by computing the corresponding clustered
-  context-dependent phone and using that index to perform a lookup in the neural network's output.
-  Note: these \f$p(q, h)\f$ quantities are not normalized.
-  The \f$p(q | h)\f$ quantities are used in both training and decoding.
-
-
-  \subsection ctc_cctc_baseline5  Baseline 5: context-dependent blank symbol
-
-  Baseline 5 is a simple extension of Baseline 4, in which, instead of having one blank
-  symbol, we have a separate blank symbol for each distinct history state h.  In the
-  configuration we envisage, we would only have biphone context, so each left-phone corresponds
-  to its own history-state, and the number of blank symbols would be equal to the
-  number of phones.
-
-  \subsection ctc_cctc_cctc  CCTC itself: incorporating a phone language model
-
-  Finally we get to CCTC itself.  The difference from Baseline 5 is that prior to training
-  the model, we estimate a phone n-gram language model, and we `train against' this.
-
-  This is done in order to discourage the neural net itself from learning a kind
-  of language model on phones-- that is what we have our word-based decoding
-  graph for.  In test time we rely entirely on the word graph for the language
-  model, and don't use the phone n-gram language model.  We can view decoding as
-  differing from training by the application of a `correction factor' equal to
-  the ratio of the word-graph-based LM probability to the phone-ngram LM
-  probability.
-
-  Let us write the phone language model probabilities as \f$p_{lm}(q | h)\f$,
-  where h represents the language-model history state.  We use a Kneser-Ney
-  n-gram language model for this, but modified using count cutoffs to minimize
-  the number of distinct history states we need to keep track of (because
-  history-states have a cost in decoding time-- we need to compute a normalizer
-  for each one).  You can think of h as representing a sequence of phones.
-  In, say, a 4-gram phone language model, the maximum number of phones in h
-  is three, but most history-states will be much shorter than that because of data
-  sparsity and the count cutoff.
-
-  The key equation in CCTC is
-\f[
-     p(q | h) = \frac{ p_{ac}(q, h) p_{lm}(q | h)  }
-                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
-\f]
- where \f$p_{lm}(q | h)\f$ represents the phone-level language model probabilities
- and \f$p_{ac}(q, h)\f$ represents the un-normalized clustered context-dependent
- acoustic probabilities that come from the output of the neural network (actually,
- we exponentiate the network's output to get these quantities).
- Don't attempt to make sense of any of this in some kind of Bayesian context.  The
- formula is to be interpreted as defining the model itself.  That is, it defines
- how we train the model.
- The only thing in this formula that represents a well-defined, pre-existing constant
- probability is \f$p_{lm}(q | h)\f$.  \f$\log p(q | h)\f$ is something that we train,
- and the formula defines how we interpret the neural network's outputs.
-
-  \subsection ctc_cctc_decoding Decoding in CCTC: using the `real' language model
-
- When we decode with the CTC, the only difference from the training setup is that we replace the
- phone n-gram probability \f$p_{lm}(q | h)\f$ in the <em>numerator</em>
- of the equation with the probability from our chosen word-level decoding graph, which we
- can write as \f$p_{\mathrm{graph}}(q | h)\f$.  So we could write the decoding
- equation as:
-\f[
-     p(q | h) = \frac{ p_{ac}(q, h) p_{\mathrm{graph}}(q | h)  }
-                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
-\f]
- However, this doesn't correspond to how we do the computation.  In practice
- we compute the following quantity:
-\f[
-     p(q | h) = \frac{ p_{ac}(q, h) }
-                     { \sum_{q'}    p_{ac}(q', h) p_{lm}(q' | h)   }
-\f]
-which we can view as acoustic-only part of the probability, coming from the CCTC code,
-and this gets combined with the language model probability \f$p_{\mathrm{graph}}(q | h)\f$
-when we do the Viterbi graph search.  All this should be familiar to people with
-a speech recognition background.
-
-
-\subsection ctc_cctc_further Further details of CCTC
-
-Some key details which we glossed over above are:
-
-  - In the equations above, the history-state h is always the most detailed
-    history-state that either the phone language-model or the lookup phonetic context
-    requires.  We don't want to get into the nitty gritty of how we ensure
-    this; but for now just rest assured that all the quantities we need to compute
-    as a function of h are well-defined because h is 'sufficiently detailed'.
-
-  - For blank symbols, we always take \f$p_{lm}(\mathrm{blank} | h)\f$ to equal 1.0, in both
-    training time and test time.  Here, by `blank' we mean whichever blank symbol
-    is appropriate for this history-state.
-    This might seem less than ideal, but in fact there is no problem, because the
-    equation above *defines* the model, and the model can learn anything it needs
-    to learn by modifying the `acoustic' probabilities of the blank symbols.
-
- \subsection ctc_cctc_tuning Simplifications in CCTC
-
- When we were leading up to CCTC via a sequence of baselines, you will recall that
- there was an `alternative branch' to Baseline 2(alt) and Baseline 3(alt), that
- we put into a separate path because we don't incorporate those features in CCTC.
-
- Firstly, of course we don't use fully context-dependent phones, we only use
- left-context.  This is what makes the other concepts work.  We note that the
- difference between monophone and triphone is not that great in Google's paper
- (e.g. 12.7% versus 12.2% word error) so we hope the limitation to left phonetic
- context for the acoustic states won't be a very great limitation.
-
- Regarding repeats of the phone symbols-- the Sak et al implementation that we
- are following, and the original paper on CTC, allow repetitions of the phone
- symbols as long as they are delineated by blanks (to distinguish the case where
- the underlying symbol really repeats).  Our framework doesn't allow this.  This
- is mostly as a simplification.  The problem the repeated-symbols was trying to
- solve is that sometimes the probabilities of phone symbols can be a little
- spread-out over time-- it can be hard for the network to learn a distribution that
- is very 'spiky'.  The reason we don't think this will be a problem in our setup
- is that the language-model probability of a phone following itself will tend to be quite
- low, so once we see a phone the model will give up trying to model itself again.
- Note: we don't expect that this explanation will make much sense to anyone
- who has not thought long and hard about CTC and the implications of our
- approach.  A more detailed explanation would take a long time to write.
-
- Regarding the scaling of the probability of the blank symbol, which in the Sak et al
- paper was scaled by a factor of 1/10-- we don't believe this will be necessary in our framework,
- because it happens `naturally'.  In decoding time we omit the factor \f$p_{lm}(q | h)\f$ from
- the numerator of \f$p(q | h)\f$ because it's `accounted for' by the graph.  Assuming the phone-level
- perplexity is about 10, which is a reasonable value, this has a very similar effect to scaling
- the non-blank phone probabilities \em up by a factor 10, which has the same effect as scaling
- blank \em down by a factor of 10.  So we don't believe any further scaling of the blank symbol
- will be necessary.
-
- \subsection ctc_cctc_tombstone 'Tombstone' CCTC
-
- An extension to CCTC which seems to be working very well is the 'Tombstone' concept, which
- we will briefly describe here (pending more complete documentation).  We believe this
- will become the standard CTC recipe we use, because the results are so far very encouraging.
-
- You can view the model we train with in CCTC as a HMM, where the number of HMM
- states is a little bit more than the number of distinct history-states in the
- phone language model (it's slightly more because of phonetic-context
- effects.. it's complicated, just ignore that for now).  Each HMM state has
- num-phones + 1 transitions out of it: one for a blank symbol specific to the
- phonetic history-state (this one is a self-loop), and one each for each of the
- context-independent phones.  The 'tombstone' idea is to add one more transition
- out of each HMM-state: a transition to a 'tombstone state' that doesn't go
- anywhere and isn't part of any valid sequence that we can decode.  If the model takes the 'tombstone'
- transition, it's saying ``I don't like any of these alternatives.  I think a mistake
- was made earlier in the prediction''.  That is, it's saying that it's not happy
- being in the phonetic-LM history state that it is in.
-
- This allows the CCTC model to atone for earlier mistakes, and it means that it
- doesn't have to wait until all the evidence is in before outputting symbols.
- Instead it can output them 'provisionally' and then later decide it made a bad
- move.  Of course, none of this affects the Viterbi decoding process-- the
- decoding process is exactly the same, and doesn't ever look at the tombstone
- symbols. </em>The tombstones are simply a mechanism to relax the constraint
- that the transitions out of each state sum to one.</em>.  In fact, there are
- other ways to achieve the same thing-- for instance, we could take out the
- denominator of the CCTC equation, which would substantially simplify the
- training and recognition process.  We will have to experiment with things like
- that.
-
- The 'tombstone' idea is not applicable to conventional CTC,.  Viewing CTC it as
- a special case of CCTC, there is just one HMM state -- imagine there is just
- one phonetic language-model state -- and the effect of the tombstone
- probability would just cancel out and would not affect the probability of different
- sequences differently.
-
-
- In normal CCTC, the model is 'locally normalized' like a directed graphical
- model because we ensure via the model structure tthat the
- (acoustic-data-dependent) transition probabilities out of each state sum to
- one.  Tombstone CCTC is more like an undirected graphical model that has
- a Z factor that needs to be computed-- this gives rise to the denominator
- term in training, which we will talk about below.
-
- \subsection ctc_cctc_tombstone_training Training 'Tombstone' CCTC
-
- The training process in 'tombstone' CCTC essentially differs from CCTC training
- in the same way as MMI training differs from Maximum Likelihood training, in that
- we add a denominator term to the objective function in addition to the existing
- numerator term.  The denominator does not need a lattice because it is feasible,
- on a GPU card, to do a full forward-backward over the HMM states of the CCTC model.
- (The number of HMM states is, as mentioned before, generally a little larger than
- the number of history-states in the phone-level language model).
-
- In order to avoid confusion with other uses of the words 'numerator' and 'denominator'
- in CCTC, we refer to the numerator as the 'positive' part and the denominator as the
- 'negative' part of the objective function, because the likelihood from
- denominator is negated in the overall objective function.  Both the numerator
- and denominator involve an alpha-beta forward-backward algorithm; however, the numerator
- is constrained by a Finite State Acceptor representation of the allowable sequences
- (we do this so that we can control at what frames any given phone can appear, to within,
- say, a range of 5 frames before the start of the phone in the a reference alignment,
- to 10 frames after the end.  The denominator allows all paths through the HMM without
- any constraint, so you can view the numerator as a subset of the denominator.
-
- We have to be a little careful with edge effects-- remember that we train on
- split-up pieces of files, of typically 50 to 100 frames.  If we used a fixed
- distribution for the 'initial-probabilities' of the HMM states in the
- denominator, we found that the objective function tended to be positive, due to
- these edge effects-- basically, because the 'good' HMM-states have a low
- initial-probability.  We were able to fix this by assigning the first-frame
- alpha probabilities of the denominator to be the same as those used for the
- numerator, which is a uniform distribution over the small subset of HMM-states
- that are 'allowed' in the FST on the first frame of the numerator FST.  This is
- anyway a closer approximation to what the alpha scores would look like if we
- had done forward-backward over the entire file without breaking it up.  Note
- that we anyway discard the derivatives of the (currently) first 5 and last 10
- frames of each segment of (say) 75 frames that we train on, out of concern that
- the occupation probabilities there are inaccurate due to edge effects.
-
-
- \subsection ctc_cctc_tombstone_decoding Decoding using 'Tombstone' CCTC
-
- We found that with 'tombstone' CCTC, no special tricks are necessary during decoding.
- Adding a penalty on blank is not helpful.  For the language model, we completely
- remove the phone language model that was used during training, and replace
- it with the score from the language-model FST, as described in \ref ctc_cctc_decoding.
- Although our setup supports a language-model scale, in practice it tends to
- choose a scale of one.  Note, in the scripts you'll see values like 9, 10 and 11 being
- chosen, but these have to be divided by 10 to get the true scale: we scale down the
- acoustic probabilities by a factor of 10 in the lattices after decoding so that
- we can test integer language-model scale factors and still get a fine enough gradation in
- relative scales.
-
-  We noticed that the 'tombstone' models, at least in the WSJ setup, tend to
- decode '<UNK>' quite often (about 10 times more frequently than before), and
- that it quite often corresponds to words that were in fact out of vocabulary.
- We tried penalizing '<UNK>' in the decoding graph and, while it reduced the
- number of times that '<UNK>' was decoded, the WER did not improve.
- We regard this as encouraging-- maybe the tombstone model is just better
- at detecting out-of-vocabulary words.
+ For speed, we don't use log values in the alpha-beta computation for the
+ denominator graph.  In order to keep all the numerical values in a suitable
+ range, we multiply all the acoustic probabilities (exponentiated nnet outputs)
+ on each frame, by an 'arbitrary value' selected to ensure that our alpha scores
+ stay in a good range.  We call this an 'arbitrary value' because the algorithm
+ is designed so that we could choose any value here, and it would still be
+ mathematically correct.  We designate one HMM state as a 'special state', and
+ the 'arbitrary constant' is chosen is the inverse of that special state's alpha
+ on the previous frame.  This keeps the special state's alpha values close to
+ one.  As the 'special state' we choose a state that has high probability in the
+ limiting distribution of the HMM, and which can access the majority of states
+ of the HMM.
+   
 
 
 */
