@@ -819,20 +819,19 @@ Component *AffineComponent::CollapseWithPrevious(
 // the CuRowSparseMatrix class.
 
 void SparseLinearComponent::Scale(BaseFloat scale) {
-  if(!is_updatable_)
-    return;    
+  KALDI_ASSERT(is_updatable_);
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
   linear_params_.CopyToMat(&tmp);
   tmp.Scale(scale);
   linear_params_.CopyFromMat(tmp);
+  ComputeLinearParamsTransposedVersion();
   //linear_params_.Scale(scale);
 }
 
 void SparseLinearComponent::Add(BaseFloat alpha, const Component &other_in) {
+  KALDI_ASSERT(is_updatable_);
   const SparseLinearComponent *other =
       dynamic_cast<const SparseLinearComponent*>(&other_in);
-  if(!is_updatable_)
-    return;    
   KALDI_ASSERT(other != NULL);
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols()),
                    tmp2(linear_params_.NumRows(), linear_params_.NumCols());
@@ -840,6 +839,7 @@ void SparseLinearComponent::Add(BaseFloat alpha, const Component &other_in) {
   other->linear_params_.CopyToMat(&tmp2);
   tmp.AddMat(alpha, tmp2);
   linear_params_.CopyFromMat(tmp);
+  ComputeLinearParamsTransposedVersion();
   //linear_params_.AddMat(alpha, other->linear_params_);
 }
 
@@ -849,18 +849,17 @@ SparseLinearComponent::SparseLinearComponent(const SparseLinearComponent &compon
     linear_params_transposed_(component.linear_params_transposed_) { }
 
 void SparseLinearComponent::SetZero(bool treat_as_gradient) {
-  if(!is_updatable_)
-    return;
+  KALDI_ASSERT(is_updatable_);
   if (treat_as_gradient) {
     SetLearningRate(1.0);
     is_gradient_ = true;
   }
   linear_params_.SetRandn(1.0);
+  ComputeLinearParamsTransposedVersion();
 }
 
 void SparseLinearComponent::PerturbParams(BaseFloat stddev) {
-  if(!is_updatable_)
-    return;
+  KALDI_ASSERT(is_updatable_);
   SparseMatrix<BaseFloat> stmp(linear_params_.NumRows(), linear_params_.NumCols());
   stmp.SetRandn(0.01);
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols()), 
@@ -869,6 +868,7 @@ void SparseLinearComponent::PerturbParams(BaseFloat stddev) {
   stmp.CopyToMat(&tmp2);
   tmp.AddMat(stddev, tmp2);
   linear_params_.CopyFromMat(tmp);
+  ComputeLinearParamsTransposedVersion();
   //linear_params_.AddMat(stddev, temp_linear_params);
 }
 
@@ -882,9 +882,13 @@ std::string SparseLinearComponent::Info() const {
     ((linear_params_size <= 1) ? 1 : ( linear_params_size - 1));
   // Assuming nonzero elements are iid from standard normal distribution,
   // zero-prob can be estimated as 1 - sample_var
+  BaseFloat frob_norm = linear_params_.FrobeniusNorm();
+  BaseFloat uncentered_var = (frob_norm * frob_norm) / 
+    linear_params_.NumElements();
   stream << Type() << ", input-dim=" << InputDim()
          << ", output-dim=" << OutputDim()
          << ", sparseness=" << 1 - sample_var
+         << ", uncentered-var=" << uncentered_var
          << ", learning-rate=" << LearningRate()
          << ", is-updatable=" << (is_updatable_ ? "true" : "false")
          << ", is-gradient=" << (is_gradient_ ? "true" : "false");
@@ -1021,6 +1025,7 @@ int32 SparseLinearComponent::NumParameters() const {
   return InputDim() * OutputDim();
 }
 void SparseLinearComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(is_updatable_);
   KALDI_ASSERT(params->Dim() == this->NumParameters());
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
   linear_params_.CopyToMat(&tmp);
@@ -1028,10 +1033,12 @@ void SparseLinearComponent::Vectorize(VectorBase<BaseFloat> *params) const {
   //params->CopyRowsFromMat(linear_params_);
 }
 void SparseLinearComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(is_updatable_);
   KALDI_ASSERT(params.Dim() == this->NumParameters());
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
   tmp.CopyRowsFromVec(params);
   linear_params_.CopyFromMat(tmp);
+  ComputeLinearParamsTransposedVersion();
   //linear_params_.CopyRowsFromVec(params);
 }
 

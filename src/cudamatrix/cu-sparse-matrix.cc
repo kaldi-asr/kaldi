@@ -191,6 +191,23 @@ void CuRowSparseMatrix<Real>::SetRandn(BaseFloat zero_prob) {
 }
 
 template <typename Real>
+Real CuRowSparseMatrix<Real>::FrobeniusNorm() const {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    std::vector<RowElement<Real> > cpu_data;
+    data_.CopyToVec(&cpu_data);
+    Real squared_sum = 0;
+    for (int32 i = 0; i < cpu_data.size(); ++i)
+      squared_sum += cpu_data[i].weight * cpu_data[i].weight;
+    return std::sqrt(squared_sum);
+  } else
+#endif
+    {
+      return this->Mat().FrobeniusNorm();
+    }
+}
+
+template <typename Real>
 void CuRowSparseMatrix<Real>::Write(std::ostream &os, bool binary) const {
   SparseMatrix<Real> tmp;
   CopyToSmat(&tmp);
