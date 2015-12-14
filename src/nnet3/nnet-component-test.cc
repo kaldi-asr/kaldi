@@ -45,13 +45,15 @@ void TestNnetComponentCopy(Component *c) {
 }
 
 void TestNnetComponentAddScale(Component *c) {
-  Component *c2 = c->Copy();
-  Component *c3 = c2->Copy();
-  c3->Add(0.5, *c2);
-  c2->Scale(1.5);
-  KALDI_ASSERT(c2->Info() == c3->Info());
-  delete c2;
-  delete c3;
+  if (c->Properties() & kUpdatableComponent) {
+    Component *c2 = c->Copy();
+    Component *c3 = c2->Copy();
+    c3->Add(0.5, *c2);
+    c2->Scale(1.5);
+    KALDI_ASSERT(c2->Info() == c3->Info());
+    delete c2;
+    delete c3;
+  }
 }
 
 void TestNnetComponentVectorizeUnVectorize(Component *c) {
@@ -78,16 +80,9 @@ void TestNnetComponentUpdatableFlag(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
   if(uc==NULL)
     return;
-  if(!(uc->Properties() & kUpdatableComponent) || (uc->NumParameters() == 0)){
+  if(!(uc->Properties() & kUpdatableComponent)){
     KALDI_ASSERT(uc->NumParameters() == 0);
     KALDI_ASSERT(uc->DotProduct(*uc) == 0);
-    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
-    uc2->Scale(7.0);
-    uc2->Add(3.0, *uc);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
-    uc->SetZero(false);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
-    delete uc2;
   }
 }
 

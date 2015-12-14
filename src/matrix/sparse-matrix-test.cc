@@ -183,6 +183,33 @@ void UnitTestSparseMatrixAddToMat() {
 }
 
 template <typename Real>
+void UnitTestSparseMatrixCopyToFromMat() {
+  for (int32 i = 0; i < 10; i++) {
+    MatrixIndexT row = 10 + Rand() % 40;
+    MatrixIndexT col = 10 + Rand() % 50;
+
+    SparseMatrix<Real> smat(row, col);
+    smat.SetRandn(0.8);
+
+    Matrix<Real> mat(row, col);
+ 
+    Real norm = smat.FrobeniusNorm();
+
+    smat.CopyToMat(&mat);
+    Matrix<Real> mat1(mat);
+    smat.CopyFromMat(mat);
+    AssertEqual(mat1, mat, 0.00001);
+    AssertEqual(norm, smat.FrobeniusNorm());
+
+    smat.Transpose();
+    mat.Resize(smat.NumRows(), smat.NumCols(), kUndefined);
+    smat.CopyToMat(&mat);
+    mat.Transpose();
+    AssertEqual(mat1, mat, 0.00001);
+  }
+}
+
+template <typename Real>
 void UnitTestSparseMatrixTraceMatSmat() {
   for (int32 i = 0; i < 10; i++) {
     MatrixIndexT row = 10 + Rand() % 40;
@@ -226,6 +253,7 @@ void SparseMatrixUnitTest() {
   UnitTestSparseMatrixFrobeniusNorm<Real>();
   UnitTestSparseMatrixAddToMat<Real>();
   UnitTestSparseMatrixTraceMatSmat<Real>();
+  UnitTestSparseMatrixCopyToFromMat<Real>();
 }
 
 }  // namespace kaldi

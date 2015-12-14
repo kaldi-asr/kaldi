@@ -340,16 +340,17 @@ template<typename Real>
 void SparseMatrix<Real>::Transpose() {
   if(rows_.empty())
     return;
-  std::vector<SparseVector<Real> > trows(NumCols(), SparseVector<Real>(NumRows()));
+  std::vector<SparseVector<Real> > trans_rows
+    (NumCols(), SparseVector<Real>(NumRows()));
   for (int32 i = 0; i < rows_.size(); ++i) {
     const std::pair<MatrixIndexT, Real> *row_data = rows_[i].Data();
     for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
-      trows[row_data[j].first].pairs_.push_back(std::make_pair(
-				      i,
-				      row_data[j].second));
+      trans_rows[row_data[j].first].pairs_.push_back(std::make_pair(
+							  i,
+							  row_data[j].second));
     }
   }
-  rows_.swap(trows);
+  rows_.swap(trans_rows);
 }
 
 template <typename Real>
@@ -400,10 +401,10 @@ void SparseMatrix<Real>::CopyFromMat(const MatrixBase<OtherReal> &other) {
   if (rows_.size() == 0) return;
   for (int32 r = 0; r < rows_.size(); r++) {
     SparseVector<Real> row(other.NumCols());
-    for(int32 c = 0; c < other.NumCols(); c++)
-      row.pairs_.push_back(std::make_pair(c, other(r, c)));
+    for (int32 c = 0; c < other.NumCols(); c++)
+      if (other(r, c) != 0.0)      
+	row.pairs_.push_back(std::make_pair(c, other(r, c)));
     rows_[r].Swap(&row);
-    //    rows_[r].CopyFromSvec(row);
   }
 }
 template void SparseMatrix<float>::CopyFromMat(const MatrixBase<float> &other);
