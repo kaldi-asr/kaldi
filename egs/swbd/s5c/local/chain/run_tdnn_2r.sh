@@ -3,6 +3,16 @@
 # _2r is as _2q, but further changing the topology to have one rather than
 # two pdf-ids per triphone.
 
+# it's consistently worse, and a fairly substantial difference.
+# WER on           2q     2r
+# train_dev,tg     17.43  17.82  0.4% worse
+# train_dev,fg     16.07  16.64  0.6% worse
+# eval2000,tg      19.0   19.8   0.8% worse
+# eval2000,fg      17.1   18.0   0.9% worse
+# train-prob      -0.08441  -0.08318
+# valid-prob      -0.01221  -0.1272
+
+
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
@@ -162,7 +172,7 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5r_tree$suffix
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -260,3 +270,35 @@ if [ $stage -le 14 ]; then
 fi
 wait;
 exit 0;
+
+
+# Just a note: I saw some warnings like this in the logs:
+
+WARNING (nnet3-chain-normalize-egs:main():nnet3-chain-normalize-egs.cc:72) For example sp1.0-sw02859-B_050239-051084-0, FST was empty after composing with normalization FST. This should be extremely rare (a few per corpus, at most)
+
+#below is how I verified that they were caused by a benign cause.. it was that the lattice versus
+#1-best alignment had different paths (and presumably the lattice didn't have the same path
+#contained in the 1-best.
+#
+# after the first ow_S we have a silence in the 1-best:
+
+copy-int-vector 'ark:gunzip -c exp/chain/tri5r_tree_sp/ali.45.gz |' ark,t:- |  grep sp1.0-sw02859-B_050239-051084 | ali-to-phones exp/chain/tri5r_tree_sp/final.mdl ark:- ark,t:-  | utils/int2sym.pl -f 2- data/lang/phones.txt
+copy-int-vector 'ark:gunzip -c exp/chain/tri5r_tree_sp/ali.45.gz |' ark,t:-
+ali-to-phones exp/chain/tri5r_tree_sp/final.mdl ark:- ark,t:-
+LOG (copy-int-vector:main():copy-int-vector.cc:83) Copied 5884 vectors of int32.
+LOG (ali-to-phones:main():ali-to-phones.cc:134) Done 1 utterances.
+sp1.0-sw02859-B_050239-051084 sil ow_S sil ay_B k_I m_I ax_I n_E hh_B ih_I m_I s_I eh_I l_I f_E ih_B f_E hh_B iy_E hh_B ae_I d_E s_B ah_I m_E t_B ae_I l_I ih_I n_I t_E ax_B r_I aw_I n_I d_E ay_S th_B ih_I ng_I k_E dh_B ey_I d_E b_B iy_E ax_S s_B uw_I p_I er_E t_B iy_I m_E b_B ah_I t_E hh_B iy_E k_B ae_I n_I t_E d_B uw_E ih_B t_E b_B ay_E hh_B ih_I m_I s_I eh_I l_I f_E hh_B iy_I z_E g_B aa_I t_E t_B ax_E hh_B ae_I v_E ax_S l_B ay_I n_E ih_B n_E f_B r_I ah_I n_I t_E ah_B v_E hh_B ih_I m_E dh_B ae_I t_E n_B ow_I z_E hh_B aw_E t_B ax_E b_B l_I aa_I k_E sil
+
+
+# but in the lattice (which seems to be linear at that point), after the first
+# ow_S there is no silence:
+
+lattice-copy "ark:gunzip -c exp/tri4_lats_nodup_sp/lat.45.gz |" "scp,t,p:echo sp1.0-sw02859-B_050239-051084 -|" | lattice-best-path "scp:echo sp1.0-sw02859-B_050239-051084 -|" ark:/dev/null ark,t:- | ali-to-phones exp/tri4/final.mdl ark:- ark,t:- | utils/int2sym.pl -f 2- data/lang/phones.txt
+lattice-copy 'ark:gunzip -c exp/tri4_lats_nodup_sp/lat.45.gz |' 'scp,t,p:echo sp1.0-sw02859-B_050239-051084 -|'
+lattice-best-path 'scp:echo sp1.0-sw02859-B_050239-051084 -|' ark:/dev/null ark,t:-
+ali-to-phones exp/tri4/final.mdl ark:- ark,t:-
+LOG (lattice-best-path:main():lattice-best-path.cc:99) For utterance sp1.0-sw02859-B_050239-051084, best cost 53.7031 + 39521.9 = 39575.6 over 843 frames.
+LOG (lattice-best-path:main():lattice-best-path.cc:124) Overall score per frame is 46.9461 = 0.0637047 [graph] + 46.8824 [acoustic] over 843 frames.
+LOG (lattice-best-path:main():lattice-best-path.cc:128) Done 1 lattices, failed for 0
+LOG (ali-to-phones:main():ali-to-phones.cc:134) Done 1 utterances.
+sp1.0-sw02859-B_050239-051084 sil ow_S ay_B k_I m_I ax_I n_E hh_B ih_I m_I s_I eh_I l_I f_E ih_B f_E hh_B iy_E hh_B ae_I d_E s_B ah_I m_E t_B ae_I l_I ih_I n_I t_E ax_B r_I aw_I n_I d_E ay_S th_B ih_I ng_I k_E dh_B ey_I d_E b_B iy_E ax_S s_B uw_I p_I er_E t_B iy_I m_E b_B ah_I t_E hh_B iy_E k_B ae_I n_I t_E d_B uw_E ih_B t_E b_B ay_E hh_B ih_I m_I s_I eh_I l_I f_E hh_B iy_I z_E g_B aa_I t_E t_B ax_E hh_B ae_I v_E ax_S l_B ay_I n_E ih_B n_E f_B r_I ah_I n_I t_E ah_B v_E hh_B ih_I m_E dh_B ae_I t_E n_B ow_I z_E hh_B aw_E t_B ax_E b_B l_I aa_I k_E sil

@@ -1,16 +1,6 @@
 #!/bin/bash
 
-# _2q is as _2o but changing from 9000 -> 6000 states as the target.
-#  (like 2p, where it wasn't helpful, but doing this experiment for the topology with fewer state).
-
-# it's consistently a little worse.
-# WER on           2o       2q
-# train_dev,tg     17.24    17.43  0.2% worse
-# train_dev,fg     15.93    16.07  0.2% worse
-# eval2000,tg      18.7     19.0   0.3% worse
-# eval2000,fg      16.9     17.1   0.2% worse
-# train-prob     -0.08352 -0.08441
-# valid-prob     -0.1218  -0.01221
+# _2s is as _2o, but another topology, this time with 3 states and 3 pdf-ids
 
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
@@ -122,11 +112,11 @@
 set -e
 
 # configs for 'chain'
-stage=11
+stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2q  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2s  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -171,7 +161,9 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5_2q_tree$suffix
+treedir=exp/chain/tri5_2s_tree$suffix
+lang=data/lang_chain_2s
+
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -194,21 +186,20 @@ if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  lang=data/lang_chain_o
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
   # topology.
-  steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+  steps/nnet3/chain/gen_topo4.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 6000 data/$train_set data/lang_chain_o $ali_dir $treedir
+      --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then

@@ -51,18 +51,15 @@ namespace kaldi {
 
   \section chain_scripts  Where to find scripts for the 'chain' models
 
-
   The current best scripts for the 'chain' models can be found in the
-  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_2o.sh is the
-  current best one.  This is currently available in the 'chain' branch of Dan's
-  git repository (%git@github.com:/danpovey/kaldi.git) but will soon be pushed to
-  the 'chain' branch of the official Kaldi git repository
-  (https://github.com/kaldi-asr/kaldi.git) and eventually will be merged to the
-  master.
+  Switchboard setup in egs/swbd/s5c; the script local/chain/run_tdnn_2o.sh is
+  the current best one.  This is currently available in the 'chain' branch of
+  the official github repository (https://github.com/kaldi-asr/kaldi.git) and
+  eventually will be merged to the master.
 
   This script uses TDNNs as the neural net (we've been doing the development
   with TDNNs because they are easier to tune then LSTMs), and gives a better WER
-  WER than the baseline TDNN: 11.4\%, versus 12.1\% for the best TDNN baseline 
+  WER than the baseline TDNN: 11.4\%, versus 12.1\% for the best TDNN baseline
   (on the Switchboard-only portion of eval2000).
 
   \section chain_model  The chain model
@@ -73,7 +70,7 @@ namespace kaldi {
   sense because all the neural nets we are currently using (LSTMs, TDNNs) have some kind
   of recurrent connections or splicing inside them, i.e. they are not purely feedforward
   nets.
-  
+
   The difference from a normal model is the objective function used to train it:
   instead of a frame-level objective, we use the log-probability of the correct
   phone sequence as the objective function.  The training process is quite
@@ -93,18 +90,18 @@ namespace kaldi {
 
   \section chain_training The training procedure for 'chain' models
 
-  The training procedure for chain models is a lattice-free version of 
+  The training procedure for chain models is a lattice-free version of
   MMI, where the denominator state posteriors are obtained by the
   forward-backward algorithm over a HMM formed from a phone-level decoding graph,
   and the numerator state posteriors are obtained by a similar forward-backward
   algorithm but limited to sequences corresponding to the transcript.
 
-  For each output index of the neural net (i.e. for each pdf-id), we 
+  For each output index of the neural net (i.e. for each pdf-id), we
   compute a derivative of of the form (numerator occupation probability -
   denominator occupation probability), and these are propagated back to the
   network.
 
-  
+
   \subsection chain_training_denominator  The denominator FST
 
   For the denominator part of the computation we do forward-backward over a HMM.
@@ -112,7 +109,7 @@ namespace kaldi {
  (pdf-ids) are associated with the arcs and not the states, so it's not really a
  HMM in the normal formulation, but it's easier think of it as a HMM because
  we use the forward-backward algorithm to get posteriors.
- In the code and scripts we refer to it as the 'denominator FST'.  
+ In the code and scripts we refer to it as the 'denominator FST'.
 
   \subsubsection chain_training_denominator_phone_lm Phone language model for the denominator FST
 
@@ -183,8 +180,8 @@ namespace kaldi {
   write out a version of the denominator FST that has these initial and final probabilities, and we refer to
   this as the 'normalization FST.'  (The initial probabilities are emulated using epsilon arcs, because
   FSTs do not support initial probabilities).  This 'normalization FST' will be used to add probabilities to the
- numerator FSTs in a way that we'll describe later. 
-  
+ numerator FSTs in a way that we'll describe later.
+
   \subsection chain_training_numerator  Numerator FSTs
 
  As part of our preparation for the training process we produce something
@@ -213,9 +210,9 @@ namespace kaldi {
  time-alignment information), naturally have a structure where we can identify
  any FST state with a particular frame index.  Note: at the stage where we do this
  splitting, there are no costs in the numerator FST yet-- it's just viewed as
- encoding a constraint on paths-- so we do not have to make a decision how to split up the costs 
+ encoding a constraint on paths-- so we do not have to make a decision how to split up the costs
 on the paths.
-  
+
   \subsubsection chain_training_numerator_normalization Normalizing the numerator FSTs
 
  Above (\ref chain_training_denominator_compilation) we mentioned how we compute
@@ -229,7 +226,7 @@ on the paths.
  principle could allow the objective function to increase without bound.  The
  reason why this could happen is that the phone LM lacks smoothing, and is
  estimated from 1-best alignments, so the lattices could contain phone n-grams
- sequences not seen in training. 
+ sequences not seen in training.
 
  It happens occasionally (but very rarely) that this normalization process
  generates an empty FST: this can occur when the lattice contains triphones that
@@ -240,7 +237,7 @@ on the paths.
  pronunciations of a word.  These pieces of utterances are just discarded.
 
   \subsubsection chain_training_numerator_normalization Format of the numerator FSTs
-  
+
   The numerator FSTs are weighted acceptors where the labels correspond to
   pdf-ids plus one.  We can't use pdf-ids, because they could be zero; and zero
   is treated specially (as epsilon) by OpenFst.  When we form minibatches, instead
@@ -322,7 +319,7 @@ on the paths.
  pruning, since the memory access for the different sequences would no longer be
  'in sync', we would lose this advantage.  It should still be doable to get a
  pruned version of the forward-backward algorithm, though.
- 
+
  For speed, we don't use log values in the alpha-beta computation for the
  denominator graph.  In order to keep all the numerical values in a suitable
  range, we multiply all the acoustic probabilities (exponentiated nnet outputs)
@@ -335,7 +332,7 @@ on the paths.
  one.  As the 'special state' we choose a state that has high probability in the
  limiting distribution of the HMM, and which can access the majority of states
  of the HMM.
-   
+
  \section chain_decoding  Decoding with 'chain' models
 
  The decoding process with 'chain' models is exactly the same as for regular nnet3
@@ -354,7 +351,7 @@ on the paths.
       transition-probability scaling we trained with, which for simplicity we
       have set to 1.0.  So we supply the option <code>--self-loop-scale
       1.0</code> to the <code>utils/mkgraph.sh</code> script.
-  
+
     - There is no 'division by the prior' necessary in these models.  So we simply
       don't set the vector of priors in the <code>.mdl</code> files; we made sure
       that the decoder just omits the division by the prior if the priors are not set.
@@ -394,7 +391,7 @@ on the paths.
  comparing with, uses them.  There is no inherent connection with 'chain'
  models, and no fundamental requirement to use them.  Actually we want to get rid
  of them (see below).
- 
+
 
  \section chain_next_steps  Next steps (TODOs) with 'chain' models
 
@@ -404,7 +401,7 @@ on the paths.
        (It will be interesting to see whether there are scale-dependent effects
        affecting how well this model works).
      - Create and tune LSTM and BLSTM versions of the training script.  (This
-       may involve some playing around with learning rate schedules and 
+       may involve some playing around with learning rate schedules and
        configurations).
      - Figure out how to speed up the forward-backward part of the computation.
        (E.g. using state-level pruning, or just by optimizing the current kernels or
@@ -423,3 +420,5 @@ on the paths.
 
 
 */
+
+}
