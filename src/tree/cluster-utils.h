@@ -112,6 +112,13 @@ BaseFloat ClusterBottomUp(const std::vector<Clusterable*> &points,
                           std::vector<Clusterable*> *clusters_out,
                           std::vector<int32> *assignments_out);
 
+BaseFloat ClusterBottomUpEntropy(const std::vector<Clusterable*> &points,
+                          BaseFloat thresh,
+                          int32 min_clust,
+                          std::vector<Clusterable*> *clusters_out,
+                          std::vector<int32> *assignments_out,
+                          size_t tree_index);
+
 /** This is a bottom-up clustering where the points are pre-clustered in a set
  *  of compartments, such that only points in the same compartment are clustered
  *  together. The compartment and pair of points with the smallest merge cost

@@ -92,6 +92,8 @@ std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
 ///  be checking, and we may add more later on.
 bool IsSimpleNnet(const Nnet &nnet);
 
+bool IsMultiOutputNnet(const Nnet &nnet);
+
 /// Zeroes the component stats in all nonlinear components in the nnet.
 void ZeroComponentStats(Nnet *nnet);
 
@@ -107,6 +109,11 @@ void ZeroComponentStats(Nnet *nnet);
 void ComputeSimpleNnetContext(const Nnet &nnet,
                               int32 *left_context,
                               int32 *right_context);
+
+void ComputeMultiNnetContext(const Nnet &nnet,
+                             int32 num_outputs,
+                             int32 *left_context,
+                             int32 *right_context);
 
 
 /// Sets the learning rate for all the components in the nnet to this value.

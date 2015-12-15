@@ -24,6 +24,73 @@
 
 namespace kaldi {
 
+TransitionModel::TransitionModel(const TransitionModel& other):
+          topo_(other.topo_), triples_(other.triples_),
+          state2id_(other.state2id_), id2state_(other.id2state_),
+          log_probs_(other.log_probs_),
+          non_self_loop_log_probs_(other.non_self_loop_log_probs_),
+          num_pdfs_(other.num_pdfs_) {
+}
+
+TransitionModel::TransitionModel(const ContextDependency &ctx_dep,
+                  const unordered_map<int32, vector<int32> >& mapping,
+                  const vector<TransitionModel>& transition_models):
+                                topo_(transition_models[0].topo_) {
+  KALDI_ASSERT(mapping.begin() != mapping.end());  
+  // so that the next assertion is valid
+
+  KALDI_ASSERT(transition_models.size() == (mapping.begin()->second).size());
+
+  // these are the same as the (ctx_dep, topo) constructor
+  ComputeTriples(ctx_dep);
+  ComputeDerived();
+  InitializeProbs();
+
+  for(size_t i = 1; i < log_probs_.Dim(); i++) {  // starting from 1
+    int32 phone = TransitionIdToPhone(i);
+    int32 hmm_state = TransitionIdToHmmState(i);
+    int32 pdf = TransitionIdToPdf(i);
+    int32 transition_index = TransitionIdToTransitionIndex(i);
+
+    int32 transition_state =
+       TripleToTransitionState(phone, hmm_state, pdf);
+    int32 transition_id =
+       PairToTransitionId(transition_state, transition_index);
+
+    KALDI_ASSERT(i == transition_id);
+
+    unordered_map<int32, vector<int32> >::const_iterator iter;
+    iter = mapping.find(pdf);
+    KALDI_ASSERT(iter != mapping.end());
+
+    vector<int32> v = iter->second;
+    vector<BaseFloat> new_log_probs;
+    for (size_t j = 0; j < v.size(); j++) {
+      int32 new_pdf = v[j];
+      int32 new_transition_state =
+         transition_models[j].TripleToTransitionState(phone, 
+                                                      hmm_state, new_pdf);
+      int32 new_transition_id =
+         transition_models[j].PairToTransitionId(new_transition_state, 
+                                                 transition_index);
+
+      new_log_probs.push_back(
+          transition_models[j].log_probs_(new_transition_id));
+    }
+
+    BaseFloat prob = 0.0;
+    // so here we calculate an algebraic mean of the transition-probs
+    for (size_t j = 0; j < new_log_probs.size(); j++) {
+      prob += exp(new_log_probs[j]);
+    }
+    prob /= new_log_probs.size();
+    log_probs_(i) = log(prob);
+  }
+
+  ComputeDerivedOfProbs(); 
+  Check();
+}
+
 void TransitionModel::ComputeTriples(const ContextDependency &ctx_dep) {
   const std::vector<int32> &phones = topo_.GetPhones();
   std::vector<std::vector<std::pair<int32, int32> > > pdf_info;

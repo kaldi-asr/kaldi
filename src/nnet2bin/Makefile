@@ -8,6 +8,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-am-info nnet-init \
    nnet-train-simple nnet-train-ensemble nnet-train-transitions nnet-latgen-faster nnet-am-copy \
+   nnet-latgen-faster-multi \
    nnet-am-init nnet-insert nnet-align-compiled \
    nnet-compute-prob nnet-copy-egs nnet-shrink nnet-combine nnet-combine-a \
    nnet-am-average nnet-am-combine nnet-am-compute nnet-am-shrink nnet-am-mixup \
