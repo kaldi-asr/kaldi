@@ -21,7 +21,7 @@
 #include <queue>
 #include "util/stl-utils.h"
 #include "tree/build-tree-utils.h"
-
+#include "tree/clusterable-classes.h"
 
 
 namespace kaldi {
@@ -323,7 +323,9 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
     kaldi::AddToClustersOptimized(summed_stats, assignments, *total, &clusters);
     BaseFloat this_objf = SumClusterableObjf(clusters);
 
-    if (this_objf < unsplit_objf- 0.001*std::abs(unsplit_objf)) {  // got worse; should never happen.
+    // turned off because it is not true any more for entropy_clusterable objects
+    if (dynamic_cast<EntropyClusterable*>(summed_stats[0]) != NULL
+        && this_objf < unsplit_objf- 0.001*std::abs(unsplit_objf)) {  // got worse; should never happen.
       // of course small differences can be caused by roundoff.
       KALDI_WARN << "Objective function got worse when building tree: "<< this_objf << " < " << unsplit_objf;
       KALDI_ASSERT(!(this_objf < unsplit_objf - 0.01*(200 + std::abs(unsplit_objf))));  // do assert on more stringent check.
@@ -400,7 +402,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
     for (size_t i = 0;i < assignments.size();i++) if (assignments[i] == 1) yes_set.push_back(i);
   }
   *yes_set_out = yes_set;
-    
+
   DeletePointers(&clusters);
 #ifdef KALDI_PARANOID
   {  // Check the "ans" is correct.
@@ -919,23 +921,6 @@ EventMap *GetStubMap(int32 P,
       return new TableEventMap(kPdfClass,  // split on hmm-position
                                m);
     }
-  } else if (max_set_size == 1
-            && static_cast<int32>(phone_sets.size()) <= 2*highest_numbered_phone) {
-    // create table map splitting on phone-- more efficient.
-    // the part after the && checks that this would not contain a very sparse vector.
-    std::map<EventValueType, EventMap*> m;
-    for (size_t i = 0; i < phone_sets.size(); i++) {
-      std::vector<std::vector<int32> > phone_sets_tmp;
-      phone_sets_tmp.push_back(phone_sets[i]);
-      std::vector<bool> share_roots_tmp;
-      share_roots_tmp.push_back(share_roots[i]);
-      EventMap *this_stub = GetStubMap(P, phone_sets_tmp, phone2num_pdf_classes,
-                                       share_roots_tmp,
-                                       num_leaves_out);
-      KALDI_ASSERT(m.count(phone_sets_tmp[0][0]) == 0);
-      m[phone_sets_tmp[0][0]] = this_stub;
-    }
-    return new TableEventMap(P, m);
   } else {
     // Do a split.  Recurse.
     size_t half_sz = phone_sets.size() / 2;

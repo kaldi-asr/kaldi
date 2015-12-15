@@ -90,6 +90,23 @@ EventMap *BuildTree(Questions &qopts,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
                     int32 P);
 
+// BuildTreeMulti is for building multiple decision trees
+// It is very similar to BuildTree, with a lot of the argument having the 
+// same effect; the difference is,
+// 1. The splitting criteria is the original like_impr + lambda * entropy
+// 2. It returns a vector of pointers to trees
+std::vector<EventMap*> BuildTreeMulti(Questions &qopts,
+                    const std::vector<std::vector<int32> > &phone_sets,
+                    const std::vector<int32> &phone2num_pdf_classes,
+                    const std::vector<bool> &share_roots,
+                    const std::vector<bool> &do_split,
+                    const BuildTreeStatsType &stats,
+                    BaseFloat thresh,
+                    int32 max_leaves,
+                    BaseFloat cluster_thresh,
+                    int32 P,
+                    size_t num_trees,
+                    BaseFloat lambda);
 
 /**
  *
@@ -188,6 +205,17 @@ void GenRandStats(int32 dim, int32 num_stats, int32 N, int32 P,
                   bool ensure_all_phones_covered,
                   BuildTreeStatsType *stats_out);
 
+void GenRandStatsEntropy(int32 dim, int32 num_stats, int32 N, int32 P,
+                  const std::vector<int32> &phone_ids,
+                  const std::vector<int32> &hmm_lengths,
+                  const std::vector<bool> &is_ctx_dep,
+                  bool ensure_all_phones_covered,
+                  BuildTreeStatsType *stats_out,
+                  double lambda);
+
+void StatsToEntropy(const BuildTreeStatsType &stats_in,
+                    BuildTreeStatsType &stats_multi,
+                    double lambda);
 
 /// included here because it's used in some tree-building
 /// calling code.  Reads an OpenFst symbl table,

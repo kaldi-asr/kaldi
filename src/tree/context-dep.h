@@ -35,6 +35,8 @@
 
 namespace kaldi {
 
+using std::vector;
+
 static const EventKeyType kPdfClass = -1;  // The "name" to which we assign the
 // pdf-class (generally corresponds ot position in the HMM, zero-based);
 // must not be used for any other event.  I.e. the value corresponding to
@@ -94,7 +96,7 @@ class ContextDependency: public ContextDependencyInterface {
 
   ~ContextDependency() { delete to_pdf_; }
 
-  const EventMap &ToPdfMap() const { return *to_pdf_; }
+  EventMap &ToPdfMap() const { return *to_pdf_; }
 
   /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
   /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).

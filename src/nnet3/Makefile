@@ -23,6 +23,9 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
   nnet-example-utils.o nnet-training.o \
   nnet-diagnostics.o nnet-combine.o nnet-am-decodable-simple.o \
+  am-nnet-multi.o \
+  nnet-am-decodable-multi.o \
+  nnet-combine-multi.o \
   nnet-optimize-utils.o nnet-simple-computer.o
 
 LIBNAME = kaldi-nnet3

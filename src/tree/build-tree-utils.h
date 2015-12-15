@@ -222,6 +222,13 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
                                          const EventMap &e_restrict,
                                          int32 *num_removed);
 
+EventMap *ClusterEventMapRestrictedByMapEntropy(const EventMap &e_in,
+                                         BuildTreeStatsType &stats,
+                                         BaseFloat thresh,
+                                         const EventMap &e_restrict,
+                                         int32 *num_removed,
+                                         size_t tree_index);
+
 
 /// RenumberEventMap [intended to be used after calling ClusterEventMap] renumbers
 /// an EventMap so its leaves are consecutive.
@@ -278,6 +285,16 @@ EventMap *SplitDecisionTree(const EventMap &orig,
                             int32 *num_leaves,
                             BaseFloat *objf_impr_out,
                             BaseFloat *smallest_split_change_out);
+
+/// This function build multiple decision trees
+std::vector<EventMap*> SplitDecisionTreeMulti(std::vector<EventMap*> orig,
+                            const BuildTreeStatsType &stats,
+                            Questions &qcfg,
+                            BaseFloat thresh,
+                            int32 max_leaves,  // max_leaves<=0 -> no maximum.
+                            std::vector<int32> *num_leaves,
+                            std::vector<BaseFloat> *objf_impr_out,
+                            std::vector<BaseFloat> *smallest_split_change_out);
 
 /// CreateRandomQuestions will initialize a Questions randomly, in a reasonable
 /// way [for testing purposes, or when hand-designed questions are not available].

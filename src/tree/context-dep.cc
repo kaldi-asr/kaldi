@@ -1,6 +1,7 @@
 // tree/context-dep.cc
 
 // Copyright 2009-2011  Microsoft Corporation
+//           2015       Hainan Xu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -148,7 +149,6 @@ void ContextDependency::Write (std::ostream &os, bool binary) const {
   WriteToken(os, binary, "EndContextDependency");
 }
 
-
 void ContextDependency::Read (std::istream &is, bool binary) {
   if (to_pdf_) {
     delete to_pdf_;
@@ -214,8 +214,6 @@ void ContextDependency::GetPdfInfo(const std::vector<int32> &phones,
     KALDI_ASSERT(IsSortedAndUniq( ((*pdf_info)[i])));  // should have no dups.
   }
 }
-
-
 
 ContextDependency*
 MonophoneContextDependency(const std::vector<int32> phones,

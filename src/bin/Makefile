@@ -10,6 +10,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         make-pdf-to-tid-transducer make-ilabel-transducer show-transitions \
         ali-to-phones ali-to-post weight-silence-post acc-lda est-lda \
         ali-to-pdf est-mllt build-tree build-tree-two-level decode-faster \
+        build-tree-virtual build-tree-entropy \
         decode-faster-mapped vector-scale copy-transition-model rand-prune-post \
         phones-to-prons prons-to-wordali copy-gselect copy-tree scale-post \
         compute-mce-scale get-silence-probs post-to-weights reverse-weights \
@@ -22,7 +23,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         matrix-logprob matrix-sum latgen-tracking-mapped \
         build-pfile-from-ali get-post-on-ali tree-info am-info \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
-        transform-vec align-text matrix-dim
+        transform-vec align-text matrix-dim init-model-multi
 
 
 OBJFILES =
