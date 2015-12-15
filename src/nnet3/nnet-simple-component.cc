@@ -819,7 +819,9 @@ Component *AffineComponent::CollapseWithPrevious(
 // the CuRowSparseMatrix class.
 
 void SparseLinearComponent::Scale(BaseFloat scale) {
-  KALDI_ASSERT(is_updatable_);
+  if (!is_updatable_) {
+    return;
+  }
   Matrix<BaseFloat> tmp(linear_params_.NumRows(), linear_params_.NumCols());
   linear_params_.CopyToMat(&tmp);
   tmp.Scale(scale);
@@ -829,7 +831,9 @@ void SparseLinearComponent::Scale(BaseFloat scale) {
 }
 
 void SparseLinearComponent::Add(BaseFloat alpha, const Component &other_in) {
-  KALDI_ASSERT(is_updatable_);
+  if (!is_updatable_) {
+    return;
+  }
   const SparseLinearComponent *other =
       dynamic_cast<const SparseLinearComponent*>(&other_in);
   KALDI_ASSERT(other != NULL);
