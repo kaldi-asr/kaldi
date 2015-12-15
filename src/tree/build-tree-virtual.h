@@ -25,6 +25,9 @@ void ReadMultiTreeMapping(unordered_map<int32, vector<int32> >& mappings,
                  std::istream &is, bool binary,
                  size_t num_trees = 0); // last parameter not necessary
 
+void MappingToSparseMatrix(const unordered_map<int32, vector<int32> >& mapping,
+                           SparseMatrix<BaseFloat> *out);
+
 struct MultiTreeNodeInfo {
   EventMap* parent; 
   const EventMap* src_node;  // corresponding node in the source tree

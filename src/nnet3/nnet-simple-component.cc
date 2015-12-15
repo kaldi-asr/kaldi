@@ -933,10 +933,11 @@ void SparseLinearComponent::Init(BaseFloat learning_rate,
 void SparseLinearComponent::Init(BaseFloat learning_rate,
                            std::string matrix_filename, bool is_updatable) {
   UpdatableComponent::Init(learning_rate, is_gradient_, is_updatable);
-  /*Cu*/Matrix<BaseFloat> mat;
-  ReadKaldiObject(matrix_filename, &mat);
-  KALDI_ASSERT(mat.NumCols() >= 1);
-  linear_params_.CopyFromMat(mat);
+//  /*Cu*/Matrix<BaseFloat> mat;
+//  ReadKaldiObject(matrix_filename, &mat);
+//  KALDI_ASSERT(mat.NumCols() >= 1);
+//  linear_params_.CopyFromMat(mat);
+  ReadKaldiObject(matrix_filename, &linear_params_);
   ComputeLinearParamsTransposedVersion();
 }
 

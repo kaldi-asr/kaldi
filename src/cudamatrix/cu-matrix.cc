@@ -1060,6 +1060,7 @@ void CuMatrixBase<Real>::AddMatMat(
   }
 }
 
+const int SIZE = 65535;
 template <typename Real>
 void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                             const CuRowSparseMatrix<Real> &B, MatrixTransposeType transB, Real beta) {
@@ -1070,7 +1071,9 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A, Mat
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
-    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), n_blocks(NumCols(), 1));
+    int32 y = std::min(NumCols(), SIZE), z = n_blocks(y, SIZE);
+//    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), n_blocks(NumCols(), 1));
+    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), y, z);
     if (transA == kNoTrans)
       cuda_add_mat_smat(dimGrid, dimBlock, this->data_, Dim(), alpha, A.data_, A.Stride(),
                         B.Data(), B.NumElementsPerRow(), B.Stride(), beta);
