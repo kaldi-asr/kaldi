@@ -24,6 +24,22 @@
 
 namespace kaldi {
 
+bool SameSet(const ConstIntegerSet<EventValueType>& a,
+             const ConstIntegerSet<EventValueType>& b) {
+  ConstIntegerSet<EventValueType>::iterator set_iter;
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (set_iter = a.begin(); set_iter != a.end(); set_iter++) {
+    int32 i = *set_iter;
+    int count = b.count(i);
+    if (count == 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 
 void EventMap::Write(std::ostream &os, bool binary, EventMap *emap) {
   if (emap == NULL) {
@@ -52,7 +68,7 @@ EventMap *EventMap::Read(std::istream &is, bool binary) {
 }
 
 
-void ConstantEventMap::Write(std::ostream &os, bool binary) {
+void ConstantEventMap::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "CE");
   WriteBasicType(os, binary, answer_);
   if (os.fail()) {
@@ -66,6 +82,16 @@ ConstantEventMap* ConstantEventMap::Read(std::istream &is, bool binary) {
   EventAnswerType answer;
   ReadBasicType(is, binary, &answer);
   return new ConstantEventMap(answer);
+}
+
+bool ConstantEventMap::IsSameTree (const EventMap* other) const {
+  const ConstantEventMap* s_other = 
+          dynamic_cast<const ConstantEventMap*>(other);
+  if (s_other == NULL) {
+    KALDI_LOG << "Is not same at ConstantEventMap ";
+    return false;
+  }
+  return true;
 }
 
 EventMap* TableEventMap::Prune() const {
@@ -119,7 +145,7 @@ EventMap* TableEventMap::MapValues(
 }
 
 
-void TableEventMap::Write(std::ostream &os, bool binary) {
+void TableEventMap::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "TE");
   WriteBasicType(os, binary, key_);
   uint32 size = table_.size();
@@ -151,6 +177,10 @@ TableEventMap* TableEventMap::Read(std::istream &is, bool binary) {
   }
   ExpectToken(is, binary, ")");
   return new TableEventMap(key, table);
+}
+
+bool TableEventMap::IsSameTree (const EventMap* other) const {
+  return false;  // TableEventMap will NOT be used in virtual tree!
 }
 
 EventMap* SplitEventMap::Prune() const {
@@ -189,7 +219,7 @@ EventMap* SplitEventMap::MapValues(
   }  
 }
 
-void SplitEventMap::Write(std::ostream &os, bool binary) {
+void SplitEventMap::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "SE");
   WriteBasicType(os, binary, key_);
   // WriteIntegerVector(os, binary, yes_set_);
@@ -222,6 +252,40 @@ SplitEventMap* SplitEventMap::Read(std::istream &is, bool binary) {
   // the constructor checks this.  Therefore this is an unlikely error.
   if (yes == NULL || no == NULL) KALDI_ERR << "SplitEventMap::Read, NULL pointers.";
   return new SplitEventMap(key, yes_set, yes, no);
+}
+
+bool SplitEventMap::IsSameTree (const EventMap* other) const {
+  const SplitEventMap* s_other = dynamic_cast<const SplitEventMap*>(other);
+  if (s_other == NULL) {
+    KALDI_LOG << "Is not same different leaf ";
+    return false;
+  }
+  else if (this->key_ != s_other->key_) {
+    KALDI_LOG << "Is not same different key ";
+    return false;
+  }
+
+  if (!SameSet(this->yes_set_, s_other->yes_set_)) {
+    KALDI_LOG << "Different Set ";
+    return false;
+  }
+
+  std::vector<EventMap*> this_children;
+  this->GetChildren(&this_children);
+  std::vector<EventMap*> other_children;
+  other->GetChildren(&other_children);
+
+  if (this_children.size() != other_children.size()) {
+    KALDI_LOG << "Different Num of Children ";
+    return false;
+  }
+
+  for (size_t i = 0; i < this_children.size(); i++) { 
+    if(!this_children[i]->IsSameTree(other_children[i])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 

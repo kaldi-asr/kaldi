@@ -27,7 +27,7 @@
 namespace kaldi {
 namespace nnet3 {
 
-
+bool isPrefix(const string &str, const string &pre);
 
 /** Merge a set of input examples into a single example (typically the size of
     "src" will be the minibatch size).  Will crash if "src" is the empty vector.

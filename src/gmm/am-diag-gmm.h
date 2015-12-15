@@ -100,8 +100,7 @@ class AmDiagGmm {
 //  int32 dim_;
 
   void RemovePdf(int32 pdf_index);
-
-  KALDI_DISALLOW_COPY_AND_ASSIGN(AmDiagGmm);
+  AmDiagGmm& operator= (const AmDiagGmm& other);
 };
 
 

@@ -25,6 +25,17 @@
 namespace kaldi {
 namespace nnet3 {
 
+bool isPrefix(const string &str, const string &pre) {
+  if (str.size() < pre.size()) {
+    return false;
+  }
+  for (int i = 0; i < pre.size(); i++) {
+    if (str[i] != pre[i]) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // get a sorted list of all NnetIo names in all examples in the list (will
 // normally be just the strings "input" and "output", but maybe also "ivector").

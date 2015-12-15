@@ -28,6 +28,8 @@
 #include "hmm/hmm-topology.h"
 #include "itf/options-itf.h"
 
+using std::vector;
+
 namespace kaldi {
 
 /// \addtogroup hmm_group
@@ -127,6 +129,16 @@ class TransitionModel {
   TransitionModel(const ContextDependency &ctx_dep,
                   const HmmTopology &hmm_topo);
 
+  /// initialize a TransitionModel from a ``virtual tree',
+  /// a vector of TransitionModel's, 
+  /// and a mapping structure, which maps virtual-tree leaves to
+  /// a vector of single-tree leaves
+  /// This function is used in the multi-tree recipes
+  TransitionModel(const ContextDependency &ctx_dep,
+                  const unordered_map<int32, vector<int32> >& mapping,
+                  const vector<TransitionModel>& transition_models);
+
+  explicit TransitionModel(const TransitionModel& other);
 
   /// Constructor that takes no arguments: typically used prior to calling Read.
   TransitionModel() { }
@@ -243,6 +255,9 @@ class TransitionModel {
   bool Compatible(const TransitionModel &other) const;
   
  private:
+  // disallow = operator
+  TransitionModel& operator =(const TransitionModel &other);
+
   void MleUpdateShared(const Vector<double> &stats,
                        const MleTransitionUpdateConfig &cfg,
                        BaseFloat *objf_impr_out, BaseFloat *count_out);
@@ -303,9 +318,6 @@ class TransitionModel {
   /// tree (but the tree numbers pdfs contiguously from zero so this is the number
   /// of pdfs).
   int32 num_pdfs_;
-
-
-  DISALLOW_COPY_AND_ASSIGN(TransitionModel);
 
 };
 

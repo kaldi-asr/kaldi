@@ -748,11 +748,13 @@ static void _add_mat_mat_elements(Real *data, const Real *srcA_data, const Real 
     }
 }
 
+const int SIZE = 65535;
+
 template<typename Real>
 __global__
 static void _add_mat_smat(Real *data, MatrixDim dim, Real alpha, const Real *srcA_data, const int srcA_stride, const RowElement<Real>* srcB_data, const int *srcB_epr, const int srcB_stride, Real beta) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index of output matrix
-  int32_cuda j = blockIdx.y; // column index of output matrix
+  int32_cuda j = blockIdx.y + blockIdx.z * SIZE; // column index of output matrix
                              // use 1D block for this kernel, all threads share same j
   if (i < dim.rows && j < dim.cols) {
     int32_cuda tgt_index = i * dim.stride + j; // actual index of data
@@ -772,7 +774,7 @@ template<typename Real>
 __global__
 static void _add_mat_trans_smat(Real *data, MatrixDim dim, Real alpha, const Real *srcA_data, const int srcA_stride, const RowElement<Real>* srcB_data, const int *srcB_epr, const int srcB_stride, Real beta) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row index of output matrix
-  int32_cuda j = blockIdx.y; // column index of output matrix
+  int32_cuda j = blockIdx.y + blockIdx.z * SIZE; // column index of output matrix
                              // use 1D block for this kernel, all threads share same j
   if (i < dim.rows && j < dim.cols) {
     int32_cuda tgt_index = i * dim.stride + j; // actual index of data
