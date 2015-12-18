@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
+
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
@@ -115,7 +117,7 @@ stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2w  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -160,7 +162,9 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5_2o_tree$suffix
+lang=data/lang_chain_2w
+frame_subsampling_factor=2
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -183,7 +187,6 @@ if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  lang=data/lang_chain_o
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
@@ -195,9 +198,9 @@ fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor $frame_subsampling_factor \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_o $ali_dir $treedir
+      --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -209,6 +212,7 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --frame-subsampling-factor $frame_subsampling_factor \
     --apply-deriv-weights false \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \

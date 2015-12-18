@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# _2u is as _2o, but using 'not-shared' in the roots files, to ensure that
+# the initial and non-initial states will never be shared.  I don't expect this
+# to make any difference, as that question always gets asked, but it's a baseline for _2v.
+
+
+#  If anything, it's a little worse.
+
+# WER on            2o       2u
+# train_dev,tg      17.24    17.23   no diff
+# train_dev,fg      15.93    15.98   no diff
+# eval2000,tg       18.7     19.3  0.6% worse
+# eval2000,fg       16.9     17.3  0.4% worse
+
+
+
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
@@ -33,7 +48,7 @@
 # provided from the tree-building, and effectively puts the leftmost context position as a single
 # set.
 #   This seems definitely helpful: on train_dev, with tg improvement is 18.12->17.55 and with fg
-#  from 16.73->16.14; and on eval2000, with tg from 19.8->19.5 and with fg from 17.8->17.6.
+#  from 16.73->16.14; and on eval2000, with tg from 19.8->19.5 and with fg from 17.8->17..
 
 # _2c is as _2a but after a code change in which we start using transition-scale
 # and self-loop-scale of 1 instead of zero in training; we change the options to
@@ -115,7 +130,7 @@ stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2u  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -160,7 +175,8 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5o_tree$suffix
+treedir=exp/chain/tri5_2u_tree$suffix
+lang=data/lang_chain_2u
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -183,7 +199,6 @@ if [ $stage -le 10 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  lang=data/lang_chain_o
   rm -rf $lang
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
@@ -191,13 +206,17 @@ if [ $stage -le 10 ]; then
   # Use our special topology... note that later on may have to tune this
   # topology.
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
+  # use 'not-shared' roots so initial and non-initial pdf-ids cannot be the
+  # same.
+  awk '{$1 = "not-shared"; print;}' <data/lang/phones/roots.txt >$lang/phones/roots.txt
+  awk '{$1 = "not-shared"; print;}' <data/lang/phones/roots.int >$lang/phones/roots.int
 fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 9000 data/$train_set data/lang_chain_o $ali_dir $treedir
+      --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
