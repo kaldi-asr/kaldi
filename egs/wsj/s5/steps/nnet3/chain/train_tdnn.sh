@@ -207,6 +207,7 @@ if [ $stage -le -5 ]; then
 
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_configs.py \
+    --include-log-softmax=false \
     --final-layer-normalize-target $final_layer_normalize_target \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \

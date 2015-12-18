@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
+# Going back to 100 frames per eg, which I previously found to be about the same in
+# WER, because we were running out of memory.
 
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
@@ -132,7 +134,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=150
+frames_per_eg=100
 remove_egs=false
 
 # End configuration section.
