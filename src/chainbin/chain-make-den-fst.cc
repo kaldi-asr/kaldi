@@ -67,9 +67,6 @@ int main(int argc, char *argv[]) {
     chain::CreateDenominatorFst(ctx_dep, trans_model, phone_lm,
                                 &den_fst);
 
-    KALDI_LOG << "Denominator FST has " << den_fst.NumStates() << " states and "
-              << NumArcs(den_fst) << " arcs.";
-
     fst::StdVectorFst normalization_fst;
     chain::DenominatorGraph den_graph(den_fst, trans_model.NumPdfs());
     den_graph.GetNormalizationFst(den_fst, &normalization_fst);

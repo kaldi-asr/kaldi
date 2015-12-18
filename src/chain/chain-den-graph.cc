@@ -286,6 +286,37 @@ void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
 }
 
 
+static void PrintDenGraphStats(const fst::StdVectorFst &den_graph) {
+  int32 num_states = den_graph.NumStates();
+  int32 degree_cutoff = 3;  // track states with <= transitions in/out.
+  int32 num_states_low_degree_in = 0,
+      num_states_low_degree_out = 0,
+      tot_arcs = 0;
+  std::vector<int32> num_in_arcs(num_states, 0);
+  for (int32 s = 0; s < num_states; s++) {
+    if (den_graph.NumArcs(s) <= degree_cutoff) {
+      num_states_low_degree_out++;
+    }
+    tot_arcs += den_graph.NumArcs(s);
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(den_graph, s);
+         !aiter.Done(); aiter.Next()) {
+      int32 dest_state = aiter.Value().nextstate;
+      num_in_arcs[dest_state]++;
+    }
+  }
+  for (int32 s = 0; s < num_states; s++) {
+    if (num_in_arcs[s] <= degree_cutoff) {
+      num_states_low_degree_in++;
+    }
+  }
+  KALDI_LOG << "Number of states is " << num_states << " and arcs "
+            << tot_arcs << "; number of states with in-degree <= "
+            << degree_cutoff << " is " << num_states_low_degree_in
+            << " and with out-degree <= " << degree_cutoff
+            << " is " << num_states_low_degree_out;
+}
+
+
 // Check that every pdf is seen, warn if some are not.
 static void CheckDenominatorFst(int32 num_pdfs,
                                 const fst::StdVectorFst &den_fst) {
@@ -360,7 +391,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   BaseFloat self_loop_scale = 1.0;  // We have to be careful to use the same
                                     // value in test time.
-  bool reorder = true;  // more efficient in general; won't affect results.
+  bool reorder = false;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
                &transition_id_fst);
@@ -385,6 +416,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
 
   *den_fst = transition_id_fst;
   CheckDenominatorFst(trans_model.NumPdfs(), *den_fst);
+  PrintDenGraphStats(*den_fst);
 }
 
 
