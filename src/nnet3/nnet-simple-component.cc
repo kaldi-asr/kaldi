@@ -1302,11 +1302,12 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &active_scaling_count_);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
     ReadBasicType(is, binary, &max_change_scale_stats_);
-    ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
-  } else {
-    if (token != "<NaturalGradientAffineComponent>")
-      KALDI_ERR << "Expected <NaturalGradientAffineComponent>, got " << token;
+    ReadToken(is, binary, &token);
   }
+  if (token != "<NaturalGradientAffineComponent>" &&
+      token != "</NaturalGradientAffineComponent>")
+    KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
+              << "</NaturalGradientAffineComponent>, got " << token;
   SetNaturalGradientConfigs();
 }
 
@@ -1463,7 +1464,7 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
+  WriteToken(os, binary, "</NaturalGradientAffineComponent>");
 }
 
 std::string NaturalGradientAffineComponent::Info() const {

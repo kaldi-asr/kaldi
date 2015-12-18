@@ -170,23 +170,4 @@ openblas_compiled:
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
-# libsndfile needed by beamformit,
-libsndfile: libsndfile-1.0.25.tar.gz libsndfile-1.0.25/lib/libsndfile.so
-libsndfile-1.0.25.tar.gz:
-	wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
-libsndfile-1.0.25/lib/libsndfile.so:
-	tar xvf libsndfile-1.0.25.tar.gz && cd libsndfile-1.0.25/ && \
-	./configure --prefix=$(PWD)/libsndfile-1.0.25/ && make && make install
-
-# beamforming tool,
-beamformit: libsndfile beamformit-3.51
-
-.PHONY: beamformit-3.51
-
-beamformit-3.51: beamformit-3.51.tgz
-	tar -xozf BeamformIt-3.51.tgz; \
-	cd BeamformIt-3.51; patch -p1 -N < ../extras/beamformit.patch; cmake . ; make
-
-beamformit-3.51.tgz:
-	wget -c -T 10 http://www.xavieranguera.com/beamformit/releases/BeamformIt-3.51.tgz
 
