@@ -19,7 +19,9 @@ import numpy as np
 if len(sys.argv) != 4:
   print "Usage: %s prf ctm_in ctm_out" % __file__
   sys.exit(1)
-dummy, prf_file, ctm_file, ctm_out_file = sys.argv
+prf_file, ctm_file, ctm_out_file = sys.argv[1:]
+
+if ctm_out_file == '-': ctm_out_file = '/dev/stdout'
 
 # Load the prf file,
 prf = []
@@ -43,32 +45,32 @@ for (f,c,t,e) in prf:
   while t_pos < len(t):
     t1 = t[t_pos:].split(' ',1)[0] # get 1st token at 't_pos'
     try:
-      t1f = float(t1)
       # get word evaluation letter 'C,S,I',
       evl = e[t_pos] if e[t_pos] != ' ' else 'C' 
       # add to dictionary,
       key='%s,%s' % (f,c) # file,channel
       if key not in prf_dict: prf_dict[key] = dict()
-      prf_dict[key][t1f] = evl
+      prf_dict[key][float(t1)] = evl
     except ValueError:
       pass
     t_pos += len(t1)+1 # advance position for parsing,
 
 # Load the ctm file (with confidences),
-ctm = np.loadtxt(ctm_file, dtype='object,object,f8,f8,object,f8')
+with open(ctm_file) as f:
+  ctm = [ l.split() for l in f ]
 
 # Append the sclite alignment tags to ctm,
-ctm2 = []
-for (f, chan, beg, dur, wrd, conf) in ctm:
+ctm_out = []
+for f, chan, beg, dur, wrd, conf in ctm:
   # U = unknown, C = correct, S = substitution, I = insertion,
   sclite_tag = 'U' 
   try:
-    sclite_tag = prf_dict[('%s,%s'%(f,chan)).lower()][beg]
+    sclite_tag = prf_dict[('%s,%s'%(f,chan)).lower()][float(beg)]
   except KeyError:
     pass
-  ctm2.append((f,chan,beg,dur,wrd,conf,sclite_tag))
+  ctm_out.append([f,chan,beg,dur,wrd,conf,sclite_tag])
 
 # Save the augmented ctm file,
-ctm3 = np.array(ctm2, dtype='object,object,f8,f8,object,f8,object')
-np.savetxt(ctm_out_file, ctm3, fmt='%s %s %.2f %.2f %s %.2f %s')
+with open(ctm_out_file, 'w') as f:
+  f.writelines([' '.join(ctm_record)+'\n' for ctm_record in ctm_out])
 

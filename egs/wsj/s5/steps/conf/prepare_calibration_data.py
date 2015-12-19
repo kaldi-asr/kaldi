@@ -41,7 +41,7 @@ parser.add_option("--conf-feats", help="Feature file for logistic regression. [d
 if len(args) != 4:
   parser.print_help()
   sys.exit(1)
-ctm_file, depths_file, arpa_gz, words_file = args
+ctm_file, depths_file, unigrams, word_categories_file = args
 
 assert(o.conf_feats != '')
 
@@ -69,7 +69,7 @@ if o.conf_targets != '':
   # Store the targets,
   np.savetxt(o.conf_targets, np.array(targets,dtype='object,i'), fmt='%s %d')
 
-# Segments dicionart is indexed by utterance,
+# Segments hash is indexed by utterance-id,
 if o.segments != '':
   segments = { utt:(reco,beg,end) for (utt,reco,beg,end) in np.loadtxt(o.segments,dtype='object,object,f8,f8') }
   # Optionally apply 'reco2file_and_channel' mapping,
@@ -109,20 +109,11 @@ else:
       depths[reco2file_and_channel[segments[utt][0]]][frame_begin:frame_begin+len(d)] = d
 
 # Load the unigram probabilities in 10log from ARPA,
-import gzip, re
-arpa_log10_unigram = dict()
-with gzip.open(arpa_gz,'r') as f:
-  read = False
-  for l in f:
-    if l.strip() == '\\1-grams:': read = True
-    if l.strip() == '\\2-grams:': break
-    if read and len(l.split())>=2:
-      log10_p_unigram, wrd = re.split('[\t ]+',l.strip(),2)[:2]
-      arpa_log10_unigram[wrd] = log10_p_unigram
+p_unigram_log10 = { wrd:p_unigram for wrd, p_unigram in np.loadtxt(unigrams, dtype='object,f8') }
 
-# Load the 'words.txt' table for categorical distribution of words on input,
-wrd_to_int = { wrd:i for wrd,i in np.loadtxt(words_file,dtype='object,i4') }
-wrd_num = np.max(np.array(wrd_to_int.values(),dtype='int')) + 1
+# Load the 'word_categories' mapping for categorical input features derived from 'lang/words.txt',
+wrd_to_cat = { wrd:cat for wrd,idx,cat in np.loadtxt(word_categories_file,dtype='object,i4,i4') }
+wrd_cat_num = max(wrd_to_cat.values()) + 1
 
 # Build the input features,
 with open(o.conf_feats,'w') as inputs:
@@ -139,13 +130,12 @@ with open(o.conf_feats,'w') as inputs:
     log_avg_depth = np.log(np.mean(depths[(f,chan)][int(np.rint(100.0*beg)):int(np.rint(100.0*(beg+dur)))]))
     # - log of frames per character ratio,
     log_frame_per_letter = np.log(100.0*dur/len(wrd))
-    
-    # - categorical distribution of words (DISABLED!!!, needs a lot of memory, but gave 0.015 NCE improvement),
-    # wrd_1_of_k = [0]*wrd_num; 
-    # wrd_1_of_k[wrd_to_int[wrd]] = 1;
+    # - categorical distribution of words with frequency higher than min-count,
+    wrd_1_of_k = [0]*wrd_cat_num; 
+    wrd_1_of_k[wrd_to_cat[wrd]] = 1;
 
     # Compose the input feature vector,
-    feats = [ logit, log_lenwrd, log_avg_depth, arpa_log10_unigram[wrd], log_frame_per_letter ] # + wrd_1_of_k
+    feats = [ logit, log_lenwrd, log_avg_depth, p_unigram_log10[wrd], log_frame_per_letter ] + wrd_1_of_k
     # Store the input features, 
     inputs.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

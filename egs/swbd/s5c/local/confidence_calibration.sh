@@ -22,14 +22,17 @@ set -euxo pipefail
 dev_caldir=$dev_latdir/confidence_$lmwt
 eval_caldir=$eval_latdir/confidence_$lmwt
 
+
 ###### Train the calibration,
-steps/conf_train_calibration.sh --cmd "$decode_cmd" --lmwt $lmwt \
-  --grep-filter 'UH|UM|EH|MM|HM|AH|HUH|HA|ER|OOF|HEE|ACH|EEE|EW' \
-  $dev_data $graph $arpa_gz $dev_latdir $dev_caldir
+# Extract unigrams,
+unigrams=$(mktemp); steps/conf/parse_arpa_unigrams.py $arpa_gz $unigrams
+# Train the calibration,
+steps/conf/train_calibration.sh --cmd "$decode_cmd" --lmwt $lmwt \
+  $dev_data $graph $unigrams $dev_latdir $dev_caldir
 
 ###### Apply the calibration to eval set,
-steps/conf_apply_calibration.sh --cmd "$decode_cmd" \
-  $eval_data $graph $arpa_gz $eval_latdir $dev_caldir $eval_caldir
+steps/conf/apply_calibration.sh --cmd "$decode_cmd" \
+  $eval_data $graph $eval_latdir $dev_caldir $eval_caldir
 # The final confidences are here '$eval_caldir/ctm_calibrated',
 
 ###### Sclite scoring,

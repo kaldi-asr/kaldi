@@ -15,8 +15,9 @@
 cmd=
 lmwt=12
 decode_mbr=true
+word_min_count=10 # Minimum word-count for single-word category,
+normalizer=0.0025 # L2 regularization constant,
 stage=0
-grep_filter= # hesitations, format: "word1|word2|...|wordN"
 # end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -36,13 +37,13 @@ set -euxo pipefail
 
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
-arpa_gz=$3
+unigrams=$3
 latdir=$4
 dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 
-for f in $data/text $lang/words.txt $arpa_gz $latdir/lat.1.gz; do
+for f in $data/text $lang/words.txt $unigrams $latdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
 done
 [ -z "$cmd" ] && echo "$0: Missing --cmd '...'" && exit 1
@@ -52,7 +53,8 @@ nj=$(cat $latdir/num_jobs)
 
 # Store the setup,
 echo $lmwt >$dir/lmwt
-echo $decode_mbr >$dir/decode_mbr 
+echo $decode_mbr >$dir/decode_mbr
+cp $unigrams $dir/unigrams
 
 # Create the ctm with raw confidences,
 # - we keep the timing relative to the utterance,
@@ -73,13 +75,16 @@ fi
 
 # Get evaluation of the 'ctm' using the 'text' reference,
 if [ $stage -le 1 ]; then
-  utils/scoring/convert_ctm_to_tra.py $dir/ctm - | \
+  steps/conf/convert_ctm_to_tra.py $dir/ctm - | \
   align-text --special-symbol="<eps>" ark:$data/text ark:- ark,t:- | \
   utils/scoring/wer_per_utt_details.pl --special-symbol "<eps>" \
   >$dir/align_text 
   # Append alignment to ctm,
-  utils/scoring/append_eval_to_ctm.py $dir/align_text $dir/ctm $dir/ctm_aligned
+  steps/conf/append_eval_to_ctm.py $dir/align_text $dir/ctm $dir/ctm_aligned
 fi
+
+# Prepare word-categories,
+steps/conf/prepare_word_categories.py --min-count $word_min_count $lang/words.txt $dir/ctm $dir/word_categories
 
 # Compute lattice-depth,
 latdepth=$dir/lattice_frame_depth.ark
@@ -89,20 +94,20 @@ fi
 
 # Create the training data for logistic regression,
 if [ $stage -le 3 ]; then
-  utils/scoring/prepare_calibration_data.py \
+  steps/conf/prepare_calibration_data.py \
     --conf-targets $dir/train_targets.ark --conf-feats $dir/train_feats.ark \
-    $dir/ctm_aligned $latdepth $arpa_gz $lang/words.txt
+    $dir/ctm_aligned $latdepth $unigrams $dir/word_categories
 fi
 
 # Filter the targets,
 if [ $stage -le 4 ]; then
-  # Removing words with format: [...], <...>, %..., ...-, and '$grep_filter',
-  grep -i -v -E "\^(\[.*\]|<.*>|%[^,]*|[^,]*-|$grep_filter)," $dir/train_targets.ark >$dir/train_targets_filt.ark
+  # Removing words with format: [...], <...>, %..., ...-,
+  grep -i -v -E "\^(\[.*\]|<.*>|%[^,]*|[^,]*-)," $dir/train_targets.ark >$dir/train_targets_filt.ark
 fi
 
 # Train the logistic regression,
 if [ $stage -le 5 ]; then
-  logistic-regression-train --binary=false ark:$dir/train_feats.ark \
+  logistic-regression-train --binary=false --normalizer=$normalizer ark:$dir/train_feats.ark \
     ark:$dir/train_targets_filt.ark $dir/calibration.mdl 2>$dir/log/logistic-regression-train.log
 fi
 
