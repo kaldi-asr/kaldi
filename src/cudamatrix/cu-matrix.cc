@@ -1071,7 +1071,7 @@ void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A, Mat
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     dim3 dimBlock(CU1DBLOCK, 1);
-    int32 y = std::min(NumCols(), SIZE), z = n_blocks(y, SIZE);
+    int32 y = std::min(NumCols(), SIZE), z = n_blocks(NumCols(), SIZE);
 //    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), n_blocks(NumCols(), 1));
     dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK), y, z);
     if (transA == kNoTrans)
