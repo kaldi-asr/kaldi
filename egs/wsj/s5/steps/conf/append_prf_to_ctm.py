@@ -4,7 +4,6 @@
 # Apache 2.0
 
 import sys
-import numpy as np
 
 # Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
 # (parsed from the 'prf' output of 'sclite')
