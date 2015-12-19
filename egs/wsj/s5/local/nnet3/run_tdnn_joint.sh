@@ -11,14 +11,14 @@
 # --num-threads 16 and --minibatch-size 128.
 
 stage=0
-dir=exp/nnet3/nnet_tdnn_joint_$4
-multidir=$1
-virtualdir=$2
-num_outputs=$3
-train_stage=$5
+dir=
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+multidir=$1
+virtualdir=$2
+num_outputs=$3
+train_stage=$4
 
 echo dir is $dir
 
