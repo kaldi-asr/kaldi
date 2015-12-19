@@ -16,7 +16,6 @@ make install
 git clone https://github.com/xanguera/BeamformIt
 (
 cd BeamformIt
-git apply ../extras/beamformit.patch
 cmake -DLIBSND_INSTALL_DIR=$PWD/../libsndfile-1.0.25 .
 make
 );
