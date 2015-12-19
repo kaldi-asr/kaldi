@@ -2,7 +2,20 @@
 
 # _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
 # Going back to 100 frames per eg, which I previously found to be about the same in
-# WER, because we were running out of memory.
+# WER, because we were running out of memory [although this is before a code
+# change to use reorder=false, which halved the num-states in the graph on this setup
+# [~45k->22k], and reduced the num-transitions to a quarter [900k->225k].
+
+
+# a little surprisingly, it's worse, and clearly so.
+# note, we can't really compare the objf values, as the chunk size is not the same.
+
+# WER on          2m        2o          2w
+# train_dev,tg    17.22     17.24       17.62
+# train_dev,fg    15.87     15.93       16.49
+# eval2000,tg     18.7      18.7        19.4
+# eval2000,fg     17.0      16.9        17.8
+
 
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.

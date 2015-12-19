@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
+# 800k to 1.2 million.  The aim is to avoid some of the per-job overhead
+# (model-averaging, etc.), since each iteration takes only a minute or so.
+
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
@@ -115,7 +119,7 @@ stage=10
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2y  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
@@ -160,8 +164,8 @@ fi
 dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
-treedir=exp/chain/tri5_2o_tree$suffix
-lang=data/lang_chain_2o
+treedir=exp/chain/tri5_2y_tree$suffix
+lang=data/lang_chain_2y
 
 
 # if we are using the speed-perturbed data we need to generate
@@ -211,6 +215,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --apply-deriv-weights false \
+    --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \

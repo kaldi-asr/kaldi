@@ -1,5 +1,25 @@
 #!/bin/bash
 
+# _2x is as _2w but with more epochs (6 vs 4), as it looks like the 2w model
+# hadn't completely trained.  Re-using the egs.
+
+# _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
+# Going back to 100 frames per eg, which I previously found to be about the same in
+# WER, because we were running out of memory [although this is before a code
+# change to use reorder=false, which halved the num-states in the graph on this setup
+# [~45k->22k], and reduced the num-transitions to a quarter [900k->225k].
+
+
+# a little surprisingly, it's worse, and clearly so.
+# note, we can't really compare the objf values, as the chunk size is not the same.
+
+# WER on          2m        2o          2w
+# train_dev,tg    17.22     17.24       17.62
+# train_dev,fg    15.87     15.93       16.49
+# eval2000,tg     18.7      18.7        19.4
+# eval2000,fg     17.0      16.9        17.8
+
+
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
@@ -111,17 +131,17 @@
 set -e
 
 # configs for 'chain'
-stage=10
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_2x  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
 splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
 
 # training options
-num_epochs=4
+num_epochs=6
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
@@ -130,7 +150,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=150
+frames_per_eg=100
 remove_egs=false
 
 # End configuration section.
@@ -161,8 +181,8 @@ dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_2o_tree$suffix
-lang=data/lang_chain_2o
-
+lang=data/lang_chain_2w
+frame_subsampling_factor=2
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -196,7 +216,7 @@ fi
 
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor $frame_subsampling_factor \
       --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
@@ -210,6 +230,8 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --egs-dir exp/chain/tdnn_2w_sp/egs \
+    --frame-subsampling-factor $frame_subsampling_factor \
     --apply-deriv-weights false \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
