@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# _3a is as _2z, but using wider contexts for splicing.
+
+# _2z is as _2y, but modifying the splice_indexes so that we see more
+#  general contexts (I'm calling this 'gtdnn'...).  Model has the same context
+# width so re-using the egs from 2y.
+
 # _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
 # 800k to 1.2 million.  The aim is to avoid some of the per-job overhead
 # (model-averaging, etc.), since each iteration takes only a minute or so.
@@ -117,14 +123,14 @@
 set -e
 
 # configs for 'chain'
-stage=10
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_2y  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3a  # Note: _sp will get added to this if $speed_perturb == true.
 
 # TDNN options
-splice_indexes="-2,-1,0,1,2 -1,2 -3,3 -6,3 -6,3"
+splice_indexes="-2,-1,0,1,2 -1/0/1,0/1/2 -6/-3/0,0/3/6 -9/-6/-3/0,-3/0/3/6 -9/-6/-3/0,-3/0/3/6"
 
 # training options
 num_epochs=4
@@ -210,7 +216,7 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.

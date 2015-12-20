@@ -123,7 +123,7 @@ class NormalizeComponent: public NonlinearComponent {
  public:
  void Init(int32 dim, BaseFloat target_rms);
   explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0) { Init(dim, target_rms); }
-  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other), 
+  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other),
     target_rms_(other.target_rms_) { }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
@@ -131,7 +131,7 @@ class NormalizeComponent: public NonlinearComponent {
   }
   NormalizeComponent(): target_rms_(1.0) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
-  virtual void InitFromConfig(ConfigLine *cfl);    
+  virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -237,6 +237,55 @@ class RectifiedLinearComponent: public NonlinearComponent {
  private:
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
+
+/**
+   This component is a fixed (non-trainable) nonlinearity that sums its inputs
+   to produce outputs.  Currently the only supported configuration is that its
+   input-dim is interpreted as consisting of n blocks, and the output is just a
+   summation over the n blocks, where  n = input-dim / output-dim, so for instance
+    output[n] = input[n] + input[block-size + n] + .... .
+   Later if needed we can add a configuration variable that allows you to sum
+   over 'interleaved' input.
+ */
+class SumReduceComponent: public Component {
+ public:
+  void Init(int32 input_dim, int32 output_dim);
+  explicit SumReduceComponent(int32 input_dim, int32 output_dim) {
+    Init(input_dim, output_dim);
+  }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kLinearInInput;
+  }
+  SumReduceComponent(): input_dim_(0), output_dim_(0) { }
+  virtual std::string Type() const { return "SumReduceComponent"; }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *, // to_update
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+  virtual Component* Copy() const { return new SumReduceComponent(input_dim_,
+                                                                  output_dim_); }
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual std::string Info() const;
+ protected:
+  int32 input_dim_;
+  int32 output_dim_;
+};
+
 
 class FixedAffineComponent;
 class FixedScaleComponent;

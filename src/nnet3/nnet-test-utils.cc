@@ -807,7 +807,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 21);
+  int32 n = RandInt(0, 22);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1009,7 +1009,13 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
-
+    case 22: {
+      *component_type = "SumReduceComponent";
+      int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
+          input_dim = output_dim * group_size;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

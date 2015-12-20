@@ -5,12 +5,11 @@ from __future__ import print_function
 import re, os, argparse, sys, math, warnings
 
 
-
 parser = argparse.ArgumentParser(description="Writes config files and variables "
                                  "for TDNNs creation and training",
                                  epilog="See steps/nnet3/train_tdnn.sh for example.");
 parser.add_argument("--splice-indexes", type=str,
-                    help="Splice indexes at each hidden layer, e.g. '-3,-2,-1,0,1,2,3 0 -2,2 0 -4,4 0 -8,8'")
+                    help="Splice indexes at each hidden layer, e.g. '-3:-2:-1:0:1:2:3 0 -2:2 0 -4:4 0 -8:8'")
 parser.add_argument("--feat-dim", type=int,
                     help="Raw feature dimension, e.g. 13")
 parser.add_argument("--ivector-dim", type=int,
@@ -66,7 +65,17 @@ if args.use_presoftmax_prior_scale == "true":
 else:
     use_presoftmax_prior_scale = False
 
-## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
+## Work out splice_array e.g. for regular TDNNs,
+#  splice_indexes == '-3,-2,-1,0,1,2,3 0 -2,2 0 -4,4 0 -8,8'
+# we'd get the following (and it may seem to use arrays unnecessarily):
+#   splice_array = [ [ [-3],[-2],...[3] ], [[0]], [[-2],[2]], [[0]], [[-4],[4]], [[0]], [ [-8],[8] ] ]
+#  For 'generalized' TDNNs, we make use of the deeply nested list, where
+#  each sub-list, where it replaces an integer, represents a list of
+#  time-offsets that we're doing a weighted sum over, for instance, if:
+#  splice_indexes == '-3,-2,-1,0,1,2,3 0 -6/-3/0/3,-3/0/3/6 0 ' #HERE
+#  = [ [ [-3],[-2],...[3] ], [[0]], [[-6,-3,0,3],[-3,0,3,6]], [[0]] ]
+
+
 splice_array = []
 left_context = 0
 right_context = 0
@@ -80,15 +89,24 @@ try:
         if len(split2) < 1:
             sys.exit("invalid --splice-indexes argument, too-short element: "
                      + args.splice_indexes)
-        int_list = []
-        for int_str in split2:
-            int_list.append(int(int_str))
-        if not int_list == sorted(int_list):
-            sys.exit("elements of --splice-indexes must be sorted: "
-                     + args.splice_indexes)
-        left_context += -int_list[0]
-        right_context += int_list[-1]
-        splice_array.append(int_list)
+        # int_array_list will contain a list of sub-lists, where in
+        # regular TDNNs, each sub-list has length one.
+        int_array_list = []
+        for int_array_str in split2:
+            sub_list = int_array_str.split("/");
+            int_array_list.append([ int(x) for x in sub_list])
+            if len(splice_array) == 0 and len(sub_list) != 1:
+                sys.exit("invalid --splice-indexes argument (first splicing is not simple): " +
+                         args.splice_indexes)
+
+
+        # update left_context and right_context
+        sorted_list = []
+        map(sorted_list.extend, int_array_list);  # flatten to sorted_list
+        sorted_list = sorted(sorted_list);
+        left_context += -sorted_list[0]
+        right_context += sorted_list[-1]
+        splice_array.append(int_array_list)
 except ValueError as e:
     sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
 left_context = max(0, left_context)
@@ -105,11 +123,17 @@ print('right_context=' + str(right_context), file=f)
 print('num_hidden_layers=' + str(num_hidden_layers), file=f)
 f.close()
 
+## Write the 'init.config' which is a network that just does the initial frame-splicing.
+## We use this to accumulate stats for the LDA transform, and then add to and modify this
+## network using 'layer*.config'.
 f = open(args.config_dir + "/init.config", "w")
 print('# Config file for initializing neural network prior to', file=f)
 print('# preconditioning matrix computation', file=f)
 print('input-node name=input dim=' + str(args.feat_dim), file=f)
-list=[ ('Offset(input, {0})'.format(n) if n != 0 else 'input' ) for n in splice_array[0] ]
+
+
+
+list=[ ('Offset(input, {0})'.format(n[0]) if n[0] != 0 else 'input' ) for n in splice_array[0] ]
 if args.ivector_dim > 0:
     print('input-node name=ivector dim=' + str(args.ivector_dim), file=f)
     list.append('ReplaceIndex(ivector, t, 0)')
@@ -118,18 +142,24 @@ if args.ivector_dim > 0:
 print('output-node name=output input=Append({0})'.format(", ".join(list)), file=f)
 f.close()
 
+## Next create the 'layer*.config'.  These partial configs are used to add
+## components and nodes incrementally to the network, as we add more layers.
+
 for l in range(1, num_hidden_layers + 1):
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
     if l == 1:
+        cur_spliced_dim = input_dim
         print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
-    cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
+    else:
+        cur_unspliced_dim = nonlin_output_dim
+        cur_spliced_dim = len(splice_array[l-1]) * cur_unspliced_dim
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
     print('component name=affine{0} type=NaturalGradientAffineComponent '
           'input-dim={1} output-dim={2} bias-stddev=0'.
-        format(l, cur_dim, nonlin_input_dim), file=f)
+        format(l, cur_spliced_dim, nonlin_input_dim), file=f)
     if args.relu_dim is not None:
         print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
               format(l, args.relu_dim), file=f)
@@ -153,9 +183,27 @@ for l in range(1, num_hidden_layers + 1):
                     args.config_dir), file=f)
         print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
                 args.num_targets), file=f)
+
+    # If we have any non-simple splices, add the relevant components- we'd need
+    # a PerElementScaleComponent and a SumReduceComponent for each one.
+    # This will only possibly be the case for l > 1.
+    for n in range(0, len(splice_array[l-1])):
+        sub_array = splice_array[l-1][n]
+        sub_array_length = len(sub_array)
+        if sub_array_length > 1:
+            # this is a non-simple-splice.
+            if l == 1:
+                sys.exit("code error");  # we already checked this.
+            print('component name=per-element-scale-{0}-{1} type=PerElementScaleComponent '
+                  'dim={2} param-stddev=1.0 param-mean=0.0'.format(
+                    l, n+1, cur_unspliced_dim * sub_array_length), file=f)
+            print('component name=sum-reduce-{0}-{1} type=SumReduceComponent '
+                  'input-dim={2} output-dim={3}'.format(
+                    l, n+1, cur_unspliced_dim * sub_array_length, cur_unspliced_dim), file=f)
+
     print('# Now for the network structure', file=f)
     if l == 1:
-        splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
+        splices = [ ('Offset(input, {0})'.format(n[0]) if n[0] != 0 else 'input') for n in splice_array[l-1] ]
         if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
@@ -164,8 +212,28 @@ for l in range(1, num_hidden_layers + 1):
         cur_input='lda'
     else:
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
-        splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
-                    for n in splice_array[l-1] ]
+        splices = []
+        for n in range(0, len(splice_array[l-1])):
+            sub_array = splice_array[l-1][n]
+            sub_array_length = len(sub_array)
+            if sub_array_length <= 1:
+                offset = sub_array[0];
+                if offset == 0:
+                    splices.append('renorm{0}'.format(l-1))
+                else:
+                    splices.append('Offset(renorm{0}, {1})'.format(l-1, offset))
+            else:
+                # we need to create two component instances: one to do per-element scaling, one for
+                # sum-reduce.
+                sub_splices = [ ('Offset(renorm{0}, {1})'.format(l-1, m) if m != 0 else 'renorm{0}'.format(l-1))
+                                for m in sub_array ]
+                sub_splice_input = 'Append({0})'.format(', '.join(sub_splices))
+                print('component-node name=per-element-scale-{0}-{1} component=per-element-scale-{0}-{1} '
+                      'input={2} '.format(l, n+1, sub_splice_input), file=f)
+                print ('component-node name=sum-reduce-{0}-{1} component=sum-reduce-{0}-{1} '
+                       'input=per-element-scale-{0}-{1}'.format(l, n+1), file=f)
+                # after creating the appropriate component nodes, update 'splices'.
+                splices.append('sum-reduce-{0}-{1}'.format(l, n+1))
         cur_input='Append({0})'.format(', '.join(splices))
     print('component-node name=affine{0} component=affine{0} input={1} '.
           format(l, cur_input), file=f)

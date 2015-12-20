@@ -3,13 +3,14 @@
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.
 # hm--- it's about the same, or maybe slightly better!
+#   Correction: after rerunning, it actually seems a little worse.
 # caution: accidentally overwrote most of this dir, but kept the key stuff.
 
-# WER on          2m        2o
-# train_dev,tg    17.22     17.24       no diff
-# train_dev,fg    15.87     15.93       no diff
-# eval2000,tg     18.7      18.7        no diff
-# eval2000,fg     17.0      16.9        0.1 better
+# WER on          2m        2o        2o[rerun after delete]
+# train_dev,tg    17.22     17.24     17.19
+# train_dev,fg    15.87     15.93     15.89
+# eval2000,tg     18.7      18.7      19.3
+# eval2000,fg     17.0      16.9      17.4
 
 # train-prob,final  -0.0803   -0.0835
 # valid-prob,final  -0.0116   -0.0122

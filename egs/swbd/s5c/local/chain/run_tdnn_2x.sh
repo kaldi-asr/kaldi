@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# _2x is as _2w but with more epochs (6 vs 4), as it looks like the 2w model
-# hadn't completely trained.  Re-using the egs.
+# _2x is as _2w (which has frame subsampling factor of 2 not 3), but with more
+# epochs (6 vs 4), as it looks like the 2w model hadn't completely trained.
+# Re-using the egs.  I added the results to the table below.  The WER is
+# even worse than 2x.
 
 # _2w is as _2o, but setting the frame subsampling factor to 2 instead of 3.
 # Going back to 100 frames per eg, which I previously found to be about the same in
@@ -13,11 +15,11 @@
 # a little surprisingly, it's worse, and clearly so.
 # note, we can't really compare the objf values, as the chunk size is not the same.
 
-# WER on          2m        2o          2w
-# train_dev,tg    17.22     17.24       17.62
-# train_dev,fg    15.87     15.93       16.49
-# eval2000,tg     18.7      18.7        19.4
-# eval2000,fg     17.0      16.9        17.8
+# WER on          2m        2o          2w       2x
+# train_dev,tg    17.22     17.24       17.62    17.79
+# train_dev,fg    15.87     15.93       16.49    16.57
+# eval2000,tg     18.7      18.7        19.4     19.6
+# eval2000,fg     17.0      16.9        17.8     18.0
 
 
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
