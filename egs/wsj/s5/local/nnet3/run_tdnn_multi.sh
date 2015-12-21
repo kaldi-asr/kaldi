@@ -33,10 +33,10 @@ fi
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_tdnn_multi_output.sh --stage $train_stage \
+  steps/nnet3/train_tdnn_multi.sh --stage $train_stage \
     --cleanup false \
     --num-outputs $num_outputs \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \

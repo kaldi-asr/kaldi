@@ -46,10 +46,10 @@ if [ "$gmm" == "true" ]; then
   steps/decode_multi.sh --cmd "$decode_cmd" --nj 10 \
       --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_dev93 \
       $dir/virtual/graph data/test_dev93 $dir/virtual/decode_dev93 $dir/virtual/tree-mapping
-  )&
   steps/decode_multi.sh --cmd "$decode_cmd" --nj 8 \
       --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_eval92 \
       $dir/virtual/graph data/test_eval92 $dir/virtual/decode_eval92 $dir/virtual/tree-mapping
+  )&
 fi
 
 nnet3dir=${dir}_tdnn_joint
