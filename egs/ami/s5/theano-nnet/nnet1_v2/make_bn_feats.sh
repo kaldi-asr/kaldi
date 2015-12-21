@@ -64,7 +64,7 @@ nnet=$bnfeadir/feature_extractor_nnet.pklz
 python theano-nnet/nnet1_v2/nnet_copy.py \
   --remove-last-components=$remove_last_components \
   $nndir/final_nnet.pklz $nnet 2>$logdir/feature_extractor.log || exit 1
-(cd $bnfeadir; ln -s feature_extractor_nnet.pklz final_nnet.pklz; cd -) #for nn_fwdpass.py
+(cd $bnfeadir; ln -sf feature_extractor_nnet.pklz final_nnet.pklz; cd -) #for nn_fwdpass.py
 #TODO
 # nnet-info $nnet >$data/feature_extractor.nnet-info
 

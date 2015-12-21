@@ -17,7 +17,6 @@ from feature_funcs import features, feature_preprocess
 from nnet1_v2.neuralnet import NeuralNet
 import nnet1_v2.neuralnet
 from feature_funcs.feature_preprocess import FeaturePreprocess, CMVN
-from feature_funcs.transform_feats import transform_feats
 
 import compute_mtd
 
@@ -114,7 +113,7 @@ def compute_phone_post(Y, pdf_to_phone_map, max_phone_id): #Y=state_post
 
 
 from optparse import OptionParser
-usage = "%prog [options] <nnet-dir> <data-dir> <out.pkl>"
+usage = "%prog [options] <nnet-dir> <data-dir> <out_acc.pklz>"
 parser = OptionParser(usage)
 
 parser.add_option('--config', dest="config",
@@ -149,19 +148,16 @@ parser.add_option('--pdf-to-pseudo-phone', dest='pdf_to_pseudo_phone',
                   help="A two column file that maps pdf-id to the corresponding pseudo phone-id. If supplied, outputs the log probabilities for given phones instead of pdf's [default: %default]",
                   default = "", type=str)
 
-parser.add_option('--nnet-feats-transform', dest='nnet_feats_transform',
-                  help="Transformation (Linear/Affine) to be applied on top of features from nnet [default: %default]",
-                  default="", type=str)
 
 (o, args) = parser.parse_args()
 # options specified in config overides command line
 if o.config != "": (o, args) = utils.parse_config(parser, o.config)
 
-if len(args) != 2:
+if len(args) != 3:
   parser.print_help()
   sys.exit(1)
 
-(nnet_dir, data_dir) = (args[0], args[1])
+(nnet_dir, data_dir, out_acc_pklz) = (args[0], args[1], args[2])
 
 ## Create log file
 logging.basicConfig(stream=sys.stderr, format='%(asctime)s: %(message)s', level=logging.INFO)
@@ -220,11 +216,6 @@ if not os.path.exists(data_scp):
   logging.error("%s doesn't exist", data_scp)
   sys.exit(1)
 
-### Load transform of nnet-out ###
-transform_nnet_out = transform_feats(o.nnet_feats_transform)
-###
-
-
 strm_indices=o.strm_indices
 comb_num=int(o.comb_num)
 
@@ -239,8 +230,33 @@ with kaldi_io.KaldiScpReader(data_scp, feature_preprocess.full_preprocess, reade
       Y = AdditiveSmoothing(Y, 1e-5)
       Y = logit(Y)
 
-    Y = transform_nnet_out.transform_feats(Y, utt)
+    if ii == 0:
+      N = Y.shape[0]
+      F = np.sum(Y, axis=0)
+      S = np.dot(np.transpose(Y), Y)
+    else:
+      N = N + Y.shape[0]
+      F = F + np.sum(Y, axis=0)
+      S = S + np.dot(np.transpose(Y), Y)
 
-    kaldi_io.write_stdout_ascii(Y, utt)
+#store N, F, S
+stats_dict = {}
+(stats_dict['N'], stats_dict['F'], stats_dict['S']) = (N, F, S)
+
+import bz2
+f = bz2.BZ2File(out_acc_pklz, "wb")
+pickle.dump(stats_dict, f)
+f.close()
+
+logging.info("Succeded accumalating N, F, S in %s", out_acc_pklz)
+sys.exit(0)
+
+# Do EigenAnalysis
+
+# sum_mat = F / float(N)
+# sumsq_mat = S / float(N)
+# sumsq_mat = sumsq_mat - np.outer(sum_mat, sum_mat)
+# (w, v) = np.linalg.eig(sumsq_mat)
+
 
 
