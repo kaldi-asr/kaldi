@@ -140,7 +140,7 @@ if [ $stage -le -2 ]; then
     gmm-init-model  --write-occs=$dir/tree_$i/1.occs  \
       $dir/tree-$i $dir/treeacc $lang/topo $dir/tree_$i/1.mdl 2> $dir/tree_$i/log/init_model.log || exit 1;
     grep 'no stats' $dir/tree_$i/log/init_model.log && echo "This is a bad warning.";
-    rm $dir/treeacc  # not now
+#    rm $dir/treeacc  # not now
   done
 fi
 
