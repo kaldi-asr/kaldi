@@ -8,11 +8,12 @@
 # Apache 2.0.
 
 # train_convnet_accel2.sh is modified from train_pnorm_accel2.sh. It propotypes
-# the training of a ConvNet. The ConvNet is composed of 4 layers. The first layer
+# the training of a ConvNet. The ConvNet is composed of 4 hidden layers. The first layer
 # is a Convolutional1d component plus a Maxpooling component. The second layer
 # is a single Convolutional1d component. The third and fourth layers are affine
 # components with ReLU nonlinearities. Due to non-squashing output, normalize
-# component is applied to all four layers.
+# component is applied to all four layers. The number of hidden layers is hard
+# coded now.
 
 # train_pnorm_accel2.sh is a modified form of train_pnorm_simple2.sh (the "2"
 # suffix is because they both use the the "new" egs format, created by
@@ -64,7 +65,7 @@ shuffle_buffer_size=5000 # This "buffer_size" variable controls randomization of
                 # (the point of this is to get data in different minibatches on different iterations,
                 # since in the preconditioning method, 2 samples in the same minibatch can
                 # affect each others' gradients.
-
+num_hidden_layers=4
 add_layers_period=2 # by default, add new layers every 2 iterations.
 stage=-3
 

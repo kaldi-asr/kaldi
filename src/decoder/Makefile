@@ -1,6 +1,6 @@
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare -O3
+EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 TESTFILES = 

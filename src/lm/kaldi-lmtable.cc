@@ -194,6 +194,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     KALDI_ERR << "\\data\\ token not found in arpa file.";
   }
 
+  std::vector<int> orders; 
   while (getline(istrm, inpline) && !istrm.eof()) {
     // break out of loop if another section is found
     if (inpline.find("-grams:") != string::npos) break;
@@ -207,6 +208,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     }
     // found valid line
     ngram_order = atoi(inpline.substr(pos1+5, pos2-(pos1+5)).c_str());
+    orders.push_back(ngram_order);
     if (ngram_order > max_ngram_order) {
       max_ngram_order = ngram_order;
     }
@@ -216,6 +218,11 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     KALDI_ERR << "No ngrams found in specified file";
   }
 
+  for (int32 i = 0; i < orders.size(); i++) {
+    if (orders[i] != i+1)
+      KALDI_ERR << (i + 1) <<"-grams not specified in arpa file";
+  }
+ 
   // process "\N-grams:" sections, we may have already read a "\N-grams:" line
   // if so, process it, otherwise get another line
   while (inpline.find("-grams:") != string::npos
@@ -228,7 +235,14 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
     }
     // found, set current level
     ngram_order = atoi(inpline.substr(pos1+1, pos2-(pos1+1)).c_str());
-    cerr << "Processing " << ngram_order << "-grams" << endl;
+    if (orders[0] != ngram_order)
+      KALDI_ERR << ngram_order << "-grams not specified in arpa header, or "
+                << "statistics of "<< orders[0] << "-grams not provided ? "
+                << "Check your arpa lm file.";
+    else {
+      cerr << "Processing " << ngram_order << "-grams" << endl;
+      orders.erase(orders.begin());
+    }
 
     // process individual n-grams
     while (getline(istrm, inpline) && !istrm.eof()) {
@@ -327,6 +341,9 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                                  startSent, endSent);
     }  // end of loop on individual n-gram lines
   }
+  if (orders.size() > 0)
+    KALDI_ERR << orders[0] << "-grams specified in arpa header " 
+              << "but no statistics provided to build FST";
 
   conv_->ConnectUnusedStates(fst);
 

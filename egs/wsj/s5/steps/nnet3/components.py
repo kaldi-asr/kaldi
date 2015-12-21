@@ -80,9 +80,10 @@ def AddOutputNode(config_lines, input, label_delay=None):
     else:
         component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = "", label_delay=None):
+def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = "", label_delay=None, include_softmax = "true"):
     prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
-    prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
+    if include_softmax == "true":
+      prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
     AddOutputNode(config_lines, prev_layer_output, label_delay)
 
 

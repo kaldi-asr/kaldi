@@ -54,6 +54,42 @@ void TestNnetComponentAddScale(Component *c) {
   delete c3;
 }
 
+void TestNnetComponentVectorizeUnVectorize(Component *c) {
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  if((uc==NULL) || (uc->NumParameters() == 0))
+    return;
+  UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+  uc2->SetZero(false);
+  Vector<BaseFloat> params(uc2->NumParameters());
+  uc2->Vectorize(&params);
+  KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
+  uc->Vectorize(&params);
+  uc2->UnVectorize(params);
+  KALDI_ASSERT(uc2->Info() == uc->Info());
+  KALDI_ASSERT(uc2->DotProduct(*uc2) == uc->DotProduct(*uc));
+  Vector<BaseFloat> params2(uc2->NumParameters());
+  uc2->Vectorize(&params2);
+  for(int i = 0; i < params.Dim(); i++)
+    KALDI_ASSERT(params(i) == params2(i));
+  delete uc2;
+}
+
+void TestNnetComponentUpdatableFlag(Component *c) {
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  if(uc==NULL)
+    return;
+  if(!(uc->Properties() & kUpdatableComponent)){
+    KALDI_ASSERT(uc->NumParameters() == 0);
+    KALDI_ASSERT(uc->DotProduct(*uc) == 0);
+    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+    uc2->Scale(7.0);
+    uc2->Add(3.0, *uc);
+    KALDI_ASSERT(uc2->Info() == uc->Info());
+    uc->SetZero(false);
+    KALDI_ASSERT(uc2->Info() == uc->Info());
+    delete uc2;
+  }
+}
 
 // tests the properties kPropagateAdds, kBackpropAdds,
 // kBackpropNeedsInput, kBackpropNeedsOutput.
@@ -67,11 +103,23 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
   int32 properties = c.Properties();
   CuMatrix<BaseFloat> input_data(num_rows, input_dim),
       output_data1(num_rows, output_dim),
-      output_data2(num_rows, output_dim);
+      output_data2(num_rows, output_dim),
+      output_data3(input_data);
   output_data2.Add(1.0);
+
+  if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
+    KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
+  }
 
   c.Propagate(NULL, input_data, &output_data1);
   c.Propagate(NULL, input_data, &output_data2);
+  if (properties & kPropagateInPlace) {
+    c.Propagate(NULL, output_data3, &output_data3);
+    if (!output_data1.ApproxEqual(output_data3)) {
+      KALDI_ERR << "Test of kPropagateInPlace flag for component of type "
+                << c.Type() << " failed.";
+    }
+  }
   if (properties & kPropagateAdds)
     output_data2.Add(-1.0); // remove the offset
   AssertEqual(output_data1, output_data2);
@@ -107,6 +155,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
                c_copy,
                &input_deriv3);
   }
+
   if (properties & kBackpropAdds)
     input_deriv2.Add(-1.0);  // subtract the offset.
   AssertEqual(input_deriv1, input_deriv2);
@@ -271,6 +320,8 @@ void UnitTestNnetComponent() {
     TestNnetComponentIo(c);
     TestNnetComponentCopy(c);
     TestNnetComponentAddScale(c);
+    TestNnetComponentVectorizeUnVectorize(c);
+    TestNnetComponentUpdatableFlag(c);
     TestSimpleComponentPropagateProperties(*c);
     if (!TestSimpleComponentDataDerivative(*c, 1.0e-04) &&
         !TestSimpleComponentDataDerivative(*c, 1.0e-03) &&
@@ -300,7 +351,7 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
 
-  for (int32 loop = 0; loop < 2; loop++) {
+  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");

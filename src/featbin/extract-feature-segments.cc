@@ -61,11 +61,9 @@ int main(int argc, char *argv[]) {
         "End segments overshooting by less (in seconds) are truncated,"
         " else rejected.");
     po.Register("snip-edges", &snip_edges,
-        "If true, n_frames frames will be snipped from the beginning of each "
+        "If true, n_frames frames will be snipped from the end of each "
         "extracted feature matrix, "
         "where n_frames = ceil((frame_length - frame_shift) / frame_shift), "
-        "except for the segments at the beginning of a file, where "
-        "the snipping is done from the end. "
         "This ensures that only the feature vectors that "
         "completely fit in the segment are extracted. "
         "This makes the extracted segment lengths match the lengths of the "
@@ -164,10 +162,8 @@ int main(int argc, char *argv[]) {
           (start * 1000.0 / frame_shift)));
       int32 end_samp = static_cast<int32>(round(end * 1000.0 / frame_shift));
 
-      if (start_samp > 0) {
-        start_samp += snip_length;
-      } else {
-        // at the beginning of a file, we have to snip from the end
+      if (snip_edges) {
+        // snip the edge at the end of the segment (usually 2 frames),
         end_samp -= snip_length;
       }
 

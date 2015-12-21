@@ -50,7 +50,7 @@ bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
   }
   if (max_len - min_len > 0) {
     KALDI_VLOG(2) << "Length mismatch " << max_len << " vs. " << min_len
-                  << (utt.empty() ? "" : " for utt ") << utt 
+                  << (utt.empty() ? "" : " for utt ") << utt
                   << " within tolerance " << tolerance;
   }
   out->Resize(min_len, tot_dim);
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace std;
-    
+
     const char *usage =
         "Paste feature files (assuming they have the same lengths);  think of the\n"
         "unix command paste a b.\n"
@@ -79,8 +79,8 @@ int main(int argc, char *argv[]) {
         " or: paste-feats <in-rxfilename1> <in-rxfilename2> [<in-rxfilename3> ...] <out-wxfilename>\n"
         " e.g. paste-feats ark:feats1.ark \"ark:select-feats 0-3 ark:feats2.ark ark:- |\" ark:feats-out.ark\n"
         "  or: paste-feats foo.mat bar.mat baz.mat\n"
-        "See also: copy-feats, copy-matrix, append-vector-to-feats, concat-feats\n";
-    
+        "See also: copy-feats, copy-matrix, append-vector-to-feats\n";
+
     ParseOptions po(usage);
 
     int32 length_tolerance = 0;
@@ -90,22 +90,22 @@ int main(int argc, char *argv[]) {
                 " difference of length-tolerance, otherwise exclude segment.");
     po.Register("binary", &binary, "If true, output files in binary "
                 "(only relevant for single-file operation, i.e. no tables)");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     if (ClassifyRspecifier(po.GetArg(1), NULL, NULL)
         != kNoRspecifier) {
       // We're operating on tables, e.g. archives.
-      
+
       // Last argument is output
       string wspecifier = po.GetArg(po.NumArgs());
       BaseFloatMatrixWriter feat_writer(wspecifier);
-    
+
       // First input is sequential
       string rspecifier1 = po.GetArg(1);
       SequentialBaseFloatMatrixReader input1(rspecifier1);
@@ -117,14 +117,14 @@ int main(int argc, char *argv[]) {
         RandomAccessBaseFloatMatrixReader *rd = new RandomAccessBaseFloatMatrixReader(rspecifier);
         input.push_back(rd);
       }
-  
+
       int32 num_done = 0, num_err = 0;
-    
+
       // Main loop
       for (; !input1.Done(); input1.Next()) {
         string utt = input1.Key();
         KALDI_VLOG(2) << "Merging features for utterance " << utt;
-      
+
         // Collect features from streams to vector 'feats'
         vector<Matrix<BaseFloat> > feats(po.NumArgs() - 1);
         feats[0] = input1.Value();
@@ -189,7 +189,7 @@ cat <<EOF > 2.mat
  [ 0 1
    2 3 ]
 EOF
-paste-feats --length-tolerance=1 --binary=false 1.mat 2.mat 3a.mat 
+paste-feats --length-tolerance=1 --binary=false 1.mat 2.mat 3a.mat
 cat <<EOF > 3b.mat
  [ 0 1 2 0 1
    3 4 5 2 3 ]

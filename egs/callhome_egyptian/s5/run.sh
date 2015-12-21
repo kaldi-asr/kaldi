@@ -168,4 +168,12 @@ steps/nnet2/train_pnorm_ensemble.sh \
 ) &
 
 wait
+
+# (TDNN + iVectors) training
+# Note that the alignments used by run_tdnn.sh come from the pnorm-ensemble model
+# If you choose to skip ensemble training (which is slow), use the best
+# fmllr alignments available (tri4a)
+# You can modify this in local/nnet/run_tdnn.sh
+local/nnet3/run_tdnn.sh
+
 exit 0;

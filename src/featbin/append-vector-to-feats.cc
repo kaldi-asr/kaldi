@@ -35,7 +35,7 @@ void AppendVectorToFeats(const Matrix<BaseFloat> &in,
              0, in.NumCols()).CopyFromMat(in);
   out->Range(0, in.NumRows(),
              in.NumCols(), vec.Dim()).CopyRowsFromVec(vec);
-}  
+}
 
 
 }
@@ -44,31 +44,32 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace std;
-    
+
     const char *usage =
         "Append a vector to each row of input feature files\n"
         "\n"
         "Usage: append-vector-to-feats <in-rspecifier1> <in-rspecifier2> <out-wspecifier>\n"
-        " or: append-feats <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n";
-    
+        " or: append-vector-to-feats <in-rxfilename1> <in-rxfilename2> <out-wxfilename>\n"
+        "See also: paste-feats, concat-feats\n";
+
     ParseOptions po(usage);
 
     bool binary = true;
     po.Register("binary", &binary, "If true, output files in binary "
                 "(only relevant for single-file operation, i.e. no tables)");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     if (ClassifyRspecifier(po.GetArg(1), NULL, NULL)
         != kNoRspecifier) {
       // We're operating on tables, e.g. archives.
-      
-    
+
+
       string feat_rspecifier = po.GetArg(1);
       SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
 
@@ -77,22 +78,22 @@ int main(int argc, char *argv[]) {
 
       string wspecifier = po.GetArg(3);
       BaseFloatMatrixWriter feat_writer(wspecifier);
-      
+
       int32 num_done = 0, num_err = 0;
       // Main loop
       for (; !feat_reader.Done(); feat_reader.Next()) {
         string utt = feat_reader.Key();
         KALDI_VLOG(2) << "Processing utterance " << utt;
-        
+
         const Matrix<BaseFloat> &feats(feat_reader.Value());
-        
+
         if (!vec_reader.HasKey(utt)) {
           KALDI_WARN << "Could not read vector for utterance " << utt;
           num_err++;
-          continue;          
+          continue;
         }
         const Vector<BaseFloat> &vec(vec_reader.Value(utt));
-        
+
         Matrix<BaseFloat> output;
         AppendVectorToFeats(feats, vec, &output);
         feat_writer.Write(utt, output);
@@ -132,7 +133,7 @@ EOF
 cat <<EOF > 2.vec
  [ 0 1 ]
 EOF
-append-vector-to-feats --binary=false 1.mat 2.vec 3a.mat 
+append-vector-to-feats --binary=false 1.mat 2.vec 3a.mat
 cat <<EOF > 3b.mat
  [ 0 1 2 0 1
    3 4 5 0 1

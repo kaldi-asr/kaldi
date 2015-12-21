@@ -29,6 +29,172 @@
 
 namespace kaldi {
 
+/**
+    The following explains how the const arpa LM works. We will start from a toy
+    example, and gradually get to the existing framework. Related classes are:
+    LmState, ConstArpaLmBuilder and ConstArpaLm.
+
+    First, let's explain how we can compute LM scores from an Arpa file. Suppose
+    we want to get the N-gram prob for "A B C". We can code the lookup something
+    very roughly like this:
+
+    float GetNgramLogprob(hist, word) {  // hist = "A B", word = "C"
+      backoff_logprob = 0.0;
+      if ((state = GetLmState(hist)) != NULL) {
+        // "A B" exists as a prefix in the LM
+        if (state->HasWord(word)) {
+          return state->Logprob(word);
+        } else {
+          // We'll need to backoff to "B C", but include the backoff penalty.
+          backoff_logprob = state->BackoffLogprob();
+        }
+      }
+      return backoff_logprob + GetNgramLogprob(hist_minus_first_word, word);
+    }
+
+    In terms of data-structures, in the most abstract form of it would be
+    something like the following (note, we assume words in the lexicon can be
+    represented as int32, and that these indexes are nonnegative):
+
+    class LmState {  // e.g., LmState for "A B"
+      // This is the actual LM-prob of this sequence, e.g. if this state is
+      // "A B" then it would be the logprob of "A -> B".
+      float logprob_;
+
+      // Backoff probability for LM-state "A B" -> "X" backing off to "B" -> "X"
+      // if "A B X" is not present in the language model.
+      float backoff_logprob_;
+
+      // e.g. "C" -> LmState of "A B C".
+      std::unordered_map<int32, LmState*> children_;
+    };
+
+    The above design is very memory inefficient for two reasons:
+    1. Suppose "A B" has no children, i.e. no C such that "A B C" is an n-gram.
+       In this case the backoff_logprob will be zero and the 'children' vector
+       will be empty. So all we need is the "float logprob_". Let's call "A B" a
+       leaf in this case.
+    2. The map std::unordered_map uses a lot of memory.
+
+    A first iteration of making this efficient is to get rid of the map as
+    follows:
+
+    class LmState {
+      float logprob_;
+      float backoff_logprob_;
+      std::vector<std::pair<int32, int32> > children_;
+    };
+
+    Here, the 'children_' vector contains pairs (child_word, child_info), sorted
+    by 'child_word' so we can use binary search to locate the entry. We have to
+    do some fancy bit-work to avoid having to allocate an LmState if a given
+    N-gram is a leaf. We design the child_info in the children_ vector as
+    follows:
+    1. If it's an even number, then it represents a float (i.e. we
+       reinterpret_cast to float), and the associated N-gram is a leaf. This
+       requires losing the least significant bit of information in the float.
+    2. If it's an odd number, then it will be used to represent a pointer to the
+       LmState of the child. In order to use a 32-bit number to represent a
+       possibly 64-bit pointer, we store the LmState structures in memory in
+       a way that's sorted lexicographically by the vector of words, so that
+       following "A B" will be the LmStates for "A B A", "A B B", "A B C" and so
+       on (note, we actually deal with integers instead of letters). So if we
+       make the pointers relative to the current LmState, most of them will be
+       quite small (and all will be positive, due to the lexicographic sorting).
+       As for the pointers that are too large, if any, we can have an "overflow
+       buffer" indexed by a 30-bit index that stores, directly as pointers, the
+       child LmStates. We use the first bit to distinguish the relative pointer
+       case and the overflow pointer case, i.e.,
+       a. If (child_info / 2) is positive, then (current_lmstate_pointer +
+          child_info / 2) is the address of the child LmState.
+       b. If (child_info / 2) is negative, then -1 * (child_info / 2) is the
+          index into the overflow buffer which gives the address of the child
+          LmState.
+
+    Note that unigram LM-states are usually frequently accessed, so it makes
+    sense to assign one LmState to each single word even if it would otherwise
+    be "leaf" as defined above. We then can have an array of those unigram
+    LM-states for efficient lookup.
+
+    Also, we define the class LmState just to set up data structure for Arpa
+    LM. In the end, we have a class like the following:
+
+    class ConstArpaLm {
+     public:
+      // Some public functions.
+     private:
+      // Index of largest word-id, plus one; defines end of "unigram_states_"
+      // array.
+      int32 num_words_;
+
+      // Loopup table for pointers of unigrams. The pointer could be NULL, for
+      // example for those words that are in words.txt, but not in the language
+      // model.
+      int32 **unigram_states_;
+
+      // Number of entries in the overflow buffer for pointers that couldn't be
+      // represented as a 30-bit relative index
+      int32 overflow_buffer_size_;
+
+      // Technically a 32-bit number cannot represent a possibly 64-bit pointer.
+      // We therefore use "relative" address instead of "absolute" address,
+      // which will be a small number most of the time. This buffer is for the
+      // case where the relative address has more than 30-bits.
+      int32 **overflow_buffer_;
+
+      // Size of the array lm_states_. This is required only for I/O.
+      int64 lm_states_size_;
+
+      // Data block for LmState.
+      int32 *lm_states_;
+    };
+
+    Note, when we do I/O, we don't write out the arrays of pointers
+    "overflow_buffer_" and "unigram_states_" directly. Instead we subtract
+    "lm_states_" from each one before writing them out, so we are writing out
+    indexes. Then, when we read them back in, after we allocate "lm_states_"
+    we can convert them back to pointers. When we create these temporary arrays
+    of indexes while reading and writing, we use int64, even if the pointer type
+    of the machine is int32. This way the I/O is independent of the pointer size
+    of the machine.
+
+    Now it is time to put things together.
+
+    ConstArpaLmBuilder takes charge of reading in the Arpa LM and building the
+    ConstArpaLm.
+
+    ConstArpaLM holds the Arpa LM in memory, and provides interfaces for LM
+    operations, such as GetNgramLogprob().
+
+    LmState is an auxiliary class that computes the relative pointers for
+    ConstArpaLmBuilder and ConstArpaLm. It will only be called once during the
+    building process, so it doesn't have to be very efficient.
+
+    In summary, the general building process is as follows:
+    1. In ConstArpaLmBuilder, read in the Arpa format LM. While reading, we keep
+       in memory something like this:
+         std::unordered_map<std::vector<int32>,
+                            LmState*, VectorHasher<int32> > seq_to_state_;
+       The map helps us to convert n-gram entries into LmState (including
+       setting up the parent-children relationship, see above about LmState).
+       Note that at this stage, we don't work on the relative pointers yet.
+    2. In ConstArpaLmBuilder, create a sorted vector from <seq_to_state_>
+         std::vector<std::pair<std::vector<int32>*, LmState*> > sorted_vec;
+       Note, only LmState with non-zero MemSize() should be put into the sorted
+       vector, and we sort it lexicographically according to the word.
+    3. In ConstArpaLmBuilder, update the address for each LmState, relative to
+       the first LmState in the sorted vector (i.e. assume the first LmState has
+       address 0, and work out the rest LmState address using the MemSize() of
+       each LmState).
+    4. In ConstArpaLmBuilder, create a memory block for all the LmStates (after
+       sorting and updating the address). This includes <lm_state_> that stores
+       all the LmStates in an int32 array, <unigram_states_> that keeps the
+       address of unigram LmStates, <overflow_buffer_> that keeps the address
+       of LmState whose address differs too much from the parent address. See
+       above how we handle the leaf case.
+    5. With the information in step 4, create the class ConstArpaLm.
+*/
+
 // Forward declaration of Auxiliary struct ArpaLine.
 struct ArpaLine;
 
@@ -59,7 +225,7 @@ class ConstArpaLm {
   ConstArpaLm(const int32 bos_symbol, const int32 eos_symbol,
               const int32 unk_symbol, const int32 ngram_order,
               const int32 num_words, const int32 overflow_buffer_size,
-              const int32 lm_states_size, int32** unigram_states,
+              const int64 lm_states_size, int32** unigram_states,
               int32** overflow_buffer, int32* lm_states) :
       bos_symbol_(bos_symbol), eos_symbol_(eos_symbol),
       unk_symbol_(unk_symbol), ngram_order_(ngram_order),
@@ -87,7 +253,8 @@ class ConstArpaLm {
     }
   }
 
-  // Reads the ConstArpaLm format language model.
+  // Reads the ConstArpaLm format language model. It calls ReadInternal() or
+  // ReadInternalOldFormat() to do the actual reading.
   void Read(std::istream &is, bool binary);
 
   // Writes the language model in ConstArpaLm format.
@@ -111,6 +278,15 @@ class ConstArpaLm {
   int32 NgramOrder() const { return ngram_order_; }
 
  private:
+  // Function that loads data from stream to the class.
+  void ReadInternal(std::istream &is, bool binary);
+
+  // Function that loads data from stream to the class. This is a deprecated one
+  // that handles the old on-disk format. We keep this for back-compatibility
+  // purpose. We have modified the Write() function so for all the new on-disk
+  // format, ReadInternal() will be called.
+  void ReadInternalOldFormat(std::istream &is, bool binary);
+
   // Loops up n-gram probability for given word sequence. Backoff is handled by
   // recursively calling this function.
   float GetNgramLogprobRecurse(const int32 word,
@@ -173,7 +349,7 @@ class ConstArpaLm {
   int32 overflow_buffer_size_;
 
   // Size of the <lm_states_> array, which will be needed by I/O.
-  int32 lm_states_size_;
+  int64 lm_states_size_;
 
   // Points to the end of <lm_states_>. We use this information to check if
   // there is any illegal visit to the un-reserved memory.
