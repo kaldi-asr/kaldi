@@ -8,6 +8,8 @@ echo "$0 $@"
 
 . ./utils/parse_options.sh || exit 1;
 
+set -e
+
 num_trees=$1
 lambda=$2
 num_leaves=$3
@@ -22,6 +24,7 @@ echo dir is $dir
 if [ "$gmm" == "true" ]; then
   echo training GMM systems
   steps/train_sat_entropy.sh --numtrees $num_trees --cmd "$train_cmd" \
+      --lambda $lambda \
       $num_leaves $num_gauss $data $lang $alidir $dir
 
   for i in `seq 0 $[$num_trees-1]`; do

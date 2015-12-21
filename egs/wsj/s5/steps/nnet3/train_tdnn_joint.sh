@@ -216,7 +216,7 @@ if [ $stage -le -5 ]; then
 
   total_leaves=`echo $target_string | awk -F ',' '{for(i=1;i<=NF;i++)sum+=$i}{print sum}'`
 
-  convert-tree-map-to-matrix $tree_mapping $dir/sparse.mat
+  convert-treemap-to-matrix $tree_mapping $dir/sparse.mat
   echo total leaves is $total_leaves
 
   num_virtual=`head -n 1 $tree_mapping | awk '{print$1}'`

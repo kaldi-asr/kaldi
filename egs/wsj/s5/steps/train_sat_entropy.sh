@@ -109,7 +109,7 @@ if [ $stage -le -4 ] && $train_tree; then
   [ "`ls $dir/*.treeacc | wc -w`" -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
     sum-tree-stats $dir/treeacc $dir/*.treeacc || exit 1;
-#  rm $dir/*.treeacc
+  rm $dir/*.treeacc
 fi
 
 if [ $stage -le -3 ] && $train_tree; then
@@ -140,7 +140,7 @@ if [ $stage -le -2 ]; then
     gmm-init-model  --write-occs=$dir/tree_$i/1.occs  \
       $dir/tree-$i $dir/treeacc $lang/topo $dir/tree_$i/1.mdl 2> $dir/tree_$i/log/init_model.log || exit 1;
     grep 'no stats' $dir/tree_$i/log/init_model.log && echo "This is a bad warning.";
-#    rm $dir/treeacc  # not now
+    rm $dir/treeacc  # not now
   done
 fi
 
@@ -206,7 +206,7 @@ for i in `seq 0 $[numtrees-1]`; do
     $cmd $dir/tree_$i/log/est_alimdl.log \
       gmm-est --power=$power --remove-low-count-gaussians=false $dir/tree_$i/$x.mdl \
       "gmm-sum-accs - $dir/tree_$i/$x.*.acc|" $dir/tree_$i/$x.alimdl  || exit 1;
-#    rm $dir/tree_$i/$x.*.acc
+    rm $dir/tree_$i/$x.*.acc
   fi
 
   rm $dir/tree_$i/final.{mdl,alimdl,occs} 2>/dev/null
