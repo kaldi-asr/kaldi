@@ -8,7 +8,7 @@ echo "$0 $@"
 
 . ./utils/parse_options.sh || exit 1;
 
-set -e
+#set -e
 
 num_trees_L=$1
 num_trees_T=$2
@@ -16,6 +16,8 @@ num_trees_R=$3
 lambda=$4
 num_leaves=$5
 num_gauss=$6
+
+num_trees=$[$num_trees_L+$num_trees_T+$num_trees_L]
 
 data=data/train_si284
 lang=data/lang

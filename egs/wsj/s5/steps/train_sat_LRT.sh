@@ -139,40 +139,45 @@ if [ $stage -le -3 ] && $train_tree; then
   compile-questions $context_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
   echo "$0: Building the tree"
-  $cmd $dir/log/build_tree.log \
-    build-tree-entropy $context_opts --verbose=1 --max-leaves=$numleaves \
-    --num-trees=$numtrees_T  --lambda=$lambda \
-    --thresh=0 \
-    --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
-    $dir/questions.qst $lang/topo $dir/tree || exit 1;
+  if [ ! -f $dir/tree.L-0 ]; then
+    $cmd $dir/log/build_tree.log \
+      build-tree-entropy $context_opts --verbose=1 --max-leaves=$numleaves \
+      --num-trees=$numtrees_T  --lambda=$lambda \
+      --thresh=0 \
+      --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
+      $dir/questions.qst $lang/topo $dir/tree || exit 1;
 
-  $cmd $dir/log/build_tree.R.log \
-    build-tree-entropy --context-width=2 --central-position=0 --verbose=1 --max-leaves=$numleaves \
-    --num-trees=$numtrees_R  --lambda=$lambda \
-    --thresh=0 \
-    --cluster-thresh=$cluster_thresh $dir/treeacc.R $lang/phones/roots.int \
-    $dir/questions.qst $lang/topo $dir/tree.R || exit 1;
+    $cmd $dir/log/build_tree.R.log \
+      build-tree-entropy --context-width=2 --central-position=0 --verbose=1 --max-leaves=$numleaves \
+      --num-trees=$numtrees_R  --lambda=$lambda \
+      --thresh=0 \
+      --cluster-thresh=$cluster_thresh $dir/treeacc.R $lang/phones/roots.int \
+      $dir/questions.qst $lang/topo $dir/tree.R || exit 1;
 
-  $cmd $dir/log/build_tree.L.log \
-    build-tree-entropy --context-width=2 --central-position=1 --verbose=1 --max-leaves=$numleaves \
-    --num-trees=$numtrees_L  --lambda=$lambda \
-    --thresh=0 \
-    --cluster-thresh=$cluster_thresh $dir/treeacc.L $lang/phones/roots.int \
-    $dir/questions.qst $lang/topo $dir/tree.L || exit 1;
+    $cmd $dir/log/build_tree.L.log \
+      build-tree-entropy --context-width=2 --central-position=1 --verbose=1 --max-leaves=$numleaves \
+      --num-trees=$numtrees_L  --lambda=$lambda \
+      --thresh=0 \
+      --cluster-thresh=$cluster_thresh $dir/treeacc.L $lang/phones/roots.int \
+      $dir/questions.qst $lang/topo $dir/tree.L || exit 1;
+  fi
 
-  for i in `seq 0 $[$numtrees-1]`; do
+  for i in `seq 0 $[$numtrees_L-1]`; do
     cp $dir/tree.L-$i $dir/tree-$[$numtrees_T+$i]
+  done
+  for i in `seq 0 $[$numtrees_R-1]`; do
     cp $dir/tree.R-$i $dir/tree-$[$numtrees_T+$numtrees_L+$i]
   done
 fi
 
-numtrees=$[$numtrees_T+$numtrees_R+$numtrees+L]
+numtrees=$[$numtrees_T+$numtrees_R+$numtrees_L]
 echo total number of trees is $numtrees
 
 if [ $stage -le -2 ]; then
   echo "$0: Initializing the model"
 
-  for i in `seq 0 $[numtrees-1]`; do
+# triphone trees
+  for i in `seq 0 $[numtrees_T-1]`; do
     mkdir -p $dir/tree_$i
     echo $nj > $dir/tree_$i/num_jobs
     mkdir -p $dir/tree_$i/log
@@ -182,6 +187,35 @@ if [ $stage -le -2 ]; then
     grep 'no stats' $dir/tree_$i/log/init_model.log && echo "This is a bad warning.";
 #    rm $dir/treeacc  # not now
   done
+
+# L-trees
+  add_shift=$numtrees_T
+  for j in `seq 0 $[numtrees_L-1]`; do
+    i=$[$add_shift+$j]
+    mkdir -p $dir/tree_$i
+    echo $nj > $dir/tree_$i/num_jobs
+    mkdir -p $dir/tree_$i/log
+    cp $dir/tree.L-$j $dir/tree_$i/tree   #  used for alignment in dnn .... 
+    gmm-init-model  --write-occs=$dir/tree_$i/1.occs  \
+      $dir/tree.L-$j $dir/treeacc.L $lang/topo $dir/tree_$i/1.mdl 2> $dir/tree_$i/log/init_model.log || exit 1;
+    grep 'no stats' $dir/tree_$i/log/init_model.log && echo "This is a bad warning.";
+#    rm $dir/treeacc  # not now
+  done
+
+# R-trees
+  add_shift=$[$numtrees_T+$numtrees_L]
+  for j in `seq 0 $[numtrees_R-1]`; do
+    i=$[$add_shift+$j]
+    mkdir -p $dir/tree_$i
+    echo $nj > $dir/tree_$i/num_jobs
+    mkdir -p $dir/tree_$i/log
+    cp $dir/tree.R-$j $dir/tree_$i/tree   #  used for alignment in dnn .... 
+    gmm-init-model  --write-occs=$dir/tree_$i/1.occs  \
+      $dir/tree.R-$j $dir/treeacc.R $lang/topo $dir/tree_$i/1.mdl 2> $dir/tree_$i/log/init_model.log || exit 1;
+    grep 'no stats' $dir/tree_$i/log/init_model.log && echo "This is a bad warning.";
+#    rm $dir/treeacc  # not now
+  done
+
 fi
 
 if [ $stage -le -1 ]; then
