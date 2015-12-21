@@ -29,7 +29,7 @@ chime3_data=$1
 wsj0_data=$chime3_data/data/WSJ0 # directory of WSJ0 in CHiME3. You can also specify your WSJ0 corpus directory
 
 eval_flag=true # make it true when the evaluation data are released
-
+false && {
 # process for clean speech and making LMs etc. from original WSJ0
 # note that training on clean data means original WSJ0 data only (no booth data)
 local/clean_wsj0_data_prep.sh $wsj0_data || exit 1;
@@ -82,7 +82,7 @@ done
 # multi = simu + real
 utils/combine_data.sh data/tr05_multi_noisy data/tr05_simu_noisy data/tr05_real_noisy
 utils/combine_data.sh data/dt05_multi_noisy data/dt05_simu_noisy data/dt05_real_noisy
-
+}
 # training models for clean and noisy data
 # if you want to check the performance of the ASR only using real/simu data
 # please try to add "tr05_real_noisy" "tr05_simu_noisy"
@@ -94,6 +94,7 @@ for train in tr05_multi_noisy tr05_orig_clean; do
   else
     nj2=$nj
   fi
+  false && {
   steps/train_mono.sh --boost-silence 1.25 --nj $nj2 \
     data/$train data/lang exp/mono0a_$train || exit 1;
 
@@ -117,26 +118,31 @@ for train in tr05_multi_noisy tr05_orig_clean; do
     2500 15000 data/$train data/lang exp/tri2b_ali_$train exp/tri3b_$train || exit 1;
 
   utils/mkgraph.sh data/lang_test_tgpr_5k exp/tri3b_$train exp/tri3b_$train/graph_tgpr_5k || exit 1;
-
+  }
   # if you want to know the result of the close talk microphone, plese try the following 
+
+  # decode clean speech
+  steps/decode_fmllr.sh --nj 4 --num-threads 4 --cmd "${decodebig_cmd}" \
+    exp/tri3b_$train/graph_tgpr_5k data/et05_orig_clean exp/tri3b_$train/decode_tgpr_5k_et05_orig_clean #&
+
   # decode close speech
   # steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_close exp/tri3b_$train/decode_tgpr_5k_dt05_real_close &
   # steps/decode_fmllr.sh --nj 4 --num-threads 4 \
   #   exp/tri3b_$train/graph_tgpr_5k data/et05_real_close exp/tri3b_$train/decode_tgpr_5k_et05_real_close &
   # decode real noisy speech
-  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
-    exp/tri3b_$train/graph_tgpr_5k data/dt05_real_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_real_noisy &
-  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
-    exp/tri3b_$train/graph_tgpr_5k data/et05_real_noisy exp/tri3b_$train/decode_tgpr_5k_et05_real_noisy &
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 --cmd "${decodebig_cmd}" \
+  #   exp/tri3b_$train/graph_tgpr_5k data/dt05_real_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_real_noisy #&
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 --cmd "${decodebig_cmd}" \
+  #   exp/tri3b_$train/graph_tgpr_5k data/et05_real_noisy exp/tri3b_$train/decode_tgpr_5k_et05_real_noisy &
   # decode simu noisy speech
-  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
-    exp/tri3b_$train/graph_tgpr_5k data/dt05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_simu_noisy &
-  steps/decode_fmllr.sh --nj 4 --num-threads 4 \
-    exp/tri3b_$train/graph_tgpr_5k data/et05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_et05_simu_noisy &
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 --cmd "${decodebig_cmd}" \
+  #   exp/tri3b_$train/graph_tgpr_5k data/dt05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_dt05_simu_noisy &
+  # steps/decode_fmllr.sh --nj 4 --num-threads 4 --cmd "${decodebig_cmd}" \
+  #   exp/tri3b_$train/graph_tgpr_5k data/et05_simu_noisy exp/tri3b_$train/decode_tgpr_5k_et05_simu_noisy #&
 done
 wait
-
+exit 0;
 # get the best scores
 #for train in tr05_multi_noisy tr05_real_noisy tr05_simu_noisy tr05_orig_clean; do
 for train in tr05_multi_noisy tr05_orig_clean; do

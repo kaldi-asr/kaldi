@@ -18,8 +18,10 @@
 chime3_data=`pwd`/../.. 
 # Otherwise, please specify it, e.g., 
 # chime3_data=/local_data/watanabe/work/201410CHiME3/CHiME3
-local/run_init.sh $chime3_data
-
+chime3_data=/mnt/matylda3/karafiat/JHU2015/corpora/chime3/CHiME3
+#local/run_init.sh $chime3_data
+local/run_init_new.sh $chime3_data
+exit 0;
 # GMM based ASR experiment
 # Please set a directory of your speech enhancement method.
 # run_gmm.sh can be done every time when you change a speech enhancement technique.
