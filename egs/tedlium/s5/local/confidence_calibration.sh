@@ -23,7 +23,7 @@ dev_caldir=$dev_latdir/confidence_$lmwt
 eval_caldir=$eval_latdir/confidence_$lmwt
 
 ###### Data preparation,
-# Prepare filtering for excluding data from train-set,
+# Prepare filtering for excluding data from train-set (1 .. keep word, 0 .. exclude word),
 word_filter=$(mktemp)
 awk '{ keep_the_word = $1 !~ /^(\[.*\]|<.*>|%.*|!.*|-.*|.*-)$/; print $0, keep_the_word }' \
   $graph/words.txt >$word_filter
