@@ -546,10 +546,8 @@ void ComputeMatrixAccesses(
 ComputationChecker::ComputationChecker(
     const CheckComputationOptions &config,
     const Nnet &nnet,
-    const ComputationRequest &request,
     const NnetComputation &computation):
-    config_(config), nnet_(nnet), request_(request),
-    computation_(computation) { }
+    config_(config), nnet_(nnet), computation_(computation) { }
 
 
 
@@ -980,7 +978,7 @@ void CheckComputation(const Nnet &nnet,
                       bool check_rewrite) {
   CheckComputationOptions opts;
   opts.check_rewrite = check_rewrite;
-  ComputationChecker checker(opts, nnet, request, computation);
+  ComputationChecker checker(opts, nnet, computation);
   checker.Check();
 }
 

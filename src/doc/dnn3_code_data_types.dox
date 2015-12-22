@@ -386,10 +386,12 @@ defined by the "input" field.
 <descriptor>  ::=   ReplaceIndex(<descriptor>, <variable-name>, <value>)
 \endverbatim
 
-
-Now we will describe the actual syntax, which differs from the above simplified
-version because expressions may appear only in a certain hierarchy.  This
-syntax also corresponds more closely with the class names in the real code.
+Now we will describe the actual syntax which the code uses internally, which
+differs from the above simplified version because expressions may appear only in
+a certain hierarchy.  This syntax also corresponds more closely with the class
+names in the real code.  The code that reads Descriptors attempts to normalize
+them in as general as possible a way, so that almost all of the above syntax
+can be read and converted to the internal representation.
 \verbatim
 ;;; <descriptor> == class Descriptor
 <descriptor> ::=  Append(<sum-descriptor>[, <sum-descriptor> ... ] )
