@@ -9,7 +9,10 @@ parser = argparse.ArgumentParser(description="Writes config files and variables 
                                  "for TDNNs creation and training",
                                  epilog="See steps/nnet3/train_tdnn.sh for example.");
 parser.add_argument("--splice-indexes", type=str,
-                    help="Splice indexes at each hidden layer, e.g. '-3,-2,-1,0,1,2,3 0 -2,2 0 -4,4 0 -8,8'")
+                    help="Splice indexes at each hidden layer, e.g. '-3:-2:-1:0:1:2:3 0 -2:2 0 -4:4 0 -8:8'")
+parser.add_argument("--x-expand", type=int,
+                    help="If >1, number of times to expand the network internally using the x index.",
+                    default=1);
 parser.add_argument("--feat-dim", type=int,
                     help="Raw feature dimension, e.g. 13")
 parser.add_argument("--ivector-dim", type=int,
@@ -74,7 +77,6 @@ else:
 #  time-offsets that we're doing a weighted sum over, for instance, if:
 #  splice_indexes == '-3,-2,-1,0,1,2,3 0 -6/-3/0/3,-3/0/3/6 0 ' #HERE
 #  = [ [ [-3],[-2],...[3] ], [[0]], [[-6,-3,0,3],[-3,0,3,6]], [[0]] ]
-
 
 splice_array = []
 left_context = 0
@@ -212,6 +214,31 @@ for l in range(1, num_hidden_layers + 1):
         cur_input='lda'
     else:
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
+        prev_output='renorm{0}'.format(l-1)
+        if l == 2 and args.x_expand > 1:  # Expand on x.
+            for x in range(0, args.x_expand):
+                print('component name=expand-x-{0} type=NaturalGradientAffineComponent '
+                      'input-dim={1} output-dim={1} bias-stddev=0'.format(
+                        x, cur_unspliced_dim), file=f)
+                # the input to this component is the previous output, with the x dimension offset
+                # by the negative of this x value.  Since the input will only be defined for x=0
+                # this only ends up getting defined for this x value; and later we rely on this.
+                print('component-node name=expand-x-{0} component=expand-x-{0} input=Offset({1}, 0, {2})'.format(
+                        x, prev_output, -x), file=f)
+                # the use of 'Failover' in the descriptor is a trick to get it,
+                # for a particular x value, to use the input processed with the
+                # appropriate version of the 'expand-x' component.
+                if x == 0:
+                    prev_output_modified = 'expand-x-0'
+                else:
+                    prev_output_modified = 'Failover(expand-x-{0}, {1})'.format(
+                        x, prev_output_modified);
+            prev_output = prev_output_modified
+        if l == num_hidden_layers and args.x_expand > 1:
+            # collapse back down over the x indexes, by summing.
+            offset_list = [ 'Offset({0}, 0, {1})'.format(prev_output, x) for x in range(0, args.x_expand) ]
+            prev_output = 'Sum({0})'.format(', '.join(offset_list))
+
         splices = []
         for n in range(0, len(splice_array[l-1])):
             sub_array = splice_array[l-1][n]
@@ -219,13 +246,13 @@ for l in range(1, num_hidden_layers + 1):
             if sub_array_length <= 1:
                 offset = sub_array[0];
                 if offset == 0:
-                    splices.append('renorm{0}'.format(l-1))
+                    splices.append(prev_output)
                 else:
-                    splices.append('Offset(renorm{0}, {1})'.format(l-1, offset))
+                    splices.append('Offset({0}, {1})'.format(prev_output, offset))
             else:
                 # we need to create two component instances: one to do per-element scaling, one for
                 # sum-reduce.
-                sub_splices = [ ('Offset(renorm{0}, {1})'.format(l-1, m) if m != 0 else 'renorm{0}'.format(l-1))
+                sub_splices = [ ('Offset({0}, {1})'.format(prev_output, m) if m != 0 else prev_output)
                                 for m in sub_array ]
                 sub_splice_input = 'Append({0})'.format(', '.join(sub_splices))
                 print('component-node name=per-element-scale-{0}-{1} component=per-element-scale-{0}-{1} '
