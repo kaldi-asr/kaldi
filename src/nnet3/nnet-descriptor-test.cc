@@ -60,7 +60,7 @@ SumDescriptor *GenRandSumDescriptor(
     bool not_required = (Rand() % 5 == 0);
     if (not_required)
       return new OptionalSumDescriptor(GenRandSumDescriptor(num_nodes));
-    else 
+    else
       return new SimpleSumDescriptor(GenRandForwardingDescriptor(num_nodes));
   } else {
     return new BinarySumDescriptor((Rand() % 2 == 0 ? BinarySumDescriptor::kSum:
@@ -78,7 +78,7 @@ void GenRandDescriptor(int32 num_nodes,
   std::vector<SumDescriptor*> parts;
   for (int32 part = 0; part < num_parts; part++)
     parts.push_back(GenRandSumDescriptor(num_nodes));
-  *desc = Descriptor(parts);                    
+  *desc = Descriptor(parts);
 
 }
 
@@ -108,19 +108,22 @@ void UnitTestDescriptorIo() {
     const std::string *next_token = &(tokens[0]);
     bool ans = desc4.Parse(node_names, &next_token);
     KALDI_ASSERT(ans);
-    
+
     std::ostringstream ostr2;
     desc2.WriteConfig(ostr2, node_names);
     std::ostringstream ostr3;
     desc3.WriteConfig(ostr3, node_names);
     std::ostringstream ostr4;
-    desc4.WriteConfig(ostr4, node_names);    
+    desc4.WriteConfig(ostr4, node_names);
 
     KALDI_ASSERT(ostr.str() == ostr2.str());
     KALDI_ASSERT(ostr.str() == ostr3.str());
     KALDI_LOG << "x = " << ostr.str();
     KALDI_LOG << "y = " << ostr4.str();
-    KALDI_ASSERT(ostr.str() == ostr4.str());
+    if (ostr.str() != ostr4.str()) {
+      KALDI_WARN << "x and y differ: checking that it's due to Offset normalization.";
+      KALDI_ASSERT(ostr.str().find("Offset(Offset") != std::string::npos);
+    }
   }
 }
 
@@ -175,7 +178,7 @@ std::string NormalizeTextDescriptor(const std::vector<std::string> &node_names,
                                     const std::string &desc_str) {
   std::vector<std::string> tokens;
   DescriptorTokenize(desc_str, &tokens);
-  tokens.push_back("end of input");  
+  tokens.push_back("end of input");
   const std::string *next_token = &(tokens[0]);
   GeneralDescriptor *gen_desc = GeneralDescriptor::Parse(node_names,
                                                          &next_token);
@@ -216,9 +219,9 @@ int main() {
   using namespace kaldi::nnet3;
 
 
-  UnitTestGeneralDescriptorSpecial();  
+  UnitTestGeneralDescriptorSpecial();
   UnitTestGeneralDescriptor();
-  //  UnitTestDescriptorIo();
+  UnitTestDescriptorIo();
 
 
   KALDI_LOG << "Nnet descriptor tests succeeded.";
