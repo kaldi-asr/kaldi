@@ -234,10 +234,6 @@ for l in range(1, num_hidden_layers + 1):
                     prev_output_modified = 'Failover(expand-x-{0}, {1})'.format(
                         x, prev_output_modified);
             prev_output = prev_output_modified
-        if l == num_hidden_layers and args.x_expand > 1:
-            # collapse back down over the x indexes, by summing.
-            offset_list = [ 'Offset({0}, 0, {1})'.format(prev_output, x) for x in range(0, args.x_expand) ]
-            prev_output = 'Sum({0})'.format(', '.join(offset_list))
 
         splices = []
         for n in range(0, len(splice_array[l-1])):
@@ -269,8 +265,15 @@ for l in range(1, num_hidden_layers + 1):
     print('component-node name=renorm{0} component=renorm{0} input=nonlin{0}'.
           format(l), file=f)
 
-    print('component-node name=final-affine component=final-affine input=renorm{0}'.
-          format(l), file=f)
+    if args.x_expand > 1:
+        # collapse back down over the x indexes, by summing.
+        offset_list = [ 'Offset(renorm{0}, 0, {1})'.format(l, x) for x in range(0, args.x_expand) ]
+        renorm_descriptor = 'Sum({0})'.format(', '.join(offset_list))
+    else:
+        renorm_descriptor = 'renorm{0}'.format(l)
+
+    print('component-node name=final-affine component=final-affine input={0}'.format(
+          renorm_descriptor), file=f)
 
     if args.include_log_softmax == "true":
         if use_presoftmax_prior_scale:

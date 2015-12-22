@@ -67,6 +67,7 @@ exit_stage=-100 # you can set this to terminate the training early.  Exits befor
 
 # count space-separated fields in splice_indexes to get num-hidden-layers.
 splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
+x_expand=1
 # Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
 # note: hidden layers which are composed of one or more components,
 # so hidden layer indexing is different from component count
@@ -208,6 +209,7 @@ if [ $stage -le -5 ]; then
   # create the config files for nnet initialization
   python steps/nnet3/make_tdnn_configs.py \
     --include-log-softmax=false \
+     --x-expand=$x_expand \
     --final-layer-normalize-target $final_layer_normalize_target \
     --splice-indexes "$splice_indexes"  \
     --feat-dim $feat_dim \
