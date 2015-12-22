@@ -1,6 +1,16 @@
 #!/bin/bash
 
 # _3a is as _2z, but using wider contexts for splicing.
+# Objective functions are better, but WERs are basically unchanged.
+
+# WER on             2y       2z       3a
+# train_dev,tg       16.99    17.16    17.15
+# train_dev,fg       15.86    15.78    15.86
+# eval2000,tg        18.9     18.9     18.8
+# eval2000,fg        17.0     17.1     17.0
+# final train prob   -0.08955  -0.09024  -0.8180
+# final valid prob   -0.12508  -0.1209  -0.1182
+
 
 # _2z is as _2y, but modifying the splice_indexes so that we see more
 #  general contexts (I'm calling this 'gtdnn'...).  Model has the same context

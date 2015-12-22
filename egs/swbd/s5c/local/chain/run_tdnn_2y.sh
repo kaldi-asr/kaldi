@@ -11,9 +11,11 @@
 # hm--- it's about the same, or maybe slightly better!
 # caution: accidentally overwrote most of this dir, but kept the key stuff.
 
+# note: when I compare with the rerun of 2o (not shown), this run is actually
+# better.
 # WER on          2m        2o          2y    [ now comparing 2o->2y:]
 # train_dev,tg    17.22     17.24       16.99  0.2% better
-# train_dev,fg    15.87     15.93       16.86  0.1% better
+# train_dev,fg    15.87     15.93       15.86  0.1% better
 # eval2000,tg     18.7      18.7        18.9   0.2% worse
 # eval2000,fg     17.0      16.9        17.0   0.1% worse
 

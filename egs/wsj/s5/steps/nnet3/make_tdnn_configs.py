@@ -9,7 +9,7 @@ parser = argparse.ArgumentParser(description="Writes config files and variables 
                                  "for TDNNs creation and training",
                                  epilog="See steps/nnet3/train_tdnn.sh for example.");
 parser.add_argument("--splice-indexes", type=str,
-                    help="Splice indexes at each hidden layer, e.g. '-3:-2:-1:0:1:2:3 0 -2:2 0 -4:4 0 -8:8'")
+                    help="Splice indexes at each hidden layer, e.g. '-3,-2,-1,0,1,2,3 0 -2,2 0 -4,4 0 -8,8'")
 parser.add_argument("--feat-dim", type=int,
                     help="Raw feature dimension, e.g. 13")
 parser.add_argument("--ivector-dim", type=int,

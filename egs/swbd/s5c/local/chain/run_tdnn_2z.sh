@@ -4,6 +4,14 @@
 #  general contexts (I'm calling this 'gtdnn'...).  Model has the same context
 # width so re-using the egs from 2y.
 
+# WER on             2y      2z
+# train_dev,tg       16.99    17.16  0.2% worse
+# train_dev,fg       15.86    15.78  0.1% better
+# eval2000,tg        18.9     18.9   no diff
+# eval2000,fg        17.0     17.1   no diff
+# final train prob   -0.08955 -0.12508
+# final valid prob   -0.090235 -0.1209
+
 # _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
 # 800k to 1.2 million.  The aim is to avoid some of the per-job overhead
 # (model-averaging, etc.), since each iteration takes only a minute or so.
