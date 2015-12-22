@@ -470,7 +470,7 @@ void Descriptor::GetNodeDependencies(std::vector<int32> *node_indexes) const {
 }
 
 
-// static 
+// static
 GeneralDescriptor* GeneralDescriptor::Parse(
     const std::vector<std::string> &node_names,
     const std::string **next_token) {
@@ -492,7 +492,7 @@ GeneralDescriptor* GeneralDescriptor::Parse(
     t = kRound;
   } else if (**next_token == "ReplaceIndex") {
     t = kReplaceIndex;
-  } else {    
+  } else {
     // what we read wasn't a reserved name like Offset, etc.
     // We expect a node name in that case.
     for (size_t i = 0; i < node_names.size(); i++) {
@@ -562,7 +562,7 @@ void GeneralDescriptor::ParseOffset(
     const std::string **next_token) {
   descriptors_.push_back(Parse(node_names, next_token));
   ExpectToken(",", "Offset", next_token);
-  value1_ = ReadIntegerToken("Offset", next_token);  
+  value1_ = ReadIntegerToken("Offset", next_token);
   if (**next_token == ",") {
     (*next_token)++;
     value2_ = ReadIntegerToken("Offset", next_token);
@@ -592,8 +592,8 @@ void GeneralDescriptor::ParseReplaceIndex(
     value1_ = int32(ReplaceIndexForwardingDescriptor::kT);
     (*next_token)++;
   } else if (**next_token == "x") {
-    value1_ = int32(ReplaceIndexForwardingDescriptor::kX);    
-    (*next_token)++;    
+    value1_ = int32(ReplaceIndexForwardingDescriptor::kX);
+    (*next_token)++;
   } else {
     KALDI_ERR << "Expected 't' or 'x', got " << **next_token;
   }
@@ -683,6 +683,17 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
         delete child;
         parent->descriptors_[0] = grandchild;
         changed = true;
+      } else if (parent->value1_ == 0 && parent->value2_ == 0) {
+        // remove redundant Offset expression like Offset(x, 0).
+        parent->descriptors_.swap(child->descriptors_);
+        parent->descriptor_type_ = child->descriptor_type_;
+        parent->value1_ = child->value1_;
+        parent->value2_ = child->value2_;
+        child->descriptors_.clear();  // avoid delete in destructor.
+        delete child;
+        changed = true;
+        break;  // break from the switch ('parent' is no longer of type
+                // kOffset)', so we don't want to carry through.
       }
     }
     // ... and continue through to the next case statement.
@@ -721,10 +732,37 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
         child->descriptors_.clear();  // avoid delete in destructor of 'child'
         delete child;
         changed = true;
-      }      
+      }
+      break;
+    }
+    case kSum: {
+      KALDI_ASSERT(!parent->descriptors_.empty());
+      if (parent->descriptors_.size() == 1) {
+        // convert Sum(x) to just x.
+        GeneralDescriptor *child = parent->descriptors_[0];
+        parent->descriptor_type_ = child->descriptor_type_;
+        parent->descriptors_.swap(child->descriptors_);
+        parent->value1_ = child->value1_;
+        parent->value2_ = child->value2_;
+        child->descriptors_.clear();  // avoid delete in destructor.
+        delete child;
+        changed = true;
+      } else if (parent->descriptors_.size() > 2) {
+        // convert Sum(a, b, c, ...) to Sum(a, Sum(b, c, ...)).
+        GeneralDescriptor *new_child = new GeneralDescriptor(kSum);
+        // assign b, c, .. to the descriptors of new_child.
+        new_child->descriptors_.insert(new_child->descriptors_.begin(),
+                                       parent->descriptors_.begin() + 1,
+                                       parent->descriptors_.end());
+        parent->descriptors_.erase(parent->descriptors_.begin() + 1,
+                                   parent->descriptors_.end());
+        parent->descriptors_.push_back(new_child);
+        changed = true;
+      }
+      break;
     }
     default: { } // empty statement.
-      
+
   }
   // ... and recurse.
   for (size_t i = 0; i < parent->descriptors_.size(); i++)
@@ -823,7 +861,7 @@ SumDescriptor *GeneralDescriptor::ConvertToSumDescriptor() const {
       return new SimpleSumDescriptor(this->ConvertToForwardingDescriptor());
     }
   }
-}   
+}
 
 
 ForwardingDescriptor *GeneralDescriptor::ConvertToForwardingDescriptor() const {
@@ -852,7 +890,7 @@ ForwardingDescriptor *GeneralDescriptor::ConvertToForwardingDescriptor() const {
       KALDI_ASSERT(value1_ == int32(ReplaceIndexForwardingDescriptor::kT) ||
                    value1_ == int32(ReplaceIndexForwardingDescriptor::kX));
       return new ReplaceIndexForwardingDescriptor(
-          descriptors_[0]->ConvertToForwardingDescriptor(),          
+          descriptors_[0]->ConvertToForwardingDescriptor(),
           value1_ == int32(ReplaceIndexForwardingDescriptor::kT) ?
           ReplaceIndexForwardingDescriptor::kT :
           ReplaceIndexForwardingDescriptor::kX,
