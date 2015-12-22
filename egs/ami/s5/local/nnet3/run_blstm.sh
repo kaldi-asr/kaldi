@@ -18,7 +18,7 @@ chunk_right_context=40
 num_jobs_initial=2
 num_jobs_final=12
 samples_per_iter=20000
-
+realign_times=
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -41,5 +41,6 @@ local/nnet3/run_lstm.sh --affix $affix \
                          --samples-per-iter $samples_per_iter \
                          --use-ihm-ali $use_ihm_ali \
                          --use-sat-alignments $use_sat_alignments \
+                         --realign-times "$realign_times" \
                          --remove-egs $remove_egs
 
