@@ -3,8 +3,7 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
-import sys
-import numpy as np
+import sys, math
 
 from optparse import OptionParser
 desc = """
@@ -30,112 +29,86 @@ The iput 'ctm' is augmented by per-word tags (or 'U' is added if no tags),
 The script can be used both to prepare the training data,
 or to prepare input features for forwarding through trained model.
 """
-usage = "%prog [opts] ctm segments depth-per-frame-ascii.ark arpa-lm.gz words.txt logreg_inputs"
+usage = "%prog [opts] ctm word-filter word-length unigrams depth-per-frame-ascii.ark word-categories"
 parser = OptionParser(usage=usage, description=desc)
-parser.add_option("--segments", help="Mapping of sentence-relative times to absolute times, for lattice-depths. Use for ctm with absolute times. [default %default]", default='')
-parser.add_option("--reco2file-and-channel", help="Mapping of recording to file and channel in 'stm' [default %default]", default='')
 parser.add_option("--conf-targets", help="Targets file for logistic regression (no targets generated if '') [default %default]", default='')
 parser.add_option("--conf-feats", help="Feature file for logistic regression. [default %default]", default='')
 (o, args) = parser.parse_args()
 
-if len(args) != 4:
+if len(args) != 6:
   parser.print_help()
   sys.exit(1)
-ctm_file, depths_file, unigrams, word_categories_file = args
+ctm_file, word_filter_file, word_length_file, unigrams, depths_file, word_categories_file = args
 
 assert(o.conf_feats != '')
 
-# Load the ctm,
-try:
-  ctm = np.loadtxt(ctm_file,dtype='object,object,f8,f8,object,f8,object')
-except IndexError:
-  # Missing 'score_tag' column, add 'U' everywhere,
-  ctm = np.loadtxt(ctm_file,dtype='object,object,f8,f8,object,f8')
-  ctm = [(f, chan, beg, dur, wrd, conf, 'U') for (f, chan, beg, dur, wrd, conf) in ctm]
-  ctm = np.array(ctm,dtype='object,object,f8,f8,object,f8,object')
+# Load the ctm (optionally add eval colmn with 'U'):
+ctm = [ l.split() for l in open(ctm_file) ]
+if len(ctm[0]) == 6: [ l.append('U') for l in ctm ]
+assert(len(ctm[0]) == 7)
+
+# Load the word-filter,
+word_filter = [ l.split() for l in open(word_filter_file) ]
+word_filter = { wrd:bool(int(keep_word)) for wrd,id,keep_word in word_filter }
 
 # Build the targets,
 if o.conf_targets != '':
-  targets = []
-  for (f, chan, beg, dur, wrd, conf, score_tag) in ctm:
-    # Skip words we don't know if being correct, 
-    if score_tag == 'U': continue 
-    # Build the key,
-    key = "%s^%s^%.2f^%.2f^%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
-    # Build the target,
-    tgt = 1 if score_tag == 'C' else 0 # Correct = 1, else 0,
-    # Add to list,
-    targets.append((key,tgt))
-  # Store the targets,
-  np.savetxt(o.conf_targets, np.array(targets,dtype='object,i'), fmt='%s %d')
+  with open(o.conf_targets,'w') as f:
+    for (utt, chan, beg, dur, wrd, conf, score_tag) in ctm:
+      # Skip the words we don't know if being correct, 
+      if score_tag == 'U': continue 
+      # Some words are excluded from training (partial words, hesitations, etc.),
+      if not word_filter[wrd]: continue 
+      # Build the key,
+      key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd, conf, score_tag)
+      # Build the target,
+      tgt = 1 if score_tag == 'C' else 0 # Correct = 1, else 0,
+      # Write,
+      f.write('%s %d\n' % (key,tgt))
 
-# Segments hash is indexed by utterance-id,
-if o.segments != '':
-  segments = { utt:(reco,beg,end) for (utt,reco,beg,end) in np.loadtxt(o.segments,dtype='object,object,f8,f8') }
-  # Optionally apply 'reco2file_and_channel' mapping,
-  if o.reco2file_and_channel != '':
-    reco2file_and_channel = { reco:(file,chan) for (reco,file,chan) in np.loadtxt(o.reco2file_and_channel,dtype='object,object,object') }
-  else:
-    # Or trivial self-mapping using 2nd column in 'segments', (default channel is '1'),
-    reco2file_and_channel = { reco:(reco,'1') for reco in np.unique(np.array(segments.values())['f0']) } 
+# Load the word-lengths,
+word_length = [ l.split() for l in open(word_length_file) ]
+word_length = { wrd:int(length) for wrd,id,length in word_length }
 
-### Load the per-frame lattice-depth,
+# Load the unigram probabilities in 10log (usually parsed from ARPA),
+p_unigram_log10 = [ l.split() for l in open(unigrams) ]
+p_unigram_log10 = { wrd:float(p_unigram) for wrd, p_unigram in p_unigram_log10 }
+
+# Load the per-frame lattice-depth,
+# - we assume, the 1st column in 'ctm' is the 'utterance-key' in depth file,
 depths = dict()
-if o.segments == '':
-  # In simpler case, the 1st column of 'CTM' are the utterance keys,
-  # which simplifies the lookup of the lattice-dephts.
-  with open(depths_file,'r') as f:
-    for l in f:
-      utt,d = l.split(' ',1)
-      depths[(utt,'1')] = np.array(d.split(),dtype='int')
-else:
-  # In difficult case, the 'CTM' was mapped by 'utils/convert_ctm.pl'.
-  # The depth keys are the utterance-id's, so we fit the depths into 'long' 
-  # vectors covering the complete unsegmented audio channel.
-  #
-  # Getting lengths of unsegmented audio channels (i.e. the end of last segment),
-  reco_beg_end_sort = np.sort(np.array(segments.values(),dtype='object,f8,f8'), order=['f0','f2'])
-  reco_beg_end_lastseg = reco_beg_end_sort[np.append(reco_beg_end_sort['f0'][1:] != reco_beg_end_sort['f0'][:-1],[True])]
-  # Create buffers for the depths,
-  for (reco,beg,end) in reco_beg_end_lastseg:
-    frame_total = 1 + int(np.rint(100*end))
-    depths[reco2file_and_channel[reco]] = np.zeros(frame_total, dtype='int')
-  # Load the depths (ASCII), fill the buffer with the depths,
-  with open(depths_file,'r') as f:
-    for l in f:
-      utt,d = l.split(' ',1)
-      d = np.array(d.split(),dtype='int')
-      frame_begin = int(np.rint(100*segments[utt][1]))
-      depths[reco2file_and_channel[segments[utt][0]]][frame_begin:frame_begin+len(d)] = d
-
-# Load the unigram probabilities in 10log from ARPA,
-p_unigram_log10 = { wrd:p_unigram for wrd, p_unigram in np.loadtxt(unigrams, dtype='object,f8') }
+for l in open(depths_file):
+  utt,d = l.split(' ',1)
+  depths[utt] = map(int,d.split())
 
 # Load the 'word_categories' mapping for categorical input features derived from 'lang/words.txt',
-wrd_to_cat = { wrd:cat for wrd,idx,cat in np.loadtxt(word_categories_file,dtype='object,i4,i4') }
+wrd_to_cat = [ l.split() for l in open(word_categories_file) ]
+wrd_to_cat = { wrd:int(category) for wrd,id,category in wrd_to_cat }
 wrd_cat_num = max(wrd_to_cat.values()) + 1
 
 # Build the input features,
-with open(o.conf_feats,'w') as inputs:
-  for (f, chan, beg, dur, wrd, conf, score_tag) in ctm:
-    # Build the key, same as previous,
-    key = "%s^%s^%.2f^%.2f^%s,%.2f,%s" % (f, chan, beg, dur, wrd, conf, score_tag)
+with open(o.conf_feats,'w') as f:
+  for (utt, chan, beg, dur, wrd, conf, score_tag) in ctm:
+    # Build the key, same as previously,
+    key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd, conf, score_tag)
+
     # Build input features,
-    # - logit of MBR posterior, 
+    # - logit of MBR posterior,
     damper = 0.001 # avoid -inf,+inf from log,
-    logit = np.log(conf+damper) - np.log(1.0 - conf+damper)
-    # - log of word-length in characters,
-    log_lenwrd = np.log(len(wrd)) 
+    logit = math.log(float(conf)+damper) - math.log(1.0 - float(conf)+damper)
+    # - log of word-length,
+    log_lenwrd = math.log(word_length[wrd]) 
+    # - log of frames per word-length,
+    log_frame_per_letter = math.log(100.0*float(dur)/word_length[wrd])
     # - log of average-depth of lattice at the word position,
-    log_avg_depth = np.log(np.mean(depths[(f,chan)][int(np.rint(100.0*beg)):int(np.rint(100.0*(beg+dur)))]))
-    # - log of frames per character ratio,
-    log_frame_per_letter = np.log(100.0*dur/len(wrd))
+    depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
+    log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
     # - categorical distribution of words with frequency higher than min-count,
     wrd_1_of_k = [0]*wrd_cat_num; 
     wrd_1_of_k[wrd_to_cat[wrd]] = 1;
 
     # Compose the input feature vector,
-    feats = [ logit, log_lenwrd, log_avg_depth, p_unigram_log10[wrd], log_frame_per_letter ] + wrd_1_of_k
+    feats = [ logit, log_lenwrd, log_frame_per_letter, p_unigram_log10[wrd], log_avg_depth ] + wrd_1_of_k
     # Store the input features, 
-    inputs.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
+    f.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

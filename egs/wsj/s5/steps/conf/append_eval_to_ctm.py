@@ -3,8 +3,7 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
-import sys
-import numpy as np
+import sys,operator
 
 # Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
 # (i.e. the output of 'align-text' post-processed by 'wer_per_utt_details.pl')
@@ -37,25 +36,35 @@ with open(eval_in, 'r') as f:
     assert(tag == 'hyp')
     utt,tag,op_vec = op.split(' ',2)
     assert(tag == 'op')
-    eval_vec[utt] = np.array(op_vec.split())[np.array(hyp_vec.split()) != '<eps>']
+    hyp_vec = hyp_vec.split()
+    op_vec = op_vec.split()
+    # Fill create eval vector with symbols 'C', 'S', 'I',
+    assert(utt not in eval_vec)
+    eval_vec[utt] = []
+    for op,hyp in zip(op_vec, hyp_vec):
+      if hyp != '<eps>': eval_vec[utt].append(op)
 
-# Read the CTM (contains confidences),
-ctm = np.loadtxt(ctm_in, dtype='object,object,f8,f8,object,f8')
-ctm = np.sort(ctm, order=['f0','f1','f2'])
-# Split CTM per keys from 1st column,
-ctm_parts = np.split(ctm, np.nonzero(ctm['f0'][1:] != ctm['f0'][:-1])[0]+1)
+# Load the 'ctm' into dictionary,
+ctm = dict()
+with open(ctm_in) as f:
+  for l in f:
+    utt, ch, beg, dur, wrd, conf = l.split()
+    if not utt in ctm: ctm[utt] = []
+    ctm[utt].append((utt, ch, float(beg), float(dur), wrd, float(conf)))
 
 # Build the 'ctm' with 'eval' column added,
 ctm_eval = []
-for part in ctm_parts:
-  utt = part[0][0]
+for utt,ctm_part in ctm.iteritems():
+  ctm_part.sort(key = operator.itemgetter(2)) # Sort by 'beg' time,
   # extending the 'tuple' by '+':
-  merged = [ tuple(tup) + (evl,) for tup,evl in zip(part,eval_vec[utt]) ]
-  ctm_eval.append(merged)
-  
+  merged = [ tup + (evl,) for tup,evl in zip(ctm_part,eval_vec[utt]) ]
+  ctm_eval.extend(merged)
+
+# Sort again,
+ctm_eval.sort(key = operator.itemgetter(0,1,2))
+
 # Store,
-import operator
-ctm_eval = reduce(operator.add, ctm_eval) # Flattening the array of arrays,
-ctm_eval = np.array(ctm_eval, dtype='object,object,f8,f8,object,f8,object')
-np.savetxt(ctm_eval_out, ctm_eval, fmt=['%s','%s','%f','%f','%s','%f','%s'])
+with open(ctm_eval_out,'w') as f:
+  for tup in ctm_eval:
+    f.write('%s %s %f %f %s %f %s\n' % tup)
 

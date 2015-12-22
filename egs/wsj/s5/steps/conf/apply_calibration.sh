@@ -29,6 +29,8 @@ dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 calibration=$caldir/calibration.mdl
+word_filter=$caldir/word_filter # used only in training,
+word_length=$caldir/word_length
 unigrams=$caldir/unigrams
 word_categories=$caldir/word_categories
 
@@ -46,6 +48,8 @@ decode_mbr=$(cat $caldir/decode_mbr)
 echo $lmwt >$dir/lmwt
 echo $decode_mbr >$dir/decode_mbr 
 cp $calibration $dir/calibration.mdl
+cp $word_filter $dir/word_filter
+cp $word_length $dir/word_length
 cp $unigrams $dir/unigrams
 cp $word_categories $dir/word_categories
 
@@ -69,14 +73,13 @@ fi
 # Compute lattice-depth,
 latdepth=$dir/lattice_frame_depth.ark
 if [ $stage -le 1 ]; then
-  [ -e $latdepth ] || utils/lattice_depth_per_frame.sh --cmd "$cmd" $latdir $dir
+  [ -e $latdepth ] || steps/conf/lattice_depth_per_frame.sh --cmd "$cmd" $latdir $dir
 fi
 
 # Create the forwarding data for logistic regression,
 if [ $stage -le 2 ]; then
-  steps/conf/prepare_calibration_data.py \
-    --conf-feats $dir/forward_feats.ark \
-    $dir/ctm $latdepth $unigrams $word_categories
+  steps/conf/prepare_calibration_data.py --conf-feats $dir/forward_feats.ark \
+    $dir/ctm $word_filter $word_length $unigrams $latdepth $word_categories
 fi
 
 # Apply calibration model to dev,

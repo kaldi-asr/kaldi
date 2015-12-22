@@ -22,12 +22,20 @@ set -euxo pipefail
 dev_caldir=$dev_latdir/confidence_$lmwt
 eval_caldir=$eval_latdir/confidence_$lmwt
 
-###### Train the calibration,
+###### Data preparation,
+# Prepare filtering for excluding data from train-set,
+word_filter=$(mktemp)
+awk '{ keep_the_word = $1 !~ /^(\[.*\]|<.*>|%.*|!.*|-.*|.*-)$/; print $0, keep_the_word }' \
+  $graph/words.txt >$word_filter
+# Calcualte the word-length,
+word_length=$(mktemp)
+awk '{ print $0, length($1) }' $graph/words.txt >$word_length
 # Extract unigrams,
 unigrams=$(mktemp); steps/conf/parse_arpa_unigrams.py $arpa_gz $unigrams
-# Train the calibration,
+
+###### Train the calibration,
 steps/conf/train_calibration.sh --cmd "$decode_cmd" --lmwt $lmwt \
-  $dev_data $graph $unigrams $dev_latdir $dev_caldir
+  $dev_data $graph $word_filter $word_length $unigrams $dev_latdir $dev_caldir
 
 ###### Apply the calibration to eval set,
 steps/conf/apply_calibration.sh --cmd "$decode_cmd" \

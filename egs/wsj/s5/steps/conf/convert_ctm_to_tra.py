@@ -3,8 +3,7 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
-import sys
-import numpy as np
+import sys, operator
 
 # This scripts loads a 'ctm' file and converts it into the 'tra' format:
 # "utt-key word1 word2 word3 ... wordN"
@@ -22,19 +21,17 @@ dummy, ctm_in, tra_out = sys.argv
 if ctm_in == '-': ctm_in = '/dev/stdin'
 if tra_out == '-': tra_out = '/dev/stdout'
 
-ctm = np.loadtxt(ctm_in, dtype='object,object,f8,f8,object,f8')
-ctm = np.sort(ctm, order=['f0','f1','f2'])
+# Load the 'ctm' into dictionary,
+tra = dict()
+with open(ctm_in) as f:
+  for l in f:
+    utt, ch, beg, dur, wrd, conf = l.split()
+    if not utt in tra: tra[utt] = []
+    tra[utt].append((float(beg),wrd))
 
-# Split CTM per keys from 1st column,
-ctm_parts = np.split(ctm, np.nonzero(ctm['f0'][1:] != ctm['f0'][:-1])[0]+1)
-
-# Build the 'tra' file,
-tra = []
-for part in ctm_parts:
-  utt = part[0][0]
-  words = ' '.join(part['f4'])
-  tra.append((utt, words))
-
-# Save the output 'tra' file,
-np.savetxt(tra_out, np.array(tra, dtype='object,object'), fmt=['%s','%s'])
+# Store the in 'tra' format,
+with open(tra_out,'w') as f:
+  for utt,tuples in tra.iteritems():
+    tuples.sort(key = operator.itemgetter(0)) # Sort by 'beg' time,
+    f.write('%s %s\n' % (utt,' '.join([t[1] for t in tuples])))
 
