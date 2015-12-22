@@ -122,7 +122,9 @@ void UnitTestDescriptorIo() {
     KALDI_LOG << "y = " << ostr4.str();
     if (ostr.str() != ostr4.str()) {
       KALDI_WARN << "x and y differ: checking that it's due to Offset normalization.";
-      KALDI_ASSERT(ostr.str().find("Offset(Offset") != std::string::npos);
+      KALDI_ASSERT(ostr.str().find("Offset(Offset") != std::string::npos ||
+                   (ostr.str().find("Offset(") != std::string::npos &&
+                    ostr.str().find(", 0)") != std::string::npos));
     }
   }
 }
@@ -209,6 +211,10 @@ void UnitTestGeneralDescriptorSpecial() {
                "Append(Sum(a, c), Sum(b, d))");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Append(Append(a, b), Append(c, d))") ==
                "Append(a, b, c, d)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(a, b, c, d)") ==
+               "Sum(a, Sum(b, Sum(c, d)))");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(a)") == "a");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(a, 0)") == "a");
 }
 
 } // namespace nnet3
