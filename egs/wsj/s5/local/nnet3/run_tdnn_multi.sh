@@ -10,15 +10,17 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=9
+stage=-100
 train_stage=-100
-dir=exp/nnet3/nnet_tdnn_multi_$4
-multidir=$1
-virtualdir=$2
-num_outputs=$3
+#dir=exp/nnet3/nnet_tdnn_multi_$4
+dir=
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+multidir=$1
+virtualdir=$2
+num_outputs=$3
 
 echo dir is $dir
 
