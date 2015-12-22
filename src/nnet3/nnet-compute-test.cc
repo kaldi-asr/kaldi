@@ -68,7 +68,7 @@ void UnitTestNnetCompute() {
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;  
-    ComputationChecker checker(check_config, nnet, request, computation);
+    ComputationChecker checker(check_config, nnet, computation);
     checker.Check();
 
     if (RandInt(0, 1) == 0) {

@@ -39,11 +39,11 @@ namespace nnet3 {
    \file nnet-descriptor.h
 
    This file contains class definitions for classes ForwardingDescriptor,
-   SumDescriptor and InputDescriptor.  Basically this is code that specifies how
+   SumDescriptor and Descriptor.  Basically this is code that specifies how
    we glue together the outputs of possibly several other network-nodes, as the
    input of a particular network node (or as an output of the network).  In the
    neural-network code we refer to the top-level descriptor which is
-   InputDescriptor.  The InputDescriptor is a concatenation features; each part
+   Descriptor.  The InputDescriptor is a concatenation of features; each part
    is a SumDescriptor.  The SumDescriptor is a summation over a set of features
    of all the same dimension, each of which is represented by a
    ForwardingDescriptor.  A ForwardingDescriptor in the simplest case just
@@ -101,15 +101,6 @@ class ForwardingDescriptor {
   virtual int32 Dim(const Nnet &nnet) const = 0;
   
   virtual ForwardingDescriptor *Copy() const = 0;
-
-  // The Parse method is used for reading a config-file-style represenation.
-  // Assumes the input has already been tokenized into an array of strings, and
-  // it moves the begin-pointer "next_token" to account for token that it
-  // consumes.  Calls KALDI_ERR on error.
-  // The list of tokens should be terminated with a string saying "end of input".
-  static ForwardingDescriptor *Parse(const std::vector<std::string> &node_names,
-                                     const std::string **next_token);
-  
 
   /// This function is for use in things like clockwork RNNs, where shifting the
   /// time of the inputs and outputs of the network by some multiple integer n
@@ -241,7 +232,7 @@ class RoundingForwardingDescriptor: public ForwardingDescriptor {
 /// of them (normally t) with a constant value and keeping the rest.
 class ReplaceIndexForwardingDescriptor: public ForwardingDescriptor {  
  public:
-  enum VariableName { kN, kT, kX };
+  enum VariableName { kN = 0, kT = 1, kX = 2};
   
   virtual Cindex MapToInput(const Index &ind) const;
   virtual int32 Dim(const Nnet &nnet) const { return src_->Dim(nnet); }
@@ -325,14 +316,6 @@ class SumDescriptor {
   // see Modulus function of ForwardingDescriptor for explanation.
   virtual int32 Modulus() const = 0;
 
-  // The Parse method is used for reading a config-file-style represenation.
-  // Assumes the input has already been tokenized into an array of strings, and
-  // it moves the begin-pointer "next_token" to account for token that it
-  // consumes.  Calls KALDI_ERR on error.
-  // The input tokens should be terminated with a token that says "end of input". 
-  static SumDescriptor* Parse(const std::vector<std::string> &node_names,
-                              const std::string **next_token);
-  
   /// Write in config-file format.  Conventional Read and Write methods are not
   /// supported.
   virtual void WriteConfig(std::ostream &os,
@@ -341,11 +324,39 @@ class SumDescriptor {
 
 };
 
-/// This is the simple case of class SumDescriptor, in which we
-/// contain just one term (the term is a ForwardingDescriptor).
-/// You can initialize with reqired = false in order to express
-/// an optional quantity, like (A if defined, else zero).
-class UnarySumDescriptor: public SumDescriptor {
+/// This is the case of class SumDescriptor, in which we contain just one term,
+/// and that term is optional (an IfDefined() expression).  That term is a
+/// general SumDescriptor.
+class OptionalSumDescriptor: public SumDescriptor {
+ public:
+  virtual void GetDependencies(const Index &ind,
+                               std::vector<Cindex> *dependencies) const;
+  virtual bool IsComputable(const Index &ind,
+                            const CindexSet &cindex_set,
+                            std::vector<Cindex> *input_terms) const {
+    return true;
+  }
+  virtual int32 Dim(const Nnet &nnet) const;
+
+  // This function appends to "node_indexes" a list (not necessarily sorted or
+  // unique) of all the node indexes that this descriptor may forward data from.
+  virtual void GetNodeDependencies(std::vector<int32> *node_indexes) const;
+  virtual int32 Modulus() const { return src_->Modulus(); }
+  /// written form is: if required_ == true, "<written-form-of-src>"
+  /// else "IfDefined(<written-form-of-src>)".
+  virtual void WriteConfig(std::ostream &os,
+                           const std::vector<std::string> &node_names) const;
+  virtual SumDescriptor *Copy() const;
+  
+  OptionalSumDescriptor(SumDescriptor *src): src_(src) { }
+  virtual ~OptionalSumDescriptor() { delete src_; }
+ private:
+  SumDescriptor *src_;
+};
+
+// This is the base-case of SumDescriptor which just wraps
+// a ForwardingDescriptor.
+class SimpleSumDescriptor: public SumDescriptor {
  public:
   virtual void GetDependencies(const Index &ind,
                                std::vector<Cindex> *dependencies) const;
@@ -364,14 +375,12 @@ class UnarySumDescriptor: public SumDescriptor {
                            const std::vector<std::string> &node_names) const;
   virtual SumDescriptor *Copy() const;
   
-  UnarySumDescriptor(ForwardingDescriptor *src,
-                     bool required = true):
-      src_(src), required_(required) { }
-  virtual ~UnarySumDescriptor() { delete src_; }
+  SimpleSumDescriptor(ForwardingDescriptor *src): src_(src) { }
+  virtual ~SimpleSumDescriptor() { delete src_; }
  private:
   ForwardingDescriptor *src_;
-  bool required_;
 };
+
 
 
 /// BinarySumDescriptor can represent either A + B, or (A if defined, else B).
@@ -421,11 +430,12 @@ class Descriptor {
   int32 Dim(const Nnet &nnet) const;
   
   // The Parse method is used for reading a config-file-style represenation.
-  // Assumes the input has already been tokenized into an array of strings by
-  // DescriptorTokenize(); it moves the begin-pointer "next_token" to account
-  // for token that it consumes.  Prints warning and returns false on error
-  // (including if there was junk after the last token).
-  // The input tokens should be terminated with a token that says "end of input".
+  // Internally this uses class GeneralDescriptor to read and normalize the
+  // input.  Assumes the input has already been tokenized into an array of
+  // strings by DescriptorTokenize(); it moves the begin-pointer "next_token" to
+  // account for token that it consumes.  Prints warning and returns false on
+  // error (including if there was junk after the last token).  The input tokens
+  // should be terminated with a token that says "end of input".
   bool Parse(const std::vector<std::string> &node_names,
              const std::string **next_token);
   
@@ -491,6 +501,102 @@ class Descriptor {
   void Destroy(); // empties parts_ after deleting its members.
   // the elements of parts_ are owned here.
   std::vector<SumDescriptor*> parts_;
+};
+
+
+/**
+   This class is only used when parsing Descriptors.  It is useful for normalizing
+   descriptors that are structured in an invalid or redundant way, into a
+   form that can be turned into a real Descriptor.
+ */
+struct GeneralDescriptor {
+  enum DescriptorType { kAppend, kSum, kFailover, kIfDefined, kOffset, kSwitch,
+                        kRound, kReplaceIndex, kNodeName };
+  
+  // The Parse method is used for reading a config-file-style represenation.
+  // Assumes the input has already been tokenized into an array of strings, and
+  // it moves the begin-pointer "next_token" to account for token that it
+  // consumes.  Calls KALDI_ERR on error.  The list of tokens should be
+  // terminated with a string saying "end of input".  Does not check that all
+  // the input has been consumed-- the caller should do that [check that
+  // **next_token == "end of input" after calling.]
+  static GeneralDescriptor *Parse(const std::vector<std::string> &node_names,
+                                  const std::string **next_token);
+
+  explicit GeneralDescriptor(DescriptorType t, int32 value1 = -1,
+                             int32 value2 = -1):
+      descriptor_type_(t), value1_(value1), value2_(value2) { }
+
+  ~GeneralDescriptor() { DeletePointers(&descriptors_); }
+
+  GeneralDescriptor *GetNormalizedDescriptor() const;
+
+  Descriptor *ConvertToDescriptor();
+
+  // prints in text form-- this is really only used for debug.
+  void Print(const std::vector<std::string> &node_names,
+             std::ostream &os);
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(GeneralDescriptor);
+
+  DescriptorType descriptor_type_;
+  
+  // the following is only relevant if descriptor_type == kReplaceIndex [1 for t, 2 for ]
+  // or kNodeName (the index of the node), or kOffset [the t offset].
+  int32 value1_;
+  // the following is only relevant if descriptor_type == kReplaceIndex [the value
+  // we replace the index with], or kOffset [the x offset]
+  int32 value2_;
+
+  // For any descriptor types that take args of type kDescriptor, a list of those
+  // args.  Pointers owned here.
+  std::vector<GeneralDescriptor*> descriptors_;
+
+  //  parses an Append() or Sum() or Switch() expression after the "Append(" or
+  //  "Sum(" or "Switch(" has been read.
+  void ParseAppendOrSumOrSwitch(const std::vector<std::string> &node_names,
+                                const std::string **next_token);
+  // parse an IfDefined() expression after the IfDefined( has already been
+  // read.
+  void ParseIfDefined(const std::vector<std::string> &node_names,
+                      const std::string **next_token);
+  // ... and so on.
+  void ParseOffset(const std::vector<std::string> &node_names,
+                   const std::string **next_token);
+  void ParseSwitch(const std::vector<std::string> &node_names,
+                   const std::string **next_token);
+  void ParseFailover(const std::vector<std::string> &node_names,
+                     const std::string **next_token);
+  void ParseRound(const std::vector<std::string> &node_names,
+                  const std::string **next_token);
+  void ParseReplaceIndex(const std::vector<std::string> &node_names,
+                         const std::string **next_token);
+
+  
+
+  // Used inside NormalizeAppend().  Return the number of terms there
+  // would be in a single consolidated Append() expressions, and asserts that in
+  // whichever branch of any other expressions we take, the number of terms is
+  // the same.
+  int32 NumAppendTerms() const;
+  // Used inside NormalizeAppend().  Gets one of the appended terms from this
+  // descriptor, with 0 <= term < NumAppendTerms().  Answer is newly allocated.
+  GeneralDescriptor *GetAppendTerm(int32 term) const;
+
+
+  // Normalizes w.r.t. Append expressions by moving Append() to the outside.
+  // Called only at the top level.
+  GeneralDescriptor *NormalizeAppend() const;
+
+  // This call does all other types of normalization except for normalizing
+  // Append() expressions (which is assumed to have been done already).  Returns
+  // true if anything was changed.
+  static bool Normalize(GeneralDescriptor *ptr);
+  
+  SumDescriptor *ConvertToSumDescriptor() const;
+  ForwardingDescriptor *ConvertToForwardingDescriptor() const;
+
 };
 
 
