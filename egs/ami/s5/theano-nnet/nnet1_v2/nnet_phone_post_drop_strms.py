@@ -17,7 +17,6 @@ from feature_funcs import features, feature_preprocess
 from nnet1_v2.neuralnet import NeuralNet
 import nnet1_v2.neuralnet
 from feature_funcs.feature_preprocess import FeaturePreprocess, CMVN
-from feature_funcs.transform_feats import transform_feats
 
 import compute_mtd
 
@@ -149,10 +148,6 @@ parser.add_option('--pdf-to-pseudo-phone', dest='pdf_to_pseudo_phone',
                   help="A two column file that maps pdf-id to the corresponding pseudo phone-id. If supplied, outputs the log probabilities for given phones instead of pdf's [default: %default]",
                   default = "", type=str)
 
-parser.add_option('--nnet-feats-transform', dest='nnet_feats_transform',
-                  help="Transformation (Linear/Affine) to be applied on top of features from nnet [default: %default]",
-                  default="", type=str)
-
 (o, args) = parser.parse_args()
 # options specified in config overides command line
 if o.config != "": (o, args) = utils.parse_config(parser, o.config)
@@ -220,11 +215,6 @@ if not os.path.exists(data_scp):
   logging.error("%s doesn't exist", data_scp)
   sys.exit(1)
 
-### Load transform of nnet-out ###
-# transform_nnet_out = transform_feats(o.nnet_feats_transform)
-###
-
-
 strm_indices=o.strm_indices
 comb_num=int(o.comb_num)
 
@@ -238,8 +228,6 @@ with kaldi_io.KaldiScpReader(data_scp, feature_preprocess.full_preprocess, reade
     elif o.apply_logit == "true":
       Y = AdditiveSmoothing(Y, 1e-5)
       Y = logit(Y)
-
-    # Y = transform_nnet_out.transform_feats(Y, utt)
 
     kaldi_io.write_stdout_ascii(Y, utt)
 
