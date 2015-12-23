@@ -43,8 +43,8 @@ echo "$0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [ $# -ne 3 ]; then
-  echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
+if [ $# -ne 4 ]; then
+  echo "Usage: $0 [options] <graph-dir> <data-dir> <model-dir> <lattice-dir>"
   echo "e.g.:   steps/nnet3/ctc/decode.sh --nj 8 \\"
   echo "--online-ivector-dir exp/ctc/ivectors_test_eval92 \\"
   echo "    exp/ctc/nnet_tdnn_a/graph_tgpr data/test_eval92_hires exp/ctc/nnet_tdnn_a/decode_bg_eval92"
@@ -62,8 +62,8 @@ fi
 
 graphdir=$1
 data=$2
-dir=$3
-srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
+srcdir=$3
+dir=$4
 model=$srcdir/$iter.mdl
 
 
@@ -137,7 +137,14 @@ if [ ! -z "$online_ivector_dir" ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  # Prepare 'scp' for storing lattices separately and gzipped
+  for n in `seq $nj`; do
+    [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
+    cat $sdata/$n/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/"$1".gz"; }'
+  done >$dir/lat.store_separately_as_gz.scp
+
+  # Generate the lattices
+  $cmd JOB=1:$nj $dir/log/decode_den.JOB.log \
     nnet3-ctc-latgen-faster $ivector_opts \
      --frame-subsampling-factor=$frame_subsampling_factor \
      --frames-per-chunk=$frames_per_chunk \
@@ -147,21 +154,27 @@ if [ $stage -le 1 ]; then
      --blank-scale=$blank_scale --allow-partial=true \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/CTC.fst "$feats" \
-     "ark:|lattice-scale --acoustic-scale=$lattice_acoustic_scale ark:- ark:- | gzip -c > $dir/lat.JOB.gz" || exit 1;
+     "ark:|lattice-scale --acoustic-scale=$lattice_acoustic_scale ark:- scp:$dir/lat.store_separately_as_gz.scp" || exit 1;
 fi
 
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at
-# different acoustic scales to get the final output.
+#2) Generate 'scp' for reading the lattices
+for n in `seq $nj`; do
+  find $dir/lat${n} -name "*.gz" | awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }'
+done >$dir/lat.scp
 
-
-if [ $stage -le 2 ]; then
-  if ! $skip_scoring ; then
-    [ ! -x local/score.sh ] && \
-      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-    echo "score best paths"
-    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
-    echo "score confidence and timing with sclite"
-  fi
-fi
-echo "Decoding done."
-exit 0;
+echo "Generate Lattices done."
+## The output of this script is the files "lat.*.gz"-- we'll rescore this at
+## different acoustic scales to get the final output.
+#
+#
+#if [ $stage -le 2 ]; then
+#  if ! $skip_scoring ; then
+#    [ ! -x local/score.sh ] && \
+#      echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+#    echo "score best paths"
+#    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
+#    echo "score confidence and timing with sclite"
+#  fi
+#fi
+#echo "Decoding done."
+#exit 0;
