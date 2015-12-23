@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     AlignConfig align_config;
-    DecodableAmNnetSimpleOptions decodable_opts;
+    DecodableNnetCctcSimpleOptions decodable_opts;
     std::string use_gpu = "yes";
     BaseFloat acoustic_scale = 1.0;
     BaseFloat transition_scale = 1.0;
