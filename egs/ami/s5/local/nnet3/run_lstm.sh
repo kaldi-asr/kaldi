@@ -51,6 +51,7 @@ momentum=0.5
 num_chunk_per_minibatch=100
 samples_per_iter=20000
 remove_egs=true
+realign_times=
 
 # feature options
 use_ivectors=true
@@ -98,11 +99,11 @@ fi
 
 if [ $use_ihm_ali == "true" ]; then
   gmm_dir=exp/ihm/$gmm
-  ali_dir=${gmm_dir}_train_parallel_sp_ali
   mic=${mic}_cleanali
+  ali_dir=${gmm_dir}_${mic}_train_parallel_sp_ali
 else
   gmm_dir=exp/$mic/$gmm
-  ali_dir=${gmm_dir}_train_sp_ali
+  ali_dir=${gmm_dir}_${mic}_train_sp_ali
 fi
 
 final_lm=`cat data/local/lm/final_lm`
@@ -152,6 +153,7 @@ if [ $stage -le 10 ]; then
     --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
+    --realign-times "$realign_times" \
     data/$mic/train_sp_hires data/lang $ali_dir $dir  || exit 1;
 fi
 

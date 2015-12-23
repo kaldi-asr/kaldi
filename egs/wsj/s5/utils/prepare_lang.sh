@@ -114,8 +114,8 @@ fi
 # phones.txt file provided, we will do some sanity check here.
 if [[ ! -z $phone_symbol_table ]]; then
   # Checks if we have position dependent phones
-  n1=`cat $phone_symbol_table | grep -v -P "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
-  n2=`cat $phone_symbol_table | grep -v -P "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
+  n1=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sort -u | wc -l`
+  n2=`cat $phone_symbol_table | grep -v -E "^#[0-9]+$" | cut -d' ' -f1 | sed 's/_[BIES]$//g' | sort -u | wc -l`
   $position_dependent_phones && [ $n1 -eq $n2 ] &&\
     echo "$0: Position dependent phones requested, but not in provided phone symbols" && exit 1;
   ! $position_dependent_phones && [ $n1 -ne $n2 ] &&\
@@ -123,7 +123,7 @@ if [[ ! -z $phone_symbol_table ]]; then
 
   # Checks if the phone sets match.
   cat $srcdir/{,non}silence_phones.txt | awk -v f=$phone_symbol_table '
-  BEGIN { while ((getline < f) > 0) { sub(/((_[BEIS])|) [0-9]+$/, "", $0); phones[$0] = 1; }}
+  BEGIN { while ((getline < f) > 0) { sub(/_[BEIS]$/, "", $1); phones[$1] = 1; }}
   { for (x = 1; x <= NF; ++x) { if (!($x in phones)) {
       print "Phone appears in the lexicon but not in the provided phones.txt: "$x; exit 1; }}}' || exit 1;
 fi

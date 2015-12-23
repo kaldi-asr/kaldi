@@ -49,8 +49,8 @@ fi
 
 if [ $use_ihm_ali == "true" ]; then
   gmm_dir=exp/ihm/$gmm
-  ali_dir=${gmm_dir}_train_parallel_sp_ali
   mic=${mic}_cleanali
+  ali_dir=${gmm_dir}_train_parallel_sp_ali
 else
   gmm_dir=exp/$mic/$gmm
   ali_dir=${gmm_dir}_train_sp_ali
