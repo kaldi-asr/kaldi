@@ -8,6 +8,7 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
+stage=0
 
 # nnet related
 remove_last_components=4 # remove N last components from the nnet
@@ -81,23 +82,24 @@ python theano-nnet/nnet1_v2/nnet_copy.py \
 # Create info
 python theano-nnet/nnet1_v2/nnet_info.py $nnet >$logdir/feature_extractor.nnet-info || exit 1;
 
+if [ $stage -le 0 ]; then
 echo "Geting accumalators"
-$cmd JOB=1:$nj $logdir/mlpfeats_acc.JOB.log \
+$cmd JOB=1:$nj $logdir/acc_pca.JOB.log \
   $nnet_fwdpass_tool $nnet_fwdpass_opts \
     --feat-preprocess=$pcadir/feat_preprocess.pkl \
     --utt2spk-file=$srcdata/utt2spk --cmvn-scp=$srcdata/cmvn.scp \
-    $pcadir $sdata/JOB/ $pcadir/data/pca_acc.JOB.pklz || exit 1
-
+    $pcadir $sdata/JOB/ \| \
+    acc-pca ark,t:- $pcadir/data/pca_acc.JOB || exit 1
+fi
 
 pca_acc_str=""
 for ((n=1; n<=nj; n++)); do
-  pca_acc_str=$pca_acc_str" "$pcadir/data/pca_acc.${n}.pklz
+  pca_acc_str=$pca_acc_str" "$pcadir/data/pca_acc.${n}
 done
 
 echo "Estimating PCA matrix"
 $cmd $logdir/pca_est.log \
-  python theano-nnet/feature_funcs/est_pca.py "$est_pca_opts" \
-    $pcadir/pca.mat $pca_acc_str || exit 1;
+ est-pca-acc $est_pca_opts $pcadir/pca.mat $pca_acc_str || exit 1;
 
 exit 0;
 

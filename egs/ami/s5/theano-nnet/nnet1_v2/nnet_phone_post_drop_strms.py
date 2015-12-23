@@ -221,7 +221,7 @@ if not os.path.exists(data_scp):
   sys.exit(1)
 
 ### Load transform of nnet-out ###
-transform_nnet_out = transform_feats(o.nnet_feats_transform)
+# transform_nnet_out = transform_feats(o.nnet_feats_transform)
 ###
 
 
@@ -239,7 +239,7 @@ with kaldi_io.KaldiScpReader(data_scp, feature_preprocess.full_preprocess, reade
       Y = AdditiveSmoothing(Y, 1e-5)
       Y = logit(Y)
 
-    Y = transform_nnet_out.transform_feats(Y, utt)
+    # Y = transform_nnet_out.transform_feats(Y, utt)
 
     kaldi_io.write_stdout_ascii(Y, utt)
 
