@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# _3b is as _2y, but with --x-expand 3, and decreasing the relu-dim from 850 to 650.
-# reusing the egs from 2y.
+# _3b is as _2y, but with --x-expand 3, and decreasing the relu-dim from 850 to 825
+# to get closer to matching num-params.
 
 # _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
 # 800k to 1.2 million.  The aim is to avoid some of the per-job overhead
@@ -238,7 +238,7 @@ if [ $stage -le 12 ]; then
     --max-param-change $max_param_change \
     --final-layer-normalize-target $final_layer_normalize_target \
     --x-expand 3 \
-    --relu-dim 650 \
+    --relu-dim 825 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
     data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
