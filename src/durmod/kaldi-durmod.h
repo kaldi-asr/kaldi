@@ -53,23 +53,23 @@ class PhoneDurationModel {
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary) const;
 
-  PhoneDurationModel() { }
+  PhoneDurationModel() {}
   PhoneDurationModel(const PhoneDurationModelOptions &opts,
-                   const std::vector<std::vector<int32> > &roots,
-                   const std::vector<std::vector<int32> > &questions):
+                     const std::vector<std::vector<int32> > &roots,
+                     const std::vector<std::vector<int32> > &questions):
     left_context_(opts.left_ctx),
     right_context_(opts.right_ctx),
     roots_(roots),
     questions_(questions),
-    max_duration_(30) { }
+    max_duration_(30) {}
 
   void InitNnet(int input_dim, int dim1,
                 int dim2, int output_dim);
   void SetMaxDuration(int32 max_duration_in_frames) {
     max_duration_ = max_duration_in_frames;
   }
-  const Nnet &GetNnet() const {return nnet_;}
-  Nnet &GetNnet() {return nnet_;}
+  const Nnet &GetNnet() const { return nnet_; }
+  Nnet &GetNnet() { return nnet_; }
 
  private:
   Nnet nnet_;
