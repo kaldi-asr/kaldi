@@ -31,6 +31,7 @@
 #include "lat/kaldi-lattice.h"
 #include "fst/fstlib.h"
 #include "ctc/cctc-graph.h"
+#include "nnet3/nnet-cctc-decodable-simple.h"
 
 int main(int argc, char *argv[]) {
   try {
