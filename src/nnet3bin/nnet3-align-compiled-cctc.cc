@@ -104,14 +104,14 @@ int main(int argc, char *argv[]) {
       
       ctc::CctcTransitionModel cctc_trans_model;
       TransitionModel trans_model;
-      AmNnetSimple am_nnet;
+      Nnet nnet;
       {
         bool binary;
         Input ki_cctc(cctc_model_in_filename, &binary);
         Input ki(model_in_filename, &binary);
         cctc_trans_model.Read(ki_cctc.Stream(), binary);
         trans_model.Read(ki.Stream(), binary);
-        am_nnet.Read(ki_cctc.Stream(), binary);
+        nnet.Read(ki_cctc.Stream(), binary);
       }
 
       RandomAccessBaseFloatMatrixReader online_ivector_reader(
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
         }
 
         DecodableNnetCctcSimple nnet_decodable(
-            decodable_opts, cctc_trans_model, am_nnet,
+            decodable_opts, cctc_trans_model, nnet,
             features, ivector, online_ivectors,
             online_ivector_period);
 
