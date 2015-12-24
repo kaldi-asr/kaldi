@@ -1,5 +1,6 @@
 // durmodbin/durmod-copy.cc
 // Author: Hossein Hadian
+
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
 #include "base/kaldi-common.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
@@ -27,19 +29,24 @@ int main(int argc, char *argv[]) {
   using nnet3::Nnet;
   try {
     const char *usage =
-        "Copy the raw nnet.\n"
+        "Copy the model. If it is used with --raw=true then only the raw nnet"
+        " inside the model is copied. Also --set-raw-nnet can be used to "
+        " set the raw nnet inside the model.\n"
         "Usage:  durmod-copy [options] <in-dur-model> <out-dur-model>\n"
         "e.g.:\n"
         "  durmod-copy-nnet --binary=false 0.mdl 1.mdl\n"
         "";
+
     bool binary_write = true, raw = false;
     std::string raw_nnet = "";
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("raw", &raw, "If true, write only 'raw' neural net.");
     po.Register("set-raw-nnet", &raw_nnet,
                 "Set the raw nnet inside the model to the one provided in "
                 "the option string.");
+
     po.Read(argc, argv);
     if (po.NumArgs() != 2) {
       po.PrintUsage();
@@ -49,15 +56,18 @@ int main(int argc, char *argv[]) {
                 out_model_filename = po.GetArg(2);
     PhoneDurationModel durmodel;
     ReadKaldiObject(in_model_filename, &durmodel);
+
     if (!raw_nnet.empty()) {
       Nnet nnet;
       ReadKaldiObject(raw_nnet, &nnet);
       durmodel.SetNnet(nnet);
     }
+
     if (raw)
       WriteKaldiObject(durmodel.GetNnet(), out_model_filename, binary_write);
     else
       WriteKaldiObject(durmodel, out_model_filename, binary_write);
+
     KALDI_LOG << "Done writing the nnet.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
