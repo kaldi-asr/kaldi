@@ -1,6 +1,6 @@
 // bin/est-pca.cc
 
-// Copyright      2014  Johns Hopkins University  (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University  (author: Sri Harish Mallidi)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
