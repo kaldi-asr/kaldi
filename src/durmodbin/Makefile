@@ -4,7 +4,7 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-BINFILES = durmod-init durmod-make-egs durmod-copy-nnet
+BINFILES = durmod-init durmod-make-egs durmod-copy
 OBJFILES =
 
 

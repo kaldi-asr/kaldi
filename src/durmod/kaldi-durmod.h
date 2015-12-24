@@ -37,14 +37,16 @@ namespace kaldi {
   using nnet3::NnetIo;
 
 struct PhoneDurationModelOptions {
-  int left_ctx, right_ctx;
+  int32 left_ctx, right_ctx;
+  int32 max_duration;
 
   void Register(OptionsItf *po);
 
   PhoneDurationModelOptions():
     left_ctx(4),
-    right_ctx(2)
-    { }
+    right_ctx(2),
+    max_duration(30)
+    {}
 };
 
 class PhoneDurationModel {
@@ -61,7 +63,7 @@ class PhoneDurationModel {
     right_context_(opts.right_ctx),
     roots_(roots),
     questions_(questions),
-    max_duration_(30) {}
+    max_duration_(opts.max_duration) {}
 
   void InitNnet(int input_dim, int dim1,
                 int dim2, int output_dim);
@@ -70,6 +72,7 @@ class PhoneDurationModel {
   }
   const Nnet &GetNnet() const { return nnet_; }
   Nnet &GetNnet() { return nnet_; }
+  void SetNnet(const Nnet &nnet) { nnet_ = nnet; }
 
  private:
   Nnet nnet_;

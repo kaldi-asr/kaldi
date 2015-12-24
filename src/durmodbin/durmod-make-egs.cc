@@ -1,5 +1,5 @@
 // durmodbin/durmod-make-egs.cc
-// Copyright 2015 Johns Hopkins University
+// Author: Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -98,12 +98,17 @@ int main(int argc, char *argv[]) {
     }
     lognormal_var /= n_egs_done;
     KALDI_LOG << "Wrote " << n_egs_done << " examples.";
+    // My estimation of a reasonable max_duration_ using stats:
+    int32 stats_based_max_duration_ = exp(lognormal_mean)
+                                      + 2.5 * exp(sqrt(lognormal_var));
+
     KALDI_LOG << "Statistics of durations (in frames): "
               << " Mean=" << mean_duration
               << " Min=" << min_duration
               << " Max=" << max_duration
               << " LogNormal-Mean=" << lognormal_mean
-              << " LogNormal-SD=" << sqrt(lognormal_var);
+              << " LogNormal-SD=" << sqrt(lognormal_var)
+              << " Stats-based-max-duration: " << stats_based_max_duration_;
     KALDI_LOG << "Done " << n_done << " utterances.";
   } catch(const std::exception &e) {
     std::cerr << e.what();

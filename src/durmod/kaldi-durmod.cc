@@ -19,8 +19,11 @@
 #include "durmod/kaldi-durmod.h"
 namespace kaldi {
 void PhoneDurationModelOptions::Register(OptionsItf *opts) {
-  opts->Register("left-ctx", &left_ctx, "Number of left context frames");
-  opts->Register("right-ctx", &right_ctx, "Number of right context frames");
+  opts->Register("left-context", &left_ctx, "Number of left context frames");
+  opts->Register("right-context", &right_ctx, "Number of right context frames");
+  opts->Register("max-duration", &max_duration,
+                 "Max phone duration in frames. Durations longer than this will"
+                 "be mapped to this value.");
 }
 PhoneDurationEgsMaker::PhoneDurationEgsMaker(const PhoneDurationModel &model) {
   InitFeatureMaker(model);
@@ -138,7 +141,7 @@ void PhoneDurationEgsMaker::InitFeatureMaker(const PhoneDurationModel &model) {
       if (max_phone_idx < phone)
         max_phone_idx = phone;
       if (binary_feats_.count(phone) <= 0) {
-        KALDI_WARN << "Phone " << phone << "does not have any "
+        KALDI_WARN << "Phone " << phone << " does not have any "
                    << "acoustic question associated.";
       }
     }
@@ -223,12 +226,12 @@ void PhoneDurationModel::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, right_context_);
   WriteBasicType(os, binary, max_duration_);
   WriteToken(os, binary, "<Roots>");
-  WriteBasicType(os, binary, roots_.size());
+  WriteBasicType(os, binary, static_cast<int32>(roots_.size()));
   for (int i = 0; i < roots_.size(); i++)
     WriteIntegerVector(os, binary, roots_[i]);
   WriteToken(os, binary, "</Roots>");
   WriteToken(os, binary, "<Questions>");
-  WriteBasicType(os, binary, questions_.size());
+  WriteBasicType(os, binary, static_cast<int32>(questions_.size()));
   for (int i = 0; i < questions_.size(); i++)
     WriteIntegerVector(os, binary, questions_[i]);
   WriteToken(os, binary, "</Questions>");

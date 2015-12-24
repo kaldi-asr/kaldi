@@ -1,5 +1,5 @@
 // durmodbin/durmod-init.cc
-// Copyright 2015 Johns Hopkins University
+// Author: Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,7 +32,12 @@ int main(int argc, char *argv[]) {
         " <dur-model>\n"
         "e.g.: \n"
         "  durmod-init roots.int extra_questions.int 0.durmod";
+
+    bool binary_write = true;
+
     ParseOptions po(usage);
+    po.Register("binary", &binary_write, "Write output in binary mode");
+
     PhoneDurationModelOptions opts;
     opts.Register(&po);
     po.Read(argc, argv);
@@ -58,16 +63,13 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Read " << questions.size() << " phonetic questions";
     PhoneDurationModel durmod(opts, roots, questions);
     PhoneDurationEgsMaker egs_maker(durmod);
-//    int32 mixture_size = 1;
     int32 dim1 = egs_maker.FeatureDim() * 1.5;
-//    if (dim1 % 2 != 0)
-//      dim1++;
     durmod.InitNnet(egs_maker.FeatureDim(), dim1,
                     10, egs_maker.OutputDim());
     KALDI_LOG << "Feature dim: " << egs_maker.FeatureDim()
               << ", NumBinaryFeatures: " << egs_maker.NumBinaryFeatures()
               << ", NumPhoneIdentities: " << egs_maker.NumPhoneIdentities();
-    WriteKaldiObject(durmod, model_filename, false);
+    WriteKaldiObject(durmod, model_filename, binary_write);
     KALDI_LOG << "Done writing the model.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
