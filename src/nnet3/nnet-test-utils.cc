@@ -981,7 +981,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       for (int32 i = 0; i < input_dim-1; i++)
         buffer << column_map[i] << ",";
       buffer << column_map.back();
-      os << "new-column-order=" << buffer.str();
+      os << "column-map=" << buffer.str();
       break;
     }
     case 21: {
