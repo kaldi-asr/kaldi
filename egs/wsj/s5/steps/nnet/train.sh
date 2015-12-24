@@ -365,7 +365,7 @@ if [ ! -z $nnet_init ]; then
 elif [ ! -z $nnet_proto ]; then
   echo "# initializing NN from prototype '$nnet_proto'";
   nnet_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
-  nnet-initialize --seed $seed $nnet_proto $nnet_init
+  nnet-initialize --seed=$seed $nnet_proto $nnet_init
 else 
   echo "# getting input/output dims :"
   # input-dim,
