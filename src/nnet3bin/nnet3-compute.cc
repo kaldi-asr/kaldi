@@ -31,7 +31,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     using namespace kaldi::nnet3;
     typedef kaldi::int32 int32;
-    typedef kaldi::int64 int64;
 
     const char *usage =
         "Propagate the features through raw neural network model "
