@@ -221,55 +221,60 @@ void WaveData::Read(std::istream &is) {
   uint32 data_chunk_size = ReadUint32(is, swap);
   riff_chunk_read += 4;
 
+  // check if data is read in stream mode
+  bool is_stream_mode = false;
+  if ((riff_chunk_size == 0 && data_chunk_size == 0)
+        || (riff_chunk_size == std::numeric_limits<uint32>::max() 
+            && data_chunk_size == std::numeric_limits<uint32>::max())) {
+    // when data are read in stream model, we don't know chunk size in advance
+    // data_chunk_size and riff_chunk_size (Uint32) could be 
+    // either ox00000000 or oxFFFFFFFF
+    is_stream_mode = true;
+  }
+
   if (std::abs(static_cast<int64>(riff_chunk_read) +
                static_cast<int64>(data_chunk_size) -
                static_cast<int64>(riff_chunk_size)) > 1) {
     // we allow the size to be off by one, because there is a weirdness in the
     // format of RIFF files that means that the input may sometimes be padded
     // with 1 unused byte to make the total size even.
-    KALDI_ERR << "Expected " << riff_chunk_size << " bytes in RIFF chunk, but "
-              << "after first data block there will be " << riff_chunk_read
-              << " + " << data_chunk_size << " bytes "
-              << "(we do not support reading multiple data chunks).";
+    if (is_stream_mode) 
+        KALDI_WARN << "Read in RIFF chunk size: " << riff_chunk_size
+                   << ", Read in data chunk size: " << data_chunk_size
+                   << ". Maybe data is read in stream mode "
+                   << "so that we don't know exact size in advance.";
+    else
+        KALDI_ERR << "Expected " << riff_chunk_size << " bytes in RIFF chunk, but "
+                  << "after first data block there will be " << riff_chunk_read
+                  << " + " << data_chunk_size << " bytes "
+                  << "(we do not support reading multiple data chunks).";
   }
 
-  std::vector<char*> data_pointer_vec;
-  std::vector<int> data_size_vec;
+  std::vector<char> chunk_data_vec;
   uint32 num_bytes_read = 0;
-  for (int32 remain_chunk_size = data_chunk_size; remain_chunk_size > 0;
-       remain_chunk_size -= kBlockSize) {
-    int32 this_block_size = remain_chunk_size;
-    if (kBlockSize < remain_chunk_size)
-      this_block_size = kBlockSize;
-    char *block_data_vec = new char[this_block_size];
-    is.read(block_data_vec, this_block_size);
-    num_bytes_read += is.gcount();
-    data_size_vec.push_back(is.gcount());
-    data_pointer_vec.push_back(block_data_vec);
-    if (num_bytes_read < this_block_size)
-      break;
+  if (!is_stream_mode) {
+     chunk_data_vec.resize(data_chunk_size);
+     is.read(&chunk_data_vec[0], data_chunk_size);
+     num_bytes_read = is.gcount();
+     KALDI_ASSERT(num_bytes_read == data_chunk_size);     
+  } else {
+    // when data are read in stream model, we don't know size in advance
+    // data_chunk_size and riff_chunk_size (Uint32) could be 
+    // either ox00000000 or oxFFFFFFFF
+    // we need to read in the stream differently in this case
+    chunk_data_vec.clear();
+    num_bytes_read = 0;
+    while (is.good()) {
+      char buffer[kBlockSize];
+      is.read(buffer, sizeof buffer);
+      std::copy(buffer, buffer + is.gcount(),
+                std::back_inserter(chunk_data_vec));
+      num_bytes_read += is.gcount();
+    }
   }
-
-  std::vector<char> chunk_data_vec(num_bytes_read);
-  uint32 data_address = 0;
-  for (int i = 0; i < data_pointer_vec.size(); i++) {
-    memcpy(&(chunk_data_vec[data_address]), data_pointer_vec[i],
-           data_size_vec[i]);
-    delete[] data_pointer_vec[i];
-    data_address += data_size_vec[i];
-  }
-
-  char *data_ptr = &(chunk_data_vec[0]);
-  if (num_bytes_read == 0 && num_bytes_read != data_chunk_size) {
-    KALDI_ERR << "WaveData: failed to read data chunk (read no bytes)";
-  } else if (num_bytes_read != data_chunk_size) {
-    KALDI_ASSERT(num_bytes_read < data_chunk_size);
-    KALDI_WARN << "Read fewer bytes than specified in the header: "
-               << num_bytes_read << " < " << data_chunk_size;
-  }
-
-  if (data_chunk_size == 0)
+  if (num_bytes_read == 0)
     KALDI_ERR << "WaveData: empty file (no data)";
+  char *data_ptr = &(chunk_data_vec[0]);
 
   uint32 num_samp = num_bytes_read / block_align;
   data_.Resize(num_channels, num_samp);
