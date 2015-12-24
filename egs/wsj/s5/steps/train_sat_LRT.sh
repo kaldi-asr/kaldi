@@ -139,27 +139,38 @@ if [ $stage -le -3 ] && $train_tree; then
   compile-questions $context_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
   echo "$0: Building the tree"
-  if [ ! -f $dir/tree.L-0 ]; then
-    $cmd $dir/log/build_tree.log \
-      build-tree-entropy $context_opts --verbose=1 --max-leaves=$numleaves \
-      --num-trees=$numtrees_T  --lambda=$lambda \
-      --thresh=0 \
-      --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
-      $dir/questions.qst $lang/topo $dir/tree || exit 1;
+  if [ ! -f $dir/done.build_tree ]; then
+    if [ "$numtrees_T" -gt 0 ]; then
+    echo building triphone tree
+    (  $cmd $dir/log/build_tree.log \
+        build-tree-entropy $context_opts --verbose=1 --max-leaves=$numleaves \
+        --num-trees=$numtrees_T  --lambda=$lambda \
+        --thresh=0 \
+        --cluster-thresh=$cluster_thresh $dir/treeacc $lang/phones/roots.int \
+        $dir/questions.qst $lang/topo $dir/tree || exit 1;)&
+    fi
 
-    $cmd $dir/log/build_tree.R.log \
-      build-tree-entropy --context-width=2 --central-position=0 --verbose=1 --max-leaves=$numleaves \
-      --num-trees=$numtrees_R  --lambda=$lambda \
-      --thresh=0 \
-      --cluster-thresh=$cluster_thresh $dir/treeacc.R $lang/phones/roots.int \
-      $dir/questions.qst $lang/topo $dir/tree.R || exit 1;
+    if [ "$numtrees_R" -gt 0 ]; then
+    echo building left tree
+    (  $cmd $dir/log/build_tree.R.log \
+        build-tree-entropy --context-width=2 --central-position=0 --verbose=1 --max-leaves=$numleaves \
+        --num-trees=$numtrees_R  --lambda=$lambda \
+        --thresh=0 \
+        --cluster-thresh=$cluster_thresh $dir/treeacc.R $lang/phones/roots.int \
+        $dir/questions.qst $lang/topo $dir/tree.R || exit 1;)&
+    fi
 
-    $cmd $dir/log/build_tree.L.log \
-      build-tree-entropy --context-width=2 --central-position=1 --verbose=1 --max-leaves=$numleaves \
-      --num-trees=$numtrees_L  --lambda=$lambda \
-      --thresh=0 \
-      --cluster-thresh=$cluster_thresh $dir/treeacc.L $lang/phones/roots.int \
-      $dir/questions.qst $lang/topo $dir/tree.L || exit 1;
+    if [ "$numtrees_L" -gt 0 ]; then
+    echo building right tree
+    (  $cmd $dir/log/build_tree.L.log \
+        build-tree-entropy --context-width=2 --central-position=1 --verbose=1 --max-leaves=$numleaves \
+        --num-trees=$numtrees_L  --lambda=$lambda \
+        --thresh=0 \
+        --cluster-thresh=$cluster_thresh $dir/treeacc.L $lang/phones/roots.int \
+        $dir/questions.qst $lang/topo $dir/tree.L || exit 1;)&
+    fi
+    wait
+    touch $dir/done.build_tree
   fi
 
   for i in `seq 0 $[$numtrees_L-1]`; do
@@ -254,7 +265,7 @@ for i in `seq 0 $[numtrees-1]`; do
 done
 
 
-while [ `ls $dir/done* 2>/dev/null | wc -l` -ne $numtrees ]; do sleep 30; done
+#while [ `ls $dir/done* 2>/dev/null | grep -v build | wc -l` -ne $numtrees ]; do sleep 30; done
 
 if [ `ls $dir/tree_*/${num_iters}.mdl | wc -l` -ne $numtrees ]; then
     echo something is wrong

@@ -3,7 +3,10 @@
 . path.sh
 . cmd.sh
 
-gmm=false
+gmm=true
+method=joint # joint for joint training; multi for multi-output training
+gmm_decode=false
+dnn_stage=-100
 echo "$0 $@"
 
 . ./utils/parse_options.sh || exit 1;
@@ -42,14 +45,21 @@ if [ "$gmm" == "true" ]; then
 
   utils/mkgraph.sh data/lang_test_bd_tgpr $dir/virtual $dir/virtual/graph_bd_tgpr
 
-  steps/decode_multi.sh --cmd "$decode_cmd" --nj 10 \
-      --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_dev93 \
-      $dir/virtual/graph data/test_dev93 $dir/virtual/decode_dev93 $dir/virtual/tree-mapping &
-  steps/decode_multi.sh --cmd "$decode_cmd" --nj 8 \
-      --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_eval92 \
-      $dir/virtual/graph data/test_eval92 $dir/virtual/decode_eval92 $dir/virtual/tree-mapping &
+  if [ "$gmm_decode" == "true" ]; then
+    steps/decode_multi.sh --cmd "$decode_cmd" --nj 10 \
+        --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_dev93 \
+        $dir/virtual/graph data/test_dev93 $dir/virtual/decode_dev93 $dir/virtual/tree-mapping &
+    steps/decode_multi.sh --cmd "$decode_cmd" --nj 8 \
+        --numtrees $num_trees --transform_dir exp/tri4b/decode_bd_tgpr_eval92 \
+        $dir/virtual/graph data/test_eval92 $dir/virtual/decode_eval92 $dir/virtual/tree-mapping &
+  fi
 fi
 
-nnet3dir=${dir}_tdnn_joint
+nnet3dir=${dir}/../tdnn_${method}_${num_leaves}
 
-./local/nnet3/run_tdnn_joint.sh --dir $nnet3dir $dir $dir/virtual $num_trees -100
+./local/nnet3/run_tdnn_$method.sh --dir $nnet3dir $dir $dir/virtual $num_trees $dnn_stage
+
+method=multi
+nnet3dir=${dir}/../tdnn_${method}_${num_leaves}
+
+./local/nnet3/run_tdnn_$method.sh --dir $nnet3dir $dir $dir/virtual $num_trees $dnn_stage
