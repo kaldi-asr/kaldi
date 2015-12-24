@@ -746,17 +746,23 @@ class ClipGradientComponent: public Component {
 
 };
 
-// PermuteComponent shuffles the columns in the input, according to the
-// specification.
+/** PermuteComponent changes the order of the columns (i.e. the feature or
+    activation dimensions).  Output dimension i is mapped to input dimension
+    column_map_[i], so it's like doing:
+      for each row:
+        for each feature/activation dimension i:
+          output(row, i) = input(row, column_map_[i]).
+
+*/
 class PermuteComponent: public Component {
  public:
   PermuteComponent()  {}
-  PermuteComponent(CuArray<int32> column_map): column_map_(column_map){}
+  PermuteComponent(const std::vector<int32> &column_map) { Init(column_map); }
 
   virtual int32 InputDim() const { return column_map_.Dim(); }
   virtual int32 OutputDim() const { return column_map_.Dim(); }
   virtual void InitFromConfig(ConfigLine *cfl);
-  void Init(CuArray<int32> column_map) { column_map_ = column_map;}
+  void Init(const std::vector<int32> &column_map);
 
   virtual std::string Type() const { return "PermuteComponent"; }
 
@@ -766,8 +772,7 @@ class PermuteComponent: public Component {
 
   virtual void ZeroStats() {}
 
-  virtual Component* Copy() const {
-    return new PermuteComponent(column_map_);}
+  virtual Component* Copy() const;
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -788,7 +793,13 @@ class PermuteComponent: public Component {
   virtual void Write(std::ostream &os, bool binary) const;
   virtual std::string Info() const;
  private:
+  // computes the reverse column map.  Must not be called if column_map_.Dim()
+  // == 0
+  void ComputeReverseColumnMap();
   CuArray<int32> column_map_;
+  // the following is a derived variable, not written to disk.
+  // It is used in backprop.
+  CuArray<int32> reverse_column_map_;
   PermuteComponent &operator =
       (const PermuteComponent &other); // Disallow.
 };
