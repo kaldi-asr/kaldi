@@ -11,18 +11,28 @@ def scores_to_best_comb(scores_dicts_list, utt, combination_type="sum"):
   #number of methods
   num_pm_methods = len(scores_dicts_list)
   num_combs = len(scores_dicts_list[0])
-  goodness_scores = np.asarray((num_pm_methods, num_combs))
+  goodness_scores = np.zeros((num_pm_methods, num_combs))
 
   for ii, scores_dicts in enumerate(scores_dicts_list):
-    goodness_scores[ii, :] = np.asarray(map(lambda x: x[utt], scores_dicts))
+    this_scores = np.asarray(map(lambda x: x[utt], scores_dicts))
+
+    if goodness_scores[ii, :].shape == this_scores.shape:
+      goodness_scores[ii, :] = this_scores
+    else:
+      if len(goodness_scores[ii, :]) == len(this_scores): #same number of elems, diff shape
+        this_scores = np.reshape(this_scores, goodness_scores[ii, :].shape)
+        goodness_scores[ii, :] = this_scores
+      else:
+        logging.ERROR("ERROR: incompatible shapes")
+        sys.exit(1)
     
   #combine scores from the methods
   if ii == 0: # then only 1 method
     best_comb = np.argmax(goodness_scores)+1 #[0..30]->[1..31]
   elif ii > 0: # multiple methods
-    s = 1/np.sum(goodness_scores, axis=1)
+    s = np.sum(goodness_scores, axis=1)
     S = np.transpose(np.matlib.repmat(s, goodness_scores.shape[1], 1))
-    goodness_scores = goodness_scores * S
+    goodness_scores = goodness_scores / S
     
     if combination_type == "sum": #Arith. Mean of probs
       goodness_scores = np.mean(goodness_scores, axis=0)
