@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+# tdnn with 'jesus layer'
+
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings
-
 
 
 parser = argparse.ArgumentParser(description="Writes config files and variables "
@@ -20,12 +21,14 @@ parser.add_argument("--include-log-softmax", type=str,
 parser.add_argument("--final-layer-normalize-target", type=float,
                     help="RMS target for final layer (set to <1 if final layer learns too fast",
                     default=1.0)
-parser.add_argument("--pnorm-input-dim", type=int,
-                    help="input dimension to p-norm nonlinearities")
-parser.add_argument("--pnorm-output-dim", type=int,
-                    help="output dimension of p-norm nonlinearities")
-parser.add_argument("--relu-dim", type=int,
-                    help="dimension of ReLU nonlinearities")
+parser.add_argument("--jesus-dim", type=int,
+                    help="dimension of Jesus layer", default=1000)
+parser.add_argument("--jesus-part-dim", type=int,
+                    help="dimension of block part of Jesus layer", default=20)
+parser.add_argument("--jesus-part-hidden-dim", type=int,
+                    help="hidden dimension of block part of Jesus layer", default=200)
+
+
 parser.add_argument("--use-presoftmax-prior-scale", type=str,
                     help="if true, a presoftmax-prior-scale is added",
                     choices=['true', 'false'], default = "true")
@@ -48,23 +51,14 @@ if args.feat_dim is None or not (args.feat_dim > 0):
     sys.exit("--feat-dim argument is required");
 if args.num_targets is None or not (args.num_targets > 0):
     sys.exit("--num-targets argument is required");
-if not args.relu_dim is None:
-    if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
-        sys.exit("--relu-dim argument not compatible with "
-                 "--pnorm-input-dim or --pnorm-output-dim options");
-    nonlin_input_dim = args.relu_dim
-    nonlin_output_dim = args.relu_dim
-else:
-    if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
-        sys.exit("--relu-dim not set, so expected --pnorm-input-dim and "
-                 "--pnorm-output-dim to be provided.");
-    nonlin_input_dim = args.pnorm_input_dim
-    nonlin_output_dim = args.pnorm_output_dim
 
 if args.use_presoftmax_prior_scale == "true":
     use_presoftmax_prior_scale = True
 else:
     use_presoftmax_prior_scale = False
+
+if (args.jesus_dim % args.jesus_part_dim != 0):
+    sys.exit("--jesus-part-dim must divide --jesus-dim")
 
 ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
 splice_array = []
@@ -118,43 +112,13 @@ if args.ivector_dim > 0:
 print('output-node name=output input=Append({0})'.format(", ".join(list)), file=f)
 f.close()
 
+
 for l in range(1, num_hidden_layers + 1):
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
     if l == 1:
         print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
               format(args.config_dir), file=f)
-    cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
-
-    print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
-    print('component name=affine{0} type=NaturalGradientAffineComponent '
-          'input-dim={1} output-dim={2} bias-stddev=0'.
-        format(l, cur_dim, nonlin_input_dim), file=f)
-    if args.relu_dim is not None:
-        print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
-              format(l, args.relu_dim), file=f)
-    else:
-        print('# In nnet3 framework, p in P-norm is always 2.', file=f)
-        print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
-              format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
-    print('component name=renorm{0} type=NormalizeComponent dim={1} target-rms={2}'.format(
-        l, nonlin_output_dim,
-        (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f)
-    print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0'.format(
-          nonlin_output_dim, args.num_targets), file=f)
-    # printing out the next two, and their component-nodes, for l > 1 is not
-    # really necessary as they will already exist, but it doesn't hurt and makes
-    # the structure clearer.
-    if args.include_log_softmax == "true":
-        if use_presoftmax_prior_scale :
-            print('component name=final-fixed-scale type=FixedScaleComponent '
-                  'scales={0}/presoftmax_prior_scale.vec'.format(
-                    args.config_dir), file=f)
-        print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
-                args.num_targets), file=f)
-    print('# Now for the network structure', file=f)
-    if l == 1:
         splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
         if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
         orig_input='Append({0})'.format(', '.join(splices))
@@ -162,23 +126,77 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=lda component=lda input={0}'.format(orig_input),
               file=f)
         cur_input='lda'
+        cur_dim = input_dim
     else:
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
         splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
                     for n in splice_array[l-1] ]
         cur_input='Append({0})'.format(', '.join(splices))
+        cur_dim = args.jesus_dim * len(splice_array[l-1])
+
+    print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
+    print('component name=affine{0} type=NaturalGradientAffineComponent '
+          'input-dim={1} output-dim={2} bias-stddev=0'.
+        format(l, cur_dim, args.jesus_dim), file=f)
     print('component-node name=affine{0} component=affine{0} input={1} '.
           format(l, cur_input), file=f)
-    print('component-node name=nonlin{0} component=nonlin{0} input=affine{0}'.
-          format(l), file=f)
-    print('component-node name=renorm{0} component=renorm{0} input=nonlin{0}'.
-          format(l), file=f)
 
-    print('component-node name=final-affine component=final-affine input=renorm{0}'.
-          format(l), file=f)
+    # now the current dimension is args.jesus_dim.
 
+    # Now the Jesus layer.
+    print ('component name=jesus-distribute-{0} type=DistributeComponent input-dim={1} '
+           'output-dim={2} '.format(l, args.jesus_dim, args.jesus_part_dim), file=f)
+    print ('component-node name=jesus-distribute-{0} component=jesus-distribute-{0} '
+           'input=affine{0}'.format(l), file=f)
+
+    print ('component name=jesus-affine-{0}a type=NaturalGradientAffineComponent '
+           'input-dim={1} output-dim={2} bias-stddev=0 '.format(
+            l, args.jesus_part_dim, args.jesus_part_hidden_dim), file=f)
+    print ('component-node name=jesus-affine-{0}a component=jesus-affine-{0}a '
+           'input=jesus-distribute-{0}'.format(l), file=f)
+    print ('component name=jesus-relu-{0}a type=RectifiedLinearComponent dim={1} '.
+           format(l, args.jesus_part_hidden_dim), file=f)
+    print ('component-node name=jesus-relu-{0}a component=jesus-relu-{0}a '
+           'input=jesus-affine-{0}a'.format(l), file=f)
+    print ('component name=jesus-affine-{0}b type=NaturalGradientAffineComponent '
+           'input-dim={1} output-dim={2} bias-stddev=0 '.format(
+            l, args.jesus_part_hidden_dim, args.jesus_part_dim),
+           file=f)
+    print ('component-node name=jesus-affine-{0}b component=jesus-affine-{0}b '
+           'input=jesus-relu-{0}a'.format(l), file=f)
+    num_jesus_parts = args.jesus_dim / args.jesus_part_dim;
+    jesus_append = 'Append({0})'.format(', '.join(
+            [ 'ReplaceIndex(jesus-affine-{0}b, x, {1})'.format(l, i) for i in range(0, num_jesus_parts) ]))
+
+    print ('component name=jesus-relu-{0}b type=RectifiedLinearComponent dim={1} '.
+           format(l, args.jesus_dim), file=f)
+    print ('component-node name=jesus-relu-{0}b component=jesus-relu-{0}b '
+           'input={1}'.format(l, jesus_append), file=f)
+    print ('component name=renorm{0} type=NormalizeComponent dim={1} target-rms={2}'.format(
+            l, args.jesus_dim,
+            (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f)
+    print ('component-node name=renorm{0} component=renorm{0} input=jesus-relu-{0}b'.format(l),
+           file=f)
+
+    # with each new layer we regenerate the final-affine component give it a
+    # small covariance to avoid problems with the natural gradient Jesus affine
+    # components.
+    print('component name=final-affine type=NaturalGradientAffineComponent '
+          'input-dim={0} output-dim={1} param-stddev=0.001 bias-stddev=0'.format(
+            args.jesus_dim, args.num_targets), file=f)
+    print('component-node name=final-affine component=final-affine input=renorm{0}'.format(l),
+          file=f)
+
+    # printing out the next two, and their component-nodes, for l > 1 is not
+    # really necessary as they will already exist, but it doesn't hurt and makes
+    # the structure clearer.
     if args.include_log_softmax == "true":
-        if use_presoftmax_prior_scale:
+        print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
+                args.num_targets), file=f)
+        if use_presoftmax_prior_scale :
+            print('component name=final-fixed-scale type=FixedScaleComponent '
+                  'scales={0}/presoftmax_prior_scale.vec'.format(
+                    args.config_dir), file=f)
             print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
                   file=f)
             print('component-node name=final-log-softmax component=final-log-softmax '
@@ -189,6 +207,7 @@ for l in range(1, num_hidden_layers + 1):
         print('output-node name=output input=final-log-softmax', file=f)
     else:
         print('output-node name=output input=final-affine', file=f)
+
     f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim

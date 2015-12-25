@@ -26,6 +26,7 @@ final_effective_lrate=0.00002
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+jesus_dim=
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -199,24 +200,35 @@ num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exi
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
-  if [ ! -z "$relu_dim" ]; then
-    dim_opts="--relu-dim $relu_dim"
+  if [ ! -z "$jesus_dim" ]; then
+    python steps/nnet3/make_jtdnn_configs.py \
+      --include-log-softmax=false \
+      --final-layer-normalize-target $final_layer_normalize_target \
+      --splice-indexes "$splice_indexes"  \
+      --feat-dim $feat_dim \
+      --ivector-dim $ivector_dim  \
+      --jesus-dim $jesus_dim \
+      --num-targets $num_leaves \
+      --use-presoftmax-prior-scale false \
+      $dir/configs || exit 1;
   else
-    dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
+    if [ ! -z "$relu_dim" ]; then
+      dim_opts="--relu-dim $relu_dim"
+    else
+      dim_opts="--pnorm-input-dim $pnorm_input_dim --pnorm-output-dim  $pnorm_output_dim"
+    fi
+    # create the config files for nnet initialization
+    python steps/nnet3/make_tdnn_configs.py \
+      --include-log-softmax=false \
+      --final-layer-normalize-target $final_layer_normalize_target \
+      --splice-indexes "$splice_indexes"  \
+      --feat-dim $feat_dim \
+      --ivector-dim $ivector_dim  \
+      $dim_opts \
+      --num-targets $num_leaves \
+      --use-presoftmax-prior-scale false \
+      $dir/configs || exit 1;
   fi
-
-  # create the config files for nnet initialization
-  python steps/nnet3/make_tdnn_configs.py \
-    --include-log-softmax=false \
-    --final-layer-normalize-target $final_layer_normalize_target \
-    --splice-indexes "$splice_indexes"  \
-    --feat-dim $feat_dim \
-    --ivector-dim $ivector_dim  \
-     $dim_opts \
-    --num-targets $num_leaves \
-    --use-presoftmax-prior-scale false \
-   $dir/configs || exit 1;
-
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
   # we do this as it's a convenient way to get the stats for the 'lda-like'
