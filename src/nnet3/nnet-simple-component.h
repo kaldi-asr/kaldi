@@ -1443,7 +1443,7 @@ class MaxpoolingComponent: public Component {
     return new MaxpoolingComponent(input_dim_, output_dim_,
 		    pool_size_, pool_stride_); }
 
-  // Some functions that are specific to this
+  // Some functions that are specific to this class
   void Init(int32 input_dim, int32 output_dim,
             int32 pool_size, int32 pool_stride);
 

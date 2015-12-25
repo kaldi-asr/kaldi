@@ -55,14 +55,14 @@ enum ComponentProperties {
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kReordersIndexes = 0x040,  // true if the ReordersIndexes function might reorder
+  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
                            // setting, the "in_deriv" output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kBackpropNeedsInput  = 0x100,  // true if backprop operation needs access to
-                                 // forward-pass input.
+  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+                                // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
   kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
@@ -86,7 +86,7 @@ enum ComponentProperties {
 class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
-  virtual ~ComponentPrecomputedIndexes();
+  virtual ~ComponentPrecomputedIndexes() { }
 };
 
 

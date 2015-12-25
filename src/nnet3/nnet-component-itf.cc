@@ -98,6 +98,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new MaxpoolingComponent();
   } else if (component_type == "PermuteComponent") {
     ans = new PermuteComponent();
+  } else if (component_type == "DistributeComponent") {
+    ans = new DistributeComponent();
   }
   return ans;
 }
