@@ -57,6 +57,7 @@ enum ComponentProperties {
                            // accommodate it.
   kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
+                             // Must not be set for simple components.
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
                            // setting, the "in_deriv" output.  The Component chooses
                            // whether to add or set, and the calling code has to

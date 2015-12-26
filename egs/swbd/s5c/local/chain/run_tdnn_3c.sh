@@ -3,6 +3,7 @@
 # _3c is as _2y, but using 'jesus' nonlinearity: the --jesus-dim 800 option, instead of
 #   --relu-dim 850.
 #  reusing the egs from 2y.
+# caution: see config section, I changed some things while running.
 
 # _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
 # 800k to 1.2 million.  The aim is to avoid some of the per-job overhead
@@ -137,7 +138,8 @@ num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
-max_param_change=1.0
+# max_param_change=1.0
+max_param_change=0.5  # Changed it to this value on iteration  74.
 final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16

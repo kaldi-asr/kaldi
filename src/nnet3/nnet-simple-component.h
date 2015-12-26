@@ -1454,6 +1454,143 @@ class MaxpoolingComponent: public Component {
   int32 pool_stride_;
 };
 
+/**
+   CompositeComponent is a base-class for components that are sequences of other
+   [simple] components.  The child-class is responsible for the InitFromConfig()
+   function.  The reason you might want to do this is to save memory (at the expense of
+   more compute), because doing it like this means we have to re-do parts of the
+   forward pass in the backprop phase.
+   We inherit from UpdatableComponent just in case one or more of the components
+   in the sequence are updatable.
+ */
+class CompositeComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+
+  virtual std::string Info() const;
+  // We don't implement InitFromConfig() at this level: child-class should do
+  // it.
+  CompositeComponent() { } // use Init to really initialize.
+
+  // Initialize from this list of components; takes ownership of the pointers.
+  void Init(const std::vector<Component*> &components,
+            int32 max_rows_process);
+
+  // We don't implement Type() at this level.
+
+  // The properties depend on the properties of the constituent components.
+  virtual int32 Properties() const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+ private:
+  // returns true if at least one of 'components_' returns the kUpdatable flag
+  // in its flags.
+  bool IsUpdatable() const;
+
+  // the maximum number of
+  int32 max_rows_process_;
+  std::vector<Component*> components_;
+
+};
+
+
+/**
+   Suppose we had a BlockAffineComponent which had repeats of the
+   same block (so like the same affine component repeated a number of times).
+   Then the Jesus component would be equivalent to a BlockAffineComponent,
+   followed by a ReLU, followed by another BlockAffineComponent.  This is
+   used to learn a many-to-many nonlinearity.   Bear in mind
+   that the dimension at the ReLU could be quite a bit higher than the
+   dimension at the input and output of the Jesus component (e.g. ten times
+   higher), which is why we want to implement this as a single component
+   (to save memory, at the expense of having to repeat the forward propagation
+   phase of the first BlockAffineComponent, during the backprop phase).
+*/
+
+class JesusComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const {
+    return linear_params_a_.NumCols() * num_blocks_;
+  }
+  virtual int32 OutputDim() const {
+    return linear_params_b_.NumRows() * num_blocks_;
+  }
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  JesusComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "JesusComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|kBackpropAdds;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+
+  void Init(BaseFloat learning_rate,
+            int32 num_blocks, int32 block_input_dim,
+            int32 block_hidden_dim, int32 block_output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+
+ private:
+
+  int32 num_blocks_;
+  // first the parameters before the ReLU
+  CuMatrix<BaseFloat> linear_params_a_;
+  CuVector<BaseFloat> bias_params_a_;
+  // next, the parameters after the ReLU
+  CuMatrix<BaseFloat> linear_params_b_;
+  CuVector<BaseFloat> bias_params_b_;
+};
+
 
 } // namespace nnet3
 } // namespace kaldi

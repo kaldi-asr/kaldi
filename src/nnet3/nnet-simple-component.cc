@@ -3782,5 +3782,195 @@ std::string PermuteComponent::Info() const {
 }
 
 
+bool CompositeComponent::IsUpdatable() const {
+  for (std::vector<Component*>::const_iterator iter = components_.begin(),
+           end = components_.end(); iter != end; ++iter)
+    if ((*iter)->Flags() & kUpdatableComponent != 0)
+      return true;
+  return false;
+}
+
+// virtual
+int32 CompositeComponent::InputDim() const {
+  KALDI_ASSERT(!components_.empty());
+  return components_.front()->InputDim();
+};
+
+// virtual
+int32 CompositeComponent::OutputDim() const {
+  KALDI_ASSERT(!components_.empty());
+  return components_.back()->OutputDim();
+};
+
+virtual int32 CompositeComponent::Properties() const {
+  KALDI_ASSERT(!components_.empty());
+  int32 last_component_properties = components_.back()->Properties();
+  // We always assume backprop needs the input, as this would be necessary to
+  // get the activations at intermediate layers, if these were not needed in
+  // backprop, there would be no reason to use a CompositeComponent.
+  int32 ans = kSimpleComponent | kBackpropNeedsInput |
+      (last_component_properties & kPropagateAdds) |
+      (last_component_properties & kBackpropNeedsOutput) |
+      (IsUpdatable() ? kUpdatableComponent : 0);
+  for (size_t i = 0; i < components_.size(); i++)
+    if (components_[i]->Properties() & kStoresStats)
+      ans |= kStoresStats;
+};
+
+
+virtual void CompositeComponent::Propagate(
+    const ComponentPrecomputedIndexes *, // indexes
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() == out->NumCols() && in.NumCols() == InputDim() &&
+               out->NumCols() == OutputDim());
+  int32 num_rows = in.NumRows(),
+      num_components = components_.size();
+  if (num_rows > max_rows_process_) {
+    KALDI_ASSERT(max_rows_process_ > 0);
+    // recurse and process smaller parts of the data, to save memory.
+    for (int32 row_offset = 0; row_offset < num_rows;
+         row_offset += max_rows_process) {
+      int32 this_num_rows = std::min<int32>(max_rows_process,
+                                            num_rows - row_offset);
+      const CuSubMatrix<BaseFloat> in_part(in, row_offset, this_num_rows,
+                                           0, in.NumCols());
+      CuSubMatrix<BaseFloat> out_part(*out, row_offset, this_num_rows,
+                                      0, out->NumCols());
+      this->Propagate(NULL, in_part, &out_part);
+    }
+    return;
+  }
+  std::vector<CuMatrix<BaseFloat> > intermediate_outputs(num_components - 1);
+  for (int32 i = 0; i < num_components; i++) {
+    if (i + 1 < num_components) {
+      intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
+                                     kUndefined);
+      if (components_[i]->Properties() & kPropagateAdds)
+        intermediate_outputs[i].SetZero();
+    }
+    components_[i]->Propagate(NULL, (i == 0 ? in : intermediate_outputs[i-1]),
+               (i + 1 == num_components ? out : &(intermediate_outputs[i])));
+    if (i > 0)
+      intermediate_outputs[i-1].Resize(0, 0);
+  }
+}
+
+// virtual
+void CompositeComponent::Backprop(const std::string &debug_info,
+                                  const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &in_value,
+                                  const CuMatrixBase<BaseFloat> &out_value,
+                                  const CuMatrixBase<BaseFloat> &out_deriv,
+                                  Component *to_update,
+                                  CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_value.NumRows() == out_deriv->NumCols() &&
+               in_value.NumCols() == InputDim() &&
+               out_deriv->NumCols() == OutputDim());
+  int32 num_rows = in.NumRows(),
+      num_components = components_.size();
+  if (num_rows > max_rows_process_) {
+    KALDI_ASSERT(max_rows_process_ > 0);
+    // recurse and process smaller parts of the data, to save memory.
+    for (int32 row_offset = 0; row_offset < num_rows;
+         row_offset += max_rows_process) {
+      bool have_output_value = (out_value.NumRows() != 0);
+      int32 this_num_rows = std::min<int32>(max_rows_process,
+                                            num_rows - row_offset);
+      // out_value_part will only be used if out_value is nonempty; otherwise we
+      // make it a submatrix of 'out_deriv' to avoid errors in the constructor.
+      const CuSubMatrix<BaseFloat> out_value_part(have_output_value ? out_value : out_deriv,
+                                                  row_offset, this_num_rows,
+                                                  0, out_deriv.NumCols());
+      // in_deriv_value_part will only be used if in_deriv != NULL; otherwise we
+      // make it a submatrix of 'in_value' to avoid errors in the constructor.
+      CuSubMatrix<BaseFloat> in_deriv_part(in_deriv != NULL ? *in_deriv : in_value,
+                                            row_offset, this_num_rows,
+                                            0, in_value.NumCols());
+      CuSubMatrix<BaseFloat> in_value_part(in_value, row_offset, this_num_rows,
+                                           0, in_value.NumCols());
+      const CuSubMatrix<BaseFloat> out_deriv_part(out_deriv,
+                                                  row_offset, this_num_rows,
+                                                  0, in_value.NumCols());
+      CuMatrix<BaseFloat>  empty_mat;
+      this->Backprop(debug_info, NULL, in_value_part,
+                     have_output_value ? out_value_part : empty_mat,
+                     out_deriv, to_update,
+                     in_deriv != NULL ? &in_deriv_part : NULL);
+    }
+    return;
+  }
+  // For now, assume all intermediate values and derivatives need to be
+  // computed.  in_value and out_deriv will always be supplied.
+
+  std::vector<CuMatrix<BaseFloat> > intermediate_outputs(num_components - 1);
+  std::vector<CuMatrix<BaseFloat> > intermediate_derivs(num_components - 1);
+
+  // Do the propagation again for all but the last component in the sequence.
+  // later on we can try being more careful about which ones we need to propagage.
+  for (int32 i = 0; i < num_components; i++) {
+    if (i + 1 < num_components) {
+      intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
+                                     kUndefined);
+      if (components_[i]->Properties() & kPropagateAdds)
+        intermediate_outputs[i].SetZero();
+    }
+    components_[i]->Propagate(NULL, (i == 0 ? in : intermediate_outputs[i-1]),
+               (i + 1 == num_components ? out : &(intermediate_outputs[i])));
+    if (i > 0)
+      intermediate_outputs[i-1].Resize(0, 0);
+  }
+
+
+
+
+}
+
+
+virtual std::string CompositeComponent::Info() const {
+  stream << Type() << " ";
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (i > 0) stream << ", ";
+    stream << "sub-component" << (i+1) << " = { "
+           << components_[i]->Info() << " }";
+  }
+}
+
+
+
+std::string JesusComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_a_size =
+      static_cast<BaseFloat>(linear_params_a_.NumRows())
+      * static_cast<BaseFloat>(linear_params_a_.NumCols()),
+      linear_params_b_size =
+      static_cast<BaseFloat>(linear_params_b_.NumRows())
+      * static_cast<BaseFloat>(linear_params_b_.NumCols());
+  BaseFloat linear_stddev_a =
+      std::sqrt(TraceMatMat(linear_params_a_, linear_params_a_, kTrans) /
+                linear_params_a_size),
+      bias_stddev_a = std::sqrt(VecVec(bias_params_a_, bias_params_a_) /
+                               bias_params_a_.Dim()),
+      linear_stddev_b =
+      std::sqrt(TraceMatMat(linear_params_b_, linear_params_b_, kTrans) /
+                linear_params_b_size),
+      bias_stddev_b = std::sqrt(VecVec(bias_params_b_, bias_params_b_) /
+                               bias_params_b_.Dim()),
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", block-input-dim=" << linear_params_a_.NumCols()
+         << ", block-hidden-dim=" << linear_params_a_.NumRows()
+         << ", block-output-dim=" << linear_params_b_.NumRows()
+         << ", num-blocks=" << num_blocks_
+         << ", linear-params-a-stddev=" << linear_stddev_a
+         << ", bias-params-a-stddev=" << bias_stddev_a
+         << ", linear-params-b-stddev=" << linear_stddev_a
+         << ", bias-params-b-stddev=" << bias_stddev_a
+         << ", learning-rate=" << LearningRate()
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
+  return stream.str();
+}
+
+
 } // namespace nnet3
 } // namespace kaldi
