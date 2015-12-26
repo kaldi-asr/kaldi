@@ -190,7 +190,6 @@ void ElementwiseProductComponent::InitFromConfig(ConfigLine *cfl) {
   Init(input_dim, output_dim);
 }
 
-
 void ElementwiseProductComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
@@ -1786,14 +1785,44 @@ void SumGroupComponent::Init(const std::vector<int32> &sizes) {
   this->output_dim_ = sizes.size();
 }
 
+void SumGroupComponent::Init(int32 input_dim, int32 output_dim) {
+  const int32 num_groups = output_dim;
+  KALDI_ASSERT(input_dim % num_groups == 0);
+  const int32 group_size = input_dim / num_groups;
+
+  std::vector<Int32Pair> cpu_vec(num_groups);
+  std::vector<int32> reverse_cpu_vec;
+  int32 cur_index = 0;
+  for (size_t i = 0; i < num_groups; i++) {
+    cpu_vec[i].first = cur_index;
+    cpu_vec[i].second = cur_index + group_size;
+    cur_index += group_size;
+    for (int32 j = cpu_vec[i].first; j < cpu_vec[i].second; j++)
+      reverse_cpu_vec.push_back(i);
+  }
+  this->indexes_ = cpu_vec;
+  this->reverse_indexes_ = reverse_cpu_vec;
+  this->input_dim_ = input_dim;
+  this->output_dim_ = num_groups;
+}
+
 void SumGroupComponent::InitFromConfig(ConfigLine *cfl) {
   std::vector<int32> sizes;
-  bool ok = cfl->GetValue("sizes", &sizes);
-
-  if (!ok || cfl->HasUnusedValues() || sizes.empty())
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-  this->Init(sizes);
+  bool has_sizes = cfl->GetValue("sizes", &sizes);
+  if (has_sizes) {
+    if (cfl->HasUnusedValues() || sizes.empty())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    this->Init(sizes);
+  } else { // each group has the same size
+    int32 input_dim = -1, output_dim = -1;
+    if (!cfl->GetValue("input-dim", &input_dim) ||
+        !cfl->GetValue("output-dim", &output_dim) || cfl->HasUnusedValues()) {
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    }
+    Init(input_dim, output_dim);
+  }
 }
 
 Component* SumGroupComponent::Copy() const {

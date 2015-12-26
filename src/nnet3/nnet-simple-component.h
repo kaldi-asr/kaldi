@@ -576,18 +576,25 @@ class FixedAffineComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
 };
 
-// SumGroupComponent is used to sum up groups of posteriors.
-// It's used to introduce a kind of Gaussian-mixture-model-like
-// idea into neural nets.  This is basically a degenerate case of
-// MixtureProbComponent; we had to implement it separately to
-// be efficient for CUDA (we can use this one regardless whether
-// we have CUDA or not; it's the normal case we want anyway).
+/// SumGroupComponent is used to sum up groups of posteriors.
+/// It's used to introduce a kind of Gaussian-mixture-model-like
+/// idea into neural nets.  This is basically a degenerate case of
+/// MixtureProbComponent; we had to implement it separately to
+/// be efficient for CUDA (we can use this one regardless whether
+/// we have CUDA or not; it's the normal case we want anyway).
+///
+/// There are two forms of initialization in a config file: one
+/// where the number of elements are specified for each group
+/// individually as a vector, and one where only the total input
+/// dimension and the output dimension (number of groups) is specified.
+/// The second is used when all groups have the same size.
 class SumGroupComponent: public Component {
 public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   void Init(const std::vector<int32> &sizes); // the vector is of the input dim
                                               // (>= 1) for each output dim.
+  void Init(int32 input_dim, int32 output_dim);
   void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
                                                   // each output-dim, how many
                                                   // inputs were summed over.
