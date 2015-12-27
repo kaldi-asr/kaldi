@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-simple-computer.h"
+#include "nnet3/nnet-am-decodable-simple.h"
 #include "base/timer.h"
 #include "nnet3/nnet-utils.h"
 
@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
     
-    NnetSimpleComputerOptions opts;
+    NnetSimpleComputationOptions opts;
         
     bool apply_exp = false;
     std::string use_gpu = "yes";
@@ -141,14 +141,19 @@ int main(int argc, char *argv[]) {
        
       Matrix<BaseFloat> mat(features.NumRows(), features.NumCols());
       features.CopyToMat(&mat);
-      NnetSimpleComputer nnet_computer(
-          opts, nnet, mat,
-          left_context, right_context,
+
+      Vector<BaseFloat> priors;
+      NnetDecodableBase nnet_computer(
+          opts, nnet, priors, mat,
           ivector, online_ivectors,
           online_ivector_period);
 
-      Matrix<BaseFloat> matrix;
-      nnet_computer.GetOutput(&matrix);
+      Matrix<BaseFloat> matrix(nnet_computer.NumFrames(), 
+                               nnet_computer.OutputDim());
+      for (int32 t = 0; t < nnet_computer.NumFrames(); t++) {
+        SubVector<BaseFloat> row(matrix, t);
+        nnet_computer.GetOutputForFrame(t, &row);
+      }
 
       if (apply_exp)
         matrix.ApplyExp();

@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     bool apply_log = false;
     bool apply_exp = false;
+    BaseFloat apply_power = 1.0;
     BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
@@ -53,6 +54,8 @@ int main(int argc, char *argv[]) {
                 "Must be avoided if matrix has negative quantities.");
     po.Register("apply-exp", &apply_exp, 
                 "This option can be used to apply exp on the matrices");
+    po.Register("apply-power", &apply_power,
+                "This option can be used to apply a power on the matrices");
 
     po.Read(argc, argv);
 
@@ -94,11 +97,12 @@ int main(int argc, char *argv[]) {
       BaseFloatMatrixWriter writer(matrix_out_fn);
       SequentialBaseFloatMatrixReader reader(matrix_in_fn);
       for (; !reader.Done(); reader.Next(), num_done++) {
-        if (scale != 1.0 || apply_log || apply_exp) {
+        if (scale != 1.0 || apply_log || apply_exp || apply_power != 1.0) {
           Matrix<BaseFloat> mat(reader.Value());
           if (scale != 1.0) mat.Scale(scale);
           if (apply_log) mat.ApplyLog();
           if (apply_exp) mat.ApplyExp();
+          if (apply_power != 1.0) mat.ApplyPow(apply_power);
           writer.Write(reader.Key(), mat);
         } else {
           writer.Write(reader.Key(), reader.Value());

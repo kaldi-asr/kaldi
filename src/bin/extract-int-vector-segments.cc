@@ -29,7 +29,8 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Extract integer vectors corresponding to segments from whole vectors\n"
-        "Usage:  extract-int-vector-segments [options...] <ali-rspecifier> <segments-rxfilename> <ali-wspecifier>\n";
+        "Usage: extract-int-vector-segments [options...] <ali-rspecifier> <segments-rspecifier> <ali-wspecifier>\n"
+        " e.g.: extract-int-vector-segments ark:file_ali.ark ark,t:data/train/segments ark:utt_ali.ark";
 
     // construct all the global objects
     ParseOptions po(usage);

@@ -35,8 +35,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     bool binary = true;
+    bool write_for_matlab = false;
 
     po.Register("binary", &binary, "Write output in binary mode");
+    po.Register("write-for-matlab", &write_for_matlab, 
+                "Write in a way that would be easy to MATLAB to read");
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -60,7 +63,11 @@ int main(int argc, char *argv[]) {
     }
 
     Output ko(tree_stats_wxfilename, binary);
-    tree_stats.Write(ko.Stream(), binary);
+
+    if (write_for_matlab)
+      tree_stats.Write(ko.Stream(), binary);
+    else 
+      tree_stats.WriteForMatlab(ko.Stream(), binary);
 
     KALDI_LOG << "Wrote summed accs ( " << tree_stats.NumStats() 
               << " individual stats)";

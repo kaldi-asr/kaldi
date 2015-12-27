@@ -24,9 +24,10 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
 				loglikes-to-post copy-post-mapped weight-pdf-post \
 				split-speakers-on-diarization-assigments vector-apply-log \
-				matrix-scale matrix-sum-cols \
+				matrix-scale matrix-sum-cols extract-int-vector-segments \
 				quantize-feats post-to-bits \
-				acc-bool-vector-stats sum-bool-vector-stats
+				acc-bool-vector-stats sum-bool-vector-stats copy-bool-vector-stats \
+				matrix-add-offset
 
 
 OBJFILES =

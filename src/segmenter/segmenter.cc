@@ -1140,13 +1140,13 @@ void Segmentation::Write(std::ostream &os, bool binary) const {
  * set true then <speaker> is either SPEECH or SILENCE.
  * The function retunns the largest class_id that it encounters.
 **/
-int32 Segmentation::WriteRttm(std::ostream &os, std::string key, 
+int32 Segmentation::WriteRttm(std::ostream &os, const std::string &file_id, const std::string &channel, 
                               BaseFloat frame_shift, BaseFloat start_time, 
                               bool map_to_speech_and_sil) const {
   SegmentList::const_iterator it = segments_.begin();
   int32 largest_class = 0;
   for (; it != segments_.end(); ++it) {
-    os << "SPEAKER " << key << " 1 "
+    os << "SPEAKER " << file_id << " " << channel << " "
        << it->start_frame * frame_shift + start_time << " " 
        << (it->Length()) * frame_shift << " <NA> <NA> ";
     if (map_to_speech_and_sil) {

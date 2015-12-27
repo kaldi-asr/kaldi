@@ -72,8 +72,14 @@ std::string Nnet::GetAsConfigLine(int32 node_index, bool include_dim) const {
       node.descriptor.WriteConfig(ans, node_names_);
       if (include_dim)
         ans << " dim=" << node.Dim(*this);
-      ans << " objective=" << (node.u.objective_type == kLinear ? "linear" :
-                               "quadratic");
+
+      if (node.u.objective_type == kLinear) 
+        ans << " objective=linear";
+      else if (node.u.objective_type == kQuadratic)
+        ans << " objective=quadratic";
+      else if (node.u.objective_type == kCrossEntropy)
+        ans << " objective=xent";
+      
       break;
     case kComponent:
       ans << "component-node name=" << name << " component="
@@ -99,8 +105,7 @@ bool Nnet::IsOutputNode(int32 node) const {
   int32 size = nodes_.size();
   KALDI_ASSERT(node >= 0 && node < size);
   return (nodes_[node].node_type == kDescriptor &&
-          (node + 1 == size ||
-           nodes_[node + 1].node_type != kComponent));
+          (nodes_[node + 1].node_type != kComponent));
 }
 
 bool Nnet::IsInputNode(int32 node) const {
@@ -377,6 +382,8 @@ void Nnet::ProcessOutputNodeConfigLine(
         nodes_[node_index].u.objective_type = kLinear;
       } else if (objective_type == "quadratic") {
         nodes_[node_index].u.objective_type = kQuadratic;
+      } else if (objective_type == "xent") {
+        nodes_[node_index].u.objective_type = kCrossEntropy;
       } else {
         KALDI_ERR << "Invalid objective type: " << objective_type;
       }

@@ -181,6 +181,10 @@ class VectorBase {
   template<typename OtherReal>
   void AddVec(const Real alpha, const VectorBase<OtherReal> &v);
 
+  /// Add vector : *this = *this + alpha * rv, where the vector and rv are 
+  /// stored in log and the answer is returned in log
+  void LogAddExpVec(const Real alpha, const VectorBase<Real> &v);
+
   /// Add vector : *this = *this + alpha * rv^2  [element-wise squaring].
   void AddVec2(const Real alpha, const VectorBase<Real> &v);
 

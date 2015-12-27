@@ -63,7 +63,6 @@ nnet2::Component *ConvertSpliceComponent(
   const nnet1::Splice *splice =
       dynamic_cast<const nnet1::Splice*>(&nnet1_component);
   KALDI_ASSERT(splice != NULL);
-  int32 low, high;
   std::vector<int32> frame_offsets;
 
   std::ostringstream ostr;

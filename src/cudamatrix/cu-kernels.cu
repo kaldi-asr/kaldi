@@ -600,6 +600,112 @@ static void _add_mat_trans(Real alpha, const Real* src, Real* dst, MatrixDim d, 
     dst[index] = alpha*src[index_src] + dst[index];
 }
 
+__device__
+static float _log_add(float x, float y) {
+  float diff;
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= log(FLT_EPSILON)) {
+    float res;
+    res = x + log1p(exp(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
+
+__device__
+static double _log_add(double x, double y) {
+  double diff;
+  if (x < y) {
+    diff = x - y;
+    x = y;
+  } else {
+    diff = y - x;
+  }
+  // diff is negative.  x is now the larger one.
+
+  if (diff >= log(DBL_EPSILON)) {
+    double res;
+    res = x + log1p(exp(diff));
+    return res;
+  } else {
+    return x;  // return the larger one.
+  }
+}
+
+__device__
+static float _log_sub(float x, float y) {
+  if (y >= x) {  // Throws exception if y>=x.
+    if (y == x)
+      return -1.0 / 0.0;
+    else
+    return 0.0 / 0.0;
+  }
+
+  float diff = y - x;  // Will be negative.
+  float res = x + log1p(-exp(diff));
+
+  if (isnan(res))
+    return -1.0 / 0.0;
+  return res;
+}
+
+__device__
+static double _log_sub(double x, double y) {
+  if (y >= x) {  // Throws exception if y>=x.
+    if (y == x)
+      return -1.0 / 0.0;
+    else
+    return 0.0 / 0.0;
+  }
+
+  double diff = y - x;  // Will be negative.
+  double res = x + log1p(-exp(diff));
+
+  if (isnan(res))
+    return -1.0 / 0.0;
+  return res;
+}
+
+
+template<typename Real>
+__global__
+static void _log_add_exp_mat(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j*d.stride;
+  int32_cuda index_src = i + j*src_stride;
+  if (i < d.cols && j < d.rows) {
+    if (alpha > 0)
+      dst[index] = _log_add(log(alpha) + src[index_src], dst[index]);
+    else if (alpha < 0)
+      dst[index] = _log_sub(dst[index], log(-alpha) + src[index_src]);
+  }
+}
+
+template<typename Real>
+__global__
+static void _log_add_exp_mat_trans(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j *d.stride;
+  int32_cuda index_src = j + i*src_stride;
+  if (i < d.cols && j < d.rows) {
+    if (alpha > 0)
+      dst[index] = _log_add(log(alpha) + src[index_src], dst[index]);
+    else if (alpha < 0)
+      dst[index] = _log_sub(dst[index], log(-alpha) + src[index_src]);
+  }
+
+}
+
 template<typename Real>
 __global__
 static void _add_mat_blocks(Real alpha, const Real* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, Real* dst, MatrixDim d, int src_stride) {
@@ -2365,6 +2471,14 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float* dst, 
   }
 }
 
+void cudaF_log_add_exp_mat(dim3 Gr, dim3 Bl, float alpha, const float* src, float* dst, MatrixDim d, int src_stride, int A_trans) {
+  if (A_trans) {
+    _log_add_exp_mat_trans<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
+  } else {
+    _log_add_exp_mat<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
+  }
+}
+
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float* src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, float* dst, MatrixDim d, int src_stride, int A_trans) {
   if (A_trans) {
     _add_mat_blocks_trans<<<Gr,Bl>>>(alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride);
@@ -2837,6 +2951,14 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double* ds
     _add_mat_trans<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
   } else {
     _add_mat<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
+  }
+}
+
+void cudaD_log_add_exp_mat(dim3 Gr, dim3 Bl, double alpha, const double* src, double* dst, MatrixDim d, int src_stride, int A_trans) {
+  if (A_trans) {
+    _log_add_exp_mat_trans<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
+  } else {
+    _log_add_exp_mat<<<Gr,Bl>>>(alpha,src,dst,d,src_stride);
   }
 }
 

@@ -1045,6 +1045,37 @@ void VectorBase<float>::AddVec(const float alpha, const VectorBase<double> &v);
 template
 void VectorBase<double>::AddVec(const double alpha, const VectorBase<float> &v);
 
+
+template<typename Real>
+void VectorBase<Real>::LogAddExpVec(const Real alpha, const VectorBase<Real> &v) {
+  KALDI_ASSERT(dim_ == v.dim_);
+  if (alpha == 0) return;
+
+  // remove __restrict__ if it causes compilation problems.
+  register Real *__restrict__ data = data_;
+  register Real *__restrict__ other_data = v.data_;
+
+  MatrixIndexT dim = dim_;
+  if (alpha != 1.0)
+    for (MatrixIndexT i = 0; i < dim; i++) {
+      if (alpha > 0) {
+        data[i] = LogAdd(data[i], other_data[i] + Log(alpha));
+      } else {
+        KALDI_ASSERT(alpha < 0);
+        data[i] = LogSub(data[i], other_data[i] + Log(-alpha));
+      }
+    }
+  else
+    for (MatrixIndexT i = 0; i < dim; i++)
+      data[i] = LogAdd(data[i], other_data[i]);
+}
+
+template
+void VectorBase<float>::LogAddExpVec(const float alpha, const VectorBase<float> &v);
+template
+void VectorBase<double>::LogAddExpVec(const double alpha, const VectorBase<double> &v);
+
+
 template<typename Real>
 template<typename OtherReal>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {

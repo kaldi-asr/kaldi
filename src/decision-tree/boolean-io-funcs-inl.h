@@ -29,14 +29,42 @@
 
 namespace kaldi {
 
+char BooleanVectorToChar(std::vector<bool>::const_iterator beg,
+                         std::vector<bool>::const_iterator end) {
+  char val = 0;
+  size_t i = 0;
+  while (beg != end) {
+    val |= (*beg++ << i++);
+  }
+  KALDI_ASSERT(i <= 8);
+  return val;
+}
+
+void CharToBooleanVector(char ch, std::vector<bool>::iterator beg,
+                         std::vector<bool>::iterator end) {
+  size_t i = 0;
+  while (beg != end) {
+    *beg++ = ((ch >> i++) & 0x01);
+  }
+  KALDI_ASSERT(i <= 8);
+}
+
 inline void WriteBooleanVector(std::ostream &os, bool binary,
                                const std::vector<bool> &v) {
   if (binary) {
     char sz = sizeof(bool);  // this is currently just a check.
     os.write(&sz, 1);
-    std::vector<char> ch_vec;
-    std::copy(v.begin(), v.end(), std::back_inserter(ch_vec));
-    WriteIntegerVector(os, binary, ch_vec);
+    int32 vecsz = static_cast<int32>(v.size());
+    KALDI_ASSERT((size_t)vecsz == v.size());
+    os.write(reinterpret_cast<const char *>(&vecsz), sizeof(vecsz));
+    
+    std::vector<bool>::const_iterator beg = v.begin();
+    std::vector<bool>::const_iterator end = v.begin() + (vecsz > 8 ? 8 : vecsz);
+    for (size_t i = 0; i < vecsz / 8; i++, beg+=8, end+=8) {
+      WriteBasicType(os, binary, BooleanVectorToChar(beg, end));
+    }
+    if (end != v.end())
+      WriteBasicType(os, binary, BooleanVectorToChar(beg, v.end()));
   } else {
     // focus here is on prettiness of text form rather than
     // efficiency of reading-in.
@@ -54,7 +82,6 @@ inline void WriteBooleanVector(std::ostream &os, bool binary,
   }
 }
 
-
 inline void ReadBooleanVector(std::istream &is, bool binary,
                               std::vector<bool> *v) {
   KALDI_ASSERT(v != NULL);
@@ -67,9 +94,26 @@ inline void ReadBooleanVector(std::istream &is, bool binary,
                 << sizeof(bool) << ", saw instead " << sz << ", at file position "
                 << is.tellg();
     }
-    std::vector<char> ch_vec;
-    ReadIntegerVector(is, binary, &ch_vec);
-    std::copy(ch_vec.begin(), ch_vec.end(), std::back_inserter(*v));
+    int32 vecsz;
+    is.read(reinterpret_cast<char *>(&vecsz), sizeof(vecsz));
+    if (is.fail() || vecsz < 0)
+      KALDI_ERR << "ReadBooleanVector: expected to see [, saw "
+                << is.peek() << ", at file position " << is.tellg();
+    v->resize(vecsz);
+    
+    std::vector<bool>::iterator beg = v->begin();
+    std::vector<bool>::iterator end = v->begin() + (vecsz > 8 ? 8 : vecsz);
+
+    for (size_t i = 0; i < vecsz / 8; i++, beg+=8, end+=8) {
+      char ch = 0;
+      ReadBasicType(is, binary, &ch);
+      CharToBooleanVector(ch, beg, end);
+    }
+    if (end != v->end()) {
+      char ch = 0;
+      ReadBasicType(is, binary, &ch);
+      CharToBooleanVector(ch, beg, v->end());
+    }
   } else {
     std::vector<bool> tmp_v;  // use temporary so v doesn't use extra memory
                               // due to resizing.

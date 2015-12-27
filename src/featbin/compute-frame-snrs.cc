@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
         "Compute frame-level log-SNRs from time-frequency bin predictions and "
         "the corrupted fbank features. \n"
         "Optionally write clean feats as output.\n"
-        "Usage: compute-frame-snrs <feats-rspecifier> <mask-rspecifier> <frame-snr-wspecifier> [<clean-feats-wspecifier>]\n"
+        "Usage: compute-frame-snrs <feats-rspecifier> <mask-rspecifier> <frame-snr-wspecifier> [<clean-feats-wspecifier>] [<out-snr-wspecifier>]\n"
         " e.g.:   compute-frame-snrs scp:data/train_fbank/feats.scp \"ark:nnet3-compute exp/nnet3/final.raw scp:data/train_hires/feats.scp ark:- |\" ark:-\n";
     
     int32 length_tolerance = 0;
@@ -89,14 +89,14 @@ int main(int argc, char *argv[]) {
     po.Register("length-tolerance", &length_tolerance,
                 "If length is different, trim as shortest up to a frame "
                 " difference of length-tolerance, otherwise exclude segment.");
-    po.Register("prediction_type", &prediction_type, 
+    po.Register("prediction-type", &prediction_type, 
                 "Prediction type can be FbankMask or IRM");
     po.Register("ceiling", &ceiling, 
                 "Maximum log-frame-SNR allowed");
     
     po.Read(argc, argv);
     
-    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
@@ -104,14 +104,17 @@ int main(int argc, char *argv[]) {
     std::string fbank_rspecifier = po.GetArg(1),
                 mask_rspecifier = po.GetArg(2),
                 frame_snr_wspecifier = po.GetArg(3),
-                clean_fbank_wspecifier;
-    if (po.NumArgs() == 4)
+                clean_fbank_wspecifier, out_snr_wspecifier;
+    if (po.NumArgs() >= 4)
       clean_fbank_wspecifier = po.GetArg(4);
+    if (po.NumArgs() == 5)
+      out_snr_wspecifier = po.GetArg(5);
 
     SequentialBaseFloatMatrixReader fbank_reader(fbank_rspecifier);
     RandomAccessBaseFloatMatrixReader mask_reader(mask_rspecifier);
     BaseFloatVectorWriter frame_snr_writer(frame_snr_wspecifier);
     BaseFloatMatrixWriter clean_fbank_writer(clean_fbank_wspecifier);
+    BaseFloatMatrixWriter out_snr_writer(out_snr_wspecifier);
 
     int32 num_done = 0, num_fail = 0;
 
@@ -156,26 +159,51 @@ int main(int argc, char *argv[]) {
           << " exceeds tolerance " << length_tolerance;
       }
 
+      // TODO: Support correction of length mismatch
       KALDI_ASSERT(max_len == min_len);
 
       Vector<BaseFloat> frame_snrs(min_len);
 
       Matrix<BaseFloat> &clean_fbank = mask;
-      
+      // clean_fbank temporarily stores the mask
+
+      Matrix<BaseFloat> out_snr;
+
       if (prediction_type == "Irm") {
         clean_fbank.ApplyCeiling(0.0);                // S / (N + S)
-        // clean_fbank temporarily stores the mask
         clean_fbank.AddMat(1.0, fbank, kNoTrans);     // F * S / (N + S)
         // clean_fbank has been computed
         ComputeFrameSnrsUsingCorruptedFbank(clean_fbank, fbank, &frame_snrs, ceiling);
+        if (!out_snr_wspecifier.empty()) {
+          out_snr.Resize(fbank.NumRows(), fbank.NumCols());
+          // First compute noise
+          out_snr.CopyFromMat(fbank);
+          out_snr.LogAddExpMat(-1.0, clean_fbank, kNoTrans); // Noise computed
+          out_snr.AddMat(-1.0, clean_fbank);    // N / S
+          out_snr.Scale(-1.0);                  // S / N
+          out_snr.ApplyCeiling(ceiling);
+        }
       } else if (prediction_type == "FbankMask") {
         clean_fbank.ApplyCeiling(0.0);                // S / T
-        // clean_fbank temporarily stores the mask
         clean_fbank.AddMat(1.0, fbank, kNoTrans);     // F * S / T
-        ComputeFrameSnrsUsingCorruptedFbank(clean_fbank, fbank, &frame_snrs, ceiling);
         // clean_fbank has been computed
+        ComputeFrameSnrsUsingCorruptedFbank(clean_fbank, fbank, &frame_snrs, ceiling);
+        if (!out_snr_wspecifier.empty()) {
+          out_snr.Resize(fbank.NumRows(), fbank.NumCols());
+          out_snr.CopyFromMat(fbank);
+          out_snr.LogAddExpMat(-1.0, clean_fbank, kNoTrans); // Noise computed
+          out_snr.AddMat(-1.0, clean_fbank);    // N / S
+          out_snr.Scale(-1.0);                  // S / N
+          out_snr.ApplyCeiling(ceiling);
+        }
       } else if (prediction_type == "Snr") {
         mask.ApplyCeiling(ceiling);
+        if (!out_snr_wspecifier.empty()) {
+          out_snr.Resize(mask.NumRows(), mask.NumCols());
+          out_snr.CopyFromMat(mask);
+          out_snr.ApplyCeiling(ceiling);
+        }
+
         Matrix<BaseFloat> noise_fbank(mask);
 
         Matrix<BaseFloat> zeros(mask.NumRows(), mask.NumCols());
@@ -197,6 +225,10 @@ int main(int argc, char *argv[]) {
 
       if (clean_fbank_wspecifier != "") {
         clean_fbank_writer.Write(utt, clean_fbank);
+      }
+
+      if (!out_snr_wspecifier.empty()) {
+        out_snr_writer.Write(utt, out_snr);
       }
       
       frame_snr_writer.Write(utt, frame_snrs);

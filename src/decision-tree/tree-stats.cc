@@ -28,8 +28,10 @@ namespace decision_tree_classifier {
 
 void BooleanTreeStats::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<BooleanTreeStats>");
+  if (!binary) os << "\n";
   WriteToken(os, binary, "<NumClasses>");
   WriteBasicType(os, binary, num_classes_);
+  if (!binary) os << "\n";
   for (auto it = stats_.begin(); it != stats_.end(); ++it) {
     WriteToken(os, binary, "<Vector>");
     WriteBooleanVector(os, binary, it->first);
@@ -37,6 +39,33 @@ void BooleanTreeStats::Write(std::ostream &os, bool binary) const {
     (it->second).Write(os, binary);
   }
   WriteToken(os, binary, "</BooleanTreeStats>");
+}
+
+void BooleanTreeStats::WriteForMatlab(std::ostream &os, bool binary) const {
+  if (!binary) {
+    os << "\n";
+    WriteToken(os, binary, "<NumClasses>");
+    WriteBasicType(os, binary, num_classes_);
+    os << "\n";
+  }
+  for (auto it = stats_.begin(); it != stats_.end(); ++it) {
+    for (std::vector<bool>::const_iterator w_it = (it->first).begin(); 
+        w_it != (it->first).end(); ++w_it) {
+      if (!binary) {
+        os << (*w_it ? "1" : "0") << " ";
+      } else {
+        char ch = (*w_it ? '1' : '0');
+        os.write(reinterpret_cast<const char *> (&ch), sizeof(char));
+      }
+    }
+
+    for (size_t i = 0; i < (it->second).Dim(); i++) {
+      if (!binary) os << (it->second)(i) << " ";
+      else os.write(reinterpret_cast<const char *> ((it->second).Data() + i), 
+                    sizeof(BaseFloat));
+    }
+    if (!binary) os << "\n";
+  }
 }
 
 void BooleanTreeStats::Read(std::istream &is, bool binary, bool add) {
@@ -80,6 +109,67 @@ void BooleanTreeStats::Read(std::istream &is, bool binary, bool add) {
     
     ReadToken(is, binary, &token);
   }
+}
+
+int32 BooleanTreeStats::ReadAndWrite(std::istream &is, bool binary_in,
+                                    std::ostream &os, bool binary,
+                                    bool write_for_matlab) {
+  int32 num_stats = 0;
+  ExpectToken(is, binary_in, "<BooleanTreeStats>");
+  ExpectToken(is, binary_in, "<NumClasses>");
+  ReadBasicType(is, binary_in, &num_classes_);
+  std::string token;
+  ReadToken(is, binary_in, &token);
+
+  if (!write_for_matlab) {
+    WriteToken(os, binary, "<BooleanTreeStats>");
+    if (!binary) os << "\n";
+    WriteToken(os, binary, "<NumClasses>");
+    WriteBasicType(os, binary, num_classes_);
+    if (!binary) os << "\n";
+  }
+
+  while (token != "</BooleanTreeStats>") {
+    if (token != "<Vector>") {
+      KALDI_ERR << "Unexpected token " << token 
+                << "; expecting <Vector> or </BooleanTreeStats>";
+    }
+
+    std::vector<bool> vec;
+    ReadBooleanVector(is, binary_in, &vec);
+    if (!write_for_matlab) {
+      WriteToken(os, binary, "<Vector>");
+      WriteBooleanVector(os, binary, vec);
+    } else {
+      for (std::vector<bool>::const_iterator w_it = vec.begin();
+            w_it != vec.end(); ++w_it) {
+        if (!binary) os << (*w_it ? "1" : "0") << " ";
+        else {
+          char ch = (*w_it ? '1' : '0');
+          os.write(reinterpret_cast<const char *> (&ch), sizeof(char));
+        }
+      } 
+    }
+
+    ExpectToken(is, binary_in, "<Counts>");
+    Vector<BaseFloat> counts;
+    counts.Read(is, binary_in);
+    if (!write_for_matlab) {
+      WriteToken(os, binary, "<Counts>");
+      counts.Write(os, binary);
+    } else {
+      for (size_t i = 0; i < counts.Dim(); i++) {
+        if (!binary) os << counts(i) << " ";
+        else os.write(reinterpret_cast<const char *> (counts.Data() + i),
+                                                      sizeof(BaseFloat));
+      }
+      if (!binary) os << "\n";
+    }
+    num_stats++;
+    ReadToken(is, binary_in, &token);
+  }
+  if (!write_for_matlab) WriteToken(os, binary, "</BooleanTreeStats>");
+  return num_stats;
 }
 
 void BooleanTreeStats::Accumulate(const std::vector<bool> &bits,

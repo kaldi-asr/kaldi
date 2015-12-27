@@ -387,6 +387,10 @@ class CuMatrixBase {
   /// *this += alpha * A
   void AddMat(Real alpha, const CuMatrixBase<Real> &A,
               MatrixTransposeType trans = kNoTrans);
+  
+  /// Version of AddMat when the matrices are stored in log
+  void LogAddExpMat(Real alpha, const CuMatrixBase<Real> &A,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// if A.NumRows() is multiple of (*this)->NumRows and A.NumCols() is multiple of (*this)->NumCols
   /// divide A into blocks of the same size as (*this) and add them to *this (times alpha)

@@ -26,8 +26,12 @@ namespace decision_tree_classifier {
 class BooleanTreeStats {
  public:
   void Write(std::ostream &os, bool binary) const;
+  void WriteForMatlab(std::ostream &os, bool binary) const;
 
   void Read(std::istream &is, bool binary, bool add = false);
+  int32 ReadAndWrite(std::istream &is, bool binary_in,
+                    std::ostream &os, bool binary, 
+                    bool write_for_matlab = false);
 
   void Accumulate(const std::vector<bool> &bits,
                   int32 label);

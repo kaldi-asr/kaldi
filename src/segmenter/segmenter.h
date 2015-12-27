@@ -474,7 +474,7 @@ class Segmentation {
     void Write(std::ostream &os, bool binary) const;
 
     // Write the segmentation in the form of an RTTM
-    int32 WriteRttm(std::ostream &os, std::string key, 
+    int32 WriteRttm(std::ostream &os, const std::string &file_id, const std::string &channel, 
                     BaseFloat frame_shift, BaseFloat start_time, 
                     bool map_to_speech_and_sil) const;
     

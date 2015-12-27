@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
                 ivectors_wspecifier = po.GetArg(5);
     
     SequentialTokenVectorReader reco2utt_reader(reco2utt_rxfilename);
-    RandomAccessSegmentReader segment_reader(segments_rspecifier);
+    RandomAccessUtteranceSegmentReader segment_reader(segments_rspecifier);
     RandomAccessBaseFloatVectorReader ivector_reader(utt_ivectors_rspecifier);
     segmenter::SegmentationWriter seg_writer(segmentation_wspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
           break;
         }
         
-        const Segment &segment = segment_reader.Value(*it);
+        const UtteranceSegment &segment = segment_reader.Value(*it);
         const Vector<BaseFloat> &ivector = ivector_reader.Value(*it);
         
         if (ivector_dim == -1)

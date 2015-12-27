@@ -268,6 +268,45 @@ static void UnitTestAddVecToColsSpeed() {
   KALDI_LOG << __func__ << " finished in " << t.Elapsed() << " seconds.";   
 }
 
+template<typename Real> static void UnitTestLogAddExpMat() {
+  std::vector<MatrixIndexT> sizes;
+  sizes.push_back(512);
+  sizes.push_back(1024);
+  
+  Matrix<Real> alphas_mat(1,5);
+  alphas_mat.SetRandUniform();
+  Vector<Real> alphas(alphas_mat.Row(0));
+  //alphas.Add(-0.5);
+  //alphas.Scale(2.0):
+
+  for (size_t i = 0; i < sizes.size(); i++) {
+    MatrixIndexT size = sizes[i];
+    {
+      for (int32 j=0; j<5; j++) {
+        Matrix<Real> A(size,size), B(size, size);
+        A.SetRandn(); B.SetRandn();
+        A.ApplyPowAbs(1.0);
+        B.ApplyPowAbs(1.0);
+        Matrix<Real> logA(A);
+        logA.ApplyLog();
+        Matrix<Real> logB(B);
+        logB.ApplyLog();
+
+        Real alpha = alphas(j);
+        Matrix<Real> sum1(A);
+        sum1.AddMat(alpha, B, kNoTrans);
+
+        if (alpha > 0) {
+          Matrix<Real> sum2(logA);
+          sum2.LogAddExpMat(alpha, logB, kNoTrans);
+          sum2.ApplyExp();
+          KALDI_ASSERT(sum1.ApproxEqual(sum2));
+        } 
+      }
+    }
+  }
+}
+
 template<typename Real> static void MatrixUnitSpeedTest() {
   UnitTestRealFftSpeed<Real>();
   UnitTestSplitRadixRealFftSpeed<Real>();
@@ -277,6 +316,7 @@ template<typename Real> static void MatrixUnitSpeedTest() {
   UnitTestAddColSumMatSpeed<Real>();
   UnitTestAddVecToRowsSpeed<Real>();
   UnitTestAddVecToColsSpeed<Real>();
+  UnitTestLogAddExpMat<Real>();
 }
 
 } // namespace kaldi

@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
     int32 noise_channel = 0;
     bool normalize_output = true;
     BaseFloat volume = 0;
-    BaseFloat signal_db = 0, rms_energy_amplitude = 0.8;
+    BaseFloat rms_amplitude = 0.1;
     bool normalize_by_amplitude = false, normalize_by_power = false;
     int32 srand_seed = 0;
     BaseFloat min_duration = 0.1, search_fraction = 0.1;
@@ -245,18 +245,15 @@ int main(int argc, char *argv[]) {
                 "if you had also specified --normalize-output=false. "
                 "If you set this option to a negative value, it will be "
                 "ignored and instead the --signal-db option would be used.");
-    po.Register("signal-db", &signal_db,
-                "Desired signal energy after corruption. This will be used "
+    po.Register("rms-amplitude", &rms_amplitude,
+                "Desired rms after corruption. This will be used "
                 "only if volume is less than 0");
     po.Register("normalize-by-amplitude", &normalize_by_amplitude, 
                 "Make the maximum amplitude in the output signal to be 95% of "
                 "the amplitude range possible in wave output");
     po.Register("normalize-by-power", &normalize_by_power,
                 "Make the amplitude such that the RMS energy of the signal "
-                "is rms-energy-amplitude fraction of the total range of "
-                "amplitudes possible in wave output");
-    po.Register("rms-energy-amplitude", &rms_energy_amplitude,
-                "Fraction of the range of amplitides possible in wave output");
+                "is rms-amplitude");
     po.Register("output-noise-file", &out_noise_file,
                 "Wave file to write the output noise file just before "
                 "adding it to the reverberated signal");
@@ -487,17 +484,14 @@ int main(int argc, char *argv[]) {
         if (normalize_by_amplitude) {
           BaseFloat max = MaxAbsolute(input);
 
-          scale = Exp( signal_db / 20.0 * Log(10.0) // signal_db to amplitude
+          scale = Exp( Log(rms_amplitude) // signal_db to amplitude
                        - Log(max)                   // actual max amplitude
                        + 15.0 * Log(2.0)            // * 2^15
                        + Log(0.95) );               // Allow only 0.95 of max amplitude possible
         } else if (normalize_by_power) {
-          scale = Exp( signal_db / 20.0 * Log(10.0) // signal_db to amplitude
-                      - 0.5 * Log(power_after_corruption) // actual rms amplitude
-                      + 15.0 * Log(2.0)               // * 2^15
-                      + Log(rms_energy_amplitude) );  // Make the rms amplitude to be 
-                                                      // this fraction of the
-                                                      // max amplitude possible.
+          scale = Exp( Log(rms_amplitude) // rms amplitude
+                      - 0.5 * Log(power_before_corruption) // clean rms amplitude
+                      + 15.0 * Log(2.0));               // * 2^15
         }
         
         input.Scale(scale);

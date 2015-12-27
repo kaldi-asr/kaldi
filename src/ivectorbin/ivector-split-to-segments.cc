@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
                 ivectors_wspecifier = po.GetArg(5);
     
     SequentialTokenVectorReader reco2utt_reader(reco2utt_rspecifier);
-    RandomAccessSegmentReader segment_reader(segments_rspecifier);
+    RandomAccessUtteranceSegmentReader segment_reader(segments_rspecifier);
     segmenter::RandomAccessSegmentationReader reco_seg_reader(segmentations_rspecifier); // Corresponding to the read reco iVectors
     RandomAccessBaseFloatMatrixReader ivector_reader(ivectors_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        const Segment &segment = segment_reader.Value(*it);
+        const UtteranceSegment &segment = segment_reader.Value(*it);
 
 
         segments_seg.Emplace(std::round(segment.start_time / frame_shift), 
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
       }
 
       segmenter::Segmentation new_seg;
-      segments_seg.CreateSubSegments(reco_seg, 1, 1, &new_seg); // data_seg is no longer sorted
+      segments_seg.CreateSubSegments(reco_seg, 1, 1, &new_seg); 
 
       segmenter::SegmentList::iterator new_it = new_seg.Begin();
       for (segmenter::SegmentList::iterator utt_it = segments_seg.Begin();

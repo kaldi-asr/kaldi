@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Convert segmentation into RTTM\n"
         "\n"
-        "Usage: segmentation-to-rttm [options] (segmentation-in-rspecifier|segmentation-in-rxfilename) rttm-out-wxfilename\n"
+        "Usage: segmentation-to-rttm [options] segmentation-in-rspecifier rttm-out-wxfilename\n"
         " e.g.: segmentation-to-rttm foo -\n"
         "   segmentation-to-rttm ark:1.seg -\n";
     
@@ -38,11 +38,13 @@ int main(int argc, char *argv[]) {
 
     BaseFloat frame_shift = 0.01;
     std::string segments_rxfilename;
+    std::string reco2file_and_channel_rxfilename;
     ParseOptions po(usage);
     
     po.Register("binary", &binary, "Write in binary mode (only relevant if output is a wxfilename)");
     po.Register("frame-shift", &frame_shift, "Frame shift in seconds");
     po.Register("segments", &segments_rxfilename, "Segments file");
+    po.Register("reco2file-and-channel", &reco2file_and_channel_rxfilename, "reco2file_and_channel file");
     po.Register("map-to-speech-and-sil", &map_to_speech_and_sil, "Map all classes to SPEECH and SILENCE");
 
     po.Read(argc, argv);
@@ -57,6 +59,7 @@ int main(int argc, char *argv[]) {
 
     if (segments_rxfilename != "") {
       Input ki(segments_rxfilename); // no binary argment: never binary.
+      int32 i = 0;
       std::string line;
       /* read each line from segments file */
       while (std::getline(ki.Stream(), line)) {
@@ -103,70 +106,92 @@ int main(int argc, char *argv[]) {
 
         utt2file.insert(std::make_pair(segment, utterance));
         utt2start_time.insert(std::make_pair(segment, start));
+        i++;
       }
+      KALDI_LOG << "Read " << i << " lines from " << segments_rxfilename;
     }
 
+    std::unordered_map<std::string, std::pair<std::string, std::string> , StringHasher> reco2file_and_channel;
+
+    if (!reco2file_and_channel_rxfilename.empty()) {
+      Input ki(reco2file_and_channel_rxfilename); // no binary argment: never binary.
+
+      int32 i = 0;
+      std::string line;
+      /* read each line from reco2file_and_channel file */
+      while (std::getline(ki.Stream(), line)) {
+        std::vector<std::string> split_line;
+        SplitStringToVector(line, " \t\r", true, &split_line);
+        if (split_line.size() != 3) {
+          KALDI_WARN << "Invalid line in reco2file_and_channel file: " << line;
+          continue;
+        }
+
+        const std::string &reco_id = split_line[0];
+        const std::string &file_id = split_line[1];
+        const std::string &channel = split_line[2];
+
+        reco2file_and_channel.insert(std::make_pair(reco_id, std::make_pair(file_id, channel)));
+        i++;
+      }
+
+      KALDI_LOG << "Read " << i << " lines from " << reco2file_and_channel_rxfilename;
+    }
 
     std::unordered_set<std::string, StringHasher> seen_files;
 
-    std::string segmentation_in_fn = po.GetArg(1),
-        segmentation_out_fn = po.GetArg(2);
-
-    // all these "fn"'s are either rspecifiers or filenames.
-
-    bool in_is_rspecifier =
-        (ClassifyRspecifier(segmentation_in_fn, NULL, NULL)
-         != kNoRspecifier);
+    std::string segmentation_rspecifier = po.GetArg(1),
+            rttm_out_wxfilename = po.GetArg(2);
 
     int64  num_done = 0, num_err = 0;
     
-    if (!in_is_rspecifier) {
-      Segmentation seg;
-      {
-        bool binary_in;
-        Input ki(segmentation_in_fn, &binary_in);
-        seg.Read(ki.Stream(), binary_in);
-      }
-      Output ko(segmentation_out_fn, binary);
-      seg.Write(ko.Stream(), binary);
-      KALDI_LOG << "Copied segmentation to " << segmentation_out_fn;
-      return 0;
-    } else {
-      
-      Output ko(segmentation_out_fn, false);
-      SequentialSegmentationReader reader(segmentation_in_fn);
-      for (; !reader.Done(); reader.Next(), num_done++) {
-        Segmentation seg(reader.Value());
-        std::string key = reader.Key();
+    Output ko(rttm_out_wxfilename, false);
+    SequentialSegmentationReader reader(segmentation_rspecifier);
+    for (; !reader.Done(); reader.Next(), num_done++) {
+      Segmentation seg(reader.Value());
+      const std::string &key = reader.Key();
 
-        std::string file_id = key; 
-        BaseFloat start_time = 0.0;
-        if (segments_rxfilename != "") {
-          KALDI_ASSERT(utt2file.count(key) > 0 && utt2start_time.count(key) > 0);
-          file_id = utt2file.at(key);
-          start_time = utt2start_time.at(key);
-        }
-
-        int32 largest_class = seg.WriteRttm(ko.Stream(), file_id, frame_shift, start_time, map_to_speech_and_sil);
-
-        if (map_to_speech_and_sil) {
-          if (seen_files.count(file_id) == 0) {
-            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SILENCE <NA>\n";
-            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown SPEECH <NA>\n";
-            seen_files.insert(file_id);
-          }
-        } else {
-          for (int32 i = 0; i < largest_class; i++) {
-            ko.Stream() << "SPKR-INFO " << file_id << " 1 <NA> <NA> <NA> unknown " << i << " <NA>\n";
-          }
-        }
-
+      std::string reco_id = key; 
+      BaseFloat start_time = 0.0;
+      if (!segments_rxfilename.empty()) {
+        if (utt2file.count(key) == 0 || utt2start_time.count(key) == 0)
+          KALDI_ERR << "Could not find key " << key << " in segments " 
+                    << segments_rxfilename;
+        KALDI_ASSERT(utt2file.count(key) > 0 && utt2start_time.count(key) > 0);
+        reco_id = utt2file[key];
+        start_time = utt2start_time[key];
       }
 
-      KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
-                << num_err << " segmentations";
-      return (num_done != 0 ? 0 : 1);
+      std::string file_id, channel;
+      if (!reco2file_and_channel_rxfilename.empty()) {
+        if (reco2file_and_channel.count(reco_id) == 0) 
+          KALDI_ERR << "Could not find recording " << reco_id 
+                    << " in " << reco2file_and_channel_rxfilename;
+        file_id = reco2file_and_channel[reco_id].first;
+        channel = reco2file_and_channel[reco_id].second;
+      } else {
+        file_id = reco_id;
+        channel = "1";
+      }
+
+      int32 largest_class = seg.WriteRttm(ko.Stream(), file_id, channel, frame_shift, start_time, map_to_speech_and_sil);
+
+      if (map_to_speech_and_sil) {
+        if (seen_files.count(reco_id) == 0) {
+          ko.Stream() << "SPKR-INFO " << file_id << " " << channel << " <NA> <NA> <NA> unknown SILENCE <NA>\n";
+          ko.Stream() << "SPKR-INFO " << file_id << " " << channel << " <NA> <NA> <NA> unknown SPEECH <NA>\n";
+          seen_files.insert(reco_id);
+        }
+      } else {
+        for (int32 i = 0; i < largest_class; i++) {
+          ko.Stream() << "SPKR-INFO " << file_id << " " << channel << " <NA> <NA> <NA> unknown " << i << " <NA>\n";
+        }
+      }
     }
+
+    KALDI_LOG << "Copied " << num_done << " segmentation; failed with "
+      << num_err << " segmentations";
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

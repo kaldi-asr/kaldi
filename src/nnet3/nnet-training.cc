@@ -180,6 +180,43 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
               << " (nnet) vs. " << supervision.NumCols() << " (egs)\n";
 
   switch (objective_type) {
+    case kCrossEntropy: {
+      // objective is x * log(y) + (1-x) * log(1-y)
+      CuMatrix<BaseFloat> cu_post(supervision.NumRows(), supervision.NumCols(),
+                                  kUndefined);  // x
+      cu_post.CopyFromGeneralMat(supervision);
+
+      CuMatrix<BaseFloat> n_cu_post(cu_post.NumRows(), cu_post.NumCols());
+      n_cu_post.Set(1.0);
+      n_cu_post.AddMat(-1.0, cu_post);          // 1-x
+
+      CuMatrix<BaseFloat> log_prob(output);     // y
+      log_prob.ApplyLog();                      // log(y)
+
+      CuMatrix<BaseFloat> n_output(output.NumRows(), output.NumCols(), kSetZero);
+      n_output.Set(1.0);  
+      n_output.AddMat(-1.0, output);            // 1-y
+      n_output.ApplyLog();                      // log(1-y)
+
+      *tot_weight = cu_post.NumRows() * cu_post.NumCols();
+      *tot_objf = TraceMatMat(log_prob, cu_post, kTrans) 
+                  + TraceMatMat(n_output, n_cu_post, kTrans);
+
+      if (supply_deriv) {
+        // deriv is x / y - (1-x) / (1-y)
+        n_output.ApplyExp();                    // 1-y
+        n_cu_post.DivElements(n_output);        // 1-x / (1-y)
+
+        log_prob.ApplyExp();                    // y
+        cu_post.DivElements(log_prob);          // x / y
+        
+        CuMatrix<BaseFloat> output_deriv(cu_post);  // x / y
+        output_deriv.AddMat(-1.0, n_cu_post);       // x / y - (1-x) / (1-y)
+        computer->AcceptOutputDeriv(output_name, &output_deriv);
+      }
+                                   
+      break;
+    }
     case kLinear: {
       // objective is x * y.
       switch (supervision.Type()) {
