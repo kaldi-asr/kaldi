@@ -1555,7 +1555,7 @@ class CompositeComponent: public UpdatableComponent {
   virtual void Write(std::ostream &os, bool binary) const;
 
   // Don't implement Copy() at this level: implement it in the child class.
-  
+
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
@@ -1566,7 +1566,7 @@ class CompositeComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
- private:
+ protected:
   // returns true if at least one of 'components_' returns the kUpdatable flag
   // in its flags.
   bool IsUpdatable() const;
@@ -1593,6 +1593,8 @@ class JesusComponent: public CompositeComponent {
 
   virtual void InitFromConfig(ConfigLine *cfl);
 
+  virtual Component* Copy() const;
+
   // Initialize.  num_blocks must divide input_dim, output_dim and
   // hidden_dim, otherwise it is an error.
   // note, typically hidden_dim will be quite a bit larger than input_dim
@@ -1600,7 +1602,7 @@ class JesusComponent: public CompositeComponent {
   // 100 or so, and max_rows_process could be fairly large like 2048.
   void Init(int32 input_dim, int32 output_dim, int32 hidden_dim,
             int32 num_blocks, int32 max_rows_process);
-  
+
   JesusComponent() { } // use Init to really initialize.
 
 };

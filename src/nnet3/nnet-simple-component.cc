@@ -3861,7 +3861,7 @@ void CompositeComponent::Propagate(
 
 void CompositeComponent::Init(const std::vector<Component*> &components,
                               int32 max_rows_process) {
-  DeletePointers(&components_);  // clean up.  
+  DeletePointers(&components_);  // clean up.
   KALDI_ASSERT(!components_.empty());
 
   components_ = components;
@@ -3977,7 +3977,7 @@ void CompositeComponent::Backprop(const std::string &debug_info,
     // skip the last-but-one component's propagate if the last component's
     // backprop doesn't need the input.  [lowest hanging fruit for optimization]
     if (i + 2 == num_components &&
-        !(components_[i+1]->Properties() & kBackpropNeedsInput)) 
+        !(components_[i+1]->Properties() & kBackpropNeedsInput))
       break;
     intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
                                    kUndefined);
@@ -4168,17 +4168,23 @@ void JesusComponent::Init(int32 input_dim, int32 output_dim,
       output_dim % num_blocks != 0 ||
       hidden_dim % num_blocks != 0) {
     std::vector<Component*> components(3);
+    /*
     components[0] = new RepeatedAffineComponent();
     components[0]->Init(input_dim, hidden_dim, num_blocks, ...);
     components[1] = new RectifiedLinearComponent();
     components[1]->Init(hidden_dim);
     components[2] = new RepeatedAffineComponent();
     components[2]->Init(hidden_dim, hidden_dim, num_blocks, ...);
+    */
     // call Init method of parent class CompositeComponent.
-    Init(components, max_rows_process);
+    CompositeComponent::Init(components, max_rows_process);
   }
 }
-                          
+
+// virtual
+void JesusComponent::InitFromConfig(ConfigLine *cfl) {
+  KALDI_ERR << "TODO";
+}
 
 
 

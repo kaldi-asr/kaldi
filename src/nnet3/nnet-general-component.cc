@@ -20,6 +20,7 @@
 #include <iterator>
 #include <sstream>
 #include "nnet3/nnet-general-component.h"
+#include "nnet3/nnet-computation-graph.h"
 #include "nnet3/nnet-parse.h"
 
 namespace kaldi {
@@ -59,6 +60,8 @@ bool DistributeComponent::IsComputable(
     std::vector<Index> *used_inputs) const {
   Index input_index;
   ComputeInputIndexAndBlock(output_index, &input_index, NULL);
+  if (!input_index_set(input_index))
+    return false;
   if (used_inputs) {
     used_inputs->clear();
     used_inputs->push_back(input_index);
