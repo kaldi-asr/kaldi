@@ -73,7 +73,7 @@ lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 			 # "[-1,1] [-2,2] [-3,3]" means a three layer stacked bi-directional LSTM would use recurrence
-			 # connections with delay -1 for the forward, 1 for the backward at layer1, 
+			 # connections with delay -1 for the forward, 1 for the backward at layer1,
 			 # -2 for the forward, 2 for the backward at layer2, and so on at layer3
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
@@ -690,9 +690,8 @@ if [ $stage -le $[$num_iters+1] ]; then
   if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
   else egs_part=JOB; fi
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
-    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs  ark:- ark:- \| \
+    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
+    nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
       "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

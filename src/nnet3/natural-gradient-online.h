@@ -506,6 +506,9 @@ class OnlineNaturalGradient {
   // value returned depends on num_samples_history_.
   BaseFloat Eta(int32 N) const;
 
+  // called if self_debug_ = true, makes sure the members satisfy certain
+  // properties.
+  void SelfTest() const;
 
   // Configuration values:
 
@@ -535,7 +538,8 @@ class OnlineNaturalGradient {
 
   // delta is a relative floor on the unit-matrix scaling factor rho_t in our
   // Fisher estimate, which we set to 1.0e-05: this is relative to the largest
-  // value of D_t.  It's needed to control roundoff error.
+  // value of D_t.  It's needed to control roundoff error.  We apply the same
+  // floor to the eigenvalues in D_t.
   BaseFloat delta_;
 
   // t is a counter that measures how many updates we've done.
