@@ -23,19 +23,34 @@ dev_caldir=$dev_latdir/confidence_$lmwt
 eval_caldir=$eval_latdir/confidence_$lmwt
 
 ###### Data preparation,
+
 # Prepare filtering for excluding data from train-set (1 .. keep word, 0 .. exclude word),
+# - only excludes from training-targets, the confidences are recalibrated for all the words,
 word_filter=$(mktemp)
 awk '{ keep_the_word = $1 !~ /^(\[.*\]|<.*>|%.*|!.*|-.*|.*-)$/; print $0, keep_the_word }' \
   $graph/words.txt >$word_filter
+
 # Calcualte the word-length,
 word_length=$(mktemp)
-awk '{ print $0, length($1) }' $graph/words.txt >$word_length
+awk '{if(r==0) { len_hash[$1] = NF-2; } 
+      if(r==1) { if(len_hash[$1]) { len = len_hash[$1]; } else { len = -1 }  
+      print $0, len; }}' \
+  r=0 $graph/phones/align_lexicon.txt \
+  r=1 $graph/words.txt \
+  >$word_length
+
 # Extract unigrams,
-unigrams=$(mktemp); steps/conf/parse_arpa_unigrams.py $arpa_gz $unigrams
+unigrams=$(mktemp); steps/conf/parse_arpa_unigrams.py $graph/words.txt $arpa_gz $unigrams
+
+###### Paste the 'word-specific' features (first 4 columns have fixed position, more feature-columns can be added),
+# Format: "word word_id filter length other_features"
+word_feats=$(mktemp)
+paste $word_filter <(awk '{ print $3 }' $word_length) <(awk '{ print $3 }' $unigrams) > $word_feats
+
 
 ###### Train the calibration,
 steps/conf/train_calibration.sh --cmd "$decode_cmd" --lmwt $lmwt \
-  $dev_data $graph $word_filter $word_length $unigrams $dev_latdir $dev_caldir
+  $dev_data $graph $word_feats $dev_latdir $dev_caldir
 
 ###### Apply the calibration to eval set,
 steps/conf/apply_calibration.sh --cmd "$decode_cmd" \

@@ -10,13 +10,13 @@ desc = """
 Prepare input features and training targets for logistic regression,
 which calibrates the Minimum Bayes Risk posterior confidences.
 
-The inputs are: 
+The logisitc-regression input features are: 
 - posteriors from 'ctm' transformed by logit,
 - logarithm of word-length in letters,
 - logarithm of average lattice-depth at position of the word,
 - 10base logarithm of unigram probability of a word from language model,
 
-The output is:
+The logistic-regresion targets are:
 - 1 for correct word,
 - 0 for incorrect word (substitution, insertion),
 
@@ -35,10 +35,10 @@ parser.add_option("--conf-targets", help="Targets file for logistic regression (
 parser.add_option("--conf-feats", help="Feature file for logistic regression. [default %default]", default='')
 (o, args) = parser.parse_args()
 
-if len(args) != 6:
+if len(args) != 4:
   parser.print_help()
   sys.exit(1)
-ctm_file, word_filter_file, word_length_file, unigrams, depths_file, word_categories_file = args
+ctm_file, word_feats_file, depths_file, word_categories_file = args
 
 assert(o.conf_feats != '')
 
@@ -47,32 +47,32 @@ ctm = [ l.split() for l in open(ctm_file) ]
 if len(ctm[0]) == 6: [ l.append('U') for l in ctm ]
 assert(len(ctm[0]) == 7)
 
-# Load the word-filter,
-word_filter = [ l.split() for l in open(word_filter_file) ]
-word_filter = { wrd:bool(int(keep_word)) for wrd,id,keep_word in word_filter }
+# Load the word-features, the format: "wrd wrd_id filter length other_feats"
+# (typically 'other_feats' are unigram log-probabilities),
+word_feats = [ l.split(None,4) for l in open(word_feats_file) ]
+
+# Prepare filtering dict,
+word_filter = { wrd_id:bool(int(filter)) for (wrd,wrd_id,filter,length,other_feats) in word_feats }
+# Prepare the lenght dict,
+word_length = { wrd_id:float(length) for (wrd,wrd_id,filter,length,other_feats) in word_feats }
+# Prepare other_feats dict,
+other_feats = { wrd_id:other_feats.strip() for (wrd,wrd_id,filter,length,other_feats) in word_feats }
 
 # Build the targets,
 if o.conf_targets != '':
   with open(o.conf_targets,'w') as f:
-    for (utt, chan, beg, dur, wrd, conf, score_tag) in ctm:
+    for (utt, chan, beg, dur, wrd_id, conf, score_tag) in ctm:
       # Skip the words we don't know if being correct, 
       if score_tag == 'U': continue 
       # Some words are excluded from training (partial words, hesitations, etc.),
-      if not word_filter[wrd]: continue 
+      # (Value: 1 == keep word, 0 == exclude word from the targets),
+      if not word_filter[wrd_id]: continue 
       # Build the key,
-      key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd, conf, score_tag)
+      key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd_id, conf, score_tag)
       # Build the target,
       tgt = 1 if score_tag == 'C' else 0 # Correct = 1, else 0,
       # Write,
       f.write('%s %d\n' % (key,tgt))
-
-# Load the word-lengths,
-word_length = [ l.split() for l in open(word_length_file) ]
-word_length = { wrd:int(length) for wrd,id,length in word_length }
-
-# Load the unigram probabilities in 10log (usually parsed from ARPA),
-p_unigram_log10 = [ l.split() for l in open(unigrams) ]
-p_unigram_log10 = { wrd:float(p_unigram) for wrd, p_unigram in p_unigram_log10 }
 
 # Load the per-frame lattice-depth,
 # - we assume, the 1st column in 'ctm' is the 'utterance-key' in depth file,
@@ -83,32 +83,32 @@ for l in open(depths_file):
 
 # Load the 'word_categories' mapping for categorical input features derived from 'lang/words.txt',
 wrd_to_cat = [ l.split() for l in open(word_categories_file) ]
-wrd_to_cat = { wrd:int(category) for wrd,id,category in wrd_to_cat }
+wrd_to_cat = { wrd_id:int(category) for wrd,wrd_id,category in wrd_to_cat }
 wrd_cat_num = max(wrd_to_cat.values()) + 1
 
 # Build the input features,
 with open(o.conf_feats,'w') as f:
-  for (utt, chan, beg, dur, wrd, conf, score_tag) in ctm:
+  for (utt, chan, beg, dur, wrd_id, conf, score_tag) in ctm:
     # Build the key, same as previously,
-    key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd, conf, score_tag)
+    key = "%s^%s^%s^%s^%s,%s,%s" % (utt, chan, beg, dur, wrd_id, conf, score_tag)
 
     # Build input features,
     # - logit of MBR posterior,
     damper = 0.001 # avoid -inf,+inf from log,
     logit = math.log(float(conf)+damper) - math.log(1.0 - float(conf)+damper)
     # - log of word-length,
-    log_lenwrd = math.log(word_length[wrd]) 
+    log_lenwrd = math.log(word_length[wrd_id]) 
     # - log of frames per word-length,
-    log_frame_per_letter = math.log(100.0*float(dur)/word_length[wrd])
+    log_frame_per_letter = math.log(100.0*float(dur)/word_length[wrd_id])
     # - log of average-depth of lattice at the word position,
     depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
     log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
-    # - categorical distribution of words with frequency higher than min-count,
+    # - categorical distribution of words (with frequency higher than min-count),
     wrd_1_of_k = [0]*wrd_cat_num; 
-    wrd_1_of_k[wrd_to_cat[wrd]] = 1;
+    wrd_1_of_k[wrd_to_cat[wrd_id]] = 1;
 
     # Compose the input feature vector,
-    feats = [ logit, log_lenwrd, log_frame_per_letter, p_unigram_log10[wrd], log_avg_depth ] + wrd_1_of_k
+    feats = [ logit, log_lenwrd, log_frame_per_letter, log_avg_depth, other_feats[wrd_id] ] + wrd_1_of_k
     # Store the input features, 
     f.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

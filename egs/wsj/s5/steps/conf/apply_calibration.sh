@@ -19,7 +19,7 @@ if [ $# -ne 5 ]; then
   exit 1;
 fi
 
-set -euxo pipefail
+set -euo pipefail
 
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
@@ -29,12 +29,10 @@ dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 calibration=$caldir/calibration.mdl
-word_filter=$caldir/word_filter # used only in training,
-word_length=$caldir/word_length
-unigrams=$caldir/unigrams
+word_feats=$caldir/word_feats
 word_categories=$caldir/word_categories
 
-for f in $lang/words.txt $unigrams $word_categories $latdir/lat.1.gz $calibration $model; do
+for f in $lang/words.txt $word_feats $word_categories $latdir/lat.1.gz $calibration $model; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
 done
 [ -z "$cmd" ] && echo "$0: Missing --cmd '...'" && exit 1
@@ -48,9 +46,7 @@ decode_mbr=$(cat $caldir/decode_mbr)
 echo $lmwt >$dir/lmwt
 echo $decode_mbr >$dir/decode_mbr 
 cp $calibration $dir/calibration.mdl
-cp $word_filter $dir/word_filter
-cp $word_length $dir/word_length
-cp $unigrams $dir/unigrams
+cp $word_feats $dir/word_feats
 cp $word_categories $dir/word_categories
 
 # Create the ctm with raw confidences,
@@ -66,8 +62,9 @@ if [ $stage -le 0 ]; then
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/JOB.ctm
   # Merge and clean,
-  set +x; for ((n=1; n<=nj; n++)); do cat $dir/${n}.ctm; done > $dir/ctm
-  rm $dir/*.ctm; set -x
+  for ((n=1; n<=nj; n++)); do cat $dir/${n}.ctm; done > $dir/ctm
+  rm $dir/*.ctm
+  cat $dir/ctm | utils/sym2int.pl -f 5 $lang/words.txt >$dir/ctm_int
 fi
 
 # Compute lattice-depth,
@@ -79,14 +76,15 @@ fi
 # Create the forwarding data for logistic regression,
 if [ $stage -le 2 ]; then
   steps/conf/prepare_calibration_data.py --conf-feats $dir/forward_feats.ark \
-    $dir/ctm $word_filter $word_length $unigrams $latdepth $word_categories
+    $dir/ctm_int $word_feats $latdepth $word_categories
 fi
 
 # Apply calibration model to dev,
 if [ $stage -le 3 ]; then
   logistic-regression-eval --apply-log=false $calibration \
     ark:$dir/forward_feats.ark ark,t:- | \
-    awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' \
+    awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' | \
+    utils/int2sym.pl -f 5 $lang/words.txt \
     >$dir/ctm_calibrated
 fi
 

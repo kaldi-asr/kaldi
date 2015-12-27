@@ -17,14 +17,15 @@ lmwt=12
 decode_mbr=true
 word_min_count=10 # Minimum word-count for single-word category,
 normalizer=0.0025 # L2 regularization constant,
+category_text= # Alternative corpus for counting words to get word-categories (by default using 'ctm'),
 stage=0
 # end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
-if [ $# -ne 7 ]; then
-  echo "Usage: $0 [opts] <data-dir> <lang-dir|graph-dir> <word-filter> <word-length> <unigrams> <decode-dir> <calibration-dir>"
+if [ $# -ne 5 ]; then
+  echo "Usage: $0 [opts] <data-dir> <lang-dir|graph-dir> <word-feats> <decode-dir> <calibration-dir>"
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --lmwt <int>                    # scaling for confidence extraction"
@@ -33,19 +34,17 @@ if [ $# -ne 7 ]; then
   exit 1;
 fi
 
-set -euxo pipefail
+set -euo pipefail
 
 data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
-word_filter=$3
-word_length=$4
-unigrams=$5
-latdir=$6
-dir=$7
+word_feats=$3
+latdir=$4
+dir=$5
 
 model=$latdir/../final.mdl # assume model one level up from decoding dir.
 
-for f in $data/text $lang/words.txt $word_filter $word_length $unigrams $latdir/lat.1.gz; do
+for f in $data/text $lang/words.txt $word_feats $latdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: Missing file $f" && exit 1
 done
 [ -z "$cmd" ] && echo "$0: Missing --cmd '...'" && exit 1
@@ -56,9 +55,7 @@ nj=$(cat $latdir/num_jobs)
 # Store the setup,
 echo $lmwt >$dir/lmwt
 echo $decode_mbr >$dir/decode_mbr
-cp $word_filter $dir/word_filter
-cp $word_length $dir/word_length
-cp $unigrams $dir/unigrams
+cp $word_feats $dir/word_feats
 
 # Create the ctm with raw confidences,
 # - we keep the timing relative to the utterance,
@@ -73,8 +70,8 @@ if [ $stage -le 0 ]; then
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/JOB.ctm
   # Merge and clean,
-  set +x; for ((n=1; n<=nj; n++)); do cat $dir/${n}.ctm; done > $dir/ctm
-  rm $dir/*.ctm; set -x
+  for ((n=1; n<=nj; n++)); do cat $dir/${n}.ctm; done > $dir/ctm
+  rm $dir/*.ctm
 fi
 
 # Get evaluation of the 'ctm' using the 'text' reference,
@@ -85,10 +82,17 @@ if [ $stage -le 1 ]; then
   >$dir/align_text 
   # Append alignment to ctm,
   steps/conf/append_eval_to_ctm.py $dir/align_text $dir/ctm $dir/ctm_aligned
+  # Convert words to 'ids',
+  cat $dir/ctm_aligned | utils/sym2int.pl -f 5 $lang/words.txt >$dir/ctm_aligned_int
 fi
 
 # Prepare word-categories (based on wotd frequencies in 'ctm'),
-steps/conf/prepare_word_categories.py --min-count $word_min_count $lang/words.txt $dir/ctm $dir/word_categories
+if [ -z "$category_text" ]; then
+  steps/conf/convert_ctm_to_tra.py $dir/ctm - | \
+  steps/conf/prepare_word_categories.py --min-count $word_min_count $lang/words.txt - $dir/word_categories
+else
+  steps/conf/prepare_word_categories.py --min-count $word_min_count $lang/words.txt "$category_text" $dir/word_categories
+fi
 
 # Compute lattice-depth,
 latdepth=$dir/lattice_frame_depth.ark
@@ -100,7 +104,7 @@ fi
 if [ $stage -le 3 ]; then
   steps/conf/prepare_calibration_data.py \
     --conf-targets $dir/train_targets.ark --conf-feats $dir/train_feats.ark \
-    $dir/ctm_aligned $word_filter $word_length $unigrams $latdepth $dir/word_categories
+    $dir/ctm_aligned_int $word_feats $latdepth $dir/word_categories
 fi
 
 # Train the logistic regression,
@@ -113,8 +117,9 @@ fi
 if [ $stage -le 5 ]; then
   logistic-regression-eval --apply-log=false $dir/calibration.mdl \
     ark:$dir/train_feats.ark ark,t:- | \
-    awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' \
-    >$dir/ctm_calibrated
+    awk '{ key=$1; p_corr=$4; sub(/,.*/,"",key); gsub(/\^/," ",key); print key,p_corr }' | \
+    utils/int2sym.pl -f 5 $lang/words.txt \
+    >$dir/ctm_calibrated_int
 fi
 
 exit 0

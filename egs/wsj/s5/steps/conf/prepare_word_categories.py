@@ -18,17 +18,22 @@ parser.add_option("--min-count", help="Minimum word-count to have a single word 
 if len(args) != 3:
   parset.print_help()
   sys.exit(1)
-words_file, ctm_file, category_mapping_file = args
+words_file, text_file, category_mapping_file = args
 
+if text_file == '-': text_file = '/dev/stdin'
 if category_mapping_file == '-': category_mapping_file = '/dev/stdout'
 
-# Read the words from the ctm,
-with open(ctm_file) as f:
-  ctm_words = [ l.split()[4] for l in f ]
+# Read the words from the 'tra' file,
+with open(text_file) as f:
+  text_words = [ l.split()[1:] for l in f ]
+
+# Flatten the array of arrays of words,
+import itertools
+text_words = list(itertools.chain.from_iterable(text_words))
 
 # Count the words (regardless if correct or incorrect),
 word_counts = dict()
-for w in ctm_words:
+for w in text_words:
   if w not in word_counts: word_counts[w] = 0
   word_counts[w] += 1
 
