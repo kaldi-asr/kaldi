@@ -393,6 +393,64 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
+/*
+class RepeatedAffineComponent: public UpdatableComponent {
+
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_blocks_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  AffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "AffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+
+  private:
+  const RepeatedAffineComponent &operator = (
+      const RepeatedAffineComponent &other); // Disallow.
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  int32 num_blocks_;
+}; */
+
+
 class SoftmaxComponent: public NonlinearComponent {
  public:
   explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
@@ -1496,8 +1554,8 @@ class CompositeComponent: public UpdatableComponent {
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual Component* Copy() const;
-
+  // Don't implement Copy() at this level: implement it in the child class.
+  
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
@@ -1521,74 +1579,30 @@ class CompositeComponent: public UpdatableComponent {
 
 
 /**
-   Suppose we had a BlockAffineComponent which had repeats of the
-   same block (so like the same affine component repeated a number of times).
-   Then the Jesus component would be equivalent to a BlockAffineComponent,
-   followed by a ReLU, followed by another BlockAffineComponent.  This is
-   used to learn a many-to-many nonlinearity.   Bear in mind
-   that the dimension at the ReLU could be quite a bit higher than the
-   dimension at the input and output of the Jesus component (e.g. ten times
-   higher), which is why we want to implement this as a single component
-   (to save memory, at the expense of having to repeat the forward propagation
-   phase of the first BlockAffineComponent, during the backprop phase).
+   A JesusComponent is a particular combination of the sequence
+   (RepeatedAffineComponent, RectifiedLinearComponent, RepeatedAffineComponent).
+   It's useful to implement learned nonlinearities.
+   We implement it as part of CompositeComponent instead of as an explicit
+   sequence of Compnents in the config file, to help control memory
+   usage (at the expense of more computation).
+
 */
-
-class JesusComponent: public UpdatableComponent {
+class JesusComponent: public CompositeComponent {
  public:
-  virtual int32 InputDim() const {
-    return linear_params_a_.NumCols() * num_blocks_;
-  }
-  virtual int32 OutputDim() const {
-    return linear_params_b_.NumRows() * num_blocks_;
-  }
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  JesusComponent() { } // use Init to really initialize.
   virtual std::string Type() const { return "JesusComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|kBackpropAdds;
-  }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
 
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
+  virtual void InitFromConfig(ConfigLine *cfl);
 
-  virtual Component* Copy() const;
+  // Initialize.  num_blocks must divide input_dim, output_dim and
+  // hidden_dim, otherwise it is an error.
+  // note, typically hidden_dim will be quite a bit larger than input_dim
+  // and output_dim (e.g. 10x larger), num_blocks will be quite large like
+  // 100 or so, and max_rows_process could be fairly large like 2048.
+  void Init(int32 input_dim, int32 output_dim, int32 hidden_dim,
+            int32 num_blocks, int32 max_rows_process);
+  
+  JesusComponent() { } // use Init to really initialize.
 
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-
-  void Init(BaseFloat learning_rate,
-            int32 num_blocks, int32 block_input_dim,
-            int32 block_hidden_dim, int32 block_output_dim,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-
- private:
-
-  int32 num_blocks_;
-  // first the parameters before the ReLU
-  CuMatrix<BaseFloat> linear_params_a_;
-  CuVector<BaseFloat> bias_params_a_;
-  // next, the parameters after the ReLU
-  CuMatrix<BaseFloat> linear_params_b_;
-  CuVector<BaseFloat> bias_params_b_;
 };
 
 

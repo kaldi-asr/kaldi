@@ -215,7 +215,8 @@ void DistributeComponent::InitFromConfig(ConfigLine *cfl) {
   if (!ok || cfl->HasUnusedValues())
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(input_dim, output_dim);
+  else
+    Init(input_dim, output_dim);
 }
 
 void DistributeComponent::Write(std::ostream &os, bool binary) const {

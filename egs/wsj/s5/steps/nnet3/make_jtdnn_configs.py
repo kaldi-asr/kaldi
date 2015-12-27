@@ -21,8 +21,9 @@ parser.add_argument("--include-log-softmax", type=str,
 parser.add_argument("--final-layer-normalize-target", type=float,
                     help="RMS target for final layer (set to <1 if final layer learns too fast",
                     default=1.0)
-parser.add_argument("--jesus-dim", type=int,
+parser.add_argument("--jesus-output-dim", type=int,
                     help="dimension of Jesus layer", default=1000)
+
 parser.add_argument("--jesus-part-dim", type=int,
                     help="dimension of block part of Jesus layer", default=20)
 parser.add_argument("--jesus-part-hidden-dim", type=int,
@@ -142,7 +143,6 @@ for l in range(1, num_hidden_layers + 1):
           format(l, cur_input), file=f)
 
     # now the current dimension is args.jesus_dim.
-
     # Now the Jesus layer.
     print ('component name=jesus-distribute-{0} type=DistributeComponent input-dim={1} '
            'output-dim={2} '.format(l, args.jesus_dim, args.jesus_part_dim), file=f)
