@@ -42,8 +42,8 @@ nnet2::Component *ConvertAffineTransformComponent(
     int32 rank_in = 20,
           rank_out = 80,
           update_period = 4;
-	BaseFloat num_samples_history = 2000.,
-		alpha = 4.;
+    BaseFloat num_samples_history = 2000.,
+              alpha = 4.;
     return new nnet2::AffineComponentPreconditionedOnline(
       nnet2::AffineComponent(affine->GetLinearity(),
         affine->GetBias(),
