@@ -38,11 +38,10 @@ nnet2::Component *ConvertAffineTransformComponent(
   // default learning rate is 1.0e-05, you can use the --learning-rate or
   // --learning-rates option to nnet-am-copy to change it if you need.
   BaseFloat learning_rate = 1.0e-05; 
-  if (affinecompprecond)
-  {
-    int rank_in = 20,
-        rank_out = 80,
-        update_period = 4;
+  if (affinecompprecond) {
+    int32 rank_in = 20,
+          rank_out = 80,
+          update_period = 4;
 	BaseFloat num_samples_history = 2000.,
 		alpha = 4.;
     return new nnet2::AffineComponentPreconditionedOnline(
@@ -55,8 +54,7 @@ nnet2::Component *ConvertAffineTransformComponent(
       num_samples_history,
       alpha);
   }
-  else
-  {
+  else {
     return new nnet2::AffineComponent(affine->GetLinearity(),
       affine->GetBias(),
       learning_rate);
@@ -84,7 +82,7 @@ nnet2::Component *ConvertSpliceComponent(
   const nnet1::Splice *splice =
       dynamic_cast<const nnet1::Splice*>(&nnet1_component);
   KALDI_ASSERT(splice != NULL);
-  int32 low, high;
+//  int32 low, high;
   std::vector<int32> frame_offsets;
 
   std::ostringstream ostr;
@@ -191,8 +189,9 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
 
-    po.Register("affinecompprecond", &affinecompprecond, "Using AffineComponentPreconditionOnline instead AffineComponent");
-    
+    po.Register("affinecompprecond", &affinecompprecond,
+		"Using AffineComponentPreconditionOnline instead AffineComponent");
+
     po.Read(argc, argv);
     srand(srand_seed);
     
