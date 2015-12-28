@@ -37,7 +37,7 @@ nnet2::Component *ConvertAffineTransformComponent(
   KALDI_ASSERT(affine != NULL);
   // default learning rate is 1.0e-05, you can use the --learning-rate or
   // --learning-rates option to nnet-am-copy to change it if you need.
-  BaseFloat learning_rate = 1.0e-05; 
+  BaseFloat learning_rate = 1.0e-05;
   if (affinecompprecond) {
     int32 rank_in = 20,
           rank_out = 80,
@@ -53,8 +53,7 @@ nnet2::Component *ConvertAffineTransformComponent(
       update_period,
       num_samples_history,
       alpha);
-  }
-  else {
+  } else {
     return new nnet2::AffineComponent(affine->GetLinearity(),
       affine->GetBias(),
       learning_rate);
@@ -190,7 +189,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary_write, "Write output in binary mode");
 
     po.Register("affinecompprecond", &affinecompprecond,
-		"Using AffineComponentPreconditionOnline instead AffineComponent");
+      "Using AffineComponentPreconditionOnline instead AffineComponent");
 
     po.Read(argc, argv);
     srand(srand_seed);
