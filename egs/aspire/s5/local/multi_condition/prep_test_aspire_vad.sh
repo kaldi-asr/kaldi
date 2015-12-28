@@ -17,8 +17,11 @@ graph_dir=exp/tri5a/graph_pp
 iter=final        # Acoustic model to be used for decoding
 mfccdir=mfcc_reverb_submission    # Dir to store MFCC features
 fbankdir=fbank_reverb_submission  # Dir to store Fbank features
+sad_mfcc_config=conf/mfcc_hires.conf
+sad_fbank_config=conf/fbank.conf
 mfcc_config=conf/mfcc_hires.conf
 fbank_config=conf/fbank.conf
+add_frame_snr=true
 
 nj=30             # number of parallel jobs for VAD and segmentation
 decode_nj=200     # number of parallel jobs for decoding
@@ -37,7 +40,8 @@ max_count=100 # parameter for extract_ivectors.sh
 sub_speaker_frames=1500
 ivector_scale=1.0
 weights_file=
-silence_weight=0.00001
+weights_method=Viterbi
+silence_weight=0
 
 # Decoding and scoring opts
 acwt=0.1
@@ -100,8 +104,8 @@ make_mfcc () {
     echo "$0: make_mfcc: Not enough arguments. Some variable is probably not set"
     exit 1
   fi
-  this_nj=$nj
-  mfcc_config=$mfcc_config
+  local this_nj=$nj
+  local mfcc_config=$mfcc_config
 
   while [ $# -gt 0 ]; do
     if [ $[$# % 2] -ne 0 ]; then
@@ -133,11 +137,12 @@ make_mfcc () {
     exit 1
   fi
 
-  data_dir=$1
-  mfccdir=$2
+  local data_dir=$1
+  local mfccdir=$2
 
   rm -rf ${data_dir}_hires
   utils/copy_data_dir.sh ${data_dir} ${data_dir}_hires
+  [ -f $data_dir/reco2file_and_channel ] && cp $data_dir/reco2file_and_channel ${data_dir}_hires
 
   data_dir=${data_dir}_hires
   steps/make_mfcc.sh --nj $this_nj --cmd "$train_cmd" \
@@ -154,8 +159,8 @@ make_fbank () {
     echo "$0: make_fbank: Not enough arguments. Some variable is probably not set"
     exit 1
   fi
-  this_nj=$nj
-  fbank_config=conf/fbank_hires.conf
+  local this_nj=$nj
+  local fbank_config=conf/fbank_hires.conf
 
   while [ $# -gt 0 ]; do
     if [ $[$# % 2] -ne 0 ]; then
@@ -188,11 +193,12 @@ make_fbank () {
   fi
 
 
-  data_dir=$1
-  fbankdir=$2
+  local data_dir=$1
+  local fbankdir=$2
 
   rm -rf ${data_dir}_fbank
   utils/copy_data_dir.sh ${data_dir} ${data_dir}_fbank
+  [ -f $data_dir/reco2file_and_channel ] && cp $data_dir/reco2file_and_channel ${data_dir}_fbank
 
   data_dir=${data_dir}_fbank
   steps/make_fbank.sh --nj $this_nj --cmd "$train_cmd" \
@@ -207,14 +213,14 @@ make_fbank () {
 if [[ "$data_id" =~ "test_aspire" ]]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
   if [ $stage -le 0 ]; then
-    make_mfcc --nj $nj --mfcc-config $mfcc_config $data_dir $mfccdir
-    make_fbank --nj $nj --fbank-config $fbank_config $data_dir $fbankdir
+    make_mfcc --nj $nj --mfcc-config $sad_mfcc_config $data_dir $mfccdir
+    make_fbank --nj $nj --fbank-config $sad_fbank_config $data_dir $fbankdir
   fi
 elif [[ "$data_id" =~ "eval_aspire" ]]; then
   out_file=single_eval${affix}_$model_affix.ctm
   if [ $stage -le 0 ]; then
-    make_mfcc --nj $nj --mfcc-config $mfcc_config $data_dir $mfcc_dir
-    make_fbank --nj $nj --fbank-config $fbank_config $data_dir $fbankdir
+    make_mfcc --nj $nj --mfcc-config $sad_mfcc_config $data_dir $mfcc_dir
+    make_fbank --nj $nj --fbank-config $sad_fbank_config $data_dir $fbankdir
   fi
 else
   if $create_whole_dir; then
@@ -231,9 +237,9 @@ else
       cat $whole_dir/wav.scp | awk '{print $1, $1;}' > $whole_dir/utt2spk
       utils/utt2spk_to_spk2utt.pl $whole_dir/utt2spk > $whole_dir/spk2utt
 
-      make_mfcc --nj $nj --mfcc-config $mfcc_config $whole_dir $mfccdir
+      make_mfcc --nj $nj --mfcc-config $sad_mfcc_config $whole_dir $mfccdir
 
-      make_fbank --nj $nj --fbank-config $fbank_config $whole_dir $fbankdir
+      make_fbank --nj $nj --fbank-config $sad_fbank_config $whole_dir $fbankdir
     fi
     data_id=${data_id}_whole
   fi
@@ -243,7 +249,7 @@ fi
 if [ $stage -le 1 ]; then
   # Compute sub-band SNR
   local/snr/compute_frame_snrs.sh --cmd "$train_cmd" \
-    --use-gpu yes --nj $nj --prediction-type "Snr" --iter $snr_predictor_iter \
+    --use-gpu yes --nj $nj --iter $snr_predictor_iter \
     $snr_predictor \
     data/${data_id}_hires data/${data_id}_fbank \
     $frame_snrs_dir || exit 1
@@ -251,13 +257,19 @@ fi
 
 compute_sad_opts=(--quantization-bins $quantization_bins --iter $sad_model_iter)
 
-if [ ! -z "$frame_snrs_dir" ] && [ $stage -ge 2 ]; then
+if [ ! -z "$input_frame_snrs_dir" ] && [ $stage -ge 2 ]; then
   frame_snrs_dir=$input_frame_snrs_dir
 fi
 
 if [ $stage -le 2 ]; then
+  local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $nj --add-frame-snr $add_frame_snr \
+    data/${data_id}_fbank $frame_snrs_dir exp/make_snr_data_dir/${data_id} snr_feats $frame_snrs_dir/${data_id}_snr || exit 1
+fi
+
+if [ $stage -le 3 ]; then
   local/snr/compute_sad.sh \
     --nj $nj --use-gpu yes "${compute_sad_opts[@]}" \
+    --snr-data-dir $frame_snrs_dir/${data_id}_snr \
     $sad_model_dir $frame_snrs_dir ${vad_dir} || exit 1
 fi
 
@@ -268,13 +280,15 @@ if [ ! -z "$input_vad_dir" ] && [ $stage -ge 3 ]; then
   vad_dir=$input_vad_dir
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   local/snr/sad_to_segments.sh --cmd "$train_cmd" \
     --method $segmentation_method --stage $segmentation_stage ${segmentation_config:+--config $segmentation_config} \
     data/${data_id}_hires ${vad_dir} $segmentation_dir $segmented_data_dir
 fi
 
-if [ $stage -le 4 ]; then
+[ -f $data_dir/reco2file_and_channel ] && cp $data_dir/reco2file_and_channel ${segmented_data_dir}
+
+if [ $stage -le 5 ]; then
   make_mfcc --nj $nj --mfcc-config $mfcc_config \
     $segmented_data_dir $mfccdir
 fi
@@ -286,9 +300,11 @@ if $use_ivectors; then
   else
     mkdir -p $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
 
-    if [ $stage -le 4 ]; then
-      local/snr/get_weights_for_ivector_extraction.sh ${data_dir} \
-        ${segmented_data_dir} ${vad}_dir \
+    if [ $stage -le 6 ]; then
+      local/snr/get_weights_for_ivector_extraction.sh --cmd queue.pl --nj $nj \
+        --method $weights_method ${segmentation_config:+--config $segmentation_config} \
+        --silence-weight $silence_weight \
+        ${segmented_data_dir} ${vad_dir} \
         $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
       ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
     fi

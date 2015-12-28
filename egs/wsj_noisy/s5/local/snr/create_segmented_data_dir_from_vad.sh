@@ -13,8 +13,8 @@ feats=
 . utils/parse_options.sh 
 
 if [ $# -ne 6 ]; then
-  echo "Usage: $0 <data-dir> <segments-file> <seg2utt-file> <feats-scp> <tmp-dir> <feat-dir> <out-data-dir>"
-  echo " e.g.: $0 data/train_100k exp/vad_data_prep_train_100k/file_vad/segments exp/vad_data_prep_train_100k/file_vad/seg2utt exp/frame_snrs_a_train_100k/snr.scp exp/make_segmented_feats/log segmented_feats data/train_100k_seg"
+  echo "Usage: $0 <data-dir> <segments-file> <seg2utt-file> <tmp-dir> <feat-dir> <out-data-dir>"
+  echo " e.g.: $0 data/train_100k exp/vad_data_prep_train_100k/file_vad/segments exp/vad_data_prep_train_100k/file_vad/seg2utt exp/make_segmented_feats/log segmented_feats data/train_100k_seg"
   exit 1
 fi
 
