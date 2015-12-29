@@ -393,6 +393,92 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
+class RepeatedAffineComponent: public UpdatableComponent {
+  friend class SoftmaxComponent; // Friend declaration relates to mixing up.
+ public:
+ 
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
+ 
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+ 
+  RepeatedAffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "RepeatedAffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+	     kBackpropNeedsInput|kBackpropAdds;
+  }
+ 
+ 
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv);
+ 
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+ 
+//  virtual Component* Copy() const;     //To rewrite latter
+ 
+ 
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+ 
+  // Some functions that are specific to this class.
+ 
+  // This new function is used when mixing up:
+  virtual void SetParams(const VectorBase<BaseFloat> &bias,
+                         const MatrixBase<BaseFloat> &linear);
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
+  // The next constructor is used in converting from nnet1.
+   RepeatedAffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                           const CuVectorBase<BaseFloat> &bias_params,
+                           int32 num_repeats,
+                           BaseFloat learning_rate);
+  void Init(BaseFloat learning_rate,
+            int32 input_dim, int32 output_dim, int32 num_repeats,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(BaseFloat learning_rate, int32 num_repeats,
+            std::string matrix_filename);
+ 
+  // This function resizes the dimensions of the component, setting the
+  // parameters to zero, while leaving any other configuration values the same.
+  virtual void Resize(int32 input_dim, int32 output_dim);
+ 
+  // The following functions are used for collapsing multiple layers
+  // together.	They return a pointer to a new Component equivalent to
+  // the sequence of two components.	We haven't implemented this for
+  // FixedLinearComponent yet.
+  Component *CollapseWithNext(const RepeatedAffineComponent &next) const ;
+  //Component *CollapseWithNext(const FixedAffineComponent &next) const;
+  // Component *CollapseWithNext(const FixedScaleComponent &next) const;
+  //Component *CollapseWithPrevious(const FixedAffineComponent &prev) const;
+ 
+ protected:
+  friend class NaturalGradientAffineComponent;
+ 
+  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  int32 num_repeats_;
+};
+
 class SoftmaxComponent: public NonlinearComponent {
  public:
   explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }

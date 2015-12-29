@@ -975,6 +975,337 @@ Component *AffineComponent::CollapseWithPrevious(
   return ans;
 }
 
+//RepeatedAffineComponent::RepeatedAffineComponent() {}
+
+RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent & component) :
+    UpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    bias_params_(component.bias_params_),
+    num_repeats_(component.num_repeats_) {}
+
+RepeatedAffineComponent::RepeatedAffineComponent(const CuMatrixBase<BaseFloat>& linear_params,
+                                                 const CuVectorBase<BaseFloat>& bias_params,
+                                                 int32 num_repeats,
+                                                 BaseFloat learning_rate) : 
+    UpdatableComponent(learning_rate),
+    linear_params_(linear_params),
+    bias_params_(bias_params),
+    num_repeats_(num_repeats) {
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
+               bias_params.Dim() != 0);
+}
+
+void RepeatedAffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+void RepeatedAffineComponent::Resize(int32 input_dim, int32 output_dim) {
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0);
+  KALDI_ASSERT(input_dim % num_repeats_ == 0 && output_dim % num_repeats_ == 0);
+  bias_params_.Resize(output_dim / num_repeats_);
+  linear_params_.Resize(output_dim / num_repeats_, input_dim / num_repeats_);
+}
+
+void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const RepeatedAffineComponent *other =
+      dynamic_cast<const RepeatedAffineComponent *>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+void RepeatedAffineComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  linear_params_.SetZero();
+  bias_params_.SetZero();
+}
+
+void RepeatedAffineComponent::SetParams(const VectorBase<BaseFloat> &bias,
+  const MatrixBase<BaseFloat> &linear) {
+  bias_params_ = bias;
+  linear_params_ = linear;
+  KALDI_ASSERT(bias_params_.Dim() == linear_params_.NumRows());
+}
+
+void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
+  CuMatrix<BaseFloat> temp_linear_params(linear_params_);
+  temp_linear_params.SetRandn();
+  linear_params_.AddMat(stddev, temp_linear_params);
+  CuVector<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddVec(stddev, temp_bias_params);
+}	
+
+std::string RepeatedAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+	                        linear_params_size),
+  bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+  bias_params_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", num-repeats=" << num_repeats_
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
+  return stream.str();
+}
+
+//due to the change of backProp function from parent class Component.
+/*
+Component* RepeatedAffineComponent::Copy() const {
+	RepeatedAffineComponent *ans = new RepeatedAffineComponent();
+	ans->learning_rate_ = learning_rate_;
+	ans->linear_params_ = linear_params_;
+	ans->bias_params_ = bias_params_;
+	ans->is_gradient_ = is_gradient_;
+	ans->num_repeats_ = num_repeats_;
+	return ans;
+}
+*/
+
+BaseFloat RepeatedAffineComponent::DotProduct(const UpdatableComponent &other_in) const {
+                                              const RepeatedAffineComponent *other =
+    dynamic_cast<const RepeatedAffineComponent*>(&other_in);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans)
+                     + VecVec(bias_params_, other->bias_params_);
+}
+
+void RepeatedAffineComponent::Init(BaseFloat learning_rate,
+                                   int32 input_dim, int32 output_dim, int32 num_repeats,
+                                   BaseFloat param_stddev, BaseFloat bias_stddev) {
+  KALDI_ASSERT(input_dim % num_repeats == 0 && output_dim % num_repeats == 0);
+  UpdatableComponent::Init(learning_rate);
+  linear_params_.Resize(output_dim / num_repeats, input_dim / num_repeats);
+  bias_params_.Resize(output_dim / num_repeats);
+  num_repeats_ = num_repeats;
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+}
+
+void RepeatedAffineComponent::Init(BaseFloat learning_rate,
+                                   int32 num_repeats,
+                                   std::string matrix_filename) {
+  UpdatableComponent::Init(learning_rate);
+  num_repeats_ = num_repeats;
+  CuMatrix<BaseFloat> mat;
+  ReadKaldiObject(matrix_filename, &mat); // will abort on failure.
+  KALDI_ASSERT(mat.NumCols() >= 2);
+  int32 input_dim = mat.NumCols() - 1, output_dim = mat.NumRows();
+  linear_params_.Resize(output_dim, input_dim);
+  bias_params_.Resize(output_dim);
+  linear_params_.CopyFromMat(mat.Range(0, output_dim, 0, input_dim));
+  bias_params_.CopyColFromMat(mat, input_dim);
+}
+
+void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_;
+  int32 num_repeats = num_repeats_;
+  std::string matrix_filename;
+  int32 input_dim = -1, output_dim = -1;
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  ok = ok && cfl->GetValue("num_repeats", &num_repeats);
+  if (cfl->GetValue("matrix", &matrix_filename)) {
+    Init(learning_rate, num_repeats, matrix_filename);
+    if (cfl->GetValue("input-dim", &input_dim))
+      KALDI_ASSERT(input_dim == InputDim() &&
+	               "input-dim mismatch vs. matrix.");
+    if (cfl->GetValue("output-dim", &output_dim))
+      KALDI_ASSERT(output_dim == OutputDim() &&
+	               "output-dim mismatch vs. matrix.");
+  } else {
+    ok = ok && cfl->GetValue("input-dim", &input_dim);
+    ok = ok && cfl->GetValue("output-dim", &output_dim);
+	KALDI_ASSERT(input_dim % num_repeats == 0 &&
+	             "num-repeats must divide input-dim");
+	KALDI_ASSERT(output_dim % num_repeats == 0 &&
+	             "num-repeats must divide output-dim");
+	BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+    bias_stddev = 1.0;
+	cfl->GetValue("param-stddev", &param_stddev);
+    cfl->GetValue("bias-stddev", &bias_stddev);
+    Init(learning_rate, input_dim, output_dim, num_repeats,
+         param_stddev, bias_stddev);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	          << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+void RepeatedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                        const CuMatrixBase<BaseFloat> &in,
+                                        CuMatrixBase<BaseFloat> *out) const {
+
+  // No need for asserts as they'll happen within the matrix operations.
+  int32 block_rows = linear_params_.NumRows();
+  int32 block_cols = linear_params_.NumCols();
+  // copies bias_params_ to each row
+  // of *out
+
+  CuVector<BaseFloat> tmp_repeated_bias(num_repeats_ * bias_params_.Dim(), kSetZero);
+  CuSubMatrix<BaseFloat> tmp_bias_mat(tmp_repeated_bias.Data(), num_repeats_, 
+                                      bias_params_.Dim(), bias_params_.Dim());
+  tmp_bias_mat.CopyRowsFromVec(bias_params_);
+  out->CopyRowsFromVec(tmp_repeated_bias);
+
+  std::vector<CuSubMatrix<BaseFloat> *> in_batch, out_batch, linear_params_batch;
+  CuSubMatrix<BaseFloat>* params_elem = 
+      new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+
+  //split the in and out mat into blocks.
+  for (int i = 0; i < num_repeats_; i++) {
+    in_batch.push_back(new CuSubMatrix<BaseFloat>(in.ColRange(
+	                   i * block_cols, block_cols)));
+    out_batch.push_back(new CuSubMatrix<BaseFloat>(
+	                    out->ColRange(i * block_rows, block_rows)));
+    linear_params_batch.push_back(params_elem);
+  }
+  AddMatMatBatched(1.0f, out_batch, in_batch, kNoTrans, 
+                   linear_params_batch, kTrans, 1.0f);
+}
+
+void RepeatedAffineComponent::Backprop(const std::string &debug_info,
+                                       const ComponentPrecomputedIndexes *indexes,
+                                       const CuMatrixBase<BaseFloat> &in_value,
+                                       const CuMatrixBase<BaseFloat> &, // out_value
+                                       const CuMatrixBase<BaseFloat> &out_deriv,
+                                       Component *to_update_in,
+                                       CuMatrixBase<BaseFloat> *in_deriv){
+  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv) {
+    int32 block_rows = linear_params_.NumRows();
+	int32 block_cols = linear_params_.NumCols();
+	std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch, linear_params_batch;
+	CuSubMatrix<BaseFloat>* params_elem = 
+	    new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+  
+  //split the out_deriv and the in_deriv mat into blocks.
+    for (int i = 0; i < num_repeats_; i++) {
+      in_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(in_deriv->ColRange(
+	                           i * block_cols, block_cols)));
+      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+	                            i * block_rows, block_rows)));
+      linear_params_batch.push_back(params_elem);	
+    }
+    AddMatMatBatched(1.0f, in_deriv_batch, out_deriv_batch, kNoTrans, 
+                     linear_params_batch, kNoTrans, 1.0f);
+  }
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    int32 block_rows = linear_params_.NumRows();
+    int32 block_cols = linear_params_.NumCols();
+	std::vector<CuSubMatrix<BaseFloat> *> in_value_batch, out_deriv_batch, linear_params_deriv_batch;
+	CuSubMatrix<BaseFloat>* params_deriv_elem = 
+	    new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+
+    for (int i = 0; i < num_repeats_; i++) {
+      in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
+	                           i * block_cols, block_cols)));
+      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+	                            i * block_rows, block_rows)));
+      linear_params_deriv_batch.push_back(params_deriv_elem);
+    }
+    AddMatMatBatched(learning_rate_, linear_params_deriv_batch, out_deriv_batch, kTrans, 
+                     in_value_batch, kNoTrans, 0.0f);
+
+	for (int i = 0; i < num_repeats_; i++) {
+      bias_params_.AddRowSumMat(1.0f, out_deriv, 1.0);
+      linear_params_.AddMat(1.0f, *linear_params_deriv_batch[i], kNoTrans);		
+    }
+  }
+}
+
+void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
+  // might not see the "<RepeatedAffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "</RepeatedAffineComponent>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<NumRepeats>");
+  ReadBasicType(is, binary, &num_repeats_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</RepeatedAffineComponent>");
+}
+
+void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<RepeatedAffineComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<NumRepeats>");
+  WriteBasicType(os, binary, num_repeats_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</RepeatedAffineComponent>");
+}
+
+int32 RepeatedAffineComponent::NumParameters() const {
+  // Note: unlike AffineComponent, InputDim() & OutputDim() are not used here and below,
+  // for they are multipled by num_repeats_.
+  return linear_params_.NumCols() * linear_params_.NumRows() + bias_params_.Dim();
+}
+
+void RepeatedAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  params->Range(0, linear_params_.NumCols() * linear_params_.NumRows()).CopyRowsFromMat(linear_params_);
+  params->Range(linear_params_.NumCols() * linear_params_.NumRows(),
+                bias_params_.Dim()).CopyFromVec(bias_params_);
+}
+
+void RepeatedAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  linear_params_.CopyRowsFromVec(params.Range(0, linear_params_.NumCols() * linear_params_.NumRows()));
+  bias_params_.CopyFromVec(params.Range(linear_params_.NumCols() * linear_params_.NumRows(),
+                                        bias_params_.Dim()));
+}
+
+Component *RepeatedAffineComponent::CollapseWithNext(
+    const RepeatedAffineComponent &next_component) const {
+  RepeatedAffineComponent *ans = dynamic_cast<RepeatedAffineComponent*>(this->Copy());
+  KALDI_ASSERT(ans != NULL);
+  // Note: it's possible that "ans" is really of a derived type such
+  // as AffineComponentPreconditioned, but this will still work.
+  // the "copy" call will copy things like learning rates, "alpha" value
+  // for preconditioned component, etc.
+  KALDI_ASSERT(next_component.num_repeats_ == num_repeats_);
+  ans->linear_params_.Resize(next_component.linear_params_.NumRows(), linear_params_.NumCols());
+  ans->bias_params_ = next_component.bias_params_;
+
+  ans->linear_params_.AddMatMat(1.0, next_component.linear_params_, kNoTrans,
+                                this->linear_params_, kNoTrans, 0.0);
+  ans->bias_params_.AddMatVec(1.0, next_component.linear_params_, kNoTrans,
+                              this->bias_params_, 1.0);
+  return ans;
+}
+
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
   scales_.Scale(scale);
