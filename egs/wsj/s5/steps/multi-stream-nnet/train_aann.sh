@@ -317,7 +317,7 @@ if [[ -z "$mlp_init" && -z "$mlp_proto" ]]; then
   echo "Genrating network prototype $mlp_proto"
 
   # my.extras/utils/nnet/make_aann_proto.py --activation-type='<Tanh>' --no-softmax --hid-bias-mean=0 --hid-bias-range=1 --bottleneck-dim=$bn_dim $num_fea $num_tgt $hid_layers $hid_dim > $mlp_proto
-  python my.extras/utils/nnet/make_aann_proto.py $proto_opts \
+  python utils/multi-stream/nnet/make_aann_proto.py $proto_opts \
     ${bn_dim:+ --bottleneck-dim=$bn_dim} \
     $num_fea $num_tgt $hid_layers $hid_dim > $mlp_proto
 
