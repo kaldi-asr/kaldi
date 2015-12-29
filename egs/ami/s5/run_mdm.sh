@@ -130,6 +130,8 @@ if [ $stage -le 8 ]; then
     data/$mic/train data/lang exp/$mic/tri3a exp/$mic/tri3a_ali
 fi
 
+exit
+
 # At this point you can already run the DNN script:
 # local/nnet/run_dnn_lda_mllt.sh $mic
 # exit 0

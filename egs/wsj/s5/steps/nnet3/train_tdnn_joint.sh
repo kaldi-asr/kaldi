@@ -60,7 +60,7 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 
 randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
-cleanup=true
+cleanup=false
 egs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=

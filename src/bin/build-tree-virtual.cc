@@ -38,8 +38,6 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     int32 num_trees = 1;
 
-    std::string occs_out_filename;
-
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("num-trees", &num_trees, "Number of source trees that we will"
