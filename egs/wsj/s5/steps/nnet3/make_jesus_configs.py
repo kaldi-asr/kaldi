@@ -32,16 +32,17 @@ parser.add_argument("--jesus-output-dim", type=int,
                     help="output dimension of Jesus layer", default=1000)
 parser.add_argument("--affine-output-dim", type=int,
                     help="Output dimension of affine components (their input dim "
-                    "is --jesus-output-dim).")
+                    "is --jesus-output-dim).", default=1000)
 parser.add_argument("--include-relu", type=str,
-                    help="If true, add ReLU nonlinearity after the Jesus layer")
+                    help="If true, add ReLU nonlinearity after the Jesus layer",
+                    default="true", choices = ["false", "true"])
 parser.add_argument("--num-jesus-blocks", type=int,
                     help="number of blocks in Jesus layer.  --jesus-output-dim, "
                     "--jesus-hidden-dim and --affine-output-dim will be rounded up to "
-                    "be a multiple of this.");
+                    "be a multiple of this.", default=100);
 parser.add_argument("--clipping-threshold", type=float,
                     help="clipping threshold used in ClipGradient components (only relevant if "
-                    "recurrence indexes are specified).  If clipping-threshold=0 no clipping is done", 
+                    "recurrence indexes are specified).  If clipping-threshold=0 no clipping is done",
                     default=15)
 parser.add_argument("--num-targets", type=int,
                     help="number of network targets (e.g. num-pdf-ids/num-leaves)")
@@ -50,8 +51,8 @@ parser.add_argument("config_dir",
 
 print(' '.join(sys.argv))
 
-# layer0: splice + transform + ReLU + renormalize
-# layerN: splice + Jesus [+ ReLU +] affine + renormalize.
+# layer1: splice + LDA-transform + affine + ReLU + renormalize
+# layerX: splice + Jesus [+ ReLU +] affine + renormalize.
 
 args = parser.parse_args()
 
@@ -80,15 +81,11 @@ if args.affine_output_dim % args.num_jesus_blocks != 0:
     print('Rounding up --jesus-hidden-dim to {0} to be a multiple of --num-jesus-blocks={1}: ',
           args.affine_output_dim, args.num_jesus_blocks)
 
-
-if (args.jesus_dim % args.jesus_part_dim != 0):
-    sys.exit("--jesus-part-dim must divide --jesus-dim")
-
 ## Work out splice_array and recurrence_array,
 ## e.g. for
 ## args.splice_indexes == '-3,-2,-1,0,1,2,3 -3,0:-3 -3,0:-3 -6,-3,0:-6,-3'
-## we would have 
-##   splice_array = [ [ -3,-2,...3 ], [-3,0] [-3,0] [-6,-3,0] 
+## we would have
+##   splice_array = [ [ -3,-2,...3 ], [-3,0] [-3,0] [-6,-3,0]
 ## and
 ##  recurrence_array = [ [], [-3], [-3], [-6,-3] ]
 ## Note, recurrence_array[0] must be empty; and any element of recurrence_array
@@ -113,12 +110,12 @@ try:
             split_on_colon.append("")
         int_list = []
         this_splices = [ int(x) for x in split_on_colon[0].split(",") ]
-        this_recurrence = [ int(x) for x in split_on_colon[1].split(",") ]
+        this_recurrence = [ int(x) for x in split_on_colon[1].split(",") if x ]
         splice_array.append(this_splices)
         recurrence_array.append(this_recurrence)
         if (len(this_splices) < 1):
             sys.exit("invalid --splice-indexes argument [empty splices]: " + args.splice_indexes)
-        if len(this_recurrences) > 1 and this_recurrences[0] * this_recurrences[-1] <= 0:
+        if len(this_recurrence) > 1 and this_recurrence[0] * this_recurrence[-1] <= 0:
             sys.exit("invalid --splice-indexes argument [invalid recurrence indexes; would not be computable."
                      + args.splice_indexes)
         if not this_splices == sorted(this_splices):
@@ -127,7 +124,7 @@ try:
         left_context += -this_splices[0]
         right_context += this_splices[-1]
 except ValueError as e:
-    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
+    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + " " + str(e))
 left_context = max(0, left_context)
 right_context = max(0, right_context)
 num_hidden_layers = len(splice_array)
@@ -172,9 +169,39 @@ for l in range(1, num_hidden_layers + 1):
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
         print('component-node name=lda component=lda input={0}'.format(orig_input),
               file=f)
-        cur_input='lda'
-        cur_dim = input_dim
+        # after the initial LDA transform, put a trainable affine layer and a ReLU, followed
+        # by a NormalizeComponent.
+        print('component name=affine1 type=NaturalGradientAffineComponent '
+              'input-dim={0} output-dim={1} bias-stddev=0'.format(
+                input_dim, args.affine_output_dim), file=f)
+        print('component-node name=affine1 component=affine1 input=lda')
+        print('component name=relu1 type=RectifiedLinearComponent dim={0}'.format(
+                args.affine_output_dim), file=f)
+        print('component-node name=relu1 component=relu1 input=affine1')
+        print('component name=renorm1 type=RenormalizeComponent dim={0}'.format(
+                args.affine_output_dim), file=f)
+        print('component-node name=renorm1 component=renorm1 input=relu1')
     else:
+        splices = []
+        for offset in splice_array[l-1]:
+            splices.append('Offset(renorm{0}, {1})'.format(l-1, offset))
+        # if this layer has recurrence, add a ClipGradientComponent for use
+        # by its recurrent connections
+        if len(recurrence_array[l-1]) > 0:
+            print('component name=clip-gradient{0} dim={1} clipping-threshold={2} '
+                  'norm-based-clipping=true '.format(
+                    l, args.affine_output_dim, args.clipping_threshold), file=f)
+            print('component-node name=clip-gradient{0} component=clip-gradient{0} '
+                  'input=renorm{0}'.format(l), file=f)
+        for offset in recurrence_array[l-1]:
+            splices.append('IfDefined(Offset(clip-gradient{0}, {1}))'.format(l, offset))
+
+        # As input to the Jesus component we'll append the spliced input and
+        # recurrent input, but we first need to rearrange the dimensions so that
+        # a particular dimension
+want to
+
+
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
         splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
                     for n in splice_array[l-1] ]

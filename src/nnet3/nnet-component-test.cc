@@ -55,9 +55,10 @@ void TestNnetComponentAddScale(Component *c) {
 }
 
 void TestNnetComponentVectorizeUnVectorize(Component *c) {
-  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
-  if((uc==NULL) || (uc->NumParameters() == 0))
+  if (!(c->Properties() & kUpdatableComponent))
     return;
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  KALDI_ASSERT(uc != NULL);
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
   uc2->SetZero(false);
   Vector<BaseFloat> params(uc2->NumParameters());
@@ -79,19 +80,10 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
 }
 
 void TestNnetComponentUpdatableFlag(Component *c) {
-  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
-  if(uc==NULL)
-    return;
-  if(!(uc->Properties() & kUpdatableComponent)){
-    KALDI_ASSERT(uc->NumParameters() == 0);
-    KALDI_ASSERT(uc->DotProduct(*uc) == 0);
-    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
-    uc2->Scale(7.0);
-    uc2->Add(3.0, *uc);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
-    uc->SetZero(false);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
-    delete uc2;
+  if (c->Properties() & kUpdatableComponent) {
+    UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+    KALDI_ASSERT(uc != NULL && "Component returning the kUpdatable flag "
+                 "must be castable to UpdatableComponent.");
   }
 }
 

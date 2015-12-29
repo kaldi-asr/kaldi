@@ -834,7 +834,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 22);
+  int32 n = RandInt(0, 23);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1041,6 +1041,29 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
           input_dim = output_dim * group_size;
       os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      break;
+    }
+    case 23: {
+      *component_type = "CompositeComponent";
+      int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
+          max_rows_process = RandInt(1, 30);
+      os << "num-components=" << num_components
+         << " max-rows-process=" << max_rows_process;
+      std::vector<std::string> sub_configs;
+      for (int32 i = 1; i <= num_components; i++) {
+        if (RandInt(1, 3) == 1) {
+          os << " component" << i << "='type=RectifiedLinearComponent dim="
+             << cur_dim << "'";
+        } else if (RandInt(1, 2) == 1) {
+          os << " component" << i << "='type=TanhComponent dim="
+             << cur_dim << "'";
+        } else {
+          int32 next_dim = RandInt(20, 30);
+          os << " component" << i << "='type=AffineComponent input-dim="
+             << cur_dim << " output-dim=" << next_dim << "'";
+          cur_dim = next_dim;
+        }
+      }
       break;
     }
     default:

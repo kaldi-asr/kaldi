@@ -39,7 +39,13 @@ enum ComponentProperties {
                              // of output and this component doesn't care about the indexes
                              // (i.e. it maps each row of input to each row of output without
                              // regard to the index values).  Will normally be true.
-  kUpdatableComponent = 0x002,  // true if the component has parameters that can be updated.
+  kUpdatableComponent = 0x002,  // true if the component has parameters that can
+                                // be updated.  Components that return this flag
+                                // must be dynamic_castable to type
+                                // UpdatableComponent (but components of type
+                                // UpdatableComponent do not have to return this
+                                // flag, e.g.  if this instance is not really
+                                // updatable).
   kLinearInInput = 0x004,    // true if the component's output is always a
                              // linear function of its input, i.e. alpha times
                              // input gives you alpha times output.
@@ -314,10 +320,11 @@ class Component {
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
-  //    -- an UpdatableComponent adds the parameters of
+  ///    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  //    -- a NonlinearComponent it relates to adding stats
+  ///    -- a NonlinearComponent it relates to adding stats
+  /// Otherwise it should do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
 
   Component() { }
@@ -333,7 +340,7 @@ class Component {
 /**
  * Class UpdatableComponent is a Component which has trainable parameters; it
  * extends the interface of Component.  This is a base-class for Components with
- * parameters.
+ * parameters.  See comment by declaration of kUpdatableComponent.
  */
 class UpdatableComponent: public Component {
  public:
