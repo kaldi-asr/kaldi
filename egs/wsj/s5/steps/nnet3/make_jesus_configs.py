@@ -133,11 +133,6 @@ print('num_hidden_layers=' + str(num_hidden_layers), file=f)
 f.close()
 
 
-
-print('splice_array is: ' + str(splice_array))
-print('recurrence_array is: ' + str(recurrence_array))
-
-
 f = open(args.config_dir + "/init.config", "w")
 print('# Config file for initializing neural network prior to', file=f)
 print('# preconditioning matrix computation', file=f)

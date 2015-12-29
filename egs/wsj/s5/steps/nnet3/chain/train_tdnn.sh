@@ -210,7 +210,6 @@ if [ $stage -le -5 ]; then
       --ivector-dim $ivector_dim  \
        $jesus_opts \
       --num-targets $num_leaves \
-      --use-presoftmax-prior-scale false \
       $dir/configs || exit 1;
 
   elif [ ! -z "$jesus_dim" ]; then
