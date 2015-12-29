@@ -27,6 +27,7 @@ pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
 jesus_dim=
+jesus_opts=  # opts to steps/nnet3/make_jesus_configs.py
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -200,7 +201,19 @@ num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exi
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
-  if [ ! -z "$jesus_dim" ]; then
+  if [ ! -s "$jesus_opts" ]; then
+    python steps/nnet3/make_jesus_configs.py \
+      --include-log-softmax=false \
+      --final-layer-normalize-target $final_layer_normalize_target \
+      --splice-indexes "$splice_indexes"  \
+      --feat-dim $feat_dim \
+      --ivector-dim $ivector_dim  \
+       $jesus_opts \
+      --num-targets $num_leaves \
+      --use-presoftmax-prior-scale false \
+      $dir/configs || exit 1;
+
+  elif [ ! -z "$jesus_dim" ]; then
     python steps/nnet3/make_jtdnn_configs.py \
       --include-log-softmax=false \
       --final-layer-normalize-target $final_layer_normalize_target \
