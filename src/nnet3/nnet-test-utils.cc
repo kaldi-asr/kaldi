@@ -1082,6 +1082,15 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " num-repeats=" << num_repeats;
       break;
     }
+    case 25: {
+      *component_type = "BlockAffineComponent";
+      int32 num_blocks = RandInt(1, 50),
+          input_dim = num_blocks * RandInt(5, 15),
+          output_dim = num_blocks * RandInt(5, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-blocks=" << num_blocks;
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

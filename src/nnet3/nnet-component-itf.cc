@@ -104,6 +104,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new CompositeComponent();
   } else if (component_type == "RepeatedAffineComponent") {
     ans = new RepeatedAffineComponent();
+  } else if (component_type == "BlockAffineComponent") {
+    ans = new BlockAffineComponent();
   }
   return ans;
 }
