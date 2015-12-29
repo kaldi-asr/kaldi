@@ -102,6 +102,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DistributeComponent();
   } else if (component_type == "CompositeComponent") {
     ans = new CompositeComponent();
+  } else if (component_type == "RepeatedAffineComponent") {
+    ans = new RepeatedAffineComponent();
   }
   return ans;
 }

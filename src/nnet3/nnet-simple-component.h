@@ -393,23 +393,21 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
-/*
 class RepeatedAffineComponent: public UpdatableComponent {
+ public:
 
-  virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
-  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_blocks_; }
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  AffineComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "AffineComponent"; }
+  RepeatedAffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "RepeatedAffineComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-        kBackpropNeedsInput|kBackpropAdds;
+	     kBackpropNeedsInput|kBackpropAdds;
   }
-
-
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -426,7 +424,6 @@ class RepeatedAffineComponent: public UpdatableComponent {
 
   virtual Component* Copy() const;
 
-
   // Some functions from base-class UpdatableComponent.
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
@@ -437,19 +434,25 @@ class RepeatedAffineComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
+  // Some functions that are specific to this class.
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
+
+   RepeatedAffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
+                           const CuVectorBase<BaseFloat> &bias_params,
+                           int32 num_repeats,
+                           BaseFloat learning_rate);
   void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+            int32 input_dim, int32 output_dim, int32 num_repeats,
             BaseFloat param_stddev, BaseFloat bias_stddev);
 
-  private:
-  const RepeatedAffineComponent &operator = (
-      const RepeatedAffineComponent &other); // Disallow.
+ protected:
+  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
-  int32 num_blocks_;
-}; */
-
+  int32 num_repeats_;
+};
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
@@ -634,18 +637,25 @@ class FixedAffineComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedAffineComponent);
 };
 
-// SumGroupComponent is used to sum up groups of posteriors.
-// It's used to introduce a kind of Gaussian-mixture-model-like
-// idea into neural nets.  This is basically a degenerate case of
-// MixtureProbComponent; we had to implement it separately to
-// be efficient for CUDA (we can use this one regardless whether
-// we have CUDA or not; it's the normal case we want anyway).
+/// SumGroupComponent is used to sum up groups of posteriors.
+/// It's used to introduce a kind of Gaussian-mixture-model-like
+/// idea into neural nets.  This is basically a degenerate case of
+/// MixtureProbComponent; we had to implement it separately to
+/// be efficient for CUDA (we can use this one regardless whether
+/// we have CUDA or not; it's the normal case we want anyway).
+///
+/// There are two forms of initialization in a config file: one
+/// where the number of elements are specified for each group
+/// individually as a vector, and one where only the total input
+/// dimension and the output dimension (number of groups) is specified.
+/// The second is used when all groups have the same size.
 class SumGroupComponent: public Component {
 public:
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_dim_; }
   void Init(const std::vector<int32> &sizes); // the vector is of the input dim
                                               // (>= 1) for each output dim.
+  void Init(int32 input_dim, int32 output_dim);
   void GetSizes(std::vector<int32> *sizes) const; // Get a vector saying, for
                                                   // each output-dim, how many
                                                   // inputs were summed over.

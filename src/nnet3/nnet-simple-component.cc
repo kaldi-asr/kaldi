@@ -190,7 +190,6 @@ void ElementwiseProductComponent::InitFromConfig(ConfigLine *cfl) {
   Init(input_dim, output_dim);
 }
 
-
 void ElementwiseProductComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
     const CuMatrixBase<BaseFloat> &in,
@@ -976,6 +975,316 @@ Component *AffineComponent::CollapseWithPrevious(
   return ans;
 }
 
+RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent & component) :
+    UpdatableComponent(component),
+    linear_params_(component.linear_params_),
+    bias_params_(component.bias_params_),
+    num_repeats_(component.num_repeats_) {}
+
+RepeatedAffineComponent::RepeatedAffineComponent(const CuMatrixBase<BaseFloat>& linear_params,
+                                                 const CuVectorBase<BaseFloat>& bias_params,
+                                                 int32 num_repeats,
+                                                 BaseFloat learning_rate) :
+    UpdatableComponent(learning_rate),
+    linear_params_(linear_params),
+    bias_params_(bias_params),
+    num_repeats_(num_repeats) {
+  KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
+               bias_params.Dim() != 0);
+}
+
+void RepeatedAffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const RepeatedAffineComponent *other =
+      dynamic_cast<const RepeatedAffineComponent *>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+void RepeatedAffineComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  linear_params_.SetZero();
+  bias_params_.SetZero();
+}
+
+void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
+  CuMatrix<BaseFloat> temp_linear_params(linear_params_);
+  temp_linear_params.SetRandn();
+  linear_params_.AddMat(stddev, temp_linear_params);
+  CuVector<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddVec(stddev, temp_bias_params);
+}
+
+std::string RepeatedAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+      * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+	                        linear_params_size),
+  bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+  bias_params_.Dim());
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", num-repeats=" << num_repeats_
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
+  return stream.str();
+}
+
+Component* RepeatedAffineComponent::Copy() const {
+  RepeatedAffineComponent *ans = new RepeatedAffineComponent(*this);
+  return ans;
+}
+
+BaseFloat RepeatedAffineComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const RepeatedAffineComponent *other =
+      dynamic_cast<const RepeatedAffineComponent*>(&other_in);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans)
+                     + VecVec(bias_params_, other->bias_params_);
+}
+
+void RepeatedAffineComponent::Init(BaseFloat learning_rate,
+                                   int32 input_dim, int32 output_dim, int32 num_repeats,
+                                   BaseFloat param_stddev, BaseFloat bias_stddev) {
+  KALDI_ASSERT(input_dim % num_repeats == 0 && output_dim % num_repeats == 0);
+  UpdatableComponent::Init(learning_rate);
+  linear_params_.Resize(output_dim / num_repeats, input_dim / num_repeats);
+  bias_params_.Resize(output_dim / num_repeats);
+  num_repeats_ = num_repeats;
+  KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
+  linear_params_.SetRandn(); // sets to random normally distributed noise.
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+}
+
+
+void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true;
+  BaseFloat learning_rate = learning_rate_;
+  int32 num_repeats = num_repeats_;
+  int32 input_dim = -1, output_dim = -1;
+  cfl->GetValue("learning-rate", &learning_rate); // optional.
+  ok = cfl->GetValue("num-repeats", &num_repeats) && ok;
+  ok = cfl->GetValue("input-dim", &input_dim) && ok;
+  ok = cfl->GetValue("output-dim", &output_dim) && ok;
+  KALDI_ASSERT(input_dim % num_repeats == 0 &&
+               "num-repeats must divide input-dim");
+  KALDI_ASSERT(output_dim % num_repeats == 0 &&
+               "num-repeats must divide output-dim");
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+      bias_stddev = 1.0;
+  cfl->GetValue("param-stddev", &param_stddev);
+  cfl->GetValue("bias-stddev", &bias_stddev);
+  Init(learning_rate, input_dim, output_dim, num_repeats,
+       param_stddev, bias_stddev);
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	          << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+void RepeatedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                        const CuMatrixBase<BaseFloat> &in,
+                                        CuMatrixBase<BaseFloat> *out) const {
+
+  // No need for asserts as they'll happen within the matrix operations.
+  int32 block_rows = linear_params_.NumRows();
+  int32 block_cols = linear_params_.NumCols();
+
+  {
+    // copy bias_params_ to each row  of *out
+    CuVector<BaseFloat> tmp_repeated_bias(num_repeats_ * bias_params_.Dim(),
+                                          kUndefined);
+    CuSubMatrix<BaseFloat> tmp_bias_mat(tmp_repeated_bias.Data(), num_repeats_,
+                                        bias_params_.Dim(), bias_params_.Dim());
+    tmp_bias_mat.CopyRowsFromVec(bias_params_);
+    out->CopyRowsFromVec(tmp_repeated_bias);
+  }
+
+  std::vector<CuSubMatrix<BaseFloat> *> in_batch, out_batch,
+      linear_params_batch;
+  CuSubMatrix<BaseFloat>* params_elem =
+      new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+
+  //split the in and out mat into blocks.
+  for (int i = 0; i < num_repeats_; i++) {
+    in_batch.push_back(new CuSubMatrix<BaseFloat>(in.ColRange(
+	                   i * block_cols, block_cols)));
+    out_batch.push_back(new CuSubMatrix<BaseFloat>(
+	                    out->ColRange(i * block_rows, block_rows)));
+    linear_params_batch.push_back(params_elem);
+  }
+  AddMatMatBatched<BaseFloat>(1.0, out_batch, in_batch, kNoTrans,
+                              linear_params_batch, kTrans, 1.0);
+  delete params_elem;
+  DeletePointers(&in_batch);
+  DeletePointers(&out_batch);
+}
+
+void RepeatedAffineComponent::Backprop(const std::string &debug_info,
+                                       const ComponentPrecomputedIndexes *indexes,
+                                       const CuMatrixBase<BaseFloat> &in_value,
+                                       const CuMatrixBase<BaseFloat> &, // out_value
+                                       const CuMatrixBase<BaseFloat> &out_deriv,
+                                       Component *to_update_in,
+                                       CuMatrixBase<BaseFloat> *in_deriv) const {
+  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv) {
+    int32 block_rows = linear_params_.NumRows();
+	int32 block_cols = linear_params_.NumCols();
+	std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch,
+        linear_params_batch;
+	CuSubMatrix<BaseFloat>* params_elem =
+	    new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+
+    //split the out_deriv and the in_deriv mat into blocks.
+    for (int i = 0; i < num_repeats_; i++) {
+      in_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(in_deriv->ColRange(
+	                           i * block_cols, block_cols)));
+      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+	                            i * block_rows, block_rows)));
+      linear_params_batch.push_back(params_elem);
+    }
+    AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
+                                linear_params_batch, kNoTrans, 1.0);
+    delete params_elem;
+    DeletePointers(&in_deriv_batch);
+    DeletePointers(&out_deriv_batch);
+  }
+
+  if (to_update != NULL) {
+    // Next update the model (must do this 2nd so the derivatives we propagate
+    // are accurate, in case this == to_update_in.)
+    int32 block_rows = linear_params_.NumRows();
+    int32 block_cols = linear_params_.NumCols();
+	std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
+        out_deriv_batch, linear_params_deriv_batch;
+    CuMatrix<BaseFloat> linear_params_deriv_repeated(
+        block_rows * num_repeats_, block_cols);
+
+    for (int i = 0; i < num_repeats_; i++) {
+      in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
+	                           i * block_cols, block_cols)));
+      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+	                            i * block_rows, block_rows)));
+      linear_params_deriv_batch.push_back(
+          new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
+              i * block_rows, block_rows)));
+    }
+    AddMatMatBatched<BaseFloat>(
+        to_update->learning_rate_,
+        linear_params_deriv_batch,
+        out_deriv_batch, kTrans,
+        in_value_batch, kNoTrans, 0.0);
+
+    { // sum up the repeated blocks of pieces of derivative (from
+      // linear_params_deriv_repeated) into linear_params_.  We do this in a
+      // single CUDA call by means of a little fakery, viewing the matrix as a
+      // vector.  This may generate some spurious valgrind/memcheck warnings due
+      // to accessing the memory in between rows of a matrix that has been allocated
+      // using cudamalloc2d.
+      KALDI_ASSERT(SameDimAndStride(linear_params_, to_update->linear_params_));
+
+      KALDI_ASSERT(linear_params_.Stride() ==
+                   linear_params_deriv_repeated.Stride());
+      // linear_params_repeated as a matrix where each row corresponds to a block.
+      int32 size_as_vector =
+          (linear_params_.NumRows() - 1) * linear_params_.Stride() +
+          linear_params_.NumCols(),
+          stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
+      CuSubVector<BaseFloat> linear_params_as_vec(
+          to_update->linear_params_.Data(), size_as_vector);
+      CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
+          linear_params_deriv_repeated.Data(), num_repeats_,
+          size_as_vector, stride_as_matrix);
+      linear_params_as_vec.AddRowSumMat(1.0, linear_params_deriv_repeated_as_mat);
+    }
+
+    { // deal with the derivative w.r.t. the bias.
+      CuVector<BaseFloat> repeated_bias_deriv(
+          num_repeats_ * bias_params_.Dim());
+      repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
+      CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
+                                            num_repeats_, bias_params_.Dim(),
+                                            bias_params_.Dim());
+      to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
+                                           bias_deriv_mat);
+    }
+    DeletePointers(&in_value_batch);
+    DeletePointers(&out_deriv_batch);
+    DeletePointers(&linear_params_deriv_batch);
+  }
+}
+
+void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
+  // might not see the "<RepeatedAffineComponent>" part because
+  // of how ReadNew() works.
+  ExpectOneOrTwoTokens(is, binary, "</RepeatedAffineComponent>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<NumRepeats>");
+  ReadBasicType(is, binary, &num_repeats_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</RepeatedAffineComponent>");
+}
+
+void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<RepeatedAffineComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<NumRepeats>");
+  WriteBasicType(os, binary, num_repeats_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</RepeatedAffineComponent>");
+}
+
+int32 RepeatedAffineComponent::NumParameters() const {
+  // Note: unlike AffineComponent, InputDim() & OutputDim() are not used here and below,
+  // for they are multipled by num_repeats_.
+  return linear_params_.NumCols() * linear_params_.NumRows() + bias_params_.Dim();
+}
+
+void RepeatedAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  params->Range(0, linear_params_.NumCols() * linear_params_.NumRows()).CopyRowsFromMat(linear_params_);
+  params->Range(linear_params_.NumCols() * linear_params_.NumRows(),
+                bias_params_.Dim()).CopyFromVec(bias_params_);
+}
+
+void RepeatedAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  linear_params_.CopyRowsFromVec(params.Range(0, linear_params_.NumCols() * linear_params_.NumRows()));
+  bias_params_.CopyFromVec(params.Range(linear_params_.NumCols() * linear_params_.NumRows(),
+                                        bias_params_.Dim()));
+}
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
   scales_.Scale(scale);
@@ -1786,14 +2095,44 @@ void SumGroupComponent::Init(const std::vector<int32> &sizes) {
   this->output_dim_ = sizes.size();
 }
 
+void SumGroupComponent::Init(int32 input_dim, int32 output_dim) {
+  const int32 num_groups = output_dim;
+  KALDI_ASSERT(input_dim % num_groups == 0);
+  const int32 group_size = input_dim / num_groups;
+
+  std::vector<Int32Pair> cpu_vec(num_groups);
+  std::vector<int32> reverse_cpu_vec;
+  int32 cur_index = 0;
+  for (size_t i = 0; i < num_groups; i++) {
+    cpu_vec[i].first = cur_index;
+    cpu_vec[i].second = cur_index + group_size;
+    cur_index += group_size;
+    for (int32 j = cpu_vec[i].first; j < cpu_vec[i].second; j++)
+      reverse_cpu_vec.push_back(i);
+  }
+  this->indexes_ = cpu_vec;
+  this->reverse_indexes_ = reverse_cpu_vec;
+  this->input_dim_ = input_dim;
+  this->output_dim_ = num_groups;
+}
+
 void SumGroupComponent::InitFromConfig(ConfigLine *cfl) {
   std::vector<int32> sizes;
-  bool ok = cfl->GetValue("sizes", &sizes);
-
-  if (!ok || cfl->HasUnusedValues() || sizes.empty())
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-  this->Init(sizes);
+  bool has_sizes = cfl->GetValue("sizes", &sizes);
+  if (has_sizes) {
+    if (cfl->HasUnusedValues() || sizes.empty())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    this->Init(sizes);
+  } else { // each group has the same size
+    int32 input_dim = -1, output_dim = -1;
+    if (!cfl->GetValue("input-dim", &input_dim) ||
+        !cfl->GetValue("output-dim", &output_dim) || cfl->HasUnusedValues()) {
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    }
+    Init(input_dim, output_dim);
+  }
 }
 
 Component* SumGroupComponent::Copy() const {
@@ -2583,8 +2922,9 @@ void ConvolutionComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     }
   }
   // apply all filters
-  AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
-		  kTrans, 1.0f);
+  AddMatMatBatched<BaseFloat>(1.0, tgt_batch, patch_batch,
+                              kNoTrans, filter_params_batch,
+                              kTrans, 1.0);
   // release memory
   delete filter_params_elem;
   for (int32 p = 0; p < tgt_batch.size(); p++) {
@@ -2737,9 +3077,9 @@ void ConvolutionComponent::Backprop(const std::string &debug_info,
       filter_params_batch.push_back(filter_params_elem);
     }
   }
-  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans,
-		  filter_params_batch, kNoTrans, 0.0f);
-
+  AddMatMatBatched<BaseFloat>(1.0, patch_deriv_batch,
+                              out_deriv_batch, kNoTrans,
+                              filter_params_batch, kNoTrans, 0.0);
 
   if (in_deriv) {
     // combine the derivatives from the individual input deriv patches
@@ -2809,8 +3149,8 @@ void ConvolutionComponent::Update(const std::string &debug_info,
     }
   }
 
-  AddMatMatBatched(1.0f, filters_grad_batch, out_deriv_batch, kTrans,
-                   input_patch_batch, kNoTrans, 1.0f);
+  AddMatMatBatched<BaseFloat>(1.0, filters_grad_batch, out_deriv_batch, kTrans,
+                              input_patch_batch, kNoTrans, 1.0);
 
   // add the row blocks together to filters_grad
   filters_grad.AddMatBlocks(1.0, filters_grad_blocks_batch);
@@ -3207,8 +3547,8 @@ void Convolutional1dComponent::Propagate(const ComponentPrecomputedIndexes *inde
   }
 
   // apply all filters
-  AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
-		  kTrans, 1.0f);
+  AddMatMatBatched<BaseFloat>(1.0, tgt_batch, patch_batch, kNoTrans,
+                              filter_params_batch, kTrans, 1.0);
 
   // release memory
   delete filter_params_elem;
@@ -3334,8 +3674,8 @@ void Convolutional1dComponent::Backprop(const std::string &debug_info,
 				    p * num_filters, num_filters)));
     filter_params_batch.push_back(filter_params_elem);
   }
-  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans,
-		  filter_params_batch, kNoTrans, 0.0f);
+  AddMatMatBatched<BaseFloat>(1.0, patch_deriv_batch, out_deriv_batch, kNoTrans,
+                              filter_params_batch, kNoTrans, 0.0);
 
   // release memory
   delete filter_params_elem;
@@ -3532,8 +3872,8 @@ void Convolutional1dComponent::Update(const std::string &debug_info,
 				    p * filter_dim, filter_dim)));
   }
 
-  AddMatMatBatched(1.0f, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
-		  kNoTrans, 1.0f);
+  AddMatMatBatched<BaseFloat>(1.0, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
+                              kNoTrans, 1.0);
 
   // add the row blocks together to filters_grad
   filters_grad.AddMatBlocks(1.0, filters_grad_blocks_batch);
