@@ -240,7 +240,7 @@ class ConvolutionalComponent : public UpdatableComponent {
     int32 filter_dim = filters_.NumCols();
 
     // we will need the buffers 
-    if (vectorized_feature_patches_.NumRows() == 0) {
+    if (vectorized_feature_patches_.NumRows() != num_frames) {
       vectorized_feature_patches_.Resize(num_frames,
                                          filter_dim * num_patches, kUndefined);
       feature_patch_diffs_.Resize(num_frames, filter_dim * num_patches, kSetZero);
