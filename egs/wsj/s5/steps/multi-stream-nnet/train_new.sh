@@ -56,7 +56,7 @@ utt_weights=       # per-utterance weights (scalar for --frame-weights),
 copy_feats=false   # resave the train/cv features into /tmp (disabled by default),
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
-skip_cuda_check=false
+skip_cuda_check=true
 
 # End configuration.
 

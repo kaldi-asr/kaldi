@@ -6,7 +6,6 @@
 # Schedules epochs and controls learning rate during the neural network training
 
 # Begin configuration.
-
 cmd=run.pl
 
 # training options,
@@ -94,42 +93,29 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 [ -e $dir/.mlp_best ] && mlp_best=$(cat $dir/.mlp_best)
 [ -e $dir/.learn_rate ] && learn_rate=$(cat $dir/.learn_rate)
 
+if [ ! -e $dir/.done_iter00.initial.cv ]; then
+  $cmd JOB=1:$num_stream_combns $dir/log/iter00.initial.comb.JOB.log \
+    $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
+      ${frame_weights:+ "--frame-weights=$frame_weights"} \
+      ${utt_weights:+ "--utt-weights=$utt_weights"} \
+      "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=JOB $stream_indices ark:- ark:- |" "$labels_cv" $mlp_best || exit 1;
+  touch $dir/.done_iter00.initial.cv
+fi
+
 # cross-validation on original network,
 cum_loss=0.0
-$cmd $dir/log/iter00.initial.comb.JOB.log \
-  steps/multi-stream-nnet/cross_validate.sh \
-
 for ((n=1; n<=$num_stream_combns; n++)); do
-  log=$dir/log/iter00.initial.comb_$n.log;
-  # skip iteration (epoch) if already done,
-  if [ -e $dir/.done_iter00.initial.comb_$n ]; then
-    echo "    skipping...    iter00.initial.comb_$n..."
-    this_loss=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
-    this_loss_type=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $5; }')
-
-    cum_loss=`echo $cum_loss + $this_loss | bc -l`
-    continue
-  fi
-
-  this_feats_cv="$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=$n $stream_indices ark:- ark:- |"
-  hostname>$log
-  $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
-    ${frame_weights:+ "--frame-weights=$frame_weights"} \
-    ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$this_feats_cv" "$labels_cv" $mlp_best \
-    2>> $log
+  log=$dir/log/iter00.initial.comb.$n.log;
 
   this_loss=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
   this_loss_type=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $5; }')
 
   cum_loss=`echo $cum_loss + $this_loss | bc -l`
-  touch $dir/.done_iter00.initial.comb_$n
 done
 
 loss=`echo $cum_loss / $num_stream_combns | bc -l`
 loss_type=$this_loss_type
 echo "CROSSVAL PRERUN AVG.LOSS $(printf "%.4f" $loss) $loss_type"
-
 
 # resume lr-halving,
 halving=0
@@ -141,7 +127,7 @@ for iter in $(seq -w $max_iters); do
   mlp_next=$dir/nnet/${mlp_base}_iter${iter}
   
   # skip iteration (epoch) if already done,
-  [ -e $dir/.done_iter$iter ] && echo -n "skipping... " && ls $mlp_next* && continue 
+  [ -e $dir/.done_iter$iter ] && echo "skipping... " && ls $mlp_next* && continue 
   
   # training,
   this_mlp_inp=$mlp_best
@@ -150,21 +136,21 @@ for iter in $(seq -w $max_iters); do
     log=$dir/log/iter${iter}_epoch${ii}.tr.log;
 
     if [ -e $dir/.done_iter${iter}_epoch${ii}.tr ]; then
-      echo -n "    skipping... "
+      echo "    skipping... "
       echo "    $this_mlp_out exists..."
       this_mlp_inp=$this_mlp_out      
       continue
     fi
     this_seed=$(($seed+${iter#0}+$ii))
     this_feats_tr="$feats_tr nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --seed=$this_seed $stream_indices ark:- ark:- |"
-    hostname>$log
+
+    $cmd $log \
     $train_tool --cross-validate=false --randomize=true --verbose=$verbose $train_tool_opts \
       --learn-rate=$learn_rate --momentum=$momentum \
       --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
       ${frame_weights:+ "--frame-weights=$frame_weights"} \
       ${utt_weights:+ "--utt-weights=$utt_weights"} \
-      "$this_feats_tr" "$labels_tr" $this_mlp_inp $this_mlp_out \
-      2>> $log || exit 1; 
+      "$this_feats_tr" "$labels_tr" $this_mlp_inp $this_mlp_out || exit 1;
     touch $dir/.done_iter${iter}_epoch${ii}.tr
     this_mlp_inp=$this_mlp_out
   done
@@ -174,30 +160,23 @@ for iter in $(seq -w $max_iters); do
   echo -n "TRAIN AVG.LOSS $(printf "%.4f" $tr_loss), (lrate$(printf "%.6g" $learn_rate)), "
   
   # cross-validation,
+  if [ ! -e $dir/.done_iter${iter}.cv ]; then
+    $cmd JOB=1:$num_stream_combns $dir/log/iter${iter}.cv.comb.JOB.log \
+      $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
+        ${frame_weights:+ "--frame-weights=$frame_weights"} \
+        ${utt_weights:+ "--utt-weights=$utt_weights"} \
+        "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=JOB $stream_indices ark:- ark:- |" "$labels_cv" $mlp_next || exit 1
+    touch $dir/.done_iter${iter}.cv
+  fi
+
   cum_loss=0.0
   for ((n=1; n<=$num_stream_combns; n++)); do
-    log=$dir/log/iter${iter}.cv.comb_${n}.log;
-    # skip iteration (epoch) if already done,
-    if [ -e $dir/.done_iter${iter}.cv.comb_${n} ]; then
-      echo -n "    skipping... iter${iter}.cv.comb_${n} exists "
-      this_loss=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
-      cum_loss=`echo $cum_loss + $this_loss | bc -l`
-      continue
-    fi
-
-    hostname>$log
-    this_feats_cv="$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=$n $stream_indices ark:- ark:- |"
-    $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
-      ${frame_weights:+ "--frame-weights=$frame_weights"} \
-      ${utt_weights:+ "--utt-weights=$utt_weights"} \
-      "$this_feats_cv" "$labels_cv" $mlp_next \
-      2>>$log || exit 1;
+    log=$dir/log/iter${iter}.cv.comb.${n}.log;
 
     this_loss=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
     this_loss_type=$(cat $log | grep "AvgLoss:" | tail -n 1 | awk '{ print $5; }')
 
     cum_loss=`echo $cum_loss + $this_loss | bc -l`
-    touch $dir/.done_iter${iter}.cv.comb_${n}
   done
   loss_new=`echo $cum_loss / $num_stream_combns | bc -l`
   echo -n "CROSSVAL AVG.LOSS $(printf "%.4f" $loss_new), "
