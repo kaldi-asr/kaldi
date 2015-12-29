@@ -1197,26 +1197,31 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
         in_value_batch, kNoTrans, 0.0);
 
     { // sum up the repeated blocks of pieces of derivative (from
-      // linear_params_deriv_repeated) into linear_params_.  We do this in a
-      // single CUDA call by means of a little fakery, viewing the matrix as a
-      // vector.  This may generate some spurious valgrind/memcheck warnings due
-      // to accessing the memory in between rows of a matrix that has been allocated
-      // using cudamalloc2d.
+      // linear_params_deriv_repeated) into linear_params_.  We do this without
+      // the use of loops by means of a little fakery, viewing
+      // linear_params_deriv_repeated as a matrix with a larger stride than it
+      // really has to sum up its rows.  This may generate some spurious
+      // valgrind/memcheck warnings due to accessing the memory in between rows
+      // of a matrix that has been allocated using cudamalloc2d.
       KALDI_ASSERT(SameDimAndStride(linear_params_, to_update->linear_params_));
-
-      KALDI_ASSERT(linear_params_.Stride() ==
-                   linear_params_deriv_repeated.Stride());
-      // linear_params_repeated as a matrix where each row corresponds to a block.
+      // view linear_params_deriv_repeated as a matrix where each row
+      // corresponds to one repeat.
       int32 size_as_vector =
           (linear_params_.NumRows() - 1) * linear_params_.Stride() +
           linear_params_.NumCols(),
           stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
-      CuSubVector<BaseFloat> linear_params_as_vec(
-          to_update->linear_params_.Data(), size_as_vector);
       CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
           linear_params_deriv_repeated.Data(), num_repeats_,
           size_as_vector, stride_as_matrix);
-      linear_params_as_vec.AddRowSumMat(1.0, linear_params_deriv_repeated_as_mat);
+      // add all remaining rows to the first row, of
+      // linear_params_deriv_repeated_as_mat
+      if (num_repeats_ > 1)
+        linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
+            1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
+                                                              num_repeats_-1));
+      to_update->linear_params_.AddMat(1.0,
+                                       linear_params_deriv_repeated.RowRange(
+                                           0, linear_params_.NumRows()));
     }
 
     { // deal with the derivative w.r.t. the bias.
