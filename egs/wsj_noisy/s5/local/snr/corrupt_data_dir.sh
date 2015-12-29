@@ -16,7 +16,6 @@ random_seed=0
 num_files_per_job=100
 background_snrs="20:10:15:5:0:-2:-5:-10"
 foreground_snrs="20:10:15:5:0:-2:-5:-10"
-signal_dbs="8:5:2:0:-2:-5:-10:-20:-30:-40:-50"
 tmp_dir=exp/make_corrupt
 output_clean_dir=
 output_clean_wav_dir=
@@ -209,7 +208,7 @@ fi
 if [ $stage -le 3 ]; then
   python local/snr/corrupt_wavs.py \
     --background-snrs $background_snrs --foreground-snrs $foreground_snrs \
-    --signal-dbs $signal_dbs --random-seed $random_seed \
+    --random-seed $random_seed \
     --output-clean-wav-file-list $tmp_dir/clean_${random_seed}.list \
     --output-noise-wav-file-list $tmp_dir/noise_${random_seed}.list \
     $tmp_dir/src_wav.scp $tmp_dir/corrupted_${random_seed}.list $impnoise_dir \

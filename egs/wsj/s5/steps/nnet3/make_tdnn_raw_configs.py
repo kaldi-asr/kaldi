@@ -34,9 +34,12 @@ parser.add_argument("--skip-final-softmax", type=str,
 parser.add_argument("--skip-lda", type=str,
                     help="add lda matrix",
                     choices=['true', 'false'], default = "false")
+parser.add_argument("--add-final-sigmoid", type=str,
+                    help="add a sigmoid layer as the final layer. Applicable only if skip-final-softmax is true.",
+                    choices=['true', 'false'], default = "false")
 parser.add_argument("--objective-type", type=str, default="linear",
-                    choices = ["linear", "quadratic"],
-                    help = "the type of objective; i.e. quadratic or linear")
+                    choices = ["linear", "quadratic", "xent"],
+                    help = "the type of objective; i.e. quadratic or linear or cross-entropy")
 parser.add_argument("--max-change-per-sample", type=float, default=0.075,
                     help = "the maximum a paramter is allowed to change")
 parser.add_argument("config_dir",
@@ -60,8 +63,8 @@ if args.splice_indexes is None:
     sys.exit("--splice-indexes argument is required");
 if args.feat_dim is None or not (args.feat_dim > 0):
     sys.exit("--feat-dim argument is required");
-if args.num_targets is None or not (args.feat_dim > 0):
-    sys.exit("--feat-dim argument is required");
+if args.num_targets is None or not (args.num_targets > 0):
+    sys.exit("--num-targets argument is required");
 if not args.relu_dim is None:
     if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None or not args.sigmoid_dim is None:
         sys.exit("--relu-dim argument not compatible with "
@@ -100,6 +103,11 @@ if args.no_hidden_layers == "true":
     no_hidden_layers = True
 else:
     no_hidden_layers = False
+
+if args.add_final_sigmoid == "true":
+    add_final_sigmoid = True
+else:
+    add_final_sigmoid = False
 
 ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
 splice_array = []
@@ -237,11 +245,14 @@ for l in range(1, num_hidden_layers + 1):
       # really necessary as they will already exist, but it doesn't hurt and makes
       # the structure clearer.
       if use_presoftmax_prior_scale:
-        print('component name=final-fixed-scale type=FixedScaleComponent '
-              'scales={0}/presoftmax_prior_scale.vec'.format(
-              args.config_dir), file=f)
+          print('component name=final-fixed-scale type=FixedScaleComponent '
+                'scales={0}/presoftmax_prior_scale.vec'.format(
+                args.config_dir), file=f)
       print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
             args.num_targets), file=f)
+    elif add_final_sigmoid:
+        print('component name=final-sigmoid type=SigmoidComponent dim={0}'.format(
+              args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     if l == 1:
         splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
@@ -249,11 +260,11 @@ for l in range(1, num_hidden_layers + 1):
         orig_input='Append({0})'.format(', '.join(splices))
         # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
         if not skip_lda:
-          print('component-node name=lda component=lda input={0}'.format(orig_input),
-                file=f)
-          cur_input='lda'
+            print('component-node name=lda component=lda input={0}'.format(orig_input),
+                  file=f)
+            cur_input='lda'
         else:
-          cur_input = orig_input
+            cur_input = orig_input
     else:
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
         splices = [ ('Offset(renorm{0}, {1})'.format(l-1, n) if n !=0 else 'renorm{0}'.format(l-1))
@@ -279,7 +290,11 @@ for l in range(1, num_hidden_layers + 1):
                   'input=final-affine', file=f)
         print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
     else:
-        print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
+        if add_final_sigmoid:
+            print('component-node name=final-sigmoid component=final-sigmoid input=final-affine', file=f)
+            print('output-node name=output input=final-sigmoid objective={0}'.format(args.objective_type), file=f)
+        else:
+            print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
     f.close()
 
 if num_hidden_layers == 0:
@@ -305,37 +320,44 @@ if num_hidden_layers == 0:
               'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
               input_dim, args.num_targets, args.max_change_per_sample), file=f)
     if not skip_final_softmax:
-      if use_presoftmax_prior_scale:
-        print('component name=final-fixed-scale type=FixedScaleComponent '
-              'scales={0}/presoftmax_prior_scale.vec'.format(
-              args.config_dir), file=f)
-      print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
-            args.num_targets), file=f)
+        if use_presoftmax_prior_scale:
+            print('component name=final-fixed-scale type=FixedScaleComponent '
+                  'scales={0}/presoftmax_prior_scale.vec'.format(
+                  args.config_dir), file=f)
+        print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
+              args.num_targets), file=f)
+    elif add_final_sigmoid:
+        print('component name=final-sigmoid type=SigmoidComponent dim={0}'.format(
+              args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[0] ]
     if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
     orig_input='Append({0})'.format(', '.join(splices))
     # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
     if not skip_lda:
-      print('component-node name=lda component=lda input={0}'.format(orig_input),
-            file=f)
-      cur_input='lda'
+        print('component-node name=lda component=lda input={0}'.format(orig_input),
+              file=f)
+        cur_input='lda'
     else:
-      cur_input = orig_input
+        cur_input = orig_input
     print('component-node name=final-affine component=final-affine input={0}'.
           format(cur_input), file=f)
     if not skip_final_softmax:
-      if use_presoftmax_prior_scale:
-          print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
-                file=f)
-          print('component-node name=final-log-softmax component=final-log-softmax '
-                'input=final-fixed-scale', file=f)
-      else:
-          print('component-node name=final-log-softmax component=final-log-softmax '
-                'input=final-affine', file=f)
-      print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
+        if use_presoftmax_prior_scale:
+            print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+                  file=f)
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-fixed-scale', file=f)
+        else:
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-affine', file=f)
+        print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
     else:
-      print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
+        if add_final_sigmoid:
+            print('component-node name=final-sigmoid component=final-sigmoid input=final-affine', file=f)
+            print('output-node name=output input=final-sigmoid objective={0}'.format(args.objective_type), file=f)
+        else:
+            print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
     f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim

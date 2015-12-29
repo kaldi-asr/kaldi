@@ -72,18 +72,33 @@ def AddSoftmaxLayer(config_lines, name, input):
             'dimension': input['dimension']}
 
 
-def AddOutputNode(config_lines, input, label_delay=None):
+def AddSigmoidLayer(config_lines, name, input):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_sigmoid type=SigmoidComponent dim={1}".format(name, input['dimension']))
+    component_nodes.append("component-node name={0}_sigmoid component={0}_sigmoid input={1}".format(name, input['descriptor']))
+
+    return {'descriptor':  '{0}_sigmoid'.format(name),
+
+        def AddOutputNode(config_lines, input, label_delay=None, objective_type = "linear"):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     if label_delay is None:
-        component_nodes.append('output-node name=output input={0}'.format(input['descriptor']))
+        component_nodes.append('output-node name=output input={0} objective={1}'.format(input['descriptor']), objective_type)
     else:
-        component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
+        component_nodes.append('output-node name=output input=Offset({0},{1}) objective={2}'.format(input['descriptor'], label_delay), objective_type)
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = "", label_delay=None):
+def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = "", label_delay=None, skip_final_softmax = False, objective_type = "linear"):
     prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
-    prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
-    AddOutputNode(config_lines, prev_layer_output, label_delay)
+    if skip_final_softmax:
+        prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
+    AddOutputNode(config_lines, prev_layer_output, label_delay, objective_type)
+
+def AddFinalSigmoidLayer(config_lines, input, output_dim, ng_affine_options = "", label_delay=None, objective_type = "linear"):
+    prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
+    prev_layer_output = AddSigmoidLayer(config_lines, "Final", prev_layer_output)
+    AddOutputNode(config_lines, prev_layer_output, label_delay, objective_type)
 
 
 def AddLstmLayer(config_lines,

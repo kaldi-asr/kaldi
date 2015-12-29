@@ -7,7 +7,7 @@ set -u
 . path.sh
 
 cmd=run.pl
-method=Smoothing
+method=Viterbi
 stage=-10
 
 # General segmentation options

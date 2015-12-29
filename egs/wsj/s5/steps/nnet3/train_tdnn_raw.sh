@@ -37,6 +37,7 @@ online_ivector_dir=
 presoftmax_prior_scale_power=-0.25
 use_presoftmax_prior_scale=true
 remove_egs=true  # set to false to disable removing egs after training is done.
+egs_suffix=
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
@@ -64,19 +65,19 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
 cleanup=true
+keep_model_iter=10
 egs_dir=
 skip_lda=true
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
-transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
+transform_dir=     
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
 num_targets=    # applicable only if posterior_targets is true
-#feats_scp=
 quantization_bin_boundaries=
 posterior_targets=false
 objective_type=linear
@@ -86,6 +87,7 @@ max_param_change=1
 no_hidden_layers=false
 sparsity_constants=
 positivity_constraints=
+config_dir=
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
@@ -142,14 +144,6 @@ for f in $data/feats.scp $targets_scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-if ! $posterior_targets; then
-  # Set num targets as the dimension of targets features
-  num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
-fi
-
-[ -z $num_targets ] && echo "\$num_targets is unset" && exit 1
-[ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
-
 # in this dir we'll have just one job.
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
@@ -205,9 +199,15 @@ if [ $stage -le -5 ]; then
     
   raw_nnet_config_opts=()
 
+
   objective_opts="--objective-type=$objective_type"
 
-  raw_nnet_config_opts+=(--skip-final-softmax $skip_final_softmax)
+  if [ "$objective_type" == "xent" ]; then
+    raw_nnet_config_opts+=(--add-final-sigmoid=true --skip-final-softmax=true)
+  else
+    raw_nnet_config_opts+=(--skip-final-softmax=$skip_final_softmax)
+  fi
+  
   raw_nnet_config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
   raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
@@ -225,16 +225,29 @@ if [ $stage -le -5 ]; then
     num_bins=`echo $quantization_bin_boundaries | awk -F ':' '{print NF + 1}'` || exit 1
     input_dim=$[num_bins * feat_dim]
   fi
+  
+  if ! $posterior_targets; then
+    # Set num targets as the dimension of targets features
+    num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
+  fi
 
-  # create the config files for nnet initialization
-  python steps/nnet3/make_tdnn_raw_configs.py  \
-    --splice-indexes="$splice_indexes"  \
-    --feat-dim=$input_dim \
-    --ivector-dim=$ivector_dim \
-    "${raw_nnet_config_opts[@]}" $objective_opts \
-    $dim_opts --max-change-per-sample=$max_change_per_sample \
-    --num-targets=$num_targets  \
-   $dir/configs || exit 1;
+  [ -z $num_targets ] && echo "\$num_targets is unset" && exit 1
+  [ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
+
+
+  if [ ! -z "$config_dir" ]; then
+    cp -rT $config_dir $dir/configs
+  else
+    # create the config files for nnet initialization
+    python steps/nnet3/make_tdnn_raw_configs.py  \
+      --splice-indexes="$splice_indexes"  \
+      --feat-dim=$input_dim \
+      --ivector-dim=$ivector_dim \
+      "${raw_nnet_config_opts[@]}" $objective_opts \
+      $dim_opts --max-change-per-sample=$max_change_per_sample \
+      --num-targets=$num_targets  \
+      $dir/configs || exit 1;
+  fi
 
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
@@ -279,6 +292,14 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   #  fi
   #  extra_opts+=(--sparse-input-dim $sparse_input_dim --feats-scp $feats_scp)
   #fi
+if ! $posterior_targets; then
+  # Set num targets as the dimension of targets features
+  num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
+fi
+
+[ -z $num_targets ] && echo "\$num_targets is unset" && exit 1
+[ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
+
 
   steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
     --samples-per-iter $samples_per_iter --stage $get_egs_stage \
@@ -376,7 +397,10 @@ if [ $stage -le -1 ]; then
   # presoftmax_prior_scale.vec.
   $cmd $dir/log/add_first_layer.log \
        nnet3-init --srand=-3 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
+
 fi
+
+
 
 
 # set num_iters so that as close as possible, we process the data $num_epochs
@@ -524,7 +548,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |$quantize_opts" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs$egs_suffix.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |$quantize_opts" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -557,7 +581,7 @@ while [ $x -lt $num_iters ]; do
     rm $nnets_list
     [ ! -f $dir/$[$x+1].raw ] && exit 1;
     if [ -f $dir/$[$x-1].raw ] && $cleanup && \
-       [ $[($x-1)%100] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
+       [ $[($x-1)%$keep_model_iter] -ne 0  ] && [ $[$x-1] -lt $first_model_combine ]; then
       rm $dir/$[$x-1].raw
     fi
   fi
@@ -649,7 +673,7 @@ if $cleanup; then
 
   echo Removing most of the models
   for x in `seq 0 $num_iters`; do
-    if [ $[$x%100] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.raw ]; then
+    if [ $[$x%$keep_model_iter] -ne 0 ] && [ $x -ne $num_iters ] && [ -f $dir/$x.raw ]; then
        # delete all but every 100th model; don't delete the ones which combine to form the final model.
       rm $dir/$x.raw
     fi

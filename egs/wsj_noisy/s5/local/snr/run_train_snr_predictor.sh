@@ -19,12 +19,16 @@ initial_effective_lrate=0.005
 final_effective_lrate=0.0005
 pnorm_input_dim=2000
 pnorm_output_dim=250
+relu_dim=
 train_data_dir=data/train_si284_corrupted_hires
 targets_scp=data/train_si284_corrupted_hires/snr_targets.scp
 max_change_per_sample=0.075
 max_param_change=1
 add_layers_period=2
+target_type=IrmExp
+config_dir=
 egs_dir=
+egs_suffix=
 dir=
 
 . cmd.sh
@@ -36,7 +40,11 @@ if [ -z "$dir" ]; then
   dir=exp/nnet3_snr_predictor/nnet_tdnn_a
 fi
 
+if [ -z "$relu_dim" ]; then
 dir=${dir}_i${pnorm_input_dim}_o${pnorm_output_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
+else
+dir=${dir}_r${relu_dim}_n${num_hidden_layers}_lrate${initial_effective_lrate}_${final_effective_lrate}
+fi
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1 
@@ -46,22 +54,29 @@ where "nvcc" is installed.
 EOF
 fi
 
+objective_type=quadratic
+if [ $target_type == "IrmExp" ]; then
+  objective_type=xent
+fi
+
 if [ $stage -le 8 ]; then
+  echo $target_type > $dir/target_type
+
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 14 \
-    --splice-indexes "$splice_indexes" \
+    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
+    --splice-indexes "$splice_indexes" --egs-suffix "$egs_suffix" \
     --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --max-change-per-sample $max_change_per_sample --max-param-change $max_param_change \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --cmd "$decode_cmd" --nj 40 --objective-type quadratic --cleanup false \
-    --pnorm-input-dim $pnorm_input_dim \
-    --pnorm-output-dim $pnorm_output_dim \
+    --cmd "$decode_cmd" --nj 40 --objective-type $objective_type --cleanup false --config-dir "$config_dir" \
+    --pnorm-input-dim "$pnorm_input_dim" --pnorm-output-dim "$pnorm_output_dim" \
+    --relu-dim "$relu_dim" \
     --add-layers-period $add_layers_period \
     $train_data_dir $targets_scp $dir || exit 1;
 fi

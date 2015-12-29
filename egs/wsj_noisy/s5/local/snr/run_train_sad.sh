@@ -22,8 +22,8 @@ final_effective_lrate=0.0005
 relu_dim=
 sigmoid_dim=50
 train_data_dir=data/train_si284_corrupted_hires
-snr_scp=data/train_si284_corrupted_hires/snr_targets.scp
-vad_scp=data/train_si284_corrupted_hires/vad.scp
+snr_scp=
+vad_scp=
 final_vad_scp=
 max_change_per_sample=0.075
 datadir=
@@ -243,7 +243,7 @@ if [ $stage -le 3 ]; then
       fi
 
       bash -x steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
-        --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 14 \
+        --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
         --splice-indexes "$splice_indexes" \
         --egs-dir "$egs_dir" ${feats_opts[@]} \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -251,7 +251,7 @@ if [ $stage -le 3 ]; then
         --positivity-constraints "$positivity_constraints" \
         --sparsity-constants "$sparsity_constants" \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-        --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup false --use-presoftmax-prior-scale true \
+        --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup true --use-presoftmax-prior-scale true \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
         --num-targets 2 --max-param-change $max_param_change \
         --cleanup false${relu_dim:+ --relu-dim $relu_dim}${sigmoid_dim:+ --sigmoid-dim $sigmoid_dim} \

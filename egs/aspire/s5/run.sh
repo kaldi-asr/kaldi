@@ -134,6 +134,8 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 steps/train_sat.sh  --cmd "$train_cmd" \
   5000 100000 data/train_100k data/lang exp/tri3a_ali  exp/tri4a || exit 1;
 
+exit 1
+
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \

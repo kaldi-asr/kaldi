@@ -13,31 +13,33 @@ set -o pipefail
 
 cmd=run.pl
 nj=4
-use_gpu=yes
+use_gpu=no
 iter=final
-prediction_type="Snr"
 copy_opts= # Due to code change, the log(Irm) predicted might have previously been log(sqrt(Irm)). Hence use "matrix-scale --scale=2.0 ark:- ark:- \|". Also for log(Snr), it might have been log(sqrt(Snr)). 
 stage=0
 
 . utils/parse_options.sh
 
-if [ $# -ne 4 ] && [ $# -ne 3 ]; then
+if [ $# -ne 4 ]; then
   echo "Usage: $0 <snr-nnet-dir> <corrupted-data-dir> <corrupted-fbank-dir> <dir>"
   echo " e.g.: $0 exp/nnet3_snr_predictor/nnet_tdnn_a data/train_si284_corrupted_hires data/train_si284_corrupted_fbank exp/frame_snrs_train_si284_corrupted"
   exit 1
 fi
 
 snr_predictor_nnet_dir=$1
-if [ $# -eq 4 ]; then
-  corrupted_data_dir=$2
-  corrupted_fbank_dir=$3
-  dir=$4
-  split_data.sh $corrupted_fbank_dir $nj
-else
-  corrupted_data_dir=$2
-  dir=$3
+corrupted_data_dir=$2
+corrupted_fbank_dir=$3
+dir=$4
+
+[ ! -f $snr_predictor_nnet_dir/target_type ] && echo "$snr_predictor_nnet_dir/target_type could not be found" && exit 1
+prediction_type=`cat $snr_predictor_nnet_dir/target_type`
+echo $prediction_type > $dir/prediction_type
+
+if [ $prediction_type == "IrmExp" ]; then
+  copy_opts="$copy_opts copy-matrix --apply-log=true ark:- ark:- |"
 fi
 
+split_data.sh $corrupted_fbank_dir $nj
 split_data.sh $corrupted_data_dir $nj
 
 sdata=$corrupted_data_dir/split$nj
@@ -71,25 +73,21 @@ if [ $stage -le 0 ]; then
 
   $gpu_cmd JOB=1:$nj $dir/log/compute_nnet_pred.JOB.log \
     nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/$iter.raw "$feats" \
-    ark:- \| ${copy_opts}copy-feats --compress=true ark:- \
+    ark:- \| ${copy_opts}copy-feats --compress=false ark:- \
     ark,scp:$dir/nnet_pred.JOB.ark,$dir/nnet_pred.JOB.scp || exit 1
 fi
 
-for n in `seq $nj`; do
-  cat $dir/nnet_pred.$n.scp
-done > $dir/nnet_pred_snrs.scp
-
-if [ $# -eq 4 ] && [ $stage -le 1 ]; then
+if [ $stage -le 1 ]; then
   case $prediction_type in 
-    "Irm")
+    "Irm"|"IrmExp")
       # nnet_pred is log (clean energy / (clean energy + noise energy) )
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
         compute-frame-snrs --prediction-type="Irm" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
-        copy-feats --compress=true ark:- \
-        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/out_snr.JOB.ark,$dir/out_snr.JOB.scp"
       ;;
     "FbankMask")
       # nnet_pred is log (clean feat / noisy feat)
@@ -97,9 +95,9 @@ if [ $# -eq 4 ] && [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="FbankMask" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
-        copy-feats --compress=true ark:- \
-        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/out_snr.JOB.ark,$dir/out_snr.JOB.scp"
       ;;
     "FrameSnr")
       $cmd JOB=1:$nj $dir/log/compute_frame_snrs.JOB.log \
@@ -111,17 +109,22 @@ if [ $# -eq 4 ] && [ $stage -le 1 ]; then
         compute-frame-snrs --prediction-type="Snr" \
         scp:$corrupted_fbank_dir/split$nj/JOB/feats.scp \
         ark:$dir/nnet_pred.JOB.ark \
-        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" ark:- \| \
-        copy-feats --compress=true ark:- \
-        ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp
+        "ark:|vector-to-feat ark:- ark:- | copy-feats --compress=true ark:- ark,scp:$dir/frame_snrs.JOB.ark,$dir/frame_snrs.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/clean_pred.JOB.ark,$dir/clean_pred.JOB.scp" \
+        "ark:|copy-feats --compress=true ark:- ark,scp:$dir/out_snr.JOB.ark,$dir/out_snr.JOB.scp"
       ;;
     *)
       echo "Unknown prediction-type '$prediction_type'" && exit 1
   esac
+fi
   
+if [ $stage -le 2 ]; then
   for n in `seq $nj`; do
     cat $dir/frame_snrs.$n.scp
   done > $dir/frame_snrs.scp
-fi
 
+  for n in `seq $nj`; do
+    cat $dir/out_snr.$n.scp
+  done > $dir/nnet_pred_snrs.scp
+fi
 

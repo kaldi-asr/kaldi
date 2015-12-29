@@ -21,6 +21,8 @@ quantization_bins=-2.5:2.5:7.5:12.5:17.5
 use_gpu=yes
 sil_prior=0.5
 speech_prior=0.5
+add_frame_snr=false
+snr_data_dir=
 
 . utils/parse_options.sh 
 
@@ -34,9 +36,11 @@ model_dir=$1
 snr_pred_dir=$2
 dir=$3
 
-if [ ! -s $snr_pred_dir/nnet_pred_snrs.scp ]; then  
-  echo "$0: Could not read $snr_pred_dir/nnet_pred_snrs.scp or it is empty" 
-  exit 1
+if [ -z "$snr_data_dir" ]; then
+  if [ ! -s $snr_pred_dir/nnet_pred_snrs.scp ]; then  
+    echo "$0: Could not read $snr_pred_dir/nnet_pred_snrs.scp or it is empty" 
+    exit 1
+  fi
 fi
 
 mkdir -p $dir
@@ -50,6 +54,20 @@ if [ $use_gpu == "yes" ]; then
   gpu_opts="--gpu 1"
 fi
 
+append_feats_opts="copy-feats scp:- ark:- |"
+
+
+if [ -z "$snr_data_dir" ]; then
+  if $add_frame_snr; then
+    append_feats_opts="append-feats scp:- scp:$snr_pred_dir/frame_snrs.scp ark:- |"
+  fi
+fi
+
+feats=snr_pred_dir/nnet_pred_snrs.scp
+if [ ! -z "$snr_data_dir" ]; then
+  feats=$snr_data_dir/feats.scp
+fi
+
 if [ $stage -le 1 ]; then
   case $method in 
     "LogisticRegressionSubsampled")
@@ -57,7 +75,7 @@ if [ $stage -le 1 ]; then
 
       $decode_cmd --mem 8G JOB=1:$nj $dir/log/eval_logistic_regression.JOB.log \
         logistic-regression-eval-on-feats "$model" \
-        "ark:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp | splice-feats $splice_opts scp:- ark:- |" \
+        "ark:utils/split_scp.pl -j $nj \$[JOB-1] $feats |$append_feats_opts splice-feats $splice_opts ark:- ark:- |" \
         ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       ;;
     "LogisticRegression"|"Dnn")
@@ -66,13 +84,17 @@ if [ $stage -le 1 ]; then
       if [ $feat_type != "sparse" ]; then
         $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
           nnet3-compute --apply-exp=false --use-gpu=$use_gpu "$model" \
-          "scp:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp |" \
+          "ark:utils/split_scp.pl -j $nj \$[JOB-1] $feats |$append_feats_opts" \
           ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       else 
         num_bins=`echo $quantization_bins | awk -F ':' '{print NF + 1}' 2>/dev/null` || exit 1
-        feat_dim=`head -n 1 $snr_pred_dir/nnet_pred_snrs.scp | feat-to-dim scp:- - 2>/dev/null` || exit 1
+        feat_dim=`head -n 1 $feats | feat-to-dim scp:- - 2>/dev/null` || exit 1
+        if $add_frame_snr; then
+          feat_dim=$[feat_dim+1]
+        fi
         sparse_input_dim=$[num_bins * feat_dim]
 
+        
         train_num_bins=`cat $model_dir/quantization_bin_boundaries | awk -F ':' '{print NF + 1}' 2>/dev/null` || exit 1
 
         if [ $num_bins -ne $train_num_bins ]; then
@@ -82,7 +104,7 @@ if [ $stage -le 1 ]; then
 
         $decode_cmd --mem 8G $gpu_opts JOB=1:$nj $dir/log/eval_tdnn.JOB.log \
           nnet3-compute-from-sparse-input --apply-exp=false --use-gpu=$use_gpu --sparse-input-dim=$sparse_input_dim "$model" \
-          "ark:utils/split_scp.pl -j $nj \$[JOB-1] $snr_pred_dir/nnet_pred_snrs.scp | quantize-feats scp:- $quantization_bins ark:- |" \
+          "ark:utils/split_scp.pl -j $nj \$[JOB-1] $feats |$append_feats_opts quantize-feats ark:- $quantization_bins ark:- |" \
           ark:$dir/log_nnet_posteriors.JOB.ark || exit 1
       fi
       ;;

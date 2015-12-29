@@ -47,6 +47,12 @@ while (<STDIN>) {
 my %text = ();
 my %utt2spk = ();
 
+while (<UI>) {
+  chomp; 
+  my @col = split;
+  $utt2spk{$col[0]} = $col[1];
+}
+
 while (<TI>) {
   chomp;
   my @col = split;
@@ -55,23 +61,12 @@ while (<TI>) {
   my $utt = shift @col;
   $text{$utt} = join(" ", @col);
 }
-while (<UI>) {
-  chomp; 
-  my @col = split;
-  $utt2spk{$col[0]} = $col[1];
-}
 
 foreach $file (keys %file2utt) {
   my @utts = @{$file2utt{$file}};
   #print STDERR $file . " " . join(" ", @utts) . "\n";
   $text_line = "";
-  foreach $utt (@utts) {
-    defined $text{$utt} or die "Unknown utterance $utt in text\n";
-    defined $utt2spk{$utt} or die "Unknown utterance $utt in utt2spk\n";
-
-    $text_line .=  " " . $text{$utt};
-    print UO "$file $utt2spk{$utt}\n";
-  }
+  print UO "$file $file\n";
   print TO "$file $text_line\n";
 }
 ' $data/text $data/utt2spk $dir/text $dir/utt2spk
@@ -79,9 +74,5 @@ foreach $file (keys %file2utt) {
 sort -u $dir/utt2spk > $dir/utt2spk.tmp
 mv $dir/utt2spk.tmp $dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-
-if [ -f $data/cmvn.scp ]; then
-  cp $data/cmvn.scp $dir
-fi
 
 utils/fix_data_dir.sh $dir

@@ -47,15 +47,17 @@ if __name__ == "__main__":
                       help='snrs to be used for corruption')
   parser.add_argument('--foreground-snrs', type=str, default = '20:10:0',
                       help='snrs to be used with foreground noises')
-  parser.add_argument('--signal-dbs', type=str,
-                      default = '5:2:0:-2:-5:-10:-20:-30:-40:-50:-60',
-                      help='desired signal dbs')
+  parser.add_argument('--rms-amplitudes', type=str,
+                      default = '0.0001:0.0005:0.001:0.002:0.005:0.008:0.01:0.02:0.05:0.08:0.1:0.2:0.3:0.5',
+                      help='desired signal rms')
   parser.add_argument('--foreground-prob', type=float, default = 0.7,
                       help = 'probability with which to add foreground noise '
                       'on non-pair impulse noise files')
   parser.add_argument('--foreground-prob-for-pair', type=float, default = 0.4,
                       help = 'probability with which to add foreground noise '
                       'on impulse-noise pairs')
+  parser.add_argument('--reverb-prob', type=float, default=0.4,
+                      help = 'probability with which to add reverberation')
   parser.add_argument('--random-seed', type = int, default = 0,
                       help = 'seed to be used in the randomization')
   parser.add_argument('--output-clean-wav-file-list', type=str,
@@ -86,7 +88,7 @@ if __name__ == "__main__":
       random_seed = params.random_seed)
   foreground_snrs = list_cyclic_iterator(foreground_snr_string_parts,
       random_seed = params.random_seed)
-  signal_dbs= list_cyclic_iterator(params.signal_dbs.split(':'),
+  rms_amplitudes = list_cyclic_iterator(params.rms_amplitudes.split(':'),
       random_seed = params.random_seed)
 
   wav_files = return_nonempty_lines(open(params.wav_scp, 'r').readlines())
@@ -108,8 +110,6 @@ if __name__ == "__main__":
   impulses = list_cyclic_iterator(return_nonempty_lines(
     open(params.impulses_noises_dir+'/info/impulse_files').readlines()),
     random_seed = params.random_seed)    # This list could be empty
-  # Explicitly add a None so that you can create corrupted files without any reverberation
-  impulses.add_to_list(None)
 
   background_noises = list_cyclic_iterator(return_nonempty_lines(
     open(params.impulses_noises_dir+'/info/background_noise_files').readlines()),
@@ -154,8 +154,11 @@ if __name__ == "__main__":
     output_file_id = splits[0]
     output_wav_file = " ".join(splits[1:])
 
-    # randomly select corruption parameters
-    impulse_file = impulses.next()
+    if random.uniform(0,1) <= params.reverb_prob:
+      # randomly select corruption parameters
+      impulse_file = impulses.next()
+    else:
+      impulse_file = None
 
     found_impulse_noise_pair = False
     if impulse_file is not None:
@@ -170,7 +173,7 @@ if __name__ == "__main__":
       background_noise_file = background_noises.next()
 
     background_snr = background_snrs.next()
-    signal_db = signal_dbs.next()
+    rms_amplitude = rms_amplitudes.next()
 
     assert(len(wav_file.strip()) > 0)
     assert(impulse_file is None or len(impulse_file.strip()) > 0)
@@ -185,16 +188,16 @@ if __name__ == "__main__":
     background_noise_opts = '--background-noise-file={0} --background-snr-db={1}'.format(background_noise_file, background_snr)
 
     foreground_noise_opts = ''
-    if random.uniform(0,1) >= foreground_prob:
+    if random.uniform(0,1) <= foreground_prob:
       foreground_snr = foreground_snrs.next()
       foreground_noise_files = foreground_noises.next_few(10)
       if foreground_noise_files is not None:
         foreground_noise_opts = '--foreground-noise-files={0} --foreground-snr-db={1}'.format(":".join(foreground_noise_files), foreground_snr)
 
     volume_opts = ""
-    if signal_db is not None:
-      assert(len(signal_db.strip()) > 0)
-      volume_opts = "--volume=-1 --signal-db={0} --normalize-by-amplitude=true".format(signal_db)
+    if rms_amplitude is not None:
+      assert(len(rms_amplitude.strip()) > 0)
+      volume_opts = "--volume=-1 --rms-amplitude={0} --normalize-by-power=true".format(rms_amplitude)
 
     if params.output_clean_wav_file_list is not None:
       splits = clean_wav_out_files[i].split()
