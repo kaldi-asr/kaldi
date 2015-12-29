@@ -807,7 +807,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 23);
+  int32 n = RandInt(0, 24);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1021,6 +1021,15 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       int32 num_groups = RandInt(1, 50),
         input_dim = num_groups * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << num_groups;
+      break;
+    }
+    case 24: {
+      *component_type = "RepeatedAffineComponent";
+      int32 num_repeats = RandInt(1, 50),
+          input_dim = num_repeats * RandInt(1, 15),
+          output_dim = num_repeats * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-repeats=" << num_repeats;
       break;
     }
     default:
