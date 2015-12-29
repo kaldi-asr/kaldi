@@ -152,6 +152,7 @@ int main(int argc, char *argv[]) {
 	  // logit is more sensitive to log(0), 
 	  // so higher smoothing value
 	  phone_post.Add(1e-5); 
+	  // phone_post.Add(0.0);
 	  for (int32 i=0; i<phone_post.NumRows(); i++) {
 	    // Normalize, after smoothing
 	    SubVector<BaseFloat> Row(phone_post, i);

@@ -64,11 +64,17 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
+    std::string stream_combination_pvals;
+    po.Register("stream-combination-pvals", &stream_combination_pvals, "Probability values Feature transform in front of main network (in nnet format)");
+
     int32 stream_combination = 0;
     po.Register("stream-combination", &stream_combination, "Assign mask, so that for all frames stream-combination is present");
 
-    std::string stream_combination_pvals;
-    po.Register("stream-combination-pvals", &stream_combination_pvals, "Probability values Feature transform in front of main network (in nnet format)");
+    std::string stream_mask;
+    po.Register("stream-mask", &stream_mask, "Stream mask (Kaldi rspecifier).");
+
+    std::string crossvalidate = "false";
+    po.Register("cross-validate", &crossvalidate, "If provided expects --stream-combination or --stream-mask, else does random masking");
 
     int32 seed = 777;
     po.Register("seed", &seed, "Seed for random number generator");
@@ -95,12 +101,24 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     BaseFloatMatrixWriter feature_writer(feature_wspecifier);
 
+    RandomAccessBaseFloatMatrixReader stream_mask_reader;
+    if (stream_mask != "") {
+      stream_mask_reader.Open(stream_mask);
+    }
+
 
     std::vector<int> stream_indices;
     bool ret = SplitStringToIntegers(stream_indices_str, ":", true, &stream_indices);
     if (!ret) {
       KALDI_ERR << "Cannot parse the stream_indices. It should be"
 		<< "colon-separated list of integers";
+    }
+
+    if (crossvalidate == "true") {
+      if ((stream_mask == "") && (stream_combination == 0)) {
+	KALDI_ERR << "Given --cross-validate=true"
+	          << " but --stream-mask='' and --stream-combination=0";
+      }
     }
 
     int32 num_streams = stream_indices.size() - 1;
@@ -132,12 +150,11 @@ int main(int argc, char *argv[]) {
       // Check if feature_dim == end of stream_indices
       KALDI_ASSERT(mat.NumCols() == stream_indices[stream_indices.size()-1]);
 
-      // Apply stream mask to mat and put it in out_mat
-      for (int32 i=0; i<mat.NumRows(); i++) {
-	int32 this_frame_stream_combination = 0;
-	if (stream_combination != 0 ) {
-	  this_frame_stream_combination = stream_combination;
-	} else {
+      if (crossvalidate == "false") {
+
+	// Apply random stream mask to each row mat and put it in out_mat
+	for (int32 i=0; i<mat.NumRows(); i++) {
+	  int32 this_frame_stream_combination = 0;
 	  // Randomly select stream combination
 	  if (stream_combination_pvals == "" ) {
 	    this_frame_stream_combination = RandInt(1, num_stream_combns);
@@ -145,16 +162,43 @@ int main(int argc, char *argv[]) {
 	    // Biased random number generation based on stream_combination_pvals
 	    KALDI_ERR << "Not yet implemented random number generation based on stream_combination_pvals";  
 	  }
+	  
+	  SubVector<BaseFloat> Row(mat, i);
+	  std::vector<int> this_frame_stream_mask = stream_combination_to_mask[this_frame_stream_combination];
+	  for (int32 j=0; j<num_streams; j++) {
+	    SubVector<BaseFloat> subRow(Row, stream_indices[j], stream_indices[j+1] - stream_indices[j]);
+	    subRow.Scale(this_frame_stream_mask[j]);
+	  }
 	}
 
-        SubVector<BaseFloat> Row(mat, i);
-	std::vector<int> this_frame_stream_mask = stream_combination_to_mask[this_frame_stream_combination];
-	for (int32 j=0; j<num_streams; j++) {
-	  SubVector<BaseFloat> subRow(Row, stream_indices[j], stream_indices[j+1] - stream_indices[j]);
-	  subRow.Scale(this_frame_stream_mask[j]);
+      } 
+      else {
+	if (stream_mask != "") {
+	  Matrix<BaseFloat> this_utt_stream_mask;
+	  this_utt_stream_mask = stream_mask_reader.Value(utt);
+	  for (int32 j=0; j<num_streams; j++) {
+
+	    SubMatrix<BaseFloat> this_stream(mat.ColRange(stream_indices[j], stream_indices[j+1] - stream_indices[j]));
+	    Vector<BaseFloat> this_stream_mask;
+
+	    this_stream_mask.Resize(this_utt_stream_mask.NumRows());
+	    this_stream_mask.CopyColFromMat(this_utt_stream_mask, j);
+	    
+	    this_stream.MulRowsVec(this_stream_mask);
+	  }
+
+	} else if (stream_combination != 0) {
+	  std::vector<int> frame_stream_mask = stream_combination_to_mask[stream_combination];
+	  for (int32 i=0; i<mat.NumRows(); i++) {
+	    SubVector<BaseFloat> Row(mat, i);
+	    for (int32 j=0; j<num_streams; j++) {
+	      SubVector<BaseFloat> subRow(Row, stream_indices[j], stream_indices[j+1] - stream_indices[j]);
+	      subRow.Scale(frame_stream_mask[j]);
+	    }
+	  }
 	}
       }
-
+    
       // Write
       feature_writer.Write(feature_reader.Key(), mat);
 
