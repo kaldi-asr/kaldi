@@ -17,7 +17,8 @@ BINFILES = nnet-train-frmshuff \
         nnet-kl-hmm-acc nnet-kl-hmm-mat-to-component \
 	feat-to-post paste-post train-transitions \
 	cuda-gpu-available \
-	apply-feature-stream-mask transform-nnet-posteriors
+	apply-feature-stream-mask transform-nnet-posteriors \
+        nnet-score-sent
 
 OBJFILES =
 
