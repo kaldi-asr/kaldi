@@ -51,9 +51,6 @@ parser.add_argument("config_dir",
 
 print(' '.join(sys.argv))
 
-# layer1: splice + LDA-transform + affine + ReLU + renormalize
-# layerX: splice + Jesus [+ ReLU +] affine + renormalize.
-
 args = parser.parse_args()
 
 if not os.path.exists(args.config_dir):
@@ -158,6 +155,10 @@ f.close()
 
 
 for l in range(1, num_hidden_layers + 1):
+    # the following summarizes the structure of the layers:
+    # layer1: splice + LDA-transform + affine + ReLU + renormalize
+    # layerX: splice + Jesus [+ ReLU +] affine + renormalize.
+
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
     if l == 1:
@@ -183,10 +184,14 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=renorm1 component=renorm1 input=relu1')
     else:
         splices = []
+        spliced_dims = []
         for offset in splice_array[l-1]:
             splices.append('Offset(renorm{0}, {1})'.format(l-1, offset))
+            spliced_dims.append(args.affine_output_dim)
         # if this layer has recurrence, add a ClipGradientComponent for use
         # by its recurrent connections
+        # TODO: test where it's best to have the recurrence from- maybe the output
+        # of the jesus layer itself, before the affine layer?
         if len(recurrence_array[l-1]) > 0:
             print('component name=clip-gradient{0} dim={1} clipping-threshold={2} '
                   'norm-based-clipping=true '.format(
@@ -195,11 +200,32 @@ for l in range(1, num_hidden_layers + 1):
                   'input=renorm{0}'.format(l), file=f)
         for offset in recurrence_array[l-1]:
             splices.append('IfDefined(Offset(clip-gradient{0}, {1}))'.format(l, offset))
+            spliced_dims.append(args.affine_output_dim)
+
+
+        cur_input = 'Append({0})'.format(', '.join(splices))
+        cur_dim = sum(spliced_dims)
 
         # As input to the Jesus component we'll append the spliced input and
         # recurrent input, but we first need to rearrange the dimensions so that
-        # a particular dimension
-want to
+        # things pertaining to a particular block stay together.
+        new_column_order = []
+        for x in range(0, args.num_jesus_blocks):
+            dim_offset = 0
+            for src_splice in range(0, len(spliced_dims)):
+                src_block_size = src_splice / args.num_jesus_blocks
+                for y in range(0, src_block_size):
+                    new_column_order.append(dim_offset + (x * src_block_size) + y)
+                dim_offset += src_splice
+        if sorted(new_column_order) != range(0, sum(spliced_dims)):
+            sys.exit("code error creating new column order");
+
+        if new_column_order != range(0, sum(spliced_dims)):
+            print('component name=permute{0} type=PermuteComponent new-column-order={1}'.format(
+                    l, ','.join(new_column_order)), file=f)
+            print('component-node name=permute{0} component-permute{0} input={1}'.format(
+                    l, cur_input), file=f)
+            cur_input = 'permute{0}'.format(l)
 
 
         # e.g. cur_input = 'Append(Offset(renorm1, -2), renorm1, Offset(renorm1, 2))'
@@ -207,6 +233,11 @@ want to
                     for n in splice_array[l-1] ]
         cur_input='Append({0})'.format(', '.join(splices))
         cur_dim = args.jesus_dim * len(splice_array[l-1])
+
+        # Now add the jesus component.
+        num_sub_components = ..HERE...
+        print('component name=jesus{0} type=CompositeComponent num-
+
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
     print('component name=affine{0} type=NaturalGradientAffineComponent '
