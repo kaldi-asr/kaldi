@@ -118,9 +118,16 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 
+frame_subsampling_opt=
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  # e.g. for 'chain' systems
+  frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
+  cp $srcdir/frame_subsampling_factor $dir
+fi
+
 $cmd JOB=1:$nj $dir/log/align.JOB.log \
   compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
-  nnet3-align-compiled $scale_opts $ivector_opts \
+  nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
     --use-gpu=$use_gpu --beam=$beam --retry-beam=$retry_beam \
     $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 
