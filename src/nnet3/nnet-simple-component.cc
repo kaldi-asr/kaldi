@@ -1084,8 +1084,8 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
                "num-repeats must divide input-dim");
   KALDI_ASSERT(output_dim % num_repeats == 0 &&
                "num-repeats must divide output-dim");
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0;
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_repeats),
+      bias_stddev = 0.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
   Init(learning_rate, input_dim, output_dim, num_repeats,
@@ -4244,6 +4244,15 @@ void CompositeComponent::Read(std::istream &is, bool binary) {
     components[i] = ReadNew(is, binary);
   Init(components, max_rows_process);
   ExpectToken(is, binary, ostr_end.str());
+}
+
+// virtual
+void CompositeComponent::ZeroStats() {
+  // we call ZeroStats() on all components without checking their flags; this
+  // will do nothing if the component doesn't store stats.  (components like
+  // ReLU and sigmoid and tanh store stats on activations).
+  for (size_t i = 0; i < components_.size(); i++)
+   components_[i]->ZeroStats();
 }
 
 // virtual

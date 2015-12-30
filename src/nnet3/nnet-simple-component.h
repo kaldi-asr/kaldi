@@ -1581,6 +1581,11 @@ class CompositeComponent: public UpdatableComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
+  // note, we don't implement StoreStats() as it would be inefficient.  Instead,
+  // by default we call StoreStats() on all members that have the flag set,
+  // inside the Backprop.
+  virtual void ZeroStats();
+
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
 

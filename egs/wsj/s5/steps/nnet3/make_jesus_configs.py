@@ -181,7 +181,7 @@ for l in range(1, num_hidden_layers + 1):
         # TODO: test where it's best to have the recurrence from- maybe the output
         # of the jesus layer itself, before the affine layer?
         if len(recurrence_array[l-1]) > 0:
-            print('component name=clip-gradient{0} dim={1} clipping-threshold={2} '
+            print('component type=ClipGradientComponent name=clip-gradient{0} dim={1} clipping-threshold={2} '
                   'norm-based-clipping=true '.format(
                     l, args.affine_output_dim, args.clipping_threshold), file=f)
             print('component-node name=clip-gradient{0} component=clip-gradient{0} '
