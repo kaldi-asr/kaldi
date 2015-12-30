@@ -73,6 +73,7 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 #TDNN
 #Total training time is 5:19:19
+# local/nnet3/run_tdnn.sh --mic sdm1 --use-sat-alignments false
 %WER 46.1 | 15377 94333 | 59.1 25.8 15.0 5.2 46.1 65.6 | -24.026 | exp/sdm1/nnet3/tdnn_sp/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 50.9 | 13867 89975 | 53.6 27.9 18.5 4.5 50.9 70.1 | -23.332 | exp/sdm1/nnet3/tdnn_sp/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
 
@@ -83,9 +84,29 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 
 #Variable-delay LSTM (Default LSTM recipe)
 #Total training time is 18:43:35
+# local/nnet3/run_lstm.sh --mic sdm1 --use-sat-alignments false
 %WER 44.4 | 14208 94318 | 61.2 25.7 13.1 5.5 44.4 70.1 | -24.197 | exp/sdm1/nnet3/lstm_sp_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 47.9 | 14766 89956 | 56.0 25.7 18.2 3.9 47.9 64.1 | -23.997 | exp/sdm1/nnet3/lstm_sp_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+# BLSTM
+# local/nnet3/run_blstm.sh --mic sdm1 --use-sat-alignments false
+%WER 42.8 | 14948 94501 | 62.2 25.2 12.6 5.1 42.8 65.8 | -24.499 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 46.1 | 13760 89981 | 57.8 25.9 16.3 3.9 46.1 68.2 | -24.143 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+# local/nnet3/run_blstm.sh --mic sdm1 --use-sat-alignments true
+%WER 42.5 | 14150 94510 | 62.4 24.6 12.9 4.9 42.5 69.2 | -24.676 | exp/sdm1/nnet3/lstm_sp_bidirectional_fmllr_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 45.6 | 14142 89993 | 58.5 26.1 15.4 4.2 45.6 66.5 | -24.127 | exp/sdm1/nnet3/lstm_sp_bidirectional_fmllr_ld0/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+# BLSTM + clean alignments
+#  local/nnet3/run_blstm.sh --mic sdm1 \
+#    --chunk-right-context 20 \ 
+#    --use-sat-alignments true \
+#    --use-ihm-ali true
+# Note: Chunk right context of 20 limits the latency of the acoustic model to
+# 20 frames.
+
+%WER 38.5 | 14828 94514 | 66.6 22.7 10.6 5.2 38.5 63.7 | -25.569 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 41.8 | 12828 89977 | 62.5 24.6 12.9 4.3 41.8 70.8 | -24.813 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (28.7.2015)

@@ -547,6 +547,10 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
+    // This operator is only intended to support sorting in EpsilonClosure()
+    bool operator < (const Element &other) const {
+      return state < other.state;
+    }
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -760,29 +764,18 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     // be so at output].  This function follows input-epsilons, and augments the
     // subset accordingly.
     
-    unordered_map<InputStateId, Element> cur_subset;
-    typedef typename unordered_map<InputStateId, Element>::iterator MapIter;    
-
-    {
-      MapIter iter = cur_subset.end();
-      for (size_t i = 0;i < subset->size();i++) {
-        std::pair<const InputStateId, Element> pr((*subset)[i].state, (*subset)[i]);
-#if __GNUC__ == 4 && __GNUC_MINOR__ == 0
-        iter = cur_subset.insert(iter, pr).first;
-#else
-        iter = cur_subset.insert(iter, pr);
-#endif
-        // By providing iterator where we inserted last one, we make insertion more efficient since
-        // input subset was already in sorted order.
-      }
-    }
-    // find whether input fst is known to be sorted on input label. 
-    bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
-
     std::deque<Element> queue;
-    for (typename vector<Element>::const_iterator iter = subset->begin();
-         iter != subset->end();
-         ++iter) queue.push_back(*iter);
+    unordered_map<InputStateId, Element> cur_subset;
+    typedef typename unordered_map<InputStateId, Element>::iterator MapIter;
+    typedef typename vector<Element>::const_iterator VecIter;
+
+    for (VecIter iter = subset->begin(); iter != subset->end(); ++iter) {
+      queue.push_back(*iter);
+      cur_subset[iter->state] = *iter;
+    }
+
+    // find whether input fst is known to be sorted on input label.
+    bool sorted = ((ifst_->Properties(kILabelSorted, false) & kILabelSorted) != 0);
     bool replaced_elems = false; // relates to an optimization, see below.
     int counter = 0; // stops infinite loops here for non-lattice-determinizable input;
     // useful in testing.
@@ -819,8 +812,7 @@ template<class Weight, class IntType> class LatticeDeterminizer {
           else
             next_elem.string = repository_.Successor(elem.string, arc.olabel);
           
-          typename unordered_map<InputStateId, Element>::iterator
-              iter = cur_subset.find(next_elem.state);
+          MapIter iter = cur_subset.find(next_elem.state);
           if (iter == cur_subset.end()) {
             // was no such StateId: insert and add to queue.
             cur_subset[next_elem.state] = next_elem;
@@ -843,12 +835,13 @@ template<class Weight, class IntType> class LatticeDeterminizer {
       }
     }
 
-    {  // copy cur_subset to subset.
-      // sorted order is automatic.
+    { // copy cur_subset to subset.
       subset->clear();
       subset->reserve(cur_subset.size());
       MapIter iter = cur_subset.begin(), end = cur_subset.end();
       for (; iter != end; ++iter) subset->push_back(iter->second);
+      // sort by state ID, because the subset hash function is order-dependent(see SubsetKey)
+      std::sort(subset->begin(), subset->end());
     }
   }
 

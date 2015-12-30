@@ -40,20 +40,20 @@ namespace nnet3 {
    it is referred to as online NG-SGD.  Note that the method exported
    from this header is just the core of the algorithm, and some outer-level parts
    of it are implemented in class NaturalGradientAffineComponent.
-   
+
   The rest of this extended comment describes the way we keep updated an estimate
   of the inverse of a scatter matrix, in an online way.  This is the same as the
   estimation of one of the A or B quantities in the paper.  This comment is slightly
   redundant with the paper- actually it precedes the paper- but we keep it in case it
   is useful in understanging our method.
-     
+
   We consider the problem of doing online estimation of a (scaled-identity plus low-rank)
   approximation of a Fisher matrix... since the Fisher matrix is a scatter of vector-valued derivatives
   and we will be given the derivatives (or at least terms in a factorization of the derivatives
   which need not concern us right now), we can just think of the present task as being
   the online accumulation of a (low-rank plus scaled-identity) approximation to a variance
   of a distribution with mean zero.
-  
+
   Later on we'll think about how to get easy access to the inverse of this approximate
   variance, which is what we really need.
 
@@ -72,7 +72,7 @@ namespace nnet3 {
   t'th iteration, define the scatter S_t of the input vectors X_t as:
 
      S_t =(def) 1/N X_t^T X_t           (eqn:St)
-     
+
   (where N is the minibatch size).  Be careful not to confuse the rank R with
   with input X_t (we would typeface X_t in bold if this were not plain text, to
   make the distinction clearer).  We want F_t to approach some kind of
@@ -86,7 +86,7 @@ namespace nnet3 {
 
   we'll use this in place of the observed scatter S_t, to slow down the update.
   Defining
-  
+
    Y_t =(def) R_t T_t
 
   which can be expanded as follows:
@@ -96,7 +96,7 @@ namespace nnet3 {
            = \eta R_t S_t + (1-\eta) (D_t + \rho_t I) R_t
 
   It is useful to think of Y_t as having each of the top eigenvectors of the
-  scatter scaled by the corresponding eigenvalue \lambda_i. 
+  scatter scaled by the corresponding eigenvalue \lambda_i.
   We compute the following R by R matrix:
     Z_t =(def) Y_t Y_t^T
   and do the symmetric eigenvalue decomposition
@@ -107,12 +107,12 @@ namespace nnet3 {
   The diagonal elements of C_t can be thought of as corresponding to the squares of
   our current estimate of the top eigenvalues of the scatter matrix.
   [we should check that no element of C_t is <= 0.]
-  
+
   It is easy to show that C_t^{-0.5} U_t^T Z_t U_t C_t^{-0.5} = I, so
      (C_t^{-0.5} U_t^T Y_t) (Y_t^T U_t C_t^{-0.5}) = I.  Define
     R_{t+1} =(def) C_t^{-0.5} U_t^T Y_t
 
-  and it's clear that R_{t+1} R_{t+1}^T = I. 
+  and it's clear that R_{t+1} R_{t+1}^T = I.
   We will set
      D_{t+1} =(def) C_t^{0.5} - \rho_{t+1} I             (eqn:dt1)
 
@@ -123,13 +123,13 @@ namespace nnet3 {
   But a proper treatment of this would require convergence analysis that would
   get quite complicated.  We will choose \rho_{t+1} in order to ensure that
   tr(F_{t+1}) = tr(T_t).
-  
+
   For any t,
      tr(F_t) = D \rho_t + tr(D_t)
      tr(T_t) = \eta tr(S_t) + (1-\eta) tr(F_t)
              = \eta tr(S_t) + (1-\eta) (D \rho_t + tr(D_t))
   Expanding out D_{t+1} from (eqn:dt1) in the expression for tr(F_{t+1}) below:
-      tr(F_{t+1})  = D \rho_{t+1} +  tr(D_{t+1}) 
+      tr(F_{t+1})  = D \rho_{t+1} +  tr(D_{t+1})
       tr(F_{t+1})  = D \rho_{t+1} +  tr(C_t^{0.5} - \rho_{t+1} I)
                    = (D - R) \rho_{t+1} + tr(C_t^{0.5})
    and equating tr(F_{t+1}) with T_t (since F_{t+1} is supposed to be a low-rank
@@ -161,7 +161,7 @@ namespace nnet3 {
         G_t =(def) F_t +  \alpha/D tr(F_t) I
             =     R_t^T D_t R_t + (\rho_t + \alpha/D tr(F_t)) I
             =     R_t^T D_t R_t + \beta_t I
-  where            
+  where
     \beta_t =(def) \rho_t + \alpha/D tr(F_t)
             =      \rho_t(1+\alpha) + \alpha/D tr(D_t)       (eqn:betat2)
 
@@ -189,7 +189,7 @@ namespace nnet3 {
                 = 1/\beta_t (I - R_t^T E_t R_t)
   where
         E_t =(def)  1/\beta_t (D_t^{-1} + 1/\beta_t I)^{-1},         (eqn:etdef)
-  so       
+  so
     e_{tii} =   1/\beta_t * 1/(1/d_{tii} + 1/\beta_t)                (eqn:tii)
             =   1/(\beta_t/d_{tii} + 1)
 
@@ -205,10 +205,10 @@ namespace nnet3 {
   number of operations on the GPU.  We can now write:
 
         \hat{X}_t = X_t - X_t W_t^T W_t       (eqn:pt2)
-  
+
   The following, which we'll compute on the GPU, are going to be useful in computing
   quantities like Z_t:
-  
+
      H_t =(def) X_t W_t^T     (dim is N by R)
      J_t =(def) H_t^T X_t     (dim is R by D)
          =      W_t X_t^T X_t
@@ -231,7 +231,7 @@ namespace nnet3 {
 
   we wrote above that
       Y_t = \eta R_t S_t + (1-\eta) (D_t + \rho_t I) R_t
-  so      
+  so
       Y_t = \eta/N R_t X_t^T X_t   + (1-\eta) (D_t + \rho_t I) R_t
           = \eta/N E_t^{-0.5} J_t  + (1-\eta) (D_t + \rho_t I) R_t     (eqn:yt)
   We will expand Z_t using the expression for Y_t in the line above:
@@ -254,7 +254,7 @@ namespace nnet3 {
   \rho_t^2, and since negative or zero elements of C_t would cause us a problem
   later, we floor C_t to this value.  (see below regarding how we ensure R_{t+1}
   has orthonormal rows).
-  
+
   We will continue the discussion below regarding what we do with C_t and U_t.
   Next, we need to digress briefly and describe how to compute
   tr(\hat{X}_t \hat{X}_t^T) and tr(X_t X_t^2), since these appear in expressions for
@@ -295,17 +295,17 @@ namespace nnet3 {
   We found above in (eqn:rhot1)
      \rho_{t+1} = 1/(D - R) (\eta tr(S_t) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
   Expanding out S_t from its definition in (eqn:St),
-     \rho_{t+1} = 1/(D - R) (\eta/N tr(X_t X_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).  
+     \rho_{t+1} = 1/(D - R) (\eta/N tr(X_t X_t^T) + (1-\eta)(D \rho_t + tr(D_t)) - tr(C_t^{0.5})).
   We can compute this directly as all the quantities involved are already known
   or easy to compute.
   Next, from (eqn:dt1), we compute
      D_{t+1} = C_t^{0.5} - \rho_{t+1} I
   At this point if \rho_{t+1} is smaller than some small value \epsilon, e.g. 1.0e-10, we
   set it to \epsilon; as mentioned, we do this to stop F_t approaching zero if all inputs
-  are zero.  Next, if any diagonal element D_{t+1,i,i} has absolute value less than \epsilon,
-  we set it to +\epsilon.  This is to ensure that diagonal elements of E are never zero, which
-  would cause problems.
-  
+  are zero.  Next, if any diagonal element D_{t+1,i,i} has absolute value less
+  than \epsilon, we set it to +\epsilon.  This is to ensure that diagonal
+  elements of E are never zero, which would cause problems.
+
   Next, we compute (from eqn:betat2, eqn:etdef, eqn:tii),
         \beta_{t+1} = \rho_{t+1} (1+\alpha) + \alpha/D tr(D_{t+1})
             E_{t+1} = 1/\beta_{t+1} (D_{t+1}^{-1} + 1/\beta_{t+1} I)^{-1},
@@ -329,12 +329,12 @@ namespace nnet3 {
         B_t = J_t + (1-\eta)/(\eta/N) (D_t + \rho_t I) W_t
    [note: we use the fact that (D_t + \rho_t I) and E_t^{-0.5} commute because
     they are diagonal].
-               
+
   A_t is computed on the CPU and transferred from there to the GPU, B_t is
   computed on the PGU, and the multiplication of A_t with B_t is done on the GPU.
 
    * Keeping R_t orthogonal *
-   
+
    Our method requires the R_t matrices to be orthogonal (which we define to
    mean that R_t R_t^T = I).  If roundoff error causes this equality to be
    significantly violated, it could cause a problem for the stability of our
@@ -369,9 +369,9 @@ namespace nnet3 {
       W_t <-- (E_t^{0.5} C^{-1} E_t^{-0.5}) W_t,
    and the matrix in parentheses is computed on the CPU, transferred to the
    GPU, and the multiplication is done there.
- 
 
-   * Initialization *  
+
+   * Initialization *
 
    Now, a note on what we do on time t = 0, i.e. for the first minibatch.  We
    initialize X_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
@@ -474,7 +474,7 @@ class OnlineNaturalGradient {
                   BaseFloat rho_t1,
                   const MatrixBase<BaseFloat> &U_t,
                   const VectorBase<BaseFloat> &sqrt_c_t,
-                  const VectorBase<BaseFloat> &inv_sqrt_e_t,                                      
+                  const VectorBase<BaseFloat> &inv_sqrt_e_t,
                   const CuMatrixBase<BaseFloat> &W_t,
                   CuMatrixBase<BaseFloat> *J_t,
                   CuMatrixBase<BaseFloat> *W_t1) const;
@@ -490,13 +490,26 @@ class OnlineNaturalGradient {
 
   void Init(const CuMatrixBase<BaseFloat> &R0);
 
+  // Initialize to some small 'default' values, called from Init().  Init() then
+  // does a few iterations of update with the first batch's data to give more
+  // reasonable values.
+  void InitDefault(int32 D);
+
+  // initializes R, which is assumed to have at least as many columns as rows,
+  // to a specially designed matrix with orthonormal rows, that has no zero rows
+  // or columns.
+  static void InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R);
+
   // Returns the learning rate eta as the function of the number of samples
   // (actually, N is the number of vectors we're preconditioning, which due to
   // context is not always exactly the same as the number of samples).  The
   // value returned depends on num_samples_history_.
   BaseFloat Eta(int32 N) const;
 
-  
+  // called if self_debug_ = true, makes sure the members satisfy certain
+  // properties.
+  void SelfTest() const;
+
   // Configuration values:
 
   // The rank of the correction to the unit matrix (e.g. 20).
@@ -506,13 +519,13 @@ class OnlineNaturalGradient {
   // updating the Fisher-matrix parameters every "update_period_" minibatches;
   // this saves time.
   int32 update_period_;
-  
+
   // num_samples_history_ determines the value of eta, which in turn affects how
   // fast we update our estimate of the covariance matrix.  We've done it this
   // way in order to make it easy to have a single configuration value that
   // doesn't have to be changed when we change the minibatch size.
   BaseFloat num_samples_history_;
-  
+
   // alpha controls how much we smooth the Fisher matrix with the unit matrix.
   // e.g. alpha = 4.0.
   BaseFloat alpha_;
@@ -525,9 +538,10 @@ class OnlineNaturalGradient {
 
   // delta is a relative floor on the unit-matrix scaling factor rho_t in our
   // Fisher estimate, which we set to 1.0e-05: this is relative to the largest
-  // value of D_t.  It's needed to control roundoff error.
+  // value of D_t.  It's needed to control roundoff error.  We apply the same
+  // floor to the eigenvalues in D_t.
   BaseFloat delta_;
-  
+
   // t is a counter that measures how many updates we've done.
   int32 t_;
 
@@ -536,45 +550,24 @@ class OnlineNaturalGradient {
   // is a mechanism to avoid spending too much time updating the subspace (which can
   // be wasteful).
   int32 num_updates_skipped_;
-  
+
   // If true, activates certain checks.
   bool self_debug_;
 
   CuMatrix<BaseFloat> W_t_;
   BaseFloat rho_t_;
   Vector<BaseFloat> d_t_;
- 
-  
+
+
   // Used to prevent parameters being read or written in an inconsistent state.
   Mutex read_write_mutex_;
 
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
   Mutex update_mutex_;
-  
+
 
 };
-
-
-/*
-  This function finds the approximate top eigenvectors and eigenvalues of S = beta M
-  M^T (if trans == kNoTrans) or S = beta M^T M (if trans == kTrans).
-  Each row p of P will be set to an approximate
-  eigenvector of S, and the corresponding value in s will exactly equal p^T S p.
-  (note: it will actually be those with the largest absolute value that we return,
-  which makes a difference only if S has negative eigenvalues).
-  We do the eigenvalue computation on the CPU, mainly to avoid the hassle of
-  coding a version of it for CUDA.
-  Caution: most of the other eigenvalue or SVD code puts the eigenvalues in the
-  columns, not the rows.
-  This function is used by class OnlineNaturalGradient; we declare it separately
-  for ease of testing.   
- */
-void ApproxEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
-                         MatrixTransposeType trans,
-                         CuMatrixBase<BaseFloat> *P,
-                         CuVectorBase<BaseFloat> *s);
-
 
 
 } // namespace nnet3

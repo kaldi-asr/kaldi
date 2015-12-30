@@ -105,9 +105,26 @@ exit 0
 %WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
 %WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
 
-# these are results with nnet3 LSTMs : local/nnet3/run_lstm.sh (8 epoch training on speed-perturbed and volume perturbed data)
-%WER 11.8 | 1831 21395 | 89.4 7.0 3.6 1.3 11.8 47.8 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 13.2 | 1831 21395 | 88.3 8.0 3.7 1.5 13.2 49.5 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+# local/nnet3/run_lstm.sh
+# these are results with nnet3 LSTMs cell_dim=1280, recurrent_dim=384, lstm_delay=-1 -2 -3, label_delay=5 num_params=25010228 (8 epoch training on speed-perturbed
+# and volume perturbed data)
+%WER 11.4 | 1831 21395 | 89.8 6.8 3.4 1.2 11.4 46.0 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.7 | 1831 21395 | 88.6 7.6 3.8 1.3 12.7 48.7 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# bidirectional LSTM
+# -----------------------
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 1024 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+# (8 epoch training on speed-perturbed and volume perturbed data)
+# num_params=20101172
+%WER 10.3 | 1831 21395 | 90.6 6.1 3.2 0.9 10.3 44.2 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 11.3 | 1831 21395 | 89.6 6.9 3.5 1.0 11.3 46.6 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_11_1.0/eval2000_hires.ctm.swbd.filt.sys
 
 # results with nnet3 tdnn: local/nnet3/run_tdnn.sh (11.10.2015) (2 epoch training on speed-perturbed and volume perturbed data)
 %WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys

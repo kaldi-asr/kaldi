@@ -203,6 +203,9 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
     --config conf/decode.config \
     $graph_dir data/eval2000 exp/tri4/decode_eval2000_sw1_tg
+  # Will be used for confidence calibration example,
+  steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
+    $graph_dir data/train_dev exp/tri4/decode_dev_sw1_tg
 ) &
 wait
 
@@ -300,6 +303,19 @@ fi
 
 # demonstration script for raw-fMLLR.  You should probably ignore this.
 # local/run_raw_fmllr.sh
+
+# nnet3 LSTM recipe
+# local/nnet3/run_lstm.sh
+
+# nnet3 BLSTM recipe
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 1024 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
 
 # getting results (see RESULTS file)
 # for x in 1 2 3a 3b 4a; do grep 'Percent Total Error' exp/tri$x/decode_eval2000_sw1_tg/score_*/eval2000.ctm.filt.dtl | sort -k5 -g | head -1; done

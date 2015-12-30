@@ -431,7 +431,9 @@ void ComputationGraphBuilder::Compute() {
   int32 max_distance = 10000;
   while (current_distance_ < max_distance) {
     BuildGraphOneIter();
-    Check();
+    // only check rarely if we're running at low verbose level.
+    if (GetVerboseLevel() >= 3 || RandInt(1,  (current_distance_ + 1)) == 1)
+      Check();
     // TODO: come up with a scheme to delay when we call
     // UpdateAllComputableInfo().
     UpdateAllComputableInfo();

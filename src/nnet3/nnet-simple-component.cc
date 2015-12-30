@@ -709,7 +709,7 @@ void AffineComponent::Backprop(const std::string &debug_info,
 void AffineComponent::Read(std::istream &is, bool binary) {
   // might not see the "<AffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "</AffineComponent>", "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, "<AffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -1214,11 +1214,12 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &active_scaling_count_);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
     ReadBasicType(is, binary, &max_change_scale_stats_);
-    ExpectToken(is, binary, "<NaturalGradientAffineComponent>");
-  } else {
-    if (token != "<NaturalGradientAffineComponent>")
-      KALDI_ERR << "Expected <NaturalGradientAffineComponent>, got " << token;
+    ReadToken(is, binary, &token);
   }
+  if (token != "<NaturalGradientAffineComponent>" &&
+      token != "</NaturalGradientAffineComponent>")
+    KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
+              << "</NaturalGradientAffineComponent>, got " << token;
   SetNaturalGradientConfigs();
 }
 
@@ -1375,7 +1376,7 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
+  WriteToken(os, binary, "</NaturalGradientAffineComponent>");
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
@@ -1812,7 +1813,7 @@ void FixedAffineComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ASSERT(mat.NumRows() != 0);
     Init(mat);
   } else {
-    int32 input_dim, output_dim;
+    int32 input_dim = -1, output_dim = -1;
     if (!cfl->GetValue("input-dim", &input_dim) ||
         !cfl->GetValue("output-dim", &output_dim) || cfl->HasUnusedValues()) {
       KALDI_ERR << "Invalid initializer for layer of type "
@@ -2774,7 +2775,8 @@ void ConvolutionComponent::InderivPatchesToInderiv(
                                             y_step * filt_y_step + y, z,
                                             input_x_dim, input_y_dim,
                                             input_z_dim);
-            } else if (input_vectorization_ == kYzx)  {
+            } else {
+              KALDI_ASSERT(input_vectorization_ == kYzx);
               vector_index = YzxVectorIndex(x_step * filt_x_step + x,
                                             y_step * filt_y_step + y, z,
                                             input_x_dim, input_y_dim,
@@ -3805,6 +3807,29 @@ std::string MaxpoolingComponent::Info() const {
   return stream.str();
 }
 
+void PermuteComponent::ComputeReverseColumnMap() {
+  int32 dim = column_map_.Dim();
+  KALDI_ASSERT(dim > 0);
+  std::vector<int32> reverse_column_map_cpu(dim, -1),
+      column_map_cpu(dim);
+  column_map_.CopyToVec(&column_map_cpu);
+  for (int32 i = 0; i < dim; i++) {
+    int32 &dest = reverse_column_map_cpu[column_map_cpu[i]];
+    if (dest != -1)
+      KALDI_ERR << "Column map does not represent a permutation.";
+    dest = i;
+  }
+  reverse_column_map_.Resize(dim);
+  reverse_column_map_.CopyFromVec(reverse_column_map_cpu);
+}
+
+Component* PermuteComponent::Copy() const {
+  PermuteComponent *ans = new PermuteComponent();
+  ans->column_map_ = column_map_;
+  ans->reverse_column_map_ = reverse_column_map_;
+  return ans;  
+}
+
 void PermuteComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const  {
@@ -3817,69 +3842,63 @@ void PermuteComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
                                 Component *to_update,
                                 CuMatrixBase<BaseFloat> *in_deriv) const  {
-  // computing the reverse column_map
-  std::vector<int32> reverse_column_map(column_map_.Dim()),
-                     column_map(column_map_.Dim());
-  column_map_.CopyToVec(&column_map);
-  int32 column_map_size = column_map.size();
-  for (int32 i = 0; i < column_map_size; i++)  {
-    reverse_column_map[column_map[i]] = i;
-  }
-  CuArray<int32> cu_reverse_column_map(reverse_column_map);
-  in_deriv->CopyCols(out_deriv, cu_reverse_column_map);
+  in_deriv->CopyCols(out_deriv, reverse_column_map_);
 }
 
 void PermuteComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
-  std::string new_column_order;
-  ok = ok && cfl->GetValue("new-column-order", &new_column_order);
+  std::string column_map_str;
+  ok = ok && cfl->GetValue("column-map", &column_map_str);
   std::vector<int32> column_map;
-  SplitStringToIntegers(new_column_order, ",", true, &column_map);
-  CuArray<int32> cu_column_map(column_map);
+  if (!SplitStringToIntegers(column_map_str, ",", true, &column_map))
+    KALDI_ERR << "Bad initializer in PermuteComponent: column-map="
+              << column_map_str;
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
 	      << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(cu_column_map);
+  Init(column_map);
+}
+
+void PermuteComponent::Init(const std::vector<int32> &column_map) {
+  KALDI_ASSERT(column_map.size() > 0);
+  column_map_.CopyFromVec(column_map);
+  ComputeReverseColumnMap();
 }
 
 void PermuteComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<PermuteComponent>", "<ColumnMap>");
-  CuVector<BaseFloat> cu_column_map;
-  cu_column_map.Read(is, binary);
-  std::vector<int32> column_map(cu_column_map.Dim());
-  for (int32 i = 0; i < cu_column_map.Dim(); i++)
-    column_map[i] = static_cast<int32>(cu_column_map(i));
+  std::vector<int32> column_map;
+  ReadIntegerVector(is, binary, &column_map);
   column_map_.CopyFromVec(column_map);
   ExpectToken(is, binary, "</PermuteComponent>");
+  ComputeReverseColumnMap();
 }
 
 void PermuteComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<PermuteComponent>");
   WriteToken(os, binary, "<ColumnMap>");
   std::ostringstream buffer;
-  std::vector<int32> column_map(column_map_.Dim());
+  std::vector<int32> column_map;
   column_map_.CopyToVec(&column_map);
-  CuVector<BaseFloat> cu_column_map(column_map.size());
-  for (int32 i = 0; i < column_map.size() -1; i++)
-    cu_column_map(i) = static_cast<BaseFloat>(column_map[i]);
-  cu_column_map.Write(os, binary);
+  WriteIntegerVector(os, binary, column_map);
   WriteToken(os, binary, "</PermuteComponent>");
 }
 
 std::string PermuteComponent::Info() const {
   std::stringstream stream;
   stream << Type() << ", dim=" << column_map_.Dim();
-  stream << " , new-column-order=";
+  stream << " , column-map=[ ";
   std::vector<int32> column_map(column_map_.Dim());
   column_map_.CopyToVec(&column_map);
-  CuVector<BaseFloat> cu_column_map(column_map.size());
-  for (int32 i = 0; i < column_map.size() -1; i++)
-    cu_column_map(i) = static_cast<BaseFloat>(column_map[i]);
-  cu_column_map.Write(stream, false);
-
+  int32 max_size = 5;
+  for (size_t i = 0; i < column_map.size() && i < max_size; i++)
+    stream << column_map[i] << ' ';
+  if (static_cast<int32>(column_map.size()) > max_size)
+    stream << "... ";
+  stream << "]";
   return stream.str();
 }
 

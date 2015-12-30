@@ -84,7 +84,7 @@ sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 #check and correct the case when segment timings for given speaker overlap themself 
 #(important for simulatenous asclite scoring to proceed).
 #There is actually only one such case for devset and automatic segmentetions
-join $dir/utt2spkm $dir/segments | \
+join $dir/utt2spk $dir/segments | \
    perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
            if ($pu eq $_[1] && $pt > $_[3]) {
              print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"

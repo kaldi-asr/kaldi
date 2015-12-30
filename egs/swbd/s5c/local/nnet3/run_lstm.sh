@@ -23,14 +23,16 @@ common_egs_dir=
 
 # LSTM options
 splice_indexes="-2,-1,0,1,2 0 0"
+lstm_delay=" -1 -2 -3 "
 label_delay=5
 num_lstm_layers=3
-cell_dim=1024
+cell_dim=1280
 hidden_dim=1024
-recurrent_projection_dim=256
-non_recurrent_projection_dim=256
+recurrent_projection_dim=384
+non_recurrent_projection_dim=384
 chunk_width=20
 chunk_left_context=40
+chunk_right_context=0
 
 
 # training options
@@ -46,6 +48,7 @@ remove_egs=true
 
 #decode options
 extra_left_context=
+extra_right_context=
 frames_per_chunk=
 
 # End configuration section.
@@ -86,6 +89,7 @@ if [ $stage -le 9 ]; then
 
   steps/nnet3/lstm/train.sh --stage $train_stage \
     --label-delay $label_delay \
+    --lstm-delay "$lstm_delay" \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
@@ -103,6 +107,7 @@ if [ $stage -le 9 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --chunk-width $chunk_width \
     --chunk-left-context $chunk_left_context \
+    --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
     data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
@@ -113,6 +118,9 @@ if [ $stage -le 10 ]; then
   if [ -z $extra_left_context ]; then
     extra_left_context=$chunk_left_context
   fi
+  if [ -z $extra_right_context ]; then
+    extra_right_context=$chunk_right_context
+  fi
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
   fi
@@ -121,6 +129,7 @@ if [ $stage -le 10 ]; then
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
+	  --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_sw1_tg || exit 1;

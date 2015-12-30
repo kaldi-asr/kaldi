@@ -56,7 +56,7 @@ void TestNnetComponentAddScale(Component *c) {
 
 void TestNnetComponentVectorizeUnVectorize(Component *c) {
   UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
-  if((uc==NULL) || (uc->NumParameters() == 0))
+  if ((uc==NULL) || (uc->NumParameters() == 0))
     return;
   UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
   uc2->SetZero(false);
@@ -66,7 +66,9 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   uc->Vectorize(&params);
   uc2->UnVectorize(params);
   KALDI_ASSERT(uc2->Info() == uc->Info());
-  KALDI_ASSERT(uc2->DotProduct(*uc2) == uc->DotProduct(*uc));
+  BaseFloat x = uc2->DotProduct(*uc2), y = uc->DotProduct(*uc),
+      z = uc2->DotProduct(*uc);
+  KALDI_ASSERT(ApproxEqual(x, y) && ApproxEqual(y, z));
   Vector<BaseFloat> params2(uc2->NumParameters());
   uc2->Vectorize(&params2);
   for(int i = 0; i < params.Dim(); i++)

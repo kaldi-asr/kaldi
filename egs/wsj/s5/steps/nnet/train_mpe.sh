@@ -17,6 +17,7 @@ num_iters=4
 acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
+momentum=0.0
 halving_factor=1.0 #ie. disable halving
 do_smbr=true
 exclude_silphones=true # exclude silphones from approximate accuracy computation
@@ -169,6 +170,7 @@ while [ $x -le $num_iters ]; do
        --acoustic-scale=$acwt \
        --lm-scale=$lmwt \
        --learn-rate=$learn_rate \
+       --momentum=$momentum \
        --do-smbr=$do_smbr \
        --verbose=$verbose \
        --one-silence-class=$one_silence_class \

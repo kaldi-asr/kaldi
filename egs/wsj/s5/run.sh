@@ -47,7 +47,7 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
  # Caution: the commands below will only work if $decode_cmd 
  # is setup to use qsub.  Else, just remove the --cmd option.
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
- # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
+ # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
   (
    local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
    utils/prepare_lang.sh data/local/dict_nosp_larger \
@@ -434,3 +434,14 @@ local/nnet/run_dnn.sh
 # # A couple of nnet3 recipes:
 # local/nnet3/run_tdnn_baseline.sh  # designed for exact comparison with nnet2 recipe
 # local/nnet3/run_tdnn.sh  # better absolute results
+# local/nnet3/run_lstm.sh  # lstm recipe
+# bidirectional lstm recipe
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 640 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+
