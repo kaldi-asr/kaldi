@@ -5,6 +5,7 @@
 //                2013  Xiaohui Zhang
 //           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
+//                2015  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -454,6 +455,13 @@ class RepeatedAffineComponent: public UpdatableComponent {
   int32 num_repeats_;
 };
 
+/// This class implements an affine transform using a block diagonal matrix
+/// e.g., one whose weight matrix is all zeros except for blocks on the
+/// diagonal. All these blocks have the same dimensions.
+///  input-dim: num cols of block diagonal matrix.
+///  output-dim: num rows of block diagonal matrix.
+/// num-blocks: number of blocks in diagonal of the matrix.
+/// num-blocks must divide both input-dim and output-dim
 class BlockAffineComponent : public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
@@ -515,8 +523,6 @@ class BlockAffineComponent : public UpdatableComponent {
   int32 num_blocks_;
  private:
   const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
-  // TODO: Remove this comment. Also: Comprehend C++'s constructors.
-  //KALDI_DISALLOW_COPY_AND_ASSIGN(BlockAffineComponent);
 };
 
 class SoftmaxComponent: public NonlinearComponent {

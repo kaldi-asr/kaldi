@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2015  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1297,8 +1298,6 @@ BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
   bias_params_(other.bias_params_),
   num_blocks_(other.num_blocks_) {}
 
-//TODO: Copy constructor, and just-params constructors
-// At least, RepeatedAffineComponent has these.
 Component* BlockAffineComponent::Copy() const {
   BlockAffineComponent *ans = new BlockAffineComponent(*this);
   return ans;
@@ -1327,12 +1326,11 @@ std::string BlockAffineComponent::Info() const {
 void BlockAffineComponent::Init(BaseFloat learning_rate, int32 input_dim,
                                 int32 output_dim, int32 num_blocks,
                                 BaseFloat param_stddev, BaseFloat bias_stddev) {
-  KALDI_ASSERT(input_dim > 0 && output_dim > 0 && num_blocks > 1);
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0 && num_blocks >= 1);
   KALDI_ASSERT(output_dim % num_blocks == 0 && input_dim % num_blocks == 0);
   const int32 num_columns_per_block = input_dim / num_blocks;
 
   UpdatableComponent::Init(learning_rate);
-  // TODO: What about is_gradient_???
 
   linear_params_.Resize(output_dim, num_columns_per_block);
   bias_params_.Resize(output_dim);
@@ -1346,13 +1344,6 @@ void BlockAffineComponent::Init(BaseFloat learning_rate, int32 input_dim,
 }
 
 void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
-  // TODO: Make this documentation cleaner and viewable from doxygen.
-  // num_blocks
-  // input dim - num cols of block diagonal matrix.
-  // output dim - num rows of block diagonal matrix.
-  // Rows of each block is output dim / num_blocks
-  // bias dimension should be output dim
-
   int32 input_dim, output_dim, num_blocks;
   if(!cfl->GetValue("input-dim", &input_dim) ||
      !cfl->GetValue("output-dim", &output_dim) ||
@@ -1416,10 +1407,6 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
                                     CuMatrixBase<BaseFloat> *in_deriv) const {
   BlockAffineComponent *to_update = dynamic_cast<BlockAffineComponent*>(to_update_in);
 
-  // my own sanity check.
-  // TODO: Remove these after testing.
-  KALDI_ASSERT(out_deriv.NumCols() == OutputDim());
-
   const int32 num_rows_in_block = linear_params_.NumRows() / num_blocks_;
   const int32 num_cols_in_block = linear_params_.NumCols();
 
@@ -1428,10 +1415,6 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
   // If we wanted to add with coefficient 0.0 we'd need to zero the
   // in_deriv, in case of infinities.
   if (in_deriv) {
-    // my own sanity check.
-    // TODO: Remove these after testing.
-    KALDI_ASSERT(in_deriv->NumCols() == InputDim());
-
     std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch, linear_params_batch;
 
     for(int block_counter = 0; block_counter < num_blocks_; block_counter++) {
@@ -1502,7 +1485,6 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
     } // end linear params update
 
     { // bias update
-      // be fishly about this. I didn't think this through fully.
       to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
                                            out_deriv, 1.0);
     } // end bias update
@@ -1544,8 +1526,8 @@ void BlockAffineComponent::PerturbParams(BaseFloat stddev) {
 BaseFloat BlockAffineComponent::DotProduct(const UpdatableComponent &other_in) const {
   const BlockAffineComponent *other =
     dynamic_cast<const BlockAffineComponent*>(&other_in);
-  return TraceMatMat(linear_params_, other->linear_params_, kTrans);
-    + VecVec(bias_params_, other->bias_params_);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans) +
+    VecVec(bias_params_, other->bias_params_);
 }
 
 void BlockAffineComponent::Read(std::istream &is, bool binary) {

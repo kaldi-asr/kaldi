@@ -1076,8 +1076,8 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     case 25: {
       *component_type = "RepeatedAffineComponent";
       int32 num_repeats = RandInt(1, 50),
-          input_dim = num_repeats * RandInt(1, 15),
-          output_dim = num_repeats * RandInt(1, 15);
+          input_dim = num_repeats * RandInt(2, 15),
+          output_dim = num_repeats * RandInt(2, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-repeats=" << num_repeats;
       break;
@@ -1085,8 +1085,8 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     case 25: {
       *component_type = "BlockAffineComponent";
       int32 num_blocks = RandInt(1, 50),
-          input_dim = num_blocks * RandInt(5, 15),
-          output_dim = num_blocks * RandInt(5, 15);
+          input_dim = num_blocks * RandInt(2, 15),
+          output_dim = num_blocks * RandInt(2, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-blocks=" << num_blocks;
       break;
