@@ -1183,10 +1183,12 @@ void NaturalGradientAffineComponent::Resize(
 
 
 void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientAffineComponent>"
   // might not see the "<NaturalGradientAffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<NaturalGradientAffineComponent>",
-                       "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
@@ -1216,10 +1218,10 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &max_change_scale_stats_);
     ReadToken(is, binary, &token);
   }
-  if (token != "<NaturalGradientAffineComponent>" &&
-      token != "</NaturalGradientAffineComponent>")
-    KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
-              << "</NaturalGradientAffineComponent>, got " << token;
+  if (token != ostr_end.str() &&
+      token != ostr_beg.str())
+    KALDI_ERR << "Expected " << ostr_beg.str() << " or "
+              << ostr_end.str() << ", got " << token;
   SetNaturalGradientConfigs();
 }
 
@@ -1349,7 +1351,10 @@ void NaturalGradientAffineComponent::Init(
 }
 
 void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientAffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
   WriteToken(os, binary, "<LinearParams>");
@@ -1376,7 +1381,7 @@ void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "</NaturalGradientAffineComponent>");
+  WriteToken(os, binary, ostr_end.str());
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
@@ -1512,15 +1517,16 @@ NaturalGradientPositiveAffineComponent::NaturalGradientPositiveAffineComponent()
   sparsity_constant_(0.0) { }
 
 void NaturalGradientPositiveAffineComponent::Read(std::istream &is, bool binary) {
-  // might not see the "<NaturalGradientAffineComponent>" part because
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientPositiveAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientPositiveAffineComponent>"
+  // might not see the "<NaturalGradientPositiveAffineComponent>" part because
   // of how ReadNew() works.
   std::string token;
   ReadToken(is, binary, &token);
-  if (token == "<NaturalGradientPositiveAffineComponent>") {
+  if (token == ostr_beg.str()) {
     ExpectToken(is, binary, "<EnsurePositiveLinearComponent>");
     ReadBasicType(is, binary, &ensure_positive_linear_component_);
-    ReadToken(is, binary, &token);
-  } else if (token == "<NaturalGradientAffineComponent>") {
     ReadToken(is, binary, &token);
   } else if (token == "<EnsurePositiveLinearComponent>") {
     ReadBasicType(is, binary, &ensure_positive_linear_component_);
@@ -1559,10 +1565,11 @@ void NaturalGradientPositiveAffineComponent::Read(std::istream &is, bool binary)
     ReadBasicType(is, binary, &active_scaling_count_);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
     ReadBasicType(is, binary, &max_change_scale_stats_);
-    ExpectToken(is, binary, "<NaturalGradientPositiveAffineComponent>");
+    ExpectToken(is, binary, ostr_beg.str());
   } else {
-    if (token != "<NaturalGradientAffineComponent>")
-      KALDI_ERR << "Expected <NaturalGradientPositiveAffineComponent>, got " << token;
+    if (token != ostr_beg.str() && token != ostr_end.str())
+      KALDI_ERR << "Expected " << ostr_beg.str() << " or " 
+                << ostr_end.str() << ", got " << token;
   }
   SetNaturalGradientConfigs();
 }
@@ -1649,7 +1656,10 @@ void NaturalGradientPositiveAffineComponent::Init(
 }       
 
 void NaturalGradientPositiveAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<NaturalGradientPositiveAffineComponent>");
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientAffineComponent>"
+  WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<EnsurePositiveLinearComponent>");
   WriteBasicType(os, binary, ensure_positive_linear_component_);
   WriteToken(os, binary, "<SparsityConstant>");
@@ -1680,7 +1690,7 @@ void NaturalGradientPositiveAffineComponent::Write(std::ostream &os, bool binary
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
-  WriteToken(os, binary, "<NaturalGradientPositiveAffineComponent>");
+  WriteToken(os, binary, ostr_end.str());
 }
 
 std::string NaturalGradientPositiveAffineComponent::Info() const {
@@ -1693,25 +1703,9 @@ std::string NaturalGradientPositiveAffineComponent::Info() const {
 }
 
 Component* NaturalGradientPositiveAffineComponent::Copy() const {
-  NaturalGradientPositiveAffineComponent *ans = new NaturalGradientPositiveAffineComponent();
-  ans->learning_rate_ = learning_rate_;
-  ans->rank_in_ = rank_in_;
-  ans->rank_out_ = rank_out_;
-  ans->update_period_ = update_period_;
-  ans->num_samples_history_ = num_samples_history_;
-  ans->alpha_ = alpha_;
-  ans->linear_params_ = linear_params_;
-  ans->bias_params_ = bias_params_;
-  ans->preconditioner_in_ = preconditioner_in_;
-  ans->preconditioner_out_ = preconditioner_out_;
-  ans->max_change_per_sample_ = max_change_per_sample_;
-  ans->is_gradient_ = is_gradient_;
-  ans->update_count_ = update_count_;
-  ans->active_scaling_count_ = active_scaling_count_;
-  ans->max_change_scale_stats_ = max_change_scale_stats_;
+  NaturalGradientPositiveAffineComponent *ans = dynamic_cast<NaturalGradientPositiveAffineComponent*>(NaturalGradientAffineComponent::Copy());
   ans->ensure_positive_linear_component_ = ensure_positive_linear_component_;
   ans->sparsity_constant_ = sparsity_constant_;
-  ans->SetNaturalGradientConfigs();
   return ans;
 }
 
@@ -1771,6 +1765,42 @@ void NaturalGradientPositiveAffineComponent::SetPositive(NaturalGradientPositive
   if (ensure_positive_linear_component_) {
     if (method == kFloor) linear_params_.ApplyFloor(0.0);
     else if (method == kAbsoluteValue) linear_params_.ApplyPowAbs(1.0);
+  }
+}
+
+void NaturalGradientLogExpAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                const CuMatrixBase<BaseFloat> &in,
+                                 CuMatrixBase<BaseFloat> *out) const {
+
+  // Think of bias_params_ as being stored in log-domain
+  // No need for asserts as they'll happen within the matrix operations.
+  out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
+  // of *out.
+  
+  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);//i NaturalGradientPositiveAffineComponent::kFloor);
+}
+
+void NaturalGradientLogExpAffineComponent::Backprop(
+                               const std::string &debug_info,
+                               const ComponentPrecomputedIndexes *indexes,
+                               const CuMatrixBase<BaseFloat> &in_value,
+                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_deriv,
+                               Component *to_update_in,
+                               CuMatrixBase<BaseFloat> *in_deriv) const {
+  NaturalGradientLogExpAffineComponent *to_update = 
+    dynamic_cast<NaturalGradientLogExpAffineComponent*>(to_update_in);
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv)
+    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans,
+                        1.0);
+
+  if (to_update != NULL) {
+    to_update->Update(debug_info, in_value, out_deriv, linear_params_);
   }
 }
 

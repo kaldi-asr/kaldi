@@ -530,7 +530,7 @@ class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineCompon
         kSparsityPrior|kPositiveLinearParameters;
   }
 
- private:
+ protected:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientPositiveAffineComponent);
    
   bool ensure_positive_linear_component_;
@@ -546,9 +546,34 @@ class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineCompon
   // // Update method after the normal update without considering the L1 penalty is
   // // done.
   // void AddPenalty(BaseFloat sparsity_constant, BaseFloat local_lrate);
-
+  friend class NaturalGradientLogExpAffineComponent;
 };
 
+class NaturalGradientLogExpAffineComponent: public NaturalGradientPositiveAffineComponent {
+ public:
+  virtual std::string Type() const { return "NaturalGradientLogExpAffineComponent"; }
+  
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientLogExpAffineComponent);
+   
+};
 
 /// FixedAffineComponent is an affine transform that is supplied
 /// at network initialization time and is not trainable.
