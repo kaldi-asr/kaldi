@@ -47,8 +47,10 @@ if [ $stage -le 8 ]; then
 #  train_stage=`ls $dir | grep .mdl | sed s=.mdl==g | sort -n | tail -n 1`
   echo train_stage $train_stage
 
+  train_set=train
   steps/nnet3/train_tdnn_joint.sh --stage $train_stage \
     --cleanup false \
+    --num-outputs $num_outputs \
     --num-epochs 3 --num-jobs-initial 2 --num-jobs-final 12 \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 -3,3 0 0" \
     --feat-type raw \

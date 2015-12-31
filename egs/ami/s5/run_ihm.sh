@@ -133,6 +133,8 @@ if [ $stage -le 8 ]; then
     data/$mic/train data/lang exp/$mic/tri4a exp/$mic/tri4a_ali
 fi
 
+exit
+
 # At this point you can already run the DNN script with fMLLR features:
 # local/nnet/run_dnn.sh
 # exit 0

@@ -368,6 +368,7 @@ std::vector<EventMap*> BuildTreeMulti(Questions &qopts,
 
         GaussClusterable *sum =
           dynamic_cast<GaussClusterable*>(SumStats(split_stats[j]));
+        if (sum == NULL) continue;  // sometimes there is no stats
         entropy += sum->count() / count_all * log(count_all / sum->count());
         likelihood += sum->Objf();
         delete sum;
