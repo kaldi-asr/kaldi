@@ -97,9 +97,7 @@ with open(o.conf_feats,'w') as f:
     damper = 0.001 # avoid -inf,+inf from log,
     logit = math.log(float(conf)+damper) - math.log(1.0 - float(conf)+damper)
     # - log of word-length,
-    log_lenwrd = math.log(word_length[wrd_id]) 
-    # - log of frames per word-length,
-    log_frame_per_letter = math.log(100.0*float(dur)/word_length[wrd_id])
+    log_word_length = math.log(word_length[wrd_id]) # i.e. number of phones in a word,
     # - log of average-depth of lattice at the word position,
     depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
     log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
@@ -108,7 +106,7 @@ with open(o.conf_feats,'w') as f:
     wrd_1_of_k[wrd_to_cat[wrd_id]] = 1;
 
     # Compose the input feature vector,
-    feats = [ logit, log_lenwrd, log_frame_per_letter, log_avg_depth, other_feats[wrd_id] ] + wrd_1_of_k
+    feats = [ logit, log_word_length, log_avg_depth, other_feats[wrd_id] ] + wrd_1_of_k
     # Store the input features, 
     f.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

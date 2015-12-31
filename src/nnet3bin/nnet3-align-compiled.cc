@@ -62,6 +62,9 @@ int main(int argc, char *argv[]) {
     int32 online_ivector_period = 0;
     align_config.Register(&po);
     decodable_opts.Register(&po);
+    
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
                 "Transition-probability scale [relative to acoustics]");
     po.Register("acoustic-scale", &acoustic_scale,
@@ -84,6 +87,10 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
 
     std::string model_in_filename = po.GetArg(1),
         fst_rspecifier = po.GetArg(2),
@@ -183,6 +190,10 @@ int main(int argc, char *argv[]) {
                 << (num_done + num_err) << " utterances.";
       KALDI_LOG << "Done " << num_done << ", errors on " << num_err;
     }
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
     return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

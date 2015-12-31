@@ -709,7 +709,7 @@ void AffineComponent::Backprop(const std::string &debug_info,
 void AffineComponent::Read(std::istream &is, bool binary) {
   // might not see the "<AffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "</AffineComponent>", "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, "<AffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
