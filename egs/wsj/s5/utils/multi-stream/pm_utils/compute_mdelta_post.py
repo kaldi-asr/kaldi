@@ -3,6 +3,8 @@ import sys, os, logging, numpy as np
 import cPickle as pickle
 import compute_mtd
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
 from io_funcs import kaldi_io, utils
 
 import mkl
