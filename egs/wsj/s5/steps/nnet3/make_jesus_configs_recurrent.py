@@ -12,7 +12,7 @@
 #      - indirect [projected] input from recurrence.                 --jesus-projected-recurrence-input-dim
 #  outputs of jesus layer:
 #     for all layers:
-#       --jesus-forward-output-dim 
+#       --jesus-forward-output-dim
 #     for recurrent layers:
 #       --jesus-direct-recurrence-dim
 #       --jesus-projected-recurrence-output-dim
@@ -59,12 +59,9 @@ parser.add_argument("--jesus-projected-recurrence-input-dim", type=int,
                     help="part of input dimension of Jesus layer that comes via "
                     "projection from the output of the same Jesus layer at different time",
                     default=200)
-parser.add_argument("--include-relu", type=str,
-                    help="If true, add ReLU nonlinearity after the Jesus layer",
-                    default="true", choices = ["false", "true"])
 parser.add_argument("--num-jesus-blocks", type=int,
                     help="number of blocks in Jesus layer.  All configs of the form "
-                    "--jesus-*-dim will be rounded up to be a multiple of this.", 
+                    "--jesus-*-dim will be rounded up to be a multiple of this.",
                     default=100);
 parser.add_argument("--clipping-threshold", type=float,
                     help="clipping threshold used in ClipGradient components (only relevant if "
@@ -95,13 +92,13 @@ if args.num_jesus_blocks < 1:
 for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_input_dim",
               "jesus_direct_recurrence_dim", "jesus_projected_recurrence_output_dim",
               "jesus_projected_recurrence_input_dim" ]:
-    old_val = getattr(args, "name")
+    old_val = getattr(args, name)
     if old_val % args.num_jesus_blocks != 0:
         new_val = old_val + args.num_jesus_blocks - (old_val % args.num_jesus_blocks)
         printable_name = '--' + name.replace('_', '-')
         print('Rounding up {0} from {1} to {2} to be a multiple of --num-jesus-blocks={3}: '.format(
                 printable_name, old_val, new_val, args.num_jesus_blocks))
-        setattr(args, "name", new_val);
+        setattr(args, name, new_val);
 
 
 ## Work out splice_array and recurrence_array,
@@ -183,15 +180,16 @@ for l in range(1, num_hidden_layers + 1):
     #                                                               -> [direct-recurrent]
     #                                                               -> [projected-recurrent, one per delay]: affine + ReLU
     # Inside the jesus component is:
-    #  [permute +] repeated-affine + ReLU + repeated-affine
+    #  [permute +] ReLU + repeated-affine + ReLU + repeated-affine
     # [we make the repeated-affine the last one so we don't have to redo that in backprop].
     # We follow this with a post-jesus composite component containing the operations:
     #  [permute +] ReLU + renormalize
     # call this post-jesusN.
     # After this we use dim-range nodes to split up the output into
-    # [ jesusN-forward-output, jesusN-direct-output and jesusN-recurrent-output ]
-    # parts; a node called jesusN-recurrent-output-clip (for ClipGradient),
-    # and nodes for the jesusN-forward-affine and jesusN-recurrent-affine-delayN
+    # [ jesusN-forward-output, jesusN-direct-output and jesusN-projected-output ]
+    # parts;
+    # and nodes for the jesusN-forward-affine and jesusN-recurrent-affine-offsetN
+    # and jesusN-recurrent-affine-offsetN-clip
     # computations.
 
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
@@ -214,10 +212,10 @@ for l in range(1, num_hidden_layers + 1):
               file=f)
         # the ReLU after the affine
         print('component name=relu1 type=RectifiedLinearComponent dim={1}'.format(
-                l, args.affine_output_dim), file=f)
+                l, args.jesus_forward_input_dim), file=f)
         print('component-node name=relu1 component=relu1 input=affine1', file=f)
         # the renormalize component after the ReLU
-        print ('component name=renorm1 type=NormalizeComponent dim={1} '.format(
+        print ('component name=renorm1 type=NormalizeComponent dim={0} '.format(
                 args.jesus_forward_input_dim), file=f)
         print('component-node name=renorm1 component=renorm1 input=relu1', file=f)
         cur_output = 'renorm1'
@@ -230,21 +228,23 @@ for l in range(1, num_hidden_layers + 1):
                 splices.append('Offset(renorm1, {0})'.format(offset))
             else:
                 splices.append('Offset(jesus{0}-forward-output-affine, {1})'.format(l-1, offset))
-            spliced_dims.append(args.affine_output_dim)
+            spliced_dims.append(args.jesus_forward_input_dim)
         for offset in recurrence_array[l-1]:
             # the direct recurrence
             splices.append('IfDefined(Offset(jesus{0}-direct-output, {1}))'.format(l, offset))
             spliced_dims.append(args.jesus_direct_recurrence_dim)
             # the indirect recurrence (via projection)
-            splices.append('IfDefined(Offset(jesus{0}-recurrent-affine-delay{1}-clip, {1}))'.format(l, offset))
+            splices.append('IfDefined(Offset(jesus{0}-recurrent-affine-offset{1}-clip, {1}))'.format(l, offset))
             spliced_dims.append(args.jesus_projected_recurrence_input_dim)
-
-            splices.append('IfDefined(Offset(clip-gradient{0}, {1}))'.format(l, offset))
-            spliced_dims.append(args.affine_output_dim)
 
         # get the input to the Jesus layer.
         cur_input = 'Append({0})'.format(', '.join(splices))
         cur_dim = sum(spliced_dims)
+
+        this_layer_is_recurrent = (len(recurrence_array[l-1]) != 0)
+        this_jesus_output_dim = args.jesus_forward_output_dim + (
+            (args.jesus_projected_recurrence_output_dim +
+             args.jesus_direct_recurrence_dim) if this_layer_is_recurrent else 0)
 
         # As input to the Jesus component we'll append the spliced input and
         # recurrent input, and the first thing inside the component that we do
@@ -267,15 +267,8 @@ for l in range(1, num_hidden_layers + 1):
 
         need_input_permute_component = (new_column_order != range(0, sum(spliced_dims)))
 
-        if new_column_order != range(0, sum(spliced_dims)):
-            print('component name=permute{0} type=PermuteComponent new-column-order={1}'.format(
-                    l, ','.join([str(x) for x in new_column_order])), file=f)
-            print('component-node name=permute{0} component=permute{0} input={1}'.format(
-                    l, cur_input), file=f)
-            cur_input = 'permute{0}'.format(l)
-
         # Now add the jesus component.
-        num_sub_components = (4 if need_input_permute_component else 3);
+        num_sub_components = (5 if need_input_permute_component else 4);
         print('component name=jesus{0} type=CompositeComponent num-components={1}'.format(
                 l, num_sub_components), file=f, end='')
         # print the sub-components of the CompositeComopnent on the same line.
@@ -284,18 +277,24 @@ for l in range(1, num_hidden_layers + 1):
         if need_input_permute_component:
             print(" component1='type=PermuteComponent new-column-order={1}'".format(
                     l, ','.join([str(x) for x in new_column_order])), file=f, end='')
+        print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
+                (2 if need_input_permute_component else 1),
+                cur_dim), file=f, end='')
+
         print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-              "output-dim={2} num-repeats={3}'".format((2 if need_input_permute_component else 1),
+              "output-dim={2} num-repeats={3}'".format((3 if need_input_permute_component else 2),
                                                        cur_dim, args.jesus_hidden_dim,
                                                        args.num_jesus_blocks),
               file=f, end='')
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
-                (3 if need_input_permute_component else 2),
+                (4 if need_input_permute_component else 3),
                 args.jesus_hidden_dim), file=f, end='')
+
+
         print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-              "output-dim={2} num-repeats={3}'".format((4 if need_input_permute_component else 3),
+              "output-dim={2} num-repeats={3}'".format((5 if need_input_permute_component else 4),
                                                        args.jesus_hidden_dim,
-                                                       args.jesus_output_dim,
+                                                       this_jesus_output_dim,
                                                        args.num_jesus_blocks),
               file=f, end='')
         print("", file=f) # print newline.
@@ -303,57 +302,58 @@ for l in range(1, num_hidden_layers + 1):
                 l, cur_input), file=f)
 
         # now print the post-Jesus component which consists of [permute +] ReLU
-        # + renormalize.  we only need the permute component if this is a 
+        # + renormalize.  we only need the permute component if this is a
         # recurrent layer.
-        need_output_permute_component = (len(recurrence_array[l-1] != 0))
-                                         
-        num_sub_components = (3 if need_output_permute_component else 2);
+
+        num_sub_components = (3 if this_layer_is_recurrent else 2);
         print('component name=post-jesus{0} type=CompositeComponent num-components={1}'.format(
                 l, num_sub_components), file=f, end='')
-        if need_output_permute_component:
+        if this_layer_is_recurrent:
             new_column_order = []
-            output_part_dims = [ args.jesus_forward_output_dim, 
-                                 args.jesus_direct_output_dim,
-                                 args.jesus_recurrent_output_dim ]
-            total_output_dim = sum(output_part_dims)
-            total_block_size = total_output_dim / args.num_jesus_blocks
+            output_part_dims = [ args.jesus_forward_output_dim,
+                                 args.jesus_direct_recurrence_dim,
+                                 args.jesus_projected_recurrence_output_dim ]
+            if sum(output_part_dims) != this_jesus_output_dim:
+                sys.exit("code error")
+            total_block_size = this_jesus_output_dim / args.num_jesus_blocks
             previous_part_dims_sum = 0
             for part_dim in output_part_dims:
-                within_block_offset = previous_part_dims_sum / args.num_jesus_block
-                within_block_dim = part_dim / args.num_jesus_block
+                within_block_offset = previous_part_dims_sum / args.num_jesus_blocks
+                within_block_dim = part_dim / args.num_jesus_blocks
                 for x in range(0, args.num_jesus_blocks):
                     for y in range(0, within_block_dim):
                         new_column_order.append(x * total_block_size + within_block_offset + y)
                 previous_part_dims_sum += part_dim
-            if sorted(new_column_order) != range(0, total_output_dim):
+            if sorted(new_column_order) != range(0, this_jesus_output_dim):
                 print("new_column_order is " + str(new_column_order))
                 print("output_part_dims is " + str(output_part_dims))
                 sys.exit("code error creating new column order")
             print(" component1='type=PermuteComponent new-column-order={1}'".format(
                     l, ','.join([str(x) for x in new_column_order])), file=f, end='')
+
         # still within the post-Jesus component, print the ReLU
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
-                (2 if need_output_permute_component else 1),
-                total_output_dim), file=f, end='')
+                (2 if this_layer_is_recurrent else 1),
+                this_jesus_output_dim), file=f, end='')
         # still within the post-Jesus component, print the NormalizeComponent
         print(" component{0}='type=NormalizeComponent dim={1}'".format(
-                (3 if need_output_permute_component else 2),
-                total_output_dim), file=f, end='')
+                (3 if this_layer_is_recurrent else 2),
+                this_jesus_output_dim), file=f, end='')
         print("", file=f) # print newline.
         print('component-node name=post-jesus{0} component=post-jesus{0} input=jesus{0}'.format(l),
               file=f)
 
-        if len(recurrence_array[l-1] != 0):
+        if len(recurrence_array[l-1]) != 0:
             # This is a recurrent layer -> print the dim-range nodes.
             dim_offset = 0
-            print('dim-range-node name=jesus{0}-forward-output input=post-jesus{0} '
+            print('dim-range-node name=jesus{0}-forward-output input-node=post-jesus{0} '
                   'dim={1} dim-offset={2}'.format(l, args.jesus_forward_output_dim, dim_offset), file=f)
             dim_offset += args.jesus_forward_output_dim
-            print('dim-range-node name=jesus{0-}direct-output input=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_direct_output_dim, dim_offset), file=f)
-            dim_offset += args.jesus_direct_output_dim
-            print('dim-range-node name=jesus{0-}recurrent-output input=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_recurrent_output_dim,
+            print('dim-range-node name=jesus{0}-direct-output input-node=post-jesus{0} '
+                  'dim={1} dim-offset={2}'.format(l, args.jesus_direct_recurrence_dim, dim_offset), file=f)
+            dim_offset += args.jesus_direct_recurrence_dim
+            print('dim-range-node name=jesus{0}-projected-output input-node=post-jesus{0} '
+                  'dim={1} dim-offset={2}'.format(l, args.jesus_projected_recurrence_output_dim,
                                                   dim_offset), file=f)
             input_to_forward_affine = 'jesus{0}-forward-output'.format(l)
         else:
@@ -366,34 +366,35 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=jesus{0}-forward-output-affine component=forward-affine{0} input={1}'.format(
                 l, input_to_forward_affine), file=f)
         # for each recurrence delay, create an affine node followed by a
-        # clip-gradient node.
+        # clip-gradient node.  [if there are multiple recurrences in the same layer,
+        # each one gets its own affine projection.]
         for delay in recurrence_array[l-1]:
-            print('component name=jesus{0}-recurrent-affine-delay{1} type=NaturalGradientAffineComponent '
+            print('component name=jesus{0}-recurrent-affine-offset{1} type=NaturalGradientAffineComponent '
                   'input-dim={2} output-dim={3} bias-stddev=0'.
-              format(l, delay, args.jesus_recurrent_output_dim, args.jesus_recurrent_input_dim), file=f)
-            print('component-node name=jesus{0}-recurrent-affine-delay{1} component=jesus{0}-recurrent-affine-delay{1} '
-                  'input=jesus{0}-recurrent-output'.format(l, delay), file=f)
-            print('component name=jesus{0}-recurrent-affine-delay{1}-clip type=ClipGradientComponent '
-                  'dim={1} clipping-threshold={2} '.format(l, delay, args.jesus_recurrent_input_dim,
+              format(l, delay,
+                     args.jesus_projected_recurrence_output_dim,
+                     args.jesus_projected_recurrence_input_dim), file=f)
+            print('component-node name=jesus{0}-recurrent-affine-offset{1} component=jesus{0}-recurrent-affine-offset{1} '
+                  'input=jesus{0}-projected-output'.format(l, delay), file=f)
+            print('component name=jesus{0}-recurrent-affine-offset{1}-clip type=ClipGradientComponent '
+                  'dim={2} clipping-threshold={3} '.format(l, delay, args.jesus_projected_recurrence_input_dim,
                                                            args.clipping_threshold), file=f)
-            print('component-node name=jesus{0}-recurrent-affine-delay{1}-clip component=jesus{0}-recurrent-affine-delay{1}-clip '
-                  'input=jesus{0}-recurrent-affine-delay{1}-clip'.format(l, delay), file=f)
+            print('component-node name=jesus{0}-recurrent-affine-offset{1}-clip component=jesus{0}-recurrent-affine-offset{1}-clip '
+                  'input=jesus{0}-recurrent-affine-offset{1}'.format(l, delay), file=f)
 
-
-        print('component name=affine{0} type=NaturalGradientAffineComponent '
-              'input-dim={1} output-dim={2} bias-stddev=0'.
-              format(l, args.jesus_output_dim, args.affine_output_dim), file=f)
-        print('component-node name=affine{0} component=affine{0} input=jesus{0}'.format(
-                l), file=f)
-        
         cur_output = 'jesus{0}-forward-output-affine'.format(l)
 
 
-    # with each new layer we regenerate the final-affine component
+    # with each new layer we regenerate the final-affine component, with a ReLU before it
+    # because the layers we printed don't end with a nonlinearity.
+    print('component name=final-relu type=RectifiedLinearComponent dim={0}'.format(
+            args.jesus_forward_input_dim), file=f)
+    print('component-node name=final-relu component=final-relu input={0}'.format(cur_output),
+          file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} param-stddev=0.001 bias-stddev=0'.format(
-            args.affine_output_dim, args.num_targets), file=f)
-    print('component-node name=final-affine component=final-affine input={1}'.format(cur_output),
+            args.jesus_forward_input_dim, args.num_targets), file=f)
+    print('component-node name=final-affine component=final-affine input=final-relu',
           file=f)
     # printing out the next two, and their component-nodes, for l > 1 is not
     # really necessary as they will already exist, but it doesn't hurt and makes
