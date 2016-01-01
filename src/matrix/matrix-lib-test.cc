@@ -4460,6 +4460,38 @@ static void UnitTestRandCategorical() {
   }
 }
 
+
+template<class Real>
+void PlaceNansInGaps(Matrix<Real> *mat) {
+  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
+      stride = mat->Stride();
+  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
+  for (int32 r = 0; r + 1 < num_rows; r++) {
+    for (int32 j = num_cols; j < stride; j++) {
+      if (RandInt(0, 1) == 0)
+        (mat->RowData(r))[j] = not_a_number;
+      else
+        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
+    }
+  }
+}
+
+
+template <class Real>
+static void UnitTestAddMatMatNans() {
+  for (int32 i = 0; i < 200; i++) {
+    int32 num_rows = RandInt(1, 256), mid = RandInt(1, 256), num_cols = RandInt(1, 256);
+    Matrix<Real> mat1(num_rows, mid), mat2(mid, num_cols), prod(num_rows, num_cols);
+    PlaceNansInGaps(&mat1);
+    PlaceNansInGaps(&mat2);
+    prod.AddMatMat(1.0, mat1, kNoTrans, mat2, kNoTrans, 0.0);
+    // make sure the nan's don't propagate.
+    KALDI_ASSERT(prod.Sum() == 0.0 &&
+                 "The BLAS library that you are linking against has an issue that might "
+                 "cause problems later on.");
+  }
+}
+
 template<class Real>
 static void UnitTestTopEigs() {
   for (MatrixIndexT i = 0; i < 2; i++) {
@@ -4669,6 +4701,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddDiagVecMat<Real>();
   UnitTestAddMatDiagVec<Real>();
   UnitTestAddMatMatElements<Real>();
+  UnitTestAddMatMatNans<Real>();
   UnitTestAddToDiagMatrix<Real>();
   UnitTestAddToDiag<Real>();
   UnitTestMaxAbsEig<Real>();
