@@ -1,16 +1,17 @@
 #!/bin/bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 # 2014, University of Edinburgh, (Author: Pawel Swietojanski)
+# 2015, Brno University of Technology (Author: Karel Vesely)
 
 # begin configuration section.
 cmd=run.pl
 stage=0
+decode_mbr=true
 min_lmwt=9
 max_lmwt=15
-reverse=false
 asclite=true
 overlap_spk=4
-#end configuration section.
+# end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
@@ -22,7 +23,6 @@ if [ $# -ne 3 ]; then
   echo "    --stage (0|1|2)                 # start scoring script from part-way through."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -42,37 +42,37 @@ for f in $data/stm $data/glm $lang/words.txt $lang/phones/word_boundary.int \
 done
 
 name=`basename $data`; # e.g. eval2000
+nj=$(cat $dir/num_jobs)
 
 mkdir -p $dir/ascoring/log
 
 if [ $stage -le 0 ]; then
-  if $reverse; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/ascore_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-reverse ark:- ark:- \| \
-      lattice-align-words --reorder=false $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
+  for LMWT in $(seq $min_lmwt $max_lmwt); do
+    $cmd JOB=1:$nj $dir/ascoring/log/get_ctm.${LMWT}.JOB.log \
+      mkdir -p $dir/ascore_${LMWT}/ '&&' \
+      lattice-scale --inv-acoustic-scale=${LMWT} "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+      lattice-limit-depth ark:- ark:- \| \
+      lattice-push --push-strings=false ark:- ark:- \| \
+      lattice-align-words-lexicon --max-expand=10.0 \
+       $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt  \| \
       utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/ascore_LMWT/$name.ctm || exit 1;
-  else
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/get_ctm.LMWT.log \
-      mkdir -p $dir/ascore_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt  \| \
-      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-      '>' $dir/ascore_LMWT/$name.ctm || exit 1;
-  fi
+      '>' $dir/ascore_${LMWT}/${name}.JOB.ctm || exit 1;
+    # Merge and clean,
+    for ((n=1; n<=nj; n++)); do cat $dir/ascore_${LMWT}/${name}.${n}.ctm; done > $dir/ascore_${LMWT}/${name}.ctm
+    rm  $dir/ascore_${LMWT}/${name}.*.ctm
+  done
 fi
 
 if [ $stage -le 1 ]; then
 # Remove some stuff we don't want to score, from the ctm.
-  for x in $dir/ascore_*/$name.ctm; do
+# - we remove hesitations here, otherwise the CTM would have a bug! 
+#   (confidences in place of the removed hesitations),
+  for x in $dir/ascore_*/${name}.ctm; do
     cp $x $dir/tmpf;
     cat $dir/tmpf | grep -i -v -E '\[noise|laughter|vocalized-noise\]' | \
+      grep -i -v -E ' (ACH|AH|EEE|EH|ER|EW|HA|HEE|HM|HMM|HUH|MM|OOF|UH|UM) ' | \
       grep -i -v -E '<unk>' > $x;
 #      grep -i -v -E '<UNK>|%HESITATION' > $x;
   done
@@ -113,7 +113,7 @@ if [ $stage -le 2 ]; then
   else
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/ascoring/log/score.LMWT.log \
       cp $data/stm $dir/ascore_LMWT/ '&&' \
-      $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1
+      $hubscr -p $hubdir -v -V -l english -h hub5 -g $data/glm -r $dir/ascore_LMWT/stm $dir/ascore_LMWT/${name}.ctm || exit 1
   fi
 fi
 

@@ -6,7 +6,7 @@
 stage=0
 mic=ihm
 num_threads_ubm=32
-nj=70
+nj=10
 use_ihm_ali=false
 use_sat_alignments=true
 
@@ -49,13 +49,13 @@ if [ "$use_ihm_ali" == "true" ]; then
   # we are going to modify the mic name as changing the alignments
   # changes the ivector extractor
   mic=${mic}_cleanali
-  ali_dir=exp/ihm/${gmm}_train_parallel_sp_ali
+  ali_dir=exp/ihm/${gmm}_${mic}_train_parallel_sp_ali
 else
   # prepare the perturbed data directory and generate alignments
   local/nnet3/prepare_perturbed_alignments.sh --stage $stage --mic $mic \
                                               --use-sat-alignments $use_sat_alignments
   
-  ali_dir=exp/$mic/${gmm}_train_sp_ali
+  ali_dir=exp/$mic/${gmm}_${mic}_train_sp_ali
 fi
 
 if [ $stage -le 4 ]; then

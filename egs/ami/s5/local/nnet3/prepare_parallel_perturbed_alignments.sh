@@ -9,7 +9,7 @@
 mic=sdm1
 new_mic=sdm1_cleanali
 use_sat_alignments=true
-nj=70
+nj=10
 stage=0
 
 . cmd.sh
@@ -30,6 +30,9 @@ speed_perturb_datadir() {
 
   if [ "$extract_features" == "true" ]; then
     mfccdir=mfcc_${mic}_perturbed
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+      utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    fi
     for x in ${dataset}_sp; do
       steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
         data/$mic/$x exp/make_${mic}_mfcc/$x $mfccdir || exit 1;
@@ -52,6 +55,10 @@ if [ $stage -le 1 ]; then
 # extract the features for the parallel data dir which will be used for alignments
 # in case there is no speed perturbation
   mfccdir=mfcc_${mic}
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+  fi
+
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
     data/${mic}/train_parallel exp/make_${mic}_mfcc/train_parallel $mfccdir || exit 1;
   steps/compute_cmvn_stats.sh data/$mic/train_parallel exp/make_${mic}_mfcc/train_parallel $mfccdir || exit 1;
@@ -79,7 +86,7 @@ if [ $stage -le 3 ]; then
     align_script=steps/align_si.sh
   fi
   $align_script --nj $nj --cmd "$train_cmd" \
-    data/$mic/train_parallel_sp data/lang $gmm_dir ${gmm_dir}_${data_set}_ali || exit 1;
+    data/$mic/train_parallel_sp data/lang $gmm_dir ${gmm_dir}_${mic}_${data_set}_ali || exit 1;
 fi
 
 exit 0;

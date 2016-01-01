@@ -28,10 +28,7 @@ graph_dir=$gmmdir/graph_${LM}
 
 # Set bash to 'debug' mode, it will exit on : 
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
-set -e
-set -u
-set -o pipefail
-set -x
+set -euxo pipefail
 
 # Store fMLLR features, so we can train on them easily,
 if [ $stage -le 0 ]; then
