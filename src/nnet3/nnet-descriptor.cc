@@ -258,18 +258,18 @@ SumDescriptor *SimpleSumDescriptor::Copy() const {
 }
 
 void SimpleSumDescriptor::GetDependencies(const Index &ind,
-                                         std::vector<Cindex> *dependencies) const {
+                                          std::vector<Cindex> *dependencies) const {
   dependencies->push_back(src_->MapToInput(ind));
 }
 
 bool SimpleSumDescriptor::IsComputable(
     const Index &ind,
     const CindexSet &cindex_set,
-    std::vector<Cindex> *required_inputs) const {
+    std::vector<Cindex> *used_inputs) const {
   Cindex c = src_->MapToInput(ind);
   bool src_present  = cindex_set(c);
-  if (src_present && required_inputs != NULL)
-    required_inputs->push_back(c);
+  if (src_present && used_inputs != NULL)
+    used_inputs->push_back(c);
   return src_present;
 }
 
@@ -297,10 +297,10 @@ void BinarySumDescriptor::GetDependencies(
 bool BinarySumDescriptor::IsComputable(
     const Index &ind,
     const CindexSet &cindex_set,
-    std::vector<Cindex> *required_inputs) const {
+    std::vector<Cindex> *used_inputs) const {
   KALDI_PARANOID_ASSERT(op_ == kSum || op_ == kFailover);
   std::vector<Cindex> src1_inputs, src2_inputs;
-  bool r = (required_inputs != NULL);
+  bool r = (used_inputs != NULL);
   bool src1_computable = src1_->IsComputable(ind, cindex_set,
                                              r ? &src1_inputs: NULL),
       src2_computable = src2_->IsComputable(ind, cindex_set,
@@ -308,10 +308,10 @@ bool BinarySumDescriptor::IsComputable(
   if (op_ == kSum) {
     if (src1_computable && src2_computable) {
       if (r) {
-        required_inputs->insert(required_inputs->end(),
-                                src1_inputs.begin(), src1_inputs.end());
-        required_inputs->insert(required_inputs->end(),
-                                src2_inputs.begin(), src2_inputs.end());
+        used_inputs->insert(used_inputs->end(),
+                            src1_inputs.begin(), src1_inputs.end());
+        used_inputs->insert(used_inputs->end(),
+                            src2_inputs.begin(), src2_inputs.end());
       }
       return true;
     } else {
@@ -321,13 +321,13 @@ bool BinarySumDescriptor::IsComputable(
     KALDI_ASSERT(op_ == kFailover);
     if (src1_computable) {
       if (r)
-        required_inputs->insert(required_inputs->end(),
-                                src1_inputs.begin(), src1_inputs.end());
+        used_inputs->insert(used_inputs->end(),
+                            src1_inputs.begin(), src1_inputs.end());
       return true;
     } else if (src2_computable) {
       if (r)
-        required_inputs->insert(required_inputs->end(),
-                                src2_inputs.begin(), src2_inputs.end());
+        used_inputs->insert(used_inputs->end(),
+                            src2_inputs.begin(), src2_inputs.end());
       return true;
     } else {
       return false;
@@ -693,16 +693,16 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *parent) {
         delete child;
         changed = true;
         break;  // break from the switch ('parent' is no longer of type
-                // kOffset)', so we don't want to carry through.
+        // kOffset)', so we don't want to carry through.
       }
     }
-    // ... and continue through to the next case statement.
+      // ... and continue through to the next case statement.
     case kSwitch: case kRound: case kReplaceIndex: { // ..and kOffset:
       KALDI_ASSERT(parent->descriptors_.size() >= 1);
       GeneralDescriptor *child = parent->descriptors_[0];
       KALDI_ASSERT(child->descriptor_type_ != kAppend);  // would be code error
-                                                        // (already did
-                                                        // NormalizeAppend()).
+      // (already did
+      // NormalizeAppend()).
       if (child->descriptor_type_ == kSum ||
           child->descriptor_type_ == kFailover ||
           child->descriptor_type_ == kIfDefined) {
@@ -784,7 +784,7 @@ void GeneralDescriptor::Print(const std::vector<std::string> &node_names,
     case kFailover: os << "Failover("; break;
     case kIfDefined: os << "IfDefined("; break;
     case kSwitch: os << "Switch("; break;
-    // now handle the exceptions.
+      // now handle the exceptions.
     case kOffset: case kRound: {
       os << "Offset(";
       KALDI_ASSERT(descriptors_.size() == 1);
