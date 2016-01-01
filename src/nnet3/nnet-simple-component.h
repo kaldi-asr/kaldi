@@ -5,6 +5,7 @@
 //                2013  Xiaohui Zhang
 //           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
+//                2015  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -452,6 +453,76 @@ class RepeatedAffineComponent: public UpdatableComponent {
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
   int32 num_repeats_;
+};
+
+/// This class implements an affine transform using a block diagonal matrix
+/// e.g., one whose weight matrix is all zeros except for blocks on the
+/// diagonal. All these blocks have the same dimensions.
+///  input-dim: num cols of block diagonal matrix.
+///  output-dim: num rows of block diagonal matrix.
+/// num-blocks: number of blocks in diagonal of the matrix.
+/// num-blocks must divide both input-dim and output-dim
+class BlockAffineComponent : public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows(); }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  BlockAffineComponent() { }
+  virtual std::string Type() const { return "BlockAffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+      kBackpropNeedsInput|kBackpropAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // BlockAffine-specific functions.
+  void Init(BaseFloat learning_rate, int32 input_dim,
+            int32 output_dim, int32 num_blocks,
+            BaseFloat param_stddev, BaseFloat bias_stddev);
+  explicit BlockAffineComponent(const BlockAffineComponent &other);
+ protected:
+  // The matrix linear_params_ has a block structure, with num_blocks_ blocks of
+  // equal size.  The blocks are stored in linear_params_ as
+  // [ M
+  //   N
+  //   O ] but we actually treat it as the matrix:
+  // [ M 0 0
+  //   0 N 0
+  //   0 0 O ]
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  int32 num_blocks_;
+ private:
+  const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
 };
 
 class SoftmaxComponent: public NonlinearComponent {
