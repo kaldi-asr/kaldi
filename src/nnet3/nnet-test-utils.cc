@@ -834,7 +834,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 25);
+  int32 n = RandInt(0, 26);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1080,6 +1080,15 @@ static void GenerateRandomComponentConfig(std::string *component_type,
           output_dim = num_repeats * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 26: {
+      *component_type = "BlockAffineComponent";
+      int32 num_blocks = RandInt(1, 50),
+          input_dim = num_blocks * RandInt(1, 15),
+          output_dim = num_blocks * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-blocks=" << num_blocks;
       break;
     }
     default:

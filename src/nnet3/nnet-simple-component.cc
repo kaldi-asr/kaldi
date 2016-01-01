@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2015  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1164,6 +1165,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
 	                            i * block_rows, block_rows)));
       linear_params_batch.push_back(params_elem);
     }
+
     AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
                                 linear_params_batch, kNoTrans, 1.0);
     delete params_elem;
@@ -1202,14 +1204,21 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
       // linear_params_deriv_repeated as a matrix with a larger stride than it
       // really has to sum up its rows.  This may generate some spurious
       // valgrind/memcheck warnings due to accessing the memory in between rows
-      // of a matrix that has been allocated using cudamalloc2d.
+      // of a matrix that has been allocated using cudaMallocPitch.
       KALDI_ASSERT(SameDimAndStride(linear_params_, to_update->linear_params_));
       // view linear_params_deriv_repeated as a matrix where each row
       // corresponds to one repeat.
+
+      // usage of linear_params_deriv_repeated.Stride() instead of
+      // linear_params_.Stride() is important here. CUDA does not guarantee
+      // that two matrices of the same number of columns
+      // (linear_params_deriv_repeated and linear_params_) have the same stride.
+      // i.e., we cannot reliably do:
+      // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
       int32 size_as_vector =
-          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride()
-          + linear_params_.NumCols(),
-          stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
+          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
+          linear_params_.NumCols(),
+          stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
       CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
           linear_params_deriv_repeated.Data(), num_repeats_,
           size_as_vector, stride_as_matrix);
@@ -1229,8 +1238,8 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
           num_repeats_ * bias_params_.Dim());
       repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
       CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
-                                            num_repeats_, bias_params_.Dim(),
-                                            bias_params_.Dim());
+                                            num_repeats_, bias_params_.Dim(), // num rows, num cols
+                                            bias_params_.Dim()); // stride
       to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
                                            bias_deriv_mat);
     }
@@ -1243,7 +1252,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
 void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
   // might not see the "<RepeatedAffineComponent>" part because
   // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "</RepeatedAffineComponent>", "<LearningRate>");
+  ExpectOneOrTwoTokens(is, binary, "<RepeatedAffineComponent>", "<LearningRate>");
   ReadBasicType(is, binary, &learning_rate_);
   ExpectToken(is, binary, "<NumRepeats>");
   ReadBasicType(is, binary, &num_repeats_);
@@ -1289,6 +1298,285 @@ void RepeatedAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   linear_params_.CopyRowsFromVec(params.Range(0, linear_params_.NumCols() * linear_params_.NumRows()));
   bias_params_.CopyFromVec(params.Range(linear_params_.NumCols() * linear_params_.NumRows(),
                                         bias_params_.Dim()));
+}
+
+BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
+  UpdatableComponent(other),
+  linear_params_(other.linear_params_),
+  bias_params_(other.bias_params_),
+  num_blocks_(other.num_blocks_) {}
+
+Component* BlockAffineComponent::Copy() const {
+  BlockAffineComponent *ans = new BlockAffineComponent(*this);
+  return ans;
+}
+
+std::string BlockAffineComponent::Info() const {
+  std::stringstream stream;
+  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
+    * static_cast<BaseFloat>(linear_params_.NumCols());
+  BaseFloat linear_stddev =
+      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
+                linear_params_size),
+    bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
+                            bias_params_.Dim());
+
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", num-blocks=" << num_blocks_
+         << ", linear-params-stddev=" << linear_stddev
+         << ", bias-params-stddev=" << bias_stddev
+         << ", learning-rate=" << LearningRate()
+         << ", is-gradient=" << (is_gradient_ ? "true" : "false");
+  return stream.str();
+}
+
+void BlockAffineComponent::Init(BaseFloat learning_rate, int32 input_dim,
+                                int32 output_dim, int32 num_blocks,
+                                BaseFloat param_stddev, BaseFloat bias_stddev) {
+  KALDI_ASSERT(input_dim > 0 && output_dim > 0 && num_blocks >= 1);
+  KALDI_ASSERT(output_dim % num_blocks == 0 && input_dim % num_blocks == 0);
+  const int32 num_columns_per_block = input_dim / num_blocks;
+
+  UpdatableComponent::Init(learning_rate);
+
+  linear_params_.Resize(output_dim, num_columns_per_block);
+  bias_params_.Resize(output_dim);
+  KALDI_ASSERT(param_stddev >= 0.0 && bias_stddev >= 0.0);
+  linear_params_.SetRandn();
+  linear_params_.Scale(param_stddev);
+  bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);
+
+  num_blocks_ = num_blocks;
+}
+
+void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 input_dim, output_dim, num_blocks;
+  if(!cfl->GetValue("input-dim", &input_dim) ||
+     !cfl->GetValue("output-dim", &output_dim) ||
+     !cfl->GetValue("num-blocks", &num_blocks) || cfl->HasUnusedValues()) {
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  }
+
+  // optional parameters
+  BaseFloat learning_rate = learning_rate_;
+  cfl->GetValue("learning-rate", &learning_rate);
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_blocks),
+    bias_stddev = 1.0;
+  cfl->GetValue("param-stddev", &param_stddev);
+  cfl->GetValue("bias-stddev", &bias_stddev);
+
+  Init(learning_rate, input_dim, output_dim, num_blocks,
+       param_stddev, bias_stddev);
+}
+
+void BlockAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                     const CuMatrixBase<BaseFloat> &in,
+                                     CuMatrixBase<BaseFloat> *out) const {
+  out->CopyRowsFromVec(bias_params_);
+  // block_dimension is both the number of columns, and the number of rows,
+  // of a block.
+  int32 num_rows_in_block = linear_params_.NumRows() / num_blocks_;
+  int32 num_cols_in_block = linear_params_.NumCols();
+  std::vector<CuSubMatrix<BaseFloat> *> in_batch, out_batch,
+    linear_params_batch;
+  for(int block_counter = 0; block_counter < num_blocks_; block_counter++) {
+    CuSubMatrix<BaseFloat> *in_block =
+      new CuSubMatrix<BaseFloat>(in.ColRange(block_counter * num_cols_in_block,
+                                   num_cols_in_block));
+    in_batch.push_back(in_block);
+
+    CuSubMatrix<BaseFloat> *out_block =
+      new CuSubMatrix<BaseFloat>(out->ColRange(block_counter * num_rows_in_block,
+                                    num_rows_in_block));
+    out_batch.push_back(out_block);
+
+    CuSubMatrix<BaseFloat> *linear_params_block =
+      new CuSubMatrix<BaseFloat>(linear_params_.RowRange(block_counter * num_rows_in_block,
+                                              num_rows_in_block));
+    linear_params_batch.push_back(linear_params_block);
+  }
+  AddMatMatBatched<BaseFloat>(1.0, out_batch, in_batch, kNoTrans,
+                              linear_params_batch, kTrans, 1.0);
+
+  DeletePointers(&in_batch);
+  DeletePointers(&out_batch);
+  DeletePointers(&linear_params_batch);
+}
+
+void BlockAffineComponent::Backprop(const std::string &debug_info,
+                                    const ComponentPrecomputedIndexes *indexes,
+                                    const CuMatrixBase<BaseFloat> &in_value,
+                                    const CuMatrixBase<BaseFloat> &, // out_value
+                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                    Component *to_update_in,
+                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  BlockAffineComponent *to_update = dynamic_cast<BlockAffineComponent*>(to_update_in);
+
+  const int32 num_rows_in_block = linear_params_.NumRows() / num_blocks_;
+  const int32 num_cols_in_block = linear_params_.NumCols();
+
+  // Propagate the derivative back to the input.
+  // add with coefficient 1.0 since property kBackpropAdds is true.
+  // If we wanted to add with coefficient 0.0 we'd need to zero the
+  // in_deriv, in case of infinities.
+  if (in_deriv) {
+    std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch, linear_params_batch;
+
+    for(int block_counter = 0; block_counter < num_blocks_; block_counter++) {
+      CuSubMatrix<BaseFloat> *in_deriv_block =
+        new CuSubMatrix<BaseFloat>(in_deriv->ColRange(block_counter * num_cols_in_block,
+                                                      num_cols_in_block));
+      in_deriv_batch.push_back(in_deriv_block);
+
+      CuSubMatrix<BaseFloat> *out_deriv_block =
+        new CuSubMatrix<BaseFloat>(out_deriv.ColRange(block_counter * num_rows_in_block,
+                                                       num_rows_in_block));
+      out_deriv_batch.push_back(out_deriv_block);
+
+      CuSubMatrix<BaseFloat> *linear_params_block =
+        new CuSubMatrix<BaseFloat>(linear_params_.RowRange(block_counter * num_rows_in_block,
+                                                          num_rows_in_block));
+      linear_params_batch.push_back(linear_params_block);
+    }
+
+    AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
+                                linear_params_batch, kNoTrans, 1.0);
+
+    DeletePointers(&in_deriv_batch);
+    DeletePointers(&out_deriv_batch);
+    DeletePointers(&linear_params_batch);
+  }
+
+  if (to_update != NULL) {
+
+    { // linear params update
+
+      std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
+        out_deriv_batch, linear_params_batch;
+
+      for (int block_counter = 0; block_counter < num_blocks_; block_counter++) {
+        CuSubMatrix<BaseFloat> *in_value_block =
+          new CuSubMatrix<BaseFloat>(in_value.ColRange(block_counter * num_cols_in_block,
+                                                       num_cols_in_block));
+        in_value_batch.push_back(in_value_block);
+
+        CuSubMatrix<BaseFloat> *out_deriv_block =
+          new CuSubMatrix<BaseFloat>(out_deriv.ColRange(block_counter * num_rows_in_block,
+                                                        num_rows_in_block));
+        out_deriv_batch.push_back(out_deriv_block);
+
+        CuSubMatrix<BaseFloat> *linear_params_block =
+          new CuSubMatrix<BaseFloat>(to_update->linear_params_.RowRange(block_counter * num_rows_in_block,
+                                                                        num_rows_in_block));
+        linear_params_batch.push_back(linear_params_block);
+      }
+
+      AddMatMatBatched<BaseFloat>(to_update->learning_rate_,
+                                  linear_params_batch,
+                                  out_deriv_batch, kTrans,
+                                  in_value_batch, kNoTrans, 1.0);
+
+      DeletePointers(&in_value_batch);
+      DeletePointers(&out_deriv_batch);
+      DeletePointers(&linear_params_batch);
+    } // end linear params update
+
+    { // bias update
+      to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
+                                           out_deriv, 1.0);
+    } // end bias update
+  }
+}
+
+void BlockAffineComponent::Scale(BaseFloat scale) {
+  linear_params_.Scale(scale);
+  bias_params_.Scale(scale);
+}
+
+void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const BlockAffineComponent *other =
+    dynamic_cast<const BlockAffineComponent *>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  linear_params_.AddMat(alpha, other->linear_params_);
+  bias_params_.AddVec(alpha, other->bias_params_);
+}
+
+void BlockAffineComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    SetLearningRate(1.0);
+    is_gradient_ = true;
+  }
+  linear_params_.SetZero();
+  bias_params_.SetZero();
+}
+
+void BlockAffineComponent::PerturbParams(BaseFloat stddev) {
+  CuMatrix<BaseFloat> temp_linear_params(linear_params_);
+  temp_linear_params.SetRandn();
+  linear_params_.AddMat(stddev, temp_linear_params);
+
+  CuVector<BaseFloat> temp_bias_params(bias_params_);
+  temp_bias_params.SetRandn();
+  bias_params_.AddVec(stddev, temp_bias_params);
+}
+
+BaseFloat BlockAffineComponent::DotProduct(const UpdatableComponent &other_in) const {
+  const BlockAffineComponent *other =
+    dynamic_cast<const BlockAffineComponent*>(&other_in);
+  return TraceMatMat(linear_params_, other->linear_params_, kTrans) +
+    VecVec(bias_params_, other->bias_params_);
+}
+
+void BlockAffineComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<BlockAffineComponent>", "<LearningRate>");
+  ReadBasicType(is, binary, &learning_rate_);
+  ExpectToken(is, binary, "<NumBlocks>");
+  ReadBasicType(is, binary, &num_blocks_);
+  ExpectToken(is, binary, "<LinearParams>");
+  linear_params_.Read(is, binary);
+  ExpectToken(is, binary, "<BiasParams>");
+  bias_params_.Read(is, binary);
+  ExpectToken(is, binary, "<IsGradient>");
+  ReadBasicType(is, binary, &is_gradient_);
+  ExpectToken(is, binary, "</BlockAffineComponent>");
+}
+
+void BlockAffineComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<BlockAffineComponent>");
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+  WriteToken(os, binary, "<NumBlocks>");
+  WriteBasicType(os, binary, num_blocks_);
+  WriteToken(os, binary, "<LinearParams>");
+  linear_params_.Write(os, binary);
+  WriteToken(os, binary, "<BiasParams>");
+  bias_params_.Write(os, binary);
+  WriteToken(os, binary, "<IsGradient>");
+  WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "</BlockAffineComponent>");
+}
+
+int32 BlockAffineComponent::NumParameters() const {
+  return linear_params_.NumCols() * linear_params_.NumRows() + bias_params_.Dim();
+}
+
+void BlockAffineComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  KALDI_ASSERT(params->Dim() == this->NumParameters());
+  int32 num_linear_params = linear_params_.NumCols() * linear_params_.NumRows();
+  int32 num_bias_params = bias_params_.Dim();
+  params->Range(0, num_linear_params).CopyRowsFromMat(linear_params_);
+  params->Range(num_linear_params, num_bias_params).CopyFromVec(bias_params_);
+}
+
+void BlockAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  KALDI_ASSERT(params.Dim() == this->NumParameters());
+  int32 num_linear_params = linear_params_.NumCols() * linear_params_.NumRows();
+  int32 num_bias_params = bias_params_.Dim();
+  linear_params_.CopyRowsFromVec(params.Range(0, num_linear_params));
+  bias_params_.CopyFromVec(params.Range(num_linear_params, num_bias_params));
 }
 
 void PerElementScaleComponent::Scale(BaseFloat scale) {
