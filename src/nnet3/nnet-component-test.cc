@@ -83,7 +83,7 @@ void TestNnetComponentAddScale(Component *c) {
   Component *c3 = c2->Copy();
   c3->Add(0.5, *c2);
   c2->Scale(1.5);
-  KALDI_ASSERT(c2->Info() == c3->Info());
+  KALDI_ASSERT(StringsApproxEqual(c2->Info(), c3->Info()));
   delete c2;
   delete c3;
 }
