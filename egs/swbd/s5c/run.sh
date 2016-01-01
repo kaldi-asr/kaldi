@@ -203,6 +203,9 @@ steps/train_sat.sh  --cmd "$train_cmd" \
   steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
     --config conf/decode.config \
     $graph_dir data/eval2000 exp/tri4/decode_eval2000_sw1_tg
+  # Will be used for confidence calibration example,
+  steps/decode_fmllr.sh --nj 30 --cmd "$decode_cmd" \
+    $graph_dir data/train_dev exp/tri4/decode_dev_sw1_tg
 ) &
 wait
 

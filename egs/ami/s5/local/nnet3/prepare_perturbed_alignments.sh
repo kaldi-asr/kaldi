@@ -4,7 +4,7 @@
 # and generates the corresponding alignments
 
 mic=ihm
-nj=70
+nj=10
 stage=0
 use_sat_alignments=true
 
@@ -55,7 +55,7 @@ if [ $stage -le 2 ]; then
     align_script=steps/align_si.sh
   fi
   $align_script --nj $nj --cmd "$train_cmd" \
-    data/$mic/train_sp data/lang $gmm_dir ${gmm_dir}_${data_set}_ali || exit 1;
+    data/$mic/train_sp data/lang $gmm_dir ${gmm_dir}_${mic}_${data_set}_ali || exit 1;
 fi
 
 exit 0;

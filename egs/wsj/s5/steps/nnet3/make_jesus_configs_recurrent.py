@@ -336,9 +336,10 @@ for l in range(1, num_hidden_layers + 1):
                 (2 if this_layer_is_recurrent else 1),
                 this_jesus_output_dim), file=f, end='')
         # still within the post-Jesus component, print the NormalizeComponent
-        print(" component{0}='type=NormalizeComponent dim={1}'".format(
+        print(" component{0}='type=NormalizeComponent dim={1} target-rms={2}'".format(
                 (3 if this_layer_is_recurrent else 2),
-                this_jesus_output_dim), file=f, end='')
+                this_jesus_output_dim,
+                (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f, end='')
         print("", file=f) # print newline.
         print('component-node name=post-jesus{0} component=post-jesus{0} input=jesus{0}'.format(l),
               file=f)

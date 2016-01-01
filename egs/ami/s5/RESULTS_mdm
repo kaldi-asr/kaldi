@@ -74,7 +74,22 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
     # epoch 4
     %WER 44.2 | 13577 89767 | 61.1 22.3 16.6 5.3 44.2 68.9 | -25.003 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_11/eval_hires_o4.ctm.filt.sys
     %WER 44.0 | 13448 89769 | 60.8 21.4 17.8 4.9 44.0 69.6 | -25.331 | exp/mdm8/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
-    
+   
+
+#------------------------------------------------------------------------------------------------------------------------------------
+# Nnet3 systems
+
+# BLSTM + clean alignments
+#  local/nnet3/run_blstm.sh --mic mdm8\
+#    --chunk-right-context 20 \ 
+#    --use-sat-alignments true \
+#    --use-ihm-ali true
+# Note: Chunk right context of 20 limits the latency of the acoustic model to
+# 20 frames.
+
+
+  %WER 35.5 | 15221 94509 | 69.9 21.0 9.1 5.4 35.5 61.4 | -26.440 | exp/mdm8_cleanali/nnet3/lstm_bidirectional_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+  %WER 38.3 | 13423 89786 | 65.8 22.0 12.2 4.1 38.3 66.3 | -26.016 | exp/mdm8_cleanali/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys 
 #--------------------------------------------------------------------------------------------------------------------------------------------
 # Karel, JSALT 2015, (31.7.2015)
 # nnet1, MFCC-LDA-MLLT-DNN system (local/nnet/run_dnn_lda_mllt.sh),

@@ -224,13 +224,13 @@ void WaveData::Read(std::istream &is) {
   if (std::abs(static_cast<int64>(riff_chunk_read) +
                static_cast<int64>(data_chunk_size) -
                static_cast<int64>(riff_chunk_size)) > 1) {
-    // we allow the size to be off by one, because there is a weirdness in the
-    // format of RIFF files that means that the input may sometimes be padded
-    // with 1 unused byte to make the total size even.
-    KALDI_ERR << "Expected " << riff_chunk_size << " bytes in RIFF chunk, but "
-              << "after first data block there will be " << riff_chunk_read
-              << " + " << data_chunk_size << " bytes "
-              << "(we do not support reading multiple data chunks).";
+    // we allow the size to be off by one without warning, because there is a
+    // weirdness in the format of RIFF files that means that the input may
+    // sometimes be padded with 1 unused byte to make the total size even.
+    KALDI_WARN << "Expected " << riff_chunk_size << " bytes in RIFF chunk, but "
+               << "after first data block there will be " << riff_chunk_read
+               << " + " << data_chunk_size << " bytes "
+               << "(we do not support reading multiple data chunks).";
   }
 
   std::vector<char*> data_pointer_vec;
