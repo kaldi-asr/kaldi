@@ -688,12 +688,37 @@ void GenerateConfigSequenceCnn2d(
   configs->push_back(os.str());
 }
 
+// generates a config sequence involving DistributeComponent.
+void GenerateConfigSequenceDistribute(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  int32 output_dim = (opts.output_dim > 0 ? opts.output_dim : 100);
+  int32 x_expand = RandInt(1, 5), after_expand_dim = RandInt(10, 20),
+      input_dim = x_expand * after_expand_dim;
+  std::ostringstream os;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component name=distribute type=DistributeComponent input-dim="
+     << input_dim << " output-dim=" << after_expand_dim << std::endl;
+  os << "component-node name=distribute component=distribute input=input\n";
+  os << "component name=affine type=AffineComponent input-dim="
+     << after_expand_dim << " output-dim=" << output_dim << std::endl;
+  os << "component-node name=affine component=affine input=distribute\n";
+  os << "output-node name=output input=Sum(";
+  for (int32 i = 0; i < x_expand; i++) {
+    if (i > 0) os << ", ";
+    os << "ReplaceIndex(affine, x, " << i << ")";
+  }
+  os << ")\n";
+  configs->push_back(os.str());
+}
+
+
 
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 8);
+  int32 network_type = RandInt(0, 9);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -742,7 +767,9 @@ start:
         goto start;
       GenerateConfigSequenceCnn2d(opts, configs);
       break;
-
+    case 9:
+      GenerateConfigSequenceDistribute(opts, configs);
+      break;
     default:
       KALDI_ERR << "Error generating config sequence.";
   }
@@ -807,7 +834,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 24);
+  int32 n = RandInt(0, 25);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1017,13 +1044,36 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 23: {
+      *component_type = "CompositeComponent";
+      int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
+          max_rows_process = RandInt(1, 30);
+      os << "num-components=" << num_components
+         << " max-rows-process=" << max_rows_process;
+      std::vector<std::string> sub_configs;
+      for (int32 i = 1; i <= num_components; i++) {
+        if (RandInt(1, 3) == 1) {
+          os << " component" << i << "='type=RectifiedLinearComponent dim="
+             << cur_dim << "'";
+        } else if (RandInt(1, 2) == 1) {
+          os << " component" << i << "='type=TanhComponent dim="
+             << cur_dim << "'";
+        } else {
+          int32 next_dim = RandInt(20, 30);
+          os << " component" << i << "='type=AffineComponent input-dim="
+             << cur_dim << " output-dim=" << next_dim << "'";
+          cur_dim = next_dim;
+        }
+      }
+      break;
+    }
+    case 24: {
       *component_type = "SumGroupComponent";
       int32 num_groups = RandInt(1, 50),
         input_dim = num_groups * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << num_groups;
       break;
     }
-    case 24: {
+    case 25: {
       *component_type = "RepeatedAffineComponent";
       int32 num_repeats = RandInt(1, 50),
           input_dim = num_repeats * RandInt(1, 15),

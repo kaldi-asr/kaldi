@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "nnet3-chain-get-egs was not supplied when the original egs were\n"
         "created.\n"
         "\n"
-        "Usage:  nnet3-chain-normalize-egs [options] <normalizatin-fst> <egs-rspecifier> <egs-wspecifier>\n"
+        "Usage:  nnet3-chain-normalize-egs [options] <normalization-fst> <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
         "e.g.\n"
         "nnet3-chain-normalize-egs dir/normalization.fst ark:train_in.cegs ark:train_out.cegs\n";

@@ -438,7 +438,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
-  // The next constructor is used in converting from nnet1.
+
    RepeatedAffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                            const CuVectorBase<BaseFloat> &bias_params,
                            int32 num_repeats,
@@ -1518,11 +1518,13 @@ class MaxpoolingComponent: public Component {
 
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
+  // We don't implement InitFromConfig() at this level: child-class should do
+  // it.
   virtual Component* Copy() const {
     return new MaxpoolingComponent(input_dim_, output_dim_,
 		    pool_size_, pool_stride_); }
 
-  // Some functions that are specific to this
+  // Some functions that are specific to this class
   void Init(int32 input_dim, int32 output_dim,
             int32 pool_size, int32 pool_stride);
 
@@ -1531,6 +1533,100 @@ class MaxpoolingComponent: public Component {
   int32 output_dim_;
   int32 pool_size_;
   int32 pool_stride_;
+};
+
+/**
+   CompositeComponent is a base-class for components that are sequences of other
+   [simple] components.  The config line would be something like the following
+   (imagine this is all on one line):
+
+   component name=composite1 type=CompositeComponent max-rows-process=2048 num-components=3 \
+      component1='type=BlockAffineComponent input-dim=1000 output-dim=10000 num-blocks=100' \
+      component2='type=RectifiedLinearComponent dim=10000' \
+      component3='type=BlockAffineComponent input-dim=10000 output-dim=1000 num-blocks=100'
+
+
+   The reason you might want to use this component, instead of directly using
+   the same sequence of components in the config file, is to save GPU memory (at
+   the expense of more compute)-- because doing it like this means we have to
+   re-do parts of the forward pass in the backprop phase, but we avoid using
+   much memory for very long (and you can make the memory usage very small by
+   making max-rows-process small).  We inherit from UpdatableComponent just in
+   case one or more of the components in the sequence are updatable.
+ */
+class CompositeComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  virtual Component* Copy() const;
+
+  CompositeComponent() { } // use Init() or InitFromConfig() to really initialize.
+
+  // Initialize from this list of components; takes ownership of the pointers.
+  void Init(const std::vector<Component*> &components,
+            int32 max_rows_process);
+
+  virtual std::string Type() const { return "CompositeComponent"; }
+
+  // The properties depend on the properties of the constituent components.  As
+  // a special case, we never return kStoresStats in the properties: by default
+  // we store things like activation stats (e.g. for nonlinear components like
+  // ReLU) as part of the backprop.  This means we may wastefully store stats
+  // even when not requested, but it does save time as a separate StoreStats()
+  // call would involve propagating the internals.
+  virtual int32 Properties() const;
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // note, we don't implement StoreStats() as it would be inefficient.  Instead,
+  // by default we call StoreStats() on all members that have the flag set,
+  // inside the Backprop.
+  virtual void ZeroStats();
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  // Don't implement Copy() at this level: implement it in the child class.
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // note: we dont implement the StoreStats function as it would be quite
+  // expensive; instead, by default we call StoreStats() for any components that
+  // want to store stats, as part of the backprop pass.  This is not 100% ideal
+  // but it will usually do what you want.  We can revisit this later if needed.
+
+  virtual ~CompositeComponent() { DeletePointers(&components_); }
+ protected:
+  // returns true if at least one of 'components_' returns the kUpdatable flag
+  // in its flags.
+  bool IsUpdatable() const;
+
+  // the maximum number of
+  int32 max_rows_process_;
+  std::vector<Component*> components_;
+
 };
 
 

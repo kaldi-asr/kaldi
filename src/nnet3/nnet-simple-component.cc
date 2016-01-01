@@ -1084,8 +1084,8 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
                "num-repeats must divide input-dim");
   KALDI_ASSERT(output_dim % num_repeats == 0 &&
                "num-repeats must divide output-dim");
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-      bias_stddev = 1.0;
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_repeats),
+      bias_stddev = 0.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
   Init(learning_rate, input_dim, output_dim, num_repeats,
@@ -1207,7 +1207,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
       // view linear_params_deriv_repeated as a matrix where each row
       // corresponds to one repeat.
       int32 size_as_vector =
-          (linear_params_.NumRows() - 1) * linear_params_.Stride() +
+          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
           linear_params_.NumCols(),
           stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
       CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
@@ -4142,6 +4142,427 @@ std::string PermuteComponent::Info() const {
   stream << "]";
   return stream.str();
 }
+
+
+bool CompositeComponent::IsUpdatable() const {
+  for (std::vector<Component*>::const_iterator iter = components_.begin(),
+           end = components_.end(); iter != end; ++iter)
+    if (((*iter)->Properties() & kUpdatableComponent) != 0)
+      return true;
+  return false;
+}
+
+// virtual
+int32 CompositeComponent::InputDim() const {
+  KALDI_ASSERT(!components_.empty());
+  return components_.front()->InputDim();
+};
+
+// virtual
+int32 CompositeComponent::OutputDim() const {
+  KALDI_ASSERT(!components_.empty());
+  return components_.back()->OutputDim();
+};
+
+// virtual
+int32 CompositeComponent::Properties() const {
+  KALDI_ASSERT(!components_.empty());
+  int32 last_component_properties = components_.back()->Properties(),
+      first_component_properties = components_.front()->Properties();
+  // We always assume backprop needs the input, as this would be necessary to
+  // get the activations at intermediate layers, if these were not needed in
+  // backprop, there would be no reason to use a CompositeComponent.
+  int32 ans = kSimpleComponent | kBackpropNeedsInput |
+      (last_component_properties & kPropagateAdds) |
+      (last_component_properties & kBackpropNeedsOutput) |
+      (first_component_properties & kBackpropAdds) |
+      (IsUpdatable() ? kUpdatableComponent : 0);
+  // we call StoreStats() on any sub-components as part of
+  // the backprop phase.
+  if (last_component_properties & kStoresStats)
+    ans |= kBackpropNeedsOutput;
+  return ans;
+};
+
+
+// virtual
+void CompositeComponent::Propagate(
+    const ComponentPrecomputedIndexes *, // indexes
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() == out->NumRows() && in.NumCols() == InputDim() &&
+               out->NumCols() == OutputDim());
+  int32 num_rows = in.NumRows(),
+      num_components = components_.size();
+  if (max_rows_process_ > 0 && num_rows > max_rows_process_) {
+    // recurse and process smaller parts of the data, to save memory.
+    for (int32 row_offset = 0; row_offset < num_rows;
+         row_offset += max_rows_process_) {
+      int32 this_num_rows = std::min<int32>(max_rows_process_,
+                                            num_rows - row_offset);
+      const CuSubMatrix<BaseFloat> in_part(in, row_offset, this_num_rows,
+                                           0, in.NumCols());
+      CuSubMatrix<BaseFloat> out_part(*out, row_offset, this_num_rows,
+                                      0, out->NumCols());
+      this->Propagate(NULL, in_part, &out_part);
+    }
+    return;
+  }
+  std::vector<CuMatrix<BaseFloat> > intermediate_outputs(num_components - 1);
+  for (int32 i = 0; i < num_components; i++) {
+    if (i + 1 < num_components) {
+      intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
+                                     kUndefined);
+      if (components_[i]->Properties() & kPropagateAdds)
+        intermediate_outputs[i].SetZero();
+    }
+    components_[i]->Propagate(NULL, (i == 0 ? in : intermediate_outputs[i-1]),
+               (i + 1 == num_components ? out : &(intermediate_outputs[i])));
+    if (i > 0)
+      intermediate_outputs[i-1].Resize(0, 0);
+  }
+}
+
+
+void CompositeComponent::Init(const std::vector<Component*> &components,
+                              int32 max_rows_process) {
+  DeletePointers(&components_);  // clean up.
+  components_ = components;
+  KALDI_ASSERT(!components.empty());
+  max_rows_process_ = max_rows_process;
+
+  for (size_t i = 0; i < components_.size(); i++) {
+    // make sure all constituent components are simple.
+    KALDI_ASSERT(components_[i]->Properties() & kSimpleComponent);
+    if (i > 0) {
+      // make sure all the internal dimensions match up.
+      KALDI_ASSERT(components_[i]->InputDim() ==
+                   components_[i-1]->OutputDim());
+    }
+  }
+}
+
+// virtual
+void CompositeComponent::Read(std::istream &is, bool binary) {
+  // we want this Read function to work for derived types.
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<JesusComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</JesusComponent>"
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<MaxRowsProcess>");
+  int32 max_rows_process;
+  ReadBasicType(is, binary, &max_rows_process);
+  ExpectToken(is, binary, "<NumComponents>");
+  int32 num_components;
+  ReadBasicType(is, binary, &num_components); // Read dimension.
+  if (num_components < 0 || num_components > 100000)
+    KALDI_ERR << "Bad num-components";
+  std::vector<Component*> components(num_components);
+  for (int32 i = 0; i < num_components; i++)
+    components[i] = ReadNew(is, binary);
+  Init(components, max_rows_process);
+  ExpectToken(is, binary, ostr_end.str());
+}
+
+// virtual
+void CompositeComponent::ZeroStats() {
+  // we call ZeroStats() on all components without checking their flags; this
+  // will do nothing if the component doesn't store stats.  (components like
+  // ReLU and sigmoid and tanh store stats on activations).
+  for (size_t i = 0; i < components_.size(); i++)
+   components_[i]->ZeroStats();
+}
+
+// virtual
+void CompositeComponent::Write(std::ostream &os, bool binary) const {
+  // we want this Write function to work for derived types.
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<JesusComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</JesusComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<MaxRowsProcess>");
+  WriteBasicType(os, binary, max_rows_process_);
+  WriteToken(os, binary, "<NumComponents>");
+  int32 num_components = components_.size();
+  WriteBasicType(os, binary, num_components);
+  for (int32 i = 0; i < num_components; i++)
+    components_[i]->Write(os, binary);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+
+// virtual
+void CompositeComponent::Backprop(const std::string &debug_info,
+                                  const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &in_value,
+                                  const CuMatrixBase<BaseFloat> &out_value,
+                                  const CuMatrixBase<BaseFloat> &out_deriv,
+                                  Component *to_update,
+                                  CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_value.NumRows() == out_deriv.NumRows() &&
+               in_value.NumCols() == InputDim() &&
+               out_deriv.NumCols() == OutputDim());
+  int32 num_rows = in_value.NumRows(),
+      num_components = components_.size();
+  if (max_rows_process_ > 0 && num_rows > max_rows_process_) {
+    KALDI_ASSERT(max_rows_process_ > 0);
+    // recurse and process smaller parts of the data, to save memory.
+    for (int32 row_offset = 0; row_offset < num_rows;
+         row_offset += max_rows_process_) {
+      bool have_output_value = (out_value.NumRows() != 0);
+      int32 this_num_rows = std::min<int32>(max_rows_process_,
+                                            num_rows - row_offset);
+      // out_value_part will only be used if out_value is nonempty; otherwise we
+      // make it a submatrix of 'out_deriv' to avoid errors in the constructor.
+      const CuSubMatrix<BaseFloat> out_value_part(have_output_value ? out_value : out_deriv,
+                                                  row_offset, this_num_rows,
+                                                  0, out_deriv.NumCols());
+      // in_deriv_value_part will only be used if in_deriv != NULL; otherwise we
+      // make it a submatrix of 'in_value' to avoid errors in the constructor.
+      CuSubMatrix<BaseFloat> in_deriv_part(in_deriv != NULL ? *in_deriv : in_value,
+                                            row_offset, this_num_rows,
+                                            0, in_value.NumCols());
+      CuSubMatrix<BaseFloat> in_value_part(in_value, row_offset, this_num_rows,
+                                           0, in_value.NumCols());
+      const CuSubMatrix<BaseFloat> out_deriv_part(out_deriv,
+                                                  row_offset, this_num_rows,
+                                                  0, out_deriv.NumCols());
+      CuMatrix<BaseFloat>  empty_mat;
+      this->Backprop(debug_info, NULL, in_value_part,
+                     (have_output_value ? static_cast<const CuMatrixBase<BaseFloat>&>(out_value_part) :
+                      static_cast<const CuMatrixBase<BaseFloat>&>(empty_mat)),
+                     out_deriv_part, to_update,
+                     in_deriv != NULL ? &in_deriv_part : NULL);
+    }
+    return;
+  }
+  // For now, assume all intermediate values and derivatives need to be
+  // computed.  in_value and out_deriv will always be supplied.
+
+  // intermediate_outputs[i] contains the output of component i.
+  std::vector<CuMatrix<BaseFloat> > intermediate_outputs(num_components - 1);
+  // intermediate_derivs[i] contains the deriative at the output of component i.
+  std::vector<CuMatrix<BaseFloat> > intermediate_derivs(num_components - 1);
+
+  // Do the propagation again, for all but the last component in the sequence.
+  // later on we can try being more careful about which ones we need to
+  // propagate.
+  for (int32 i = 0; i + 1 < num_components; i++) {
+    // skip the last-but-one component's propagate if the last component's
+    // backprop doesn't need the input and the one previous to that doesn't
+    // need the output.  [lowest hanging fruit for optimization]
+    if (i + 2 == num_components &&
+        !(components_[i+1]->Properties() & kBackpropNeedsInput) &&
+        !(components_[i]->Properties() & kBackpropNeedsOutput))
+      break;
+    intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
+                                   kUndefined);
+    if (components_[i]->Properties() & kPropagateAdds)
+      intermediate_outputs[i].SetZero();
+    components_[i]->Propagate(NULL,
+                              (i == 0 ? in_value : intermediate_outputs[i-1]),
+                              &(intermediate_outputs[i]));
+  }
+  for (int32 i = num_components - 1; i >= 0; i--) {
+    Component *component_to_update =
+        (to_update == NULL ? NULL :
+         dynamic_cast<CompositeComponent*>(to_update)->components_[i]);
+
+    if (components_[i]->Properties() & kStoresStats &&
+        component_to_update != NULL)
+      component_to_update->StoreStats(
+          (i + 1 == num_components ? out_value : intermediate_outputs[i]));
+
+    // skip the first component's backprop if it's not updatable and in_deriv is
+    // not requested.  Again, this is the lowest-hanging fruit to optimize.
+    if (i == 0 && !(components_[0]->Properties() & kUpdatableComponent) &&
+        in_deriv == NULL)
+      break;
+    if (i > 0) {
+      intermediate_derivs[i-1].Resize(num_rows, components_[i]->InputDim());
+      if (components_[i]->Properties() & kPropagateAdds)
+        intermediate_derivs[i-1].SetZero();
+    }
+    components_[i]->Backprop(debug_info, NULL,
+                             (i == 0 ? in_value : intermediate_outputs[i-1]),
+                             (i + 1 == num_components ? out_value : intermediate_outputs[i]),
+                             (i + 1 == num_components ? out_deriv : intermediate_derivs[i]),
+                             component_to_update,
+                             (i == 0 ? in_deriv : &(intermediate_derivs[i-1])));
+  }
+}
+
+
+// virtual
+std::string CompositeComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << " ";
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (i > 0) stream << ", ";
+    stream << "sub-component" << (i+1) << " = { "
+           << components_[i]->Info() << " }";
+  }
+  return stream.str();
+}
+
+// virtual
+void CompositeComponent::Scale(BaseFloat scale) {
+  for (size_t i = 0; i < components_.size(); i++)
+    components_[i]->Scale(scale);
+}
+
+// virtual
+void CompositeComponent::Add(BaseFloat alpha, const Component &other_in) {
+  const CompositeComponent *other = dynamic_cast<const CompositeComponent*>(
+      &other_in);
+  KALDI_ASSERT(other != NULL && other->components_.size() ==
+               components_.size() && "Mismatching nnet topologies");
+  for (size_t i = 0; i < components_.size(); i++)
+    components_[i]->Add(alpha, *(other->components_[i]));
+}
+
+// virtual
+void CompositeComponent::SetZero(bool treat_as_gradient) {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetZero(treat_as_gradient);
+    }
+  }
+}
+
+// virtual
+void CompositeComponent::PerturbParams(BaseFloat stddev) {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->PerturbParams(stddev);
+    }
+  }
+}
+
+// virtual
+int32 CompositeComponent::NumParameters() const {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  int32 ans = 0;
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      ans += uc->NumParameters();
+    }
+  }
+  return ans;
+}
+
+// virtual
+void CompositeComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  int32 cur_offset = 0;
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      int32 this_size = uc->NumParameters();
+      SubVector<BaseFloat> params_range(*params, cur_offset, this_size);
+      uc->Vectorize(&params_range);
+      cur_offset += this_size;
+    }
+  }
+  KALDI_ASSERT(cur_offset == params->Dim());
+}
+
+// virtual
+void CompositeComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  int32 cur_offset = 0;
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      int32 this_size = uc->NumParameters();
+      SubVector<BaseFloat> params_range(params, cur_offset, this_size);
+      uc->UnVectorize(params_range);
+      cur_offset += this_size;
+    }
+  }
+  KALDI_ASSERT(cur_offset == params.Dim());
+}
+
+// virtual
+BaseFloat CompositeComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  const CompositeComponent *other = dynamic_cast<const CompositeComponent*>(
+      &other_in);
+  KALDI_ASSERT(other != NULL && other->components_.size() ==
+               components_.size() && "Mismatching nnet topologies");
+  BaseFloat ans = 0.0;
+  for (size_t i = 0.0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      const UpdatableComponent *uc_other =
+          dynamic_cast<UpdatableComponent*>(other->components_[i]);
+      KALDI_ASSERT(uc != NULL && uc_other != NULL);
+      ans += uc->DotProduct(*uc_other);
+    }
+  }
+  return ans;
+}
+
+// virtual
+Component* CompositeComponent::Copy() const {
+  std::vector<Component*> components(components_.size());
+  for (size_t i = 0; i < components_.size(); i++)
+    components[i] = components_[i]->Copy();
+  CompositeComponent *ans = new CompositeComponent();
+  ans->Init(components, max_rows_process_);
+  return ans;
+}
+
+
+// virtual
+void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 max_rows_process = 4096, num_components = -1;
+  cfl->GetValue("max-rows-process", &max_rows_process);
+  if (!cfl->GetValue("num-components", &num_components) ||
+      num_components < 1)
+    KALDI_ERR << "Expected num-components to be defined in "
+              << "CompositeComponent config line '" << cfl->WholeLine() << "'";
+  std::vector<Component*> components;
+  for (int32 i = 1; i <= num_components; i++) {
+    std::ostringstream name_stream;
+    name_stream << "component" << i;
+    std::string component_config;
+    if (!cfl->GetValue(name_stream.str(), &component_config)) {
+      DeletePointers(&components);
+      KALDI_ERR << "Expected '" << name_stream.str() << "' to be defined in "
+                << "CompositeComponent config line '" << cfl->WholeLine() << "'";
+    }
+    ConfigLine nested_line;
+    // note: the nested line may not contain comments.
+    std::string component_type;
+    Component *this_component = NULL;
+    if (!nested_line.ParseLine(component_config) ||
+        !nested_line.GetValue("type", &component_type) ||
+        !(this_component = NewComponentOfType(component_type))) {
+      DeletePointers(&components);
+      KALDI_ERR << "Could not parse config line for '" << name_stream.str()
+                << "(or undefined or bad component type [type=xxx]), in "
+                << "CompositeComponent config line '" << cfl->WholeLine() << "'";
+    }
+    this_component->InitFromConfig(&nested_line);
+    components.push_back(this_component);
+  }
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  this->Init(components, max_rows_process);
+}
+
 
 
 } // namespace nnet3
