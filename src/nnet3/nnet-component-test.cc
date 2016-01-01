@@ -24,6 +24,37 @@
 namespace kaldi {
 namespace nnet3 {
 
+// returns true if two are string are equal except for what looks like it might
+// be a difference last digit of a floating point number, e.g. accept
+// 1.234 to be the same as 1.235.  Not very rigorous.
+static bool StringsApproxEqual(const std::string &a,
+                               const std::string &b) {
+  if (a == b || a.size() != b.size())
+    return true;
+  size_t size = a.size();
+  for (size_t pos = 0; pos < size; pos++) {
+    if (a[pos] != b[pos]) {
+      if (!isdigit(a[pos]) || !isdigit(b[pos]))
+        return false;
+      // if it's not the last digit in the string, return false
+      if (pos + 1 != size && isdigit(a[pos+1]))
+        return false;
+      size_t pos2;
+      for (pos2 = pos - 1; pos2 > 0; pos2--) {
+        if (a[pos2] == '.') break;  // we accept this difference: we went backwards and found a '.'
+        if (!isdigit(a[pos2]))  // we reject this difference: we went back and
+                                // found non-digit before '.' -> not floating
+                                // point.
+          return false;
+      }
+      if (pos2 == 0)
+        return false;
+    }
+  }
+  return true;
+}
+
+
 void TestNnetComponentIo(Component *c) {
   bool binary = (Rand() % 2 == 0);
   std::ostringstream os1;
@@ -40,7 +71,7 @@ void TestNnetComponentIo(Component *c) {
 
 void TestNnetComponentCopy(Component *c) {
   Component *c2 = c->Copy();
-  if (c->Info() != c2->Info()) {
+  if (!StringsApproxEqual(c->Info(), c2->Info())) {
     KALDI_ERR << "Expected info strings to be equal: '"
               << c->Info() << "' vs. '" << c2->Info() << "'";
   }
@@ -69,7 +100,7 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
   uc->Vectorize(&params);
   uc2->UnVectorize(params);
-  KALDI_ASSERT(uc2->Info() == uc->Info());
+  KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
   BaseFloat x = uc2->DotProduct(*uc2), y = uc->DotProduct(*uc),
       z = uc2->DotProduct(*uc);
   KALDI_ASSERT(ApproxEqual(x, y) && ApproxEqual(y, z));
@@ -78,6 +109,15 @@ void TestNnetComponentVectorizeUnVectorize(Component *c) {
   for(int i = 0; i < params.Dim(); i++)
     KALDI_ASSERT(params(i) == params2(i));
   delete uc2;
+}
+
+void TestStringsApproxEqual() {
+  // we must test the test.
+  KALDI_ASSERT(!StringsApproxEqual("a", "b"));
+  KALDI_ASSERT(!StringsApproxEqual("1", "2"));
+  KALDI_ASSERT(StringsApproxEqual("1.234", "1.235"));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y", "x 1.235 y"));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.49"));
 }
 
 void TestNnetComponentUpdatable(Component *c) {
@@ -112,8 +152,10 @@ void TestNnetComponentUpdatable(Component *c) {
     uc2->Add(3.0, *uc3);
     uc3->Scale(8.0);
     // now they should both be scaled to 8 times the original component.
-    KALDI_ASSERT(uc2->Info() == uc3->Info());
-
+    if (!StringsApproxEqual(uc2->Info(), uc3->Info())) {
+      KALDI_ERR << "Expected info strings to be equal: '"
+                << uc2->Info() << "' vs. '" << uc3->Info() << "'";
+    }
     // testing that scaling by 0.5 works the same whether
     // done on the vectorized paramters or via Scale().
     Vector<BaseFloat> vec2(uc->NumParameters());
@@ -122,7 +164,7 @@ void TestNnetComponentUpdatable(Component *c) {
     uc2->UnVectorize(vec2);
     uc3->Scale(0.5);
     KALDI_ASSERT(uc2->Info() == uc3->Info());
-    
+
     // testing that SetZero() works the same whether done on the vectorized
     // paramters or via SetZero(), and that unvectorizing something that's been
     // zeroed gives us zero parameters.
@@ -132,7 +174,7 @@ void TestNnetComponentUpdatable(Component *c) {
     uc3->SetZero(false);
     uc3->Vectorize(&vec2);
     KALDI_ASSERT(uc2->Info() == uc3->Info() && VecVec(vec2, vec2) == 0.0);
-    
+
     delete uc2;
     delete uc3;
   }
@@ -193,7 +235,7 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
     output_data5.Scale(0.5);
     AssertEqual(output_data1, output_data5);
   }
-  
+
 
   CuMatrix<BaseFloat> output_deriv(num_rows, output_dim);
   output_deriv.SetRandn();
@@ -422,7 +464,7 @@ void UnitTestNnetComponent() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-
+  TestStringsApproxEqual();
   for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
