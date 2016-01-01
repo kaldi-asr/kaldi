@@ -1207,8 +1207,8 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
       // view linear_params_deriv_repeated as a matrix where each row
       // corresponds to one repeat.
       int32 size_as_vector =
-          (linear_params_.NumRows() - 1) * linear_params_.Stride() +
-          linear_params_.NumCols(),
+          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride()
+          + linear_params_.NumCols(),
           stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
       CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
           linear_params_deriv_repeated.Data(), num_repeats_,
@@ -4068,7 +4068,7 @@ Component* PermuteComponent::Copy() const {
   PermuteComponent *ans = new PermuteComponent();
   ans->column_map_ = column_map_;
   ans->reverse_column_map_ = reverse_column_map_;
-  return ans;  
+  return ans;
 }
 
 void PermuteComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -4112,7 +4112,23 @@ void PermuteComponent::Init(const std::vector<int32> &column_map) {
 void PermuteComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<PermuteComponent>", "<ColumnMap>");
   std::vector<int32> column_map;
-  ReadIntegerVector(is, binary, &column_map);
+  if (binary && is.peek() == 'F') {
+    // back-compatibility code [temporary]
+    Vector<BaseFloat> float_map;
+    float_map.Read(is, binary);
+    column_map.resize(float_map.Dim());
+    for (int32 i = 0; i < float_map.Dim(); i++) {
+      // note: casting truncates toward zero: add 0.5 to approximate rounding.
+      column_map[i] = static_cast<int32>(float_map(i) + 0.5);
+    }
+    // the next line is a workaround for a bug in the old
+    // writing code, which now causes an assert failure.  it's only
+    // valid for the permutations we're currently using.  anyway all this
+    // code is only temporary.
+    column_map.back() = float_map.Dim() - 1;
+  } else {
+    ReadIntegerVector(is, binary, &column_map);
+  }
   column_map_.CopyFromVec(column_map);
   ExpectToken(is, binary, "</PermuteComponent>");
   ComputeReverseColumnMap();
