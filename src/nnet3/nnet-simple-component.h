@@ -522,7 +522,7 @@ class BlockAffineComponent : public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
   int32 num_blocks_;
  private:
-  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
+  const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
 };
 
 class SoftmaxComponent: public NonlinearComponent {

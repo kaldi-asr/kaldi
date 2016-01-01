@@ -1165,6 +1165,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
 	                            i * block_rows, block_rows)));
       linear_params_batch.push_back(params_elem);
     }
+
     AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
                                 linear_params_batch, kNoTrans, 1.0);
     delete params_elem;
@@ -1203,14 +1204,21 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
       // linear_params_deriv_repeated as a matrix with a larger stride than it
       // really has to sum up its rows.  This may generate some spurious
       // valgrind/memcheck warnings due to accessing the memory in between rows
-      // of a matrix that has been allocated using cudamalloc2d.
+      // of a matrix that has been allocated using cudaMallocPitch.
       KALDI_ASSERT(SameDimAndStride(linear_params_, to_update->linear_params_));
       // view linear_params_deriv_repeated as a matrix where each row
       // corresponds to one repeat.
+
+      // usage of linear_params_deriv_repeated.Stride() instead of
+      // linear_params_.Stride() is important here. CUDA does not guarantee
+      // that two matrices of the same number of columns
+      // (linear_params_deriv_repeated and linear_params_) have the same stride.
+      // i.e., we cannot reliably do:
+      // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
       int32 size_as_vector =
-          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
-          linear_params_.NumCols(),
-          stride_as_matrix = linear_params_.NumRows() * linear_params_.Stride();
+        (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
+        linear_params_.NumCols(),
+        stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
       CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
           linear_params_deriv_repeated.Data(), num_repeats_,
           size_as_vector, stride_as_matrix);
@@ -1230,8 +1238,8 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
           num_repeats_ * bias_params_.Dim());
       repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
       CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
-                                            num_repeats_, bias_params_.Dim(),
-                                            bias_params_.Dim());
+                                            num_repeats_, bias_params_.Dim(), // num rows, num cols
+                                            bias_params_.Dim()); // stride
       to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
                                            bias_deriv_mat);
     }
@@ -1355,7 +1363,7 @@ void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
   // optional parameters
   BaseFloat learning_rate = learning_rate_;
   cfl->GetValue("learning-rate", &learning_rate);
-  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
+  BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_blocks),
     bias_stddev = 1.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
@@ -1447,13 +1455,7 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
     { // linear params update
 
       std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
-        out_deriv_batch, linear_params_deriv_batch;
-
-      // this constructor zeros out the entire matrix. Unfortunately, we need
-      // this for AddMatMatBatched even though beta is 0 because it is possible
-      // there may be NaN in the matrix's space, and 0 * NaN is NaN.
-      CuMatrix<BaseFloat> linear_params_deriv(linear_params_.NumRows(),
-                                              linear_params_.NumCols());
+        out_deriv_batch, linear_params_batch;
 
       for (int block_counter = 0; block_counter < num_blocks_; block_counter++) {
         CuSubMatrix<BaseFloat> *in_value_block =
@@ -1466,22 +1468,20 @@ void BlockAffineComponent::Backprop(const std::string &debug_info,
                                                         num_rows_in_block));
         out_deriv_batch.push_back(out_deriv_block);
 
-        CuSubMatrix<BaseFloat> *linear_params_deriv_block =
-          new CuSubMatrix<BaseFloat>(linear_params_deriv.RowRange(block_counter * num_rows_in_block,
-                                                                  num_rows_in_block));
-        linear_params_deriv_batch.push_back(linear_params_deriv_block);
+        CuSubMatrix<BaseFloat> *linear_params_block =
+          new CuSubMatrix<BaseFloat>(to_update->linear_params_.RowRange(block_counter * num_rows_in_block,
+                                                                        num_rows_in_block));
+        linear_params_batch.push_back(linear_params_block);
       }
 
       AddMatMatBatched<BaseFloat>(to_update->learning_rate_,
-                                  linear_params_deriv_batch,
+                                  linear_params_batch,
                                   out_deriv_batch, kTrans,
-                                  in_value_batch, kNoTrans, 0.0);
-
-      to_update->linear_params_.AddMat(1.0, linear_params_deriv);
+                                  in_value_batch, kNoTrans, 1.0);
 
       DeletePointers(&in_value_batch);
       DeletePointers(&out_deriv_batch);
-      DeletePointers(&linear_params_deriv_batch);
+      DeletePointers(&linear_params_batch);
     } // end linear params update
 
     { // bias update
