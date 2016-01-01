@@ -349,6 +349,12 @@ Each component-node in the config file gets expanded to two nodes: a node of
 type kComponent, and an immediately preceding node of type kDescriptor that is
 defined by the "input" field.
 
+The config file above doesn't give an example of a dim-range node.  The basic format
+of a dim-range node is this (this example would take the first 50 dimensions from the 65 dimensions
+of component affine1):
+\verbatim
+dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
+\endverbatim
 
  \subsection dnn3_dt_nnet_descriptor_code Descriptors in config files
 

@@ -59,5 +59,15 @@ for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && gr
 %WER 26.0 | 12643 89976 | 77.1 14.7 8.2 3.2 26.0 55.7 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt/ascore_12/eval_hires.ctm.filt.sys
 %WER 25.8 | 12643 89978 | 77.6 14.6 7.8 3.4 25.8 55.8 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt_offline/ascore_11/eval_hires.ctm.filt.sys
 
+#------------------------------------------------------------------------------------------------------------------------------------
+# Nnet3 systems
 
+# BLSTM 
+#  local/nnet3/run_blstm.sh --mic ihm \
+#    --chunk-right-context 20 \ 
+#    --use-sat-alignments true
+# Note: Chunk right context of 20 limits the latency of the acoustic model to
+# 20 frames.
 
+%WER 22.8 | 13098 94494 | 80.1 11.0 8.9 3.0 22.8 54.8 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.6 | 12643 89969 | 80.0 12.7 7.3 2.7 22.6 53.5 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_9/eval_hires.ctm.filt.sys
