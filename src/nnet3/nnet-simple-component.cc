@@ -1322,8 +1322,8 @@ void NaturalGradientAffineComponent::Init(
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
+  bias_params_.Scale(bias_stddev);  
   bias_params_.Add(bias_mean);
-  bias_params_.Scale(bias_stddev);
   rank_in_ = rank_in;
   rank_out_ = rank_out;
   update_period_ = update_period;
