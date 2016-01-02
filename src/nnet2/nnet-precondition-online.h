@@ -566,10 +566,7 @@ class OnlinePreconditioner {
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
   Mutex update_mutex_;
-
-
 };
-
 
 } // namespace nnet2
 } // namespace kaldi
