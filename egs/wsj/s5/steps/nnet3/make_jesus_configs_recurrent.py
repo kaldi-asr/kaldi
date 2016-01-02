@@ -251,21 +251,21 @@ for l in range(1, num_hidden_layers + 1):
         # is rearrange the dimensions so that things pertaining to a particular
         # block stay together.
 
-        new_column_order = []
+        column_map = []
         for x in range(0, args.num_jesus_blocks):
             dim_offset = 0
             for src_splice in spliced_dims:
                 src_block_size = src_splice / args.num_jesus_blocks
                 for y in range(0, src_block_size):
-                    new_column_order.append(dim_offset + (x * src_block_size) + y)
+                    column_map.append(dim_offset + (x * src_block_size) + y)
                 dim_offset += src_splice
-        if sorted(new_column_order) != range(0, sum(spliced_dims)):
-            print("new_column_order is " + str(new_column_order))
+        if sorted(column_map) != range(0, sum(spliced_dims)):
+            print("column_map is " + str(column_map))
             print("num_jesus_blocks is " + str(args.num_jesus_blocks))
             print("spliced_dims is " + str(spliced_dims))
             sys.exit("code error creating new column order")
 
-        need_input_permute_component = (new_column_order != range(0, sum(spliced_dims)))
+        need_input_permute_component = (column_map != range(0, sum(spliced_dims)))
 
         # Now add the jesus component.
         num_sub_components = (5 if need_input_permute_component else 4);
@@ -275,8 +275,8 @@ for l in range(1, num_hidden_layers + 1):
         # this CompositeComponent has the same effect as a sequence of
         # components, but saves memory.
         if need_input_permute_component:
-            print(" component1='type=PermuteComponent new-column-order={1}'".format(
-                    l, ','.join([str(x) for x in new_column_order])), file=f, end='')
+            print(" component1='type=PermuteComponent column-map={1}'".format(
+                    l, ','.join([str(x) for x in column_map])), file=f, end='')
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
                 (2 if need_input_permute_component else 1),
                 cur_dim), file=f, end='')
@@ -309,7 +309,7 @@ for l in range(1, num_hidden_layers + 1):
         print('component name=post-jesus{0} type=CompositeComponent num-components={1}'.format(
                 l, num_sub_components), file=f, end='')
         if this_layer_is_recurrent:
-            new_column_order = []
+            column_map = []
             output_part_dims = [ args.jesus_forward_output_dim,
                                  args.jesus_direct_recurrence_dim,
                                  args.jesus_projected_recurrence_output_dim ]
@@ -322,14 +322,14 @@ for l in range(1, num_hidden_layers + 1):
                 within_block_dim = part_dim / args.num_jesus_blocks
                 for x in range(0, args.num_jesus_blocks):
                     for y in range(0, within_block_dim):
-                        new_column_order.append(x * total_block_size + within_block_offset + y)
+                        column_map.append(x * total_block_size + within_block_offset + y)
                 previous_part_dims_sum += part_dim
-            if sorted(new_column_order) != range(0, this_jesus_output_dim):
-                print("new_column_order is " + str(new_column_order))
+            if sorted(column_map) != range(0, this_jesus_output_dim):
+                print("column_map is " + str(column_map))
                 print("output_part_dims is " + str(output_part_dims))
                 sys.exit("code error creating new column order")
-            print(" component1='type=PermuteComponent new-column-order={1}'".format(
-                    l, ','.join([str(x) for x in new_column_order])), file=f, end='')
+            print(" component1='type=PermuteComponent column-map={1}'".format(
+                    l, ','.join([str(x) for x in column_map ])), file=f, end='')
 
         # still within the post-Jesus component, print the ReLU
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
