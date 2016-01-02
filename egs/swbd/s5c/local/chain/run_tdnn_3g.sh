@@ -1,7 +1,25 @@
 #!/bin/bash
 
 # _3g is as _3f but using 100 blocks instead of 200, as in d->e 200 groups was found
-# to be worde.
+# to be worse.
+# It's maybe a little better than the baseline 2y; and better than 3d [-> I guess recurrence
+# is helpful.]
+#./show_wer.sh 3g
+#%WER 17.05 [ 8387 / 49204, 905 ins, 2386 del, 5096 sub ] exp/chain/tdnn_3g_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 15.67 [ 7712 / 49204, 882 ins, 2250 del, 4580 sub ] exp/chain/tdnn_3g_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 18.7 | 4459 42989 | 83.5 11.1 5.3 2.2 18.7 56.2 | exp/chain/tdnn_3g_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 16.8 | 4459 42989 | 85.1 9.9 5.0 2.0 16.8 53.7 | exp/chain/tdnn_3g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
+#a03:s5c: ./show_wer.sh 2y
+#%WER 16.99 [ 8358 / 49204, 973 ins, 2193 del, 5192 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 15.86 [ 7803 / 49204, 959 ins, 2105 del, 4739 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 18.9 | 4459 42989 | 83.4 11.3 5.3 2.3 18.9 56.3 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.0 | 4459 42989 | 85.1 10.1 4.8 2.1 17.0 53.5 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+#a03:s5c: ./show_wer.sh 3d
+#%WER 17.35 [ 8539 / 49204, 1023 ins, 2155 del, 5361 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_tg/wer_10_0.0
+#%WER 16.09 [ 7919 / 49204, 1012 ins, 2071 del, 4836 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+#%WER 18.9 | 4459 42989 | 83.2 11.2 5.6 2.1 18.9 56.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.0 | 4459 42989 | 85.0 9.8 5.2 2.0 17.0 53.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
 
 # _3f is as _3e, but modifying the splicing setup to add (left) recurrence:
 # added the :3's in   --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3"

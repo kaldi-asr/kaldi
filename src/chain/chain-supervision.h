@@ -58,7 +58,7 @@ struct SupervisionOptions {
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
                    "shift in phone position relative to the alignment");
-    opts->Register("right-tolerance", &left_tolerance, "Right tolerance for "
+    opts->Register("right-tolerance", &right_tolerance, "Right tolerance for "
                    "shift in phone position relative to the alignment");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                    "if the frame-rate for the chain model will be less than the "
