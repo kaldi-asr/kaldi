@@ -344,6 +344,86 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
   return best_objf_change;
 }
 
+void FindBestNSplitsForKey(int32 N,
+                           const BuildTreeStatsType &stats,
+                           const Questions &qo,
+                           EventKeyType key,
+                           vector<vector<EventValueType> > *yes_set_out_vec,
+                           vector<BaseFloat> *improvements_vec) {
+  if (stats.size()<=1) return;  // cannot split if only zero or one instance of stats.
+  if (!PossibleValues(key, stats, NULL)) {
+    return;  // Can't split as key not always defined.
+  }
+  std::vector<Clusterable*> summed_stats;  // indexed by value corresponding to key. owned here.
+  {  // compute summed_stats
+    std::vector<BuildTreeStatsType> split_stats;
+    SplitStatsByKey(stats, key, &split_stats);
+    SumStatsVec(split_stats, &summed_stats);
+  }
+
+  std::vector<EventValueType> yes_set;
+
+  const QuestionsForKey &key_opts = qo.GetQuestionsOf(key);
+  Clusterable *total = SumClusterable(summed_stats);
+  if (total == NULL) return;
+  BaseFloat unsplit_objf = total->Objf();
+
+  const vector<std::vector<EventValueType> >
+               &questions_of_this_key = key_opts.initial_questions;
+
+  vector<vector<EventValueType> > yes_set_to_append;
+  vector<BaseFloat> impro_to_append;
+
+  for (size_t i = 0; i < questions_of_this_key.size(); i++) {
+    const vector<EventValueType> &yes_set = questions_of_this_key[i];
+    vector<int32> assignments(summed_stats.size(), 0);  // 0 is index of "no".
+    vector<Clusterable*> clusters(2);  // no and yes clusters.
+    for (vector<EventValueType>::const_iterator iter = yes_set.begin();
+         iter != yes_set.end(); iter++) {
+      KALDI_ASSERT(*iter>=0);
+      if (*iter < (EventValueType)assignments.size()) assignments[*iter] = 1;
+    }
+    kaldi::AddToClustersOptimized(summed_stats, assignments, *total, &clusters);
+    BaseFloat this_objf = SumClusterableObjf(clusters);
+
+    // turned off because it is not true any more for entropy_clusterable objects
+    if (dynamic_cast<EntropyClusterable*>(summed_stats[0]) != NULL
+        && this_objf < unsplit_objf- 0.001*std::abs(unsplit_objf)) {  // got worse; should never happen.
+      // of course small differences can be caused by roundoff.
+      KALDI_WARN << "Objective function got worse when building tree: "<< this_objf << " < " << unsplit_objf;
+      KALDI_ASSERT(!(this_objf < unsplit_objf - 0.01*(200 + std::abs(unsplit_objf))));  // do assert on more stringent check.
+    }
+
+    BaseFloat this_objf_change = this_objf - unsplit_objf;
+
+    if (yes_set_to_append.size() < N) {
+      yes_set_to_append.push_back(questions_of_this_key[i]);
+      impro_to_append.push_back(this_objf_change);
+    } else {
+      BaseFloat cur_min = impro_to_append[0];
+      int min_index = 0;
+      for (int k = 1; k < impro_to_append.size(); k++) {
+        if (impro_to_append[k] < cur_min) {
+          cur_min = impro_to_append[k];
+          min_index = k;
+        }
+      }
+
+      if (this_objf_change > cur_min) {
+        yes_set_to_append[min_index] = questions_of_this_key[i];
+        impro_to_append[min_index] = this_objf_change;
+      }
+    }
+    DeletePointers(&clusters);
+  }
+
+  yes_set_out_vec->insert(yes_set_out_vec->end(),
+                          yes_set_to_append.begin(), yes_set_to_append.end());
+  improvements_vec->insert(improvements_vec->begin(),
+                           impro_to_append.begin(), impro_to_append.end());
+  DeletePointers(&summed_stats);
+}
+
 
 // returns best delta-objf.
 // If key does not exist, returns 0 and sets yes_set_out to empty.
