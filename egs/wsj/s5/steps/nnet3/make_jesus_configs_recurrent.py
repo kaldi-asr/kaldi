@@ -36,6 +36,9 @@ parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
+parser.add_argument("--use-repeated-affine", type=str,
+                    help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
+                    default="true", choices = ["false", "true"])
 parser.add_argument("--final-layer-normalize-target", type=float,
                     help="RMS target for final layer (set to <1 if final layer learns too fast",
                     default=1.0)
@@ -281,22 +284,40 @@ for l in range(1, num_hidden_layers + 1):
                 (2 if need_input_permute_component else 1),
                 cur_dim), file=f, end='')
 
-        print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-              "output-dim={2} num-repeats={3}'".format((3 if need_input_permute_component else 2),
-                                                       cur_dim, args.jesus_hidden_dim,
-                                                       args.num_jesus_blocks),
-              file=f, end='')
+        if args.use_repeated_affine == "true":
+            print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
+                  "output-dim={2} num-repeats={3}'".format((3 if need_input_permute_component else 2),
+                                                           cur_dim, args.jesus_hidden_dim,
+                                                           args.num_jesus_blocks),
+                  file=f, end='')
+        else:
+            print(" component{0}='type=BlockAffineComponent bias-stddev=0 input-dim={1} "
+                  "output-dim={2} num-blocks={3}'".format((3 if need_input_permute_component else 2),
+                                                          cur_dim, args.jesus_hidden_dim,
+                                                          args.num_jesus_blocks),
+                  file=f, end='')
+
+
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
                 (4 if need_input_permute_component else 3),
                 args.jesus_hidden_dim), file=f, end='')
 
 
-        print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-              "output-dim={2} num-repeats={3}'".format((5 if need_input_permute_component else 4),
-                                                       args.jesus_hidden_dim,
-                                                       this_jesus_output_dim,
-                                                       args.num_jesus_blocks),
-              file=f, end='')
+        if args.use_repeated_affine == "true":
+            print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
+                  "output-dim={2} num-repeats={3}'".format((5 if need_input_permute_component else 4),
+                                                           args.jesus_hidden_dim,
+                                                           this_jesus_output_dim,
+                                                           args.num_jesus_blocks),
+                  file=f, end='')
+        else:
+            print(" component{0}='type=BlockAffineComponent bias-stddev=0 input-dim={1} "
+                  "output-dim={2} num-blocks={3}'".format((5 if need_input_permute_component else 4),
+                                                           args.jesus_hidden_dim,
+                                                           this_jesus_output_dim,
+                                                           args.num_jesus_blocks),
+                  file=f, end='')
+
         print("", file=f) # print newline.
         print('component-node name=jesus{0} component=jesus{0} input={1}'.format(
                 l, cur_input), file=f)
