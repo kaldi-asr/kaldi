@@ -1355,10 +1355,9 @@ void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
   int32 input_dim, output_dim, num_blocks;
   if(!cfl->GetValue("input-dim", &input_dim) ||
      !cfl->GetValue("output-dim", &output_dim) ||
-     !cfl->GetValue("num-blocks", &num_blocks) || cfl->HasUnusedValues()) {
+     !cfl->GetValue("num-blocks", &num_blocks))
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  }
 
   // optional parameters
   BaseFloat learning_rate = learning_rate_;
@@ -1367,6 +1366,10 @@ void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
     bias_stddev = 1.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
+
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
 
   Init(learning_rate, input_dim, output_dim, num_blocks,
        param_stddev, bias_stddev);
