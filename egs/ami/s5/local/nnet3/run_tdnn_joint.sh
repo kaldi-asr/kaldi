@@ -10,7 +10,7 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=0
+stage=9
 dir=
 has_fisher=true
 mic=ihm
@@ -67,15 +67,15 @@ fi
 if [ $stage -le 9 ]; then
   # this does offline decoding that should give the same results as the real
   # online decoding.
-  for lm_suffix in bd_tgpr; do
-    graph_dir=$virtualdir/graph_${lm_suffix}
+  for decode_set in dev eval; do
+    num_jobs=`cat data/$mic/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    decode_dir=${dir}/decode_${decode_set}
+    graph_dir=${virtualdir}/graph_ami_fsh.o3g.kn.pr1-7
     # use already-built graphs.
-    for year in eval92 dev93; do
-(      steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_test_$year \
-         $graph_dir data/test_${year}_hires \
-         $dir/decode_${lm_suffix}_${year} || exit 1; ) &
-    done
+(      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
+          --online-ivector-dir exp/$mic/nnet3/ivectors_${decode_set} \
+         $graph_dir data/$mic/${decode_set}_hires \
+         $decode_dir || exit 1; ) &
     wait
     echo done
   done
