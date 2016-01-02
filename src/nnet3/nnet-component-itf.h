@@ -369,7 +369,7 @@ class UpdatableComponent: public Component {
   /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
   /// Sets the learning rate of gradient descent
-  void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
+  virtual void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
 
   /// Gets the learning rate of gradient descent
   BaseFloat LearningRate() const { return learning_rate_; }
