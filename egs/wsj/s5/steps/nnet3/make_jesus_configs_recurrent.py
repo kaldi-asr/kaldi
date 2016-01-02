@@ -309,6 +309,7 @@ for l in range(1, num_hidden_layers + 1):
                 (4 if need_input_permute_component else 3),
                 args.jesus_hidden_dim), file=f, end='')
 
+        
 
         if args.use_repeated_affine == "true":
             print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
@@ -402,13 +403,16 @@ for l in range(1, num_hidden_layers + 1):
         # clip-gradient node.  [if there are multiple recurrences in the same layer,
         # each one gets its own affine projection.]
 
-        # The reason we set the param-stddev to 0 is out of concern that if we initialize to nonzero,
-        # this will encourage the corresponding inputs at the jesus layer to become small (to remove
-        # this random input), which in turn will make this component learn slowly (due to small
-        # derivatives).
+        # The reason we set the param-stddev to 0 is out of concern that if we
+        # initialize to nonzero, this will encourage the corresponding inputs at
+        # the jesus layer to become small (to remove this random input), which
+        # in turn will make this component learn slowly (due to small
+        # derivatives).  we set the bias-mean to 0.001 so that the ReLUs on the
+        # input of the Jesus layer are in the part of the activation that has a
+        # nonzero derivative- otherwise with this setup it would never learn.
         for delay in recurrence_array[l-1]:
             print('component name=jesus{0}-recurrent-affine-offset{1} type=NaturalGradientAffineComponent '
-                  'input-dim={2} output-dim={3} param-stddev=0 bias-stddev=0'.
+                  'input-dim={2} output-dim={3} param-stddev=0 bias-stddev=0 bias-mean=0.001'.
               format(l, delay,
                      args.jesus_projected_recurrence_output_dim,
                      args.jesus_projected_recurrence_input_dim), file=f)
