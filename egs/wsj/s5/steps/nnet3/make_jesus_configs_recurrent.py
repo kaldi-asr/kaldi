@@ -66,6 +66,9 @@ parser.add_argument("--num-jesus-blocks", type=int,
                     help="number of blocks in Jesus layer.  All configs of the form "
                     "--jesus-*-dim will be rounded up to be a multiple of this.",
                     default=100);
+parser.add_argument("--jesus-stddev-scale", type=float,
+                    help="Scaling factor on parameter stddev of Jesus layer (smaller->jesus layer learns faster)",
+                    default=1.0)
 parser.add_argument("--clipping-threshold", type=float,
                     help="clipping threshold used in ClipGradient components (only relevant if "
                     "recurrence indexes are specified).  If clipping-threshold=0 no clipping is done",
@@ -285,16 +288,20 @@ for l in range(1, num_hidden_layers + 1):
                 cur_dim), file=f, end='')
 
         if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-                  "output-dim={2} num-repeats={3}'".format((3 if need_input_permute_component else 2),
-                                                           cur_dim, args.jesus_hidden_dim,
-                                                           args.num_jesus_blocks),
+            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
+                    (3 if need_input_permute_component else 2),
+                    cur_dim, args.jesus_hidden_dim,
+                    args.num_jesus_blocks,
+                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
                   file=f, end='')
         else:
-            print(" component{0}='type=BlockAffineComponent bias-stddev=0 input-dim={1} "
-                  "output-dim={2} num-blocks={3}'".format((3 if need_input_permute_component else 2),
-                                                          cur_dim, args.jesus_hidden_dim,
-                                                          args.num_jesus_blocks),
+            print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
+                  "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
+                    (3 if need_input_permute_component else 2),
+                    cur_dim, args.jesus_hidden_dim,
+                    args.num_jesus_blocks,
+                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
                   file=f, end='')
 
 
@@ -304,18 +311,22 @@ for l in range(1, num_hidden_layers + 1):
 
 
         if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent bias-stddev=0 input-dim={1} "
-                  "output-dim={2} num-repeats={3}'".format((5 if need_input_permute_component else 4),
-                                                           args.jesus_hidden_dim,
-                                                           this_jesus_output_dim,
-                                                           args.num_jesus_blocks),
+            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
+                    (5 if need_input_permute_component else 4),
+                    args.jesus_hidden_dim,
+                    this_jesus_output_dim,
+                    args.num_jesus_blocks,
+                    args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks)),
                   file=f, end='')
         else:
-            print(" component{0}='type=BlockAffineComponent bias-stddev=0 input-dim={1} "
-                  "output-dim={2} num-blocks={3}'".format((5 if need_input_permute_component else 4),
-                                                           args.jesus_hidden_dim,
-                                                           this_jesus_output_dim,
-                                                           args.num_jesus_blocks),
+            print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
+                  "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
+                    (5 if need_input_permute_component else 4),
+                    args.jesus_hidden_dim,
+                    this_jesus_output_dim,
+                    args.num_jesus_blocks,
+                    args.jesus_stddev_scale / math.sqrt((args.jesus_hidden_dim / args.num_jesus_blocks))),
                   file=f, end='')
 
         print("", file=f) # print newline.
@@ -390,9 +401,14 @@ for l in range(1, num_hidden_layers + 1):
         # for each recurrence delay, create an affine node followed by a
         # clip-gradient node.  [if there are multiple recurrences in the same layer,
         # each one gets its own affine projection.]
+
+        # The reason we set the param-stddev to 0 is out of concern that if we initialize to nonzero,
+        # this will encourage the corresponding inputs at the jesus layer to become small (to remove
+        # this random input), which in turn will make this component learn slowly (due to small
+        # derivatives).
         for delay in recurrence_array[l-1]:
             print('component name=jesus{0}-recurrent-affine-offset{1} type=NaturalGradientAffineComponent '
-                  'input-dim={2} output-dim={3} bias-stddev=0'.
+                  'input-dim={2} output-dim={3} param-stddev=0 bias-stddev=0'.
               format(l, delay,
                      args.jesus_projected_recurrence_output_dim,
                      args.jesus_projected_recurrence_input_dim), file=f)
