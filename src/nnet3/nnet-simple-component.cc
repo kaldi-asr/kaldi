@@ -4749,6 +4749,20 @@ void CompositeComponent::PerturbParams(BaseFloat stddev) {
 }
 
 // virtual
+void CompositeComponent::SetLearningRate(BaseFloat lrate) {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  UpdatableComponent::SetLearningRate(lrate);  // set learning_rate_-- this gets
+                                               // returned from LearningRate().
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetLearningRate(lrate);
+    }
+  }
+}
+
+// virtual
 int32 CompositeComponent::NumParameters() const {
   KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
   int32 ans = 0;
