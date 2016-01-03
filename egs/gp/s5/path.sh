@@ -32,3 +32,5 @@ SHORTEN_BIN=
 SOX_BIN=
 # e.g. $PWD/tools/sox-14.3.2/bin
 
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

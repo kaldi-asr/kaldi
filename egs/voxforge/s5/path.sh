@@ -14,3 +14,5 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)/tools/mitlm-svn/lib
 
 # Needed for "correct" sorting
 export LC_ALL=C
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

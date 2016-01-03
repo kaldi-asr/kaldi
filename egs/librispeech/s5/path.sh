@@ -23,3 +23,5 @@ sequitur_path="$(dirname $sequitur)/lib/$PYTHON/site-packages"
 
 # Directory under which the LM training corpus should be extracted
 LM_CORPUS_ROOT=./lm-corpus
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

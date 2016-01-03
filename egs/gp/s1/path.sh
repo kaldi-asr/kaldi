@@ -35,3 +35,5 @@ export LC_ALL=C
 # Site-specific configs:
 [ `hostname -y` == ecdf ] && { . path_ed.sh; }
 
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+

@@ -16,3 +16,5 @@ srilm_sub_bin=`find "$srilm_bin" -type d`
 for d in $srilm_sub_bin ; do
     export PATH=$d:$PATH
 done
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+
