@@ -31,7 +31,6 @@ int main(int argc, char *argv[]) {
 
     bool binary = true;
     int32 num_qst = 1;
-    string matrix_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -80,7 +79,7 @@ int main(int argc, char *argv[]) {
          ExpandDecisionTree(ctx_dep, stats, qo, num_qst);
 
     int32 N = ctx_dep.ContextWidth(), P = ctx_dep.CentralPosition();
-    vector<pair<int32, int32> > NPs(out.size(), make_pair(N, P));
+    vector<pair<int32, int32> > NPs(out.size(), std::make_pair(N, P));
 
     // pointer owned here
     ContextDependencyMulti ctx_dep_multi(NPs, out, topo);
@@ -90,7 +89,7 @@ int main(int argc, char *argv[]) {
     ctx_dep_multi.GetVirtualTreeAndMapping(&merged_tree, &mappings);
 
     SparseMatrix<BaseFloat> matrix;
-    ConvertExpandedMappingToSparseMatrix(&merged_tree, &matrix);
+    ExpandedMappingToSparseMatrix(mappings, &matrix);
 
     WriteKaldiObject(matrix, matrix_filename, binary);
 
