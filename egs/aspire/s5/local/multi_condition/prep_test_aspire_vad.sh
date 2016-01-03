@@ -22,6 +22,7 @@ sad_fbank_config=conf/fbank.conf
 mfcc_config=conf/mfcc_hires.conf
 fbank_config=conf/fbank.conf
 add_frame_snr=true
+append_to_orig_feats=false
 
 nj=30             # number of parallel jobs for VAD and segmentation
 decode_nj=200     # number of parallel jobs for decoding
@@ -249,7 +250,7 @@ fi
 if [ $stage -le 1 ]; then
   # Compute sub-band SNR
   local/snr/compute_frame_snrs.sh --cmd "$train_cmd" \
-    --use-gpu yes --nj $nj --iter $snr_predictor_iter \
+    --use-gpu no --nj $nj --iter $snr_predictor_iter \
     $snr_predictor \
     data/${data_id}_hires data/${data_id}_fbank \
     $frame_snrs_dir || exit 1
@@ -262,7 +263,7 @@ if [ ! -z "$input_frame_snrs_dir" ] && [ $stage -ge 2 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $nj --add-frame-snr $add_frame_snr \
+  local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $nj --append-to-orig-feats $append_to_orig_feats --add-frame-snr $add_frame_snr \
     data/${data_id}_fbank $frame_snrs_dir exp/make_snr_data_dir/${data_id} snr_feats $frame_snrs_dir/${data_id}_snr || exit 1
 fi
 

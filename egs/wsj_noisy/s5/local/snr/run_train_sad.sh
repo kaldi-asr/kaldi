@@ -39,6 +39,7 @@ sparsity_constants=
 positivity_constraints=
 segments_file=
 seg2utt_file=
+config_dir=
 
 . cmd.sh
 . ./path.sh
@@ -253,7 +254,7 @@ if [ $stage -le 3 ]; then
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup true --use-presoftmax-prior-scale true \
         --skip-final-softmax false --skip-lda true --posterior-targets true \
-        --num-targets 2 --max-param-change $max_param_change \
+        --num-targets 2 --max-param-change $max_param_change --config-dir "$config_dir" \
         --cleanup false${relu_dim:+ --relu-dim $relu_dim}${sigmoid_dim:+ --sigmoid-dim $sigmoid_dim} \
         $datadir "$final_vad_scp" $dir || exit 1;
       ;;
