@@ -1,6 +1,7 @@
 // nnet2/nnet-precondition-online.h
 
 // Copyright 2013-2015   Johns Hopkins University (author: Daniel Povey)
+//                2015   Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -39,7 +40,7 @@ namespace nnet2 {
    by D. Povey, X. Zhang and S. Khudanpur, ICLR Workshop, 2015, where
    it is referred to as online NG-SGD.  Note that the method exported
    from this header is just the core of the algorithm, and some outer-level parts
-   of it are implemented in class AffineComponentPreconditionOnline.
+   of it are implemented in class NaturalGradientAffineComponent.
 
   The rest of this extended comment describes the way we keep updated an estimate
   of the inverse of a scatter matrix, in an online way.  This is the same as the
@@ -506,6 +507,9 @@ class OnlinePreconditioner {
   // value returned depends on num_samples_history_.
   BaseFloat Eta(int32 N) const;
 
+  // called if self_debug_ = true, makes sure the members satisfy certain
+  // properties.
+  void SelfTest() const;
 
   // Configuration values:
 
@@ -535,7 +539,8 @@ class OnlinePreconditioner {
 
   // delta is a relative floor on the unit-matrix scaling factor rho_t in our
   // Fisher estimate, which we set to 1.0e-05: this is relative to the largest
-  // value of D_t.  It's needed to control roundoff error.
+  // value of D_t.  It's needed to control roundoff error.  We apply the same
+  // floor to the eigenvalues in D_t.
   BaseFloat delta_;
 
   // t is a counter that measures how many updates we've done.
@@ -561,10 +566,7 @@ class OnlinePreconditioner {
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
   Mutex update_mutex_;
-
-
 };
-
 
 } // namespace nnet2
 } // namespace kaldi
