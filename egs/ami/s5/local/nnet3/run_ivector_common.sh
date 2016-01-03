@@ -11,10 +11,12 @@ num_threads_ubm=32
 speed_perturb=true
 use_sat_alignments=true
 
-set -e
+#set -e
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+nj=50
 
 if [ "$use_sat_alignments" == "true" ] ; then
   gmm_dir=exp/$mic/tri4a

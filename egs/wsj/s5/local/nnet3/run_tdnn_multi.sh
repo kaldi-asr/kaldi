@@ -10,16 +10,18 @@
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
 
-stage=9
+stage=-100
 train_stage=-100
-dir=exp/nnet3/nnet_tdnn_multi_$4
-multidir=$1
-virtualdir=$2
-num_outputs=$3
+#dir=exp/nnet3/nnet_tdnn_multi_$4
+dir=
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+multidir=$1
+virtualdir=$2
+num_outputs=$3
+train_stage=$4
 echo dir is $dir
 
 if ! cuda-compiled; then
@@ -33,10 +35,10 @@ fi
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_tdnn_multi_output.sh --stage $train_stage \
+  steps/nnet3/train_tdnn_multi.sh --stage $train_stage \
     --cleanup false \
     --num-outputs $num_outputs \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \

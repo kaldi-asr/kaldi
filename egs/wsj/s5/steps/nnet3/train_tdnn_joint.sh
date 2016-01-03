@@ -60,7 +60,7 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 
 randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
-cleanup=true
+cleanup=false
 egs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
@@ -216,7 +216,7 @@ if [ $stage -le -5 ]; then
 
   total_leaves=`echo $target_string | awk -F ',' '{for(i=1;i<=NF;i++)sum+=$i}{print sum}'`
 
-  convert-tree-map-to-matrix $tree_mapping $dir/sparse.mat
+  convert-treemap-to-matrix $tree_mapping $dir/sparse.mat
   echo total leaves is $total_leaves
 
   num_virtual=`head -n 1 $tree_mapping | awk '{print$1}'`

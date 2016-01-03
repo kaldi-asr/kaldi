@@ -60,7 +60,7 @@ splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
 
 randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
-cleanup=true
+cleanup=false
 egs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
@@ -653,12 +653,12 @@ if [ $stage -le $[$num_iters+1] ]; then
     nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs-multi $prior_gpu_opt --apply-exp=true \
       --num-outputs=$num_outputs \
-      "nnet3-am-copy-multi --raw=true $dir/combined.mdl -|" ark:- ark:$dir/egs_tmp
+      "nnet3-am-copy-multi --raw=true $dir/combined.mdl -|" ark:- ark:$dir/egs.JOB.tmp
 #  ''' 2>/dev/null   
 #      \| \
   for i in `seq 0 $[$num_outputs-1]`; do
     $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log$i \
-    matrix-sum-rows ark:$dir/egs_tmp$i ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec$i || exit 1;
+    matrix-sum-rows ark:$dir/egs.JOB.tmp$i ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec$i || exit 1;
 
     sleep 3;  # make sure there is time for $dir/post.$x.*.vec to appear.
 
