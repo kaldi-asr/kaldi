@@ -354,11 +354,9 @@ class AffineComponent: public UpdatableComponent {
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(BaseFloat learning_rate,
-            std::string matrix_filename);
+  void Init(std::string matrix_filename);
 
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
@@ -440,12 +438,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
   const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
-   RepeatedAffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
-                           const CuVectorBase<BaseFloat> &bias_params,
-                           int32 num_repeats,
-                           BaseFloat learning_rate);
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim, int32 num_repeats,
+  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
             BaseFloat param_stddev, BaseFloat bias_stddev);
 
  protected:
@@ -505,8 +498,7 @@ class BlockAffineComponent : public UpdatableComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
   // BlockAffine-specific functions.
-  void Init(BaseFloat learning_rate, int32 input_dim,
-            int32 output_dim, int32 num_blocks,
+  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
             BaseFloat param_stddev, BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
  protected:
@@ -592,14 +584,12 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
             int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_sample);
-  void Init(BaseFloat learning_rate, int32 rank_in,
-            int32 rank_out, int32 update_period,
+  void Init(int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
@@ -1053,9 +1043,8 @@ class PerElementScaleComponent: public UpdatableComponent {
   // Some functions that are specific to this class.
   explicit PerElementScaleComponent(const PerElementScaleComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
-            BaseFloat param_stddev);
-  void Init(BaseFloat learning_rate, std::string vector_filename);
+  void Init(int32 dim, BaseFloat param_mean, BaseFloat param_stddev);
+  void Init(std::string vector_filename);
 
  protected:
   friend class AffineComponent;  // necessary for collapse
@@ -1126,9 +1115,9 @@ class PerElementOffsetComponent: public UpdatableComponent {
   // Some functions that are specific to this class.
   explicit PerElementOffsetComponent(const PerElementOffsetComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+  void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev);
-  void Init(BaseFloat learning_rate, std::string vector_filename);
+  void Init(std::string vector_filename);
 
  protected:
   const PerElementOffsetComponent &operator
@@ -1161,11 +1150,11 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   explicit NaturalGradientPerElementScaleComponent(
       const NaturalGradientPerElementScaleComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+  void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev, int32 rank, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_minibatch);
-  void Init(BaseFloat learning_rate, std::string vector_filename,
+  void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_minibatch);
 
@@ -1331,16 +1320,14 @@ class ConvolutionComponent: public UpdatableComponent {
                  const MatrixBase<BaseFloat> &filter);
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(BaseFloat learning_rate,
-            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 filt_x_dim, int32 filt_y_dim,
             int32 filt_x_step, int32 filt_y_step, int32 num_filters,
             TensorVectorizationType input_vectorization,
             BaseFloat param_stddev, BaseFloat bias_stddev);
   // there is no filt_z_dim parameter as the length of the filter along
   // z-dimension is same as the input
-  void Init(BaseFloat learning_rate,
-            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 filt_x_dim, int32 filt_y_dim,
             int32 filt_x_step, int32 filt_y_step,
             TensorVectorizationType input_vectorization,
@@ -1504,11 +1491,10 @@ class Convolutional1dComponent: public UpdatableComponent {
                  const MatrixBase<BaseFloat> &filter);
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             int32 patch_dim, int32 patch_step, int32 patch_stride,
             BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(BaseFloat learning_rate,
-            int32 patch_dim, int32 patch_step, int32 patch_stride,
+  void Init(int32 patch_dim, int32 patch_step, int32 patch_stride,
             std::string matrix_filename);
 
   // resize the component, setting the parameters to zero, while

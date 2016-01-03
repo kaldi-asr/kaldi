@@ -39,9 +39,12 @@ parser.add_argument("--include-log-softmax", type=str,
 parser.add_argument("--use-repeated-affine", type=str,
                     help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
                     default="true", choices = ["false", "true"])
-parser.add_argument("--final-layer-normalize-target", type=float,
-                    help="RMS target for final layer (set to <1 if final layer learns too fast",
+parser.add_argument("--final-layer-learning-rate-factor", type=float,
+                    help="Learning-rate factor for final affine component",
                     default=1.0)
+parser.add_argument("--recurrent-projection-learning-rate-factor", type=float,
+                    help="Learning-rate factor for recurrent projections",
+                    default=10.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
 parser.add_argument("--jesus-forward-output-dim", type=int,
@@ -369,10 +372,9 @@ for l in range(1, num_hidden_layers + 1):
                 (2 if this_layer_is_recurrent else 1),
                 this_jesus_output_dim), file=f, end='')
         # still within the post-Jesus component, print the NormalizeComponent
-        print(" component{0}='type=NormalizeComponent dim={1} target-rms={2}'".format(
+        print(" component{0}='type=NormalizeComponent dim={1} '".format(
                 (3 if this_layer_is_recurrent else 2),
-                this_jesus_output_dim,
-                (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f, end='')
+                this_jesus_output_dim), file=f, end='')
         print("", file=f) # print newline.
         print('component-node name=post-jesus{0} component=post-jesus{0} input=jesus{0}'.format(l),
               file=f)
@@ -412,10 +414,11 @@ for l in range(1, num_hidden_layers + 1):
         # nonzero derivative- otherwise with this setup it would never learn.
         for delay in recurrence_array[l-1]:
             print('component name=jesus{0}-recurrent-affine-offset{1} type=NaturalGradientAffineComponent '
-                  'input-dim={2} output-dim={3} param-stddev=0 bias-stddev=0 bias-mean=0.001'.
-              format(l, delay,
-                     args.jesus_projected_recurrence_output_dim,
-                     args.jesus_projected_recurrence_input_dim), file=f)
+                  'input-dim={2} output-dim={3} learning-rate-factor={4} param-stddev=0 bias-stddev=0 bias-mean=0.001'.
+                  format(l, delay,
+                         args.jesus_projected_recurrence_output_dim,
+                         args.jesus_projected_recurrence_input_dim,
+                         args.recurrent_projection_learning_rate_factor), file=f)
             print('component-node name=jesus{0}-recurrent-affine-offset{1} component=jesus{0}-recurrent-affine-offset{1} '
                   'input=jesus{0}-projected-output'.format(l, delay), file=f)
             print('component name=jesus{0}-recurrent-affine-offset{1}-clip type=ClipGradientComponent '
@@ -434,8 +437,9 @@ for l in range(1, num_hidden_layers + 1):
     print('component-node name=final-relu component=final-relu input={0}'.format(cur_output),
           file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0.001 bias-stddev=0'.format(
-            args.jesus_forward_input_dim, args.num_targets), file=f)
+          'input-dim={0} output-dim={1} learning-rate-factor={2} param-stddev=0.0 bias-stddev=0'.format(
+            args.jesus_forward_input_dim, args.num_targets,
+            args.final_layer_learning_rate_factor), file=f)
     print('component-node name=final-affine component=final-affine input=final-relu',
           file=f)
     # printing out the next two, and their component-nodes, for l > 1 is not

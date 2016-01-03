@@ -140,11 +140,13 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
-
-void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {
-  learning_rate_ = lr;
-  is_gradient_ = is_gradient;
+void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  cfl->GetValue("learning-rate", &learning_rate_);
+  cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();  
 }
+
 
 std::string UpdatableComponent::Info() const {
   std::stringstream stream;
@@ -153,6 +155,8 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (learning_rate_factor_ != 1.0)
+    stream << ", learning-rate-factor=" << learning_rate_factor_;
   return stream.str();
 }
 

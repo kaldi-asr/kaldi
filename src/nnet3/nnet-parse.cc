@@ -68,19 +68,17 @@ bool ConfigLine::ParseLine(const std::string &line) {
       // in general, config values with spaces in them, even without quoting.
 
       size_t next_next_equals_sign = line.find_first_of("=", next_equals_sign + 1),
-          terminating_space;
-
+          terminating_space = size;
+      
       if (next_next_equals_sign != std::string::npos) {  // found a later equals sign.
         size_t preceding_space = line.find_last_of(" \t", next_next_equals_sign);
         if (preceding_space != std::string::npos &&
             preceding_space > next_equals_sign)
           terminating_space = preceding_space;
-      } else {  // found no later equals sign -> eat up the entire config line.
-        terminating_space = size;
       }
-      while (isspace(line[terminating_space - 1]))
+      while (isspace(line[terminating_space - 1]) && terminating_space > 0)
         terminating_space--;
-
+      
       std::string value(line, next_equals_sign + 1,
                         terminating_space - (next_equals_sign + 1));
       data_.insert(std::make_pair(key, std::make_pair(value, false)));
