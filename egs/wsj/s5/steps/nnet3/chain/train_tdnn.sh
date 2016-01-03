@@ -204,7 +204,6 @@ if [ $stage -le -5 ]; then
   if [ ! -z "$jesus_recurrent_opts" ]; then
     python steps/nnet3/make_jesus_configs_recurrent.py \
       --include-log-softmax=false \
-      --final-layer-normalize-target $final_layer_normalize_target \
       --splice-indexes "$splice_indexes"  \
       --feat-dim $feat_dim \
       --ivector-dim $ivector_dim  \

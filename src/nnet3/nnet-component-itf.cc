@@ -144,7 +144,56 @@ void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   cfl->GetValue("learning-rate", &learning_rate_);
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
   if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
-    KALDI_ERR << "Bad initializer " << cfl->WholeLine();  
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+}
+
+
+void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == opening_tag.str()) {
+    // if the first token is the opening tag, then
+    // ignore it and get the next tag.
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+  } else {
+    KALDI_ERR << "Expected token <LearningRate>, got "
+              << token;
+  }
+}
+
+void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
+                                              bool binary) const {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  WriteToken(os, binary, opening_tag.str());
+  if (learning_rate_factor_ != 1.0) {
+    WriteToken(os, binary, "<LearningRateFactor>");
+    WriteBasicType(os, binary, learning_rate_factor_);
+  }
+  if (is_gradient_) {
+    WriteToken(os, binary, "<IsGradient>");
+    WriteBasicType(os, binary, is_gradient_);
+  }
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
 }
 
 

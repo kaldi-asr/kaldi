@@ -1,8 +1,21 @@
 #!/bin/bash
 
+# _3l is as _3j, but making similar changes to as 3i->3k, which is (1) adding
+# the option --jesus-stddev-scale 0.2 [0.32 was not strong enough], and (2) a
+# script change to give the recurrent affine layers an initial param-stddev of
+# 0.  I also changed the script
+# make_jesus_configs_recurrent.py to give the recurrent affine layers an initial
+# param-stddev of 0 which will discourage those corresponding input weights in
+# the jesus layer from getting small in early iters; and removed the --normalize-target
+# option and replaced it with the --final-layer-learning-rate-factor option;
+# and added a learning-rate factor for
+
+# _3j is as _3i but using BlockAffineComponent instead of
+# RepeatedAffineComponent in Jesus layers. (see --use-repeated-affine false
+# option, which is newly added to the script).
+
 # _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
 # applied, in order to control how fast the final layer's affine component learns.
-# also a code fix (the recurrent connections weren't being used; bug in OptionalDescriptor)
 
 # _3h is as _3g but using a different and hopefully better type of recurrence, using
 # steps/nnet3/make_jesus_configs_recurrent.py to create the configs.  This is more
@@ -149,7 +162,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3i  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3l  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -242,7 +255,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000" \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000 --use-repeated-affine false --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
@@ -257,7 +270,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 850 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \

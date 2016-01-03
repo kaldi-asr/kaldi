@@ -593,18 +593,23 @@ class NaturalGradientAffineComponent: public AffineComponent {
             BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
-
+  // this constructor does not really initialize, use Init() or Read().
+  NaturalGradientAffineComponent();
   virtual void Resize(int32 input_dim, int32 output_dim);
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  NaturalGradientAffineComponent();
+  // copy constructor
+  explicit NaturalGradientAffineComponent(
+      const NaturalGradientAffineComponent &other);
   virtual void ZeroStats();
 
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientAffineComponent);
+  // disallow assignment operator.
+  NaturalGradientAffineComponent &operator= (
+      const NaturalGradientAffineComponent&);
 
   // Configs for preconditioner.  The input side tends to be better conditioned ->
   // smaller rank needed, so make them separately configurable.
@@ -1592,7 +1597,7 @@ class MaxpoolingComponent: public Component {
 };
 
 /**
-   CompositeComponent is a base-class for components that are sequences of other
+   CompositeComponent is components representing a sequence of
    [simple] components.  The config line would be something like the following
    (imagine this is all on one line):
 
@@ -1600,7 +1605,6 @@ class MaxpoolingComponent: public Component {
       component1='type=BlockAffineComponent input-dim=1000 output-dim=10000 num-blocks=100' \
       component2='type=RectifiedLinearComponent dim=10000' \
       component3='type=BlockAffineComponent input-dim=10000 output-dim=1000 num-blocks=100'
-
 
    The reason you might want to use this component, instead of directly using
    the same sequence of components in the config file, is to save GPU memory (at

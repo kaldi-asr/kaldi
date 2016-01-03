@@ -5,7 +5,11 @@
 # was previously learning too slow, I think.  I also changed the script
 # make_jesus_configs_recurrent.py to give the recurrent affine layers an initial
 # param-stddev of 0 which will discourage those corresponding input weights in
-# the jesus layer from getting small in early iters.
+# the jesus layer from getting small in early iters; and removed the --normalize-target
+# option and replaced it with the --final-layer-learning-rate-factor option;
+# and added a learning-rate factor for
+#
+# --normalize-target 0.25, in order
 
 # _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
 # applied, in order to control how fast the final layer's affine component learns.
@@ -163,7 +167,6 @@ initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
 max_param_change=1.0
-final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
@@ -248,7 +251,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.316 " \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.316 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
@@ -263,8 +266,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --final-layer-normalize-target $final_layer_normalize_target \
-    --relu-dim 850 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
     data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;

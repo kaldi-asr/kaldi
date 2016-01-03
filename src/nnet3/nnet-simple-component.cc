@@ -860,10 +860,7 @@ void AffineComponent::Backprop(const std::string &debug_info,
 }
 
 void AffineComponent::Read(std::istream &is, bool binary) {
-  // might not see the "<AffineComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<AffineComponent>", "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
@@ -874,9 +871,7 @@ void AffineComponent::Read(std::istream &is, bool binary) {
 }
 
 void AffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<AffineComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
@@ -1223,10 +1218,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
 }
 
 void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
-  // might not see the "<RepeatedAffineComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<RepeatedAffineComponent>", "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<NumRepeats>");
   ReadBasicType(is, binary, &num_repeats_);
   ExpectToken(is, binary, "<LinearParams>");
@@ -1239,9 +1231,7 @@ void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
 }
 
 void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<RepeatedAffineComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<NumRepeats>");
   WriteBasicType(os, binary, num_repeats_);
   WriteToken(os, binary, "<LinearParams>");
@@ -1500,8 +1490,7 @@ BaseFloat BlockAffineComponent::DotProduct(const UpdatableComponent &other_in) c
 }
 
 void BlockAffineComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<BlockAffineComponent>", "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<NumBlocks>");
   ReadBasicType(is, binary, &num_blocks_);
   ExpectToken(is, binary, "<LinearParams>");
@@ -1514,9 +1503,7 @@ void BlockAffineComponent::Read(std::istream &is, bool binary) {
 }
 
 void BlockAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<BlockAffineComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<NumBlocks>");
   WriteBasicType(os, binary, num_blocks_);
   WriteToken(os, binary, "<LinearParams>");
@@ -1692,9 +1679,7 @@ void PerElementScaleComponent::Backprop(
 }
 
 void PerElementScaleComponent::Read(std::istream &is, bool binary) {
-  // might not see the begin marker part because of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<PerElementScaleComponent>", "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate.
   ExpectToken(is, binary, "<Params>");
   scales_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
@@ -1703,9 +1688,7 @@ void PerElementScaleComponent::Read(std::istream &is, bool binary) {
 }
 
 void PerElementScaleComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<PerElementScaleComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate.
   WriteToken(os, binary, "<Params>");
   scales_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
@@ -1857,9 +1840,7 @@ void PerElementOffsetComponent::Backprop(
 }
 
 void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
-  // might not see the begin marker part because of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<PerElementOffsetComponent>", "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate
   ExpectToken(is, binary, "<Offsets>");
   offsets_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
@@ -1868,9 +1849,7 @@ void PerElementOffsetComponent::Read(std::istream &is, bool binary) {
 }
 
 void PerElementOffsetComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<PerElementOffsetComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<Offsets>");
   offsets_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
@@ -1893,8 +1872,10 @@ void PerElementOffsetComponent::UnVectorize(
 
 
 
-NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0),
-  update_count_(0.0), active_scaling_count_(0.0), max_change_scale_stats_(0.0) { }
+NaturalGradientAffineComponent::NaturalGradientAffineComponent():
+    max_change_per_sample_(0.0),
+    update_count_(0.0), active_scaling_count_(0.0),
+    max_change_scale_stats_(0.0) { }
 
 // virtual
 void NaturalGradientAffineComponent::Resize(
@@ -1912,11 +1893,7 @@ void NaturalGradientAffineComponent::Resize(
 
 
 void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
-  // might not see the "<NaturalGradientAffineComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<NaturalGradientAffineComponent>",
-                       "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // Read the opening tag and learning rate
   ExpectToken(is, binary, "<LinearParams>");
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
@@ -2047,7 +2024,7 @@ void NaturalGradientAffineComponent::Init(
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
-  bias_params_.Scale(bias_stddev);  
+  bias_params_.Scale(bias_stddev);
   bias_params_.Add(bias_mean);
   rank_in_ = rank_in;
   rank_out_ = rank_out;
@@ -2067,10 +2044,9 @@ void NaturalGradientAffineComponent::Init(
   max_change_scale_stats_ = 0.0;
 }
 
-void NaturalGradientAffineComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<NaturalGradientAffineComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+void NaturalGradientAffineComponent::Write(std::ostream &os,
+                                           bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<LinearParams>");
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
@@ -2107,11 +2083,9 @@ std::string NaturalGradientAffineComponent::Info() const {
                 linear_params_size),
       bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
                               bias_params_.Dim());
-  stream << Type() << ", input-dim=" << InputDim()
-         << ", output-dim=" << OutputDim()
+  stream << UpdatableComponent::Info()
          << ", linear-params-stddev=" << linear_stddev
          << ", bias-params-stddev=" << bias_stddev
-         << ", learning-rate=" << LearningRate()
          << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
          << ", num_samples_history=" << num_samples_history_
@@ -2127,24 +2101,24 @@ std::string NaturalGradientAffineComponent::Info() const {
 }
 
 Component* NaturalGradientAffineComponent::Copy() const {
-  NaturalGradientAffineComponent *ans = new NaturalGradientAffineComponent();
-  ans->learning_rate_ = learning_rate_;
-  ans->rank_in_ = rank_in_;
-  ans->rank_out_ = rank_out_;
-  ans->update_period_ = update_period_;
-  ans->num_samples_history_ = num_samples_history_;
-  ans->alpha_ = alpha_;
-  ans->linear_params_ = linear_params_;
-  ans->bias_params_ = bias_params_;
-  ans->preconditioner_in_ = preconditioner_in_;
-  ans->preconditioner_out_ = preconditioner_out_;
-  ans->max_change_per_sample_ = max_change_per_sample_;
-  ans->is_gradient_ = is_gradient_;
-  ans->update_count_ = update_count_;
-  ans->active_scaling_count_ = active_scaling_count_;
-  ans->max_change_scale_stats_ = max_change_scale_stats_;
-  ans->SetNaturalGradientConfigs();
-  return ans;
+  return new NaturalGradientAffineComponent(*this);
+}
+
+NaturalGradientAffineComponent::NaturalGradientAffineComponent(
+    const NaturalGradientAffineComponent &other):
+    AffineComponent(other),
+    rank_in_(other.rank_in_),
+    rank_out_(other.rank_out_),
+    update_period_(other.update_period_),
+    num_samples_history_(other.num_samples_history_),
+    alpha_(other.alpha_),
+    preconditioner_in_(other.preconditioner_in_),
+    preconditioner_out_(other.preconditioner_out_),
+    max_change_per_sample_(other.max_change_per_sample_),
+    update_count_(other.update_count_),
+    active_scaling_count_(other.active_scaling_count_),
+    max_change_scale_stats_(other.max_change_scale_stats_) {
+  SetNaturalGradientConfigs();
 }
 
 void NaturalGradientAffineComponent::Update(
@@ -2693,10 +2667,7 @@ void FixedBiasComponent::Read(std::istream &is, bool binary) {
 
 void NaturalGradientPerElementScaleComponent::Read(
     std::istream &is, bool binary) {
-  // might not see the begin marker part because of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, "<NaturalGradientPerElementScaleComponent>",
-                       "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
+  ReadUpdatableCommon(is, binary);  // Read the opening tag and learning rate
   ExpectToken(is, binary, "<Params>");
   scales_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
@@ -2722,9 +2693,7 @@ void NaturalGradientPerElementScaleComponent::Read(
 
 void NaturalGradientPerElementScaleComponent::Write(std::ostream &os,
                                                     bool binary) const {
-  WriteToken(os, binary, "<NaturalGradientPerElementScaleComponent>");
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<Params>");
   scales_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
@@ -2903,7 +2872,7 @@ ConvolutionComponent::ConvolutionComponent(
   KALDI_ASSERT(filter_params.NumRows() == bias_params.Dim() &&
                bias_params.Dim() != 0);
   KALDI_ASSERT(filter_params.NumCols() == filt_x_dim * filt_y_dim * input_z_dim);
-  SetLearningRate(learning_rate),  
+  SetLearningRate(learning_rate);
   is_gradient_ = false;
 }
 
@@ -3420,35 +3389,29 @@ void ConvolutionComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
     learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
                            // learning rate factor.
-    is_gradient_ = true;    
+    is_gradient_ = true;
   }
   filter_params_.SetZero();
   bias_params_.SetZero();
 }
 
 void ConvolutionComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<ConvolutionComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</ConvolutionComponent>"
-  // might not see the "<ConvolutionComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<InputXDim>");
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate.
+  ExpectToken(is, binary, "<InputXDim>");
   ReadBasicType(is, binary, &input_x_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<InputYDim>");
+  ExpectToken(is, binary, "<InputYDim>");
   ReadBasicType(is, binary, &input_y_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<InputZDim>");
+  ExpectToken(is, binary, "<InputZDim>");
   ReadBasicType(is, binary, &input_z_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<FiltXDim>");
+  ExpectToken(is, binary, "<FiltXDim>");
   ReadBasicType(is, binary, &filt_x_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<FiltYDim>");
+  ExpectToken(is, binary, "<FiltYDim>");
   ReadBasicType(is, binary, &filt_y_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<FiltXStep>");
+  ExpectToken(is, binary, "<FiltXStep>");
   ReadBasicType(is, binary, &filt_x_step_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<FiltYStep>");
+  ExpectToken(is, binary, "<FiltYStep>");
   ReadBasicType(is, binary, &filt_y_step_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<InputVectorization>");
+  ExpectToken(is, binary, "<InputVectorization>");
   int32 input_vectorization;
   ReadBasicType(is, binary, &input_vectorization);
   input_vectorization_ = static_cast<TensorVectorizationType>(input_vectorization);
@@ -3460,20 +3423,15 @@ void ConvolutionComponent::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &tok);
   if (tok == "<IsGradient>") {
     ReadBasicType(is, binary, &is_gradient_);
-    ExpectToken(is, binary, ostr_end.str());
+    ExpectToken(is, binary, "</ConvolutionComponent>");
   } else {
     is_gradient_ = false;
-    KALDI_ASSERT(tok == ostr_end.str());
+    KALDI_ASSERT(tok == "</ConvolutionComponent>");
   }
 }
 
 void ConvolutionComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
-  WriteToken(os, binary, ostr_beg.str());
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // write opening tag and learning rate.
   WriteToken(os, binary, "<InputXDim>");
   WriteBasicType(os, binary, input_x_dim_);
   WriteToken(os, binary, "<InputYDim>");
@@ -3496,7 +3454,7 @@ void ConvolutionComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "</ConvolutionComponent>");
 }
 
 BaseFloat ConvolutionComponent::DotProduct(const UpdatableComponent &other_in) const {
@@ -3954,18 +3912,12 @@ void Convolutional1dComponent::SetZero(bool treat_as_gradient) {
 }
 
 void Convolutional1dComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
-  // might not see the "<Convolutional1dComponent>" part because
-  // of how ReadNew() works.
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<LearningRate>");
-  ReadBasicType(is, binary, &learning_rate_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchDim>");
+  ReadUpdatableCommon(is, binary);  // Read opening tag and learning rate.
+  ExpectToken(is, binary, "<PatchDim>");
   ReadBasicType(is, binary, &patch_dim_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchStep>");
+  ExpectToken(is, binary, "<PatchStep>");
   ReadBasicType(is, binary, &patch_step_);
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<PatchStride>");
+  ExpectToken(is, binary, "<PatchStride>");
   ReadBasicType(is, binary, &patch_stride_);
   ExpectToken(is, binary, "<FilterParams>");
   filter_params_.Read(is, binary);
@@ -3975,20 +3927,15 @@ void Convolutional1dComponent::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &tok);
   if (tok == "<IsGradient>") {
     ReadBasicType(is, binary, &is_gradient_);
-    ExpectToken(is, binary, ostr_end.str());
+    ExpectToken(is, binary, "</Convolutional1dComponent>");
   } else {
     is_gradient_ = false;
-    KALDI_ASSERT(tok == ostr_end.str());
+    KALDI_ASSERT(tok == "</Convolutional1dComponent>");
   }
 }
 
 void Convolutional1dComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<Convolutional1dComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</Convolutional1dComponent>"
-  WriteToken(os, binary, ostr_beg.str());
-  WriteToken(os, binary, "<LearningRate>");
-  WriteBasicType(os, binary, learning_rate_);
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<PatchDim>");
   WriteBasicType(os, binary, patch_dim_);
   WriteToken(os, binary, "<PatchStep>");
@@ -4001,7 +3948,7 @@ void Convolutional1dComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "</Convolutional1dComponent>");
 }
 
 BaseFloat Convolutional1dComponent::DotProduct(const UpdatableComponent &other_in) const {
@@ -4485,13 +4432,43 @@ void CompositeComponent::Init(const std::vector<Component*> &components,
 
 // virtual
 void CompositeComponent::Read(std::istream &is, bool binary) {
-  // we want this Read function to work for derived types.
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<JesusComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</JesusComponent>"
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<MaxRowsProcess>");
+  // Because we didn't previously write out the learning rate,
+  // we need some temporary code.
   int32 max_rows_process;
-  ReadBasicType(is, binary, &max_rows_process);
+  if (false) {
+    ReadUpdatableCommon(is, binary);
+    ExpectToken(is, binary, "<MaxRowsProcess>");
+    ReadBasicType(is, binary, &max_rows_process);
+  } else {  // temporary code.
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token == "<CompositeComponent>") {
+      // if the first token is the opening tag, then
+      // ignore it and get the next tag.
+      ReadToken(is, binary, &token);
+    }
+    if (token == "<LearningRateFactor>") {
+      ReadBasicType(is, binary, &learning_rate_factor_);
+      ReadToken(is, binary, &token);
+    } else {
+      learning_rate_factor_ = 1.0;
+    }
+    if (token == "<IsGradient>") {
+      ReadBasicType(is, binary, &is_gradient_);
+      ReadToken(is, binary, &token);
+    } else {
+      is_gradient_ = false;
+    }
+    if (token == "<LearningRate>") {
+      ReadBasicType(is, binary, &learning_rate_);
+      ReadToken(is, binary, &token);
+    }
+    if (token != "<MaxRowsProcess>") {
+      KALDI_ERR << "Expected token <MaxRowsProcess>, got "
+                << token;
+    }
+    ReadBasicType(is, binary, &max_rows_process);
+  }
   ExpectToken(is, binary, "<NumComponents>");
   int32 num_components;
   ReadBasicType(is, binary, &num_components); // Read dimension.
@@ -4501,7 +4478,7 @@ void CompositeComponent::Read(std::istream &is, bool binary) {
   for (int32 i = 0; i < num_components; i++)
     components[i] = ReadNew(is, binary);
   Init(components, max_rows_process);
-  ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "</CompositeComponent>");
 }
 
 // virtual
@@ -4515,11 +4492,7 @@ void CompositeComponent::ZeroStats() {
 
 // virtual
 void CompositeComponent::Write(std::ostream &os, bool binary) const {
-  // we want this Write function to work for derived types.
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">"; // e.g. "<JesusComponent>"
-  ostr_end << "</" << Type() << ">"; // e.g. "</JesusComponent>"
-  WriteToken(os, binary, ostr_beg.str());
+  WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate.
   WriteToken(os, binary, "<MaxRowsProcess>");
   WriteBasicType(os, binary, max_rows_process_);
   WriteToken(os, binary, "<NumComponents>");
@@ -4527,7 +4500,7 @@ void CompositeComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, num_components);
   for (int32 i = 0; i < num_components; i++)
     components_[i]->Write(os, binary);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "</CompositeComponent>");
 }
 
 

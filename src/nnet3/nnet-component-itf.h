@@ -346,7 +346,7 @@ class UpdatableComponent: public Component {
  public:
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
-      learning_rate_factor_(other.learning_rate_factor_),      
+      learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_) { }
 
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
@@ -356,7 +356,7 @@ class UpdatableComponent: public Component {
 
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
                         is_gradient_(false) { }
-  
+
   virtual ~UpdatableComponent() { }
 
   /// \brief Computes dot-product between parameters of two instances of a
@@ -396,8 +396,17 @@ class UpdatableComponent: public Component {
   // to be called from child classes, extracts any learning rate information
   // from the config line and sets them appropriately.
   void InitLearningRatesFromConfig(ConfigLine *cfl);
-  
-  BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)  
+
+  // To be used in child-class Read() functions, this function reads the opening
+  // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
+  void ReadUpdatableCommon(std::istream &is, bool binary);
+
+  // To be used in child-class Write() functions, writes the opening
+  // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
+  // learning rate;
+  void WriteUpdatableCommon(std::ostream &is, bool binary) const;
+
+  BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
   BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
                                    ///< can be set to another < value so that
                                    ///when < you call SetLearningRate(), that
@@ -406,7 +415,7 @@ class UpdatableComponent: public Component {
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
-  
+
  private:
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };
