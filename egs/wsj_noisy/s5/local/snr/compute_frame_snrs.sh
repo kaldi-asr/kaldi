@@ -31,6 +31,8 @@ corrupted_data_dir=$2
 corrupted_fbank_dir=$3
 dir=$4
 
+mkdir -p $dir
+
 [ ! -f $snr_predictor_nnet_dir/target_type ] && echo "$snr_predictor_nnet_dir/target_type could not be found" && exit 1
 prediction_type=`cat $snr_predictor_nnet_dir/target_type`
 echo $prediction_type > $dir/prediction_type
