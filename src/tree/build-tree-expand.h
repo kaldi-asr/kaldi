@@ -1,19 +1,17 @@
-// tree/build-tree-virtual.h
+// tree/build-tree-expand.h
 
 // Hainan Xu
 
 #ifndef KALDI_TREE_BUILD_TREE_EXPAND_H_
 #define KALDI_TREE_BUILD_TREE_EXPAND_H_
 
-#include "tree/build-tree-utils.h"
 #include "tree/context-dep.h"
 #include "util/stl-utils.h"
-#include <queue>
 
 using std::vector;
-using std::set;
-using std::map;
-using std::priority_queue;
+// using std::set;
+// using std::map;
+// using std::priority_queue;
 using std::string;
 
 namespace kaldi {

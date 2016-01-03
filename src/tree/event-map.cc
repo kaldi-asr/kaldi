@@ -94,6 +94,11 @@ bool ConstantEventMap::IsSameTree (const EventMap* other) const {
   return true;
 }
 
+void ConstantEventMap::ExpandTree(const std::vector<key_yesset> &questions, int* next) {
+  // should never be called here
+  KALDI_ASSERT(false);
+}
+
 EventMap* TableEventMap::Prune() const {
   std::vector<EventMap*> table;
   table.reserve(table_.size());
@@ -181,6 +186,11 @@ TableEventMap* TableEventMap::Read(std::istream &is, bool binary) {
 
 bool TableEventMap::IsSameTree (const EventMap* other) const {
   return false;  // TableEventMap will NOT be used in virtual tree!
+}
+
+void TableEventMap::ExpandTree(const std::vector<key_yesset> &questions, int* next) {
+  // should never be called here
+  KALDI_ASSERT(false);
 }
 
 EventMap* SplitEventMap::Prune() const {
@@ -288,6 +298,35 @@ bool SplitEventMap::IsSameTree (const EventMap* other) const {
   return true;
 }
 
+void SplitEventMap::ExpandTree(const std::vector<key_yesset> &questions,
+                               int* next) {
+  std::vector<EventMap*> children;
+  this->GetChildren(&children);
+
+  // we know the size is 2
+  for (size_t i = 0; i < children.size(); i++) {
+    if (dynamic_cast<SplitEventMap*>(children[i]) != NULL) {
+      children[i]->ExpandTree(questions, next);
+    }
+    else {
+      ConstantEventMap* c = dynamic_cast<ConstantEventMap*>(children[i]);
+      KALDI_ASSERT(c != NULL);
+      EventAnswerType leaf_id;
+      c->Map(EventType(), &leaf_id);
+
+      ConstantEventMap* d = new ConstantEventMap((*next)++);
+
+      SplitEventMap* to_add = new SplitEventMap(questions[leaf_id].key,
+                                                questions[leaf_id].yes_set,
+                                                c, d);
+      if (i == 0) {
+        this->yes_ = to_add;
+      } else {
+        this->no_ = to_add;
+      }
+    }
+  }
+}
 
 void WriteEventType(std::ostream &os, bool binary, const EventType &evec) {
   WriteToken(os, binary, "EV");

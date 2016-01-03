@@ -63,6 +63,11 @@ inline std::pair<EventKeyType, EventValueType> MakeEventPair (EventKeyType k, Ev
   return std::pair<EventKeyType, EventValueType>(k, v);
 }
 
+struct key_yesset {
+  EventKeyType key;
+  std::vector<EventValueType> yes_set;
+};
+
 // This function returns true iff the set a and b have the same elements, 
 // (they could have different orders)
 bool SameSet(const ConstIntegerSet<EventValueType>& a,
@@ -130,7 +135,8 @@ class EventMap {
   // along with the virtual tree, should be the same
   // This function will NOT be called for TableEventMap therefore
   // for TableEventMap we always return false
-  virtual bool IsSameTree (const EventMap* other) const = 0; 
+  virtual bool IsSameTree(const EventMap* other) const = 0; 
+  virtual void ExpandTree(const std::vector<key_yesset> &questions, int* next) = 0;
   
   EventMap *Copy() const { std::vector<EventMap*> new_leaves; return Copy(new_leaves); }
 
@@ -220,7 +226,8 @@ class ConstantEventMap: public EventMap {
   virtual void Write(std::ostream &os, bool binary) const;
   static ConstantEventMap *Read(std::istream &is, bool binary);
 
-  virtual bool IsSameTree (const EventMap* other) const;
+  virtual bool IsSameTree(const EventMap* other) const;
+  virtual void ExpandTree(const std::vector<key_yesset> &questions, int* next);
 
   virtual void ApplyOffsetToCentralPhone(int32 offset) {
     KALDI_ASSERT(offset > 0);
@@ -286,7 +293,8 @@ class TableEventMap: public EventMap {
   virtual ~TableEventMap() {
     DeletePointers(&table_);
   }
-  virtual bool IsSameTree (const EventMap* other) const;
+  virtual bool IsSameTree(const EventMap* other) const;
+  virtual void ExpandTree(const std::vector<key_yesset> &questions, int* next);
 
   virtual void ApplyOffsetToCentralPhone(int32 offset) {
     KALDI_ASSERT(offset > 0);
@@ -364,7 +372,8 @@ class SplitEventMap: public EventMap {  // A decision tree [non-leaf] node.
     KALDI_ASSERT(yes_ != NULL && no_ != NULL);
   }
 
-  virtual bool IsSameTree (const EventMap* other) const;
+  virtual bool IsSameTree(const EventMap* other) const;
+  virtual void ExpandTree(const std::vector<key_yesset> &questions, int* next);
 
   virtual void ApplyOffsetToCentralPhone(int32 offset) {
     KALDI_ASSERT(offset > 0);

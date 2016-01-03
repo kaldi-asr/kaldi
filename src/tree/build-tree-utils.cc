@@ -344,7 +344,7 @@ BaseFloat ComputeInitialSplit(const std::vector<Clusterable*> &summed_stats,
   return best_objf_change;
 }
 
-void FindBestNSplitsForKey(int32 N,
+void FindNBestSplitsForKey(int32 N,
                            const BuildTreeStatsType &stats,
                            const Questions &qo,
                            EventKeyType key,

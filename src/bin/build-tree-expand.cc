@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
 
     bool binary = true;
     int32 num_qst = 1;
+    string matrix_filename;
 
     ParseOptions po(usage);
     po.Register("binary", &binary, "Write output in binary mode");
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
         topo_filename = po.GetArg(2),
         questions_filename = po.GetArg(3),
         stats_filename = po.GetArg(4),
-        tree_out_prefix = po.GetArg(5);
+        matrix_filename = po.GetArg(5);
 
     HmmTopology topo;
     ReadKaldiObject(topo_filename, &topo);
@@ -77,6 +78,21 @@ int main(int argc, char *argv[]) {
     ReadKaldiObject(tree_in, &ctx_dep);
     vector<EventMap*> out = 
          ExpandDecisionTree(ctx_dep, stats, qo, num_qst);
+
+    int32 N = ctx_dep.ContextWidth(), P = ctx_dep.CentralPosition();
+    vector<pair<int32, int32> > NPs(out.size(), make_pair(N, P));
+
+    // pointer owned here
+    ContextDependencyMulti ctx_dep_multi(NPs, out, topo);
+    
+    unordered_map<int32, vector<int32> > mappings;
+    EventMap* merged_tree;
+    ctx_dep_multi.GetVirtualTreeAndMapping(&merged_tree, &mappings);
+
+    SparseMatrix<BaseFloat> matrix;
+    ConvertExpandedMappingToSparseMatrix(&merged_tree, &matrix);
+
+    WriteKaldiObject(matrix, matrix_filename, binary);
 
     return 0;
   } catch(const std::exception &e) {
