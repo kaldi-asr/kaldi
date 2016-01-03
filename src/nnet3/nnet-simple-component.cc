@@ -1162,7 +1162,58 @@ void PerElementOffsetComponent::UnVectorize(
   offsets_.CopyFromVec(params);
 }
 
+const BaseFloat LogComponent::kLogFloor = 1.0e-10;
 
+void LogComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                             const CuMatrixBase<BaseFloat> &in, 
+                             CuMatrixBase<BaseFloat> *out) const { 
+  // Apllies log function (x >= epsi ? log(x) : log(epsi)).
+  out->CopyFromMat(in);
+  out->ApplyFloor(kLogFloor);
+  out->ApplyLog();
+}
+
+void LogComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    CuMatrix<BaseFloat> divided_in_value(in_value), floored_in_value(in_value);
+    divided_in_value.Set(1.0);
+    floored_in_value.CopyFromMat(in_value);
+    floored_in_value.ApplyFloor(kLogFloor); // (x > epsi ? x : epsi) 
+
+    divided_in_value.DivElements(floored_in_value); // (x > epsi ? 1/x : 1/epsi) 
+    in_deriv->CopyFromMat(in_value);
+    in_deriv->Add(-1.0 * kLogFloor); // (x - epsi)
+    in_deriv->ApplyHeaviside(); // (x > epsi ? 1 : 0)
+    in_deriv->MulElements(divided_in_value); // (dy/dx: x  > epsi ? 1/x : 0)
+    in_deriv->MulElements(out_deriv);   // dF/dx = dF/dy * dy/dx
+  }
+}
+
+void ExpComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                  const CuMatrixBase<BaseFloat> &in, 
+                                  CuMatrixBase<BaseFloat> *out) const { 
+  // Applied exp function
+  out->CopyFromMat(in);
+  out->ApplyExp();
+}
+
+void ExpComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &,//in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &,//out_deriv,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    in_deriv->CopyFromMat(out_value);
+  }
+}
 
 NaturalGradientAffineComponent::NaturalGradientAffineComponent(): max_change_per_sample_(0.0),
   update_count_(0.0), active_scaling_count_(0.0), max_change_scale_stats_(0.0) { }
@@ -1565,10 +1616,10 @@ void NaturalGradientPositiveAffineComponent::Read(std::istream &is, bool binary)
     ReadBasicType(is, binary, &active_scaling_count_);
     ExpectToken(is, binary, "<MaxChangeScaleStats>");
     ReadBasicType(is, binary, &max_change_scale_stats_);
-    ExpectToken(is, binary, ostr_beg.str());
+    ExpectToken(is, binary, ostr_end.str());
   } else {
-    if (token != ostr_beg.str() && token != ostr_end.str())
-      KALDI_ERR << "Expected " << ostr_beg.str() << " or " 
+    if (token != ostr_end.str())
+      KALDI_ERR << "Expected " 
                 << ostr_end.str() << ", got " << token;
   }
   SetNaturalGradientConfigs();
@@ -1703,7 +1754,23 @@ std::string NaturalGradientPositiveAffineComponent::Info() const {
 }
 
 Component* NaturalGradientPositiveAffineComponent::Copy() const {
-  NaturalGradientPositiveAffineComponent *ans = dynamic_cast<NaturalGradientPositiveAffineComponent*>(NaturalGradientAffineComponent::Copy());
+  NaturalGradientPositiveAffineComponent *ans = new NaturalGradientPositiveAffineComponent();
+  ans->learning_rate_ = learning_rate_;
+  ans->rank_in_ = rank_in_;
+  ans->rank_out_ = rank_out_;
+  ans->update_period_ = update_period_;
+  ans->num_samples_history_ = num_samples_history_;
+  ans->alpha_ = alpha_;
+  ans->linear_params_ = linear_params_;
+  ans->bias_params_ = bias_params_;
+  ans->preconditioner_in_ = preconditioner_in_;
+  ans->preconditioner_out_ = preconditioner_out_;
+  ans->max_change_per_sample_ = max_change_per_sample_;
+  ans->is_gradient_ = is_gradient_;
+  ans->update_count_ = update_count_;
+  ans->active_scaling_count_ = active_scaling_count_;
+  ans->max_change_scale_stats_ = max_change_scale_stats_;
+  ans->SetNaturalGradientConfigs();
   ans->ensure_positive_linear_component_ = ensure_positive_linear_component_;
   ans->sparsity_constant_ = sparsity_constant_;
   return ans;
@@ -1755,6 +1822,7 @@ void NaturalGradientPositiveAffineComponent::Scale(BaseFloat scale) {
 void NaturalGradientPositiveAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
   const NaturalGradientPositiveAffineComponent *other =
       dynamic_cast<const NaturalGradientPositiveAffineComponent*>(&other_in);
+  KALDI_ASSERT(other);
   if (ensure_positive_linear_component_ && !other->PositiveLinearComponentEnsured()) {
     KALDI_ERR << "Trying to add a positive linear component with a non-positive one"; 
   }
@@ -1768,41 +1836,132 @@ void NaturalGradientPositiveAffineComponent::SetPositive(NaturalGradientPositive
   }
 }
 
+/*
 void NaturalGradientLogExpAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-                                const CuMatrixBase<BaseFloat> &in,
-                                 CuMatrixBase<BaseFloat> *out) const {
+                                                     const CuMatrixBase<BaseFloat> &in,
+                                                     CuMatrixBase<BaseFloat> *out) const {
+
+  CuVector<BaseFloat> in_max(in.NumRows());
+  in_max.ComputeMaxPerRow(in);
+
+  CuMatrix<BaseFloat> in_temp(in.NumRows(), in.NumCols() + 1);
+  CuSubMatrix<BaseFloat> in_linear(in_temp, 0, in.NumRows(), 0, in.NumCols());
+  in_linear.CopyFromMat(in); 
+  in_linear.AddVecToCols(-1.0, in_max);
+
+  CuMatrix<BaseFloat> params(linear_params_.NumRows(), linear_params_.NumCols() + 1);
+  params.Range(0, linear_params_.NumRows(), 0, linear_params_.NumCols()).CopyFromMat(linear_params_);
+  params.CopyColFromVec(linear_params_.NumCols(), bias_params_);
 
   // Think of bias_params_ as being stored in log-domain
   // No need for asserts as they'll happen within the matrix operations.
   out->CopyRowsFromVec(bias_params_); // copies bias_params_ to each row
   // of *out.
   
-  out->AddMatMat(1.0, in, kNoTrans, linear_params_, kTrans, 1.0);//i NaturalGradientPositiveAffineComponent::kFloor);
+  out->LogExpAddMatMat(1.0, in, kNoTrans, kLogUnit, linear_params_, kTrans, kNoLogUnit, 1.0,  NaturalGradientPositiveAffineComponent::kFloor);
 }
 
 void NaturalGradientLogExpAffineComponent::Backprop(
                                const std::string &debug_info,
                                const ComponentPrecomputedIndexes *indexes,
                                const CuMatrixBase<BaseFloat> &in_value,
-                               const CuMatrixBase<BaseFloat> &, // out_value
+                               const CuMatrixBase<BaseFloat> &out_value,
                                const CuMatrixBase<BaseFloat> &out_deriv,
                                Component *to_update_in,
                                CuMatrixBase<BaseFloat> *in_deriv) const {
   NaturalGradientLogExpAffineComponent *to_update = 
     dynamic_cast<NaturalGradientLogExpAffineComponent*>(to_update_in);
 
-  // Propagate the derivative back to the input.
-  // add with coefficient 1.0 since property kBackpropAdds is true.
-  // If we wanted to add with coefficient 0.0 we'd need to zero the
-  // in_deriv, in case of infinities.
-  if (in_deriv)
-    in_deriv->AddMatMat(1.0, out_deriv, kNoTrans, linear_params_, kNoTrans,
-                        1.0);
+  CuVector<BaseFloat> in_max;
+  in_max.ComputeRowMax(in_value);
 
-  if (to_update != NULL) {
-    to_update->Update(debug_info, in_value, out_deriv, linear_params_);
+  CuMatrix<BaseFloat> in(in_value);
+  in.AddVecToCols(-1.0, in_max, 0.0);
+  in.ApplyExp();
+
+  CuMatrix<BaseFloat> out(out_value);
+  out.AddVecToCols(-1.0, in_max, 0.0);
+
+  out.ApplyExp();
+  out.MulElements(1.0, out_deriv);
+
+  if (in_deriv) {
+    CuMatrix<BaseFloat> this_in_deriv(in_deriv->NumRows(), in_deriv->NumCols());
+    this_in_deriv.AddMatMat(-1.0, out, kNoTrans, linear_params_, kNoTrans, 0.0);
+    this_in_deriv.MulElements(in);
+    in_deriv->AddMat(-1.0, this_in_deriv, kNoTrans);
+  }
+
+  if (to_update) {
+    to_update->Update(debug_info, in, out, linear_params_);
   }
 }
+
+BaseFloat NaturalGradientLogExpAffineComponent::Update(
+    const std::string &debug_info,
+    const CuMatrixBase<BaseFloat> &in,
+    const CuMatrixBase<BaseFloat> &out,
+    const CuMatrixBase<BaseFloat> &linear_params) {
+
+  linear_params_.AddMatMat(1.0, in, kTrans, out, kNoTrans);
+  
+  CuMatrix<BaseFloat> in_value_temp;
+
+  in_value_temp.Resize(in_value.NumRows(),
+                       in_value.NumCols() + 1, kUndefined);
+  in_value_temp.Range(0, in_value.NumRows(),
+                      0, in_value.NumCols()).CopyFromMat(in_value);
+
+  // Add the 1.0 at the end of each row "in_value_temp"
+  in_value_temp.Range(0, in_value.NumRows(),
+                      in_value.NumCols(), 1).Set(1.0);
+
+  CuMatrix<BaseFloat> out_deriv_temp(out_deriv);
+
+  CuMatrix<BaseFloat> row_products(2,
+                                   in_value.NumRows());
+  CuSubVector<BaseFloat> in_row_products(row_products, 0),
+      out_row_products(row_products, 1);
+
+  // These "scale" values get will get multiplied into the learning rate (faster
+  // than having the matrices scaled inside the preconditioning code).
+  BaseFloat in_scale, out_scale;
+
+  preconditioner_in_.PreconditionDirections(&in_value_temp, &in_row_products,
+                                            &in_scale);
+  preconditioner_out_.PreconditionDirections(&out_deriv_temp, &out_row_products,
+                                             &out_scale);
+
+  // "scale" is a scaling factor coming from the PreconditionDirections calls
+  // (it's faster to have them output a scaling factor than to have them scale
+  // their outputs).
+  BaseFloat scale = in_scale * out_scale;
+
+  CuSubMatrix<BaseFloat> in_value_precon_part(in_value_temp,
+                                              0, in_value_temp.NumRows(),
+                                              0, in_value_temp.NumCols() - 1);
+  // this "precon_ones" is what happens to the vector of 1's representing
+  // offsets, after multiplication by the preconditioner.
+  CuVector<BaseFloat> precon_ones(in_value_temp.NumRows());
+
+  precon_ones.CopyColFromMat(in_value_temp, in_value_temp.NumCols() - 1);
+
+  BaseFloat local_lrate = scale * learning_rate_;
+  update_count_ += 1.0;
+  bias_params_.AddMatVec(local_lrate, out_deriv_temp, kTrans,
+                         precon_ones, 1.0);
+  linear_params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
+                           in_value_precon_part, kNoTrans, 1.0);
+  return local_lrate;
+
+  BaseFloat local_lrate = NaturalGradientAffineComponent::Update(debug_info, in_value, out_deriv);
+  CuMatrix<BaseFloat> sign_linear_params(linear_params);
+  sign_linear_params.ApplySignum();
+  if (sparsity_constant_ > 0.0) 
+    linear_params_.AddMat(-sparsity_constant_ / in_value.NumRows() * local_lrate, sign_linear_params);
+  return local_lrate;
+}
+*/
 
 std::string FixedAffineComponent::Info() const {
   std::stringstream stream;

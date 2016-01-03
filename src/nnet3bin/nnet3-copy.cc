@@ -71,6 +71,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     BaseFloat learning_rate = -1;
     BaseFloat sparsity_constant = 0;
+    BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -80,6 +81,8 @@ int main(int argc, char *argv[]) {
     po.Register("sparsity-constant", &sparsity_constant,
                 "If supplied, set the sparsity constant for regularization "
                 "of the components that support have a positive sparsity-constant");
+    po.Register("scale", &scale, "The parameter matrices are scaled"
+                " by the specified value.");
 
     po.Read(argc, argv);
     
@@ -96,6 +99,9 @@ int main(int argc, char *argv[]) {
     
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
+    
+    if (scale != 1.0)
+      ScaleNnet(scale, &nnet);
 
     if (sparsity_constant > 0.0) 
       SetSparsityConstant(sparsity_constant, &nnet);
