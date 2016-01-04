@@ -1,33 +1,28 @@
 #!/bin/bash
 
-# _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
-# applied, in order to control how fast the final layer's affine component learns.
-# also a code fix (the recurrent connections weren't being used; bug in OptionalDescriptor)
-
-# Here is the original decoding, with frame-per-chunk=50
-#./show_wer.sh 3i
-#%WER 18.00 [ 8856 / 49204, 1025 ins, 2376 del, 5455 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
-#%WER 16.52 [ 8129 / 49204, 1084 ins, 1995 del, 5050 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
-#%WER 19.8 | 4459 42989 | 82.6 11.9 5.5 2.4 19.8 57.7 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
-#%WER 17.9 | 4459 42989 | 84.1 10.5 5.5 2.0 17.9 55.3 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
-
-# and a newer decoding with frames-per-chunk=100.
-# ./show_wer.sh 3i
-#%WER 17.86 [ 8787 / 49204, 1015 ins, 2366 del, 5406 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
-#%WER 16.52 [ 8130 / 49204, 1092 ins, 1969 del, 5069 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
-#%WER 19.6 | 4459 42989 | 82.5 11.4 6.0 2.2 19.6 57.5 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
-#%WER 17.8 | 4459 42989 | 84.1 10.4 5.5 2.0 17.8 55.1 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
-
-# after initial decoding wasn't great, trying increasing frames-per-chunk from
-# 50 to 100.
-
-# _3h is as _3g but using a different and hopefully better type of recurrence, using
-# steps/nnet3/make_jesus_configs_recurrent.py to create the configs.  This is more
-# similar to LSTMs.
-# We're re-using the egs from 2y, which isn't 100% ideal as we'd like some context.
+# _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support
+# recurrence, with improvements to the learning of the jesus layers.
 
 # _3g is as _3f but using 100 blocks instead of 200, as in d->e 200 groups was found
-# to be worde.
+# to be worse.
+# It's maybe a little better than the baseline 2y; and better than 3d [-> I guess recurrence
+# is helpful.]
+#./show_wer.sh 3g
+#%WER 17.05 [ 8387 / 49204, 905 ins, 2386 del, 5096 sub ] exp/chain/tdnn_3g_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 15.67 [ 7712 / 49204, 882 ins, 2250 del, 4580 sub ] exp/chain/tdnn_3g_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 18.7 | 4459 42989 | 83.5 11.1 5.3 2.2 18.7 56.2 | exp/chain/tdnn_3g_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 16.8 | 4459 42989 | 85.1 9.9 5.0 2.0 16.8 53.7 | exp/chain/tdnn_3g_sp/decode_eval2000_sw1_fsh_fg/score_10_0.5/eval2000_hires.ctm.filt.sys
+#a03:s5c: ./show_wer.sh 2y
+#%WER 16.99 [ 8358 / 49204, 973 ins, 2193 del, 5192 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 15.86 [ 7803 / 49204, 959 ins, 2105 del, 4739 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 18.9 | 4459 42989 | 83.4 11.3 5.3 2.3 18.9 56.3 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.0 | 4459 42989 | 85.1 10.1 4.8 2.1 17.0 53.5 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+#a03:s5c: ./show_wer.sh 3d
+#%WER 17.35 [ 8539 / 49204, 1023 ins, 2155 del, 5361 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_tg/wer_10_0.0
+#%WER 16.09 [ 7919 / 49204, 1012 ins, 2071 del, 4836 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+#%WER 18.9 | 4459 42989 | 83.2 11.2 5.6 2.1 18.9 56.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.0 | 4459 42989 | 85.0 9.8 5.2 2.0 17.0 53.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
 
 # _3f is as _3e, but modifying the splicing setup to add (left) recurrence:
 # added the :3's in   --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3"
@@ -166,7 +161,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3i  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3n  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -259,8 +254,8 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000" \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3" \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
@@ -294,7 +289,6 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-         --frames-per-chunk 100 \
          --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \

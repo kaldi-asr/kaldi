@@ -1,25 +1,26 @@
 #!/bin/bash
 
+# [note: this uses BlockAffineComponent not RepeatedAffineComponent]
+# _3m is as _3l, but changing --jesus-stddev-scale from 0.2 to 0.1, as the Jesus layers
+# were learning too slowly in 3l (this will make them learn approximately 4x faster).
+# [terminated, likelihoods were not promising].
+
+# _3l is as _3j, but making similar changes to as 3i->3k, which is (1) adding
+# the option --jesus-stddev-scale 0.2 [0.32 was not strong enough], and (2) a
+# script change to give the recurrent affine layers an initial param-stddev of
+# 0.  I also changed the script
+# make_jesus_configs_recurrent.py to give the recurrent affine layers an initial
+# param-stddev of 0 which will discourage those corresponding input weights in
+# the jesus layer from getting small in early iters; and removed the --normalize-target
+# option and replaced it with the --final-layer-learning-rate-factor option;
+# and added a learning-rate factor for
+
+# _3j is as _3i but using BlockAffineComponent instead of
+# RepeatedAffineComponent in Jesus layers. (see --use-repeated-affine false
+# option, which is newly added to the script).
+
 # _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
 # applied, in order to control how fast the final layer's affine component learns.
-# also a code fix (the recurrent connections weren't being used; bug in OptionalDescriptor)
-
-# Here is the original decoding, with frame-per-chunk=50
-#./show_wer.sh 3i
-#%WER 18.00 [ 8856 / 49204, 1025 ins, 2376 del, 5455 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
-#%WER 16.52 [ 8129 / 49204, 1084 ins, 1995 del, 5050 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
-#%WER 19.8 | 4459 42989 | 82.6 11.9 5.5 2.4 19.8 57.7 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
-#%WER 17.9 | 4459 42989 | 84.1 10.5 5.5 2.0 17.9 55.3 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
-
-# and a newer decoding with frames-per-chunk=100.
-# ./show_wer.sh 3i
-#%WER 17.86 [ 8787 / 49204, 1015 ins, 2366 del, 5406 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
-#%WER 16.52 [ 8130 / 49204, 1092 ins, 1969 del, 5069 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
-#%WER 19.6 | 4459 42989 | 82.5 11.4 6.0 2.2 19.6 57.5 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
-#%WER 17.8 | 4459 42989 | 84.1 10.4 5.5 2.0 17.8 55.1 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
-
-# after initial decoding wasn't great, trying increasing frames-per-chunk from
-# 50 to 100.
 
 # _3h is as _3g but using a different and hopefully better type of recurrence, using
 # steps/nnet3/make_jesus_configs_recurrent.py to create the configs.  This is more
@@ -166,7 +167,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3i  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3m  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -259,7 +260,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000" \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1500 --jesus-direct-recurrence-dim 1000 --jesus-projected-recurrence-output-dim 600 --jesus-projected-recurrence-input-dim 300 --jesus-hidden-dim 15000 --use-repeated-affine false --jesus-stddev-scale 0.1 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
@@ -274,7 +275,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --final-layer-normalize-target $final_layer_normalize_target \
     --relu-dim 850 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
@@ -294,7 +294,6 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-         --frames-per-chunk 100 \
          --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
