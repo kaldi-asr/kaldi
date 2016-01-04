@@ -9,6 +9,7 @@
 bin_dir=         # binary dir of nnet-score-sent , 
                  # should end with / at the end
 
+only_mse=true
 nj=1
 cmd=run.pl
 # End configuration section.
@@ -104,10 +105,18 @@ fi
 
 nnet=$nndir/final.nnet
 # Run neural net MSE computation
+if [ $only_mse == "true" ]; then
+$cmd JOB=1:$nj $logdir/compute_mse.JOB.log \
+  ${bin_dir}nnet-score-sent --use-gpu=no --objective-function=mse \
+    --feature-transform=$feature_transform $nnet "$feats" "$labels" ark:- \| \
+    select-feats 0 ark:- ark,scp:$msedir/mse_$name.JOB.ark,$msedir/mse_$name.JOB.scp || exit 1
+
+else
 $cmd JOB=1:$nj $logdir/compute_mse.JOB.log \
   ${bin_dir}nnet-score-sent --use-gpu=no --objective-function=mse \
     --feature-transform=$feature_transform $nnet "$feats" "$labels" \
-    ark,scp:$msedir/mse_$name.JOB.ark,$msedir/mse_$name.JOB.scp
+    ark,scp:$msedir/mse_$name.JOB.ark,$msedir/mse_$name.JOB.scp || exit 1;
+fi
 
 N0=$(cat $srcdata/feats.scp | wc -l) 
 N1=$(cat $msedir/mse_$name.*.scp | wc -l)
