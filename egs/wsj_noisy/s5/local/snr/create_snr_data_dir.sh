@@ -40,7 +40,7 @@ featdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } pr
 mkdir -p $dir $featdir $tmpdir/$dataid
 
 for n in `seq $nj`; do
-  utils/create_data_link.pl $featdir/appended_snr_feats.$n.ark
+  utils/create_data_link.pl $featdir/appended_snr_feats_$dataid.$n.ark
 done
 
 if [ $stage -le 1 ]; then
@@ -55,7 +55,7 @@ if [ $stage -le 1 ]; then
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_snr_feats.JOB.log \
       paste-feats scp:$sdata/JOB/feats.scp scp:$snr_dir/nnet_pred_snrs.scp ark:- \| \
       $append_opts copy-feats --compress=$compress ark:- \
-      ark,scp:$featdir/appended_snr_feats.JOB.ark,$featdir/appended_snr_feats.JOB.scp || exit 1
+      ark,scp:$featdir/appended_snr_feats_$dataid.JOB.ark,$featdir/appended_snr_feats_$dataid.JOB.scp || exit 1
   else
     if $add_frame_snr; then
       append_opts="paste-feats scp:- scp:$snr_dir/frame_snrs.scp ark:- |"
@@ -64,7 +64,7 @@ if [ $stage -le 1 ]; then
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_snr_feats.JOB.log \
       utils/split_scp.pl -j $nj \$[JOB-1] $snr_dir/nnet_pred_snrs.scp \| \
       $append_opts copy-feats --compress=$compress ark:- \
-      ark,scp:$featdir/appended_snr_feats.JOB.ark,$featdir/appended_snr_feats.JOB.scp || exit 1
+      ark,scp:$featdir/appended_snr_feats_$dataid.JOB.ark,$featdir/appended_snr_feats_$dataid.JOB.scp || exit 1
   fi
 
 fi
@@ -73,6 +73,6 @@ utils/copy_data_dir.sh $data $dir
 rm -f $dir/cmvn.scp
 
 for n in `seq $nj`; do
-  cat $featdir/appended_snr_feats.$n.scp
+  cat $featdir/appended_snr_feats_$dataid.$n.scp
 done > $dir/feats.scp
 

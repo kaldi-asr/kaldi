@@ -269,7 +269,7 @@ fi
 
 if [ $stage -le 3 ]; then
   local/snr/compute_sad.sh \
-    --nj $nj --use-gpu yes "${compute_sad_opts[@]}" \
+    --nj $nj --use-gpu no "${compute_sad_opts[@]}" \
     --snr-data-dir $frame_snrs_dir/${data_id}_snr \
     $sad_model_dir $frame_snrs_dir ${vad_dir} || exit 1
 fi
