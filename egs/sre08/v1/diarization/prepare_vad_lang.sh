@@ -47,6 +47,10 @@
 # derived files, that go in lang/.
 
 # Begin configuration section.
+nonsil_self_loop_probability=0.9
+nonsil_transition_probability=0.1
+sil_self_loop_probability=0.9
+sil_transition_probability=0.1
 num_sil_states=5
 num_nonsil_states=3
 # end configuration sections
@@ -165,7 +169,12 @@ utils/sym2int.pl -f 3- $dir/phones.txt <$dir/phones/roots.txt \
 
 silphonelist=`cat $dir/phones/silence.csl`
 nonsilphonelist=`cat $dir/phones/nonsilence.csl`
-diarization/gen_vad_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonelist >$dir/topo
+diarization/gen_vad_topo.pl \
+  --nonsil-self-loop-probability $nonsil_self_loop_probability \
+  --nonsil-transition-probability $nonsil_transition_probability \
+  --sil-self-loop-probability $sil_self_loop_probability \
+  --sil-transition-probability $sil_transition_probability \
+  $num_nonsil_states $num_sil_states $nonsilphonelist $silphonelist >$dir/topo
 
 rm -f $dir/L_disambig.fst 2>/dev/null
 ln -s L.fst $dir/L_disambig.fst

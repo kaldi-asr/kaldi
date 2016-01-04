@@ -25,6 +25,10 @@ overlap_length=100        # Overlapping frames when segments are split.
 # Viterbi options
 min_silence_duration=30   # minimum number of frames for silence
 min_speech_duration=30    # minimum number of frames for speech
+nonsil_self_loop_probability=0.9
+nonsil_transition_probability=0.1
+sil_self_loop_probability=0.9
+sil_transition_probability=0.1
 speech_to_sil_ratio=1     # the prior on speech vs silence
 
 # Decoding options
@@ -103,7 +107,12 @@ EOF
       echo -e "1\n2\n1 2" > $dir/local/dict/extra_questions.txt
 
       mkdir -p $dir/lang
-      diarization/prepare_vad_lang.sh --num-sil-states $min_silence_duration \
+      diarization/prepare_vad_lang.sh \
+        --nonsil-self-loop-probability $nonsil_self_loop_probability \
+        --nonsil-transition-probability $nonsil_transition_probability \
+        --sil-self-loop-probability $sil_self_loop_probability \
+        --sil-transition-probability $sil_transition_probability \
+        --num-sil-states $min_silence_duration \
         --num-nonsil-states $min_speech_duration \
         $dir/local/dict $dir/local/lang $dir/lang || exit 1
     fi

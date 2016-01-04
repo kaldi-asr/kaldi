@@ -5,8 +5,20 @@
 # Generate a topology file.  This allows control of the number of states in the
 # non-silence HMMs, and in the silence HMMs.
 
+use Getopt::Long;
+
+$nonsil_self_loop_p = 0.9;
+$nonsil_transition_p = 0.1;
+$sil_self_loop_p = 0.5;
+$sil_transition_p = 0.5;
+
+GetOptions('nonsil-self-loop-probability:f' => \$nonsil_self_loop_p,
+           'nonsil-transition-probability:f' => \$nonsil_transition_p,
+           'sil-self-loop-probability:f' => \$sil_self_loop_p,
+           'sil-transition-probability:f' => \$sil_transition_p);
+
 if(@ARGV != 4) {
-  print STDERR "Usage: sid/gen_vad_topo.pl <speech-duration> <silence-duration> <colon-separated-nonsilence-phones> <colon-separated-silence-phones>\n";
+  print STDERR "Usage: sid/gen_vad_topo.pl [options] <speech-duration> <silence-duration> <colon-separated-nonsilence-phones> <colon-separated-silence-phones>\n";
   print STDERR "e.g.:  sid/gen_vad_topo.pl 75 30 2 1\n";
   exit (1);
 }
@@ -31,7 +43,7 @@ for ($state = 0; $state < $num_nonsil_states - 1; $state++) {
   print "<State> $state <PdfClass> 0 <Transition> $statep1 1.0 </State>\n";
 }
 $statep1 = $state+1;
-print "<State> $state <PdfClass> 0 <Transition> $state 0.9 <Transition> $statep1 0.1 </State>\n";
+print "<State> $state <PdfClass> 0 <Transition> $state $nonsil_self_loop_p <Transition> $statep1 $nonsil_transition_p </State>\n";
 print "<State> $num_nonsil_states </State>\n"; # non-emitting final state.
 print "</TopologyEntry>\n";
 
@@ -45,7 +57,7 @@ for ($state = 0; $state < $num_sil_states - 1; $state++) {
   print "<State> $state <PdfClass> 0 <Transition> $statep1 1.0 </State>\n";
 }
 $statep1 = $state+1;
-print "<State> $state <PdfClass> 0 <Transition> $state 0.5 <Transition> $statep1 0.5 </State>\n";
+print "<State> $state <PdfClass> 0 <Transition> $state $sil_self_loop_p <Transition> $statep1 $sil_transition_p </State>\n";
 print "<State> $num_sil_states </State>\n"; # non-emitting final state.
 print "</TopologyEntry>\n";
 print "</Topology>\n";
