@@ -49,16 +49,16 @@ if [ $stage -le 1 ]; then
     sdata=$data/split$nj
 
     if $add_frame_snr; then
-      append_opts="append-feats ark:- scp:$snr_dir/frame_snrs.scp ark:- |"
+      append_opts="paste-feats ark:- scp:$snr_dir/frame_snrs.scp ark:- |"
     fi
 
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_snr_feats.JOB.log \
-      append-feats scp:$sdata/JOB/feats.scp scp:$snr_dir/nnet_pred_snrs.scp ark:- \| \
+      paste-feats scp:$sdata/JOB/feats.scp scp:$snr_dir/nnet_pred_snrs.scp ark:- \| \
       $append_opts copy-feats --compress=$compress ark:- \
       ark,scp:$featdir/appended_snr_feats.JOB.ark,$featdir/appended_snr_feats.JOB.scp || exit 1
   else
     if $add_frame_snr; then
-      append_opts="append-feats scp:- scp:$snr_dir/frame_snrs.scp ark:- |"
+      append_opts="paste-feats scp:- scp:$snr_dir/frame_snrs.scp ark:- |"
     fi
 
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_snr_feats.JOB.log \

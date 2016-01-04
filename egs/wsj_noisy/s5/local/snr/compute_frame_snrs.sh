@@ -34,7 +34,7 @@ dir=$4
 mkdir -p $dir
 
 [ ! -f $snr_predictor_nnet_dir/target_type ] && echo "$snr_predictor_nnet_dir/target_type could not be found" && exit 1
-prediction_type=`cat $snr_predictor_nnet_dir/target_type`
+prediction_type=`cat $snr_predictor_nnet_dir/target_type` || exit 1
 echo $prediction_type > $dir/prediction_type
 
 if [ $prediction_type == "IrmExp" ]; then
