@@ -341,6 +341,7 @@ void GeneralMatrix::CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
         Matrix<BaseFloat> mat(cmat_);
         if (trans == kNoTrans) {
           cu_mat->CopyFromMat(mat);
+          break;
         } else {
           CuMatrix<BaseFloat> temp_cu;
           temp_cu.Swap(&mat);

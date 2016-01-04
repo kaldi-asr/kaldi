@@ -6,3 +6,5 @@ export LC_ALL=C
 BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
 
 export PATH=$PATH:$BEAMFORMIT
+export PYTHONPATH=$KALDI_ROOT/egs/wsj/s5/utils/numpy_io:$PYTHONPATH
+
