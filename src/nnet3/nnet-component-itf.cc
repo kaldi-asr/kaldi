@@ -104,8 +104,13 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new CompositeComponent();
   } else if (component_type == "RepeatedAffineComponent") {
     ans = new RepeatedAffineComponent();
+  } else if (component_type == "NaturalGradientRepeatedAffineComponent") {
+    ans = new NaturalGradientRepeatedAffineComponent();
   } else if (component_type == "BlockAffineComponent") {
     ans = new BlockAffineComponent();
+  }
+  if (ans != NULL) {
+    KALDI_ASSERT(component_type == ans->Type());
   }
   return ans;
 }

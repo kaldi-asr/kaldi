@@ -291,7 +291,7 @@ for l in range(1, num_hidden_layers + 1):
                 cur_dim), file=f, end='')
 
         if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+            print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
                   "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
                     (3 if need_input_permute_component else 2),
                     cur_dim, args.jesus_hidden_dim,
@@ -315,7 +315,7 @@ for l in range(1, num_hidden_layers + 1):
         
 
         if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+            print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
                   "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
                     (5 if need_input_permute_component else 4),
                     args.jesus_hidden_dim,

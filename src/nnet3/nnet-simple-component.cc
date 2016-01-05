@@ -1038,6 +1038,7 @@ void RepeatedAffineComponent::Init(int32 input_dim, int32 output_dim, int32 num_
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
+  SetNaturalGradientConfigs();
 }
 
 
@@ -1141,83 +1142,85 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
     DeletePointers(&out_deriv_batch);
   }
 
-  if (to_update != NULL) {
-    // Next update the model (must do this 2nd so the derivatives we propagate
-    // are accurate, in case this == to_update_in.)
-    int32 block_rows = linear_params_.NumRows();
-    int32 block_cols = linear_params_.NumCols();
-	std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
-        out_deriv_batch, linear_params_deriv_batch;
-    CuMatrix<BaseFloat> linear_params_deriv_repeated(
-        block_rows * num_repeats_, block_cols);
+  // Next update the model (must do this 2nd so the derivatives we propagate are
+  // accurate, in case this == to_update_in.)
+  if (to_update != NULL)
+    to_update->Update(in_value, out_deriv);
+}
 
-    for (int i = 0; i < num_repeats_; i++) {
-      in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
-	                           i * block_cols, block_cols)));
-      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
-	                            i * block_rows, block_rows)));
-      linear_params_deriv_batch.push_back(
-          new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
-              i * block_rows, block_rows)));
-    }
-    AddMatMatBatched<BaseFloat>(
-        to_update->learning_rate_,
-        linear_params_deriv_batch,
-        out_deriv_batch, kTrans,
-        in_value_batch, kNoTrans, 0.0);
+void RepeatedAffineComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
+                                     const CuMatrixBase<BaseFloat> &out_deriv) {
+  int32 block_rows = linear_params_.NumRows();
+  int32 block_cols = linear_params_.NumCols();
+  std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
+      out_deriv_batch, linear_params_deriv_batch;
+  CuMatrix<BaseFloat> linear_params_deriv_repeated(
+      block_rows * num_repeats_, block_cols);
 
-    { // sum up the repeated blocks of pieces of derivative (from
-      // linear_params_deriv_repeated) into linear_params_.  We do this without
-      // the use of loops by means of a little fakery, viewing
-      // linear_params_deriv_repeated as a matrix with a larger stride than it
-      // really has to sum up its rows.  This may generate some spurious
-      // valgrind/memcheck warnings due to accessing the memory in between rows
-      // of a matrix that has been allocated using cudaMallocPitch.
-      KALDI_ASSERT(SameDimAndStride(linear_params_, to_update->linear_params_));
-      // view linear_params_deriv_repeated as a matrix where each row
-      // corresponds to one repeat.
-
-      // usage of linear_params_deriv_repeated.Stride() instead of
-      // linear_params_.Stride() is important here. CUDA does not guarantee
-      // that two matrices of the same number of columns
-      // (linear_params_deriv_repeated and linear_params_) have the same stride.
-      // i.e., we cannot reliably do:
-      // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
-      int32 size_as_vector =
-          (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
-          linear_params_.NumCols(),
-          stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
-      CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
-          linear_params_deriv_repeated.Data(), num_repeats_,
-          size_as_vector, stride_as_matrix);
-      // add all remaining rows to the first row, of
-      // linear_params_deriv_repeated_as_mat
-      if (num_repeats_ > 1)
-        linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
-            1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
-                                                              num_repeats_-1));
-      to_update->linear_params_.AddMat(1.0,
-                                       linear_params_deriv_repeated.RowRange(
-                                           0, linear_params_.NumRows()));
-    }
-
-    { // deal with the derivative w.r.t. the bias.
-      CuVector<BaseFloat> repeated_bias_deriv(
-          num_repeats_ * bias_params_.Dim());
-      repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
-      CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
-                                            num_repeats_, bias_params_.Dim(), // num rows, num cols
-                                            bias_params_.Dim()); // stride
-      to_update->bias_params_.AddRowSumMat(to_update->learning_rate_,
-                                           bias_deriv_mat);
-    }
-    DeletePointers(&in_value_batch);
-    DeletePointers(&out_deriv_batch);
-    DeletePointers(&linear_params_deriv_batch);
+  for (int i = 0; i < num_repeats_; i++) {
+    in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
+        i * block_cols, block_cols)));
+    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+        i * block_rows, block_rows)));
+    linear_params_deriv_batch.push_back(
+        new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
+            i * block_rows, block_rows)));
   }
+  AddMatMatBatched<BaseFloat>(learning_rate_,
+                              linear_params_deriv_batch,
+                              out_deriv_batch, kTrans,
+                              in_value_batch, kNoTrans, 0.0);
+
+  { // sum up the repeated blocks of pieces of derivative (from
+    // linear_params_deriv_repeated) into linear_params_.  We do this without
+    // the use of loops by means of a little fakery, viewing
+    // linear_params_deriv_repeated as a matrix with a larger stride than it
+    // really has to sum up its rows.  This may generate some spurious
+    // valgrind/memcheck warnings due to accessing the memory in between rows
+    // of a matrix that has been allocated using cudaMallocPitch.
+    // view linear_params_deriv_repeated as a matrix where each row
+    // corresponds to one repeat.
+
+    // usage of linear_params_deriv_repeated.Stride() instead of
+    // linear_params_.Stride() is important here. CUDA does not guarantee
+    // that two matrices of the same number of columns
+    // (linear_params_deriv_repeated and linear_params_) have the same stride.
+    // i.e., we cannot reliably do:
+    // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
+    int32 size_as_vector =
+        (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
+        linear_params_.NumCols(),
+        stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
+    CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
+        linear_params_deriv_repeated.Data(), num_repeats_,
+        size_as_vector, stride_as_matrix);
+    // add all remaining rows to the first row, of
+    // linear_params_deriv_repeated_as_mat
+    if (num_repeats_ > 1)
+      linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
+          1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
+                                                            num_repeats_ - 1));
+    linear_params_.AddMat(1.0, linear_params_deriv_repeated.RowRange(
+        0, linear_params_.NumRows()));
+  }
+
+  { // deal with the derivative w.r.t. the bias.
+    CuVector<BaseFloat> repeated_bias_deriv(
+        num_repeats_ * bias_params_.Dim());
+    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
+    CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
+                                          num_repeats_, bias_params_.Dim(), // num rows, num cols
+                                          bias_params_.Dim()); // stride
+    bias_params_.AddRowSumMat(learning_rate_,
+                              bias_deriv_mat);
+  }
+  DeletePointers(&in_value_batch);
+  DeletePointers(&out_deriv_batch);
+  DeletePointers(&linear_params_deriv_batch);
 }
 
 void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
+  // This Write function also works for NaturalGradientRepeatedAffineComponent.
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<NumRepeats>");
   ReadBasicType(is, binary, &num_repeats_);
@@ -1227,10 +1230,12 @@ void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, "</RepeatedAffineComponent>");
+  ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
+  SetNaturalGradientConfigs();
 }
 
 void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
+  // This Write function also works for NaturalGradientRepeatedAffineComponent.
   WriteUpdatableCommon(os, binary);  // Write opening tag and learning rate
   WriteToken(os, binary, "<NumRepeats>");
   WriteBasicType(os, binary, num_repeats_);
@@ -1240,7 +1245,8 @@ void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
-  WriteToken(os, binary, "</RepeatedAffineComponent>");
+  // write closing token.
+  WriteToken(os, binary, std::string("</") + Type() + std::string(">"));
 }
 
 int32 RepeatedAffineComponent::NumParameters() const {
@@ -1261,6 +1267,131 @@ void RepeatedAffineComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   linear_params_.CopyRowsFromVec(params.Range(0, linear_params_.NumCols() * linear_params_.NumRows()));
   bias_params_.CopyFromVec(params.Range(linear_params_.NumCols() * linear_params_.NumRows(),
                                         bias_params_.Dim()));
+}
+
+void NaturalGradientRepeatedAffineComponent::SetNaturalGradientConfigs() {
+  int32 rank_in = 40;
+  int32 input_dim = linear_params_.NumCols();
+  if (rank_in > input_dim / 2)
+    rank_in = input_dim / 2;
+  if (rank_in < 1)
+    rank_in = 1;
+  preconditioner_in_.SetRank(rank_in);
+  preconditioner_in_.SetUpdatePeriod(4);
+}
+
+NaturalGradientRepeatedAffineComponent::NaturalGradientRepeatedAffineComponent(
+    const NaturalGradientRepeatedAffineComponent &other):
+    RepeatedAffineComponent(other),
+    preconditioner_in_(other.preconditioner_in_) { }
+
+// virtual
+Component* NaturalGradientRepeatedAffineComponent::Copy() const {
+  return new NaturalGradientRepeatedAffineComponent(*this);
+}
+
+void NaturalGradientRepeatedAffineComponent::Update(
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  int32 block_rows = linear_params_.NumRows();
+  int32 block_cols = linear_params_.NumCols();
+  std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
+      out_deriv_batch, linear_params_deriv_batch;
+
+  // params_deriv_repeated as as linear_params_deriv_repeated below,
+  // but with an extra column which will come in useful when dealing with
+  // the biases.
+  CuMatrix<BaseFloat> params_deriv_repeated(
+      block_rows * num_repeats_, block_cols + 1);
+  CuSubMatrix<BaseFloat> linear_params_deriv_repeated(
+      params_deriv_repeated, 0, params_deriv_repeated.NumRows(),
+      0, block_cols);
+  // params_deriv will becomes the derivative w.r.t the parameters,
+  // with the derivative w.r.t. the bias as the last column.
+  CuSubMatrix<BaseFloat> params_deriv(params_deriv_repeated, 0, block_rows,
+                                      0, block_cols + 1);
+  
+  for (int i = 0; i < num_repeats_; i++) {
+    in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
+        i * block_cols, block_cols)));
+    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+        i * block_rows, block_rows)));
+    linear_params_deriv_batch.push_back(
+        new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
+            i * block_rows, block_rows)));
+  }
+  AddMatMatBatched<BaseFloat>(1.0,
+                              linear_params_deriv_batch,
+                              out_deriv_batch, kTrans,
+                              in_value_batch, kNoTrans, 0.0);
+
+  { // sum up the repeated blocks of pieces of derivative (from
+    // linear_params_deriv_repeated) into the first block
+    // of linear_params_deriv_repeated.  We do this without
+    // the use of loops by means of a little fakery, viewing
+    // linear_params_deriv_repeated as a matrix with a larger stride than it
+    // really has to sum up its rows.  This may generate some spurious
+    // valgrind/memcheck warnings due to accessing the memory in between rows
+    // of a matrix that has been allocated using cudaMallocPitch.
+    // view linear_params_deriv_repeated as a matrix where each row
+    // corresponds to one repeat.
+
+    // usage of linear_params_deriv_repeated.Stride() instead of
+    // linear_params_.Stride() is important here. CUDA does not guarantee
+    // that two matrices of the same number of columns
+    // (linear_params_deriv_repeated and linear_params_) have the same stride.
+    // i.e., we cannot reliably do:
+    // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
+    int32 size_as_vector =
+        (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
+        linear_params_.NumCols(),
+        stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
+    CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
+        linear_params_deriv_repeated.Data(), num_repeats_,
+        size_as_vector, stride_as_matrix);
+    // add all remaining rows to the first row of
+    // linear_params_deriv_repeated_as_mat [i.e. add all but the 1st block to the 1st block]
+    if (num_repeats_ > 1)
+      linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
+          1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
+                                                            num_repeats_ - 1));
+  }
+
+  CuVector<BaseFloat> repeated_bias_deriv(
+      num_repeats_ * bias_params_.Dim());
+  { // deal with the derivative w.r.t. the bias.
+    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);    
+    CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
+                                          num_repeats_, bias_params_.Dim(), // num rows, num cols
+                                          bias_params_.Dim()); // stride
+    // Add all but the first row of bias_deriv_mat, to the first row.
+    if (num_repeats_ > 1)
+      bias_deriv_mat.Row(0).AddRowSumMat(
+          1.0, bias_deriv_mat.RowRange(1, num_repeats_ - 1));
+
+    // copy the summed bias-derivative to the last column of the matrix
+    // 'params_deriv'.
+    params_deriv.CopyColFromVec(bias_deriv_mat.Row(0), block_cols);
+  }
+
+  BaseFloat scale = 1.0;
+  if (!is_gradient_) {
+    // Only apply the preconditioning/natural-gradient if we're not computing
+    // the exact gradient.
+    preconditioner_in_.PreconditionDirections(&params_deriv, NULL, &scale);
+  }
+  linear_params_.AddMat(learning_rate_ * scale,
+                        params_deriv.ColRange(0, block_cols));
+  // there is no function to add a column of a matrix to a vector, so use a
+  // temporary vector [re-using some memory we already allocated.]
+  CuSubVector<BaseFloat> bias_direction(repeated_bias_deriv.Data(),
+                                        bias_params_.Dim());
+  bias_direction.CopyColFromMat(params_deriv, block_cols);
+  bias_params_.AddVec(learning_rate_ * scale, bias_direction);
+  
+  DeletePointers(&in_value_batch);
+  DeletePointers(&out_deriv_batch);
+  DeletePointers(&linear_params_deriv_batch);
 }
 
 BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
