@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -94,6 +95,8 @@ class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
   virtual ~ComponentPrecomputedIndexes() { }
+  virtual void Read(std::istream &istream, bool binary);
+  virtual void Write(std::ostream &ostream, bool binary) const;
 };
 
 

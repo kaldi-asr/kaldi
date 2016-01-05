@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -426,6 +427,34 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
   computation_cache_.insert(std::make_pair(request,
                             std::make_pair(computation, ait)));
+}
+
+void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
+  size_t computation_cache_size;
+  ExpectToken(is, binary, "<ComputationCacheSize>");
+  ReadBasicType(is, binary, &computation_cache_size);
+  KALDI_ASSERT(computation_cache_size >= 0);
+  computation_cache_.clear();
+  access_queue_.clear();
+  ExpectToken(is, binary, "<ComputationCache>");
+  for (size_t c = 0; c < computation_cache_size; c++) {
+    ComputationRequest *request = new ComputationRequest();
+    request->Read(is, binary);
+    NnetComputation *computation = new NnetComputation();
+    computation->Read(is, binary);
+    UpdateCache(request, computation);
+  }
+}
+
+void CachingOptimizingCompiler::WriteCache(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ComputationCacheSize>");
+  WriteBasicType(os, binary, computation_cache_.size());
+  WriteToken(os, binary, "<ComputationCache>");
+  for (CacheType::const_iterator iter = computation_cache_.begin();
+           iter != computation_cache_.end(); ++iter) {
+    iter->first->Write(os, binary);
+    iter->second.first->Write(os, binary);
+  }
 }
 
 void CachingOptimizingCompiler::UpdateAccessQueue(CacheType::iterator &cit) {
