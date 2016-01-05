@@ -221,9 +221,8 @@ void OnlineNaturalGradient::ReorthogonalizeXt1(
       KALDI_ERR << "Cholesky out of expected range, "
                 << "reorthogonalizing with Gram-Schmidt";
   } catch (...) {
-    // It would be very strange to reach this point, but we try to handle it
-    // gracefully anyway.  We do a Gram-Schmidt orthogonalization, which is
-    // a bit less efficient but more robust.
+    // We do a Gram-Schmidt orthogonalization, which is a bit less efficient but
+    // more robust than the method using Cholesky.
     KALDI_WARN << "Cholesky or Invert() failed while re-orthogonalizing R_t. "
                << "Re-orthogonalizing on CPU.";
     Matrix<BaseFloat> cpu_W_t1(*W_t1);
@@ -275,8 +274,26 @@ void OnlineNaturalGradient::SelfTest() const {
       O(i, j) *= i_factor * j_factor;
     }
   }
-  if (!O.IsUnit(1.0e-04) || O(0, 0) != O(0, 0))
-    KALDI_WARN << "Matrix W is not orthogonal, or is NaN: O = " << O;
+  if (!O.IsUnit(1.0e-04) || O(0, 0) != O(0, 0)) {
+    BaseFloat worst_error = 0.0;
+    int32 worst_i = 0, worst_j = 0;
+    for (int32 i = 0; i < R; i++) {
+      for (int32 j = 0; j < R; j++) {
+        BaseFloat elem = O(i, j);
+        BaseFloat error = fabs(elem - (i == j ? 1.0 : 0.0));
+        if (error > worst_error || error != error) {
+          worst_error = error;
+          worst_i = i;
+          worst_j = j;
+        }
+      }
+    }
+    if (worst_error > 1.0e-02 || worst_error != worst_error) {
+      KALDI_WARN << "Failed to verify W_t (worst error: O[" << worst_i << ','
+                 << worst_j << "] = " << O(worst_i, worst_j)
+                 << ", d_t = " << d_t_;
+    }
+  }
 }
 
 void OnlineNaturalGradient::PreconditionDirectionsInternal(
@@ -522,38 +539,6 @@ void OnlineNaturalGradient::ComputeWt1(int32 N,
   // W_{t+1} = A_t B_t
   CuMatrix<BaseFloat> A_t_gpu(A_t);
   W_t1->AddMatMat(1.0, A_t_gpu, kNoTrans, *J_t, kNoTrans, 0.0);
-
-  if (self_debug_) {
-    CuMatrix<BaseFloat> W_t1_prod(R, R);
-    W_t1_prod.SymAddMat2(1.0, *W_t1, kNoTrans, 0.0);
-    W_t1_prod.CopyLowerToUpper();
-    Matrix<BaseFloat> W_t1_prod_cpu(W_t1_prod);
-    // Verifying that W_{t+1} W_{t+1}^T == E_t, via
-    // E_{-0.5} W_{t+1} W_{t+1}^T E_{-0.5} == I.
-    for (int32 i = 0; i < R; i++)
-      for (int32 j = 0; j < R; j++)
-        W_t1_prod_cpu(i, j) *= inv_sqrt_e_t1(i) * inv_sqrt_e_t1(j);
-
-    BaseFloat worst_error = 0.0;
-    int32 worst_i = 0, worst_j = 0;
-    for (int32 i = 0; i < R; i++) {
-      for (int32 j = 0; j < R; j++) {
-        BaseFloat elem = W_t1_prod_cpu(i, j);
-        BaseFloat error = fabs(elem - (i == j ? 1.0 : 0.0));
-        if (error > worst_error || error != error) {
-          worst_error = error;
-          worst_i = i;
-          worst_j = j;
-        }
-      }
-    }
-    if (worst_error > 1.0e-02 || worst_error != worst_error) {
-      KALDI_WARN << "Failed to verify W_{t+1}, the following should be unit: "
-                 << W_t1_prod_cpu << " (worst error: W_{t+1}[" << worst_i << ','
-                 << worst_j << "] = " << W_t1_prod_cpu(worst_i, worst_j)
-                 << ", d_t = " << d_t_;
-    }
-  }
 }
 
 void OnlineNaturalGradient::ComputeZt(int32 N,

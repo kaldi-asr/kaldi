@@ -565,10 +565,7 @@ class OnlineNaturalGradient {
   // This mutex is used to control which thread gets to update the
   // parameters, in multi-threaded code.
   Mutex update_mutex_;
-
-
 };
-
 
 } // namespace nnet3
 } // namespace kaldi

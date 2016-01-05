@@ -55,6 +55,8 @@ MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 
 template <typename Real>
 Real CuSparseMatrix<Real>::Sum() const {
+  if (NumElements() == 0)
+    return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<Real> sum_vec(*this);
@@ -341,6 +343,7 @@ void GeneralMatrix::CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
         Matrix<BaseFloat> mat(cmat_);
         if (trans == kNoTrans) {
           cu_mat->CopyFromMat(mat);
+          break;
         } else {
           CuMatrix<BaseFloat> temp_cu;
           temp_cu.Swap(&mat);
