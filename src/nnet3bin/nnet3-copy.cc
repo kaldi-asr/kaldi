@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat learning_rate = -1;
-    BaseFloat sparsity_constant = 0;
+    BaseFloat sparsity_constant = -1;
     BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
     if (scale != 1.0)
       ScaleNnet(scale, &nnet);
 
-    if (sparsity_constant > 0.0) 
+    if (sparsity_constant >= 0.0) 
       SetSparsityConstant(sparsity_constant, &nnet);
 
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
