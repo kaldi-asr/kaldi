@@ -18,9 +18,6 @@ parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
-parser.add_argument("--use-repeated-affine", type=str,
-                    help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
-                    default="true", choices = ["false", "true"])
 parser.add_argument("--final-layer-learning-rate-factor", type=float,
                     help="Learning-rate factor for final affine component",
                     default=1.0)
@@ -192,7 +189,7 @@ for l in range(1, num_hidden_layers + 1):
         # by a NormalizeComponent.
         output_dim = args.jesus_first_layer_input_dim
         print('component name=affine1 type=NaturalGradientAffineComponent '
-              'input-dim={0} output-dim={1} bias-stddev=0'.format(
+              'input-dim={0} output-dim={1} bias-mean=0.5 bias-stddev=0'.format(
                 input_dim, output_dim), file=f)
         print('component-node name=affine1 component=affine1 input=lda',
               file=f)
@@ -256,46 +253,28 @@ for l in range(1, num_hidden_layers + 1):
                 (2 if need_input_permute_component else 1),
                 cur_dim), file=f, end='')
 
-        if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
-                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
-                    (3 if need_input_permute_component else 2),
-                    cur_dim, args.jesus_hidden_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
-                  file=f, end='')
-        else:
-            print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
-                  "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
-        
-                    cur_dim, args.jesus_hidden_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
-                  file=f, end='')
+        print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+              "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
+                (3 if need_input_permute_component else 2),
+                cur_dim, args.jesus_hidden_dim,
+                args.num_jesus_blocks,
+                args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks),
+                0.5 * args.jesus_stddev_scale),
+              file=f, end='')
 
         print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
                 (4 if need_input_permute_component else 3),
                 args.jesus_hidden_dim), file=f, end='')
 
-
-        if args.use_repeated_affine == "true":
-            print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
-                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
-                    (5 if need_input_permute_component else 4),
-                    args.jesus_hidden_dim,
-                    this_jesus_output_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks)),
-                  file=f, end='')
-        else:
-            print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
-                  "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
-                    (5 if need_input_permute_component else 4),
-                    args.jesus_hidden_dim,
-                    this_jesus_output_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt((args.jesus_hidden_dim / args.num_jesus_blocks))),
-                  file=f, end='')
+        print(" component{0}='type=RepeatedAffineComponent input-dim={1} output-dim={2} "
+              "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
+                (5 if need_input_permute_component else 4),
+                args.jesus_hidden_dim,
+                this_jesus_output_dim,
+                args.num_jesus_blocks,
+                args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
+                0.5 * args.jesus_stddev_scale),
+              file=f, end='')
 
         print("", file=f) # print newline.
         print('component-node name=jesus{0} component=jesus{0} input={1}'.format(
@@ -356,13 +335,13 @@ for l in range(1, num_hidden_layers + 1):
 
             # print an affine node for the full output.
             print('component name=jesus{0}-full-affine type=NaturalGradientAffineComponent '
-                  'input-dim={1} output-dim={2} bias-stddev=0'.
+                  'input-dim={1} output-dim={2} bias-mean=0.5 bias-stddev=0'.
                   format(l, args.jesus_full_output_dim, args.jesus_full_input_dim), file=f)
             print('component-node name=jesus{0}-full-affine component=jesus{0}-full-affine '
                   'input=jesus{0}-full-output'.format(l), file=f)
             # ... and print a block-affine node for the block output
             print('component name=jesus{0}-block-affine type=BlockAffineComponent '
-                  'input-dim={1} output-dim={2} num-blocks={3} bias-stddev=0'.
+                  'input-dim={1} output-dim={2} num-blocks={3} bias-mean=0.5 bias-stddev=0'.
                   format(l, args.jesus_block_output_dim, args.jesus_block_input_dim,
                          args.num_jesus_blocks), file=f)
             print('component-node name=jesus{0}-block-affine component=jesus{0}-block-affine '
@@ -378,7 +357,7 @@ for l in range(1, num_hidden_layers + 1):
             # print an affine node for the full output.  We're hardcoding this
             # to have the same input and output dims for now.
             print('component name=jesus{0}-full-affine type=NaturalGradientAffineComponent '
-                  'input-dim={1} output-dim={1} bias-stddev=0'.
+                  'input-dim={1} output-dim={1} bias-mean=0.5 bias-stddev=0'.
                   format(l, args.jesus_final_output_dim), file=f)
             print('component-node name=jesus{0}-full-affine component=jesus{0}-full-affine '
                   'input=post-jesus{0}'.format(l), file=f)
