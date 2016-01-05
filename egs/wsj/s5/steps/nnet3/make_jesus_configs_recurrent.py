@@ -292,11 +292,12 @@ for l in range(1, num_hidden_layers + 1):
 
         if args.use_repeated_affine == "true":
             print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
-                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
+                  "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
                     (3 if need_input_permute_component else 2),
                     cur_dim, args.jesus_hidden_dim,
                     args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
+                    args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks),
+                    0.5 * args.jesus_stddev_scale),
                   file=f, end='')
         else:
             print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
@@ -312,16 +313,17 @@ for l in range(1, num_hidden_layers + 1):
                 (4 if need_input_permute_component else 3),
                 args.jesus_hidden_dim), file=f, end='')
 
-        
+
 
         if args.use_repeated_affine == "true":
             print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
-                  "num-repeats={3} param-stddev={4} bias-stddev=0'".format(
+                  "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
                     (5 if need_input_permute_component else 4),
                     args.jesus_hidden_dim,
                     this_jesus_output_dim,
                     args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks)),
+                    args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
+                    0.5 * args.jesus_stddev_scale),
                   file=f, end='')
         else:
             print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "

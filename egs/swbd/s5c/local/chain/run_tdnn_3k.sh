@@ -6,10 +6,20 @@
 # make_jesus_configs_recurrent.py to give the recurrent affine layers an initial
 # param-stddev of 0 which will discourage those corresponding input weights in
 # the jesus layer from getting small in early iters; and removed the --normalize-target
-# option and replaced it with the --final-layer-learning-rate-factor option;
-# and added a learning-rate factor for
-#
-# --normalize-target 0.25, in order
+# option and replaced it with the --final-layer-learning-rate-factor option.
+
+#  # these results are with the non-optimal chunk size of 50 (in 3i, 100 was slightly better):
+#%WER 17.86 [ 8787 / 49204, 1015 ins, 2366 del, 5406 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.52 [ 8130 / 49204, 1092 ins, 1969 del, 5069 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+#%WER 19.6 | 4459 42989 | 82.5 11.4 6.0 2.2 19.6 57.5 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.8 | 4459 42989 | 84.1 10.4 5.5 2.0 17.8 55.1 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+
+# The following are the corresponding results from 3i, decoded with the same chunk size.
+##%WER 18.00 [ 8856 / 49204, 1025 ins, 2376 del, 5455 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_tg/wer_11_0.0
+##%WER 16.52 [ 8129 / 49204, 1084 ins, 1995 del, 5050 sub ] exp/chain/tdnn_3i_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+##%WER 19.8 | 4459 42989 | 82.6 11.9 5.5 2.4 19.8 57.7 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+##%WER 17.9 | 4459 42989 | 84.1 10.5 5.5 2.0 17.9 55.3 | exp/chain/tdnn_3i_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+
 
 # _3i is as _3h but after a script fix in which the --final-layer-normalize-target is
 # applied, in order to control how fast the final layer's affine component learns.

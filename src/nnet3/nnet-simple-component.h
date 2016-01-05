@@ -439,7 +439,8 @@ class RepeatedAffineComponent: public UpdatableComponent {
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
   void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
 
  protected:
   // This function Update(), called from backprop, is broken out for
@@ -447,11 +448,11 @@ class RepeatedAffineComponent: public UpdatableComponent {
   virtual void Update(
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
-  
+
   // This function does nothing here but is redefined in child-class
   // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
   virtual void SetNaturalGradientConfigs() { }
-  
+
   const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
@@ -462,14 +463,14 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
  public:
   // Use Init() to really initialize.
   NaturalGradientRepeatedAffineComponent() { }
-  
+
   // Most of the public functions are inherited from RepeatedAffineComponent.
   virtual std::string Type() const {
     return "NaturalGradientRepeatedAffineComponent";
   }
 
-  virtual Component* Copy() const;    
-  
+  virtual Component* Copy() const;
+
   // Copy constructor
   explicit NaturalGradientRepeatedAffineComponent(
       const NaturalGradientRepeatedAffineComponent &other);
@@ -477,13 +478,13 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
   virtual void Update(
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
-  
+
   const NaturalGradientRepeatedAffineComponent &operator=(
       const NaturalGradientRepeatedAffineComponent &other); // Disallow.
-  
+
   // Applies the default configuration to preconditioner_in_.
   virtual void SetNaturalGradientConfigs();
-  
+
   // For efficiency reasons we only apply the natural gradient to the input
   // side, i.e. not to the space of output derivatives-- we believe the input
   // side is the more important side.  We don't make the natural-gradient
@@ -546,7 +547,7 @@ class BlockAffineComponent : public UpdatableComponent {
 
   // BlockAffine-specific functions.
   void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
+            BaseFloat param_stddev, BaseFloat bias_mean, BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
  protected:
   // The matrix linear_params_ has a block structure, with num_blocks_ blocks of

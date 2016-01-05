@@ -2,6 +2,8 @@
 
 # _3p is the same as 3o, but after a code and script change so we can use
 # natural gradient for the RepeatedAffineComponent.
+# [natural gradient was helpful, based on logs;
+# also made a change to use positive bias for the jesus-component affine parts.]
 
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
 

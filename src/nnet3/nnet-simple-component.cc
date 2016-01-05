@@ -1028,7 +1028,8 @@ BaseFloat RepeatedAffineComponent::DotProduct(const UpdatableComponent &other_in
 }
 
 void RepeatedAffineComponent::Init(int32 input_dim, int32 output_dim, int32 num_repeats,
-                                   BaseFloat param_stddev, BaseFloat bias_stddev) {
+                                   BaseFloat param_stddev, BaseFloat bias_mean,
+                                   BaseFloat bias_stddev) {
   KALDI_ASSERT(input_dim % num_repeats == 0 && output_dim % num_repeats == 0);
   linear_params_.Resize(output_dim / num_repeats, input_dim / num_repeats);
   bias_params_.Resize(output_dim / num_repeats);
@@ -1038,6 +1039,7 @@ void RepeatedAffineComponent::Init(int32 input_dim, int32 output_dim, int32 num_
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
+  bias_params_.Add(bias_mean);
   SetNaturalGradientConfigs();
 }
 
@@ -1055,11 +1057,12 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
   KALDI_ASSERT(output_dim % num_repeats == 0 &&
                "num-repeats must divide output-dim");
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_repeats),
-      bias_stddev = 0.0;
+      bias_mean = 0.0, bias_stddev = 0.0;
   cfl->GetValue("param-stddev", &param_stddev);
+  cfl->GetValue("bias-mean", &bias_mean);
   cfl->GetValue("bias-stddev", &bias_stddev);
   Init(input_dim, output_dim,
-       num_repeats, param_stddev, bias_stddev);
+       num_repeats, param_stddev, bias_mean, bias_stddev);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
 	          << cfl->UnusedValues();
@@ -1310,7 +1313,7 @@ void NaturalGradientRepeatedAffineComponent::Update(
   // with the derivative w.r.t. the bias as the last column.
   CuSubMatrix<BaseFloat> params_deriv(params_deriv_repeated, 0, block_rows,
                                       0, block_cols + 1);
-  
+
   for (int i = 0; i < num_repeats_; i++) {
     in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
         i * block_cols, block_cols)));
@@ -1360,7 +1363,7 @@ void NaturalGradientRepeatedAffineComponent::Update(
   CuVector<BaseFloat> repeated_bias_deriv(
       num_repeats_ * bias_params_.Dim());
   { // deal with the derivative w.r.t. the bias.
-    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);    
+    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
     CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
                                           num_repeats_, bias_params_.Dim(), // num rows, num cols
                                           bias_params_.Dim()); // stride
@@ -1388,7 +1391,7 @@ void NaturalGradientRepeatedAffineComponent::Update(
                                         bias_params_.Dim());
   bias_direction.CopyColFromMat(params_deriv, block_cols);
   bias_params_.AddVec(learning_rate_ * scale, bias_direction);
-  
+
   DeletePointers(&in_value_batch);
   DeletePointers(&out_deriv_batch);
   DeletePointers(&linear_params_deriv_batch);
@@ -1424,7 +1427,8 @@ std::string BlockAffineComponent::Info() const {
 
 void BlockAffineComponent::Init(int32 input_dim,
                                 int32 output_dim, int32 num_blocks,
-                                BaseFloat param_stddev, BaseFloat bias_stddev) {
+                                BaseFloat param_stddev, BaseFloat bias_mean,
+                                BaseFloat bias_stddev) {
   KALDI_ASSERT(input_dim > 0 && output_dim > 0 && num_blocks >= 1);
   KALDI_ASSERT(output_dim % num_blocks == 0 && input_dim % num_blocks == 0);
   const int32 num_columns_per_block = input_dim / num_blocks;
@@ -1435,7 +1439,7 @@ void BlockAffineComponent::Init(int32 input_dim,
   linear_params_.Scale(param_stddev);
   bias_params_.SetRandn();
   bias_params_.Scale(bias_stddev);
-
+  bias_params_.Add(bias_mean);
   num_blocks_ = num_blocks;
 }
 
@@ -1449,16 +1453,17 @@ void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
 
   InitLearningRatesFromConfig(cfl);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_blocks),
-    bias_stddev = 1.0;
+      bias_mean = 0.0, bias_stddev = 1.0;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
+  cfl->GetValue("bias-mean", &bias_mean);
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
 
   Init(input_dim, output_dim, num_blocks,
-       param_stddev, bias_stddev);
+       param_stddev, bias_mean, bias_stddev);
 }
 
 void BlockAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
