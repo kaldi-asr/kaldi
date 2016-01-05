@@ -58,7 +58,7 @@ Real CuSparseMatrix<Real>::Sum() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<Real> sum_vec(this->NumElements(), kUndefined);
-    this->CopyToVec(&sum_vec);
+    this->CopyElementsToVec(&sum_vec);
     return sum_vec.Sum();
   } else
 #endif
@@ -72,7 +72,7 @@ Real CuSparseMatrix<Real>::FrobeniusNorm() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<Real> element_vec(this->NumElements(), kUndefined);
-    this->CopyToVec(&element_vec);
+    this->CopyElementsToVec(&element_vec);
     return element_vec.Norm(2);
   } else
 #endif
@@ -205,35 +205,26 @@ template
 void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<double> *smat) const;
 
 template <typename Real>
-template <typename OtherReal>
-void CuSparseMatrix<Real>::CopyToVec(CuVector<OtherReal> *vec) const {
+void CuSparseMatrix<Real>::CopyElementsToVec(CuVector<Real> *vec) const {
   KALDI_ASSERT(vec != NULL);
   KALDI_ASSERT(this->NumElements() == vec->Dim());
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimBlock(CU1DBLOCK, 1);
-    dim3 dimGrid(n_blocks(this->NumElements(), CU1DBLOCK), 1);
-    cuda_copy_from_smat_as_vec(dimGrid, dimBlock, vec->Data(),
-                               this->Data(), this->NumElements());
+    cublas_copy(GetCublasHandle(),
+                this->NumElements(),
+                &(this->elements_.Data()->weight),
+                static_cast<size_t>(sizeof(MatrixElement<Real>) / sizeof(Real)),
+                vec->Data(), 1);
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
 #endif
   {
     Vector<Real> tmp(this->NumElements(), kUndefined);
-    Mat().CopyToVec(&tmp);
+    Mat().CopyElementsToVec(&tmp);
     vec->CopyFromVec(tmp);
   }
 }
-template
-void CuSparseMatrix<float>::CopyToVec(CuVector<float> *vec) const;
-template
-void CuSparseMatrix<float>::CopyToVec(CuVector<double> *vec) const;
-template
-void CuSparseMatrix<double>::CopyToVec(CuVector<float> *vec) const;
-template
-void CuSparseMatrix<double>::CopyToVec(CuVector<double> *vec) const;
-
 
 template <typename Real>
 void CuSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {

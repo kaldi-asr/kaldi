@@ -97,8 +97,7 @@ class CuSparseMatrix {
 
   /// Copy elements to CuVector. It is the caller's responsibility to resize
   /// <*vec>.
-  template <typename OtherReal>
-  void CopyToVec(CuVector<OtherReal> *vec) const;
+  void CopyElementsToVec(CuVector<Real> *vec) const;
 
   /// Swap with CPU-based matrix.
   void Swap(SparseMatrix<Real> *smat);

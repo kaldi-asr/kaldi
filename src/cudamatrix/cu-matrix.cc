@@ -1943,9 +1943,9 @@ void CuMatrixBase<Real>::CopyColFromVec(const CuVectorBase<Real> &v,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(NumRows(), CU1DBLOCK));
-    cuda_copy_col_from_vec(dimGrid, dimBlock, data_, v.Data(), col, Dim());
+    cublas_copy(GetCublasHandle(),
+                v.Dim(), v.Data(), 1,
+                this->data_ + col, this->stride_);
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else

@@ -83,10 +83,8 @@ void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixInd
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int dimBlock(CU1DBLOCK);
-    int dimGrid(n_blocks(dim_,CU1DBLOCK));
-
-    cuda_copy_col_from_mat(dimGrid, dimBlock, data_, col, mat.Data(), mat.Dim(), dim_);
+    cublas_copy(GetCublasHandle(),
+                this->dim_, mat.Data() + col, mat.Stride(), this->data_, 1);
     CU_SAFE_CALL(cudaGetLastError());    
     CuDevice::Instantiate().AccuProfile("CuVectorBase::CopyColFromMat", tim.Elapsed());
   } else
