@@ -141,17 +141,21 @@ int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
 }
 
 void NnetComputation::MatrixInfo::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<MatrixInfo>");
   ExpectToken(is, binary, "<NumRows>");
   ReadBasicType(is, binary, &num_rows);
   ExpectToken(is, binary, "<NumCols>");
   ReadBasicType(is, binary, &num_cols);
+  ExpectToken(is, binary, "</MatrixInfo>");
 }
 
 void NnetComputation::MatrixInfo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<MatrixInfo>");
   WriteToken(os, binary, "<NumRows>");
   WriteBasicType(os, binary, num_rows);
   WriteToken(os, binary, "<NumCols>");
   WriteBasicType(os, binary, num_cols);
+  WriteToken(os, binary, "</MatrixInfo>");
 }
 
 void NnetComputation::MatrixDebugInfo::Swap(
@@ -161,6 +165,7 @@ void NnetComputation::MatrixDebugInfo::Swap(
 }
 
 void NnetComputation::MatrixDebugInfo::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<MatrixDebugInfo>");
   ExpectToken(is, binary, "<IsDeriv>");
   ReadBasicType(is, binary, &is_deriv);
   size_t num_cindexes;
@@ -172,9 +177,11 @@ void NnetComputation::MatrixDebugInfo::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &(cindexes[c].first));
     cindexes[c].second.Read(is, binary);
   }
+  ExpectToken(is, binary, "</MatrixDebugInfo>");
 }
 
 void NnetComputation::MatrixDebugInfo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<MatrixDebugInfo>");
   WriteToken(os, binary, "<IsDeriv>");
   WriteBasicType(os, binary, is_deriv);
   WriteToken(os, binary, "<NumCindexes>");
@@ -184,9 +191,11 @@ void NnetComputation::MatrixDebugInfo::Write(std::ostream &os, bool binary) cons
     WriteBasicType(os, binary, cindexes[c].first);
     cindexes[c].second.Write(os, binary);
   }
+  WriteToken(os, binary, "</MatrixDebugInfo>");
 }
 
 void NnetComputation::SubMatrixInfo::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<SubMatrixInfo>");
   ExpectToken(is, binary, "<MatrixIndex>");
   ReadBasicType(is, binary, &matrix_index);
   ExpectToken(is, binary, "<RowOffset>");
@@ -197,9 +206,11 @@ void NnetComputation::SubMatrixInfo::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &col_offset);
   ExpectToken(is, binary, "<NumCols>");
   ReadBasicType(is, binary, &num_cols);
+  ExpectToken(is, binary, "</SubMatrixInfo>");
 }
 
 void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<SubMatrixInfo>");
   WriteToken(os, binary, "<MatrixIndex>");
   WriteBasicType(os, binary, matrix_index);
   WriteToken(os, binary, "<RowOffset>");
@@ -210,9 +221,11 @@ void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, col_offset);
   WriteToken(os, binary, "<NumCols>");
   WriteBasicType(os, binary, num_cols);
+  WriteToken(os, binary, "</SubMatrixInfo>");
 }
 
 void NnetComputation::Command::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<Command>");
   if (binary) {
     int32 command_type_int;
     ReadBasicType(is, binary, &command_type_int);
@@ -264,9 +277,11 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       KALDI_ERR << "Un-handled command type.";
     }
   }
+  ExpectToken(is, binary, "</Command>");
 }
 
 void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<Command>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
   } else {
@@ -336,6 +351,7 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         KALDI_ERR << "Un-handled command type.";
     }
   }
+  WriteToken(os, binary, "</Command>");
 }
 
 
@@ -609,6 +625,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetComputation>");
   size_t num_matrices;
   ExpectToken(is, binary, "<NumMatrices>");
   ReadBasicType(is, binary, &num_matrices);
@@ -639,16 +656,6 @@ void NnetComputation::Read(std::istream &is, bool binary) {
     submatrices[c].Read(is, binary);
   }
 
-//  size_t num_component_precomputed_indexes;
-//  ExpectToken(is, binary, "<NumComponentPrecomputedIndexes>");
-//  ReadBasicType(is, binary, &num_component_precomputed_indexes);
-//  KALDI_ASSERT(num_component_precomputed_indexes >= 0);
-//  component_precomputed_indexes.resize(num_component_precomputed_indexes);
-//  ExpectToken(is, binary, "<ComponentPrecomputedIndexes>");
-//  for (size_t c = 0; c < num_component_precomputed_indexes; c++) {
-//    component_precomputed_indexes[c]->Read(is, binary);
-//  }
-
   size_t num_indexes;
   ExpectToken(is, binary, "<NumIndexes>");
   ReadBasicType(is, binary, &num_indexes);
@@ -656,12 +663,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   indexes.resize(num_indexes);
   ExpectToken(is, binary, "<Indexes>");
   for (size_t c = 0; c < num_indexes; c++) {
-    size_t size;
-    ReadBasicType(is, binary, &size);
-    KALDI_ASSERT(size >= 0);
-    indexes[c].resize(size);
-    for (size_t i = 0; i < size; i++)
-      ReadBasicType(is, binary, &(indexes[c][i]));
+    ReadIntegerVector(is, binary, &(indexes[c]));
   }
 
   size_t num_indexes_multi;
@@ -671,14 +673,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   indexes_multi.resize(num_indexes_multi);
   ExpectToken(is, binary, "<IndexesMulti>");
   for (size_t c = 0; c < num_indexes_multi; c++) {
-    size_t size;
-    ReadBasicType(is, binary, &size);
-    KALDI_ASSERT(size >= 0);
-    indexes_multi[c].resize(size);
-    for (size_t i = 0; i < size; i++) {
-      ReadBasicType(is, binary, &(indexes_multi[c][i].first));
-      ReadBasicType(is, binary, &(indexes_multi[c][i].second));
-    }
+    ReadIntegerPairVector(is, binary, &(indexes_multi[c]));
   }
 
   size_t num_indexes_ranges;
@@ -688,14 +683,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   indexes_ranges.resize(num_indexes_ranges);
   ExpectToken(is, binary, "<IndexesRanges>");
   for (size_t c = 0; c < num_indexes_ranges; c++) {
-    size_t size;
-    ReadBasicType(is, binary, &size);
-    KALDI_ASSERT(size >= 0);
-    indexes_ranges[c].resize(size);
-    for (size_t i = 0; i < size; i++) {
-      ReadBasicType(is, binary, &(indexes_ranges[c][i].first));
-      ReadBasicType(is, binary, &(indexes_ranges[c][i].second));
-    }
+    ReadIntegerPairVector(is, binary, &(indexes_ranges[c]));
   }
 
   size_t num_input_output_info;
@@ -727,9 +715,11 @@ void NnetComputation::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &need_model_derivative);
 
   ComputeCudaIndexes();
+  ExpectToken(is, binary, "</NnetComputation>");
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetComputation>");
   WriteToken(os, binary, "<NumMatrices>");
   WriteBasicType(os, binary, matrices.size());
   WriteToken(os, binary, "<Matrices>");
@@ -737,6 +727,7 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
     matrices[c].Write(os, binary);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumMatrixDebugInfo>");
   WriteBasicType(os, binary, matrix_debug_info.size());
   WriteToken(os, binary, "<MatrixDebugInfo>");
@@ -744,52 +735,39 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
     matrix_debug_info[c].Write(os, binary);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumSubMatrices>");
   WriteBasicType(os, binary, submatrices.size());
   WriteToken(os, binary, "<SubMatrices>");
   for (size_t c = 0; c < submatrices.size(); c++) {
     submatrices[c].Write(os, binary);
   }
-
-//  WriteToken(os, binary, "<NumComponentPrecomputedIndexes>");
-//  WriteBasicType(os, binary, component_precomputed_indexes.size());
-//  WriteToken(os, binary, "<ComponentPrecomputedIndexes>");
-//  for (int32 c = 0; c < component_precomputed_indexes.size(); c++) {
-//    if (component_precomputed_indexes[c] != NULL) 
-//      component_precomputed_indexes[c]->Write(os, binary);
-//  }
-
+  
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumIndexes>");
   WriteBasicType(os, binary, indexes.size());
   WriteToken(os, binary, "<Indexes>");
   for (size_t c = 0; c < indexes.size(); c++) {
-    WriteBasicType(os, binary, indexes[c].size());
-    for (size_t i = 0; i < indexes[c].size(); i++)
-      WriteBasicType(os, binary, indexes[c][i]);
+    WriteIntegerVector(os, binary, indexes[c]);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumIndexesMulti>");
   WriteBasicType(os, binary, indexes_multi.size());
   WriteToken(os, binary, "<IndexesMulti>");
   for (size_t c = 0; c < indexes_multi.size(); c++) {
-    WriteBasicType(os, binary, indexes_multi[c].size());
-    for (size_t i = 0; i < indexes_multi[c].size(); i++) {
-      WriteBasicType(os, binary, indexes_multi[c][i].first);
-      WriteBasicType(os, binary, indexes_multi[c][i].second);
-    }
+    WriteIntegerPairVector(os, binary, indexes_multi[c]);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumIndexesRanges>");
   WriteBasicType(os, binary, indexes_ranges.size());
   WriteToken(os, binary, "<IndexesRanges>");
   for (size_t c = 0; c < indexes_ranges.size(); c++) {
-    WriteBasicType(os, binary, indexes_ranges[c].size());
-    for (size_t i = 0; i < indexes_ranges[c].size(); i++) {
-      WriteBasicType(os, binary, indexes_ranges[c][i].first);
-      WriteBasicType(os, binary, indexes_ranges[c][i].second);
-    }
+    WriteIntegerPairVector(os, binary, indexes_ranges[c]);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumInputOutputInfo>");
   WriteBasicType(os, binary, input_output_info.size());
   WriteToken(os, binary, "<InputOutputInfo>");
@@ -801,6 +779,7 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
     WriteBasicType(os, binary, iter->second.second);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumCommands>");
   WriteBasicType(os, binary, commands.size());
   WriteToken(os, binary, "<Commands>");
@@ -808,8 +787,10 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
     commands[c].Write(os, binary);
   }
 
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NeedModelDerivative>");
   WriteBasicType(os, binary, need_model_derivative);
+  WriteToken(os, binary, "</NnetComputation>");
 }
 
 void NnetComputation::GetCommandStrings(
@@ -875,6 +856,7 @@ void IoSpecification::Swap(IoSpecification *other) {
 }  
 
 void IoSpecification::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<IoSpecification>");
   ReadToken(is, binary, &name);
   ExpectToken(is, binary, "<NumIndexes>");
   size_t num_indexes;
@@ -883,9 +865,11 @@ void IoSpecification::Read(std::istream &is, bool binary) {
   ReadIndexVector(is, binary, &indexes);
   ExpectToken(is, binary, "<HasDeriv>");
   ReadBasicType(is, binary, &has_deriv);
+  ExpectToken(is, binary, "</IoSpecification>");
 }
 
 void IoSpecification::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<IoSpecification>");
   WriteToken(os, binary, name);
   WriteToken(os, binary, "<NumIndexes>");
   WriteBasicType(os, binary, indexes.size());
@@ -893,9 +877,11 @@ void IoSpecification::Write(std::ostream &os, bool binary) const {
   WriteIndexVector(os, binary, indexes);
   WriteToken(os, binary, "<HasDeriv>");
   WriteBasicType(os, binary, has_deriv);
+  WriteToken(os, binary, "</IoSpecification>");
 }
 
 void ComputationRequest::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<ComputationRequest>");
   size_t num_inputs;
   ExpectToken(is, binary, "<NumInputs>");
   ReadBasicType(is, binary, &num_inputs);
@@ -920,9 +906,11 @@ void ComputationRequest::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &need_model_derivative);
   ExpectToken(is, binary, "<StoreComponentStats>");
   ReadBasicType(is, binary, &store_component_stats);
+  ExpectToken(is, binary, "</ComputationRequest>");
 }
 
 void ComputationRequest::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ComputationRequest>");
   WriteToken(os, binary, "<NumInputs>");
   WriteBasicType(os, binary, inputs.size());
   WriteToken(os, binary, "<Inputs>");
@@ -941,6 +929,7 @@ void ComputationRequest::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, need_model_derivative);
   WriteToken(os, binary, "<StoreComponentStats>");
   WriteBasicType(os, binary, store_component_stats);
+  WriteToken(os, binary, "</ComputationRequest>");
 }
 >>>>>>> added I/O interfaces for NnetComputation and ComputationRequest
 
