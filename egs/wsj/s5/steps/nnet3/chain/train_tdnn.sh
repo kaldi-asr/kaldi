@@ -498,7 +498,7 @@ while [ $x -lt $num_iters ]; do
       # (i.e. it can worsen the objective function), and the smaller minibatch
       # size will help to keep the update stable.
       this_minibatch_size=$[$minibatch_size/2];
-      this_max_param_change=$(perl -e "print (0.5 * $max_param_change);")
+      this_max_param_change=$(perl -e "print ($max_param_change/sqrt(2));")
     fi
 
     rm $dir/.error 2>/dev/null
