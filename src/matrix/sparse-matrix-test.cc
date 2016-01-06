@@ -32,7 +32,7 @@ void UnitTestSparseVectorSum() {
 
     Vector<Real> vec(dim);
     vec.SetRandn();
-    svec.CopyToVec(&vec);
+    svec.CopyElementsToVec(&vec);
 
     Real sum1 = svec.Sum();
     Real sum2 = vec.Sum();
@@ -50,7 +50,7 @@ void UnitTestSparseVectorAddToVec() {
 
     Vector<Real> vec(dim);
     vec.SetRandn();
-    svec.CopyToVec(&vec);
+    svec.CopyElementsToVec(&vec);
 
     Vector<Real> other_vec1(dim);
     other_vec1.SetRandn();
@@ -75,7 +75,7 @@ void UnitTestSparseVectorMax() {
 
     Vector<Real> vec(dim);
     vec.SetRandn();
-    svec.CopyToVec(&vec);
+    svec.CopyElementsToVec(&vec);
 
     int32 index1, index2;
     Real max1, max2;
@@ -98,7 +98,7 @@ void UnitTestSparseVectorVecSvec() {
 
     Vector<Real> vec(dim);
     vec.SetRandn();
-    svec.CopyToVec(&vec);
+    svec.CopyElementsToVec(&vec);
 
     Vector<Real> other_vec(dim);
     other_vec.SetRandn();

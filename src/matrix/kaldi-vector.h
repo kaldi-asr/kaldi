@@ -107,10 +107,6 @@ class VectorBase {
   template<typename OtherReal>
   void CopyFromPacked(const PackedMatrix<OtherReal> &M);
 
-  /// Copy data from a SparseMatrix.
-  template<typename OtherReal>
-  void CopyFromSmat(const SparseMatrix<OtherReal> &M);
-
   /// Copy data from another vector of different type (double vs. float)
   template<typename OtherReal>
   void CopyFromVec(const VectorBase<OtherReal> &v);
@@ -418,12 +414,6 @@ class Vector: public VectorBase<Real> {
   explicit Vector(const VectorBase<OtherReal> &v): VectorBase<Real>() {
     Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
-  }
-
-  template<typename OtherReal>
-  explicit Vector(const SparseMatrix<OtherReal> &smat) : VectorBase<Real>() {
-    Resize(smat.NumElements(), kUndefined);
-    this->CopyFromSmat(smat);
   }
 
 // Took this out since it is unsafe : Arnab
