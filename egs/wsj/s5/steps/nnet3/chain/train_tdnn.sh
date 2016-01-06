@@ -45,7 +45,6 @@ frame_subsampling_factor=3  # controls reduced frame-rate at the output.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 max_param_change=2.0
-scale_max_param_change=false # if this option is used, scale it by num-jobs.
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -491,6 +490,7 @@ while [ $x -lt $num_iters ]; do
     fi
     if $do_average; then
       this_minibatch_size=$minibatch_size
+      this_max_param_change=$max_param_change
     else
       # on iteration zero or when we just added a layer, use a smaller minibatch
       # size (and we will later choose the output of just one of the jobs): the
@@ -498,6 +498,7 @@ while [ $x -lt $num_iters ]; do
       # (i.e. it can worsen the objective function), and the smaller minibatch
       # size will help to keep the update stable.
       this_minibatch_size=$[$minibatch_size/2];
+      this_max_param_change=$(perl -e "print (0.5 * $max_param_change);")
     fi
 
     rm $dir/.error 2>/dev/null
@@ -516,11 +517,6 @@ while [ $x -lt $num_iters ]; do
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
-        if $scale_max_param_change; then
-          this_max_param_change=$(perl -e "print ($max_param_change * $this_num_jobs);")
-        else
-          this_max_param_change=$max_param_change
-        fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
               $parallel_train_opts $deriv_time_opts \

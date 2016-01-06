@@ -18,8 +18,8 @@ parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
-parser.add_argument("--final-layer-learning-rate-factor", type=float,
-                    help="Learning-rate factor for final affine component",
+parser.add_argument("--final-layer-target-rms", type=float,
+                    help="Target RMS value prior to final affine component (e.g. set 0.5 for chain)",
                     default=1.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
@@ -33,12 +33,12 @@ parser.add_argument("--jesus-full-input-dim", type=int,
 parser.add_argument("--jesus-block-output-dim", type=int,
                     help="Output dimension of Jesus layer that goes via block-matrix affine projection "
                     "to the next layer (same as input dim of block affine transform)",
-                    default=1800)
+                    default=2400)
 parser.add_argument("--jesus-block-input-dim", type=int,
                     help="Input dimension of Jesus layer (per splice) that comes from block-matrix "
                     "affine projection from the previous layer (same as output dim of block "
                     "affine transform)",
-                    default=1800)
+                    default=2400)
 parser.add_argument("--jesus-final-output-dim", type=int,
                     help="Output dimension for the final Jesus layer, if >0; else "
                     "the same as jesus-full-output-dim.", default=-1);
@@ -47,12 +47,16 @@ parser.add_argument("--jesus-first-layer-input-dim", type=int,
                     "the same as jesus-full-input-dim.", default=-1);
 parser.add_argument("--block-learning-rate-factor", type=float,
                     help="Learning-rate factor for block-diagonal affine matrices",
-                    default=10.0)
+                    default=1.0)
 parser.add_argument("--num-jesus-blocks", type=int,
                     help="number of blocks in Jesus layer and in block affine projections "
                     "between Jesus layers.  All configs of the form "
                     "--jesus-*-dim will be rounded up to be a multiple of this.",
                     default=100);
+parser.add_argument("--num-affine-blocks", type=int,
+                    help="number of blocks in block-affine layer between Jesus layers, if >0. "
+                    "Otherwise defaults to num-jesus-blocks.  Must divide num-jesus-blocks.",
+                    default=-1);
 parser.add_argument("--jesus-stddev-scale", type=float,
                     help="Scaling factor on parameter stddev of Jesus layer (smaller->jesus layer learns faster)",
                     default=1.0)
@@ -83,10 +87,14 @@ if args.jesus_first_layer_input_dim < 1:
     args.jesus_first_layer_input_dim = args.jesus_full_input_dim
 if args.jesus_final_output_dim < 1:
     args.jesus_final_output_dim = args.jesus_full_output_dim
+if args.num_affine_blocks <= 0:
+    args.num_affine_blocks = args.num_jesus_blocks
+if args.num_jesus_blocks % args.num_affine_blocks != 0:
+    sys.exit("invalid --num-affine-blocks value, does not divide --num-jesus-blocks.");
 
 
 for name in [ "jesus_hidden_dim", "jesus_full_output_dim", "jesus_full_input_dim",
-              "jesus_block_output_dim", "jesus_block_input_dim", 
+              "jesus_block_output_dim", "jesus_block_input_dim",
               "jesus_final_output_dim", "jesus_first_layer_input_dim" ]:
     old_val = getattr(args, name)
     if old_val % args.num_jesus_blocks != 0:
@@ -156,7 +164,7 @@ for l in range(1, num_hidden_layers + 1):
     #   components.  For a reason relating to saving memory, we put the
     # ReLU + renormalize at the beginning of each layer, inside the Jesus
     # component, instead of at the end of the layers.
-    
+
     # layer1: splice + LDA-transform + affine
     #
     # layerX [middle layers]: splice + Jesus + post-Jesus + [full transform; block transform]
@@ -164,10 +172,10 @@ for l in range(1, num_hidden_layers + 1):
     # final-layer:  ReLU + renormalize + final-affine [+ log-softmax].
 
     # Inside the jesus component is:
-    #   [permute +] ReLU + renormalize + repeated-affine + ReLU + repeated-affine 
+    #   [permute +] ReLU + renormalize + repeated-affine + ReLU + repeated-affine
     # Inside the post-Jesus component is:
     #  [permute +] ReLU + renormalize.
-    # to save some repeated computation caused by the store-stats operation, 
+    # to save some repeated computation caused by the store-stats operation,
     # we put the final ReLU outside of the Jesus component.
     #
     # After the Jesus component we use dim-range nodes to split up the output into
@@ -189,14 +197,19 @@ for l in range(1, num_hidden_layers + 1):
         # by a NormalizeComponent.
         output_dim = args.jesus_first_layer_input_dim
         print('component name=affine1 type=NaturalGradientAffineComponent '
-              'input-dim={0} output-dim={1} bias-mean=0.5 bias-stddev=0'.format(
+              'input-dim={0} output-dim={1} bias-mean=0.1 bias-stddev=0'.format(
                 input_dim, output_dim), file=f)
         print('component-node name=affine1 component=affine1 input=lda',
               file=f)
+        print('component name=renorm1 type=NormalizeComponent dim={0}'.format(output_dim),
+              file=f)
+        print('component-node name=renorm1 component=renorm1 input=affine1',
+              file=f)
+
         cur_dims = [ args.jesus_first_layer_input_dim ]
-        cur_outputs = [ 'affine1' ]
+        cur_outputs = [ 'renorm1' ]
         cur_dim_if_final = args.jesus_first_layer_input_dim
-        cur_output_if_final = 'affine1'
+        cur_output_if_final = 'renorm1'
     else:
         # Take care of splicing:
         next_outputs = []
@@ -326,7 +339,7 @@ for l in range(1, num_hidden_layers + 1):
             # and block affine transforms, and then the affine components.
             dim_offset = 0
             print('dim-range-node name=jesus{0}-full-output input-node=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_full_output_dim, 
+                  'dim={1} dim-offset={2}'.format(l, args.jesus_full_output_dim,
                                                   dim_offset), file=f)
             dim_offset += args.jesus_full_output_dim
             print('dim-range-node name=jesus{0}-block-output input-node=post-jesus{0} '
@@ -335,29 +348,30 @@ for l in range(1, num_hidden_layers + 1):
 
             # print an affine node for the full output.
             print('component name=jesus{0}-full-affine type=NaturalGradientAffineComponent '
-                  'input-dim={1} output-dim={2} bias-mean=0.5 bias-stddev=0'.
+                  'input-dim={1} output-dim={2} bias-mean=0.1 bias-stddev=0'.
                   format(l, args.jesus_full_output_dim, args.jesus_full_input_dim), file=f)
             print('component-node name=jesus{0}-full-affine component=jesus{0}-full-affine '
                   'input=jesus{0}-full-output'.format(l), file=f)
             # ... and print a block-affine node for the block output
             print('component name=jesus{0}-block-affine type=BlockAffineComponent '
-                  'input-dim={1} output-dim={2} num-blocks={3} bias-mean=0.5 bias-stddev=0'.
-                  format(l, args.jesus_block_output_dim, args.jesus_block_input_dim,
-                         args.num_jesus_blocks), file=f)
+                  'learning-rate-factor={1} input-dim={2} output-dim={3} num-blocks={4} bias-mean=0.1 bias-stddev=0'.
+                  format(l, args.block_learning_rate_factor,
+                         args.jesus_block_output_dim, args.jesus_block_input_dim,
+                         args.num_affine_blocks), file=f)
             print('component-node name=jesus{0}-block-affine component=jesus{0}-block-affine '
                   'input=jesus{0}-block-output'.format(l), file=f)
             cur_dims = [ args.jesus_full_input_dim, args.jesus_block_input_dim ]
             cur_outputs = [ 'jesus{0}-full-affine'.format(l), 'jesus{0}-block-affine'.format(l) ]
             # for producing the temporary final node for discriminative pretraining,
             # only use the full-affine part.  This will create warnings about orphan components.
-            cur_dim_if_final =  args.jesus_full_input_dim 
+            cur_dim_if_final =  args.jesus_full_input_dim
             cur_output_if_final = 'jesus{0}-full-affine'.format(l)
         else:
             # this is the last hidden layer -> we don't have dim-range nodes.
             # print an affine node for the full output.  We're hardcoding this
             # to have the same input and output dims for now.
             print('component name=jesus{0}-full-affine type=NaturalGradientAffineComponent '
-                  'input-dim={1} output-dim={1} bias-mean=0.5 bias-stddev=0'.
+                  'input-dim={1} output-dim={1} bias-mean=0.1 bias-stddev=0'.
                   format(l, args.jesus_final_output_dim), file=f)
             print('component-node name=jesus{0}-full-affine component=jesus{0}-full-affine '
                   'input=post-jesus{0}'.format(l), file=f)
@@ -370,11 +384,14 @@ for l in range(1, num_hidden_layers + 1):
             cur_dim_if_final), file=f)
     print('component-node name=final-relu component=final-relu input={0}'.format(cur_output_if_final),
           file=f)
+    print('component name=final-normalize type=NormalizeComponent dim={0} target-rms={1}'.format(
+            cur_dim_if_final, args.final_layer_target_rms), file=f)
+    print('component-node name=final-normalize component=final-normalize input=final-relu',
+          file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} learning-rate-factor={2} param-stddev=0.0 bias-stddev=0'.format(
-            cur_dim_if_final, args.num_targets,
-            args.final_layer_learning_rate_factor), file=f)
-    print('component-node name=final-affine component=final-affine input=final-relu',
+          'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0'.format(
+            cur_dim_if_final, args.num_targets), file=f)
+    print('component-node name=final-affine component=final-affine input=final-normalize',
           file=f)
     # printing out the next two, and their component-nodes, for l > 1 is not
     # really necessary as they will already exist, but it doesn't hurt and makes
