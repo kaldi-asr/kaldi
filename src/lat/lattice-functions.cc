@@ -1584,4 +1584,175 @@ void ComposeCompactLatticeDeterministic(
   fst::Connect(composed_clat);
 }
 
+bool HasUniquePhoneContext(const CompactLattice &clat,
+       const TransitionModel &tmodel, int32 n) {
+  typedef typename fst::StdArc::StateId StateId;
+  typedef unordered_map<StateId, vector<int32> > MapType;
+  MapType context_map;
+  typedef typename MapType::iterator IterType;
+  KALDI_ASSERT(clat.Properties(fst::kTopSorted, true));
+  StateId num_states = clat.NumStates();
+  // Insert an empty context for the first state, 0.
+  context_map.insert(std::pair<const StateId,
+    vector<int32> >(0, vector<int32>()));
+
+  for (StateId s = 0; s < num_states; s++) {
+    KALDI_ASSERT(context_map.find(s) != context_map.end());
+    IterType itr = context_map.find(s);
+    vector<int32> old_context = itr->second;
+
+    // For each transition out of state s, record its phone label and extend
+    // it with the context stored for s, omitting the oldest label. Store this
+    // new context list at the next state.
+    for (fst::ArcIterator<CompactLattice> aiter(clat, s); !aiter.Done();
+         aiter.Next()) {
+      const CompactLatticeArc &arc = aiter.Value();
+      StateId next_state = arc.nextstate;
+      vector<int32> context;
+      const std::vector<int32> &tid_seq = arc.weight.String();
+      // If there is an epsilon on the arc of clat we transition to the next
+      // state but keep det_fst at the current state.
+      if (tid_seq.size() != 0) {
+        // The number of final states in the transition id sequence.
+        int32 num_final = 0,
+              phone_label;
+        for (int32 i = 0; i < tid_seq.size(); i++) {
+          if (tmodel.IsFinal(tid_seq[i])) {
+            phone_label = tmodel.TransitionIdToPhone(tid_seq[i]);
+            num_final += 1;
+          }
+        }
+        // There should be only one final state per phone, and only one
+        // phone per transition. If this fails, try running the lattice
+        // through lattice-align-phones with the option remove-epsilon=false.
+        context.push_back(phone_label);
+        KALDI_ASSERT(num_final == 1);
+      }
+      // Copy the transition history from the current state to the next
+      // state, omitting the oldest one.
+      for (int32 i = 0; i < std::min(static_cast<int32>(old_context.size()), n-2); i++)
+        context.push_back(old_context[i]);
+
+      // If the state has never been visited, store its history.
+      if (context_map.find(next_state) == context_map.end()) {
+        std::pair<const StateId, vector<int32> >
+            insert_value(next_state, context);
+        context_map.insert(insert_value);
+      // If next_state has already been visited, we need to check
+      // if the context recorded at that state matches the current
+      // path to it.
+      } else {
+        IterType itr = context_map.find(next_state);
+        vector<int32> next_context = itr->second;
+        for (int32 i = 0; i < std::min(static_cast<int32>(next_context.size()),
+          static_cast<int32>(context.size())); i++) {
+          if (context[i] != next_context[i])
+            return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
+void CompactLatticeExpandByPhone(const CompactLattice &clat, int32 n,
+        const TransitionModel &tmodel,
+        CompactLattice *composed_clat) {
+  typedef typename CompactLatticeArc::Weight Weight;
+  typedef typename fst::StdArc::StateId StateId;
+  typedef std::pair<StateId, StateId> StatePair;
+  typedef unordered_map<StatePair, StateId,
+    kaldi::PairHasher<StateId> > MapType;
+  typedef typename MapType::iterator IterType;
+
+  fst::UnweightedNgramFst<CompactLatticeArc> det_fst(n);
+  composed_clat->DeleteStates();
+
+  MapType state_map;
+  std::queue<StatePair> state_queue;
+
+  // Set start state in fst_composed.
+  StateId s1 = clat.Start(),
+          s2 = det_fst.Start(),
+          start_state = composed_clat->AddState();
+  StatePair start_pair(s1, s2);
+  state_queue.push(start_pair);
+  composed_clat->SetStart(start_state);
+  // A mapping between pairs of states in clat and det_fst and the
+  // corresponding state in composed_clat.
+  std::pair<const StatePair, StateId> start_map(start_pair, start_state);
+  std::pair<IterType, bool> result = state_map.insert(start_map);
+  KALDI_ASSERT(result.second == true);
+
+  while (!state_queue.empty()) {
+    StatePair q = state_queue.front();
+    StateId q1 = q.first,
+            q2 = q.second;
+    state_queue.pop();
+    // All states in det_fst are final states. We only require the state in
+    // clat to be final, before we create a final state in composed_clat.
+    Weight final_weight = clat.Final(q1);
+    if (final_weight != Weight::Zero()) {
+      KALDI_ASSERT(state_map.find(q) != state_map.end());
+      composed_clat->SetFinal(state_map[q], final_weight);
+    }
+
+    // for each pair of edges from clat and det_fst at q1 and q2.
+    for (fst::ArcIterator<CompactLattice> aiter(clat, q1);
+        !aiter.Done(); aiter.Next()) {
+      const CompactLatticeArc &arc1 = aiter.Value();
+      CompactLatticeArc arc2;
+      StatePair next_pair;
+      StateId next_state1 = arc1.nextstate,
+              next_state2,
+              next_state;
+      const std::vector<int32> &tid_seq = arc1.weight.String();
+      // If there are no phone labels on the transition, then move to the
+      // next state but keep det_fst at the current state. Usually, but
+      // not always, this corresponds to a null transition.
+      if (tid_seq.size() == 0) {
+        next_state2 = q2;
+      } else {
+        // The number of final states in the transition id sequence.
+        int32 num_final = 0,
+              phone_label;
+        for (int32 i = 0; i < tid_seq.size(); i++) {
+          if (tmodel.IsFinal(tid_seq[i])) {
+            phone_label = tmodel.TransitionIdToPhone(tid_seq[i]);
+            num_final += 1;
+          }
+        }
+        // There should be only one final state per phone, and only one
+        // phone per transition. If this fails, try running the lattice
+        // through lattice-align-phones with the option remove-epsilon=false.
+        KALDI_ASSERT(num_final == 1);
+        bool match = det_fst.GetArc(q2, phone_label, &arc2);
+        KALDI_ASSERT(match == true);
+        next_state2 = arc2.nextstate;
+      }
+      next_pair = StatePair(next_state1, next_state2);
+      IterType sitr = state_map.find(next_pair);
+      // If sitr == state_map.end() then the state isn't in composed_clat yet.
+      if (sitr == state_map.end()) {
+        next_state = composed_clat->AddState();
+        std::pair<const StatePair, StateId> new_state(
+          next_pair, next_state);
+        std::pair<IterType, bool> result = state_map.insert(new_state);
+        // Since we already checked if state_map contained new_state,
+        // it should always be added if we reach here.
+        KALDI_ASSERT(result.second == true);
+        state_queue.push(next_pair);
+      // If sitr != state_map.end() then the next state is already in
+      // the state_map.
+      } else {
+        next_state = sitr->second;
+      }
+      // All weights in det_fst are Weight::One, so the weight of
+      // composed_clat is just the weight of clat.
+      composed_clat->AddArc(state_map[q], CompactLatticeArc(arc1.ilabel,
+                            arc1.olabel, arc1.weight, next_state));
+    }
+  }
+}
+
 }  // namespace kaldi

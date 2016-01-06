@@ -306,6 +306,21 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
+/// This function returns true if the CompactLattice clat has unique
+/// left phone context of length n, and false if it does not.
+bool HasUniquePhoneContext(const CompactLattice &clat,
+       const TransitionModel &tmodel, int32 n);
+
+/// This function expands a CompactLattice so that each state in
+/// the lattice has a unique left phone context up to the length n.
+/// The expanded lattice is returned in clat_expanded.  Before using this
+/// function be sure that lattice-align-phones is applied to the lattice
+/// with the option remove-epsilon set to false.
+void CompactLatticeExpandByPhone(const CompactLattice &clat,
+    int32 n,
+    const TransitionModel &tmodel,
+    CompactLattice *clat_expanded);
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_

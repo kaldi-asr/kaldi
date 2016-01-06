@@ -1,5 +1,6 @@
 // durmodbin/durmod-copy.cc
-// Author: Hossein Hadian
+
+// Copyright 2015 Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +24,7 @@
 #include "util/parse-options.h"
 #include "tree/build-tree.h"
 #include "durmod/kaldi-durmod.h"
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -34,8 +36,7 @@ int main(int argc, char *argv[]) {
         " set the raw nnet inside the model.\n"
         "Usage:  durmod-copy [options] <in-dur-model> <out-dur-model>\n"
         "e.g.:\n"
-        "  durmod-copy-nnet --binary=false 0.mdl 1.mdl\n"
-        "";
+        "  durmod-copy-nnet --binary=false 0.mdl 1.mdl\n";
 
     bool binary_write = true, raw = false;
     std::string raw_nnet = "";

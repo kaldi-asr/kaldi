@@ -1,5 +1,6 @@
 // durmodbin/durmod-init.cc
-// Author: Hossein Hadian
+
+// Copyright 2015 Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -15,6 +16,7 @@
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
+
 #include "base/kaldi-common.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
@@ -22,6 +24,7 @@
 #include "util/parse-options.h"
 #include "tree/build-tree.h"
 #include "durmod/kaldi-durmod.h"
+
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
@@ -31,7 +34,7 @@ int main(int argc, char *argv[]) {
         "Usage:  durmod-init [options] <roots-file> <binary-feature-questions>"
         " <dur-model>\n"
         "e.g.: \n"
-        "  durmod-init roots.int extra_questions.int 0.durmod";
+        "  durmod-init roots.int extra_questions.int durmodel.mdl";
 
     bool binary_write = true;
 
@@ -51,7 +54,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::vector<int32> > roots;
     {
       Input ki(roots_filename.c_str());
-      std::vector<bool> is_shared, is_split;  // dummy variables, won't be used
+      std::vector<bool> is_shared, is_split;
       ReadRootsFile(ki.Stream(), &roots, &is_shared, &is_split);
     }
     KALDI_LOG << "Read " << roots.size() << " roots (phone sets)";
@@ -63,9 +66,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Read " << questions.size() << " phonetic questions";
     PhoneDurationModel durmod(opts, roots, questions);
     PhoneDurationEgsMaker egs_maker(durmod);
-    int32 dim1 = egs_maker.FeatureDim() * 1.5;
+    int32 dim1 = egs_maker.FeatureDim() * 8;
     durmod.InitNnet(egs_maker.FeatureDim(), dim1,
-                    10, egs_maker.OutputDim());
+                    egs_maker.OutputDim() * 1.5, egs_maker.OutputDim());
+    // TODO(hhadian): print some nice info
     KALDI_LOG << "Feature dim: " << egs_maker.FeatureDim()
               << ", NumBinaryFeatures: " << egs_maker.NumBinaryFeatures()
               << ", NumPhoneIdentities: " << egs_maker.NumPhoneIdentities();
