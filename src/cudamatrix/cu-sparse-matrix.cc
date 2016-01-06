@@ -207,7 +207,7 @@ template
 void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<double> *smat) const;
 
 template <typename Real>
-void CuSparseMatrix<Real>::CopyElementsToVec(CuVector<Real> *vec) const {
+void CuSparseMatrix<Real>::CopyElementsToVec(CuVectorBase<Real> *vec) const {
   KALDI_ASSERT(vec != NULL);
   KALDI_ASSERT(this->NumElements() == vec->Dim());
 #if HAVE_CUDA == 1
