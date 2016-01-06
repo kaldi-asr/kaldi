@@ -1,4 +1,4 @@
-// latbin/durmod-rescore-lattice.cc
+// durmodbin/durmod-rescore-lattice.cc
 
 // Copyright 2015 Hossein Hadian
 
