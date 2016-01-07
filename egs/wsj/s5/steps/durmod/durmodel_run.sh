@@ -24,12 +24,12 @@ dir=$4
 
 steps/durmod/durmodel_prepare_examples.sh --left-context 4 \
                                      --right-context 2 \
-                                     --max-duration 15 \
+                                     --max-duration 50 \
                                      $phones_dir $alidir $alidir/durmod
 
 steps/durmod/durmodel_train.sh --num-epochs 100 --minibatch-size 512 $alidir/durmod
 
-steps/durmod/durmodel_rescore.sh --lm-scale 0.75 $alidir/durmod/durmodel.mdl \
+steps/durmod/durmodel_rescore.sh --lm-scale 0.5 $alidir/durmod/durmodel.mdl \
                                 $decode_dir $dir
 if [[ ! -z $testdata ]]; then
   lang=$(dirname $phones_dir)

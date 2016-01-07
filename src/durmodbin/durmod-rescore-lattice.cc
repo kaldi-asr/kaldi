@@ -70,7 +70,6 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
-    int32 context_size = durmodel.RightContext() + durmodel.LeftContext() + 1;
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
       CompactLattice clat = compact_lattice_reader.Value();
@@ -78,13 +77,6 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Rescoring lattice for key " << key;
 
       if (lm_scale != 0.0) {
-
-        TopSortCompactLatticeIfNeeded(&clat);
-        if (!HasUniquePhoneContext(clat, trans_model, context_size)) {
-          KALDI_LOG << "Lattice " << key << " does not has unique left context";
-          n_fail++;
-          continue;
-        }
 
         fst::ScaleLattice(fst::GraphLatticeScale(1.0 / lm_scale), &clat);
         ArcSort(&clat, fst::OLabelCompare<CompactLatticeArc>());

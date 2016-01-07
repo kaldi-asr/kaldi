@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Author: Hossein Hadian
+# Copyright 2015 Hossein Hadian
 
 lm_scale=1.0
 cmd=run.pl
@@ -32,11 +32,9 @@ durmodel_context_size=`durmod-info $durmodel 2>/dev/null | grep full-context-siz
 echo "Duration Model Context Size: "$durmodel_context_size
   
 $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
-lattice-align-phones --remove-epsilon=false \
-                 $srcdir/final.mdl "ark:gunzip -c $latdir/lat.JOB.gz |" ark:- \| \
-                 lattice-expand-ngram-phone --n=$durmodel_context_size \
-                 $srcdir/final.mdl ark:- ark:- \| \
-                 durmod-rescore-lattice --lm-scale=$lm_scale $durmodel $srcdir/final.mdl \
-                 ark:- "ark,t:|gzip -c >$dir/lat.JOB.gz" || exit 1;
+      lattice-align-phones --remove-epsilon=false \
+      $srcdir/final.mdl "ark:gunzip -c $latdir/lat.JOB.gz |" ark:- \| \
+      durmod-rescore-lattice --lm-scale=$lm_scale $durmodel $srcdir/final.mdl \
+      ark:- "ark,t:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 
 echo "Done"
