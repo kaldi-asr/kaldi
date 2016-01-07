@@ -310,7 +310,7 @@ class ContextFst : public Fst<Arc> {
   ContextFstImpl<Arc, LabelT> *impl_;  // protected so CacheStateIterator
   // Makes visible to friends.
   ContextFstImpl<Arc, LabelT> *GetImpl() const { return impl_; }
- // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl(); 
+ // would be: ImplToFst<ContextFstImpl<Arc, LabelT> >::GetImpl();
  // but need to convert to using the ImplToFst stuff.
 
   void operator = (const ContextFstImpl<Arc> &fst);  // disallow
@@ -504,7 +504,7 @@ void ComposeContextFst(const ContextFst<Arc, LabelT> &ifst1, const Fst<Arc> &ifs
    information to ilabels_out.  "ifst" is mutable because we need to add the
    subsequential loop.
  */
-inline void ComposeContext(vector<int32> &disambig_syms,
+inline void ComposeContext(const vector<int32> &disambig_syms,
                            int N, int P,
                            VectorFst<StdArc> *ifst,
                            VectorFst<StdArc> *ofst,

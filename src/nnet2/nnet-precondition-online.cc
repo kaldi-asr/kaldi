@@ -1,6 +1,7 @@
 // nnet2/nnet-precondition-online.cc
 
-// Copyright 2013   Johns Hopkins University (author: Daniel Povey)
+// Copyright 2013-2015   Johns Hopkins University (author: Daniel Povey)
+//                2015   Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,50 +24,23 @@ namespace kaldi {
 namespace nnet2 {
 
 
-static void CheckOrthogonal(CuMatrixBase<BaseFloat> *N,
-                            bool quiet = false,
-                            int32 recurse_count = 0) {
-  if (recurse_count > 100)
-    KALDI_ERR << "CheckOrthogonal recursed >100 times, something is wrong.";
-
-  int32 R = N->NumRows();
-  CuSpMatrix<BaseFloat> S(R);
-  S.AddMat2(1.0, *N, kNoTrans, 0.0);
-  if (!S.IsUnit(1.0e-04)) {
-    {
-      SpMatrix<BaseFloat> S_cpu(S);
-      if (!quiet)
-        KALDI_WARN << "Matrix N is not orthogonal, fixing it.  N N^T is "
-                   << S_cpu;
-      Vector<BaseFloat> s(R);
-      S_cpu.Eig(&s);
-      BaseFloat threshold = 0.001;
-      if (s.Min() < threshold) {
-        if (!quiet) {
-          KALDI_WARN << "Minimum eigenvalue of N N^T is less than " << threshold
-                     << ", may be hard to fix: re-initializing from random "
-                     << "start. Eigs are" << s;
-        }
-        N->SetRandn();
-        CheckOrthogonal(N, quiet, recurse_count + 1);
-        return;
-      }
-    }
-    CuTpMatrix<BaseFloat> Cinv(R);
-    Cinv.Cholesky(S);
-    Cinv.Invert();
-    CuMatrix<BaseFloat> N_copy(*N);
-    N->AddTpMat(1.0, Cinv, kNoTrans, N_copy, kNoTrans, 0.0);
-    CheckOrthogonal(N, quiet, recurse_count + 1); // Check that it worked.
-  }
-}
-
 OnlinePreconditioner::OnlinePreconditioner():
     rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
     epsilon_(1.0e-10), delta_(5.0e-04), t_(-1),
     num_updates_skipped_(0), self_debug_(false) { }
 
 
+/**
+  This function creates a matrix with orthonormal rows that is like the
+  following matrix, except with each row normalized to have unit 2-norm:
+  [  1.1 0   1   0   1   0
+     0   1.1 0   1   0   1  ]
+  The reason why the first element in each row is 1.1 and not 1, is for
+  symmetry-breaking... we don't want any weighted sum of all these rows to be
+  all ones, because the derivative in that direction can be zero in some
+  architectures and it causes us to have to do an inefficient CPU-based
+  renormalization.
+ */
 // static
 void OnlinePreconditioner::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
   int32 num_rows = R->NumRows(), num_cols = R->NumCols();
@@ -74,15 +48,19 @@ void OnlinePreconditioner::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
   R->SetZero();
   std::vector<MatrixElement<BaseFloat> > elems;
   elems.reserve(num_cols);
+  BaseFloat first_elem = 1.1;
   for (int32 r = 0; r < num_rows; r++) {
     std::vector<int32> cols;  // columns that have an entry for this row
     for (int32 c = r; c < num_cols; c += num_rows)
       cols.push_back(c);
-    BaseFloat val = 1.0 / sqrt(cols.size());
+    BaseFloat normalizer = 1.0 / sqrt(first_elem * first_elem +
+                                      cols.size() - 1);
     for (size_t i = 0; i < cols.size(); i++) {
       int32 c = cols[i];
-      MatrixElement<BaseFloat> elem = { r, c, val };
-      elems.push_back(elem);
+      MatrixElement<BaseFloat> e = { r, c,
+                                     normalizer * (i == 0 ? first_elem :
+                                                   BaseFloat(1.0)) };
+      elems.push_back(e);
     }
   }
   R->AddElements(1.0, elems);
@@ -240,10 +218,12 @@ void OnlinePreconditioner::ReorthogonalizeXt1(
   try {
     C.Cholesky(O);
     C.Invert();  // Now it's C^{-1}.
+    if (!(C.Max() < 100.0))
+      KALDI_ERR << "Cholesky out of expected range, "
+                << "reorthogonalizing with Gram-Schmidt";
   } catch (...) {
-    // It would be very strange to reach this point, but we try to handle it
-    // gracefully anyway.  We do a Gram-Schmidt orthogonalization, which is
-    // a bit less efficient but more robust.
+    // We do a Gram-Schmidt orthogonalization, which is a bit less efficient but
+    // more robust than the method using Cholesky.
     KALDI_WARN << "Cholesky or Invert() failed while re-orthogonalizing R_t. "
                << "Re-orthogonalizing on CPU.";
     Matrix<BaseFloat> cpu_W_t1(*W_t1);
@@ -269,6 +249,52 @@ void OnlinePreconditioner::ReorthogonalizeXt1(
   temp_O->CopyFromMat(O_mat);
   temp_W->CopyFromMat(*W_t1);
   W_t1->AddMatMat(1.0, *temp_O, kNoTrans, *temp_W, kNoTrans, 0.0);
+}
+
+// makes sure certain invariants are being preserved
+void OnlinePreconditioner::SelfTest() const {
+  KALDI_ASSERT(rho_t_ >= epsilon_);
+  BaseFloat d_t_max = d_t_.Max(), d_t_min = d_t_.Min();
+  KALDI_ASSERT(d_t_min >= epsilon_);
+  KALDI_ASSERT(d_t_min > 0.9 * delta_ * d_t_max);
+  KALDI_ASSERT(rho_t_ > 0.9 * delta_ * d_t_max);
+
+  int32 D = W_t_.NumCols(), R = W_t_.NumRows();
+  BaseFloat beta_t = rho_t_ * (1.0 + alpha_) + alpha_ * d_t_.Sum() / D;
+  Vector<BaseFloat> e_t(R, kUndefined), sqrt_e_t(R, kUndefined),
+      inv_sqrt_e_t(R, kUndefined);
+  ComputeEt(d_t_, beta_t, &e_t, &sqrt_e_t, &inv_sqrt_e_t);
+
+  CuSpMatrix<BaseFloat> S(R);
+  S.AddMat2(1.0, W_t_, kNoTrans, 0.0);
+  SpMatrix<BaseFloat> O(S);
+  for (int32 i = 0; i < R; i++) {
+    BaseFloat i_factor = inv_sqrt_e_t(i);
+    for (int32 j = 0; j <= i; j++) {
+      BaseFloat j_factor = inv_sqrt_e_t(j);
+      O(i, j) *= i_factor * j_factor;
+    }
+  }
+  if (!O.IsUnit(1.0e-04) || O(0, 0) != O(0, 0)) {
+    BaseFloat worst_error = 0.0;
+    int32 worst_i = 0, worst_j = 0;
+    for (int32 i = 0; i < R; i++) {
+      for (int32 j = 0; j < R; j++) {
+        BaseFloat elem = O(i, j);
+        BaseFloat error = fabs(elem - (i == j ? 1.0 : 0.0));
+        if (error > worst_error || error != error) {
+          worst_error = error;
+          worst_i = i;
+          worst_j = j;
+        }
+      }
+    }
+    if (worst_error > 1.0e-02 || worst_error != worst_error) {
+      KALDI_WARN << "Failed to verify W_t (worst error: O[" << worst_i << ','
+                 << worst_j << "] = " << O(worst_i, worst_j)
+                 << ", d_t = " << d_t_;
+    }
+  }
 }
 
 void OnlinePreconditioner::PreconditionDirectionsInternal(
@@ -429,7 +455,7 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
   BaseFloat floor_val = std::max(epsilon_, delta_ * sqrt_c_t.Max());
   if (rho_t1 < floor_val)
     rho_t1 = floor_val;
-  d_t1.ApplyFloor(epsilon_);
+  d_t1.ApplyFloor(floor_val);
 
   CuMatrix<BaseFloat> W_t1(R, D);  // W_{t+1}
   ComputeWt1(N, d_t, d_t1, rho_t, rho_t1, U_t, sqrt_c_t, inv_sqrt_e_t,
@@ -446,7 +472,6 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
                        &L_t);
   }
 
-
   // Commit the new parameters.
   read_write_mutex_.Lock();
   KALDI_ASSERT(t_ == t);  // we already ensured this.
@@ -456,26 +481,33 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
   d_t_.CopyFromVec(d_t1);
   rho_t_ = rho_t1;
 
+  if (self_debug_)
+    SelfTest();
+
   read_write_mutex_.Unlock();
   update_mutex_.Unlock();
 }
 
 BaseFloat OnlinePreconditioner::Eta(int32 N) const {
   KALDI_ASSERT(num_samples_history_ > 0.0);
-  return 1.0 - Exp(-N / num_samples_history_);
+  BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
+  // Don't let eta approach 1 too closely, as it can lead to NaN's appearing if
+  // the input is all zero.
+  if (ans > 0.9) ans = 0.9;
+  return ans;
 }
 
 void OnlinePreconditioner::ComputeWt1(int32 N,
-                                      const VectorBase<BaseFloat> &d_t,
-                                      const VectorBase<BaseFloat> &d_t1,
-                                      BaseFloat rho_t,
-                                      BaseFloat rho_t1,
-                                      const MatrixBase<BaseFloat> &U_t,
-                                      const VectorBase<BaseFloat> &sqrt_c_t,
-                                      const VectorBase<BaseFloat> &inv_sqrt_e_t,
-                                      const CuMatrixBase<BaseFloat> &W_t,
-                                      CuMatrixBase<BaseFloat> *J_t,
-                                      CuMatrixBase<BaseFloat> *W_t1) const {
+                                       const VectorBase<BaseFloat> &d_t,
+                                       const VectorBase<BaseFloat> &d_t1,
+                                       BaseFloat rho_t,
+                                       BaseFloat rho_t1,
+                                       const MatrixBase<BaseFloat> &U_t,
+                                       const VectorBase<BaseFloat> &sqrt_c_t,
+                                       const VectorBase<BaseFloat> &inv_sqrt_e_t,
+                                       const CuMatrixBase<BaseFloat> &W_t,
+                                       CuMatrixBase<BaseFloat> *J_t,
+                                       CuMatrixBase<BaseFloat> *W_t1) const {
 
   int32 R = d_t.Dim(), D = W_t.NumCols();
   BaseFloat eta = Eta(N);
@@ -508,38 +540,6 @@ void OnlinePreconditioner::ComputeWt1(int32 N,
   // W_{t+1} = A_t B_t
   CuMatrix<BaseFloat> A_t_gpu(A_t);
   W_t1->AddMatMat(1.0, A_t_gpu, kNoTrans, *J_t, kNoTrans, 0.0);
-
-  if (self_debug_) {
-    CuMatrix<BaseFloat> W_t1_prod(R, R);
-    W_t1_prod.SymAddMat2(1.0, *W_t1, kNoTrans, 0.0);
-    W_t1_prod.CopyLowerToUpper();
-    Matrix<BaseFloat> W_t1_prod_cpu(W_t1_prod);
-    // Verifying that W_{t+1} W_{t+1}^T == E_t, via
-    // E_{-0.5} W_{t+1} W_{t+1}^T E_{-0.5} == I.
-    for (int32 i = 0; i < R; i++)
-      for (int32 j = 0; j < R; j++)
-        W_t1_prod_cpu(i, j) *= inv_sqrt_e_t1(i) * inv_sqrt_e_t1(j);
-
-    BaseFloat worst_error = 0.0;
-    int32 worst_i = 0, worst_j = 0;
-    for (int32 i = 0; i < R; i++) {
-      for (int32 j = 0; j < R; j++) {
-        BaseFloat elem = W_t1_prod_cpu(i, j);
-        BaseFloat error = fabs(elem - (i == j ? 1.0 : 0.0));
-        if (error > worst_error) {
-          worst_error = error;
-          worst_i = i;
-          worst_j = j;
-        }
-      }
-    }
-    if (worst_error > 1.0e-02) {
-      KALDI_WARN << "Failed to verify W_{t+1}, the following should be unit: "
-                 << W_t1_prod_cpu << " (worst error: W_{t+1}[" << worst_i << ','
-                 << worst_j << "] = " << W_t1_prod_cpu(worst_i, worst_j)
-                 << ", d_t = " << d_t_;
-    }
-  }
 }
 
 void OnlinePreconditioner::ComputeZt(int32 N,

@@ -43,7 +43,7 @@ class SparseVector {
   Real Sum() const;
 
   template <class OtherReal>
-  void CopyToVec(VectorBase<OtherReal> *vec) const;
+  void CopyElementsToVec(VectorBase<OtherReal> *vec) const;
 
   // *vec += alpha * *this.
   template <class OtherReal>
@@ -136,8 +136,7 @@ class SparseMatrix {
 
   /// Copies the values of all the elements in SparseMatrix into a VectorBase
   /// object.
-  template <class OtherReal>
-  void CopyToVec(VectorBase<OtherReal> *other) const;
+  void CopyElementsToVec(VectorBase<Real> *other) const;
 
   /// Copies data from another sparse matrix. We will add the transpose option
   /// later when it is necessary.
