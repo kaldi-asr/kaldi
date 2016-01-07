@@ -5,6 +5,27 @@
 # [natural gradient was helpful, based on logs;
 # also made a change to use positive bias for the jesus-component affine parts.]
 
+# Comparing the WER with 2y, it's about 1% abs worse [see below].  However, this is
+# for an odd reason: the model, while smaller than the 2y one (8.8 vs. 12.1 million
+# parameters), seems to have a lot more learning capacity, with better train and worse valid
+# prob.  In 3r and 3s I am trying smaller versions of this architecture.
+
+# a03:s5c: ./show_wer.sh 3p
+# %WER 18.05 [ 8880 / 49204, 966 ins, 2447 del, 5467 sub ] exp/chain/tdnn_3p_sp/decode_train_dev_sw1_tg/wer_12_0.0
+# %WER 16.86 [ 8296 / 49204, 967 ins, 2321 del, 5008 sub ] exp/chain/tdnn_3p_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+# %WER 19.8 | 4459 42989 | 82.4 11.5 6.1 2.1 19.8 57.7 | exp/chain/tdnn_3p_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 18.2 | 4459 42989 | 83.9 10.5 5.7 2.0 18.2 55.6 | exp/chain/tdnn_3p_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+# a03:s5c: ./show_wer.sh 2y
+# %WER 16.99 [ 8358 / 49204, 973 ins, 2193 del, 5192 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 15.86 [ 7803 / 49204, 959 ins, 2105 del, 4739 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+# %WER 18.9 | 4459 42989 | 83.4 11.3 5.3 2.3 18.9 56.3 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.0 | 4459 42989 | 85.1 10.1 4.8 2.1 17.0 53.5 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#                        2y             3p
+#  final-train-prob:  -0.083068    -0.0771
+#  final-valid-prob:  -0.01212     -0.12715
+# num-parameters:      12094115     8804087
+
+
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
 
 # _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support

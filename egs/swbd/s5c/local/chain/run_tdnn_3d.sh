@@ -4,6 +4,20 @@
 # configs from make_jesus_configs.py.
 #  --jesus-opts "--affine-output-dim 600 --jesus-output-dim 1800 --jesus-hidden-dim 15000" \
 #   --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3"
+# Results are about the same as 2y, or maybe just a little worse.
+
+# a03:s5c: ./show_wer.sh 3d
+# %WER 17.35 [ 8539 / 49204, 1023 ins, 2155 del, 5361 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_tg/wer_10_0.0
+# %WER 16.09 [ 7919 / 49204, 1012 ins, 2071 del, 4836 sub ] exp/chain/tdnn_3d_sp/decode_train_dev_sw1_fsh_fg/wer_10_0.0
+# %WER 18.9 | 4459 42989 | 83.2 11.2 5.6 2.1 18.9 56.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.0 | 4459 42989 | 85.0 9.8 5.2 2.0 17.0 53.6 | exp/chain/tdnn_3d_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# a03:s5c: ./show_wer.sh 2y
+# %WER 16.99 [ 8358 / 49204, 973 ins, 2193 del, 5192 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 15.86 [ 7803 / 49204, 959 ins, 2105 del, 4739 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+# %WER 18.9 | 4459 42989 | 83.4 11.3 5.3 2.3 18.9 56.3 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.0 | 4459 42989 | 85.1 10.1 4.8 2.1 17.0 53.5 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+
 
 # _2y is as _2o, but increasing the --frames-per-iter by a factor of 1.5, from
 # 800k to 1.2 million.  The aim is to avoid some of the per-job overhead

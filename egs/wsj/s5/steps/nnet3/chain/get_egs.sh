@@ -366,8 +366,8 @@ if [ $stage -le 5 ]; then
 
   if [ $archives_multiple == 1 ]; then # normal case.
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
-      nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:$dir/cegs.JOB.ark  || exit 1;
+      nnet3-chain-normalize-egs $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
+      nnet3-chain-shuffle-egs --srand=JOB ark:- ark:$dir/cegs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
     # final archives.  we create soft links to manage this splitting, because
@@ -383,8 +383,8 @@ if [ $stage -le 5 ]; then
       done
     done
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-chain-shuffle-egs --srand=JOB "ark:cat $egs_list|" ark:- \| \
-      nnet3-chain-normalize-egs $chaindir/normalization.fst ark:- ark:- \| \
+      nnet3-chain-normalize-egs $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
+      nnet3-chain-shuffle-egs --srand=JOB ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
   fi
 fi
