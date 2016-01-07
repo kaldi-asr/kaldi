@@ -346,17 +346,16 @@ class UpdatableComponent: public Component {
  public:
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
+      learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_) { }
 
-  void Init(BaseFloat lr, bool is_gradient = false);
-
-  UpdatableComponent(BaseFloat learning_rate) {  Init(learning_rate); }
-
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///    sets is_gradient_ to true and the learning rate to 1.
+  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  ///  learning_rate_factor_.
   virtual void SetZero(bool treat_as_gradient) = 0;
 
-  UpdatableComponent(): learning_rate_(0.001) { }
+  UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
+                        is_gradient_(false) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -369,9 +368,13 @@ class UpdatableComponent: public Component {
   /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
   /// Sets the learning rate of gradient descent
-  virtual void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
+  virtual void SetLearningRate(BaseFloat lrate) {
+    learning_rate_ = lrate * learning_rate_factor_;
+  }
 
-  /// Gets the learning rate of gradient descent
+  /// Gets the learning rate of gradient descent.  Note: if you call
+  /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
+  /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
   virtual std::string Info() const;
@@ -390,11 +393,29 @@ class UpdatableComponent: public Component {
   }
 
  protected:
+  // to be called from child classes, extracts any learning rate information
+  // from the config line and sets them appropriately.
+  void InitLearningRatesFromConfig(ConfigLine *cfl);
+
+  // To be used in child-class Read() functions, this function reads the opening
+  // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
+  void ReadUpdatableCommon(std::istream &is, bool binary);
+
+  // To be used in child-class Write() functions, writes the opening
+  // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
+  // learning rate;
+  void WriteUpdatableCommon(std::ostream &is, bool binary) const;
+
   BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
+  BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
+                                   ///< can be set to another < value so that
+                                   ///when < you call SetLearningRate(), that
+                                   ///value will be scaled by this factor.
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
+
  private:
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };

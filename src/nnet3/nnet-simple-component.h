@@ -73,7 +73,6 @@ class PnormComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
@@ -112,7 +111,6 @@ class ElementwiseProductComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
@@ -281,7 +279,6 @@ class SumReduceComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
@@ -354,11 +351,9 @@ class AffineComponent: public UpdatableComponent {
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
                   BaseFloat learning_rate);
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(BaseFloat learning_rate,
-            std::string matrix_filename);
+  void Init(std::string matrix_filename);
 
   // This function resizes the dimensions of the component, setting the
   // parameters to zero, while leaving any other configuration values the same.
@@ -440,20 +435,63 @@ class RepeatedAffineComponent: public UpdatableComponent {
   const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
 
-   RepeatedAffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
-                           const CuVectorBase<BaseFloat> &bias_params,
-                           int32 num_repeats,
-                           BaseFloat learning_rate);
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim, int32 num_repeats,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
 
  protected:
+  // This function Update(), called from backprop, is broken out for
+  // extensibility to natural gradient update.
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  // This function does nothing here but is redefined in child-class
+  // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
+  virtual void SetNaturalGradientConfigs() { }
+
   const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
   int32 num_repeats_;
 };
+
+class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
+ public:
+  // Use Init() to really initialize.
+  NaturalGradientRepeatedAffineComponent() { }
+
+  // Most of the public functions are inherited from RepeatedAffineComponent.
+  virtual std::string Type() const {
+    return "NaturalGradientRepeatedAffineComponent";
+  }
+
+  virtual Component* Copy() const;
+
+  // Copy constructor
+  explicit NaturalGradientRepeatedAffineComponent(
+      const NaturalGradientRepeatedAffineComponent &other);
+ private:
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  const NaturalGradientRepeatedAffineComponent &operator=(
+      const NaturalGradientRepeatedAffineComponent &other); // Disallow.
+
+  // Applies the default configuration to preconditioner_in_.
+  virtual void SetNaturalGradientConfigs();
+
+  // For efficiency reasons we only apply the natural gradient to the input
+  // side, i.e. not to the space of output derivatives-- we believe the input
+  // side is the more important side.  We don't make the natural-gradient
+  // configurable; we just give it a reasonable configuration.
+  // Instead of using the individual data-points, for efficiency reasons we use
+  // the distribution of per-minibatch summed derivatives over each dimension of
+  // the output space, as the source for the Fisher matrix.
+  OnlineNaturalGradient preconditioner_in_;
+};
+
 
 /// This class implements an affine transform using a block diagonal matrix
 /// e.g., one whose weight matrix is all zeros except for blocks on the
@@ -505,9 +543,9 @@ class BlockAffineComponent : public UpdatableComponent {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
 
   // BlockAffine-specific functions.
-  void Init(BaseFloat learning_rate, int32 input_dim,
-            int32 output_dim, int32 num_blocks,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
+  void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
  protected:
   // The matrix linear_params_ has a block structure, with num_blocks_ blocks of
@@ -592,29 +630,32 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual std::string Type() const { return "NaturalGradientAffineComponent"; }
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev, BaseFloat bias_stddev, BaseFloat bias_mean,
             int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_sample);
-  void Init(BaseFloat learning_rate, int32 rank_in,
-            int32 rank_out, int32 update_period,
+  void Init(int32 rank_in, int32 rank_out, int32 update_period,
             BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,
             std::string matrix_filename);
-
+  // this constructor does not really initialize, use Init() or Read().
+  NaturalGradientAffineComponent();
   virtual void Resize(int32 input_dim, int32 output_dim);
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Info() const;
   virtual Component* Copy() const;
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
-  NaturalGradientAffineComponent();
+  // copy constructor
+  explicit NaturalGradientAffineComponent(
+      const NaturalGradientAffineComponent &other);
   virtual void ZeroStats();
 
  private:
-  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientAffineComponent);
+  // disallow assignment operator.
+  NaturalGradientAffineComponent &operator= (
+      const NaturalGradientAffineComponent&);
 
   // Configs for preconditioner.  The input side tends to be better conditioned ->
   // smaller rank needed, so make them separately configurable.
@@ -1053,9 +1094,8 @@ class PerElementScaleComponent: public UpdatableComponent {
   // Some functions that are specific to this class.
   explicit PerElementScaleComponent(const PerElementScaleComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
-            BaseFloat param_stddev);
-  void Init(BaseFloat learning_rate, std::string vector_filename);
+  void Init(int32 dim, BaseFloat param_mean, BaseFloat param_stddev);
+  void Init(std::string vector_filename);
 
  protected:
   friend class AffineComponent;  // necessary for collapse
@@ -1126,9 +1166,9 @@ class PerElementOffsetComponent: public UpdatableComponent {
   // Some functions that are specific to this class.
   explicit PerElementOffsetComponent(const PerElementOffsetComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+  void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev);
-  void Init(BaseFloat learning_rate, std::string vector_filename);
+  void Init(std::string vector_filename);
 
  protected:
   const PerElementOffsetComponent &operator
@@ -1161,11 +1201,11 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   explicit NaturalGradientPerElementScaleComponent(
       const NaturalGradientPerElementScaleComponent &other);
 
-  void Init(BaseFloat learning_rate, int32 dim, BaseFloat param_mean,
+  void Init(int32 dim, BaseFloat param_mean,
             BaseFloat param_stddev, int32 rank, int32 update_period,
             BaseFloat num_samples_history, BaseFloat alpha,
             BaseFloat max_change_per_minibatch);
-  void Init(BaseFloat learning_rate, std::string vector_filename,
+  void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_minibatch);
 
@@ -1331,16 +1371,14 @@ class ConvolutionComponent: public UpdatableComponent {
                  const MatrixBase<BaseFloat> &filter);
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(BaseFloat learning_rate,
-            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 filt_x_dim, int32 filt_y_dim,
             int32 filt_x_step, int32 filt_y_step, int32 num_filters,
             TensorVectorizationType input_vectorization,
             BaseFloat param_stddev, BaseFloat bias_stddev);
   // there is no filt_z_dim parameter as the length of the filter along
   // z-dimension is same as the input
-  void Init(BaseFloat learning_rate,
-            int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 filt_x_dim, int32 filt_y_dim,
             int32 filt_x_step, int32 filt_y_step,
             TensorVectorizationType input_vectorization,
@@ -1504,11 +1542,10 @@ class Convolutional1dComponent: public UpdatableComponent {
                  const MatrixBase<BaseFloat> &filter);
   const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(BaseFloat learning_rate, int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             int32 patch_dim, int32 patch_step, int32 patch_stride,
             BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(BaseFloat learning_rate,
-            int32 patch_dim, int32 patch_step, int32 patch_stride,
+  void Init(int32 patch_dim, int32 patch_step, int32 patch_stride,
             std::string matrix_filename);
 
   // resize the component, setting the parameters to zero, while
@@ -1606,7 +1643,7 @@ class MaxpoolingComponent: public Component {
 };
 
 /**
-   CompositeComponent is a base-class for components that are sequences of other
+   CompositeComponent is components representing a sequence of
    [simple] components.  The config line would be something like the following
    (imagine this is all on one line):
 
@@ -1614,7 +1651,6 @@ class MaxpoolingComponent: public Component {
       component1='type=BlockAffineComponent input-dim=1000 output-dim=10000 num-blocks=100' \
       component2='type=RectifiedLinearComponent dim=10000' \
       component3='type=BlockAffineComponent input-dim=10000 output-dim=1000 num-blocks=100'
-
 
    The reason you might want to use this component, instead of directly using
    the same sequence of components in the config file, is to save GPU memory (at
