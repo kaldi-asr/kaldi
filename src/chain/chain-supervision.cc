@@ -36,6 +36,7 @@ bool TryDeterminizeMinimize(int32 supervision_max_states,
   if (supervision_fst->NumStates() >= supervision_max_states) {
     KALDI_WARN << "Not attempting determinization as number of states "
                << "is too large " << supervision_fst->NumStates();
+    return false;
   }
   fst::DeterminizeOptions<fst::StdArc> opts;
   opts.state_threshold = supervision_max_states;
@@ -313,10 +314,6 @@ bool ProtoSupervisionToSupervision(
     // possibly there were too many phones for too few frames.
     return false;
   }
-
-  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &(supervision->fst)))
-    return false;
 
   supervision->weight = 1.0;
   supervision->num_sequences = 1;
@@ -652,27 +649,28 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
-
-  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &(supervision->fst)))
-    return false;
-
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
   // the composed result will be epsilon free.
   fst::StdVectorFst supervision_fst_noeps(supervision->fst);
   fst::RmEpsilon(&supervision_fst_noeps);
-  fst::StdVectorFst composed_fst;
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &supervision_fst_noeps))
+    return false;
+
   // note: by default, 'Compose' will call 'Connect', so if the
   // resulting FST is not connected, it will end up empty.
-  fst::Compose(supervision_fst_noeps, normalization_fst, &composed_fst);
+  fst::StdVectorFst composed_fst;
+  fst::Compose(supervision_fst_noeps, normalization_fst,
+               &composed_fst);
   if (composed_fst.NumStates() == 0)
     return false;
   // projection should not be necessary, as both FSTs are acceptors.
   // determinize and minimize to make it as compact as possible.
 
   if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &(supervision->fst)))
+                              &composed_fst))
     return false;
+  supervision->fst = composed_fst;
 
   // Make sure the states are numbered in increasing order of time.
   SortBreadthFirstSearch(&(supervision->fst));
