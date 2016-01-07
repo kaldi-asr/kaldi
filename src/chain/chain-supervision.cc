@@ -26,6 +26,33 @@
 namespace kaldi {
 namespace chain {
 
+const int kSupervisionMaxStates = 200000;  // we can later make this
+                                           // configurable if needed.
+
+// attempts determinization (with limited max-states) and minimization;
+// returns true on success
+bool TryDeterminizeMinimize(int32 supervision_max_states,
+                            fst::StdVectorFst *supervision_fst) {
+  if (supervision_fst->NumStates() >= supervision_max_states) {
+    KALDI_WARN << "Not attempting determinization as number of states "
+               << "is too large " << supervision_fst->NumStates();
+  }
+  fst::DeterminizeOptions<fst::StdArc> opts;
+  opts.state_threshold = supervision_max_states;
+  fst::StdVectorFst fst_copy = *supervision_fst;
+  fst::Determinize(fst_copy, supervision_fst, opts);
+  // the - 1 here is just because I'm not sure if it stops just before the
+  // threshold.
+  if (supervision_fst->NumStates() >= opts.state_threshold - 1) {
+    KALDI_WARN << "Determinization stopped early after reaching "
+               << supervision_fst->NumStates() << " states.  Likely "
+               << "this utterance has a very strange transcription.";
+    return false;
+  }
+  fst::Minimize(supervision_fst);
+  return true;
+}
+
 void ProtoSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<ProtoSupervision>");
   if (!binary) os << "\n";
@@ -286,6 +313,11 @@ bool ProtoSupervisionToSupervision(
     // possibly there were too many phones for too few frames.
     return false;
   }
+
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &(supervision->fst)))
+    return false;
+
   supervision->weight = 1.0;
   supervision->num_sequences = 1;
   supervision->frames_per_sequence = proto_supervision.allowed_phones.size();
@@ -620,7 +652,12 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
-  // remove epsilons before componing.  'normalization_fst' has noepsilons so
+
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &(supervision->fst)))
+    return false;
+
+  // remove epsilons before composing.  'normalization_fst' has noepsilons so
   // the composed result will be epsilon free.
   fst::StdVectorFst supervision_fst_noeps(supervision->fst);
   fst::RmEpsilon(&supervision_fst_noeps);
@@ -632,8 +669,11 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
     return false;
   // projection should not be necessary, as both FSTs are acceptors.
   // determinize and minimize to make it as compact as possible.
-  fst::Determinize(composed_fst, &(supervision->fst));
-  fst::Minimize(&(supervision->fst));
+
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &(supervision->fst)))
+    return false;
+
   // Make sure the states are numbered in increasing order of time.
   SortBreadthFirstSearch(&(supervision->fst));
   KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
