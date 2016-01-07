@@ -158,6 +158,34 @@ std::string ErrorContext(const std::string &str);
 // printing stats in info lines.
 std::string SummarizeVector(const Vector<BaseFloat> &vec);
 
+/** Print to 'os' some information about the mean and standard deviation of
+    some parameters, used in Info() functions in nnet-simple-component.cc.
+    For example:
+     PrintParameterStats(os, "bias", bias_params_, true);
+    would print to 'os' something like the string 
+     ", bias-{mean,stddev}=-0.013,0.196".  If 'include_mean = false',
+    it will print something like
+     ", bias-rms=0.2416", and this represents and uncentered standard deviation.
+ */
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuVector<BaseFloat> &params,
+                         bool include_mean = false);
+
+/** Print to 'os' some information about the mean and standard deviation of
+    some parameters, used in Info() functions in nnet-simple-component.cc.
+    For example:
+     PrintParameterStats(os, "linear-params", linear_params_;
+    would print to 'os' something like the string 
+     ", linear-params-rms=0.239".
+    If you set include_mean to true, it will print something like
+    ", linear-params-{mean-stddev}=0.103,0.183".
+ */
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuMatrix<BaseFloat> &params,
+                         bool include_mean = false);
+
 
 } // namespace nnet3
 } // namespace kaldi

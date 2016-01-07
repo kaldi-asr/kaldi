@@ -1,7 +1,5 @@
 // nnet3/nnet-parse.cc
 
-// nnet3/nnet-parse.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -23,6 +21,8 @@
 #include <sstream>
 #include <iomanip>
 #include "nnet3/nnet-parse.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-matrix.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -454,7 +454,6 @@ static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
   }
   os.unsetf(std::ios_base::floatfield);
   os << std::setprecision(6);  // Restore the default.
-
 }
 
 
@@ -496,6 +495,41 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
   return os.str();
 }
 
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuVector<BaseFloat> &params,
+                         bool include_mean) {
+  os << std::setprecision(4);
+  os << ", " << name << '-';
+  if (include_mean) {
+    BaseFloat mean = params.Sum() / params.Dim(),
+        stddev = std::sqrt(VecVec(params, params) / params.Dim() - mean * mean);
+    os << "{mean,stddev}=" << mean << ',' << stddev;
+  } else {
+    BaseFloat rms = std::sqrt(VecVec(params, params) / params.Dim());
+    os << "rms=" << rms;
+  }
+  os << std::setprecision(6);  // restore the default precision.
+}
+
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuMatrix<BaseFloat> &params,
+                         bool include_mean) {
+  os << std::setprecision(4);
+  os << ", " << name << '-';
+  int32 dim = params.NumRows() * params.NumCols();
+  if (include_mean) {
+    BaseFloat mean = params.Sum() / dim,
+        stddev = std::sqrt(TraceMatMat(params, params, kTrans) / dim -
+                           mean * mean);
+    os << "{mean,stddev}=" << mean << ',' << stddev;
+  } else {
+    BaseFloat rms = std::sqrt(TraceMatMat(params, params, kTrans) / dim);
+    os << "rms=" << rms;
+  }
+  os << std::setprecision(6);  // restore the default precision.
+}
 
 
 } // namespace nnet3

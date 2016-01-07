@@ -86,13 +86,6 @@ void PnormComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</PnormComponent>");
 }
 
-std::string PnormComponent::Info() const {
-  std::stringstream stream;
-  stream << Type() << ", input-dim=" << input_dim_
-         << ", output-dim=" << output_dim_;
-  return stream.str();
-}
-
 
 void SumReduceComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
@@ -165,12 +158,6 @@ void SumReduceComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</SumReduceComponent>");
 }
 
-std::string SumReduceComponent::Info() const {
-  std::stringstream stream;
-  stream << Type() << ", input-dim=" << input_dim_
-         << ", output-dim=" << output_dim_;
-  return stream.str();
-}
 
 void ElementwiseProductComponent::Init(int32 input_dim, int32 output_dim)  {
   input_dim_ = input_dim;
@@ -252,13 +239,6 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</ElementwiseProductComponent>");
 }
 
-std::string ElementwiseProductComponent::Info() const {
-  std::stringstream stream;
-  stream << Type() << ", input-dim=" << input_dim_
-         << ", output-dim=" << output_dim_;
-  return stream.str();
-}
-
 const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
 // This component modifies the vector of activations by scaling it so that the
 // root-mean-square equals 1.0.  It's important that its square root
@@ -335,7 +315,7 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
 }
 
 std::string NormalizeComponent::Info() const {
-  std::stringstream stream;
+  std::ostringstream stream;
   stream << NonlinearComponent::Info();
   stream << ", target-rms=" << target_rms_;
   return stream.str();
@@ -493,7 +473,7 @@ void ClipGradientComponent::Write(std::ostream &os, bool binary) const {
 }
 
 std::string ClipGradientComponent::Info() const {
-  std::stringstream stream;
+  std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
          << ", norm-based-clipping="
          << (norm_based_clipping_ ? "true" : "false")
@@ -734,17 +714,10 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
 }
 
 std::string AffineComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
-      * static_cast<BaseFloat>(linear_params_.NumCols());
-  BaseFloat linear_stddev =
-      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
-                linear_params_size),
-      bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-                              bias_params_.Dim());
-  stream << UpdatableComponent::Info()
-         << ", linear-params-stddev=" << linear_stddev
-         << ", bias-params-stddev=" << bias_stddev;
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info();
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
@@ -1000,18 +973,11 @@ void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
 }
 
 std::string RepeatedAffineComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
-      * static_cast<BaseFloat>(linear_params_.NumCols());
-  BaseFloat linear_stddev =
-      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
-	                        linear_params_size),
-  bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-  bias_params_.Dim());
+  std::ostringstream stream;
   stream << UpdatableComponent::Info()
-         << ", num-repeats=" << num_repeats_
-         << ", linear-params-stddev=" << linear_stddev
-         << ", bias-params-stddev=" << bias_stddev;
+         << ", num-repeats=" << num_repeats_;
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
@@ -1409,19 +1375,11 @@ Component* BlockAffineComponent::Copy() const {
 }
 
 std::string BlockAffineComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
-    * static_cast<BaseFloat>(linear_params_.NumCols());
-  BaseFloat linear_stddev =
-      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
-                linear_params_size),
-    bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-                            bias_params_.Dim());
-
+  std::ostringstream stream;
   stream << UpdatableComponent::Info()
-         << ", num-blocks=" << num_blocks_
-         << ", linear-params-stddev=" << linear_stddev
-         << ", bias-params-stddev=" << bias_stddev;
+         << ", num-blocks=" << num_blocks_;
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
@@ -1704,17 +1662,11 @@ void PerElementScaleComponent::PerturbParams(BaseFloat stddev) {
 }
 
 std::string PerElementScaleComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat scales_mean = scales_.Sum() / scales_.Dim();
-  BaseFloat scales_stddev = std::sqrt(VecVec(scales_, scales_) /
-                              scales_.Dim());
-  stream << Type() << ", input-dim=" << InputDim()
-         << ", output-dim=" << OutputDim()
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info()
          << ", scales-min=" << scales_.Min()
-         << ", scales-max=" << scales_.Max()
-         << ", scales-mean=" << scales_mean
-         << ", scales-stddev=" << scales_stddev
-         << ", learning-rate=" << LearningRate();
+         << ", scales-max=" << scales_.Max();
+  PrintParameterStats(stream, "scales", scales_, true);
   return stream.str();
 }
 
@@ -1879,17 +1831,11 @@ void PerElementOffsetComponent::PerturbParams(BaseFloat stddev) {
 }
 
 std::string PerElementOffsetComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat offsets_mean = offsets_.Sum() / offsets_.Dim();
-  BaseFloat offsets_stddev = std::sqrt(VecVec(offsets_, offsets_) /
-                              offsets_.Dim());
-  stream << Type() << ", input-dim=" << InputDim()
-         << ", output-dim=" << OutputDim()
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info()
          << ", offsets-min=" << offsets_.Min()
-         << ", offsets-max=" << offsets_.Max()
-         << ", offsets-mean=" << offsets_mean
-         << ", offsets-stddev=" << offsets_stddev
-         << ", learning-rate=" << LearningRate();
+         << ", offsets-max=" << offsets_.Max();
+  PrintParameterStats(stream, "offsets", offsets_, true);
   return stream.str();
 }
 
@@ -2211,18 +2157,11 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat linear_params_size = static_cast<BaseFloat>(linear_params_.NumRows())
-      * static_cast<BaseFloat>(linear_params_.NumCols());
-  BaseFloat linear_stddev =
-      std::sqrt(TraceMatMat(linear_params_, linear_params_, kTrans) /
-                linear_params_size),
-      bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-                              bias_params_.Dim());
-  stream << UpdatableComponent::Info()
-         << ", linear-params-stddev=" << linear_stddev
-         << ", bias-params-stddev=" << bias_stddev
-         << ", rank-in=" << rank_in_
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info();
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
+  stream << ", rank-in=" << rank_in_
          << ", rank-out=" << rank_out_
          << ", num_samples_history=" << num_samples_history_
          << ", update_period=" << update_period_
@@ -2336,18 +2275,10 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
 }
 
 std::string FixedAffineComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat linear_params_size =
-      static_cast<BaseFloat>(linear_params_.NumRows())
-      * static_cast<BaseFloat>(linear_params_.NumCols());
-  BaseFloat linear_params_stddev =
-      std::sqrt(TraceMatMat(linear_params_,
-                            linear_params_, kTrans) / linear_params_size);
-  BaseFloat bias_params_stddev =
-      std::sqrt(VecVec(bias_params_, bias_params_) / bias_params_.Dim());
-
-  stream << Component::Info() << ", linear-params-stddev="
-      << linear_params_stddev << ", bias-params-stddev=" << bias_params_stddev;
+  std::ostringstream stream;
+  stream << Component::Info();
+  PrintParameterStats(stream, "linear-params", linear_params_);
+  PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
 
@@ -2675,13 +2606,9 @@ void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
 
 
 std::string FixedScaleComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat scales_size = static_cast<BaseFloat>(scales_.Dim()),
-      scales_mean = scales_.Sum() / scales_size,
-      scales_stddev = std::sqrt(VecVec(scales_, scales_) / scales_size
-       - (scales_mean * scales_mean));
-  stream << Component::Info() << ", scales-mean=" << scales_mean
-         << ", scales-stddev=" << scales_stddev;
+  std::ostringstream stream;
+  stream << Component::Info();
+  PrintParameterStats(stream, "scales", scales_, true);
   return stream.str();
 }
 
@@ -2751,13 +2678,9 @@ void FixedBiasComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 std::string FixedBiasComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat bias_size = static_cast<BaseFloat>(bias_.Dim()),
-      bias_mean = bias_.Sum() / bias_size,
-      bias_stddev = std::sqrt(VecVec(bias_, bias_) / bias_size)
-       - (bias_mean * bias_mean);
-  stream << Component::Info() << ", bias-mean=" << bias_mean
-         << ", bias-stddev=" << bias_stddev;
+  std::ostringstream stream;
+  stream << Component::Info();
+  PrintParameterStats(stream, "bias", bias_, true);
   return stream.str();
 }
 
@@ -2848,7 +2771,7 @@ void NaturalGradientPerElementScaleComponent::Write(std::ostream &os,
 }
 
 std::string NaturalGradientPerElementScaleComponent::Info() const {
-  std::stringstream stream;
+  std::ostringstream stream;
   stream << PerElementScaleComponent::Info()
          << ", rank=" << preconditioner_.GetRank()
          << ", update-period=" << preconditioner_.GetUpdatePeriod()
@@ -3080,16 +3003,7 @@ void ConvolutionComponent::Init(
 
 // display information about component
 std::string ConvolutionComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat filter_params_size =
-      static_cast<BaseFloat>(filter_params_.NumRows())
-      * static_cast<BaseFloat>(filter_params_.NumCols());
-  BaseFloat filter_stddev =
-            std::sqrt(TraceMatMat(filter_params_, filter_params_, kTrans) /
-                      filter_params_size),
-            bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-                                    bias_params_.Dim());
-
+  std::ostringstream stream;
   stream << UpdatableComponent::Info()
          << ", input-x-dim=" << input_x_dim_
          << ", input-y-dim=" << input_y_dim_
@@ -3099,9 +3013,9 @@ std::string ConvolutionComponent::Info() const {
          << ", filt-x-step=" << filt_x_step_
          << ", filt-y-step=" << filt_y_step_
          << ", input-vectorization=" << input_vectorization_
-         << ", num-filters=" << filter_params_.NumRows()
-         << ", filter-params-stddev=" << filter_stddev
-         << ", bias-params-stddev=" << bias_stddev;
+         << ", num-filters=" << filter_params_.NumRows();
+  PrintParameterStats(stream, "filter-params", filter_params_);
+  PrintParameterStats(stream, "bias-params", bias_params_, true);  
   return stream.str();
 }
 
@@ -3731,15 +3645,7 @@ void Convolutional1dComponent::Resize(int32 input_dim, int32 output_dim) {
 
 // display information about component
 std::string Convolutional1dComponent::Info() const {
-  std::stringstream stream;
-  BaseFloat filter_params_size = static_cast<BaseFloat>(filter_params_.NumRows())
-                                 * static_cast<BaseFloat>(filter_params_.NumCols());
-  BaseFloat filter_stddev =
-            std::sqrt(TraceMatMat(filter_params_, filter_params_, kTrans) /
-                      filter_params_size),
-            bias_stddev = std::sqrt(VecVec(bias_params_, bias_params_) /
-                                    bias_params_.Dim());
-
+  std::ostringstream stream;
   int32 num_splice = InputDim() / patch_stride_;
   int32 filter_dim = num_splice * patch_dim_;
   int32 num_patches = 1 + (patch_stride_ - patch_dim_) / patch_step_;
@@ -3749,9 +3655,9 @@ std::string Convolutional1dComponent::Info() const {
          << ", num-splice=" << num_splice
          << ", num-patches=" << num_patches
          << ", num-filters=" << num_filters
-         << ", filter-dim=" << filter_dim
-         << ", filter-params-stddev=" << filter_stddev
-         << ", bias-params-stddev=" << bias_stddev;
+         << ", filter-dim=" << filter_dim;
+  PrintParameterStats(stream, "filter-params", filter_params_);
+  PrintParameterStats(stream, "bias-params", bias_params_, true);  
   return stream.str();
 }
 
@@ -4348,7 +4254,7 @@ void MaxpoolingComponent::Write(std::ostream &os, bool binary) const {
 }
 
 std::string MaxpoolingComponent::Info() const {
-  std::stringstream stream;
+  std::ostringstream stream;
   stream << Type() << ", input-dim = " << input_dim_
          << ", output-dim = " << output_dim_
          << ", pool-size = " << pool_size_
@@ -4453,7 +4359,7 @@ void PermuteComponent::Write(std::ostream &os, bool binary) const {
 }
 
 std::string PermuteComponent::Info() const {
-  std::stringstream stream;
+  std::ostringstream stream;
   stream << Type() << ", dim=" << column_map_.Dim();
   stream << " , column-map=[ ";
   std::vector<int32> column_map(column_map_.Dim());

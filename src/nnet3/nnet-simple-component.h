@@ -73,7 +73,6 @@ class PnormComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
@@ -112,7 +111,6 @@ class ElementwiseProductComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
@@ -281,7 +279,6 @@ class SumReduceComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
-  virtual std::string Info() const;
  protected:
   int32 input_dim_;
   int32 output_dim_;
