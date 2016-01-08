@@ -544,7 +544,8 @@ class BlockAffineComponent : public UpdatableComponent {
 
   // BlockAffine-specific functions.
   void Init(int32 input_dim, int32 output_dim, int32 num_blocks,
-            BaseFloat param_stddev, BaseFloat bias_mean, BaseFloat bias_stddev);
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
  protected:
   // The matrix linear_params_ has a block structure, with num_blocks_ blocks of

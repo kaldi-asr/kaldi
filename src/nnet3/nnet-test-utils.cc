@@ -1100,7 +1100,6 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " num-repeats=" << num_repeats;
       break;
     }
-      
     default:
       KALDI_ERR << "Error generating random component";
   }

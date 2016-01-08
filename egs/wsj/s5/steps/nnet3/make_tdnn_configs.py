@@ -141,7 +141,7 @@ for l in range(1, num_hidden_layers + 1):
         l, nonlin_output_dim,
         (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
-          'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0'.format(
+          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
           nonlin_output_dim, args.num_targets), file=f)
     # printing out the next two, and their component-nodes, for l > 1 is not
     # really necessary as they will already exist, but it doesn't hurt and makes

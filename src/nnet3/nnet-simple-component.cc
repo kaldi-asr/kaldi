@@ -1189,7 +1189,7 @@ void RepeatedAffineComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
 }
 
 void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
-  // This Write function also works for NaturalGradientRepeatedAffineComponent.
+  // This Read function also works for NaturalGradientRepeatedAffineComponent.
   ReadUpdatableCommon(is, binary);  // read opening tag and learning rate.
   ExpectToken(is, binary, "<NumRepeats>");
   ReadBasicType(is, binary, &num_repeats_);
@@ -1408,7 +1408,6 @@ void BlockAffineComponent::InitFromConfig(ConfigLine *cfl) {
      !cfl->GetValue("num-blocks", &num_blocks))
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-
   InitLearningRatesFromConfig(cfl);
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_blocks),
       bias_mean = 0.0, bias_stddev = 1.0;
