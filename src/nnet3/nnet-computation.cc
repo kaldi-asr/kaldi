@@ -168,15 +168,8 @@ void NnetComputation::MatrixDebugInfo::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<MatrixDebugInfo>");
   ExpectToken(is, binary, "<IsDeriv>");
   ReadBasicType(is, binary, &is_deriv);
-  size_t num_cindexes;
-  ExpectToken(is, binary, "<NumCindexes>");
-  ReadBasicType(is, binary, &num_cindexes);
-  cindexes.resize(num_cindexes);
   ExpectToken(is, binary, "<Cindexes>");
-  for (size_t c = 0; c < num_cindexes; c++) {
-    ReadBasicType(is, binary, &(cindexes[c].first));
-    cindexes[c].second.Read(is, binary);
-  }
+  ReadCindexVector(is, binary, &cindexes);
   ExpectToken(is, binary, "</MatrixDebugInfo>");
 }
 
@@ -184,13 +177,8 @@ void NnetComputation::MatrixDebugInfo::Write(std::ostream &os, bool binary) cons
   WriteToken(os, binary, "<MatrixDebugInfo>");
   WriteToken(os, binary, "<IsDeriv>");
   WriteBasicType(os, binary, is_deriv);
-  WriteToken(os, binary, "<NumCindexes>");
-  WriteBasicType(os, binary, cindexes.size()); 
   WriteToken(os, binary, "<Cindexes>");
-  for (int32 c = 0; c < cindexes.size(); c++) {
-    WriteBasicType(os, binary, cindexes[c].first);
-    cindexes[c].second.Write(os, binary);
-  }
+  WriteCindexVector(os, binary, cindexes);
   WriteToken(os, binary, "</MatrixDebugInfo>");
 }
 

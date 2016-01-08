@@ -1,6 +1,7 @@
 // nnet3/nnet-common.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -151,7 +152,123 @@ void ReadIndexVector(std::istream &is, bool binary,
   }
 }
 
+static void WriteCindexVectorElementBinary(
+    std::ostream &os,
+    const std::vector<Cindex> &vec,
+    int32 i) {
+  bool binary = true;
+  int32 node_index = vec[i].first;
+  Index index = vec[i].second;
+  if (i == 0) {
+    if (index.n == 0 && index.x == 0 &&
+        std::abs(index.t) < 125) {
+      // handle this common case in one character.
+      os.put(static_cast<signed char>(index.t));
+    } else {  // handle the general case less efficiently.
+      os.put(127);
+      WriteBasicType(os, binary, node_index);
+      WriteBasicType(os, binary, index.n);
+      WriteBasicType(os, binary, index.t);
+      WriteBasicType(os, binary, index.x);
+    }
+  } else {
+    Index last_index = vec[i-1].second;
+    if (index.n == last_index.n && index.x == last_index.x &&
+        std::abs(index.t - last_index.t) < 125) {
+      signed char c = index.t - last_index.t;
+      os.put(c);
+    } else {  // handle the general case less efficiently.
+      os.put(127);
+      WriteBasicType(os, binary, node_index);
+      WriteBasicType(os, binary, index.n);
+      WriteBasicType(os, binary, index.t);
+      WriteBasicType(os, binary, index.x);
+    }
+  }
+  if (!os.good())
+    KALDI_ERR << "Output stream error detected";
+}
 
+static void ReadCindexVectorElementBinary(
+    std::istream &is,
+    int32 i,
+    std::vector<Cindex> *vec) {
+  bool binary = true;
+  int32 &node_index = (*vec)[i].first;
+  Index &index = (*vec)[i].second;
+  if (!is.good())
+    KALDI_ERR << "End of file while reading vector of Index.";
+  signed char c = is.get();
+  if (i == 0) {
+    if (std::abs(int(c)) < 125) {
+      index.n = 0;
+      index.t = c;
+      index.x = 0;
+    } else {
+      if (c != 127)
+        KALDI_ERR << "Unexpected character " << c
+                  << " encountered while reading Index vector.";
+      ReadBasicType(is, binary, &node_index);
+      ReadBasicType(is, binary, &(index.n));
+      ReadBasicType(is, binary, &(index.t));
+      ReadBasicType(is, binary, &(index.x));
+    }
+  } else {
+    Index &last_index = (*vec)[i-1].second;
+    if (std::abs(int(c)) < 125) {
+      index.n = last_index.n;
+      index.t = last_index.t + c;
+      index.x = last_index.x;
+    } else {
+      if (c != 127)
+        KALDI_ERR << "Unexpected character " << c
+                  << " encountered while reading Index vector.";
+      ReadBasicType(is, binary, &node_index);
+      ReadBasicType(is, binary, &(index.n));
+      ReadBasicType(is, binary, &(index.t));
+      ReadBasicType(is, binary, &(index.x));
+    }
+  }
+}
+
+void WriteCindexVector(std::ostream &os, bool binary,
+                       const std::vector<Cindex> &vec) {
+  // This token will make it easier to write back-compatible code if we later
+  // change the format.
+  WriteToken(os, binary, "<I1V>");
+  int32 size = vec.size();
+  WriteBasicType(os, binary, size);
+  if (!binary) {  // In text mode we just use the native Write functionality.
+    for (int32 i = 0; i < size; i++) {
+      WriteBasicType(os, binary, vec[i].first);
+      vec[i].second.Write(os, binary);
+    }  
+  } else {
+    for (int32 i = 0; i < size; i++)
+      WriteCindexVectorElementBinary(os, vec, i);
+  }
+}
+
+void ReadCindexVector(std::istream &is, bool binary,
+                      std::vector<Cindex> *vec) {
+  ExpectToken(is, binary, "<I1V>");
+  int32 size;
+  ReadBasicType(is, binary, &size);
+  if (size < 0) {
+    KALDI_ERR << "Error reading Index vector: size = "
+              << size;
+  }
+  vec->resize(size);
+  if (!binary) {  
+    for (int32 i = 0; i < size; i++) {
+      ReadBasicType(is, binary, &((*vec)[i].first));
+      (*vec)[i].second.Read(is, binary);
+    }
+  } else {
+    for (int32 i = 0; i < size; i++)
+      ReadCindexVectorElementBinary(is, i, vec);
+  }
+}
 
 size_t IndexHasher::operator () (const Index &index) const {
   // The numbers that appear below were chosen arbitrarily from a list of primes
