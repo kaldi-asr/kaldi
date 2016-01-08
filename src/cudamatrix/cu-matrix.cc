@@ -790,12 +790,11 @@ void CuMatrixBase<Real>::GroupPnormDeriv(const CuMatrixBase<Real> &src1,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
-
-    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(), src2.Data(), Dim(), src2.Stride(), group_size, power);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
+    cuda_calc_pnorm_deriv(dimGrid, dimBlock, this->data_, src1.Data(),
+                          src2.Data(), Dim(), src2.Stride(), group_size, power);
     CU_SAFE_CALL(cudaGetLastError());
 
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -814,12 +813,10 @@ void CuMatrixBase<Real>::GroupMaxDeriv(const CuMatrixBase<Real> &src1,
   KALDI_ASSERT(this->NumCols() == src2.NumCols() * group_size);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
-
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
-
+   Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
     cuda_calc_group_max_deriv(dimGrid, dimBlock, this->data_,
                               src1.Data(), src2.Data(), Dim(),
                               src2.Stride(), group_size);
@@ -893,11 +890,13 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
     }
     if (num_rows_ == 0) return;
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
-
-    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_, data_, Dim(), A.Stride(),
+    // This block dimension seems to work better than the
+    // one from GetBlockSizesForSimpleMatrixOperation().
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
+    cuda_add_mat(dimGrid, dimBlock, alpha, A.data_,
+                 data_, Dim(), A.Stride(),
                  (transA == kTrans ? 1 : 0));
     CU_SAFE_CALL(cudaGetLastError());
 
@@ -1145,9 +1144,9 @@ void CuMatrixBase<Real>::AddDiagVecMat(
     KALDI_ASSERT(v.Dim() == this->NumRows());
 
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK),
+                 n_blocks(num_rows_, CU2DBLOCK));
     MatrixIndexT M_row_stride = M.Stride(), M_col_stride = 1;
     if (transM == kTrans)
       std::swap(M_row_stride, M_col_stride);
@@ -1265,9 +1264,9 @@ void CuMatrixBase<Real>::GroupPnorm(const CuMatrixBase<Real> &src, Real power) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(src.NumRows(), src.NumCols(),
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
     cuda_group_pnorm(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
                      src.Stride(), group_size, power);
     CU_SAFE_CALL(cudaGetLastError());
@@ -1287,9 +1286,9 @@ void CuMatrixBase<Real>::GroupMax(const CuMatrixBase<Real> &src) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(src.NumRows(), src.NumCols(),
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK),
+                 n_blocks(NumRows(), CU2DBLOCK));
     cuda_group_max(dimGrid, dimBlock, this->data_, src.data_,
                    this->Dim(), src.Stride(), group_size);
     CU_SAFE_CALL(cudaGetLastError());
@@ -2180,9 +2179,9 @@ void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(static_cast<MatrixIndexT>(src.Dim()) == NumRows());
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK),
+                 n_blocks(num_rows_, CU2DBLOCK));
     cuda_copy_rows(dimGrid, dimBlock, data_, src.Data(), Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -2202,9 +2201,9 @@ void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
     KALDI_ASSERT(static_cast<MatrixIndexT>(dst.Dim()) == NumRows());
 
     Timer tim;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(num_cols_, CU2DBLOCK),
+                 n_blocks(num_rows_, CU2DBLOCK));
     cuda_copy_to_rows(dimGrid, dimBlock, dst.Data(), data_, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -2367,10 +2366,10 @@ void CuMatrixBase<Real>::CopyLowerToUpper() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    int32 dim = this->num_rows_;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(dim, dim,
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    int32 dim = num_rows_;
+    dim3 dimGrid(n_blocks(dim, CU2DBLOCK),
+                 n_blocks(dim, CU2DBLOCK));
     cuda_copy_low_upp(dimGrid, dimBlock, data_, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -2389,9 +2388,9 @@ void CuMatrixBase<Real>::CopyUpperToLower() {
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
     int32 dim = this->num_rows_;
-    dim3 dimGrid, dimBlock;
-    GetBlockSizesForSimpleMatrixOperation(dim, dim,
-                                          &dimGrid, &dimBlock);
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(dim, CU2DBLOCK),
+                 n_blocks(dim, CU2DBLOCK));
     cuda_copy_upp_low(dimGrid, dimBlock, data_, Dim());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
