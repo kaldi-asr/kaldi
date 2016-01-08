@@ -175,17 +175,14 @@ __global__
 static void _add_diag_vec_mat(Real alpha, Real *mat, MatrixDim mat_dim,
                               const Real *vec, const Real *mat2, int mat2_row_stride,
                               int mat2_col_stride, Real beta) {
-  // Note from Dan: in this kernel, we make the x dimension correspond to the
-  // row index and y to the column index.  That was not always the case for
-  // earlier kernels written by others.
-  int i = blockIdx.y * blockDim.y + threadIdx.y; // row index
-  int j = blockIdx.x * blockDim.x + threadIdx.x; // column index
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // column index
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // row index
 
-  int index = i * mat_dim.stride + j,
-      index2 = i * mat2_row_stride + j * mat2_col_stride;
+  int index = j * mat_dim.stride + i,
+      index2 = j * mat2_row_stride + i * mat2_col_stride;
 
-  if (i < mat_dim.rows && j < mat_dim.cols) {
-    mat[index] = alpha * vec[i] * mat2[index2] + beta * mat[index];
+  if (i < mat_dim.cols && j < mat_dim.rows) {
+    mat[index] = alpha * vec[j] * mat2[index2] + beta * mat[index];
   }
 }
 
@@ -557,12 +554,12 @@ static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
 template<typename Real>
 __global__
 static void _add_mat(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
-  int32_cuda index_src = i + j*src_stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;  // column index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  int32_cuda index = i + j * d.stride;
+  int32_cuda index_src = i + j * src_stride;
   if (i < d.cols && j < d.rows)
-    dst[index] = alpha*src[index_src] + dst[index];
+    dst[index] = alpha * src[index_src] + dst[index];
 }
 
 template<typename Real>
@@ -1339,8 +1336,9 @@ static void _copy_rows(Real* dst, const Real *const *src, MatrixDim dst_dim) {
   int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
   if (i < dst_dim.cols && j < dst_dim.rows) {
     int dst_index = j * dst_dim.stride + i;
-    if (src[j] != NULL) {
-      dst[dst_index] = src[j][i];
+    const Real *pointer = src[j];
+    if (pointer != NULL) {
+      dst[dst_index] = pointer[i];
     } else {
       dst[dst_index] = 0;
     }
@@ -1354,8 +1352,9 @@ static void _copy_to_rows(Real* const* dst,
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
   int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
   if (i < src_dim.cols && j < src_dim.rows) {
-    if (dst[j] != NULL) {
-      dst[j][i] = src[j * src_dim.stride + i];
+    Real *pointer = dst[j];
+    if (pointer != NULL) {
+      pointer[i] = src[j * src_dim.stride + i];
     }
   }
 }
