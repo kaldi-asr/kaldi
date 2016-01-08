@@ -78,7 +78,7 @@ cp $nndir/final.feature_transform $pcadir/
 feature_transform=$pcadir/final.feature_transform
 nnet=$pcadir/feature_extractor.nnet
 nnet-copy --remove-last-components=$remove_last_components $nndir/final.nnet $nnet 2>$logdir/feature_extractor.log || exit 1
-nnet-info $nnet >$data/feature_extractor.nnet-info
+nnet-info $nnet >$pcadir/feature_extractor.nnet-info
 # from here-on we can just $pcadir
 
 # PREPARE FEATURE EXTRACTION PIPELINE

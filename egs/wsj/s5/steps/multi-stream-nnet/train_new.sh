@@ -1,5 +1,8 @@
 #!/bin/bash
 
+. ./path.sh
+. ./cmd.sh
+
 # Copyright 2015  Brno University of Technology (author: Sri Harish Mallidi)
 # Apache 2.0
 
