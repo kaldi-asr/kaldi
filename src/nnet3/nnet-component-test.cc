@@ -35,23 +35,26 @@ static bool StringsApproxEqual(const std::string &a,
   for (size_t pos = 0; pos < size; pos++) {
     if (a[pos] != b[pos]) {
       if (!isdigit(a[pos]) || !isdigit(b[pos]))
-        return false;
-      // if it's not the last digit in the string, return false
+        goto fail;
+      // if it's not the last digit in the string, goto fail
       if (pos + 1 != size && isdigit(a[pos+1]))
-        return false;
+        goto fail;
       size_t pos2;
       for (pos2 = pos - 1; pos2 > 0; pos2--) {
         if (a[pos2] == '.') break;  // we accept this difference: we went backwards and found a '.'
         if (!isdigit(a[pos2]))  // we reject this difference: we went back and
                                 // found non-digit before '.' -> not floating
                                 // point.
-          return false;
+          goto fail;
       }
       if (pos2 == 0)
-        return false;
+        goto fail;
     }
   }
   return true;
+fail:
+  KALDI_WARN << "Info strings differ: '" << a << "' vs. '" << b << "'.";
+  return false;
 }
 
 
@@ -138,9 +141,9 @@ void TestNnetComponentUpdatable(Component *c) {
     UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
     uc2->Scale(7.0);
     uc2->Add(3.0, *uc);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
+    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
     uc->SetZero(false);
-    KALDI_ASSERT(uc2->Info() == uc->Info());
+    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
     delete uc2;
   } else {
     KALDI_ASSERT(uc->NumParameters() != 0);
@@ -428,7 +431,7 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 100; n++)  {
+  for (int32 n = 0; n < 200; n++)  {
     Component *c = GenerateRandomSimpleComponent();
     KALDI_LOG << c->Info();
     TestNnetComponentIo(c);

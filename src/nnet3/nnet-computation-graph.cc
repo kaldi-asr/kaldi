@@ -266,7 +266,9 @@ void ComputationGraphBuilder::AddOutputs() {
       num_added++;
     }
   }
-  KALDI_ASSERT(num_added > 0 && "AddOutputToGraph: nothing to add.");
+  if (num_added == 0) {
+    KALDI_ERR << "Cannot process computation request with no outputs";
+  }
   current_distance_ = 0;
   // the calls to AddCindexId in this function will have added to next_queue_.
   KALDI_ASSERT(current_queue_.empty());

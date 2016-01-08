@@ -67,7 +67,7 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
 
 /// For use in test code, this function generates an alignment (a sequence of
 /// transition-ids) corresponding to a given phone sequence.
-void GenerateRandomAlignment(const ContextDependency &ctx_dep,
+void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
                              const TransitionModel &trans_model,
                              bool reorder,
                              const std::vector<int32> &phone_sequence,

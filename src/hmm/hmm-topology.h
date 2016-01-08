@@ -144,6 +144,10 @@ class HmmTopology {
   /// used by tree-building code such as BuildTree().
   void GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_classes) const;
 
+  // Returns the minimum number of frames it takes to traverse this model for
+  // this phone: e.g. 3 for the normal HMM topology.
+  int32 MinLength(int32 phone) const;
+
   HmmTopology() {}
 
   bool operator == (const HmmTopology &other) const {

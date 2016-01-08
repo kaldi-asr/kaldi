@@ -11,7 +11,7 @@ CXXFLAGS += -msse -msse2 -Wall -I.. \
       -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H \
       -DHAVE_CLAPACK \
       -I$(FSTROOT)/include \
-      $(EXTRA_CXXFLAGS) \
+      $(EXTRA_CXXFLAGS) -Wno-unused-local-typedef \
       -g # -O0 -DKALDI_PARANOID
 
 
