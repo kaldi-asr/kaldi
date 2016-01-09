@@ -13,7 +13,7 @@ if [ $# != 3 ]; then
    echo "... where <lattice-dir> is assumed to be a sub-directory "
    echo " of the directory where the transition model (i.e. final.mdl) is."
    echo "<phone-map> is for when the duration model has been trained using a different system (phones.txt is different)"
-   echo "e.g.: $0 exp/mono/durmod exp/mono/decode_test_bg exp/mono/decode_test_bg_durmod"
+   echo "e.g.: $0 exp/mono/durmod/durmodel.mdl exp/mono/decode_test_bg exp/mono/decode_test_bg_durmod"
    echo ""
    echo "  --lm-scale <float>                       # scale used for rescoring"   
    exit 1;
@@ -24,6 +24,9 @@ latdir=$2
 dir=$3
 srcdir=`dirname $latdir`
 
+for f in $durmodel $latdir/lat.1.gz $srcdir/final.mdl; do
+  [ ! -f $f ] && echo "$0: Required file not found: $f" && exit 1;
+done
 
 nj=`cat $latdir/num_jobs`
 mkdir -p $dir/log || exit 1;

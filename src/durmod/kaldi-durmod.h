@@ -44,14 +44,14 @@ namespace kaldi {
   using nnet3::NnetComputer;
 
 struct PhoneDurationModelOptions {
-  int32 left_ctx, right_ctx;
+  int32 left_context, right_context;
   int32 max_duration;
 
   void Register(OptionsItf *po);
 
   PhoneDurationModelOptions():
-    left_ctx(3),
-    right_ctx(2),
+    left_context(3),
+    right_context(2),
     max_duration(50) {}
 };
 
@@ -68,8 +68,8 @@ class PhoneDurationModel {
   PhoneDurationModel(const PhoneDurationModelOptions &opts,
                      const std::vector<std::vector<int32> > &roots,
                      const std::vector<std::vector<int32> > &questions):
-    left_context_(opts.left_ctx),
-    right_context_(opts.right_ctx),
+    left_context_(opts.left_context),
+    right_context_(opts.right_context),
     roots_(roots),
     questions_(questions),
     max_duration_(opts.max_duration) {}
@@ -125,7 +125,7 @@ class PhoneDurationEgsMaker {
   unordered_map<int32, int32> phone_id_;
   int32 num_binary_features_;
   int32 num_phone_identities_;
-  int32 left_ctx_, right_ctx_;
+  int32 left_context_, right_context_;
   int32 max_duration_;
   int32 feature_dim_;
 

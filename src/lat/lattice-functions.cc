@@ -1511,13 +1511,15 @@ void ComposeCompactLatticeDeterministic(
     // If the product of the final weights of the two states is not zero, then
     // we should create final state in fst_composed. We compute the product
     // manually since this is more efficient.
-    Weight2 final_weight(LatticeWeight(clat.Final(s1).Weight().Value1() +
-                                       det_fst->Final(s2).Value(),
-                                       clat.Final(s1).Weight().Value2()),
-                         clat.Final(s1).String());
-    if (final_weight != Weight2::Zero()) {
-      KALDI_ASSERT(state_map.find(s) != state_map.end());
-      composed_clat->SetFinal(state_map[s], final_weight);
+    if (clat.Final(s1).Weight().Value1() != Weight1::Zero()) {
+      Weight2 final_weight(LatticeWeight(clat.Final(s1).Weight().Value1() +
+                                         det_fst->Final(s2).Value(),
+                                         clat.Final(s1).Weight().Value2()),
+                           clat.Final(s1).String());
+      if (final_weight != Weight2::Zero()) {
+        KALDI_ASSERT(state_map.find(s) != state_map.end());
+        composed_clat->SetFinal(state_map[s], final_weight);
+      }
     }
 
     // Loops over pair of edges at s1 and s2.

@@ -66,13 +66,10 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Read " << questions.size() << " phonetic questions";
     PhoneDurationModel durmod(opts, roots, questions);
     PhoneDurationEgsMaker egs_maker(durmod);
-    int32 dim1 = egs_maker.FeatureDim() * 8;
-    durmod.InitNnet(egs_maker.FeatureDim(), dim1,
+    int32 hidden_dim1 = egs_maker.FeatureDim() * 6;
+    durmod.InitNnet(egs_maker.FeatureDim(), hidden_dim1,
                     egs_maker.OutputDim() * 1.5, egs_maker.OutputDim());
     // TODO(hhadian): print some nice info
-    KALDI_LOG << "Feature dim: " << egs_maker.FeatureDim()
-              << ", NumBinaryFeatures: " << egs_maker.NumBinaryFeatures()
-              << ", NumPhoneIdentities: " << egs_maker.NumPhoneIdentities();
     WriteKaldiObject(durmod, model_filename, binary_write);
     KALDI_LOG << "Done writing the model.";
   } catch(const std::exception &e) {
