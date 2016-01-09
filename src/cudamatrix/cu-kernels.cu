@@ -723,7 +723,7 @@ static void _add_mat_mat_elements(Real *data, const Real *srcA_data, const Real 
 // to be within range, since they are taken from the block index.
 template <typename Real>
 __global__
-static void _cuda_rearrange_3d_tensor(int32_cuda xdim,
+static void _rearrange_3d_tensor(int32_cuda xdim,
                                       int32_cuda xstride_in,
                                       int32_cuda ystride_in,
                                       int32_cuda zstride_in,
@@ -2464,6 +2464,23 @@ void cudaF_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int
 }
 
 /*
+ * 3-Tensor
+ */
+void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl,
+                               int32_cuda xdim,
+                               int32_cuda xstride_in,
+                               int32_cuda ystride_in,
+                               int32_cuda zstride_in,
+                               int32_cuda xstride_out,
+                               int32_cuda ystride_out,
+                               int32_cuda zstride_out,
+                               const float *src,
+                               float *dst) {
+  _rearrange_3d_tensor<<<Gr,Bl>>>(xdim, xstride_in, ystride_in, zstride_in,
+                                       xstride_out, ystride_out, zstride_out, src, dst);
+}
+
+/*
  * cu::
  */
 void cudaF_soft_hinge (dim3 Gr, dim3 Bl, float* y, const float* x, MatrixDim d, int src_stride) {
@@ -2920,6 +2937,22 @@ void cudaD_block_add_mat_mat(dim3 Gr, dim3 Bl, CuBlockMatrixData *B_cu_data, int
                                 D_col_stride, alpha, beta);
 }
 
+/*
+ * 3-Tensor
+ */
+void cudaD_rearrange_3d_tensor(dim3 Gr, dim3 Bl,
+                               int32_cuda xdim,
+                               int32_cuda xstride_in,
+                               int32_cuda ystride_in,
+                               int32_cuda zstride_in,
+                               int32_cuda xstride_out,
+                               int32_cuda ystride_out,
+                               int32_cuda zstride_out,
+                               const double *src,
+                               double *dst) {
+  _rearrange_3d_tensor<<<Gr,Bl>>>(xdim, xstride_in, ystride_in, zstride_in,
+                                       xstride_out, ystride_out, zstride_out, src, dst);
+}
 /*
  * cu::
  */

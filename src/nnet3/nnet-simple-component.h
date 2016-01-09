@@ -437,7 +437,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
 
   void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
             BaseFloat param_stddev, BaseFloat bias_mean,
-            BaseFloat bias_stddev);
+            BaseFloat bias_stddev, bool fast_mode);
 
  protected:
   // This function Update(), called from backprop, is broken out for
@@ -454,6 +454,22 @@ class RepeatedAffineComponent: public UpdatableComponent {
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
   int32 num_repeats_;
+  // if true, use a single gemm call instead of the batched gemm call.
+  // batched gemm call is faster only for a small linear_params_ (less
+  // than (100 by 100). In general, you want fast_mode_ to be true.
+  bool fast_mode_;
+
+ private:
+  void FastPropagate(const ComponentPrecomputedIndexes *indexes,
+                     const CuMatrixBase<BaseFloat> &in,
+                     CuMatrixBase<BaseFloat> *out) const;
+
+  void FastBackprop(const std::string &debug_info,
+                    const CuMatrixBase<BaseFloat> &out_deriv,
+                    CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  void FastUpdate(const CuMatrixBase<BaseFloat> &in_value,
+                  const CuMatrixBase<BaseFloat> &out_deriv);
 };
 
 class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {

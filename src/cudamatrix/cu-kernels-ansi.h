@@ -95,12 +95,6 @@ void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col, floa
 void cudaF_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d);
 void cudaF_add_mat_diag_vec(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim, const float *mat2, int mat2_row_stride, int mat2_col_stride, const float *vec, float beta);
 void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data, const float *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, float alpha, float beta);
-/// 3 tensors are packed into matrices.
-void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
-                               int32_cuda xstride_in, int32_cuda ystride_in,
-                               int32_cuda zstride_in, int32_cuda xstride_out,
-                               int32_cuda ystride_out, int32_cuda zstride_out,
-                               const float *src, float *dst);
 
 /*
  * CuVector
@@ -184,7 +178,14 @@ void cudaF_matrix_lookup(dim3 Gr, dim3 Bl, const float *data, MatrixDim dim,
 void cudaF_equal_element_mask(dim3 Gr, dim3 Bl, const float *mat1,
                               const float *mat2, float *mask, MatrixDim mat1_dim,
                               int mat2_stride, int mask_stride);
-  
+/*
+ * 3-tensor. Both CuVector and CuMatrix can be interpretted as 3-tensors.
+ */
+void cudaF_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
+                               int32_cuda xstride_in, int32_cuda ystride_in,
+                               int32_cuda zstride_in, int32_cuda xstride_out,
+                               int32_cuda ystride_out, int32_cuda zstride_out,
+                               const float *src, float *dst);
 /*********************************************************
  * double CUDA kernel calls
  */
@@ -241,12 +242,7 @@ void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, do
 void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d);
 void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim, const double *mat2, int mat2_row_stride, int mat2_col_stride, const double *vec, double beta);
 void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta);
-/// 3 tensors are packed into matrices.
-void cudaD_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
-                               int32_cuda xstride_in, int32_cuda ystride_in,
-                               int32_cuda zstride_in, int32_cuda xstride_out,
-                               int32_cuda ystride_out, int32_cuda zstride_out,
-                               const double *src, double *dst);
+
 /*
  * CuVector
  */
@@ -359,7 +355,14 @@ void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
                               const double *mat2, double *mask, MatrixDim mat1_dim, 
                               int mat2_stride, int mask_stride);
   
-
+/*
+ * 3-tensor. Both CuVector and CuMatrix can be interpretted as 3-tensors.
+ */
+void cudaD_rearrange_3d_tensor(dim3 Gr, dim3 Bl, int32_cuda xdim,
+                               int32_cuda xstride_in, int32_cuda ystride_in,
+                               int32_cuda zstride_in, int32_cuda xstride_out,
+                               int32_cuda ystride_out, int32_cuda zstride_out,
+                               const double *src, double *dst);
   
 } // extern "C" 
 
