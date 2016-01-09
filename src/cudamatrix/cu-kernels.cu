@@ -716,6 +716,30 @@ static void _add_mat_mat_elements(Real *data, const Real *srcA_data, const Real 
     }
 }
 
+// 3d tensor copy.  x index is from the thread and block x indexes;
+// y and z indexes are the block y and z indexes.
+
+// note, we don't need to know the y or z dims as they are guaranteed
+// to be within range, since they are taken from the block index.
+template <typename Real>
+__global__
+static void _cuda_rearrange_3d_tensor(int32_cuda xdim,
+                                      int32_cuda xstride_in,
+                                      int32_cuda ystride_in,
+                                      int32_cuda zstride_in,
+                                      int32_cuda xstride_out,
+                                      int32_cuda ystride_out,
+                                      int32_cuda zstride_out,
+                                      const Real *src,
+                                      Real *dst) {
+  // threads only vary in x.
+  int32_cuda x = threadIdx.x + blockIdx.x * blockDim.x,
+      y = blockIdx.y,
+      z = blockIdx.z;
+  if (x >= xdim) return;
+  dst[x * xstride_out + y * ystride_out + z * zstride_out] =
+      src[x * xstride_in + y * ystride_in + z * zstride_in];
+}
 
 /*
  * CuVector

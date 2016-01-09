@@ -2810,6 +2810,46 @@ void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatri
   }
 }
 
+template <typename Real>
+void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
+                  int32 src_xstride, int32 src_ystride, int32 src_zstride,
+                  int32 dst_xstride, int32 dst_ystride, int32 dst_zstride,
+                  const Real *src, Real *dst) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(std::min<int32>(CU1DBLOCK, xdim), 1, 1);
+    dim3 dimGrid(n_blocks(xdim, dimBlock.x), ydim, zdim);
+    // the kernel only needs the xdim because it's only the number of
+    // threads (i.e. blockDim) that gets padded.
+    cuda_rearrange_3d_tensor(dimGrid, dimBlock, xdim,
+                             src_xstride, src_ystride, src_zstride,
+                             dst_xstride, dst_ystride, dst_zstride,
+                             src, dst);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    for (int32 x = 0; x < xdim; x++)
+      for (int32 y = 0; y < ydim; y++)
+        for (int32 z = 0; z < zdim; z++)
+          dst[x * dst_xstride + y * dst_ystride + z * dst_zstride] =
+              src[x * src_xstride + y * src_ystride + z * src_zstride];
+  }
+}
+
+// instantiate the template for float and double.
+template
+void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
+                  int32 src_xstride, int32 src_ystride, int32 src_zstride,
+                  int32 dst_xstride, int32 dst_ystride, int32 dst_zstride,
+                  const float *src, float *dst);
+template
+void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
+                  int32 src_xstride, int32 src_ystride, int32 src_zstride,
+                  int32 dst_xstride, int32 dst_ystride, int32 dst_zstride,
+                  const double *src, double *dst);
 
 /**
  * Print the matrix to stream
