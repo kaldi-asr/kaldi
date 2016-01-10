@@ -1,8 +1,43 @@
 #!/bin/bash
 
+# _3y is as _3s but doubling jesus-hidden-dim from 15000 to 30000.
+
+# _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
+# num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.
+# This of course reduces overtraining.  Results are a bit better than 3p but still
+# not as good as 3s.
+
+# ./show_wer.sh 3s
+# %WER 17.88 [ 8799 / 49204, 1006 ins, 2312 del, 5481 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 16.67 [ 8200 / 49204, 982 ins, 2221 del, 4997 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+# %WER 19.6 | 4459 42989 | 82.8 11.8 5.4 2.4 19.6 57.6 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.6 | 4459 42989 | 84.4 10.1 5.4 2.1 17.6 54.7 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+# a03:s5c: ./show_wer.sh 3p
+# %WER 18.05 [ 8880 / 49204, 966 ins, 2447 del, 5467 sub ] exp/chain/tdnn_3p_sp/decode_train_dev_sw1_tg/wer_12_0.0
+# %WER 16.86 [ 8296 / 49204, 967 ins, 2321 del, 5008 sub ] exp/chain/tdnn_3p_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+# %WER 19.8 | 4459 42989 | 82.4 11.5 6.1 2.1 19.8 57.7 | exp/chain/tdnn_3p_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+# %WER 18.2 | 4459 42989 | 83.9 10.5 5.7 2.0 18.2 55.6 | exp/chain/tdnn_3p_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+# a03:s5c: ./show_wer.sh 2y
+# %WER 16.99 [ 8358 / 49204, 973 ins, 2193 del, 5192 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 15.86 [ 7803 / 49204, 959 ins, 2105 del, 4739 sub ] exp/chain/tdnn_2y_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+# %WER 18.9 | 4459 42989 | 83.4 11.3 5.3 2.3 18.9 56.3 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.0 | 4459 42989 | 85.1 10.1 4.8 2.1 17.0 53.5 | exp/chain/tdnn_2y_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+
+
+# _3r is as _3p but reducing the number of parameters as it seemed to be
+# overtraining (despite already being quite a small model): [600,1800 ->
+# 500,1500].  Also in the interim there was a script change to
+# nnet3/chain/train_tdnn.sh to, on mix-up iters, apply half the max-change.
+# [changing it right now from 1/2 to 1/sqrt(2) which is more consistent
+# with the halving of the minibatch size.]
+
+
+# _3p is the same as 3o, but after a code and script change so we can use
+# natural gradient for the RepeatedAffineComponent.
+# [natural gradient was helpful, based on logs;
+# also made a change to use positive bias for the jesus-component affine parts.]
+
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
-# [ seemed helpful based on likelihoods on first iterations]: on iter 42,
-# train prob is -0.1554->-0.1523, and valid prob is -0.1559->-0.1540.
 
 # _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support
 # recurrence, with improvements to the learning of the jesus layers.
@@ -165,7 +200,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3y  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -258,7 +293,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 30000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

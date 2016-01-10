@@ -1,8 +1,36 @@
 #!/bin/bash
 
+# _3t is as _3s but using slightly wider context.  Dumping our own egs.
+#  The final train prob is better -0.0851->-0.0815, but valid prob is worse -0.1231->-0.1243.
+# WER is slightly worse.  So we won't use this for now, but later if we use more data we
+# could try wider context like this.
+#a03:s5c: ./show_wer.sh 3s
+#%WER 17.88 [ 8799 / 49204, 1006 ins, 2312 del, 5481 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.67 [ 8200 / 49204, 982 ins, 2221 del, 4997 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 19.6 | 4459 42989 | 82.8 11.8 5.4 2.4 19.6 57.6 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.6 | 4459 42989 | 84.4 10.1 5.4 2.1 17.6 54.7 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+#
+#%WER 18.01 [ 8860 / 49204, 1043 ins, 2315 del, 5502 sub ] exp/chain/tdnn_3t_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.68 [ 8205 / 49204, 930 ins, 2420 del, 4855 sub ] exp/chain/tdnn_3t_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+#%WER 19.7 | 4459 42989 | 82.6 11.9 5.5 2.3 19.7 57.4 | exp/chain/tdnn_3t_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.filt.sys
+#%WER 17.8 | 4459 42989 | 84.2 10.4 5.4 2.0 17.8 55.4 | exp/chain/tdnn_3t_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+
+# _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
+
+# _3r is as _3p but reducing the number of parameters as it seemed to be
+# overtraining (despite already being quite a small model): [600,1800 ->
+# 500,1500].  Also in the interim there was a script change to
+# nnet3/chain/train_tdnn.sh to, on mix-up iters, apply half the max-change.
+# [changing it right now from 1/2 to 1/sqrt(2) which is more consistent
+# with the halving of the minibatch size.]
+
+
+# _3p is the same as 3o, but after a code and script change so we can use
+# natural gradient for the RepeatedAffineComponent.
+# [natural gradient was helpful, based on logs;
+# also made a change to use positive bias for the jesus-component affine parts.]
+
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
-# [ seemed helpful based on likelihoods on first iterations]: on iter 42,
-# train prob is -0.1554->-0.1523, and valid prob is -0.1559->-0.1540.
 
 # _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support
 # recurrence, with improvements to the learning of the jesus layers.
@@ -165,7 +193,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3t  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -251,15 +279,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-2,-1,0,1,2 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --splice-indexes "-2,-1,0,1,2 -3,-2,-1,0,1,2,3 -3,0,3 -6,-3,0,3,6 -6,-3,0,3,6" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \

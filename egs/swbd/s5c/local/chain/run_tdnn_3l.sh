@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# [abandoned, not working well.]
 # _3l is as _3j, but making similar changes to as 3i->3k, which is (1) adding
 # the option --jesus-stddev-scale 0.2 [0.32 was not strong enough], and (2) a
 # script change to give the recurrent affine layers an initial param-stddev of

@@ -54,6 +54,9 @@ parser.add_argument("--jesus-forward-input-dim", type=int,
                     help="Input dimension of Jesus layer that comes from affine projection "
                     "from the previous layer (same as output dim of forward affine transform)",
                     default=1000)
+parser.add_argument("--final-hidden-dim", type=int,
+                    help="Final hidden layer dimension-- or if <0, the same as "
+                    "--jesus-forward-input-dim", default=-1)
 parser.add_argument("--jesus-direct-recurrence-dim", type=int,
                     help="part of output dimension of Jesus layer that comes directly from "
                     "different time instance of the same Jesus layer", default=1000)
@@ -97,10 +100,12 @@ if args.num_targets is None or not (args.num_targets > 0):
     sys.exit("--num-targets argument is required");
 if args.num_jesus_blocks < 1:
     sys.exit("invalid --num-jesus-blocks value");
+if args.final_hidden_dim < 0:
+    args.final_hidden_dim = args.jesus_forward_input_dim
 
 for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_input_dim",
               "jesus_direct_recurrence_dim", "jesus_projected_recurrence_output_dim",
-              "jesus_projected_recurrence_input_dim" ]:
+              "jesus_projected_recurrence_input_dim", "final_hidden_dim" ]:
     old_val = getattr(args, name)
     if old_val % args.num_jesus_blocks != 0:
         new_val = old_val + args.num_jesus_blocks - (old_val % args.num_jesus_blocks)
@@ -228,6 +233,7 @@ for l in range(1, num_hidden_layers + 1):
                 args.jesus_forward_input_dim), file=f)
         print('component-node name=renorm1 component=renorm1 input=relu1', file=f)
         cur_output = 'renorm1'
+        cur_affine_output_dim = args.jesus_forward_input_dim
     else:
         splices = []
         spliced_dims = []
@@ -398,9 +404,10 @@ for l in range(1, num_hidden_layers + 1):
             input_to_forward_affine = 'post-jesus{0}'.format(l)
 
         # handle the forward output, we need an affine node for this:
+        cur_affine_output_dim = (args.jesus_forward_input_dim if l < num_hidden_layers else args.final_hidden_dim)
         print('component name=forward-affine{0} type=NaturalGradientAffineComponent '
               'input-dim={1} output-dim={2} bias-stddev=0'.
-              format(l, args.jesus_forward_output_dim, args.jesus_forward_input_dim), file=f)
+              format(l, args.jesus_forward_output_dim, cur_affine_output_dim), file=f)
         print('component-node name=jesus{0}-forward-output-affine component=forward-affine{0} input={1}'.format(
                 l, input_to_forward_affine), file=f)
         # for each recurrence delay, create an affine node followed by a
@@ -435,12 +442,12 @@ for l in range(1, num_hidden_layers + 1):
     # with each new layer we regenerate the final-affine component, with a ReLU before it
     # because the layers we printed don't end with a nonlinearity.
     print('component name=final-relu type=RectifiedLinearComponent dim={0}'.format(
-            args.jesus_forward_input_dim), file=f)
+            cur_affine_output_dim), file=f)
     print('component-node name=final-relu component=final-relu input={0}'.format(cur_output),
           file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} learning-rate-factor={2} param-stddev=0.0 bias-stddev=0'.format(
-            args.jesus_forward_input_dim, args.num_targets,
+            cur_affine_output_dim, args.num_targets,
             args.final_layer_learning_rate_factor), file=f)
     print('component-node name=final-affine component=final-affine input=final-relu',
           file=f)

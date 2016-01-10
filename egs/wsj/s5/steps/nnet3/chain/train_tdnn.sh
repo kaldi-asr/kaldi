@@ -23,6 +23,7 @@ truncate_deriv_weights=0  # can be used to set to zero the weights of derivs fro
 apply_deriv_weights=true
 initial_effective_lrate=0.0002
 final_effective_lrate=0.00002
+extra_left_context=0  # actually for recurrent setups.
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
@@ -285,7 +286,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--transform-dir $transform_dir)
   # we need a bit of extra left-context and right-context to allow for frame
   # shifts (we use shifted version of the data for more variety).
-  extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2])
+  extra_opts+=(--left-context $[$left_context+$frame_subsampling_factor/2+$extra_left_context])
   extra_opts+=(--right-context $[$right_context+$frame_subsampling_factor/2])
   echo "$0: calling get_egs.sh"
   steps/nnet3/chain/get_egs.sh $egs_opts "${extra_opts[@]}" \

@@ -1,8 +1,28 @@
 #!/bin/bash
 
+# _3x is as _3s (and continuing the same kind of experimentation as in 3t->3w)...
+#  increasing --jesus-forward-output-dim from 1500 to 2000 XXXd reducing
+# XXXfinal-hidden-dim from 400 (it defaults to --jesus-forward-input-dim) to 350
+# XXXmostly compensate for the increase in parameters.
+
+# _3t is as _3s but using slightly wider context.  Dumping our own egs.
+
+# _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
+
+# _3r is as _3p but reducing the number of parameters as it seemed to be
+# overtraining (despite already being quite a small model): [600,1800 ->
+# 500,1500].  Also in the interim there was a script change to
+# nnet3/chain/train_tdnn.sh to, on mix-up iters, apply half the max-change.
+# [changing it right now from 1/2 to 1/sqrt(2) which is more consistent
+# with the halving of the minibatch size.]
+
+
+# _3p is the same as 3o, but after a code and script change so we can use
+# natural gradient for the RepeatedAffineComponent.
+# [natural gradient was helpful, based on logs;
+# also made a change to use positive bias for the jesus-component affine parts.]
+
 # _3o is as _3n but filling in the first splice-indexes from -1,2 to -1,0,1,2.
-# [ seemed helpful based on likelihoods on first iterations]: on iter 42,
-# train prob is -0.1554->-0.1523, and valid prob is -0.1559->-0.1540.
 
 # _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support
 # recurrence, with improvements to the learning of the jesus layers.
@@ -165,7 +185,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_3o  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_3x  # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -251,14 +271,14 @@ fi
 if [ $stage -le 12 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --egs-dir exp/chain/tdnn_3t_sp/egs \
+    --jesus-recurrent-opts "--jesus-forward-input-dim 400 --jesus-forward-output-dim 2000 --final-hidden-dim 350 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
