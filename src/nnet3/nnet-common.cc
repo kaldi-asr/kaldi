@@ -189,7 +189,7 @@ static void WriteCindexVectorElementBinary(
       WriteBasicType(os, binary, index.x);
     }
   }
-  if (i == vec.size()) 
+  if (i == vec.size())
     os << ']';
   if (!os.good())
     KALDI_ERR << "Output stream error detected";
@@ -255,16 +255,16 @@ void WriteCindexVector(std::ostream &os, bool binary,
     for (int32 i = 0; i < size; i++) {
       int32 node_index = vec[i].first;
       if (i == 0 || node_index != vec[i-1].first) {
-        if (i > 0) 
+        if (i > 0)
           os.put(']');
         os.put('[');
         WriteBasicType(os, binary, node_index);
         os.put(':');
-      }   
+      } 
       vec[i].second.Write(os, binary);
-      if (i == size - 1)  
+      if (i == size - 1)
         os.put(']');
-    }  
+    } 
   } else {
     for (int32 i = 0; i < size; i++)
       WriteCindexVectorElementBinary(os, vec, i);
@@ -281,7 +281,7 @@ void ReadCindexVector(std::istream &is, bool binary,
               << size;
   }
   vec->resize(size);
-  if (!binary) {  
+  if (!binary) {
     for (int32 i = 0; i < size; i++) {
       is >> std::ws;
       if (is.peek() == static_cast<int>(']') || i == 0) {
