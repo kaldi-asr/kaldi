@@ -34,6 +34,7 @@ void UnitTestNnetComputationIo(NnetComputation *computation) {
   computation->Write(os, binary);
   const std::string &original_output = os.str();
   std::istringstream computation_is(original_output);
+  KALDI_LOG << computation_is.str();
   computation->Read(computation_is, binary);
   std::istringstream computation_is2(original_output);
   NnetComputation computation2;
@@ -65,7 +66,8 @@ void UnitTestComputationRequestIo(ComputationRequest *request) {
   std::ostringstream os2, os3;
   request->Write(os2, binary);
   request2.Write(os3, binary);
-  
+  KALDI_ASSERT(*request == request2);
+
   if (binary) {
     KALDI_LOG << os2.str();
     KALDI_LOG << original_output;

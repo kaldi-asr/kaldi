@@ -159,6 +159,12 @@ static void WriteCindexVectorElementBinary(
   bool binary = true;
   int32 node_index = vec[i].first;
   Index index = vec[i].second;
+  if (i == 0 || node_index != vec[i-1].first) {
+    // '|' into ranges that each have all the same node name, like:
+    // [node_1: index_1 index_2] [node_2: index_3 index_4]
+    os.put('|');
+    WriteBasicType(os, binary, node_index);
+  }  
   if (i == 0) {
     if (index.n == 0 && index.x == 0 &&
         std::abs(index.t) < 125) {
@@ -166,7 +172,6 @@ static void WriteCindexVectorElementBinary(
       os.put(static_cast<signed char>(index.t));
     } else {  // handle the general case less efficiently.
       os.put(127);
-      WriteBasicType(os, binary, node_index);
       WriteBasicType(os, binary, index.n);
       WriteBasicType(os, binary, index.t);
       WriteBasicType(os, binary, index.x);
@@ -179,12 +184,13 @@ static void WriteCindexVectorElementBinary(
       os.put(c);
     } else {  // handle the general case less efficiently.
       os.put(127);
-      WriteBasicType(os, binary, node_index);
       WriteBasicType(os, binary, index.n);
       WriteBasicType(os, binary, index.t);
       WriteBasicType(os, binary, index.x);
     }
   }
+  if (i == vec.size()) 
+    os << ']';
   if (!os.good())
     KALDI_ERR << "Output stream error detected";
 }
@@ -194,10 +200,15 @@ static void ReadCindexVectorElementBinary(
     int32 i,
     std::vector<Cindex> *vec) {
   bool binary = true;
-  int32 &node_index = (*vec)[i].first;
   Index &index = (*vec)[i].second;
   if (!is.good())
-    KALDI_ERR << "End of file while reading vector of Index.";
+    KALDI_ERR << "End of file while reading vector of Cindex.";
+  if (is.peek() == static_cast<int>('|')) {
+    is.get();
+    ReadBasicType(is, binary, &((*vec)[i].first));
+  } else {
+    (*vec)[i].first = (*vec)[i-1].first;
+  }
   signed char c = is.get();
   if (i == 0) {
     if (std::abs(int(c)) < 125) {
@@ -207,8 +218,7 @@ static void ReadCindexVectorElementBinary(
     } else {
       if (c != 127)
         KALDI_ERR << "Unexpected character " << c
-                  << " encountered while reading Index vector.";
-      ReadBasicType(is, binary, &node_index);
+                  << " encountered while reading Cindex vector.";
       ReadBasicType(is, binary, &(index.n));
       ReadBasicType(is, binary, &(index.t));
       ReadBasicType(is, binary, &(index.x));
@@ -222,8 +232,7 @@ static void ReadCindexVectorElementBinary(
     } else {
       if (c != 127)
         KALDI_ERR << "Unexpected character " << c
-                  << " encountered while reading Index vector.";
-      ReadBasicType(is, binary, &node_index);
+                  << " encountered while reading Cindex vector.";
       ReadBasicType(is, binary, &(index.n));
       ReadBasicType(is, binary, &(index.t));
       ReadBasicType(is, binary, &(index.x));
@@ -231,6 +240,10 @@ static void ReadCindexVectorElementBinary(
   }
 }
 
+// This function writes elements of a Cindex vector in a compact form.
+// which is similar as the output of PrintCindexes. The vector is divided
+// into ranges that each have all the same node name, like:
+// [node_1: index_1 index_2] [node_2: index_3 index_4]
 void WriteCindexVector(std::ostream &os, bool binary,
                        const std::vector<Cindex> &vec) {
   // This token will make it easier to write back-compatible code if we later
@@ -240,8 +253,17 @@ void WriteCindexVector(std::ostream &os, bool binary,
   WriteBasicType(os, binary, size);
   if (!binary) {  // In text mode we just use the native Write functionality.
     for (int32 i = 0; i < size; i++) {
-      WriteBasicType(os, binary, vec[i].first);
+      int32 node_index = vec[i].first;
+      if (i == 0 || node_index != vec[i-1].first) {
+        if (i > 0) 
+          os.put(']');
+        os.put('[');
+        WriteBasicType(os, binary, node_index);
+        os.put(':');
+      }   
       vec[i].second.Write(os, binary);
+      if (i == size - 1)  
+        os.put(']');
     }  
   } else {
     for (int32 i = 0; i < size; i++)
@@ -261,8 +283,38 @@ void ReadCindexVector(std::istream &is, bool binary,
   vec->resize(size);
   if (!binary) {  
     for (int32 i = 0; i < size; i++) {
-      ReadBasicType(is, binary, &((*vec)[i].first));
+      is >> std::ws;
+      if (is.peek() == static_cast<int>(']') || i == 0) {
+        if (i != 0)
+          is.get();
+        is >> std::ws;
+        if (is.peek() == static_cast<int>('[')) {
+          is.get();
+        } else {
+          KALDI_ERR << "ReadCintegerVector: expected to see [, saw "
+                    << is.peek() << ", at file position " << is.tellg();
+        }
+        ReadBasicType(is, binary, &((*vec)[i].first));
+        is >> std::ws;
+        if (is.peek() == static_cast<int>(':')) {
+          is.get();
+        } else {
+          KALDI_ERR << "ReadCintegerVector: expected to see :, saw "
+                    << is.peek() << ", at file position " << is.tellg();
+        }
+      } else {
+        (*vec)[i].first = (*vec)[i-1].first;
+      }
       (*vec)[i].second.Read(is, binary);
+      if (i == size - 1) { 
+        is >> std::ws;
+        if (is.peek() == static_cast<int>(']')) {
+          is.get();
+        } else {
+          KALDI_ERR << "ReadCintegerVector: expected to see ], saw "
+                    << is.peek() << ", at file position " << is.tellg();
+        }
+      }
     }
   } else {
     for (int32 i = 0; i < size; i++)

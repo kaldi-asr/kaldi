@@ -64,6 +64,11 @@ void UnitTestCindexIo() {
 
   for (int32 i = 0; i < cindexes.size(); i++) {
     if (i == 0 || RandInt(0, 1) == 0) {
+      cindexes[i].first = RandInt(0, 127);
+    } else {
+      cindexes[i].first = cindexes[i-1].first;
+    }
+    if (i == 0 || RandInt(0, 1) == 0) {
       cindexes[i].second.n = RandInt(-1, 2);
       cindexes[i].second.t = RandInt(-150, 150);
       cindexes[i].second.x = RandInt(-1, 1);
@@ -78,7 +83,6 @@ void UnitTestCindexIo() {
   std::ostringstream os;
   bool binary = (RandInt(0, 1) == 0);
   WriteCindexVector(os, binary, cindexes);
-
   std::vector<Cindex> cindexes2;
   if (RandInt(0, 1) == 0)
     cindexes2 = cindexes;

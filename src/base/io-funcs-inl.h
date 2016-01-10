@@ -112,11 +112,11 @@ inline void WriteIntegerPairVector(std::ostream &os, bool binary,
     typename std::vector<std::pair<T, T> >::const_iterator iter = v.begin(), end = v.end();
     for (; iter != end; ++iter) {
       if (sizeof(T) == 1)
-        os << static_cast<int16>(iter->first) << ","
-           << static_cast<int16>(iter->second) << " ";
+        os << static_cast<int16>(iter->first) << ','
+           << static_cast<int16>(iter->second) << ' ';
       else
-        os << iter->first << ","
-           << iter->second << " ";
+        os << iter->first << ','
+           << iter->second << ' ';
     }
     os << "]\n";
   }

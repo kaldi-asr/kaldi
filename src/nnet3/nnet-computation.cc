@@ -151,11 +151,14 @@ void NnetComputation::MatrixInfo::Read(std::istream &is, bool binary) {
 
 void NnetComputation::MatrixInfo::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<MatrixInfo>");
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumRows>");
   WriteBasicType(os, binary, num_rows);
   WriteToken(os, binary, "<NumCols>");
   WriteBasicType(os, binary, num_cols);
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "</MatrixInfo>");
+  if (!binary) os << std::endl;
 }
 
 void NnetComputation::MatrixDebugInfo::Swap(
@@ -175,11 +178,15 @@ void NnetComputation::MatrixDebugInfo::Read(std::istream &is, bool binary) {
 
 void NnetComputation::MatrixDebugInfo::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<MatrixDebugInfo>");
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<IsDeriv>");
   WriteBasicType(os, binary, is_deriv);
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<Cindexes>");
   WriteCindexVector(os, binary, cindexes);
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "</MatrixDebugInfo>");
+  if (!binary) os << std::endl;
 }
 
 void NnetComputation::SubMatrixInfo::Read(std::istream &is, bool binary) {
@@ -199,6 +206,7 @@ void NnetComputation::SubMatrixInfo::Read(std::istream &is, bool binary) {
 
 void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<SubMatrixInfo>");
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<MatrixIndex>");
   WriteBasicType(os, binary, matrix_index);
   WriteToken(os, binary, "<RowOffset>");
@@ -209,7 +217,9 @@ void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const 
   WriteBasicType(os, binary, col_offset);
   WriteToken(os, binary, "<NumCols>");
   WriteBasicType(os, binary, num_cols);
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "</SubMatrixInfo>");
+  if (!binary) os << std::endl;
 }
 
 void NnetComputation::Command::Read(std::istream &is, bool binary) {
@@ -779,6 +789,7 @@ void NnetComputation::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NeedModelDerivative>");
   WriteBasicType(os, binary, need_model_derivative);
   WriteToken(os, binary, "</NnetComputation>");
+  if (!binary) os << std::endl;
 }
 
 void NnetComputation::GetCommandStrings(
@@ -858,6 +869,7 @@ void IoSpecification::Read(std::istream &is, bool binary) {
 
 void IoSpecification::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<IoSpecification>");
+  if (!binary) os << std::endl;
   WriteToken(os, binary, name);
   WriteToken(os, binary, "<NumIndexes>");
   WriteBasicType(os, binary, indexes.size());
@@ -865,7 +877,9 @@ void IoSpecification::Write(std::ostream &os, bool binary) const {
   WriteIndexVector(os, binary, indexes);
   WriteToken(os, binary, "<HasDeriv>");
   WriteBasicType(os, binary, has_deriv);
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "</IoSpecification>");
+  if (!binary) os << std::endl;
 }
 
 void ComputationRequest::Read(std::istream &is, bool binary) {
@@ -899,25 +913,31 @@ void ComputationRequest::Read(std::istream &is, bool binary) {
 
 void ComputationRequest::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<ComputationRequest>");
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<NumInputs>");
   WriteBasicType(os, binary, inputs.size());
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<Inputs>");
   for (size_t c = 0; c < inputs.size(); c++) {
     inputs[c].Write(os, binary);
   }
+  if (!binary) os << std::endl;
 
   WriteToken(os, binary, "<NumOutputs>");
   WriteBasicType(os, binary, outputs.size());
+  if (!binary) os << std::endl;
   WriteToken(os, binary, "<Outputs>");
   for (size_t c = 0; c < outputs.size(); c++) {
     outputs[c].Write(os, binary);
   }
+  if (!binary) os << std::endl;
 
   WriteToken(os, binary, "<NeedModelDerivative>");
   WriteBasicType(os, binary, need_model_derivative);
   WriteToken(os, binary, "<StoreComponentStats>");
   WriteBasicType(os, binary, store_component_stats);
   WriteToken(os, binary, "</ComputationRequest>");
+  if (!binary) os << std::endl;
 }
 >>>>>>> added I/O interfaces for NnetComputation and ComputationRequest
 
