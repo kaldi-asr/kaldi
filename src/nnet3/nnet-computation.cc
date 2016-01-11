@@ -939,7 +939,6 @@ void ComputationRequest::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</ComputationRequest>");
   if (!binary) os << std::endl;
 }
->>>>>>> added I/O interfaces for NnetComputation and ComputationRequest
 
 void ComputationRequest::Print(std::ostream &os) const {
   os << " # Computation request:\n";

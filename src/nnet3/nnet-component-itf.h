@@ -95,8 +95,6 @@ class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
   virtual ~ComponentPrecomputedIndexes() { }
-  virtual void Read(std::istream &istream, bool binary);
-  virtual void Write(std::ostream &ostream, bool binary) const;
 };
 
 
