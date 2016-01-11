@@ -1654,13 +1654,12 @@ void NaturalGradientPositiveAffineComponent::InitFromConfig(ConfigLine *cfl) {
     ok = ok && cfl->GetValue("input-dim", &input_dim);
     ok = ok && cfl->GetValue("output-dim", &output_dim);
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim),
-        bias_stddev = 1.0, bias_mean = 0.0, bias_init = 0.0;
+        bias_stddev = 1.0, bias_mean = 0.0;
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
     cfl->GetValue("bias-mean", &bias_mean);
-    cfl->GetValue("bias-init", &bias_init);
     Init(learning_rate, input_dim, output_dim, param_stddev,
-         bias_init, bias_mean, bias_stddev, rank_in, rank_out, update_period,
+         bias_mean, bias_stddev, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample, 
          ensure_positive_linear_component, sparsity_constant);
   }
@@ -1686,13 +1685,13 @@ void NaturalGradientPositiveAffineComponent::Init(
 void NaturalGradientPositiveAffineComponent::Init(
     BaseFloat learning_rate,
     int32 input_dim, int32 output_dim,
-    BaseFloat param_stddev, BaseFloat bias_init,
+    BaseFloat param_stddev,
     BaseFloat bias_mean, BaseFloat bias_stddev,
     int32 rank_in, int32 rank_out, int32 update_period,
     BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample, 
-    bool ensure_positive_linear_component, BaseFloat sparsity_constant = 0.0) {
-  NaturalGradientAffineComponent::Init(learning_rate, input_dim, output_dim, param_stddev, bias_init,
+    bool ensure_positive_linear_component, BaseFloat sparsity_constant) {
+  NaturalGradientAffineComponent::Init(learning_rate, input_dim, output_dim, param_stddev,
        bias_mean, bias_stddev, rank_in, rank_out, update_period,
        num_samples_history, alpha, max_change_per_sample);
   ensure_positive_linear_component_ = ensure_positive_linear_component;
