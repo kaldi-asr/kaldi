@@ -6,7 +6,8 @@
 # nnet3/chain/train_tdnn.sh to, on mix-up iters, apply half the max-change.
 # [changing it right now from 1/2 to 1/sqrt(2) which is more consistent
 # with the halving of the minibatch size.]
-
+# [I think I abandoned this after deciding to reduce the parameters even further,
+# to the setup in 3s].
 
 # _3p is the same as 3o, but after a code and script change so we can use
 # natural gradient for the RepeatedAffineComponent.

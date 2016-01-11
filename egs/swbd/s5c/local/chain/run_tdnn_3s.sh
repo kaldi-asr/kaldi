@@ -3,7 +3,7 @@
 # _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
 # num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.
 # This of course reduces overtraining.  Results are a bit better than 3p but still
-# not as good as 3s.
+# not as good as 2y
 
 # ./show_wer.sh 3s
 # %WER 17.88 [ 8799 / 49204, 1006 ins, 2312 del, 5481 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_tg/wer_11_0.0
@@ -306,8 +306,6 @@ if [ $stage -le 12 ]; then
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
-    --final-layer-normalize-target $final_layer_normalize_target \
-    --relu-dim 850 \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
     data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;

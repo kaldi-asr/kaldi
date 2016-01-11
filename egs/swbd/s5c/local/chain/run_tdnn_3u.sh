@@ -3,6 +3,8 @@
 # _3u is as _3s (and re-using the egs) but with one more layer; keeping the same dim
 # and total context, and reducing --jesus-forward-output-dim from 1500 to 1300 to
 # ensure that the number of parameters doesn't increase too much.
+#  [stopping this run, as the likelihoods weren't promising, e.g. by iteration
+#  39, the valid-prob was worse vs. 3t, -0.1488 -> -0.1521 (train: -0.1510 -> -0.1532)
 
 # _3t is as _3s but using slightly wider context.  Dumping our own egs.
 

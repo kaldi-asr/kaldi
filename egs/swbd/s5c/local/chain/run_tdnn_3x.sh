@@ -1,9 +1,21 @@
 #!/bin/bash
 
 # _3x is as _3s (and continuing the same kind of experimentation as in 3t->3w)...
-#  increasing --jesus-forward-output-dim from 1500 to 2000 XXXd reducing
-# XXXfinal-hidden-dim from 400 (it defaults to --jesus-forward-input-dim) to 350
-# XXXmostly compensate for the increase in parameters.
+#  increasing --jesus-forward-output-dim from 1500 to 2000.
+# More overtraining: final-train -0.0852->-0.0799, final-valid -0.1231->-0.1261,
+# WER effect is very tiny but maybe slightly better.
+#a03:s5c: ./show_wer.sh 3x
+#%WER 17.78 [ 8750 / 49204, 910 ins, 2405 del, 5435 sub ] exp/chain/tdnn_3x_sp/decode_train_dev_sw1_tg/wer_12_0.0
+#%WER 16.60 [ 8166 / 49204, 921 ins, 2290 del, 4955 sub ] exp/chain/tdnn_3x_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+#%WER 19.5 | 4459 42989 | 82.7 11.4 5.9 2.2 19.5 57.5 | exp/chain/tdnn_3x_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.7 | 4459 42989 | 84.3 10.3 5.5 1.9 17.7 54.6 | exp/chain/tdnn_3x_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+#a03:s5c: ./show_wer.sh 3s
+#%WER 17.88 [ 8799 / 49204, 1006 ins, 2312 del, 5481 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.67 [ 8200 / 49204, 982 ins, 2221 del, 4997 sub ] exp/chain/tdnn_3s_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 19.6 | 4459 42989 | 82.8 11.8 5.4 2.4 19.6 57.6 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.6 | 4459 42989 | 84.4 10.1 5.4 2.1 17.6 54.7 | exp/chain/tdnn_3s_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+
+
 
 # _3t is as _3s but using slightly wider context.  Dumping our own egs.
 

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # _3y is as _3s but doubling jesus-hidden-dim from 15000 to 30000.
+#  not promising: by iteration 228, train prob changed -0.09583->-0.09575, and
+# valid prob from -0.1213 -> -0.1239.  Killed it.
 
 # _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
 # num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.
