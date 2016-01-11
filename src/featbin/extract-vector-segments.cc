@@ -99,9 +99,9 @@ int main(int argc, char *argv[]) {
       // total number of samples present in features
       int32 num_samp = vector.Dim();
       // Convert start & end times of the segment to corresponding sample number
-      int32 start_samp = static_cast<int32>(std::round(
+      int32 start_samp = static_cast<int32>((
           (segment.start_time * 1000.0 / frame_shift)));
-      int32 end_samp = static_cast<int32>(std::round(segment.end_time * 1000.0 / frame_shift + 0.0495));
+      int32 end_samp = static_cast<int32>((segment.end_time * 1000.0 / frame_shift + 0.0495));
       
       if (snip_edges) {
         // snip the edge at the end of the segment (usually 2 frames),
