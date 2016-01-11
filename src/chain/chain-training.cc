@@ -55,7 +55,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   *tot_objf = num_logprob_weighted - supervision.weight * den_logprob;
   *tot_weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
-  if (!(*tot_objf  == *tot_objf)) {
+  if (!((*tot_objf) - (*tot_objf) == 0)) {
     // inf or NaN detected
     if (nnet_output_deriv)
       nnet_output_deriv->SetZero();
