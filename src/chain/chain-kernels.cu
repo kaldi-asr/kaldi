@@ -40,9 +40,15 @@ __device__ inline void atomic_add_thresholded(Real* address, Real value) {
   // threshold itself with probability (value / threshold).  This preserves
   // expectations.  Note: we assume that value >= 0.
 
-  // you can choose any value for the threshold, but powers of 2 are nice
-  // because they will exactly preserve the precision of the value.
-  const Real threshold = 1.0 / (1 << 14);
+  // kThresholdingPowerOfTwo is defined in chain-datastruct.h; think of this as
+  // defining the real threshold. (larger power -> more exact, smaller power ->
+  // faster).  The occupation factors that we add ('value' in this code) will
+  // previously have been scaled by by 2^{-kOccupationRescalingPowerOfTwo}, so
+  // we need to adjust the threshold to compensate for this.
+  // In the next line we compute 'threshold' in what an odd way to avoid
+  // overflow; it should be computed as a constant in the compiler.
+  const Real threshold = (1.0 / (1 << kThresholdingPowerOfTwo)) /
+      (1 << kOccupationRescalingPowerOfTwo);
   if (value >= threshold) {
     atomic_add(address, value);
   } else {
@@ -67,7 +73,6 @@ __device__ inline void atomic_add_thresholded(Real* address, Real value) {
     if ((x >> 12) > (x & 4095))
       atomic_add(address, threshold);
   }
-
 }
 
 // one iteration of the forward computation in the 'tombstone' CTC HMM computation.
@@ -183,7 +188,28 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
       inv_arbitrary_scale =
       this_alpha[special_hmm_state * num_sequences + s];
   double tot_variable_factor = 0.0;
-  BaseFloat occupation_factor = this_alpha_prob / inv_arbitrary_scale;
+
+  // this should be compiled as a constant.  This factor 'occupation_factor'
+  // here is arbitrarily chosen and will be canceled out by its inverse factor
+  // in chain-denomnator.cc.  It is to avoid infinities appearing in the
+  // derivatives when the 'special' HMM state gets very unlikely and
+  // 'this_alpha_prob' gets close to the maximum representable floating point
+  // value.  A check in chain-training.cc that tot_objf is finite would detect
+  // the case where the alphas are actually infinite and discard the
+  // derivatives, so we can assume that all the alphas are finite.  However, if
+  // one of the alphas is close to the maximum representable floating point
+  // value and if inv_arbitrary_scale is less than one, we could (if not for
+  // this factor of 10^-6) easily get overflow in the next line and produce an
+  // inf, which would not be detected as the alphas remain finite; this would
+  // produce an inf in the nnet-output derivatives and propagate back to the
+  // training.  Because 'inv_arbitrary_scale' is in the same range as the exp of
+  // the nnet outputs, and for a non-diverging chain model these will always be
+  // fairly close to 1, this small factor (around 10^-6 currently) should be
+  // sufficient to prevent an inf appearing here.
+  const BaseFloat occupation_arbitrary_factor =
+      (1.0 / (1 << kOccupationRescalingPowerOfTwo));
+  BaseFloat occupation_factor = (occupation_arbitrary_factor * this_alpha_prob) /
+      inv_arbitrary_scale;
   const DenominatorGraphTransition
       *trans_iter = transitions + forward_transitions[h].first,
       *trans_end = transitions + forward_transitions[h].second;

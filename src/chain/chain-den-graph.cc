@@ -181,12 +181,22 @@ int32 DenominatorGraph::ComputeSpecialState(
     const fst::StdVectorFst &fst,
     const Vector<BaseFloat> &initial_probs) {
   int32 num_states = initial_probs.Dim();
-  std::vector<std::pair<BaseFloat, int32> > pairs(num_states);
-  for (int32 i = 0; i < num_states; i++)
-    pairs.push_back(std::pair<BaseFloat, int32>(-initial_probs(i), i));
-  // the first element of each pair is the negative of the initial-prob,
-  // so when we sort, the highest initial-prob will be first.
+  std::vector<int32> num_transitions_into(num_states, 0);
+  for (int32 s = 0; s < fst.NumStates(); s++) {
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, s); !aiter.Done();
+         aiter.Next())
+      num_transitions_into[aiter.Value().nextstate]++;
+  }
+  // this vector 'pairs' is a vector of pairs (-num-transitions-into-state, state).
+  std::vector<std::pair<int32, int32> > pairs(num_states);
+  for (int32 i = 0; i < num_states; i++) {
+    pairs[i].first = -num_transitions_into[i];
+    pairs[i].second = i;
+  }
+  // the first element of each pair is the negative of the num-transitions, so
+  // when we sort, the highest num-transitions will be first.
   std::sort(pairs.begin(), pairs.end());
+
   // this threshold of 0.75 is pretty arbitrary.  We reject any
   // state if it can't be reached by 75% of all other states.
   // In practice we think that states will either be reachable by

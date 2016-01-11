@@ -190,8 +190,10 @@ void DenominatorComputation::Backward(
           *nnet_output_deriv,
           t * num_sequences_, chunk_frames * num_sequences_,
           0, num_pdfs);
-      output_deriv_part.AddMat(deriv_weight, transposed_deriv_part,
-                               kTrans);
+      const BaseFloat occupation_arbitrary_factor_inv =
+          (1 << kOccupationRescalingPowerOfTwo);
+      output_deriv_part.AddMat(deriv_weight * occupation_arbitrary_factor_inv,
+                               transposed_deriv_part, kTrans);
       if (t != 0)
         transposed_deriv_part.SetZero();
     }
@@ -266,8 +268,12 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
             inv_arbitrary_scale =
             this_alpha[special_hmm_state * num_sequences + s];
         double tot_variable_factor = 0.0;
-        BaseFloat
-            occupation_factor = this_alpha_prob / inv_arbitrary_scale;
+        // search for 'occupation_arbitrary_factor' in chain-kernels.cu for
+        // an explanation.
+        const BaseFloat occupation_arbitrary_factor =
+            (1.0 / (1 << kOccupationRescalingPowerOfTwo));
+        BaseFloat occupation_factor = (occupation_arbitrary_factor *
+                                       this_alpha_prob) / inv_arbitrary_scale;
         const DenominatorGraphTransition
             *trans_iter = transitions + forward_transitions[h].first,
             *trans_end = transitions + forward_transitions[h].second;

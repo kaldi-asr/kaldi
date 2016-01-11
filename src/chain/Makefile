@@ -12,7 +12,7 @@ OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
           language-model.o chain-denominator.o chain-training.o
 
 ifeq ($(CUDA), true)
-  OBJFILES += chain-kernels.o 
+  OBJFILES += chain-kernels.o
 endif
 
 LIBNAME = kaldi-chain
@@ -53,7 +53,7 @@ endif
 
 ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a \
            ../fstext/kaldi-fstext.a \
-           ../matrix/kaldi-matrix.a ../cudamatrix/kaldi-cudamatrix.a \
+           ../cudamatrix/kaldi-cudamatrix.a ../matrix/kaldi-matrix.a \
           ../util/kaldi-util.a ../base/kaldi-base.a
 
 
