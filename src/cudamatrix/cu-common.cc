@@ -51,19 +51,20 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimBlock) {
   KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   int32 col_blocksize = 64, row_blocksize = 4;
-  while (num_cols + (num_cols / 2) <= col_blocksize &&
-         num_rows > 65536 * row_blocksize) {
+  while (col_blocksize > 1 &&
+         (num_cols + (num_cols / 2) <= col_blocksize ||
+          num_rows > 65536 * row_blocksize)) {
     col_blocksize /= 2;
     row_blocksize *= 2;
   }
-
-  KALDI_ASSERT(col_blocksize > 0 && "Matrix too large to process");
 
   dimBlock->x = col_blocksize;
   dimBlock->y = row_blocksize;
   dimBlock->z = 1;
   dimGrid->x = n_blocks(num_cols, col_blocksize);
   dimGrid->y = n_blocks(num_rows, row_blocksize);
+  KALDI_ASSERT(dimGrid->y <= 65536 &&
+               "Matrix has too many rows to process");
   dimGrid->z = 1;
 }
 #endif
