@@ -398,6 +398,19 @@ class CuMatrixBase {
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 
+  /// This function does general tensor multiplication. The general model for 3d tensor multiplication is: 
+  /// C(i, j, k) = \sum_l A(U, V, W) * B(X, Y, Z) where U,V,W,X,Y,Z are some combination of i,j,k,l.
+  /// we have an enum that describes the indexes. egs (U,V,W,X,Y,Z) = (i,j,l,j,k,l)
+  /// Different kernel will be used for each enum value. 
+  void TensorMultiply3D(Real alpha,
+                        int32 this_second_dim,
+                        const CuMatrixBase<Real> &A,
+                        int32 A_second_dim,
+                        const CuMatrixBase<Real> &B,
+                        int32 B_second_dim,
+                        Tensor3DPairTransposeType trans3d,
+                        Real beta);
+
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
   /// if you need it symmetric as a regular matrix, do CopyLowerToUpper().

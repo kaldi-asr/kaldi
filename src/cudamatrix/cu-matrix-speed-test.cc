@@ -1,6 +1,7 @@
 // cudamatrix/cu-matrix-speed-test.cc
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+//           2015  Pegah Ghahrmani
 //           2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -624,6 +625,99 @@ void TestCuMatrixLookup(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real>
+static void TestCuTensorMultiply3dCase1SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m1,m2*m4), B(m2,m3*m4), C(m1,m2*m3); 
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m2, B, m3, kTensor3DPairTransposeIjljkl, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeIjljkl: " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real>
+static void TestCuTensorMultiply3dCase2SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m1,m2*m4), B(m2,m3*m4), C(m1,m2*m3); 
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m2, B, m4, kTensor3DPairTransposeIjljlk, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeIjljlk : " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real>
+static void TestCuTensorMultiply3dCase3SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m4, m1*m3), B(m4, m1*m2), C(m1,m2*m3);  
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m1, B, m1, kTensor3DPairTransposeLiklij, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeLiklij: " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real>
+static void TestCuTensorMultiply3dCase4SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m1,m3*m4), B(m3,m2*m4), C(m1,m2*m3); 
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m4, B, m2, kTensor3DPairTransposeIlkkjl, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeIlkkjl: " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real>
+static void TestCuTensorMultiply3dCase5SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m1,m3*m4), B(m3,m2*m4), C(m1,m2*m3); 
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m4, B, m4, kTensor3DPairTransposeIlkklj, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeIlkklj: " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real>
+static void TestCuTensorMultiply3dCase6SpeedTest(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  int32 m1 = 50, m2 = 50, m3 = 50, m4 = dim;
+  CuMatrix<Real> A(m4,m3*m1), B(m4,m1*m2), C(m1,m2*m3); 
+  Timer tim;
+  int32 iter = 0;
+  for(; tim.Elapsed()  < time_in_secs; iter++)
+    C.TensorMultiply3D(1.0, m2, A, m3, B, m2, kTensor3DPairTransposeLkilji, 1.0); 
+  BaseFloat gflops = (m1 * m2 * m3 * m4 * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::TensorMultiply3D, kTensor3DPairTransposeLkilji: " 
+            << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+
+
 template<typename Real> void TestCuMatrixCopyRows1(int32 dim) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> M(dim, dim), N(dim, dim);
@@ -817,6 +911,18 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kTrans);
   }
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase1SpeedTest<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase2SpeedTest<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase3SpeedTest<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase4SpeedTest<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase5SpeedTest<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuTensorMultiply3dCase6SpeedTest<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestSymInvertPosDef<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

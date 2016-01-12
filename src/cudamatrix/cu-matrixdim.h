@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
+//                2015  Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -55,6 +56,21 @@ extern "C" {
     int32_cuda stride;
   } MatrixDim;
 
+  /**
+   * Structure containing size of the 3d tensor plus strides.
+   * The 3d tensor is a pair of a matrix M and an integer second_dim,
+   * which is the dimension of the second index of the tensor.
+   * So the first index, dim1 correspond to th row-index of M and 
+   * dim2 is equal to second_dim and dim3 correspond to M.NumCols() / second_dim.
+   * This structure is an argument of most of the CUDA kernels.
+   */
+  typedef struct Tensor3dDim_ {
+    int32_cuda dim1;
+    int32_cuda dim2;
+    int32_cuda dim3;
+    int32_cuda stride;
+  } Tensor3dDim;
+
 // we define the following constants here because this file is included
 // both by the C++ code and also CUDA code.
 
@@ -66,7 +82,8 @@ extern "C" {
 // Must be defined the same in cu-kernels-ansi.h
 #define CU2DBLOCK 16
 
-
+// The optimum size of shared array for TensorMultiply3d
+#define CU1DSHARED 64
   /** This structure is used in cu-block-matrix.h to store information
       about a block-diagonal matrix.  We declare it here so that it
       will be accessible

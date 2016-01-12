@@ -6,6 +6,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//                2015  Pegah Ghahremani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -979,6 +980,143 @@ void CuMatrixBase<Real>::AddMatMatDivMat(const CuMatrixBase<Real> &A,
     Mat().AddMatMatDivMat(A.Mat(), B.Mat(), C.Mat());
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::TensorMultiply3D(Real alpha, 
+                      int32 this_second_dim,
+                      const CuMatrixBase<Real> &A, int32 A_second_dim,
+                      const CuMatrixBase<Real> &B, int32 B_second_dim,
+                      Tensor3DPairTransposeType trans3d,
+                      Real beta) {
+
+  KALDI_ASSERT(A.NumCols() % A_second_dim == 0 &&  B.NumCols() % B_second_dim == 0 &&
+              NumCols() % this_second_dim == 0);
+  int32 A_third_dim = A.NumCols() / A_second_dim, B_third_dim = B.NumCols() / B_second_dim,
+    this_third_dim = NumCols() / this_second_dim;
+  Tensor3dDim a_dim = {A.NumRows(), A_second_dim, A_third_dim, A.Stride()};
+  Tensor3dDim b_dim = {B.NumRows(), B_second_dim, B_third_dim, B.Stride()};
+  Tensor3dDim c_dim = {NumRows(), this_second_dim, this_third_dim, Stride()};
+
+  int32 l = 0;
+  if (trans3d == kTensor3DPairTransposeIjljkl || trans3d == kTensor3DPairTransposeIjljlk)
+    l = A_third_dim;
+  else if (trans3d == kTensor3DPairTransposeLiklij || trans3d == kTensor3DPairTransposeLkilji)
+    l = A.NumRows();
+  else if (trans3d == kTensor3DPairTransposeIlkkjl || trans3d == kTensor3DPairTransposeIlkklj) 
+    l = A_second_dim;
+  int32 shared_array_size = CU1DSHARED; // since we sum the thread value using _sum_reduce
+                                // and we define array in shared memory, it would
+                                // be optimized to decrease array length to speed up
+                                // _sum_reduce
+  //int32 l_block_size = std::max(4, (l + CU1DBLOCK - 1) / CU1DBLOCK);
+
+  int32 l_block_size = std::max(std::max(1, int(std::log(l/2.0))), (l + shared_array_size - 1) / shared_array_size);
+  int32 l_num_blocks = (l + l_block_size - 1)/ l_block_size; 
+  KALDI_ASSERT(l_num_blocks <= CU1DBLOCK);
+  // set gridDim and blockDim
+  // The gridDim ranges over i,j,k (i.e. i,j,k correspond to blockIdx.{x,y,z})
+  // The range of l values that each thread processes should 
+  // be derived from threadIdx.x.
+  // l_block_size is the number of processes done by each thread 
+  // and this passes as a function argument to cuda kernels.
+  dim3 dimBlock, dimGrid;
+  if (l <= CU1DSHARED) {
+    int32 x_blocksize = 1;
+    int32 y_blocksize =  this_second_dim;
+    while (y_blocksize * x_blocksize > CU1DBLOCK || y_blocksize > CU2DBLOCK)
+      y_blocksize--;   
+    int32 z_blocksize = this_third_dim;
+    while (z_blocksize * x_blocksize * y_blocksize > CU1DBLOCK || z_blocksize > CU2DBLOCK)
+      z_blocksize--;   
+    dimBlock.x = x_blocksize; dimBlock.y = y_blocksize; dimBlock.z = z_blocksize;
+    dimGrid.x = NumRows(); dimGrid.y = n_blocks(this_second_dim, y_blocksize);
+    dimGrid.z = n_blocks(this_third_dim, z_blocksize);
+    //dimBlock = {x_blocksize, y_blocksize, z_blocksize};
+    //dim3 dimGrid = {NumRows(), n_blocks(this_second_dim, y_blocksize),
+    //  n_blocks(this_third_dim, z_blocksize)};
+    l_block_size = l;
+  } else {
+    dimBlock.x = l_num_blocks; dimBlock.y = 1; dimBlock.z = 1;
+    dimGrid.x = NumRows(); dimGrid.y = this_second_dim; dimGrid.z = this_third_dim;
+    //dim3 dimBlock(l_num_blocks, 1, 1);
+    //dim3 dimGrid(NumRows(), this_second_dim, this_third_dim);
+  }
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    // define block size in 3 dimensions.
+    // The gridDim ranges over i, j, k. 
+    if (trans3d == kTensor3DPairTransposeIjljkl) {
+     // For each i, j, k:  this_tensor(i, j, k) := 
+     //       \sum_l A_tensor(i, j, l) * B_tensor(j, k, l)
+      KALDI_ASSERT(NumRows() == A.NumRows() && 
+                   this_second_dim == A_second_dim && 
+                   this_third_dim == B_second_dim && 
+                   A_third_dim == B_third_dim);
+      cuda_tensor_multiply_3d_ijljkl(dimGrid, dimBlock, alpha, A.data_, B.data_, 
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+    } else if (trans3d == kTensor3DPairTransposeIjljlk) {
+      // For each i, j, k:  this_tensor(i, j, k) := 
+      //    \sum_l A_tensor(i, j, l) * B_tensor(j, l, k);
+      KALDI_ASSERT(NumRows() == A.NumRows() && this_second_dim == A_second_dim &&
+                   this_second_dim == B.NumRows() && 
+                   this_third_dim == B_third_dim && 
+                   A_third_dim == B_second_dim);
+      cuda_tensor_multiply_3d_ijljlk(dimGrid, dimBlock, alpha, A.data_, B.data_, 
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+      
+    } else if (trans3d == kTensor3DPairTransposeLiklij) {
+      // for each i, j, k:  this_tensor(i, j, k) := 
+      //    \sum_l A_tensor(l, i, k) * B_tensor(l, i, j) 
+      KALDI_ASSERT(NumRows() == A_second_dim && NumRows() == B_second_dim &&
+                   this_second_dim == B.NumCols() / B_second_dim && 
+                   NumCols() / this_second_dim == A.NumCols() / A_second_dim &&
+                   A.NumRows() == B.NumRows());
+      cuda_tensor_multiply_3d_liklij(dimGrid, dimBlock, alpha, A.data_, B.data_, 
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+    } else if (trans3d == kTensor3DPairTransposeIlkkjl) {
+      // for each i, j, k: this_tensor(i,j,k) = 
+      // \sum_l A_tensor(i, l, k) * params(k, j, l)
+      KALDI_ASSERT(NumRows() == A.NumRows() && A_second_dim == B_third_dim &&
+                   B_second_dim == this_second_dim &&
+                   this_third_dim == A_third_dim &&
+                   this_third_dim == B.NumRows());
+      cuda_tensor_multiply_3d_ilkkjl(dimGrid, dimBlock, alpha, A.data_, B.data_,
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+    } else if (trans3d == kTensor3DPairTransposeIlkklj) {
+      // for each i, j, k:  this_tensor(i, j, k) := 
+      // \sum_l A_tensor(i, l, k) * B_tensor(k, l, j);
+      KALDI_ASSERT(NumRows() == A.NumRows() && A_second_dim == B_second_dim &&
+                   B_third_dim == this_second_dim &&
+                   this_third_dim == A_third_dim &&
+                   this_third_dim == B.NumRows());
+      cuda_tensor_multiply_3d_ilkklj(dimGrid, dimBlock, alpha, A.data_, B.data_,
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+
+    } else if (trans3d == kTensor3DPairTransposeLkilji) {
+      // for each i, j, k:  this_tensor(i, j, k) := 
+      // \sum_l A_tensor(l, k, i) * B_tensor(l, j, i)
+      KALDI_ASSERT(NumRows() == A_third_dim && NumRows() == B_third_dim &&
+                   this_second_dim == B_second_dim && 
+                   this_third_dim == A_second_dim &&
+                   A.NumRows() == B.NumRows());
+      cuda_tensor_multiply_3d_lkilji(dimGrid, dimBlock, alpha, A.data_, B.data_,
+                                     data_, a_dim, b_dim, c_dim, l_block_size, beta);
+ 
+    } else {
+      KALDI_ERR << "Wrong trans3d argument " << trans3d;
+    }
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+} else
+#endif
+  {
+    Mat().TensorMultiply3D(alpha, this_second_dim, A.Mat(), A_second_dim,
+                           B.Mat(), B_second_dim, trans3d, beta);
+  }
+}
+
+
 
 template<typename Real>
 void CuMatrixBase<Real>::AddVecToCols(Real alpha,

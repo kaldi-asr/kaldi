@@ -5,6 +5,7 @@
 //                2014  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang    
+//                2014  Pegah Ghahremani
 //           2013-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -172,6 +173,18 @@ inline void cuda_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src, float 
 inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, float *dst, MatrixDim d, int src_stride, int A_trans) { cudaF_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride, A_trans); }
 inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) { cudaF_add_mat_mat_div_mat(Gr,Bl,A,B,C,dst,d,stride_a,stride_b,stride_c); }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
+inline void cuda_tensor_multiply_3d_ijljkl(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_ijljkl(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_ijljlk(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_ijljlk(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_liklij(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_liklij(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_ilkkjl(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_ilkkjl(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_ilkklj(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_ilkklj(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_lkilji(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta) {
+  cudaF_tensor_multiply_3d_lkilji(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d) { cudaF_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
 inline void cuda_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) { cudaF_transpose_matrix(Gr, Bl, mat, d); }
 inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, float alpha, float beta, const float* T, MatrixDim tdim, float *S, MatrixDim sdim) { cudaF_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim); }
@@ -358,6 +371,21 @@ inline void cuda_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *src, doub
 inline void cuda_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, double *dst, MatrixDim d, int src_stride, int A_trans) { cudaD_add_mat_blocks(Gr, Bl, alpha, src, num_row_blocks, num_col_blocks, dst, d, src_stride, A_trans); }
 inline void cuda_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d, int stride_a, int stride_b, int stride_c) { cudaD_add_mat_mat_div_mat(Gr,Bl,A,B,C,dst,d,stride_a,stride_b,stride_c); }
 inline void cuda_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_cols(Gr,Bl,alpha,col,beta,dst,d); }
+inline void cuda_tensor_multiply_3d_ijljkl(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_ijljkl(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_ijljlk(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_ijljlk(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_liklij(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_liklij(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+
+inline void cuda_tensor_multiply_3d_ilkkjl(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_ilkkjl(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_ilkklj(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_ilkklj(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+inline void cuda_tensor_multiply_3d_lkilji(dim3 Gr,dim3 Bl,double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta) {
+  cudaD_tensor_multiply_3d_lkilji(Gr, Bl, alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);}
+
+
 inline void cuda_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d) { cudaD_add_vec_to_rows(Gr,Bl,alpha,row,beta,dst,d); }
 inline void cuda_transpose_matrix(dim3 Gr, dim3 Bl, double *mat, MatrixDim d) { cudaD_transpose_matrix(Gr, Bl, mat, d); }
 inline void cuda_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double* T, MatrixDim tdim, double *S, MatrixDim sdim) { cudaD_sy_add_tr2(Gr, Bl, alpha, beta, T, tdim, S, sdim); }

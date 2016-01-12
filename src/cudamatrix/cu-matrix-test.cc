@@ -6,6 +6,7 @@
 //           2013  Hainan Xu
 //           2013  Xiaohui Zhang
 //           2013  Johns Hopkins University (author: Guoguo Chen)
+//           2015  Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -2424,6 +2425,137 @@ static void UnitTestCuMatrixEqualElementMask() {
   KALDI_ASSERT(m4.Sum() == 25);
 
 }
+template<typename Real> 
+static void UnitTestTensorMultiply3dSimple() {
+  for (int32 t = 0; t < 1; t++) { 
+    int32 m1 = 100 + rand() % 20, m2 = 50 + rand() % 20, 
+      m3 = 50 + rand() % 20, m4 = 50 + rand() % 10;
+    //int32 m1 = 100, m2 = 5, m3 = 5, m4 = 256;
+
+    // test kTensor3DPairTransposeIjljkl
+    CuMatrix<Real> A1(m1,m2*m4), B1(m2,m3*m4), C1(m1,m2*m3), C1_orig(m1, m2*m3);
+    A1.Set(1.0);
+    B1.Set(1.0);
+    C1_orig.Set(m4);
+    C1.TensorMultiply3D(1.0, m2, A1, m2, B1, m3, kTensor3DPairTransposeIjljkl, 1.0);
+    KALDI_ASSERT(C1.ApproxEqual(C1_orig));
+    
+    // test kTensor3DPairTransposeIjljlk
+    CuMatrix<Real> A2(m1,m2*m4), B2(m2, m3*m4), C2(m1,m2*m3);
+    A2.Set(1.0);
+    B2.Set(1.0);
+    C2.TensorMultiply3D(1.0, m2, A2, m2, B2, m4, kTensor3DPairTransposeIjljlk, 1.0);
+    KALDI_ASSERT(C2.ApproxEqual(C1_orig));
+    
+    // test kTensor3DPairTransposeliklij
+    CuMatrix<Real> A3(m4, m1*m3), B3(m4, m1*m2), C3(m1,m2*m3);
+    A3.Set(1.0);
+    B3.Set(1.0);
+    C3.TensorMultiply3D(1.0, m2, A3, m1, B3, m1, kTensor3DPairTransposeLiklij, 1.0);
+    KALDI_ASSERT(C3.ApproxEqual(C1_orig));
+    //KALDI_LOG << "kTensor3DPairTransposeLiklij :" << C3;
+
+    // test kTensor3DPairTransposeIlkkjl
+    CuMatrix<Real> A4(m1,m3*m4), B4(m3,m2*m4), C4(m1,m2*m3);
+    A4.Set(1.0);
+    B4.Set(1.0);
+    C4.TensorMultiply3D(1.0, m2, A4, m4, B4, m2, kTensor3DPairTransposeIlkkjl, 1.0);
+    KALDI_ASSERT(C4.ApproxEqual(C1_orig));
+   }
+}
+
+template<typename Real> 
+static void UnitTestTensorMultiply3d() {
+  for (int32 t = 0; t < 1; t++) { 
+    int32 m1 = 100 + rand() % 20, m2 = 50 + rand() % 20, 
+      m3 = 50 + rand() % 20, m4 = 50 + rand() % 10;
+    Real alpha = (rand() % 500)/100.0, beta = (rand() % 500) / 100.0;
+    //int32 m1 = 100, m2 = 5, m3 = 5, m4 = 256;
+
+    // test kTensor3DPairTransposeIjljkl
+    CuMatrix<Real> A1(m1,m2*m4), B1(m2,m3*m4), C1(m1,m2*m3);
+    A1.SetRandn();
+    B1.SetRandn();
+    C1.SetRandn();
+    Matrix<Real> A1_cp(m1, m2 * m4), B1_cp(m2, m3 * m4), D1(m1, m2*m3);
+    A1_cp.CopyFromMat(A1);
+    B1_cp.CopyFromMat(B1);
+    D1.CopyFromMat(C1);
+    C1.TensorMultiply3D(alpha, m2, A1, m2, B1, m3, kTensor3DPairTransposeIjljkl, beta);
+    D1.TensorMultiply3D(alpha, m2, A1_cp, m2, B1_cp, m3, kTensor3DPairTransposeIjljkl, beta);
+    Matrix<Real> C1_cp(C1);
+    KALDI_ASSERT(C1_cp.ApproxEqual(D1));
+
+    // test kTensor3DPairTransposeIjljlk
+    CuMatrix<Real> A2(m1,m2*m4), B2(m2, m3*m4), C2(m1,m2*m3);
+    A2.SetRandn();
+    B2.SetRandn();
+    Matrix<Real> A2_cp(m1, m2 * m4), B2_cp(m2, m3 * m4), D2(m1, m2*m3);
+    A2_cp.CopyFromMat(A2);
+    B2_cp.CopyFromMat(B2);
+
+    C2.TensorMultiply3D(alpha, m2, A2, m2, B2, m4, kTensor3DPairTransposeIjljlk, beta);
+    D2.TensorMultiply3D(alpha, m2, A2_cp, m2, B2_cp, m4, kTensor3DPairTransposeIjljlk, beta);
+    Matrix<Real> C2_cp(C2);
+    KALDI_ASSERT(C2_cp.ApproxEqual(D2));
+    
+    // test kTensor3DPairTransposeliklij
+    CuMatrix<Real> A3(m4, m1*m3), B3(m4, m1*m2), C3(m1,m2*m3);
+    A3.SetRandn();
+    B3.SetRandn();
+    Matrix<Real> A3_cp(m4, m1 * m3), B3_cp(m4, m1 * m2), D3(m1, m2 * m3);
+    A3_cp.CopyFromMat(A3);
+    B3_cp.CopyFromMat(B3);
+
+    C3.TensorMultiply3D(alpha, m2, A3, m1, B3, m1, kTensor3DPairTransposeLiklij, beta);
+    D3.TensorMultiply3D(alpha, m2, A3_cp, m1, B3_cp, m1, kTensor3DPairTransposeLiklij, beta); 
+    Matrix<Real> C3_cp(C3);
+    KALDI_ASSERT(C3_cp.ApproxEqual(D3));
+    //KALDI_LOG << "kTensor3DPairTransposeLiklij :" << C3;
+
+    // test kTensor3DPairTransposeilkkjl
+    CuMatrix<Real> A4(m1, m3 * m4), B4(m3, m2 * m4), C4(m1, m2 * m3);
+    A4.SetRandn();
+    B4.SetRandn();
+    C4.SetRandn();
+    Matrix<Real> A4_cp(m1, m3 * m4), B4_cp(m3, m2 * m4), D4(m1, m2 * m3);
+    A4_cp.CopyFromMat(A4);
+    B4_cp.CopyFromMat(B4);
+    D4.CopyFromMat(C4);
+    C4.TensorMultiply3D(alpha, m2, A4, m4, B4, m2, kTensor3DPairTransposeIlkkjl, beta);
+    D4.TensorMultiply3D(alpha, m2, A4_cp, m4, B4_cp, m2, kTensor3DPairTransposeIlkkjl, beta);
+    Matrix<Real> C4_cp(C4);
+    KALDI_ASSERT(C4_cp.ApproxEqual(D4));
+
+    // test kTensor3DPairTransposeilkklj
+    CuMatrix<Real> A5(m1, m3 * m4), B5(m3, m2 * m4), C5(m1, m2 * m3);
+    A5.SetRandn();
+    B5.SetRandn();
+    C5.SetRandn();
+    Matrix<Real> A5_cp(m1, m3 * m4), B5_cp(m3, m2 * m4), D5(m1, m2 * m3);
+    A5_cp.CopyFromMat(A5);
+    B5_cp.CopyFromMat(B5);
+    D5.CopyFromMat(C5);
+    C5.TensorMultiply3D(alpha, m2, A5, m4, B5, m4, kTensor3DPairTransposeIlkklj, beta);
+    D5.TensorMultiply3D(alpha, m2, A5_cp, m4, B5_cp, m4, kTensor3DPairTransposeIlkklj, beta);
+    Matrix<Real> C5_cp(C5);
+    KALDI_ASSERT(C5_cp.ApproxEqual(D5));
+
+    // test kTensor3DPairTransposelkilji
+    CuMatrix<Real> A6(m4, m1*m3), B6(m4, m1*m2), C6(m1,m2*m3);
+    A6.SetRandn();
+    B6.SetRandn();
+    C6.SetRandn();
+    Matrix<Real> A6_cp(m4, m1 * m3), B6_cp(m4, m1 * m2), D6(m1, m2 * m3);
+    A6_cp.CopyFromMat(A6);
+    B6_cp.CopyFromMat(B6);
+    D6.CopyFromMat(C6);
+    C6.TensorMultiply3D(alpha, m2, A6, m3, B6, m2, kTensor3DPairTransposeLkilji, beta);
+    D6.TensorMultiply3D(alpha, m2, A6_cp, m3, B6_cp, m2, kTensor3DPairTransposeLkilji, beta); 
+    Matrix<Real> C6_cp(C6);
+    KALDI_ASSERT(C6_cp.ApproxEqual(D6));
+  }
+}
 
 template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTraceMatMat<Real>();
@@ -2481,6 +2613,8 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixAddElements<Real>();
   UnitTestCuMatrixLookup<Real>();
   UnitTestCuMatrixEqualElementMask<Real>();
+  UnitTestTensorMultiply3dSimple<Real>();
+  UnitTestTensorMultiply3d<Real>();
   // test CuVector<Real> methods
   UnitTestCuVectorAddVec<Real>();
   UnitTestCuVectorAddRowSumMat<Real>();

@@ -2,7 +2,8 @@
 
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Petr Schwarz;  Yanmin Qian;
-//                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu
+//                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu;
+//                      Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -576,6 +577,17 @@ class MatrixBase {
   void AddMatMatDivMat(const MatrixBase<Real>& A,
                         const MatrixBase<Real>& B,
                        const MatrixBase<Real>& C);
+
+  /// This function does general tensor multiplication. 
+  /// The general model for 3d tensor multiplication is as follows:
+  /// C(i, j, k) = \sum_l A(U, V, W) * B(X, Y, Z) where U,V,W,X,Y,Z are some combination of i,j,k,l.
+  /// we have an enum that describes the indexes. egs. (U,V,W,X,Y,Z) = (i,j,l,j,k,l)
+  void TensorMultiply3D(Real alpha, int32 this_second_dim,
+                                        const MatrixBase<Real> &A, int32 A_second_dim,
+                                        const MatrixBase<Real> &B, int32 B_second_dim,
+                                        Tensor3DPairTransposeType trans3d,
+                                        Real beta);
+
 
   /// A version of AddMatMat specialized for when the second argument
   /// contains a lot of zeroes.
