@@ -1895,6 +1895,7 @@ void CuMatrixBase<Real>::CopyRowsFromVec(const CuVectorBase<Real> &v) {
       GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
                                             &dimGrid, &dimBlock);
       cuda_copy_rows_from_vec(dimGrid, dimBlock, data_, this->Dim(), v.Data());
+      CU_SAFE_CALL(cudaGetLastError());
     } else {
       KALDI_ERR << "Wrong sized arguments";
     }
