@@ -1409,7 +1409,22 @@ void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
+  // backwards compatibility code: fast_mode_ was not in the original
+  // RepeatedAffineComponent
+  std::string next_tag;
+  ReadToken(is, binary, &next_tag);
+  // ReadToken advances the input
+  if(next_tag == "<FastMode>") {
+    ReadBasicType(is, binary, &fast_mode_);
+    ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
+  } else {
+    fast_mode_ = true;
+    // Creating a stream is a longwinded way to replicate
+    // previous behavior by being able to call ExpectToken().
+    std::stringstream ss(next_tag);
+    ExpectToken(ss, binary, std::string("</") + Type() + std::string(">"));
+  }
+  // end backwards compatibility code.
   SetNaturalGradientConfigs();
 }
 
@@ -1424,6 +1439,8 @@ void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<FastMode>");
+  WriteBasicType(os, binary, fast_mode_);
   // write closing token.
   WriteToken(os, binary, std::string("</") + Type() + std::string(">"));
 }
