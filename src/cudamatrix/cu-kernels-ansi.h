@@ -4,6 +4,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu    
 //                2013  Xiaohui Zhang
+//                2014  Pegah Ghahremani
 //           2013-2015  Guoguo Chen
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -92,6 +93,12 @@ void cudaF_add_mat(dim3 Gr, dim3 Bl, float alpha, const float *src, float *dst, 
 void cudaF_add_mat_blocks(dim3 Gr, dim3 Bl, float alpha, const float *src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, float *dst, MatrixDim d, int src_stride, int A_trans);
 void cudaF_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const float *A, const float *B, const float *C, float *dst, MatrixDim d, int stride_a, int stride_b, int stride_c);
 void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float *col, float beta, float *dst, MatrixDim d);
+void cudaF_tensor_multiply_3d_ijljkl(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
+void cudaF_tensor_multiply_3d_ijljlk(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
+void cudaF_tensor_multiply_3d_liklij(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
+void cudaF_tensor_multiply_3d_ilkkjl(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
+void cudaF_tensor_multiply_3d_ilkklj(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
+void cudaF_tensor_multiply_3d_lkilji(dim3 Gr,dim3 Bl,float alpha,const float* A,const float* B,float* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, float beta);
 void cudaF_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float *row, float beta, float *dst, MatrixDim d);
 void cudaF_add_mat_diag_vec(dim3 Gr, dim3 Bl, float alpha, float *mat, MatrixDim mat_dim, const float *mat2, int mat2_row_stride, int mat2_col_stride, const float *vec, float beta);
 void cudaF_add_mat_mat_elements(dim3 Gr, dim3 Bl, float *data, const float *srcA_data, const float *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, float alpha, float beta);
@@ -231,6 +238,12 @@ void cudaD_add_mat(dim3 Gr, dim3 Bl, double alpha, const double *src, double *ds
 void cudaD_add_mat_blocks(dim3 Gr, dim3 Bl, double alpha, const double *src, int32_cuda num_row_blocks, int32_cuda num_col_blocks, double *dst, MatrixDim d, int src_stride, int A_trans);
 void cudaD_add_mat_mat_div_mat(dim3 Gr, dim3 Bl, const double *A, const double *B, const double *C, double *dst, MatrixDim d, int stride_a, int stride_b, int stride_c);
 void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double *col, double beta, double *dst, MatrixDim d);
+void cudaD_tensor_multiply_3d_ijljkl(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
+void cudaD_tensor_multiply_3d_ijljlk(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
+void cudaD_tensor_multiply_3d_liklij(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
+void cudaD_tensor_multiply_3d_ilkkjl(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
+void cudaD_tensor_multiply_3d_ilkklj(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
+void cudaD_tensor_multiply_3d_lkilji(dim3 Gr,dim3 Bl, double alpha,const double* A,const double* B, double* C, Tensor3dDim a_dim,Tensor3dDim b_dim,Tensor3dDim c_dim,int l_block_size, double beta);
 void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double *row, double beta, double *dst, MatrixDim d);
 void cudaD_add_mat_diag_vec(dim3 Gr, dim3 Bl, double alpha, double *mat, MatrixDim mat_dim, const double *mat2, int mat2_row_stride, int mat2_col_stride, const double *vec, double beta);
 void cudaD_add_mat_mat_elements(dim3 Gr, dim3 Bl, double *data, const double *srcA_data, const double *srcB_data, MatrixDim dim, int srcA_stride, int srcB_stride, double alpha, double beta);

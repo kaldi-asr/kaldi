@@ -5,6 +5,7 @@
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
+//                2014  Pegah Ghahremani
 //           2013-2015  Guoguo Chen
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -649,6 +650,305 @@ static void _sy_add_tr2(Real alpha, Real beta, const Real *T, MatrixDim tdim, Re
       output_index2 = j * sdim.stride + i;
   S[output_index1] = alpha * sum + beta * S[output_index1];
   S[output_index2] = alpha * sum + beta * S[output_index2];
+}
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_ijljkl(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= a_dim.dim1 || i >= c_dim.dim1 || j >= a_dim.dim2 || j >= c_dim.dim2 
+      || j >= b_dim.dim1 || k >= b_dim.dim2 || k >= c_dim.dim3) return;
+  int32_cuda a_index = i * a_dim.stride + j * a_dim.dim3 + l_block_num * l_block_size; 
+  int32_cuda b_index = j * b_dim.stride + k * b_dim.dim3 + l_block_num * l_block_size;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+
+  int32_cuda l_rem = a_dim.dim3 - l_block_num * l_block_size;
+  if (l_block_size < l_rem) l_rem = l_block_size; 
+  Real sum = 0.0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l] * B[b_index + l];
+  }
+  
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+}
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_ijljlk(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= a_dim.dim1 || i >= c_dim.dim1 || j >= a_dim.dim2 || j >= c_dim.dim2 
+      || j >= b_dim.dim1 || k >= b_dim.dim3 || k >= c_dim.dim3) return;
+
+  int32_cuda a_index = i * a_dim.stride + j * a_dim.dim3 + l_block_num * l_block_size; 
+  int32_cuda b_index = j * b_dim.stride + (l_block_num * l_block_size) * b_dim.dim3 + k;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+  int32_cuda l_rem = a_dim.dim3 - l_block_num * l_block_size;
+  if (l_block_size < l_rem) l_rem = l_block_size; 
+  Real sum = 0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l] * B[b_index + l * b_dim.dim3];
+  }
+  
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+}
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_liklij(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= a_dim.dim2 || i >= c_dim.dim1 || j >= b_dim.dim3 || j >= c_dim.dim2 
+      || k >= a_dim.dim3 || k >= c_dim.dim3) return;
+  int32_cuda a_index = (l_block_num * l_block_size) * a_dim.stride + i * a_dim.dim3 + k; 
+  int32_cuda b_index = (l_block_num * l_block_size) * b_dim.stride + i * b_dim.dim3 + j;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+  int32_cuda l_rem = a_dim.dim1 - l_block_num * l_block_size;
+  if (l_block_size < l_rem) l_rem = l_block_size;
+  Real sum = 0;
+  for (int l = 0; l < l_block_size && l < l_rem; l++) {
+    sum += A[a_index + l * a_dim.stride] * B[b_index + l * b_dim.stride];
+  }
+  
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+}
+/*
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_ilkkjl(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j = blockIdx.y; // 2nd dim of C_tensor 
+  int32_cuda k = blockIdx.z; // 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (i >= c_dim.dim1 || j >= c_dim.dim2 || k >= c_dim.dim3 || l_const >= a_dim.dim2) return;
+  int32_cuda a_index = i * a_dim.stride + l_const * a_dim.dim3 + k;
+  int32_cuda b_index = k * b_dim.stride + j * b_dim.dim3 + l_const;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+
+  int32_cuda l_rem = a_dim.dim2 - l_const;
+  if (l_block_size < l_rem) l_rem = l_block_size;
+  Real sum = 0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l * a_dim.dim3] * B[b_index + l];
+  }
+  
+  __shared__ Real l2_data[CU2DBLOCK];
+
+  l2_data[threadIdx.x] = sum;
+
+  __syncthreads();
+
+  Real ans = _sum_reduce(l2_data);
+  if (threadIdx.x == 0) 
+    C[c_index] = beta * C[c_index] + alpha * ans;      
+}
+*/
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_ilkkjl(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= c_dim.dim1 || j >= c_dim.dim2 || k >= c_dim.dim3 || l_const >= a_dim.dim2) return;
+  int32_cuda a_index = i * a_dim.stride + l_const * a_dim.dim3 + k;
+  int32_cuda b_index = k * b_dim.stride + j * b_dim.dim3 + l_const;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+
+  int32_cuda l_rem = a_dim.dim2 - l_const;
+  if (l_block_size < l_rem) l_rem = l_block_size;
+  Real sum = 0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l * a_dim.dim3] * B[b_index + l];
+  }
+  
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+}
+
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_ilkklj(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= c_dim.dim1 || j >= c_dim.dim2 || k >= c_dim.dim3 || l_const >= a_dim.dim2) return;
+  int32_cuda a_index = i * a_dim.stride + l_const * a_dim.dim3 + k;
+  int32_cuda b_index = k * b_dim.stride + l_const * b_dim.dim3 + j;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+
+  int32_cuda l_rem = a_dim.dim2 - l_const;
+  if (l_block_size < l_rem) l_rem = l_block_size;
+  Real sum = 0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l * a_dim.dim3] * B[b_index + l * b_dim.dim3];
+  }
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+}
+
+template<typename Real>
+__global__
+static void _tensor_multiply_3d_lkilji(Real alpha, const Real* A, const Real* B, Real* C, Tensor3dDim a_dim,
+                                       Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, Real beta) {
+  int32_cuda l_block_num = threadIdx.x;   // l/l_block_size
+  int32_cuda i = blockIdx.x; // 1st dim of C_tensor
+  int32_cuda j, k; // 2nd and 3rd dim of C_tensor
+  int32_cuda l_const = l_block_num * l_block_size;
+  if (blockDim.x == 1) {
+    j = blockIdx.y * blockDim.y + threadIdx.y;
+    k = blockIdx.z * blockDim.z + threadIdx.z;
+  } else if ( blockDim.x > 1) {
+    j = blockIdx.y; // 2nd dim of C_tensor   
+    k = blockIdx.z; // 3rd dim of C_tensor   
+  }
+  if (i >= c_dim.dim1 || j >= c_dim.dim2 || k >= c_dim.dim3 || l_const >= a_dim.dim1) return; 
+  int32_cuda a_index = l_const * a_dim.stride + k * a_dim.dim3 + i; 
+  int32_cuda b_index = l_const * b_dim.stride + j * b_dim.dim3 + i;
+  int32_cuda c_index = i * c_dim.stride + j * c_dim.dim3 + k;
+  int32_cuda l_rem = a_dim.dim1 - l_const;
+  if (l_block_size < l_rem) l_rem = l_block_size;
+  Real sum = 0;
+  for (int l = 0; l < l_rem; l++) {
+    sum += A[a_index + l * a_dim.stride] * B[b_index + l * b_dim.stride];
+  }
+  
+  if (blockDim.x > 1) {
+    __shared__ Real l2_data[CU1DSHARED];
+
+    l2_data[threadIdx.x] = sum;
+
+    __syncthreads();
+
+    Real ans = _sum_reduce(l2_data);
+    
+    if (threadIdx.x == 0) 
+      C[c_index] = beta * C[c_index] + alpha * ans;    
+
+  } else if (blockDim.x == 1) {
+    C[c_index] = beta * C[c_index] + alpha * sum;
+  }
+
 }
 
 
@@ -2294,6 +2594,35 @@ void cudaF_add_vec_to_cols(dim3 Gr, dim3 Bl, float alpha, const float* col, floa
   _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d);
 }
 
+void cudaF_tensor_multiply_3d_ijljkl(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_ijljkl<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+
+void cudaF_tensor_multiply_3d_ijljlk(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_ijljlk<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaF_tensor_multiply_3d_liklij(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_liklij<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaF_tensor_multiply_3d_ilkkjl(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_ilkkjl<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+
+void cudaF_tensor_multiply_3d_ilkklj(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_ilkklj<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaF_tensor_multiply_3d_lkilji(dim3 Gr, dim3 Bl, float alpha, const float* A, const float* B, float* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, float beta) {
+  _tensor_multiply_3d_lkilji<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+
+
+
 
 void cudaF_add_vec_to_rows(dim3 Gr, dim3 Bl, float alpha, const float* row, float beta, float* dst, MatrixDim d) {
   _add_vec_to_rows<<<Gr,Bl>>>(alpha,row,beta,dst,d);
@@ -2755,6 +3084,32 @@ void cudaD_sy_add_tr2(dim3 Gr, dim3 Bl, double alpha, double beta, const double*
 void cudaD_add_vec_to_cols(dim3 Gr, dim3 Bl, double alpha, const double* col, double beta, double* dst, MatrixDim d) {
   _add_vec_to_cols<<<Gr,Bl>>>(alpha,col,beta,dst,d);
 }
+
+void cudaD_tensor_multiply_3d_ijljkl(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_ijljkl<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaD_tensor_multiply_3d_ijljlk(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_ijljlk<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaD_tensor_multiply_3d_liklij(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_liklij<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaD_tensor_multiply_3d_ilkkjl(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_ilkkjl<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaD_tensor_multiply_3d_ilkklj(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_ilkklj<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+void cudaD_tensor_multiply_3d_lkilji(dim3 Gr, dim3 Bl, double alpha, const double* A, const double* B, double* C, Tensor3dDim a_dim, Tensor3dDim b_dim, Tensor3dDim c_dim, int l_block_size, double beta) {
+  _tensor_multiply_3d_lkilji<<<Gr,Bl>>>(alpha, A, B, C, a_dim, b_dim, c_dim, l_block_size, beta);
+}
+
+
 
 void cudaD_add_vec_to_rows(dim3 Gr, dim3 Bl, double alpha, const double* row, double beta, double* dst, MatrixDim d) {
   _add_vec_to_rows<<<Gr,Bl>>>(alpha,row,beta,dst,d);

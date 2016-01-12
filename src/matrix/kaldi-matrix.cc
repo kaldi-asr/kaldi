@@ -3,7 +3,7 @@
 // Copyright 2009-2011   Lukas Burget;  Ondrej Glembek;  Go Vivace Inc.;
 //                       Microsoft Corporation;  Saarland University;
 //                       Yanmin Qian;  Petr Schwarz;  Jan Silovsky;
-//                       Haihua Xu
+//                       Haihua Xu; Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -197,6 +197,144 @@ void MatrixBase<Real>::AddMatMatDivMat(const MatrixBase<Real>& A,
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::TensorMultiply3D(Real alpha, int32 this_second_dim,
+                                        const MatrixBase<Real> &A, int32 A_second_dim,
+                                        const MatrixBase<Real> &B, int32 B_second_dim,
+                                        Tensor3DPairTransposeType trans3d,
+                                        Real beta) {
+  // where 3d tensor "M_tensor" will be a pair of Matrix M and
+  // the second index of a tensor as M_second_dim. 
+  // this 1st index correspond to row_index of M and M is viewed as a tensor with dimensions
+  // (M.NumRows(), M_second_dim, M.NumCols() / M_second_dim).
+  KALDI_ASSERT(NumCols() % this_second_dim == 0 && A.NumCols() % A_second_dim == 0 &&
+               B.NumCols() % B_second_dim == 0);
+  int32 this_third_dim = NumCols() / this_second_dim, A_third_dim = A.NumCols() / A_second_dim,
+    B_third_dim = B.NumCols() / B_second_dim, this_num_rows = NumRows();
+
+  if (trans3d == kTensor3DPairTransposeIjljkl) {
+    // for each i, j, k:  C_tensor(i, j, k) := \sum_l A_tensor(i, j, l) * B_tensor(j, k, l)
+    KALDI_ASSERT(A.NumRows() == NumRows() && this_second_dim == A_second_dim &&
+      this_second_dim == B.NumRows() && NumCols() / this_second_dim == B_second_dim &&
+      A.NumCols() / A_second_dim == B.NumCols() / B_second_dim);
+    Matrix<Real> B_mat(this_third_dim, A_third_dim); // we create B_mat for each j
+    for (int32 j = 0; j < this_second_dim; j++) {
+      for (int32 row = 0; row < B_second_dim; row++) 
+        for (int32 col = 0; col < B_third_dim; col++)
+          B_mat(row, col) = B(j, row * B_third_dim + col);
+      SubMatrix<Real> this_sub((*this), 0, NumRows(), j * this_third_dim, this_third_dim);
+      SubMatrix<Real> A_sub(A, 0, A.NumRows(), j * A_third_dim, A_third_dim);
+      this_sub.AddMatMat(alpha, A_sub, kNoTrans, B_mat, kTrans, beta);
+    }
+  } else if (trans3d == kTensor3DPairTransposeIjljlk) {
+    // for each i, j, k:  C_tensor(i, j, k) := \sum_l A_tensor(i, j, l) * B_tensor(j, l, k);
+    KALDI_ASSERT(NumRows() == A.NumRows() && this_second_dim == A_second_dim &&
+                 this_second_dim == B.NumRows() && 
+                 NumCols() / this_second_dim == B.NumCols() / B_second_dim && 
+                 A.NumCols() / A_second_dim == B_second_dim);
+    Matrix<Real> B_mat(B_second_dim, B_third_dim);
+    for (int32 j = 0; j < this_second_dim; j++) {
+      for (int32 row = 0; row < B_second_dim; row++) 
+        for (int32 col = 0; col < B_third_dim; col++)
+          B_mat(row, col) = B(j, row * B_third_dim + col);
+      SubMatrix<Real> this_sub((*this), 0, NumRows(), j * this_third_dim, this_third_dim);
+      SubMatrix<Real> A_sub(A, 0, A.NumRows(), j * A_third_dim, A_third_dim);
+      this_sub.AddMatMat(alpha, A_sub, kNoTrans, B_mat, kNoTrans, beta);
+    }
+  } else if (trans3d == kTensor3DPairTransposeLiklij) {
+    // for each i, j, k:  C_tensor(i, j, k) := \sum_l A_tensor(l, i, k) * B_tensor(l, i, j)
+    KALDI_ASSERT(NumRows() == A_second_dim && NumRows() == B_second_dim &&
+                 this_second_dim == B.NumCols() / B_second_dim && 
+                 NumCols() / this_second_dim == A.NumCols() / A_second_dim &&
+                 A.NumRows() == B.NumRows());
+    this->Scale(beta);
+    for (int32 i = 0; i < NumRows(); i++) {
+      Matrix<Real> C_mat(this_third_dim, this_second_dim);
+      SubMatrix<Real> A_sub(A, 0, A.NumRows(), i * A_third_dim, A_third_dim),
+        B_sub(B, 0, B.NumRows(), i * B_third_dim, B_third_dim);
+      C_mat.AddMatMat(alpha, A_sub, kTrans, B_sub, kNoTrans, 0.0);
+      for (int32 row = 0; row < this_second_dim; row++) 
+        for (int32 col = 0; col < this_third_dim; col++) 
+          (*this)(i, row * this_third_dim + col) += C_mat(col, row);
+    }
+  } else if (trans3d == kTensor3DPairTransposeIlkkjl) {
+    // for each i, j, k:  C_tensor(i, j, k) := \sum_l A_tensor(i, l, k) * B_tensor(k, j ,l)
+    KALDI_ASSERT(NumRows() == A.NumRows() && A_second_dim == B_third_dim &&
+                 B_second_dim == this_second_dim &&
+                 this_third_dim == A_third_dim &&
+                 this_third_dim == B.NumRows());
+    this->Scale(beta);
+    // loop over group_sizes
+    for (int32 k = 0; k < this_third_dim; k++) {
+      Matrix<Real> A_mat(A.NumRows(), A_second_dim),
+        this_mat(NumRows(), this_second_dim),
+        B_mat(B_second_dim, B_third_dim);
+        std::vector<MatrixIndexT> indices(A_second_dim, 0);
+      for (int32 i = 0; i < A_second_dim; i++)
+        indices[i] = i * A_third_dim + k;
+      A_mat.CopyCols(A, &indices[0]); // copy cols of A corresponf to group_size k.
+      for (int32 row = 0; row < B_second_dim; row++)
+        for (int32 col = 0; col < B_third_dim; col++)
+          B_mat(row, col) = B(k, row * B_third_dim + col);
+      this_mat.AddMatMat(alpha, A_mat, kNoTrans, B_mat, kTrans, 0);
+      for (int32 i = 0; i < this_second_dim; i++)
+        this->Range(0, this_num_rows, i * this_third_dim + k, 1).AddMat(1.0, this_mat.Range(0, this_num_rows, i,1));
+      
+    }
+  } else if (trans3d == kTensor3DPairTransposeIlkklj) {
+    KALDI_ASSERT(NumRows() == A.NumRows() && A_second_dim == B_second_dim &&
+                 B_third_dim == this_second_dim &&
+                 this_third_dim == A_third_dim &&
+                 this_third_dim == B.NumRows());
+    this->Scale(beta);
+    // loop over group_sizes
+    for (int32 k = 0; k < this_third_dim; k++) {
+      Matrix<Real> A_mat(A.NumRows(), A_second_dim),
+        this_mat(NumRows(), this_second_dim),
+        B_mat(B_second_dim, B_third_dim);
+        std::vector<MatrixIndexT> indices(A_second_dim, 0);
+      for (int32 i = 0; i < A_second_dim; i++)
+        indices[i] = i * A_third_dim + k;
+      A_mat.CopyCols(A, &indices[0]); // copy cols of A corresponf to group_size k.
+      for (int32 row = 0; row < B_second_dim; row++)
+        for (int32 col = 0; col < B_third_dim; col++)
+          B_mat(row, col) = B(k, row * B_third_dim + col);
+      this_mat.AddMatMat(alpha, A_mat, kNoTrans, B_mat, kNoTrans, 0.0);
+      for (int32 i = 0; i < this_second_dim; i++)
+        this->Range(0, this_num_rows, i * this_third_dim + k, 1).AddMat(1.0, this_mat.Range(0, this_num_rows, i,1));
+    }
+  } else if (trans3d == kTensor3DPairTransposeLkilji) {
+    // for each i, j, k:  this_tensor(i, j, k) := 
+    // \sum_l A_tensor(l, k, i) * B_tensor(l, j, i)
+    KALDI_ASSERT(NumRows() == A_third_dim && NumRows() == B_third_dim &&
+                 this_second_dim == B_second_dim && 
+                 this_third_dim == A_second_dim &&
+                 A.NumRows() == B.NumRows());
+    // loop over i
+    for (int32 i = 0; i < this_num_rows; i++) {
+      Matrix<Real> C_mat(this_second_dim, this_third_dim),
+        A_mat(A.NumRows(), A_second_dim),
+        B_mat(B.NumRows(), B_second_dim);
+      std::vector<MatrixIndexT> A_indices(A_second_dim, 0), B_indices(B_second_dim, 0);
+      for (int32 col = 0; col < A_second_dim; col++)
+        A_indices[col] = col * A_third_dim + i;
+      for (int32 col = 0; col < B_second_dim; col++)
+        B_indices[col] = col * B_third_dim + i;
+      A_mat.CopyCols(A, &A_indices[0]);
+      B_mat.CopyCols(B, &B_indices[0]);
+      for (int32 j = 0; j < this_second_dim; j++)
+        C_mat.Range(j, 1, 0, this_third_dim).AddMat(1.0, this->Range(i, 1, j * this_third_dim, this_third_dim));
+
+      C_mat.AddMatMat(alpha, B_mat, kTrans, A_mat, kNoTrans, beta);
+      
+      for (int32 j = 0; j < this_second_dim; j++) 
+        this->Range(i, 1, j * this_third_dim, this_third_dim).CopyFromMat(C_mat.Range(j, 1, 0, this_third_dim));
+    }
+
+  } else {
+    KALDI_ERR << "Wrong trans3d argument " << trans3d;
+  }
+}
 
 template<typename Real>
 void MatrixBase<Real>::CopyLowerToUpper() {

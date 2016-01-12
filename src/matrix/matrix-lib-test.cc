@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2015   Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,6 +30,112 @@
 // comment it (and that function) out if it causes problems.
 
 namespace kaldi {
+
+template<typename Real> 
+void SimpleTensorMultiply3D(Real alpha, const Matrix<Real> &A, int32 A_second_dim,
+                          const Matrix<Real> &B, int32 B_second_dim,
+                          Matrix<Real> *C, int32 C_second_dim,
+                          Tensor3DPairTransposeType trans3d, Real beta) {
+  KALDI_ASSERT(C->NumCols() % C_second_dim == 0 &&
+    A.NumCols() % A_second_dim == 0 &&
+    B.NumCols() % B_second_dim == 0);
+  int32 C_third_dim = C->NumCols() / C_second_dim,
+    A_third_dim = A.NumCols() / A_second_dim,
+    B_third_dim = B.NumCols() / B_second_dim;
+  Real tmp = 0.0;
+  if (trans3d == kTensor3DPairTransposeIjljkl) { 
+    KALDI_ASSERT(A.NumRows() == C->NumRows() && C_second_dim == A_second_dim &&
+      C_second_dim == B.NumRows() && C->NumCols() / C_second_dim == B_second_dim &&
+      A.NumCols() / A_second_dim == B.NumCols() / B_second_dim);
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A_third_dim; l++) 
+            tmp += A(i, j * A_third_dim + l) * B(j, k * B_third_dim + l);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k) + alpha * tmp;
+        }
+      }
+    }
+  } else if (trans3d == kTensor3DPairTransposeIjljlk) {   
+    KALDI_ASSERT(C->NumRows() == A.NumRows() && C_second_dim == A_second_dim &&
+                 C_second_dim == B.NumRows() && 
+                 C->NumCols() / C_second_dim == B.NumCols() / B_second_dim && 
+                 A.NumCols() / A_second_dim == B_second_dim);
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A_third_dim; l++) 
+            tmp += A(i, j * A_third_dim + l) * B(j, l * B_third_dim + k);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k)  + alpha * tmp;
+        }
+      }
+    }
+ 
+  } else if (trans3d == kTensor3DPairTransposeLiklij) {
+    KALDI_ASSERT(C->NumRows() == A_second_dim && C->NumRows() == B_second_dim &&
+                 C_second_dim == B.NumCols() / B_second_dim && 
+                 C->NumCols() / C_second_dim == A.NumCols() / A_second_dim &&
+                 A.NumRows() == B.NumRows());
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A.NumRows(); l++) 
+            tmp += A(l, i * A_third_dim + k) * B(l, i * B_third_dim + j);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k) + alpha * tmp;
+        }
+      }
+    }
+  } else if (trans3d == kTensor3DPairTransposeIlkkjl) {
+    KALDI_ASSERT(C->NumRows() == A.NumRows() && A_second_dim == B_third_dim &&
+                 B_second_dim == C_second_dim &&
+                 C_third_dim == A_third_dim &&
+                 C_third_dim == B.NumRows());
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A_second_dim; l++) 
+            tmp += A(i, l * A_third_dim + k) * B(k, j * B_third_dim + l);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k) + alpha * tmp;
+        }
+      }
+    }
+  } else if (trans3d == kTensor3DPairTransposeIlkklj) {
+    KALDI_ASSERT(C->NumRows() == A.NumRows() && A_second_dim == B_second_dim &&
+                 B_third_dim == C_second_dim &&
+                 C_third_dim == A_third_dim &&
+                 C_third_dim == B.NumRows());
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A_second_dim; l++) 
+            tmp += A(i, l * A_third_dim + k) * B(k, l * B_third_dim + j);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k) + alpha * tmp;
+        }
+      }
+    }
+  } else if (trans3d == kTensor3DPairTransposeLkilji) {
+    KALDI_ASSERT(C->NumRows() == A_third_dim && C->NumRows() == B_third_dim &&
+                 C_second_dim == B_second_dim && 
+                 C_third_dim == A_second_dim &&
+                 A.NumRows() == B.NumRows());
+    for (int32 i = 0; i < C->NumRows(); i++) {
+      for (int32 j = 0; j < C_second_dim; j++) {
+        for (int32 k = 0; k < C_third_dim; k++) {
+          tmp = 0;
+          for (int32 l = 0; l < A.NumRows(); l++) 
+            tmp += A(l, k * A_third_dim + i) * B(l, j * B_third_dim + i);
+          (*C)(i, j * C_third_dim + k) = beta * (*C)(i, j * C_third_dim + k) + alpha * tmp;
+        }
+      }
+    }
+  }
+}
+
 
 template<typename Real>
 void RandPosdefSpMatrix(MatrixIndexT dim, SpMatrix<Real> *matrix) {
@@ -4566,6 +4673,109 @@ template<typename Real> static void UnitTestTriVecSolver() {
   }
 }
 
+template<typename Real> 
+static void UnitTestTensorMultiply3dSimple() {
+  for (int32 t = 0; t < 1; t++) { 
+    int32 m1 = 100 + rand() % 20, m2 = 50 + rand() % 20, 
+      m3 = 50 + rand() % 20, m4 = 50 + rand() % 10;
+    // test kTensor3DPairTransposeIjljkl    
+    Matrix<Real> A1(m1,m2*m4), B1(m2,m3*m4), C1(m1,m2*m3), C1_orig(m1, m2*m3);
+    A1.Set(1.0);
+    B1.Set(1.0);
+    C1_orig.Set(m4);
+    C1.TensorMultiply3D(1.0, m2, A1, m2, B1, m3, kTensor3DPairTransposeIjljkl, 1.0);
+    KALDI_ASSERT(C1.ApproxEqual(C1_orig));
+    //KALDI_LOG << "In UnitTestTensorMultiply3d, C = " << C1;
+    
+    // test kTensor3DPairTransposeIjljlk    
+    Matrix<Real> A2(m1,m2*m4), B2(m2, m3*m4), C2(m1,m2*m3);
+    A2.Set(1.0);
+    B2.Set(1.0);
+    C2.TensorMultiply3D(1.0, m2, A2, m2, B2, m4, kTensor3DPairTransposeIjljlk, 1.0);
+    KALDI_ASSERT(C2.ApproxEqual(C1_orig));
+    //KALDI_LOG << "kTensor3DPairTransposeIjljlk :" << C2;
+
+    // test kTensor3DPairTransposeliklij
+    Matrix<Real> A3(m4, m1*m3), B3(m4, m1*m2), C3(m1,m2*m3);
+    A3.Set(1.0);
+    B3.Set(1.0);
+    C3.TensorMultiply3D(1.0, m2, A3, m1, B3, m1, kTensor3DPairTransposeLiklij, 1.0);
+    KALDI_ASSERT(C3.ApproxEqual(C1_orig));
+    //KALDI_LOG << "kTensor3DPairTransposeLiklij :" << C3;
+  }
+}
+template<typename Real> 
+static void UnitTestTensorMultiply3d() {
+  for (int32 t = 0; t < 1; t++) { 
+    int32 m1 = 100 + rand() % 20, m2 = 50 + rand() % 20, 
+      m3 = 50 + rand() % 20, m4 = 50 + rand() % 10;
+    Real alpha = (rand() % 500)/100.0, beta = (rand() % 500) / 100.0;
+    // test kTensor3DPairTransposeIjljkl    
+    Matrix<Real> A1(m1,m2*m4), B1(m2,m3*m4), C1(m1,m2*m3), D1(m1, m2*m3);
+    A1.SetRandn();
+    B1.SetRandn();
+    C1.SetRandn();
+    D1.CopyFromMat(C1);
+    C1.TensorMultiply3D(alpha, m2, A1, m2, B1, m3, kTensor3DPairTransposeIjljkl, beta);
+    SimpleTensorMultiply3D(alpha, A1, m2, B1, m3, &D1, m2, kTensor3DPairTransposeIjljkl, beta);
+    KALDI_ASSERT(C1.ApproxEqual(D1));
+    //KALDI_LOG << "In UnitTestTensorMultiply3d, C = " << C1;
+    
+    // test kTensor3DPairTransposeIjljlk    
+    Matrix<Real> A2(m1,m2*m4), B2(m2, m3*m4), C2(m1,m2*m3), D2(m1, m2 * m3);
+    A2.SetRandn();
+    B2.SetRandn();
+    C2.SetRandn();
+    D2.CopyFromMat(C2);
+    C2.TensorMultiply3D(alpha, m2, A2, m2, B2, m4, kTensor3DPairTransposeIjljlk, beta);
+    SimpleTensorMultiply3D(alpha, A2, m2, B2, m4, &D2, m2, kTensor3DPairTransposeIjljlk, beta);
+    KALDI_ASSERT(C2.ApproxEqual(D2));
+    //KALDI_LOG << "kTensor3DPairTransposeIjljlk :" << C2;
+
+    // test kTensor3DPairTransposeliklij
+    Matrix<Real> A3(m4, m1*m3), B3(m4, m1*m2), C3(m1,m2*m3), D3(m1, m2 * m3);
+    A3.SetRandn();
+    B3.SetRandn();
+    C3.SetRandn();
+    D3.CopyFromMat(C3);
+    C3.TensorMultiply3D(alpha, m2, A3, m1, B3, m1, kTensor3DPairTransposeLiklij, beta);
+    SimpleTensorMultiply3D(alpha, A3, m1, B3, m1, &D3, m2, kTensor3DPairTransposeLiklij, beta);
+    KALDI_ASSERT(C3.ApproxEqual(D3));
+    //KALDI_LOG << "kTensor3DPairTransposeLiklij :" << C3;
+
+    // test kTensor3DPairTransposeIlkkjl    
+    Matrix<Real> A4(m1,m3*m4), B4(m3,m2*m4), C4(m1,m2*m3), D4(m1, m2*m3);
+    A4.SetRandn();
+    B4.SetRandn();
+    C4.SetRandn();
+    D4.CopyFromMat(C4);
+    C4.TensorMultiply3D(alpha, m2, A4, m4, B4, m2, kTensor3DPairTransposeIlkkjl, beta);
+    SimpleTensorMultiply3D(alpha, A4, m4, B4, m2, &D4, m2, kTensor3DPairTransposeIlkkjl, beta);
+    KALDI_ASSERT(C4.ApproxEqual(D4));
+
+    // test kTensor3DPairTransposeIlkklj 
+    Matrix<Real> A5(m1,m3*m4), B5(m3,m2*m4), C5(m1,m2*m3), D5(m1, m2*m3);
+    A5.SetRandn();
+    B5.SetRandn();
+    C5.SetRandn();
+    D5.CopyFromMat(C5);
+    C5.TensorMultiply3D(alpha, m2, A5, m4, B5, m4, kTensor3DPairTransposeIlkklj, beta);
+    SimpleTensorMultiply3D(alpha, A5, m4, B5, m4, &D5, m2, kTensor3DPairTransposeIlkklj, beta);
+    KALDI_ASSERT(C5.ApproxEqual(D5));
+
+
+    // test kTensor3DPairTransposeLkilji
+    Matrix<Real> A6(m4, m1*m3), B6(m4, m1*m2), C6(m1,m2*m3), D6(m1, m2 * m3);
+    A6.SetRandn();
+    B6.SetRandn();
+    C6.SetRandn();
+    D6.CopyFromMat(C6);
+    C6.TensorMultiply3D(alpha, m2, A6, m3, B6, m2, kTensor3DPairTransposeLkilji, beta);
+    SimpleTensorMultiply3D(alpha, A6, m3, B6, m2, &D6, m2, kTensor3DPairTransposeLkilji, beta);
+    KALDI_ASSERT(C6.ApproxEqual(D6));
+  }
+}
+
 
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLinearCgd<Real>();
@@ -4715,6 +4925,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   // UnitTestSvdSpeed<Real>();
   KALDI_LOG << " Point K";
   UnitTestTriVecSolver<Real>();
+  UnitTestTensorMultiply3d<Real>();
 }
 
 

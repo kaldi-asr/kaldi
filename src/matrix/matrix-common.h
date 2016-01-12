@@ -45,6 +45,15 @@ typedef enum {
   kTakeMeanAndCheck
 } SpCopyType;
 
+typedef enum {
+  kTensor3DPairTransposeIjljkl,
+  kTensor3DPairTransposeIjljlk,
+  kTensor3DPairTransposeLiklij,
+  kTensor3DPairTransposeIlkkjl,
+  kTensor3DPairTransposeIlkklj,
+  kTensor3DPairTransposeLkilji
+} Tensor3DPairTransposeType;
+
 template<typename Real> class VectorBase;
 template<typename Real> class Vector;
 template<typename Real> class SubVector;
