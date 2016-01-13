@@ -29,40 +29,46 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Steps
 
-1. Checkout Kaldi trunk, either using the svn from the url
-       https://svn.code.sf.net/p/kaldi/code/trunk
-   or using git from
-       https://github.com/kaldi-asr/kaldi.git
+1. Checkout Kaldi trunk, either using the svn from the url https://svn.code.sf.net/p/kaldi/code/trunk
+   or using git from https://github.com/kaldi-asr/kaldi.git
+
    Example:
-       $ git clone https://github.com/kaldi-asr/kaldi.git kaldi
+   
+        $ git clone https://github.com/kaldi-asr/kaldi.git kaldi
 
 2. Enter the `(kaldi)/tools` directory in the freshly
    checked-out kaldi repo. All following actions should
    be taken in the tools dir.
+
    Example:
-       $ cd (kaldi)/tools
-       (kaldi)/tools$ pwd
+   
+        $ cd (kaldi)/tools
+        (kaldi)/tools$ pwd
 
 3. Use git to clone the OpenFST(win) from
-       https://github.com/jtrmal/openfstwin-1.3.4.git
+       
+        https://github.com/jtrmal/openfstwin-1.3.4.git
+
    Example:
-       (kaldi)/tools$ git clone https://github.com/jtrmal/openfstwin-1.3.4.git openfst
+   
+        (kaldi)/tools$ git clone https://github.com/jtrmal/openfstwin-1.3.4.git openfst
 
 4. Download pthread-win32 (or wget or curl)
 
    https://sourceforge.net/projects/pthreads4w/
 
-       (kaldi)/tools$ wget http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
-       (kaldi)/tools$ mkdir pthreads; cd pthreads
-       (kaldi)/tools/pthreads$ unzip ../pthreads-w32-2-9-1-release.zip
+        (kaldi)/tools$ wget http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
+        (kaldi)/tools$ mkdir pthreads; cd pthreads
+        (kaldi)/tools/pthreads$ unzip ../pthreads-w32-2-9-1-release.zip
 
 5. Use patch (or you can use git patch) to patch the OpenFST(win).
 
    The patch location is `tools/extras/openfstwin-1.3.4.patch`
 
    Example:
-       (kaldi)/tools$ cd openfst
-       (kaldi)/tools/openfst$ patch -p1 <../extras/openfstwin-1.3.4.patch
+   
+        (kaldi)/tools$ cd openfst
+        (kaldi)/tools/openfst$ patch -p1 <../extras/openfstwin-1.3.4.patch
 
    If you get this error: `Assertion failed: hunk, file ../patch-2.5.9-src/patch.c, line 354`
    it is because the `patch.c` file should have Windows line endings (CRLF) rather than Unix ones (LF).
@@ -71,12 +77,12 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
    https://sourceforge.net/projects/openblas
 
-       (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
-       (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
-       (kaldi)/tools$ unzip OpenBLAS-v0.2.14-Win64-int32.zip
-       (kaldi)/tools$ unzip mingw64_dll.zip
+        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/OpenBLAS-v0.2.14-Win64-int32.zip
+        (kaldi)/tools$ wget http://sourceforge.net/projects/openblas/files/v0.2.14/mingw64_dll.zip
+        (kaldi)/tools$ unzip OpenBLAS-v0.2.14-Win64-int32.zip
+        (kaldi)/tools$ unzip mingw64_dll.zip
 
-   NOTE: Be careful to download "Win64-int32" and not "Win64-int64"!
+   **Be careful to download "Win64-int32" and not "Win64-int64"!**
 
 7. Install MKL (if using MLK)
 
@@ -85,11 +91,11 @@ For cygwin installation, see the instructions in `../INSTALL`.
    set certain environment variables on which the MSVC Build rules rely.
    If you call "set" in the command line, you should see:
 
-       (kaldi)/tools $ set | grep CUDA
-       CUDA_PATH='C:\Users\Yenda\Downloads\cuda'
-       CUDA_PATH_V7_0='C:\Users\Yenda\Downloads\cuda'
-       NVCUDASAMPLES7_0_ROOT='C:\Users\Yenda\Downloads\cuda'
-       NVCUDASAMPLES_ROOT='C:\Users\Yenda\Downloads\cuda'
+        (kaldi)/tools $ set | grep CUDA
+        CUDA_PATH='C:\Users\Yenda\Downloads\cuda'
+        CUDA_PATH_V7_0='C:\Users\Yenda\Downloads\cuda'
+        NVCUDASAMPLES7_0_ROOT='C:\Users\Yenda\Downloads\cuda'
+        NVCUDASAMPLES_ROOT='C:\Users\Yenda\Downloads\cuda'
 
    The first one (`CUDA_PATH`) is particularly important.
 
@@ -107,15 +113,16 @@ For cygwin installation, see the instructions in `../INSTALL`.
 10. Enter the `(kaldi)/windows` directory
 
     Example:
-        (kaldi)/tools/openfst$ cd ../../windows
-        (kaldi)/windows $ pwd
+    
+         (kaldi)/tools/openfst$ cd ../../windows
+         (kaldi)/windows $ pwd
 
 11. Modify the file `variables.props` to reflect
     the correct paths, using your favorite text editor.
     Don't worry, it's a text file, even though you have to be
     careful to keep the structure itself intact
 
-        (kaldi)/windows $ vim variables.props
+         (kaldi)/windows $ vim variables.props
 
     If you plan to use MKL, you can ignore the `OPENBLASDIR` path.
     If you plan to use OpenBLAS, you can ignore the `MKLDIR` path.
@@ -129,14 +136,14 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 14. Call the script that generates the MSVC solution
 
-        generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mlk]
+         generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mlk]
 
     `--enable-mlk` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MLK support.
     CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
 
     For example, for a build supporting CUDA using OpenBLAS and VS 2015 you would run:
 
-        (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-cuda --enable-openblas
+         (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-cuda --enable-openblas
 
 15. Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
@@ -151,6 +158,7 @@ NOTE: I'm leaving the information about ATLAS here, for reference (also do not f
 (D)
 If you had installed ATLAS, you next have to do this:
 [assuming you are one level above this directory]
+
     cd kaldiwin_vs10_auto/
 
 Type the following (these commands were done from cygwin): note that these
