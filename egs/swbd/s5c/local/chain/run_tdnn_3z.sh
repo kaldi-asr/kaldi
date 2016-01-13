@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # _3z is as _3s, but reducing the target num-states in the tree building from 9k to 6k.
+# A slight degradation in WER, but it's not 100% consistent.  The final train-prob
+# was worse -0.0852 -> -0.0888, and valid-prob was worse -0.1231->-0.1280.
+#./show_wer.sh 3z
+#%WER 18.05 [ 8883 / 49204, 990 ins, 2397 del, 5496 sub ] exp/chain/tdnn_3z_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.50 [ 8120 / 49204, 960 ins, 2234 del, 4926 sub ] exp/chain/tdnn_3z_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+#%WER 19.7 | 4459 42989 | 82.5 11.9 5.5 2.2 19.7 57.6 | exp/chain/tdnn_3z_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+#%WER 17.8 | 4459 42989 | 84.1 10.4 5.5 1.9 17.8 55.1 | exp/chain/tdnn_3z_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
 
 # _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
 # num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.
