@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 // Copyright      2015  Vijayaditya Peddinti
+// Copyright      2016  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -712,7 +713,47 @@ void GenerateConfigSequenceDistribute(
   configs->push_back(os.str());
 }
 
+/// Generate a config string with a composite component composed only
+/// of block affine, repeated affine, and natural gradient repeated affine
+/// components.
+void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
+                                          std::vector<std::string> *configs) {
+  int32 num_components = RandInt(1,5);
+  int32 input_dim = 10 * RandInt(1,10);
+  if (opts.output_dim > 0) {
+    KALDI_WARN  << "This function doesn't take a requested output_dim due to "
+      "implementation complications.";
+  }
+  int32 max_rows_process = 512 + 512 * RandInt(1,3);
+  std::ostringstream os;
+  os << "component name=composite1 type=CompositeComponent max-rows-process=" 
+     << max_rows_process << " num-components=" << num_components;
 
+  int32 types_length = 3;
+  std::string types[] = {"BlockAffineComponent",
+                         "RepeatedAffineComponent",
+                         "NaturalGradientRepeatedAffineComponent"};
+  int32 last_output_dim = input_dim;
+  // components within a composite component are indexed from 1.
+  for(int32 i = 1; i <= num_components; i++) {
+    os << " component" << i << "=";
+    int32 rand_index = RandInt(0, types_length - 1);
+    std::string rand_type = types[rand_index];
+    os << "'type=" << rand_type << " input-dim=" << last_output_dim;
+    int32 current_output_dim = 10 * RandInt(1,10);
+    // must be a divisor or current_output_dim and last_output_dim
+    int32 num_repeats = 10;
+    os << " output-dim=" << current_output_dim;
+    std::string repeats_string = (rand_type == "BlockAffineComponent") ? "num-blocks": "num-repeats";
+    os << " " << repeats_string << "=" << num_repeats << "'";
+    last_output_dim = current_output_dim;
+  }
+  os << std::endl << std::endl;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component-node name=composite1 component=composite1 input=input\n";
+  os << "output-node name=output input=composite1\n";
+  configs->push_back(os.str());
+}
 
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
