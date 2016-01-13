@@ -70,7 +70,8 @@ class DenominatorComputation {
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
   // nnet output), to 'nnet_output_deriv'.
-  void Backward(BaseFloat deriv_weight,
+  // returns true if everything seemed OK, false if a failure was detected.
+  bool Backward(BaseFloat deriv_weight,
                 CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
  private:
@@ -96,8 +97,9 @@ class DenominatorComputation {
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaGeneralFrame(int32 t);
 
-  // some checking that we can do if debug mode is activated.
-  void BetaGeneralFrameDebug(int32 t) const;
+  // some checking that we can do if debug mode is activated, or on frame zero.
+  // Sets ok_ to false if a bad problem is detected.
+  void BetaGeneralFrameDebug(int32 t);
 
   const ChainTrainingOptions &opts_;
   const DenominatorGraph &den_graph_;
@@ -144,6 +146,8 @@ class DenominatorComputation {
   // order to keep them in a good dynamic range.  The product of them
   // must be included in the total likelihood.
   CuVector<BaseFloat> log_correction_term_;
+
+  bool ok_;
 };
 
 

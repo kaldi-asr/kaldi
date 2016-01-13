@@ -48,20 +48,24 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                      nnet_output);
 
   BaseFloat den_logprob = denominator.Forward();
+  bool ok;
   if (nnet_output_deriv)
-    denominator.Backward(-supervision.weight,
-                         nnet_output_deriv);
+    ok = denominator.Backward(-supervision.weight,
+                              nnet_output_deriv);
 
   *tot_objf = num_logprob_weighted - supervision.weight * den_logprob;
   *tot_weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
-  if (!((*tot_objf) - (*tot_objf) == 0)) {
-    // inf or NaN detected
+  if (!((*tot_objf) - (*tot_objf) == 0) || !ok) {
+    // inf or NaN detected, or denominator computation returned false.
     if (nnet_output_deriv)
       nnet_output_deriv->SetZero();
     BaseFloat default_objf = -10;
     KALDI_WARN << "Objective function is " << (*tot_objf)
-               << ", setting to " << default_objf << " per frame.";
+               << "and denominator computation returned "
+               << std::boolalpha << ok
+               << ", setting objective function to " << default_objf
+               << " per frame.";
     *tot_objf  = default_objf * *tot_weight;
   }
 

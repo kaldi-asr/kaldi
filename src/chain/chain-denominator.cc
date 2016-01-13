@@ -44,7 +44,8 @@ DenominatorComputation::DenominatorComputation(
     beta_(2, den_graph_.NumStates() * num_sequences_, kUndefined),
     tot_prob_(num_sequences_, kUndefined),
     tot_log_prob_(num_sequences_, kUndefined),
-    log_correction_term_(num_sequences_, kUndefined) {
+    log_correction_term_(num_sequences_, kUndefined),
+    ok_(true) {
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
   exp_nnet_output_transposed_.ApplyExp();
 }
@@ -170,7 +171,7 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
 
 
 
-void DenominatorComputation::Backward(
+bool DenominatorComputation::Backward(
     BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   BetaLastFrame();
@@ -200,6 +201,7 @@ void DenominatorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
+  return ok_;
 }
 
 void DenominatorComputation::BetaLastFrame() {
@@ -297,7 +299,7 @@ void DenominatorComputation::BetaGeneralFrame(int32 t) {
   }
 }
 
-void DenominatorComputation::BetaGeneralFrameDebug(int32 t) const {
+void DenominatorComputation::BetaGeneralFrameDebug(int32 t) {
   CuSubVector<BaseFloat> this_alpha(alpha_, t),
       this_beta(beta_, t % 2);
   int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
@@ -315,13 +317,22 @@ void DenominatorComputation::BetaGeneralFrameDebug(int32 t) const {
                << alpha_beta_product << " != " << num_sequences_
                << " alpha-sum = " << this_alpha.Sum() << ", beta-sum = "
                << this_beta.Sum();
+    if (fabs(alpha_beta_product - num_sequences_) > 2.0) {
+      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+      ok_ = false;
+    }
   }
   // use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
   if (!ApproxEqual(this_log_prob_deriv_sum,
-                   num_sequences_, 0.01))
+                   num_sequences_, 0.01)) {
     KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
                << this_log_prob_deriv_sum << " != " << num_sequences_;
+    if (fabs(this_log_prob_deriv_sum - num_sequences_) > 2.0) {
+      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
+      ok_ = false;
+    }
+  }
 }
 
 
