@@ -99,7 +99,8 @@ if [ -e $D/ivector_dim ]; then
 fi
 
 # Add Multi-stream options
-feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
+#feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
+feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
 
 # Run the forward pass,
 $cmd JOB=1:$nj $logdir/make_pca_transf.JOB.log \

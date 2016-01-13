@@ -71,6 +71,7 @@ D=$nndir
 [ -e $D/delta_order ] && cp $D/delta_order $pcadir/
 [ -e $D/delta_opts ] && cp $D/delta_opts $pcadir/
 [ -e $D/pytel_transform.py ] && cp $D/pytel_transform.py $pcadir/ 
+[ -e $D/stream_combination.list ] && cp $D/stream_combination.list $pcadir/ 
 [ -e $D/ivector_dim ] && cp $D/ivector_dim $pcadir/
 
 ## prepare nnet related
@@ -112,7 +113,8 @@ if [ -e $D/ivector_dim ]; then
 fi
 
 # Add Multi-stream options
-feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
+#feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
+feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
 
 if [ $stage -le 0 ]; then
 echo "Computing accumalators"
