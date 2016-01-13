@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# Copyright 2014  Brno University of Technology (author: Karel Vesely)
+# Copyright 2014-2016  Brno University of Technology (author: Karel Vesely)
 # Licensed under the Apache License, Version 2.0 (the "License")
 
 import numpy as np
-import os, re, gzip, struct
+import os, re, gzip, struct, wave
 
 #################################################
 # Data-type independent helper functions,
@@ -422,4 +422,30 @@ def read_segments_as_bool_vec(segments_file):
   assert np.sum(end-start) == np.sum(frms)
   return frms
 
+#################################################
+# Read ark with wave files (produced by 'extract-segments'),
+# - Useful for prototyping feature extraction,
+
+def read_wav_ark(file_or_fd):
+  """ genrator(key,vec) = read_wav_ark(file_or_fd)
+   Create generator of (key,waveform,wave_info) tuples getting data from ark file.
+   file_or_fd : filename or already opened file-descriptor
+
+   Hint, read ark to hash:
+   d = { utt:(data,samp_freq) for utt,data,samp_freq in pytel.kaldi_io.read_wav_ark(file) }
+  """
+  fd = open_or_fd(file_or_fd)
+  try:
+    key = read_key(fd)
+    while key:
+      wave_read = wave.open(fd,'rb')
+      assert(wave_read.getnchannels() == 1)
+      assert(wave_read.getsampwidth() == 2)
+      sampling_freq = wave_read.getframerate()
+      buf = wave_read.readframes(wave_read.getnframes())
+      data = np.frombuffer(buf, dtype='short').astype("float")
+      yield key, data, sampling_freq
+      key = read_key(fd)
+  finally:
+    if fd is not file_or_fd: fd.close()
 
