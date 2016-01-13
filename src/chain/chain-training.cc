@@ -48,7 +48,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                      nnet_output);
 
   BaseFloat den_logprob = denominator.Forward();
-  bool ok;
+  bool ok = true;
   if (nnet_output_deriv)
     ok = denominator.Backward(-supervision.weight,
                               nnet_output_deriv);
@@ -62,7 +62,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
       nnet_output_deriv->SetZero();
     BaseFloat default_objf = -10;
     KALDI_WARN << "Objective function is " << (*tot_objf)
-               << "and denominator computation returned "
+               << " and denominator computation (if done) returned "
                << std::boolalpha << ok
                << ", setting objective function to " << default_objf
                << " per frame.";
