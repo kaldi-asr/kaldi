@@ -249,7 +249,13 @@ static void _cuda_chain_hmm_backward(const Int32Pair *forward_transitions,
     atomic_add_thresholded(log_prob_deriv + (pdf_id0 * log_prob_deriv_stride + s),
                            occupation_prob0);
   }
-  this_beta[h * num_sequences + s] = tot_variable_factor / inv_arbitrary_scale;
+  BaseFloat beta = tot_variable_factor / inv_arbitrary_scale;
+  // If an overflow was generated while computing the beta (which should be
+  // extremely rare), substitute zero.  This will likely lead to denominator
+  // occupancies which are less than one for this sequence, as the resulting
+  // betas will be less than they should be.  but it's better than generating an
+  // inf and ruining the whole backprop.
+  this_beta[h * num_sequences + s] = (beta - beta == 0 ? beta : 0.0);
 }
 
 

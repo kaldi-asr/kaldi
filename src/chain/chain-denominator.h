@@ -96,6 +96,9 @@ class DenominatorComputation {
   // beta computation for 0 <= beta < num_time_steps_.
   void BetaGeneralFrame(int32 t);
 
+  // some checking that we can do if debug mode is activated.
+  void BetaGeneralFrameDebug(int32 t) const;
+
   const ChainTrainingOptions &opts_;
   const DenominatorGraph &den_graph_;
 
