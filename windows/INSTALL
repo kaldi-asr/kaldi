@@ -113,14 +113,15 @@
 
 
 4c) call the script that generates the MSVC solution
-    i.e.
-    generate_solution.pl --vsver <default|vs2013|vs2015>
-    i.e. for example
-    generate_solution.pl --vsver vs2013
     
-    For CUDA support, add switch --enable-cuda to the command line,
-    i.e. for example
-    generate_solution.pl --vsver vs2013 --enable-cuda
+    generate_solution.pl --vsver <default|vs2013|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mlk]
+    
+	--enable-mlk is the default so you shouldn't need to use it. If --enable-openblas is passed it disables MLK support.
+	CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
+	
+	For example, for a build supporting CUDA using OpenBLAS and VS 2015 you would run:
+	
+    generate_solution.pl --vsver vs2015 --enable-cuda --enable-openblas
     
 5)  Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build
    Expect 10 projects to fail, majority of them will fail because of missing include "portaudio.h"
