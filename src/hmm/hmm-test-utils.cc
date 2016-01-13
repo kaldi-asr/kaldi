@@ -229,7 +229,7 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
 }
 
 
-void GenerateRandomAlignment(const ContextDependency &ctx_dep,
+void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
                              const TransitionModel &trans_model,
                              bool reorder,
                              const std::vector<int32> &phone_sequence,

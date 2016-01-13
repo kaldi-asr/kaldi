@@ -39,7 +39,13 @@ enum ComponentProperties {
                              // of output and this component doesn't care about the indexes
                              // (i.e. it maps each row of input to each row of output without
                              // regard to the index values).  Will normally be true.
-  kUpdatableComponent = 0x002,  // true if the component has parameters that can be updated.
+  kUpdatableComponent = 0x002,  // true if the component has parameters that can
+                                // be updated.  Components that return this flag
+                                // must be dynamic_castable to type
+                                // UpdatableComponent (but components of type
+                                // UpdatableComponent do not have to return this
+                                // flag, e.g.  if this instance is not really
+                                // updatable).
   kLinearInInput = 0x004,    // true if the component's output is always a
                              // linear function of its input, i.e. alpha times
                              // input gives you alpha times output.
@@ -55,14 +61,15 @@ enum ComponentProperties {
                            // than setting, its output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kReordersIndexes = 0x040,  // true if the ReordersIndexes function might reorder
+  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
+                             // Must not be set for simple components.
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
                            // setting, the "in_deriv" output.  The Component chooses
                            // whether to add or set, and the calling code has to
                            // accommodate it.
-  kBackpropNeedsInput  = 0x100,  // true if backprop operation needs access to
-                                 // forward-pass input.
+  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+                                // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
   kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
@@ -86,7 +93,7 @@ enum ComponentProperties {
 class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
-  virtual ~ComponentPrecomputedIndexes();
+  virtual ~ComponentPrecomputedIndexes() { }
 };
 
 
@@ -313,10 +320,11 @@ class Component {
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
-  //    -- an UpdatableComponent adds the parameters of
+  ///    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  //    -- a NonlinearComponent it relates to adding stats
+  ///    -- a NonlinearComponent it relates to adding stats
+  /// Otherwise it should do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
 
   Component() { }
@@ -332,23 +340,22 @@ class Component {
 /**
  * Class UpdatableComponent is a Component which has trainable parameters; it
  * extends the interface of Component.  This is a base-class for Components with
- * parameters.
+ * parameters.  See comment by declaration of kUpdatableComponent.
  */
 class UpdatableComponent: public Component {
  public:
   UpdatableComponent(const UpdatableComponent &other):
       learning_rate_(other.learning_rate_),
+      learning_rate_factor_(other.learning_rate_factor_),
       is_gradient_(other.is_gradient_) { }
 
-  void Init(BaseFloat lr, bool is_gradient = false);
-
-  UpdatableComponent(BaseFloat learning_rate) {  Init(learning_rate); }
-
   /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///    sets is_gradient_ to true and the learning rate to 1.
+  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  ///  learning_rate_factor_.
   virtual void SetZero(bool treat_as_gradient) = 0;
 
-  UpdatableComponent(): learning_rate_(0.001) { }
+  UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
+                        is_gradient_(false) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -361,9 +368,13 @@ class UpdatableComponent: public Component {
   /// to the parameters of the component.
   virtual void PerturbParams(BaseFloat stddev) = 0;
   /// Sets the learning rate of gradient descent
-  void SetLearningRate(BaseFloat lrate) {  learning_rate_ = lrate; }
+  virtual void SetLearningRate(BaseFloat lrate) {
+    learning_rate_ = lrate * learning_rate_factor_;
+  }
 
-  /// Gets the learning rate of gradient descent
+  /// Gets the learning rate of gradient descent.  Note: if you call
+  /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
+  /// a different value than x will returned.
   BaseFloat LearningRate() const { return learning_rate_; }
 
   virtual std::string Info() const;
@@ -382,11 +393,29 @@ class UpdatableComponent: public Component {
   }
 
  protected:
+  // to be called from child classes, extracts any learning rate information
+  // from the config line and sets them appropriately.
+  void InitLearningRatesFromConfig(ConfigLine *cfl);
+
+  // To be used in child-class Read() functions, this function reads the opening
+  // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
+  void ReadUpdatableCommon(std::istream &is, bool binary);
+
+  // To be used in child-class Write() functions, writes the opening
+  // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
+  // learning rate;
+  void WriteUpdatableCommon(std::ostream &is, bool binary) const;
+
   BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
+  BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
+                                   ///< can be set to another < value so that
+                                   ///when < you call SetLearningRate(), that
+                                   ///value will be scaled by this factor.
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
                       ///< gradient.
+
  private:
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };

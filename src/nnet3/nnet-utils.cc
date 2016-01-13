@@ -1,7 +1,5 @@
 // nnet3/nnet-utils.cc
 
-// nnet3/nnet-utils.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -267,9 +265,14 @@ void SetLearningRate(BaseFloat learning_rate,
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    comp->Scale(scale);
+  if (scale == 1.0) return;
+  else if (scale == 0.0) {
+    SetZero(false, nnet);
+  } else {
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->Scale(scale);
+    }
   }
 }
 
@@ -355,6 +358,24 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   }
   return ans;
 }
+
+std::string NnetInfo(const Nnet &nnet) {
+  std::ostringstream ostr;
+  if (IsSimpleNnet(nnet)) {
+    int32 left_context, right_context;
+    // this call will crash if the nnet is not 'simple'.
+    ComputeSimpleNnetContext(nnet, &left_context, &right_context);
+    ostr << "left-context: " << left_context << "\n";
+    ostr << "right-context: " << right_context << "\n";
+  }
+  ostr << "input-dim: " << nnet.InputDim("input") << "\n";
+  ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
+  ostr << "output-dim: " << nnet.OutputDim("output") << "\n";
+  ostr << "# Nnet info follows.\n";
+  ostr << nnet.Info();
+  return ostr.str();
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

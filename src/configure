@@ -177,7 +177,10 @@ do
   esac
 done
 
-
+# the idea here is that if you change the configuration options from using
+# CUDA to not using it, or vice versa, we want to recompile all parts of the
+# code that may use a GPU.  Touching this file is a way to force this.
+touch cudamatrix/cu-common.h 2>/dev/null
 
 function failure {
   echo "***configure failed: $* ***" >&2

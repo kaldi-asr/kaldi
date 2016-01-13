@@ -77,8 +77,8 @@ int main(int argc, char *argv[]) {
       std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
-      egs.resize(buffer_size, std::make_pair(std::string(""),
-                                             static_cast<NnetExample*>(NULL)));
+      egs.resize(buffer_size,
+                 std::pair<std::string, NnetExample*>("", NULL));
       for (; !example_reader.Done(); example_reader.Next()) {
         int32 index = RandInt(0, buffer_size - 1);
         if (egs[index].second == NULL) {

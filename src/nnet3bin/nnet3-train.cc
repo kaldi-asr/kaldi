@@ -70,19 +70,14 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    bool ok;
-    {
-      NnetTrainer trainer(train_config, &nnet);
+    NnetTrainer trainer(train_config, &nnet);
 
-      SequentialNnetExampleReader example_reader(examples_rspecifier);
+    SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-      for (; !example_reader.Done(); example_reader.Next())
-        trainer.Train(example_reader.Value());
+    for (; !example_reader.Done(); example_reader.Next())
+      trainer.Train(example_reader.Value());
 
-      ok = trainer.PrintTotalStats();
-
-      // need trainer's destructor to be called before we write model.
-    }
+    bool ok = trainer.PrintTotalStats();
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

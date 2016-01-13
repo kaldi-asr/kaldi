@@ -96,7 +96,7 @@ template<class Label, class StringId> class StringRepository {
     else if (id>=single_symbol_start) {
       v->resize(1); (*v)[0] = id - single_symbol_start;
     } else {
-      assert(id >= string_start && id < static_cast<StringId>(vec_.size()));
+      assert(static_cast<size_t>(id) < vec_.size());
       *v = *(vec_[id]);
     }
   }

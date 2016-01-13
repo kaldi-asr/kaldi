@@ -83,9 +83,6 @@ class CuVectorBase {
   void CopyFromVec(const VectorBase<OtherReal> &src);
 
   template<typename OtherReal>
-  void CopyFromSmat(const CuSparseMatrix<OtherReal> &smat);
-
-  template<typename OtherReal>
   void CopyToVec(VectorBase<OtherReal> *dst) const;
   
   void CopyRowsFromMat(const CuMatrixBase<Real> &M);
@@ -251,13 +248,6 @@ class CuVector: public CuVectorBase<Real> {
   explicit CuVector(const VectorBase<OtherReal> &v) : CuVectorBase<Real>() {
     Resize(v.Dim(), kUndefined);
     this->CopyFromVec(Vector<Real>(v));
-  }
-
-  template<typename OtherReal>
-  explicit CuVector(const CuSparseMatrix<OtherReal> &smat) :
-      CuVectorBase<Real> () {
-    Resize(smat.NumElements(), kUndefined);
-    this->CopyFromSmat(smat);
   }
 
   /// Allocate the memory
