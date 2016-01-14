@@ -108,13 +108,13 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
                                           nnet_output.NumCols(),
                                           kUndefined);
 
-    BaseFloat tot_objf, tot_weight;
+    BaseFloat tot_objf, tot_l2_term, tot_weight;
 
     ComputeChainObjfAndDeriv(opts_.chain_config, den_graph_,
                              sup.supervision, nnet_output,
-                             &tot_objf, &tot_weight,
+                             &tot_objf, &tot_l2_term, &tot_weight,
                              &nnet_output_deriv);
-
+    
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
       nnet_output_deriv.MulRowsVec(cu_deriv_weights);
@@ -124,7 +124,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
-                                     tot_weight, tot_objf);
+                                     tot_weight, tot_objf, tot_l2_term);
   }
 }
 

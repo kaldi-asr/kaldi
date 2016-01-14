@@ -98,11 +98,11 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
       nnet_output_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
 
-    BaseFloat tot_objf, tot_weight;
-
+    BaseFloat tot_like, tot_l2_term, tot_weight;
+    
     ComputeChainObjfAndDeriv(chain_config_, den_graph_,
                              sup.supervision, nnet_output,
-                             &tot_objf, &tot_weight,
+                             &tot_like, &tot_l2_term, &tot_weight,
                              (nnet_config_.compute_deriv ?
                               &nnet_output_deriv : NULL));
 
@@ -114,9 +114,10 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     // and conjugate gradient descent both rely on the derivatives being
     // accurate, and don't fail gracefully if the derivatives are not accurate).
 
-    SimpleObjectiveInfo &totals = objf_info_[sup.name];
+    ChainObjectiveInfo &totals = objf_info_[sup.name];
     totals.tot_weight += tot_weight;
-    totals.tot_objective += tot_objf;
+    totals.tot_like += tot_like;
+    totals.tot_l2_term += tot_l2_term;
 
     if (nnet_config_.compute_deriv)
       computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
@@ -127,7 +128,7 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
 
 bool NnetChainComputeProb::PrintTotalStats() const {
   bool ans = false;
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
       iter, end;
   iter = objf_info_.begin();
   end = objf_info_.end();
@@ -135,11 +136,21 @@ bool NnetChainComputeProb::PrintTotalStats() const {
     const std::string &name = iter->first;
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
-    const SimpleObjectiveInfo &info = iter->second;
-    KALDI_LOG << "Overall log-probability for '"
-              << name << "' is "
-              << (info.tot_objective / info.tot_weight) << " per frame"
-              << ", over " << info.tot_weight << " frames.";
+    const ChainObjectiveInfo &info = iter->second;
+    BaseFloat like = (info.tot_like / info.tot_weight),
+        l2_term = (info.tot_l2_term / info.tot_weight),
+        tot_objf = like + l2_term;
+    if (info.tot_l2_term == 0.0) {
+      KALDI_LOG << "Overall log-probability for '"
+                << name << "' is "
+                << like << " per frame"
+                << ", over " << info.tot_weight << " frames.";
+    } else {
+      KALDI_LOG << "Overall log-probability for '"
+                << name << "' is "
+                << like << " + " << l2_term << " = " << tot_objf << " per frame"
+                << ", over " << info.tot_weight << " frames.";
+    }
     if (info.tot_weight > 0)
       ans = true;
   }
@@ -147,9 +158,9 @@ bool NnetChainComputeProb::PrintTotalStats() const {
 }
 
 
-const SimpleObjectiveInfo* NnetChainComputeProb::GetObjective(
+const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     const std::string &output_name) const {
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
       iter = objf_info_.find(output_name);
   if (iter != objf_info_.end())
     return &(iter->second);

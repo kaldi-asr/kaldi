@@ -84,14 +84,19 @@ struct ObjectiveFunctionInfo {
 
   double tot_weight;
   double tot_objf;
+  double tot_aux_objf;  // An 'auxiliary' objective function that is optional-
+                        // may be used when things like regularization are being
+                        // used.
 
   double tot_weight_this_phase;
   double tot_objf_this_phase;
+  double tot_aux_objf_this_phase;
 
   ObjectiveFunctionInfo():
       current_phase(0),
-      tot_weight(0.0), tot_objf(0.0),
-      tot_weight_this_phase(0.0), tot_objf_this_phase(0.0) { }
+      tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
+      tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
+      tot_aux_objf_this_phase(0.0) { }
 
   // This function updates the stats and, if the phase has just changed,
   // prints a message indicating progress.  The phase equals
@@ -101,7 +106,8 @@ struct ObjectiveFunctionInfo {
                    int32 minibatches_per_phase,
                    int32 minibatch_counter,
                    BaseFloat this_minibatch_weight,
-                   BaseFloat this_minibatch_tot_objf);
+                   BaseFloat this_minibatch_tot_objf,
+                   BaseFloat this_minibatch_tot_aux_objf = 0.0);
 
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,

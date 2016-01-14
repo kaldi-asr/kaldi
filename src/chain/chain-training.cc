@@ -29,8 +29,9 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               const DenominatorGraph &den_graph,
                               const Supervision &supervision,
                               const CuMatrixBase<BaseFloat> &nnet_output,
-                              BaseFloat *tot_objf,
-                              BaseFloat *tot_weight,
+                              BaseFloat *objf,
+                              BaseFloat *l2_term,                              
+                              BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv) {
   BaseFloat num_logprob_weighted;
   if (nnet_output_deriv)
@@ -48,25 +49,25 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                      nnet_output);
 
   BaseFloat den_logprob = denominator.Forward();
-  bool ok;
+  bool ok = true;
   if (nnet_output_deriv)
     ok = denominator.Backward(-supervision.weight,
                               nnet_output_deriv);
 
-  *tot_objf = num_logprob_weighted - supervision.weight * den_logprob;
-  *tot_weight = supervision.weight * supervision.num_sequences *
+  *objf = num_logprob_weighted - supervision.weight * den_logprob;
+  *weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
-  if (!((*tot_objf) - (*tot_objf) == 0) || !ok) {
+  if (!((*objf) - (*objf) == 0) || !ok) {
     // inf or NaN detected, or denominator computation returned false.
     if (nnet_output_deriv)
       nnet_output_deriv->SetZero();
     BaseFloat default_objf = -10;
-    KALDI_WARN << "Objective function is " << (*tot_objf)
-               << "and denominator computation returned "
+    KALDI_WARN << "Objective function is " << (*objf)
+               << " and denominator computation (if done) returned "
                << std::boolalpha << ok
                << ", setting objective function to " << default_objf
                << " per frame.";
-    *tot_objf  = default_objf * *tot_weight;
+    *objf  = default_objf * *weight;
   }
 
   // This code helps us see how big the derivatives are, on average,
@@ -84,6 +85,15 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     for (int32 i = 0; i < tot_frames; i++)
       row_products_per_frame(i / num_sequences) += row_products_cpu(i);
     KALDI_LOG << "Derivs per frame are " << row_products_per_frame;
+  }
+
+  if (opts.l2_regularize == 0.0) {
+    *l2_term = 0.0;
+  } else {
+    // compute the l2 penalty term and its derivative
+    BaseFloat scale = supervision.weight * opts.l2_regularize;
+    *l2_term = -0.5 * scale * TraceMatMat(nnet_output, nnet_output, kNoTrans);
+    nnet_output_deriv->AddMat(-1.0 * scale, nnet_output);
   }
 }
 

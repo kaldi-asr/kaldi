@@ -427,7 +427,7 @@ double NnetChainCombiner::ComputeObjfAndDerivFromNnet(
                                                 end = egs_.end();
   for (; iter != end; ++iter)
     prob_computer_->Compute(*iter);
-  const SimpleObjectiveInfo *objf_info =
+  const ChainObjectiveInfo *objf_info =
       prob_computer_->GetObjective("output");
   if (objf_info == NULL)
     KALDI_ERR << "Error getting objective info (unsuitable egs?)";
@@ -436,7 +436,7 @@ double NnetChainCombiner::ComputeObjfAndDerivFromNnet(
   VectorizeNnet(deriv, nnet_params_deriv);
   // we prefer to deal with normalized objective functions.
   nnet_params_deriv->Scale(1.0 / objf_info->tot_weight);
-  return objf_info->tot_objective / objf_info->tot_weight;
+  return (objf_info->tot_like + objf_info->tot_l2_term) / objf_info->tot_weight;
 }
 
 
