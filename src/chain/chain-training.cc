@@ -92,8 +92,9 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   } else {
     // compute the l2 penalty term and its derivative
     BaseFloat scale = supervision.weight * opts.l2_regularize;
-    *l2_term = -0.5 * scale * TraceMatMat(nnet_output, nnet_output, kNoTrans);
-    nnet_output_deriv->AddMat(-1.0 * scale, nnet_output);
+    *l2_term = -0.5 * scale * TraceMatMat(nnet_output, nnet_output, kTrans);
+    if (nnet_output_deriv)
+      nnet_output_deriv->AddMat(-1.0 * scale, nnet_output);
   }
 }
 
