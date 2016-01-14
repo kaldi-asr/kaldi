@@ -40,11 +40,17 @@ namespace chain {
 
 
 struct ChainTrainingOptions {
-  // Currently empty.
+  // Currently empty.  l2 regularization constant; the actual term added to the
+  // objf will be -0.5 times this constant times the squared l2 norm.  (squared
+  // so it's additive across the dimensions).
+  BaseFloat l2_regularize;
 
-  ChainTrainingOptions() { }
+  ChainTrainingOptions(): l2_regularize(0.0) { }
 
   void Register(OptionsItf *opts) {
+    opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
+                   "constant for 'chain' training, applied to the output "
+                   "of the neural net.");
   }
 };
 
@@ -59,10 +65,13 @@ struct ChainTrainingOptions {
                             paths and constraints on the alignment as an FST
    @param [in] nnet_output  The output of the neural net; dimension must equal
                           ((supervision.num_sequences * supervision.frames_per_sequence) by
-                            den_graph.NumPdfs()).
+                            den_graph.NumPdfs()).  The rows are ordered as: all sequences
+                            for frame 0; all sequences for frame 1; etc.
    @param [out] objf       The [num - den] objective function computed for this
                            example; you'll want to divide it by 'tot_weight' before
                            displaying it.
+   @param [out] l2_term  The l2 regularization term in the objective function, if
+                           the --l2-regularize option is used.  To be added to 'o
    @param [out] weight     The weight to normalize the objective function by;
                            equals supervision.weight * supervision.num_sequences *
                            supervision.frames_per_sequence.
@@ -75,8 +84,9 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               const DenominatorGraph &den_graph,
                               const Supervision &supervision,
                               const CuMatrixBase<BaseFloat> &nnet_output,
-                              BaseFloat *tot_objf,
-                              BaseFloat *tot_weight,
+                              BaseFloat *objf,
+                              BaseFloat *l2_term,
+                              BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
 

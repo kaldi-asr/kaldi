@@ -256,10 +256,10 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
                                         nnet_output.NumCols(),
                                         kUndefined);
 
-  BaseFloat objf, weight;
+  BaseFloat objf, l2_term, weight;
 
   ComputeChainObjfAndDeriv(opts, den_graph, supervision,
-                           nnet_output, &objf, &weight,
+                           nnet_output, &objf, &l2_term, &weight,
                            &nnet_output_deriv);
 
   {
@@ -296,11 +296,12 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
     CuMatrix<BaseFloat> nnet_output_perturbed(nnet_delta_output);
     nnet_output_perturbed.AddMat(1.0, nnet_output);
 
-    BaseFloat objf_modified, weight_modified;
+    BaseFloat objf_modified, l2_term_modified, weight_modified;
 
     ComputeChainObjfAndDeriv(opts, den_graph, supervision,
                              nnet_output_perturbed,
-                             &objf_modified, &weight_modified,
+                             &objf_modified, &l2_term_modified,
+                             &weight_modified,
                              NULL);
 
     observed_objf_changes(p) = objf_modified - objf;
