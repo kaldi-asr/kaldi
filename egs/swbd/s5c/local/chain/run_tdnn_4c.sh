@@ -1,6 +1,19 @@
 #!/bin/bash
 
 # _4c is as _4a, but using half the --jesus-hidden-dim: 7500 versus 15000.
+# Yay-- WER is slightly better or the same.  Final train-prob is worse
+# -0.0879 -> -0.0882, and valid-prob worse -0.1213 -> -0.1241.
+
+# %WER 17.63 [ 8673 / 49204, 956 ins, 2334 del, 5383 sub ] exp/chain/tdnn_4c_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 16.61 [ 8175 / 49204, 964 ins, 2272 del, 4939 sub ] exp/chain/tdnn_4c_sp/decode_train_dev_sw1_fsh_fg/wer_11_0.0
+# %WER 19.7 | 4459 42989 | 82.6 11.8 5.6 2.3 19.7 57.4 | exp/chain/tdnn_4c_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+# %WER 17.8 | 4459 42989 | 84.2 10.6 5.2 2.0 17.8 54.4 | exp/chain/tdnn_4c_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.filt.sys
+# a03:s5c: ./show_wer.sh 4a
+# %WER 17.88 [ 8800 / 49204, 1017 ins, 2233 del, 5550 sub ] exp/chain/tdnn_4a_sp/decode_train_dev_sw1_tg/wer_11_0.0
+# %WER 16.73 [ 8231 / 49204, 898 ins, 2397 del, 4936 sub ] exp/chain/tdnn_4a_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+# %WER 19.7 | 4459 42989 | 82.5 12.0 5.5 2.3 19.7 57.6 | exp/chain/tdnn_4a_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.filt.sys
+# %WER 17.8 | 4459 42989 | 84.2 10.3 5.5 2.0 17.8 55.1 | exp/chain/tdnn_4a_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+
 
 # _4a is as _3s, but using narrower splice-indexes in the first layer.
 

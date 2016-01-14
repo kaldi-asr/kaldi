@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # _4a is as _3s, but using narrower splice-indexes in the first layer.
+# WER is maybe a fraction worse than 3s (see below); final train prob is
+# worse -0->0852 -> -0.0879, and valid prob is better -0.121 ->-0.1213
+#./show_wer.sh 4a
+#%WER 17.88 [ 8800 / 49204, 1017 ins, 2233 del, 5550 sub ] exp/chain/tdnn_4a_sp/decode_train_dev_sw1_tg/wer_11_0.0
+#%WER 16.73 [ 8231 / 49204, 898 ins, 2397 del, 4936 sub ] exp/chain/tdnn_4a_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+#%WER 19.7 | 4459 42989 | 82.5 12.0 5.5 2.3 19.7 57.6 | exp/chain/tdnn_4a_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.filt.sys
+#%WER 17.8 | 4459 42989 | 84.2 10.3 5.5 2.0 17.8 55.1 | exp/chain/tdnn_4a_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
 
 # _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
 # num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.
