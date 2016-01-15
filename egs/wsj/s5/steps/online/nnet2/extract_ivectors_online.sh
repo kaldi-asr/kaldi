@@ -93,6 +93,7 @@ echo -n >$ieconf
 cp $srcdir/online_cmvn.conf $dir/conf/ || exit 1;
 echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
 for x in $(echo $splice_opts); do echo "$x"; done > $dir/conf/splice.conf
+echo "--ivector-period=$ivector_period" >>$ieconf
 echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
 echo "--lda-matrix=$srcdir/final.mat" >>$ieconf
 echo "--global-cmvn-stats=$srcdir/global_cmvn.stats" >>$ieconf
