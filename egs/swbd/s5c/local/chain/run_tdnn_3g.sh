@@ -2,6 +2,7 @@
 
 # _3g is as _3f but using 100 blocks instead of 200, as in d->e 200 groups was found
 # to be worse.
+# (note: cannot be reproduced using current scripts).
 # It's maybe a little better than the baseline 2y; and better than 3d [-> I guess recurrence
 # is helpful.]
 #./show_wer.sh 3g

@@ -2,6 +2,7 @@
 
 # _3d is as _2y, and re-using the egs, but using --jesus-opts and
 # configs from make_jesus_configs.py.
+# (note: cannot be reproduced using current scripts).
 #  --jesus-opts "--affine-output-dim 600 --jesus-output-dim 1800 --jesus-hidden-dim 15000" \
 #   --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3"
 # Results are about the same as 2y, or maybe just a little worse.

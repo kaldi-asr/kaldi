@@ -285,7 +285,7 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -3,-2,-1,0,1,2,3 -3,0,3 -6,-3,0,3,6 -6,-3,0,3,6" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

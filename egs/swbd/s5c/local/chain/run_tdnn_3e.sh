@@ -2,6 +2,7 @@
 
 # _3e is as _3d, but increasing the --num-jesus-blocks from 100 (the default)
 # to 200 in order to reduce computation in the Jesus layer.
+# (note: cannot be reproduced using current scripts).
 
 # _3d is as _2y, and re-using the egs, but using --jesus-opts and
 # configs from make_jesus_configs.py.

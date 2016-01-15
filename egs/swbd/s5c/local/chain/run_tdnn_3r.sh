@@ -270,7 +270,7 @@ if [ $stage -le 12 ]; then
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-recurrent-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 15000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-2,-1,0,1,2 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

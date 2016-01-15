@@ -3,6 +3,7 @@
 
 # _3f is as _3e, but modifying the splicing setup to add (left) recurrence:
 # added the :3's in   --splice-indexes "-2,-1,0,1,2 -1,2 -3,0,3:-3 -6,-3,0,3:-3 -6,-3,0,3:-3"
+# (note: cannot be reproduced using current scripts).
 # Therefore it's
 # no longer really a tdnn, more like an RNN combined with TDNN.  BTW, I'm not re-dumping egs with extra
 # context, and this isn't really ideal - I want to see if this seems promising first.
