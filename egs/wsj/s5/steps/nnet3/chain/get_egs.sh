@@ -25,6 +25,8 @@ frames_per_eg=25   # number of frames of labels per example.  more->less disk sp
 frames_overlap_per_eg=0  # number of supervised frames of overlap that we aim for per eg.
                   # can be useful to avoid wasted data if you're using --left-deriv-truncate
                   # and --right-deriv-truncate.
+cut_zero_frames=-1  # if activated, activates new-style derivative weights.. i'll reorganize
+                    # this if it works well.
 frame_subsampling_factor=3 # ratio between input and output frame-rate of nnet.
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
@@ -44,6 +46,7 @@ num_egs_diagnostic=400 # number of frames for "compute_prob" jobs
 frames_per_iter=400000 # each iteration of training, see this many frames
                        # per job.  This is just a guideline; it will pick a number
                        # that divides the number of samples in the entire data.
+
 right_tolerance=  #CTC right tolerance == max label delay.
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
@@ -263,7 +266,7 @@ if [ $stage -le 2 ]; then
 fi
 
 
-egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress"
+egs_opts="--left-context=$left_context --right-context=$right_context --num-frames=$frames_per_eg --num-frames-overlap=$frames_overlap_per_eg --frame-subsampling-factor=$frame_subsampling_factor --compress=$compress --cut-zero-frames=$cut_zero_frames"
 
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
