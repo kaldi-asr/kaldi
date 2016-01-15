@@ -132,9 +132,6 @@ class Nnet {
 
   /// Replace the component indexed by c with a new component.
   /// Frees previous component indexed by c.
-  /// Changing the identity of a component is dangerous; this was made
-  /// only to replaced RepeatedAffine components with BlockAffine components,
-  /// which will still have the same inputDim() and OutputDim() values.
   void SetComponent(int32 c, Component *component);
 
   /// returns const reference to a particular numbered network node.

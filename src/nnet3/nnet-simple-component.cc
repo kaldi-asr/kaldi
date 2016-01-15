@@ -1371,11 +1371,10 @@ BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
 
 BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac) :
   UpdatableComponent(rac),
-  linear_params_(rac.num_repeats_ * rac.linear_params_.NumRows(), 
+  linear_params_(rac.num_repeats_ * rac.linear_params_.NumRows(),
                  rac.linear_params_.NumCols(), kUndefined),
   bias_params_(rac.num_repeats_ * rac.linear_params_.NumRows(), kUndefined),
-  num_blocks_(rac.num_repeats_)
-{
+  num_blocks_(rac.num_repeats_) {
   // copy rac's linear_params_ and bias_params_ to this.
   int32 num_rows_in_block = rac.linear_params_.NumRows();
   for(int32 block_counter = 0; block_counter < num_blocks_; block_counter++) {

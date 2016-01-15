@@ -95,9 +95,8 @@ int main(int argc, char *argv[]) {
       am_nnet.SetNnet(nnet);
     }
 
-    if(convert_repeated_to_block) {
+    if(convert_repeated_to_block)
       ConvertRepeatedToBlockAffine(&(am_nnet.GetNnet()));
-    }
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
