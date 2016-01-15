@@ -1,7 +1,7 @@
 // nnet3/nnet-nnet.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
-
+//             2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,6 +130,12 @@ class Nnet {
   /// caller.
   const Component *GetComponent(int32 c) const;
 
+  /// Replace the component indexed by c with a new component.
+  /// Frees previous component indexed by c.
+  /// Changing the identity of a component is dangerous; this was made
+  /// only to replaced RepeatedAffine components with BlockAffine components,
+  /// which will still have the same inputDim() and OutputDim() values.
+  void SetComponent(int32 c, Component *component);
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {

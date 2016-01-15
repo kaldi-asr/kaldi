@@ -1,7 +1,7 @@
 // nnet3/nnet-nnet.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+//                2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,6 +137,12 @@ const Component *Nnet::GetComponent(int32 c) const {
 Component *Nnet::GetComponent(int32 c) {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
   return components_[c];
+}
+
+void Nnet::SetComponent(int32 c, Component *component) {
+  KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
+  delete components_[c];
+  components_[c] = component;
 }
 
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor

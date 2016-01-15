@@ -931,15 +931,15 @@ static void _add_diag_mat_mat(
   int v_idx = i / threads_per_element,   // v_idx is the index into v that we are supposed to
       sub_idx = i % threads_per_element; // add to; 0 <= sub_idx < threads_per_element tells
                                          // us which block of elements we sum up.
-  if (v_idx >= v_dim) return;
-
-  Real sum = 0.0;
-  for (int j = sub_idx; j < M_cols; j += threads_per_element) {
-    int M_index = v_idx * M_row_stride + j * M_col_stride,
-        N_index = j * N_row_stride + v_idx * N_col_stride;
-    sum += M[M_index] * N[N_index];
+  if (v_idx < v_dim) {
+    Real sum = 0.0;
+    for (int j = sub_idx; j < M_cols; j += threads_per_element) {
+      int M_index = v_idx * M_row_stride + j * M_col_stride,
+          N_index = j * N_row_stride + v_idx * N_col_stride;
+      sum += M[M_index] * N[N_index];
+    }
+    temp_data[threadIdx.x] = sum;
   }
-  temp_data[threadIdx.x] = sum;
 
   // start_idx = threadIdx.x - sub_idx; // start of the position in temp_data
                                      // that we want to sum up.
@@ -959,7 +959,7 @@ static void _add_diag_mat_mat(
     __syncthreads();
     num_total_threads = half_point;
   }
-  if (sub_idx == 0) {
+  if (sub_idx == 0 && v_idx < v_dim) {
     v[v_idx] = beta * v[v_idx] + alpha * temp_data[threadIdx.x];
   }
 }
@@ -1152,7 +1152,6 @@ __global__
 static void _pvec_sum(Real* v, Real* g, int dim, int size) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int start = size * i;
-  if (start >= dim) return;
   int end = start + size;
   if (end > dim) end = dim;
   __shared__ Real row_data[CU1DBLOCK];
