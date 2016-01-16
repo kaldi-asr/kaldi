@@ -22,18 +22,21 @@
 namespace kaldi {
 
 void PhoneDurationModelOptions::Register(OptionsItf *opts) {
-  opts->Register("left-context", &left_context, "Number of left context frames");
-  opts->Register("right-context", &right_context, "Number of right context frames");
+  opts->Register("left-context", &left_context,
+                 "Number of left context frames");
+  opts->Register("right-context", &right_context,
+                 "Number of right context frames");
   opts->Register("max-duration", &max_duration,
                  "Max phone duration in frames. Durations longer than this will"
                  "be mapped to this value.");
 }
 
-PhoneDurationEgsMaker::PhoneDurationEgsMaker(const PhoneDurationModel &model) {
+PhoneDurationFeatureMaker::PhoneDurationFeatureMaker(
+                                              const PhoneDurationModel &model) {
   InitFeatureMaker(model);
 }
 
-BaseFloat PhoneDurationEgsMaker::NormalizeDuration(
+BaseFloat PhoneDurationFeatureMaker::NormalizeDuration(
                                                int32 duration_in_frames) const {
   BaseFloat normalized_duration =
                           2.0 / (1.0 + Exp(-0.01f * duration_in_frames)) - 1;
@@ -43,7 +46,7 @@ BaseFloat PhoneDurationEgsMaker::NormalizeDuration(
   return normalized_duration;
 }
 
-void PhoneDurationEgsMaker::MakeFeatureVector(
+void PhoneDurationFeatureMaker::MakeFeatureVector(
                     const std::vector<std::pair<int32, int32> > &phone_context,
                     int phone_index,
                     SparseVector<BaseFloat> *feat) const {
@@ -96,54 +99,8 @@ void PhoneDurationEgsMaker::MakeFeatureVector(
   feat->CopyFromSvec(tmp);
 }
 
-void PhoneDurationEgsMaker::MakeNnetExample(
-                    const std::vector<std::pair<int32, int32> > &phone_context,
-                    int phone_index,
-                    NnetExample *eg) const {
-  SparseVector<BaseFloat> feat;
-  MakeFeatureVector(phone_context, phone_index, &feat);
-  int32 phone_duration = phone_context[phone_index].second;
-  SparseMatrix<BaseFloat> feat_mat(1, feat.Dim());
-  feat_mat.SetRow(0, feat);
-  int32 output_dim = max_duration_;
-  Posterior output_elements(1);
-
-  // The nodes at the output of the network are indexed from
-  // 0 to (max_duration_ - 1). Index 0 is for duration = 1.
-  int32 duration_id = (phone_duration > max_duration_) ?
-                                                       (max_duration_ - 1):
-                                                       (phone_duration - 1);
-  output_elements[0].push_back(std::make_pair(duration_id, 1.0));
-  SparseMatrix<BaseFloat> output_mat(output_dim, output_elements);
-
-  NnetIo input, output;
-  input.name = "input";
-  input.features = feat_mat;
-  input.indexes.resize(1);
-  output.name = "output";
-  output.features = output_mat;
-  output.indexes.resize(1);
-  eg->io.push_back(input);
-  eg->io.push_back(output);
-}
-
-void PhoneDurationEgsMaker::AlignmentToNnetExamples(
-                      const std::vector<std::pair<int32, int32> > &alignment,
-                      std::vector<NnetExample> *egs) const {
-// These lines are commented because we need edge examples too:
-//  if (alignment.size() < (model.left_context + model.right_context + 1)) {
-//    return;
-//  }
-  for (int i = 0; i < alignment.size(); i++) {
-    NnetExample eg;
-    MakeNnetExample(alignment, i, &eg);
-    // eg.io[0].indexes[0].t = i;
-    // eg.io[1].indexes[0].t = i;
-    egs->push_back(eg);
-  }
-}
-
-void PhoneDurationEgsMaker::InitFeatureMaker(const PhoneDurationModel &model) {
+void PhoneDurationFeatureMaker::InitFeatureMaker(
+                                              const PhoneDurationModel &model) {
   num_binary_features_ = model.questions_.size();
   num_phone_identities_ = model.roots_.size() + 1;  // id=0 is for not-available
                                                     // phones (i.e. null phones
@@ -151,9 +108,11 @@ void PhoneDurationEgsMaker::InitFeatureMaker(const PhoneDurationModel &model) {
   left_context_ = model.left_context_;
   right_context_ = model.right_context_;
   max_duration_ = model.max_duration_;
-  int input_dim_phones = num_phone_identities_ * (left_context_ + right_context_ + 1);
+  int input_dim_phones = num_phone_identities_ *
+                                           (left_context_ + right_context_ + 1);
   int input_dim_durations = left_context_;
-  int input_dim_binary = num_binary_features_ * (left_context_ + right_context_ + 1);
+  int input_dim_binary = num_binary_features_ *
+                                           (left_context_ + right_context_ + 1);
   feature_dim_ = input_dim_phones + input_dim_binary + input_dim_durations;
 
   // create the reverse map for questions membership
@@ -182,61 +141,6 @@ void PhoneDurationEgsMaker::InitFeatureMaker(const PhoneDurationModel &model) {
   }
 }
 
-void PhoneDurationModel::InitNnet(int input_dim, int hidden_dim1,
-                                  int hidden_dim2, int output_dim) {
-  std::stringstream config;
-
-  // TODO(hhadian): to be later moved to scripts:
-
-  KALDI_LOG << "DurModel.Nnet: in-dim: " << input_dim
-            << ", hidden_dim1: " << hidden_dim1
-            << ", hidden_dim2: " << hidden_dim2
-            << ", out-dim: " << output_dim;
-
-  config << "component name=affine1 type=AffineComponent"
-         << " learning-rate=0.001 param-stddev=0.02 bias-stddev=0"
-         << " input-dim=" << input_dim << " output-dim=" << hidden_dim1 << std::endl;
-  config << "component name=relu1 type=RectifiedLinearComponent"
-         << " dim=" << hidden_dim1 << std::endl;
-  config << "component name=norm1 type=NormalizeComponent"
-         << " dim=" << hidden_dim1 << std::endl;
-  config << "component name=affine2 type=AffineComponent"
-         << " learning-rate=0.001 param-stddev=0.02 bias-stddev=0"
-         << " input-dim=" << hidden_dim1 << " output-dim=" << hidden_dim2 << std::endl;
-  config << "component name=relu2 type=RectifiedLinearComponent"
-         << " dim=" << hidden_dim2 << std::endl;
-  config << "component name=norm2 type=NormalizeComponent"
-         << " dim=" << hidden_dim2 << std::endl;
-  config << "component name=affine3 type=AffineComponent"
-         << " learning-rate=0.001 param-stddev=0.02 bias-stddev=0"
-         << " input-dim=" << hidden_dim2 << " output-dim=" << output_dim << std::endl;
-  config << "component name=softmax type=LogSoftmaxComponent"
-         << " dim=" << output_dim << std::endl;
-  config << "input-node name=input dim=" << input_dim << std::endl;
-  config << "component-node name=affine1_node component=affine1 input=input"
-         << std::endl;
-  config << "component-node name=relu1_node component=relu1 input=affine1_node"
-         << std::endl;
-  config << "component-node name=norm1_node component=norm1 input=relu1_node"
-         << std::endl;
-  config << "component-node name=affine2_node "
-         << "component=affine2 input=norm1_node"
-         << std::endl;
-  config << "component-node name=relu2_node component=relu2 input=affine2_node"
-         << std::endl;
-  config << "component-node name=norm2_node component=norm2 input=relu2_node"
-         << std::endl;
-  config << "component-node name=affine3_node "
-         << "component=affine3 input=norm2_node"
-         << std::endl;
-  config << "component-node name=softmax_node "
-         << "component=softmax input=affine3_node"
-         << std::endl;
-  config << "output-node name=output input=softmax_node" << std::endl;
-  std::cout << config.str();
-  nnet_.ReadConfig(config);
-}
-
 void PhoneDurationModel::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<PhoneDurationModel>");
   ExpectToken(is, binary, "<LeftContext>");
@@ -258,7 +162,6 @@ void PhoneDurationModel::Read(std::istream &is, bool binary) {
   for (int i = 0; i < questions_.size(); i++)
     ReadIntegerVector(is, binary, &(questions_[i]));
   ExpectToken(is, binary, "</Questions>");
-  nnet_.Read(is, binary);
   ExpectToken(is, binary, "</PhoneDurationModel>");
 }
 
@@ -280,38 +183,92 @@ void PhoneDurationModel::Write(std::ostream &os, bool binary) const {
   for (int i = 0; i < questions_.size(); i++)
     WriteIntegerVector(os, binary, questions_[i]);
   WriteToken(os, binary, "</Questions>");
-  nnet_.Write(os, binary);
   WriteToken(os, binary, "</PhoneDurationModel>");
 }
 
-void PhoneDurationScoreComputer::ComputeOutputForExample(const NnetExample &eg,
-                             Matrix<BaseFloat> *output) {
+void MakeNnetExample(const PhoneDurationFeatureMaker &feat_maker,
+                     const std::vector<std::pair<int32, int32> > &phone_context,
+                     int phone_index,
+                     NnetExample *eg) {
+  SparseVector<BaseFloat> feat;
+  feat_maker.MakeFeatureVector(phone_context, phone_index, &feat);
+  int32 phone_duration = phone_context[phone_index].second;
+  SparseMatrix<BaseFloat> feat_mat(1, feat.Dim());
+  feat_mat.SetRow(0, feat);
+  int32 output_dim = feat_maker.OutputDim();
+  Posterior output_elements(1);
+
+  // The nodes at the output of the network are indexed from
+  // 0 to (max_duration_ - 1). Index 0 is for duration = 1.
+  int32 duration_id = (phone_duration > output_dim) ?
+                                                       (output_dim - 1):
+                                                       (phone_duration - 1);
+  output_elements[0].push_back(std::make_pair(duration_id, 1.0));
+  SparseMatrix<BaseFloat> output_mat(output_dim, output_elements);
+
+  NnetIo input, output;
+  input.name = "input";
+  input.features = feat_mat;
+  input.indexes.resize(1);
+  output.name = "output";
+  output.features = output_mat;
+  output.indexes.resize(1);
+  eg->io.push_back(input);
+  eg->io.push_back(output);
+}
+void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
+                         const std::vector<std::pair<int32, int32> > &alignment,
+                         std::vector<NnetExample> *egs) {
+  for (int i = 0; i < alignment.size(); i++) {
+    NnetExample eg;
+    MakeNnetExample(feat_maker, alignment, i, &eg);
+    egs->push_back(eg);
+  }
+}
+
+
+void NnetPhoneDurationModel::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<NnetPhoneDurationModel>");
+  dur_model_.Read(is, binary);
+  nnet_.Read(is, binary);
+  ExpectToken(is, binary, "</NnetPhoneDurationModel>");
+}
+
+void NnetPhoneDurationModel::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetPhoneDurationModel>");
+  dur_model_.Write(os, binary);
+  nnet_.Write(os, binary);
+  WriteToken(os, binary, "</NnetPhoneDurationModel>");
+}
+void NnetPhoneDurationScoreComputer::ComputeOutputForExample(
+                                                    const NnetExample &eg,
+                                                    Matrix<BaseFloat> *output) {
   ComputationRequest request;
   bool need_backprop = false, store_stats = false;
-  GetComputationRequest(model_.nnet_, eg, need_backprop,
+  GetComputationRequest(model_.GetNnet(), eg, need_backprop,
                         store_stats, &request);
   const NnetComputation &computation = *(compiler_.Compile(request));
   NnetComputeOptions options;
   //  if (GetVerboseLevel() >= 3)
   //    options.debug = true;
-  NnetComputer computer(options, computation, model_.nnet_, NULL);
-  computer.AcceptInputs(model_.nnet_, eg.io);
+  NnetComputer computer(options, computation, model_.GetNnet(), NULL);
+  computer.AcceptInputs(model_.GetNnet(), eg.io);
   computer.Forward();
   const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
   output->Resize(nnet_output.NumRows(), nnet_output.NumCols());
   nnet_output.CopyToMat(output);
 }
 
-BaseFloat PhoneDurationScoreComputer::GetLogProb(
+BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
                    const std::vector<std::pair<int32, int32> > &phone_context) {
   KALDI_ASSERT(phone_context.size() == model_.FullContextSize());
   NnetExample eg;
-  egs_maker_.MakeNnetExample(phone_context, model_.left_context_, &eg);
+  MakeNnetExample(feature_maker_, phone_context, model_.LeftContext(), &eg);
   Matrix<BaseFloat> output;
   ComputeOutputForExample(eg, &output);
-  int32 phone_duration = phone_context[model_.left_context_].second;
-  int32 duration_id = (phone_duration > model_.max_duration_) ?
-                                                (model_.max_duration_ - 1):
+  int32 phone_duration = phone_context[model_.LeftContext()].second;
+  int32 duration_id = (phone_duration > model_.MaxDuration()) ?
+                                                (model_.MaxDuration() - 1):
                                                 (phone_duration - 1);
 
   int32 actual_duration_id = phone_duration - 1;  // if we had no max duration
@@ -323,16 +280,15 @@ BaseFloat PhoneDurationScoreComputer::GetLogProb(
 }
 
 PhoneDurationModelDeterministicFst::PhoneDurationModelDeterministicFst(
-                                            const PhoneDurationModel &model,
-                                            PhoneDurationScoreComputer *scorer):
-                            context_size_(model.right_context_ +
-                                          model.left_context_ + 1),
-                            right_context_(model.right_context_),
-                            max_duration_(model.max_duration_),
+                                        const PhoneDurationModel &model,
+                                        NnetPhoneDurationScoreComputer *scorer):
+                            context_size_(model.FullContextSize()),
+                            right_context_(model.RightContext()),
+                            max_duration_(model.MaxDuration()),
                             scorer_(*scorer) {
   // In the beginning we have a Null left context.
   // Null means that the phone-identity and duration are both zero --> olabel=0
-  std::vector<int32> start_context(model.left_context_, 0);
+  std::vector<int32> start_context(model.LeftContext(), 0);
   state_to_context_.push_back(start_context);
   context_to_state_[start_context] = 0;
   start_state_ = 0;

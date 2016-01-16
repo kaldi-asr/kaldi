@@ -1,4 +1,4 @@
-// durmodbin/durmod-info.cc
+// durmodbin/durmodel-info.cc
 
 // Copyright 2015 Hossein Hadian
 
@@ -31,9 +31,9 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Print info about the phone duration model.\n"
-        "Usage:  durmod-info [options] <duration-model>\n"
+        "Usage:  durmodel-info [options] <duration-model>\n"
         "e.g.: \n"
-        "  durmod-info durmodel.mdl";
+        "  durmodel-info durmodel.mdl";
 
     ParseOptions po(usage);
     po.Read(argc, argv);
@@ -45,13 +45,13 @@ int main(int argc, char *argv[]) {
     std::string model_filename = po.GetArg(1);
     PhoneDurationModel durmodel;
     ReadKaldiObject(model_filename, &durmodel);
-    PhoneDurationEgsMaker egs_maker(durmodel);
+    PhoneDurationFeatureMaker feat_maker(durmodel);
 
-    std::cout << "feature-dim: " << egs_maker.FeatureDim()
+    std::cout << "feature-dim: " << feat_maker.FeatureDim()
               << std::endl
-              << "num-binary-features: " << egs_maker.NumBinaryFeatures()
+              << "num-binary-features: " << feat_maker.NumBinaryFeatures()
               << std::endl
-              << "num-phone-identities: " << egs_maker.NumPhoneIdentities()
+              << "num-phone-identities: " << feat_maker.NumPhoneIdentities()
               << std::endl
               << "max-duration: " << durmodel.MaxDuration()
               << std::endl
@@ -61,6 +61,7 @@ int main(int argc, char *argv[]) {
               << std::endl
               << "full-context-size: " << durmodel.FullContextSize()
               << std::endl;
+
     KALDI_LOG << "Done.";
   } catch(const std::exception &e) {
     std::cerr << e.what();

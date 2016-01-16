@@ -8,8 +8,8 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 
-BINFILES = durmod-init durmod-make-egs durmod-copy durmod-rescore-lattice \
-           durmod-info
+BINFILES = nnet3-durmodel-init nnet3-durmodel-make-egs nnet3-durmodel-copy \
+           nnet3-durmodel-rescore-lattice durmodel-info durmodel-init
 OBJFILES =
 
 

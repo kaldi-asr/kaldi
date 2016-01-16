@@ -50,15 +50,13 @@ struct PhoneDurationModelOptions {
   void Register(OptionsItf *po);
 
   PhoneDurationModelOptions():
-    left_context(3),
+    left_context(4),
     right_context(2),
-    max_duration(50) {}
+    max_duration(60) {}
 };
 
 class PhoneDurationModel {
-  friend class PhoneDurationEgsMaker;
-  friend class PhoneDurationModelDeterministicFst;
-  friend class PhoneDurationScoreComputer;
+  friend class PhoneDurationFeatureMaker;
 
  public:
   void Read(std::istream &is, bool binary);
@@ -74,47 +72,37 @@ class PhoneDurationModel {
     questions_(questions),
     max_duration_(opts.max_duration) {}
 
-  void InitNnet(int input_dim, int dim1,
-                int dim2, int output_dim);
   inline int32 MaxDuration() const { return max_duration_; }
   inline int32 RightContext() const { return right_context_; }
   inline int32 LeftContext() const { return left_context_; }
   inline int32 FullContextSize() const {
     return left_context_ + right_context_ + 1;
   }
-  const Nnet &GetNnet() const { return nnet_; }
-  Nnet &GetNnet() { return nnet_; }
-  void SetNnet(const Nnet &nnet) { nnet_ = nnet; }
-
+  // TODO(hhadian): this class is passive. make it struct?
  private:
-  Nnet nnet_;
-
-  // info related to generating features
   int32 left_context_, right_context_;
   std::vector<std::vector<int32> > roots_;
   std::vector<std::vector<int32> > questions_;
   int32 max_duration_;
 };
 
-class PhoneDurationEgsMaker {
+class PhoneDurationFeatureMaker {
  public:
-  explicit PhoneDurationEgsMaker(const PhoneDurationModel &model);
+  explicit PhoneDurationFeatureMaker(const PhoneDurationModel &model);
 
   void InitFeatureMaker(const PhoneDurationModel &model);
 
-  void AlignmentToNnetExamples(
-      const std::vector<std::pair<int32, int32> > &alignment,
-      std::vector<NnetExample> *egs) const;
-
+  /// This method extracts features for a phone. The inputs are a phone_context
+  /// and an index into that context which indicates the centeral phone.
+  /// The features consist of phone-IDs (which are represented in a 1-of-n
+  /// encoding, suitable for neural networks), phone durations, and binary
+  /// features determined from a set of questions (i.e. extra_questions.int)
   void MakeFeatureVector(
                     const std::vector<std::pair<int32, int32> > &phone_context,
                     int phone_index,
                     SparseVector<BaseFloat> *feat) const;
 
-  void MakeNnetExample(
-                    const std::vector<std::pair<int32, int32> > &phone_context,
-                    int phone_index,
-                    NnetExample *eg) const;
+
   int32 FeatureDim() const { return feature_dim_; }
   int32 NumBinaryFeatures() const { return num_binary_features_; }
   int32 NumPhoneIdentities() const { return num_phone_identities_; }
@@ -134,10 +122,40 @@ class PhoneDurationEgsMaker {
   BaseFloat NormalizeDuration(int32 duration_in_frames) const;
 };
 
-class PhoneDurationScoreComputer {
+class NnetPhoneDurationModel {
  public:
-  explicit PhoneDurationScoreComputer(const PhoneDurationModel &model):
-      model_(model), compiler_(model.GetNnet()), egs_maker_(model) {}
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+
+  NnetPhoneDurationModel() {}
+  NnetPhoneDurationModel(const PhoneDurationModel &duration_model,
+                         const Nnet &nnet):
+                         dur_model_(duration_model),
+                         nnet_(nnet) {}
+
+  inline int32 MaxDuration() const { return dur_model_.MaxDuration(); }
+  inline int32 RightContext() const { return dur_model_.RightContext(); }
+  inline int32 LeftContext() const { return dur_model_.LeftContext(); }
+  inline int32 FullContextSize() const { return dur_model_.FullContextSize(); }
+
+  const PhoneDurationModel &GetDurationModel() const { return dur_model_; }
+  PhoneDurationModel &GetDurationModel() { return dur_model_; }
+
+  const Nnet &GetNnet() const { return nnet_; }
+  Nnet &GetNnet() { return nnet_; }
+  void SetNnet(const Nnet &nnet) { nnet_ = nnet; }
+
+ private:
+  PhoneDurationModel dur_model_;
+  Nnet nnet_;
+};
+
+class NnetPhoneDurationScoreComputer {
+ public:
+  explicit NnetPhoneDurationScoreComputer(const NnetPhoneDurationModel &model):
+      model_(model),
+      compiler_(model.GetNnet()),
+      feature_maker_(model.GetDurationModel()) { }
 
   void ComputeOutputForExample(const NnetExample &eg,
                                Matrix<BaseFloat> *output);
@@ -148,9 +166,9 @@ class PhoneDurationScoreComputer {
          GetLogProb(const std::vector<std::pair<int32, int32> > &phone_context);
 
  private:
-  const PhoneDurationModel &model_;
+  const NnetPhoneDurationModel &model_;
   CachingOptimizingCompiler compiler_;
-  PhoneDurationEgsMaker egs_maker_;
+  PhoneDurationFeatureMaker feature_maker_;
 };
 
 class PhoneDurationModelDeterministicFst
@@ -159,10 +177,10 @@ class PhoneDurationModelDeterministicFst
   typedef fst::StdArc::Weight Weight;
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
-  
+
   // second argument is non-cost because it has a cache
   PhoneDurationModelDeterministicFst(const PhoneDurationModel &model,
-                                     PhoneDurationScoreComputer *scorer);
+                                     NnetPhoneDurationScoreComputer *scorer);
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
@@ -183,10 +201,26 @@ class PhoneDurationModelDeterministicFst
   std::vector<std::vector<Label> > state_to_context_;
   int32 context_size_, right_context_;
   int32 max_duration_;
-  PhoneDurationScoreComputer &scorer_;
+  NnetPhoneDurationScoreComputer &scorer_;
 
   BaseFloat GetLogProb(const std::vector<Label> &context) const;
 };
+
+
+
+/// This functions uses a feature maker to convert a phone_context into an
+/// Nnet3 example.
+void MakeNnetExample(const PhoneDurationFeatureMaker &feat_maker,
+                     const std::vector<std::pair<int32, int32> > &phone_context,
+                     int phone_index,
+                     NnetExample *eg);
+
+/// This function uses MakeNnetExample to convert a sequence of (phone,duration)
+/// pairs (i.e. alignment) into a set of Nnet3 examples
+void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
+                         const std::vector<std::pair<int32, int32> > &alignment,
+                         std::vector<NnetExample> *egs);
+
 
 /// This function decodes an already encoded olabel to phone id and duration.
 std::pair<int32, int32> OlabelToPhoneAndDuration(fst::StdArc::Label olabel,

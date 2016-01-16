@@ -1,4 +1,4 @@
-// durmodbin/durmod-copy.cc
+// durmodbin/nnet3-durmodel-init.cc
 
 // Copyright 2015 Hossein Hadian
 
@@ -27,49 +27,41 @@
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
-  typedef kaldi::int32 int32;
   using nnet3::Nnet;
+
+  typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Copy the model. If it is used with --raw=true then only the raw nnet"
-        " inside the model is copied. Also --set-raw-nnet can be used to "
-        " set the raw nnet inside the model.\n"
-        "Usage:  durmod-copy [options] <in-dur-model> <out-dur-model>\n"
-        "e.g.:\n"
-        "  durmod-copy-nnet --binary=false 0.mdl 1.mdl\n";
+        "Init the nnet3-duration model.\n"
+        "Usage:  nnet3-durmodel-init [options] <durmodel-in> <raw-nnet3-in>"
+        " <nnet3-dur-model-out>\n"
+        "e.g.: \n"
+        "  nnet3-durmodel-init durmodel.mdl nnet.raw 0.mdl";
 
-    bool binary_write = true, raw = false;
-    std::string raw_nnet = "";
+    bool binary_write = true;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
-    po.Register("raw", &raw, "If true, write only 'raw' neural net.");
-    po.Register("set-raw-nnet", &raw_nnet,
-                "Set the raw nnet inside the model to the one provided in "
-                "the option string.");
 
     po.Read(argc, argv);
-    if (po.NumArgs() != 2) {
+    if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    std::string in_model_filename = po.GetArg(1),
-                out_model_filename = po.GetArg(2);
+    std::string in_durmodel_filename = po.GetArg(1),
+                in_nnet_filename = po.GetArg(2),
+                out_model_filename = po.GetArg(3);
+
     PhoneDurationModel durmodel;
-    ReadKaldiObject(in_model_filename, &durmodel);
+    ReadKaldiObject(in_durmodel_filename, &durmodel);
 
-    if (!raw_nnet.empty()) {
-      Nnet nnet;
-      ReadKaldiObject(raw_nnet, &nnet);
-      durmodel.SetNnet(nnet);
-    }
+    Nnet nnet;
+    ReadKaldiObject(in_nnet_filename, &nnet);
 
-    if (raw)
-      WriteKaldiObject(durmodel.GetNnet(), out_model_filename, binary_write);
-    else
-      WriteKaldiObject(durmodel, out_model_filename, binary_write);
+    NnetPhoneDurationModel nnet_dur_model(durmodel, nnet);
+    WriteKaldiObject(nnet_dur_model, out_model_filename, binary_write);
 
-    KALDI_LOG << "Done writing the nnet.";
+    KALDI_LOG << "Done writing the model.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

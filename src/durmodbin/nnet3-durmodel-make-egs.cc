@@ -1,4 +1,4 @@
-// durmodbin/durmod-make-egs.cc
+// durmodbin/nnet3-durmodel-make-egs.cc
 // Copyright 2015 Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -29,11 +29,11 @@ int main(int argc, char *argv[]) {
 
   try {
     const char *usage =
-        "Prepare training examples for the phone duration model.\n"
-        "Usage:  durmod-make-egs [options] <dur-model> <trans-model> "
-        "<alignments-rspecifier> <egs-wspecifier>\n"
+        "Prepare nnet3 training examples for the phone duration model.\n"
+        "Usage:  nnet3-durmodel-make-egs [options] <dur-model> "
+        "<trans-model> <alignments-rspecifier> <egs-wspecifier>\n"
         "e.g.: \n"
-        "  durmod-make-egs durmodel.mdl final.mdl egs:ali.1 ark:1.egs";
+        "  nnet3-durmodel-make-egs durmodel.mdl final.mdl egs:ali.1 ark:1.egs";
     ParseOptions po(usage);
     po.Read(argc, argv);
     if (po.NumArgs() != 4) {
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
                                            example_writer(examples_wspecifier);
     int32 n_done = 0;
     int32 n_egs_done = 0;
-    PhoneDurationEgsMaker egs_maker(durmodel);
+    PhoneDurationFeatureMaker feature_maker(durmodel);
 
 
     for (; !reader.Done(); reader.Next()) {
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
       }
 
       std::vector<NnetExample> egs;
-      egs_maker.AlignmentToNnetExamples(pairs, &egs);
+      AlignmentToNnetExamples(feature_maker, pairs, &egs);
       n_egs_done += egs.size();
       for (int i = 0; i < egs.size(); i++)
         example_writer.Write(key, egs[i]);

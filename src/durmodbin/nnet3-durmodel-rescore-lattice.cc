@@ -1,4 +1,4 @@
-// durmodbin/durmod-rescore-lattice.cc
+// durmodbin/nnet3-durmodel-rescore-lattice.cc
 
 // Copyright 2015 Hossein Hadian
 
@@ -35,10 +35,10 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
       "Rescore a lattice using the scores from a phone duration model.\n"
-      "Usage:  durmod-rescore-lattice [options] <dur-model> <trans-model> "
-      "<lattice-rspecifier> <lattice-wspecifier>\n"
+      "Usage: nnet3-durmodel-rescore-lattice [options] <nnet3-dur-model> "
+      "<trans-model> <lattice-rspecifier> <lattice-wspecifier>\n"
       "e.g.: \n"
-      "durmod-rescore-lattice durmodel.mdl final.mdl "
+      "nnet3-durmodel-rescore-lattice 20.mdl final.mdl "
       "ark:lat.1 ark:rescored_lat.1\n";
 
     BaseFloat lm_scale = 1.0;
@@ -54,16 +54,16 @@ int main(int argc, char *argv[]) {
     }
 
     TransitionModel trans_model;
-    std::string durmodel_filename = po.GetArg(1),
+    std::string nnet_durmodel_filename = po.GetArg(1),
                 model_filename = po.GetArg(2),
                 lats_rspecifier = po.GetArg(3),
                 lats_wspecifier = po.GetOptArg(4);
 
     ReadKaldiObject(model_filename, &trans_model);
-    PhoneDurationModel durmodel;
-    ReadKaldiObject(durmodel_filename, &durmodel);
+    NnetPhoneDurationModel nnet_durmodel;
+    ReadKaldiObject(nnet_durmodel_filename, &nnet_durmodel);
 
-    PhoneDurationScoreComputer durmodel_scorer(durmodel);
+    NnetPhoneDurationScoreComputer durmodel_scorer(nnet_durmodel);
 
     // Read and write as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
@@ -77,18 +77,18 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Rescoring lattice for key " << key;
 
       if (lm_scale != 0.0) {
-
         fst::ScaleLattice(fst::GraphLatticeScale(1.0 / lm_scale), &clat);
         ArcSort(&clat, fst::OLabelCompare<CompactLatticeArc>());
 
         // Insert the phone-id/duration info into the lattice olabels
         DurationModelReplaceLabelsLattice(&clat,
                                           trans_model,
-                                          durmodel.MaxDuration());
+                                          nnet_durmodel.MaxDuration());
 
         // Wrap the duration-model scorer with an on-demand fst
-        PhoneDurationModelDeterministicFst on_demand_fst(durmodel,
-                                                         &durmodel_scorer);
+        PhoneDurationModelDeterministicFst on_demand_fst(
+                                               nnet_durmodel.GetDurationModel(),
+                                               &durmodel_scorer);
 
         // Compose the lattice with the on-demand fst
         CompactLattice composed_clat;

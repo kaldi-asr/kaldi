@@ -1,0 +1,56 @@
+#!/bin/bash
+
+learning_rate=0.001
+natural_gradient=false
+hidden_dim1=
+hidden_dim2=
+
+[ -f ./path.sh ] && . ./path.sh; # source the path.
+. parse_options.sh || exit 1;
+
+if [ $# != 2 ]; then
+   echo "Usage: $0 [options] <input-dim> <output-dim>"
+   echo "e.g.: $0 320 50"
+   exit 1;
+fi
+
+feat_dim=$1
+output_dim=$2
+
+if [ -z $hidden_dim1 ]; then
+  hidden_dim1=$[$feat_dim*3]
+fi
+
+if [ -z $hidden_dim2 ]; then
+  hidden_dim2=$[$output_dim*2]
+fi
+
+if $natural_gradient; then
+  affine_comp="NaturalGradientAffineComponent"
+else
+  affine_comp="AffineComponent"
+fi
+
+
+printf "\
+component name=affine1 type=$affine_comp learning-rate=$learning_rate \
+          param-stddev=0.01 bias-stddev=0 input-dim=$feat_dim output-dim=$hidden_dim1\n\
+component name=relu1 type=RectifiedLinearComponent dim=$hidden_dim1\n\
+component name=norm1 type=NormalizeComponent dim=$hidden_dim1\n\
+component name=affine2 type=$affine_comp learning-rate=$learning_rate \
+          param-stddev=0.01 bias-stddev=0 input-dim=$hidden_dim1 output-dim=$hidden_dim2\n\
+component name=relu2 type=RectifiedLinearComponent dim=$hidden_dim2\n\
+component name=norm2 type=NormalizeComponent dim=$hidden_dim2\n\
+component name=affine3 type=$affine_comp learning-rate=$learning_rate \
+          param-stddev=0.01 bias-stddev=0 input-dim=$hidden_dim2 output-dim=$output_dim\n\
+component name=softmax type=LogSoftmaxComponent dim=$output_dim\n\
+input-node name=input dim=$feat_dim\n\
+component-node name=affine1_node component=affine1 input=input\n\
+component-node name=relu1_node component=relu1 input=affine1_node\n\
+component-node name=norm1_node component=norm1 input=relu1_node\n\
+component-node name=affine2_node component=affine2 input=norm1_node\n\
+component-node name=relu2_node component=relu2 input=affine2_node\n\
+component-node name=norm2_node component=norm2 input=relu2_node\n\
+component-node name=affine3_node component=affine3 input=norm2_node\n\
+component-node name=softmax_node component=softmax input=affine3_node\n\
+output-node name=output input=softmax_node\n"

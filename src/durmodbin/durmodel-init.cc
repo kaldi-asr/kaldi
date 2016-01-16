@@ -1,4 +1,4 @@
-// durmodbin/durmod-init.cc
+// durmodbin/durmodel-init.cc
 
 // Copyright 2015 Hossein Hadian
 
@@ -31,10 +31,10 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage =
         "Init the phone duration model.\n"
-        "Usage:  durmod-init [options] <roots-file> <binary-feature-questions>"
+        "Usage: durmodel-init [options] <roots-file> <binary-feature-questions>"
         " <dur-model>\n"
         "e.g.: \n"
-        "  durmod-init roots.int extra_questions.int durmodel.mdl";
+        "  durmodel-init roots.int extra_questions.int durmodel.mdl";
 
     bool binary_write = true;
 
@@ -64,13 +64,10 @@ int main(int argc, char *argv[]) {
                 << questions_filename;
     }
     KALDI_LOG << "Read " << questions.size() << " phonetic questions";
-    PhoneDurationModel durmod(opts, roots, questions);
-    PhoneDurationEgsMaker egs_maker(durmod);
-    int32 hidden_dim1 = egs_maker.FeatureDim() * 6;
-    durmod.InitNnet(egs_maker.FeatureDim(), hidden_dim1,
-                    egs_maker.OutputDim() * 1.5, egs_maker.OutputDim());
-    // TODO(hhadian): print some nice info
-    WriteKaldiObject(durmod, model_filename, binary_write);
+
+    PhoneDurationModel durmodel(opts, roots, questions);
+    WriteKaldiObject(durmodel, model_filename, binary_write);
+
     KALDI_LOG << "Done writing the model.";
   } catch(const std::exception &e) {
     std::cerr << e.what();
