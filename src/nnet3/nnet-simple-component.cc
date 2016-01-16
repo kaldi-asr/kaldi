@@ -937,7 +937,8 @@ RepeatedAffineComponent::RepeatedAffineComponent(const RepeatedAffineComponent &
     UpdatableComponent(component),
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_),
-    num_repeats_(component.num_repeats_) {}
+    num_repeats_(component.num_repeats_),
+    fast_mode_(component.fast_mode_){}
 
 
 void RepeatedAffineComponent::Scale(BaseFloat scale) {
@@ -975,7 +976,8 @@ void RepeatedAffineComponent::PerturbParams(BaseFloat stddev){
 std::string RepeatedAffineComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info()
-         << ", num-repeats=" << num_repeats_;
+         << ", num-repeats=" << num_repeats_
+         << ", fast-mode=" << std::boolalpha << fast_mode_;
   PrintParameterStats(stream, "linear-params", linear_params_);
   PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
@@ -995,7 +997,7 @@ BaseFloat RepeatedAffineComponent::DotProduct(const UpdatableComponent &other_in
 
 void RepeatedAffineComponent::Init(int32 input_dim, int32 output_dim, int32 num_repeats,
                                    BaseFloat param_stddev, BaseFloat bias_mean,
-                                   BaseFloat bias_stddev) {
+                                   BaseFloat bias_stddev, bool fast_mode) {
   KALDI_ASSERT(input_dim % num_repeats == 0 && output_dim % num_repeats == 0);
   linear_params_.Resize(output_dim / num_repeats, input_dim / num_repeats);
   bias_params_.Resize(output_dim / num_repeats);
@@ -1003,9 +1005,14 @@ void RepeatedAffineComponent::Init(int32 input_dim, int32 output_dim, int32 num_
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
   linear_params_.SetRandn(); // sets to random normally distributed noise.
   linear_params_.Scale(param_stddev);
+
   bias_params_.SetRandn();
+
   bias_params_.Scale(bias_stddev);
   bias_params_.Add(bias_mean);
+
+  fast_mode_ = fast_mode;
+
   SetNaturalGradientConfigs();
 }
 
@@ -1022,13 +1029,16 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
                "num-repeats must divide input-dim");
   KALDI_ASSERT(output_dim % num_repeats == 0 &&
                "num-repeats must divide output-dim");
+  // Parse optional parameters:
   BaseFloat param_stddev = 1.0 / std::sqrt(input_dim / num_repeats),
       bias_mean = 0.0, bias_stddev = 0.0;
+  bool fast_mode = false;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-mean", &bias_mean);
   cfl->GetValue("bias-stddev", &bias_stddev);
+  cfl->GetValue("fast-mode", &fast_mode);
   Init(input_dim, output_dim,
-       num_repeats, param_stddev, bias_mean, bias_stddev);
+       num_repeats, param_stddev, bias_mean, bias_stddev, fast_mode);
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
 	          << cfl->UnusedValues();
@@ -1036,9 +1046,80 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
+void RepeatedAffineComponent::FastPropagate(const ComponentPrecomputedIndexes *indexes,
+                                            const CuMatrixBase<BaseFloat> &in,
+                                            CuMatrixBase<BaseFloat> *out) const {
+  // the following renaming is for sanity's sake.
+  int32 batch_size = in.NumRows();
+  int32 num_groups = num_repeats_;
+  int32 in_group_size = linear_params_.NumCols();
+  int32 out_group_size = linear_params_.NumRows();
+  /*
+   * In this method we take advantage of the fact that in can be viewed as a
+   * 3-tensor of dimension batch_size X num_groups X in_group_size, with
+   * the last two dimensions packed into is row dimension
+   * (i.e., batch_size X num_groups * in_group_size)
+   * By repacking the first two dimensions into a temporary matrix's row
+   * dimension, (so that it is, batch_size * num_groups X in_group_size)
+   * we can accomplish transforming everything by linear_params_ in a single
+   * matrix multiply.
+   *
+   * This is the general approach taken throughout the "fast" methods.
+   * The temporary matrices are always suffixed with "_3tensor".
+   */
+
+  // We initialize to kUndefined because the initial values will never be
+  // accessed.
+  CuMatrix<BaseFloat> in_3tensor(batch_size * num_groups,
+                                 in_group_size, kUndefined);
+  CuMatrix<BaseFloat> out_3tensor(batch_size * num_groups,
+                                  out_group_size, kUndefined);
+
+  { // 1) Reshape in to in_3tensor
+  int32 xdim = batch_size,
+    ydim = num_groups,
+    zdim = in_group_size,
+    src_xstride = in.Stride(),
+    src_ystride = in_group_size,
+    src_zstride = 1,
+    dst_xstride = in_3tensor.Stride() * num_groups,
+    dst_ystride = in_3tensor.Stride(),
+    dst_zstride = 1;
+  Tensor3dCopy(xdim, ydim, zdim,
+               src_xstride, src_ystride, src_zstride,
+               dst_xstride, dst_ystride, dst_zstride,
+               in.Data(), in_3tensor.Data());
+  } // end 1)
+
+  // 2) add bias vector.
+  out_3tensor.CopyRowsFromVec(bias_params_);
+  // 3) matrix multiply
+  out_3tensor.AddMatMat(1.0, in_3tensor, kNoTrans, linear_params_, kTrans, 1.0);
+
+  { // 4) copy out_3tensor to out
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = out_group_size,
+      src_xstride = out_3tensor.Stride() * num_groups,
+      src_ystride = out_3tensor.Stride(),
+      src_zstride = 1,
+      dst_xstride = out->Stride(),
+      dst_ystride = out_group_size,
+      dst_zstride = 1;
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 out_3tensor.Data(), out->Data());
+  } // end 4)
+}
+
 void RepeatedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                         const CuMatrixBase<BaseFloat> &in,
                                         CuMatrixBase<BaseFloat> *out) const {
+  if(fast_mode_) {
+    FastPropagate(indexes, in, out);
+    return;
+  }
 
   // No need for asserts as they'll happen within the matrix operations.
   int32 block_rows = linear_params_.NumRows();
@@ -1074,6 +1155,73 @@ void RepeatedAffineComponent::Propagate(const ComponentPrecomputedIndexes *index
   DeletePointers(&out_batch);
 }
 
+void RepeatedAffineComponent::FastBackprop(const std::string &debug_info,
+                                           const CuMatrixBase<BaseFloat> &out_deriv,
+                                           CuMatrixBase<BaseFloat> *in_deriv) const  {
+  int32 batch_size = out_deriv.NumRows();
+  int32 num_groups = num_repeats_;
+  int32 in_group_size = linear_params_.NumCols();
+  int32 out_group_size = linear_params_.NumRows();
+
+  CuMatrix<BaseFloat> out_deriv_3tensor(batch_size * num_groups,
+                                        out_group_size, kUndefined);
+  { // 1) Reshape out_deriv to out_deriv_3tensor
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = out_group_size,
+      src_xstride = out_deriv.Stride(),
+      src_ystride = out_group_size,
+      src_zstride = 1,
+      dst_xstride = out_deriv_3tensor.Stride() * num_groups,
+      dst_ystride = out_deriv_3tensor.Stride(),
+      dst_zstride = 1;
+
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 out_deriv.Data(), out_deriv_3tensor.Data());
+  } // end 1)
+
+  CuMatrix<BaseFloat> in_deriv_3tensor(batch_size * num_groups, in_group_size, kUndefined);
+  { // 2) Copy in_deriv to in_deriv_3tensor.
+    // Must do this because kBackpropAdds is true
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = in_group_size,
+      src_xstride = in_deriv->Stride(),
+      src_ystride = in_group_size,
+      src_zstride = 1,
+      dst_xstride = in_deriv_3tensor.Stride() * num_groups,
+      dst_ystride = in_deriv_3tensor.Stride(),
+      dst_zstride = 1;
+
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 in_deriv->Data(), in_deriv_3tensor.Data());
+  } // end 2)
+
+  // 3) Calculate input derivative from output derivative
+  in_deriv_3tensor.AddMatMat(1.0, out_deriv_3tensor, kNoTrans, linear_params_, kNoTrans, 1.0);
+
+  { // 4) Reshape in_deriv_3tensor to in_deriv
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = in_group_size,
+      src_xstride = in_deriv_3tensor.Stride() * num_groups,
+      src_ystride = in_deriv_3tensor.Stride(),
+      src_zstride = 1,
+      dst_xstride = in_deriv->Stride(),
+      dst_ystride = in_group_size,
+      dst_zstride = 1;
+
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 in_deriv_3tensor.Data(), in_deriv->Data());
+  } // end 4)
+}
+
 void RepeatedAffineComponent::Backprop(const std::string &debug_info,
                                        const ComponentPrecomputedIndexes *indexes,
                                        const CuMatrixBase<BaseFloat> &in_value,
@@ -1081,44 +1229,106 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
                                        const CuMatrixBase<BaseFloat> &out_deriv,
                                        Component *to_update_in,
                                        CuMatrixBase<BaseFloat> *in_deriv) const {
-  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(to_update_in);
-
-  // Propagate the derivative back to the input.
-  // add with coefficient 1.0 since property kBackpropAdds is true.
-  // If we wanted to add with coefficient 0.0 we'd need to zero the
-  // in_deriv, in case of infinities.
-  if (in_deriv) {
-    int32 block_rows = linear_params_.NumRows();
-	int32 block_cols = linear_params_.NumCols();
-	std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch,
+  // data derivative. Model derivative below.
+  if(fast_mode_ && in_deriv != NULL) {
+    FastBackprop(debug_info, out_deriv, in_deriv);
+  } else { // slow method.
+    // Propagate the derivative back to the input.
+    // add with coefficient 1.0 since property kBackpropAdds is true.
+    // If we wanted to add with coefficient 0.0 we'd need to zero the
+    // in_deriv, in case of infinities.
+    if (in_deriv) {
+      int32 block_rows = linear_params_.NumRows();
+      int32 block_cols = linear_params_.NumCols();
+      std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch,
         linear_params_batch;
-	CuSubMatrix<BaseFloat>* params_elem =
+      CuSubMatrix<BaseFloat>* params_elem =
 	    new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
 
-    //split the out_deriv and the in_deriv mat into blocks.
-    for (int i = 0; i < num_repeats_; i++) {
-      in_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(in_deriv->ColRange(
-	                           i * block_cols, block_cols)));
-      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
-	                            i * block_rows, block_rows)));
-      linear_params_batch.push_back(params_elem);
-    }
+      //split the out_deriv and the in_deriv mat into blocks.
+      for (int i = 0; i < num_repeats_; i++) {
+        in_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(in_deriv->ColRange(
+                                  i * block_cols, block_cols)));
+        out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
+                                  i * block_rows, block_rows)));
+        linear_params_batch.push_back(params_elem);
+      }
 
-    AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
-                                linear_params_batch, kNoTrans, 1.0);
-    delete params_elem;
-    DeletePointers(&in_deriv_batch);
-    DeletePointers(&out_deriv_batch);
+      AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
+                                  linear_params_batch, kNoTrans, 1.0);
+      delete params_elem;
+      DeletePointers(&in_deriv_batch);
+      DeletePointers(&out_deriv_batch);
+    }
   }
 
+
+  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(to_update_in);
   // Next update the model (must do this 2nd so the derivatives we propagate are
   // accurate, in case this == to_update_in.)
   if (to_update != NULL)
     to_update->Update(in_value, out_deriv);
 }
 
+void RepeatedAffineComponent::FastUpdate(const CuMatrixBase<BaseFloat> &in_value,
+                                         const CuMatrixBase<BaseFloat> &out_deriv) {
+  int32 batch_size = in_value.NumRows();
+  int32 num_groups = num_repeats_;
+  int32 in_group_size = in_value.NumCols() / num_groups;
+  int32 out_group_size = out_deriv.NumCols() / num_groups;
+  CuMatrix<BaseFloat> in_value_3tensor(batch_size * num_groups, in_group_size, kUndefined);
+  CuMatrix<BaseFloat> out_deriv_3tensor(batch_size * num_groups, out_group_size, kUndefined);
+
+  { // copy in_value to in_value_3tensor
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = in_group_size,
+      src_xstride = in_value.Stride(),
+      src_ystride = in_group_size,
+      src_zstride = 1,
+      dst_xstride = in_value_3tensor.Stride() * num_groups,
+      dst_ystride = in_value_3tensor.Stride(),
+      dst_zstride = 1;
+
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 in_value.Data(), in_value_3tensor.Data());
+  } // end copy in_value to in_value_3tensor
+
+  { // copy out_deriv to out_deriv_3tensor
+    int32 xdim = batch_size,
+      ydim = num_groups,
+      zdim = out_group_size,
+      src_xstride = out_deriv.Stride(),
+      src_ystride = out_group_size,
+      src_zstride = 1,
+      dst_xstride = out_deriv_3tensor.Stride() * num_groups,
+      dst_ystride = out_deriv_3tensor.Stride(),
+      dst_zstride = 1;
+
+    Tensor3dCopy(xdim, ydim, zdim,
+                 src_xstride, src_ystride, src_zstride,
+                 dst_xstride, dst_ystride, dst_zstride,
+                 out_deriv.Data(), out_deriv_3tensor.Data());
+  } // end copy out_deriv_to_out_deriv_3tensor
+
+
+  // do updates
+  linear_params_.AddMatMat(learning_rate_, out_deriv_3tensor, kTrans,
+                           in_value_3tensor, kNoTrans, 1.0);
+
+  bias_params_.AddRowSumMat(learning_rate_,
+                            out_deriv_3tensor, 1.0);
+  // end do updates
+}
+
 void RepeatedAffineComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
                                      const CuMatrixBase<BaseFloat> &out_deriv) {
+  if (fast_mode_) {
+    FastUpdate(in_value, out_deriv);
+    return;
+  }
   int32 block_rows = linear_params_.NumRows();
   int32 block_cols = linear_params_.NumCols();
   std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
@@ -1199,7 +1409,22 @@ void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
   bias_params_.Read(is, binary);
   ExpectToken(is, binary, "<IsGradient>");
   ReadBasicType(is, binary, &is_gradient_);
-  ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
+  // backwards compatibility code: fast_mode_ was not in the original
+  // RepeatedAffineComponent
+  std::string next_tag;
+  ReadToken(is, binary, &next_tag);
+  // ReadToken advances the input
+  if(next_tag == "<FastMode>") {
+    ReadBasicType(is, binary, &fast_mode_);
+    ExpectToken(is, binary, std::string("</") + Type() + std::string(">"));
+  } else {
+    fast_mode_ = true;
+    // Creating a stream is a longwinded way to replicate
+    // previous behavior by being able to call ExpectToken().
+    std::stringstream ss(next_tag);
+    ExpectToken(ss, binary, std::string("</") + Type() + std::string(">"));
+  }
+  // end backwards compatibility code.
   SetNaturalGradientConfigs();
 }
 
@@ -1214,6 +1439,8 @@ void RepeatedAffineComponent::Write(std::ostream &os, bool binary) const {
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<IsGradient>");
   WriteBasicType(os, binary, is_gradient_);
+  WriteToken(os, binary, "<FastMode>");
+  WriteBasicType(os, binary, fast_mode_);
   // write closing token.
   WriteToken(os, binary, std::string("</") + Type() + std::string(">"));
 }
@@ -1262,6 +1489,11 @@ Component* NaturalGradientRepeatedAffineComponent::Copy() const {
 void NaturalGradientRepeatedAffineComponent::Update(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
+
+  if (fast_mode_) {
+    KALDI_WARN << "Fast mode is not implemented for " 
+      "NaturalGradientRepeatedAffineComponent right now.";
+  }
   int32 block_rows = linear_params_.NumRows();
   int32 block_cols = linear_params_.NumCols();
   std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,

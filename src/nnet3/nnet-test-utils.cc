@@ -834,10 +834,14 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 27);
+  int32 n = RandInt(0, 28);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
+  // The below line makes booleans print as "true" and "false" instead of
+  // "1" and "0". The former format is expected by 
+  // ConfigLine::GetValue(string, bool)
+  os.setf(std::ios_base::boolalpha);
   switch(n) {
     case 0: {
       *component_type = "PnormComponent";
@@ -1098,6 +1102,22 @@ static void GenerateRandomComponentConfig(std::string *component_type,
           output_dim = num_repeats * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 28: {
+      *component_type = "RepeatedAffineComponent";
+      int32 num_repeats = RandInt(1, 50),
+          input_dim = num_repeats * RandInt(1, 15),
+          output_dim = num_repeats * RandInt(1, 15);
+      bool fast_mode;
+      if (RandInt(0,1) == 1) {
+        fast_mode = true;
+      } else {
+        fast_mode = false;
+      }
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-repeats=" << num_repeats
+         << " fast-mode=" << fast_mode;
       break;
     }
     default:

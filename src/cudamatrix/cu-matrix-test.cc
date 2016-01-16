@@ -2425,6 +2425,27 @@ static void UnitTestCuMatrixEqualElementMask() {
 
 }
 
+// This is a test on vectors but I put it here because Tensor3dCopy()
+// is in cu-matrix.h
+template<typename Real>
+static void UnitTestTensor3dCopy() {
+  int32 dim_x = RandInt(1, 10), dim_y = RandInt(1, 5), dim_z = RandInt(1, 5);
+  CuVector<Real> vec(dim_x * dim_y * dim_z), vec2(dim_x * dim_y * dim_z);
+  vec.SetRandn();
+
+  CuVector<Real> vec_rearranged(dim_x * dim_y * dim_z);
+  Tensor3dCopy(dim_x, dim_y, dim_z,
+               1, dim_x, dim_x * dim_y,
+               dim_y * dim_z, dim_z, 1,
+               vec.Data(), vec_rearranged.Data());
+  Tensor3dCopy(dim_x, dim_y, dim_z,
+               dim_y * dim_z, dim_z, 1,
+               1, dim_x, dim_x * dim_y,
+               vec_rearranged.Data(), vec2.Data());
+  AssertEqual(vec, vec2);
+}
+
+
 template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixTraceMatMat<Real>();
   UnitTestCuMatrixObjfDeriv<Real>();
@@ -2522,6 +2543,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuDiffTanh<Real>();
   UnitTestCuVectorAddTpVec<Real>();
   UnitTestCuVectorMulTp<Real>();
+  UnitTestTensor3dCopy<Real>();
 }
 
 

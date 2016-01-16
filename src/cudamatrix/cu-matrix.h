@@ -469,6 +469,7 @@ class CuMatrixBase {
                      MatrixTransposeType trans = kNoTrans);
   void CopyLowerToUpper();
   void CopyUpperToLower();
+
   inline CuSubMatrix<Real> Range(const MatrixIndexT row_offset,
                                  const MatrixIndexT num_rows,
                                  const MatrixIndexT col_offset,
@@ -793,6 +794,18 @@ void MatrixBase<Real>::CopyFromMat(const CuMatrixBase<OtherReal> &cu,
                                    MatrixTransposeType trans) {
   cu.CopyToMat(this, trans);
 }
+
+
+/**
+ * Tensor3dCopy is a low-level function. It can be used on both matrices
+ * and vectors.
+ */
+template<typename Real>
+void Tensor3dCopy(int32 xdim, int32 ydim, int32 zdim,
+                  int32 src_xstride, int32 src_ystride, int32 src_zstride,
+                  int32 dst_xstride, int32 dst_ystride, int32 dst_zstride,
+                  const Real *src, Real *dst);
+
 
 
 }  // namespace
