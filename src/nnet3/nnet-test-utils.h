@@ -1,7 +1,7 @@
 // nnet3/nnet-test-utils.h
 
 // Copyright   2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright   2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +59,11 @@ struct NnetGenerationOptions {
 void GenerateConfigSequence(const NnetGenerationOptions &opts,
                             std::vector<std::string> *configs);
 
+/// Generate a config string with a composite component composed only
+/// of block affine, repeated affine, and natural gradient repeated affine
+/// components.
+void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
+                                          std::vector<std::string> *configs);
 
 /**  This function computes an example computation request, for testing purposes.
      The "Simple" in the name means that it currently only supports neural nets

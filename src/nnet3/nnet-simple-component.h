@@ -389,109 +389,7 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
-class RepeatedAffineComponent: public UpdatableComponent {
- public:
-
-  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
-  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-
-  RepeatedAffineComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "RepeatedAffineComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-	     kBackpropNeedsInput|kBackpropAdds;
-  }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
-  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
-
-  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
-            BaseFloat param_stddev, BaseFloat bias_mean,
-            BaseFloat bias_stddev);
-
- protected:
-  // This function Update(), called from backprop, is broken out for
-  // extensibility to natural gradient update.
-  virtual void Update(
-      const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);
-
-  // This function does nothing here but is redefined in child-class
-  // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
-  virtual void SetNaturalGradientConfigs() { }
-
-  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
-  CuMatrix<BaseFloat> linear_params_;
-  CuVector<BaseFloat> bias_params_;
-  int32 num_repeats_;
-};
-
-class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
- public:
-  // Use Init() to really initialize.
-  NaturalGradientRepeatedAffineComponent() { }
-
-  // Most of the public functions are inherited from RepeatedAffineComponent.
-  virtual std::string Type() const {
-    return "NaturalGradientRepeatedAffineComponent";
-  }
-
-  virtual Component* Copy() const;
-
-  // Copy constructor
-  explicit NaturalGradientRepeatedAffineComponent(
-      const NaturalGradientRepeatedAffineComponent &other);
- private:
-  virtual void Update(
-      const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);
-
-  const NaturalGradientRepeatedAffineComponent &operator=(
-      const NaturalGradientRepeatedAffineComponent &other); // Disallow.
-
-  // Applies the default configuration to preconditioner_in_.
-  virtual void SetNaturalGradientConfigs();
-
-  // For efficiency reasons we only apply the natural gradient to the input
-  // side, i.e. not to the space of output derivatives-- we believe the input
-  // side is the more important side.  We don't make the natural-gradient
-  // configurable; we just give it a reasonable configuration.
-  // Instead of using the individual data-points, for efficiency reasons we use
-  // the distribution of per-minibatch summed derivatives over each dimension of
-  // the output space, as the source for the Fisher matrix.
-  OnlineNaturalGradient preconditioner_in_;
-};
-
+class RepeatedAffineComponent;
 
 /// This class implements an affine transform using a block diagonal matrix
 /// e.g., one whose weight matrix is all zeros except for blocks on the
@@ -547,6 +445,7 @@ class BlockAffineComponent : public UpdatableComponent {
             BaseFloat param_stddev, BaseFloat bias_mean,
             BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
+  explicit BlockAffineComponent(const RepeatedAffineComponent &rac);
  protected:
   // The matrix linear_params_ has a block structure, with num_blocks_ blocks of
   // equal size.  The blocks are stored in linear_params_ as
@@ -561,6 +460,109 @@ class BlockAffineComponent : public UpdatableComponent {
   int32 num_blocks_;
  private:
   const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
+};
+
+class RepeatedAffineComponent: public UpdatableComponent {
+ public:
+
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  RepeatedAffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "RepeatedAffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+	     kBackpropNeedsInput|kBackpropAdds;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
+
+  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
+  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
+ protected:
+  // This function Update(), called from backprop, is broken out for
+  // extensibility to natural gradient update.
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  // This function does nothing here but is redefined in child-class
+  // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
+  virtual void SetNaturalGradientConfigs() { }
+
+  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  int32 num_repeats_;
+};
+
+class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
+ public:
+  // Use Init() to really initialize.
+  NaturalGradientRepeatedAffineComponent() { }
+
+  // Most of the public functions are inherited from RepeatedAffineComponent.
+  virtual std::string Type() const {
+    return "NaturalGradientRepeatedAffineComponent";
+  }
+
+  virtual Component* Copy() const;
+
+  // Copy constructor
+  explicit NaturalGradientRepeatedAffineComponent(
+      const NaturalGradientRepeatedAffineComponent &other);
+ private:
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  const NaturalGradientRepeatedAffineComponent &operator=(
+      const NaturalGradientRepeatedAffineComponent &other); // Disallow.
+
+  // Applies the default configuration to preconditioner_in_.
+  virtual void SetNaturalGradientConfigs();
+
+  // For efficiency reasons we only apply the natural gradient to the input
+  // side, i.e. not to the space of output derivatives-- we believe the input
+  // side is the more important side.  We don't make the natural-gradient
+  // configurable; we just give it a reasonable configuration.
+  // Instead of using the individual data-points, for efficiency reasons we use
+  // the distribution of per-minibatch summed derivatives over each dimension of
+  // the output space, as the source for the Fisher matrix.
+  OnlineNaturalGradient preconditioner_in_;
 };
 
 class SoftmaxComponent: public NonlinearComponent {
@@ -1643,7 +1645,7 @@ class MaxpoolingComponent: public Component {
 };
 
 /**
-   CompositeComponent is components representing a sequence of
+   CompositeComponent is a component representing a sequence of
    [simple] components.  The config line would be something like the following
    (imagine this is all on one line):
 
@@ -1659,6 +1661,10 @@ class MaxpoolingComponent: public Component {
    much memory for very long (and you can make the memory usage very small by
    making max-rows-process small).  We inherit from UpdatableComponent just in
    case one or more of the components in the sequence are updatable.
+
+   It is an error to nest a CompositeComponent inside a CompositeComponent.
+   The same effect can be accomplished by specifying a smaller max-rows-process
+   in a single CompositeComponent.
  */
 class CompositeComponent: public UpdatableComponent {
  public:
@@ -1723,6 +1729,18 @@ class CompositeComponent: public UpdatableComponent {
   // expensive; instead, by default we call StoreStats() for any components that
   // want to store stats, as part of the backprop pass.  This is not 100% ideal
   // but it will usually do what you want.  We can revisit this later if needed.
+
+  // Functions to iterate over the internal components
+
+  int32 NumComponents() const { return components_.size();}
+  /// Gets the ith component in this component.
+  /// The ordering is the same as in the config line. The caller
+  /// does not own the received component.
+  const Component* GetComponent(int32 i) const;
+  /// Sets the ith component. After this call, CompositeComponent owns
+  /// the reference to the argument component. Frees the previous
+  /// ith component.
+  void SetComponent(int32 i, Component *component);
 
   virtual ~CompositeComponent() { DeletePointers(&components_); }
  protected:

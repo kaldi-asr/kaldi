@@ -1369,6 +1369,25 @@ BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
   bias_params_(other.bias_params_),
   num_blocks_(other.num_blocks_) {}
 
+BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac) :
+  UpdatableComponent(rac),
+  linear_params_(rac.num_repeats_ * rac.linear_params_.NumRows(),
+                 rac.linear_params_.NumCols(), kUndefined),
+  bias_params_(rac.num_repeats_ * rac.linear_params_.NumRows(), kUndefined),
+  num_blocks_(rac.num_repeats_) {
+  // copy rac's linear_params_ and bias_params_ to this.
+  int32 num_rows_in_block = rac.linear_params_.NumRows();
+  for(int32 block_counter = 0; block_counter < num_blocks_; block_counter++) {
+    int32 row_offset = block_counter * num_rows_in_block;
+    CuSubMatrix<BaseFloat> block = this->linear_params_.RowRange(row_offset,
+                                                                 num_rows_in_block);
+    block.CopyFromMat(rac.linear_params_);
+    CuSubVector<BaseFloat> block_bias = this->bias_params_.Range(row_offset,
+                                                                 num_rows_in_block);
+    block_bias.CopyFromVec(rac.bias_params_);
+  }
+}
+
 Component* BlockAffineComponent::Copy() const {
   BlockAffineComponent *ans = new BlockAffineComponent(*this);
   return ans;
@@ -4826,6 +4845,15 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
                 << "(or undefined or bad component type [type=xxx]), in "
                 << "CompositeComponent config line '" << cfl->WholeLine() << "'";
     }
+    if(this_component->Type() == "CompositeComponent") {
+      DeletePointers(&components);
+      delete this_component;
+      KALDI_ERR << "Found CompositeComponent nested within CompositeComponent."
+                << "Try decreasing max-rows-process instead."
+                << "Nested line: '" << nested_line.WholeLine() << "'\n"
+                << "Toplevel CompositeComponent line '" << cfl->WholeLine()
+                << "'";
+    }
     this_component->InitFromConfig(&nested_line);
     components.push_back(this_component);
   }
@@ -4835,7 +4863,16 @@ void CompositeComponent::InitFromConfig(ConfigLine *cfl) {
   this->Init(components, max_rows_process);
 }
 
+const Component* CompositeComponent::GetComponent(int32 i) const {
+  KALDI_ASSERT(static_cast<size_t>(i) < components_.size());
+  return components_[i];
+}
 
+void CompositeComponent::SetComponent(int32 i, Component *component) {
+  KALDI_ASSERT(static_cast<size_t>(i) < components_.size());
+  delete components_[i];
+  components_[i] = component;
+}
 
 } // namespace nnet3
 } // namespace kaldi
