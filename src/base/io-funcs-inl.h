@@ -101,7 +101,7 @@ inline void WriteIntegerPairVector(std::ostream &os, bool binary,
     KALDI_ASSERT((size_t)vecsz == v.size());
     os.write(reinterpret_cast<const char *>(&vecsz), sizeof(vecsz));
     if (vecsz != 0) {
-      os.write(reinterpret_cast<const char *>(&(v[0])), sizeof(T)*vecsz*2);
+      os.write(reinterpret_cast<const char *>(&(v[0])), sizeof(T) * vecsz * 2);
     }
   } else {
     // focus here is on prettiness of text form rather than
@@ -109,7 +109,8 @@ inline void WriteIntegerPairVector(std::ostream &os, bool binary,
     // reading-in is dominated by low-level operations anyway:
     // for efficiency use binary.
     os << "[ ";
-    typename std::vector<std::pair<T, T> >::const_iterator iter = v.begin(), end = v.end();
+    typename std::vector<std::pair<T, T> >::const_iterator iter = v.begin(),
+                                                            end = v.end();
     for (; iter != end; ++iter) {
       if (sizeof(T) == 1)
         os << static_cast<int16>(iter->first) << ','
