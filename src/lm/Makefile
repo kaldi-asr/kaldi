@@ -10,10 +10,10 @@ MATHLIB = NONE
 
 include ../kaldi.mk
 
-TESTFILES = lm-lib-test
+TESTFILES = arpa-file-parser-test lm-lib-test
 
-OBJFILES = const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o kaldi-rnnlm.o \
-           mikolov-rnnlm-lib.o
+OBJFILES = arpa-file-parser.o const-arpa-lm.o kaldi-lmtable.o kaldi-lm.o \
+	   kaldi-rnnlm.o mikolov-rnnlm-lib.o
 
 TESTOUTPUTS = composed.fst output.fst output1.fst output2.fst
 
