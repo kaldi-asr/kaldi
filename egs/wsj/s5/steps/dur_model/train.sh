@@ -2,14 +2,15 @@
 
 # Copyright 2015 Hossein Hadian
 
-num_epochs=15
+num_epochs=20
 minibatch_size=512
-compute_prob_interval=2
+compute_prob_interval=1
+num_epochs_per_iter=1
 nnet_config=
 cmd=run.pl
 use_gpu=true    # if true, we run on GPU.
-stage=0
-
+stage=-2
+shuffle_buffer_size=5000
 egs_opts=
 nnet_opts=
 max_duration=0
@@ -43,7 +44,7 @@ dir=$3
 durmodel=$dir/durmodel.mdl
 mkdir -p $dir/log
 
-if [ $stage -le 0 ]; then
+if [ $stage -le -2 ]; then
   echo "$0: Initializing the duration model and nnet..."
 
   transmodel=$alidir/final.mdl
@@ -83,74 +84,79 @@ if [ $stage -le 0 ]; then
 
 fi
 
-if [ $stage -le 1 ]; then
+if [ $stage -le -1 ]; then
   echo "$0: Preparing examples..."
-  steps/dur_model/get_examples.sh --cmd $cmd $egs_opts $alidir $dir || exit 1;
+  steps/dur_model/get_examples.sh --cmd $cmd --shuffle-buffer-size $shuffle_buffer_size $egs_opts $alidir $dir || exit 1;
 fi
 
 
-if [ $stage -le 2 ]; then
+[ ! -f $durmodel ] && echo "$0: Duration model file not found (have you completed stage -2?): $durmodel" && exit 1;
+[ ! -f $dir/train.egs ] && echo "$0: Train examples file not found (have you completed stage -1?): $dir/train.egs" && exit 1;
+[ ! -f $dir/val.egs ] && echo "$0: Validation examples file not found (have you completed stage -1?): $dir/val.egs" && exit 1;
 
-  [ ! -f $durmodel ] && echo "$0: Duration model file not found (have you completed stage 0?): $durmodel" && exit 1;
-  [ ! -f $dir/train.egs ] && echo "$0: Train examples file not found (have you completed stage 1?): $dir/train.egs" && exit 1;
-  [ ! -f $dir/val.egs ] && echo "$0: Validation examples file not found (have you completed stage 1?): $dir/val.egs" && exit 1;
-
-  if $use_gpu; then
-    train_queue_opt="--gpu 1"
-    if [ $cmd != "queue.pl" ]; then
-      echo "$0: WARNING: you are running on GPU but you are not using queue.pl."
-      echo -n "Are you sure you are not in a cluster? (if yes press ENTER, else Ctrl-c)"
-      read OK
-    fi
-    if ! cuda-compiled; then
-      echo "$0: WARNING: you are running with one thread but you have not compiled"
-      echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
-      echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
-      exit 1
-    fi
-  else
-    parallel_train_opts="--use-gpu=no"
+if $use_gpu; then
+  train_queue_opt="--gpu 1"
+  if ! cuda-compiled; then
+    echo "$0: WARNING: you are running with one thread but you have not compiled"
+    echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
+    echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
+    exit 1
   fi
+else
+  parallel_train_opts="--use-gpu=no"
+fi
 
-  # TODO(hhadian): config is appiled here. Should it be moved to stage 0?
-  # At stage 0, the user does not know the feat dim and ouput dim.
+if [ $stage -le 0 ]; then  # do the nnet-related initializations only if stage<=0
+  stage=0
   if [[ ! -z $nnet_config ]]; then
-    echo "$0: Using provided config file for nnet."
+    echo "$0: Using provided config file for nnet: $nnet_config"
   else
     nnet_config=$dir/nnet.conf
-    feat_dim=$(durmodel-info $durmodel | grep feature-dim | awk '{ print $2 }')
-    output_dim=$(durmodel-info $durmodel | grep max-duration | awk '{ print $2 }')
+    feat_dim=$(durmodel-info $durmodel | grep feature-dim | awk '{ print $2 }') || exit 1;
+    output_dim=$(durmodel-info $durmodel | grep max-duration | awk '{ print $2 }') || exit 1;
     steps/dur_model/make_nnet_config.sh $nnet_opts $feat_dim $output_dim >$nnet_config
     echo "$0: Wrote nnet config to "$nnet_config
   fi
-
   $cmd $dir/log/nnet_init.log \
        nnet3-init $nnet_config $dir/nnet.raw || exit 1;
-  $cmd $dir/log/durmod_set_raw_nnet.log \
+  $cmd $dir/log/nnet_durmodel_init.log \
        nnet3-durmodel-init $durmodel $dir/nnet.raw $dir/0.mdl || exit 1;
+else
+  [ ! -f $dir/$stage.mdl ] && echo "$0: Nnet-duration model file not found (you provided --stage=$stage): $dir/$stage.mdl" && exit 1;
+fi
 
-  for epoch in $(seq 0 $[$num_epochs-1]); do
-    echo "Epoch: "$epoch
-    curr_mdl=$dir/$[$epoch].mdl
-    next_mdl=$dir/$[$epoch+1].mdl
+num_examples=`cat $dir/num_examples` || num_examples=1
+num_epochs_per_iter=$[40000000/$num_examples]
+[[ $num_epochs_per_iter == 0 ]] && num_epochs_per_iter=1
+[[ $num_epochs_per_iter -gt 8 ]] && num_epochs_per_iter=8
+num_iterations=$[$num_epochs/$num_epochs_per_iter]
 
-    $cmd $train_queue_opt $dir/log/train_$epoch.log \
-         nnet3-train $parallel_train_opts "nnet3-durmodel-copy --raw=true $curr_mdl -|" \
-              "ark:nnet3-shuffle-egs --srand=$epoch \
-              'ark:for n in 1 2 3 4 5; do cat $dir/train.egs; done |' ark:-| \
-              nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
-              $dir/nnet.raw || exit 1;
+echo "$0: Number of epochs per each iteration is $num_epochs_per_iter"
+echo "$0: Will train from iteration $stage through iteration $[$num_iterations-1] ..."
 
-    # grep Overall $dir/log/train_$epoch.log
-    $cmd $dir/log/durmod_set_raw_nnet.log \
-         nnet3-durmodel-copy --set-raw-nnet=$dir/nnet.raw $curr_mdl $next_mdl
+for iter in $(seq $stage $[$num_iterations-1]); do
+  echo "Iteration: "$iter
+  curr_mdl=$dir/$[$iter].mdl
+  next_mdl=$dir/$[$iter+1].mdl
+  
+  train_egs="ark:for n in $(seq -s ' ' $num_epochs_per_iter); do cat $dir/train.egs; done |"
+  $cmd $train_queue_opt $dir/log/train_$iter.log \
+       nnet3-train $parallel_train_opts "nnet3-durmodel-copy --raw=true $curr_mdl -|" \
+            "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$iter \
+            '$train_egs' ark:-| \
+            nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
+            $dir/nnet.raw || exit 1;
 
-    if [[ $[$epoch%$compute_prob_interval] == 0 ]]; then
-      $cmd $dir/log/compute_prob_$[$epoch+1].log \
-         nnet3-compute-prob $dir/nnet.raw \
-         "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" \
-         && grep -o -H "Overall.*" $dir/log/compute_prob_$[$epoch+1].log &
-    fi
-  done # training loop
-  wait $! # wait for last background process if any
-fi # stage 1
+  # grep Overall $dir/log/train_$epoch.log
+  $cmd $dir/log/durmod_set_raw_nnet.log \
+       nnet3-durmodel-copy --set-raw-nnet=$dir/nnet.raw $curr_mdl $next_mdl
+
+  if [[ $[$iter%$compute_prob_interval] == 0 ]]; then
+    $cmd $dir/log/compute_prob_$[$iter+1].log \
+       nnet3-compute-prob $dir/nnet.raw \
+       "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" \
+       && grep -o -H "Overall.*" $dir/log/compute_prob_$[$iter+1].log &
+  fi
+done # training loop
+wait $! 2>/dev/null # wait for last background process if any
+

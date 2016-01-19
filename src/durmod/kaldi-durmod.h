@@ -78,7 +78,8 @@ class PhoneDurationModel {
   inline int32 FullContextSize() const {
     return left_context_ + right_context_ + 1;
   }
-  // TODO(hhadian): this class is passive. make it struct?
+  std::string Info() const;
+
  private:
   int32 left_context_, right_context_;
   std::vector<std::vector<int32> > roots_;
@@ -92,21 +93,27 @@ class PhoneDurationFeatureMaker {
 
   void InitFeatureMaker(const PhoneDurationModel &model);
 
-  /// This method extracts features for a phone. The inputs are a phone_context
-  /// and an index into that context which indicates the centeral phone.
-  /// The features consist of phone-IDs (which are represented in a 1-of-n
-  /// encoding, suitable for neural networks), phone durations, and binary
-  /// features determined from a set of questions (i.e. extra_questions.int)
+  /// This method extracts features for a phone. The inputs are a
+  /// phone-duration context and an index into that context which indicates the
+  /// middle phone (middle in the sense of left/right context).
+  /// a phone-duration context is a sequence of <phone-ID, duration-in-frames>
+  /// pairs.
+  /// The extracted features consist of phone-IDs (which are represented in a
+  /// 1-of-n encoding, suitable for neural networks), phone durations, and
+  /// binary features determined from a set of questions
+  /// (i.e. extra_questions.int)
   void MakeFeatureVector(
-                    const std::vector<std::pair<int32, int32> > &phone_context,
-                    int phone_index,
-                    SparseVector<BaseFloat> *feat) const;
+                 const std::vector<std::pair<int32, int32> > &phone_dur_context,
+                 int phone_index,
+                 SparseVector<BaseFloat> *feat) const;
 
 
   int32 FeatureDim() const { return feature_dim_; }
   int32 NumBinaryFeatures() const { return num_binary_features_; }
   int32 NumPhoneIdentities() const { return num_phone_identities_; }
   int32 OutputDim() const { return max_duration_; }
+
+  std::string Info() const;
 
  private:
   unordered_map<int32, std::vector<int32> > binary_feats_;
@@ -155,15 +162,16 @@ class NnetPhoneDurationScoreComputer {
   explicit NnetPhoneDurationScoreComputer(const NnetPhoneDurationModel &model):
       model_(model),
       compiler_(model.GetNnet()),
-      feature_maker_(model.GetDurationModel()) { }
+      feature_maker_(model.GetDurationModel()) {}
 
   void ComputeOutputForExample(const NnetExample &eg,
                                Matrix<BaseFloat> *output);
 
   /// Computes the log prob for the middle phone (middle in the left/right
-  /// context sense) in a phone context.
-  BaseFloat
-         GetLogProb(const std::vector<std::pair<int32, int32> > &phone_context);
+  /// context sense) in a phone-duration context (please refer to
+  /// PhoneDurationFeatureMaker::MakeFeatureVector).
+  BaseFloat GetLogProb(
+                const std::vector<std::pair<int32, int32> > &phone_dur_context);
 
  private:
   const NnetPhoneDurationModel &model_;
@@ -178,7 +186,8 @@ class PhoneDurationModelDeterministicFst
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  // second argument is non-cost because it has a cache
+  // second argument is non-cost only because it has a cache (this class does
+  // not take ownership of the pointer)
   PhoneDurationModelDeterministicFst(const PhoneDurationModel &model,
                                      NnetPhoneDurationScoreComputer *scorer);
 
@@ -203,17 +212,23 @@ class PhoneDurationModelDeterministicFst
   int32 max_duration_;
   NnetPhoneDurationScoreComputer &scorer_;
 
+  /// Uses the score-computer object to compute the log prob for the middle
+  /// phone in the input context. The input argument is a phone-duration
+  /// context similar to the one in NnetPhoneDurationScoreComputer::GetLogProb
+  /// but with the difference that the phone-IDs and duration values are
+  /// encoded in a single integer (i.e. fst Label).
   BaseFloat GetLogProb(const std::vector<Label> &context) const;
 };
 
 
 
-/// This functions uses a feature maker to convert a phone_context into an
-/// Nnet3 example.
+/// This function uses a feature maker to convert a phone duration context (for
+/// definition, please refer to PhoneDurationFeatureMaker::MakeFeatureVector)
+/// into an Nnet3 example.
 void MakeNnetExample(const PhoneDurationFeatureMaker &feat_maker,
-                     const std::vector<std::pair<int32, int32> > &phone_context,
-                     int phone_index,
-                     NnetExample *eg);
+                 const std::vector<std::pair<int32, int32> > &phone_dur_context,
+                 int phone_index,
+                 NnetExample *eg);
 
 /// This function uses MakeNnetExample to convert a sequence of (phone,duration)
 /// pairs (i.e. alignment) into a set of Nnet3 examples

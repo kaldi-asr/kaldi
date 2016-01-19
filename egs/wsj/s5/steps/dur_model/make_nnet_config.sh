@@ -1,7 +1,7 @@
 #!/bin/bash
 
 learning_rate=0.001
-natural_gradient=false
+natural_gradient=true
 hidden_dim1=
 hidden_dim2=
 

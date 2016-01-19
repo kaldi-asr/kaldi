@@ -2,7 +2,7 @@
 
 # Copyright 2015 Hossein Hadian
 
-lm_scale=1.0
+duration_model_scale=0.5
 cmd=run.pl
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
@@ -14,7 +14,7 @@ if [ $# != 3 ]; then
    echo " of the directory where the transition model (i.e. final.mdl) is."
    echo "e.g.: $0 exp/mono/durmod/30.mdl exp/mono/decode_test_bg exp/mono/decode_test_bg_durmod"
    echo ""
-   echo "  --lm-scale <float>                       # scale used for rescoring"
+   echo "  --duration-model-scale <float>                       # scale used for rescoring"
    exit 1;
 fi
 
@@ -33,7 +33,5 @@ mkdir -p $dir/log || exit 1;
 $cmd JOB=1:$nj $dir/log/rescore.JOB.log \
       lattice-align-phones --remove-epsilon=false \
       $srcdir/final.mdl "ark:gunzip -c $latdir/lat.JOB.gz |" ark:- \| \
-      nnet3-durmodel-rescore-lattice --lm-scale=$lm_scale $nnet_durmodel $srcdir/final.mdl \
+      nnet3-durmodel-rescore-lattice --duration-model-scale=$duration_model_scale $nnet_durmodel $srcdir/final.mdl \
       ark:- "ark,t:|gzip -c >$dir/lat.JOB.gz" || exit 1;
-
-echo "Done"

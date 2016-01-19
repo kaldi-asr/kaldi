@@ -9,7 +9,8 @@ LDLIBS += $(CUDA_LDLIBS)
 
 
 BINFILES = nnet3-durmodel-init nnet3-durmodel-make-egs nnet3-durmodel-copy \
-           nnet3-durmodel-rescore-lattice durmodel-info durmodel-init
+           nnet3-durmodel-rescore-lattice durmodel-info durmodel-init \
+           nnet3-durmodel-info
 OBJFILES =
 
 

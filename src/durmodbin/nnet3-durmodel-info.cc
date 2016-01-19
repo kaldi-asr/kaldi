@@ -1,4 +1,4 @@
-// durmodbin/durmodel-info.cc
+// durmodbin/nnet3-durmodel-info.cc
 
 // Copyright 2015 Hossein Hadian
 
@@ -30,10 +30,10 @@ int main(int argc, char *argv[]) {
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Print info about the phone duration model.\n"
-        "Usage:  durmodel-info [options] <duration-model>\n"
+        "Print info about the nnet phone duration model.\n"
+        "Usage:  nnet3-durmodel-info [options] <duration-model>\n"
         "e.g.: \n"
-        "  durmodel-info durmodel.mdl";
+        "  nnet3-durmodel-info 0.mdl";
 
     ParseOptions po(usage);
     po.Read(argc, argv);
@@ -43,12 +43,14 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     std::string model_filename = po.GetArg(1);
-    PhoneDurationModel durmodel;
+    NnetPhoneDurationModel durmodel;
     ReadKaldiObject(model_filename, &durmodel);
-    PhoneDurationFeatureMaker feat_maker(durmodel);
+    PhoneDurationFeatureMaker feat_maker(durmodel.GetDurationModel());
 
-    std::cout << durmodel.Info()
-              << feat_maker.Info();
+    std::cout << durmodel.GetDurationModel().Info()
+              << feat_maker.Info() << std::endl
+              << "# Nnet3 info follows." << std::endl
+              << durmodel.GetNnet().Info() << std::endl;
 
     KALDI_LOG << "Done.";
   } catch(const std::exception &e) {

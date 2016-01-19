@@ -41,10 +41,10 @@ int main(int argc, char *argv[]) {
       "nnet3-durmodel-rescore-lattice 20.mdl final.mdl "
       "ark:lat.1 ark:rescored_lat.1\n";
 
-    BaseFloat lm_scale = 1.0;
+    BaseFloat duration_model_scale = 1.0;
     ParseOptions po(usage);
-    po.Register("lm-scale", &lm_scale, "Scaling factor for language model "
-                "costs");
+    po.Register("duration-model-scale", &duration_model_scale, "Scaling factor "
+                "for duration model costs");
 
     po.Read(argc, argv);
 
@@ -76,8 +76,9 @@ int main(int argc, char *argv[]) {
       compact_lattice_reader.FreeCurrent();
       KALDI_LOG << "Rescoring lattice for key " << key;
 
-      if (lm_scale != 0.0) {
-        fst::ScaleLattice(fst::GraphLatticeScale(1.0 / lm_scale), &clat);
+      if (duration_model_scale != 0.0) {
+        fst::ScaleLattice(fst::GraphLatticeScale(1.0 / duration_model_scale),
+                          &clat);
         ArcSort(&clat, fst::OLabelCompare<CompactLatticeArc>());
 
         // Insert the phone-id/duration info into the lattice olabels
@@ -104,7 +105,8 @@ int main(int argc, char *argv[]) {
         Invert(&composed_lat);
         CompactLattice determinized_clat;
         DeterminizeLattice(composed_lat, &determinized_clat);
-        fst::ScaleLattice(fst::GraphLatticeScale(lm_scale), &determinized_clat);
+        fst::ScaleLattice(fst::GraphLatticeScale(duration_model_scale),
+                          &determinized_clat);
         if (determinized_clat.Start() == fst::kNoStateId) {
           KALDI_WARN << "Empty lattice for utterance " << key;
           n_fail++;
