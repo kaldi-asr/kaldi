@@ -72,8 +72,13 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
    If you get this error: `Assertion failed: hunk, file ../patch-2.5.9-src/patch.c, line 354`
    it is because the `patch.c` file should have Windows line endings (CRLF) rather than Unix ones (LF).
+   
+There are two options to use for BLAS (linear algebra): MLK and OpenBLAS. MLK is made by Intel and is optimised
+for their processors. Unfortunately it isn't free. OpenBLAS is free alternative with similar performance.
 
-6. Download the OpenBLAS binary packages (if using OpenBLAS)
+6. If using MLK, install it.
+
+7. If using OpenBLAS, download the binary packages.
 
    https://sourceforge.net/projects/openblas
 
@@ -83,8 +88,6 @@ For cygwin installation, see the instructions in `../INSTALL`.
         (kaldi)/tools$ unzip mingw64_dll.zip
 
    **Be careful to download "Win64-int32" and not "Win64-int64"!**
-
-7. Install MKL (if using MLK)
 
 8. If you want enabled CUDA support, download and install NVidia CUDA SDK.
    Be careful and strive for as standard install as possible. The installer
