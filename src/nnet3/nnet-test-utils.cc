@@ -682,8 +682,40 @@ void GenerateConfigSequenceCnn2d(
      << " input-vectorization-order=" << vectorization
      << std::endl;
 
+  int32 conv_output_x_dim = (1 + (input_x_dim - filt_x_dim) / filt_x_step);
+  int32 conv_output_y_dim = (1 + (input_y_dim - filt_y_dim) / filt_y_step);
+  int32 conv_output_z_dim = num_filters;
+  int32 pool_x_size = 1 + Rand() % conv_output_x_dim;
+  int32 pool_y_size = 1 + Rand() % conv_output_y_dim;
+  int32 pool_z_size = 1 + Rand() % conv_output_z_dim;
+  int32 pool_x_step = 1;
+  int32 pool_y_step = 1;
+  int32 pool_z_step = 1;
+  do {
+    pool_x_step = (1 + Rand() % pool_x_size);
+  } while((conv_output_x_dim - pool_x_size) % pool_x_step);
+  do {
+    pool_y_step = (1 + Rand() % pool_y_size);
+  } while((conv_output_y_dim - pool_y_size) % pool_y_step);
+  do {
+    pool_z_step = (1 + Rand() % pool_z_size);
+  } while((conv_output_z_dim - pool_z_size) % pool_z_step);
+
+  os << "component name=maxpooling type=Maxpooling3dComponent "
+     << " input-x-dim=" << conv_output_x_dim
+     << " input-y-dim=" << conv_output_y_dim
+     << " input-z-dim=" << conv_output_z_dim
+     << " pool-x-size=" << pool_x_size
+     << " pool-y-size=" << pool_y_size
+     << " pool-z-size=" << pool_z_size
+     << " pool-x-step=" << pool_x_step
+     << " pool-y-step=" << pool_y_step
+     << " pool-z-step=" << pool_z_step
+     << std::endl;
+
   os << "input-node name=input dim=" << (input_x_dim * input_y_dim * input_z_dim) << std::endl;
   os << "component-node name=conv_node component=conv input=input\n";
+  os << "component-node name=maxpooling_node component=maxpooling input=conv_node\n";
   os << "output-node name=output input=conv_node\n";
   configs->push_back(os.str());
 }
@@ -834,7 +866,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 27);
+  int32 n = RandInt(0, 28);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1098,6 +1130,35 @@ static void GenerateRandomComponentConfig(std::string *component_type,
           output_dim = num_repeats * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 28: {
+      *component_type = "Maxpooling3dComponent";
+      int32 input_x_dim = 5 + Rand() % 10,
+            input_y_dim = 5 + Rand() % 10,
+            input_z_dim = 5 + Rand() % 10,
+            pool_x_size = 1 + Rand() % input_x_dim,
+            pool_y_size = 1 + Rand() % input_y_dim,
+            pool_z_size = 1 + Rand() % input_z_dim,
+            pool_x_step = (1 + Rand() % pool_x_size),
+            pool_y_step = (1 + Rand() % pool_y_size),
+            pool_z_step = (1 + Rand() % pool_z_size);
+      // adjusting input dim to ensure divisibility
+      int32 remainder = (input_x_dim - pool_x_size) % pool_x_step;
+      input_x_dim = input_x_dim - remainder;
+      remainder = (input_y_dim - pool_y_size) % pool_y_step;
+      input_y_dim = input_y_dim - remainder;
+      remainder = (input_z_dim - pool_z_size) % pool_z_step;
+      input_z_dim = input_z_dim - remainder;
+      os << " input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " pool-x-size=" << pool_x_size
+         << " pool-y-size=" << pool_y_size
+         << " pool-z-size=" << pool_z_size
+         << " pool-x-step=" << pool_x_step
+         << " pool-y-step=" << pool_y_step
+         << " pool-z-step=" << pool_z_step;
       break;
     }
     default:

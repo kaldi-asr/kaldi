@@ -4218,13 +4218,6 @@ void MaxpoolingComponent::Backprop(const std::string &debug_info,
       patch_summands[p] += 1;
     }
   }
-
-  // scale in_deriv of overlaped pools
-  for(int32 p = 0; p < num_patches; p++) {
-    CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p * pool_stride_, pool_stride_));
-    KALDI_ASSERT(patch_summands[p] > 0);
-    tgt.Scale(1.0 / patch_summands[p]);
-  }
 }
 
 void MaxpoolingComponent::Read(std::istream &is, bool binary) {
@@ -4258,6 +4251,256 @@ std::string MaxpoolingComponent::Info() const {
          << ", output-dim = " << output_dim_
          << ", pool-size = " << pool_size_
          << ", pool-stride = " << pool_stride_;
+  return stream.str();
+}
+
+// aquire input dim
+int32 Maxpooling3dComponent::InputDim() const {
+  return input_x_dim_ * input_y_dim_ * input_z_dim_;
+}
+
+// aquire output dim
+int32 Maxpooling3dComponent::OutputDim() const {
+  int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
+  int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
+  int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
+  return num_pools_x * num_pools_y * num_pools_z;
+}
+
+// initialize the component using hyperparameters
+void Maxpooling3dComponent::Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+                                 int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
+                                 int32 pool_x_step, int32 pool_y_step, int32 pool_z_step) {
+  input_x_dim_ = input_x_dim;
+  input_y_dim_ = input_y_dim;
+  input_z_dim_ = input_z_dim;
+  pool_x_size_ = pool_x_size;
+  pool_y_size_ = pool_y_size;
+  pool_z_size_ = pool_z_size;
+  pool_x_step_ = pool_x_step;
+  pool_y_step_ = pool_y_step;
+  pool_z_step_ = pool_z_step;
+
+  // sanity check of the max pooling parameters
+  KALDI_ASSERT((input_x_dim_ - pool_x_size_) % pool_x_step_  == 0);
+  KALDI_ASSERT((input_y_dim_ - pool_y_size_) % pool_y_step_  == 0);
+  KALDI_ASSERT((input_z_dim_ - pool_z_size_) % pool_z_step_  == 0);
+}
+
+// initialize the component using configuration file
+void Maxpooling3dComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 input_x_dim = -1, input_y_dim = -1, input_z_dim = -1;
+  int32 pool_x_size = -1, pool_y_size = -1, pool_z_size = -1;
+  int32 pool_x_step = -1, pool_y_step = -1, pool_z_step = -1;
+  bool ok = true;
+
+  ok = ok && cfl->GetValue("input-x-dim", &input_x_dim);
+  ok = ok && cfl->GetValue("input-y-dim", &input_y_dim);
+  ok = ok && cfl->GetValue("input-z-dim", &input_z_dim);
+  ok = ok && cfl->GetValue("pool-x-size", &pool_x_size);
+  ok = ok && cfl->GetValue("pool-y-size", &pool_y_size);
+  ok = ok && cfl->GetValue("pool-z-size", &pool_z_size);
+  ok = ok && cfl->GetValue("pool-x-step", &pool_x_step);
+  ok = ok && cfl->GetValue("pool-y-step", &pool_y_step);
+  ok = ok && cfl->GetValue("pool-z-step", &pool_z_step);
+
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+              << cfl->UnusedValues();
+  if (!ok)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+  Init(input_x_dim, input_y_dim, input_z_dim,
+       pool_x_size, pool_y_size, pool_z_size,
+       pool_x_step, pool_y_step, pool_z_step);
+}
+
+/*
+  3d max pooling propagate function
+  It is assumed that each row of the input matrix
+  is a vectorized 3D-tensor in zxy format.
+  This function first performs max pooling along the x and y axes
+  due to the convinience of the input vectorization format.
+  It then performs max pooling along the z axis if necessary.
+  The output matrix is also in zxy vectorization format.
+*/
+
+void Maxpooling3dComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                    const CuMatrixBase<BaseFloat> &in,
+                                    CuMatrixBase<BaseFloat> *out) const {
+  int32 num_frames = in.NumRows();
+  int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
+  int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
+  int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
+
+  // Do the max-pooling first along x and y axis
+  CuMatrix<BaseFloat> patches_zyx(num_frames, num_pools_x * num_pools_y * input_z_dim_, kUndefined);
+  for (int32 qx = 0; qx < num_pools_x; qx++) {
+    for (int32 qy = 0; qy < num_pools_y; qy++) {
+      // get output buffer of the pool
+      int32 q = qy + qx * num_pools_y;
+      CuSubMatrix<BaseFloat> pool(patches_zyx.ColRange(q * input_z_dim_, input_z_dim_));
+      pool.Set(-1e20); // reset a large negative value
+      int32 offset_x = qx * pool_x_step_;
+      int32 offset_y = qy * pool_y_step_;
+      for (int32 px = offset_x; px < (pool_x_size_ + offset_x); px++) {
+        for (int32 py = offset_y; py < (pool_y_size_ + offset_y); py++) {
+          int32 p = py + px * input_y_dim_;
+          pool.Max(in.ColRange(p * input_z_dim_, input_z_dim_));
+        }
+      }
+    }
+  }
+
+  if (pool_z_size_ == 1) {    // no need to perform pooling along z axis
+    out->CopyFromMat(patches_zyx);
+  } else {    // if need to perform pooling along z axis
+    // Reshape the matrix from zyx to xyz
+    CuMatrix<BaseFloat> patches_xyz(num_frames, num_pools_x * num_pools_y * input_z_dim_, kUndefined);
+    std::vector<int32> column_map(num_pools_x * num_pools_y * input_z_dim_);
+    // build-up a column selection map
+    for (int32 pz = 0, index = 0; pz < input_z_dim_; pz++)
+      for (int32 py = 0; py < num_pools_y; py++)
+        for (int32 px = 0; px < num_pools_x; px++, index++)
+          column_map[index] = px * input_z_dim_ * num_pools_y + py * input_z_dim_ + pz;
+
+    CuArray<int32> cu_cols(column_map);
+    patches_xyz.CopyCols(patches_zyx, cu_cols);
+
+    // Perform pooling along the z axis
+    CuMatrix<BaseFloat> out_xyz(num_frames, num_pools_x * num_pools_y * num_pools_z, kUndefined);
+    int32 stride_xy = num_pools_x * num_pools_y;
+    for (int32 qz = 0; qz < num_pools_z; qz++) {
+      // get output buffer of the pool
+      CuSubMatrix<BaseFloat> pool(out_xyz.ColRange(qz * stride_xy, stride_xy));
+      pool.Set(-1e20); // reset a large negative value
+      int32 offset_z = qz * pool_z_step_;
+      for (int32 pz = offset_z; pz < (pool_z_size_ + offset_z); pz++) {
+        pool.Max(patches_xyz.ColRange(pz * stride_xy, stride_xy));
+      }
+    }
+
+    // Reshape the output matrix from xyz to zyx
+    std::vector<int32> column_map2(num_pools_x * num_pools_y * num_pools_z);
+    // build-up a column selection map
+    for (int32 px = 0, index = 0; px < num_pools_x; px++)
+      for (int32 py = 0; py < num_pools_y; py++)
+        for (int32 pz = 0; pz < num_pools_z; pz++, index++)
+          column_map2[index] = pz * num_pools_x * num_pools_y + py * num_pools_x + px;
+
+    CuArray<int32> cu_cols2(column_map2);
+    out->CopyCols(out_xyz, cu_cols2);
+  }
+}
+
+/*
+  3d max pooling backpropagate function
+  This function backpropagate the error from
+  out_deriv to in_deriv.
+  In order to select the node in each pool to
+  backpropagate the error, it has to compare
+  the output pool value stored in the out_value
+  matrix with each of its input pool member node
+  stroed in the in_value matrix.
+*/
+
+void Maxpooling3dComponent::Backprop(const std::string &debug_info,
+                                   const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &in_value,
+                                   const CuMatrixBase<BaseFloat> &out_value,
+                                   const CuMatrixBase<BaseFloat> &out_deriv,
+                                   Component *, // to_update,
+                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
+  int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
+  int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
+  // Here we assume both the out_deriv and in_deriv are in zxy format
+  for(int32 qx = 0; qx < num_pools_x; qx++) {
+    for(int32 qy = 0; qy < num_pools_y; qy++) {
+      for(int32 qz = 0; qz < num_pools_z; qz++) {
+        // locate each output pool value stored in the out_value matrix
+        int32 q = qx * num_pools_z * num_pools_y + qy * num_pools_z + qz;
+        CuSubMatrix<BaseFloat> out_q(out_value.ColRange(q, 1));
+        CuSubMatrix<BaseFloat> src(out_deriv.ColRange(q, 1));
+        for(int32 rx = 0; rx < pool_x_size_; rx++) {
+          for(int32 ry = 0; ry < pool_y_size_; ry++) {
+            for(int32 rz = 0; rz < pool_z_size_; rz++) {
+              // locate the members of each pool stored in the in_value matrix
+              int32 p = (qx * pool_x_step_ + rx) * input_y_dim_ * input_z_dim_ +
+                        (qy * pool_y_step_ + ry) * input_z_dim_ +
+                        (qz * pool_z_step_ + rz);
+              CuSubMatrix<BaseFloat> in_p(in_value.ColRange(p, 1));
+              CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p, 1));
+              // zero-out mask
+              CuMatrix<BaseFloat> mask;
+              in_p.EqualElementMask(out_q, &mask);
+              mask.MulElements(src);
+              tgt.AddMat(1.0, mask);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void Maxpooling3dComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<Maxpooling3dComponent>", "<InputXDim>");
+  ReadBasicType(is, binary, &input_x_dim_);
+  ExpectToken(is, binary, "<InputYDim>");
+  ReadBasicType(is, binary, &input_y_dim_);
+  ExpectToken(is, binary, "<InputZDim>");
+  ReadBasicType(is, binary, &input_z_dim_);
+  ExpectToken(is, binary, "<PoolXSize>");
+  ReadBasicType(is, binary, &pool_x_size_);
+  ExpectToken(is, binary, "<PoolYSize>");
+  ReadBasicType(is, binary, &pool_y_size_);
+  ExpectToken(is, binary, "<PoolZSize>");
+  ReadBasicType(is, binary, &pool_z_size_);
+  ExpectToken(is, binary, "<PoolXStep>");
+  ReadBasicType(is, binary, &pool_x_step_);
+  ExpectToken(is, binary, "<PoolYStep>");
+  ReadBasicType(is, binary, &pool_y_step_);
+  ExpectToken(is, binary, "<PoolZStep>");
+  ReadBasicType(is, binary, &pool_z_step_);
+  ExpectToken(is, binary, "</Maxpooling3dComponent>");
+}
+
+void Maxpooling3dComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<Maxpooling3dComponent>");
+  WriteToken(os, binary, "<InputXDim>");
+  WriteBasicType(os, binary, input_x_dim_);
+  WriteToken(os, binary, "<InputYDim>");
+  WriteBasicType(os, binary, input_y_dim_);
+  WriteToken(os, binary, "<InputZDim>");
+  WriteBasicType(os, binary, input_z_dim_);
+  WriteToken(os, binary, "<PoolXSize>");
+  WriteBasicType(os, binary, pool_x_size_);
+  WriteToken(os, binary, "<PoolYSize>");
+  WriteBasicType(os, binary, pool_y_size_);
+  WriteToken(os, binary, "<PoolZSize>");
+  WriteBasicType(os, binary, pool_z_size_);
+  WriteToken(os, binary, "<PoolXStep>");
+  WriteBasicType(os, binary, pool_x_step_);
+  WriteToken(os, binary, "<PoolYStep>");
+  WriteBasicType(os, binary, pool_y_step_);
+  WriteToken(os, binary, "<PoolZStep>");
+  WriteBasicType(os, binary, pool_z_step_);
+  WriteToken(os, binary, "</Maxpooling3dComponent>");
+}
+
+// display information about component
+std::string Maxpooling3dComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", input-x-dim = " << input_x_dim_
+         << ", input-y-dim = " << input_y_dim_
+         << ", input-z-dim = " << input_z_dim_
+         << ", pool-x-size = " << pool_x_size_
+         << ", pool-y-size = " << pool_y_size_
+         << ", pool-z-size = " << pool_z_size_
+         << ", pool-x-step = " << pool_x_step_
+         << ", pool-y-step = " << pool_y_step_
+         << ", pool-z-step = " << pool_z_step_;
   return stream.str();
 }
 

@@ -96,6 +96,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ConvolutionComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
+  } else if (component_type == "Maxpooling3dComponent") {
+    ans = new Maxpooling3dComponent();
   } else if (component_type == "PermuteComponent") {
     ans = new PermuteComponent();
   } else if (component_type == "DistributeComponent") {

@@ -1643,6 +1643,103 @@ class MaxpoolingComponent: public Component {
 };
 
 /**
+ * Maxpooling3dComponent implements 3d-maxpooling.
+ * This component is designed to be used after a ConvolutionComponent
+ * so that the input matrix is propagated from a 2d/3d convolutional layer.
+ * This component supports performing max pooling along the three axes.
+ * Pooling with overlapping on each axis is supported.
+ * Input : A matrix where each row is a vectorized 3D-tensor.
+ *        The 3D tensor has dimensions
+ *        x: (e.g. time)
+ *        y: (e.g. frequency)
+ *        z: (e.g. channels like number of filters in the ConvolutionComponent)
+ *
+ *        The component only supports input vectorizations of type zyx
+ *        which is the default output vectorization type of a ConvolutionComponent.
+ *        For the description of vectorized 3d tensor, please read the comment
+ *        at the ConvolutionComponent.
+ *
+ * Output : The output is also a 3D tensor vectorized in the zyx format.
+ *
+ * For information on the hyperparameters and parameters of this component see
+ * the variable declarations.
+ *
+ *
+ */
+
+class Maxpooling3dComponent: public Component {
+ public:
+  explicit Maxpooling3dComponent(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+                                 int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
+                                 int32 pool_x_step, int32 pool_y_step, int32 pool_z_step
+                                 ) {
+    Init(input_x_dim, input_y_dim, input_z_dim,
+         pool_x_size, pool_y_size, pool_z_size,
+         pool_x_step, pool_y_step, pool_z_step);
+  }
+  Maxpooling3dComponent(): input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
+                           pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
+                           pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
+  virtual int32 InputDim() const;
+  virtual int32 OutputDim() const;
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Type() const { return "Maxpooling3dComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
+            kBackpropAdds;
+  }
+
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *, // to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual Component* Copy() const {
+    return new Maxpooling3dComponent(input_x_dim_, input_y_dim_, input_z_dim_,
+                                     pool_x_size_, pool_y_size_, pool_z_size_,
+                                     pool_x_step_, pool_y_step_, pool_z_step_); }
+
+  // Some functions that are specific to this
+  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
+            int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
+            int32 pool_x_step, int32 pool_y_step, int32 pool_z_step);
+
+ protected:
+  int32 input_x_dim_;   // size of the input along x-axis
+                        // (e.g. number of time steps)
+  int32 input_y_dim_;   // size of input along y-axis
+                        // (e.g. number of mel-frequency bins)
+  int32 input_z_dim_;   // size of input along z-axis
+                        // (e.g. number of filters in the ConvolutionComponent)
+
+  int32 pool_x_size_;    // size of the pooling window along x-axis
+  int32 pool_y_size_;    // size of the pooling window along y-axis
+  int32 pool_z_size_;    // size of the pooling window along z-axis
+
+  int32 pool_x_step_;   // the number of steps taken along x-axis of input
+                        //  before computing the next pool
+  int32 pool_y_step_;   // the number of steps taken along y-axis of input
+                        // before computing the next pool
+  int32 pool_z_step_;   // the number of steps taken along z-axis of input
+                        // before computing the next pool
+
+};
+
+
+/**
    CompositeComponent is components representing a sequence of
    [simple] components.  The config line would be something like the following
    (imagine this is all on one line):
