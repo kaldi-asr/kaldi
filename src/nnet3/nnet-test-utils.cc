@@ -1136,11 +1136,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       *component_type = "Maxpooling3dComponent";
       int32 input_x_dim = 5 + Rand() % 10,
             input_y_dim = 5 + Rand() % 10,
-            input_z_dim = 5 + Rand() % 10,
-            pool_x_size = 1 + Rand() % input_x_dim,
+            input_z_dim = 5 + Rand() % 10;
+      int32 pool_x_size = 1 + Rand() % input_x_dim,
             pool_y_size = 1 + Rand() % input_y_dim,
-            pool_z_size = 1 + Rand() % input_z_dim,
-            pool_x_step = (1 + Rand() % pool_x_size),
+            pool_z_size = 1 + Rand() % input_z_dim;
+      int32 pool_x_step = (1 + Rand() % pool_x_size),
             pool_y_step = (1 + Rand() % pool_y_size),
             pool_z_step = (1 + Rand() % pool_z_size);
       // adjusting input dim to ensure divisibility

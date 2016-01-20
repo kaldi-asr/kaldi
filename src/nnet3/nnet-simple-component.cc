@@ -4314,6 +4314,40 @@ void Maxpooling3dComponent::InitFromConfig(ConfigLine *cfl) {
        pool_x_step, pool_y_step, pool_z_step);
 }
 
+// Method to convert from a matrix representing a minibatch of vectorized
+// 3D tensors to patches for 3d max pooling, each patch corresponds to
+// one pool output dot product in the pooling
+void Maxpooling3dComponent::InputToInputPatches(
+    const CuMatrixBase<BaseFloat>& in,
+    CuMatrix<BaseFloat> *patches) const{
+  int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
+  int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
+  int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
+
+  std::vector<int32> column_map(patches->NumCols());
+  int32 column_map_size = column_map.size();
+  for (int32 x = 0, index =0; x < pool_x_size_; x++) {
+    for (int32 y = 0; y < pool_y_size_; y++) {
+      for (int32 z = 0; z < pool_z_size_; z++) {
+        // given the local node coordinate, group them from each pool
+        for (int32 x_pool = 0; x_pool < num_pools_x; x_pool++) {
+          for (int32 y_pool = 0; y_pool < num_pools_y; y_pool++) {
+            for (int32 z_pool = 0; z_pool < num_pools_z; z_pool++, index++) {
+              KALDI_ASSERT(index < column_map_size);
+              column_map[index] = (x_pool * pool_x_step_ + x) * input_y_dim_ * input_z_dim_ +
+                                  (y_pool * pool_y_step_ + y) * input_z_dim_ +
+                                  (z_pool * pool_z_step_ + z);
+
+            }
+          }
+        }
+      }
+    }
+  }
+  CuArray<int32> cu_cols(column_map);
+  patches->CopyCols(in, cu_cols);
+}
+
 /*
   3d max pooling propagate function
   It is assumed that each row of the input matrix
@@ -4332,63 +4366,54 @@ void Maxpooling3dComponent::Propagate(const ComponentPrecomputedIndexes *indexes
   int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
   int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
 
-  // Do the max-pooling first along x and y axis
-  CuMatrix<BaseFloat> patches_zyx(num_frames, num_pools_x * num_pools_y * input_z_dim_, kUndefined);
-  for (int32 qx = 0; qx < num_pools_x; qx++) {
-    for (int32 qy = 0; qy < num_pools_y; qy++) {
-      // get output buffer of the pool
-      int32 q = qy + qx * num_pools_y;
-      CuSubMatrix<BaseFloat> pool(patches_zyx.ColRange(q * input_z_dim_, input_z_dim_));
-      pool.Set(-1e20); // reset a large negative value
-      int32 offset_x = qx * pool_x_step_;
-      int32 offset_y = qy * pool_y_step_;
-      for (int32 px = offset_x; px < (pool_x_size_ + offset_x); px++) {
-        for (int32 py = offset_y; py < (pool_y_size_ + offset_y); py++) {
-          int32 p = py + px * input_y_dim_;
-          pool.Max(in.ColRange(p * input_z_dim_, input_z_dim_));
+  int32 num_pools = num_pools_x * num_pools_y * num_pools_z;
+  int32 pool_size = pool_x_size_ * pool_y_size_ * pool_z_size_;
+  CuMatrix<BaseFloat> patches(num_frames, num_pools * pool_size, kUndefined);
+  InputToInputPatches(in, &patches);
+
+  out->Set(-1e20); // reset a large negative value
+  for (int32 q = 0; q < pool_size; q++)
+    out->Max(patches.ColRange(q * num_pools, num_pools));
+}
+
+// Method to compute the input derivative matrix from the input derivatives
+// for patches, where each patch corresponds to one dot product
+// in the convolution
+void Maxpooling3dComponent::InderivPatchesToInderiv(
+    const CuMatrix<BaseFloat>& in_deriv_patches,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+
+  int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
+  int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
+  int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
+
+  std::vector<std::vector<int32> > reverse_column_map(in_deriv->NumCols());
+  int32 rev_col_map_size = reverse_column_map.size();
+  for (int32 x = 0, index = 0; x < pool_x_size_; x++) {
+    for (int32 y = 0; y < pool_y_size_; y++) {
+      for (int32 z = 0; z < pool_z_size_; z++) {
+
+        for (int32 x_pool = 0; x_pool < num_pools_x; x_pool++) {
+          for (int32 y_pool = 0; y_pool < num_pools_y; y_pool++) {
+            for (int32 z_pool = 0; z_pool < num_pools_z; z_pool++, index++) {
+              int32 vector_index = (x_pool * pool_x_step_ + x) * input_y_dim_ * input_z_dim_ +
+                                  (y_pool * pool_y_step_ + y) * input_z_dim_ +
+                                  (z_pool * pool_z_step_ + z);
+
+              KALDI_ASSERT(vector_index < rev_col_map_size);
+              reverse_column_map[vector_index].push_back(index);
+            }
+          }
         }
       }
     }
   }
 
-  if (pool_z_size_ == 1) {    // no need to perform pooling along z axis
-    out->CopyFromMat(patches_zyx);
-  } else {    // if need to perform pooling along z axis
-    // Reshape the matrix from zyx to xyz
-    CuMatrix<BaseFloat> patches_xyz(num_frames, num_pools_x * num_pools_y * input_z_dim_, kUndefined);
-    std::vector<int32> column_map(num_pools_x * num_pools_y * input_z_dim_);
-    // build-up a column selection map
-    for (int32 pz = 0, index = 0; pz < input_z_dim_; pz++)
-      for (int32 py = 0; py < num_pools_y; py++)
-        for (int32 px = 0; px < num_pools_x; px++, index++)
-          column_map[index] = px * input_z_dim_ * num_pools_y + py * input_z_dim_ + pz;
-
-    CuArray<int32> cu_cols(column_map);
-    patches_xyz.CopyCols(patches_zyx, cu_cols);
-
-    // Perform pooling along the z axis
-    CuMatrix<BaseFloat> out_xyz(num_frames, num_pools_x * num_pools_y * num_pools_z, kUndefined);
-    int32 stride_xy = num_pools_x * num_pools_y;
-    for (int32 qz = 0; qz < num_pools_z; qz++) {
-      // get output buffer of the pool
-      CuSubMatrix<BaseFloat> pool(out_xyz.ColRange(qz * stride_xy, stride_xy));
-      pool.Set(-1e20); // reset a large negative value
-      int32 offset_z = qz * pool_z_step_;
-      for (int32 pz = offset_z; pz < (pool_z_size_ + offset_z); pz++) {
-        pool.Max(patches_xyz.ColRange(pz * stride_xy, stride_xy));
-      }
-    }
-
-    // Reshape the output matrix from xyz to zyx
-    std::vector<int32> column_map2(num_pools_x * num_pools_y * num_pools_z);
-    // build-up a column selection map
-    for (int32 px = 0, index = 0; px < num_pools_x; px++)
-      for (int32 py = 0; py < num_pools_y; py++)
-        for (int32 pz = 0; pz < num_pools_z; pz++, index++)
-          column_map2[index] = pz * num_pools_x * num_pools_y + py * num_pools_x + px;
-
-    CuArray<int32> cu_cols2(column_map2);
-    out->CopyCols(out_xyz, cu_cols2);
+  std::vector<std::vector<int32> > rearranged_column_map;
+  RearrangeIndexes(reverse_column_map, &rearranged_column_map);
+  for (int32 p = 0; p < rearranged_column_map.size(); p++) {
+    CuArray<int32> cu_cols(rearranged_column_map[p]);
+    in_deriv->AddCols(in_deriv_patches, cu_cols);
   }
 }
 
@@ -4402,7 +4427,6 @@ void Maxpooling3dComponent::Propagate(const ComponentPrecomputedIndexes *indexes
   matrix with each of its input pool member node
   stroed in the in_value matrix.
 */
-
 void Maxpooling3dComponent::Backprop(const std::string &debug_info,
                                    const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in_value,
@@ -4410,36 +4434,29 @@ void Maxpooling3dComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &out_deriv,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  int32 num_frames = in_value.NumRows();
   int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
   int32 num_pools_y = 1 + (input_y_dim_ - pool_y_size_) / pool_y_step_;
   int32 num_pools_z = 1 + (input_z_dim_ - pool_z_size_) / pool_z_step_;
-  // Here we assume both the out_deriv and in_deriv are in zxy format
-  for(int32 qx = 0; qx < num_pools_x; qx++) {
-    for(int32 qy = 0; qy < num_pools_y; qy++) {
-      for(int32 qz = 0; qz < num_pools_z; qz++) {
-        // locate each output pool value stored in the out_value matrix
-        int32 q = qx * num_pools_z * num_pools_y + qy * num_pools_z + qz;
-        CuSubMatrix<BaseFloat> out_q(out_value.ColRange(q, 1));
-        CuSubMatrix<BaseFloat> src(out_deriv.ColRange(q, 1));
-        for(int32 rx = 0; rx < pool_x_size_; rx++) {
-          for(int32 ry = 0; ry < pool_y_size_; ry++) {
-            for(int32 rz = 0; rz < pool_z_size_; rz++) {
-              // locate the members of each pool stored in the in_value matrix
-              int32 p = (qx * pool_x_step_ + rx) * input_y_dim_ * input_z_dim_ +
-                        (qy * pool_y_step_ + ry) * input_z_dim_ +
-                        (qz * pool_z_step_ + rz);
-              CuSubMatrix<BaseFloat> in_p(in_value.ColRange(p, 1));
-              CuSubMatrix<BaseFloat> tgt(in_deriv->ColRange(p, 1));
-              // zero-out mask
-              CuMatrix<BaseFloat> mask;
-              in_p.EqualElementMask(out_q, &mask);
-              mask.MulElements(src);
-              tgt.AddMat(1.0, mask);
-            }
-          }
-        }
-      }
-    }
+
+  int32 num_pools = num_pools_x * num_pools_y * num_pools_z;
+  int32 pool_size = pool_x_size_ * pool_y_size_ * pool_z_size_;
+  CuMatrix<BaseFloat> in_value_patches(num_frames, num_pools * pool_size, kUndefined);
+  CuMatrix<BaseFloat> in_deriv_patches(num_frames, num_pools * pool_size, kSetZero);
+  InputToInputPatches(in_value, &in_value_patches);
+
+  for (int32 q = 0; q < pool_size; q++) {
+    // zero-out mask
+    CuMatrix<BaseFloat> mask;
+    out_value.EqualElementMask(in_value_patches.ColRange(q * num_pools, num_pools), &mask);
+    mask.MulElements(out_deriv);
+    in_deriv_patches.ColRange(q * num_pools, num_pools).AddMat(1.0, mask);
+  }
+
+  if (in_deriv) {
+    // combine the derivatives from the individual input deriv patches
+    // to compute input deriv matrix
+    InderivPatchesToInderiv(in_deriv_patches, in_deriv);
   }
 }
 

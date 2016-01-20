@@ -1688,7 +1688,8 @@ class Maxpooling3dComponent: public Component {
   virtual std::string Type() const { return "Maxpooling3dComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
-            kBackpropAdds;
+	    kBackpropAdds;
+//|kPropagateAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1716,6 +1717,11 @@ class Maxpooling3dComponent: public Component {
   void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
             int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
             int32 pool_x_step, int32 pool_y_step, int32 pool_z_step);
+
+  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
+                           CuMatrix<BaseFloat> *patches) const;
+  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
+                               CuMatrixBase<BaseFloat> *in_deriv) const;
 
  protected:
   int32 input_x_dim_;   // size of the input along x-axis
