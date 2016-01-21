@@ -68,6 +68,21 @@ struct Index {
   void Read(std::istream &os, bool binary);
 };
 
+
+// This struct can be used as a comparison object when you want to
+// sort the indexes first on n, then x, then t (Index's own comparison
+// object will sort first on t, then n, then x)
+struct IndexLessNxt {
+  inline bool operator < (const Index &a, const Index &b) const {
+    if (a.n < b.n) { return true; }
+    else if (a.n > b.n) { return false; }
+    else if (a.x < b.x) { return true; }
+    else if (a.x > b.x) { return false; }
+    else return (a.t < b.t);
+  }
+};
+
+
 // this will be used only for debugging output.
 std::ostream &operator << (std::ostream &ostream, const Index &index);
 
