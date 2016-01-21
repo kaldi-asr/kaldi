@@ -240,5 +240,145 @@ void DistributeComponent::Read(std::istream &is, bool binary) {
 }
 
 
+class StatisticsExtractionComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+  // While creating the output we sum over row ranges of the input.
+  // forward_indexes.Dim() equals the number of rows of the output, and each
+  // element is a (start, end) range of inputs, that is summed over.
+  CuArray<Int32Pair> forward_indexes;
+
+  // this vector stores the number of inputs for each output.  Normally this will be
+  // the same as the component's output_period_ / input_period_, but could be less
+  // due to edge effects at the utterance boundary.
+  Vector<BaseFloat> counts;
+
+  // Each input row participates in exactly one output element, and
+  // 'backward_indexes' identifies which row of the output each row
+  // of the input is part of.  It's used in backprop.
+  CuArray<int32> backward_indexes;
+
+
+  virtual ~StatisticsExtractionComponentPrecomputedIndexes() { }
+
+};
+
+
+StatisticsExtractionComponent::StatisticsExtractionComponent():
+    input_dim_(-1), input_period_(1), output_period_(1),
+    include_variance_(true) { }
+
+StatisticsExtractionComponent::StatisticsExtractionComponent(
+    const StatisticsExtractionComponent &other):
+    input_dim_(other.input_dim_),
+    input_period_(other.input_period_),
+    output_period_(other.output_period_),
+    include_variance_(other.include_variance_) {
+  Check();
+}
+
+virtual void StatisticsExtractionComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = cfl->GetValue("input-dim", &input_dim_);
+  cfl->GetValue("input-period", &input_period_);
+  cfl->GetValue("output-period", &output_period_);
+  cfl->GetValue("include-variance", &include_variance_);
+  if (cfl->HasUnusedValues())
+    KALDI_ERR << "Could not process these elements in initializer: "
+	      << cfl->UnusedValues();
+  if (!ok || input_dim_ <= 0 && input_period_ <= 0 || output_period_ <= 0 ||
+      !(output_period_ % input_period_ == 0))
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";  
+  Check();
+}      
+
+void StatisticsExtractionComponent::ReorderIndexes(
+    std::vector<Index> *input_indexes,
+    std::vector<Index> *output_indexes) const {
+    std::sort(input_indexes->begin(), input_indexes->end(),
+              IndexLessNxt());
+    std::sort(output_indexes->begin(), output_indexes->end(),
+              IndexLessNxt());
+}
+
+bool StatisticsExtractionComponent::IsComputable(
+    const MiscComputationInfo &misc_info,
+    const Index &output_index,
+    const IndexSet &input_index_set,
+    std::vector<Index> *used_inputs) const {
+  Index input_index(output_index);
+  int32 t = output_index.t,
+      t_start = output_period_ * (t / output_period_);
+  if (t_start > output_period_)   // could happen for negative t_start due to
+    t_start -= output_period_;    // the way modulus works in c.
+  int32 t_end = t_start + output_period_;
+  if (!used_inputs) {
+    for (int32 t = t_start; t < t_end; t += input_period_) {
+      input_index.t = t;
+      if (input_index_set(input_index))
+        return true;
+    }
+  } else {
+    used_inputs->clear();
+    bool ans = false;
+    for (int32 t = t_start; t < t_end; t += input_period_) {
+      input_index.t = t;
+      if (input_index_set(input_index)) {
+        ans = true;
+        used_inputs->push_back(input_index);
+      }
+    }
+    return ans;
+  }
+}
+
+void StatisticsExtractionComponent::GetInputIndexes(
+    const MiscComputationInfo &misc_info,
+    const Index &output_index,
+    std::vector<Index> *desired_indexes) const {
+  desired_indexes->clear();
+  Index input_index(output_index);
+  int32 t = output_index.t,
+      t_start = output_period_ * (t / output_period_);
+  if (t_start > output_period_)   // could happen for negative t_start due to
+    t_start -= output_period_;    // the way modulus works in c.
+  for (int32 t = t_start; t < t_end; t += input_period_) {
+    input_index.t = t;
+    desired_indexes->push_back(input_index.t);
+  }
+}
+  
+
+
+class StatisticsPoolingComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // in the first stage of creating the output we sum over row ranges of
+  // the input.  forward_indexes.Dim() equals the number of rows of the
+  // output, and each element is a (start, end) range of inputs, that is
+  // summed over.
+  CuArray<Int32Pair> forward_indexes;
+
+  // backward_indexes contains the same information as forward_indexes, but in a
+  // different format.  backward_indexes.Dim() is the same as the number of rows
+  // of input, and each element contains the (start,end) of the range of outputs
+  // for which this input index appears as an element of the sum for that
+  // output.  This is possible because of the way the inputs and outputs are
+  // ordered and because of how we select the elments to appear in the sum using
+  // a window.  This quantity is used in backprop.
+  CuArray<Int32Pair> backward_indexes;
+
+  virtual ~StatisticsPoolingComponentPrecomputedIndexes() { }
+
+};
+
+// propagate:
+// for mean, divide by count.
+// for variance, divide by count, subtract mean^2, and square root.
+
+
+
+
 } // namespace nnet3
 } // namespace kaldi
