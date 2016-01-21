@@ -12,7 +12,7 @@ import ast
 import scipy.signal as signal
 import numpy as np
 
-nodes = imp.load_source('', 'steps/nnet3/nodes.py')
+nodes = imp.load_source('', 'steps/nnet3/components.py')
 
 
 def AddPerDimAffineLayer(config_lines, name, input, input_window):
