@@ -1,0 +1,9225 @@
+SIL 1.0	sil
+<SPOKEN_NOISE> 1.0	sil
+啊 1.0	aa a1
+啊 1.0	aa a2
+啊 1.0	aa a4
+啊 1.0	aa a5
+啊啊啊 1.0	aa a2 aa a2 aa a2
+啊啊啊 1.0	aa a5 aa a5 aa a5
+阿 1.0	aa a1
+阿 1.0	ee e1
+阿尔 1.0	aa a1 ee er3
+阿根廷 1.0	aa a1 g en1 t ing2
+阿九 1.0	aa a1 j iu3
+阿克 1.0	aa a1 k e4
+阿拉伯数字 1.0	aa a1 l a1 b o2 sh u4 z iy4
+阿拉法特 1.0	aa a1 l a1 f a3 t e4
+阿拉木图 1.0	aa a1 l a1 m u4 t u2
+阿婆 1.0	aa a1 p o2
+阿文 1.0	aa a1 uu un2
+阿亚 1.0	aa a1 ii ia3
+阿亚 1.0	aa a1 ii ia4
+阿育王 1.0	aa a1 vv v4 uu uang2
+阿扎尔 1.0	aa a1 zh a1 ee er3
+阿兹特克 1.0	aa a1 z iy1 t e4 k e4
+埃 1.0	aa ai1
+埃米尔 1.0	aa ai1 m i2 ee er3
+埃塞俄比亚 1.0	aa ai1 s ai4 ee e2 b i3 ii ia4
+埃斯 1.0	aa ai1 s iy1
+挨 1.0	aa ai1
+挨 1.0	aa ai2
+挨斗 1.0	aa ai1 d ou4
+挨斗 1.0	aa ai2 d ou4
+挨罚 1.0	aa ai1 f a2
+挨罚 1.0	aa ai2 f a2
+唉 1.0	aa ai1
+唉 1.0	aa ai4
+哀 1.0	aa ai1
+哀思 1.0	aa ai1 s iy1
+癌 1.0	aa ai2
+癌症 1.0	aa ai2 zh eng4
+矮 1.0	aa ai3
+矮小 1.0	aa ai2 x iao3
+艾 1.0	aa ai4
+艾迪 1.0	aa ai4 d i2
+艾森豪威尔 1.0	aa ai4 s en1 h ao2 uu ui1 ee er3
+艾滋病 1.0	aa ai4 z iy1 b ing4
+爱 1.0	aa ai4
+爱吃 1.0	aa ai4 ch ix1
+爱达 1.0	aa ai4 d a2
+爱尔兰 1.0	aa ai4 ee er3 l an2
+爱岗 1.0	aa ai4 g ang3
+爱国 1.0	aa ai4 g uo2
+爱国主义 1.0	aa ai4 g uo2 zh u3 ii i4
+爱好者 1.0	aa ai4 h ao4 zh e3
+爱花 1.0	aa ai4 h ua1
+爱乐 1.0	aa ai4 l e4
+爱情 1.0	aa ai4 q ing2
+爱玩 1.0	aa ai4 uu uan2
+爱惜 1.0	aa ai4 x i1
+爱子 1.0	aa ai4 z iy3
+爱祖国 1.0	aa ai4 z u3 g uo2
+爱妃 1.0	aa ai4 f ei1
+隘 1.0	aa ai4
+安 1.0	aa an1
+安保 1.0	aa an1 b ao3
+安达市 1.0	aa an1 d a2 sh ix4
+安第斯 1.0	aa an1 d i4 s iy1
+安东 1.0	aa an1 d ong1
+安哥拉 1.0	aa an1 g e1 l a1
+安好 1.0	aa an1 h ao3
+安静 1.0	aa an1 j ing4
+安民 1.0	aa an1 m in2
+安宁 1.0	aa an1 n ing2
+安排 1.0	aa an1 p ai2
+安全 1.0	aa an1 q van2
+安全模式 1.0	aa an1 q van2 m o2 sh ix4
+安全生产 1.0	aa an1 q van2 sh eng1 ch an3
+安然 1.0	aa an1 r an2
+安慰 1.0	aa an1 uu ui4
+安息 1.0	aa an1 x i1
+安详 1.0	aa an1 x iang2
+安心 1.0	aa an1 x in1
+安岳县 1.0	aa an1 vv ve4 x ian4
+安葬 1.0	aa an1 z ang4
+安装 1.0	aa an1 zh uang1
+按 1.0	aa an4
+按计划 1.0	aa an4 j i4 h ua4
+按喇叭 1.0	aa an4 l a3 b a5
+按年 1.0	aa an4 n ian2
+按压 1.0	aa an4 ii ia1
+按照 1.0	aa an4 zh ao4
+暗 1.0	aa an4
+暗号 1.0	aa an4 h ao4
+暗盒 1.0	aa an4 h e2
+暗红色 1.0	aa an4 h ong2 s e4
+暗中 1.0	aa an4 zh ong1
+岸 1.0	aa an4
+岸边 1.0	aa an4 b ian1
+案 1.0	aa an4
+案发 1.0	aa an4 f a1
+案犯 1.0	aa an4 f an4
+肮脏 1.0	aa ang1 z ang1
+昂首 1.0	aa ang2 sh ou3
+昂首阔步 1.0	aa ang2 sh ou3 k uo4 b u4
+昂扬 1.0	aa ang2 ii iang2
+盎然 1.0	aa ang4 r an2
+敖 1.0	aa ao2
+熬 1.0	aa ao2
+傲雪 1.0	aa ao4 x ve3
+奥 1.0	aa ao4
+奥地利 1.0	aa ao4 d i4 l i4
+奥尔 1.0	aa ao4 ee er3
+奥尼尔 1.0	aa ao4 n i2 ee er3
+奥斯卡 1.0	aa ao4 s iy1 k a3
+奥斯维辛 1.0	aa ao4 s iy1 uu ui2 x in1
+奥运 1.0	aa ao4 vv vn4
+奥运会 1.0	aa ao4 vv vn4 h ui4
+懊丧 1.0	aa ao4 s ang4
+澳 1.0	aa ao4
+澳大利亚 1.0	aa ao4 d a4 l i4 ii ia4
+澳门 1.0	aa ao4 m en2
+芭蕾舞团 1.0	b a1 l ei2 uu u3 t uan2
+扒 1.0	b a1
+八 1.0	b a1
+八百 1.0	b a1 b ai3
+八度 1.0	b a1 d u4
+八段 1.0	b a1 d uan4
+八二年 1.0	b a1 ee er4 n ian2
+八路军 1.0	b a1 l u4 j vn1
+八旗 1.0	b a1 q i2
+八千 1.0	b a1 q ian1
+八强 1.0	b a1 q iang2
+八日 1.0	b a1 r iz4
+八十 1.0	b a1 sh ix2
+八十分 1.0	b a1 sh ix2 f en1
+八十分 1.0	b a1 sh ix5 f en1
+八十年代 1.0	b a1 sh ix2 n ian2 d ai4
+八十五 1.0	b a1 sh ix2 uu u3
+八十五 1.0	b a1 sh ix5 uu u3
+八四年 1.0	b a1 s iy4 n ian2
+八位 1.0	b a1 uu ui4
+八一 1.0	b a1 ii i1
+八月 1.0	b a1 vv ve4
+八卦 1.0	b a1 g ua4
+巴 1.0	b a1
+巴尔 1.0	b a1 ee er3
+巴拿马 1.0	b a1 n a2 m a3
+巴中 1.0	b a1 zh ong1
+拔牙 1.0	b a2 ii ia2
+把 1.0	b a3
+把玩 1.0	b a3 uu uan2
+坝 1.0	b a4
+霸王 1.0	b a4 uu uang2
+罢了 1.0	b a4 l e5
+爸 1.0	b a4
+白 1.0	b ai2
+白白 1.0	b ai2 b ai2
+白帆 1.0	b ai2 f an1
+白宫 1.0	b ai2 g ong1
+白骨 1.0	b ai2 g u3
+白棉 1.0	b ai2 m ian2
+白求恩 1.0	b ai2 q iu2 ee en1
+白色 1.0	b ai2 s e4
+白薯 1.0	b ai2 sh u3
+白藤 1.0	b ai2 t eng2
+白天 1.0	b ai2 t ian1
+白银 1.0	b ai2 ii in2
+白玉 1.0	b ai2 vv v4
+白云 1.0	b ai2 vv vn2
+白昼 1.0	b ai2 zh ou4
+柏林 1.0	b o2 l in2
+柏油 1.0	b ai3 ii iu2
+百般 1.0	b ai3 b an1
+百变 1.0	b ai3 b ian4
+百草园 1.0	b ai2 c ao3 vv van2
+百出 1.0	b ai3 ch u1
+百分点 1.0	b ai3 f en1 d ian3
+百分之二十 1.0	b ai3 f en1 zh ix1 ee er4 sh ix2
+百合 1.0	b ai3 h e2
+百花 1.0	b ai3 h ua1
+百米 1.0	b ai2 m i3
+百年 1.0	b ai3 n ian2
+百人 1.0	b ai3 r en2
+百万富翁 1.0	b ai3 uu uan4 f u4 uu ueng1
+百姓 1.0	b ai3 x ing4
+百业 1.0	b ai3 ii ie4
+百余 1.0	b ai3 vv v2
+摆 1.0	b ai3
+败家 1.0	b ai4 j ia1
+稗 1.0	b ai4
+斑块 1.0	b an1 k uai4
+班 1.0	b an1
+班房 1.0	b an1 f ang2
+班子 1.0	b an1 z iy5
+班组 1.0	b an1 z u3
+搬迁 1.0	b an1 q ian1
+搬运工 1.0	b an1 vv vn4 g ong1
+般 1.0	b an1
+颁布 1.0	b an1 b u4
+板 1.0	b an3
+版 1.0	b an3
+拌 1.0	b an4
+拌菜 1.0	b an4 c ai4
+伴 1.0	b an4
+半 1.0	b an4
+半点 1.0	b an4 d ian3
+半个 1.0	b an4 g e4
+半个 1.0	b an4 g e5
+半截 1.0	b an4 j ie2
+半年 1.0	b an4 n ian2
+半小时 1.0	b an4 x iao3 sh ix2
+半夜 1.0	b an4 ii ie4
+办 1.0	b an4
+办案 1.0	b an4 aa an4
+办法 1.0	b an4 f a3
+办起 1.0	b an4 q i3
+邦 1.0	b ang1
+帮 1.0	b ang1
+帮助 1.0	b ang1 zh u4
+榜首 1.0	b ang2 sh ou3
+榜样 1.0	b ang3 ii iang4
+棒 1.0	b ang4
+棒冰 1.0	b ang4 b ing1
+蚌 1.0	b ang4
+傍 1.0	b ang4
+傍晚 1.0	b ang4 uu uan3
+包 1.0	b ao1
+包庇 1.0	b ao1 b i4
+包袱 1.0	b ao1 f u5
+包括 1.0	b ao1 k uo4
+包罗万象 1.0	b ao1 l uo2 uu uan4 x iang4
+包头 1.0	b ao1 t ou2
+包围 1.0	b ao1 uu ui2
+包装 1.0	b ao1 zh uang1
+包装物 1.0	b ao1 zh uang1 uu u4
+褒 1.0	b ao1
+薄 1.0	b ao2
+薄 1.0	b o2
+薄 1.0	b o4
+薄板 1.0	b ao2 b an3
+保 1.0	b ao3
+保长 1.0	b ao2 zh ang3
+保持 1.0	b ao3 ch ix2
+保存 1.0	b ao3 c un2
+保存在 1.0	b ao3 c un2 z ai4
+保定市 1.0	b ao3 d ing4 sh ix4
+保护 1.0	b ao3 h u4
+保护伞 1.0	b ao3 h u4 s an3
+保留 1.0	b ao3 l iu2
+保税区 1.0	b ao3 sh ui4 q v1
+保险 1.0	b ao2 x ian3
+保养 1.0	b ao2 ii iang3
+保障 1.0	b ao3 zh ang4
+保证 1.0	b ao3 zh eng4
+保重 1.0	b ao3 zh ong4
+饱 1.0	b ao3
+宝 1.0	b ao3
+宝贝 1.0	b ao3 b ei4
+抱 1.0	b ao4
+抱住 1.0	b ao4 zh u4
+抱着 1.0	b ao4 zh e5
+报 1.0	b ao4
+报道 1.0	b ao4 d ao4
+报复 1.0	b ao4 f u5
+报告 1.0	b ao4 g ao4
+报社 1.0	b ao4 sh e4
+报时 1.0	b ao4 sh ix2
+报纸 1.0	b ao4 zh ix3
+暴躁 1.0	b ao4 z ao4
+鲍鱼 1.0	b ao4 vv v2
+爆炸 1.0	b ao4 zh a4
+杯 1.0	b ei1
+碑 1.0	b ei1
+悲伤 1.0	b ei1 sh ang1
+悲壮 1.0	b ei1 zh uang4
+卑鄙无耻 1.0	b ei1 b i3 uu u2 ch ix3
+北 1.0	b ei3
+北爱尔兰 1.0	b ei3 aa ai4 ee er3 l an2
+北冰洋 1.0	b ei3 b ing1 ii iang2
+北部 1.0	b ei3 b u4
+北城 1.0	b ei3 ch eng2
+北方 1.0	b ei3 f ang1
+北京 1.0	b ei3 j ing1
+北纬 1.0	b ei2 uu ui3
+北园 1.0	b ei3 vv van2
+北约 1.0	b ei3 vv ve1
+背 1.0	b ei1
+背后 1.0	b ei4 h ou4
+背面 1.0	b ei4 m ian4
+贝 1.0	b ei4
+贝类 1.0	b ei4 l ei4
+倍 1.0	b ei4
+备 1.0	b ei4
+备战 1.0	b ei4 zh an4
+被 1.0	b ei4
+被单 1.0	b ei4 d an1
+被告 1.0	b ei4 g ao4
+被埋 1.0	b ei4 m ai2
+被套 1.0	b ei4 t ao4
+被子 1.0	b ei4 z iy5
+奔波 1.0	b en1 b o1
+奔跑 1.0	b en1 p ao3
+奔去 1.0	b en1 q v4
+奔向 1.0	b en1 x iang4
+奔走 1.0	b en1 z ou3
+本 1.0	b en3
+本版 1.0	b en2 b an3
+本厂 1.0	b en2 ch ang3
+本地 1.0	b en3 d i4
+本队 1.0	b en3 d ui4
+本该 1.0	b en3 g ai1
+本国 1.0	b en3 g uo2
+本届 1.0	b en3 j ie4
+本来 1.0	b en3 l ai2
+本来面目 1.0	b en3 l ai2 m ian4 m u4
+本人 1.0	b en3 r en2
+本色 1.0	b en3 s e4
+本社 1.0	b en3 sh e4
+本身 1.0	b en3 sh en1
+本书 1.0	b en3 sh u1
+本土 1.0	b en2 t u3
+本月 1.0	b en3 vv ve4
+笨 1.0	b en4
+崩 1.0	b eng1
+崩溃 1.0	b eng1 k ui4
+绷 1.0	b eng1
+泵 1.0	b eng4
+蹦 1.0	b eng4
+蹦蹦 1.0	b eng4 b eng4
+逼 1.0	b i1
+逼迫 1.0	b i1 p o4
+鼻梁 1.0	b i2 l iang2
+鼻子 1.0	b i2 z iy5
+比 1.0	b i3
+比昂 1.0	b i3 aa ang2
+比比 1.0	b i2 b i3
+比较 1.0	b i3 j iao4
+比例 1.0	b i3 l i4
+比如 1.0	b i3 r u2
+比赛 1.0	b i3 s ai4
+笔墨 1.0	b i3 m o4
+笔下 1.0	b i3 x ia4
+笔直 1.0	b i3 zh ix2
+彼 1.0	b i3
+毕 1.0	b i4
+毕业后 1.0	b i4 ii ie4 h ou4
+币 1.0	b i4
+闭 1.0	b i4
+闭经 1.0	b i4 j ing1
+闭塞 1.0	b i4 s e4
+必 1.0	b i4
+必能 1.0	b i4 n eng2
+必须 1.0	b i4 x v1
+壁 1.0	b i4
+避 1.0	b i4
+避开 1.0	b i4 k ai1
+避雷 1.0	b i4 l ei2
+避免 1.0	b i4 m ian3
+避雨 1.0	b i4 vv v3
+避孕 1.0	b i4 vv vn4
+避孕药 1.0	b i4 vv vn4 ii iao4
+陛下 1.0	b i4 x ia4
+边 1.0	b ian1
+边防 1.0	b ian1 f ang2
+边疆 1.0	b ian1 j iang1
+边区 1.0	b ian1 q v1
+边远 1.0	b ian1 vv van3
+编导 1.0	b ian1 d ao3
+编剧 1.0	b ian1 j v4
+编委会 1.0	b ian1 uu ui3 h ui4
+编演 1.0	b ian1 ii ian3
+便 1.0	b ian4
+便民 1.0	b ian4 m in2
+变 1.0	b ian4
+变本加厉 1.0	b ian4 b en3 j ia1 l i4
+变成 1.0	b ian4 ch eng2
+变得 1.0	b ian4 d e5
+变化 1.0	b ian4 h ua4
+变相 1.0	b ian4 x iang4
+变质 1.0	b ian4 zh ix4
+遍 1.0	b ian4
+遍及 1.0	b ian4 j i2
+标的 1.0	b iao1 d i4
+标语 1.0	b iao1 vv v3
+标志 1.0	b iao1 zh ix4
+标准 1.0	b iao1 zh un3
+表 1.0	b iao3
+表决 1.0	b iao3 j ve2
+表明 1.0	b iao3 m ing2
+表示 1.0	b iao3 sh ix4
+表示支持 1.0	b iao3 sh ix4 zh ix1 ch ix2
+表现 1.0	b iao3 x ian4
+表现性 1.0	b iao3 x ian4 x ing4
+表兄弟 1.0	b iao3 x iong1 d i4
+表演 1.0	b iao2 ii ian3
+别 1.0	b ie2
+别的 1.0	b ie2 d e5
+别国 1.0	b ie2 g uo2
+别具一格 1.0	b ie2 j v4 ii i4 g e2
+别人 1.0	b ie2 r en2
+别是 1.0	b ie2 sh ix4
+别墅 1.0	b ie2 sh u4
+别太 1.0	b ie2 t ai4
+别小看 1.0	b ie2 x iao3 k an4
+别样 1.0	b ie2 ii iang4
+别有用心 1.0	b ie2 ii iu3 ii iong4 x in1
+别致 1.0	b ie2 zh ix4
+别着急 1.0	b ie2 zh ao2 j i2
+彬 1.0	b in1
+彬彬有礼 1.0	b in1 b in1 ii iu2 l i3
+濒 1.0	b in1
+滨 1.0	b in1
+宾 1.0	b in1
+冰 1.0	b ing1
+冰柜 1.0	b ing1 g ui4
+冰凉 1.0	b ing1 l iang2
+柄 1.0	b ing3
+饼干 1.0	b ing3 g an1
+炳 1.0	b ing3
+病 1.0	b ing4
+病毒 1.0	b ing4 d u2
+病房里 1.0	b ing4 f ang2 l i3
+病理 1.0	b ing4 l i3
+病人 1.0	b ing4 r en2
+病因 1.0	b ing4 ii in1
+病愈 1.0	b ing4 vv v4
+并 1.0	b ing4
+并不 1.0	b ing4 b u4
+并称 1.0	b ing4 ch eng1
+并非 1.0	b ing4 f ei1
+并没有 1.0	b ing4 m ei2 ii iu3
+并未 1.0	b ing4 uu ui4
+并用 1.0	b ing4 ii iong4
+玻利维亚 1.0	b o1 l i4 uu ui2 ii ia4
+玻璃纸 1.0	b o1 l i5 zh ix3
+播 1.0	b o1
+播种 1.0	b o1 zh ong4
+拨 1.0	b o1
+拨动 1.0	b o1 d ong4
+拨给 1.0	b o1 g ei3
+拨款 1.0	b o1 k uan3
+波 1.0	b o1
+波恩 1.0	b o1 ee en1
+波尔 1.0	b o1 ee er3
+波黑 1.0	b o1 h ei1
+波兰 1.0	b o1 l an2
+波浪 1.0	b o1 l ang4
+波涛 1.0	b o1 t ao1
+博 1.0	b o2
+博览会 1.0	b o2 l an3 h ui4
+博物馆 1.0	b o2 uu u4 g uan3
+勃勃 1.0	b o2 b o2
+搏 1.0	b o2
+伯 1.0	b o2
+脖子 1.0	b o2 z iy5
+捕获 1.0	b u3 h uo4
+捕捞 1.0	b u3 l ao1
+捕杀 1.0	b u3 sh a1
+捕捉 1.0	b u3 zh uo1
+卜 1.0	b u3
+补考 1.0	b u2 k ao3
+不 1.0	b u2
+不 1.0	b u4
+不安 1.0	b u4 aa an1
+不比 1.0	b u4 b i3
+不必 1.0	b u2 b i4
+不必担心 1.0	b u2 b i4 d an1 x in1
+不便 1.0	b u2 b ian4
+不成 1.0	b u4 ch eng2
+不吃 1.0	b u4 ch ix1
+不穿 1.0	b u4 ch uan1
+不错 1.0	b u2 c uo4
+不大 1.0	b u2 d a4
+不但 1.0	b u2 d an4
+不当 1.0	b u2 d ang4
+不到 1.0	b u2 d ao4
+不得 1.0	b u4 d e2
+不得而知 1.0	b u4 d e2 ee er2 zh ix1
+不动 1.0	b u2 d ong4
+不断 1.0	b u2 d uan4
+不断地 1.0	b u2 d uan4 d e5
+不对 1.0	b u2 d ui4
+不对称 1.0	b u2 d ui4 ch en4
+不符合 1.0	b u4 f u2 h e2
+不符合 1.0	b u4 f u3 h e2
+不敢 1.0	b u4 g an3
+不够 1.0	b u2 g ou4
+不顾 1.0	b u2 g u4
+不过 1.0	b u2 g uo4
+不好 1.0	b u4 h ao3
+不喝 1.0	b u4 h e1
+不会 1.0	b u2 h ui4
+不会说话 1.0	b u2 h ui4 sh uo1 h ua4
+不及 1.0	b u4 j i2
+不记得 1.0	b u2 j i4 d e5
+不佳 1.0	b u4 j ia1
+不见 1.0	b u2 j ian4
+不仅 1.0	b u4 j in3
+不景气 1.0	b u4 j ing3 q i4
+不久 1.0	b u4 j iu3
+不看 1.0	b u2 k an4
+不可 1.0	b u4 k e3
+不可少 1.0	b u4 k e2 sh ao3
+不可思议 1.0	b u4 k e3 s iy1 ii i4
+不肯 1.0	b u4 k en3
+不利 1.0	b u2 l i4
+不料 1.0	b u2 l iao4
+不露 1.0	b u2 l u4
+不论怎样 1.0	b u2 l un4 z en3 ii iang4
+不满 1.0	b u4 m an3
+不灭 1.0	b u2 m ie4
+不能 1.0	b u4 n eng2
+不能不 1.0	b u4 n eng2 b u4
+不怕 1.0	b u2 p a4
+不平衡 1.0	b u4 p ing2 h eng2
+不弃 1.0	b u2 q i4
+不少 1.0	b u4 sh ao3
+不少地方 1.0	b u4 sh ao3 d i4 f ang1
+不胜枚举 1.0	b u2 sh eng4 m ei2 j v3
+不是 1.0	b u2 sh ix4
+不是我 1.0	b u2 sh ix4 uu uo3
+不受 1.0	b u2 sh ou4
+不舒服 1.0	b u4 sh u1 f u5
+不衰 1.0	b u4 sh uai1
+不说 1.0	b u4 sh uo1
+不算 1.0	b u2 s uan4
+不同 1.0	b u4 t ong2
+不外乎 1.0	b u2 uu uai4 h u1
+不忘 1.0	b u2 uu uang4
+不畏 1.0	b u2 uu ui4
+不文明 1.0	b u4 uu un2 m ing2
+不闻 1.0	b u4 uu un2
+不稳定 1.0	b u4 uu un3 d ing4
+不喜 1.0	b u4 x i3
+不休 1.0	b u4 x iu1
+不朽 1.0	b u4 x iu3
+不许 1.0	b u4 x v3
+不亚于 1.0	b u2 ii ia4 vv v2
+不要 1.0	b u2 ii iao4
+不要忽视 1.0	b u2 ii iao4 h u1 sh ix4
+不易 1.0	b u2 ii i4
+不用 1.0	b u2 ii iong4
+不用问 1.0	b u2 ii iong4 uu un4
+不远处 1.0	b u4 vv van3 ch u4
+不愿 1.0	b u2 vv van4
+不再 1.0	b u2 z ai4
+不再爱你 1.0	b u2 z ai4 aa ai4 n i3
+不在 1.0	b u2 z ai4
+不赞成 1.0	b u2 z an4 ch eng2
+不曾 1.0	b u4 c eng2
+不知 1.0	b u4 zh ix1
+不知道 1.0	b u4 zh ix1 d ao4
+不住 1.0	b u2 zh u4
+不准 1.0	b u4 zh un3
+不足 1.0	b u4 z u2
+布 1.0	b u4
+布置 1.0	b u4 zh ix4
+步伐 1.0	b u4 f a2
+步履 1.0	b u4 l v3
+步行 1.0	b u4 x ing2
+步云 1.0	b u4 vv vn2
+部 1.0	b u4
+部长 1.0	b u4 zh ang3
+部队 1.0	b u4 d ui4
+部分 1.0	b u4 f en5
+部门 1.0	b u4 m en2
+怖 1.0	b u4
+擦 1.0	c a1
+擦掉 1.0	c a1 d iao4
+擦亮 1.0	c a1 l iang4
+擦去 1.0	c a1 q v4
+擦拭 1.0	c a1 sh ix4
+擦嘴 1.0	c a1 z ui3
+裁减 1.0	c ai2 j ian3
+裁军 1.0	c ai2 j vn1
+材 1.0	c ai2
+材料 1.0	c ai2 l iao4
+才 1.0	c ai2
+才华 1.0	c ai2 h ua2
+才会 1.0	c ai2 h ui4
+才能 1.0	c ai2 n eng2
+财神爷 1.0	c ai2 sh en5 ii ie2
+财务 1.0	c ai2 uu u4
+财务会计 1.0	c ai2 uu u4 k uai4 j i5
+财政 1.0	c ai2 zh eng4
+踩着 1.0	c ai3 zh e5
+采 1.0	c ai3
+采访 1.0	c ai2 f ang3
+采购 1.0	c ai3 g ou4
+采矿 1.0	c ai3 k uang4
+采区 1.0	c ai3 q v1
+采取 1.0	c ai2 q v3
+采用 1.0	c ai3 ii iong4
+采油 1.0	c ai3 ii iu2
+采油厂 1.0	c ai3 ii iu2 ch ang3
+彩蝶 1.0	c ai3 d ie2
+彩旗 1.0	c ai3 q i2
+彩色 1.0	c ai3 s e4
+彩印厂 1.0	c ai3 ii in4 ch ang3
+彩云 1.0	c ai3 vv vn2
+菜 1.0	c ai4
+菜农 1.0	c ai4 n ong2
+蔡 1.0	c ai4
+餐 1.0	c an1
+餐巾 1.0	c an1 j in1
+参 1.0	c an1
+参 1.0	sh en1
+参加 1.0	c an1 j ia1
+参赛 1.0	c an1 s ai4
+参事 1.0	c an1 sh ix4
+参议院 1.0	c an1 ii i4 vv van4
+参与 1.0	c an1 vv v4
+蚕 1.0	c an2
+蚕茧 1.0	c an2 j ian3
+残 1.0	c an2
+残缺 1.0	c an2 q ve1
+惭愧 1.0	c an2 k ui4
+苍 1.0	c ang1
+苍苍 1.0	c ang1 c ang1
+苍天 1.0	c ang1 t ian1
+苍蝇 1.0	c ang1 ii ing5
+舱 1.0	c ang1
+仓 1.0	c ang1
+仓皇 1.0	c ang1 h uang2
+仓库 1.0	c ang1 k u4
+沧源 1.0	c ang1 vv van2
+藏 1.0	c ang2
+藏 1.0	z ang4
+藏龙卧虎 1.0	c ang2 l ong2 uu uo4 h u3
+藏起来 1.0	c ang2 q i3 l ai2
+藏起来 1.0	c ang2 q i3 l ai5
+藏文 1.0	z ang4 uu un2
+藏着 1.0	c ang2 zh e5
+藏族 1.0	z ang4 z u2
+操 1.0	c ao1
+操纵 1.0	c ao1 z ong4
+操作 1.0	c ao1 z uo4
+糙 1.0	c ao1
+槽 1.0	c ao2
+曹 1.0	c ao2
+曹禺 1.0	c ao2 vv v2
+草 1.0	c ao3
+草草 1.0	c ao2 c ao3
+草场 1.0	c ao2 ch ang3
+草帽 1.0	c ao3 m ao4
+草木 1.0	c ao3 m u4
+草拟 1.0	c ao2 n i3
+草酸 1.0	c ao3 s uan1
+草图 1.0	c ao3 t u2
+草药 1.0	c ao3 ii iao4
+厕所 1.0	c e4 s uo3
+侧 1.0	c e4
+侧面 1.0	c e4 m ian4
+册 1.0	c e4
+层 1.0	c eng2
+层层 1.0	c eng2 c eng2
+蹭 1.0	c eng4
+插 1.0	ch a1
+叉 1.0	ch a1
+叉 1.0	ch a3
+叉 1.0	ch a4
+茬 1.0	ch a2
+茶 1.0	ch a2
+茶馆 1.0	ch a2 g uan3
+茶人 1.0	ch a2 r en2
+茶食 1.0	ch a2 sh ix2
+查 1.0	ch a2
+查出 1.0	ch a2 ch u1
+查获 1.0	ch a2 h uo4
+查扣 1.0	ch a2 k ou4
+查明 1.0	ch a2 m ing2
+查完 1.0	ch a2 uu uan2
+查阅 1.0	ch a2 vv ve4
+查找 1.0	ch a2 zh ao3
+察觉 1.0	ch a2 j ve2
+察看 1.0	ch a2 k an4
+差 1.0	ch a1
+差 1.0	ch a4
+差 1.0	ch ai1
+差 1.0	c iy1
+差别 1.0	ch a1 b ie2
+差异 1.0	ch a1 ii i4
+拆 1.0	ch ai1
+柴 1.0	ch ai2
+掺 1.0	ch an1
+缠 1.0	ch an2
+缠住 1.0	ch an2 zh u4
+产 1.0	ch an3
+产出 1.0	ch an3 ch u1
+产妇 1.0	ch an3 f u4
+产粮 1.0	ch an3 l iang2
+产量 1.0	ch an3 l iang4
+产品 1.0	ch an2 p in3
+产品质量 1.0	ch an2 p in3 zh ix4 l iang4
+产权 1.0	ch an3 q van2
+产生 1.0	ch an3 sh eng1
+产销 1.0	ch an3 x iao1
+颤 1.0	ch an4
+颤音 1.0	ch an4 ii in1
+昌 1.0	ch ang1
+场 1.0	ch ang3
+场面 1.0	ch ang3 m ian4
+场内 1.0	ch ang3 n ei4
+场上 1.0	ch ang3 sh ang4
+场所 1.0	ch ang2 s uo3
+场院 1.0	ch ang2 vv van4
+常 1.0	ch ang2
+常常 1.0	ch ang2 ch ang2
+常吃 1.0	ch ang2 ch ix1
+常规 1.0	ch ang2 g ui1
+常青 1.0	ch ang2 q ing1
+常温 1.0	ch ang2 uu un1
+长 1.0	ch ang2
+长 1.0	zh ang3
+长安 1.0	ch ang2 aa an1
+长长的 1.0	ch ang2 ch ang2 d e5
+长达 1.0	ch ang2 d a2
+长江 1.0	ch ang2 j iang1
+长年 1.0	ch ang2 n ian2
+长期 1.0	ch ang2 q i1
+长沙 1.0	ch ang2 sh a1
+长寿 1.0	ch ang2 sh ou4
+长远 1.0	ch ang2 vv van3
+厂 1.0	ch ang3
+厂长 1.0	ch ang2 zh ang3
+厂房 1.0	ch ang3 f ang2
+厂家 1.0	ch ang3 j ia1
+厂里 1.0	ch ang2 l i3
+厂区 1.0	ch ang3 q v1
+厂子 1.0	ch ang3 z iy5
+敞 1.0	ch ang3
+畅快 1.0	ch ang4 k uai4
+唱片 1.0	ch ang4 p ian1
+唱片 1.0	ch ang4 p ian4
+倡议 1.0	ch ang4 ii i4
+超 1.0	ch ao1
+超产 1.0	ch ao1 ch an3
+超过 1.0	ch ao1 g uo4
+超前 1.0	ch ao1 q ian2
+超脱 1.0	ch ao1 t uo1
+钞票 1.0	ch ao1 p iao4
+朝 1.0	ch ao2
+朝外 1.0	ch ao2 uu uai4
+朝鲜 1.0	ch ao2 x ian3
+朝云 1.0	zh ao1 vv vn2
+朝政 1.0	ch ao2 zh eng4
+嘲弄 1.0	ch ao2 n ong4
+潮流 1.0	ch ao2 l iu2
+潮湿 1.0	ch ao2 sh ix1
+吵 1.0	ch ao3
+吵闹 1.0	ch ao3 n ao4
+炒 1.0	ch ao3
+炒股 1.0	ch ao2 g u3
+炒鸡蛋 1.0	ch ao3 j i1 d an4
+炒肉丝 1.0	ch ao3 r ou4 s iy1
+车 1.0	ch e1
+车把 1.0	ch e1 b a3
+车边 1.0	ch e1 b ian1
+车流 1.0	ch e1 l iu2
+车站附近 1.0	ch e1 zh an4 f u4 j in4
+车子 1.0	ch e1 z iy5
+扯 1.0	ch e3
+撤 1.0	ch e4
+撤军 1.0	ch e4 j vn1
+撤离 1.0	ch e4 l i2
+撤销 1.0	ch e4 x iao1
+彻底 1.0	ch e4 d i3
+彻夜未眠 1.0	ch e4 ii ie4 uu ui4 m ian2
+辰 1.0	ch en2
+晨 1.0	ch en2
+沉 1.0	ch en2
+沉没 1.0	ch en2 m o4
+沉默寡言 1.0	ch en2 m o4 g ua3 ii ian2
+沉重 1.0	ch en2 zh ong4
+陈 1.0	ch en2
+陈独秀 1.0	ch en2 d u2 x iu4
+陈列柜 1.0	ch en2 l ie4 g ui4
+陈云 1.0	ch en2 vv vn2
+撑 1.0	ch eng1
+称 1.0	ch eng1
+称号 1.0	ch eng1 h ao4
+称为 1.0	ch eng1 uu ui2
+称誉 1.0	ch eng1 vv v4
+称赞 1.0	ch eng1 z an4
+城 1.0	ch eng2
+城里 1.0	ch eng2 l i3
+城内 1.0	ch eng2 n ei4
+城市 1.0	ch eng2 sh ix4
+城县 1.0	ch eng2 x ian4
+成 1.0	ch eng2
+成本 1.0	ch eng2 b en3
+成不了 1.0	ch eng2 b u4 l iao3
+成不了 1.0	ch eng2 b u5 l iao3
+成长 1.0	ch eng2 zh ang3
+成都 1.0	ch eng2 d u1
+成堆 1.0	ch eng2 d ui1
+成对 1.0	ch eng2 d ui4
+成分 1.0	ch eng2 f en4
+成凤 1.0	ch eng2 f eng4
+成功 1.0	ch eng2 g ong1
+成果 1.0	ch eng2 g uo3
+成绩 1.0	ch eng2 j i4
+成家 1.0	ch eng2 j ia1
+成了 1.0	ch eng2 l e5
+成片 1.0	ch eng2 p ian4
+成群结队 1.0	ch eng2 q vn2 j ie2 d ui4
+成熟 1.0	ch eng2 sh u2
+成为 1.0	ch eng2 uu ui2
+成一 1.0	ch eng2 ii i1
+成员 1.0	ch eng2 vv van2
+呈 1.0	ch eng2
+呈贡 1.0	ch eng2 g ong4
+乘 1.0	ch eng2
+乘车 1.0	ch eng2 ch e1
+乘机 1.0	ch eng2 j i1
+乘凉 1.0	ch eng2 l iang2
+乘员 1.0	ch eng2 vv van2
+程 1.0	ch eng2
+程度 1.0	ch eng2 d u4
+程控 1.0	ch eng2 k ong4
+澄 1.0	ch eng2
+诚然 1.0	ch eng2 r an2
+诚意 1.0	ch eng2 ii i4
+承 1.0	ch eng2
+承包 1.0	ch eng2 b ao1
+承兑 1.0	ch eng2 d ui4
+承运人 1.0	ch eng2 vv vn4 r en2
+吃 1.0	ch ix1
+吃不下 1.0	ch ix1 b u2 x ia4
+吃掉 1.0	ch ix1 d iao4
+吃饭 1.0	ch ix1 f an4
+吃喝 1.0	ch ix1 h e1
+吃紧 1.0	ch ix1 j in3
+吃苦 1.0	ch ix1 k u3
+吃完 1.0	ch ix1 uu uan2
+吃药 1.0	ch ix1 ii iao4
+吃月饼 1.0	ch ix1 vv ve4 b ing5
+痴 1.0	ch ix1
+持 1.0	ch ix2
+持家 1.0	ch ix2 j ia1
+持枪 1.0	ch ix2 q iang1
+池 1.0	ch ix2
+迟 1.0	ch ix2
+迟浩田 1.0	ch ix2 h ao4 t ian2
+驰骋 1.0	ch ix2 ch eng3
+驰名 1.0	ch ix2 m ing2
+驰名中外 1.0	ch ix2 m ing2 zh ong1 uu uai4
+齿 1.0	ch ix3
+尺寸 1.0	ch ix3 c un4
+尺子 1.0	ch ix3 z iy5
+赤 1.0	ch ix4
+赤铁矿 1.0	ch ix4 t ie3 k uang4
+斥责 1.0	ch ix4 z e2
+充 1.0	ch ong1
+充分发挥 1.0	ch ong1 f en4 f a1 h ui1
+充满 1.0	ch ong1 m an3
+充溢 1.0	ch ong1 ii i4
+冲 1.0	ch ong1
+冲减 1.0	ch ong1 j ian3
+冲进 1.0	ch ong1 j in4
+冲突 1.0	ch ong1 t u1
+冲向 1.0	ch ong1 x iang4
+崇高 1.0	ch ong2 g ao1
+崇武 1.0	ch ong2 uu u3
+崇祯 1.0	ch ong2 zh en1
+宠爱 1.0	ch ong3 aa ai4
+宠儿 1.0	ch ong3 ee er2
+抽 1.0	ch ou1
+抽掉 1.0	ch ou1 d iao4
+抽水 1.0	ch ou1 sh ui3
+抽烟 1.0	ch ou1 ii ian1
+抽样 1.0	ch ou1 ii iang4
+酬谢 1.0	ch ou2 x ie4
+畴 1.0	ch ou2
+筹 1.0	ch ou2
+筹办 1.0	ch ou2 b an4
+筹备 1.0	ch ou2 b ei4
+筹措 1.0	ch ou2 c uo4
+筹款 1.0	ch ou2 k uan3
+筹资 1.0	ch ou2 z iy1
+仇 1.0	ch ou2
+绸 1.0	ch ou2
+丑 1.0	ch ou3
+丑陋 1.0	ch ou3 l ou4
+臭 1.0	ch ou4
+臭名昭著 1.0	ch ou4 m ing2 zh ao1 zh u4
+初 1.0	ch u1
+初二 1.0	ch u1 ee er4
+初期 1.0	ch u1 q i1
+出 1.0	ch u1
+出版 1.0	ch u1 b an3
+出版社 1.0	ch u1 b an3 sh e4
+出场 1.0	ch u1 ch ang3
+出场费 1.0	ch u1 ch ang3 f ei4
+出发 1.0	ch u1 f a1
+出阁 1.0	ch u1 g e2
+出海 1.0	ch u1 h ai3
+出局 1.0	ch u1 j v2
+出口 1.0	ch u1 k ou3
+出来 1.0	ch u1 l ai2
+出门 1.0	ch u1 m en2
+出面 1.0	ch u1 m ian4
+出去 1.0	ch u1 q v4
+出生 1.0	ch u1 sh eng1
+出外 1.0	ch u1 uu uai4
+出席 1.0	ch u1 x i2
+出现 1.0	ch u1 x ian4
+出洋 1.0	ch u1 ii iang2
+出于 1.0	ch u1 vv v2
+厨 1.0	ch u2
+厨子 1.0	ch u2 z iy5
+雏鹰 1.0	ch u2 ii ing1
+除 1.0	ch u2
+除此之外 1.0	ch u2 c iy3 zh ix1 uu uai4
+除了 1.0	ch u2 l e5
+除夕夜 1.0	ch u2 x i1 ii ie4
+储备 1.0	ch u3 b ei4
+触犯 1.0	ch u4 f an4
+触角 1.0	ch u4 j iao3
+处 1.0	ch u3
+处 1.0	ch u4
+处理 1.0	ch u4 l i3
+处理 1.0	ch u2 l i3
+处于 1.0	ch u3 vv v2
+处于 1.0	ch u4 vv v2
+揣着 1.0	ch uai1 zh e5
+川岛芳子 1.0	ch uan1 d ao3 f ang1 z iy3
+穿 1.0	ch uan1
+穿过 1.0	ch uan1 g uo4
+穿梭 1.0	ch uan1 s uo1
+穿着 1.0	ch uan1 zh e5
+穿着 1.0	ch uan1 zh uo2
+传 1.0	ch uan2
+传 1.0	zh uan4
+传承 1.0	ch uan2 ch eng2
+传递 1.0	ch uan2 d i4
+传开 1.0	ch uan2 k ai1
+传来 1.0	ch uan2 l ai2
+传神 1.0	ch uan2 sh en2
+传授 1.0	ch uan2 sh ou4
+传统 1.0	ch uan2 t ong3
+船 1.0	ch uan2
+串 1.0	ch uan4
+窗口 1.0	ch uang1 k ou3
+窗上 1.0	ch uang1 sh ang5
+窗外 1.0	ch uang1 uu uai4
+窗子 1.0	ch uang1 z iy5
+床 1.0	ch uang2
+床单 1.0	ch uang2 d an1
+床铺 1.0	ch uang2 p u4
+床上 1.0	ch uang2 sh ang4
+床上 1.0	ch uang2 sh ang5
+床罩 1.0	ch uang2 zh ao4
+闯将 1.0	ch uang3 j iang4
+创 1.0	ch uang1
+创 1.0	ch uang4
+创办 1.0	ch uang4 b an4
+创建 1.0	ch uang4 j ian4
+创利 1.0	ch uang4 l i4
+创业 1.0	ch uang4 ii ie4
+创造 1.0	ch uang4 z ao4
+创作 1.0	ch uang4 z uo4
+吹 1.0	ch ui1
+吹吹 1.0	ch ui1 ch ui1
+吹吹 1.0	ch ui1 ch ui5
+吹到 1.0	ch ui1 d ao4
+吹牛 1.0	ch ui1 n iu2
+吹散 1.0	ch ui1 s an4
+炊事员 1.0	ch ui1 sh ix4 vv van2
+炊烟 1.0	ch ui1 ii ian1
+春 1.0	ch un1
+春草 1.0	ch un1 c ao3
+春分 1.0	ch un1 f en1
+春风 1.0	ch un1 f eng1
+春风吹 1.0	ch un1 f eng1 ch ui1
+春耕 1.0	ch un1 g eng1
+春节前 1.0	ch un1 j ie2 q ian2
+春秋战国 1.0	ch un1 q iu1 zh an4 g uo2
+春色 1.0	ch un1 s e4
+春山 1.0	ch un1 sh an1
+春天 1.0	ch un1 t ian1
+春意 1.0	ch un1 ii i4
+春运 1.0	ch un1 vv vn4
+醇 1.0	ch un2
+唇 1.0	ch un2
+纯 1.0	ch un2
+纯粹 1.0	ch un2 c ui4
+纯棉 1.0	ch un2 m ian2
+纯音乐 1.0	ch un2 ii in1 vv ve4
+纯真 1.0	ch un2 zh en1
+戳 1.0	ch uo1
+疵 1.0	c iy1
+茨 1.0	c iy2
+磁性 1.0	c iy2 x ing4
+雌 1.0	c iy2
+辞 1.0	c iy2
+辞职 1.0	c iy2 zh ix2
+瓷 1.0	c iy2
+词条 1.0	c iy2 t iao2
+此 1.0	c iy3
+此案 1.0	c iy3 aa an4
+此次 1.0	c iy3 c iy4
+此次活动 1.0	c iy3 c iy4 h uo2 d ong4
+此后 1.0	c iy3 h ou4
+此间 1.0	c iy3 j ian1
+此刻 1.0	c iy3 k e4
+此时 1.0	c iy3 sh ix2
+此外 1.0	c iy3 uu uai4
+刺 1.0	c iy4
+刺伤 1.0	c iy4 sh ang1
+赐 1.0	c iy4
+次 1.0	c iy4
+次第 1.0	c iy4 d i4
+次日 1.0	c iy4 r iz4
+聪儿 1.0	c ong1 ee er2
+聪明反被聪明误 1.0	c ong1 m ing2 f an3 b ei4 c ong1 m ing2 uu u4
+葱绿 1.0	c ong1 l v4
+葱茏 1.0	c ong1 l ong2
+从 1.0	c ong2
+从此 1.0	c ong2 c iy3
+从而 1.0	c ong2 ee er2
+从古到今 1.0	c ong2 g u3 d ao4 j in1
+从教 1.0	c ong2 j iao4
+从来 1.0	c ong2 l ai2
+从零开始 1.0	c ong2 l ing2 k ai1 sh ix3
+从前 1.0	c ong2 q ian2
+从容 1.0	c ong2 r ong2
+从事 1.0	c ong2 sh ix4
+从未 1.0	c ong2 uu ui4
+从小 1.0	c ong2 x iao3
+从业人员 1.0	c ong2 ii ie4 r en2 vv van2
+从中 1.0	c ong2 zh ong1
+丛 1.0	c ong2
+凑 1.0	c ou4
+凑合 1.0	c ou4 h e5
+凑近 1.0	c ou4 j in4
+凑热闹 1.0	c ou4 r e4 n ao5
+粗 1.0	c u1
+粗糙 1.0	c u1 c ao1
+粗豪 1.0	c u1 h ao2
+粗俗 1.0	c u1 s u2
+粗细 1.0	c u1 x i4
+醋 1.0	c u4
+簇 1.0	c u4
+促 1.0	c u4
+窜 1.0	c uan4
+窜改 1.0	c uan4 g ai3
+摧毁 1.0	c ui1 h ui3
+崔 1.0	c ui1
+脆 1.0	c ui4
+脆弱 1.0	c ui4 r uo4
+翠 1.0	c ui4
+村 1.0	c un1
+村办 1.0	c un1 b an4
+村长 1.0	c un1 zh ang3
+村干部 1.0	c un1 g an4 b u5
+村口 1.0	c un1 k ou3
+村里 1.0	c un1 l i3
+村民 1.0	c un1 m in2
+村农民 1.0	c un1 n ong2 m in2
+村委会 1.0	c un1 uu ui3 h ui4
+村镇 1.0	c un1 zh en4
+村子 1.0	c un1 z iy5
+存 1.0	c un2
+存根 1.0	c un2 g en1
+存活 1.0	c un2 h uo2
+存在 1.0	c un2 z ai4
+磋商 1.0	c uo1 sh ang1
+搓 1.0	c uo1
+措 1.0	c uo4
+措施 1.0	c uo4 sh ix1
+错 1.0	c uo4
+错落有致 1.0	c uo4 l uo4 ii iu3 zh ix4
+错误 1.0	c uo4 uu u4
+达 1.0	d a2
+达成 1.0	d a2 ch eng2
+达到 1.0	d a2 d ao4
+答案 1.0	d a2 aa an4
+答复 1.0	d a2 f u4
+打 1.0	d a3
+打工妹 1.0	d a3 g ong1 m ei4
+打好 1.0	d a2 h ao3
+打击 1.0	d a3 j i1
+打酱油 1.0	d a3 j iang4 ii iu2
+打结 1.0	d a3 j ie2
+打开 1.0	d a3 k ai1
+打来 1.0	d a3 l ai2
+打油 1.0	d a3 ii iu2
+大 1.0	d a4
+大 1.0	d ai4
+大别山 1.0	d a4 b ie2 sh an1
+大部分 1.0	d a4 b u4 f en5
+大臣 1.0	d a4 ch en2
+大大 1.0	d a4 d a4
+大胆 1.0	d a4 d an3
+大道 1.0	d a4 d ao4
+大地 1.0	d a4 d i4
+大都 1.0	d a4 d ou1
+大都 1.0	d a4 d u1
+大多 1.0	d a4 d uo1
+大多数 1.0	d a4 d uo1 sh u4
+大夫 1.0	d ai4 f u5
+大幅度 1.0	d a4 f u2 d u4
+大概 1.0	d a4 g ai4
+大搞 1.0	d a4 g ao3
+大规模 1.0	d a4 g ui1 m o2
+大海 1.0	d a4 h ai3
+大汉 1.0	d a4 h an4
+大红 1.0	d a4 h ong2
+大户 1.0	d a4 h u4
+大会 1.0	d a4 h ui4
+大家 1.0	d a4 j ia1
+大惊失色 1.0	d a4 j ing1 sh ix1 s e4
+大块 1.0	d a4 k uai4
+大连 1.0	d a4 l ian2
+大量 1.0	d a4 l iang4
+大陆 1.0	d a4 l u4
+大马哈鱼 1.0	d a4 m a3 h a1 vv v2
+大忙人 1.0	d a4 m ang2 r en2
+大门 1.0	d a4 m en2
+大棚 1.0	d a4 p eng2
+大篷车 1.0	d a4 p eng2 ch e1
+大平 1.0	d a4 p ing2
+大企业 1.0	d a4 q i3 ii ie4
+大群 1.0	d a4 q vn2
+大嫂 1.0	d a4 s ao3
+大声 1.0	d a4 sh eng1
+大师 1.0	d a4 sh ix1
+大使 1.0	d a4 sh ix3
+大蒜 1.0	d a4 s uan4
+大提琴 1.0	d a4 t i2 q in2
+大田 1.0	d a4 t ian2
+大厅 1.0	d a4 t ing1
+大同 1.0	d a4 t ong2
+大弯 1.0	d a4 uu uan1
+大碗茶 1.0	d a4 uu uan3 ch a2
+大小 1.0	d a4 x iao3
+大型 1.0	d a4 x ing2
+大选 1.0	d a4 x van3
+大学 1.0	d a4 x ve2
+大眼睛 1.0	d a4 ii ian3 j ing5
+大勇 1.0	d a4 ii iong3
+大约 1.0	d a4 vv ve1
+大寨 1.0	d a4 zh ai4
+大涨 1.0	d a4 zh ang3
+大众 1.0	d a4 zh ong4
+大宗 1.0	d a4 z ong1
+呆 1.0	d ai1
+呆呆 1.0	d ai1 d ai1
+歹人 1.0	d ai3 r en2
+歹徒 1.0	d ai3 t u2
+戴 1.0	d ai4
+戴维 1.0	d ai4 uu ui2
+带 1.0	d ai4
+带动 1.0	d ai4 d ong4
+带回 1.0	d ai4 h ui2
+带来 1.0	d ai4 l ai2
+带领 1.0	d ai4 l ing3
+带头 1.0	d ai4 t ou2
+代 1.0	d ai4
+代表 1.0	d ai4 b iao3
+贷 1.0	d ai4
+待 1.0	d ai4
+待业 1.0	d ai4 ii ie4
+担 1.0	d an1
+担 1.0	d an4
+担任 1.0	d an1 r en4
+单 1.0	ch an2
+单 1.0	d an1
+单 1.0	sh an4
+单词 1.0	d an1 c iy2
+单独 1.0	d an1 d u2
+单井 1.0	d an1 j ing3
+单人 1.0	d an1 r en2
+单位 1.0	d an1 uu ui4
+单一 1.0	d an1 ii i1
+但 1.0	d an4
+但是 1.0	d an4 sh ix4
+但愿 1.0	d an4 vv van4
+淡 1.0	d an4
+淡紫 1.0	d an4 z iy3
+诞生 1.0	d an4 sh eng1
+弹性 1.0	t an2 x ing4
+弹药 1.0	d an4 ii iao4
+弹指 1.0	t an2 zh ix3
+当 1.0	d ang1
+当 1.0	d ang4
+当场 1.0	d ang1 ch ang3
+当地 1.0	d ang1 d i4
+当儿 1.0	d ang1 ee er2
+当家 1.0	d ang1 j ia1
+当今 1.0	d ang1 j in1
+当年 1.0	d ang1 n ian2
+当铺 1.0	d ang4 p u4
+当前 1.0	d ang1 q ian2
+当然 1.0	d ang1 r an2
+当时 1.0	d ang1 sh ix2
+当天 1.0	d ang4 t ian1
+当中 1.0	d ang1 zh ong1
+当做 1.0	d ang4 z uo4
+挡住 1.0	d ang3 zh u4
+党建 1.0	d ang3 j ian4
+党人 1.0	d ang3 r en2
+党支部 1.0	d ang3 zh ix1 b u4
+党中央 1.0	d ang3 zh ong1 ii iang1
+荡 1.0	d ang4
+刀 1.0	d ao1
+蹈 1.0	d ao3
+倒 1.0	d ao3
+倒 1.0	d ao4
+倒出 1.0	d ao4 ch u1
+倒塌 1.0	d ao3 t a1
+倒下 1.0	d ao3 x ia4
+岛 1.0	d ao3
+岛上 1.0	d ao3 sh ang4
+岛上 1.0	d ao3 sh ang5
+导 1.0	d ao3
+导演 1.0	d ao2 ii ian3
+导致 1.0	d ao3 zh ix4
+到 1.0	d ao4
+到达 1.0	d ao4 d a2
+到了 1.0	d ao4 l e5
+到了晚上 1.0	d ao4 l e5 uu uan3 sh ang5
+到期 1.0	d ao4 q i1
+稻草 1.0	d ao4 c ao3
+稻谷 1.0	d ao4 g u3
+道 1.0	d ao4
+道理 1.0	d ao4 l i3
+道情 1.0	d ao4 q ing2
+盗 1.0	d ao4
+盗版 1.0	d ao4 b an3
+盗墓 1.0	d ao4 m u4
+盗窃 1.0	d ao4 q ie4
+德 1.0	d e2
+德国 1.0	d e2 g uo2
+德勤 1.0	d e2 q in2
+德意 1.0	d e2 ii i4
+德育 1.0	d e2 vv v4
+得 1.0	d e2
+得 1.0	d e5
+得 1.0	d ei3
+得到 1.0	d e2 d ao4
+得名 1.0	d e2 m ing2
+得志 1.0	d e2 zh ix4
+的 1.0	d e5
+的 1.0	d i2
+的 1.0	d i4
+的确 1.0	d i2 q ve4
+蹬 1.0	d eng1
+灯 1.0	d eng1
+登 1.0	d eng1
+登记 1.0	d eng1 j i4
+登山队 1.0	d eng1 sh an1 d ui4
+登台 1.0	d eng1 t ai2
+等 1.0	d eng3
+等待 1.0	d eng3 d ai4
+等等 1.0	d eng2 d eng3
+等人 1.0	d eng3 r en2
+等于 1.0	d eng3 vv v2
+邓 1.0	d eng4
+堤 1.0	d i1
+低 1.0	d i1
+低沉 1.0	d i1 ch en2
+低平 1.0	d i1 p ing2
+低温 1.0	d i1 uu un1
+低于 1.0	d i1 vv v2
+迪 1.0	d i2
+敌后 1.0	d i2 h ou4
+敌军 1.0	d i2 j vn1
+敌人 1.0	d i2 r en2
+敌占区 1.0	d i2 zh an4 q v1
+翟 1.0	d i2
+翟 1.0	zh ai2
+嫡亲 1.0	d i2 q in1
+抵 1.0	d i3
+抵达 1.0	d i3 d a2
+抵抗 1.0	d i3 k ang4
+抵赖 1.0	d i3 l ai4
+抵押 1.0	d i3 ii ia1
+底 1.0	d i3
+底儿 1.0	d i3 ee er5
+底片 1.0	d i3 p ian4
+底色 1.0	d i3 s e4
+地 1.0	d e5
+地 1.0	d i4
+地处 1.0	d i4 ch u3
+地点 1.0	d i4 d ian3
+地方 1.0	d i4 f ang1
+地瓜 1.0	d i4 g ua1
+地壳 1.0	d i4 q iao4
+地雷 1.0	d i4 l ei2
+地理位置 1.0	d i4 l i3 uu ui4 zh ix5
+地名 1.0	d i4 m ing2
+地膜 1.0	d i4 m o2
+地区 1.0	d i4 q v1
+地上 1.0	d i4 sh ang4
+地市 1.0	d i4 sh ix4
+地说 1.0	d i4 sh uo1
+地毯 1.0	d i4 t an3
+地望 1.0	d i4 uu uang4
+地位 1.0	d i4 uu ui4
+地下 1.0	d i4 x ia4
+地域 1.0	d i4 vv v4
+蒂 1.0	d i4
+第 1.0	d i4
+第二 1.0	d i4 ee er4
+第二次 1.0	d i4 ee er4 c iy4
+第二阶段 1.0	d i4 ee er4 j ie1 d uan4
+第二年 1.0	d i4 ee er4 n ian2
+第六 1.0	d i4 l iu4
+第三 1.0	d i4 s an1
+第三名 1.0	d i4 s an1 m ing2
+第四册 1.0	d i4 s iy4 c e4
+第五 1.0	d i4 uu u3
+第一 1.0	d i4 ii i1
+第一大 1.0	d i4 ii i1 d a4
+第一批 1.0	d i4 ii i1 p i1
+第一线 1.0	d i4 ii i1 x ian4
+帝 1.0	d i4
+弟 1.0	d i4
+弟兄 1.0	d i4 x iong5
+递 1.0	d i4
+缔造 1.0	d i4 z ao4
+颠倒 1.0	d ian1 d ao3
+颠簸 1.0	d ian1 b o3
+点 1.0	d ian3
+点点 1.0	d ian2 d ian3
+点缀 1.0	d ian3 zh ui4
+典范 1.0	d ian3 f an4
+典礼 1.0	d ian2 l i3
+靛 1.0	d ian4
+电 1.0	d ian4
+电厂 1.0	d ian4 ch ang3
+电动 1.0	d ian4 d ong4
+电话 1.0	d ian4 h ua4
+电缆 1.0	d ian4 l an3
+电力 1.0	d ian4 l i4
+电炉 1.0	d ian4 l u2
+电脑技术 1.0	d ian4 n ao3 j i4 sh u4
+电热 1.0	d ian4 r e4
+电视 1.0	d ian4 sh ix4
+电网 1.0	d ian4 uu uang3
+电线 1.0	d ian4 x ian4
+电影 1.0	d ian4 ii ing3
+电站 1.0	d ian4 zh an4
+电子 1.0	d ian4 z iy3
+惦 1.0	d ian4
+奠定 1.0	d ian4 d ing4
+雕琢 1.0	d iao1 zh uo2
+凋谢 1.0	d iao1 x ie4
+掉 1.0	d iao4
+吊 1.0	d iao4
+调 1.0	d iao4
+调 1.0	t iao2
+调查 1.0	d iao4 ch a2
+调成 1.0	d iao4 ch eng2
+调和 1.0	t iao2 h e2
+调皮捣蛋 1.0	t iao2 p i2 d ao3 d an4
+调入 1.0	d iao4 r u4
+调整 1.0	t iao2 zh eng3
+跌倒 1.0	d ie1 d ao3
+爹 1.0	d ie1
+蝶 1.0	d ie2
+叠 1.0	d ie2
+叠嶂 1.0	d ie2 zh ang4
+丁 1.0	d ing1
+叮当 1.0	d ing1 d ang1
+叮咛 1.0	d ing1 n ing2
+钉 1.0	d ing1
+顶 1.0	d ing3
+顶风 1.0	d ing3 f eng1
+顶呱呱 1.0	d ing3 g ua1 g ua1
+定 1.0	d ing4
+定出 1.0	d ing4 ch u1
+定慧 1.0	d ing4 h ui4
+定力 1.0	d ing4 l i4
+定时炸弹 1.0	d ing4 sh ix2 zh a4 d an4
+定向 1.0	d ing4 x iang4
+订 1.0	d ing4
+订货会 1.0	d ing4 h uo4 h ui4
+订价 1.0	d ing4 j ia4
+丢 1.0	d iu1
+丢了 1.0	d iu1 l e5
+丢下 1.0	d iu1 x ia4
+东 1.0	d ong1
+东岸 1.0	d ong1 aa an4
+东半球 1.0	d ong1 b an4 q iu2
+东北部 1.0	d ong1 b ei3 b u4
+东北军 1.0	d ong1 b ei3 j vn1
+东奔西跑 1.0	d ong1 b en1 x i1 p ao3
+东渡 1.0	d ong1 d u4
+东方 1.0	d ong1 f ang1
+东京 1.0	d ong1 j ing1
+东经 1.0	d ong1 j ing1
+东扩 1.0	d ong1 k uo4
+东楼 1.0	d ong1 l ou2
+东门外 1.0	d ong1 m en2 uu uai4
+东南亚 1.0	d ong1 n an2 ii ia4
+东三环 1.0	d ong1 s an1 h uan2
+东山 1.0	d ong1 sh an1
+东山区 1.0	d ong1 sh an1 q v1
+东西方 1.0	d ong1 x i1 f ang1
+东阳 1.0	d ong1 ii iang2
+冬 1.0	d ong1
+冬奥会 1.0	d ong1 aa ao4 h ui4
+冬暖 1.0	d ong1 n uan3
+董鄂 1.0	d ong3 ee e4
+董事长 1.0	d ong3 sh ix4 zh ang3
+董文华 1.0	d ong3 uu un2 h ua2
+动 1.0	d ong4
+动脉 1.0	d ong4 m ai4
+动手 1.0	d ong4 sh ou3
+动物 1.0	d ong4 uu u5
+动用 1.0	d ong4 ii iong4
+动作 1.0	d ong4 z uo4
+栋 1.0	d ong4
+洞 1.0	d ong4
+洞悉 1.0	d ong4 x i1
+洞穴 1.0	d ong4 x ve2
+斗 1.0	d ou3
+斗 1.0	d ou4
+陡峭 1.0	d ou3 q iao4
+陡然 1.0	d ou3 r an2
+豆腐 1.0	d ou4 f u5
+豆腐脑 1.0	d ou4 f u5 n ao3
+都 1.0	d ou1
+都 1.0	d u1
+都是 1.0	d ou1 sh ix4
+都一样 1.0	d ou1 ii i2 ii iang4
+毒品 1.0	d u2 p in3
+毒死 1.0	d u2 s iy3
+独木桥 1.0	d u2 m u4 q iao2
+读 1.0	d u2
+读物 1.0	d u2 uu u4
+读者 1.0	d u2 zh e3
+堵住 1.0	d u3 zh u4
+赌博 1.0	d u3 b o2
+杜 1.0	d u4
+度 1.0	d u4
+度 1.0	d uo2
+度过难关 1.0	d u4 g uo4 n an2 g uan1
+度假 1.0	d u4 j ia4
+端 1.0	d uan1
+短 1.0	d uan3
+短短 1.0	d uan2 d uan3
+短篇小说 1.0	d uan3 p ian1 x iao3 sh uo1
+短期 1.0	d uan3 q i1
+短途 1.0	d uan3 t u2
+短暂 1.0	d uan3 z an4
+锻炼 1.0	d uan4 l ian4
+段 1.0	d uan4
+断 1.0	d uan4
+堆 1.0	d ui1
+兑现 1.0	d ui4 x ian4
+队 1.0	d ui4
+队长 1.0	d ui4 zh ang3
+队友 1.0	d ui4 ii iu3
+队员 1.0	d ui4 vv van2
+对 1.0	d ui4
+对此 1.0	d ui4 c iy3
+对方 1.0	d ui4 f ang1
+对话 1.0	d ui4 h ua4
+对接 1.0	d ui4 j ie1
+对口 1.0	d ui4 k ou3
+对立 1.0	d ui4 l i4
+对马 1.0	d ui4 m a3
+对手 1.0	d ui4 sh ou3
+对外 1.0	d ui4 uu uai4
+对于 1.0	d ui4 vv v2
+对於 1.0	d ui4 vv v2
+墩 1.0	d un1
+吨 1.0	d un1
+敦煌 1.0	d un1 h uang2
+顿 1.0	d un4
+顿觉 1.0	d un4 j ve2
+囤 1.0	d un4
+囤 1.0	t un2
+钝 1.0	d un4
+多 1.0	d uo1
+多半 1.0	d uo1 b an4
+多次 1.0	d uo1 c iy4
+多方 1.0	d uo1 f ang1
+多个 1.0	d uo1 g e4
+多怪 1.0	d uo1 g uai4
+多吉 1.0	d uo1 j i2
+多久 1.0	d uo1 j iu3
+多来 1.0	d uo1 l ai2
+多媒体 1.0	d uo1 m ei2 t i3
+多美 1.0	d uo1 m ei3
+多名 1.0	d uo1 m ing2
+多少 1.0	d uo1 sh ao3
+多数 1.0	d uo1 sh u4
+多斯桑托斯 1.0	d uo1 s iy1 s ang1 t uo1 s iy1
+多糖 1.0	d uo1 t ang2
+多头 1.0	d uo1 t ou2
+多万 1.0	d uo1 uu uan4
+多味 1.0	d uo1 uu ui4
+多样 1.0	d uo1 ii iang4
+多余 1.0	d uo1 vv v2
+多元 1.0	d uo1 vv van2
+多种 1.0	d uo1 zh ong3
+夺 1.0	d uo2
+夺得 1.0	d uo2 d e2
+夺走 1.0	d uo2 z ou3
+躲 1.0	d uo3
+朵 1.0	d uo3
+蛾 1.0	ee e2
+俄 1.0	ee e2
+俄方 1.0	ee e2 f ang1
+俄共 1.0	ee e2 g ong4
+俄国 1.0	ee e2 g uo2
+俄罗斯 1.0	ee e2 l uo2 s iy1
+俄语 1.0	ee e2 vv v3
+额 1.0	ee e2
+额外 1.0	ee e2 uu uai4
+恶 1.0	ee e3
+恶 1.0	ee e4
+恶 1.0	uu u4
+恶毒 1.0	ee e4 d u2
+恶劣 1.0	ee e4 l ie4
+恶魔 1.0	ee e4 m o2
+恶性循环 1.0	ee e4 x ing4 x vn2 h uan2
+恶性肿瘤 1.0	ee e4 x ing4 zh ong3 l iu2
+厄 1.0	ee e4
+厄瓜多尔 1.0	ee e4 g ua1 d uo1 ee er3
+扼制 1.0	ee e4 zh ix4
+扼住 1.0	ee e4 zh u4
+扼住 1.0	ee e4 zh u5
+鄂 1.0	ee e4
+饿 1.0	ee e4
+恩 1.0	ee en1
+恩波 1.0	ee en1 b o1
+恩宠 1.0	ee en1 ch ong3
+恩赐 1.0	ee en1 c iy4
+而 1.0	ee er2
+而成 1.0	ee er2 ch eng2
+而今 1.0	ee er2 j in1
+而论 1.0	ee er2 l un4
+而且 1.0	ee er2 q ie3
+而去 1.0	ee er2 q v4
+而上 1.0	ee er2 sh ang4
+而是 1.0	ee er2 sh ix4
+而行 1.0	ee er2 x ing2
+而已 1.0	ee er2 ii i3
+而又 1.0	ee er2 ii iu4
+儿 1.0	ee er2
+儿女 1.0	ee er2 n v3
+儿童 1.0	ee er2 t ong2
+儿童玩具 1.0	ee er2 t ong2 uu uan2 j v4
+儿媳 1.0	ee er2 x i2
+儿子 1.0	ee er2 z iy5
+耳 1.0	ee er3
+耳塞 1.0	ee er3 s ai1
+耳语 1.0	ee er2 vv v3
+尔 1.0	ee er3
+洱 1.0	ee er3
+洱海 1.0	ee er2 h ai3
+二 1.0	ee er4
+二八 1.0	ee er4 b a1
+二百 1.0	ee er4 b ai3
+二百多 1.0	ee er4 b ai3 d uo1
+二哥 1.0	ee er4 g e1
+二个 1.0	ee er4 g e4
+二话没说 1.0	ee er4 h ua4 m ei2 sh uo1
+二连 1.0	ee er4 l ian2
+二林 1.0	ee er4 l in2
+二毛 1.0	ee er4 m ao2
+二秒 1.0	ee er4 m iao3
+二期 1.0	ee er4 q i1
+二七 1.0	ee er4 q i1
+二千 1.0	ee er4 q ian1
+二人 1.0	ee er4 r en2
+二嫂 1.0	ee er4 s ao3
+二婶 1.0	ee er4 sh en3
+二十 1.0	ee er4 sh ix2
+二十八 1.0	ee er4 sh ix2 b a1
+二十八日 1.0	ee er4 sh ix2 b a1 r iz4
+二十八万 1.0	ee er4 sh ix2 b a1 uu uan4
+二十八万 1.0	ee er4 sh ix5 b a1 uu uan4
+二十二 1.0	ee er4 sh ix2 ee er4
+二十九日 1.0	ee er4 sh ix2 j iu3 r iz4
+二十九日 1.0	ee er4 sh ix5 j iu3 r iz4
+二十六 1.0	ee er4 sh ix2 l iu4
+二十六日 1.0	ee er4 sh ix2 l iu4 r iz4
+二十六日 1.0	ee er4 sh ix5 l iu4 r iz4
+二十七 1.0	ee er4 sh ix2 q i1
+二十七日 1.0	ee er4 sh ix2 q i1 r iz4
+二十七日 1.0	ee er4 sh ix5 q i1 r iz4
+二十三 1.0	ee er4 sh ix2 s an1
+二十三日 1.0	ee er4 sh ix2 s an1 r iz4
+二十三日 1.0	ee er4 sh ix5 s an1 r iz4
+二十四 1.0	ee er4 sh ix2 s iy4
+二十万 1.0	ee er4 sh ix2 uu uan4
+二十五 1.0	ee er4 sh ix2 uu u3
+二十五日 1.0	ee er4 sh ix2 uu u3 r iz4
+二十一 1.0	ee er4 sh ix2 ii i1
+二十一日 1.0	ee er4 sh ix2 ii i1 r iz4
+二十一日 1.0	ee er4 sh ix5 ii i1 r iz4
+二十一世纪 1.0	ee er4 sh ix2 ii i1 sh ix4 j i4
+二十一世纪 1.0	ee er4 sh ix5 ii i1 sh ix4 j i4
+二团 1.0	ee er4 t uan2
+二万 1.0	ee er4 uu uan4
+二万多 1.0	ee er4 uu uan4 d uo1
+二小姐 1.0	ee er4 x iao2 j ie3
+二氧化硅 1.0	ee er4 ii iang3 h ua4 g ui1
+二氧化硫 1.0	ee er4 ii iang3 h ua4 l iu2
+二氧化碳 1.0	ee er4 ii iang3 h ua4 t an4
+二元 1.0	ee er4 vv van2
+二月 1.0	ee er4 vv ve4
+发 1.0	f a1
+发 1.0	f a4
+发表 1.0	f a1 b iao3
+发病 1.0	f a1 b ing4
+发布 1.0	f a1 b u4
+发财 1.0	f a1 c ai2
+发出 1.0	f a1 ch u1
+发电量 1.0	f a1 d ian4 l iang4
+发动 1.0	f a1 d ong4
+发动机 1.0	f a1 d ong4 j i1
+发光 1.0	f a1 g uang1
+发红 1.0	f a1 h ong2
+发挥 1.0	f a1 h ui1
+发掘 1.0	f a1 j ve2
+发令枪 1.0	f a1 l ing4 q iang1
+发明 1.0	f a1 m ing2
+发烧 1.0	f a1 sh ao1
+发射 1.0	f a1 sh e4
+发生 1.0	f a1 sh eng1
+发生意外 1.0	f a1 sh eng1 ii i4 uu uai4
+发售 1.0	f a1 sh ou4
+发下 1.0	f a1 x ia4
+发现 1.0	f a1 x ian4
+发行 1.0	f a1 x ing2
+发芽 1.0	f a1 ii ia2
+发烟 1.0	f a1 ii ian1
+发言人 1.0	f a1 ii ian2 r en2
+发音 1.0	f a1 ii in1
+发育 1.0	f a1 vv v4
+发展 1.0	f a1 zh an3
+发作 1.0	f a1 z uo4
+罚款 1.0	f a2 k uan3
+法 1.0	f a3
+法律 1.0	f a3 l v4
+法西斯 1.0	f a3 x i1 s iy1
+法医 1.0	f a3 ii i1
+法院 1.0	f a3 vv van4
+藩 1.0	f an1
+番禺 1.0	p an1 vv v3
+翻 1.0	f an1
+翻腾 1.0	f an1 t eng2
+翻阅 1.0	f an1 vv ve4
+翻转 1.0	f an1 zh uan3
+繁 1.0	f an2
+繁忙 1.0	f an2 m ang2
+繁殖 1.0	f an2 zh ix2
+凡 1.0	f an2
+反 1.0	f an3
+反动派 1.0	f an3 d ong4 p ai4
+反对 1.0	f an3 d ui4
+反而 1.0	f an3 ee er2
+反思 1.0	f an3 s iy1
+反应 1.0	f an3 ii ing4
+反映 1.0	f an3 ii ing4
+反正 1.0	f an3 zh eng4
+返 1.0	f an3
+返工 1.0	f an3 g ong1
+返回 1.0	f an3 h ui2
+范 1.0	f an4
+范围 1.0	f an4 uu ui2
+贩运 1.0	f an4 vv vn4
+犯 1.0	f an4
+犯罪 1.0	f an4 z ui4
+犯罪分子 1.0	f an4 z ui4 f en4 z iy3
+饭 1.0	f an4
+饭店 1.0	f an4 d ian4
+饭后 1.0	f an4 h ou4
+饭团 1.0	f an4 t uan2
+饭香 1.0	f an4 x iang1
+泛 1.0	f an4
+芳 1.0	f ang1
+方 1.0	f ang1
+方案 1.0	f ang1 aa an4
+方便 1.0	f ang1 b ian4
+方法 1.0	f ang1 f a3
+方方正正 1.0	f ang1 f ang1 zh eng4 zh eng4
+方面 1.0	f ang1 m ian4
+方式 1.0	f ang1 sh ix4
+方圆 1.0	f ang1 vv van2
+房间 1.0	f ang2 j ian1
+房客 1.0	f ang2 k e4
+房子 1.0	f ang2 z iy5
+防 1.0	f ang2
+防暴 1.0	f ang2 b ao4
+防病 1.0	f ang2 b ing4
+防弹 1.0	f ang2 d an4
+防盗 1.0	f ang2 d ao4
+防伪 1.0	f ang2 uu ui3
+防疫 1.0	f ang2 ii i4
+防止 1.0	f ang2 zh ix3
+仿佛 1.0	f ang3 f u2
+仿制 1.0	f ang3 zh ix4
+访 1.0	f ang3
+访华 1.0	f ang3 h ua2
+访问 1.0	f ang3 uu un4
+纺织 1.0	f ang3 zh ix1
+放 1.0	f ang4
+放回 1.0	f ang4 h ui2
+放慢 1.0	f ang4 m an4
+放弃 1.0	f ang4 q i4
+放晴 1.0	f ang4 q ing2
+放心 1.0	f ang4 x in1
+放学后 1.0	f ang4 x ve2 h ou4
+放眼 1.0	f ang4 ii ian3
+放映 1.0	f ang4 ii ing4
+放在 1.0	f ang4 z ai4
+非 1.0	f ei1
+非常 1.0	f ei1 ch ang2
+非得 1.0	f ei1 d ei3
+非法 1.0	f ei1 f a3
+非同小可 1.0	f ei1 t ong2 x iao2 k e3
+非洲 1.0	f ei1 zh ou1
+啡 1.0	f ei1
+飞 1.0	f ei1
+飞虫 1.0	f ei1 ch ong2
+飞蛾 1.0	f ei1 ee e2
+飞蛾扑火 1.0	f ei1 ee e2 p u1 h uo3
+飞机 1.0	f ei1 j i1
+飞往 1.0	f ei1 uu uang3
+飞舞 1.0	f ei1 uu u3
+飞行 1.0	f ei1 x ing2
+飞行物 1.0	f ei1 x ing2 uu u4
+飞行员 1.0	f ei1 x ing2 vv van2
+肥 1.0	f ei2
+肥胖 1.0	f ei2 p ang4
+肥嘟嘟 1.0	f ei2 d u1 d u1
+诽谤 1.0	f ei3 b ang4
+废 1.0	f ei4
+废掉 1.0	f ei4 d iao4
+废旧 1.0	f ei4 j iu4
+废水 1.0	f ei4 sh ui3
+沸沸扬扬 1.0	f ei4 f ei4 ii iang2 ii iang2
+费 1.0	f ei4
+费尽 1.0	f ei4 j in4
+费孝通 1.0	f ei4 x iao4 t ong1
+费用 1.0	f ei4 ii iong4
+芬芳 1.0	f en1 f ang1
+吩咐 1.0	f en1 f u4
+分 1.0	f en1
+分 1.0	f en4
+分别 1.0	f en1 b ie2
+分布 1.0	f en1 b u4
+分厂 1.0	f en1 ch ang3
+分获 1.0	f en1 h uo4
+分钱 1.0	f en1 q ian2
+分散 1.0	f en1 s an4
+分手算了 1.0	f en1 sh ou3 s uan4 l e5
+分摊 1.0	f en1 t an1
+分外 1.0	f en4 uu uai4
+分为 1.0	f en1 uu ui2
+分心 1.0	f en1 x in1
+分行 1.0	f en1 h ang2
+纷纷 1.0	f en1 f en1
+焚 1.0	f en2
+粉 1.0	f en3
+粉红 1.0	f en3 h ong2
+粉末 1.0	f en3 m o4
+粉碎 1.0	f en3 s ui4
+粉状 1.0	f en3 zh uang4
+奋斗 1.0	f en4 d ou4
+奋起 1.0	f en4 q i3
+奋勇 1.0	f en4 ii iong3
+奋战 1.0	f en4 zh an4
+份 1.0	f en4
+愤 1.0	f en4
+愤怒 1.0	f en4 n u4
+丰碑 1.0	f eng1 b ei1
+丰富 1.0	f eng1 f u4
+丰功 1.0	f eng1 g ong1
+丰收 1.0	f eng1 sh ou1
+丰台区 1.0	f eng1 t ai2 q v1
+封 1.0	f eng1
+封闭 1.0	f eng1 b i4
+封山育林 1.0	f eng1 sh an1 vv v4 l in2
+蜂 1.0	f eng1
+蜂拥 1.0	f eng1 ii iong1
+风 1.0	f eng1
+风吹 1.0	f eng1 ch ui1
+风吹雨打 1.0	f eng1 ch ui1 vv v2 d a3
+风格 1.0	f eng1 g e2
+风骨 1.0	f eng1 g u3
+风光 1.0	f eng1 g uang1
+风化 1.0	f eng1 h ua4
+风口 1.0	f eng1 k ou3
+风浪 1.0	f eng1 l ang4
+风雷 1.0	f eng1 l ei2
+风平浪静 1.0	f eng1 p ing2 l ang4 j ing4
+风情 1.0	f eng1 q ing2
+风湿 1.0	f eng1 sh ix1
+风物 1.0	f eng1 uu u4
+风姿 1.0	f eng1 z iy1
+疯狂 1.0	f eng1 k uang2
+疯了 1.0	f eng1 l e5
+疯牛病 1.0	f eng1 n iu2 b ing4
+疯子 1.0	f eng1 z iy5
+逢年过节 1.0	f eng2 n ian2 g uo4 j ie2
+冯 1.0	f eng2
+奉献 1.0	f eng4 x ian4
+佛 1.0	f o2
+佛法 1.0	f o2 f a3
+佛光 1.0	f o2 g uang1
+佛教 1.0	f o2 j iao4
+佛手 1.0	f o2 sh ou3
+否定 1.0	f ou3 d ing4
+否决 1.0	f ou3 j ve2
+否认 1.0	f ou3 r en4
+否则 1.0	f ou3 z e2
+夫 1.0	f u1
+夫妇 1.0	f u1 f u4
+夫人 1.0	f u1 r en5
+肤色 1.0	f u1 s e4
+孵卵 1.0	f u1 l uan3
+扶 1.0	f u2
+扶持 1.0	f u2 ch ix2
+幅员 1.0	f u2 vv van2
+氟 1.0	f u2
+服 1.0	f u2
+服兵役 1.0	f u2 b ing1 ii i4
+服毒 1.0	f u2 d u2
+服务 1.0	f u2 uu u4
+服务项目 1.0	f u2 uu u4 x iang4 m u5
+服用 1.0	f u2 ii iong4
+浮标 1.0	f u2 b iao1
+浮云 1.0	f u2 vv vn2
+福 1.0	f u2
+福安 1.0	f u2 aa an1
+福临 1.0	f u2 l in2
+福耀 1.0	f u2 ii iao4
+弗 1.0	f u2
+甫 1.0	f u3
+抚养费 1.0	f u2 ii iang3 f ei4
+俯卧 1.0	f u3 uu uo4
+府 1.0	f u3
+腐蚀 1.0	f u3 sh ix2
+赴 1.0	f u4
+副 1.0	f u4
+副官 1.0	f u4 g uan1
+副主席 1.0	f u4 zh u3 x i2
+复赛 1.0	f u4 s ai4
+复杂 1.0	f u4 z a2
+傅 1.0	f u4
+付给 1.0	f u4 g ei3
+付与 1.0	f u4 vv v3
+阜外 1.0	f u4 uu uai4
+父 1.0	f u4
+父母亲 1.0	f u4 m u3 q in1
+父母亲 1.0	f u4 m u3 q in5
+父亲 1.0	f u4 q in5
+腹中 1.0	f u4 zh ong1
+负 1.0	f u4
+负担 1.0	f u4 d an1
+负伤 1.0	f u4 sh ang1
+负有 1.0	f u4 ii iu3
+负责 1.0	f u4 z e2
+负责制 1.0	f u4 z e2 zh ix4
+负债 1.0	f u4 zh ai4
+富 1.0	f u4
+富贵 1.0	f u4 g ui4
+富含 1.0	f u4 h an2
+富裕 1.0	f u4 vv v4
+富裕 1.0	f u4 vv v5
+附 1.0	f u4
+附庸风雅 1.0	f u4 ii iong1 f eng1 ii ia3
+妇产科 1.0	f u4 ch an3 k e1
+妇女 1.0	f u4 n v3
+妇女儿童 1.0	f u4 n v3 ee er2 t ong2
+妇人 1.0	f u4 r en2
+嘎 1.0	g a1
+该 1.0	g ai1
+该厂 1.0	g ai1 ch ang3
+该矿 1.0	g ai1 k uang4
+该片 1.0	g ai1 p ian1
+该片 1.0	g ai1 p ian4
+该市 1.0	g ai1 sh ix4
+该书 1.0	g ai1 sh u1
+该院 1.0	g ai1 vv van4
+该怎样 1.0	g ai1 z en3 ii iang4
+该镇 1.0	g ai1 zh en4
+该州 1.0	g ai1 zh ou1
+改 1.0	g ai3
+改变 1.0	g ai3 b ian4
+改革 1.0	g ai3 g e2
+改名 1.0	g ai3 m ing2
+改任 1.0	g ai3 r en4
+改为 1.0	g ai3 uu ui4
+改选 1.0	g ai2 x van3
+改造 1.0	g ai3 z ao4
+改正 1.0	g ai3 zh eng4
+概括 1.0	g ai4 k uo4
+概述 1.0	g ai4 sh u4
+概要 1.0	g ai4 ii iao4
+盖 1.0	g ai4
+盖儿 1.0	g ai4 ee er2
+盖楼 1.0	g ai4 l ou2
+盖上 1.0	g ai4 sh ang4
+盖上 1.0	g ai4 sh ang5
+盖亚 1.0	g ai4 ii ia3
+盖亚 1.0	g ai4 ii ia4
+干 1.0	g an1
+干 1.0	g an4
+干部 1.0	g an4 b u5
+干脆 1.0	g an1 c ui4
+干活 1.0	g an4 h uo2
+干粮 1.0	g an1 l iang2
+干粮 1.0	g an1 l iang5
+干扰 1.0	g an1 r ao3
+干线 1.0	g an4 x ian4
+干预 1.0	g an1 vv v4
+甘薯 1.0	g an1 sh u3
+甘甜 1.0	g an1 t ian2
+杆 1.0	g an1
+杆 1.0	g an3
+柑桔 1.0	g an1 j v2
+肝癌 1.0	g an1 aa ai2
+赶 1.0	g an3
+赶紧 1.0	g an2 j in3
+赶快 1.0	g an3 k uai4
+赶来 1.0	g an3 l ai2
+赶往 1.0	g an2 uu uang3
+感 1.0	g an3
+感触 1.0	g an3 ch u4
+感到 1.0	g an3 d ao4
+感激涕零 1.0	g an3 j i1 t i4 l ing2
+感觉 1.0	g an3 j ve2
+感冒 1.0	g an3 m ao4
+感受 1.0	g an3 sh ou4
+感叹 1.0	g an3 t an4
+感谢 1.0	g an3 x ie4
+感兴趣 1.0	g an3 x ing4 q v5
+感应 1.0	g an3 ii ing4
+敢 1.0	g an3
+敢死队 1.0	g an2 s iy3 d ui4
+敢于 1.0	g an3 vv v2
+敢做 1.0	g an3 z uo4
+赣 1.0	g an4
+冈 1.0	g ang1
+刚 1.0	g ang1
+刚才 1.0	g ang1 c ai2
+刚刚 1.0	g ang1 g ang1
+刚巧 1.0	g ang1 q iao3
+钢 1.0	g ang1
+钢铁 1.0	g ang1 t ie3
+钢渣 1.0	g ang1 zh a1
+缸子 1.0	g ang1 z iy5
+纲 1.0	g ang1
+岗位 1.0	g ang3 uu ui4
+港 1.0	g ang3
+港澳 1.0	g ang3 aa ao4
+港区 1.0	g ang3 q v1
+高 1.0	g ao1
+高层 1.0	g ao1 c eng2
+高处 1.0	g ao1 ch u4
+高达 1.0	g ao1 d a2
+高低 1.0	g ao1 d i1
+高额 1.0	g ao1 ee e2
+高尔基 1.0	g ao1 ee er3 j i1
+高寒 1.0	g ao1 h an2
+高级 1.0	g ao1 j i2
+高粱 1.0	g ao1 l iang5
+高龄 1.0	g ao1 l ing2
+高能 1.0	g ao1 n eng2
+高墙 1.0	g ao1 q iang2
+高僧 1.0	g ao1 s eng1
+高手 1.0	g ao1 sh ou3
+高速 1.0	g ao1 s u4
+高温 1.0	g ao1 uu un1
+高下 1.0	g ao1 x ia4
+高校 1.0	g ao1 x iao4
+高效率 1.0	g ao1 x iao4 l v4
+高效率 1.0	g ao1 x iao4 l v5
+高雅 1.0	g ao1 ii ia3
+高扬 1.0	g ao1 ii iang2
+高一 1.0	g ao1 ii i1
+高于 1.0	g ao1 vv v2
+高原 1.0	g ao1 vv van2
+高远 1.0	g ao1 vv van3
+高跷 1.0	g ao1 q iao1
+搞 1.0	g ao3
+搞错 1.0	g ao3 c uo4
+稿子 1.0	g ao3 z iy5
+告 1.0	g ao4
+告老还乡 1.0	g ao4 l ao3 h uan2 x iang1
+告诉 1.0	g ao4 s u4
+告诉 1.0	g ao4 s u5
+告知 1.0	g ao4 zh ix1
+哥 1.0	g e1
+哥伦比亚 1.0	g e1 l un2 b i3 ii ia4
+歌 1.0	g e1
+歌舞剧 1.0	g e1 uu u3 j v4
+戈 1.0	g e1
+胳膊 1.0	g e1 b o5
+胳膊肘 1.0	g e1 b o5 zh ou3
+革命 1.0	g e2 m ing4
+革新 1.0	g e2 x in1
+格 1.0	g e2
+格尔 1.0	g e2 ee er3
+格局 1.0	g e2 j v2
+格林 1.0	g e2 l in2
+格外 1.0	g e2 uu uai4
+隔绝 1.0	g e2 j ve2
+铬 1.0	g e4
+个 1.0	g e4
+个别 1.0	g e4 b ie2
+个人 1.0	g e4 r en2
+个数 1.0	g e4 sh u4
+个数 1.0	g e4 sh u5
+个体 1.0	g e4 t i3
+各 1.0	g e4
+各地 1.0	g e4 d i4
+各级 1.0	g e4 j i2
+各界 1.0	g e4 j ie4
+各类 1.0	g e4 l ei4
+各区 1.0	g e4 q v1
+各人 1.0	g e4 r en2
+各式 1.0	g e4 sh ix4
+各种 1.0	g e4 zh ong3
+各自 1.0	g e4 z iy4
+给 1.0	g ei3
+给 1.0	j i3
+给女儿 1.0	g ei2 n v3 ee er2
+给养 1.0	j i2 ii iang3
+给予 1.0	j i2 vv v3
+根 1.0	g en1
+根本 1.0	g en1 b en3
+根据 1.0	g en1 j v4
+根据地 1.0	g en1 j v4 d i4
+跟 1.0	g en1
+跟随 1.0	g en1 s ui2
+跟着 1.0	g en1 zh e5
+耕 1.0	g eng1
+耕地 1.0	g eng1 d i4
+耕牛 1.0	g eng1 n iu2
+耕耘 1.0	g eng1 vv vn2
+更 1.0	g eng1
+更 1.0	g eng4
+更大 1.0	g eng4 d a4
+更迭 1.0	g eng1 d ie2
+更多 1.0	g eng4 d uo1
+更加 1.0	g eng4 j ia1
+更是 1.0	g eng4 sh ix4
+更为 1.0	g eng4 uu ui2
+更早 1.0	g eng4 z ao3
+更正 1.0	g eng1 zh eng4
+更重要 1.0	g eng4 zh ong4 ii iao4
+羹 1.0	g eng1
+工 1.0	g ong1
+工厂 1.0	g ong1 ch ang3
+工程 1.0	g ong1 ch eng2
+工程量 1.0	g ong1 ch eng2 l iang4
+工程院 1.0	g ong1 ch eng2 vv van4
+工人 1.0	g ong1 r en2
+工事 1.0	g ong1 sh ix4
+工学 1.0	g ong1 x ve2
+工业 1.0	g ong1 ii ie4
+工业区 1.0	g ong1 ii ie4 q v1
+工资 1.0	g ong1 z iy1
+工作 1.0	g ong1 z uo4
+工作面 1.0	g ong1 z uo4 m ian4
+攻 1.0	g ong1
+功 1.0	g ong1
+功夫 1.0	g ong1 f u5
+功力 1.0	g ong1 l i4
+功能 1.0	g ong1 n eng2
+龚 1.0	g ong1
+供 1.0	g ong1
+供 1.0	g ong4
+供养 1.0	g ong1 ii iang3
+供养 1.0	g ong4 ii iang3
+供应 1.0	g ong1 ii ing4
+供应 1.0	g ong4 ii ing4
+公 1.0	g ong1
+公安局 1.0	g ong1 aa an1 j v2
+公安人员 1.0	g ong1 aa an1 r en2 vv van2
+公安厅 1.0	g ong1 aa an1 t ing1
+公报 1.0	g ong1 b ao4
+公共 1.0	g ong1 g ong4
+公斤 1.0	g ong1 j in1
+公里 1.0	g ong1 l i3
+公路 1.0	g ong1 l u4
+公司 1.0	g ong1 s iy1
+公寓 1.0	g ong1 vv v4
+公元 1.0	g ong1 vv van2
+公元前 1.0	g ong1 vv van2 q ian2
+公约 1.0	g ong1 vv ve1
+公主 1.0	g ong1 zh u3
+宫 1.0	g ong1
+弓 1.0	g ong1
+弓弩 1.0	g ong1 n u3
+巩 1.0	g ong3
+贡山 1.0	g ong4 sh an1
+贡献 1.0	g ong4 x ian4
+共 1.0	g ong4
+共产党员 1.0	g ong4 ch an2 d ang3 vv van2
+共创 1.0	g ong4 ch uang4
+共和 1.0	g ong4 h e2
+共和党 1.0	g ong4 h e2 d ang3
+共和国 1.0	g ong4 h e2 g uo2
+共计 1.0	g ong4 j i4
+共建 1.0	g ong4 j ian4
+共生 1.0	g ong4 sh eng1
+共识 1.0	g ong4 sh ix2
+共同 1.0	g ong4 t ong2
+共同努力 1.0	g ong4 t ong2 n u3 l i4
+共同探讨 1.0	g ong4 t ong2 t an4 t ao3
+共享 1.0	g ong4 x iang3
+共有 1.0	g ong4 ii iu3
+钩 1.0	g ou1
+勾 1.0	g ou1
+勾 1.0	g ou4
+勾引 1.0	g ou1 ii in3
+沟 1.0	g ou1
+狗 1.0	g ou3
+构思 1.0	g ou4 s iy1
+构筑 1.0	g ou4 zh u4
+购买 1.0	g ou4 m ai3
+购物 1.0	g ou4 uu u4
+购置 1.0	g ou4 zh ix4
+够 1.0	g ou4
+咕噜 1.0	g u1 l u1
+咕噜 1.0	g u1 l u5
+估计 1.0	g u1 j i4
+孤单 1.0	g u1 d an1
+姑娘 1.0	g u1 n iang5
+姑嫂 1.0	g u1 s ao3
+姑爷 1.0	g u1 ii ie5
+鼓起勇气 1.0	g u2 q i2 ii iong3 q i4
+古 1.0	g u3
+古巴 1.0	g u3 b a1
+古代 1.0	g u3 d ai4
+古籍 1.0	g u3 j i2
+古建筑 1.0	g u3 j ian4 zh u4
+古罗马 1.0	g u3 l uo2 m a3
+古朴 1.0	g u2 p u3
+古希腊 1.0	g u3 x i1 l a4
+古雅 1.0	g u2 ii ia3
+骨 1.0	g u1
+骨 1.0	g u3
+骨灰盒 1.0	g u3 h ui1 h e2
+骨折 1.0	g u3 zh e2
+谷城 1.0	g u3 ch eng2
+谷底 1.0	g u2 d i3
+股 1.0	g u3
+故 1.0	g u4
+故去 1.0	g u4 q v4
+故土 1.0	g u4 t u3
+故友 1.0	g u4 ii iu3
+顾 1.0	g u4
+顾客 1.0	g u4 k e4
+顾问 1.0	g u4 uu un4
+固定汇率 1.0	g u4 d ing4 h ui4 l v4
+固镇 1.0	g u4 zh en4
+刮 1.0	g ua1
+瓜 1.0	g ua1
+寡不敌众 1.0	g ua3 b u4 d i2 zh ong4
+挂 1.0	g ua4
+挂钩 1.0	g ua4 g ou1
+乖张 1.0	g uai1 zh ang1
+拐卖 1.0	g uai3 m ai4
+怪 1.0	g uai4
+怪病 1.0	g uai4 b ing4
+怪事 1.0	g uai4 sh ix4
+怪物 1.0	g uai4 uu u5
+关 1.0	g uan1
+关闭 1.0	g uan1 b i4
+关怀备至 1.0	g uan1 h uai2 b ei4 zh ix4
+关进 1.0	g uan1 j in4
+关税 1.0	g uan1 sh ui4
+关系 1.0	g uan1 x i5
+关心 1.0	g uan1 x in1
+关于 1.0	g uan1 vv v2
+关照 1.0	g uan1 zh ao4
+关注 1.0	g uan1 zh u4
+官 1.0	g uan1
+官兵 1.0	g uan1 b ing1
+官方 1.0	g uan1 f ang1
+官军 1.0	g uan1 j vn1
+官员 1.0	g uan1 vv van2
+官邸 1.0	g uan1 d i3
+冠军 1.0	g uan4 j vn1
+观 1.0	g uan1
+观察 1.0	g uan1 ch a2
+观看 1.0	g uan1 k an4
+观念 1.0	g uan1 n ian4
+观赏 1.0	g uan1 sh ang3
+观众 1.0	g uan1 zh ong4
+管 1.0	g uan3
+管理 1.0	g uan2 l i3
+管理局 1.0	g uan2 l i3 j v2
+管理条例 1.0	g uan2 l i3 t iao2 l i4
+管制 1.0	g uan3 zh ix4
+馆 1.0	g uan3
+馆里 1.0	g uan2 l i3
+馆内 1.0	g uan3 n ei4
+馆员 1.0	g uan3 vv van2
+罐头 1.0	g uan4 t ou5
+惯 1.0	g uan4
+灌区 1.0	g uan4 q v1
+贯 1.0	g uan4
+光 1.0	g uang1
+光膀子 1.0	g uang1 b ang3 z iy5
+光波 1.0	g uang1 b o1
+光顾 1.0	g uang1 g u4
+光棍 1.0	g uang1 g un4
+光环 1.0	g uang1 h uan2
+光洁 1.0	g uang1 j ie2
+光洁度 1.0	g uang1 j ie2 d u4
+光亮 1.0	g uang1 l iang4
+光溜溜 1.0	g uang1 l iu1 l iu1
+光芒 1.0	g uang1 m ang2
+光盘 1.0	g uang1 p an2
+光谱 1.0	g uang1 p u3
+光荣 1.0	g uang1 r ong2
+光耀 1.0	g uang1 ii iao4
+光影 1.0	g uang1 ii ing3
+广 1.0	g uang3
+广播 1.0	g uang3 b o1
+广场 1.0	g uang2 ch ang3
+广大 1.0	g uang3 d a4
+广岛 1.0	g uang2 d ao3
+广东人 1.0	g uang3 d ong1 r en2
+广泛 1.0	g uang3 f an4
+广告 1.0	g uang3 g ao4
+广告公司 1.0	g uang3 g ao4 g ong1 s iy1
+广告业 1.0	g uang3 g ao4 ii ie4
+广阔 1.0	g uang3 k uo4
+广为 1.0	g uang3 uu ui2
+广西 1.0	g uang3 x i1
+广州 1.0	g uang3 zh ou1
+广州队 1.0	g uang3 zh ou1 d ui4
+规 1.0	g ui1
+规定 1.0	g ui1 d ing4
+规划 1.0	g ui1 h ua4
+规模 1.0	g ui1 m o2
+规整 1.0	g ui1 zh eng3
+归 1.0	g ui1
+归来 1.0	g ui1 l ai2
+归属 1.0	g ui1 sh u3
+鬼 1.0	g ui3
+鬼谷 1.0	g ui2 g u3
+鬼屋 1.0	g ui3 uu u1
+桂 1.0	g ui4
+桂冠 1.0	g ui4 g uan1
+桂云 1.0	g ui4 vv vn2
+柜台 1.0	g ui4 t ai2
+贵 1.0	g ui4
+贵阳 1.0	g ui4 ii iang2
+贵州 1.0	g ui4 zh ou1
+滚 1.0	g un3
+滚动 1.0	g un3 d ong4
+滚滚 1.0	g un2 g un3
+滚雪球 1.0	g un2 x ve3 q iu2
+滚圆 1.0	g un3 vv van2
+棍 1.0	g un4
+棍棒 1.0	g un4 b ang4
+锅 1.0	g uo1
+郭 1.0	g uo1
+国 1.0	g uo2
+国奥队 1.0	g uo2 aa ao4 d ui4
+国产 1.0	g uo2 ch an3
+国臣 1.0	g uo2 ch en2
+国防大学 1.0	g uo2 f ang2 d a4 x ve2
+国和 1.0	g uo2 h e2
+国会 1.0	g uo2 h ui4
+国籍 1.0	g uo2 j i2
+国际 1.0	g uo2 j i4
+国际市场 1.0	g uo2 j i4 sh ix4 ch ang3
+国际形势 1.0	g uo2 j i4 x ing2 sh ix4
+国家 1.0	g uo2 j ia1
+国库 1.0	g uo2 k u4
+国林 1.0	g uo2 l in2
+国民党 1.0	g uo2 m in2 d ang3
+国难 1.0	g uo2 n an4
+国内 1.0	g uo2 n ei4
+国内外 1.0	g uo2 n ei4 uu uai4
+国平 1.0	g uo2 p ing2
+国外 1.0	g uo2 uu uai4
+国王 1.0	g uo2 uu uang2
+国务委员 1.0	g uo2 uu u4 uu ui3 vv van2
+国务院 1.0	g uo2 uu u4 vv van4
+国新 1.0	g uo2 x in1
+国有企业 1.0	g uo2 ii iu2 q i3 ii ie4
+国政 1.0	g uo2 zh eng4
+果 1.0	g uo3
+果然 1.0	g uo3 r an2
+果园 1.0	g uo3 vv van2
+果汁 1.0	g uo3 zh ix1
+过 1.0	g uo4
+过程 1.0	g uo4 ch eng2
+过度 1.0	g uo4 d u4
+过后 1.0	g uo4 h ou4
+过客 1.0	g uo4 k e4
+过滤 1.0	g uo4 l v4
+过年 1.0	g uo4 n ian2
+过去 1.0	g uo4 q v4
+过眼云烟 1.0	g uo4 ii ian3 vv vn2 ii ian1
+过于 1.0	g uo4 vv v2
+哈 1.0	h a1
+哈格 1.0	h a1 g e2
+哈利 1.0	h a1 l i4
+哈梅 1.0	h a1 m ei2
+孩子 1.0	h ai2 z iy5
+孩子们 1.0	h ai2 z iy5 m en5
+海 1.0	h ai3
+海拔 1.0	h ai3 b a2
+海边 1.0	h ai3 b ian1
+海风 1.0	h ai3 f eng1
+海疆 1.0	h ai3 j iang1
+海口市 1.0	h ai2 k ou3 sh ix4
+海阔天空 1.0	h ai3 k uo4 t ian1 k ong1
+海民 1.0	h ai3 m in2
+海内外 1.0	h ai3 n ei4 uu uai4
+海上 1.0	h ai3 sh ang4
+海水 1.0	h ai2 sh ui3
+海外 1.0	h ai3 uu uai4
+海湾战争 1.0	h ai3 uu uan1 zh an4 zh eng1
+海文 1.0	h ai3 uu un2
+海峡 1.0	h ai3 x ia2
+海星 1.0	h ai3 x ing1
+海洋 1.0	h ai3 ii iang2
+海豚 1.0	h ai3 t un2
+害 1.0	h ai4
+害虫 1.0	h ai4 ch ong2
+害怕 1.0	h ai4 p a4
+憨憨 1.0	h an1 h an1
+韩 1.0	h an2
+韩国 1.0	h an2 g uo2
+韩晶 1.0	h an2 j ing1
+韩愈 1.0	h an2 vv v4
+含 1.0	h an2
+含笑九泉 1.0	h an2 x iao4 j iu3 q van2
+含蓄 1.0	h an2 x v4
+含有 1.0	h an2 ii iu3
+寒 1.0	h an2
+寒冷 1.0	h an2 l eng3
+寒气 1.0	h an2 q i4
+寒山寺 1.0	h an2 sh an1 s iy4
+喊声 1.0	h an3 sh eng1
+旱情 1.0	h an4 q ing2
+旱烟 1.0	h an4 ii ian1
+汗 1.0	h an2
+汗 1.0	h an4
+汗流满面 1.0	h an4 l iu2 m an3 m ian4
+汉 1.0	h an4
+汉口 1.0	h an4 k ou3
+汉生 1.0	h an4 sh eng1
+汉王 1.0	h an4 uu uang2
+汉文 1.0	h an4 uu un2
+汉阳 1.0	h an4 ii iang2
+汉语拼音 1.0	h an4 vv v3 p in1 ii in1
+汉正街 1.0	h an4 zh eng4 j ie1
+杭城 1.0	h ang2 ch eng2
+杭州 1.0	h ang2 zh ou1
+航 1.0	h ang2
+航道 1.0	h ang2 d ao4
+航空 1.0	h ang2 k ong1
+航空兵 1.0	h ang2 k ong1 b ing1
+航空器 1.0	h ang2 k ong1 q i4
+航务 1.0	h ang2 uu u4
+壕 1.0	h ao2
+豪情 1.0	h ao2 q ing2
+豪言壮语 1.0	h ao2 ii ian2 zh uang4 vv v3
+毫不 1.0	h ao2 b u4
+毫米 1.0	h ao2 m i3
+郝 1.0	h ao3
+好 1.0	h ao3
+好 1.0	h ao4
+好处 1.0	h ao3 ch u4
+好看 1.0	h ao3 k an4
+好评 1.0	h ao3 p ing2
+好人 1.0	h ao3 r en2
+好容易 1.0	h ao3 r ong2 ii i4
+好生 1.0	h ao3 sh eng1
+好事 1.0	h ao3 sh ix4
+好书 1.0	h ao3 sh u1
+好玩 1.0	h ao3 uu uan2
+好习惯 1.0	h ao3 x i2 g uan4
+好像 1.0	h ao3 x iang4
+好转 1.0	h ao2 zh uan3
+号 1.0	h ao4
+浩大 1.0	h ao4 d a4
+呵呵 1.0	h e1 h e1
+喝 1.0	h e1
+喝 1.0	h e4
+喝完 1.0	h e1 uu uan2
+核 1.0	h e2
+核算 1.0	h e2 s uan4
+核桃 1.0	h e2 t ao5
+核心 1.0	h e2 x in1
+和 1.0	h e2
+和 1.0	h e4
+和 1.0	h u2
+和 1.0	h uo2
+和 1.0	h uo4
+和成 1.0	h e2 ch eng2
+和平区 1.0	h e2 p ing2 q v1
+和煦 1.0	h e2 x v4
+何 1.0	h e2
+何地 1.0	h e2 d i4
+何某 1.0	h e2 m ou3
+何物 1.0	h e2 uu u4
+合 1.0	h e2
+合编 1.0	h e2 b ian1
+合并 1.0	h e2 b ing4
+合肥 1.0	h e2 f ei2
+合家欢 1.0	h e2 j ia1 h uan1
+合理 1.0	h e2 l i3
+合力 1.0	h e2 l i4
+合龙 1.0	h e2 l ong2
+合同 1.0	h e2 t ong5
+合一 1.0	h e2 ii i1
+合影 1.0	h e2 ii ing3
+合着 1.0	h e2 zh e5
+合作 1.0	h e2 z uo4
+盒 1.0	h e2
+貉子 1.0	h ao2 z iy3
+貉子 1.0	h ao2 z iy5
+河 1.0	h e2
+河北省 1.0	h e2 b ei2 sh eng3
+河谷 1.0	h e2 g u3
+河流 1.0	h e2 l iu2
+河南 1.0	h e2 n an2
+河南省 1.0	h e2 n an2 sh eng3
+河源 1.0	h e2 vv van2
+赫然 1.0	h e4 r an2
+贺 1.0	h e4
+贺岁 1.0	h e4 s ui4
+黑 1.0	h ei1
+黑暗 1.0	h ei1 aa an4
+黑白 1.0	h ei1 b ai2
+黑布 1.0	h ei1 b u4
+黑海 1.0	h ei1 h ai3
+黑龙江省 1.0	h ei1 l ong2 j iang1 sh eng3
+痕 1.0	h en2
+很 1.0	h en3
+很多 1.0	h en3 d uo1
+很快 1.0	h en3 k uai4
+很难 1.0	h en3 n an2
+很容易 1.0	h en3 r ong2 ii i4
+很相似 1.0	h en3 x iang1 s iy4
+哼哼唧唧 1.0	h eng1 h eng5 j i1 j i1
+亨德森 1.0	h eng1 d e2 s en1
+横 1.0	h eng2
+横 1.0	h eng4
+横杆 1.0	h eng2 g an1
+横跨 1.0	h eng2 k ua4
+横卧 1.0	h eng2 uu uo4
+衡量 1.0	h eng2 l iang2
+恒 1.0	h eng2
+恒通 1.0	h eng2 t ong1
+轰动 1.0	h ong1 d ong4
+哄抢 1.0	h ong1 q iang3
+鸿 1.0	h ong2
+洪 1.0	h ong2
+洪都拉斯 1.0	h ong2 d u1 l a1 s iy1
+洪魔 1.0	h ong2 m o2
+洪森 1.0	h ong2 s en1
+洪水 1.0	h ong2 sh ui3
+洪武 1.0	h ong2 uu u3
+红 1.0	h ong2
+红绸 1.0	h ong2 ch ou2
+红富士 1.0	h ong2 f u4 sh ix4
+红光 1.0	h ong2 g uang1
+红火 1.0	h ong2 h uo5
+红绿 1.0	h ong2 l v4
+红绿灯 1.0	h ong2 l v4 d eng1
+红玫瑰 1.0	h ong2 m ei2 g ui1
+红娘子 1.0	h ong2 n iang2 z iy3
+红润 1.0	h ong2 r un4
+红色 1.0	h ong2 s e4
+红颜薄命 1.0	h ong2 ii ian2 b o2 m ing4
+红砖 1.0	h ong2 zh uan1
+喉管 1.0	h ou2 g uan3
+喉咙 1.0	h ou2 l ong5
+侯 1.0	h ou2
+猴 1.0	h ou2
+厚 1.0	h ou4
+候选人 1.0	h ou4 x van3 r en2
+后 1.0	h ou4
+后窗 1.0	h ou4 ch uang1
+后代 1.0	h ou4 d ai4
+后来 1.0	h ou4 l ai2
+后面 1.0	h ou4 m ian5
+后勤部 1.0	h ou4 q in2 b u4
+后人 1.0	h ou4 r en2
+后腿 1.0	h ou4 t ui3
+后院 1.0	h ou4 vv van4
+呼 1.0	h u1
+呼唤 1.0	h u1 h uan4
+呼吸困难 1.0	h u1 x i1 k un4 n an2
+呼吁 1.0	h u1 vv v4
+乎 1.0	h u1
+胡 1.0	h u2
+胡耀邦 1.0	h u2 ii iao4 b ang1
+湖 1.0	h u2
+湖北省 1.0	h u2 b ei2 sh eng3
+湖滨 1.0	h u2 b in1
+湖口县 1.0	h u2 k ou3 x ian4
+湖畔 1.0	h u2 p an4
+护 1.0	h u4
+护理 1.0	h u4 l i3
+户 1.0	h u4
+户外 1.0	h u4 uu uai4
+花 1.0	h ua1
+花瓣 1.0	h ua1 b an4
+花都 1.0	h ua1 d u1
+花岗岩 1.0	h ua1 g ang1 ii ian2
+花卉 1.0	h ua1 h ui4
+花轿 1.0	h ua1 j iao4
+花圃 1.0	h ua1 p u3
+花钱 1.0	h ua1 q ian2
+花生 1.0	h ua1 sh eng1
+花水 1.0	h ua1 sh ui3
+花纹 1.0	h ua1 uu un2
+花香 1.0	h ua1 x iang1
+花鞋 1.0	h ua1 x ie2
+花样 1.0	h ua1 ii iang4
+花影 1.0	h ua1 ii ing3
+花园 1.0	h ua1 vv van2
+华 1.0	h ua2
+华 1.0	h ua4
+华北 1.0	h ua2 b ei3
+华工 1.0	h ua2 g ong1
+华里 1.0	h ua2 l i3
+华隆 1.0	h ua2 l ong2
+华侨 1.0	h ua2 q iao2
+华沙 1.0	h ua2 sh a1
+华沙 1.0	h ua4 sh a1
+华星 1.0	h ua2 x ing1
+华严 1.0	h ua2 ii ian2
+滑 1.0	h ua2
+滑过 1.0	h ua2 g uo4
+画 1.0	h ua4
+画笔 1.0	h ua4 b i3
+画册 1.0	h ua4 c e4
+画风 1.0	h ua4 f eng1
+画画 1.0	h ua4 h ua4
+画面 1.0	h ua4 m ian4
+划 1.0	h ua2
+划 1.0	h ua4
+划出 1.0	h ua4 ch u1
+划分 1.0	h ua4 f en1
+划破 1.0	h ua2 p o4
+划时代 1.0	h ua4 sh ix2 d ai4
+划着 1.0	h ua2 zh ao2
+划着 1.0	h ua2 zh e5
+划着 1.0	h ua4 zh e5
+化 1.0	h ua4
+化合 1.0	h ua4 h e2
+化身 1.0	h ua4 sh en1
+化为 1.0	h ua4 uu ui2
+化学 1.0	h ua4 x ve2
+化学武器 1.0	h ua4 x ve2 uu u3 q i4
+话 1.0	h ua4
+话说 1.0	h ua4 sh uo1
+话语 1.0	h ua4 vv v3
+槐 1.0	h uai2
+槐树 1.0	h uai2 sh u4
+怀 1.0	h uai2
+怀抱 1.0	h uai2 b ao4
+怀揣 1.0	h uai2 ch uai1
+怀恨在心 1.0	h uai2 h en4 z ai4 x in1
+怀孕 1.0	h uai2 vv vn4
+淮 1.0	h uai2
+淮安 1.0	h uai2 aa an1
+淮北 1.0	h uai2 b ei3
+淮河 1.0	h uai2 h e2
+淮南 1.0	h uai2 n an2
+淮阴 1.0	h uai2 ii in1
+坏 1.0	h uai4
+坏掉 1.0	h uai4 d iao4
+坏掉 1.0	h uai4 d iao5
+坏毛病 1.0	h uai4 m ao2 b ing4
+坏毛病 1.0	h uai4 m ao2 b ing5
+坏脾气 1.0	h uai4 p i2 q i5
+坏人 1.0	h uai4 r en2
+欢 1.0	h uan1
+欢迎 1.0	h uan1 ii ing2
+环 1.0	h uan2
+环境 1.0	h uan2 j ing4
+环球 1.0	h uan2 q iu2
+环视 1.0	h uan2 sh ix4
+环形 1.0	h uan2 x ing2
+桓 1.0	h uan2
+还 1.0	h ai2
+还 1.0	h uan2
+还击 1.0	h uan2 j i1
+还没有 1.0	h ai2 m ei2 ii iu3
+还是 1.0	h ai2 sh ix4
+还要 1.0	h ai2 ii iao4
+还有 1.0	h ai2 ii iu3
+还原 1.0	h uan2 vv van2
+还在 1.0	h ai2 z ai4
+换 1.0	h uan4
+换句话说 1.0	h uan4 j v4 h ua4 sh uo1
+换言之 1.0	h uan4 ii ian2 zh ix1
+换衣服 1.0	h uan4 ii i1 f u5
+患 1.0	h uan4
+患病 1.0	h uan4 b ing4
+患儿 1.0	h uan4 ee er2
+患有 1.0	h uan4 ii iu3
+患者 1.0	h uan4 zh e3
+荒 1.0	h uang1
+荒诞 1.0	h uang1 d an4
+荒漠 1.0	h uang1 m o4
+荒坡 1.0	h uang1 p o1
+荒山野岭 1.0	h uang1 sh an1 ii ie2 l ing3
+荒芜 1.0	h uang1 uu u2
+荒原 1.0	h uang1 vv van2
+慌忙 1.0	h uang1 m ang2
+黄 1.0	h uang2
+黄瓜 1.0	h uang2 g ua1
+黄鹤楼 1.0	h uang2 h e4 l ou2
+黄花 1.0	h uang2 h ua1
+黄金 1.0	h uang2 j in1
+黄龙 1.0	h uang2 l ong2
+黄浦区 1.0	h uang2 p u3 q v1
+黄土 1.0	h uang2 t u3
+黄土高坡 1.0	h uang2 t u3 g ao1 p o1
+黄土高原 1.0	h uang2 t u3 g ao1 vv van2
+黄胄 1.0	h uang2 zh ou4
+皇 1.0	h uang2
+皇家 1.0	h uang2 j ia1
+惶惶 1.0	h uang2 h uang2
+灰 1.0	h ui1
+灰色 1.0	h ui1 s e4
+挥毫 1.0	h ui1 h ao2
+辉 1.0	h ui1
+辉煌 1.0	h ui1 h uang2
+恢复 1.0	h ui1 f u4
+回 1.0	h ui2
+回荡 1.0	h ui2 d ang4
+回到房间 1.0	h ui2 d ao4 f ang2 j ian1
+回到家 1.0	h ui2 d ao4 j ia1
+回国 1.0	h ui2 g uo2
+回家 1.0	h ui2 j ia1
+回扣 1.0	h ui2 k ou4
+回来 1.0	h ui2 l ai2
+回来 1.0	h ui2 l ai5
+回廊 1.0	h ui2 l ang2
+回笼 1.0	h ui2 l ong2
+回娘家 1.0	h ui2 n iang2 j ia5
+回去 1.0	h ui2 q v4
+回升 1.0	h ui2 sh eng1
+回收 1.0	h ui2 sh ou1
+回头 1.0	h ui2 t ou2
+回乡 1.0	h ui2 x iang1
+回旋 1.0	h ui2 x van2
+毁灭 1.0	h ui3 m ie4
+慧娟 1.0	h ui4 j van1
+晦 1.0	h ui4
+晦暗 1.0	h ui4 aa an4
+会 1.0	h ui4
+会 1.0	k uai4
+会场 1.0	h ui4 ch ang3
+会长 1.0	h ui4 zh ang3
+会计 1.0	k uai4 j i5
+会见 1.0	h ui4 j ian4
+会上 1.0	h ui4 sh ang4
+会上 1.0	h ui4 sh ang5
+会谈 1.0	h ui4 t an2
+会心一笑 1.0	h ui4 x in1 ii i2 x iao4
+会议 1.0	h ui4 ii i4
+会议 1.0	h ui4 ii i5
+汇合 1.0	h ui4 h e2
+汇流 1.0	h ui4 l iu2
+汇票 1.0	h ui4 p iao4
+绘画 1.0	h ui4 h ua4
+荤 1.0	h un1
+昏暗 1.0	h un1 aa an4
+昏头 1.0	h un1 t ou2
+婚 1.0	h un1
+婚礼 1.0	h un1 l i3
+婚期 1.0	h un1 q i1
+婚姻 1.0	h un1 ii in1
+魂 1.0	h un2
+浑 1.0	h un2
+浑然一体 1.0	h un2 r an2 ii i4 t i3
+浑身 1.0	h un2 sh en1
+浑圆 1.0	h un2 vv van2
+混 1.0	h un2
+混 1.0	h un4
+混合 1.0	h un3 h e2
+混合 1.0	h un4 h e2
+混帐 1.0	h un4 zh ang4
+豁达 1.0	h uo4 d a2
+活 1.0	h uo2
+活动 1.0	h uo2 d ong4
+活佛 1.0	h uo2 f o2
+活生生 1.0	h uo2 sh eng1 sh eng1
+活用 1.0	h uo2 ii iong4
+火 1.0	h uo3
+火爆 1.0	h uo3 b ao4
+火车站 1.0	h uo3 ch e1 zh an4
+火箭 1.0	h uo3 j ian4
+火起来 1.0	h uo2 q i3 l ai2
+火球 1.0	h uo3 q iu2
+火焰 1.0	h uo3 ii ian4
+火焰山 1.0	h uo3 ii ian4 sh an1
+火药 1.0	h uo3 ii iao4
+获 1.0	h uo4
+获得 1.0	h uo4 d e2
+获取 1.0	h uo4 q v3
+或 1.0	h uo4
+或许 1.0	h uo4 x v3
+或者 1.0	h uo4 zh e3
+货 1.0	h uo4
+货币 1.0	h uo4 b i4
+货场 1.0	h uo4 ch ang3
+货车 1.0	h uo4 ch e1
+货款 1.0	h uo4 k uan3
+货物 1.0	h uo4 uu u4
+货运单 1.0	h uo4 vv vn4 d an1
+祸 1.0	h uo4
+击沉 1.0	j i1 ch en2
+击伤 1.0	j i1 sh ang1
+基 1.0	j i1
+基本 1.0	j i1 b en3
+基层 1.0	j i1 c eng2
+基础 1.0	j i1 ch u3
+基地 1.0	j i1 d i4
+基督教 1.0	j i1 d u1 j iao4
+基诺族 1.0	j i1 n uo4 z u2
+机 1.0	j i1
+机场 1.0	j i1 ch ang3
+机场附近 1.0	j i1 ch ang3 f u4 j in4
+机构 1.0	j i1 g ou4
+机关 1.0	j i1 g uan1
+机会 1.0	j i1 h ui4
+机器 1.0	j i1 q i4
+机上 1.0	j i1 sh ang4
+机体 1.0	j i1 t i3
+机制 1.0	j i1 zh ix4
+机智 1.0	j i1 zh ix4
+机组 1.0	j i1 z u3
+畸形 1.0	j i1 x ing2
+积 1.0	j i1
+积极 1.0	j i1 j i2
+迹 1.0	j i4
+激荡 1.0	j i1 d ang4
+激光 1.0	j i1 g uang1
+激化 1.0	j i1 h ua4
+激烈 1.0	j i1 l ie4
+激情 1.0	j i1 q ing2
+鸡飞狗跳 1.0	j i1 f ei1 g ou3 t iao4
+鸡鸣 1.0	j i1 m ing2
+鸡头 1.0	j i1 t ou2
+鸡鸭 1.0	j i1 ii ia1
+吉 1.0	j i2
+吉利 1.0	j i2 l i4
+吉林 1.0	j i2 l in2
+吉隆坡 1.0	j i2 l ong2 p o1
+吉祥 1.0	j i2 x iang2
+极 1.0	j i2
+极差 1.0	j i2 ch a4
+极度 1.0	j i2 d u4
+籍 1.0	j i2
+集 1.0	j i2
+集会 1.0	j i2 h ui4
+集贸市场 1.0	j i2 m ao4 sh ix4 ch ang3
+集体 1.0	j i2 t i3
+集体舞 1.0	j i2 t i2 uu u3
+集团 1.0	j i2 t uan2
+集团公司 1.0	j i2 t uan2 g ong1 s iy1
+集训队 1.0	j i2 x vn4 d ui4
+集中 1.0	j i2 zh ong1
+集中营 1.0	j i2 zh ong1 ii ing2
+及 1.0	j i2
+及时 1.0	j i2 sh ix2
+急 1.0	j i2
+急忙 1.0	j i2 m ang2
+急切 1.0	j i2 q ie4
+急性 1.0	j i2 x ing4
+急需 1.0	j i2 x v1
+疾病 1.0	j i2 b ing4
+即 1.0	j i2
+即可 1.0	j i2 k e3
+即然 1.0	j i2 r an2
+即使 1.0	j i2 sh ix3
+几 1.0	j i1
+几 1.0	j i3
+几百 1.0	j i2 b ai3
+几次 1.0	j i3 c iy4
+几个 1.0	j i3 g e4
+几个月 1.0	j i3 g e4 vv ve4
+几乎 1.0	j i1 h u1
+几内亚 1.0	j i3 n ei4 ii ia4
+几年前 1.0	j i3 n ian2 q ian2
+几十 1.0	j i3 sh ix2
+几天 1.0	j i3 t ian1
+几天来 1.0	j i3 t ian1 l ai2
+己 1.0	j i3
+技能 1.0	j i4 n eng2
+技术 1.0	j i4 sh u4
+技术培训 1.0	j i4 sh u4 p ei2 x vn4
+技艺 1.0	j i4 ii i4
+季 1.0	j i4
+季节 1.0	j i4 j ie2
+季军 1.0	j i4 j vn1
+济南 1.0	j i3 n an2
+济宁 1.0	j i3 n ing2
+寄 1.0	j i4
+计分 1.0	j i4 f en1
+计划 1.0	j i4 h ua4
+计算 1.0	j i4 s uan4
+记 1.0	j i4
+记得 1.0	j i4 d e5
+记忆力 1.0	j i4 ii i4 l i4
+记者 1.0	j i4 zh e3
+记着 1.0	j i4 zh e5
+既 1.0	j i4
+既然 1.0	j i4 r an2
+既有 1.0	j i4 ii iu3
+妓女 1.0	j i4 n v3
+继 1.0	j i4
+继承权 1.0	j i4 ch eng2 q van2
+继续 1.0	j i4 x v4
+纪律 1.0	j i4 l v4
+纪念 1.0	j i4 n ian4
+嘉宾 1.0	j ia1 b in1
+嘉儿 1.0	j ia1 ee er2
+嘉陵江 1.0	j ia1 l ing2 j iang1
+夹 1.0	j ia1
+夹 1.0	j ia2
+夹杂 1.0	j ia1 z a2
+夹竹桃 1.0	j ia1 zh u2 t ao2
+佳作 1.0	j ia1 z uo4
+佳肴 1.0	j ia1 ii iao2
+家 1.0	j ia1
+家长们 1.0	j ia1 zh ang3 m en5
+家电维修 1.0	j ia1 d ian4 uu ui2 x iu1
+家后 1.0	j ia1 h ou4
+家里 1.0	j ia1 l i3
+家里 1.0	j ia1 l i5
+家人 1.0	j ia1 r en2
+家属院 1.0	j ia1 sh u3 vv van4
+家庭 1.0	j ia1 t ing2
+家徒四壁 1.0	j ia1 t u2 s iy4 b i4
+家乡 1.0	j ia1 x iang1
+家用 1.0	j ia1 ii iong4
+家园 1.0	j ia1 vv van2
+家珍 1.0	j ia1 zh en1
+加 1.0	j ia1
+加工 1.0	j ia1 g ong1
+加里 1.0	j ia1 l i3
+加盟 1.0	j ia1 m eng2
+加拿大 1.0	j ia1 n a2 d a4
+加强 1.0	j ia1 q iang2
+加人 1.0	j ia1 r en2
+加上 1.0	j ia1 sh ang4
+加上 1.0	j ia1 sh ang5
+加速 1.0	j ia1 s u4
+加糖 1.0	j ia1 t ang2
+加以 1.0	j ia1 ii i3
+加运费 1.0	j ia1 vv vn4 f ei4
+贾 1.0	g u3
+贾 1.0	j ia3
+甲鱼 1.0	j ia3 vv v2
+假话 1.0	j ia3 h ua4
+假冒 1.0	j ia3 m ao4
+假日 1.0	j ia4 r iz4
+假如 1.0	j ia3 r u2
+假设 1.0	j ia3 sh e4
+假牙 1.0	j ia3 ii ia2
+价 1.0	j ia4
+价格 1.0	j ia4 g e2
+架 1.0	j ia4
+架设 1.0	j ia4 sh e4
+驾临 1.0	j ia4 l in2
+嫁 1.0	j ia4
+监督 1.0	j ian1 d u1
+监管 1.0	j ian1 g uan3
+坚 1.0	j ian1
+坚持 1.0	j ian1 ch ix2
+坚定 1.0	j ian1 d ing4
+坚实 1.0	j ian1 sh ix2
+坚硬 1.0	j ian1 ii ing4
+尖 1.0	j ian1
+尖锐 1.0	j ian1 r ui4
+间 1.0	j ian1
+间 1.0	j ian4
+间谍 1.0	j ian4 d ie2
+间断 1.0	j ian4 d uan4
+煎 1.0	j ian1
+兼 1.0	j ian1
+兼有 1.0	j ian1 ii iu3
+肩 1.0	j ian1
+肩膀 1.0	j ian1 b ang3
+肩周炎 1.0	j ian1 zh ou1 ii ian2
+艰涩 1.0	j ian1 s e4
+艰险 1.0	j ian1 x ian3
+检 1.0	j ian3
+检测 1.0	j ian3 c e4
+检验 1.0	j ian3 ii ian4
+柬 1.0	j ian3
+柬埔寨 1.0	j ian2 p u3 zh ai4
+简称 1.0	j ian3 ch eng1
+简直 1.0	j ian3 zh ix2
+减 1.0	j ian3
+减肥 1.0	j ian3 f ei2
+减肥药 1.0	j ian3 f ei2 ii iao4
+减去 1.0	j ian3 q v4
+减少 1.0	j ian2 sh ao3
+鉴 1.0	j ian4
+鉴定 1.0	j ian4 d ing4
+践 1.0	j ian4
+见 1.0	j ian4
+见 1.0	x ian4
+见到 1.0	j ian4 d ao4
+见解 1.0	j ian4 j ie3
+箭头 1.0	j ian4 t ou2
+件 1.0	j ian4
+健 1.0	j ian4
+健儿 1.0	j ian4 ee er2
+健康 1.0	j ian4 k ang1
+舰船 1.0	j ian4 ch uan2
+舰队 1.0	j ian4 d ui4
+渐 1.0	j ian4
+溅 1.0	j ian4
+建 1.0	j ian4
+建厂 1.0	j ian4 ch ang3
+建成 1.0	j ian4 ch eng2
+建立 1.0	j ian4 l i4
+建设 1.0	j ian4 sh e4
+建筑 1.0	j ian4 zh u4
+建筑业 1.0	j ian4 zh u4 ii ie4
+僵 1.0	j iang1
+将 1.0	j iang1
+将 1.0	j iang4
+将近 1.0	j iang1 j in4
+将军 1.0	j iang1 j vn1
+将士 1.0	j iang4 sh ix4
+将要 1.0	j iang1 ii iao4
+江 1.0	j iang1
+江北区 1.0	j iang1 b ei3 q v1
+江淮 1.0	j iang1 h uai2
+江山市 1.0	j iang1 sh an1 sh ix4
+江西 1.0	j iang1 x i1
+江泽民 1.0	j iang1 z e2 m in2
+江中 1.0	j iang1 zh ong1
+疆 1.0	j iang1
+蒋 1.0	j iang3
+奖 1.0	j iang3
+奖品 1.0	j iang2 p in3
+讲 1.0	j iang3
+讲解 1.0	j iang2 j ie3
+讲求 1.0	j iang3 q iu2
+讲学 1.0	j iang3 x ve2
+酱油 1.0	j iang4 ii iu2
+降 1.0	j iang4
+降 1.0	x iang2
+降价 1.0	j iang4 j ia4
+降落伞 1.0	j iang4 l uo4 s an3
+降血压 1.0	j iang4 x ie3 ii ia1
+降血压 1.0	j iang4 x ve3 ii ia1
+降血压 1.0	j iang4 x ve4 ii ia1
+降雨量 1.0	j iang4 vv v3 l iang4
+椒盐 1.0	j iao1 ii ian2
+礁石 1.0	j iao1 sh ix2
+焦 1.0	j iao1
+胶合板 1.0	j iao1 h e2 b an3
+胶卷 1.0	j iao1 j van3
+交 1.0	j iao1
+交错 1.0	j iao1 c uo4
+交火 1.0	j iao1 h uo3
+交加 1.0	j iao1 j ia1
+交配 1.0	j iao1 p ei4
+交谈 1.0	j iao1 t an2
+交通 1.0	j iao1 t ong1
+交往 1.0	j iao1 uu uang3
+交易 1.0	j iao1 ii i4
+交织 1.0	j iao1 zh ix1
+郊区 1.0	j iao1 q v1
+郊外 1.0	j iao1 uu uai4
+娇妻 1.0	j iao1 q i1
+嚼 1.0	j iao2
+搅 1.0	j iao3
+矫健 1.0	j iao3 j ian4
+脚 1.0	j iao3
+脚底 1.0	j iao2 d i3
+脚气 1.0	j iao3 q i4
+脚下 1.0	j iao3 x ia4
+脚丫 1.0	j iao3 ii ia1
+脚印 1.0	j iao3 ii in4
+狡猾 1.0	j iao3 h ua2
+角 1.0	j iao3
+角 1.0	j ve2
+饺子 1.0	j iao3 z iy5
+缴获 1.0	j iao3 h uo4
+缴纳 1.0	j iao3 n a4
+教材 1.0	j iao4 c ai2
+教练 1.0	j iao4 l ian4
+教派 1.0	j iao4 p ai4
+教师 1.0	j iao4 sh ix1
+教授 1.0	j iao4 sh ou4
+教书育人 1.0	j iao1 sh u1 vv v4 r en2
+教务长 1.0	j iao4 uu u4 zh ang3
+教义 1.0	j iao4 ii i4
+教育 1.0	j iao4 vv v4
+教育 1.0	j iao4 vv v5
+教员 1.0	j iao4 vv van2
+较 1.0	j iao4
+较大 1.0	j iao4 d a4
+较多 1.0	j iao4 d uo1
+较高 1.0	j iao4 g ao1
+较好 1.0	j iao4 h ao3
+较快 1.0	j iao4 k uai4
+较量 1.0	j iao4 l iang4
+较量 1.0	j iao4 l iang5
+较为 1.0	j iao4 uu ui2
+叫 1.0	j iao4
+叫卖 1.0	j iao4 m ai4
+叫卖声 1.0	j iao4 m ai4 sh eng1
+叫我怎么办 1.0	j iao4 uu uo2 z en3 m e5 b an4
+揭阳 1.0	j ie1 ii iang2
+接 1.0	j ie1
+接班 1.0	j ie1 b an1
+接过 1.0	j ie1 g uo4
+接来 1.0	j ie1 l ai2
+接连 1.0	j ie1 l ian2
+接任 1.0	j ie1 r en4
+接受 1.0	j ie1 sh ou4
+接着 1.0	j ie1 zh e5
+皆 1.0	j ie1
+街 1.0	j ie1
+街角 1.0	j ie1 j iao3
+街上 1.0	j ie1 sh ang4
+街上 1.0	j ie1 sh ang5
+街头 1.0	j ie1 t ou2
+阶梯 1.0	j ie1 t i1
+截至 1.0	j ie2 zh ix4
+节 1.0	j ie2
+节目 1.0	j ie2 m u4
+节目单 1.0	j ie2 m u4 d an1
+节能 1.0	j ie2 n eng2
+节育 1.0	j ie2 vv v4
+节约 1.0	j ie2 vv ve1
+杰 1.0	j ie2
+杰拉尔 1.0	j ie2 l a1 ee er3
+捷克 1.0	j ie2 k e4
+睫毛 1.0	j ie2 m ao2
+竭泽而渔 1.0	j ie2 z e2 ee er2 vv v2
+结 1.0	j ie1
+结 1.0	j ie2
+结果 1.0	j ie2 g uo3
+结合 1.0	j ie2 h e2
+结合起来 1.0	j ie2 h e2 q i3 l ai2
+结婚 1.0	j ie2 h un1
+结石 1.0	j ie2 sh ix2
+结实 1.0	j ie1 sh ix5
+结束 1.0	j ie2 sh u4
+结业 1.0	j ie2 ii ie4
+解除 1.0	j ie3 ch u2
+解放初 1.0	j ie3 f ang4 ch u1
+解决 1.0	j ie3 j ve2
+解散 1.0	j ie3 s an4
+解释 1.0	j ie3 sh ix4
+解释 1.0	j ie3 sh ix5
+解体 1.0	j ie2 t i3
+姐姐 1.0	j ie3 j ie5
+姐妹 1.0	j ie3 m ei4
+姐妹俩 1.0	j ie3 m ei4 l ia3
+姐妹们 1.0	j ie3 m ei4 m en5
+姐们儿 1.0	j ie3 m en5 ee er5
+戒烟 1.0	j ie4 ii ian1
+戒指 1.0	j ie4 zh ix5
+界定 1.0	j ie4 d ing4
+借 1.0	j ie4
+介绍 1.0	j ie4 sh ao4
+介绍信 1.0	j ie4 sh ao4 x in4
+届 1.0	j ie4
+筋 1.0	j in1
+金 1.0	j in1
+金币 1.0	j in1 b i4
+金都 1.0	j in1 d ou1
+金凤 1.0	j in1 f eng4
+金谷 1.0	j in1 g u3
+金黄 1.0	j in1 h uang2
+金鸡 1.0	j in1 j i1
+金建 1.0	j in1 j ian4
+金卡 1.0	j in1 k a3
+金牌 1.0	j in1 p ai2
+金秋 1.0	j in1 q iu1
+金融 1.0	j in1 r ong2
+金生 1.0	j in1 sh eng1
+金石滩 1.0	j in1 sh ix2 t an1
+金州区 1.0	j in1 zh ou1 q v1
+金簪 1.0	j in1 z an1
+金鑫 1.0	j in1 x in1
+今年 1.0	j in1 n ian2
+今天 1.0	j in1 t ian1
+今天下午 1.0	j in1 t ian1 x ia4 uu u3
+今晚 1.0	j in1 uu uan3
+今早 1.0	j in1 z ao3
+津贴 1.0	j in1 t ie1
+紧紧 1.0	j in2 j in3
+紧缺 1.0	j in3 q ve1
+紧张 1.0	j in3 zh ang1
+锦 1.0	j in3
+锦缎 1.0	j in3 d uan4
+仅 1.0	j in3
+进 1.0	j in4
+进场 1.0	j in4 ch ang3
+进城 1.0	j in4 ch eng2
+进而 1.0	j in4 ee er2
+进犯 1.0	j in4 f an4
+进价 1.0	j in4 j ia4
+进口 1.0	j in4 k ou3
+进门 1.0	j in4 m en2
+进入 1.0	j in4 r u4
+进行 1.0	j in4 x ing2
+进修 1.0	j in4 x iu1
+进一步 1.0	j in4 ii i2 b u4
+进驻 1.0	j in4 zh u4
+晋 1.0	j in4
+禁不住 1.0	j in1 b u2 zh u4
+禁止 1.0	j in4 zh ix3
+近 1.0	j in4
+近郊 1.0	j in4 j iao1
+近景 1.0	j in4 j ing3
+近来 1.0	j in4 l ai2
+近年来 1.0	j in4 n ian2 l ai2
+近期 1.0	j in4 q i1
+近日 1.0	j in4 r iz4
+浸 1.0	j in4
+浸入 1.0	j in4 r u4
+尽 1.0	j in3
+尽 1.0	j in4
+尽管 1.0	j in2 g uan3
+尽管 1.0	j in4 g uan3
+尽快 1.0	j in3 k uai4
+尽快 1.0	j in4 k uai4
+劲儿 1.0	j in4 ee er5
+京 1.0	j ing1
+惊 1.0	j ing1
+惊呆 1.0	j ing1 d ai1
+惊恐万状 1.0	j ing1 k ong3 uu uan4 zh uang4
+惊心动魄 1.0	j ing1 x in1 d ong4 p o4
+精 1.0	j ing1
+精美 1.0	j ing1 m ei3
+精明 1.0	j ing1 m ing2
+精品 1.0	j ing1 p in3
+精神 1.0	j ing1 sh en2
+精神 1.0	j ing1 sh en5
+精神文明 1.0	j ing1 sh en2 uu un2 m ing2
+精通 1.0	j ing1 t ong1
+精细 1.0	j ing1 x i4
+精心 1.0	j ing1 x in1
+精液 1.0	j ing1 ii ie4
+精子 1.0	j ing1 z iy3
+经 1.0	j ing1
+经 1.0	j ing4
+经常 1.0	j ing1 ch ang2
+经过 1.0	j ing1 g uo4
+经过 1.0	j ing1 g uo5
+经济 1.0	j ing1 j i4
+经贸 1.0	j ing1 m ao4
+经受 1.0	j ing1 sh ou4
+经验 1.0	j ing1 ii ian4
+经营 1.0	j ing1 ii ing2
+经营额 1.0	j ing1 ii ing2 ee e2
+经营者 1.0	j ing1 ii ing2 zh e3
+井 1.0	j ing3
+井口 1.0	j ing2 k ou3
+警察 1.0	j ing3 ch a2
+警方 1.0	j ing3 f ang1
+警告 1.0	j ing3 g ao4
+警惕 1.0	j ing3 t i4
+警卫 1.0	j ing3 uu ui4
+景 1.0	j ing3
+景观 1.0	j ing3 g uan1
+景和 1.0	j ing3 h e2
+景况 1.0	j ing3 k uang4
+景色 1.0	j ing3 s e4
+景象 1.0	j ing3 x iang4
+颈 1.0	j ing3
+静 1.0	j ing4
+静静地 1.0	j ing4 j ing4 d e5
+静脉 1.0	j ing4 m ai4
+静脉曲张 1.0	j ing4 m ai4 q v1 zh ang1
+静文 1.0	j ing4 uu un2
+境界 1.0	j ing4 j ie4
+境内 1.0	j ing4 n ei4
+敬酒 1.0	j ing4 j iu3
+敬老院 1.0	j ing4 l ao3 vv van4
+敬仰 1.0	j ing4 ii iang3
+敬业 1.0	j ing4 ii ie4
+镜 1.0	j ing4
+镜头 1.0	j ing4 t ou2
+径 1.0	j ing4
+靖 1.0	j ing4
+竟 1.0	j ing4
+竟然 1.0	j ing4 r an2
+竟是 1.0	j ing4 sh ix4
+竞 1.0	j ing4
+竞赛 1.0	j ing4 s ai4
+竞选 1.0	j ing4 x van3
+竞争 1.0	j ing4 zh eng1
+竞争力 1.0	j ing4 zh eng1 l i4
+炯炯 1.0	j iong2 j iong3
+窘迫 1.0	j iong3 p o4
+究 1.0	j iu1
+纠缠 1.0	j iu1 ch an2
+纠正 1.0	j iu1 zh eng4
+久 1.0	j iu3
+久而久之 1.0	j iu3 ee er2 j iu3 zh ix1
+久居 1.0	j iu3 j v1
+九 1.0	j iu3
+九段 1.0	j iu3 d uan4
+九六年 1.0	j iu3 l iu4 n ian2
+九日 1.0	j iu3 r iz4
+九三年 1.0	j iu3 s an1 n ian2
+九十七 1.0	j iu3 sh ix2 q i1
+九十七 1.0	j iu3 sh ix5 q i1
+九时 1.0	j iu3 sh ix2
+九四年 1.0	j iu3 s iy4 n ian2
+九五年 1.0	j iu2 uu u3 n ian2
+九月 1.0	j iu3 vv ve4
+酒 1.0	j iu3
+酒后 1.0	j iu3 h ou4
+酒家 1.0	j iu3 j ia1
+酒瓶 1.0	j iu3 p ing2
+酒钱 1.0	j iu3 q ian2
+酒香 1.0	j iu3 x iang1
+救命恩人 1.0	j iu4 m ing4 ee en1 r en2
+救亡 1.0	j iu4 uu uang2
+救援 1.0	j iu4 vv van2
+救灾 1.0	j iu4 z ai1
+旧 1.0	j iu4
+舅家 1.0	j iu4 j ia1
+舅舅 1.0	j iu4 j iu5
+就 1.0	j iu4
+就此 1.0	j iu4 c iy3
+就好 1.0	j iu4 h ao3
+就会 1.0	j iu4 h ui4
+就怕 1.0	j iu4 p a4
+就是 1.0	j iu4 sh ix4
+就是 1.0	j iu4 sh ix5
+就算 1.0	j iu4 s uan4
+就要 1.0	j iu4 ii iao4
+就业 1.0	j iu4 ii ie4
+就这样 1.0	j iu4 zh e4 ii iang4
+就这样 1.0	j iu4 zh ei4 ii iang4
+就职 1.0	j iu4 zh ix2
+狙击 1.0	j v1 j i1
+居 1.0	j v1
+居民 1.0	j v1 m in2
+居住 1.0	j v1 zh u4
+菊园 1.0	j v2 vv van2
+局 1.0	j v2
+局长 1.0	j v2 zh ang3
+局促 1.0	j v2 c u4
+局面 1.0	j v2 m ian4
+局势 1.0	j v2 sh ix4
+局外人 1.0	j v2 uu uai4 r en2
+举办 1.0	j v3 b an4
+举措 1.0	j v3 c uo4
+举起 1.0	j v2 q i3
+举行 1.0	j v3 x ing2
+举止 1.0	j v2 zh ix3
+举重 1.0	j v3 zh ong4
+沮丧 1.0	j v3 s ang4
+聚 1.0	j v4
+聚集 1.0	j v4 j i2
+聚众 1.0	j v4 zh ong4
+拒绝 1.0	j v4 j ve2
+据 1.0	j v4
+据说 1.0	j v4 sh uo1
+据悉 1.0	j v4 x i1
+巨大 1.0	j v4 d a4
+巨额 1.0	j v4 ee e2
+巨款 1.0	j v4 k uan3
+巨星 1.0	j v4 x ing1
+具 1.0	j v4
+具有 1.0	j v4 ii iu3
+距 1.0	j v4
+俱 1.0	j v4
+俱乐部 1.0	j v4 l e4 b u4
+句 1.0	j v4
+剧 1.0	j v4
+剧目 1.0	j v4 m u4
+剧团 1.0	j v4 t uan2
+剧院 1.0	j v4 vv van4
+剧中 1.0	j v4 zh ong1
+捐款 1.0	j van1 k uan3
+捐赠 1.0	j van1 z eng4
+卷 1.0	j van3
+卷 1.0	j van4
+卷二 1.0	j van4 ee er4
+卷曲 1.0	j van3 q v1
+卷烟厂 1.0	j van3 ii ian1 ch ang3
+爵士乐 1.0	j ve2 sh ix4 vv ve4
+觉 1.0	j iao4
+觉 1.0	j ve2
+觉得 1.0	j ve2 d e5
+决 1.0	j ve2
+决不会 1.0	j ve2 b u2 h ui4
+决不能 1.0	j ve2 b u4 n eng2
+决策 1.0	j ve2 c e4
+决定 1.0	j ve2 d ing4
+决口 1.0	j ve2 k ou3
+决赛 1.0	j ve2 s ai4
+决议 1.0	j ve2 ii i4
+决议案 1.0	j ve2 ii i4 aa an4
+诀窍 1.0	j ve2 q iao4
+绝 1.0	j ve2
+绝对安全 1.0	j ve2 d ui4 aa an1 q van2
+绝妙 1.0	j ve2 m iao4
+绝望 1.0	j ve2 uu uang4
+均 1.0	j vn1
+均为 1.0	j vn1 uu ui2
+均匀 1.0	j vn1 vv vn2
+菌 1.0	j vn1
+军 1.0	j vn1
+军代表 1.0	j vn1 d ai4 b iao3
+军队 1.0	j vn1 d ui4
+军区 1.0	j vn1 q v1
+军人 1.0	j vn1 r en2
+军嫂 1.0	j vn1 s ao3
+军事 1.0	j vn1 sh ix4
+军械 1.0	j vn1 x ie4
+军营 1.0	j vn1 ii ing2
+军帐 1.0	j vn1 zh ang4
+军政 1.0	j vn1 zh eng4
+军饷 1.0	j vn1 x iang3
+君子 1.0	j vn1 z iy3
+俊 1.0	j vn4
+俊华 1.0	j vn4 h ua2
+俊华 1.0	j vn4 h ua4
+喀布尔 1.0	k a1 b u4 ee er3
+咖啡 1.0	k a1 f ei1
+卡 1.0	k a3
+卡 1.0	q ia3
+卡车 1.0	k a3 ch e1
+卡拉 1.0	k a3 l a1
+卡连 1.0	k a3 l ian2
+卡洛 1.0	k a3 l uo4
+卡米 1.0	k a2 m i3
+卡特 1.0	k a3 t e4
+卡住 1.0	k a3 zh u4
+卡住 1.0	q ia3 zh u4
+开 1.0	k ai1
+开办 1.0	k ai1 b an4
+开辟 1.0	k ai1 p i4
+开采 1.0	k ai1 c ai3
+开车 1.0	k ai1 ch e1
+开窗 1.0	k ai1 ch uang1
+开创 1.0	k ai1 ch uang4
+开发 1.0	k ai1 f a1
+开发区 1.0	k ai1 f a1 q v1
+开放 1.0	k ai1 f ang4
+开赴 1.0	k ai1 f u4
+开关 1.0	k ai1 g uan1
+开户银行 1.0	k ai1 h u4 ii in2 h ang2
+开会 1.0	k ai1 h ui4
+开间 1.0	k ai1 j ian1
+开滦 1.0	k ai1 l uan2
+开幕 1.0	k ai1 m u4
+开山 1.0	k ai1 sh an1
+开始 1.0	k ai1 sh ix3
+开水 1.0	k ai1 sh ui3
+开通 1.0	k ai1 t ong1
+开箱 1.0	k ai1 x iang1
+开业 1.0	k ai1 ii ie4
+开远 1.0	k ai1 vv van3
+开展 1.0	k ai1 zh an3
+楷 1.0	k ai3
+楷模 1.0	k ai3 m o2
+凯歌 1.0	k ai3 g e1
+刊登 1.0	k an1 d eng1
+堪培拉 1.0	k an1 p ei2 l a1
+堪萨斯州 1.0	k an1 s a4 s iy1 zh ou1
+勘探 1.0	k an1 t an4
+看 1.0	k an1
+看 1.0	k an4
+看不到 1.0	k an4 b u2 d ao4
+看不清 1.0	k an4 b u4 q ing1
+看到 1.0	k an4 d ao4
+看护 1.0	k an1 h u4
+看见 1.0	k an4 j ian4
+看看 1.0	k an4 k an5
+看了 1.0	k an4 l e5
+看起来 1.0	k an4 q i3 l ai2
+看起来 1.0	k an4 q i3 l ai5
+看她 1.0	k an4 t a1
+看完 1.0	k an4 uu uan2
+看望 1.0	k an4 uu uang4
+看一看 1.0	k an4 ii i2 k an4
+看一看 1.0	k an4 ii i5 k an4
+看中 1.0	k an4 zh ong4
+看着 1.0	k an4 zh e5
+康 1.0	k ang1
+康夫 1.0	k ang1 f u1
+康熙 1.0	k ang1 x i1
+康县 1.0	k ang1 x ian4
+慷慨 1.0	k ang1 k ai3
+糠 1.0	k ang1
+扛着 1.0	k ang2 zh e5
+抗 1.0	k ang4
+抗癌 1.0	k ang4 aa ai2
+抗病 1.0	k ang4 b ing4
+抗病毒 1.0	k ang4 b ing4 d u2
+抗洪 1.0	k ang4 h ong2
+抗菌素 1.0	k ang4 j vn1 s u4
+抗菌素 1.0	k ang4 j vn3 s u4
+抗美援朝 1.0	k ang4 m ei3 vv van2 ch ao2
+抗日 1.0	k ang4 r iz4
+抗战 1.0	k ang4 zh an4
+抗争 1.0	k ang4 zh eng1
+考 1.0	k ao3
+考察 1.0	k ao3 ch a2
+考古 1.0	k ao2 g u3
+考究 1.0	k ao3 j iu1
+考虑 1.0	k ao3 l v4
+考入 1.0	k ao3 r u4
+考试 1.0	k ao3 sh ix4
+考验 1.0	k ao3 ii ian4
+烤 1.0	k ao3
+烤烟 1.0	k ao3 ii ian1
+靠 1.0	k ao4
+靠背椅 1.0	k ao4 b ei4 ii i3
+靠着 1.0	k ao4 zh e5
+柯 1.0	k e1
+棵 1.0	k e1
+颗 1.0	k e1
+科 1.0	k e1
+科尔沁 1.0	k e1 ee er3 q in4
+科尔沁 1.0	k e4 ee er3 q in4
+科技 1.0	k e1 j i4
+科克 1.0	k e1 k e4
+科威特 1.0	k e1 uu ui1 t e4
+科学 1.0	k e1 x ve2
+科学家 1.0	k e1 x ve2 j ia1
+科研 1.0	k e1 ii ian2
+咳嗽 1.0	k e2 s ou5
+可 1.0	k e3
+可爱的 1.0	k e3 aa ai4 d e5
+可得 1.0	k e3 d e2
+可见 1.0	k e3 j ian4
+可可 1.0	k e2 k e3
+可能 1.0	k e3 n eng2
+可能性 1.0	k e3 n eng2 x ing4
+可是 1.0	k e3 sh ix4
+可是我 1.0	k e3 sh ix4 uu uo3
+可为 1.0	k e3 uu ui2
+可为 1.0	k e3 uu ui4
+可谓 1.0	k e3 uu ui4
+可想而知 1.0	k e2 x iang3 ee er2 zh ix1
+可以 1.0	k e2 ii i3
+可以说 1.0	k e2 ii i3 sh uo1
+渴 1.0	k e3
+渴望 1.0	k e3 uu uang4
+克 1.0	k e4
+克林顿 1.0	k e4 l in2 d un4
+克什米尔 1.0	k e4 sh ix2 m i2 ee er3
+克斯 1.0	k e4 s iy1
+刻画 1.0	k e4 h ua4
+刻苦 1.0	k e4 k u3
+刻意 1.0	k e4 ii i4
+客 1.0	k e4
+客车 1.0	k e4 ch e1
+客户 1.0	k e4 h u4
+客轮 1.0	k e4 l un2
+客人 1.0	k e4 r en2
+客厅 1.0	k e4 t ing1
+客源 1.0	k e4 vv van2
+课 1.0	k e4
+课本 1.0	k e4 b en3
+课目 1.0	k e4 m u4
+肯定 1.0	k en3 d ing4
+啃 1.0	k en3
+垦 1.0	k en3
+恳请 1.0	k en2 q ing3
+坑 1.0	k eng1
+坑害 1.0	k eng1 h ai4
+空 1.0	k ong1
+空 1.0	k ong4
+空调器 1.0	k ong1 t iao2 q i4
+空军 1.0	k ong1 j vn1
+空空如也 1.0	k ong1 k ong1 r u2 ii ie3
+空留 1.0	k ong4 l iu2
+空气 1.0	k ong1 q i4
+空位 1.0	k ong4 uu ui4
+空运 1.0	k ong1 vv vn4
+空中 1.0	k ong1 zh ong1
+空子 1.0	k ong4 z iy5
+恐 1.0	k ong3
+恐怖 1.0	k ong3 b u4
+恐惧 1.0	k ong3 j v4
+恐怕 1.0	k ong3 p a4
+孔 1.0	k ong3
+孔雀 1.0	k ong3 q ve4
+孔子 1.0	k ong2 z iy3
+控制 1.0	k ong4 zh ix4
+控制 1.0	k ong4 zh ix5
+口 1.0	k ou3
+口岸 1.0	k ou3 aa an4
+口服液 1.0	k ou3 f u2 ii ie4
+口红 1.0	k ou3 h ong2
+口气 1.0	k ou3 q i4
+口镇 1.0	k ou3 zh en4
+扣 1.0	k ou4
+扣押 1.0	k ou4 ii ia1
+寇 1.0	k ou4
+哭 1.0	k u1
+哭泣 1.0	k u1 q i4
+哭声 1.0	k u1 sh eng1
+苦斗 1.0	k u3 d ou4
+苦日子 1.0	k u3 r iz4 z iy5
+苦战 1.0	k u3 zh an4
+库 1.0	k u4
+库存 1.0	k u4 c un2
+库区 1.0	k u4 q v1
+裤 1.0	k u4
+垮 1.0	k ua3
+垮台 1.0	k ua3 t ai2
+跨 1.0	k ua4
+跨入 1.0	k ua4 r u4
+块 1.0	k uai4
+块儿 1.0	k uai4 ee er5
+筷子 1.0	k uai4 z iy5
+快 1.0	k uai4
+快艇 1.0	k uai4 t ing3
+快要 1.0	k uai4 ii iao4
+宽 1.0	k uan1
+宽广 1.0	k uan1 g uang3
+宽厚 1.0	k uan1 h ou4
+宽阔 1.0	k uan1 k uo4
+款 1.0	k uan3
+款物 1.0	k uan3 uu u4
+匡 1.0	k uang1
+狂 1.0	k uang2
+狂风 1.0	k uang2 f eng1
+狂人 1.0	k uang2 r en2
+狂喜 1.0	k uang2 x i3
+矿 1.0	k uang4
+矿床 1.0	k uang4 ch uang2
+矿工 1.0	k uang4 g ong1
+矿区 1.0	k uang4 q v1
+矿务局 1.0	k uang4 uu u4 j v2
+矿业 1.0	k uang4 ii ie4
+矿渣 1.0	k uang4 zh a1
+旷野 1.0	k uang4 ii ie3
+亏 1.0	k ui1
+亏损 1.0	k ui1 s un3
+窥见 1.0	k ui1 j ian4
+奎 1.0	k ui2
+奎尔 1.0	k ui2 ee er3
+魁 1.0	k ui2
+溃疡 1.0	k ui4 ii iang2
+坤 1.0	k un1
+昆仑 1.0	k un1 l un2
+昆明 1.0	k un1 m ing2
+捆 1.0	k un3
+捆扎 1.0	k un3 z a1
+困 1.0	k un4
+困难 1.0	k un4 n an2
+困扰 1.0	k un4 r ao3
+扩大 1.0	k uo4 d a4
+扩印 1.0	k uo4 ii in4
+扩展 1.0	k uo4 zh an3
+阔 1.0	k uo4
+拉 1.0	l a1
+拉夫 1.0	l a1 f u1
+拉开 1.0	l a1 k ai1
+拉那 1.0	l a1 n a4
+拉萨 1.0	l a1 s a4
+拉丝 1.0	l a1 s iy1
+蜡 1.0	l a4
+辣椒 1.0	l a4 j iao1
+啦 1.0	l a5
+来 1.0	l ai2
+来到 1.0	l ai2 d ao4
+来回 1.0	l ai2 h ui2
+来了 1.0	l ai2 l e5
+来说 1.0	l ai2 sh uo1
+来一 1.0	l ai2 ii i1
+来源 1.0	l ai2 vv van2
+来源于 1.0	l ai2 vv van2 vv v2
+来者 1.0	l ai2 zh e3
+来这里 1.0	l ai2 zh e4 l i3
+来之不易 1.0	l ai2 zh ix1 b u2 ii i4
+赖 1.0	l ai4
+蓝 1.0	l an2
+拦腰 1.0	l an2 ii iao1
+篮 1.0	l an2
+篮球 1.0	l an2 q iu2
+篮球场 1.0	l an2 q iu2 ch ang3
+澜 1.0	l an2
+懒惰 1.0	l an3 d uo4
+烂 1.0	l an4
+烂片 1.0	l an4 p ian1
+烂片 1.0	l an4 p ian4
+滥 1.0	l an4
+滥用 1.0	l an4 ii iong4
+狼 1.0	l ang2
+狼嚎 1.0	l ang2 h ao2
+狼牙 1.0	l ang2 ii ia2
+浪 1.0	l ang4
+劳动 1.0	l ao2 d ong4
+劳动模范 1.0	l ao2 d ong4 m o2 f an4
+劳累 1.0	l ao2 l ei4
+劳模 1.0	l ao2 m o2
+劳务 1.0	l ao2 uu u4
+老 1.0	l ao3
+老百姓 1.0	l ao2 b ai3 x ing4
+老板 1.0	l ao2 b an3
+老伴 1.0	l ao3 b an4
+老办法 1.0	l ao3 b an4 f a3
+老兵 1.0	l ao3 b ing1
+老大 1.0	l ao3 d a4
+老等 1.0	l ao2 d eng3
+老爹 1.0	l ao3 d ie1
+老工人 1.0	l ao3 g ong1 r en2
+老规矩 1.0	l ao3 g ui1 j v5
+老汉 1.0	l ao3 h an4
+老红军 1.0	l ao3 h ong2 j vn1
+老虎 1.0	l ao2 h u3
+老六 1.0	l ao3 l iu4
+老马 1.0	l ao2 m a3
+老母 1.0	l ao2 m u3
+老年人 1.0	l ao3 n ian2 r en2
+老农 1.0	l ao3 n ong2
+老区 1.0	l ao3 q v1
+老曲 1.0	l ao2 q v1
+老曲 1.0	l ao2 q v3
+老人 1.0	l ao3 r en2
+老师 1.0	l ao3 sh ix1
+老太太 1.0	l ao3 t ai4 t ai5
+老文 1.0	l ao3 uu un2
+老爷们儿 1.0	l ao3 ii ie2 m en5 ee er2
+老一辈 1.0	l ao3 ii i2 b ei4
+老尹 1.0	l ao2 ii in3
+老远 1.0	l ao2 vv van3
+乐 1.0	l e4
+乐 1.0	vv ve4
+乐得 1.0	l e4 d e5
+乐团 1.0	vv ve4 t uan2
+雷 1.0	l ei2
+雷达 1.0	l ei2 d a2
+雷区 1.0	l ei2 q v1
+累 1.0	l ei3
+累 1.0	l ei4
+累计 1.0	l ei3 j i4
+累累 1.0	l ei2 l ei3
+类 1.0	l ei4
+棱 1.0	l eng2
+楞 1.0	l eng2
+冷藏 1.0	l eng3 c ang2
+冷冻 1.0	l eng3 d ong4
+冷酷 1.0	l eng3 k u4
+冷冷 1.0	l eng2 l eng3
+冷落 1.0	l eng3 l uo4
+冷清 1.0	l eng3 q ing1
+冷轧 1.0	l eng3 zh a2
+冷战 1.0	l eng3 zh an4
+梨树 1.0	l i2 sh u4
+黎 1.0	l i2
+离 1.0	l i2
+离开 1.0	l i2 k ai1
+理 1.0	l i3
+理解 1.0	l i2 j ie3
+理论 1.0	l i3 l un4
+理顺 1.0	l i3 sh un4
+理想 1.0	l i2 x iang3
+理学 1.0	l i3 x ve2
+理智 1.0	l i3 zh ix4
+李 1.0	l i3
+李白 1.0	l i3 b ai2
+李杜 1.0	l i3 d u4
+李公朴 1.0	l i3 g ong1 p u3
+李进 1.0	l i3 j in4
+李军 1.0	l i3 j vn1
+李宁 1.0	l i3 n ing2
+李瑞环 1.0	l i3 r ui4 h uan2
+李艳 1.0	l i3 ii ian4
+里 1.0	l i3
+里面 1.0	l i3 m ian4
+礼 1.0	l i3
+礼品 1.0	l i2 p in3
+莉莉 1.0	l i4 l i5
+丽 1.0	l i4
+丽芳 1.0	l i4 f ang1
+丽日 1.0	l i4 r iz4
+丽雅 1.0	l i4 ii ia3
+厉害 1.0	l i4 h ai5
+历 1.0	l i4
+历程 1.0	l i4 ch eng2
+历代 1.0	l i4 d ai4
+历任 1.0	l i4 r en4
+历史 1.0	l i4 sh ix3
+利 1.0	l i4
+利润 1.0	l i4 r un4
+利生 1.0	l i4 sh eng1
+利税 1.0	l i4 sh ui4
+利益 1.0	l i4 ii i4
+利用 1.0	l i4 ii iong4
+利于 1.0	l i4 vv v2
+例 1.0	l i4
+例会 1.0	l i4 h ui4
+例子 1.0	l i4 z iy5
+立 1.0	l i4
+立场 1.0	l i4 ch ang3
+立功 1.0	l i4 g ong1
+立即 1.0	l i4 j i2
+立论 1.0	l i4 l un4
+立强 1.0	l i4 q iang2
+立身 1.0	l i4 sh en1
+立体 1.0	l i4 t i3
+粒状 1.0	l i4 zh uang4
+力 1.0	l i4
+力量 1.0	l i4 l iang4
+俩 1.0	l ia3
+俩几 1.0	l ia2 j i3
+俩位 1.0	l ia3 uu ui4
+联 1.0	l ian2
+联邦 1.0	l ian2 b ang1
+联合 1.0	l ian2 h e2
+联盟 1.0	l ian2 m eng2
+联赛 1.0	l ian2 s ai4
+联系 1.0	l ian2 x i4
+莲藕 1.0	l ian2 oo ou3
+连 1.0	l ian2
+连队 1.0	l ian2 d ui4
+连绵 1.0	l ian2 m ian2
+连年 1.0	l ian2 n ian2
+连日来 1.0	l ian2 r iz4 l ai2
+连续 1.0	l ian2 x v4
+连夜 1.0	l ian2 ii ie4
+连英 1.0	l ian2 ii ing1
+连着 1.0	l ian2 zh e5
+帘 1.0	l ian2
+脸 1.0	l ian3
+脸盆 1.0	l ian3 p en2
+脸色 1.0	l ian3 s e4
+脸上 1.0	l ian3 sh ang4
+恋爱 1.0	l ian4 aa ai4
+炼 1.0	l ian4
+炼钢 1.0	l ian4 g ang1
+炼焦 1.0	l ian4 j iao1
+练 1.0	l ian4
+粮 1.0	l iang2
+粮棉 1.0	l iang2 m ian2
+粮食 1.0	l iang2 sh ix5
+凉 1.0	l iang2
+梁 1.0	l iang2
+粱 1.0	l iang5
+良好 1.0	l iang2 h ao3
+良种 1.0	l iang2 zh ong3
+两 1.0	l iang3
+两岸 1.0	l iang3 aa an4
+两百万 1.0	l iang2 b ai3 uu uan4
+两侧 1.0	l iang3 c e4
+两次 1.0	l iang3 c iy4
+两个 1.0	l iang3 g e5
+两家 1.0	l iang3 j ia1
+两局 1.0	l iang3 j v2
+两年 1.0	l iang3 n ian2
+两派 1.0	l iang3 p ai4
+两旁 1.0	l iang3 p ang2
+两千 1.0	l iang3 q ian1
+两千多 1.0	l iang3 q ian1 d uo1
+两千五百 1.0	l iang3 q ian1 uu u2 b ai3
+两人 1.0	l iang3 r en2
+两天 1.0	l iang3 t ian1
+两头 1.0	l iang3 t ou2
+两腿 1.0	l iang2 t ui3
+两位 1.0	l iang3 uu ui4
+两兄弟 1.0	l iang3 x iong1 d i4
+两眼 1.0	l iang2 ii ian3
+两元钱 1.0	l iang3 vv van2 q ian2
+两只 1.0	l iang3 zh ix1
+两种 1.0	l iang2 zh ong3
+量 1.0	l iang4
+量比 1.0	l iang4 b i3
+亮 1.0	l iang4
+撩 1.0	l iao1
+辽 1.0	l iao2
+辽阔 1.0	l iao2 k uo4
+辽宁 1.0	l iao2 n ing2
+辽宁省 1.0	l iao2 n ing2 sh eng3
+了 1.0	l e5
+了解一下 1.0	l iao2 j ie3 ii i2 x ia4
+廖 1.0	l iao4
+料 1.0	l iao4
+列 1.0	l ie4
+列车 1.0	l ie4 ch e1
+列队 1.0	l ie4 d ui4
+列宁 1.0	l ie4 n ing2
+烈 1.0	l ie4
+烈火 1.0	l ie4 h uo3
+劣 1.0	l ie4
+劣质 1.0	l ie4 zh ix4
+猎物 1.0	l ie4 uu u4
+琳 1.0	l in2
+琳琳 1.0	l in2 l in2
+林 1.0	l in2
+林区 1.0	l in2 q v1
+林文 1.0	l in2 uu un2
+林西 1.0	l in2 x i1
+林业 1.0	l in2 ii ie4
+临 1.0	l in2
+临床医学 1.0	l in2 ch uang2 ii i1 x ve2
+临了 1.0	l in2 l iao3
+临时 1.0	l in2 sh ix2
+临颍县 1.0	l in2 ii ing3 x ian4
+邻村 1.0	l in2 c un1
+邻近 1.0	l in2 j in4
+邻居 1.0	l in2 j v1
+淋 1.0	l in2
+淋漓 1.0	l in2 l i2
+淋淋 1.0	l in2 l in2
+零六年 1.0	l ing2 l iu4 n ian2
+零售价 1.0	l ing2 sh ou4 j ia4
+铃 1.0	l ing2
+羚羊 1.0	l ing2 ii iang2
+凌晨 1.0	l ing2 ch en2
+灵魂 1.0	l ing2 h un2
+灵活 1.0	l ing2 h uo2
+陵 1.0	l ing2
+岭南 1.0	l ing3 n an2
+领 1.0	l ing3
+领导 1.0	l ing2 d ao3
+领导层 1.0	l ing2 d ao3 c eng2
+领导人 1.0	l ing2 d ao3 r en2
+领会 1.0	l ing3 h ui4
+领先 1.0	l ing3 x ian1
+领袖 1.0	l ing3 x iu4
+领域 1.0	l ing3 vv v4
+另 1.0	l ing4
+另外 1.0	l ing4 uu uai4
+另一 1.0	l ing4 ii i1
+另一种 1.0	l ing4 ii i4 zh ong3
+另有 1.0	l ing4 ii iu3
+令 1.0	l ing4
+令人 1.0	l ing4 r en2
+留 1.0	l iu2
+留成 1.0	l iu2 ch eng2
+留念 1.0	l iu2 n ian4
+留下 1.0	l iu2 x ia4
+留影 1.0	l iu2 ii ing3
+留在 1.0	l iu2 z ai4
+刘 1.0	l iu2
+刘邦 1.0	l iu2 b ang1
+刘东 1.0	l iu2 d ong1
+刘海 1.0	l iu2 h ai3
+刘进 1.0	l iu2 j in4
+刘力 1.0	l iu2 l i4
+刘胜 1.0	l iu2 sh eng4
+刘小光 1.0	l iu2 x iao3 g uang1
+刘永 1.0	l iu2 ii iong3
+刘玉 1.0	l iu2 vv v4
+刘云山 1.0	l iu2 vv vn2 sh an1
+流 1.0	l iu2
+流弊 1.0	l iu2 b i4
+流传 1.0	l iu2 ch uan2
+流动资金 1.0	l iu2 d ong4 z iy1 j in1
+流浪 1.0	l iu2 l ang4
+流入 1.0	l iu2 r u4
+流水 1.0	l iu2 sh ui3
+流行 1.0	l iu2 x ing2
+柳 1.0	l iu3
+柳暗花明 1.0	l iu3 aa an4 h ua1 m ing2
+柳某 1.0	l iu2 m ou3
+柳生 1.0	l iu3 sh eng1
+柳州 1.0	l iu3 zh ou1
+六 1.0	l iu4
+六百 1.0	l iu4 b ai3
+六个月 1.0	l iu4 g e4 vv ve4
+六个月 1.0	l iu4 g e5 vv ve4
+六家 1.0	l iu4 j ia1
+六年 1.0	l iu4 n ian2
+六七 1.0	l iu4 q i1
+六千 1.0	l iu4 q ian1
+六人 1.0	l iu4 r en2
+六十 1.0	l iu4 sh ix2
+六岁 1.0	l iu4 s ui4
+六条 1.0	l iu4 t iao2
+六万 1.0	l iu4 uu uan4
+六月 1.0	l iu4 vv ve4
+龙 1.0	l ong2
+龙的 1.0	l ong2 d e5
+龙和 1.0	l ong2 h e2
+聋 1.0	l ong2
+聋哑 1.0	l ong2 ii ia3
+笼 1.0	l ong2
+笼统 1.0	l ong2 t ong3
+隆 1.0	l ong2
+隆冬 1.0	l ong2 d ong1
+楼 1.0	l ou2
+楼内 1.0	l ou2 n ei4
+楼区 1.0	l ou2 q v1
+楼群 1.0	l ou2 q vn2
+楼台 1.0	l ou2 t ai2
+楼外楼 1.0	l ou2 uu uai4 l ou2
+楼宇 1.0	l ou2 vv v3
+漏 1.0	l ou4
+漏网之鱼 1.0	l ou4 uu uang3 zh ix1 vv v2
+卢 1.0	l u2
+卢森堡 1.0	l u2 s en1 b ao3
+颅 1.0	l u2
+鲁迅 1.0	l u3 x vn4
+露出 1.0	l u4 ch u1
+露面 1.0	l ou4 m ian4
+路 1.0	l u4
+路人皆知 1.0	l u4 r en2 j ie1 zh ix1
+路向 1.0	l u4 x iang4
+鹿 1.0	l u4
+录取 1.0	l u4 q v3
+录像带 1.0	l u4 x iang4 d ai4
+录用 1.0	l u4 ii iong4
+陆 1.0	l u4
+吕 1.0	l v3
+铝 1.0	l v3
+铝材 1.0	l v3 c ai2
+旅 1.0	l v3
+旅长 1.0	l v2 zh ang3
+旅馆 1.0	l v2 g uan3
+旅客 1.0	l v3 k e4
+旅行社 1.0	l v3 x ing2 sh e4
+旅游 1.0	l v3 ii iu2
+旅游区 1.0	l v3 ii iu2 q v1
+旅游业 1.0	l v3 ii iu2 ii ie4
+屡 1.0	l v3
+缕缕 1.0	l v2 l v3
+氯 1.0	l v4
+率 1.0	l v4
+率领 1.0	sh uai4 l ing3
+率先 1.0	sh uai4 x ian1
+滤 1.0	l v4
+绿 1.0	l v4
+绿色 1.0	l v4 s e4
+绿树 1.0	l v4 sh u4
+绿水 1.0	l v4 sh ui3
+绿茵 1.0	l v4 ii in1
+峦 1.0	l uan2
+乱 1.0	l uan4
+乱采 1.0	l uan4 c ai3
+乱七八糟 1.0	l uan4 q i1 b a1 z ao1
+乱说 1.0	l uan4 sh uo1
+乱云 1.0	l uan4 vv vn2
+掠过 1.0	l ve4 g uo4
+略带 1.0	l ve4 d ai4
+略略 1.0	l ve4 l ve4
+略微 1.0	l ve4 uu ui1
+轮 1.0	l un2
+轮船 1.0	l un2 ch uan2
+伦 1.0	l un2
+伦次 1.0	l un2 c iy4
+伦敦 1.0	l un2 d un1
+论 1.0	l un4
+论文 1.0	l un4 uu un2
+论文集 1.0	l un4 uu un2 j i2
+螺帽 1.0	l uo2 m ao4
+螺丝刀 1.0	l uo2 s iy1 d ao1
+螺纹 1.0	l uo2 uu un2
+螺旋 1.0	l uo2 x van2
+罗 1.0	l uo2
+罗本 1.0	l uo2 b en3
+罗布 1.0	l uo2 b u4
+罗德 1.0	l uo2 d e2
+罗干 1.0	l uo2 g an4
+罗家 1.0	l uo2 j ia1
+罗马里奥 1.0	l uo2 m a2 l i3 aa ao4
+罗宁 1.0	l uo2 n ing2
+罗田 1.0	l uo2 t ian2
+锣鼓 1.0	l uo2 g u3
+锣鼓声 1.0	l uo2 g u3 sh eng1
+落 1.0	l uo4
+落地 1.0	l uo4 d i4
+落户 1.0	l uo4 h u4
+落落 1.0	l uo4 l uo4
+落魄 1.0	l uo4 p o4
+落实 1.0	l uo4 sh ix2
+落在 1.0	l a4 z ai4
+落在 1.0	l uo4 z ai4
+洛 1.0	l uo4
+洛夫 1.0	l uo4 f u1
+洛桑 1.0	l uo4 s ang1
+洛阳 1.0	l uo4 ii iang2
+骆 1.0	l uo4
+妈 1.0	m a1
+妈的 1.0	m a1 d e5
+妈妈 1.0	m a1 m a5
+麻 1.0	m a2
+麻烦 1.0	m a2 f an5
+麻辣味 1.0	m a2 l a4 uu ui4
+麻油 1.0	m a2 ii iu2
+麻子 1.0	m a2 z iy5
+玛 1.0	m a3
+玛雅文明 1.0	m a2 ii ia3 uu un2 m ing2
+码 1.0	m a3
+马 1.0	m a3
+马驰 1.0	m a3 ch ix2
+马德 1.0	m a3 d e2
+马队 1.0	m a3 d ui4
+马俊 1.0	m a3 j vn4
+马来西亚 1.0	m a3 l ai2 x i1 ii ia4
+马路 1.0	m a3 l u4
+马锐 1.0	m a3 r ui4
+马上 1.0	m a3 sh ang4
+马祖 1.0	m a2 z u3
+骂 1.0	m a4
+吗 1.0	m a5
+埋 1.0	m ai2
+埋下 1.0	m ai2 x ia4
+埋怨 1.0	m an2 vv van4
+买 1.0	m ai3
+麦苗 1.0	m ai4 m iao2
+卖 1.0	m ai4
+卖菜 1.0	m ai4 c ai4
+卖给 1.0	m ai4 g ei3
+卖淫嫖娼 1.0	m ai4 ii in2 p iao2 ch ang1
+迈进 1.0	m ai4 j in4
+满 1.0	m an3
+满怀 1.0	m an3 h uai2
+满口 1.0	m an2 k ou3
+满山遍野 1.0	m an3 sh an1 b ian4 ii ie3
+满天 1.0	m an3 t ian1
+满头 1.0	m an3 t ou2
+满意 1.0	m an3 ii i4
+满员 1.0	m an3 vv van2
+满足 1.0	m an3 z u2
+蔓延 1.0	m an4 ii ian2
+慢 1.0	m an4
+慢性 1.0	m an4 x ing4
+芒 1.0	m ang2
+茫茫 1.0	m ang2 m ang2
+盲文 1.0	m ang2 uu un2
+忙 1.0	m ang2
+忙碌 1.0	m ang2 l u4
+忙于 1.0	m ang2 vv v2
+猫 1.0	m ao1
+猫头鹰 1.0	m ao1 t ou2 ii ing1
+茅塞顿开 1.0	m ao2 s e4 d un4 k ai1
+毛 1.0	m ao2
+毛阿敏 1.0	m ao2 aa a1 m in3
+毛笔 1.0	m ao2 b i3
+毛巾 1.0	m ao2 j in1
+毛宁 1.0	m ao2 n ing2
+毛毯 1.0	m ao2 t an3
+毛竹 1.0	m ao2 zh u2
+矛盾 1.0	m ao2 d un4
+茂 1.0	m ao4
+冒出 1.0	m ao4 ch u1
+冒雨 1.0	m ao4 vv v3
+帽 1.0	m ao4
+贸 1.0	m ao4
+贸易公司 1.0	m ao4 ii i4 g ong1 s iy1
+贸易公司 1.0	m ao4 ii i5 g ong1 s iy1
+贸易逆差 1.0	m ao4 ii i4 n i4 ch a1
+么事 1.0	m e5 sh ix4
+梅 1.0	m ei2
+梅尔 1.0	m ei2 ee er3
+梅州 1.0	m ei2 zh ou1
+煤 1.0	m ei2
+煤矿 1.0	m ei2 k uang4
+煤炭 1.0	m ei2 t an4
+煤窑 1.0	m ei2 ii iao2
+没 1.0	m ei2
+没练 1.0	m ei2 l ian4
+没事 1.0	m ei2 sh ix4
+没有 1.0	m ei2 ii iu3
+没有办法 1.0	m ei2 ii iu3 b an4 f a3
+没有必要 1.0	m ei2 ii iu3 b i4 ii iao4
+没有我 1.0	m ei2 ii iu2 uu uo3
+镁 1.0	m ei3
+每 1.0	m ei3
+每当 1.0	m ei3 d ang1
+每逢 1.0	m ei3 f eng2
+每个 1.0	m ei3 g e5
+每年 1.0	m ei3 n ian2
+每人 1.0	m ei3 r en2
+每日 1.0	m ei3 r iz4
+每天 1.0	m ei3 t ian1
+每晚 1.0	m ei2 uu uan3
+每样 1.0	m ei3 ii iang4
+每月 1.0	m ei3 vv ve4
+美 1.0	m ei3
+美的 1.0	m ei3 d e5
+美地 1.0	m ei3 d e5
+美观 1.0	m ei3 g uan1
+美国 1.0	m ei3 g uo2
+美好 1.0	m ei2 h ao3
+美军 1.0	m ei3 j vn1
+美丽 1.0	m ei3 l i4
+美容 1.0	m ei3 r ong2
+美术学院 1.0	m ei3 sh u4 x ve2 vv van4
+美文 1.0	m ei3 uu un2
+美学 1.0	m ei3 x ve2
+美元 1.0	m ei3 vv van2
+美洲 1.0	m ei3 zh ou1
+妹夫 1.0	m ei4 f u5
+妹妹 1.0	m ei4 m ei5
+门 1.0	m en2
+门窗 1.0	m en2 ch uang1
+门框 1.0	m en2 k uang4
+门前 1.0	m en2 q ian2
+门上 1.0	m en2 sh ang4
+门外汉 1.0	m en2 uu uai4 h an4
+门下 1.0	m en2 x ia4
+们 1.0	m en5
+萌 1.0	m eng2
+蒙 1.0	m eng2
+蒙古 1.0	m eng2 g u3
+蒙混过关 1.0	m eng2 h un4 g uo4 g uan1
+蒙蒙 1.0	m eng2 m eng2
+蒙文 1.0	m eng3 uu un2
+猛 1.0	m eng3
+猛烈 1.0	m eng3 l ie4
+猛增 1.0	m eng3 z eng1
+梦 1.0	m eng4
+梦幻 1.0	m eng4 h uan4
+梦龙 1.0	m eng4 l ong2
+梦想 1.0	m eng4 x iang3
+梦中 1.0	m eng4 zh ong1
+梦婷 1.0	m eng4 t ing2
+孟 1.0	m eng4
+糜烂 1.0	m i2 l an4
+迷 1.0	m i2
+迷人 1.0	m i2 r en2
+弥散 1.0	m i2 s an4
+米 1.0	m i3
+米高 1.0	m i3 g ao1
+米粒 1.0	m i3 l i4
+秘诀 1.0	m i4 j ve2
+秘鲁 1.0	b i4 l u3
+秘书 1.0	m i4 sh u1
+秘书长 1.0	m i4 sh u1 zh ang3
+密 1.0	m i4
+密布 1.0	m i4 b u4
+密度 1.0	m i4 d u4
+密封 1.0	m i4 f eng1
+密封圈 1.0	m i4 f eng1 q van1
+密谋 1.0	m i4 m ou2
+密切 1.0	m i4 q ie4
+棉 1.0	m ian2
+棉布 1.0	m ian2 b u4
+棉纺 1.0	m ian2 f ang3
+棉农 1.0	m ian2 n ong2
+绵长 1.0	m ian2 ch ang2
+免得 1.0	m ian3 d e5
+免受 1.0	m ian3 sh ou4
+免于 1.0	m ian3 vv v2
+面 1.0	m ian4
+面的 1.0	m ian4 d i1
+面对 1.0	m ian4 d ui4
+面积 1.0	m ian4 j i5
+面临 1.0	m ian4 l in2
+面容 1.0	m ian4 r ong2
+面上 1.0	m ian4 sh ang5
+面团 1.0	m ian4 t uan2
+苗 1.0	m iao2
+苗木 1.0	m iao2 m u4
+苗族 1.0	m iao2 z u2
+描绘 1.0	m iao2 h ui4
+瞄准 1.0	m iao2 zh un3
+庙 1.0	m iao4
+庙会 1.0	m iao4 h ui4
+庙前 1.0	m iao4 q ian2
+妙 1.0	m iao4
+妙趣横生 1.0	m iao4 q v4 h eng2 sh eng1
+妙语 1.0	m iao4 vv v3
+灭 1.0	m ie4
+灭菌 1.0	m ie4 j vn1
+灭口 1.0	m ie4 k ou3
+灭亡 1.0	m ie4 uu uang2
+民 1.0	m in2
+民办教师 1.0	m in2 b an4 j iao4 sh ix1
+民兵 1.0	m in2 b ing1
+民歌 1.0	m in2 g e1
+民间 1.0	m in2 j ian1
+民俗 1.0	m in2 s u2
+民谚 1.0	m in2 ii ian4
+民用 1.0	m in2 ii iong4
+民宅 1.0	m in2 zh ai2
+民政部 1.0	m in2 zh eng4 b u4
+民族 1.0	m in2 z u2
+民族文化 1.0	m in2 z u2 uu un2 h ua4
+闽 1.0	m in3
+闽南话 1.0	m in3 n an2 h ua4
+明 1.0	m ing2
+明白 1.0	m ing2 b ai5
+明代 1.0	m ing2 d ai4
+明镜 1.0	m ing2 j ing4
+明亮 1.0	m ing2 l iang4
+明伦 1.0	m ing2 l un2
+明年还要 1.0	m ing2 n ian2 h ai2 ii iao4
+明清 1.0	m ing2 q ing1
+明权 1.0	m ing2 q van2
+明确 1.0	m ing2 q ve4
+明说 1.0	m ing2 sh uo1
+明太祖 1.0	m ing2 t ai4 z u3
+明天 1.0	m ing2 t ian1
+明晚 1.0	m ing2 uu uan3
+明显 1.0	m ing2 x ian3
+明月 1.0	m ing2 vv ve4
+鸣 1.0	m ing2
+鸣沙山 1.0	m ing2 sh a1 sh an1
+名 1.0	m ing2
+名将 1.0	m ing2 j iang4
+名叫 1.0	m ing2 j iao4
+名列 1.0	m ing2 l ie4
+名气 1.0	m ing2 q i4
+名人 1.0	m ing2 r en2
+名为 1.0	m ing2 uu ui2
+名演员 1.0	m ing2 ii ian3 vv van2
+名扬 1.0	m ing2 ii iang2
+名誉 1.0	m ing2 vv v4
+命 1.0	m ing4
+命令 1.0	m ing4 l ing4
+命运 1.0	m ing4 vv vn4
+谬 1.0	m iu4
+模 1.0	m o2
+模范 1.0	m o2 f an4
+膜 1.0	m o2
+磨擦 1.0	m o2 c a1
+磨成 1.0	m o2 ch eng2
+磨损 1.0	m o2 s un3
+摩托 1.0	m o2 t uo1
+摩托 1.0	m o2 t uo2
+魔 1.0	m o2
+抹 1.0	m o3
+末 1.0	m o4
+末端 1.0	m o4 d uan1
+末路 1.0	m o4 l u4
+莫 1.0	m o4
+莫高窟 1.0	m o4 g ao1 k u1
+莫慧兰 1.0	m o4 h ui4 l an2
+莫拉 1.0	m o4 l a1
+莫林 1.0	m o4 l in2
+莫尼卡 1.0	m o4 n i2 k a3
+莫桑比克 1.0	m o4 s ang1 b i3 k e4
+墨 1.0	m o4
+墨水 1.0	m o4 sh ui3
+沫 1.0	m o4
+谋杀 1.0	m ou2 sh a1
+谋私 1.0	m ou2 s iy1
+牟 1.0	m ou2
+某 1.0	m ou3
+某部 1.0	m ou3 b u4
+某市 1.0	m ou3 sh ix4
+某些 1.0	m ou3 x ie1
+某种 1.0	m ou2 zh ong3
+牡丹 1.0	m u3 d an1
+亩 1.0	m u3
+亩产 1.0	m u2 ch an3
+姆 1.0	m u3
+母 1.0	m u3
+母亲 1.0	m u3 q in1
+母子 1.0	m u2 z iy3
+墓 1.0	m u4
+墓穴 1.0	m u4 x ve2
+暮 1.0	m u4
+募捐 1.0	m u4 j van1
+慕 1.0	m u4
+木 1.0	m u4
+木船 1.0	m u4 ch uan2
+木棍 1.0	m u4 g un4
+木棉树 1.0	m u4 m ian2 sh u4
+木桩 1.0	m u4 zh uang1
+目标 1.0	m u4 b iao1
+目的 1.0	m u4 d i5
+目睹 1.0	m u4 d u3
+目光 1.0	m u4 g uang1
+目前 1.0	m u4 q ian2
+目送 1.0	m u4 s ong4
+牧 1.0	m u4
+牧民 1.0	m u4 m in2
+拿 1.0	n a2
+拿出 1.0	n a2 ch u1
+拿手 1.0	n a2 sh ou3
+哪 1.0	n a3
+哪儿 1.0	n a3 ee er5
+哪里 1.0	n a2 l i3
+哪怕 1.0	n a3 p a4
+呐喊 1.0	n a4 h an3
+钠 1.0	n a4
+那 1.0	n a4
+那儿 1.0	n a4 ee er5
+那个 1.0	n a4 g e5
+那里 1.0	n a4 l i3
+那么 1.0	n a4 m e5
+那末 1.0	n a4 m o4
+那时 1.0	n a4 sh ix2
+那时候 1.0	n a4 sh ix2 h ou5
+那天 1.0	n a4 t ian1
+那娃 1.0	n a4 uu ua2
+那位 1.0	n a4 uu ui4
+那些 1.0	n a4 x ie1
+那样 1.0	n a4 ii iang4
+那种 1.0	n a4 zh ong3
+娜 1.0	n a4
+纳 1.0	n a4
+纳入 1.0	n a4 r u4
+纳税 1.0	n a4 sh ui4
+纳税人 1.0	n a4 sh ui4 r en2
+乃 1.0	n ai3
+奶 1.0	n ai3
+奶粉 1.0	n ai2 f en3
+奶奶 1.0	n ai3 n ai5
+奶牛 1.0	n ai3 n iu2
+奶味 1.0	n ai3 uu ui4
+耐 1.0	n ai4
+耐久 1.0	n ai4 j iu3
+耐用 1.0	n ai4 ii iong4
+奈 1.0	n ai4
+奈尔 1.0	n ai4 ee er3
+南 1.0	n an2
+南岸 1.0	n an2 aa an4
+南澳 1.0	n an2 aa ao4
+南北 1.0	n an2 b ei3
+南方 1.0	n an2 f ang1
+南港 1.0	n an2 g ang3
+南国 1.0	n an2 g uo2
+南河 1.0	n an2 h e2
+南京 1.0	n an2 j ing1
+南京军区 1.0	n an2 j ing1 j vn1 q v1
+南宁 1.0	n an2 n ing2
+南屏 1.0	n an2 p ing2
+南沙 1.0	n an2 sh a1
+南下 1.0	n an2 x ia4
+男 1.0	n an2
+男宾 1.0	n an2 b in1
+男孩 1.0	n an2 h ai2
+男女 1.0	n an2 n v3
+男人 1.0	n an2 r en5
+男生 1.0	n an2 sh eng1
+男性 1.0	n an2 x ing4
+男装 1.0	n an2 zh uang1
+男子 1.0	n an2 z iy3
+难 1.0	n an2
+难怪 1.0	n an2 g uai4
+难忍 1.0	n an2 r en3
+难忘的 1.0	n an2 uu uang4 d e5
+难为 1.0	n an2 uu ui2
+难为 1.0	n an2 uu ui4
+难言之隐 1.0	n an2 ii ian2 zh ix1 ii in3
+难以 1.0	n an2 ii i3
+难于 1.0	n an2 vv v2
+囊 1.0	n ang2
+脑 1.0	n ao3
+脑袋 1.0	n ao3 d ai5
+脑筋 1.0	n ao3 j in1
+脑血管 1.0	n ao3 x ve4 g uan3
+脑血栓 1.0	n ao2 x ie3 sh uan1
+脑血栓 1.0	n ao2 x ve3 sh uan1
+脑血栓 1.0	n ao3 x ve4 sh uan1
+脑溢血 1.0	n ao3 ii i4 x ve4
+恼怒 1.0	n ao3 n u4
+闹 1.0	n ao4
+闹市 1.0	n ao4 sh ix4
+呢 1.0	n e5
+馁 1.0	n ei3
+内 1.0	n ei4
+内部 1.0	n ei4 b u4
+内地 1.0	n ei4 d i4
+内涵 1.0	n ei4 h an2
+内乱 1.0	n ei4 l uan4
+内蒙古 1.0	n ei4 m eng2 g u3
+内容 1.0	n ei4 r ong2
+内外 1.0	n ei4 uu uai4
+内外交困 1.0	n ei4 uu uai4 j iao1 k un4
+内务 1.0	n ei4 uu u4
+内向 1.0	n ei4 x iang4
+嫩 1.0	n en4
+嫩嫩 1.0	n en4 n en4
+能 1.0	n eng2
+能不能 1.0	n eng2 b u4 n eng2
+能不能 1.0	n eng2 b u5 n eng2
+能否 1.0	n eng2 f ou3
+能够 1.0	n eng2 g ou4
+能力 1.0	n eng2 l i4
+能耐 1.0	n eng2 n ai5
+能人 1.0	n eng2 r en2
+能手 1.0	n eng2 sh ou3
+能源 1.0	n eng2 vv van2
+能治病 1.0	n eng2 zh ix4 b ing4
+泥 1.0	n i2
+泥泞 1.0	n i2 n ing4
+泥水 1.0	n i2 sh ui3
+泥塘 1.0	n i2 t ang2
+尼 1.0	n i2
+尼恩 1.0	n i2 ee en1
+尼加拉瓜 1.0	n i2 j ia1 l a1 g ua1
+拟 1.0	n i3
+你 1.0	n i3
+你们 1.0	n i3 m en5
+逆差 1.0	n i4 ch a1
+逆境 1.0	n i4 j ing4
+年 1.0	n ian2
+年长者 1.0	n ian2 zh ang2 zh e3
+年代 1.0	n ian2 d ai4
+年底 1.0	n ian2 d i3
+年画 1.0	n ian2 h ua4
+年间 1.0	n ian2 j ian1
+年卡 1.0	n ian2 k a3
+年迈 1.0	n ian2 m ai4
+年轻 1.0	n ian2 q ing1
+年月 1.0	n ian2 vv ve4
+碾 1.0	n ian3
+念佛 1.0	n ian4 f o2
+娘 1.0	n iang2
+娘家 1.0	n iang2 j ia5
+娘们 1.0	n iang2 m en5
+娘娘 1.0	n iang2 n iang5
+娘子 1.0	n iang2 z iy3
+鸟 1.0	n iao3
+捏造 1.0	n ie1 z ao4
+聂卫平 1.0	n ie4 uu ui4 p ing2
+您 1.0	n in2
+凝望 1.0	n ing2 uu uang4
+凝重 1.0	n ing2 zh ong4
+宁波 1.0	n ing2 b o1
+宁儿 1.0	n ing2 ee er2
+宁肯 1.0	n ing4 k en3
+宁夏 1.0	n ing2 x ia4
+宁愿 1.0	n ing2 vv van4
+宁愿 1.0	n ing4 vv van4
+拧 1.0	n ing3
+拧紧 1.0	n ing2 j in3
+牛 1.0	n iu2
+牛比 1.0	n iu2 b i3
+牛场 1.0	n iu2 ch ang3
+牛津 1.0	n iu2 j in1
+牛肉 1.0	n iu2 r ou4
+扭 1.0	n iu3
+扭动 1.0	n iu3 d ong4
+扭亏 1.0	n iu3 k ui1
+扭亏为盈 1.0	n iu3 k ui1 uu ui2 ii ing2
+钮 1.0	n iu3
+纽约 1.0	n iu3 vv ve1
+浓 1.0	n ong2
+浓烈 1.0	n ong2 l ie4
+浓墨重彩 1.0	n ong2 m o4 zh ong4 c ai3
+浓郁 1.0	n ong2 vv v4
+农 1.0	n ong2
+农村 1.0	n ong2 c un1
+农户 1.0	n ong2 h u4
+农机具 1.0	n ong2 j i1 j v4
+农民 1.0	n ong2 m in2
+农业 1.0	n ong2 ii ie4
+农业银行 1.0	n ong2 ii ie4 ii in2 h ang2
+农艺 1.0	n ong2 ii i4
+农用 1.0	n ong2 ii iong4
+农转非 1.0	n ong2 zh uan3 f ei1
+农资 1.0	n ong2 z iy1
+农作物 1.0	n ong2 z uo4 uu u4
+弄 1.0	n ong4
+弄清 1.0	n ong4 q ing1
+弄虚作假 1.0	n ong4 x v1 z uo4 j ia3
+弄脏 1.0	n ong4 z ang1
+努力 1.0	n u3 l i4
+努力做到 1.0	n u3 l i4 z uo4 d ao4
+怒 1.0	n u4
+怒斥 1.0	n u4 ch ix4
+怒江 1.0	n u4 j iang1
+女 1.0	n v3
+女宾 1.0	n v3 b in1
+女单 1.0	n v3 d an1
+女队 1.0	n v3 d ui4
+女儿 1.0	n v3 ee er2
+女儿 1.0	n v3 ee er5
+女杰 1.0	n v3 j ie2
+女人 1.0	n v3 r en2
+女鞋 1.0	n v3 x ie2
+女性 1.0	n v3 x ing4
+女友 1.0	n v2 ii iu3
+女装 1.0	n v3 zh uang1
+女子 1.0	n v2 z iy3
+暖春 1.0	n uan3 ch un1
+暖暖的 1.0	n uan2 n uan3 d e5
+虐待 1.0	n ve4 d ai4
+虐待 1.0	n ve4 d ai5
+疟疾 1.0	n ve4 j i5
+挪 1.0	n uo2
+挪威 1.0	n uo2 uu ui1
+挪用 1.0	n uo2 ii iong4
+懦弱 1.0	n uo4 r uo4
+懦弱 1.0	n uo4 r uo5
+诺 1.0	n uo4
+欧 1.0	oo ou1
+欧美 1.0	oo ou1 m ei3
+欧文 1.0	oo ou1 uu un2
+欧亚 1.0	oo ou1 ii ia4
+欧亚大陆 1.0	oo ou1 ii ia4 d a4 l u4
+欧阳 1.0	oo ou1 ii iang2
+欧阳修 1.0	oo ou1 ii iang2 x iu1
+欧洲 1.0	oo ou1 zh ou1
+殴打 1.0	oo ou1 d a3
+藕 1.0	oo ou3
+偶 1.0	oo ou3
+偶而 1.0	oo ou3 ee er2
+偶尔 1.0	oo ou2 ee er3
+偶有 1.0	oo ou2 ii iu3
+趴 1.0	p a1
+爬 1.0	p a2
+爬坡 1.0	p a2 p o1
+爬起来 1.0	p a2 q i3 l ai2
+爬起来 1.0	p a2 q i3 l ai5
+帕帕 1.0	p a4 p a4
+帕帕 1.0	p a4 p a5
+帕子 1.0	p a4 z iy3
+帕子 1.0	p a4 z iy5
+怕 1.0	p a4
+拍 1.0	p ai1
+拍案而起 1.0	p ai1 aa an4 ee er2 q i3
+拍卖 1.0	p ai1 m ai4
+拍摄 1.0	p ai1 sh e4
+排 1.0	p ai2
+排放 1.0	p ai2 f ang4
+排练 1.0	p ai2 l ian4
+排列 1.0	p ai2 l ie4
+排名 1.0	p ai2 m ing2
+排球 1.0	p ai2 q iu2
+排污 1.0	p ai2 uu u1
+牌 1.0	p ai2
+牌子 1.0	p ai2 z iy5
+派 1.0	p ai4
+派兵 1.0	p ai4 b ing1
+派出所 1.0	p ai4 ch u1 s uo3
+派人 1.0	p ai4 r en2
+攀 1.0	p an1
+潘 1.0	p an1
+盘 1.0	p an2
+盘绕 1.0	p an2 r ao4
+盼 1.0	p an4
+盼望 1.0	p an4 uu uang4
+畔 1.0	p an4
+判处 1.0	p an4 ch u3
+判定 1.0	p an4 d ing4
+判决 1.0	p an4 j ve2
+叛乱 1.0	p an4 l uan4
+庞 1.0	p ang2
+庞大 1.0	p ang2 d a4
+旁 1.0	p ang2
+旁边 1.0	p ang2 b ian1
+旁观 1.0	p ang2 g uan1
+抛 1.0	p ao1
+抛出 1.0	p ao1 ch u1
+抛售 1.0	p ao1 sh ou4
+炮眼 1.0	p ao4 ii ian3
+袍 1.0	p ao2
+跑 1.0	p ao3
+跑步 1.0	p ao3 b u4
+跑回 1.0	p ao3 h ui2
+跑前跑后 1.0	p ao3 q ian2 p ao3 h ou4
+跑圈 1.0	p ao3 q van1
+泡 1.0	p ao1
+泡 1.0	p ao4
+胚乳 1.0	p ei1 r u3
+胚芽 1.0	p ei1 ii ia2
+培训 1.0	p ei2 x vn4
+培养 1.0	p ei2 ii iang3
+培育 1.0	p ei2 vv v4
+赔偿 1.0	p ei2 ch ang2
+赔款 1.0	p ei2 k uan3
+陪 1.0	p ei2
+陪同 1.0	p ei2 t ong2
+陪葬 1.0	p ei2 z ang4
+陪着 1.0	p ei2 zh e5
+配 1.0	p ei4
+配备 1.0	p ei4 b ei4
+配额 1.0	p ei4 ee e2
+配方 1.0	p ei4 f ang1
+配合 1.0	p ei4 h e2
+佩 1.0	p ei4
+佩刀 1.0	p ei4 d ao1
+喷 1.0	p en1
+喷涂 1.0	p en1 t u2
+喷血 1.0	p en1 x ie3
+喷血 1.0	p en1 x ve3
+喷血 1.0	p en1 x ve4
+盆 1.0	p en2
+盆花 1.0	p en2 h ua1
+盆浴 1.0	p en2 vv v4
+盆栽 1.0	p en2 z ai1
+彭 1.0	p eng2
+彭家 1.0	p eng2 j ia1
+彭丽媛 1.0	p eng2 l i4 vv van2
+蓬蓬 1.0	p eng2 p eng2
+蓬蓬 1.0	p eng2 p eng5
+棚 1.0	p eng2
+朋友 1.0	p eng2 ii iu3
+朋友 1.0	p eng2 ii iu5
+朋友们 1.0	p eng2 ii iu5 m en5
+捧腹 1.0	p eng3 f u4
+碰 1.0	p eng4
+碰到 1.0	p eng4 d ao4
+碰巧 1.0	p eng4 q iao3
+碰上 1.0	p eng4 sh ang4
+碰上 1.0	p eng4 sh ang5
+碰撞 1.0	p eng4 zh uang4
+坯 1.0	p i1
+批准 1.0	p i1 zh un3
+披 1.0	p i1
+披肩 1.0	p i1 j ian1
+披露 1.0	p i1 l ou4
+披露 1.0	p i1 l u4
+披着 1.0	p i1 zh e5
+毗 1.0	p i2
+疲劳 1.0	p i2 l ao2
+疲软 1.0	p i2 r uan3
+皮 1.0	p i2
+皮带 1.0	p i2 d ai4
+皮球 1.0	p i2 q iu2
+皮下 1.0	p i2 x ia4
+皮张 1.0	p i2 zh ang1
+篇 1.0	p ian1
+偏 1.0	p ian1
+偏僻 1.0	p ian1 p i4
+偏偏 1.0	p ian1 p ian1
+偏要 1.0	p ian1 ii iao4
+片 1.0	p ian1
+片 1.0	p ian4
+片刻 1.0	p ian4 k e4
+片片 1.0	p ian4 p ian4
+片片 1.0	p ian4 p ian5
+片中 1.0	p ian4 zh ong1
+飘 1.0	p iao1
+飘浮 1.0	p iao1 f u2
+飘飘 1.0	p iao1 p iao1
+飘飘 1.0	p iao1 p iao5
+飘然 1.0	p iao1 r an2
+飘扬 1.0	p iao1 ii iang2
+飘着 1.0	p iao1 zh e5
+漂 1.0	p iao1
+漂 1.0	p iao3
+漂 1.0	p iao4
+漂亮 1.0	p iao4 l iang5
+票 1.0	p iao4
+票款 1.0	p iao4 k uan3
+撇 1.0	p ie1
+撇 1.0	p ie3
+撇嘴 1.0	p ie2 z ui3
+拼搏 1.0	p in1 b o2
+拼命 1.0	p in1 m ing4
+拼杀 1.0	p in1 sh a1
+频 1.0	p in2
+频繁 1.0	p in2 f an2
+频频 1.0	p in2 p in2
+频频 1.0	p in2 p in5
+贫 1.0	p in2
+贫困 1.0	p in2 k un4
+贫穷 1.0	p in2 q iong2
+品 1.0	p in3
+品尝 1.0	p in3 ch ang2
+品位 1.0	p in3 uu ui4
+品种 1.0	p in2 zh ong3
+聘 1.0	p in4
+聘用 1.0	p in4 ii iong4
+乒乓 1.0	p ing1 p ang1
+乒乓球 1.0	p ing1 p ang1 q iu2
+苹果 1.0	p ing2 g uo3
+平 1.0	p ing2
+平定 1.0	p ing2 d ing4
+平衡 1.0	p ing2 h eng2
+平均 1.0	p ing2 j vn1
+平均年龄 1.0	p ing2 j vn1 n ian2 l ing2
+平均年龄 1.0	p ing2 j vn1 n ian2 l ing5
+平壤 1.0	p ing2 r ang3
+平时 1.0	p ing2 sh ix2
+平稳 1.0	p ing2 uu un3
+平阳 1.0	p ing2 ii iang2
+平原 1.0	p ing2 vv van2
+凭 1.0	p ing2
+凭栏 1.0	p ing2 l an2
+凭什么 1.0	p ing2 sh en2 m e5
+瓶口 1.0	p ing2 k ou3
+瓶子 1.0	p ing2 z iy5
+评 1.0	p ing2
+评委会 1.0	p ing2 uu ui3 h ui4
+屏幕 1.0	p ing2 m u4
+坡 1.0	p o1
+坡度 1.0	p o1 d u4
+泼墨 1.0	p o1 m o4
+颇 1.0	p o1
+颇具 1.0	p o1 j v4
+颇为 1.0	p o1 uu ui2
+婆婆 1.0	p o2 p o5
+婆娑 1.0	p o2 s uo1
+破 1.0	p o4
+破布 1.0	p o4 b u4
+破财消灾 1.0	p o4 c ai2 x iao1 z ai1
+破产 1.0	p o4 ch an3
+破坏 1.0	p o4 h uai4
+破裂 1.0	p o4 l ie4
+破土 1.0	p o4 t u3
+迫不得已 1.0	p o4 b u4 d e2 ii i3
+迫使 1.0	p o4 sh ix3
+扑 1.0	p u1
+扑向 1.0	p u1 x iang4
+铺 1.0	p u1
+铺 1.0	p u4
+铺盖 1.0	p u1 g ai4
+铺里 1.0	p u4 l i3
+葡 1.0	p u2
+蒲 1.0	p u2
+普 1.0	p u3
+普遍 1.0	p u3 b ian4
+普及 1.0	p u3 j i2
+普希金 1.0	p u3 x i1 j in1
+谱写 1.0	p u2 x ie3
+曝晒 1.0	p u4 sh ai4
+瀑 1.0	p u4
+瀑布 1.0	p u4 b u4
+期间 1.0	q i1 j ian1
+欺 1.0	q i1
+栖霞 1.0	q i1 x ia2
+妻女 1.0	q i1 n v3
+妻子 1.0	q i1 z iy3
+妻子 1.0	q i1 z iy5
+七 1.0	q i1
+七百 1.0	q i1 b ai3
+七百多 1.0	q i1 b ai3 d uo1
+七层 1.0	q i1 c eng2
+七十 1.0	q i1 sh ix2
+七十二 1.0	q i1 sh ix2 ee er4
+七十二 1.0	q i1 sh ix5 ee er4
+七十万 1.0	q i1 sh ix2 uu uan4
+七十万 1.0	q i1 sh ix5 uu uan4
+七十一 1.0	q i1 sh ix2 ii i1
+七十一 1.0	q i1 sh ix5 ii i1
+七天 1.0	q i1 t ian1
+七位 1.0	q i1 uu ui4
+七旬 1.0	q i1 x vn2
+七月 1.0	q i1 vv ve4
+凄惨 1.0	q i1 c an3
+凄然 1.0	q i1 r an2
+漆黑 1.0	q i1 h ei1
+沏茶 1.0	q i1 ch a2
+其 1.0	q i2
+其后 1.0	q i2 h ou4
+其间 1.0	q i2 j ian1
+其林 1.0	q i2 l in2
+其貌不扬 1.0	q i2 m ao4 b u4 ii iang2
+其实 1.0	q i2 sh ix2
+其他 1.0	q i2 t a1
+其他费用 1.0	q i2 t a1 f ei4 ii iong4
+其他费用 1.0	q i2 t a1 f ei4 ii iong5
+其它 1.0	q i2 t a1
+其中 1.0	q i2 zh ong1
+棋 1.0	q i2
+奇 1.0	j i1
+奇 1.0	q i2
+奇怪 1.0	q i2 g uai4
+奇缺 1.0	q i2 q ve1
+奇特 1.0	q i2 t e4
+歧义 1.0	q i2 ii i4
+齐白石 1.0	q i2 b ai2 sh ix2
+齐刷刷 1.0	q i2 sh ua1 sh ua1
+旗 1.0	q i2
+祈 1.0	q i2
+骑 1.0	q i2
+骑马 1.0	q i2 m a3
+起 1.0	q i3
+起来 1.0	q i3 l ai2
+起来 1.0	q i3 l ai5
+起跑 1.0	q i2 p ao3
+起事 1.0	q i3 sh ix4
+起跳 1.0	q i3 t iao4
+起雾 1.0	q i3 uu u4
+企图 1.0	q i3 t u2
+企业 1.0	q i3 ii ie4
+企业文化 1.0	q i3 ii ie4 uu un2 h ua4
+企业形象 1.0	q i3 ii ie4 x ing2 x iang4
+启 1.0	q i3
+启动 1.0	q i3 d ong4
+契 1.0	q i4
+砌 1.0	q i4
+砌墙 1.0	q i4 q iang2
+器械 1.0	q i4 x ie4
+气 1.0	q i4
+气势 1.0	q i4 sh ix4
+气势 1.0	q i4 sh ix5
+气息 1.0	q i4 x i1
+气象 1.0	q i4 x iang4
+气宇 1.0	q i4 vv v3
+气韵 1.0	q i4 vv vn4
+汽车 1.0	q i4 ch e1
+掐 1.0	q ia1
+恰当 1.0	q ia4 d ang4
+恰逢 1.0	q ia4 f eng2
+恰恰相反 1.0	q ia4 q ia4 x iang1 f an3
+恰恰相反 1.0	q ia4 q ia5 x iang1 f an3
+洽谈 1.0	q ia4 t an2
+牵 1.0	q ian1
+牵肠挂肚 1.0	q ian1 ch ang2 g ua4 d u4
+牵引 1.0	q ian1 ii in3
+铅球 1.0	q ian1 q iu2
+千 1.0	q ian1
+千古 1.0	q ian1 g u3
+千家万户 1.0	q ian1 j ia1 uu uan4 h u4
+千金 1.0	q ian1 j in1
+千里 1.0	q ian1 l i3
+千米 1.0	q ian1 m i3
+千千万万 1.0	q ian1 q ian1 uu uan4 uu uan4
+千瓦 1.0	q ian1 uu ua3
+千万富翁 1.0	q ian1 uu uan4 f u4 uu ueng1
+千真万确 1.0	q ian1 zh en1 uu uan4 q ve4
+迁怒 1.0	q ian1 n u4
+签订 1.0	q ian1 d ing4
+签名 1.0	q ian1 m ing2
+签署 1.0	q ian1 sh u3
+签约 1.0	q ian1 vv ve1
+黔 1.0	q ian2
+钱 1.0	q ian2
+钱伟长 1.0	q ian2 uu ui3 ch ang2
+钱越 1.0	q ian2 vv ve4
+钳 1.0	q ian2
+前 1.0	q ian2
+前进 1.0	q ian2 j in4
+前景 1.0	q ian2 j ing3
+前往 1.0	q ian2 uu uang3
+前卫 1.0	q ian2 uu ui4
+前胸 1.0	q ian2 x iong1
+潜逃 1.0	q ian2 t ao2
+浅滩 1.0	q ian3 t an1
+堑 1.0	q ian4
+欠 1.0	q ian4
+枪 1.0	q iang1
+枪毙 1.0	q iang1 b i4
+枪杀 1.0	q iang1 sh a1
+腔 1.0	q iang1
+墙 1.0	q iang2
+墙根 1.0	q iang2 g en1
+墙脚 1.0	q iang2 j iao3
+墙上 1.0	q iang2 sh ang4
+墙上 1.0	q iang2 sh ang5
+墙头草 1.0	q iang2 t ou2 c ao3
+蔷薇 1.0	q iang2 uu ui1
+强 1.0	j iang4
+强 1.0	q iang2
+强 1.0	q iang3
+强调 1.0	q iang2 d iao4
+强化 1.0	q iang2 h ua4
+强劲 1.0	q iang2 j ing4
+强壮 1.0	q iang2 zh uang4
+抢 1.0	q iang3
+抢劫 1.0	q iang3 j ie2
+抢救 1.0	q iang3 j iu4
+抢先 1.0	q iang3 x ian1
+抢运 1.0	q iang3 vv vn4
+抢占 1.0	q iang3 zh an4
+悄悄 1.0	q iao1 q iao1
+桥 1.0	q iao2
+桥墩 1.0	q iao2 d un1
+桥梁 1.0	q iao2 l iang2
+瞧 1.0	q iao2
+乔 1.0	q iao2
+乔森 1.0	q iao2 s en1
+侨 1.0	q iao2
+翘 1.0	q iao2
+翘 1.0	q iao4
+俏 1.0	q iao4
+切 1.0	q ie1
+切 1.0	q ie4
+切尔 1.0	q ie1 ee er3
+切尔 1.0	q ie4 ee er3
+切片 1.0	q ie1 p ian4
+切碎 1.0	q ie1 s ui4
+且 1.0	q ie3
+怯 1.0	q ie4
+窃贼 1.0	q ie4 z ei2
+钦 1.0	q in1
+钦州 1.0	q in1 zh ou1
+钦州市 1.0	q in1 zh ou1 sh ix4
+侵略 1.0	q in1 l ve4
+侵略军 1.0	q in1 l ve4 j vn1
+侵蚀 1.0	q in1 sh ix2
+亲 1.0	q in1
+亲 1.0	q ing4
+亲近 1.0	q in1 j in4
+亲朋 1.0	q in1 p eng2
+亲切 1.0	q in1 q ie4
+亲人 1.0	q in1 r en2
+亲手 1.0	q in1 sh ou3
+亲属 1.0	q in1 sh u3
+亲王 1.0	q in1 uu uang2
+亲缘 1.0	q in1 vv van2
+秦 1.0	q in2
+秦朝 1.0	q in2 ch ao2
+秦朝 1.0	q in2 zh ao1
+秦都区 1.0	q in2 d u1 q v1
+秦俑 1.0	q in2 ii iong3
+勤劳 1.0	q in2 l ao2
+勤于 1.0	q in2 vv v2
+禽 1.0	q in2
+禽类 1.0	q in2 l ei4
+禽畜 1.0	q in2 ch u4
+寝 1.0	q in3
+沁 1.0	q in4
+青 1.0	q ing1
+青菜 1.0	q ing1 c ai4
+青草 1.0	q ing1 c ao3
+青翠 1.0	q ing1 c ui4
+青海 1.0	q ing1 h ai3
+青花 1.0	q ing1 h ua1
+青绿 1.0	q ing1 l v4
+青年 1.0	q ing1 n ian2
+青蛙 1.0	q ing1 uu ua1
+青烟 1.0	q ing1 ii ian1
+青叶 1.0	q ing1 ii ie4
+青睐 1.0	q ing1 l ai4
+轻 1.0	q ing1
+轻而易举 1.0	q ing1 ee er2 ii i4 j v3
+轻纺 1.0	q ing1 f ang3
+轻风 1.0	q ing1 f eng1
+轻微 1.0	q ing1 uu ui1
+氢 1.0	q ing1
+倾 1.0	q ing1
+清 1.0	q ing1
+清朝 1.0	q ing1 ch ao2
+清澈 1.0	q ing1 ch e4
+清晨 1.0	q ing1 ch en2
+清楚 1.0	q ing1 ch u3
+清代 1.0	q ing1 d ai4
+清华大学 1.0	q ing1 h ua2 d a4 x ve2
+清洁 1.0	q ing1 j ie2
+清理 1.0	q ing1 l i3
+清廷 1.0	q ing1 t ing2
+清新 1.0	q ing1 x in1
+清蒸 1.0	q ing1 zh eng1
+清政府 1.0	q ing1 zh eng4 f u3
+情 1.0	q ing2
+情怀 1.0	q ing2 h uai2
+情景 1.0	q ing2 j ing3
+情况 1.0	q ing2 k uang4
+情侣卡 1.0	q ing2 l v2 k a3
+请 1.0	q ing3
+请求 1.0	q ing3 q iu2
+庆 1.0	q ing4
+庆安 1.0	q ing4 aa an1
+庆贺 1.0	q ing4 h e4
+琼 1.0	q iong2
+琼花 1.0	q iong2 h ua1
+穷 1.0	q iong2
+穷困 1.0	q iong2 k un4
+穷途 1.0	q iong2 t u2
+穷追不舍 1.0	q iong2 zh ui1 b u4 sh e3
+秋 1.0	q iu1
+秋天 1.0	q iu1 t ian1
+秋阳 1.0	q iu1 ii iang2
+秋雨 1.0	q iu1 vv v3
+球 1.0	q iu2
+球员 1.0	q iu2 vv van2
+求 1.0	q iu2
+求学 1.0	q iu2 x ve2
+求医 1.0	q iu2 ii i1
+趋势 1.0	q v1 sh ix4
+区 1.0	q v1
+区别 1.0	q v1 b ie2
+区别对待 1.0	q v1 b ie2 d ui4 d ai4
+区长 1.0	q v1 zh ang3
+区党委 1.0	q v1 d ang2 uu ui3
+区内 1.0	q v1 n ei4
+区委书记 1.0	q v1 uu ui3 sh u1 j i5
+区域 1.0	q v1 vv v4
+曲 1.0	q v1
+曲 1.0	q v3
+曲目 1.0	q v3 m u4
+曲曲 1.0	q v1 q v1
+曲曲 1.0	q v1 q v5
+曲折 1.0	q v1 zh e2
+屈 1.0	q v1
+屈尊 1.0	q v1 z un1
+驱鬼 1.0	q v1 g ui3
+取代 1.0	q v3 d ai4
+取得 1.0	q v3 d e2
+取决于 1.0	q v3 j ve2 vv v2
+娶 1.0	q v3
+去 1.0	q v4
+去年 1.0	q v4 n ian2
+去年秋天 1.0	q v4 n ian2 q iu1 t ian1
+去年十月 1.0	q v4 n ian2 sh ix2 vv ve4
+去年十月 1.0	q v4 n ian2 sh ix2 vv ve5
+去找 1.0	q v4 zh ao3
+圈 1.0	j van4
+圈 1.0	q van1
+圈层 1.0	q van1 c eng2
+圈地 1.0	q van1 d i4
+权 1.0	q van2
+权衡 1.0	q van2 h eng2
+权威 1.0	q van2 uu ui1
+泉 1.0	q van2
+全 1.0	q van2
+全部 1.0	q van2 b u4
+全厂 1.0	q van2 ch ang3
+全村 1.0	q van2 c un1
+全党 1.0	q van2 d ang3
+全都 1.0	q van2 d ou1
+全额 1.0	q van2 ee e2
+全副武装 1.0	q van2 f u4 uu u3 zh uang1
+全国 1.0	q van2 g uo2
+全国各地 1.0	q van2 g uo2 g e4 d i4
+全家 1.0	q van2 j ia1
+全椒县 1.0	q van2 j iao1 x ian4
+全局 1.0	q van2 j v2
+全剧 1.0	q van2 j v4
+全面 1.0	q van2 m ian4
+全能 1.0	q van2 n eng2
+全球 1.0	q van2 q iu2
+全区 1.0	q van2 q v1
+全然 1.0	q van2 r an2
+全身 1.0	q van2 sh en1
+全省 1.0	q van2 sh eng3
+全套 1.0	q van2 t ao4
+全体 1.0	q van2 t i3
+全体员工 1.0	q van2 t i3 vv van2 g ong1
+全天候 1.0	q van2 t ian1 h ou4
+全文 1.0	q van2 uu un2
+全县 1.0	q van2 x ian4
+全有 1.0	q van2 ii iu3
+全院 1.0	q van2 vv van4
+痊愈 1.0	q van2 vv v4
+劝说 1.0	q van4 sh uo1
+劝阻 1.0	q van4 z u3
+缺 1.0	q ve1
+缺乏 1.0	q ve1 f a2
+缺血 1.0	q ve1 x ie3
+缺血 1.0	q ve1 x ve3
+缺血 1.0	q ve1 x ve4
+却 1.0	q ve4
+却是 1.0	q ve4 sh ix4
+确 1.0	q ve4
+确保 1.0	q ve4 b ao3
+确有 1.0	q ve4 ii iu3
+确诊 1.0	q ve4 zh en3
+裙装 1.0	q vn2 zh uang1
+群 1.0	q vn2
+群峰 1.0	q vn2 f eng1
+群山 1.0	q vn2 sh an1
+群体 1.0	q vn2 t i3
+群众 1.0	q vn2 zh ong4
+群众运动 1.0	q vn2 zh ong4 vv vn4 d ong4
+然 1.0	r an2
+然而 1.0	r an2 ee er2
+然后 1.0	r an2 h ou4
+燃 1.0	r an2
+燃烧 1.0	r an2 sh ao1
+冉 1.0	r an3
+染 1.0	r an3
+让 1.0	r ang4
+让步 1.0	r ang4 b u4
+让位 1.0	r ang4 uu ui4
+饶恕 1.0	r ao2 sh u4
+扰 1.0	r ao3
+扰乱 1.0	r ao3 l uan4
+绕 1.0	r ao4
+惹得 1.0	r e3 d e5
+热爱 1.0	r e4 aa ai4
+热潮 1.0	r e4 ch ao2
+热点 1.0	r e4 d ian3
+热火朝天 1.0	r e4 h uo3 ch ao2 t ian1
+热烈 1.0	r e4 l ie4
+热闹 1.0	r e4 n ao5
+热气腾腾 1.0	r e4 q i4 t eng2 t eng2
+热血沸腾 1.0	r e4 x ie3 f ei4 t eng2
+热血沸腾 1.0	r e4 x ve3 f ei4 t eng2
+热血沸腾 1.0	r e4 x ve4 f ei4 t eng2
+仁 1.0	r en2
+人 1.0	r en2
+人才 1.0	r en2 c ai2
+人次 1.0	r en2 c iy4
+人代会 1.0	r en2 d ai4 h ui4
+人格 1.0	r en2 g e2
+人工 1.0	r en2 g ong1
+人工流产 1.0	r en2 g ong1 l iu2 ch an3
+人和 1.0	r en2 h e2
+人家 1.0	r en2 j ia1
+人家 1.0	r en2 j ia5
+人间 1.0	r en2 j ian1
+人均 1.0	r en2 j vn1
+人口 1.0	r en2 k ou3
+人类 1.0	r en2 l ei4
+人们 1.0	r en2 m en5
+人民 1.0	r en2 m in2
+人民大会堂 1.0	r en2 m in2 d a4 h ui4 t ang2
+人民群众 1.0	r en2 m in2 q vn2 zh ong4
+人民政府 1.0	r en2 m in2 zh eng4 f u3
+人群 1.0	r en2 q vn2
+人声鼎沸 1.0	r en2 sh eng1 d ing3 f ei4
+人士 1.0	r en2 sh ix4
+人体 1.0	r en2 t i3
+人往 1.0	r en2 uu uang3
+人为 1.0	r en2 uu ui2
+人选 1.0	r en2 x van3
+人仰马翻 1.0	r en2 ii iang2 m a3 f an1
+人员 1.0	r en2 vv van2
+人愿 1.0	r en2 vv van4
+任 1.0	r en2
+任 1.0	r en4
+任何 1.0	r en4 h e2
+任职 1.0	r en4 zh ix2
+认识 1.0	r en4 sh ix5
+认为 1.0	r en4 uu ui2
+认真 1.0	r en4 zh en1
+认真学习 1.0	r en4 zh en1 x ve2 x i2
+刃 1.0	r en4
+妊娠 1.0	r en4 sh en1
+扔 1.0	r eng1
+扔掉 1.0	r eng1 d iao4
+扔进 1.0	r eng1 j in4
+扔下 1.0	r eng1 x ia4
+仍 1.0	r eng2
+仍然 1.0	r eng2 r an2
+仍是 1.0	r eng2 sh ix4
+仍未 1.0	r eng2 uu ui4
+日 1.0	r iz4
+日本 1.0	r iz4 b en3
+日电 1.0	r iz4 d ian4
+日耳曼 1.0	r iz4 ee er3 m an4
+日方 1.0	r iz4 f ang1
+日化 1.0	r iz4 h ua4
+日久 1.0	r iz4 j iu3
+日军 1.0	r iz4 j vn1
+日内瓦 1.0	r iz4 n ei4 uu ua3
+日期 1.0	r iz4 q i1
+日前 1.0	r iz4 q ian2
+日数 1.0	r iz4 sh u3
+日数 1.0	r iz4 sh u4
+日伪 1.0	r iz4 uu ui3
+日新月异 1.0	r iz4 x in1 vv ve4 ii i4
+日夜 1.0	r iz4 ii ie4
+日子 1.0	r iz4 z iy5
+蓉 1.0	r ong2
+荣登 1.0	r ong2 d eng1
+荣生 1.0	r ong2 sh eng1
+荣誉 1.0	r ong2 vv v4
+融合 1.0	r ong2 h e2
+融入 1.0	r ong2 r u4
+融为一体 1.0	r ong2 uu ui2 ii i4 t i3
+溶溶 1.0	r ong2 r ong2
+溶溶 1.0	r ong2 r ong5
+容 1.0	r ong2
+容易 1.0	r ong2 ii i4
+容易 1.0	r ong2 ii i5
+绒 1.0	r ong2
+揉 1.0	r ou2
+柔道 1.0	r ou2 d ao4
+柔和 1.0	r ou2 h e2
+柔情 1.0	r ou2 q ing2
+柔柔 1.0	r ou2 r ou2
+柔柔 1.0	r ou2 r ou5
+柔软 1.0	r ou2 r uan3
+肉 1.0	r ou4
+肉搏战 1.0	r ou4 b o2 zh an4
+肉食 1.0	r ou4 sh ix2
+肉眼 1.0	r ou4 ii ian3
+儒将 1.0	r u2 j iang4
+如 1.0	r u2
+如此 1.0	r u2 c iy3
+如果 1.0	r u2 g uo3
+如何 1.0	r u2 h e2
+如今 1.0	r u2 j in1
+如数 1.0	r u2 sh u4
+如同 1.0	r u2 t ong2
+如玉 1.0	r u2 vv v4
+乳 1.0	r u3
+乳母 1.0	r u2 m u3
+乳腺癌 1.0	r u3 x ian4 aa ai2
+入 1.0	r u4
+入海 1.0	r u4 h ai3
+入室 1.0	r u4 sh ix4
+入网 1.0	r u4 uu uang3
+入伍 1.0	r u4 uu u3
+软 1.0	r uan3
+软件 1.0	r uan3 j ian4
+软磨硬泡 1.0	r uan3 m o2 ii ing4 p ao4
+软盘 1.0	r uan3 p an2
+瑞 1.0	r ui4
+瑞典 1.0	r ui4 d ian3
+瑞特 1.0	r ui4 t e4
+锐 1.0	r ui4
+润 1.0	r un4
+若 1.0	r uo4
+若干 1.0	r uo4 g an1
+弱 1.0	r uo4
+撒 1.0	s a1
+撒 1.0	s a3
+洒脱 1.0	s a3 t uo1
+萨 1.0	s a4
+塞 1.0	s ai1
+塞 1.0	s ai4
+塞 1.0	s e4
+塞尔维亚人 1.0	s ai4 ee er3 uu ui2 ii ia4 r en2
+赛 1.0	s ai4
+赛后 1.0	s ai4 h ou4
+赛区 1.0	s ai4 q v1
+三 1.0	s an1
+三百 1.0	s an1 b ai3
+三百六 1.0	s an1 b ai3 l iu4
+三胞胎 1.0	s an1 b ao1 t ai1
+三产 1.0	s an1 ch an3
+三大 1.0	s an1 d a4
+三度 1.0	s an1 d u4
+三个 1.0	s an1 g e4
+三个 1.0	s an1 g e5
+三个月 1.0	s an1 g e4 vv ve4
+三个月 1.0	s an1 g e5 vv ve4
+三皇 1.0	s an1 h uang2
+三绝 1.0	s an1 j ve2
+三郎 1.0	s an1 l ang2
+三菱 1.0	s an1 l ing2
+三轮 1.0	s an1 l un2
+三千 1.0	s an1 q ian1
+三千多 1.0	s an1 q ian1 d uo1
+三人 1.0	s an1 r en2
+三日 1.0	s an1 r iz4
+三三 1.0	s an1 s an1
+三省 1.0	s an1 sh eng3
+三十 1.0	s an1 sh ix2
+三十三 1.0	s an1 sh ix2 s an1
+三十三 1.0	s an1 sh ix5 s an1
+三十万 1.0	s an1 sh ix2 uu uan4
+三十万 1.0	s an1 sh ix5 uu uan4
+三十一日 1.0	s an1 sh ix2 ii i1 r iz4
+三十一日 1.0	s an1 sh ix5 ii i1 r iz4
+三思而后行 1.0	s an1 s iy1 ee er2 h ou4 x ing2
+三四点钟 1.0	s an1 s iy4 d ian3 zh ong1
+三味 1.0	s an1 uu ui4
+三夏 1.0	s an1 x ia4
+三月 1.0	s an1 vv ve4
+伞 1.0	s an3
+伞降 1.0	s an3 j iang4
+散 1.0	s an3
+散 1.0	s an4
+散尽 1.0	s an4 j in4
+散落 1.0	s an4 l uo4
+散文 1.0	s an3 uu un2
+桑 1.0	s ang1
+桑蚕 1.0	s ang1 c an2
+桑拿浴 1.0	s ang1 n a2 vv v4
+桑尼 1.0	s ang1 n i2
+嗓音 1.0	s ang3 ii in1
+嗓子 1.0	s ang3 z iy5
+丧 1.0	s ang1
+丧 1.0	s ang4
+丧命 1.0	s ang4 m ing4
+丧身 1.0	s ang4 sh en1
+丧生 1.0	s ang4 sh eng1
+丧失 1.0	s ang4 sh ix1
+骚扰 1.0	s ao1 r ao3
+扫除 1.0	s ao3 ch u2
+扫荡 1.0	s ao3 d ang4
+扫雷 1.0	s ao3 l ei2
+扫描 1.0	s ao3 m iao2
+扫兴 1.0	s ao3 x ing4
+嫂 1.0	s ao3
+色 1.0	s e4
+色 1.0	sh ai3
+色彩 1.0	s e4 c ai3
+色泽 1.0	s e4 z e2
+森 1.0	s en1
+森林 1.0	s en1 l in2
+僧 1.0	s eng1
+僧人 1.0	s eng1 r en2
+莎莉 1.0	sh a1 l i4
+杀 1.0	sh a1
+杀鸡取卵 1.0	sh a1 j i1 q v2 l uan3
+杀人 1.0	sh a1 r en2
+杀死 1.0	sh a1 s iy3
+沙 1.0	sh a1
+沙子 1.0	sh a1 z iy5
+纱 1.0	sh a1
+啥 1.0	sh a2
+晒 1.0	sh ai4
+晒干 1.0	sh ai4 g an1
+晒太阳 1.0	sh ai4 t ai4 ii iang5
+山 1.0	sh an1
+山川 1.0	sh an1 ch uan1
+山顶 1.0	sh an1 d ing3
+山东 1.0	sh an1 d ong1
+山东省 1.0	sh an1 d ong1 sh eng3
+山沟 1.0	sh an1 g ou1
+山间 1.0	sh an1 j ian1
+山路 1.0	sh an1 l u4
+山峦 1.0	sh an1 l uan2
+山脉 1.0	sh an1 m ai4
+山南地区 1.0	sh an1 n an2 d i4 q v1
+山区 1.0	sh an1 q v1
+山泉 1.0	sh an1 q van2
+山雀 1.0	sh an1 q ve4
+山上 1.0	sh an1 sh ang4
+山上 1.0	sh an1 sh ang5
+山西 1.0	sh an1 x i1
+山下 1.0	sh an1 x ia4
+山崖 1.0	sh an1 ii ia2
+山羊 1.0	sh an1 ii iang2
+山野 1.0	sh an1 ii ie3
+煽 1.0	sh an1
+衫 1.0	sh an1
+闪 1.0	sh an3
+闪闪 1.0	sh an2 sh an3
+闪烁 1.0	sh an3 sh uo4
+陕甘宁 1.0	sh an3 g an1 n ing2
+擅长 1.0	sh an4 ch ang2
+善长 1.0	sh an4 ch ang2
+伤 1.0	sh ang1
+伤残 1.0	sh ang1 c an2
+伤心地 1.0	sh ang1 x in1 d e5
+商 1.0	sh ang1
+商场 1.0	sh ang1 ch ang3
+商店 1.0	sh ang1 d ian4
+商定 1.0	sh ang1 d ing4
+商贩 1.0	sh ang1 f an4
+商检 1.0	sh ang1 j ian3
+商贸 1.0	sh ang1 m ao4
+商品 1.0	sh ang1 p in3
+商业 1.0	sh ang1 ii ie4
+商业秘密 1.0	sh ang1 ii ie4 m i4 m i4
+赏玩 1.0	sh ang3 uu uan2
+赏月 1.0	sh ang3 vv ve4
+上 1.0	sh ang4
+上岸 1.0	sh ang4 aa an4
+上百 1.0	sh ang4 b ai3
+上半年 1.0	sh ang4 b an4 n ian2
+上边 1.0	sh ang4 b ian1
+上次 1.0	sh ang4 c iy4
+上等 1.0	sh ang4 d eng3
+上访 1.0	sh ang4 f ang3
+上海 1.0	sh ang4 h ai3
+上佳 1.0	sh ang4 j ia1
+上交 1.0	sh ang4 j iao1
+上街 1.0	sh ang4 j ie1
+上空 1.0	sh ang4 k ong1
+上来 1.0	sh ang4 l ai2
+上来 1.0	sh ang4 l ai5
+上了 1.0	sh ang4 l e5
+上楼 1.0	sh ang4 l ou2
+上落 1.0	sh ang4 l uo4
+上坡 1.0	sh ang4 p o1
+上前 1.0	sh ang4 q ian2
+上去 1.0	sh ang4 q v5
+上山去 1.0	sh ang4 sh an1 q v4
+上山去 1.0	sh ang4 sh an1 q v5
+上上下下 1.0	sh ang4 sh ang4 x ia4 x ia4
+上身 1.0	sh ang4 sh en1
+上司 1.0	sh ang4 s iy5
+上头 1.0	sh ang4 t ou5
+上午 1.0	sh ang4 uu u3
+上下 1.0	sh ang4 x ia4
+上校 1.0	sh ang4 x iao4
+上学 1.0	sh ang4 x ve2
+上旬 1.0	sh ang4 x vn2
+上衣 1.0	sh ang4 ii i1
+上游 1.0	sh ang4 ii iu2
+上月 1.0	sh ang4 vv ve4
+上涨 1.0	sh ang4 zh ang3
+尚 1.0	sh ang4
+尚未 1.0	sh ang4 uu ui4
+尚无 1.0	sh ang4 uu u2
+梢 1.0	sh ao1
+稍 1.0	sh ao1
+烧 1.0	sh ao1
+烧鱼 1.0	sh ao1 vv v2
+芍药 1.0	sh ao2 ii iao5
+少 1.0	sh ao3
+少 1.0	sh ao4
+少部分 1.0	sh ao3 b u4 f en5
+少吃 1.0	sh ao3 ch ix1
+少儿 1.0	sh ao4 ee er2
+少平 1.0	sh ao3 p ing2
+少平 1.0	sh ao4 p ing2
+少生 1.0	sh ao3 sh eng1
+少文 1.0	sh ao3 uu un2
+少文 1.0	sh ao4 uu un2
+少校 1.0	sh ao4 x iao4
+少爷 1.0	sh ao4 ii ie5
+哨所 1.0	sh ao4 s uo3
+哨位 1.0	sh ao4 uu ui4
+邵 1.0	sh ao4
+绍 1.0	sh ao4
+蛇 1.0	sh e2
+蛇行 1.0	sh e2 x ing2
+舌 1.0	sh e2
+舍 1.0	sh e3
+舍 1.0	sh e4
+舍去 1.0	sh e3 q v4
+舍身 1.0	sh e3 sh en1
+摄氏度 1.0	sh e4 sh ix4 d u4
+摄影 1.0	sh e4 ii ing3
+摄制组 1.0	sh e4 zh ix4 z u3
+射击 1.0	sh e4 j i1
+射箭 1.0	sh e4 j ian4
+涉县 1.0	sh e4 x ian4
+社 1.0	sh e4
+社会 1.0	sh e4 h ui4
+设 1.0	sh e4
+设备 1.0	sh e4 b ei4
+设备 1.0	sh e4 b ei5
+设计 1.0	sh e4 j i4
+设计 1.0	sh e4 j i5
+设施 1.0	sh e4 sh ix1
+设有 1.0	sh e4 ii iu3
+设在 1.0	sh e4 z ai4
+申 1.0	sh en1
+申请人 1.0	sh en1 q ing3 r en2
+伸 1.0	sh en1
+身 1.0	sh en1
+身板 1.0	sh en1 b an3
+身材 1.0	sh en1 c ai2
+身处 1.0	sh en1 ch u3
+身手 1.0	sh en1 sh ou3
+身着 1.0	sh en1 zh uo2
+深 1.0	sh en1
+深沉 1.0	sh en1 ch en2
+深度 1.0	sh en1 d u4
+深红 1.0	sh en1 h ong2
+深切 1.0	sh en1 q ie4
+深秋 1.0	sh en1 q iu1
+深入 1.0	sh en1 r u4
+深水港 1.0	sh en1 sh ui2 g ang3
+深陷 1.0	sh en1 x ian4
+深夜 1.0	sh en1 ii ie4
+深远 1.0	sh en1 vv van3
+神 1.0	sh en2
+神池 1.0	sh en2 ch ix2
+神汉 1.0	sh en2 h an4
+神经病 1.0	sh en2 j ing1 b ing4
+神奇 1.0	sh en2 q i2
+神人 1.0	sh en2 r en2
+神态 1.0	sh en2 t ai4
+神韵 1.0	sh en2 vv vn4
+沈 1.0	sh en3
+沈阳 1.0	sh en3 ii iang2
+沈阳市 1.0	sh en3 ii iang2 sh ix4
+审批 1.0	sh en3 p i1
+甚 1.0	sh en4
+甚至 1.0	sh en4 zh ix4
+慎重 1.0	sh en4 zh ong4
+渗透 1.0	sh en4 t ou4
+声 1.0	sh eng1
+声明 1.0	sh eng1 m ing2
+声音 1.0	sh eng1 ii in1
+生 1.0	sh eng1
+生病 1.0	sh eng1 b ing4
+生产 1.0	sh eng1 ch an3
+生产能力 1.0	sh eng1 ch an3 n eng2 l i4
+生产线 1.0	sh eng1 ch an3 x ian4
+生长 1.0	sh eng1 zh ang3
+生长期 1.0	sh eng1 zh ang3 q i1
+生存 1.0	sh eng1 c un2
+生儿育女 1.0	sh eng1 ee er2 vv v4 n v3
+生活 1.0	sh eng1 h uo2
+生活区 1.0	sh eng1 h uo2 q v1
+生活习惯 1.0	sh eng1 h uo2 x i2 g uan4
+生活习性 1.0	sh eng1 h uo2 x i2 x ing4
+生命 1.0	sh eng1 m ing4
+生擒 1.0	sh eng1 q in2
+生食 1.0	sh eng1 sh ix2
+生态 1.0	sh eng1 t ai4
+生下 1.0	sh eng1 x ia4
+生性 1.0	sh eng1 x ing4
+生意 1.0	sh eng1 ii i4
+生意 1.0	sh eng1 ii i5
+生油 1.0	sh eng1 ii iu2
+生育 1.0	sh eng1 vv v4
+生在 1.0	sh eng1 z ai4
+升 1.0	sh eng1
+升到 1.0	sh eng1 d ao4
+升官 1.0	sh eng1 g uan1
+升降 1.0	sh eng1 j iang4
+绳 1.0	sh eng2
+绳子 1.0	sh eng2 z iy5
+省 1.0	sh eng3
+省 1.0	x ing3
+省内 1.0	sh eng3 n ei4
+省区 1.0	sh eng3 q v1
+省外 1.0	sh eng3 uu uai4
+盛 1.0	ch eng2
+盛 1.0	sh eng4
+盛产 1.0	sh eng4 ch an3
+盛夏 1.0	sh eng4 x ia4
+盛行 1.0	sh eng4 x ing2
+胜 1.0	sh eng4
+胜负 1.0	sh eng4 f u4
+圣 1.0	sh eng4
+师 1.0	sh ix1
+师生 1.0	sh ix1 sh eng1
+失火 1.0	sh ix1 h uo3
+失学 1.0	sh ix1 x ve2
+湿润 1.0	sh ix1 r un4
+诗 1.0	sh ix1
+诗情 1.0	sh ix1 q ing2
+诗人 1.0	sh ix1 r en2
+诗意 1.0	sh ix1 ii i4
+尸骨 1.0	sh ix1 g u3
+十 1.0	sh ix2
+十八 1.0	sh ix2 b a1
+十八日 1.0	sh ix2 b a1 r iz4
+十八岁 1.0	sh ix2 b a1 s ui4
+十点 1.0	sh ix2 d ian3
+十度 1.0	sh ix2 d u4
+十二 1.0	sh ix2 ee er4
+十二大 1.0	sh ix2 ee er4 d a4
+十二点钟 1.0	sh ix2 ee er4 d ian3 zh ong1
+十二日 1.0	sh ix2 ee er4 r iz4
+十二月 1.0	sh ix2 ee er4 vv ve4
+十二指肠 1.0	sh ix2 ee er4 zh ix3 ch ang2
+十分 1.0	sh ix2 f en1
+十分钟 1.0	sh ix2 f en1 zh ong1
+十个 1.0	sh ix2 g e4
+十几 1.0	sh ix2 j i3
+十九 1.0	sh ix2 j iu3
+十年 1.0	sh ix2 n ian2
+十年后 1.0	sh ix2 n ian2 h ou4
+十年前 1.0	sh ix2 n ian2 q ian2
+十七岁 1.0	sh ix2 q i1 s ui4
+十人 1.0	sh ix2 r en2
+十日 1.0	sh ix2 r iz4
+十三日 1.0	sh ix2 s an1 r iz4
+十三四 1.0	sh ix2 s an1 s iy4
+十三亿 1.0	sh ix2 s an1 ii i4
+十四 1.0	sh ix2 s iy4
+十四日 1.0	sh ix2 s iy4 r iz4
+十四天 1.0	sh ix2 s iy4 t ian1
+十天 1.0	sh ix2 t ian1
+十万 1.0	sh ix2 uu uan4
+十五 1.0	sh ix2 uu u3
+十五号 1.0	sh ix2 uu u3 h ao4
+十五岁 1.0	sh ix2 uu u3 s ui4
+十一 1.0	sh ix2 ii i1
+十一分 1.0	sh ix2 ii i1 f en1
+十一日 1.0	sh ix2 ii i1 r iz4
+十一月 1.0	sh ix2 ii i1 vv ve4
+十亿 1.0	sh ix2 ii i4
+十月 1.0	sh ix2 vv ve4
+十月革命 1.0	sh ix2 vv ve4 g e2 m ing4
+石 1.0	sh ix2
+石雕 1.0	sh ix2 d iao1
+石块 1.0	sh ix2 k uai4
+石棉瓦 1.0	sh ix2 m ian2 uu ua3
+石器时代 1.0	sh ix2 q i4 sh ix2 d ai4
+石头 1.0	sh ix2 t ou2
+石头 1.0	sh ix2 t ou5
+石油 1.0	sh ix2 ii iu2
+石之 1.0	sh ix2 zh ix1
+石柱 1.0	sh ix2 zh u4
+时 1.0	sh ix2
+时代 1.0	sh ix2 d ai4
+时而 1.0	sh ix2 ee er2
+时候 1.0	sh ix2 h ou5
+时机 1.0	sh ix2 j i1
+时间 1.0	sh ix2 j ian1
+时节 1.0	sh ix2 j ie2
+时来运转 1.0	sh ix2 l ai2 vv vn4 zh uan3
+时期 1.0	sh ix2 q i1
+时下 1.0	sh ix2 x ia4
+时装 1.0	sh ix2 zh uang1
+什 1.0	sh en2
+什 1.0	sh ix2
+什么 1.0	sh en2 m e5
+食 1.0	sh ix2
+食品 1.0	sh ix2 p in3
+食堂 1.0	sh ix2 t ang2
+食物 1.0	sh ix2 uu u4
+实 1.0	sh ix2
+实诚 1.0	sh ix2 ch eng2
+实诚 1.0	sh ix2 ch eng5
+实际 1.0	sh ix2 j i4
+实际上 1.0	sh ix2 j i4 sh ang4
+实际上 1.0	sh ix2 j i4 sh ang5
+实现 1.0	sh ix2 x ian4
+实行 1.0	sh ix2 x ing2
+实验 1.0	sh ix2 ii ian4
+实业 1.0	sh ix2 ii ie4
+实用性 1.0	sh ix2 ii iong4 x ing4
+识 1.0	sh ix2
+识见 1.0	sh ix2 j ian4
+史 1.0	sh ix3
+使 1.0	sh ix3
+使人 1.0	sh ix3 r en2
+使用 1.0	sh ix3 ii iong4
+使用方法 1.0	sh ix3 ii iong4 f ang1 f a3
+使用权 1.0	sh ix3 ii iong4 q van2
+驶 1.0	sh ix3
+驶近 1.0	sh ix3 j in4
+驶往 1.0	sh ix2 uu uang3
+始终 1.0	sh ix3 zh ong1
+式 1.0	sh ix4
+示弱 1.0	sh ix4 r uo4
+士 1.0	sh ix4
+士人 1.0	sh ix4 r en2
+世 1.0	sh ix4
+世代 1.0	sh ix4 d ai4
+世纪 1.0	sh ix4 j i4
+世界 1.0	sh ix4 j ie4
+世界上 1.0	sh ix4 j ie4 sh ang4
+世界上 1.0	sh ix4 j ie4 sh ang5
+世界遗产 1.0	sh ix4 j ie4 ii i2 ch an3
+世珍 1.0	sh ix4 zh en1
+事 1.0	sh ix4
+事迹 1.0	sh ix4 j i4
+事件 1.0	sh ix4 j ian4
+事物 1.0	sh ix4 uu u4
+事务 1.0	sh ix4 uu u4
+事业 1.0	sh ix4 ii ie4
+事由 1.0	sh ix4 ii iu2
+逝 1.0	sh ix4
+逝世 1.0	sh ix4 sh ix4
+是 1.0	sh ix4
+是否 1.0	sh ix4 f ou3
+是日 1.0	sh ix4 r iz4
+是因为 1.0	sh ix4 ii in1 uu ui2
+是因为 1.0	sh ix4 ii in1 uu ui4
+是由 1.0	sh ix4 ii iu2
+是指 1.0	sh ix4 zh ix3
+适当 1.0	sh ix4 d ang1
+适当 1.0	sh ix4 d ang4
+适合 1.0	sh ix4 h e2
+适宜 1.0	sh ix4 ii i2
+适应 1.0	sh ix4 ii ing1
+适应 1.0	sh ix4 ii ing4
+适应性 1.0	sh ix4 ii ing4 x ing4
+适用 1.0	sh ix4 ii iong4
+适用于 1.0	sh ix4 ii iong4 vv v2
+释迦牟尼 1.0	sh ix4 j ia1 m ou2 n i2
+饰 1.0	sh ix4
+氏 1.0	sh ix4
+市 1.0	sh ix4
+市场 1.0	sh ix4 ch ang3
+市场报 1.0	sh ix4 ch ang3 b ao4
+市场经济 1.0	sh ix4 ch ang3 j ing1 j i4
+市长 1.0	sh ix4 zh ang3
+市内 1.0	sh ix4 n ei4
+市区 1.0	sh ix4 q v1
+市委 1.0	sh ix4 uu ui3
+市政 1.0	sh ix4 zh eng4
+室外 1.0	sh ix4 uu uai4
+试 1.0	sh ix4
+收 1.0	sh ou1
+收购 1.0	sh ou1 g ou4
+收获 1.0	sh ou1 h uo4
+收货 1.0	sh ou1 h uo4
+收集 1.0	sh ou1 j i2
+收容 1.0	sh ou1 r ong2
+收入 1.0	sh ou1 r u4
+收税 1.0	sh ou1 sh ui4
+收徒 1.0	sh ou1 t u2
+收住 1.0	sh ou1 zh u4
+手 1.0	sh ou3
+手臂 1.0	sh ou3 b i4
+手边 1.0	sh ou3 b ian1
+手表 1.0	sh ou2 b iao3
+手段 1.0	sh ou3 d uan4
+手绢 1.0	sh ou3 j van4
+手里 1.0	sh ou2 l i3
+手捧 1.0	sh ou2 p eng3
+手术 1.0	sh ou3 sh u4
+手套 1.0	sh ou3 t ao4
+手腕 1.0	sh ou3 uu uan4
+手掌 1.0	sh ou2 zh ang3
+手指 1.0	sh ou2 zh ix3
+首 1.0	sh ou3
+首都 1.0	sh ou3 d u1
+首府 1.0	sh ou2 f u3
+首家 1.0	sh ou3 j ia1
+首批 1.0	sh ou3 p i1
+首位 1.0	sh ou3 uu ui4
+首席 1.0	sh ou3 x i2
+首先 1.0	sh ou3 x ian1
+首选 1.0	sh ou2 x van3
+守军 1.0	sh ou3 j vn1
+寿 1.0	sh ou4
+寿春 1.0	sh ou4 ch un1
+授勋 1.0	sh ou4 x vn1
+授予 1.0	sh ou4 vv v3
+售货员 1.0	sh ou4 h uo4 vv van2
+受 1.0	sh ou4
+受宠 1.0	sh ou4 ch ong3
+受到 1.0	sh ou4 d ao4
+受欢迎 1.0	sh ou4 h uan1 ii ing2
+受贿 1.0	sh ou4 h ui4
+受贿罪 1.0	sh ou4 h ui4 z ui4
+受奖 1.0	sh ou4 j iang3
+受伤 1.0	sh ou4 sh ang1
+受损 1.0	sh ou4 s un3
+受孕 1.0	sh ou4 vv vn4
+受阻 1.0	sh ou4 z u3
+瘦高 1.0	sh ou4 g ao1
+瘦弱 1.0	sh ou4 r uo4
+瘦西湖 1.0	sh ou4 x i1 h u2
+兽 1.0	sh ou4
+兽行 1.0	sh ou4 x ing2
+蔬菜 1.0	sh u1 c ai4
+输 1.0	sh u1
+输出 1.0	sh u1 ch u1
+舒畅 1.0	sh u1 ch ang4
+舒心 1.0	sh u1 x in1
+舒云 1.0	sh u1 vv vn2
+疏 1.0	sh u1
+疏浚 1.0	sh u1 j vn4
+书 1.0	sh u1
+书报 1.0	sh u1 b ao4
+书本 1.0	sh u1 b en3
+书呆子 1.0	sh u1 d ai1 z iy5
+书稿 1.0	sh u1 g ao3
+书画 1.0	sh u1 h ua4
+书画家 1.0	sh u1 h ua4 j ia1
+书籍 1.0	sh u1 j i2
+书记 1.0	sh u1 j i5
+书市 1.0	sh u1 sh ix4
+书屋 1.0	sh u1 uu u1
+书写 1.0	sh u1 x ie3
+熟悉 1.0	sh u2 x i1
+薯 1.0	sh u3
+属 1.0	sh u3
+属于 1.0	sh u3 vv v2
+树 1.0	sh u4
+树木 1.0	sh u4 m u4
+树影 1.0	sh u4 ii ing3
+束 1.0	sh u4
+数 1.0	sh u4
+数百 1.0	sh u4 b ai3
+数学 1.0	sh u4 x ve2
+数学题 1.0	sh u4 x ve2 t i2
+刷 1.0	sh ua1
+耍 1.0	sh ua3
+摔成 1.0	sh uai1 ch eng2
+摔倒 1.0	sh uai1 d ao3
+摔死 1.0	sh uai1 s iy3
+衰老 1.0	sh uai1 l ao3
+甩 1.0	sh uai3
+帅 1.0	sh uai4
+拴 1.0	sh uan1
+拴住 1.0	sh uan1 zh u4
+霜 1.0	sh uang1
+双 1.0	sh uang1
+双安 1.0	sh uang1 aa an1
+双臂 1.0	sh uang1 b i4
+双打 1.0	sh uang1 d a3
+双耳 1.0	sh uang1 ee er3
+双方 1.0	sh uang1 f ang1
+双黄连 1.0	sh uang1 h uang2 l ian2
+双目 1.0	sh uang1 m u4
+双人 1.0	sh uang1 r en2
+双手 1.0	sh uang1 sh ou3
+双双 1.0	sh uang1 sh uang1
+双眼 1.0	sh uang1 ii ian3
+双拥 1.0	sh uang1 ii iong1
+爽 1.0	sh uang3
+谁 1.0	sh ei2
+谁 1.0	sh ui2
+谁家 1.0	sh ei2 j ia1
+谁家 1.0	sh ui2 j ia1
+谁来了 1.0	sh ei2 l ai2 l e5
+谁来了 1.0	sh ui2 l ai2 l e5
+谁知 1.0	sh ei2 zh ix1
+谁知 1.0	sh ui2 zh ix1
+水 1.0	sh ui3
+水保 1.0	sh ui2 b ao3
+水杯 1.0	sh ui3 b ei1
+水泵房 1.0	sh ui3 b eng4 f ang2
+水草 1.0	sh ui2 c ao3
+水产 1.0	sh ui2 ch an3
+水洞 1.0	sh ui3 d ong4
+水开了 1.0	sh ui3 k ai1 l e5
+水库 1.0	sh ui3 k u4
+水面 1.0	sh ui3 m ian4
+水平 1.0	sh ui3 p ing2
+水洗 1.0	sh ui2 x i3
+水运 1.0	sh ui3 vv vn4
+水蒸气 1.0	sh ui3 zh eng1 q i4
+水中 1.0	sh ui3 zh ong1
+睡 1.0	sh ui4
+税 1.0	sh ui4
+税额 1.0	sh ui4 ee e2
+税法 1.0	sh ui4 f a3
+税金 1.0	sh ui4 j in1
+税收 1.0	sh ui4 sh ou1
+税务 1.0	sh ui4 uu u4
+税务所 1.0	sh ui4 uu u4 s uo3
+顺 1.0	sh un4
+顺便 1.0	sh un4 b ian4
+顺差 1.0	sh un4 ch a1
+顺德 1.0	sh un4 d e2
+顺利 1.0	sh un4 l i4
+顺顺当当 1.0	sh un4 sh un5 d ang1 d ang1
+顺序 1.0	sh un4 x v4
+顺序排列 1.0	sh un4 x v4 p ai2 l ie4
+说 1.0	sh uo1
+说到 1.0	sh uo1 d ao4
+说到这里 1.0	sh uo1 d ao4 zh e4 l i3
+说法 1.0	sh uo1 f a3
+说明 1.0	sh uo1 m ing2
+说起来 1.0	sh uo1 q i3 l ai2
+说什么 1.0	sh uo1 sh en2 m e5
+说是 1.0	sh uo1 sh ix4
+说完 1.0	sh uo1 uu uan2
+说文 1.0	sh uo1 uu un2
+说真话 1.0	sh uo1 zh en1 h ua4
+硕大 1.0	sh uo4 d a4
+硕果 1.0	sh uo4 g uo3
+朔 1.0	sh uo4
+斯 1.0	s iy1
+斯巴达 1.0	s iy1 b a1 d a2
+斯里兰卡 1.0	s iy1 l i3 l an2 k a3
+斯诺 1.0	s iy1 n uo4
+斯托 1.0	s iy1 t uo1
+撕破 1.0	s iy1 p o4
+嘶 1.0	s iy1
+思 1.0	s iy1
+思考 1.0	s iy1 k ao3
+思路 1.0	s iy1 l u4
+思奇 1.0	s iy1 q i2
+思维 1.0	s iy1 uu ui2
+思想 1.0	s iy1 x iang3
+私 1.0	s iy1
+私有 1.0	s iy1 ii iu3
+司 1.0	s iy1
+司机 1.0	s iy1 j i1
+司令部 1.0	s iy1 l ing4 b u4
+司令员 1.0	s iy1 l ing4 vv van2
+丝 1.0	s iy1
+丝厂 1.0	s iy1 ch ang3
+丝绸之路 1.0	s iy1 ch ou2 zh ix1 l u4
+丝毫 1.0	s iy1 h ao2
+丝印 1.0	s iy1 ii in4
+丝织 1.0	s iy1 zh ix1
+死 1.0	s iy3
+死狗 1.0	s iy2 g ou3
+死后 1.0	s iy3 h ou4
+死拉 1.0	s iy3 l a1
+死亡 1.0	s iy3 uu uang2
+死亡率 1.0	s iy3 uu uang2 l v4
+死者 1.0	s iy2 zh e3
+寺 1.0	s iy4
+寺庙 1.0	s iy4 m iao4
+四 1.0	s iy4
+四百 1.0	s iy4 b ai3
+四百多 1.0	s iy4 b ai3 d uo1
+四川 1.0	s iy4 ch uan1
+四川省 1.0	s iy4 ch uan1 sh eng3
+四段 1.0	s iy4 d uan4
+四方 1.0	s iy4 f ang1
+四个 1.0	s iy4 g e4
+四海 1.0	s iy4 h ai3
+四季 1.0	s iy4 j i4
+四家 1.0	s iy4 j ia1
+四九年 1.0	s iy4 j iu3 n ian2
+四面八方 1.0	s iy4 m ian4 b a1 f ang1
+四秒 1.0	s iy4 m iao3
+四年 1.0	s iy4 n ian2
+四平市 1.0	s iy4 p ing2 sh ix4
+四千 1.0	s iy4 q ian1
+四人帮 1.0	s iy4 r en2 b ang1
+四日 1.0	s iy4 r iz4
+四十 1.0	s iy4 sh ix2
+四十分 1.0	s iy4 sh ix2 f en1
+四十万 1.0	s iy4 sh ix2 uu uan4
+四时 1.0	s iy4 sh ix2
+四溢 1.0	s iy4 ii i4
+四月 1.0	s iy4 vv ve4
+四种 1.0	s iy4 zh ong3
+四周 1.0	s iy4 zh ou1
+似 1.0	s iy4
+似的 1.0	sh ix4 d e5
+似地 1.0	sh ix4 d e5
+似乎 1.0	s iy4 h u1
+饲料 1.0	s iy4 l iao4
+饲养 1.0	s iy4 ii iang3
+饲养员 1.0	s iy4 ii iang3 vv van2
+松 1.0	s ong1
+松江 1.0	s ong1 j iang1
+松软 1.0	s ong1 r uan3
+松手 1.0	s ong1 sh ou3
+颂 1.0	s ong4
+送 1.0	s ong4
+送到 1.0	s ong4 d ao4
+送给 1.0	s ong4 g ei3
+送货 1.0	s ong4 h uo4
+送进 1.0	s ong4 j in4
+送礼品 1.0	s ong4 l i2 p in3
+送往 1.0	s ong4 uu uang3
+送行 1.0	s ong4 x ing2
+送走 1.0	s ong4 z ou3
+宋 1.0	s ong4
+宋庆龄 1.0	s ong4 q ing4 l ing2
+宋真宗 1.0	s ong4 zh en1 z ong1
+宋祖英 1.0	s ong4 z u3 ii ing1
+讼 1.0	s ong4
+搜查 1.0	s ou1 ch a2
+艘 1.0	s ou1
+苏 1.0	s u1
+苏和 1.0	s u1 h e2
+苏军 1.0	s u1 j vn1
+苏联 1.0	s u1 l ian2
+苏州 1.0	s u1 zh ou1
+酥油茶 1.0	s u1 ii iu2 ch a2
+俗 1.0	s u2
+俗称 1.0	s u2 ch eng1
+素云 1.0	s u4 vv vn2
+速 1.0	s u4
+塑料 1.0	s u4 l iao4
+塑造 1.0	s u4 z ao4
+宿 1.0	s u4
+宿舍 1.0	s u4 sh e4
+诉诸 1.0	s u4 zh u1
+肃 1.0	s u4
+肃然 1.0	s u4 r an2
+酸甜苦辣 1.0	s uan1 t ian2 k u3 l a4
+酸洗 1.0	s uan1 x i3
+蒜黄 1.0	s uan4 h uang2
+算 1.0	s uan4
+算不算 1.0	s uan4 b u2 s uan4
+算不算 1.0	s uan4 b u5 s uan4
+算术 1.0	s uan4 sh u4
+虽 1.0	s ui1
+虽然 1.0	s ui1 r an2
+隋 1.0	s ui2
+随 1.0	s ui2
+随风 1.0	s ui2 f eng1
+随后 1.0	s ui2 h ou4
+随机 1.0	s ui2 j i1
+随即 1.0	s ui2 j i2
+随口 1.0	s ui2 k ou3
+随时 1.0	s ui2 sh ix2
+随意 1.0	s ui2 ii i4
+随着 1.0	s ui2 zh e5
+岁 1.0	s ui4
+岁月 1.0	s ui4 vv ve4
+遂 1.0	s ui4
+孙 1.0	s un1
+孙儿 1.0	s un1 ee er2
+孙女 1.0	s un1 n v3
+孙悦 1.0	s un1 vv ve4
+孙子 1.0	s un1 z iy5
+损 1.0	s un3
+损害 1.0	s un3 h ai4
+损坏 1.0	s un3 h uai4
+损伤 1.0	s un3 sh ang1
+损失 1.0	s un3 sh ix1
+损失惨重 1.0	s un3 sh ix1 c an3 zh ong4
+笋 1.0	s un3
+梭罗 1.0	s uo1 l uo2
+缩 1.0	s uo1
+缩小 1.0	s uo1 x iao3
+索引 1.0	s uo2 ii in3
+所 1.0	s uo3
+所长 1.0	s uo2 zh ang3
+所得 1.0	s uo3 d e2
+所能 1.0	s uo3 n eng2
+所剩 1.0	s uo3 sh eng4
+所说 1.0	s uo3 sh uo1
+所谓 1.0	s uo3 uu ui4
+所需 1.0	s uo3 x v1
+所以 1.0	s uo2 ii i3
+所有 1.0	s uo2 ii iu3
+所有者 1.0	s uo2 ii iu2 zh e3
+所在 1.0	s uo3 z ai4
+所致 1.0	s uo3 zh ix4
+塌 1.0	t a1
+他 1.0	t a1
+他们 1.0	t a1 m en5
+他人 1.0	t a1 r en2
+他说 1.0	t a1 sh uo1
+他乡 1.0	t a1 x iang1
+它 1.0	t a1
+它们 1.0	t a1 m en5
+她 1.0	t a1
+她们 1.0	t a1 m en5
+她说 1.0	t a1 sh uo1
+塔 1.0	t a3
+塔山 1.0	t a3 sh an1
+踏 1.0	t a4
+抬头 1.0	t ai2 t ou2
+台 1.0	t ai2
+台儿庄 1.0	t ai2 ee er2 zh uang1
+台上 1.0	t ai2 sh ang4
+台湾 1.0	t ai2 uu uan1
+台下 1.0	t ai2 x ia4
+泰 1.0	t ai4
+泰山 1.0	t ai4 sh an1
+太 1.0	t ai4
+太多 1.0	t ai4 d uo1
+太湖 1.0	t ai4 h u2
+太空船 1.0	t ai4 k ong1 ch uan2
+太平 1.0	t ai4 p ing2
+太平间 1.0	t ai4 p ing2 j ian1
+太平洋 1.0	t ai4 p ing2 ii iang2
+太太 1.0	t ai4 t ai5
+太行 1.0	t ai4 h ang2
+太阳 1.0	t ai4 ii iang2
+太阳伞 1.0	t ai4 ii iang2 s an3
+太原 1.0	t ai4 vv van2
+太原市 1.0	t ai4 vv van2 sh ix4
+态度 1.0	t ai4 d u4
+态度 1.0	t ai4 d u5
+汰 1.0	t ai4
+摊 1.0	t an1
+贪 1.0	t an1
+贪污 1.0	t an1 uu u1
+滩 1.0	t an1
+檀 1.0	t an2
+谈 1.0	t an2
+谈到 1.0	t an2 d ao4
+谈恋爱 1.0	t an2 l ian4 aa ai4
+谈判 1.0	t an2 p an4
+谈人生 1.0	t an2 r en2 sh eng1
+坦 1.0	t an3
+碳 1.0	t an4
+探 1.0	t an4
+探测 1.0	t an4 c e4
+探索 1.0	t an4 s uo3
+探讨 1.0	t an4 t ao3
+探望 1.0	t an4 uu uang4
+叹息 1.0	t an4 x i1
+汤 1.0	t ang1
+塘 1.0	t ang2
+塘沽区 1.0	t ang2 g u1 q v1
+堂 1.0	t ang2
+堂皇 1.0	t ang2 h uang2
+堂上 1.0	t ang2 sh ang4
+堂屋 1.0	t ang2 uu u1
+棠 1.0	t ang2
+唐 1.0	t ang2
+唐朝 1.0	t ang2 ch ao2
+唐代 1.0	t ang2 d ai4
+唐明 1.0	t ang2 m ing2
+唐三彩 1.0	t ang2 s an1 c ai3
+唐玄宗 1.0	t ang2 x van2 z ong1
+唐寅 1.0	t ang2 ii in2
+糖厂 1.0	t ang2 ch ang3
+糖果 1.0	t ang2 g uo3
+倘若 1.0	t ang3 r uo4
+躺 1.0	t ang3
+躺下 1.0	t ang3 x ia4
+淌 1.0	t ang3
+趟 1.0	t ang4
+掏出 1.0	t ao1 ch u1
+掏腰包 1.0	t ao1 ii iao1 b ao1
+滔滔 1.0	t ao1 t ao1
+桃 1.0	t ao2
+桃花庵 1.0	t ao2 h ua1 aa an1
+逃 1.0	t ao2
+逃窜 1.0	t ao2 c uan4
+逃离 1.0	t ao2 l i2
+逃难 1.0	t ao2 n an4
+逃匿 1.0	t ao2 n i4
+逃跑 1.0	t ao2 p ao3
+逃走 1.0	t ao2 z ou3
+淘汰 1.0	t ao2 t ai4
+淘汰赛 1.0	t ao2 t ai4 s ai4
+陶 1.0	t ao2
+讨 1.0	t ao3
+讨论 1.0	t ao3 l un4
+讨厌 1.0	t ao3 ii ian4
+套 1.0	t ao4
+套件 1.0	t ao4 j ian4
+特 1.0	t e4
+特别 1.0	t e4 b ie2
+特此 1.0	t e4 c iy3
+特地 1.0	t e4 d i4
+特里 1.0	t e4 l i3
+特聘 1.0	t e4 p in4
+特殊 1.0	t e4 sh u1
+特效 1.0	t e4 x iao4
+特性 1.0	t e4 x ing4
+特邀 1.0	t e4 ii iao1
+特意 1.0	t e4 ii i4
+特征 1.0	t e4 zh eng1
+特质 1.0	t e4 zh ix4
+特种 1.0	t e4 zh ong3
+特种部队 1.0	t e4 zh ong3 b u4 d ui4
+藤野先生 1.0	t eng2 ii ie3 x ian1 sh eng5
+腾 1.0	t eng2
+腾冲 1.0	t eng2 ch ong1
+疼爱 1.0	t eng2 aa ai4
+疼痛 1.0	t eng2 t ong4
+梯队 1.0	t i1 d ui4
+踢 1.0	t i1
+提 1.0	t i2
+提出 1.0	t i2 ch u1
+提高 1.0	t i2 g ao1
+提供 1.0	t i2 g ong1
+提供 1.0	t i2 g ong4
+提起 1.0	t i2 q i3
+提前 1.0	t i2 q ian2
+提议 1.0	t i2 ii i4
+蹄 1.0	t i2
+体内 1.0	t i3 n ei4
+体弱 1.0	t i3 r uo4
+体贴入微 1.0	t i3 t ie1 r u4 uu ui1
+体外 1.0	t i3 uu uai4
+体现 1.0	t i3 x ian4
+体验 1.0	t i3 ii ian4
+体育 1.0	t i3 vv v4
+体育场 1.0	t i3 vv v4 ch ang3
+体育用品 1.0	t i3 vv v4 ii iong4 p in3
+体育中心 1.0	t i3 vv v4 zh ong1 x in1
+体质 1.0	t i3 zh ix4
+替代 1.0	t i4 d ai4
+天 1.0	t ian1
+天敌 1.0	t ian1 d i2
+天地 1.0	t ian1 d i4
+天高 1.0	t ian1 g ao1
+天公 1.0	t ian1 g ong1
+天河 1.0	t ian1 h e2
+天津 1.0	t ian1 j in1
+天空 1.0	t ian1 k ong1
+天马 1.0	t ian1 m a3
+天明 1.0	t ian1 m ing2
+天内 1.0	t ian1 n ei4
+天女散花 1.0	t ian1 n v3 s an4 h ua1
+天气 1.0	t ian1 q i4
+天然 1.0	t ian1 r an2
+天天 1.0	t ian1 t ian1
+天天说 1.0	t ian1 t ian1 sh uo1
+天文 1.0	t ian1 uu un2
+天霞 1.0	t ian1 x ia2
+天下 1.0	t ian1 x ia4
+天仙 1.0	t ian1 x ian1
+天祥 1.0	t ian1 x iang2
+天心 1.0	t ian1 x in1
+天雨 1.0	t ian1 vv v3
+填 1.0	t ian2
+填平 1.0	t ian2 p ing2
+填写 1.0	t ian2 x ie3
+田 1.0	t ian2
+田鸡 1.0	t ian2 j i1
+田里 1.0	t ian2 l i3
+田野 1.0	t ian2 ii ie3
+田园 1.0	t ian2 vv van2
+甜 1.0	t ian2
+甜润 1.0	t ian2 r un4
+恬静 1.0	t ian2 j ing4
+挑灯夜战 1.0	t iao3 d eng1 ii ie4 zh an4
+条 1.0	t iao2
+条件 1.0	t iao2 j ian4
+条例 1.0	t iao2 l i4
+条约 1.0	t iao2 vv ve1
+眺望 1.0	t iao4 uu uang4
+跳 1.0	t iao4
+跳进 1.0	t iao4 j in4
+跳舞 1.0	t iao4 uu u3
+跳下 1.0	t iao4 x ia4
+跳崖 1.0	t iao4 ii ia2
+跳远 1.0	t iao4 vv van3
+铁 1.0	t ie3
+铁道 1.0	t ie3 d ao4
+铁管 1.0	t ie2 g uan3
+铁栏杆 1.0	t ie3 l an2 g an1
+铁栏杆 1.0	t ie3 l an2 g an5
+铁路 1.0	t ie3 l u4
+铁路局 1.0	t ie3 l u4 j v2
+铁梅 1.0	t ie3 m ei2
+铁丝网 1.0	t ie3 s iy1 uu uang3
+厅 1.0	t ing1
+厅堂 1.0	t ing1 t ang2
+听 1.0	t ing1
+听不到 1.0	t ing1 b u2 d ao4
+听到 1.0	t ing1 d ao4
+听话 1.0	t ing1 h ua4
+听见 1.0	t ing1 j ian4
+听觉 1.0	t ing1 j ve2
+听来 1.0	t ing1 l ai2
+听力 1.0	t ing1 l i4
+听神经 1.0	t ing1 sh en2 j ing1
+听说 1.0	t ing1 sh uo1
+听者 1.0	t ing1 zh e3
+停 1.0	t ing2
+停产 1.0	t ing2 ch an3
+停火 1.0	t ing2 h uo3
+停下 1.0	t ing2 x ia4
+停下来 1.0	t ing2 x ia4 l ai5
+停业 1.0	t ing2 ii ie4
+停止 1.0	t ing2 zh ix3
+亭 1.0	t ing2
+亭子 1.0	t ing2 z iy5
+庭 1.0	t ing2
+挺 1.0	t ing3
+挺拔 1.0	t ing3 b a2
+挺身 1.0	t ing3 sh en1
+通 1.0	t ong1
+通常 1.0	t ong1 ch ang2
+通告 1.0	t ong1 g ao4
+通过 1.0	t ong1 g uo4
+通篇 1.0	t ong1 p ian1
+通俗 1.0	t ong1 s u2
+通向 1.0	t ong1 x iang4
+通信业 1.0	t ong1 x in4 ii ie4
+通行 1.0	t ong1 x ing2
+通讯社 1.0	t ong1 x vn4 sh e4
+通讯员 1.0	t ong1 x vn4 vv van2
+通用 1.0	t ong1 ii iong4
+通知 1.0	t ong1 zh ix1
+桐城 1.0	t ong2 ch eng2
+同 1.0	t ong2
+同胞 1.0	t ong2 b ao1
+同级 1.0	t ong2 j i2
+同时 1.0	t ong2 sh ix2
+同事 1.0	t ong2 sh ix4
+同乡 1.0	t ong2 x iang1
+同行 1.0	t ong2 h ang2
+同学家 1.0	t ong2 x ve2 j ia1
+同学们 1.0	t ong2 x ve2 m en5
+同样 1.0	t ong2 ii iang4
+同一个 1.0	t ong2 ii i2 g e4
+同意 1.0	t ong2 ii i4
+同月 1.0	t ong2 vv ve4
+同志 1.0	t ong2 zh ix4
+同住 1.0	t ong2 zh u4
+同桌 1.0	t ong2 zh uo1
+铜 1.0	t ong2
+童话 1.0	t ong2 h ua4
+桶 1.0	t ong3
+捅 1.0	t ong3
+筒 1.0	t ong3
+统一 1.0	t ong3 ii i1
+痛 1.0	t ong4
+痛楚 1.0	t ong4 ch u3
+痛击 1.0	t ong4 j i1
+痛苦 1.0	t ong4 k u3
+偷 1.0	t ou1
+偷税 1.0	t ou1 sh ui4
+投入 1.0	t ou2 r u4
+投资 1.0	t ou2 z iy1
+头 1.0	t ou2
+头顶 1.0	t ou2 d ing3
+头发 1.0	t ou2 f a5
+头昏 1.0	t ou2 h un1
+头盔 1.0	t ou2 k ui1
+头羊 1.0	t ou2 ii iang2
+头晕 1.0	t ou2 vv vn1
+透过 1.0	t ou4 g uo4
+透露 1.0	t ou4 l u4
+透气 1.0	t ou4 q i4
+秃鹫 1.0	t u1 j iu4
+突出 1.0	t u1 ch u1
+突发奇想 1.0	t u1 f a1 q i2 x iang3
+突破 1.0	t u1 p o4
+突破口 1.0	t u1 p o4 k ou3
+突然 1.0	t u1 r an2
+突入 1.0	t u1 r u4
+突围 1.0	t u1 uu ui2
+突兀 1.0	t u1 uu u4
+图 1.0	t u2
+图案 1.0	t u2 aa an4
+图谋 1.0	t u2 m ou2
+图书 1.0	t u2 sh u1
+图书馆 1.0	t u2 sh u1 g uan3
+图文并茂 1.0	t u2 uu un2 b ing4 m ao4
+图纸 1.0	t u2 zh ix3
+途经 1.0	t u2 j ing1
+途径 1.0	t u2 j ing4
+涂料 1.0	t u2 l iao4
+屠 1.0	t u2
+土 1.0	t u3
+土层 1.0	t u3 c eng2
+土窑 1.0	t u3 ii iao2
+土著 1.0	t u3 zh u4
+吐 1.0	t u3
+兔 1.0	t u4
+兔子 1.0	t u4 z iy5
+湍流 1.0	t uan1 l iu2
+团 1.0	t uan2
+团部 1.0	t uan2 b u4
+团长 1.0	t uan2 zh ang3
+团结 1.0	t uan2 j ie2
+团体赛 1.0	t uan2 t i3 s ai4
+团团 1.0	t uan2 t uan2
+推 1.0	t ui1
+推波助澜 1.0	t ui1 b o1 zh u4 l an2
+推出 1.0	t ui1 ch u1
+推动 1.0	t ui1 d ong4
+推而广之 1.0	t ui1 ee er2 g uang3 zh ix1
+推广 1.0	t ui1 g uang3
+推进 1.0	t ui1 j in4
+推进剂 1.0	t ui1 j in4 j i4
+推理 1.0	t ui1 l i3
+推门 1.0	t ui1 m en2
+推土机 1.0	t ui1 t u3 j i1
+推下 1.0	t ui1 x ia4
+推销 1.0	t ui1 x iao1
+推卸 1.0	t ui1 x ie4
+推行 1.0	t ui1 x ing2
+腿 1.0	t ui3
+蜕皮 1.0	t ui4 p i2
+退缩 1.0	t ui4 s uo1
+退伍 1.0	t ui4 uu u3
+退休 1.0	t ui4 x iu1
+吞 1.0	t un1
+吞没 1.0	t un1 m o4
+吞吞吐吐 1.0	t un1 t un1 t u2 t u3
+吞下 1.0	t un1 x ia4
+臀围 1.0	t un2 uu ui2
+拖 1.0	t uo1
+拖欠 1.0	t uo1 q ian4
+拖延 1.0	t uo1 ii ian2
+托 1.0	t uo1
+托尔斯泰 1.0	t uo1 ee er3 s iy1 t ai4
+托运 1.0	t uo1 vv vn4
+脱落 1.0	t uo1 l uo4
+脱贫 1.0	t uo1 p in2
+脱去 1.0	t uo1 q v4
+脱逃 1.0	t uo1 t ao2
+脱位 1.0	t uo1 uu ui4
+脱颖而出 1.0	t uo1 ii ing3 ee er2 ch u1
+椭圆 1.0	t uo3 vv van2
+唾沫 1.0	t uo4 m o5
+挖 1.0	uu ua1
+挖掘 1.0	uu ua1 j ve2
+挖潜 1.0	uu ua1 q ian2
+挖土机 1.0	uu ua1 t u3 j i1
+哇 1.0	uu ua1
+哇 1.0	uu ua5
+蛙 1.0	uu ua1
+娃 1.0	uu ua2
+娃儿 1.0	uu ua2 ee er5
+娃哈哈 1.0	uu ua2 h a1 h a1
+娃娃 1.0	uu ua2 uu ua5
+娃娃脸 1.0	uu ua2 uu ua5 l ian3
+娃娃鱼 1.0	uu ua2 uu ua5 vv v2
+娃子 1.0	uu ua2 z iy5
+瓦 1.0	uu ua3
+瓦解 1.0	uu ua2 j ie3
+瓦努阿图 1.0	uu ua2 n u3 aa a1 t u2
+瓦斯 1.0	uu ua3 s iy1
+袜子 1.0	uu ua4 z iy5
+歪 1.0	uu uai1
+歪歪 1.0	uu uai1 uu uai1
+外 1.0	uu uai4
+外币 1.0	uu uai4 b i4
+外表 1.0	uu uai4 b iao3
+外部 1.0	uu uai4 b u4
+外层 1.0	uu uai4 c eng2
+外长 1.0	uu uai4 zh ang3
+外出 1.0	uu uai4 ch u1
+外地 1.0	uu uai4 d i4
+外敷 1.0	uu uai4 f u1
+外公外婆 1.0	uu uai4 g ong1 uu uai4 p o2
+外观 1.0	uu uai4 g uan1
+外国 1.0	uu uai4 g uo2
+外国人 1.0	uu uai4 g uo2 r en2
+外汇 1.0	uu uai4 h ui4
+外交 1.0	uu uai4 j iao1
+外交部 1.0	uu uai4 j iao1 b u4
+外交官 1.0	uu uai4 j iao1 g uan1
+外交人员 1.0	uu uai4 j iao1 r en2 vv van2
+外界 1.0	uu uai4 j ie4
+外科 1.0	uu uai4 k e1
+外来人口 1.0	uu uai4 l ai2 r en2 k ou3
+外貌 1.0	uu uai4 m ao4
+外贸 1.0	uu uai4 m ao4
+外面 1.0	uu uai4 m ian4
+外婆 1.0	uu uai4 p o2
+外勤 1.0	uu uai4 q in2
+外圈 1.0	uu uai4 q van1
+外商 1.0	uu uai4 sh ang1
+外省 1.0	uu uai4 sh eng3
+外水 1.0	uu uai4 sh ui3
+外头 1.0	uu uai4 t ou5
+外围 1.0	uu uai4 uu ui2
+外文 1.0	uu uai4 uu un2
+外务 1.0	uu uai4 uu u4
+外乡人 1.0	uu uai4 x iang1 r en2
+外向 1.0	uu uai4 x iang4
+外销 1.0	uu uai4 x iao1
+外形 1.0	uu uai4 x ing2
+外延 1.0	uu uai4 ii ian2
+外用 1.0	uu uai4 ii iong4
+外语 1.0	uu uai4 vv v3
+外资 1.0	uu uai4 z iy1
+弯 1.0	uu uan1
+弯腰 1.0	uu uan1 ii iao1
+湾 1.0	uu uan1
+玩忽职守 1.0	uu uan2 h u1 zh ix2 sh ou3
+玩乐 1.0	uu uan2 l e4
+玩命 1.0	uu uan2 m ing4
+玩闹 1.0	uu uan2 n ao4
+玩弄 1.0	uu uan2 n ong4
+玩耍 1.0	uu uan2 sh ua3
+玩玩 1.0	uu uan2 uu uan5
+玩物 1.0	uu uan2 uu u4
+玩意 1.0	uu uan2 ii i4
+玩意儿 1.0	uu uan2 ii i4 ee er5
+顽 1.0	uu uan2
+顽固 1.0	uu uan2 g u4
+顽强 1.0	uu uan2 q iang2
+完 1.0	uu uan2
+完备 1.0	uu uan2 b ei4
+完毕 1.0	uu uan2 b i4
+完成 1.0	uu uan2 ch eng2
+完成任务 1.0	uu uan2 ch eng2 r en4 uu u5
+完了 1.0	uu uan2 l e5
+完美 1.0	uu uan2 m ei3
+完美结合 1.0	uu uan2 m ei3 j ie2 h e2
+完全 1.0	uu uan2 q van2
+完善 1.0	uu uan2 sh an4
+完整 1.0	uu uan2 zh eng3
+碗 1.0	uu uan3
+碗口 1.0	uu uan2 k ou3
+挽回 1.0	uu uan3 h ui2
+晚 1.0	uu uan3
+晚婚晚育 1.0	uu uan3 h un1 uu uan3 vv v4
+晚间 1.0	uu uan3 j ian1
+晚上 1.0	uu uan3 sh ang4
+晚上 1.0	uu uan3 sh ang5
+皖 1.0	uu uan3
+宛若 1.0	uu uan3 r uo4
+婉言谢绝 1.0	uu uan3 ii ian2 x ie4 j ve2
+婉转 1.0	uu uan2 zh uan3
+万 1.0	uu uan4
+万宝路 1.0	uu uan4 b ao3 l u4
+万吨级 1.0	uu uan4 d un1 j i2
+万里 1.0	uu uan4 l i3
+万人 1.0	uu uan4 r en2
+万世 1.0	uu uan4 sh ix4
+万一 1.0	uu uan4 ii i1
+万元 1.0	uu uan4 vv van2
+腕 1.0	uu uan4
+汪 1.0	uu uang1
+汪精卫 1.0	uu uang1 j ing1 uu ui4
+汪汪汪 1.0	uu uang1 uu uang1 uu uang1
+王 1.0	uu uang2
+王斌 1.0	uu uang2 b in1
+王储 1.0	uu uang2 ch u3
+王村 1.0	uu uang2 c un1
+王刚 1.0	uu uang2 g ang1
+王宫 1.0	uu uang2 g ong1
+王国 1.0	uu uang2 g uo2
+王家 1.0	uu uang2 j ia1
+王军霞 1.0	uu uang2 j vn1 x ia2
+王俊 1.0	uu uang2 j vn4
+王开 1.0	uu uang2 k ai1
+王蕾 1.0	uu uang2 l ei3
+王磊 1.0	uu uang2 l ei3
+王茂 1.0	uu uang2 m ao4
+王某 1.0	uu uang2 m ou3
+王培 1.0	uu uang2 p ei2
+王婆 1.0	uu uang2 p o2
+王琴 1.0	uu uang2 q in2
+王叔 1.0	uu uang2 sh u1
+王铁 1.0	uu uang2 t ie3
+王维 1.0	uu uang2 uu ui2
+王伟 1.0	uu uang2 uu ui3
+王位 1.0	uu uang2 uu ui4
+王新 1.0	uu uang2 x in1
+王旭东 1.0	uu uang2 x v4 d ong1
+王亚 1.0	uu uang2 ii ia4
+王雁 1.0	uu uang2 ii ian4
+王爷 1.0	uu uang2 ii ie5
+王英 1.0	uu uang2 ii ing1
+王云 1.0	uu uang2 vv vn2
+王震 1.0	uu uang2 zh en4
+王媛 1.0	uu uang2 vv van2
+枉 1.0	uu uang3
+网 1.0	uu uang3
+网点 1.0	uu uang2 d ian3
+网管 1.0	uu uang2 g uan3
+网络 1.0	uu uang3 l uo4
+网箱 1.0	uu uang3 x iang1
+往 1.0	uu uang3
+往回 1.0	uu uang3 h ui2
+往来 1.0	uu uang3 l ai2
+往前 1.0	uu uang3 q ian2
+往日 1.0	uu uang3 r iz4
+往上 1.0	uu uang3 sh ang4
+往往 1.0	uu uang2 uu uang3
+往下 1.0	uu uang3 x ia4
+旺仔 1.0	uu uang4 z ai3
+望 1.0	uu uang4
+望江 1.0	uu uang4 j iang1
+望去 1.0	uu uang4 q v4
+望望 1.0	uu uang4 uu uang5
+望眼欲穿 1.0	uu uang4 ii ian3 vv v4 ch uan1
+望远镜 1.0	uu uang4 vv van3 j ing4
+望子成龙 1.0	uu uang4 z iy3 ch eng2 l ong2
+忘本 1.0	uu uang4 b en3
+忘不了 1.0	uu uang4 b u4 l iao3
+忘怀 1.0	uu uang4 h uai2
+忘记 1.0	uu uang4 j i4
+忘了 1.0	uu uang4 l e5
+忘却 1.0	uu uang4 q ve4
+忘我 1.0	uu uang4 uu uo3
+妄 1.0	uu uang4
+威胁 1.0	uu ui1 x ie2
+巍峨 1.0	uu ui1 ee e2
+巍巍 1.0	uu ui1 uu ui1
+微 1.0	uu ui1
+微妙 1.0	uu ui1 m iao4
+微弱 1.0	uu ui1 r uo4
+微生物 1.0	uu ui1 sh eng1 uu u4
+微微 1.0	uu ui1 uu ui1
+微微 1.0	uu ui1 uu ui5
+危 1.0	uu ui1
+韦 1.0	uu ui2
+违反 1.0	uu ui2 f an3
+围 1.0	uu ui2
+围捕 1.0	uu ui2 b u3
+围栏 1.0	uu ui2 l an2
+围绕 1.0	uu ui2 r ao4
+围住 1.0	uu ui2 zh u4
+唯唯诺诺 1.0	uu ui2 uu ui3 n uo4 n uo4
+唯有 1.0	uu ui2 ii iu3
+惟 1.0	uu ui2
+为 1.0	uu ui2
+为 1.0	uu ui4
+为此 1.0	uu ui4 c iy3
+为何 1.0	uu ui4 h e2
+为了 1.0	uu ui4 l e5
+为人 1.0	uu ui2 r en2
+为什么 1.0	uu ui4 sh en2 m e5
+为什么 1.0	uu ui4 sh ix2 m e5
+为由 1.0	uu ui2 ii iu2
+为有 1.0	uu ui2 ii iu3
+为有 1.0	uu ui4 ii iu3
+为之 1.0	uu ui4 zh ix1
+为准 1.0	uu ui2 zh un3
+维持 1.0	uu ui2 ch ix2
+维生素 1.0	uu ui2 sh eng1 s u4
+维斯 1.0	uu ui2 s iy1
+维特 1.0	uu ui2 t e4
+维吾尔 1.0	uu ui2 uu u2 ee er3
+维也纳 1.0	uu ui2 ii ie3 n a4
+萎缩 1.0	uu ui3 s uo1
+委 1.0	uu ui3
+委内瑞拉 1.0	uu ui3 n ei4 r ui4 l a1
+委托 1.0	uu ui3 t uo1
+委员 1.0	uu ui3 vv van2
+委员会 1.0	uu ui3 vv van2 h ui4
+伟 1.0	uu ui3
+伪军 1.0	uu ui3 j vn1
+伪劣 1.0	uu ui3 l ie4
+伪造 1.0	uu ui3 z ao4
+尾 1.0	uu ui3
+尾 1.0	ii i3
+尾巴 1.0	uu ui3 b a5
+尾巴 1.0	ii i3 b a5
+未 1.0	uu ui4
+未必 1.0	uu ui4 b i4
+未果 1.0	uu ui4 g uo3
+未经 1.0	uu ui4 j ing1
+未来 1.0	uu ui4 l ai2
+未能 1.0	uu ui4 n eng2
+未遂 1.0	uu ui4 s ui4
+未曾 1.0	uu ui4 c eng2
+蔚 1.0	uu ui4
+蔚然 1.0	uu ui4 r an2
+味 1.0	uu ui4
+味儿 1.0	uu ui4 ee er5
+胃 1.0	uu ui4
+胃癌 1.0	uu ui4 aa ai2
+胃酸 1.0	uu ui4 s uan1
+喂 1.0	uu ui4
+喂食 1.0	uu ui4 sh ix2
+喂养 1.0	uu ui4 ii iang3
+喂药 1.0	uu ui4 ii iao4
+位 1.0	uu ui4
+位于 1.0	uu ui4 vv v2
+位在 1.0	uu ui4 z ai4
+慰问 1.0	uu ui4 uu un4
+卫冕 1.0	uu ui4 m ian3
+卫生 1.0	uu ui4 sh eng1
+卫生员 1.0	uu ui4 sh eng1 vv van2
+瘟疫 1.0	uu un1 ii i4
+温 1.0	uu un1
+温饱 1.0	uu un1 b ao3
+温度 1.0	uu un1 d u4
+温暖如春 1.0	uu un1 n uan3 r u2 ch un1
+温柔 1.0	uu un1 r ou2
+温州 1.0	uu un1 zh ou1
+蚊 1.0	uu un2
+蚊蝇 1.0	uu un2 ii ing2
+蚊子 1.0	uu un2 z iy5
+文 1.0	uu un2
+文本 1.0	uu un2 b en3
+文彬 1.0	uu un2 b in1
+文采 1.0	uu un2 c ai3
+文富 1.0	uu un2 f u4
+文阁 1.0	uu un2 g e2
+文华 1.0	uu un2 h ua2
+文化 1.0	uu un2 h ua4
+文化馆 1.0	uu un2 h ua4 g uan3
+文化局 1.0	uu un2 h ua4 j v2
+文件 1.0	uu un2 j ian4
+文静 1.0	uu un2 j ing4
+文兰 1.0	uu un2 l an2
+文联 1.0	uu un2 l ian2
+文明 1.0	uu un2 m ing2
+文人 1.0	uu un2 r en2
+文史 1.0	uu un2 sh ix3
+文体 1.0	uu un2 t i3
+文物 1.0	uu un2 uu u4
+文选 1.0	uu un2 x van3
+文学 1.0	uu un2 x ve2
+文学作品 1.0	uu un2 x ve2 z uo4 p in3
+文言文 1.0	uu un2 ii ian2 uu un2
+文艺 1.0	uu un2 ii i4
+文友 1.0	uu un2 ii iu3
+文远 1.0	uu un2 vv van3
+文章 1.0	uu un2 zh ang1
+文征明 1.0	uu un2 zh eng1 m ing2
+文中 1.0	uu un2 zh ong1
+文字 1.0	uu un2 z iy4
+闻 1.0	uu un2
+闻风 1.0	uu un2 f eng1
+闻风丧胆 1.0	uu un2 f eng1 s ang4 d an3
+闻讯 1.0	uu un2 x vn4
+闻一多 1.0	uu un2 ii i1 d uo1
+纹 1.0	uu un2
+稳 1.0	uu un3
+稳定 1.0	uu un3 d ing4
+稳扎稳打 1.0	uu un3 zh a1 uu un2 d a3
+问 1.0	uu un4
+问道 1.0	uu un4 d ao4
+问话 1.0	uu un4 h ua4
+问题 1.0	uu un4 t i2
+问药 1.0	uu un4 ii iao4
+嗡 1.0	uu ueng1
+嗡嗡 1.0	uu ueng1 uu ueng1
+嗡嗡 1.0	uu ueng1 uu ueng5
+翁 1.0	uu ueng1
+窝 1.0	uu uo1
+窝藏 1.0	uu uo1 c ang2
+窝囊 1.0	uu uo1 n ang5
+窝头 1.0	uu uo1 t ou2
+窝窝头 1.0	uu uo1 uu uo5 t ou2
+我 1.0	uu uo3
+我不会 1.0	uu uo3 b u2 h ui4
+我的家 1.0	uu uo3 d e5 j ia1
+我的灵魂 1.0	uu uo3 d e5 l ing2 h un2
+我的手 1.0	uu uo3 d e5 sh ou3
+我国 1.0	uu uo3 g uo2
+我家 1.0	uu uo3 j ia1
+我军 1.0	uu uo3 j vn1
+我妈 1.0	uu uo3 m a1
+我们 1.0	uu uo3 m en5
+我们一家 1.0	uu uo3 m en5 ii i4 j ia1
+我娘 1.0	uu uo3 n iang2
+我省 1.0	uu uo2 sh eng3
+我喜欢 1.0	uu uo2 x i3 h uan1
+我县 1.0	uu uo3 x ian4
+我以为 1.0	uu uo2 ii i3 uu ui2
+我镇 1.0	uu uo3 zh en4
+我终于 1.0	uu uo3 zh ong1 vv v2
+卧床 1.0	uu uo4 ch uang2
+卧铺 1.0	uu uo4 p u4
+握 1.0	uu uo4
+握手言和 1.0	uu uo4 sh ou3 ii ian2 h e2
+沃 1.0	uu uo4
+沃土 1.0	uu uo4 t u3
+沃野 1.0	uu uo4 ii ie3
+巫婆 1.0	uu u1 p o2
+巫山 1.0	uu u1 sh an1
+呜呜 1.0	uu u1 uu u1
+乌 1.0	uu u1
+乌尔 1.0	uu u1 ee er3
+乌金 1.0	uu u1 j in1
+乌克兰 1.0	uu u1 k e4 l an2
+乌兹别克斯坦 1.0	uu u1 z iy1 b ie2 k e4 s iy1 t an3
+污 1.0	uu u1
+污水 1.0	uu u1 sh ui3
+诬蔑 1.0	uu u1 m ie4
+屋 1.0	uu u1
+屋顶 1.0	uu u1 d ing3
+屋角 1.0	uu u1 j iao3
+屋内 1.0	uu u1 n ei4
+屋子 1.0	uu u1 z iy5
+无 1.0	uu u2
+无碍 1.0	uu u2 aa ai4
+无法 1.0	uu u2 f a3
+无方 1.0	uu u2 f ang1
+无光 1.0	uu u2 g uang1
+无害 1.0	uu u2 h ai4
+无愧于 1.0	uu u2 k ui4 vv v2
+无论 1.0	uu u2 l un4
+无论是 1.0	uu u2 l un4 sh ix4
+无奈 1.0	uu u2 n ai4
+无期徒刑 1.0	uu u2 q i1 t u2 x ing2
+无人问津 1.0	uu u2 r en2 uu un4 j in1
+无声 1.0	uu u2 sh eng1
+无数 1.0	uu u2 sh u4
+无望 1.0	uu u2 uu uang4
+无线 1.0	uu u2 x ian4
+无一 1.0	uu u2 ii i1
+无疑 1.0	uu u2 ii i2
+无影无踪 1.0	uu u2 ii ing3 uu u2 z ong1
+无缘无故 1.0	uu u2 vv van2 uu u2 g u4
+梧 1.0	uu u2
+吴 1.0	uu u2
+吴孟超 1.0	uu u2 m eng4 ch ao1
+毋 1.0	uu u2
+武 1.0	uu u3
+武昌鱼 1.0	uu u3 ch ang1 vv v2
+武官 1.0	uu u3 g uan1
+武汉 1.0	uu u3 h an4
+武器装备 1.0	uu u3 q i4 zh uang1 b ei4
+武装 1.0	uu u3 zh uang1
+五 1.0	uu u3
+五百 1.0	uu u2 b ai3
+五村 1.0	uu u3 c un1
+五大 1.0	uu u3 d a4
+五段 1.0	uu u3 d uan4
+五个 1.0	uu u3 g e4
+五个月 1.0	uu u3 g e4 vv ve4
+五更 1.0	uu u3 g eng1
+五国 1.0	uu u3 g uo2
+五六 1.0	uu u3 l iu4
+五六年 1.0	uu u3 l iu4 n ian2
+五年 1.0	uu u3 n ian2
+五年内 1.0	uu u3 n ian2 n ei4
+五千 1.0	uu u3 q ian1
+五人 1.0	uu u3 r en2
+五色 1.0	uu u3 s e4
+五十 1.0	uu u3 sh ix2
+五十八 1.0	uu u3 sh ix2 b a1
+五十多 1.0	uu u3 sh ix2 d uo1
+五十九 1.0	uu u3 sh ix2 j iu3
+五四运动 1.0	uu u3 s iy4 vv vn4 d ong4
+五台 1.0	uu u3 t ai2
+五万 1.0	uu u3 uu uan4
+五味 1.0	uu u3 uu ui4
+五香 1.0	uu u3 x iang1
+五项 1.0	uu u3 x iang4
+五行 1.0	uu u3 x ing2
+五亿 1.0	uu u3 ii i4
+五岳 1.0	uu u3 vv ve4
+五月 1.0	uu u3 vv ve4
+午 1.0	uu u3
+午餐肉 1.0	uu u3 c an1 r ou4
+午饭 1.0	uu u3 f an4
+午后 1.0	uu u3 h ou4
+午夜 1.0	uu u3 ii ie4
+舞 1.0	uu u3
+舞会 1.0	uu u3 h ui4
+舞团 1.0	uu u3 t uan2
+伍 1.0	uu u3
+雾 1.0	uu u4
+物 1.0	uu u4
+物品 1.0	uu u4 p in3
+物体 1.0	uu u4 t i3
+物像 1.0	uu u4 x iang4
+物资 1.0	uu u4 z iy1
+勿忘 1.0	uu u4 uu uang4
+勿忘我 1.0	uu u4 uu uang4 uu uo3
+务 1.0	uu u4
+务必 1.0	uu u4 b i4
+务实 1.0	uu u4 sh ix2
+悟 1.0	uu u4
+悟到 1.0	uu u4 d ao4
+悟到 1.0	uu u4 d ao5
+误差 1.0	uu u4 ch a1
+误区 1.0	uu u4 q v1
+昔日 1.0	x i1 r iz4
+西 1.0	x i1
+西安 1.0	x i1 aa an1
+西班牙 1.0	x i1 b an1 ii ia2
+西北 1.0	x i1 b ei3
+西北角 1.0	x i1 b ei2 j iao3
+西部 1.0	x i1 b u4
+西藏 1.0	x i1 z ang4
+西楚 1.0	x i1 ch u3
+西德 1.0	x i1 d e2
+西瓜 1.0	x i1 g ua1
+西哈努克 1.0	x i1 h a1 n u3 k e4
+西湖 1.0	x i1 h u2
+西门外 1.0	x i1 m en2 uu uai4
+西山 1.0	x i1 sh an1
+西周 1.0	x i1 zh ou1
+矽 1.0	x i1
+吸食 1.0	x i1 sh ix2
+吸引 1.0	x i1 ii in3
+牺牲 1.0	x i1 sh eng1
+稀 1.0	x i1
+稀薄 1.0	x i1 b o2
+稀饭 1.0	x i1 f an4
+稀奇 1.0	x i1 q i2
+息 1.0	x i1
+希 1.0	x i1
+希君 1.0	x i1 j vn1
+希望 1.0	x i1 uu uang4
+希望小学 1.0	x i1 uu uang4 x iao3 x ve2
+膝伤 1.0	x i1 sh ang1
+溪 1.0	x i1
+袭击 1.0	x i2 j i1
+袭人 1.0	x i2 r en2
+席 1.0	x i2
+习惯 1.0	x i2 g uan4
+喜 1.0	x i3
+喜爱 1.0	x i3 aa ai4
+喜欢 1.0	x i3 h uan1
+喜讯 1.0	x i3 x vn4
+喜悦 1.0	x i3 vv ve4
+铣 1.0	x i3
+洗 1.0	x i3
+洗涤剂 1.0	x i3 d i2 j i4
+洗净 1.0	x i3 j ing4
+洗衣做饭 1.0	x i3 ii i1 z uo4 f an4
+系 1.0	j i4
+系列 1.0	x i4 l ie4
+系统 1.0	x i4 t ong3
+戏 1.0	x i4
+戏称 1.0	x i4 ch eng1
+细 1.0	x i4
+细嚼慢咽 1.0	x i4 j iao2 m an4 ii ian4
+细致 1.0	x i4 zh ix4
+瞎说 1.0	x ia1 sh uo1
+瞎子 1.0	x ia1 z iy5
+虾 1.0	x ia1
+峡 1.0	x ia2
+侠 1.0	x ia2
+狭小 1.0	x ia2 x iao3
+下 1.0	x ia4
+下辈子 1.0	x ia4 b ei4 z iy5
+下边 1.0	x ia4 b ian5
+下大雨 1.0	x ia4 d a4 vv v3
+下到 1.0	x ia4 d ao4
+下地 1.0	x ia4 d i4
+下放 1.0	x ia4 f ang4
+下滑 1.0	x ia4 h ua2
+下降 1.0	x ia4 j iang4
+下决心 1.0	x ia4 j ve2 x in1
+下来 1.0	x ia4 l ai5
+下里巴人 1.0	x ia4 l i3 b a1 r en2
+下面 1.0	x ia4 m ian4
+下派 1.0	x ia4 p ai4
+下去 1.0	x ia4 q v5
+下山 1.0	x ia4 sh an1
+下午 1.0	x ia4 uu u3
+下乡 1.0	x ia4 x iang1
+下旬 1.0	x ia4 x vn2
+下压 1.0	x ia4 ii ia1
+下腰 1.0	x ia4 ii iao1
+下一个 1.0	x ia4 ii i2 g e4
+下游 1.0	x ia4 ii iu2
+下雨 1.0	x ia4 vv v3
+下榻 1.0	x ia4 t a4
+厦门市 1.0	x ia4 m en2 sh ix4
+夏 1.0	x ia4
+夏花 1.0	x ia4 h ua1
+夏衍 1.0	x ia4 ii ian3
+夏夜 1.0	x ia4 ii ie4
+锨 1.0	x ian1
+先 1.0	x ian1
+先锋派 1.0	x ian1 f eng1 p ai4
+先后 1.0	x ian1 h ou4
+先进 1.0	x ian1 j in4
+先生 1.0	x ian1 sh eng5
+先是 1.0	x ian1 sh ix4
+仙 1.0	x ian1
+鲜 1.0	x ian1
+鲜 1.0	x ian3
+鲜花 1.0	x ian1 h ua1
+鲜活 1.0	x ian1 h uo2
+鲜味 1.0	x ian1 uu ui4
+鲜血 1.0	x ian1 x ie3
+鲜血 1.0	x ian1 x ve3
+鲜血 1.0	x ian1 x ve4
+咸菜 1.0	x ian2 c ai4
+咸阳 1.0	x ian2 ii iang2
+咸阳市 1.0	x ian2 ii iang2 sh ix4
+贤 1.0	x ian2
+闲时 1.0	x ian2 sh ix2
+闲言碎语 1.0	x ian2 ii ian2 s ui4 vv v3
+嫌疑犯 1.0	x ian2 ii i2 f an4
+显得 1.0	x ian3 d e5
+显而易见 1.0	x ian3 ee er2 ii i4 j ian4
+显赫 1.0	x ian3 h e4
+显然 1.0	x ian3 r an2
+险恶 1.0	x ian3 ee e4
+现 1.0	x ian4
+现场 1.0	x ian4 ch ang3
+现成 1.0	x ian4 ch eng2
+现阶段 1.0	x ian4 j ie1 d uan4
+现年 1.0	x ian4 n ian2
+现实 1.0	x ian4 sh ix2
+现象 1.0	x ian4 x iang4
+现有 1.0	x ian4 ii iu3
+现在 1.0	x ian4 z ai4
+现状 1.0	x ian4 zh uang4
+献艺 1.0	x ian4 ii i4
+县 1.0	x ian4
+县级 1.0	x ian4 j i2
+县市 1.0	x ian4 sh ix4
+县医院 1.0	x ian4 ii i1 vv van4
+县政协 1.0	x ian4 zh eng4 x ie2
+羡慕 1.0	x ian4 m u4
+宪 1.0	x ian4
+宪法 1.0	x ian4 f a3
+陷 1.0	x ian4
+陷进 1.0	x ian4 j in4
+限于 1.0	x ian4 vv v2
+线 1.0	x ian4
+相 1.0	x iang1
+相 1.0	x iang4
+相传 1.0	x iang1 ch uan2
+相当 1.0	x iang1 d ang1
+相当于 1.0	x iang1 d ang1 vv v2
+相对 1.0	x iang1 d ui4
+相反 1.0	x iang1 f an3
+相关 1.0	x iang1 g uan1
+相关知识 1.0	x iang1 g uan1 zh ix1 sh ix5
+相互 1.0	x iang1 h u4
+相互作用 1.0	x iang1 h u4 z uo4 ii iong4
+相继 1.0	x iang1 j i4
+相恋 1.0	x iang1 l ian4
+相熟 1.0	x iang1 sh u2
+相信我 1.0	x iang1 x in4 uu uo3
+相应 1.0	x iang1 ii ing4
+相映 1.0	x iang1 ii ing4
+相悖 1.0	x iang1 b ei4
+香 1.0	x iang1
+香港 1.0	x iang1 g ang3
+香菇 1.0	x iang1 g u1
+香香 1.0	x iang1 x iang1
+香烟 1.0	x iang1 ii ian1
+箱 1.0	x iang1
+箱内 1.0	x iang1 n ei4
+湘江 1.0	x iang1 j iang1
+乡 1.0	x iang1
+乡里 1.0	x iang1 l i3
+乡镇 1.0	x iang1 zh en4
+祥 1.0	x iang2
+想 1.0	x iang3
+想出 1.0	x iang3 ch u1
+想念 1.0	x iang3 n ian4
+想起来 1.0	x iang2 q i3 l ai2
+想象 1.0	x iang3 x iang4
+想笑 1.0	x iang3 x iao4
+想要 1.0	x iang3 ii iao4
+响 1.0	x iang3
+享年 1.0	x iang3 n ian2
+享受 1.0	x iang3 sh ou4
+享用 1.0	x iang3 ii iong4
+享誉 1.0	x iang3 vv v4
+项目 1.0	x iang4 m u5
+项羽 1.0	x iang4 vv v3
+巷战 1.0	x iang4 zh an4
+橡树 1.0	x iang4 sh u4
+像 1.0	x iang4
+向 1.0	x iang4
+向往 1.0	x iang4 uu uang3
+向我招手 1.0	x iang4 uu uo3 zh ao1 sh ou3
+象 1.0	x iang4
+哮喘病 1.0	x iao4 ch uan3 b ing4
+销 1.0	x iao1
+销毁 1.0	x iao1 h ui3
+销售 1.0	x iao1 sh ou4
+销售额 1.0	x iao1 sh ou4 ee e2
+销售渠道 1.0	x iao1 sh ou4 q v2 d ao4
+消费者 1.0	x iao1 f ei4 zh e3
+消耗 1.0	x iao1 h ao4
+消灭 1.0	x iao1 m ie4
+消去 1.0	x iao1 q v4
+消逝 1.0	x iao1 sh ix4
+消息 1.0	x iao1 x i5
+消灾 1.0	x iao1 z ai1
+晓 1.0	x iao3
+晓得 1.0	x iao3 d e5
+晓庄 1.0	x iao3 zh uang1
+小 1.0	x iao3
+小艾 1.0	x iao3 aa ai4
+小杯 1.0	x iao3 b ei1
+小船 1.0	x iao3 ch uan2
+小房子 1.0	x iao3 f ang2 z iy5
+小费 1.0	x iao3 f ei4
+小孩子 1.0	x iao3 h ai2 z iy5
+小湖 1.0	x iao3 h u2
+小姐 1.0	x iao2 j ie3
+小军 1.0	x iao3 j vn1
+小康村 1.0	x iao3 k ang1 c un1
+小路 1.0	x iao3 l u4
+小麦 1.0	x iao3 m ai4
+小苗 1.0	x iao3 m iao2
+小胖子 1.0	x iao3 p ang4 z iy5
+小巧玲珑 1.0	x iao2 q iao3 l ing2 l ong2
+小人 1.0	x iao3 r en2
+小山 1.0	x iao3 sh an1
+小时侯 1.0	x iao3 sh ix2 h ou5
+小文 1.0	x iao3 uu un2
+小伍 1.0	x iao2 uu u3
+小院 1.0	x iao3 vv van4
+小仲 1.0	x iao3 zh ong4
+小组 1.0	x iao2 z u3
+校服 1.0	x iao4 f u2
+肖 1.0	x iao1
+肖 1.0	x iao4
+笑 1.0	x iao4
+笑着 1.0	x iao4 zh e5
+效 1.0	x iao4
+效果 1.0	x iao4 g uo3
+效率 1.0	x iao4 l v5
+效益 1.0	x iao4 ii i4
+效应 1.0	x iao4 ii ing4
+些 1.0	x ie1
+歇 1.0	x ie1
+蝎 1.0	x ie1
+协调 1.0	x ie2 t iao2
+协议 1.0	x ie2 ii i4
+协约国 1.0	x ie2 vv ve1 g uo2
+协助 1.0	x ie2 zh u4
+协作 1.0	x ie2 z uo4
+携 1.0	x ie2
+邪王 1.0	x ie2 uu uang2
+斜眼 1.0	x ie2 ii ian3
+写 1.0	x ie3
+写给 1.0	x ie2 g ei3
+谢 1.0	x ie4
+谢晋 1.0	x ie4 j in4
+谢意 1.0	x ie4 ii i4
+芯 1.0	x in1
+欣然 1.0	x in1 r an2
+欣赏 1.0	x in1 sh ang3
+辛 1.0	x in1
+辛苦 1.0	x in1 k u3
+新 1.0	x in1
+新材料 1.0	x in1 c ai2 l iao4
+新潮 1.0	x in1 ch ao2
+新的 1.0	x in1 d e5
+新都 1.0	x in1 d u1
+新概念英语 1.0	x in1 g ai4 n ian4 ii ing1 vv v3
+新港 1.0	x in1 g ang3
+新华社 1.0	x in1 h ua2 sh e4
+新华医院 1.0	x in1 h ua2 ii i1 vv van4
+新加坡 1.0	x in1 j ia1 p o1
+新建 1.0	x in1 j ian4
+新晋 1.0	x in1 j in4
+新郎 1.0	x in1 l ang2
+新立 1.0	x in1 l i4
+新路 1.0	x in1 l u4
+新娘 1.0	x in1 n iang2
+新闻 1.0	x in1 uu un2
+新鲜 1.0	x in1 x ian1
+新型 1.0	x in1 x ing2
+新药 1.0	x in1 ii iao4
+新颖 1.0	x in1 ii ing3
+忻 1.0	x in1
+心 1.0	x in1
+心地 1.0	x in1 d i4
+心浮 1.0	x in1 f u2
+心肝 1.0	x in1 g an1
+心肌梗塞 1.0	x in1 j i1 g eng3 s e4
+心惊肉跳 1.0	x in1 j ing1 r ou4 t iao4
+心境 1.0	x in1 j ing4
+心理学 1.0	x in1 l i3 x ve2
+心里 1.0	x in1 l i3
+心力 1.0	x in1 l i4
+心情 1.0	x in1 q ing2
+心思 1.0	x in1 s iy5
+心头 1.0	x in1 t ou2
+心脏 1.0	x in1 z ang4
+信 1.0	x in4
+信佛 1.0	x in4 f o2
+信徒 1.0	x in4 t u2
+信息 1.0	x in4 x i1
+信息业 1.0	x in4 x i1 ii ie4
+信用卡 1.0	x in4 ii iong4 k a3
+星空 1.0	x ing1 k ong1
+腥味 1.0	x ing1 uu ui4
+猩猩 1.0	x ing1 x ing5
+兴起 1.0	x ing1 q i3
+兴趣 1.0	x ing4 q v4
+刑法 1.0	x ing2 f a3
+刑侦 1.0	x ing2 zh en1
+型材 1.0	x ing2 c ai2
+形 1.0	x ing2
+形成 1.0	x ing2 ch eng2
+形式 1.0	x ing2 sh ix4
+形势 1.0	x ing2 sh ix4
+形似 1.0	x ing2 s iy4
+形象 1.0	x ing2 x iang4
+形状 1.0	x ing2 zh uang4
+行 1.0	h ang2
+行 1.0	x ing2
+行列 1.0	h ang2 l ie4
+行人 1.0	x ing2 r en2
+行为 1.0	x ing2 uu ui2
+行业 1.0	h ang2 ii ie4
+行云流水 1.0	x ing2 vv vn2 l iu2 sh ui3
+行政 1.0	x ing2 zh eng4
+醒 1.0	x ing3
+幸 1.0	x ing4
+幸福 1.0	x ing4 f u2
+幸福的家庭 1.0	x ing4 f u2 d e5 j ia1 t ing2
+幸运 1.0	x ing4 vv vn4
+性 1.0	x ing4
+性爱 1.0	x ing4 aa ai4
+性格 1.0	x ing4 g e2
+性情 1.0	x ing4 q ing2
+性腺 1.0	x ing4 x ian4
+性质 1.0	x ing4 zh ix5
+姓 1.0	x ing4
+兄 1.0	x iong1
+兄弟 1.0	x iong1 d i4
+凶 1.0	x iong1
+凶恶 1.0	x iong1 ee e4
+凶狠 1.0	x iong1 h en3
+凶杀 1.0	x iong1 sh a1
+凶手 1.0	x iong1 sh ou3
+胸襟 1.0	x iong1 j in1
+胸前 1.0	x iong1 q ian2
+匈 1.0	x iong1
+匈奴 1.0	x iong1 n u2
+匈牙利 1.0	x iong1 ii ia2 l i4
+雄 1.0	x iong2
+雄伟 1.0	x iong2 uu ui3
+熊 1.0	x iong2
+熊猫 1.0	x iong2 m ao1
+休 1.0	x iu1
+休息室 1.0	x iu1 x i5 sh ix4
+修 1.0	x iu1
+修复 1.0	x iu1 f u4
+修改 1.0	x iu1 g ai3
+修理 1.0	x iu1 l i3
+修配 1.0	x iu1 p ei4
+修饰 1.0	x iu1 sh ix4
+修修补补 1.0	x iu1 x iu1 b u2 b u3
+修养 1.0	x iu1 ii iang3
+修筑 1.0	x iu1 zh u4
+嗅 1.0	x iu4
+秀丽 1.0	x iu4 l i4
+秀玲 1.0	x iu4 l ing2
+秀美 1.0	x iu4 m ei3
+秀媚 1.0	x iu4 m ei4
+秀云 1.0	x iu4 vv vn2
+袖子 1.0	x iu4 z iy5
+绣 1.0	x iu4
+需 1.0	x v1
+需求 1.0	x v1 q iu2
+需要 1.0	x v1 ii iao4
+虚 1.0	x v1
+须 1.0	x v1
+徐 1.0	x v2
+徐敏 1.0	x v2 m in3
+徐州市 1.0	x v2 zh ou1 sh ix4
+许 1.0	x v3
+许多 1.0	x v3 d uo1
+蓄 1.0	x v4
+旭华 1.0	x v4 h ua2
+畜 1.0	ch u4
+畜 1.0	x v4
+轩昂 1.0	x van1 aa ang2
+轩辕 1.0	x van1 vv van2
+喧闹 1.0	x van1 n ao4
+宣布 1.0	x van1 b u4
+宣传 1.0	x van1 ch uan2
+宣传牌 1.0	x van1 ch uan2 p ai2
+宣告 1.0	x van1 g ao4
+宣扬 1.0	x van1 ii iang2
+悬空 1.0	x van2 k ong1
+旋 1.0	x van2
+旋 1.0	x van4
+旋即 1.0	x van2 j i2
+旋转 1.0	x van2 zh uan3
+玄 1.0	x van2
+玄奥 1.0	x van2 aa ao4
+玄乎 1.0	x van2 h u5
+玄妙 1.0	x van2 m iao4
+玄武湖 1.0	x van2 uu u3 h u2
+选 1.0	x van3
+选购 1.0	x van3 g ou4
+选集 1.0	x van3 j i2
+选矿 1.0	x van3 k uang4
+选手 1.0	x van2 sh ou3
+选学 1.0	x van3 x ve2
+选择 1.0	x van3 z e2
+薛 1.0	x ve1
+学 1.0	x ve2
+学会 1.0	x ve2 h ui4
+学家 1.0	x ve2 j ia1
+学年 1.0	x ve2 n ian2
+学派 1.0	x ve2 p ai4
+学生 1.0	x ve2 sh eng1
+学文 1.0	x ve2 uu un2
+学习 1.0	x ve2 x i2
+学校 1.0	x ve2 x iao4
+学养 1.0	x ve2 ii iang3
+学业 1.0	x ve2 ii ie4
+学语文 1.0	x ve2 vv v3 uu un2
+学员 1.0	x ve2 vv van2
+学院 1.0	x ve2 vv van4
+学者 1.0	x ve2 zh e3
+穴 1.0	x ve2
+雪 1.0	x ve3
+雪崩 1.0	x ve3 b eng1
+雪花 1.0	x ve3 h ua1
+雪灾 1.0	x ve3 z ai1
+血 1.0	x ie3
+血 1.0	x ve4
+血案 1.0	x ie3 aa an4
+血案 1.0	x ve4 aa an4
+血管 1.0	x ie2 g uan3
+血管 1.0	x ve4 g uan3
+血管瘤 1.0	x ve2 g uan3 l iu2
+血管瘤 1.0	x ve4 g uan3 l iu2
+血肉 1.0	x ie3 r ou4
+血肉 1.0	x ve4 r ou4
+血液 1.0	x ie3 ii ie4
+血液 1.0	x ve3 ii ie4
+血液 1.0	x ve4 ii ie4
+血液循环 1.0	x ie3 ii ie4 x vn2 h uan2
+血液循环 1.0	x ve3 ii ie4 x vn2 h uan2
+血液循环 1.0	x ve4 ii ie4 x vn2 h uan2
+勋章 1.0	x vn1 zh ang1
+熏陶 1.0	x vn1 t ao1
+熏陶 1.0	x vn1 t ao2
+熏鱼 1.0	x vn1 vv v2
+循 1.0	x vn2
+循环 1.0	x vn2 h uan2
+循环系统 1.0	x vn2 h uan2 x i4 t ong3
+寻呼 1.0	x vn2 h u1
+寻呼台 1.0	x vn2 h u1 t ai2
+寻欢作乐 1.0	x vn2 h uan1 z uo4 l e4
+寻找 1.0	x vn2 zh ao3
+巡逻艇 1.0	x vn2 l uo2 t ing3
+训 1.0	x vn4
+训练 1.0	x vn4 l ian4
+训练场 1.0	x vn4 l ian4 ch ang3
+训练基地 1.0	x vn4 l ian4 j i1 d i4
+讯 1.0	x vn4
+迅速 1.0	x vn4 s u4
+压 1.0	ii ia1
+压力 1.0	ii ia1 l i4
+压裂 1.0	ii ia1 l ie4
+压实 1.0	ii ia1 sh ix2
+压死 1.0	ii ia1 s iy3
+压岁钱 1.0	ii ia1 s ui4 q ian2
+压抑 1.0	ii ia1 ii i4
+压制 1.0	ii ia1 zh ix4
+压轴 1.0	ii ia1 zh ou2
+压轴 1.0	ii ia1 zh ou4
+押 1.0	ii ia1
+押解 1.0	ii ia1 j ie4
+押金 1.0	ii ia1 j in1
+押运 1.0	ii ia1 vv vn4
+押韵 1.0	ii ia1 vv vn4
+鸦 1.0	ii ia1
+鸦片战争 1.0	ii ia1 p ian4 zh an4 zh eng1
+鸭 1.0	ii ia1
+呀 1.0	ii ia5
+芽 1.0	ii ia2
+牙 1.0	ii ia2
+牙白 1.0	ii ia2 b ai2
+牙齿 1.0	ii ia2 ch ix3
+牙床 1.0	ii ia2 ch uang2
+牙膏 1.0	ii ia2 g ao1
+牙根 1.0	ii ia2 g en1
+牙轮 1.0	ii ia2 l un2
+牙签 1.0	ii ia2 q ian1
+牙刷 1.0	ii ia2 sh ua1
+牙龈 1.0	ii ia2 ii in2
+牙龈出血 1.0	ii ia2 ii in2 ch u1 x ve4
+崖 1.0	ii ia2
+雅 1.0	ii ia3
+雅加达 1.0	ii ia3 j ia1 d a2
+雅俗共赏 1.0	ii ia3 s u2 g ong4 sh ang3
+哑 1.0	ii ia3
+亚 1.0	ii ia4
+亚红 1.0	ii ia4 h ong2
+亚军 1.0	ii ia4 j vn1
+亚美 1.0	ii ia2 m ei3
+亚美 1.0	ii ia4 m ei3
+亚美尼亚 1.0	ii ia4 m ei3 n i2 ii ia4
+亚明 1.0	ii ia3 m ing2
+亚明 1.0	ii ia4 m ing2
+亚特兰大 1.0	ii ia4 t e4 l an2 d a4
+亚文 1.0	ii ia3 uu un2
+亚文 1.0	ii ia4 uu un2
+亚细亚 1.0	ii ia4 x i4 ii ia4
+亚硝胺 1.0	ii ia4 x iao1 aa an4
+亚裔 1.0	ii ia4 ii i4
+亚洲 1.0	ii ia4 zh ou1
+咽 1.0	ii ian1
+咽 1.0	ii ian4
+咽 1.0	ii ie4
+烟 1.0	ii ian1
+烟草 1.0	ii ian1 c ao3
+烟草公司 1.0	ii ian1 c ao3 g ong1 s iy1
+烟酒 1.0	ii ian1 j iu3
+烟台 1.0	ii ian1 t ai2
+烟筒 1.0	ii ian1 t ong5
+烟雾 1.0	ii ian1 uu u4
+烟消云散 1.0	ii ian1 x iao1 vv vn2 s an4
+淹 1.0	ii ian1
+淹没 1.0	ii ian1 m o4
+淹死 1.0	ii ian1 s iy3
+盐 1.0	ii ian2
+盐城市 1.0	ii ian2 ch eng2 sh ix4
+盐酸 1.0	ii ian2 s uan1
+严 1.0	ii ian2
+严冬 1.0	ii ian2 d ong1
+严格 1.0	ii ian2 g e2
+严寒 1.0	ii ian2 h an2
+严禁 1.0	ii ian2 j in4
+严厉打击 1.0	ii ian2 l i4 d a3 j i1
+严密 1.0	ii ian2 m i4
+严明 1.0	ii ian2 m ing2
+严肃 1.0	ii ian2 s u4
+严严实实 1.0	ii ian2 ii ian2 sh ix1 sh ix1
+严严实实 1.0	ii ian2 ii ian2 sh ix2 sh ix2
+严严实实 1.0	ii ian2 ii ian2 sh ix5 sh ix5
+严重 1.0	ii ian2 zh ong4
+研 1.0	ii ian2
+研究 1.0	ii ian2 j iu1
+研究所 1.0	ii ian2 j iu1 s uo3
+研究院 1.0	ii ian2 j iu1 vv van4
+研习 1.0	ii ian2 x i2
+研制 1.0	ii ian2 zh ix4
+岩 1.0	ii ian2
+岩浆 1.0	ii ian2 j iang1
+岩棉 1.0	ii ian2 m ian2
+岩石 1.0	ii ian2 sh ix2
+延 1.0	ii ian2
+延安 1.0	ii ian2 aa an1
+延缓 1.0	ii ian2 h uan3
+延伸 1.0	ii ian2 sh en1
+延寿 1.0	ii ian2 sh ou4
+延至 1.0	ii ian2 zh ix4
+言 1.0	ii ian2
+言和 1.0	ii ian2 h e2
+言中 1.0	ii ian2 zh ong1
+颜 1.0	ii ian2
+颜色 1.0	ii ian2 s e4
+阎王 1.0	ii ian2 uu uang5
+炎 1.0	ii ian2
+炎热 1.0	ii ian2 r e4
+沿 1.0	ii ian2
+沿海 1.0	ii ian2 h ai3
+沿用 1.0	ii ian2 ii iong4
+掩 1.0	ii ian3
+掩映 1.0	ii ian3 ii ing4
+眼 1.0	ii ian3
+眼光 1.0	ii ian3 g uang1
+眼角 1.0	ii ian2 j iao3
+眼睛 1.0	ii ian3 j ing5
+眼看 1.0	ii ian3 k an4
+眼泪 1.0	ii ian3 l ei4
+眼前 1.0	ii ian3 q ian2
+眼色 1.0	ii ian3 s e4
+眼下 1.0	ii ian3 x ia4
+眼珠子 1.0	ii ian3 zh u1 z iy5
+眼睑 1.0	ii ian2 j ian3
+演 1.0	ii ian3
+演唱 1.0	ii ian3 ch ang4
+演出 1.0	ii ian3 ch u1
+演算 1.0	ii ian3 s uan4
+演艺圈 1.0	ii ian3 ii i4 q van1
+演员 1.0	ii ian3 vv van2
+演职员 1.0	ii ian3 zh ix2 vv van2
+演奏 1.0	ii ian3 z ou4
+艳福 1.0	ii ian4 f u2
+艳丽 1.0	ii ian4 l i4
+艳阳 1.0	ii ian4 ii iang2
+燕 1.0	ii ian1
+燕 1.0	ii ian4
+燕玲 1.0	ii ian4 l ing2
+燕燕 1.0	ii ian4 ii ian4
+厌恶 1.0	ii ian4 uu u4
+砚 1.0	ii ian4
+秧 1.0	ii iang1
+秧歌队 1.0	ii iang1 g e5 d ui4
+秧苗 1.0	ii iang1 m iao2
+秧田 1.0	ii iang1 t ian2
+杨 1.0	ii iang2
+杨春 1.0	ii iang2 ch un1
+杨贵妃 1.0	ii iang2 g ui4 f ei1
+杨国忠 1.0	ii iang2 g uo2 zh ong1
+杨洪基 1.0	ii iang2 h ong2 j i1
+杨军 1.0	ii iang2 j vn1
+杨柳 1.0	ii iang2 l iu3
+杨某 1.0	ii iang2 m ou3
+杨勇 1.0	ii iang2 ii iong3
+杨钰莹 1.0	ii iang2 vv v4 ii ing2
+扬 1.0	ii iang2
+扬名 1.0	ii iang2 m ing2
+扬起 1.0	ii iang2 q i3
+扬扬 1.0	ii iang2 ii iang2
+扬扬 1.0	ii iang2 ii iang5
+扬州 1.0	ii iang2 zh ou1
+羊 1.0	ii iang2
+羊羔肉 1.0	ii iang2 g ao1 r ou4
+羊毛 1.0	ii iang2 m ao2
+羊毛衫 1.0	ii iang2 m ao2 sh an1
+羊皮 1.0	ii iang2 p i2
+羊绒 1.0	ii iang2 r ong2
+羊子 1.0	ii iang2 z iy3
+羊子 1.0	ii iang2 z iy5
+洋 1.0	ii iang2
+洋溢 1.0	ii iang2 ii i4
+阳 1.0	ii iang2
+阳春 1.0	ii iang2 ch un1
+阳春白雪 1.0	ii iang2 ch un1 b ai2 x ve3
+阳光 1.0	ii iang2 g uang1
+阳泉市 1.0	ii iang2 q van2 sh ix4
+阳山 1.0	ii iang2 sh an1
+阳县 1.0	ii iang2 x ian4
+阳新县 1.0	ii iang2 x in1 x ian4
+氧 1.0	ii iang3
+氧化 1.0	ii iang3 h ua4
+氧气 1.0	ii iang3 q i4
+仰面 1.0	ii iang3 m ian4
+仰慕 1.0	ii iang3 m u4
+仰视 1.0	ii iang3 sh ix4
+仰望天空 1.0	ii iang3 uu uang4 t ian1 k ong1
+仰卧 1.0	ii iang3 uu uo4
+仰卧起坐 1.0	ii iang3 uu uo4 q i3 z uo4
+养 1.0	ii iang3
+养病 1.0	ii iang3 b ing4
+养成 1.0	ii iang3 ch eng2
+养活 1.0	ii iang3 h uo2
+养活 1.0	ii iang3 h uo5
+养老 1.0	ii iang2 l ao3
+养牛 1.0	ii iang3 n iu2
+养女 1.0	ii iang2 n v3
+养人 1.0	ii iang3 r en2
+养鱼 1.0	ii iang3 vv v2
+养育 1.0	ii iang3 vv v4
+养殖 1.0	ii iang3 zh ix2
+养殖技术 1.0	ii iang3 zh ix2 j i4 sh u4
+养殖业 1.0	ii iang3 zh ix2 ii ie4
+养猪 1.0	ii iang3 zh u1
+样 1.0	ii iang4
+样机 1.0	ii iang4 j i1
+样子 1.0	ii iang4 z iy5
+邀 1.0	ii iao1
+邀请 1.0	ii iao1 q ing3
+邀请赛 1.0	ii iao1 q ing3 s ai4
+腰 1.0	ii iao1
+腰部 1.0	ii iao1 b u4
+腰酸腿疼 1.0	ii iao1 s uan1 t ui3 t eng2
+腰疼 1.0	ii iao1 t eng2
+腰围 1.0	ii iao1 uu ui2
+妖孽 1.0	ii iao1 n ie4
+瑶山 1.0	ii iao2 sh an1
+摇摆 1.0	ii iao2 b ai3
+摇晃 1.0	ii iao2 h uang4
+摇头 1.0	ii iao2 t ou2
+摇曳 1.0	ii iao2 ii ie4
+摇一摇 1.0	ii iao2 ii i4 ii iao2
+摇一摇 1.0	ii iao2 ii i5 ii iao2
+尧 1.0	ii iao2
+遥 1.0	ii iao2
+遥望 1.0	ii iao2 uu uang4
+遥远 1.0	ii iao2 vv van3
+窑 1.0	ii iao2
+窑洞 1.0	ii iao2 d ong4
+姚 1.0	ii iao2
+咬 1.0	ii iao3
+咬牙 1.0	ii iao3 ii ia2
+舀 1.0	ii iao3
+药 1.0	ii iao4
+药厂 1.0	ii iao4 ch ang3
+药品 1.0	ii iao4 p in3
+药师 1.0	ii iao4 sh ix1
+药物 1.0	ii iao4 uu u4
+药效 1.0	ii iao4 x iao4
+药业 1.0	ii iao4 ii ie4
+要 1.0	ii iao4
+要按照 1.0	ii iao4 aa an4 zh ao4
+要靠 1.0	ii iao4 k ao4
+要买 1.0	ii iao4 m ai3
+要么 1.0	ii iao4 m e5
+要钱 1.0	ii iao4 q ian2
+要求 1.0	ii iao1 q iu2
+要人 1.0	ii iao4 r en2
+要是 1.0	ii iao4 sh ix4
+要有信心 1.0	ii iao4 ii iu3 x in4 x in1
+要员 1.0	ii iao4 vv van2
+要约 1.0	ii iao1 vv ve1
+要知道 1.0	ii iao4 zh ix1 d ao4
+耀邦 1.0	ii iao4 b ang1
+椰子 1.0	ii ie1 z iy5
+耶稣 1.0	ii ie1 s u1
+爷爷 1.0	ii ie2 ii ie5
+爷爷奶奶 1.0	ii ie2 ii ie5 n ai3 n ai5
+野 1.0	ii ie3
+野菜 1.0	ii ie3 c ai4
+野生 1.0	ii ie3 sh eng1
+野兽 1.0	ii ie3 sh ou4
+野外 1.0	ii ie3 uu uai4
+野猪 1.0	ii ie3 zh u1
+冶炼 1.0	ii ie3 l ian4
+也 1.0	ii ie3
+也罢 1.0	ii ie3 b a4
+也好 1.0	ii ie2 h ao3
+也是 1.0	ii ie3 sh ix4
+也有 1.0	ii ie2 ii iu3
+业 1.0	ii ie4
+业务 1.0	ii ie4 uu u4
+业务部 1.0	ii ie4 uu u4 b u4
+业务员 1.0	ii ie4 uu u4 vv van2
+业余 1.0	ii ie4 vv v2
+叶 1.0	ii ie4
+叶利钦 1.0	ii ie4 l i4 q in1
+叶某 1.0	ii ie4 m ou3
+腋 1.0	ii ie4
+腋下 1.0	ii ie4 x ia4
+夜 1.0	ii ie4
+夜间 1.0	ii ie4 j ian1
+夜空 1.0	ii ie4 k ong1
+夜里 1.0	ii ie4 l i3
+夜晚 1.0	ii ie4 uu uan3
+夜行 1.0	ii ie4 x ing2
+夜一 1.0	ii ie4 ii i1
+液 1.0	ii ie4
+液体 1.0	ii ie4 t i3
+一 1.0	ii i1
+一百 1.0	ii i4 b ai3
+一百二 1.0	ii i4 b ai3 ee er4
+一百二十 1.0	ii i4 b ai3 ee er4 sh ix2
+一百零八 1.0	ii i4 b ai3 l ing2 b a1
+一百三十五 1.0	ii i4 b ai3 s an1 sh ix2 uu u3
+一百四 1.0	ii i4 b ai3 s iy4
+一百四十 1.0	ii i4 b ai3 s iy4 sh ix2
+一百万 1.0	ii i4 b ai3 uu uan4
+一百五十 1.0	ii i4 b ai2 uu u3 sh ix2
+一般 1.0	ii i4 b an1
+一半 1.0	ii i2 b an4
+一本 1.0	ii i4 b en3
+一边 1.0	ii i4 b ian1
+一并 1.0	ii i2 b ing4
+一处 1.0	ii i2 ch u4
+一串 1.0	ii i2 ch uan4
+一幢 1.0	ii i2 zh uang4
+一幢幢 1.0	ii i2 zh uang4 zh uang4
+一次次 1.0	ii i2 c iy4 c iy4
+一带 1.0	ii i2 d ai4
+一代 1.0	ii i2 d ai4
+一旦 1.0	ii i2 d an4
+一档 1.0	ii i1 d ang3
+一档 1.0	ii i4 d ang3
+一到 1.0	ii i2 d ao4
+一道 1.0	ii i2 d ao4
+一点 1.0	ii i4 d ian3
+一点儿 1.0	ii i4 d ian3 ee er5
+一点钟 1.0	ii i4 d ian3 zh ong1
+一定 1.0	ii i2 d ing4
+一动 1.0	ii i2 d ong4
+一对 1.0	ii i2 d ui4
+一二九 1.0	ii i2 ee er4 j iu3
+一番 1.0	ii i4 f an1
+一方面 1.0	ii i4 f ang1 m ian4
+一幅幅 1.0	ii i4 f u2 f u2
+一概 1.0	ii i2 g ai4
+一个 1.0	ii i2 g e4
+一个半月 1.0	ii i2 g e4 b an4 vv ve4
+一个劲 1.0	ii i2 g e4 j in4
+一个民族 1.0	ii i2 g e4 m in2 z u2
+一个人 1.0	ii i2 g e4 r en2
+一个月 1.0	ii i2 g e4 vv ve4
+一根 1.0	ii i4 g en1
+一号 1.0	ii i1 h ao4
+一会儿 1.0	ii i2 h ui3 ee er5
+一会儿 1.0	ii i2 h ui4 ee er5
+一家 1.0	ii i4 j ia1
+一家三口 1.0	ii i4 j ia1 s an1 k ou3
+一见 1.0	ii i2 j ian4
+一角 1.0	ii i4 j iao3
+一进门 1.0	ii i2 j in4 m en2
+一经 1.0	ii i4 j ing1
+一九 1.0	ii i1 j iu3
+一九九二年 1.0	ii i1 j iu2 j iu3 ee er4 n ian2
+一举 1.0	ii i4 j v3
+一看 1.0	ii i2 k an4
+一口气 1.0	ii i4 k ou3 q i4
+一块 1.0	ii i2 k uai4
+一块儿 1.0	ii i2 k uai4 ee er5
+一类 1.0	ii i2 l ei4
+一两 1.0	ii i4 l iang3
+一辆 1.0	ii i2 l iang4
+一六 1.0	ii i1 l iu4
+一六五 1.0	ii i2 l iu4 uu u3
+一路 1.0	ii i2 l u4
+一缕 1.0	ii i4 l v3
+一枚 1.0	ii i4 m ei2
+一面镜子 1.0	ii i2 m ian4 j ing4 z iy5
+一面面 1.0	ii i2 m ian4 m ian4
+一名 1.0	ii i4 m ing2
+一年 1.0	ii i4 n ian2
+一排排 1.0	ii i4 p ai2 p ai2
+一派 1.0	ii i2 p ai4
+一旁 1.0	ii i4 p ang2
+一盆盆 1.0	ii i4 p en2 p en2
+一批 1.0	ii i4 p i1
+一篇 1.0	ii i4 p ian1
+一片云 1.0	ii i2 p ian4 vv vn2
+一贫如洗 1.0	ii i4 p in2 r u2 x i3
+一平 1.0	ii i4 p ing2
+一起 1.0	ii i4 q i3
+一起去 1.0	ii i4 q i3 q v4
+一千 1.0	ii i4 q ian1
+一千七八 1.0	ii i4 q ian1 q i1 b a1
+一千五 1.0	ii i4 q ian1 uu u3
+一千五百 1.0	ii i4 q ian1 uu u2 b ai3
+一千一百 1.0	ii i4 q ian1 ii i1 b ai3
+一千一百 1.0	ii i4 q ian1 ii i4 b ai3
+一切 1.0	ii i2 q ie4
+一曲 1.0	ii i4 q v3
+一群 1.0	ii i4 q vn2
+一群群 1.0	ii i4 q vn2 q vn2
+一日 1.0	ii i2 r iz4
+一声 1.0	ii i1 sh eng1
+一声 1.0	ii i4 sh eng1
+一时 1.0	ii i4 sh ix2
+一手 1.0	ii i4 sh ou3
+一艘 1.0	ii i4 s ou1
+一体 1.0	ii i4 t i3
+一天 1.0	ii i4 t ian1
+一天到晚 1.0	ii i4 t ian1 d ao4 uu uan3
+一天内 1.0	ii i4 t ian1 n ei4
+一同 1.0	ii i4 t ong2
+一头 1.0	ii i4 t ou2
+一碗 1.0	ii i4 uu uan3
+一万 1.0	ii i2 uu uan4
+一万多 1.0	ii i2 uu uan4 d uo1
+一万元 1.0	ii i2 uu uan4 vv van2
+一网打尽 1.0	ii i4 uu uang2 d a3 j in4
+一望无际 1.0	ii i2 uu uang4 uu u2 j i4
+一味 1.0	ii i2 uu ui4
+一文 1.0	ii i4 uu un2
+一下 1.0	ii i2 x ia4
+一下子 1.0	ii i2 x ia4 z iy5
+一项 1.0	ii i2 x iang4
+一小时 1.0	ii i4 x iao3 sh ix2
+一些 1.0	ii i4 x ie1
+一心一意 1.0	ii i4 x in1 ii i2 ii i4
+一行人 1.0	ii i4 h ang2 r en2
+一行人 1.0	ii i4 x ing2 r en2
+一眼 1.0	ii i4 ii ian3
+一样 1.0	ii i2 ii iang4
+一拥而上 1.0	ii i4 ii iong1 ee er2 sh ang4
+一月 1.0	ii i1 vv ve4
+一再 1.0	ii i2 z ai4
+一针 1.0	ii i4 zh en1
+一阵 1.0	ii i2 zh en4
+一阵阵 1.0	ii i2 zh en4 zh en4
+一支 1.0	ii i4 zh ix1
+一直 1.0	ii i4 zh ix2
+一只 1.0	ii i4 zh ix1
+一周年 1.0	ii i4 zh ou1 n ian2
+一坐 1.0	ii i2 z uo4
+一座 1.0	ii i2 z uo4
+医 1.0	ii i1
+医护人员 1.0	ii i1 h u4 r en2 vv van2
+医疗费 1.0	ii i1 l iao2 f ei4
+医疗器械 1.0	ii i1 l iao2 q i4 x ie4
+医生 1.0	ii i1 sh eng1
+医学 1.0	ii i1 x ve2
+医药费 1.0	ii i1 ii iao4 f ei4
+医院 1.0	ii i1 vv van4
+医治 1.0	ii i1 zh ix4
+依 1.0	ii i1
+依法 1.0	ii i1 f a3
+依据 1.0	ii i1 j v4
+依靠 1.0	ii i1 k ao4
+依然 1.0	ii i1 r an2
+依稀可见 1.0	ii i1 x i1 k e3 j ian4
+伊 1.0	ii i1
+伊拉克 1.0	ii i1 l a1 k e4
+伊朗 1.0	ii i1 l ang3
+伊始 1.0	ii i1 sh ix3
+伊斯兰教 1.0	ii i1 s iy1 l an2 j iao4
+衣 1.0	ii i1
+衣服 1.0	ii i1 f u5
+衣着 1.0	ii i1 zh uo2
+遗传 1.0	ii i2 ch uan2
+遗弃 1.0	ii i2 q i4
+遗物 1.0	ii i2 uu u4
+遗址 1.0	ii i2 zh ix3
+移 1.0	ii i2
+移到 1.0	ii i2 d ao4
+移动 1.0	ii i2 d ong4
+移送 1.0	ii i2 s ong4
+移栽 1.0	ii i2 z ai1
+仪表 1.0	ii i2 b iao3
+仪表厂 1.0	ii i2 b iao2 ch ang3
+仪器 1.0	ii i2 q i4
+仪式 1.0	ii i2 sh ix4
+疑问 1.0	ii i2 uu un4
+宜 1.0	ii i2
+姨 1.0	ii i2
+椅子 1.0	ii i3 z iy5
+倚 1.0	ii i3
+倚重 1.0	ii i3 zh ong4
+已 1.0	ii i3
+已经 1.0	ii i3 j ing1
+已有 1.0	ii i2 ii iu3
+乙肝 1.0	ii i3 g an1
+乙型肝炎 1.0	ii i3 x ing2 g an1 ii ian2
+矣 1.0	ii i3
+以 1.0	ii i3
+以此 1.0	ii i2 c iy3
+以次 1.0	ii i3 c iy4
+以后 1.0	ii i3 h ou4
+以及 1.0	ii i3 j i2
+以来 1.0	ii i3 l ai2
+以前 1.0	ii i3 q ian2
+以求 1.0	ii i3 q iu2
+以上 1.0	ii i3 sh ang4
+以示 1.0	ii i3 sh ix4
+以外 1.0	ii i3 uu uai4
+以往 1.0	ii i2 uu uang3
+以为 1.0	ii i3 uu ui2
+以下 1.0	ii i3 x ia4
+艺术 1.0	ii i4 sh u4
+艺术家 1.0	ii i4 sh u4 j ia1
+艺术性 1.0	ii i4 sh u4 x ing4
+易 1.0	ii i4
+易于 1.0	ii i4 vv v2
+亿 1.0	ii i4
+逸 1.0	ii i4
+疫苗 1.0	ii i4 m iao2
+亦 1.0	ii i4
+意 1.0	ii i4
+意境 1.0	ii i4 j ing4
+意识 1.0	ii i4 sh ix5
+意外 1.0	ii i4 uu uai4
+意味 1.0	ii i4 uu ui4
+意味着 1.0	ii i4 uu ui4 zh e5
+意义 1.0	ii i4 ii i4
+意犹未尽 1.0	ii i4 ii iu2 uu ui4 j in4
+意欲 1.0	ii i4 vv v4
+毅 1.0	ii i4
+忆苦 1.0	ii i4 k u3
+义齿 1.0	ii i4 ch ix3
+义务 1.0	ii i4 uu u4
+义演 1.0	ii i4 ii ian3
+议案 1.0	ii i4 aa an4
+议会 1.0	ii i4 h ui4
+议员 1.0	ii i4 vv van2
+异性 1.0	ii i4 x ing4
+异样 1.0	ii i4 ii iang4
+茵茵 1.0	ii in1 ii in1
+因 1.0	ii in1
+因此 1.0	ii in1 c iy3
+因而 1.0	ii in1 ee er2
+因素 1.0	ii in1 s u4
+因为 1.0	ii in1 uu ui2
+因为 1.0	ii in1 uu ui4
+因循守旧 1.0	ii in1 x vn2 sh ou3 j iu4
+因子 1.0	ii in1 z iy3
+殷切 1.0	ii in1 q ie4
+殷勤 1.0	ii in1 q in2
+殷殷 1.0	ii in1 ii in1
+音叉 1.0	ii in1 ch a1
+音乐 1.0	ii in1 vv ve4
+音律 1.0	ii in1 l v4
+音色 1.0	ii in1 s e4
+音响 1.0	ii in1 x iang3
+音序 1.0	ii in1 x v4
+音域 1.0	ii in1 vv v4
+音质 1.0	ii in1 zh ix4
+阴 1.0	ii in1
+阴沟 1.0	ii in1 g ou1
+阴森 1.0	ii in1 s en1
+阴森森 1.0	ii in1 s en1 s en1
+阴阳 1.0	ii in1 ii iang2
+阴雨 1.0	ii in1 vv v3
+阴云 1.0	ii in1 vv vn2
+姻缘 1.0	ii in1 vv van2
+吟 1.0	ii in2
+银 1.0	ii in2
+银耳 1.0	ii in2 ee er3
+银花 1.0	ii in2 h ua1
+银矿 1.0	ii in2 k uang4
+银牌 1.0	ii in2 p ai2
+银丝 1.0	ii in2 s iy1
+银行 1.0	ii in2 h ang2
+淫 1.0	ii in2
+饮 1.0	ii in3
+饮 1.0	ii in4
+饮茶 1.0	ii in3 ch a2
+饮酒 1.0	ii in2 j iu3
+饮料 1.0	ii in3 l iao4
+饮品 1.0	ii in2 p in3
+饮食 1.0	ii in3 sh ix2
+饮用 1.0	ii in3 ii iong4
+引 1.0	ii in3
+引黄 1.0	ii in3 h uang2
+引进 1.0	ii in3 j in4
+引路 1.0	ii in3 l u4
+引起 1.0	ii in2 q i3
+引擎 1.0	ii in3 q ing2
+引诱 1.0	ii in3 ii iu4
+隐 1.0	ii in3
+隐含 1.0	ii in3 h an2
+隐没 1.0	ii in3 m o4
+隐形眼镜 1.0	ii in3 x ing2 ii ian3 j ing4
+隐隐约约 1.0	ii in2 ii in3 vv ve1 vv ve1
+隐喻 1.0	ii in3 vv v4
+印 1.0	ii in4
+印错 1.0	ii in4 c uo4
+印第安 1.0	ii in4 d i4 aa an1
+印第安人 1.0	ii in4 d i4 aa an1 r en2
+印度 1.0	ii in4 d u4
+印度洋 1.0	ii in4 d u4 ii iang2
+印花 1.0	ii in4 h ua1
+印尼 1.0	ii in4 n i2
+印染厂 1.0	ii in4 r an2 ch ang3
+印刷 1.0	ii in4 sh ua1
+印有 1.0	ii in4 ii iu3
+英 1.0	ii ing1
+英镑 1.0	ii ing1 b ang4
+英方 1.0	ii ing1 f ang1
+英国 1.0	ii ing1 g uo2
+英汉 1.0	ii ing1 h an4
+英军 1.0	ii ing1 j vn1
+英亩 1.0	ii ing1 m u3
+英文 1.0	ii ing1 uu un2
+英雄 1.0	ii ing1 x iong2
+英勇 1.0	ii ing1 ii iong3
+樱桃 1.0	ii ing1 t ao2
+婴儿 1.0	ii ing1 ee er2
+婴幼儿 1.0	ii ing1 ii iu4 ee er2
+鹰 1.0	ii ing1
+应 1.0	ii ing1
+应 1.0	ii ing4
+应酬 1.0	ii ing4 ch ou5
+应当 1.0	ii ing1 d ang1
+应该 1.0	ii ing1 g ai1
+应是 1.0	ii ing1 sh ix4
+应邀 1.0	ii ing4 ii iao1
+应用 1.0	ii ing1 ii iong4
+应用 1.0	ii ing4 ii iong4
+应用题 1.0	ii ing1 ii iong4 t i2
+应用题 1.0	ii ing4 ii iong4 t i2
+应有尽有 1.0	ii ing1 ii iu3 j in4 ii iu3
+应予 1.0	ii ing1 vv v3
+应允 1.0	ii ing1 vv vn3
+应运而生 1.0	ii ing4 vv vn4 ee er2 sh eng1
+应征 1.0	ii ing4 zh eng1
+缨 1.0	ii ing1
+莹 1.0	ii ing2
+营 1.0	ii ing2
+营房 1.0	ii ing2 f ang2
+营区 1.0	ii ing2 q v1
+营养 1.0	ii ing2 ii iang3
+营养价值 1.0	ii ing2 ii iang3 j ia4 zh ix2
+营养品 1.0	ii ing2 ii iang2 p in3
+营养液 1.0	ii ing2 ii iang3 ii ie4
+营业额 1.0	ii ing2 ii ie4 ee e2
+营业税 1.0	ii ing2 ii ie4 sh ui4
+营业性 1.0	ii ing2 ii ie4 x ing4
+营业员 1.0	ii ing2 ii ie4 vv van2
+荧光灯 1.0	ii ing2 g uang1 d eng1
+蝇蛆 1.0	ii ing2 q v1
+迎 1.0	ii ing2
+迎春 1.0	ii ing2 ch un1
+迎接 1.0	ii ing2 j ie1
+迎面 1.0	ii ing2 m ian4
+迎难而上 1.0	ii ing2 n an2 ee er2 sh ang4
+迎头 1.0	ii ing2 t ou2
+盈 1.0	ii ing2
+盈盈 1.0	ii ing2 ii ing2
+盈盈 1.0	ii ing2 ii ing5
+影 1.0	ii ing3
+影片 1.0	ii ing3 p ian1
+影片 1.0	ii ing3 p ian4
+影视 1.0	ii ing3 sh ix4
+影视片 1.0	ii ing3 sh ix4 p ian1
+影视片 1.0	ii ing3 sh ix4 p ian4
+影视作品 1.0	ii ing3 sh ix4 z uo4 p in3
+影坛 1.0	ii ing3 t an2
+影响 1.0	ii ing2 x iang3
+影响生育 1.0	ii ing2 x iang3 sh eng1 vv v4
+影业 1.0	ii ing3 ii ie4
+颖 1.0	ii ing3
+硬 1.0	ii ing4
+硬骨头 1.0	ii ing4 g u2 t ou5
+硬骨头 1.0	ii ing4 g u3 t ou5
+硬化 1.0	ii ing4 h ua4
+硬件 1.0	ii ing4 j ian4
+硬朗 1.0	ii ing4 l ang5
+映 1.0	ii ing4
+映衬 1.0	ii ing4 ch en4
+映入 1.0	ii ing4 r u4
+映入眼帘 1.0	ii ing4 r u4 ii ian3 l ian2
+拥 1.0	ii iong1
+拥戴 1.0	ii iong1 d ai4
+拥军 1.0	ii iong1 j vn1
+拥有 1.0	ii iong1 ii iu3
+雍 1.0	ii iong1
+蛹 1.0	ii iong3
+咏梅 1.0	ii iong3 m ei2
+泳道 1.0	ii iong3 d ao4
+泳坛 1.0	ii iong3 t an2
+涌 1.0	ii iong3
+永 1.0	ii iong3
+永波 1.0	ii iong3 b o1
+永定河 1.0	ii iong3 d ing4 h e2
+永福 1.0	ii iong3 f u2
+永贵 1.0	ii iong3 g ui4
+永利 1.0	ii iong3 l i4
+永亮 1.0	ii iong3 l iang4
+永林 1.0	ii iong3 l in2
+永远 1.0	ii iong2 vv van3
+永贞 1.0	ii iong3 zh en1
+永葆 1.0	ii iong2 b ao3
+勇 1.0	ii iong3
+勇斗 1.0	ii iong3 d ou4
+勇猛 1.0	ii iong2 m eng3
+勇气 1.0	ii iong3 q i4
+勇于 1.0	ii iong3 vv v2
+用 1.0	ii iong4
+用餐 1.0	ii iong4 c an1
+用电 1.0	ii iong4 d ian4
+用好 1.0	ii iong4 h ao3
+用户 1.0	ii iong4 h u4
+用劲 1.0	ii iong4 j in4
+用来 1.0	ii iong4 l ai2
+用力 1.0	ii iong4 l i4
+用品 1.0	ii iong4 p in3
+用人单位 1.0	ii iong4 r en2 d an1 uu ui4
+用上 1.0	ii iong4 sh ang4
+用上 1.0	ii iong4 sh ang5
+用时 1.0	ii iong4 sh ix2
+用书 1.0	ii iong4 sh u1
+用途 1.0	ii iong4 t u2
+用药 1.0	ii iong4 ii iao4
+用以 1.0	ii iong4 ii i3
+用意 1.0	ii iong4 ii i4
+用于 1.0	ii iong4 vv v2
+幽 1.0	ii iu1
+幽默 1.0	ii iu1 m o4
+幽幽 1.0	ii iu1 ii iu1
+优 1.0	ii iu1
+优点 1.0	ii iu1 d ian3
+优惠价 1.0	ii iu1 h ui4 j ia4
+优惠券 1.0	ii iu1 h ui4 q van4
+优良 1.0	ii iu1 l iang2
+优生优育 1.0	ii iu1 sh eng1 ii iu1 vv v4
+优势 1.0	ii iu1 sh ix4
+优先 1.0	ii iu1 x ian1
+优秀 1.0	ii iu1 x iu4
+优越 1.0	ii iu1 vv ve4
+优质 1.0	ii iu1 zh ix4
+忧郁 1.0	ii iu1 vv v4
+尤 1.0	ii iu2
+尤其 1.0	ii iu2 q i2
+尤为 1.0	ii iu2 uu ui2
+由 1.0	ii iu2
+由此 1.0	ii iu2 c iy3
+由于 1.0	ii iu2 vv v2
+由於 1.0	ii iu2 vv v2
+邮戳 1.0	ii iu2 ch uo1
+邮电 1.0	ii iu2 d ian4
+邮票 1.0	ii iu2 p iao4
+犹 1.0	ii iu2
+油 1.0	ii iu2
+油菜 1.0	ii iu2 c ai4
+油层 1.0	ii iu2 c eng2
+油库 1.0	ii iu2 k u4
+油田 1.0	ii iu2 t ian2
+油印 1.0	ii iu2 ii in4
+游 1.0	ii iu2
+游客 1.0	ii iu2 k e4
+游人 1.0	ii iu2 r en2
+游玩 1.0	ii iu2 uu uan2
+游泳 1.0	ii iu2 ii iong3
+游泳池 1.0	ii iu2 ii iong3 ch ix2
+有 1.0	ii iu3
+有爱心 1.0	ii iu3 aa ai4 x in1
+有把握 1.0	ii iu2 b a3 uu uo4
+有变 1.0	ii iu3 b ian4
+有病 1.0	ii iu3 b ing4
+有成 1.0	ii iu3 ch eng2
+有的 1.0	ii iu3 d e5
+有点 1.0	ii iu2 d ian3
+有否 1.0	ii iu2 f ou3
+有个人 1.0	ii iu3 g e4 r en2
+有根有据 1.0	ii iu3 g en1 ii iu3 j v4
+有功 1.0	ii iu3 g ong1
+有关 1.0	ii iu3 g uan1
+有机 1.0	ii iu3 j i1
+有几次 1.0	ii iu2 j i3 c iy4
+有经验 1.0	ii iu3 j ing1 ii ian4
+有空 1.0	ii iu3 k ong4
+有理 1.0	ii iu2 l i3
+有利 1.0	ii iu3 l i4
+有利于 1.0	ii iu3 l i4 vv v2
+有力 1.0	ii iu3 l i4
+有了爱 1.0	ii iu3 l e5 aa ai4
+有名 1.0	ii iu3 m ing2
+有朋友 1.0	ii iu3 p eng2 ii iu5
+有魄力 1.0	ii iu3 p o4 l i4
+有期徒刑 1.0	ii iu3 q i1 t u2 x ing2
+有求必应 1.0	ii iu3 q iu2 b i4 ii ing4
+有趣 1.0	ii iu3 q v4
+有权 1.0	ii iu3 q van2
+有人 1.0	ii iu3 r en2
+有时 1.0	ii iu3 sh ix2
+有时候 1.0	ii iu3 sh ix2 h ou4
+有素 1.0	ii iu3 s u4
+有所 1.0	ii iu2 s uo3
+有所帮助 1.0	ii iu2 s uo3 b ang1 zh u4
+有特色 1.0	ii iu3 t e4 s e4
+有戏 1.0	ii iu3 x i4
+有限公司 1.0	ii iu3 x ian4 g ong1 s iy1
+有效 1.0	ii iu3 x iao4
+有些 1.0	ii iu3 x ie1
+有些人 1.0	ii iu3 x ie1 r en2
+有许多 1.0	ii iu2 x v3 d uo1
+有序 1.0	ii iu3 x v4
+有一个 1.0	ii iu3 ii i2 g e4
+有意无意 1.0	ii iu3 ii i4 uu u2 ii i4
+有益 1.0	ii iu3 ii i4
+有用 1.0	ii iu3 ii iong4
+有预谋 1.0	ii iu3 vv v4 m ou2
+有种 1.0	ii iu2 zh ong3
+有着 1.0	ii iu3 zh e5
+友 1.0	ii iu3
+友好 1.0	ii iu2 h ao3
+友协 1.0	ii iu3 x ie2
+友谊 1.0	ii iu3 ii i2
+友谊 1.0	ii iu3 ii i4
+右 1.0	ii iu4
+右臂 1.0	ii iu4 b i4
+右侧 1.0	ii iu4 c e4
+右手 1.0	ii iu4 sh ou3
+诱人 1.0	ii iu4 r en2
+诱杀 1.0	ii iu4 sh a1
+又 1.0	ii iu4
+又是 1.0	ii iu4 sh ix4
+又要 1.0	ii iu4 ii iao4
+幼 1.0	ii iu4
+幼儿园 1.0	ii iu4 ee er2 vv van2
+幼年 1.0	ii iu4 n ian2
+于 1.0	vv v2
+于此 1.0	vv v2 c iy3
+于某 1.0	vv v2 m ou3
+于是 1.0	vv v2 sh ix4
+于是乎 1.0	vv v2 sh ix4 h u1
+于心 1.0	vv v2 x in1
+榆树 1.0	vv v2 sh u4
+虞 1.0	vv v2
+愚 1.0	vv v2
+舆论 1.0	vv v2 l un4
+余 1.0	vv v2
+余地 1.0	vv v2 d i4
+余额 1.0	vv v2 ee e2
+余孽 1.0	vv v2 n ie4
+余香 1.0	vv v2 x iang1
+余音 1.0	vv v2 ii in1
+鱼 1.0	vv v2
+鱼儿 1.0	vv v2 ee er2
+鱼饵 1.0	vv v2 ee er3
+鱼类 1.0	vv v2 l ei4
+鱼苗 1.0	vv v2 m iao2
+鱼肉 1.0	vv v2 r ou4
+愉快 1.0	vv v2 k uai4
+渔 1.0	vv v2
+渔船 1.0	vv v2 ch uan2
+渔民 1.0	vv v2 m in2
+渔网 1.0	vv v2 uu uang3
+予以 1.0	vv v2 ii i3
+娱乐城 1.0	vv v2 l e4 ch eng2
+娱乐片 1.0	vv v2 l e4 p ian1
+娱乐片 1.0	vv v2 l e4 p ian4
+娱乐业 1.0	vv v2 l e4 ii ie4
+雨 1.0	vv v3
+雨淋 1.0	vv v3 l in2
+雨水 1.0	vv v2 sh ui3
+与 1.0	vv v3
+与此同时 1.0	vv v2 c iy3 t ong2 sh ix2
+与否 1.0	vv v2 f ou3
+与其 1.0	vv v3 q i2
+屿 1.0	vv v3
+禹 1.0	vv v3
+宇 1.0	vv v3
+宇宙空间 1.0	vv v3 zh ou4 k ong1 j ian1
+语 1.0	vv v3
+语词 1.0	vv v3 c iy2
+语句 1.0	vv v3 j v4
+语录 1.0	vv v3 l u4
+语文 1.0	vv v3 uu un2
+语言 1.0	vv v3 ii ian2
+羽毛球 1.0	vv v3 m ao2 q iu2
+玉 1.0	vv v4
+玉安 1.0	vv v4 aa an1
+玉和 1.0	vv v4 h e2
+玉杰 1.0	vv v4 j ie2
+玉林 1.0	vv v4 l in2
+玉米 1.0	vv v4 m i3
+玉米面 1.0	vv v4 m i3 m ian4
+玉英 1.0	vv v4 ii ing1
+郁 1.0	vv v4
+郁郁 1.0	vv v4 vv v4
+遇 1.0	vv v4
+遇到 1.0	vv v4 d ao4
+遇上 1.0	vv v4 sh ang4
+遇上 1.0	vv v4 sh ang5
+遇险 1.0	vv v4 x ian3
+愈 1.0	vv v4
+愈演愈烈 1.0	vv v4 ii ian3 vv v4 l ie4
+欲 1.0	vv v4
+欲火 1.0	vv v4 h uo3
+欲望 1.0	vv v4 uu uang4
+育 1.0	vv v4
+育儿 1.0	vv v4 ee er2
+育苗 1.0	vv v4 m iao2
+育人 1.0	vv v4 r en2
+育秧 1.0	vv v4 ii iang1
+育婴 1.0	vv v4 ii ing1
+育种 1.0	vv v4 zh ong3
+誉为 1.0	vv v4 uu ui2
+浴 1.0	vv v4
+浴血 1.0	vv v4 x ie3
+浴血 1.0	vv v4 x ve3
+浴血 1.0	vv v4 x ve4
+浴血奋战 1.0	vv v4 x ie3 f en4 zh an4
+浴血奋战 1.0	vv v4 x ve3 f en4 zh an4
+浴血奋战 1.0	vv v4 x ve4 f en4 zh an4
+寓意 1.0	vv v4 ii i4
+裕民 1.0	vv v4 m in2
+预 1.0	vv v4
+预防 1.0	vv v4 f ang2
+预期 1.0	vv v4 q i1
+预算 1.0	vv v4 s uan4
+预算外 1.0	vv v4 s uan4 uu uai4
+预选赛 1.0	vv v4 x van3 s ai4
+豫 1.0	vv v4
+鸳鸯 1.0	vv van1 ii iang5
+冤魂 1.0	vv van1 h un2
+冤枉 1.0	vv van1 uu uang5
+元 1.0	vv van2
+元和 1.0	vv van2 h e2
+元康 1.0	vv van2 k ang1
+元月 1.0	vv van2 vv ve4
+袁 1.0	vv van2
+原 1.0	vv van2
+原本 1.0	vv van2 b en3
+原产 1.0	vv van2 ch an3
+原定 1.0	vv van2 d ing4
+原理 1.0	vv van2 l i3
+原料 1.0	vv van2 l iao4
+原始 1.0	vv van2 sh ix3
+原是 1.0	vv van2 sh ix4
+原为 1.0	vv van2 uu ui4
+原先 1.0	vv van2 x ian1
+原因 1.0	vv van2 ii in1
+原因很简单 1.0	vv van2 ii in1 h en2 j ian3 d an1
+原油 1.0	vv van2 ii iu2
+原则 1.0	vv van2 z e2
+原则上 1.0	vv van2 z e2 sh ang4
+原著 1.0	vv van2 zh u4
+原子 1.0	vv van2 z iy3
+援引 1.0	vv van2 ii in3
+园 1.0	vv van2
+园里 1.0	vv van2 l i3
+园艺 1.0	vv van2 ii i4
+员 1.0	vv van2
+员村 1.0	vv van2 c un1
+员工 1.0	vv van2 g ong1
+圆 1.0	vv van2
+圆白菜 1.0	vv van2 b ai2 c ai4
+圆满 1.0	vv van2 m an3
+圆明园 1.0	vv van2 m ing2 vv van2
+圆润 1.0	vv van2 r un4
+圆形 1.0	vv van2 x ing2
+圆柱 1.0	vv van2 zh u4
+圆桌 1.0	vv van2 zh uo1
+源 1.0	vv van2
+源头 1.0	vv van2 t ou2
+源于 1.0	vv van2 vv v2
+源源 1.0	vv van2 vv van2
+源源不断 1.0	vv van2 vv van2 b u2 d uan4
+缘份 1.0	vv van2 f en4
+缘起 1.0	vv van2 q i3
+远 1.0	vv van3
+远处 1.0	vv van3 ch u4
+远方 1.0	vv van3 f ang1
+远见卓识 1.0	vv van3 j ian4 zh uo2 sh ix2
+远近 1.0	vv van3 j in4
+远亲 1.0	vv van3 q in1
+远去 1.0	vv van3 q v4
+远眺 1.0	vv van3 t iao4
+远远 1.0	vv van2 vv van3
+远在 1.0	vv van3 z ai4
+远征 1.0	vv van3 zh eng1
+远走 1.0	vv van2 z ou3
+苑 1.0	vv van4
+愿 1.0	vv van4
+愿望 1.0	vv van4 uu uang4
+愿望 1.0	vv van4 uu uang5
+愿意 1.0	vv van4 ii i4
+院 1.0	vv van4
+院坝 1.0	vv van4 b a4
+院长 1.0	vv van4 zh ang3
+院里 1.0	vv van4 l i3
+院墙 1.0	vv van4 q iang2
+院庆 1.0	vv van4 q ing4
+院士 1.0	vv van4 sh ix4
+院中 1.0	vv van4 zh ong1
+院子里 1.0	vv van4 z iy5 l i3
+曰 1.0	vv ve1
+约 1.0	vv ve1
+约翰 1.0	vv ve1 h an4
+越 1.0	vv ve4
+越冬 1.0	vv ve4 d ong1
+越多 1.0	vv ve4 d uo1
+越发 1.0	vv ve4 f a1
+越好 1.0	vv ve4 h ao3
+越界 1.0	vv ve4 j ie4
+越来越 1.0	vv ve4 l ai2 vv ve4
+越来越多 1.0	vv ve4 l ai2 vv ve4 d uo1
+越来越少 1.0	vv ve4 l ai2 vv ve4 sh ao3
+越来越远 1.0	vv ve4 l ai2 vv ve4 vv van3
+越乱 1.0	vv ve4 l uan4
+越南 1.0	vv ve4 n an2
+越权 1.0	vv ve4 q van2
+越野 1.0	vv ve4 ii ie3
+越野车 1.0	vv ve4 ii ie3 ch e1
+越早越好 1.0	vv ve4 z ao3 vv ve4 h ao3
+跃然纸上 1.0	vv ve4 r an2 zh ix3 sh ang4
+跃跃欲试 1.0	vv ve4 vv ve4 vv v4 sh ix4
+钥匙 1.0	ii iao4 sh ix5
+岳 1.0	vv ve4
+岳飞 1.0	vv ve4 f ei1
+岳林 1.0	vv ve4 l in2
+粤 1.0	vv ve4
+粤剧 1.0	vv ve4 j v4
+月 1.0	vv ve4
+月饼 1.0	vv ve4 b ing5
+月底 1.0	vv ve4 d i3
+月娥 1.0	vv ve4 ee e2
+月付 1.0	vv ve4 f u4
+月华 1.0	vv ve4 h ua2
+月经 1.0	vv ve4 j ing1
+月卡 1.0	vv ve4 k a3
+月亮 1.0	vv ve4 l iang5
+月末 1.0	vv ve4 m o4
+月色 1.0	vv ve4 s e4
+月山 1.0	vv ve4 sh an1
+月收入 1.0	vv ve4 sh ou1 r u4
+月牙 1.0	vv ve4 ii ia2
+阅读 1.0	vv ve4 d u2
+阅历 1.0	vv ve4 l i4
+耘 1.0	vv vn2
+云 1.0	vv vn2
+云层 1.0	vv vn2 c eng2
+云和 1.0	vv vn2 h e2
+云母 1.0	vv vn2 m u3
+云南 1.0	vv vn2 n an2
+云团 1.0	vv vn2 t uan2
+云雾 1.0	vv vn2 uu u4
+云霞 1.0	vv vn2 x ia2
+云雨 1.0	vv vn2 vv v3
+云云 1.0	vv vn2 vv vn2
+匀称 1.0	vv vn2 ch en4
+允许 1.0	vv vn2 x v3
+运 1.0	vv vn4
+运城 1.0	vv vn4 ch eng2
+运筹帷幄 1.0	vv vn4 ch ou2 uu ui2 uu uo4
+运达 1.0	vv vn4 d a2
+运动 1.0	vv vn4 d ong4
+运动员 1.0	vv vn4 d ong4 vv van2
+运动战 1.0	vv vn4 d ong4 zh an4
+运力 1.0	vv vn4 l i4
+运气好 1.0	vv vn4 q i5 h ao3
+运输 1.0	vv vn4 sh u1
+运输船 1.0	vv vn4 sh u1 ch uan2
+运输量 1.0	vv vn4 sh u1 l iang4
+运往 1.0	vv vn4 uu uang3
+运行 1.0	vv vn4 x ing2
+运营 1.0	vv vn4 ii ing2
+运用 1.0	vv vn4 ii iong4
+蕴 1.0	vv vn4
+晕晕乎乎 1.0	vv vn1 vv vn5 h u1 h u1
+韵 1.0	vv vn4
+韵律 1.0	vv vn4 l v4
+韵事 1.0	vv vn4 sh ix4
+韵文 1.0	vv vn4 uu un2
+孕妇 1.0	vv vn4 f u4
+孕育 1.0	vv vn4 vv v4
+砸 1.0	z a2
+砸锅卖铁 1.0	z a2 g uo1 m ai4 t ie3
+杂 1.0	z a2
+杂文 1.0	z a2 uu un2
+杂物 1.0	z a2 uu u4
+杂志 1.0	z a2 zh ix4
+杂志社 1.0	z a2 zh ix4 sh e4
+杂质 1.0	z a2 zh ix4
+栽 1.0	z ai1
+灾 1.0	z ai1
+灾害 1.0	z ai1 h ai4
+灾民 1.0	z ai1 m in2
+灾区 1.0	z ai1 q v1
+载 1.0	z ai3
+载 1.0	z ai4
+再 1.0	z ai4
+再次 1.0	z ai4 c iy4
+再有 1.0	z ai4 ii iu3
+在 1.0	z ai4
+在此 1.0	z ai4 c iy3
+在旁 1.0	z ai4 p ang2
+在逃犯 1.0	z ai4 t ao2 f an4
+在一起 1.0	z ai4 ii i4 q i3
+在于 1.0	z ai4 vv v2
+在这里 1.0	z ai4 zh e4 l i3
+咱 1.0	z an2
+暂 1.0	z an4
+暂缺 1.0	z an4 q ve1
+暂行 1.0	z an4 x ing2
+赞 1.0	z an4
+赞不绝口 1.0	z an4 b u4 j ve2 k ou3
+赞成 1.0	z an4 ch eng2
+赞美 1.0	z an4 m ei3
+赞同 1.0	z an4 t ong2
+赞誉 1.0	z an4 vv v4
+赃 1.0	z ang1
+赃款 1.0	z ang1 k uan3
+赃物 1.0	z ang1 uu u4
+脏兮兮 1.0	z ang1 x i1 x i1
+葬 1.0	z ang4
+葬身 1.0	z ang4 sh en1
+遭 1.0	z ao1
+遭到 1.0	z ao1 d ao4
+藻 1.0	z ao3
+早 1.0	z ao3
+早被 1.0	z ao3 b ei4
+早产 1.0	z ao2 ch an3
+早稻 1.0	z ao3 d ao4
+早婚 1.0	z ao3 h un1
+早期 1.0	z ao3 q i1
+早市 1.0	z ao3 sh ix4
+早衰 1.0	z ao3 sh uai1
+早已 1.0	z ao2 ii i3
+早孕 1.0	z ao3 vv vn4
+澡 1.0	z ao3
+躁 1.0	z ao4
+噪声 1.0	z ao4 sh eng1
+造 1.0	z ao4
+造成 1.0	z ao4 ch eng2
+造林 1.0	z ao4 l in2
+造型 1.0	z ao4 x ing2
+责怪 1.0	z e2 g uai4
+责令 1.0	z e2 l ing4
+责任 1.0	z e2 r en4
+则 1.0	z e2
+怎么 1.0	z en3 m e5
+怎奈 1.0	z en3 n ai4
+怎样 1.0	z en3 ii iang4
+增 1.0	z eng1
+增长 1.0	z eng1 zh ang3
+增幅 1.0	z eng1 f u2
+增加 1.0	z eng1 j ia1
+增强 1.0	z eng1 q iang2
+增收 1.0	z eng1 sh ou1
+增速 1.0	z eng1 s u4
+增效 1.0	z eng1 x iao4
+增援 1.0	z eng1 vv van2
+增值税 1.0	z eng1 zh ix2 sh ui4
+曾 1.0	c eng2
+曾 1.0	z eng1
+曾经 1.0	c eng2 j ing1
+曾某 1.0	z eng1 m ou3
+曾随 1.0	c eng2 s ui2
+曾荫权 1.0	c eng2 ii in1 q van2
+曾荫权 1.0	z eng1 ii in1 q van2
+赠 1.0	z eng4
+赠送 1.0	z eng4 s ong4
+扎 1.0	z a1
+扎 1.0	zh a1
+扎 1.0	zh a2
+扎哈 1.0	zh a1 h a1
+扎基 1.0	zh a1 j i1
+扎克 1.0	zh a1 k e4
+扎伊尔 1.0	zh a1 ii i1 ee er3
+渣 1.0	zh a1
+札幌 1.0	zh a2 h uang3
+眨 1.0	zh a3
+榨菜 1.0	zh a4 c ai4
+炸 1.0	zh a2
+炸 1.0	zh a4
+炸雷 1.0	zh a4 l ei2
+炸药 1.0	zh a4 ii iao4
+诈骗 1.0	zh a4 p ian4
+诈骗犯 1.0	zh a4 p ian4 f an4
+宅 1.0	zh ai2
+窄 1.0	zh ai3
+窄窄 1.0	zh ai2 zh ai3
+债 1.0	zh ai4
+债权 1.0	zh ai4 q van2
+债权人 1.0	zh ai4 q van2 r en2
+债券 1.0	zh ai4 q van4
+债务 1.0	zh ai4 uu u4
+寨 1.0	zh ai4
+粘 1.0	n ian2
+粘 1.0	zh an1
+沾上 1.0	zh an1 sh ang4
+沾上 1.0	zh an1 sh ang5
+崭 1.0	zh an3
+展开 1.0	zh an3 k ai1
+展品 1.0	zh an2 p in3
+展望 1.0	zh an3 uu uang4
+占 1.0	zh an4
+占领 1.0	zh an4 l ing3
+战 1.0	zh an4
+战场 1.0	zh an4 ch ang3
+战斗 1.0	zh an4 d ou4
+战火 1.0	zh an4 h uo3
+战绩 1.0	zh an4 j i4
+战军 1.0	zh an4 j vn1
+战略 1.0	zh an4 l ve4
+战胜 1.0	zh an4 sh eng4
+战时 1.0	zh an4 sh ix2
+战士 1.0	zh an4 sh ix4
+战无不胜 1.0	zh an4 uu u2 b u2 sh eng4
+战线 1.0	zh an4 x ian4
+战争 1.0	zh an4 zh eng1
+站 1.0	zh an4
+站岗 1.0	zh an4 g ang3
+樟树市 1.0	zh ang1 sh u4 sh ix4
+张 1.0	zh ang1
+张伯伦 1.0	zh ang1 b ai3 l un2
+张伯伦 1.0	zh ang1 b o2 l un2
+张翰 1.0	zh ang1 h an4
+张慧 1.0	zh ang1 h ui4
+张强 1.0	zh ang1 q iang2
+张望 1.0	zh ang1 uu uang4
+张牙舞爪 1.0	zh ang1 ii ia2 uu u2 zh ao3
+张扬 1.0	zh ang1 ii iang2
+张震 1.0	zh ang1 zh en4
+掌握 1.0	zh ang3 uu uo4
+涨 1.0	zh ang3
+涨 1.0	zh ang4
+丈 1.0	zh ang4
+帐篷 1.0	zh ang4 p eng5
+障碍 1.0	zh ang4 aa ai4
+招标文件 1.0	zh ao1 b iao1 uu un2 j ian4
+招待会 1.0	zh ao1 d ai4 h ui4
+招收 1.0	zh ao1 sh ou1
+昭 1.0	zh ao1
+找 1.0	zh ao3
+找不到 1.0	zh ao3 b u2 d ao4
+赵 1.0	zh ao4
+照 1.0	zh ao4
+照顾 1.0	zh ao4 g u5
+照镜子 1.0	zh ao4 j ing4 z iy5
+照旧 1.0	zh ao4 j iu4
+照片 1.0	zh ao4 p ian1
+照片 1.0	zh ao4 p ian4
+召 1.0	zh ao4
+遮 1.0	zh e1
+折 1.0	sh e2
+折 1.0	zh e2
+折射 1.0	zh e2 sh e4
+哲 1.0	zh e2
+哲学家 1.0	zh e2 x ve2 j ia1
+者 1.0	zh e3
+这 1.0	zh e4
+这次 1.0	zh e4 c iy4
+这儿 1.0	zh e4 ee er5
+这个 1.0	zh e4 g e5
+这个问题 1.0	zh e4 g e5 uu un4 t i2
+这块 1.0	zh e4 k uai4
+这里 1.0	zh e4 l i3
+这位 1.0	zh e4 uu ui4
+这项 1.0	zh e4 x iang4
+这些 1.0	zh e4 x ie1
+这些人 1.0	zh e4 x ie1 r en2
+这样 1.0	zh e4 ii iang4
+这样的 1.0	zh e4 ii iang4 d e5
+这一步 1.0	zh e4 ii i2 b u4
+这一年 1.0	zh e4 ii i4 n ian2
+这一片 1.0	zh e4 ii i2 p ian4
+这一切 1.0	zh e4 ii i2 q ie4
+这支 1.0	zh e4 zh ix1
+这种 1.0	zh e4 zh ong3
+这种状况 1.0	zh e4 zh ong3 zh uang4 k uang4
+浙江 1.0	zh e4 j iang1
+浙江大学 1.0	zh e4 j iang1 d a4 x ve2
+珍 1.0	zh en1
+珍贵 1.0	zh en1 g ui4
+斟酒 1.0	zh en1 j iu3
+真 1.0	zh en1
+真好玩 1.0	zh en1 h ao3 uu uan2
+真名 1.0	zh en1 m ing2
+真情 1.0	zh en1 q ing2
+真是 1.0	zh en1 sh ix4
+真正 1.0	zh en1 zh eng4
+真正意义 1.0	zh en1 zh eng4 ii i4 ii i4
+针药 1.0	zh en1 ii iao4
+侦查员 1.0	zh en1 ch a2 vv van2
+枕套 1.0	zh en3 t ao4
+诊所 1.0	zh en2 s uo3
+震颤 1.0	zh en4 ch an4
+震撼力 1.0	zh en4 h an4 l i4
+振 1.0	zh en4
+振动 1.0	zh en4 d ong4
+镇 1.0	zh en4
+镇痛 1.0	zh en4 t ong4
+阵 1.0	zh en4
+阵容 1.0	zh en4 r ong2
+阵营 1.0	zh en4 ii ing2
+蒸 1.0	zh eng1
+蒸汽浴 1.0	zh eng1 q i4 vv v4
+挣扎 1.0	zh eng1 zh a2
+征 1.0	zh eng1
+征婚 1.0	zh eng1 h un1
+征收 1.0	zh eng1 sh ou1
+争夺 1.0	zh eng1 d uo2
+争论 1.0	zh eng1 l un4
+争抢 1.0	zh eng1 q iang3
+争相 1.0	zh eng1 x iang1
+争议 1.0	zh eng1 ii i4
+怔 1.0	zh eng1
+整 1.0	zh eng3
+整地 1.0	zh eng3 d i4
+整顿 1.0	zh eng3 d un4
+整洁 1.0	zh eng3 j ie2
+整齐 1.0	zh eng3 q i2
+整容 1.0	zh eng3 r ong2
+整修 1.0	zh eng3 x iu1
+整整 1.0	zh eng2 zh eng3
+正 1.0	zh eng1
+正 1.0	zh eng4
+正版 1.0	zh eng4 b an3
+正常 1.0	zh eng4 ch ang2
+正赶上 1.0	zh eng4 g an3 sh ang4
+正好 1.0	zh eng4 h ao3
+正确 1.0	zh eng4 q ve4
+正式 1.0	zh eng4 sh ix4
+正题 1.0	zh eng4 t i2
+正文 1.0	zh eng4 uu un2
+正月 1.0	zh eng1 vv ve4
+政策 1.0	zh eng4 c e4
+政府 1.0	zh eng4 f u3
+政令 1.0	zh eng4 l ing4
+政企 1.0	zh eng4 q i3
+政委 1.0	zh eng4 uu ui3
+政务院 1.0	zh eng4 uu u4 vv van4
+政治 1.0	zh eng4 zh ix4
+郑 1.0	zh eng4
+郑成功 1.0	zh eng4 ch eng2 g ong1
+郑军 1.0	zh eng4 j vn1
+证 1.0	zh eng4
+证明 1.0	zh eng4 m ing2
+证券 1.0	zh eng4 q van4
+证书 1.0	zh eng4 sh u1
+枝 1.0	zh ix1
+支 1.0	zh ix1
+支部书记 1.0	zh ix1 b u4 sh u1 j i5
+支持 1.0	zh ix1 ch ix2
+支付 1.0	zh ix1 f u4
+支农 1.0	zh ix1 n ong2
+支委 1.0	zh ix1 uu ui3
+支行 1.0	zh ix1 h ang2
+支援 1.0	zh ix1 vv van2
+知 1.0	zh ix1
+知道 1.0	zh ix1 d ao4
+知识 1.0	zh ix1 sh ix5
+知音 1.0	zh ix1 ii in1
+汁 1.0	zh ix1
+之 1.0	zh ix1
+之风 1.0	zh ix1 f eng1
+之后 1.0	zh ix1 h ou4
+之际 1.0	zh ix1 j i4
+之间 1.0	zh ix1 j ian1
+之苦 1.0	zh ix1 k u3
+之类 1.0	zh ix1 l ei4
+之外 1.0	zh ix1 uu uai4
+之夜 1.0	zh ix1 ii ie4
+之一 1.0	zh ix1 ii i1
+之中 1.0	zh ix1 zh ong1
+织 1.0	zh ix1
+职工 1.0	zh ix2 g ong1
+职务 1.0	zh ix2 uu u4
+职业 1.0	zh ix2 ii ie4
+职员 1.0	zh ix2 vv van2
+直 1.0	zh ix2
+直拨 1.0	zh ix2 b o1
+直到 1.0	zh ix2 d ao4
+直接 1.0	zh ix2 j ie1
+直接进入 1.0	zh ix2 j ie1 j in4 r u4
+植根于 1.0	zh ix2 g en1 vv v2
+植物 1.0	zh ix2 uu u4
+殖 1.0	zh ix2
+执行主席 1.0	zh ix2 x ing2 zh u3 x i2
+值班 1.0	zh ix2 b an1
+值班室 1.0	zh ix2 b an1 sh ix3
+值班室 1.0	zh ix2 b an1 sh ix4
+值班员 1.0	zh ix2 b an1 vv van2
+值此 1.0	zh ix2 c iy3
+指 1.0	zh ix3
+指标 1.0	zh ix3 b iao1
+指出 1.0	zh ix3 ch u1
+指导员 1.0	zh ix2 d ao3 vv van2
+指挥 1.0	zh ix3 h ui1
+指头 1.0	zh ix3 t ou5
+趾 1.0	zh ix3
+只 1.0	zh ix1
+只 1.0	zh ix3
+只好 1.0	zh ix2 h ao3
+只见 1.0	zh ix3 j ian4
+只能 1.0	zh ix3 n eng2
+只是 1.0	zh ix3 sh ix4
+只要 1.0	zh ix3 ii iao4
+只用 1.0	zh ix3 ii iong4
+只有 1.0	zh ix2 ii iu3
+只缘 1.0	zh ix3 vv van2
+纸 1.0	zh ix3
+纸篓 1.0	zh ix2 l ou3
+纸箱 1.0	zh ix3 x iang1
+纸张 1.0	zh ix3 zh ang1
+志气 1.0	zh ix4 q i5
+至 1.0	zh ix4
+至诚 1.0	zh ix4 ch eng2
+至今 1.0	zh ix4 j in1
+至少 1.0	zh ix4 sh ao3
+至于 1.0	zh ix4 vv v2
+致辞 1.0	zh ix4 c iy2
+致死 1.0	zh ix4 s iy3
+置若罔闻 1.0	zh ix4 r uo4 uu uang3 uu un2
+置于 1.0	zh ix4 vv v2
+制 1.0	zh ix4
+制定 1.0	zh ix4 d ing4
+制片 1.0	zh ix4 p ian1
+制片 1.0	zh ix4 p ian4
+制品厂 1.0	zh ix4 p in2 ch ang3
+制药厂 1.0	zh ix4 ii iao4 ch ang3
+制止 1.0	zh ix4 zh ix3
+制作 1.0	zh ix4 z uo4
+智慧 1.0	zh ix4 h ui4
+智育 1.0	zh ix4 vv v4
+秩序 1.0	zh ix4 x v4
+质 1.0	zh ix4
+质地 1.0	zh ix4 d i4
+质量 1.0	zh ix4 l iang4
+质朴 1.0	zh ix4 p u3
+滞销 1.0	zh ix4 x iao1
+治 1.0	zh ix4
+治病 1.0	zh ix4 b ing4
+治好 1.0	zh ix4 h ao3
+治理 1.0	zh ix4 l i3
+治平 1.0	zh ix4 p ing2
+治学 1.0	zh ix4 x ve2
+中 1.0	zh ong1
+中 1.0	zh ong4
+中标 1.0	zh ong4 b iao1
+中等 1.0	zh ong1 d eng3
+中方 1.0	zh ong1 f ang1
+中国 1.0	zh ong1 g uo2
+中国队 1.0	zh ong1 g uo2 d ui4
+中国画 1.0	zh ong1 g uo2 h ua4
+中国科学院 1.0	zh ong1 g uo2 k e1 x ve2 vv van4
+中国政府 1.0	zh ong1 g uo2 zh eng4 f u3
+中国足球 1.0	zh ong1 g uo2 z u2 q iu2
+中华 1.0	zh ong1 h ua2
+中华人民共和国 1.0	zh ong1 h ua2 r en2 m in2 g ong4 h e2 g uo2
+中间 1.0	zh ong1 j ian1
+中将 1.0	zh ong1 j iang1
+中老年 1.0	zh ong1 l ao3 n ian2
+中年 1.0	zh ong1 n ian2
+中秋 1.0	zh ong1 q iu1
+中文 1.0	zh ong1 uu un2
+中午 1.0	zh ong1 uu u3
+中小学 1.0	zh ong1 x iao3 x ve2
+中心 1.0	zh ong1 x in1
+中学 1.0	zh ong1 x ve2
+中旬 1.0	zh ong1 x vn2
+中央 1.0	zh ong1 ii iang1
+中央军委 1.0	zh ong1 ii iang1 j vn1 uu ui3
+中医 1.0	zh ong1 ii i1
+中医药 1.0	zh ong1 ii i1 ii iao4
+中原 1.0	zh ong1 vv van2
+中州 1.0	zh ong1 zh ou1
+钟 1.0	zh ong1
+钟头 1.0	zh ong1 t ou2
+终 1.0	zh ong1
+终日 1.0	zh ong1 r iz4
+终身 1.0	zh ong1 sh en1
+终于 1.0	zh ong1 vv v2
+终止 1.0	zh ong1 zh ix3
+种 1.0	zh ong3
+种 1.0	zh ong4
+种草 1.0	zh ong4 c ao3
+种果 1.0	zh ong4 g uo3
+种养 1.0	zh ong4 ii iang3
+种植 1.0	zh ong4 zh ix2
+种种 1.0	zh ong2 zh ong3
+种子 1.0	zh ong3 z iy5
+种族 1.0	zh ong3 z u2
+肿瘤 1.0	zh ong3 l iu2
+重 1.0	ch ong2
+重 1.0	zh ong4
+重大 1.0	zh ong4 d a4
+重点 1.0	zh ong4 d ian3
+重开 1.0	ch ong2 k ai1
+重量 1.0	zh ong4 l iang4
+重庆 1.0	ch ong2 q ing4
+重新 1.0	ch ong2 x in1
+重心 1.0	zh ong4 x in1
+重要意义 1.0	zh ong4 ii iao4 ii i4 ii i4
+重要意义 1.0	zh ong4 ii iao4 ii i4 ii i5
+重用 1.0	zh ong4 ii iong4
+重于 1.0	zh ong4 vv v2
+重檐 1.0	zh ong4 ii ian2
+仲尼 1.0	zh ong4 n i2
+众 1.0	zh ong4
+众多 1.0	zh ong4 d uo1
+众人 1.0	zh ong4 r en2
+众生 1.0	zh ong4 sh eng1
+舟山 1.0	zh ou1 sh an1
+周 1.0	zh ou1
+周边 1.0	zh ou1 b ian1
+周末 1.0	zh ou1 m o4
+周期 1.0	zh ou1 q i1
+周岁 1.0	zh ou1 s ui4
+周围 1.0	zh ou1 uu ui2
+周维 1.0	zh ou1 uu ui2
+周旋 1.0	zh ou1 x van2
+周正 1.0	zh ou1 zh eng4
+州 1.0	zh ou1
+洲 1.0	zh ou1
+洲际 1.0	zh ou1 j i4
+粥 1.0	zh ou1
+昼夜 1.0	zh ou4 ii ie4
+骤起 1.0	zh ou4 q i3
+珠 1.0	zh u1
+珠峰 1.0	zh u1 f eng1
+株 1.0	zh u1
+朱 1.0	zh u1
+朱自清 1.0	zh u1 z iy4 q ing1
+猪 1.0	zh u1
+猪场 1.0	zh u1 ch ang3
+诸 1.0	zh u1
+诸多 1.0	zh u1 d uo1
+逐 1.0	zh u2
+逐渐 1.0	zh u2 j ian4
+竹 1.0	zh u2
+竹器 1.0	zh u2 q i4
+嘱 1.0	zh u3
+主产 1.0	zh u2 ch an3
+主持 1.0	zh u3 ch ix2
+主动 1.0	zh u3 d ong4
+主犯 1.0	zh u3 f an4
+主峰 1.0	zh u3 f eng1
+主管 1.0	zh u2 g uan3
+主桥 1.0	zh u3 q iao2
+主人 1.0	zh u3 r en2
+主任 1.0	zh u3 r en4
+主席 1.0	zh u3 x i2
+主旋律 1.0	zh u3 x van2 l v4
+主要 1.0	zh u3 ii iao4
+主要原因 1.0	zh u3 ii iao4 vv van2 ii in1
+主张 1.0	zh u3 zh ang1
+著 1.0	zh u4
+著称 1.0	zh u4 ch eng1
+著名 1.0	zh u4 m ing2
+助 1.0	zh u4
+助兴 1.0	zh u4 x ing4
+贮运 1.0	zh u4 vv vn4
+住 1.0	zh u4
+住进 1.0	zh u4 j in4
+住院 1.0	zh u4 vv van4
+住院治疗 1.0	zh u4 vv van4 zh ix4 l iao2
+住宅区 1.0	zh u4 zh ai2 q v1
+注射 1.0	zh u4 sh e4
+注意 1.0	zh u4 ii i4
+祝 1.0	zh u4
+祝福 1.0	zh u4 f u2
+驻 1.0	zh u4
+驻地 1.0	zh u4 d i4
+驻华 1.0	zh u4 h ua2
+驻军 1.0	zh u4 j vn1
+驻扎 1.0	zh u4 zh a1
+抓 1.0	zh ua1
+抓好 1.0	zh ua1 h ao3
+抓获 1.0	zh ua1 h uo4
+抓重点 1.0	zh ua1 zh ong4 d ian3
+抓住 1.0	zh ua1 zh u4
+抓走 1.0	zh ua1 z ou3
+爪 1.0	zh ao3
+爪 1.0	zh ua3
+专程 1.0	zh uan1 ch eng2
+专家 1.0	zh uan1 j ia1
+专家组 1.0	zh uan1 j ia1 z u3
+专款 1.0	zh uan1 k uan3
+专栏 1.0	zh uan1 l an2
+专利 1.0	zh uan1 l i4
+专利权 1.0	zh uan1 l i4 q van2
+专买 1.0	zh uan1 m ai3
+专卖局 1.0	zh uan1 m ai4 j v2
+专门 1.0	zh uan1 m en2
+专题 1.0	zh uan1 t i2
+专题组 1.0	zh uan1 t i2 z u3
+专业 1.0	zh uan1 ii ie4
+专业户 1.0	zh uan1 ii ie4 h u4
+专业组 1.0	zh uan1 ii ie4 z u3
+专营 1.0	zh uan1 ii ing2
+专用 1.0	zh uan1 ii iong4
+专用车 1.0	zh uan1 ii iong4 ch e1
+砖 1.0	zh uan1
+砖头 1.0	zh uan1 t ou2
+砖瓦 1.0	zh uan1 uu ua3
+转 1.0	zh uan3
+转 1.0	zh uan4
+转播 1.0	zh uan3 b o1
+转达 1.0	zh uan3 d a2
+转岗 1.0	zh uan2 g ang3
+转换 1.0	zh uan3 h uan4
+转基因 1.0	zh uan3 j i1 ii in1
+转炉 1.0	zh uan4 l u2
+转卖 1.0	zh uan3 m ai4
+转圈 1.0	zh uan4 q van1
+转入 1.0	zh uan3 r u4
+转世 1.0	zh uan3 sh ix4
+转为 1.0	zh uan3 uu ui2
+转向 1.0	zh uan3 x iang4
+转业 1.0	zh uan3 ii ie4
+转一圈 1.0	zh uan4 ii i4 q van1
+转阴 1.0	zh uan3 ii in1
+撰写 1.0	zh uan4 x ie3
+桩 1.0	zh uang1
+庄 1.0	zh uang1
+庄村 1.0	zh uang1 c un1
+庄严 1.0	zh uang1 ii ian2
+装 1.0	zh uang1
+装船 1.0	zh uang1 ch uan2
+装机容量 1.0	zh uang1 j i1 r ong2 l iang4
+装满 1.0	zh uang1 m an3
+装饰 1.0	zh uang1 sh ix4
+装饰公司 1.0	zh uang1 sh ix4 g ong1 s iy1
+装卸工 1.0	zh uang1 x ie4 g ong1
+装载 1.0	zh uang1 z ai3
+装载 1.0	zh uang1 z ai4
+装置 1.0	zh uang1 zh ix4
+装作 1.0	zh uang1 z uo4
+撞 1.0	zh uang4
+撞上 1.0	zh uang4 sh ang4
+壮 1.0	zh uang4
+壮观 1.0	zh uang4 g uan1
+壮烈牺牲 1.0	zh uang4 l ie4 x i1 sh eng1
+状 1.0	zh uang4
+椎 1.0	zh ui1
+追 1.0	zh ui1
+追捕 1.0	zh ui1 b u3
+追赶 1.0	zh ui1 g an3
+追回 1.0	zh ui1 h ui2
+追究 1.0	zh ui1 j iu1
+追求 1.0	zh ui1 q iu2
+追随 1.0	zh ui1 s ui2
+追问 1.0	zh ui1 uu un4
+追忆 1.0	zh ui1 ii i4
+追踪 1.0	zh ui1 z ong1
+准 1.0	zh un3
+准备 1.0	zh un3 b ei4
+准备好了 1.0	zh un3 b ei4 h ao3 l e5
+准确 1.0	zh un3 q ve4
+准尉 1.0	zh un3 uu ui4
+准则 1.0	zh un3 z e2
+捉 1.0	zh uo1
+捉住 1.0	zh uo1 zh u4
+卓 1.0	zh uo2
+卓玛 1.0	zh uo2 m a3
+卓越 1.0	zh uo1 vv ve4
+桌上 1.0	zh uo1 sh ang4
+琢磨 1.0	zh uo2 m o2
+茁壮成长 1.0	zh uo2 zh uang4 ch eng2 zh ang3
+着 1.0	zh ao1
+着 1.0	zh ao2
+着 1.0	zh e5
+着 1.0	zh uo2
+着地 1.0	zh ao2 d i4
+着急 1.0	zh ao1 j i2
+着急 1.0	zh ao2 j i2
+着迷 1.0	zh ao2 m i2
+着手 1.0	zh uo2 sh ou3
+灼 1.0	zh uo2
+兹 1.0	z iy1
+咨询业 1.0	z iy1 x vn2 ii ie4
+资产 1.0	z iy1 ch an3
+资金 1.0	z iy1 j in1
+资料 1.0	z iy1 l iao4
+资源 1.0	z iy1 vv van2
+仔 1.0	z ai3
+仔 1.0	z iy3
+子 1.0	z iy3
+子弟兵 1.0	z iy3 d i4 b ing1
+自 1.0	z iy4
+自成一家 1.0	z iy4 ch eng2 ii i4 j ia1
+自从 1.0	z iy4 c ong2
+自动 1.0	z iy4 d ong4
+自动化 1.0	z iy4 d ong4 h ua4
+自负盈亏 1.0	z iy4 f u4 ii ing2 k ui1
+自豪 1.0	z iy4 h ao2
+自己 1.0	z iy4 j i3
+自己的房间 1.0	z iy4 j i3 d e5 f ang2 j ian1
+自立 1.0	z iy4 l i4
+自然 1.0	z iy4 r an2
+自然界 1.0	z iy4 r an2 j ie4
+自然数 1.0	z iy4 r an2 sh u4
+自然条件 1.0	z iy4 r an2 t iao2 j ian4
+自如 1.0	z iy4 r u2
+自杀 1.0	z iy4 sh a1
+自身 1.0	z iy4 sh en1
+自我 1.0	z iy4 uu uo3
+自相矛盾 1.0	z iy4 x iang1 m ao2 d un4
+自信 1.0	z iy4 x in4
+自已 1.0	z iy4 ii i3
+自由 1.0	z iy4 ii iu2
+自由泳 1.0	z iy4 ii iu2 ii iong3
+自愿 1.0	z iy4 vv van4
+自主 1.0	z iy4 zh u3
+自主经营 1.0	z iy4 zh u3 j ing1 ii ing2
+字 1.0	z iy4
+字母 1.0	z iy4 m u3
+宗 1.0	z ong1
+宗教 1.0	z ong1 j iao4
+宗庆后 1.0	z ong1 q ing4 h ou4
+综合 1.0	z ong1 h e2
+总 1.0	z ong3
+总额 1.0	z ong3 ee e2
+总而言之 1.0	z ong3 ee er2 ii ian2 zh ix1
+总公司 1.0	z ong3 g ong1 s iy1
+总结会 1.0	z ong3 j ie2 h ui4
+总经理 1.0	z ong3 j ing1 l i3
+总理 1.0	z ong2 l i3
+总能 1.0	z ong3 n eng2
+总是 1.0	z ong3 sh ix4
+总算 1.0	z ong3 s uan4
+总体 1.0	z ong2 t i3
+总统 1.0	z ong2 t ong3
+纵 1.0	z ong4
+纵横 1.0	z ong4 h eng2
+纵身 1.0	z ong4 sh en1
+走 1.0	z ou3
+走出 1.0	z ou3 ch u1
+走到 1.0	z ou3 d ao4
+走访 1.0	z ou2 f ang3
+走过 1.0	z ou3 g uo4
+走红 1.0	z ou3 h ong2
+走进 1.0	z ou3 j in4
+走来 1.0	z ou3 l ai2
+走廊 1.0	z ou3 l ang2
+走路 1.0	z ou3 l u4
+走马灯 1.0	z ou2 m a3 d eng1
+走俏 1.0	z ou3 q iao4
+走入 1.0	z ou3 r u4
+走上 1.0	z ou3 sh ang4
+走完 1.0	z ou3 uu uan2
+走运 1.0	z ou3 vv vn4
+走资派 1.0	z ou3 z iy1 p ai4
+足 1.0	z u2
+足额 1.0	z u2 ee e2
+足迹 1.0	z u2 j i4
+足球 1.0	z u2 q iu2
+足坛 1.0	z u2 t an2
+族 1.0	z u2
+祖 1.0	z u3
+祖母 1.0	z u2 m u3
+祖母绿 1.0	z u2 m u3 l v4
+阻塞 1.0	z u3 s e4
+组 1.0	z u3
+组长 1.0	z u2 zh ang3
+组成 1.0	z u3 ch eng2
+组织 1.0	z u3 zh ix1
+钻 1.0	z uan1
+钻 1.0	z uan4
+钻出 1.0	z uan1 ch u1
+钻进 1.0	z uan1 j in4
+钻井 1.0	z uan4 j ing3
+钻空子 1.0	z uan1 k ong4 z iy5
+钻研 1.0	z uan1 ii ian2
+嘴 1.0	z ui3
+嘴唇 1.0	z ui3 ch un2
+嘴里 1.0	z ui2 l i3
+醉人 1.0	z ui4 r en2
+最 1.0	z ui4
+最长 1.0	z ui4 ch ang2
+最大 1.0	z ui4 d a4
+最方便 1.0	z ui4 f ang1 b ian4
+最高 1.0	z ui4 g ao1
+最高气温 1.0	z ui4 g ao1 q i4 uu un1
+最古老 1.0	z ui4 g u2 l ao3
+最后 1.0	z ui4 h ou4
+最后的 1.0	z ui4 h ou4 d e5
+最后一个 1.0	z ui4 h ou4 ii i2 g e4
+最后一块 1.0	z ui4 h ou4 ii i2 k uai4
+最佳 1.0	z ui4 j ia1
+最近 1.0	z ui4 j in4
+最为 1.0	z ui4 uu ui2
+最终 1.0	z ui4 zh ong1
+罪 1.0	z ui4
+罪犯 1.0	z ui4 f an4
+罪状 1.0	z ui4 zh uang4
+尊 1.0	z un1
+遵 1.0	z un1
+遵化市 1.0	z un1 h ua4 sh ix4
+遵义 1.0	z un1 ii i4
+昨天 1.0	z uo2 t ian1
+左 1.0	z uo3
+左边 1.0	z uo3 b ian1
+左拐 1.0	z uo2 g uai3
+左手 1.0	z uo2 sh ou3
+左下 1.0	z uo3 x ia4
+左右 1.0	z uo3 ii iu4
+佐 1.0	z uo3
+做 1.0	z uo4
+做菜 1.0	z uo4 c ai4
+做成 1.0	z uo4 ch eng2
+做官 1.0	z uo4 g uan1
+做好 1.0	z uo4 h ao3
+做人 1.0	z uo4 r en2
+做为 1.0	z uo4 uu ui4
+做做 1.0	z uo4 z uo4
+做做 1.0	z uo4 z uo5
+作 1.0	z uo1
+作 1.0	z uo4
+作案 1.0	z uo4 aa an4
+作出 1.0	z uo4 ch u1
+作答 1.0	z uo4 d a2
+作对 1.0	z uo4 d ui4
+作画 1.0	z uo4 h ua4
+作家 1.0	z uo4 j ia1
+作价 1.0	z uo4 j ia4
+作美 1.0	z uo4 m ei3
+作品 1.0	z uo4 p in3
+作为 1.0	z uo4 uu ui2
+作文 1.0	z uo4 uu un2
+作业 1.0	z uo4 ii ie4
+作业本 1.0	z uo4 ii ie4 b en3
+作用 1.0	z uo4 ii iong4
+坐 1.0	z uo4
+坐上 1.0	z uo4 sh ang4
+坐上 1.0	z uo4 sh ang5
+坐镇 1.0	z uo4 zh en4
+坐坐 1.0	z uo4 z uo5
+座 1.0	z uo4
+噩耗 1.0	ee e4 h ao4
+匕首 1.0	b i2 sh ou3
+亟待 1.0	j i2 d ai4
+剌 1.0	l a4
+伢子 1.0	ii ia2 z iy5
+佤 1.0	uu ua3
+佤族 1.0	uu ua3 z u2
+佚 1.0	ii i4
+佻 1.0	t iao1
+侬 1.0	n ong2
+倩 1.0	q ian4
+倏 1.0	sh u1
+偕 1.0	x ie2
+傩 1.0	n uo2
+讷河 1.0	n e4 h e2
+邛 1.0	q iong2
+邝 1.0	k uang4
+郢 1.0	ii ing3
+勰 1.0	x ie2
+矍铄 1.0	j ve2 sh uo4
+圩 1.0	uu ui2
+坨 1.0	t uo2
+坳 1.0	aa ao4
+堀 1.0	k u1
+芮 1.0	r ui4
+荟萃 1.0	h ui4 c ui4
+荀 1.0	x vn2
+莺 1.0	ii ing1
+莼 1.0	ch un2
+萦 1.0	ii ing2
+菰 1.0	g u1
+葳 1.0	uu ui1
+蕤 1.0	r ui2
+蕃茄 1.0	f an1 q ie2
+拚 1.0	p in1
+拚搏 1.0	p in1 b o2
+拚命 1.0	p an4 m ing4
+揆 1.0	k ui2
+摞 1.0	l uo4
+摭 1.0	zh ix2
+咔嚓 1.0	k a1 c a1
+咔嚓 1.0	k a1 ch a1
+哐啷 1.0	k uang1 l ang1
+咧 1.0	l ie1
+咧 1.0	l ie3
+唠嗑 1.0	l ao4 k e1
+哽咽 1.0	g eng3 ii ie4
+唢呐 1.0	s uo3 n a4
+嘟 1.0	d u1
+嘈杂 1.0	c ao2 z a2
+嘀咕 1.0	d i2 g u5
+噌噌噌 1.0	c eng1 c eng1 c eng1
+帙 1.0	zh ix4
+帷幕 1.0	uu ui2 m u4
+幔 1.0	m an4
+崛 1.0	j ve2
+嶙峋 1.0	l in2 x vn2
+狎 1.0	x ia2
+馍 1.0	m o2
+庖 1.0	p ao2
+庵 1.0	aa an1
+膺 1.0	ii ing1
+怡人 1.0	ii i2 r en2
+惬意 1.0	q ie4 ii i4
+惆怅 1.0	ch ou2 ch ang4
+愣 1.0	l eng4
+愣头 1.0	l eng4 t ou2
+沐浴 1.0	m u4 vv v4
+泠 1.0	l ing2
+淦 1.0	g an4
+潇洒 1.0	x iao1 s a3
+濡 1.0	r u2
+濡染 1.0	r u2 r an3
+濮 1.0	p u2
+濮阳 1.0	p u2 ii iang2
+宸 1.0	ch en2
+迥然不同 1.0	j iong3 r an2 b u4 t ong2
+迨 1.0	d ai4
+逍遥法外 1.0	x iao1 ii iao2 f a3 uu uai4
+妃子 1.0	f ei1 z iy5
+妩媚 1.0	uu u3 m ei4
+姊妹 1.0	z iy3 m ei4
+姒 1.0	s iy4
+妾 1.0	q ie4
+娅 1.0	ii ia4
+媛媛 1.0	vv van2 vv van2
+嫣 1.0	ii ian1
+嬉 1.0	x i1
+孥 1.0	n u2
+骈文 1.0	p ian2 uu un2
+绮 1.0	q i3
+绾 1.0	uu uan3
+缢 1.0	ii i4
+缫 1.0	s ao1
+瑛 1.0	ii ing1
+琦 1.0	q i2
+瑗 1.0	vv van4
+枇杷 1.0	p i2 p a5
+桠 1.0	ii ia1
+桀纣 1.0	j ie2 zh ou4
+槎 1.0	ch a2
+樾 1.0	vv ve4
+樵 1.0	q iao2
+殡 1.0	b in4
+殡仪馆 1.0	b in4 ii i2 g uan3
+殡葬 1.0	b in4 z ang4
+辍 1.0	ch uo4
+戛然而止 1.0	j ia2 r an2 ee er2 zh ix3
+臧克家 1.0	z ang1 k e4 j ia1
+瓯海 1.0	oo ou1 h ai3
+旮旯 1.0	g a1 l a2
+昙花一现 1.0	t an2 h ua1 ii i2 x ian4
+昵 1.0	n i4
+贲 1.0	b i4
+赈灾 1.0	zh en4 z ai1
+胭脂 1.0	ii ian1 zh ix5
+脍 1.0	k uai4
+豚 1.0	t un2
+腌 1.0	ii ian1
+腌菜 1.0	ii ian1 c ai4
+朦胧 1.0	m eng2 l ong2
+炀 1.0	ii iang2
+炖 1.0	d un4
+炫 1.0	x van4
+烨 1.0	ii ie4
+祯 1.0	zh en1
+忐忑 1.0	t an3 t e4
+恙 1.0	ii iang4
+砀山 1.0	d ang4 sh an1
+碣 1.0	j ie2
+瞠目结舌 1.0	ch eng1 m u4 j ie2 sh e2
+罹 1.0	l i2
+钿 1.0	d ian4
+铍 1.0	p i2
+铎 1.0	d uo2
+铿锵 1.0	k eng1 q iang1
+镯子 1.0	zh uo2 z iy5
+鸾凤 1.0	l uan2 f eng4
+疖 1.0	j ie1
+瘾 1.0	ii in3
+癖 1.0	p i3
+窦 1.0	d ou4
+窦太后 1.0	d ou4 t ai4 h ou4
+虬 1.0	q iu2
+蚯蚓 1.0	q iu1 ii in3
+蜿蜒 1.0	uu uan1 ii ian2
+螯 1.0	aa ao2
+螃蟹 1.0	p ang2 x ie4
+罂粟 1.0	ii ing1 s u4
+罅隙 1.0	x ia4 x i4
+笠 1.0	l i4
+袅 1.0	n iao3
+袅袅 1.0	n iao2 n iao3
+裘 1.0	q iu2
+糁 1.0	s an3
+趄 1.0	j v1
+趄 1.0	q ie4
+趔 1.0	l ie4
+趔趄 1.0	l ie4 q ie4
+跻身 1.0	j i1 sh en1
+踹 1.0	ch uai4
+訾 1.0	z iy3
+隽 1.0	j van4
+鎏 1.0	l iu2
+鲈鱼 1.0	l u2 vv v2
+鲨鱼 1.0	sh a1 vv v2
+鳄 1.0	ee e4
+鳄鱼 1.0	ee e4 vv v2
+鳊鱼 1.0	b ian1 vv v2
+鳝鱼 1.0	sh an4 vv v2
+鳟鱼 1.0	z un1 vv v2
+魅力 1.0	m ei4 l i4
+鏖战 1.0	aa ao2 zh an4
+黢 1.0	q v1
+四百二十三 1.0	s iy4 b ai3 er4 sh ix2 s an1
+三百一十 1.0	s an1 b ai3 ii i1 sh ix2
+二百九十一 1.0	ee er4 b ai3 j iu3 sh ix2 ii i1 
+二百五十五 1.0	ee er4 b ai3 uu u3 sh ix2 uu u3
+三百五十三 1.0	s an1 b ai3 uu u3 sh ix2 s an1
+五千四百五十 1.0	uu u3 q ian1 s iy4 b ai3 uu u3 sh ix2
+二零零零 1.0	ee er4 l ing2 l ing2 l ing2
+一千二百二十七 1.0	ii i4 q ian1 ee er4 b ai3 er4 sh ix2 q i1 
+六百三十 1.0	l iu4 b ai3 s an1 sh ix2
+五万五千五百五十五 1.0	uu u3 uu uan4 uu u3 q ian1 uu u2 b ai3 uu u3 sh ix2 uu u3
+一百三十三 1.0	ii i4 b ai3 s an1 sh ix2 s an1
+两千三百 1.0	l iang3 q ian1 s an1 b ai3
+四千五百七十 1.0	s iy4 q ian1 uu u2 b ai3 q i1 sh ix2  
+一九四一 1.0	ii i1 j iu3 s iy4 ii i1
+一百三十四 1.0	ii i4 b ai3 s an1 sh ix2 s iy4
+一百七十四 1.0	ii i4 b ai3 q i1 sh ix2 s iy4
+一九六二 1.0	ii i1 j iu3 l iu4 er4
+一九二二 1.0	ii i1 j iu3 er4 er4
+一九五零 1.0	ii i1 j iu3 uu u3 l ing2
+三千四百五十 1.0	s an1 q ian1 s iy4 b ai3 uu u3 sh ix2
+二百零四 1.0	ee er4 b ai3 l ing2 s iy4
