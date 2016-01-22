@@ -122,13 +122,13 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = ""):
+def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
     components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim))
-    components.append("component name={0}_renorm type=NormalizeComponent dim={1}".format(name, output_dim))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
 
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
     component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_affine".format(name))
