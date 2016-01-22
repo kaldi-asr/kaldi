@@ -85,6 +85,9 @@ class DenominatorComputation {
   void AlphaFirstFrame();
   // the alpha computation for some 0 < t <= num_time_steps_.
   void AlphaGeneralFrame(int32 t);
+  // does the 'alpha-dash' computation for time t.  this relates to
+  // 'leaky hmm'.
+  void AlphaDash(int32 t);
 
   // done after all the alphas, this function computes and returns the total
   // log-likelihood summed over all the sequences, and sets tot_prob_ (if we're
@@ -93,9 +96,11 @@ class DenominatorComputation {
   // from the Forward() computation).
   BaseFloat ComputeTotLogLike();
 
-  void BetaLastFrame();
+  void BetaDashLastFrame();
   // beta computation for 0 <= beta < num_time_steps_.
-  void BetaGeneralFrame(int32 t);
+  void BetaDashGeneralFrame(int32 t);
+  // compute the beta quantity from the beta-dash quantity (relates to leaky hmm).
+  void Beta(int32 t);
 
   // some checking that we can do if debug mode is activated, or on frame zero.
   // Sets ok_ to false if a bad problem is detected.
@@ -121,13 +126,18 @@ class DenominatorComputation {
   // the derivs w.r.t. the nnet outputs (transposed)
   CuMatrix<BaseFloat> nnet_output_deriv_transposed_;
 
-  // the alpha probabilities; dimension is (frames_per_sequence + 1) by (num-hmm-states
-  // * num-sequences).  Note, they are not logs.
+  // the alpha probabilities; dimension is (frames_per_sequence + 2) by (num-hmm-states
+  // * num-sequences  + num_sequences).  Note, they are not logs.
+  // The last 'num_sequences' columns are for the alpha-sums, which relates to leaky HMM.
+  // The last row is to store the alpha-dash which is a modified form of the alpha, relating
+  // to leaky HMMs.
   CuMatrix<BaseFloat> alpha_;
 
-  // the beta probabilities (rolling buffer); dimension is 2 * (num-hmm-states *
-  // num-sequences).  Note: for efficiency and to simplify the equations, these
-  // are actually the beta / tot_prob_.
+  // the beta (also beta-dash) probabilities (rolling buffer); dimension is 2 *
+  // (num-hmm-states * num-sequences + num_sequences).  [the last
+  // 'num_sequences' columns are for the beta-sums, which relates to leaky HMM.]
+  // Note: for efficiency and to simplify the equations, these are actually the
+  // beta / tot_prob_.
   CuMatrix<BaseFloat> beta_;
 
   // the total probability for each sequence, excluding the product of

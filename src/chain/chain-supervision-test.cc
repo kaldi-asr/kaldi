@@ -420,21 +420,6 @@ void ChainDenominatorTest(const DenominatorGraph &den_graph) {
                  10.0);
   }
 
-  { // another check: that scaling the initial probs has the expected effect.
-    BaseFloat scale = 0.1 + 0.7 * RandUniform();
-    DenominatorGraph den_graph_scaled(den_graph);
-    den_graph_scaled.ScaleInitialProbs(scale);
-    DenominatorComputation denominator_computation_scaled_initial(
-        opts, den_graph_scaled,
-        num_sequences, nnet_output);
-    BaseFloat forward_prob_scaled_initial =
-        denominator_computation_scaled_initial.Forward();
-    BaseFloat observed_difference =
-        forward_prob_scaled_initial - forward_prob,
-        predicted_difference = num_sequences * log(scale);
-    AssertEqual(observed_difference, predicted_difference);
-  }
-
   int32 num_tries = 5;
   BaseFloat epsilon = 1.0e-04;
   Vector<BaseFloat> predicted_objf_changes(num_tries),

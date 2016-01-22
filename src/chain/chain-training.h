@@ -45,12 +45,27 @@ struct ChainTrainingOptions {
   // so it's additive across the dimensions).
   BaseFloat l2_regularize;
 
-  ChainTrainingOptions(): l2_regularize(0.0) { }
+  // Coefficient for 'leaky hmm'.  This means we have an epsilon-transition from
+  // each state to a special state with probability one, and then another
+  // epsilon-transition from that special state to each state, with probability
+  // leaky_hmm_coefficient times [initial-prob of destination state].  Imagine
+  // we make two copies of each state prior to doing this, version A and version
+  // B, with transition from A to B, so we don't have to consider epsilon loops-
+  // or just imagine the coefficient is small enough that we can ignore the
+  // epsilon loops.
+  BaseFloat leaky_hmm_coefficient;
+
+  ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
                    "of the neural net.");
+    opts->Register("leaky-hmm-coefficient", &leaky_hmm_coefficient, "Coefficient "
+                   "that allows transitions from each HMM state to each other "
+                   "HMM state, to ensure gradual forgetting of context (can "
+                   "improve generalization).  For numerical reasons, may not be "
+                   "exactly zero.");
   }
 };
 
