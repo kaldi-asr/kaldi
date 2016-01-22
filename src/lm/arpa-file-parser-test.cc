@@ -72,8 +72,8 @@ inline CountedArray<T> MakeCountedArray(T(&array)[N]) {
 
 class TestableArpaFileParser : public ArpaFileParser {
  public:
-  TestableArpaFileParser(ArpaParseSettings settings, fst::SymbolTable* symbols)
-      : ArpaFileParser(settings, symbols),
+  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols)
+      : ArpaFileParser(options, symbols),
         header_available_(false),
         read_complete_(false),
         last_order_(0) { }
@@ -95,18 +95,18 @@ void TestableArpaFileParser::HeaderAvailable() {
   KALDI_ASSERT(!header_available_);
   KALDI_ASSERT(!read_complete_);
   header_available_ = true;
-  KALDI_ASSERT(ngram_counts().size() <= kMaxOrder);
+  KALDI_ASSERT(NgramCounts().size() <= kMaxOrder);
 }
 
 void TestableArpaFileParser::ConsumeNGram(const NGram& ngram) {
   KALDI_ASSERT(header_available_);
   KALDI_ASSERT(!read_complete_);
-  KALDI_ASSERT(ngram.words.size() <= ngram_counts().size());
+  KALDI_ASSERT(ngram.words.size() <= NgramCounts().size());
   KALDI_ASSERT(ngram.words.size() >= last_order_);
   last_order_ = ngram.words.size();
 
   NGramTestData entry = { 0 };
-  entry.line_number = line_number();
+  entry.line_number = LineNumber();
   entry.logprob = ngram.logprob;
   entry.backoff = ngram.backoff;
   std::copy(ngram.words.begin(), ngram.words.end(), entry.words);
@@ -138,8 +138,8 @@ void TestableArpaFileParser::Validate(
     CountedArray<int32> expect_counts,
     CountedArray<NGramTestData> expect_ngrams) {
   // This needs better disagnostics probably.
-  KALDI_ASSERT(ngram_counts().size() == expect_counts.count);
-  KALDI_ASSERT(std::equal(ngram_counts().begin(), ngram_counts().end(),
+  KALDI_ASSERT(NgramCounts().size() == expect_counts.count);
+  KALDI_ASSERT(std::equal(NgramCounts().begin(), NgramCounts().end(),
                           expect_counts.array));
 
   KALDI_ASSERT(ngrams_.size() == expect_ngrams.count);
@@ -191,11 +191,11 @@ ngram 3=2\n\
     { 17, -0.804938, { 1, 4, 5 },  0.0      },
     { 18, -0.551239, { 4, 5, 2 },  0.0      } };
 
-  ArpaParseSettings settings;
-  settings.bos_symbol = 1;
-  settings.eos_symbol = 2;
+  ArpaParseOptions options;
+  options.bos_symbol = 1;
+  options.eos_symbol = 2;
 
-  TestableArpaFileParser parser(settings, NULL);
+  TestableArpaFileParser parser(options, NULL);
   std::istringstream stm(integer_lm, std::ios_base::in);
   parser.Read(stm, false);
   parser.Validate(MakeCountedArray(expect_counts),
@@ -252,18 +252,18 @@ NGramTestData expect_symbolic_full[] = {
   { 18, -0.2, { 1, 4, 2 },  0.0 } };
 
 // This is run with all possible oov setting and yields same result.
-void ReadSymbolicLmNoOovImpl(ArpaParseSettings::OovHandling oov) {
+void ReadSymbolicLmNoOovImpl(ArpaParseOptions::OovHandling oov) {
   int32 expect_counts[] = { 4, 2, 2 };
   TestSymbolTable symbols;
   symbols.AddSymbol("\xCE\xB2", 5);
 
-  ArpaParseSettings settings;
-  settings.bos_symbol = 1;
-  settings.eos_symbol = 2;
-  settings.unk_symbol = 3;
-  settings.use_log10 = true;
-  settings.oov_handling = oov;
-  TestableArpaFileParser parser(settings, &symbols);
+  ArpaParseOptions options;
+  options.bos_symbol = 1;
+  options.eos_symbol = 2;
+  options.unk_symbol = 3;
+  options.use_log10 = true;
+  options.oov_handling = oov;
+  TestableArpaFileParser parser(options, &symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);
   parser.Read(stm, false);
   parser.Validate(MakeCountedArray(expect_counts),
@@ -273,28 +273,28 @@ void ReadSymbolicLmNoOovImpl(ArpaParseSettings::OovHandling oov) {
 
 void ReadSymbolicLmNoOovTests() {
   KALDI_LOG << "ReadSymbolicLmNoOovImpl(kRaiseError)";
-  ReadSymbolicLmNoOovImpl(ArpaParseSettings::kRaiseError);
+  ReadSymbolicLmNoOovImpl(ArpaParseOptions::kRaiseError);
   KALDI_LOG << "ReadSymbolicLmNoOovImpl(kAddToSymbols)";
-  ReadSymbolicLmNoOovImpl(ArpaParseSettings::kAddToSymbols);
+  ReadSymbolicLmNoOovImpl(ArpaParseOptions::kAddToSymbols);
   KALDI_LOG << "ReadSymbolicLmNoOovImpl(kReplaceWithUnk)";
-  ReadSymbolicLmNoOovImpl(ArpaParseSettings::kReplaceWithUnk);
+  ReadSymbolicLmNoOovImpl(ArpaParseOptions::kReplaceWithUnk);
   KALDI_LOG << "ReadSymbolicLmNoOovImpl(kSkipNGram)";
-  ReadSymbolicLmNoOovImpl(ArpaParseSettings::kSkipNGram);
+  ReadSymbolicLmNoOovImpl(ArpaParseOptions::kSkipNGram);
 }
 
 // This is run with all possible oov setting and yields same result.
 void ReadSymbolicLmWithOovImpl(
-    ArpaParseSettings::OovHandling oov,
+    ArpaParseOptions::OovHandling oov,
     CountedArray<NGramTestData> expect_ngrams,
     fst::SymbolTable* symbols) {
   int32 expect_counts[] = { 4, 2, 2 };
-  ArpaParseSettings settings;
-  settings.bos_symbol = 1;
-  settings.eos_symbol = 2;
-  settings.unk_symbol = 3;
-  settings.use_log10 = true;
-  settings.oov_handling = oov;
-  TestableArpaFileParser parser(settings, symbols);
+  ArpaParseOptions options;
+  options.bos_symbol = 1;
+  options.eos_symbol = 2;
+  options.unk_symbol = 3;
+  options.use_log10 = true;
+  options.oov_handling = oov;
+  TestableArpaFileParser parser(options, symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);
   parser.Read(stm, false);
   parser.Validate(MakeCountedArray(expect_counts), expect_ngrams);
@@ -302,7 +302,7 @@ void ReadSymbolicLmWithOovImpl(
 
 void ReadSymbolicLmWithOovAddToSymbols() {
   TestSymbolTable symbols;
-  ReadSymbolicLmWithOovImpl(ArpaParseSettings::kAddToSymbols,
+  ReadSymbolicLmWithOovImpl(ArpaParseOptions::kAddToSymbols,
                             MakeCountedArray(expect_symbolic_full),
                             &symbols);
   KALDI_ASSERT(symbols.NumSymbols() == 6);
@@ -323,7 +323,7 @@ void ReadSymbolicLmWithOovReplaceWithUnk() {
     { 18, -0.2, { 1, 4, 2 },  0.0 } };
 
   TestSymbolTable symbols;
-  ReadSymbolicLmWithOovImpl(ArpaParseSettings::kReplaceWithUnk,
+  ReadSymbolicLmWithOovImpl(ArpaParseOptions::kReplaceWithUnk,
                             MakeCountedArray(expect_symbolic_unk_b),
                             &symbols);
   KALDI_ASSERT(symbols.NumSymbols() == 5);
@@ -340,7 +340,7 @@ void ReadSymbolicLmWithOovSkipNGram() {
     { 18, -0.2, { 1, 4, 2 },  0.0 } };
 
   TestSymbolTable symbols;
-  ReadSymbolicLmWithOovImpl(ArpaParseSettings::kSkipNGram,
+  ReadSymbolicLmWithOovImpl(ArpaParseOptions::kSkipNGram,
                             MakeCountedArray(expect_symbolic_no_b),
                             &symbols);
   KALDI_ASSERT(symbols.NumSymbols() == 5);

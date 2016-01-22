@@ -29,8 +29,8 @@
 
 namespace kaldi {
 
-ArpaFileParser::ArpaFileParser(ArpaParseSettings settings, fst::SymbolTable* symbols)
-    : settings_(settings), symbols_(symbols), line_number_(0) {
+ArpaFileParser::ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols)
+    : options_(options), symbols_(symbols), line_number_(0) {
 }
 
 ArpaFileParser::~ArpaFileParser() {
@@ -42,29 +42,29 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
   }
 
   // Argument sanity checks.
-  if (settings_.bos_symbol <= 0 || settings_.eos_symbol <= 0 ||
-      settings_.bos_symbol == settings_.eos_symbol)
+  if (options_.bos_symbol <= 0 || options_.eos_symbol <= 0 ||
+      options_.bos_symbol == options_.eos_symbol)
     KALDI_ERR << "BOS and EOS symbols are required, must not be epsilons, and "
               << "differ from each other. Given:"
-              << " BOS=" << settings_.bos_symbol
-              << " EOS=" << settings_.eos_symbol;
+              << " BOS=" << options_.bos_symbol
+              << " EOS=" << options_.eos_symbol;
   if (symbols_ != NULL &&
-      settings_.oov_handling == ArpaParseSettings::kReplaceWithUnk &&
-      (settings_.unk_symbol <= 0 ||
-       settings_.unk_symbol == settings_.bos_symbol ||
-       settings_.unk_symbol == settings_.eos_symbol))
+      options_.oov_handling == ArpaParseOptions::kReplaceWithUnk &&
+      (options_.unk_symbol <= 0 ||
+       options_.unk_symbol == options_.bos_symbol ||
+       options_.unk_symbol == options_.eos_symbol))
     KALDI_ERR << "When symbol table is given and OOV mode is kReplaceWithUnk, "
               << "UNK symbol is required, must not be epsilon, and "
               << "differ from both BOS and EOS symbols. Given:"
-              << " UNK=" << settings_.unk_symbol
-              << " BOS=" << settings_.bos_symbol
-              << " EOS=" << settings_.eos_symbol;
-  if (symbols_ != NULL && symbols_->Find(settings_.bos_symbol).empty())
+              << " UNK=" << options_.unk_symbol
+              << " BOS=" << options_.bos_symbol
+              << " EOS=" << options_.eos_symbol;
+  if (symbols_ != NULL && symbols_->Find(options_.bos_symbol).empty())
     KALDI_ERR << "BOS symbol must exist in symbol table";
-  if (symbols_ != NULL && symbols_->Find(settings_.eos_symbol).empty())
+  if (symbols_ != NULL && symbols_->Find(options_.eos_symbol).empty())
     KALDI_ERR << "EOS symbol must exist in symbol table";
-  if (symbols_ != NULL && settings_.unk_symbol > 0 &&
-      symbols_->Find(settings_.unk_symbol).empty())
+  if (symbols_ != NULL && options_.unk_symbol > 0 &&
+      symbols_->Find(options_.unk_symbol).empty())
     KALDI_ERR << "UNK symbol must exist in symbol table";
 
   ngram_counts_.clear();
@@ -170,7 +170,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
           PARSE_ERR << "Invalid backoff weight '" << col[cur_order + 1] << "'.";
       }
       // Convert to natural log unless the option is set not to.
-      if (!settings_.use_log10) {
+      if (!options_.use_log10) {
         ngram.logprob *= M_LN10;
         ngram.backoff *= M_LN10;
       }
@@ -181,16 +181,16 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
         int32 word;
         if (symbols_) {
           // Symbol table provided, so symbol labels are expected.
-          if (settings_.oov_handling == ArpaParseSettings::kAddToSymbols) {
+          if (options_.oov_handling == ArpaParseOptions::kAddToSymbols) {
             word = symbols_->AddSymbol(col[1 + index]);
           } else {
             word = symbols_->Find(col[1 + index]);
             if (word == fst::SymbolTable::kNoSymbol) {
-              switch(settings_.oov_handling) {
-                case ArpaParseSettings::kReplaceWithUnk:
-                  word = settings_.unk_symbol;
+              switch(options_.oov_handling) {
+                case ArpaParseOptions::kReplaceWithUnk:
+                  word = options_.unk_symbol;
                   break;
-                case ArpaParseSettings::kSkipNGram:
+                case ArpaParseOptions::kSkipNGram:
                   skip_ngram = true;
                   break;
                 default:

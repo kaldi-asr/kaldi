@@ -176,8 +176,8 @@ class LmState {
 // auxiliary class LmState above.
 class ConstArpaLmBuilder : public ArpaFileParser {
  public:
-  ConstArpaLmBuilder(ArpaParseSettings settings)
-      : ArpaFileParser(settings, NULL) {
+  ConstArpaLmBuilder(ArpaParseOptions options)
+      : ArpaFileParser(options, NULL) {
     ngram_order_ = 0;
     num_words_ = 0;
     overflow_buffer_size_ = 0;
@@ -265,7 +265,7 @@ class ConstArpaLmBuilder : public ArpaFileParser {
 };
 
 void ConstArpaLmBuilder::HeaderAvailable() {
-  ngram_order_ = ngram_counts().size();
+  ngram_order_ = NgramCounts().size();
 }
 
 void ConstArpaLmBuilder::ConsumeNGram(const NGram& ngram) {
@@ -299,7 +299,7 @@ void ConstArpaLmBuilder::ConsumeNGram(const NGram& ngram) {
       std::ostringstream ss;
       for (int i = 0; i < cur_order; ++i)
         ss << (i == 0 ? '[' : ' ') << ngram.words[i];
-      KALDI_ERR << "In line " << line_number() << ": "
+      KALDI_ERR << "In line " << LineNumber() << ": "
                 << cur_order << "-gram " << ss.str() << "] does not have "
                 << "a parent model " << cur_order << "-gram.";
     }
@@ -479,7 +479,7 @@ void ConstArpaLmBuilder::Write(std::ostream &os, bool binary) const {
 
   // Creates ConstArpaLm.
   ConstArpaLm const_arpa_lm(
-      settings().bos_symbol, settings().eos_symbol, settings().unk_symbol,
+      Options().bos_symbol, Options().eos_symbol, Options().unk_symbol,
       ngram_order_, num_words_, overflow_buffer_size_, lm_states_size_,
       unigram_states_, overflow_buffer_, lm_states_);
   const_arpa_lm.Write(os, binary);
@@ -1066,13 +1066,13 @@ bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
                       const int32 eos_symbol, const int32 unk_symbol,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename) {
-  ArpaParseSettings settings;
-  settings.bos_symbol = bos_symbol;
-  settings.eos_symbol = eos_symbol;
-  settings.unk_symbol = unk_symbol;
-  settings.use_log10 = !natural_base;
+  ArpaParseOptions options;
+  options.bos_symbol = bos_symbol;
+  options.eos_symbol = eos_symbol;
+  options.unk_symbol = unk_symbol;
+  options.use_log10 = !natural_base;
 
-  ConstArpaLmBuilder lm_builder(settings);
+  ConstArpaLmBuilder lm_builder(options);
   KALDI_LOG << "Reading " << arpa_rxfilename;
   ReadKaldiObject(arpa_rxfilename, &lm_builder);
   WriteKaldiObject(lm_builder, const_arpa_wxfilename, true);

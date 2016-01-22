@@ -31,9 +31,9 @@
 namespace kaldi {
 
 /**
-  Settings that control ArpaFileParser
+  Options that control ArpaFileParser
 */
-struct ArpaParseSettings {
+struct ArpaParseOptions {
   enum OovHandling {
     kRaiseError,     ///< Abort on OOV words
     kAddToSymbols,   ///< Add novel words to the symbol table.
@@ -41,7 +41,7 @@ struct ArpaParseSettings {
     kSkipNGram       ///< Skip n-gram with OOV word and continue.
   };
 
-  ArpaParseSettings()
+  ArpaParseOptions()
       : bos_symbol(-1), eos_symbol(-1), unk_symbol(-1),
         oov_handling(kRaiseError), use_log10(false) { }
 
@@ -64,26 +64,28 @@ struct NGram {
 
 /**
     ArpaFileParser is an abstract base class for ARPA LM file conversion.
+
+    See ConstArpaLmBuilder for a usage example.
 */
 class ArpaFileParser {
  public:
-  /// Constructs the parser with the given settings and optional symbol table.
+  /// Constructs the parser with the given options and optional symbol table.
   /// If symbol table is provided, then the file should contain text n-grams,
   /// and the words are mapped to symbols through it. bos_symbol and
-  /// eos_symbol in the settings structure must be valid symbols in the table,
+  /// eos_symbol in the options structure must be valid symbols in the table,
   /// and so must be unk_symbol if provided. The table is not owned by the
   /// parser, but may be augmented, if oov_handling is set to kAddToSymbols.
   /// If symbol table is a null pointer, the file should contain integer
   /// symbol values, and oov_handling has no effect. bos_symbol and eos_symbol
   /// must be valid symbols still.
-  ArpaFileParser(ArpaParseSettings settings, fst::SymbolTable* symbols);
+  ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols);
   virtual ~ArpaFileParser();
 
   /// Read ARPA LM file through Kaldi I/O functions. Only text mode is
   /// supported.
   void Read(std::istream &is, bool binary);
 
-  const ArpaParseSettings& settings() const { return settings_; }
+  const ArpaParseOptions& Options() const { return options_; }
 
  protected:
   /// Override called before reading starts. This is the point to prepare
@@ -94,7 +96,7 @@ class ArpaFileParser {
   /// number of n-grams has been read, and ngram_counts() is now valid.
   virtual void HeaderAvailable() { }
 
-  /// Pure override that must beimplemented to process current n-gram. The
+  /// Pure override that must be implemented to process current n-gram. The
   /// n-grams are sent in the file order, which guarantees that all
   /// (k-1)-grams are processed before the first k-gram is.
   virtual void ConsumeNGram(const NGram&) = 0;
@@ -103,16 +105,16 @@ class ArpaFileParser {
   virtual void ReadComplete() { }
 
   /// Read-only access to symbol table.
-  fst::SymbolTable* symbols() const { return symbols_; }
+  const fst::SymbolTable* Symbols() const { return symbols_; }
 
   /// Inside ConsumeNGram(), provides the current line number.
-  int32 line_number() const { return line_number_; }
+  int32 LineNumber() const { return line_number_; }
 
   /// N-gram counts. Valid in and after a call to HeaderAvailable().
-  const std::vector<int32>& ngram_counts() const { return ngram_counts_; }
+  const std::vector<int32>& NgramCounts() const { return ngram_counts_; }
 
  private:
-  ArpaParseSettings settings_;
+  ArpaParseOptions options_;
   fst::SymbolTable* symbols_;  // Not owned.
   int32 line_number_;
   std::vector<int32> ngram_counts_;
