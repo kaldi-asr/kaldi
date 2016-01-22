@@ -124,7 +124,7 @@ if [ $stage -le 1 ]; then
   --copy_feats false \
   data/dae/train data/dae/dev/0db data/lang data/fbank/train data/fbank/dev exp/tri4b_dnn_dae || exit 1;
   nnet-concat exp/tri4b_dnn_dae/final.feature_transform exp/tri4b_dnn_dae/final.nnet \
-  exp/tri4b_dnn/final.feature_transform exp/tri4b_dnn_dae/dae.nnet  || exit 1
+  exp/tri4b_dnn_mpe/final.feature_transform exp/tri4b_dnn_dae/dae.nnet  || exit 1
   
 fi
 
@@ -134,19 +134,19 @@ if [ $stage -le 2 ]; then
      (
        #decode word 
        steps/nnet/decode.sh --cmd "$decode_cmd" --nj $nj \
-        --srcdir exp/tri4b_dnn \
-       exp/tri4b/graph.word data/dae/test/0db/$x exp/tri4b_dnn/decode_word_0db/$x|| exit 1;
+        --srcdir exp/tri4b_dnn_mpe \
+       exp/tri4b/graph.word data/dae/test/0db/$x exp/tri4b_dnn_mpe/decode_word_0db/$x|| exit 1;
 
        steps/nnet/decode.sh --cmd "$decode_cmd" --nj $nj \
-        --srcdir exp/tri4b_dnn --feature-transform exp/tri4b_dnn_dae/dae.nnet \
+        --srcdir exp/tri4b_dnn_mpe --feature-transform exp/tri4b_dnn_dae/dae.nnet \
        exp/tri4b/graph.word data/dae/test/0db/$x exp/tri4b_dnn_dae/decode_word_0db/$x|| exit 1;
        #decode phone
        steps/nnet/decode.sh --cmd "$decode_cmd" --nj $nj \
-        --srcdir exp/tri4b_dnn \
-       exp/tri4b/graph.phone data/dae/test/0db/$x.ph exp/tri4b_dnn/decode_phone_0db/$x|| exit 1;
+        --srcdir exp/tri4b_dnn_mpe \
+       exp/tri4b/graph.phone data/dae/test/0db/$x.ph exp/tri4b_dnn_mpe/decode_phone_0db/$x|| exit 1;
 
        steps/nnet/decode.sh --cmd "$decode_cmd" --nj $nj \
-        --srcdir exp/tri4b_dnn --feature-transform exp/tri4b_dnn_dae/dae.nnet \
+        --srcdir exp/tri4b_dnn_mpe --feature-transform exp/tri4b_dnn_dae/dae.nnet \
        exp/tri4b/graph.phone data/dae/test/0db/$x.ph exp/tri4b_dnn_dae/decode_phone_0db/$x|| exit 1;
     ) &
    done
