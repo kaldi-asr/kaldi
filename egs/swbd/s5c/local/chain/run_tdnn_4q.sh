@@ -120,7 +120,7 @@ if [ $stage -le 12 ]; then
 
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
- steps/nnet3/chain/train_tdnn_b.sh --stage $train_stage \
+ steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
     --apply-deriv-weights false \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
