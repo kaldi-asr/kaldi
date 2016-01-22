@@ -4,6 +4,7 @@ learning_rate=0.001
 natural_gradient=true
 hidden_dim1=
 hidden_dim2=
+bottleneck=true
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
@@ -22,7 +23,11 @@ if [ -z $hidden_dim1 ]; then
 fi
 
 if [ -z $hidden_dim2 ]; then
-  hidden_dim2=$[$output_dim*2]
+  if $bottleneck; then
+    hidden_dim2=10
+  else
+    hidden_dim2=$[$output_dim*2]
+  fi
 fi
 
 if $natural_gradient; then

@@ -4,10 +4,9 @@
 
 num_epochs=20
 minibatch_size=512
+compute_prob_interval=1
 num_epochs_per_iter=1
 nnet_config=
-early_stop=true
-early_stop_min_epochs=5
 cmd=run.pl
 use_gpu=true    # if true, we run on GPU.
 stage=-2
@@ -19,14 +18,12 @@ left_context=4
 right_context=2
 min_repeat_count=5
 
-echo "$0 $@"  # Print the command line for logging
-
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;
 
-if [[ $# != 3 ]]; then
-   echo "Usage: $0 [options] <phones-dir> <ali-dir> <duration-model-dir>"
-   echo "e.g.: $0 data/lang/phones exp/mono_ali exp/mono/durmod"
+if [[ $# != 6 ]]; then
+   echo "Usage: $0 [options] <phones-dir> <ali-dir> <duration-model-dir> <test-data-dir> <graph-dir> <decode-dir>"
+   echo "e.g.: $0 data/lang/phones exp/mono_ali exp/mono/durmod data/test exp/mono/graph exp/mono/decode_test"
    echo ""
    echo "Main options (for others, see top of script file):"
    echo "  --num-epochs <number>                       # max number of epochs for training"
@@ -44,11 +41,17 @@ phones_dir=$1
 alidir=$2
 dir=$3
 
+###
+testdata=$4
+graphdir=$5
+decode_dir=$6
+###
+
 durmodel=$dir/durmodel.mdl
 mkdir -p $dir/log
 
 if [ $stage -le -2 ]; then
-  echo "$0: Initializing the duration model..."
+  echo "$0: Initializing the duration model and nnet..."
 
   transmodel=$alidir/final.mdl
   for f in $transmodel $phones_dir/roots.int $phones_dir/extra_questions.int; do
@@ -89,7 +92,7 @@ fi
 
 if [ $stage -le -1 ]; then
   echo "$0: Preparing examples..."
-  steps/dur_model/get_examples.sh --cmd "$cmd" --shuffle-buffer-size $shuffle_buffer_size $egs_opts $alidir $dir || exit 1;
+  steps/dur_model/get_examples.sh --cmd $cmd --shuffle-buffer-size $shuffle_buffer_size $egs_opts $alidir $dir || exit 1;
 fi
 
 
@@ -110,7 +113,6 @@ else
 fi
 
 if [ $stage -le 0 ]; then  # do the nnet-related initializations only if stage<=0
-  echo "$0: Initializing nnet3 model..."
   stage=0
   if [[ ! -z $nnet_config ]]; then
     echo "$0: Using provided config file for nnet: $nnet_config"
@@ -131,7 +133,7 @@ fi
 
 num_examples=`cat $dir/num_examples` || num_examples=1
 num_epochs_per_iter=$[40000000/$num_examples]
-[[ $num_epochs_per_iter -le 0 ]] && num_epochs_per_iter=1
+[[ $num_epochs_per_iter == 0 ]] && num_epochs_per_iter=1
 [[ $num_epochs_per_iter -gt 8 ]] && num_epochs_per_iter=8
 num_iterations=$[$num_epochs/$num_epochs_per_iter]
 
@@ -140,44 +142,31 @@ echo "$0: Will train from iteration $stage through iteration $[$num_iterations-1
 
 for iter in $(seq $stage $[$num_iterations-1]); do
   echo "Iteration: "$iter
-  curr_mdl=$dir/$iter.mdl
+  curr_mdl=$dir/$[$iter].mdl
   next_mdl=$dir/$[$iter+1].mdl
-
+  
   train_egs="ark:for n in $(seq -s ' ' $num_epochs_per_iter); do cat $dir/train.egs; done |"
-  $cmd $train_queue_opt $dir/log/train.$[$iter+1].log \
+  $cmd $train_queue_opt $dir/log/train_$iter.log \
        nnet3-train $parallel_train_opts "nnet3-durmodel-copy --raw=true $curr_mdl -|" \
             "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$iter \
             '$train_egs' ark:-| \
             nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
             $dir/nnet.raw || exit 1;
 
+  # grep Overall $dir/log/train_$epoch.log
   $cmd $dir/log/durmod_set_raw_nnet.log \
        nnet3-durmodel-copy --set-raw-nnet=$dir/nnet.raw $curr_mdl $next_mdl
 
-  $cmd $dir/log/compute_prob_valid.$[$iter+1].log \
-     nnet3-compute-prob $dir/nnet.raw \
-     "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" \
-     && grep -o -H "Overall.*" $dir/log/compute_prob_valid.$[$iter+1].log &
-
-  if $early_stop; then
-    wait
-    curr_val_logprob=$(grep -o "Overall log.*" $dir/log/compute_prob_valid.$iter.log 2>/dev/null | awk '{print $6}')
-    next_val_logprob=$(grep -o "Overall log.*" $dir/log/compute_prob_valid.$[$iter+1].log | awk '{print $6}')
-    num_epochs_until_now=$[$iter*$num_epochs_per_iter]
-    if [[ $(echo "$next_val_logprob < $curr_val_logprob" | bc 2>/dev/null) == 1 && $num_epochs_until_now -ge $early_stop_min_epochs ]]; then
-      echo "$0: Early stopping...Best model is $curr_mdl"
-      rm $next_mdl
-      break;
-    fi
+  if [[ $[$iter%$compute_prob_interval] == 0 ]]; then
+    $cmd $dir/log/compute_prob_$[$iter+1].log \
+       nnet3-compute-prob $dir/nnet.raw \
+       "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" \
+       && grep -o -H "Overall.*" $dir/log/compute_prob_$[$iter+1].log
+    
+    steps/dur_model/run_durmod_rescore.sh \
+                       --cmd $cmd --log-file $dir/run_rescore_$[$iter+1].log \
+                       $next_mdl $testdata $graphdir $decode_dir
   fi
 done # training loop
-
-if [ -f $next_mdl ]; then
-  ln -s -f $(basename $next_mdl) $dir/final_nnet_dur_model.mdl
-else
-  ln -s -f $(basename $curr_mdl) $dir/final_nnet_dur_model.mdl
-fi
-echo "$0: Done"
-
-wait # wait for any last background process
+wait $! 2>/dev/null # wait for last background process if any
 

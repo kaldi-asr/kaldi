@@ -212,6 +212,9 @@ if $has_fisher; then
     exp/tri4/decode_eval2000_sw1_{tg,fsh_fg}
 fi
 
+# Phone duration modeling
+# local/run_durmodel.sh
+
 # MMI training starting from the LDA+MLLT+SAT systems on all the (nodup) data. 
 steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4 exp/tri4_ali_nodup
