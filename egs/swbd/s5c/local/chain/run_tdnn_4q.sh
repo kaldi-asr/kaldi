@@ -4,10 +4,6 @@
 # it has a different splicing configuration
 # it uses the PerDimensionWeightedAverage pooling in place of the Jesus layer
 
-# it relies on new steps/nnet3/chain/train_tdnn_b.sh script which accepts more 
-# parameters are calls new config generator steps/nnet3/tdnn/make_configs.py
-# which is more in line with other config generators.
-
 set -e
 
 #%WER 11.1 | 1831 21395 | 90.2 6.3 3.5 1.3 11.1 46.6 | exp/chain/tdnn_v1_trial6_sp/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
