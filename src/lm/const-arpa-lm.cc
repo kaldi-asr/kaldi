@@ -295,7 +295,14 @@ void ConstArpaLmBuilder::ConsumeNGram(const NGram& ngram) {
     unordered_map<std::vector<int32>,
                   LmState*, VectorHasher<int32> >::iterator hist_iter;
     hist_iter = seq_to_state_.find(hist);
-    KALDI_ASSERT(hist_iter != seq_to_state_.end());
+    if (hist_iter == seq_to_state_.end()) {
+      std::ostringstream ss;
+      for (int i = 0; i < cur_order; ++i)
+        ss << (i == 0 ? '[' : ' ') << ngram.words[i];
+      KALDI_ERR << "In line " << line_number() << ": "
+                << cur_order << "-gram " << ss.str() << "] does not have "
+                << "a parent model " << cur_order << "-gram.";
+    }
     if (cur_order != ngram_order_ || ngram_order_ == 1) {
       KALDI_ASSERT(lm_state != NULL);
       KALDI_ASSERT(!hist_iter->second->IsChildFinalOrder());
