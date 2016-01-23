@@ -38,9 +38,9 @@ def AddPerDimAffineLayer(config_lines, name, input, input_window):
             name, filter_input_descriptor, column_map)
 
     # add a block-affine component
-    output_descriptor = nodes.AddBlockAffineComponent(config_lines, name,
-                                                      permuted_output_descriptor,
-                                                      num_feats, num_feats)
+    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+                                                  permuted_output_descriptor,
+                                                  num_feats, num_feats)
 
     return [output_descriptor, filter_context, filter_context]
 

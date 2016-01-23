@@ -48,6 +48,7 @@ frames_per_iter=400000 # each iteration of training, see this many frames
                        # that divides the number of samples in the entire data.
 
 right_tolerance=  #CTC right tolerance == max label delay.
+left_tolerance=  
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
@@ -278,6 +279,8 @@ ctc_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$frame
 [ ! -z $right_tolerance ] && \
   ctc_supervision_all_opts="$ctc_supervision_all_opts --right-tolerance=$right_tolerance"
 
+[ ! -z $left_tolerance ] && \
+  ctc_supervision_all_opts="$ctc_supervision_all_opts --left-tolerance=$left_tolerance"
 
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
