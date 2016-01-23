@@ -73,7 +73,7 @@ struct Index {
 // sort the indexes first on n, then x, then t (Index's own comparison
 // object will sort first on t, then n, then x)
 struct IndexLessNxt {
-  inline bool operator < (const Index &a, const Index &b) const {
+  inline bool operator ()(const Index &a, const Index &b) const {
     if (a.n < b.n) { return true; }
     else if (a.n > b.n) { return false; }
     else if (a.x < b.x) { return true; }

@@ -264,6 +264,82 @@ class StatisticsExtractionComponentPrecomputedIndexes:
 };
 
 
+ComponentPrecomputedIndexes*
+StatisticsExtractionComponent::PrecomputeIndexes(
+    const MiscComputationInfo &misc_info,
+    const std::vector<Index> &input_indexes,
+    const std::vector<Index> &output_indexes,
+    bool need_backprop) const {
+  int32 num_input_indexes = input_indexes.size(),
+      num_output_indexes = output_indexes.size();
+  StatisticsExtractionComponentPrecomputedIndexes *ans = new
+      StatisticsExtractionComponentPrecomputedIndexes();
+  // both input and output indexes are assumed sorted.
+  std::vector<Int32Pair> forward_indexes_cpu(output_indexes.size());
+  Vector<BaseFloat> counts_cpu(output_indexes.size());
+  // this map maps from Index to the position in 'input_indexes'.
+  std::unordered_map<Index, int32> index_to_input_pos;
+  for (i = 0; i < num_input_indexes; i++)
+    index_to_input_pos[input_indexes[i]] = i;
+  
+  std::vector<int32> input_index_list;
+
+  // output_index_lists tells us, for each input index, which output
+  // indexes it participates in the computation of.
+  std::vector<std::vector<int32> > output_index_lists(
+      need_backprop ? num_input_indexes : 0);
+  for (int32 i = 0; i < num_output_indexes; i++) {
+    input_index_list.clear();
+    Index output_index = output_indexes[i];
+    Index input_index(output_index);
+    int32 t = output_index.t,
+        t_start = output_period_ * (t / output_period_);
+    if (t_start > output_period_)   // could happen for negative t_start due to
+      t_start -= output_period_;    // the way modulus works in c.
+    int32 t_end = t_start + output_period_;
+    for (int32 t = t_start; t < t_end; t += input_period_) {
+      input_index.t = t;
+      std::unordered_map<Index, int32>::iterator iter =
+          index_to_input_pos(input_index);
+      if (iter != index_to_input_pos.end()) {
+        input_index_list.push_back(iter->second);
+        if (need_backprop)
+          output_index_lists[iter->second].push_back(i);
+      }
+    }
+    KALDI_ASSERT(!input_index_list.empty());
+    // Check the input_index_list is a sequence of consecutive numbers, like 20,
+    // 21, 22.  This should be guaranteed by the index sorting and properties
+    // of the dependency structure that this component has.  If not, the
+    // way we do the computation wouldn't be possible.
+    for (size_t j = 0; j + 1 < input_index_list.size(); j++) {
+      KALDI_ASSERT(input_index_list[j+1] == input_index_list[j] + 1);
+    }
+    // in the example above we'd output the pair (20, 23).
+    forward_indexes_cpu[i].first = input_index_list.front();
+    forward_indexes_cpu[i].second = input_index_list.back() + 1;
+    counts_cpu(i) = input_index_list.size();
+  }
+  ans->forward_indexes = forward_indexes_cpu;
+  ans->counts = counts_cpu;
+  if (need_backprop) {
+    std::vector<Int32Pair> backward_indexes_cpu(input_indexes.size());
+    for (int32 i = 0; i < num_input_indexes; i++) {
+      const std::vector<int32> output_index_list = output_index_lists[i];
+      KALDI_ASSERT(!output_index_list.empty());
+      // Check the output_index_list is a sequence of consecutive numbers.
+      for (size_t j = 0; j + 1 < output_index_list.size(); j++) {
+        KALDI_ASSERT(output_index_list[j+1] == output_index_list[j] + 1);
+      }
+      backward_indexes_cpu[i].first = output_index_list.front();
+      backward_indexes_cpu[i].second = output_index_list.back() + 1;
+    }
+    ans->backward_indexes = backward_indexes_cpu;
+  }
+  return ans;
+}
+
+
 StatisticsExtractionComponent::StatisticsExtractionComponent():
     input_dim_(-1), input_period_(1), output_period_(1),
     include_variance_(true) { }
@@ -347,7 +423,60 @@ void StatisticsExtractionComponent::GetInputIndexes(
     desired_indexes->push_back(input_index.t);
   }
 }
-  
+
+
+void StatisticsExtractionComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(indexes_in != NULL);
+  StatisticsExtractionComponentPrecomputedIndexes *indexes =
+     dynamic_cast<StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
+  int32 num_rows_in = in.NumRows(), num_rows_out = out->NumRows();
+  KALDI_ASSERT(indexes != NULL &&
+               indexes->forward_indexes.Dim() == num_rows_out &&
+               in.NumCols() == input_dim_ &&
+               out->NumCols() == OutputDim());
+  out->SetZero();
+  // store the counts.
+  out->CopyColFromVec(indexes->counts, 1);
+  // store the mean stats
+  out->ColRange(1, input_dim_).AddRowRanges(indexes->forward_indexes, in);
+  if (include_variance_) {
+    // store the variance (sum-squared) stats.
+    CuMatrix<BaseFloat> in_squared(in);
+    in_squared.ApplyPow(2.0);
+    out->ColRange(input_dim_ + 1,
+                  input_dim_).AddRowRanges(indexes->forward_indexes,
+                                           in_squared);
+  }
+}
+
+void StatisticsExtractionComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &in_value,
+    const CuMatrixBase<BaseFloat> &, // out_value,
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *, // to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(indexes_in != NULL);
+  StatisticsExtractionComponentPrecomputedIndexes *indexes =
+     dynamic_cast<StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
+  in_deriv->SetZero();
+
+  in->ColRange(1, input_dim_).AddRows(1.0, out_deriv,
+                                      indexes->backward_indexes);
+  if (include_variance_) {
+    CuMatrix<BaseFloat> variance_deriv(in_value.NumRows(),
+                                       in_value.NumCols(),
+                                       kUndefined);
+    variance_deriv.CopyRows(out_deriv,
+                            indexes->backward_indexes);
+    in_deriv->ColRange(1 + input_dim_, input_dim_).
+        AddMatMatElements(2.0, variance_deriv, in_value);
+  }                          
+}
 
 
 class StatisticsPoolingComponentPrecomputedIndexes:
