@@ -98,7 +98,6 @@ namespace kaldi {
     void ReadToken(std::istream &is, bool binary, std::string *str);
     void PeekToken(std::istream &is, bool binary, std::string *str);
 
-
   WriteToken writes the token and one space (whether in binary or text mode).
 
   Peek returns the first character of the next token, by consuming whitespace

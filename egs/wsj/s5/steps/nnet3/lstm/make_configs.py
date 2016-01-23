@@ -90,6 +90,8 @@ if __name__ == "__main__":
                         help="Raw feature dimension, e.g. 13")
     parser.add_argument("--ivector-dim", type=int,
                         help="iVector dimension, e.g. 100", default=0)
+    parser.add_argument("--include-log-softmax", type=str,
+                        help="add the final softmax layer ", default="true", choices = ["false", "true"])
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -210,7 +212,7 @@ if __name__ == "__main__":
 					    lstm_delay = lstm_delay[i][0])
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay, args.include_log_softmax)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 	if len(lstm_delay[i]) == 2:
@@ -227,7 +229,7 @@ if __name__ == "__main__":
                                                args.ng_affine_options)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay, args.include_log_softmax)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 

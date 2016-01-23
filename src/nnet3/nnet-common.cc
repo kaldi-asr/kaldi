@@ -142,7 +142,7 @@ void ReadIndexVector(std::istream &is, bool binary,
               << size;
   }
   vec->resize(size);
-  if (!binary) {  
+  if (!binary) {
     for (int32 i = 0; i < size; i++)
       (*vec)[i].Read(is, binary);
   } else {
@@ -153,13 +153,20 @@ void ReadIndexVector(std::istream &is, bool binary,
 
 
 
+size_t IndexHasher::operator () (const Index &index) const {
+  // The numbers that appear below were chosen arbitrarily from a list of primes
+  return index.n +
+      1619 * index.t +
+      15649 * index.x;
+}
+
 size_t CindexHasher::operator () (const Cindex &cindex) const {
   // The numbers that appear below were chosen arbitrarily from a list of primes
   return cindex.first +
        1619 * cindex.second.n +
       15649 * cindex.second.t +
       89809 * cindex.second.x;
-  
+
 }
 
 std::ostream &operator << (std::ostream &ostream, const Index &index) {

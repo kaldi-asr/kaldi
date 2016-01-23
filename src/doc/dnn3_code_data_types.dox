@@ -26,7 +26,7 @@ namespace nnet3 {
 
   - Up: \ref dnn3
   - Next: \ref dnn3_code_compilation
- 
+
   \section dnn3_dt_problem  Objectives and background
 
   The previous \ref dnn1 "nnet1" and \ref dnn2 "nnet2" setups are based on a Component
@@ -89,7 +89,7 @@ output-node name=output input=output_nonlin
   with a number of additional indexes: time (t), an index (n) that
   indicates the example within the minibatch (e.g. 0 through 511 for
   a 512-example minibatch), plus an "extra" index (x) that may eventually be
-  useful in convolutional approaches but is usually zero for now. 
+  useful in convolutional approaches but is usually zero for now.
 
   To formalize the above, we define an Index is a tuple (n, t, x).  We will also
   define a \ref Cindex as a tuple (node-index, Index), where the node-index is
@@ -108,7 +108,7 @@ output-node name=output input=output_nonlin
      for receiving matrix-valued input, evaluating the NnetComputation, and supplying
      matrix-valued output.  Think of this as the run-time of a very limited interpreted
      language.
- 
+
   \section dnn3_dt_data_structures  Basic data structures in nnet3
 
    \subsection dnn3_dt_datastruct_index Indexes
@@ -149,13 +149,13 @@ output-node name=output input=output_nonlin
   \verbatim
    [ (0, -1:1) (1, -1:1) ... ]
   \endverbatim
-  
-  
+
+
    \subsection dnn3_dt_datastruct_cindex  Cindexes
 
   A \ref Cindex is a pair (int32, Index), where the int32 corresponds to the index of a node
   in a neural network.  As mentioned above, a \ref Nnet "neural network" consists of a collection of
-  named Components and a kind of graph on "nodes", and the nodes have indexes. 
+  named Components and a kind of graph on "nodes", and the nodes have indexes.
   Cindexes are used during the compilation process, and
   they correspond to the nodes of a "computation graph" corresponding to a specific
   neural net computation.  There is a correspondence
@@ -217,8 +217,8 @@ output-node name=output input=output_nonlin
   Computation acts on are a list of matrices, and also submatrices that may
   occupy row or column ranges of a matrix.  A Computation also contains various
   sets of indexes (arrays of integers and so on) that are sometimes required as
-  arguments to particular matrix operations.  
-  
+  arguments to particular matrix operations.
+
   We will describe this in more detail below in \ref dnn3_dt_nnet_computation.
 
   \subsection dnn3_dt_data_struct_computer NnetComputer
@@ -229,7 +229,7 @@ output-node name=output input=output_nonlin
  the NnetComputation.
 
 
-  \section dnn3_dt_nnet  Neural networks in nnet3 
+  \section dnn3_dt_nnet  Neural networks in nnet3
 
  The previous section should have given you a high-level overview of how the
  framework fits together.  In this section we will go into a little more detail
@@ -251,7 +251,7 @@ class Component {
   virtual void Backprop(const std::string &debug_info,
                         const ComponentPrecomputedIndexes *indexes,
                         const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &out_value,                        
+                        const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
                         Component *to_update, // may be NULL; may be identical
                                               // to "this" or different.
@@ -266,7 +266,7 @@ class Component {
  to create the corresponding row of the output.  In terms of Indexes, this means
  that the Indexes corresponding to each element of input and output are the same.
  Similar logic holds in the Backprop function.
- 
+
 
  \subsection dnn3_dt_nnet_component_properties Components (properties)
 
@@ -295,7 +295,7 @@ class Component {
  standard methods (RNNs, LSTMs and so on).  Unlike in the \ref dnn2 "nnet2" framework,
  Components are not responsible for implementing things like splicing across frames;
  instead we use \ref dnn3_dt_nnet_descriptor_code "Descriptors" to handle that, as will be explained below.
- 
+
 
  \subsection dnn3_dt_nnet_node_outline Neural network nodes (outline)
 
@@ -349,7 +349,13 @@ Each component-node in the config file gets expanded to two nodes: a node of
 type kComponent, and an immediately preceding node of type kDescriptor that is
 defined by the "input" field.
 
- 
+The config file above doesn't give an example of a dim-range node.  The basic format
+of a dim-range node is this (this example would take the first 50 dimensions from the 65 dimensions
+of component affine1):
+\verbatim
+dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
+\endverbatim
+
  \subsection dnn3_dt_nnet_descriptor_code Descriptors in config files
 
   A Descriptor is a very limited type of expression that refers to quantities defined
@@ -366,8 +372,8 @@ defined by the "input" field.
 \verbatim
 # caution, this is a simplification that overgenerates descriptors.
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
-<descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
-<descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+<descriptor>  ::=   Append(<descriptor>, [, <descriptor> ... ] )
+<descriptor>  ::=   Sum(<descriptor>, [<descriptor>, ...])
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
@@ -386,10 +392,12 @@ defined by the "input" field.
 <descriptor>  ::=   ReplaceIndex(<descriptor>, <variable-name>, <value>)
 \endverbatim
 
-
-Now we will describe the actual syntax, which differs from the above simplified
-version because expressions may appear only in a certain hierarchy.  This
-syntax also corresponds more closely with the class names in the real code.
+Now we will describe the actual syntax which the code uses internally, which
+differs from the above simplified version because expressions may appear only in
+a certain hierarchy.  This syntax also corresponds more closely with the class
+names in the real code.  The code that reads Descriptors attempts to normalize
+them in as general as possible a way, so that almost all of the above syntax
+can be read and converted to the internal representation.
 \verbatim
 ;;; <descriptor> == class Descriptor
 <descriptor> ::=  Append(<sum-descriptor>[, <sum-descriptor> ... ] )
@@ -477,7 +485,7 @@ If the Descriptor is computable for this Index, the function will return true.
 For instance, the expression <code>Sum(X, Y)</code> would only be computable
 if <code>X</code> and <code>Y</code> are computable.  If this function is going to
 return true, it will also append to "input_terms" only the input Cindexes that
-actually appear in the evaluated expression. 
+actually appear in the evaluated expression.
 For example (and speaking
 loosely), in an expression of the form <code>Failover(X, Y)</code>, if <code>X</code> is computable then
 only <code>X</code> would be appended to "input_terms", and not <code>Y</code>.
@@ -491,7 +499,7 @@ and \ref Descriptor::IsComputable() "IsComputable()" with the same interface as
 SumDescriptor, and also functions such as \ref Descriptor::NumParts() "NumParts()" and
 \ref Descriptor::Part() "Part(int32 n)" that allow the user to access the
 individual SumDescriptors in its vector.
-  
+
 \subsection dnn3_dt_nnet_node_detail Neural network nodes (detail)
 
 We will now describe neural network nodes in more detail.  As mentioned above,
@@ -502,9 +510,9 @@ enum NodeType { kInput, kDescriptor, kComponent, kDimRange };
 The actual NetworkNode is a struct.  To avoid the hassle of pointers and because C++ doesn't
 allow unions containing classes, we have a slightly messy layout:
 \verbatim
-struct NetworkNode {  
+struct NetworkNode {
   NodeType node_type;
-  // "descriptor" is relevant only for nodes of type kDescriptor.  
+  // "descriptor" is relevant only for nodes of type kDescriptor.
   Descriptor descriptor;
   union {
     // For kComponent, the index into Nnet::components_
@@ -537,7 +545,7 @@ public:
   ...
 private:
   std::vector<std::string> component_names_;
-  std::vector<Component*> components_;  
+  std::vector<Component*> components_;
   std::vector<std::string> node_names_;
   std::vector<NetworkNode> nodes_;
 
@@ -558,7 +566,7 @@ information necessary to interpret them.  Internally it defines a number of type
 including the following enum value:
 \verbatim
   enum CommandType {
-    kAllocMatrixUndefined, kAllocMatrixZeroed, 
+    kAllocMatrixUndefined, kAllocMatrixZeroed,
     kDeallocMatrix, kPropagate, kStoreStats, kBackprop,
     kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
     kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
@@ -591,9 +599,9 @@ restricted row and column range of a matrix, like the matlab syntax
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
-    int32 row_offset;    
+    int32 row_offset;
     int32 num_rows;
-    int32 col_offset;    
+    int32 col_offset;
     int32 num_cols;
   };
 \endverbatim

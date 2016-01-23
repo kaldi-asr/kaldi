@@ -62,7 +62,8 @@ mkdir -p $lang/tmp
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
-    fstminimizeencoded | fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
+    fstminimizeencoded | fstpushspecial | \
+    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst || exit 1;
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
 

@@ -511,7 +511,7 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
   return ans;
 }
 
-inline void ComposeContext(vector<int32> &disambig_syms_in,
+inline void ComposeContext(const vector<int32> &disambig_syms_in,
                            int N, int P,
                            VectorFst<StdArc> *ifst,
                            VectorFst<StdArc> *ofst,

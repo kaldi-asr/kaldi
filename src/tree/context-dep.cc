@@ -54,20 +54,23 @@ ContextDependency *GenRandContextDependency(const std::vector<int32> &phone_ids,
   float ctx_dep_prob = 0.7 + 0.3*RandUniform();
   int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
   hmm_lengths->clear();
-  hmm_lengths->resize(max_phone+1, -1);
-  std::vector<bool> is_ctx_dep(max_phone+1);
+  hmm_lengths->resize(max_phone + 1, -1);
+  std::vector<bool> is_ctx_dep(max_phone + 1);
 
   for (int32 i = 0; i <= max_phone; i++) {
     (*hmm_lengths)[i] = 1 + Rand() % 3;
     is_ctx_dep[i] = (RandUniform() < ctx_dep_prob);  // true w.p. ctx_dep_prob.
   }
-  for (size_t i = 0;i < (size_t) num_phones;i++) {
-    KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, hmm_length, is_ctx_dep) == " << (phone_ids[i]) << " " << ((*hmm_lengths)[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
-  }
+  for (size_t i = 0; i < (size_t) num_phones; i++)
+    KALDI_VLOG(2) <<  "For idx = " << i
+                  << ", (phone_id, hmm_length, is_ctx_dep) == "
+                  << (phone_ids[i]) << " " << ((*hmm_lengths)[phone_ids[i]])
+                  << " " << (is_ctx_dep[phone_ids[i]]);
   // Generate rand stats.
   BuildTreeStatsType stats;
   size_t dim = 3 + Rand() % 20;
-  GenRandStats(dim, num_stats, N, P, phone_ids, *hmm_lengths, is_ctx_dep, ensure_all_covered, &stats);
+  GenRandStats(dim, num_stats, N, P, phone_ids, *hmm_lengths,
+               is_ctx_dep, ensure_all_covered, &stats);
 
   // Now build the tree.
 
@@ -102,14 +105,14 @@ ContextDependency *GenRandContextDependencyLarge(const std::vector<int32> &phone
   KALDI_ASSERT(num_phones > 0);
   hmm_lengths->clear();
   int32 max_phone = *std::max_element(phone_ids.begin(), phone_ids.end());
-  hmm_lengths->resize(max_phone+1, -1);
-  std::vector<bool> is_ctx_dep(max_phone+1);
+  hmm_lengths->resize(max_phone + 1, -1);
+  std::vector<bool> is_ctx_dep(max_phone + 1);
 
   for (int32 i = 0; i <= max_phone; i++) {
     (*hmm_lengths)[i] = 1 + Rand() % 3;
     is_ctx_dep[i] = (RandUniform() < ctx_dep_prob);  // true w.p. ctx_dep_prob.
   }
-  for (size_t i = 0;i < (size_t) num_phones;i++) {
+  for (size_t i = 0; i < (size_t) num_phones; i++) {
     KALDI_VLOG(2) <<  "For idx = "<< i << ", (phone_id, hmm_length, is_ctx_dep) == " << (phone_ids[i]) << " " << ((*hmm_lengths)[phone_ids[i]]) << " " << (is_ctx_dep[phone_ids[i]]);
   }
   // Generate rand stats.

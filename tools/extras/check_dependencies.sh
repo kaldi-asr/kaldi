@@ -63,7 +63,10 @@ fi
 printed=false
 status=0
 
-if which apt-get >&/dev/null; then
+if which apt-get >&/dev/null && ! which zypper >/dev/null; then
+  # if we're using apt-get [but we're not OpenSuse, which uses zypper as the
+  # primary installer, but sometimes installs apt-get for some compatibility
+  # reason without it really working]...
   if [ ! -z "$debian_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo apt-get install $debian_packages"

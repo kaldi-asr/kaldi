@@ -469,6 +469,12 @@ void IoSpecification::Print(std::ostream &os) const {
   os << "\n";
 }
 
+void IoSpecification::Swap(IoSpecification *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  std::swap(has_deriv, other->has_deriv);
+}  
+
 void ComputationRequest::Print(std::ostream &os) const {
   os << " # Computation request:\n";
   for (size_t i = 0; i < inputs.size(); i++) {

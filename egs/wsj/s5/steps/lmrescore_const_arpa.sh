@@ -8,6 +8,7 @@
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
+stage=1
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -45,13 +46,15 @@ mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
-$cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
-  lattice-lmrescore --lm-scale=-1.0 \
-  "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
-  lattice-lmrescore-const-arpa --lm-scale=1.0 \
-  ark:- "$newlm" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
+if [ $stage -le 1 ]; then
+  $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
+    lattice-lmrescore --lm-scale=-1.0 \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlmcommand" ark:-  \| \
+    lattice-lmrescore-const-arpa --lm-scale=1.0 \
+    ark:- "$newlm" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
+fi
 
-if ! $skip_scoring ; then
+if ! $skip_scoring && [ $stage -le 2 ]; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $newlang $outdir

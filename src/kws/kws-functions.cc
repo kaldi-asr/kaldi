@@ -66,7 +66,7 @@ bool ClusterLattice(CompactLattice *clat,
   //   till we find the next one that doesn't overlap in time with the current
   //   cluster head, and so on.
   unordered_map<StateId, vector<Interval> >::iterator iter;
-  for (iter = head.begin(); iter != head.end(); iter++) {
+  for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
     sort(iter->second.begin(), iter->second.end(), CompareInterval);
     vector<Interval> tmp;

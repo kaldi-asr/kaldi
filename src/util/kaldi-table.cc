@@ -90,7 +90,7 @@ bool WriteScriptFile(std::ostream &os,
     return false;
   }
   std::vector<std::pair<std::string, std::string> >::const_iterator iter;
-  for (iter = script.begin(); iter != script.end(); iter++) {
+  for (iter = script.begin(); iter != script.end(); ++iter) {
     if (!IsToken(iter->first)) {
       KALDI_WARN << "WriteScriptFile: using invalid token \"" << iter->first <<
                     '"';

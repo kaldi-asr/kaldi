@@ -113,7 +113,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
       KALDI_ASSERT(*names_iter == io.name);
       int32 f = names_iter - names_begin;
       int32 this_size = io.indexes.size(),
-        &this_offset = cur_size[f];
+          &this_offset = cur_size[f];
       KALDI_ASSERT(this_size + this_offset <= sizes[f]);
       output_lists[f].push_back(&(io.features));
       NnetIo &output_io = merged_eg->io[f];
@@ -156,6 +156,33 @@ void MergeExamples(const std::vector<NnetExample> &src,
   MergeIo(src, io_names, io_sizes, compress, merged_eg);
 }
 
+void ShiftExampleTimes(int32 t_offset,
+                       const std::vector<std::string> &exclude_names,
+                       NnetExample *eg) {
+  if (t_offset == 0)
+    return;
+  std::vector<NnetIo>::iterator iter = eg->io.begin(),
+      end = eg->io.end();
+  for (; iter != end; iter++) {
+    bool name_is_excluded = false;
+    std::vector<std::string>::const_iterator
+        exclude_iter = exclude_names.begin(),
+        exclude_end = exclude_names.end();
+    for (; exclude_iter != exclude_end; ++exclude_iter) {
+      if (iter->name == *exclude_iter) {
+        name_is_excluded = true;
+        break;
+      }
+    }
+    if (!name_is_excluded) {
+      // name is not something like "ivector" that we exclude from shifting.
+      std::vector<Index>::iterator index_iter = iter->indexes.begin(),
+          index_end = iter->indexes.end();
+      for (; index_iter != index_end; ++index_iter)
+        index_iter->t += t_offset;
+    }
+  }
+}
 
 void GetComputationRequest(const Nnet &nnet,
                            const NnetExample &eg,

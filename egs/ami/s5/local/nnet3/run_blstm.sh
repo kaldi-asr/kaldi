@@ -1,12 +1,11 @@
 stage=0
 train_stage=-10
-has_fisher=true
 mic=ihm
-use_sat_alignments=false
 affix=bidirectional
-speed_perturb=true
 common_egs_dir=
 remove_egs=true
+use_ihm_ali=false
+use_sat_alignments=true
 
 # BLSTM params
 cell_dim=512
@@ -15,6 +14,11 @@ nrp_dim=128
 chunk_left_context=40
 chunk_right_context=40
 
+# training options
+num_jobs_initial=2
+num_jobs_final=12
+samples_per_iter=20000
+realign_times=
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -32,8 +36,11 @@ local/nnet3/run_lstm.sh --affix $affix \
                          --chunk-left-context $chunk_left_context \
                          --chunk-right-context $chunk_right_context \
                          --mic $mic \
+                         --num-jobs-initial $num_jobs_initial \
+                         --num-jobs-final $num_jobs_final \
+                         --samples-per-iter $samples_per_iter \
+                         --use-ihm-ali $use_ihm_ali \
                          --use-sat-alignments $use_sat_alignments \
-                         --speed-perturb $speed_perturb \
-                         --has_fisher $has_fisher \
+                         --realign-times "$realign_times" \
                          --remove-egs $remove_egs
 
