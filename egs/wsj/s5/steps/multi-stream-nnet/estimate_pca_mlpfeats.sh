@@ -116,6 +116,10 @@ fi
 #feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
 feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
 
+# keep track of transf_nnet_out_opts, 
+# so no need to supply it
+echo "$transf_nnet_out_opts" >$pcadir/transf_nnet_out_opts
+
 if [ $stage -le 0 ]; then
 echo "Computing accumalators"
 $cmd JOB=1:$nj $logdir/acc_pca.JOB.log \

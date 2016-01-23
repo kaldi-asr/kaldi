@@ -15,7 +15,7 @@ htk_save=false
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
 # transform nnet out opts
-transf_nnet_out_opts=
+# transf_nnet_out_opts= # 
 
 # End configuration section.
 
@@ -101,6 +101,10 @@ fi
 # Add Multi-stream options
 #feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
 feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
+
+# transf_nnet_out_opts
+transf_nnet_out_opts=$(cat $pcadir/transf_nnet_out_opts)
+echo "Loading transf_nnet_out_opts=$transf_nnet_out_opts"
 
 # Run the forward pass,
 $cmd JOB=1:$nj $logdir/make_pca_transf.JOB.log \
