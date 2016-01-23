@@ -53,6 +53,27 @@ int32 NumOutputNodes(const Nnet &nnet);
 /// returns the number of input nodes of this nnet.
 int32 NumInputNodes(const Nnet &nnet);
 
+/// get RoundingForwardingDescriptor::t_modulus_ for ivector
+int32 GetTModulusForIvector(const Nnet &nnet);
+
+/// goes into SumDescriptor recursively for extracting some values
+/// (e.g., OffsetForwardingDescriptor::offset_,
+/// RoundingForwardingDescriptor::t_modulus_ ) of nodes in <node_names>,
+/// and save them in <values>
+void IntoSumDescriptor(const Nnet &nnet,
+                       const SumDescriptor &this_descriptor,
+                       const std::vector<std::string> &node_names,
+                       std::vector<int32> *values);
+
+/// goes into ForwardingDescriptor recursively for extracting some values
+/// (e.g., OffsetForwardingDescriptor::offset_,
+/// RoundingForwardingDescriptor::t_modulus_ ) of nodes in <node_names>,
+/// and save them in <values>
+void IntoForwardingDescriptor(const Nnet &nnet,
+                              const ForwardingDescriptor &this_descriptor,
+                              const std::vector<std::string> &node_names,
+                              std::vector<int32> *values);
+
 /// Calls SetZero (with the given is_gradient parameter) on all updatable
 /// components of the nnet.
 void SetZero(bool is_gradient,

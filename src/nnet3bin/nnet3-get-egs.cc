@@ -29,12 +29,55 @@
 namespace kaldi {
 namespace nnet3 {
 
+static void GetIvectorsForEgs(int32 t, int32 left_context,
+                                  int32 right_context, int32 frames_per_eg,
+                                  int32 actual_frames_per_eg,
+                                  int32 ivector_interval,
+                                  const MatrixBase<BaseFloat> *ivector_feats,
+                                  NnetExample *eg) {
+  // try to get a representative iVector every ivector_interval frames
+  // in an eg.
+  KALDI_ASSERT(ivector_feats->NumRows() > 0);
+  // num_ivectors_left is the num of ivectors for frames whose t < 0.
+  // num_ivectors_right is the num of ivectors for frames whose t >= 0.
+  // They are computed according to how Round descriptor works, which
+  // basically returns floor(t / <t-modulus>) * <t-modulus>.
+  int32 num_ivectors_left = std::ceil(1.0 * left_context / ivector_interval); 
+  int32 num_ivectors_right = (frames_per_eg + right_context - 1) / 
+                             ivector_interval + 1;
+  Matrix<BaseFloat> ivectors(num_ivectors_left + num_ivectors_right,
+                             ivector_feats->NumCols(), kUndefined);
+  int32 closest_frame_left = t - 1 -
+      std::min(ivector_interval, left_context) / 2;
+  for (int32 n = 0; n < num_ivectors_left; n++) {
+    if (closest_frame_left < 0)
+      closest_frame_left = 0;
+    int32 row = num_ivectors_left - 1 - n;
+    ivectors.Row(row).CopyFromVec(ivector_feats->Row(closest_frame_left));
+    closest_frame_left -= ivector_interval;
+  }
+  int32 closest_frame_right = t +
+      std::min(ivector_interval, actual_frames_per_eg) / 2;
+  for (int32 n = 0; n < num_ivectors_right; n++) {
+    if (closest_frame_right >= ivector_feats->NumRows())
+      closest_frame_right = ivector_feats->NumRows() - 1;
+    int32 row = num_ivectors_left + n;
+    ivectors.Row(row).CopyFromVec(ivector_feats->Row(closest_frame_right));
+    closest_frame_right += ivector_interval;
+  }
+  eg->io.push_back(NnetIo("ivector", -num_ivectors_left, ivectors));
+  // multiplied each t by the factor ivector_interval
+  // according to the definition of the Round descriptor
+  for (int32 n = 0; n < eg->io.back().indexes.size(); n++)
+    eg->io.back().indexes[n].t *= ivector_interval;
+}
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
+                        int32 ivector_interval,
                         int32 num_pdfs,
                         int32 left_context,
                         int32 right_context,
@@ -76,15 +119,21 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     // if applicable, add the iVector feature.
     if (ivector_feats != NULL) {
-      // try to get closest frame to middle of window to get
-      // a representative iVector.
-      int32 closest_frame = t + (actual_frames_per_eg / 2);
-      KALDI_ASSERT(ivector_feats->NumRows() > 0);
-      if (closest_frame >= ivector_feats->NumRows())
-        closest_frame = ivector_feats->NumRows() - 1;
-      Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
-      ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
-      eg.io.push_back(NnetIo("ivector", 0, ivector));
+      if (ivector_interval == 0) {
+        // try to get closest frame to middle of window to get
+        // a representative iVector.
+        int32 closest_frame = t + (actual_frames_per_eg / 2);
+        KALDI_ASSERT(ivector_feats->NumRows() > 0);
+        if (closest_frame >= ivector_feats->NumRows())
+          closest_frame = ivector_feats->NumRows() - 1;
+        Matrix<BaseFloat> ivector(1, ivector_feats->NumCols());
+        ivector.Row(0).CopyFromVec(ivector_feats->Row(closest_frame));
+        eg.io.push_back(NnetIo("ivector", 0, ivector));
+      } else {
+        GetIvectorsForEgs(t, left_context, right_context, frames_per_eg,
+                          actual_frames_per_eg, ivector_interval,
+                          ivector_feats, &eg);
+      }
     }
 
     // add the labels.
@@ -141,7 +190,7 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
-        num_frames = 1, length_tolerance = 100;
+        num_frames = 1, length_tolerance = 100, ivector_interval = 10;
         
     std::string ivector_rspecifier;
     
@@ -160,6 +209,11 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("ivector-interval", &ivector_interval, "0 means having "
+                "only one ivector for each example. If non-zero, this value is "
+                "the interval between two consecutive ivectors to be dumped in "
+                "the example. It is recommended to have an ivector-interval of "
+                "at most 10, for good results.");
     
     po.Read(argc, argv);
 
@@ -170,6 +224,9 @@ int main(int argc, char *argv[]) {
 
     if (num_pdfs <= 0)
       KALDI_ERR << "--num-pdfs options is required.";
+
+    if (ivector_interval < 0)
+      KALDI_ERR << "--ivector-interval should be non-negative.";
     
 
     std::string feature_rspecifier = po.GetArg(1),
@@ -221,11 +278,12 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-          
+
         ProcessFile(feats, ivector_feats, pdf_post, key, compress,
-                    num_pdfs, left_context, right_context, num_frames,
-                    &num_frames_written, &num_egs_written,
-                    &example_writer);
+                    ivector_interval, num_pdfs,
+                    left_context, right_context, num_frames,
+                    &num_frames_written, &num_egs_written, &example_writer);
+
         num_done++;
       }
     }

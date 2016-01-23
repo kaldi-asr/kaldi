@@ -6,9 +6,14 @@ stage=1
 train_stage=-10
 generate_alignments=true # false if doing ctc training
 speed_perturb=true
+ivector_period=10
 
 . ./path.sh
 . ./utils/parse_options.sh
+
+if [ $ivector_period -eq 0 ]; then
+  $ivector_period=10
+fi
 
 mkdir -p nnet3
 # perturbed data preparation
@@ -130,9 +135,10 @@ if [ $stage -le 8 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_max2_hires
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 --ivector-period $ivector_period \
     data/${train_set}_max2_hires exp/nnet3/extractor exp/nnet3/ivectors_$train_set || exit 1;
 
+<<<<<<< HEAD
   for data_set in eval2000 train_dev rt03; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${data_set}_hires exp/nnet3/extractor exp/nnet3/ivectors_$data_set || exit 1;

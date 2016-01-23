@@ -34,6 +34,7 @@ non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
+ivector_interval=10
 
 
 # training options
@@ -79,7 +80,7 @@ dir=${dir}$suffix
 train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 
-local/nnet3/run_ivector_common.sh --stage $stage \
+local/nnet3/run_ivector_common.sh --stage $stage --ivector-period $ivector_interval \
   --speed-perturb $speed_perturb || exit 1;
 
 
@@ -99,6 +100,7 @@ if [ $stage -le 9 ]; then
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
     --self-repair-scale 0.00001 \
+    --ivector-interval $ivector_interval \
    $dir/configs || exit 1;
 
 fi

@@ -101,6 +101,9 @@ egs_opts=
 transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
+ivector_interval=10      # 0 means having only one ivector for each example. If non-zero, this value is the interval
+                         # between two consecutive ivectors to be dumped in the example. It is recommended to have
+                         # an ivector-interval of at most 10, for good results.
 feat_type=raw  # or set to 'lda' to use LDA features.
 align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
 align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
@@ -190,6 +193,9 @@ if [ $# != 4 ]; then
   echo "  --shrink <shrink|0.99>                           # if non-zero this parameter will be used to scale the parameter matrices"
   echo "  --shrink-threshold <threshold|0.15>              # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
+  echo "  --ivector-interval <int|10>                      # 0 means having only one ivector for each example. If non-zero, this value is the interval"
+  echo "                                                   # between two consecutive ivectors to be dumped in the example. It is recommended to have"
+  echo "                                                   # an ivector-interval of at most 10, for good results."
   echo " for more options see the script"
   exit 1;
 fi
@@ -243,6 +249,8 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
+[ $ivector_interval -gt $chunk_width ] && echo "Error ivector_interval should not be greater than chunk_width." && exit 1
+
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
@@ -267,6 +275,7 @@ if [ $stage -le -5 ]; then
     --clipping-threshold $clipping_threshold \
     --num-targets $num_leaves \
     --label-delay $label_delay \
+    --ivector-interval $ivector_interval \
    $dir/configs || exit 1;
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
@@ -299,6 +308,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--right-context $right_context)
   extra_opts+=(--valid-left-context $((chunk_width + left_context)))
   extra_opts+=(--valid-right-context $((chunk_width + right_context)))
+  extra_opts+=(--ivector-interval $ivector_interval)
 
   # Note: in RNNs we process sequences of labels rather than single label per sample
   echo "$0: calling get_egs.sh"
@@ -318,6 +328,10 @@ if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
 fi
 if [ "$ivector_dim" != "$(cat $egs_dir/info/ivector_dim)" ]; then
   echo "$0: ivector dimension mismatch with egs, $ivector_dim vs $(cat $egs_dir/info/ivector_dim)";
+  exit 1;
+fi
+if [ $ivector_interval -ne $(cat $egs_dir/info/ivector_interval) ] && [ $[$ivector_interval%$(cat $egs_dir/info/ivector_interval)] -ne 0 ]; then
+  echo "$0: ivector interval mismatch with egs (should be a multiple of), $ivector_interval vs $(cat $egs_dir/info/ivector_interval)";
   exit 1;
 fi
 

@@ -24,6 +24,7 @@ non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
+ivector_interval=10
 
 
 # training options
@@ -63,7 +64,7 @@ dir=exp/nnet3/lstm
 dir=$dir${affix:+_$affix}
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
 
-local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
+local/nnet3/run_ivector_common.sh --stage $stage --ivector-period $ivector_interval || exit 1;
 
 if [ $stage -le 8 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -94,6 +95,7 @@ if [ $stage -le 8 ]; then
     --chunk-right-context $chunk_right_context \
     --egs-dir "$common_egs_dir" \
     --remove-egs $remove_egs \
+    --ivector-interval $ivector_interval \
     data/train_si284_hires data/lang exp/tri4b_ali_si284 $dir  || exit 1;
 fi
 
@@ -114,11 +116,11 @@ if [ $stage -le 9 ]; then
       (
       num_jobs=`cat data/test_${year}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
-	  --extra-left-context $extra_left_context \
-	  --extra-right-context $extra_right_context \
-	  --frames-per-chunk "$frames_per_chunk" \
-	  --online-ivector-dir exp/nnet3/ivectors_test_$year \
-	 $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
+        --extra-left-context $extra_left_context \
+        --extra-right-context $extra_right_context \
+        --frames-per-chunk "$frames_per_chunk" \
+        --online-ivector-dir exp/nnet3/ivectors_test_$year \
+        $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year} || exit 1;
       ) &
     done
   done

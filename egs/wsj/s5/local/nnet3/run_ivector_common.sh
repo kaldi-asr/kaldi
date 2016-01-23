@@ -9,11 +9,15 @@
 mfccdir=mfcc
 
 stage=1
+ivector_period=10
 
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+if [ $ivector_period -eq 0 ]; then
+  $ivector_period=10
+fi
 
 if [ $stage -le 1 ]; then
   for datadir in train_si284 test_eval93 test_dev93 test_eval92; do
@@ -66,14 +70,14 @@ if [ $stage -le 6 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train_si284_hires \
     data/train_si284_hires_max2
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 --ivector-period $ivector_period \
     data/train_si284_hires_max2 exp/nnet3/extractor exp/nnet3/ivectors_train_si284 || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
   rm exp/nnet3/.error 2>/dev/null
   for data in test_eval92 test_dev93 test_eval93; do
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 \
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 8 --ivector-period $ivector_period \
       data/${data}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data} || touch exp/nnet3/.error &
   done
   wait
