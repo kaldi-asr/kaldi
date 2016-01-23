@@ -1,6 +1,7 @@
-#!/nfs/disk/perm/linux-x86_64/bin/python2
-###!/usr/bin/python
-import argparse
+#!/usr/bin/env python
+
+from __future__ import print_function
+import optparse
 import random
 import bisect
 import re
@@ -9,8 +10,31 @@ import wave
 import math
 import struct
 import sys
-import pyximport; pyximport.install()
-from util import *
+
+try:
+  import pyximport; pyximport.install()
+  from util import *
+except:
+  print("Cython possibly not installed, using standard python code. The process might be slow", file=sys.stderr)
+
+  def energy(mat):
+    return float(sum([x * x for x in mat])) / len(mat)
+
+  def mix(mat, noise, pos, scale):
+    ret = []
+    l = len(noise)
+    for i in xrange(len(mat)):
+        x = mat[i]
+        d = int(x + scale * noise[pos])
+        #if d > 32767 or d < -32768:
+        #    logging.debug('overflow occurred!')
+        d = max(min(d, 32767), -32768)
+        ret.append(d)
+        pos += 1
+        if pos == l:
+            pos = 0
+    return (pos, ret)
+
 
 def dirichlet(params):
     samples = [random.gammavariate(x, 1) if x > 0 else 0. for x in params]
@@ -19,22 +43,12 @@ def dirichlet(params):
         samples[x] += samples[x - 1]
     return bisect.bisect_left(samples, random.random())
 
-#def energy(wav_filename):
-#    return float(filter(lambda x: 'amp' in x,
-#                 filter(lambda x: 'RMS' in x, 
-#                 subprocess.check_output(['sox', wav_filename, '-n', 'stat'], stderr=subprocess.STDOUT).split('\n')))[0].split()[-1])
-
 def wave_mat(wav_filename):
     f = wave.open(wav_filename, 'r')
     n = f.getnframes()
     ret = f.readframes(n)
     f.close()
     return list(struct.unpack('%dh' % n, ret))
-
-"""
-def energy(mat):
-    return float(sum([x * x for x in mat])) / len(mat)
-"""
 
 def num_samples(mat):
     return len(mat)
@@ -73,36 +87,17 @@ def output_wave_file(dir, tag, mat):
         f.write(wave_header(mat, 16000))
         f.write(struct.pack('%dh' % len(mat), *mat))
 
-"""
-def mix(mat, type, scale):
-    pos, noise = noises[type]
-    ret = []
-    l = len(noise)
-    for i in xrange(len(mat)):
-        x = mat[i]
-        d = int(x + scale * noise[pos])
-        #if d > 32767 or d < -32768:
-        #    logging.debug('overflow occurred!')
-        d = max(min(d, 32767), -32768)
-        ret.append(d)
-        pos += 1
-        if pos == l:
-            pos = 0
-    noises[type] = (pos, noise)
-    return ret
-"""
-
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--noise-level', type=float, help='')
-    parser.add_argument('--noise-src', type=str, help='')
-    parser.add_argument('--noise-prior', type=str, help='')
-    parser.add_argument('--seed', type=int, help='')
-    parser.add_argument('--sigma0', type=float, help='')
-    parser.add_argument('--wav-src', type=str, help='')
-    parser.add_argument('--verbose', type=bool, help='')
-    parser.add_argument('--wavdir', type=str, help='')
-    args = parser.parse_args()
+    parser = optparse.OptionParser()
+    parser.add_option('--noise-level', type=float, help='')
+    parser.add_option('--noise-src', type=str, help='')
+    parser.add_option('--noise-prior', type=str, help='')
+    parser.add_option('--seed', type=int, help='')
+    parser.add_option('--sigma0', type=float, help='')
+    parser.add_option('--wav-src', type=str, help='')
+    parser.add_option('--verbose', type=int, help='')
+    parser.add_option('--wavdir', type=str, help='')
+    (args, dummy) = parser.parse_args()
     random.seed(args.seed)
     params = [float(x) for x in args.noise_prior.split(',')]
     
@@ -148,7 +143,6 @@ def main():
                 output_wave_file(args.wavdir, tag, result)
             else:
                 output(tag, result)
-            #output(tag, mix(mat, type, scale))
 
 if __name__ == '__main__':
     main()

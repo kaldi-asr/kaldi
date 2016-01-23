@@ -1,5 +1,6 @@
-#!/usr/bin/python2.6
+#!/usr/bin/env python
 
+from __future__ import print_function
 import sys
 
 for l in sys.stdin:
@@ -11,4 +12,4 @@ for l in sys.stdin:
         for i in v:
            lk= lk + ' ' + i
         
-    print lk.encode('utf-8')
+    print (lk.encode('utf-8'))

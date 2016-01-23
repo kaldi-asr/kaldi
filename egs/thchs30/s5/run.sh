@@ -19,6 +19,7 @@ n=8
 # data preparation 
 # generate text, wav.scp, utt2pk, spk2utt
 
+
 local/thchs-30_data_prep.sh $H $thchs || exit 1;
 
 #produce MFCC features 
@@ -59,7 +60,7 @@ cp data/mfcc/test/feats.scp data/mfcc/test.ph && cp data/mfcc/test/cmvn.scp data
 )
 
 #monophone
-steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
+steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1; 
 #test monophone model
 local/thchs-30_decode.sh --mono true --nj $n "steps/decode.sh" exp/mono data/mfcc &
 
@@ -106,4 +107,6 @@ steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/dev data/lang exp/tri4
 local/nnet/run_dnn.sh --stage 0 --nj $n  exp/tri4b exp/tri4b_ali exp/tri4b_ali_cv || exit 1;  
 
 # train dae model
+# python2.6 or above is required for noisy data generation.
+# To speed up the process, pyximport for python is recommeded.
 local/dae/run_dae.sh --stage 0 || exit 1;
