@@ -184,12 +184,12 @@ class StatisticsExtractionComponent: public Component {
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const {
     // count + sum stats [ + sum-squared stats].
-    return 1 + input_dim_ + (include_variance_ ? input_dim_ 0);
+    return 1 + input_dim_ + (include_variance_ ? input_dim_ : 0);
   }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "StatisticsExtractionComponent"; }
   virtual int32 Properties() const {
-    return kBackpropNeedsInput|kReordersIndexes;
+    return kReordersIndexes | (include_variance_ ? kBackpropNeedsInput : 0);
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -208,7 +208,7 @@ class StatisticsExtractionComponent: public Component {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
   virtual Component* Copy() const {
-    return new StatisticsPoolingComponent(*this);
+    return new StatisticsExtractionComponent(*this);
   }
   
   // Some functions that are only to be reimplemented for GeneralComponents.
