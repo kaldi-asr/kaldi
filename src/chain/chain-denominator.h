@@ -126,11 +126,10 @@ class DenominatorComputation {
   // the derivs w.r.t. the nnet outputs (transposed)
   CuMatrix<BaseFloat> nnet_output_deriv_transposed_;
 
-  // the alpha probabilities; dimension is (frames_per_sequence + 2) by (num-hmm-states
-  // * num-sequences  + num_sequences).  Note, they are not logs.
-  // The last 'num_sequences' columns are for the alpha-sums, which relates to leaky HMM.
-  // The last row is to store the alpha-dash which is a modified form of the alpha, relating
-  // to leaky HMMs.
+  // the (temporarily) alpha and (more permanently) alpha-dash probabilities;
+  // dimension is (frames_per_sequence + 1) by (num-hmm-states * num-sequences +
+  // num_sequences).  Note, they are not logs.  The last 'num_sequences' columns
+  // are for the alpha-sums, which relates to leaky HMM.
   CuMatrix<BaseFloat> alpha_;
 
   // the beta (also beta-dash) probabilities (rolling buffer); dimension is 2 *

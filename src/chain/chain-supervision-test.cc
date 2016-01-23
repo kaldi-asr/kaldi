@@ -251,6 +251,8 @@ void ChainTrainingTest(const DenominatorGraph &den_graph,
     nnet_output.SetRandn();
 
   ChainTrainingOptions opts;
+  if (RandInt(0, 1) == 1)
+    opts.leaky_hmm_coefficient = 0.2;
 
   CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
                                         nnet_output.NumCols(),
