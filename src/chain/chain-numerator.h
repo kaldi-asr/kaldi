@@ -76,8 +76,8 @@ class NumeratorComputation {
   BaseFloat Forward();
 
   // Does the backward computation and (efficiently) adds the derivative of the
-  // nnet output w.r.t. the (log-prob times supervision_.weight) to
-  // 'nnet_output_deriv'.
+  // nnet output w.r.t. the (log-prob times supervision_.weight times
+  // deriv_weight) to 'nnet_output_deriv'.
   void Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
  private:

@@ -43,8 +43,13 @@ struct ChainObjectiveInfo {
 };
 
 
-/** This class is for computing objective-function values in a nnet3+chain setup,
-    for diagnostics.  It also supports computing model derivatives.
+/** This class is for computing objective-function values in a nnet3+chain
+    setup, for diagnostics.  It also supports computing model derivatives.
+    Note: if the --xent-regularization option is nonzero, the cross-entropy
+    objective will be computed, and displayed when you call PrintTotalStats(),
+    but it will not contribute to model derivatives (there is no code to compute
+    the regularized objective function, and anyway it's not clear that we really
+    need this regularization in the combination phase).
  */
 class NnetChainComputeProb {
  public:

@@ -65,9 +65,18 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
       store_component_stats = false;
   ComputationRequest request;
+  // if the options specify cross-entropy regularization, we'll be computing
+  // this objective (not interpolated with the regular objective-- we give it a
+  // separate name), but currently we won't make it contribute to the
+  // derivative-- we just compute the derivative of the regular output.
+  // This is because in the place where we use the derivative (the
+  // model-combination code) we decided to keep it simple and just use the
+  // regular objective.
+  bool use_xent_regularization = (chain_config_.xent_regularize != 0.0),
+      use_xent_derivative = false;
   GetChainComputationRequest(nnet_, chain_eg, need_model_derivative,
-                             store_component_stats,
-                             &request);
+                             store_component_stats, use_xent_regularization,
+                             use_xent_derivative, &request);
   const NnetComputation *computation = compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
@@ -93,19 +102,24 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
       KALDI_ERR << "Network has no output named " << sup.name;
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
-    CuMatrix<BaseFloat> nnet_output_deriv;
+    bool use_xent = (chain_config_.xent_regularize != 0.0);
+    std::string xent_name = sup.name + "-xent";  // typically "output-xent".
+    CuMatrix<BaseFloat> nnet_output_deriv, xent_deriv;
     if (nnet_config_.compute_deriv)
       nnet_output_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
-
+    if (use_xent)
+      xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
+                        kUndefined);
+      
     BaseFloat tot_like, tot_l2_term, tot_weight;
     
     ComputeChainObjfAndDeriv(chain_config_, den_graph_,
                              sup.supervision, nnet_output,
                              &tot_like, &tot_l2_term, &tot_weight,
-                             (nnet_config_.compute_deriv ?
-                              &nnet_output_deriv : NULL));
-
+                             (nnet_config_.compute_deriv ? &nnet_output_deriv :
+                              NULL), (use_xent ? &xent_deriv : NULL));
+    
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
     // optimization algorithm, and in that case if there is a mismatch between
@@ -122,6 +136,18 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     if (nnet_config_.compute_deriv)
       computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
+    if (use_xent) {
+      ChainObjectiveInfo &xent_totals = objf_info_[xent_name];
+      // this block computes the cross-entropy objective.
+      const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
+          xent_name);
+      // at this point, xent_deriv is posteriors derived from the numerator
+      // computation.  note, xent_deriv has a factor of '.supervision.weight',
+      // but so does tot_weight.
+      BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
+      xent_totals.tot_weight += tot_weight;
+      xent_totals.tot_like += xent_objf;
+    }
     num_minibatches_processed_++;
   }
 }
