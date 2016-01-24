@@ -32,7 +32,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *objf,
                               BaseFloat *l2_term,                              
                               BaseFloat *weight,
-                              CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+                              CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                              CuMatrixBase<BaseFloat> *xent_output_deriv) {
   BaseFloat num_logprob_weighted;
   if (nnet_output_deriv)
     nnet_output_deriv->SetZero();
@@ -41,8 +42,17 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, and the logprob too.
     num_logprob_weighted = numerator.Forward();
-    if (nnet_output_deriv)
+    if (nnet_output_deriv) {
       numerator.Backward(nnet_output_deriv);
+      if (xent_output_deriv)
+        xent_output_deriv->CopyFromMat(*nnet_output_deriv);
+    } else if (xent_output_deriv) {
+      // this branch will be taken if xent_output_deriv but not
+      // nnet_output_deriv is set- which could happen if you want to compute the
+      // cross-entropy objective but not the derivatives.
+      xent_output_deriv->SetZero();
+      numerator.Backward(xent_output_deriv);
+    }
   }
   DenominatorComputation denominator(opts, den_graph,
                                      supervision.num_sequences,
@@ -61,6 +71,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     // inf or NaN detected, or denominator computation returned false.
     if (nnet_output_deriv)
       nnet_output_deriv->SetZero();
+    if (xent_output_deriv)
+      xent_output_deriv->SetZero();
     BaseFloat default_objf = -10;
     KALDI_WARN << "Objective function is " << (*objf)
                << " and denominator computation (if done) returned "

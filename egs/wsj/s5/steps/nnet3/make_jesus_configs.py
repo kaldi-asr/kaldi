@@ -36,6 +36,9 @@ parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
+parser.add_argument("--add-xent-output", type=str,
+                    help="For chain models, add a separate output for cross-entropy regularization",
+                    default="false", choices = ["false", "true"])
 parser.add_argument("--use-repeated-affine", type=str,
                     help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
                     default="true", choices = ["false", "true"])
@@ -463,4 +466,19 @@ for l in range(1, num_hidden_layers + 1):
     else:
         print('output-node name=output input=final-affine', file=f)
 
+    if args.add_xent_output == "true":
+        # This block prints the configs for a separate output that will be
+        # trained with a cross-entropy objective in the 'chain' models... this
+        # has the effect of regularizing the hidden parts of the model.
+        print('component name=final-affine-xent type=NaturalGradientAffineComponent '
+              'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0'.format(
+                cur_affine_output_dim, args.num_targets), file=f)
+        print('component-node name=final-affine-xent component=final-affine-xent input=final-relu',
+              file=f)
+        print('component name=final-log-softmax-xent type=LogSoftmaxComponent dim={0}'.format(
+                args.num_targets), file=f)
+        print('component-node name=final-log-softmax-xent component=final-log-softmax-xent '
+              'input=final-affine-xent', file=f)
+        print('output-node name=output-xent input=final-log-softmax-xent', file=f)
+        
     f.close()
