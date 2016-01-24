@@ -1,19 +1,19 @@
 #!/bin/bash
 
-# _4t is as _4s, but with --leaky-hmm-coefficient 0.04.
+# _4p is as _4f, but one fewer layer, and making the final-layer context wider to
+# compensate; also increasing the jesus-layer input and output dims 400->500 and 1500->1600 to
+# somewhat compensate for the reduction in parameters.
 
-# [note, I accidentally overwrote this directory afterwards, and moved it.]
-# It's really not clear whether it's helpful.
-# ./compare_wer.sh 4f 4t
-# System                       4f        4t
-# WER on train_dev(tg)      16.83     16.75
-# WER on train_dev(fg)      15.73     15.45
-# WER on eval2000(tg)        18.4      18.5
-# WER on eval2000(fg)        16.6      16.7
-# Final train prob      -0.105832 -0.112721
-# Final valid prob      -0.123021 -0.129688
-
-# _4s is as _4f, but with --leaky-hmm-coefficient 0.02.  [A new option.]
+# definitely worse.  Later with 4r I go in the opposite direction by adding a new layer,
+# and get a small improvement.
+# ./compare_wer.sh 4f 4p
+# System                       4f        4p
+# WER on train_dev(tg)      16.83     17.36
+# WER on train_dev(fg)      15.73     16.10
+# WER on eval2000(tg)        18.4      19.1
+# WER on eval2000(fg)        16.6      17.2
+# Final train prob      -0.105832 -0.104439
+# Final valid prob      -0.123021 -0.125576
 
 # _4f is as _4e, but halving the regularization from 0.0001 to 0.00005.
 
@@ -238,7 +238,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_4u # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_4p # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -330,11 +330,10 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --leaky-hmm-coefficient 0.08 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
+    --jesus-opts "--jesus-forward-input-dim 450  --jesus-forward-output-dim 1600 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -6,-3,0,3 -9,-6,-3,0,3,6" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \

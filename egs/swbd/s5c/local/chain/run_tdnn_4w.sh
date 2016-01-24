@@ -1,19 +1,24 @@
 #!/bin/bash
 
-# _4t is as _4s, but with --leaky-hmm-coefficient 0.04.
+# _4w is as _4v, but doubling --xent-regularize to 0.2
 
-# [note, I accidentally overwrote this directory afterwards, and moved it.]
-# It's really not clear whether it's helpful.
-# ./compare_wer.sh 4f 4t
-# System                       4f        4t
-# WER on train_dev(tg)      16.83     16.75
+# _4v is as _4r, but with --xent-regularize 0.1.  Increasing max_param_change
+# from 1.0 to 2.0 because there is a lot of parameter change in the final xent
+# layer, and this limits the rate of change of the other layers.
+
+# _4r is as _4f, but one more hidden layer, and reducing context of existing
+# layers so we can re-use the egs.  Reducing jesus-forward-output-dim slightly
+# from 1500 to 1400.
+
+# This is better than 4f by almost all metrics.
+# ./compare_wer.sh 4f 4r
+# System                       4f        4r
+# WER on train_dev(tg)      16.83     16.50
 # WER on train_dev(fg)      15.73     15.45
-# WER on eval2000(tg)        18.4      18.5
+# WER on eval2000(tg)        18.4      18.3
 # WER on eval2000(fg)        16.6      16.7
-# Final train prob      -0.105832 -0.112721
-# Final valid prob      -0.123021 -0.129688
-
-# _4s is as _4f, but with --leaky-hmm-coefficient 0.02.  [A new option.]
+# Final train prob      -0.105832 -0.103652
+# Final valid prob      -0.123021 -0.121105
 
 # _4f is as _4e, but halving the regularization from 0.0001 to 0.00005.
 
@@ -238,14 +243,14 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_4u # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_4w # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
-max_param_change=1.0
+max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
@@ -330,11 +335,11 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --leaky-hmm-coefficient 0.08 \
+    --xent-regularize 0.2 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
+    --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1400 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \

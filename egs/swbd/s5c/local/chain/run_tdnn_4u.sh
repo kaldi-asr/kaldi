@@ -1,17 +1,19 @@
 #!/bin/bash
 
-# _4t is as _4s, but with --leaky-hmm-coefficient 0.04.
+# _4u is as _4t, but with --leaky-hmm-coefficient 0.08.  Note: the
+# ultimate baseline is 4f.
 
-# [note, I accidentally overwrote this directory afterwards, and moved it.]
-# It's really not clear whether it's helpful.
-# ./compare_wer.sh 4f 4t
-# System                       4f        4t
-# WER on train_dev(tg)      16.83     16.75
-# WER on train_dev(fg)      15.73     15.45
-# WER on eval2000(tg)        18.4      18.5
-# WER on eval2000(fg)        16.6      16.7
-# Final train prob      -0.105832 -0.112721
-# Final valid prob      -0.123021 -0.129688
+# It seems a bit better on average.
+#./compare_wer.sh 4f 4u
+#System                       4f        4u
+#WER on train_dev(tg)      16.83     16.47
+#WER on train_dev(fg)      15.73     15.23
+#WER on eval2000(tg)        18.4      18.4
+#WER on eval2000(fg)        16.6      16.7
+#Final train prob      -0.105832 -0.118911
+#Final valid prob      -0.123021 -0.135768
+
+# _4t is as _4s, but with --leaky-hmm-coefficient 0.04.
 
 # _4s is as _4f, but with --leaky-hmm-coefficient 0.02.  [A new option.]
 
@@ -238,7 +240,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_4u # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_4t # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4

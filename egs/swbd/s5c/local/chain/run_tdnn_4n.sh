@@ -1,19 +1,23 @@
 #!/bin/bash
 
-# _4t is as _4s, but with --leaky-hmm-coefficient 0.04.
+# _4n is as _4f, but adding the [new] option --convert-repeated-to-block-iter=100.
+#  reusing iter 100 of model 4f to avoid some iterations of training [did this by
+# doing (cd exp/chain; cp -r tdnn_4f_sp tdnn_4n_sp), and then running this script with
+# --iter 100].
+# [note: to get the block-affine stuff to train fast enough to make a difference
+#  I multiplied a factor of sqrt(num-blocks) into the learning-rate factor in
+#  the code.  That change is not committed.]
+#
+# Essentially no effect on WER, but train and valid probs are worse.
+# ./compare_wer.sh 4f 4n
+# System                       4f        4n
+# WER on train_dev(tg)      16.83     16.84
+# WER on train_dev(fg)      15.73     15.69
+# WER on eval2000(tg)        18.4      18.4
+# WER on eval2000(fg)        16.6      16.6
+# Final train prob      -0.105832 -0.111309
+# Final valid prob      -0.123021 -0.123601
 
-# [note, I accidentally overwrote this directory afterwards, and moved it.]
-# It's really not clear whether it's helpful.
-# ./compare_wer.sh 4f 4t
-# System                       4f        4t
-# WER on train_dev(tg)      16.83     16.75
-# WER on train_dev(fg)      15.73     15.45
-# WER on eval2000(tg)        18.4      18.5
-# WER on eval2000(fg)        16.6      16.7
-# Final train prob      -0.105832 -0.112721
-# Final valid prob      -0.123021 -0.129688
-
-# _4s is as _4f, but with --leaky-hmm-coefficient 0.02.  [A new option.]
 
 # _4f is as _4e, but halving the regularization from 0.0001 to 0.00005.
 
@@ -238,7 +242,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_4u # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_4n # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -330,9 +334,9 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --leaky-hmm-coefficient 0.08 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
+    --convert-repeated-to-block-iter 100 \
     --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1500 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -6,-3,0,3 -6,-3,0,3" \
     --apply-deriv-weights false \
