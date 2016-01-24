@@ -136,7 +136,7 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
                                         num_minibatches_processed_,
                                         tot_weight, xent_objf);
     }
-    
+
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
       nnet_output_deriv.MulRowsVec(cu_deriv_weights);
@@ -166,7 +166,7 @@ bool NnetChainTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+    ans = info.PrintTotalStats(name) || ans;
   }
   return ans;
 }

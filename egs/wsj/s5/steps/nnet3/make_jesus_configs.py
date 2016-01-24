@@ -36,9 +36,10 @@ parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
-parser.add_argument("--add-xent-output", type=str,
-                    help="For chain models, add a separate output for cross-entropy regularization",
-                    default="false", choices = ["false", "true"])
+parser.add_argument("--xent-regularize", type=float,
+                    help="For chain models, if nonzero, add a separate output for cross-entropy "
+                    "regularization (with learning-rate-factor equal to the inverse of this)",
+                    default=0.0)
 parser.add_argument("--use-repeated-affine", type=str,
                     help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
                     default="true", choices = ["false", "true"])
@@ -466,13 +467,18 @@ for l in range(1, num_hidden_layers + 1):
     else:
         print('output-node name=output input=final-affine', file=f)
 
-    if args.add_xent_output == "true":
+    if args.xent_regularize != 0.0:
         # This block prints the configs for a separate output that will be
         # trained with a cross-entropy objective in the 'chain' models... this
-        # has the effect of regularizing the hidden parts of the model.
+        # has the effect of regularizing the hidden parts of the model.  we use
+        # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+        # 1.0 / args.xent_regularize is suitable as it means the xent
+        # final-layer learns at a rate independent of the regularization
+        # constant; and the 0.5 was tuned so as to make the relative progress
+        # similar in the xent and regular final layers.
         print('component name=final-affine-xent type=NaturalGradientAffineComponent '
-              'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0'.format(
-                cur_affine_output_dim, args.num_targets), file=f)
+              'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0 learning-rate-factor={2}'.format(
+                cur_affine_output_dim, args.num_targets, 0.5 / args.xent_regularize), file=f)
         print('component-node name=final-affine-xent component=final-affine-xent input=final-relu',
               file=f)
         print('component name=final-log-softmax-xent type=LogSoftmaxComponent dim={0}'.format(
@@ -480,5 +486,5 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=final-log-softmax-xent component=final-log-softmax-xent '
               'input=final-affine-xent', file=f)
         print('output-node name=output-xent input=final-log-softmax-xent', file=f)
-        
+
     f.close()

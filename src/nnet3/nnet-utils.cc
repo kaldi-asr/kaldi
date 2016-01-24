@@ -42,10 +42,8 @@ int32 NumInputNodes(const Nnet &nnet) {
 
 
 bool IsSimpleNnet(const Nnet &nnet) {
-  // check that we have just one output node and it is
-  // called "output".
-  if (NumOutputNodes(nnet) != 1 ||
-      nnet.GetNodeIndex("output") == -1 ||
+  // check that we have an output node and called "output".
+  if (nnet.GetNodeIndex("output") == -1 ||
       !nnet.IsOutputNode(nnet.GetNodeIndex("output")))
     return false;
   // check that there is an input node named "input".

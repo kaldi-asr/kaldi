@@ -211,11 +211,10 @@ num_leaves=$(am-info $dir/0.trans_mdl | grep -w pdfs | awk '{print $NF}') || exi
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
-  xent_opt=
-  [ "$xent_regularize" != "0.0" -a "$xent_regularize" != "0" ] && xent_opt="--add-xent-output=true"
 
   if [ ! -z "$jesus_opts" ]; then
-    python steps/nnet3/make_jesus_configs.py $xent_opt \
+    python steps/nnet3/make_jesus_configs.py \
+      --xent-regularize=$xent_regularize \
       --include-log-softmax=false \
       --splice-indexes "$splice_indexes"  \
       --feat-dim $feat_dim \
@@ -224,6 +223,8 @@ if [ $stage -le -5 ]; then
       --num-targets $num_leaves \
       $dir/configs || exit 1;
   else
+    [ $xent_regularize != "0.0" ] && \
+      echo "$0: --xent-regularize option not supported by tdnn/make_configs.py." && exit 1;
     if [ ! -z "$relu_dim" ]; then
       dim_opts="--relu-dim $relu_dim"
     else
@@ -237,7 +238,6 @@ if [ $stage -le -5 ]; then
     pool_opts=$pool_opts${pool_lpfilter_width:+" --pool-lpfilter-width $pool_lpfilter_width "}
 
     python steps/nnet3/tdnn/make_configs.py $pool_opts \
-      $xent_opt \
       --include-log-softmax=false \
       --final-layer-normalize-target $final_layer_normalize_target \
       --splice-indexes "$splice_indexes"  \
@@ -456,7 +456,7 @@ while [ $x -lt $num_iters ]; do
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-chain-compute-prob --l2-regularize=$l2_regularize --leaky-hmm-coefficient=$leaky_hmm_coefficient  --xent-regularize=$xent_regularize \
           "nnet3-am-copy --raw=true $dir/$x.mdl -|" $dir/den.fst \
-          "ark:nnet3-chain-merge-egs ark:$egs_dir/valid_diagnostic.cegs ark:- |" &
+          "ark:nnet3-chain-merge-egs ark:$egs_dir/train_diagnostic.cegs ark:- |" &
 
     if [ $x -gt 0 ]; then
       # This doesn't use the egs, it only shows the relative change in model parameters.
