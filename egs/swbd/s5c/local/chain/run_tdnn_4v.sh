@@ -4,6 +4,15 @@
 # from 1.0 to 2.0 because there is a lot of parameter change in the final xent
 # layer, and this limits the rate of change of the other layers.
 
+#./compare_wer.sh 4r 4v
+#System                       4r        4v
+#WER on train_dev(tg)      16.50     15.95
+#WER on train_dev(fg)      15.45     14.69
+#WER on eval2000(tg)        18.3      17.7
+#WER on eval2000(fg)        16.7      16.0
+#Final train prob      -0.103652 -0.106646  -1.60775
+#Final valid prob      -0.121105 -0.118631  -1.62832
+
 # _4r is as _4f, but one more hidden layer, and reducing context of existing
 # layers so we can re-use the egs.  Reducing jesus-forward-output-dim slightly
 # from 1500 to 1400.
