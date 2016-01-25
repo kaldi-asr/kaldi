@@ -423,7 +423,7 @@ class ExpComponent: public NonlinearComponent {
   ExpComponent() { }
   virtual std::string Type() const { return "ExpComponent"; }
   virtual int32 Properties() const { 
-    return kSimpleComponent|kBackpropNeedsInput|kStoresStats;
+    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,

@@ -1207,11 +1207,12 @@ void ExpComponent::Backprop(const std::string &debug_info,
                             const ComponentPrecomputedIndexes *indexes,
                             const CuMatrixBase<BaseFloat> &,//in_value,
                             const CuMatrixBase<BaseFloat> &out_value,
-                            const CuMatrixBase<BaseFloat> &,//out_deriv,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
                             Component *to_update,
                             CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->CopyFromMat(out_value);
+    in_deriv->MulElements(out_deriv);
   }
 }
 
@@ -2243,7 +2244,7 @@ void FixedScaleComponent::Init(const CuVectorBase<BaseFloat> &scales) {
 
 
 void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
-  std::string filename;
+  std::string filename; BaseFloat scale;
   // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
   if (cfl->GetValue("scales", &filename)) {
     if (cfl->HasUnusedValues())
@@ -2251,6 +2252,15 @@ void FixedScaleComponent::InitFromConfig(ConfigLine *cfl) {
                 << Type() << ": \"" << cfl->WholeLine() << "\"";
     CuVector<BaseFloat> vec;
     ReadKaldiObject(filename, &vec);
+    Init(vec);
+  } else if (cfl->GetValue("scale", &scale)) {
+    int32 dim;
+    if (!cfl->GetValue("dim", &dim) || cfl->HasUnusedValues())
+      KALDI_ERR << "Invalid initializer for layer of type "
+                << Type() << ": \"" << cfl->WholeLine() << "\"";
+    KALDI_ASSERT(dim > 0);
+    CuVector<BaseFloat> vec(dim);
+    vec.Add(scale);
     Init(vec);
   } else {
     int32 dim;
