@@ -86,10 +86,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
   const DenominatorGraphTransition *transitions = den_graph_.Transitions();
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows(),
       num_hmm_states = den_graph_.NumStates(),
-      num_sequences = num_sequences_,
-      special_hmm_state = num_hmm_states;
-  // special_hmm_state now points to the alpha-sum quantity which is located
-  // in the sam place as the num_hmm_states'th hmm state would be.
+      num_sequences = num_sequences_;
 
   // 'probs' is the matrix of pseudo-likelihoods for frame t - 1.
   CuSubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
@@ -103,8 +100,8 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
 
     cuda_chain_hmm_forward(dimGrid, dimBlock, backward_transitions, transitions,
-                           num_sequences, special_hmm_state, prob_data,
-                           probs.Stride(), prev_alpha_dash, this_alpha);
+                           num_sequences, prob_data, probs.Stride(),
+                           prev_alpha_dash, this_alpha);
 
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
@@ -126,15 +123,16 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
               this_prev_alpha = prev_alpha_dash[prev_hmm_state * num_sequences + s];
           this_tot_alpha += this_prev_alpha * transition_prob * prob;
         }
-        // Let arbitrary_scale be the inverse of the alpha value for the
-        // hmm-state indexed special_hmm_state_ on the previous frame (for this
-        // sequence); we multiply this into all the transition-probabilities
-        // from the previous frame to this frame, in both the forward and
-        // backward passes, in order to keep the alphas in a good numeric range.
-        // This won't affect the posteriors, but when computing the total
-        // likelihood we'll need to compensate for it later on.
+        // Let arbitrary_scale be the inverse of the alpha-sum value that we
+        // store in the same place we'd store the alpha for the state numbered
+        // 'num_hmm_states'. We multiply this into all the
+        // transition-probabilities from the previous frame to this frame, in
+        // both the forward and backward passes, in order to keep the alphas in
+        // a good numeric range.  This won't affect the posteriors, but when
+        // computing the total likelihood we'll need to compensate for it later
+        // on.
         BaseFloat arbitrary_scale =
-            1.0 / prev_alpha_dash[special_hmm_state * num_sequences + s];
+            1.0 / prev_alpha_dash[num_hmm_states * num_sequences + s];
         KALDI_ASSERT(this_tot_alpha - this_tot_alpha == 0);
         this_alpha[h * num_sequences + s] = this_tot_alpha * arbitrary_scale;
       }
@@ -259,10 +257,7 @@ bool DenominatorComputation::Backward(
           *nnet_output_deriv,
           t * num_sequences_, chunk_frames * num_sequences_,
           0, num_pdfs);
-      const BaseFloat occupation_arbitrary_factor_inv =
-          (1 << kOccupationRescalingPowerOfTwo);
-      output_deriv_part.AddMat(deriv_weight * occupation_arbitrary_factor_inv,
-                               transposed_deriv_part, kTrans);
+      output_deriv_part.AddMat(deriv_weight, transposed_deriv_part, kTrans);
       if (t != 0)
         transposed_deriv_part.SetZero();
     }
@@ -310,8 +305,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
                      t_wrapped * num_sequences_, num_sequences_);
 
   int32 num_hmm_states = den_graph_.NumStates(),
-      num_sequences = num_sequences_,
-      special_hmm_state = num_hmm_states;
+      num_sequences = num_sequences_;
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -319,10 +313,9 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
     cuda_chain_hmm_backward(dimGrid, dimBlock, forward_transitions, transitions,
-                            num_sequences, special_hmm_state,
-                            probs.Data(), probs.Stride(), this_alpha_dash,
-                            next_beta, this_beta_dash, log_prob_deriv.Data(),
-                            log_prob_deriv.Stride());
+                            num_sequences, probs.Data(), probs.Stride(),
+                            this_alpha_dash, next_beta, this_beta_dash,
+                            log_prob_deriv.Data(), log_prob_deriv.Stride());
     CU_SAFE_CALL(cudaGetLastError());
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
@@ -336,14 +329,9 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
       for (int32 s = 0; s < num_sequences; s++) {
         BaseFloat this_alpha_dash_prob = this_alpha_dash[h * num_sequences + s],
             inv_arbitrary_scale =
-            this_alpha_dash[special_hmm_state * num_sequences + s];
+            this_alpha_dash[num_hmm_states * num_sequences + s];
         double tot_variable_factor = 0.0;
-        // search for 'occupation_arbitrary_factor' in chain-kernels.cu for
-        // an explanation.
-        const BaseFloat occupation_arbitrary_factor =
-            (1.0 / (1 << kOccupationRescalingPowerOfTwo));
-        BaseFloat occupation_factor =
-            (occupation_arbitrary_factor * this_alpha_dash_prob) /
+        BaseFloat occupation_factor = this_alpha_dash_prob /
             inv_arbitrary_scale;
         const DenominatorGraphTransition
             *trans_iter = transitions + forward_transitions[h].first,
@@ -376,12 +364,9 @@ void DenominatorComputation::BetaGeneralFrameDebug(int32 t) {
   CuSubMatrix<BaseFloat> this_log_prob_deriv(
       nnet_output_deriv_transposed_, 0, num_pdfs,
       t_wrapped * num_sequences_, num_sequences_);
-  const BaseFloat occupation_inv_arbitrary_factor =
-      1 << kOccupationRescalingPowerOfTwo;
   BaseFloat alpha_beta_product = VecVec(this_alpha_dash,
                                         this_beta_dash),
-      this_log_prob_deriv_sum = this_log_prob_deriv.Sum() *
-      occupation_inv_arbitrary_factor;
+      this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
   if (!ApproxEqual(alpha_beta_product, num_sequences_)) {
     KALDI_WARN << "On time " << t << ", alpha-beta product "
                << alpha_beta_product << " != " << num_sequences_

@@ -46,7 +46,7 @@ extern "C" {
 
 
   // Search for this in chain-kernels.cu for an explanation.
-  enum { kOccupationRescalingPowerOfTwo = 20, kThresholdingPowerOfTwo = 14 };
+  enum { kThresholdingPowerOfTwo = 14 };
 
 }
 

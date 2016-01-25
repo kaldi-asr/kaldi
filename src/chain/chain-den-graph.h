@@ -88,13 +88,6 @@ class DenominatorGraph {
   // Note: we renormalize each HMM-state to sum to one before doing this.
   const CuVector<BaseFloat> &InitialProbs() const;
 
-  // returns the index of the HMM-state that has the highest value in
-  // InitialProbs (and which we believe will always be reachable from most other
-  // states... later on we may check this more carefully [TODO]).
-  // It's used in getting the 'arbitrary_scale' value to keep the alphas
-  // in a good dynamic range.
-  int32 SpecialHmmState() const { return special_hmm_state_; }
-
   // This function outputs a modifified version of the FST that was used to
   // build this object, that has an initial-state with epsilon transitions to
   // each state, with weight determined by initial_probs_; and has each original
@@ -116,22 +109,14 @@ class DenominatorGraph {
   // functions called from the constructor
   void SetTransitions(const fst::StdVectorFst &fst, int32 num_pfds);
 
-  // work out the initial-probs and the 'special state'
-  // Note, there are no final-probs; we treat all states as final
-  // with probability one [we have a justification for this..
-  // assuming it's roughly a well-normalized HMM, this makes sense;
-  // note that we train on chunks, so the beginning and end of a chunk
-  // appear at arbitrary points in the sequence.
-  // At both beginning and end of the chunk, we limit ourselves to
-  // only those pdf-ids that were allowed in the numerator sequence.
+  // work out the initial-probs.  Note, there are no final-probs; we treat all
+  // states as final with probability one [we have a justification for this..
+  // assuming it's roughly a well-normalized HMM, this makes sense; note that we
+  // train on chunks, so the beginning and end of a chunk appear at arbitrary
+  // points in the sequence.  At both beginning and end of the chunk, we limit
+  // ourselves to only those pdf-ids that were allowed in the numerator
+  // sequence.
   void SetInitialProbs(const fst::StdVectorFst &fst);
-
-  // return a suitable 'special' HMM-state used for normalizing probabilities in
-  // the forward-backward.  It has to have a reasonably high probability and be
-  // reachable from most of the graph.  returns a suitable state-index
-  // that we can set special_hmm_state_ to.
-  int32 ComputeSpecialState(const fst::StdVectorFst &fst,
-                            const Vector<BaseFloat> &initial_probs);
 
   // forward_transitions_ is an array, indexed by hmm-state index,
   // of start and end indexes into the transition_ array, which
@@ -152,22 +137,8 @@ class DenominatorGraph {
   // distribution of the HMM.  This isn't too critical.
   CuVector<BaseFloat> initial_probs_;
 
-  // The index of a somewhat arbitrarily chosen HMM-state that we
-  // use for adjusting the alpha probabilities.  It needs to be
-  // one that is reachable from all states (i.e. not a special
-  // state that's only reachable at sentence-start).  We choose
-  // whichever one has the greatest initial-prob.  It's set
-  // in SetInitialProbs().
-  int32 special_hmm_state_;
-
   int32 num_pdfs_;
 };
-
-// returns the number of states from which there is a path to
-// 'dest_state'.  Utility function used in selecting 'special' state
-// for normalization of probabilities.
-int32 NumStatesThatCanReach(const fst::StdVectorFst &fst,
-                            int32 dest_state);
 
 
 // Function that does acceptor minimization without weight pushing...
