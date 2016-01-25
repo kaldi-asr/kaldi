@@ -29,6 +29,8 @@ target_type=IrmExp
 config_dir=
 egs_dir=
 egs_suffix=
+src_dir=
+src_iter=final
 dir=
 
 . cmd.sh
@@ -59,6 +61,8 @@ if [ $target_type == "IrmExp" ]; then
   objective_type=xent
 fi
 
+mkdir  -p $dir
+
 if [ $stage -le 8 ]; then
   echo $target_type > $dir/target_type
 
@@ -67,17 +71,29 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
-    --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
-    --splice-indexes "$splice_indexes" --egs-suffix "$egs_suffix" \
-    --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
-    --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --max-change-per-sample $max_change_per_sample --max-param-change $max_param_change \
-    --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
-    --cmd "$decode_cmd" --nj 40 --objective-type $objective_type --cleanup false --config-dir "$config_dir" \
-    --pnorm-input-dim "$pnorm_input_dim" --pnorm-output-dim "$pnorm_output_dim" \
-    --relu-dim "$relu_dim" \
-    --add-layers-period $add_layers_period \
-    $train_data_dir $targets_scp $dir || exit 1;
+  if [ -z "$src_dir" ]; then
+    steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
+      --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
+      --splice-indexes "$splice_indexes" --egs-suffix "$egs_suffix" \
+      --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
+      --cmvn-opts "--norm-means=false --norm-vars=false" \
+      --max-change-per-sample $max_change_per_sample --max-param-change $max_param_change \
+      --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+      --cmd "$decode_cmd" --nj 40 --objective-type $objective_type --cleanup false --config-dir "$config_dir" \
+      --pnorm-input-dim "$pnorm_input_dim" --pnorm-output-dim "$pnorm_output_dim" \
+      --relu-dim "$relu_dim" \
+      --add-layers-period $add_layers_period \
+      $train_data_dir $targets_scp $dir || exit 1;
+  else
+    steps/nnet3/train_more.sh --stage $train_stage \
+      --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
+      --egs-suffix "$egs_suffix" \
+      --feat-type raw --egs-dir "$egs_dir" --get-egs-stage $get_egs_stage \
+      --cmvn-opts "--norm-means=false --norm-vars=false" --iter $src_iter \
+      --max-change-per-sample $max_change_per_sample --max-param-change $max_param_change \
+      --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
+      --cmd "$decode_cmd" --nj 40 --objective-type $objective_type --cleanup false --config-dir "$config_dir" \
+      $train_data_dir $targets_scp $src_dir $dir || exit 1;
+  fi
 fi
 

@@ -154,6 +154,7 @@ if [ -z "$final_vad_scp" ] && [ $method != "Gmm" ]; then
 1 1
 2 0
 3 0
+4 1
 EOF
       $train_cmd JOB=1:$nj $dir/vad/log/convert_vad.JOB.log \
         copy-int-vector scp:$dir/vad/vad.tmp.JOB.scp ark,t:- \| \
