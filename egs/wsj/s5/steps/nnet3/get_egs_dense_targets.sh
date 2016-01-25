@@ -112,7 +112,7 @@ mkdir -p $dir/log $dir/info
 [ ! -z "$transform_dir" ] && cp $transform_dir/tree $dir
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset | sort \
     > $dir/valid_uttlist || exit 1;
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
