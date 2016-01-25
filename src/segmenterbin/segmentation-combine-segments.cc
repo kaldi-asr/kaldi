@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
                                             &frame_counts_per_class);
         num_done++;
       }
+      seg.Sort();
       segmentation_writer.Write(reco_id, seg);
       num_segmentations++;
     }
