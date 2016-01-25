@@ -190,6 +190,34 @@ void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   fst::Decode(fst, encoder);
 }
 
+// This static function, used in CreateDenominatorFst, sorts an
+// fst's states in decreasing order of number of transitions (into + out of)
+// the state.  The aim is to have states that have a lot of transitions
+// either into them or out of them, be numbered earlier, so hopefully
+// they will be scheduled first and won't delay the computation
+static void SortOnTransitionCount(fst::StdVectorFst *fst) {
+  // negative_num_transitions[i] will contain (before sorting), the pair
+  // ( -(num-transitions-into(i) + num-transition-out-of(i)), i)
+  int32 num_states = fst->NumStates();
+  std::vector<std::pair<int32, int32> > negative_num_transitions(num_states);
+  for (int32 i = 0; i < num_states; i++) {
+    negative_num_transitions[i].first = 0;
+    negative_num_transitions[i].second = i;
+  }
+  for (int32 i = 0; i < num_states; i++) {
+    for (fst::ArcIterator<fst::StdVectorFst> aiter(*fst, i); !aiter.Done();
+         aiter.Next()) {
+      negative_num_transitions[i].first--;
+      negative_num_transitions[aiter.Value().nextstate].first--;
+    }
+  }
+  std::sort(negative_num_transitions.begin(), negative_num_transitions.end());
+  std::vector<fst::StdArc::StateId> order(num_states);
+  for (int32 i = 0; i < num_states; i++)
+    order[negative_num_transitions[i].second] = i;
+  fst::StateSort(fst, order);
+}
+
 void DenGraphMinimizeWrapper(fst::StdVectorFst *fst) {
   for (int32 i = 1; i <= 3; i++) {
     fst::PushSpecial(fst, fst::kDelta * 0.01);
@@ -342,6 +370,8 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
             << NumArcs(transition_id_fst);
 
   DenGraphMinimizeWrapper(&transition_id_fst);
+
+  SortOnTransitionCount(&transition_id_fst);
 
   *den_fst = transition_id_fst;
   CheckDenominatorFst(trans_model.NumPdfs(), *den_fst);
