@@ -24,11 +24,24 @@ fi
 mkdir -p $dir
 cp $data/wav.scp $dir
 cp $data/reco2file_and_channel $dir
+rm -f $dir/{utt2spk,text} || true
+
+text_files=
+[ -f $data/text ] && text_files=$data/text $dir/text 
 
 cat $data/segments | perl -e '
-($text_in, $utt2spk_in, $text_out, $utt2spk_out) = @ARGV;
-open(TI, "<$text_in") || die "Error: fail to open $text_in\n";
-open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
+if (scalar @ARGV == 4) {
+  ($utt2spk_in, $utt2spk_out, $text_in, $text_out) = @ARGV;
+} elsif (scalar @ARGV == 2) {
+  ($utt2spk_in, $utt2spk_out) = @ARGV;
+} else {
+  die "Unexpected number of arguments";
+}
+
+if (defined $text_in) {
+  open(TI, "<$text_in") || die "Error: fail to open $text_in\n";
+  open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
+}
 open(UI, "<$utt2spk_in") || die "Error: fail to open $utt2spk_in\n";
 open(UO, ">$utt2spk_out") || die "Error: fail to open $utt2spk_out\n";
 
@@ -53,23 +66,28 @@ while (<UI>) {
   $utt2spk{$col[0]} = $col[1];
 }
 
-while (<TI>) {
-  chomp;
-  my @col = split;
-  @col >= 1 or die "bad line $_\n";
+if (defined $text_in) {
+  while (<TI>) {
+    chomp;
+    my @col = split;
+    @col >= 1 or die "bad line $_\n";
 
-  my $utt = shift @col;
-  $text{$utt} = join(" ", @col);
+    my $utt = shift @col;
+    $text{$utt} = join(" ", @col);
+  }
 }
 
 foreach $file (keys %file2utt) {
   my @utts = @{$file2utt{$file}};
   #print STDERR $file . " " . join(" ", @utts) . "\n";
-  $text_line = "";
   print UO "$file $file\n";
-  print TO "$file $text_line\n";
+
+  if (defined $text_in) {
+    $text_line = "";
+    print TO "$file $text_line\n";
+  }
 }
-' $data/text $data/utt2spk $dir/text $dir/utt2spk
+' $data/utt2spk $dir/utt2spk $text_files
 
 sort -u $dir/utt2spk > $dir/utt2spk.tmp
 mv $dir/utt2spk.tmp $dir/utt2spk

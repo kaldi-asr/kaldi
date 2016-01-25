@@ -1,3 +1,4 @@
+#!/bin/bash
 
 set -u
 set -e 
@@ -14,6 +15,8 @@ ali_dir=
 graph_dir=exp/tri4a/graph
 transform_dir=
 map_noise_to_sil=true
+phone_map=
+mfcc_config=
 
 . utils/parse_options.sh
 
@@ -43,11 +46,13 @@ if [ -z "$ali_dir" ]; then
   fi
 fi
 
-if [ ! -f conf/phone_map_vad ]; then
-  echo "$0: Expecting conf/phone_map_vad to exist!" && exit 1
+if [ -z "$phone_map" ] || [ -z "$mfcc_config" ]; then
+  echo phone-map and mfcc-config are required && exit 1
 fi
 
-phone_map=conf/phone_map_vad 
+if [ ! -f $phone_map ]; then
+  echo "$0: Expecting $phone_map to exist!" && exit 1
+fi
 
 if $map_noise_to_sil; then
   cat $phone_map | awk '{if ($2 == 2) print $1" 0"; else print $0}' > $dir/phone_map
@@ -133,10 +138,15 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config conf/mfcc.conf ${extended_data_dir} \
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${extended_data_dir} \
     exp/make_mfcc/${data_id}_whole mfcc || exit 1
-  cp $data_dir/cmvn.scp $extended_data_dir
   utils/fix_data_dir.sh $extended_data_dir
+  
+  temp_data_dir=$dir/${data_id}_temp
+  utils/copy_data_dir.sh $data_dir ${temp_data_dir}
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${temp_data_dir} \
+    exp/make_mfcc/${data_id}_temp mfcc || exit 1
+  steps/compute_cmvn_stats.sh ${temp_dir} exp/make_mfcc/${data_id}_temp mfcc
 fi
 
 [ -z "$model_dir" ] && model_dir=$ali_dir
@@ -144,7 +154,7 @@ fi
 
 if [ $stage -le 7 ]; then
   if [ ! -d $graph_dir ]; then
-    utils/mkgraph.sh ${lang}_test $model_dir $graph_dir || exit 1
+    utils/mkgraph.sh ${lang} $model_dir $graph_dir || exit 1
   fi
 fi
 
@@ -278,4 +288,3 @@ fi
 #    cat $dir/file_vad/split$file_nj/segments.$n
 #  done > $dir/file_vad/segments
 #fi
-
