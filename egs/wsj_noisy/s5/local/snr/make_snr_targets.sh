@@ -63,7 +63,8 @@ if $apply_exp; then
 fi
 
 $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
-  compute-snr-targets --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+  compute-snr-targets --length-tolerance=1 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" \
+  --silence-phones=$silence_phones_str} \
   --floor=$floor --ceiling=$ceiling \
   scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
   scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \

@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
     std::string ali_rspecifier;
     std::string silence_phones_str;
     std::string floor_str = "-inf", ceiling_str = "inf";
+    int32 length_tolerance = 0;
 
     ParseOptions po(usage);
     po.Register("target_type", &target_type, "Target type can be FbankMask or IRM");
@@ -45,6 +46,8 @@ int main(int argc, char *argv[]) {
                 "this value");
     po.Register("ceiling", &ceiling_str, "If specified, the target is ceiled "
                 "at this value");
+    po.Register("length-tolerance", &length_tolerance, "Tolerate differences "
+                "in utterance lengths of these many frames");
 
     po.Read(argc, argv);
 
@@ -112,7 +115,7 @@ int main(int argc, char *argv[]) {
           }
           const std::vector<int32> &ali = alignment_reader.Value(key);
 
-          if (static_cast<int32>(ali.size()) != clean_energy.NumRows()) {
+          if (std::abs(static_cast<int32> (ali.size()) - clean_energy.NumRows()) > length_tolerance) { 
             KALDI_WARN << "Mismatch in number of frames in alignment "
               << "and feats; " << static_cast<int32>(ali.size())
               << " vs " << clean_energy.NumRows();
@@ -120,7 +123,13 @@ int main(int argc, char *argv[]) {
             continue;
           }
 
-          for (int32 i = 0; i < clean_energy.NumRows(); i++) {
+          int32 length = std::min(static_cast<int32>(ali.size()), clean_energy.NumRows()); 
+          KALDI_ASSERT(ali.size() >= length);
+
+          if (clean_energy.NumRows() < length) clean_energy.Resize(length, clean_energy.NumCols(), kCopyData);
+          if (noisy_energy.NumRows() < length) noisy_energy.Resize(length, noisy_energy.NumCols(), kCopyData);
+
+          for (int32 i = 0; i < length; i++) {
             if (std::binary_search(silence_phones.begin(), silence_phones.end(), ali[i])) {
               if (target_type == "Snr") 
                 noisy_energy.Row(i).LogAddExpVec(1.0, clean_energy.Row(i)); // Actually noise energy
@@ -154,13 +163,19 @@ int main(int argc, char *argv[]) {
           }
           const std::vector<int32> &ali = alignment_reader.Value(key);
           
-          if (static_cast<int32>(ali.size()) != clean_energy.NumRows()) {
+          if (std::abs(static_cast<int32> (ali.size()) - clean_energy.NumRows()) > length_tolerance) { 
             KALDI_WARN << "Mismatch in number of frames in alignment "
                        << "and feats; " << static_cast<int32>(ali.size())
                        << " vs " << clean_energy.NumRows();
             num_err++;
             continue;
           }
+          
+          int32 length = std::min(static_cast<int32>(ali.size()), clean_energy.NumRows()); 
+          KALDI_ASSERT(ali.size() >= length);
+          
+          if (clean_energy.NumRows() < length) clean_energy.Resize(length, clean_energy.NumCols(), kCopyData);
+          if (noisy_energy.NumRows() < length) noisy_energy.Resize(length, noisy_energy.NumCols(), kCopyData);
 
           for (int32 i = 0; i < clean_energy.NumRows(); i++) {
             if (std::binary_search(silence_phones.begin(), silence_phones.end(), ali[i])) {
