@@ -72,6 +72,8 @@ fi
 utils/copy_data_dir.sh $data $dir
 rm -f $dir/cmvn.scp
 
+steps/compute_cmvn_stats.sh --fake $dir $tmpdir/$dataid $featdir
+
 for n in `seq $nj`; do
   cat $featdir/appended_snr_feats_$dataid.$n.scp
 done > $dir/feats.scp
