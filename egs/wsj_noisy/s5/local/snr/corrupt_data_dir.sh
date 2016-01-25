@@ -24,6 +24,7 @@ output_noise_wav_dir=
 dest_wav_dir=
 select_only_corruption_with_noise=false
 nj=200
+dry_run=true
 pad_silence=false
 
 . ./path.sh;
@@ -245,10 +246,12 @@ if [ $stage -le 4 ]; then
     $corrupt_wav_command_lists
   #fi
 
-  $train_cmd JOB=1:$nj $tmp_dir/corrupt_wavs.${random_seed}.JOB.log \
-    cat $tmp_dir/corrupt_wav_commands.${random_seed}.JOB.list \| \
-    awk '{a=""; for (i=2; i<=NF; i++) a=a" "$i; print(a)}' \| \
-    bash -xe || exit 1
+  if ! $dry_run; then
+    $train_cmd JOB=1:$nj $tmp_dir/corrupt_wavs.${random_seed}.JOB.log \
+      cat $tmp_dir/corrupt_wav_commands.${random_seed}.JOB.list \| \
+      awk '{a=""; for (i=2; i<=NF; i++) a=a" "$i; print(a)}' \| \
+      bash -xe || exit 1
+  fi
 fi
 
 if [ $stage -le 5 ]; then

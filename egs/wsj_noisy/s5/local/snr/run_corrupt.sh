@@ -15,6 +15,8 @@ pad_silence=false
 mfcc_config=conf/mfcc_hires.conf
 fbank_config=conf/fbank.conf
 data_only=true
+corrupt_only=true
+dry_run=true
 
 . utils/parse_options.sh
 
@@ -23,6 +25,8 @@ if [ $# -ne 0 ]; then
   exit 1
 fi
 
+dataid=`basename ${data_dir}`
+
 if [ $stage -le $num_data_reps ]; then
   corrupted_data_dirs=
   start_state=1
@@ -30,22 +34,24 @@ if [ $stage -le $num_data_reps ]; then
     start_stage=$stage
   fi
   for x in `seq $start_stage $num_data_reps`; do
-    cur_dest_dir=data/temp_`basename ${data_dir}`_$x
-    output_clean_dir=data/temp_clean_`basename ${data_dir}`_$x
-    output_noise_dir=data/temp_noise_`basename ${data_dir}`_$x
-    local/snr/corrupt_data_dir.sh --random-seed $x --dest-wav-dir $dest_wav_dir/corrupted$x \
+    cur_dest_dir=data/temp_${dataid}_$x
+    output_clean_dir=data/temp_clean_${dataid}_$x
+    output_noise_dir=data/temp_noise_${dataid}_$x
+    local/snr/corrupt_data_dir.sh --dry-run $dry_run --random-seed $x --dest-wav-dir $dest_wav_dir/corrupted$x \
       --output-clean-wav-dir $dest_wav_dir/clean$x --output-clean-dir $output_clean_dir \
       --output-noise-wav-dir $dest_wav_dir/noise$x --output-noise-dir $output_noise_dir \
-      --pad-silence $pad_silence --stage $corruption_stage --tmp-dir exp/make_corrupt/$x \
+      --pad-silence $pad_silence --stage $corruption_stage --tmp-dir exp/make_corrupt_$dataid/$x \
       --nj $nj $data_dir data/impulse_noises $cur_dest_dir
     corrupted_data_dirs+=" $cur_dest_dir"
     clean_data_dirs+=" $output_clean_dir"
     noise_data_dirs+=" $output_noise_dir"
   done
 
+  rm -rf ${data_dir}_{corrupted,clean,noise}
   utils/combine_data.sh --extra-files utt2uniq ${data_dir}_corrupted ${corrupted_data_dirs}
   utils/combine_data.sh --extra-files utt2uniq ${data_dir}_clean ${clean_data_dirs}
   utils/combine_data.sh --extra-files utt2uniq ${data_dir}_noise ${noise_data_dirs}
+  
   rm -rf $corrupted_data_dirs
   rm -rf $clean_data_dirs
 fi
@@ -57,6 +63,8 @@ clean_data_dir=${data_dir}_clean
 clean_data_id=`basename $clean_data_dir`
 noise_data_dir=${data_dir}_noise
 noise_data_id=`basename $noise_data_dir`
+
+$corrupt_only && echo "--corrupt-only is true" && exit 1
 
 mfccdir=mfcc_hires
 #if [ $stage -le 2 ]; then
@@ -77,8 +85,9 @@ if [ $stage -le 12 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$mfccdir/storage $mfccdir/storage
   fi
 
+  rm -rf ${corrupted_data_dir}_hires
   utils/copy_data_dir.sh --extra-files utt2uniq ${corrupted_data_dir} ${corrupted_data_dir}_hires
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires || true
   steps/compute_cmvn_stats.sh ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires
   utils/fix_data_dir.sh --utt-extra-files utt2uniq ${corrupted_data_dir}_hires
 fi
@@ -90,8 +99,9 @@ if [ $stage -le 13 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$fbankdir/storage $fbankdir/storage
   fi
 
+  rm -rf ${clean_data_dir}_fbank
   utils/copy_data_dir.sh --extra-files utt2uniq ${clean_data_dir} ${clean_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats
   utils/fix_data_dir.sh ${clean_data_dir}_fbank
 fi
@@ -102,8 +112,9 @@ if [ $stage -le 14 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$fbankdir/storage $fbankdir/storage
   fi
 
+  rm -rf ${noise_data_dir}_fbank
   utils/copy_data_dir.sh --extra-files utt2uniq ${noise_data_dir} ${noise_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats
   utils/fix_data_dir.sh ${noise_data_dir}_fbank
 fi
@@ -113,8 +124,10 @@ if [ $stage -le 15 ]; then
     date=$(date +'%m_%d_%H_%M')
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$fbankdir/storage $fbankdir/storage
   fi
+  
+  rm -rf ${corrupted_data_dir}_fbank
   utils/copy_data_dir.sh --extra-files utt2uniq ${corrupted_data_dir} ${corrupted_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats
   utils/fix_data_dir.sh --utt-extra-files utt2uniq ${corrupted_data_dir}_fbank
 fi
