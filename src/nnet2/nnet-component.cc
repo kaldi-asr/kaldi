@@ -3933,7 +3933,7 @@ void Convolutional1dComponent::Propagate(const ChunkInfo &in_info,
   }
   
   // apply all filters
-  AddMatMatBatched(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
+  AddMatMatBatched<BaseFloat>(1.0f, tgt_batch, patch_batch, kNoTrans, filter_params_batch,
 		  kTrans, 1.0f);
 
   // release memory
@@ -4060,7 +4060,7 @@ void Convolutional1dComponent::Backprop(const ChunkInfo &in_info,
 				    p * num_filters, num_filters)));
     filter_params_batch.push_back(filter_params_elem);  
   }
-  AddMatMatBatched(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
+  AddMatMatBatched<BaseFloat>(1.0f, patch_deriv_batch, out_deriv_batch, kNoTrans, 
 		  filter_params_batch, kNoTrans, 0.0f);
 
   // release memory
@@ -4275,7 +4275,7 @@ void Convolutional1dComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
 				    p * filter_dim, filter_dim)));
   }
 
-  AddMatMatBatched(1.0f, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
+  AddMatMatBatched<BaseFloat>(1.0f, filters_grad_batch, diff_patch_batch, kTrans, patch_batch,
 		  kNoTrans, 1.0f);
 
   // add the row blocks together to filters_grad
