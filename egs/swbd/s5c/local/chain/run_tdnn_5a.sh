@@ -2,7 +2,17 @@
 
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
-# will mean that the increased parameters are now helpful.
+# will mean that the increased parameters are now helpful.  Very helpful (between 0.2%
+# and 0.6%).
+
+#./compare_wer.sh 4w 5a
+#System                       4w        5a
+#WER on train_dev(tg)      16.05     15.86
+#WER on train_dev(fg)      14.92     14.74
+#WER on eval2000(tg)        18.0      17.4
+#WER on eval2000(fg)        16.2      15.6
+#Final train prob      -0.108816-0.0998359
+#Final valid prob      -0.118254 -0.115884
 
 # _4w is as _4v, but doubling --xent-regularize to 0.2
 

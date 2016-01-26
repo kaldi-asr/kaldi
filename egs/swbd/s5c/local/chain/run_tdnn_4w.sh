@@ -1,6 +1,16 @@
 #!/bin/bash
 
-# _4w is as _4v, but doubling --xent-regularize to 0.2
+# _4w is as _4v, but doubling --xent-regularize to 0.2 WER seems consistently a
+# bit worse, although final valid prob is very slightly better.
+
+#./compare_wer.sh 4v 4w
+#System                       4v        4w
+#WER on train_dev(tg)      15.95     16.05
+#WER on train_dev(fg)      14.69     14.92
+#WER on eval2000(tg)        17.7      18.0
+#WER on eval2000(fg)        16.0      16.2
+#Final train prob      -0.106646 -0.108816
+#Final valid prob      -0.118631 -0.118254
 
 # _4v is as _4r, but with --xent-regularize 0.1.  Increasing max_param_change
 # from 1.0 to 2.0 because there is a lot of parameter change in the final xent
