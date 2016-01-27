@@ -1,19 +1,23 @@
 #!/bin/bash
 
-# _5d is as _5b, but increasing jesus-forward-input-dim from 500 to 600 and
-# jesus-forward-output-dim from 1800 to 2000.
+# _5f is as _5e, but making the 5b->5d change (increasing the
+# number of parameters)-- increasing jesus-forward-output-dim from 1800 to 2000,
+# and jesus-forward-input-dim from 500 to 600.
 
-# It's maybe slightly helpful: WER change is (-0.2, -0.2, 0, +0.1).
-#./compare_wer.sh 5b 5d
-#System                       5b        5d
-#WER on train_dev(tg)      15.51     15.29
-#WER on train_dev(fg)      14.39     14.17
-#WER on eval2000(tg)        17.3      17.3
-#WER on eval2000(fg)        15.6      15.7
-#Final train prob      -0.112013 -0.107858
-#Final valid prob      -0.130879 -0.128862
+# _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
+# the results of 4v, 4w and 5c, it looks like 0.05 is better than 0.2 or 0.1).
 
 # _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
+
+# It does seem helpful on average: (-0.35, -0.35, -0.1, 0).
+#./compare_wer.sh 5a 5b
+#System                       5a        5b
+#WER on train_dev(tg)      15.86     15.51
+#WER on train_dev(fg)      14.74     14.39
+#WER on eval2000(tg)        17.4      17.3
+#WER on eval2000(fg)        15.6      15.6
+#Final train prob     -0.0998359 -0.112013
+#Final valid prob      -0.115884 -0.130879
 
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
@@ -262,7 +266,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5d # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5f # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -354,7 +358,7 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --xent-regularize 0.2 \
+    --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \

@@ -1,7 +1,17 @@
 #!/bin/bash
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
-# the results of 4v, 4w and 5c, it looks like 0.05 is better than 0.2 or 0.1).
+# the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
+
+# The improvement is small but consistent (0.1, 0.1, 0.0, 0.1) and also seen
+# in the train and valid probs.
+#System                       5b        5e
+#WER on train_dev(tg)      15.51     15.43
+#WER on train_dev(fg)      14.39     14.32
+#WER on eval2000(tg)        17.3      17.3
+#WER on eval2000(fg)        15.6      15.5
+#Final train prob      -0.112013 -0.110056
+#Final valid prob      -0.130879 -0.129184
 
 # _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
 
