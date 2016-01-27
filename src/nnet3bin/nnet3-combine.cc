@@ -85,23 +85,27 @@ int main(int argc, char *argv[]) {
     
     
     int32 num_nnets = po.NumArgs() - 2;
-    NnetCombiner combiner(combine_config, num_nnets, egs, nnet);
+    if (num_nnets > 1 || !combine_config.enforce_sum_to_one) {
+      NnetCombiner combiner(combine_config, num_nnets, egs, nnet);
+      
+      for (int32 n = 1; n < num_nnets; n++) {
+        ReadKaldiObject(po.GetArg(1 + n), &nnet);
+        combiner.AcceptNnet(nnet);
+      }
 
-    
-    for (int32 n = 1; n < num_nnets; n++) {
-      ReadKaldiObject(po.GetArg(1 + n), &nnet);
-      combiner.AcceptNnet(nnet);
-    }
-
-    combiner.Combine();
+      combiner.Combine();
 
 
 #if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
+      CuDevice::Instantiate().PrintProfile();
 #endif
 
-    WriteKaldiObject(combiner.GetNnet(), nnet_wxfilename, binary_write);
-    
+      WriteKaldiObject(combiner.GetNnet(), nnet_wxfilename, binary_write);
+    } else {
+      KALDI_LOG << "Copying the single input model directly to the output, "
+                << "without any combination.";
+      WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
+    } 
     KALDI_LOG << "Finished combining neural nets, wrote model to "
               << nnet_wxfilename;
   } catch(const std::exception &e) {

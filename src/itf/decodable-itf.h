@@ -99,7 +99,7 @@ class DecodableInterface {
   /// decoding-from-matrix setting where we want to allow the last delta or LDA
   /// features to be flushed out for compatibility with the baseline setup.
   virtual bool IsLastFrame(int32 frame) const = 0;
-  
+
   /// The call NumFramesReady() will return the number of frames currently available
   /// for this decodable object.  This is for use in setups where you don't want the
   /// decoder to block while waiting for input.  This is newly added as of Jan 2014,
@@ -114,7 +114,7 @@ class DecodableInterface {
   /// (they will be indexed one-based, i.e. from 1 to NumIndices();
   /// this is for compatibility with OpenFst.
   virtual int32 NumIndices() const = 0;
-  
+
   virtual ~DecodableInterface() {}
 };
 /// @}

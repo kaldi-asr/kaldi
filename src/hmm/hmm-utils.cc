@@ -31,7 +31,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
     std::vector<int32> phone_window,
     const ContextDependencyInterface &ctx_dep,
     const TransitionModel &trans_model,
-    const HTransducerConfig &config,    
+    const HTransducerConfig &config,
     HmmCacheType *cache) {
   using namespace fst;
 
@@ -40,9 +40,9 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   // right.  will also have to reverse the FST we produce.
 
   if (static_cast<int32>(phone_window.size()) != ctx_dep.ContextWidth())
-    KALDI_ERR <<"Context size mismatch, ilabel-info [from context FST is "
-              <<(phone_window.size())<<", context-dependency object "
-        "expects "<<(ctx_dep.ContextWidth());
+    KALDI_ERR << "Context size mismatch, ilabel-info [from context FST is "
+              << phone_window.size() << ", context-dependency object "
+        "expects " << ctx_dep.ContextWidth();
 
   int P = ctx_dep.CentralPosition();
   int32 phone = phone_window[P];
@@ -66,7 +66,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
   for (int32 pdf_class = 0;
        pdf_class < static_cast<int32>(pdfs.size());
        pdf_class++) {
-    if ( ! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class])) ) {
+    if (! ctx_dep.Compute(phone_window, pdf_class, &(pdfs[pdf_class])) ) {
       std::ostringstream ctx_ss;
       for (size_t i = 0; i < phone_window.size(); i++)
         ctx_ss << phone_window[i] << ' ';
@@ -85,7 +85,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
     if (iter != cache->end())
       return iter->second;
   }
-  
+
   VectorFst<StdArc> *ans = new VectorFst<StdArc>;
 
   typedef StdArc Arc;
@@ -217,14 +217,11 @@ GetHmmAsFstSimple(std::vector<int32> phone_window,
       BaseFloat log_prob;
       Label label;
       int32 dest_state = entry[hmm_state].transitions[trans_idx].first;
-      bool is_self_loop = (dest_state == hmm_state);
-      if (is_self_loop)
-        continue;
       if (pdf_class == kNoPdf) {
-        // no pdf, hence non-estimated probability.  very unusual case.
-        // [would not happen with normal topology] .  There is no transition-state
+        // no pdf, hence non-estimated probability.  very unusual case.  [would
+        // not happen with normal topology] .  There is no transition-state
         // involved in this case.
-        KALDI_ASSERT(!is_self_loop);
+        KALDI_ASSERT(hmm_state != dest_state);
         log_prob = Log(entry[hmm_state].transitions[trans_idx].second);
         label = 0;
       } else {  // normal probability.
@@ -496,7 +493,7 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
   // forward-prob for that state (which is one minus self-loop-prob).  We do it
   // like this to maintain stochasticity (i.e. rather than multiplying the arcs
   // with the corresponding labels on them by this probability).
-  
+
   for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
     if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol...
       int32 trans_state = static_cast<int32>(state_in[s]);
@@ -590,10 +587,9 @@ void AddSelfLoops(const TransitionModel &trans_model,
 // code doesn't care what the answer is.
 // The "alignment" vector contains a sequence of TransitionIds.
 
-
 static bool IsReordered(const TransitionModel &trans_model,
                         const std::vector<int32> &alignment) {
-  for (size_t i = 0; i+1 < alignment.size(); i++) {
+  for (size_t i = 0; i + 1 < alignment.size(); i++) {
     int32 tstate1 = trans_model.TransitionIdToTransitionState(alignment[i]),
         tstate2 = trans_model.TransitionIdToTransitionState(alignment[i+1]);
     if (tstate1 != tstate2) {
@@ -642,7 +638,7 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
       else {  // reordered.
         while (i+1 < alignment.size() &&
               trans_model.IsSelfLoop(alignment[i+1])) {
-          KALDI_ASSERT(trans_model.TransitionIdToTransitionState(alignment[i]) == 
+          KALDI_ASSERT(trans_model.TransitionIdToTransitionState(alignment[i]) ==
                  trans_model.TransitionIdToTransitionState(alignment[i+1]));
           i++;
         }
@@ -674,13 +670,13 @@ static bool SplitToPhonesInternal(const TransitionModel &trans_model,
     // The next if-statement checks if the initial trans-id at the current end
     // point is the initial-state of the current phone if that initial-state
     // is emitting (a cursory check that the alignment is plausible).
-    int32 trans_state = 
+    int32 trans_state =
       trans_model.TransitionIdToTransitionState(alignment[cur_point]);
     int32 phone = trans_model.TransitionStateToPhone(trans_state);
     int32 pdf_class = trans_model.GetTopo().TopologyForPhone(phone)[0].pdf_class;
     if (pdf_class != kNoPdf)  // initial-state of the current phone is emitting
       if (trans_model.TransitionStateToHmmState(trans_state) != 0)
-        was_ok= false;
+        was_ok = false;
     for (size_t j = cur_point; j < end_points[i]; j++)
       split_output->back().push_back(alignment[j]);
     cur_point = end_points[i];
@@ -701,74 +697,247 @@ bool SplitToPhones(const TransitionModel &trans_model,
 }
 
 
+/** This function is used internally inside ConvertAlignment;
+    it converts the alignment for a single phone. 'new_phone_window'
+    is the window of phones as required by the tree.
+    The size of 'new_phone_alignment' is the length requested, which
+    may not always equal 'old_phone_alignment' (in case the
+    'subsample' value is not 1).
+ */
+static inline void ConvertAlignmentForPhone(
+    const TransitionModel &old_trans_model,
+    const TransitionModel &new_trans_model,
+    const ContextDependencyInterface &new_ctx_dep,
+    const std::vector<int32> &old_phone_alignment,
+    const std::vector<int32> &new_phone_window,
+    bool old_is_reordered,
+    bool new_is_reordered,
+    std::vector<int32> *new_phone_alignment) {
+  int32 alignment_size = old_phone_alignment.size();
+  static bool warned_topology = false;
+  int32 P = new_ctx_dep.CentralPosition(),
+      old_central_phone = old_trans_model.TransitionIdToPhone(
+          old_phone_alignment[0]),
+      new_central_phone = new_phone_window[P];
+  const HmmTopology &old_topo = old_trans_model.GetTopo(),
+      &new_topo = new_trans_model.GetTopo();
+
+  bool topology_mismatch = !(old_topo.TopologyForPhone(old_central_phone) ==
+                             new_topo.TopologyForPhone(new_central_phone));
+  if (topology_mismatch) {
+    if (!warned_topology) {
+      warned_topology = true;
+      KALDI_WARN << "Topology mismatch detected; automatically converting. "
+                 << "Won't warn again.";
+    }
+  }
+  bool length_mismatch =
+      (new_phone_alignment->size() != old_phone_alignment.size());
+  if (length_mismatch || topology_mismatch) {
+    // We generate a random path from this FST, ignoring the
+    // old alignment.
+    GetRandomAlignmentForPhone(new_ctx_dep, new_trans_model,
+                               new_phone_window, new_phone_alignment);
+    if (new_is_reordered)
+      ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
+    return;
+  }
+
+  KALDI_ASSERT(!old_phone_alignment.empty());
+
+  int32 new_num_pdf_classes = new_topo.NumPdfClasses(new_central_phone);
+  std::vector<int32> pdf_ids(new_num_pdf_classes);  // Indexed by pdf-class
+  for (int32 pdf_class = 0; pdf_class < new_num_pdf_classes; pdf_class++) {
+    if (!new_ctx_dep.Compute(new_phone_window, pdf_class,
+                             &(pdf_ids[pdf_class]))) {
+      std::ostringstream ss;
+      WriteIntegerVector(ss, false, new_phone_window);
+      KALDI_ERR << "tree did not succeed in converting phone window "
+                << ss.str();
+    }
+  }
+
+  // the topologies and lengths match -> we can directly transfer
+  // the alignment.
+  for (int32 j = 0; j < alignment_size; j++) {
+    int32 old_tid = old_phone_alignment[j];
+    int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
+    int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
+    int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
+    int32 new_pdf = pdf_ids[pdf_class];
+    int32 new_trans_state =
+        new_trans_model.TripleToTransitionState(new_central_phone, hmm_state,
+                                                new_pdf);
+    int32 new_tid =
+        new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
+    (*new_phone_alignment)[j] = new_tid;
+  }
+
+  if (new_is_reordered != old_is_reordered)
+    ChangeReorderingOfAlignment(new_trans_model, new_phone_alignment);
+}
+
+
+/**
+   This function, called from ConvertAlignment(), works out suitable new lengths
+   of phones in the case where subsample_factor != 1.  The input vectors
+   'mapped_phones' and 'old_lengths' must be the same size-- the length of the
+   phone sequence.  The 'topology' object and 'mapped_phones' are needed to
+   work out the minimum length of each phone in the sequence.
+   Returns true only if it could not assign lengths (because the topology was
+   too long relative to the number of frames).
+*/
+static bool ComputeNewPhoneLengths(const HmmTopology &topology,
+                                   const std::vector<int32> &mapped_phones,
+                                   const std::vector<int32> &old_lengths,
+                                   int32 subsample_factor,
+                                   std::vector<int32> *new_lengths) {
+  int32 phone_sequence_length = old_lengths.size();
+  std::vector<int32> min_lengths(phone_sequence_length);
+  new_lengths->resize(phone_sequence_length);
+  for (int32 i = 0; i < phone_sequence_length; i++)
+    min_lengths[i] = topology.MinLength(mapped_phones[i]);
+  int32 cur_time_elapsed = 0;
+  for (int32 i = 0; i < phone_sequence_length; i++) {
+    // Note: the '+ subsample_factor - 1' here is needed so that
+    // the subsampled alignments have the same length as features
+    // subsampled with 'subsample-feats'.
+    int32 subsampled_time =
+        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
+    cur_time_elapsed += old_lengths[i];
+    int32 next_subsampled_time =
+        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
+    (*new_lengths)[i] = next_subsampled_time - subsampled_time;
+  }
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int32 i = 0; i < phone_sequence_length; i++) {
+      if ((*new_lengths)[i] < min_lengths[i]) {
+        changed = true;
+        // we need at least one extra frame.. just try to get one frame for now.
+        // Get it from the left or the right, depending which one has the closest
+        // availability of a 'spare' frame.
+        int32 min_distance = std::numeric_limits<int32>::max(),
+            best_other_phone_index = -1,
+            cur_distance = 0;
+        // first try to the left.
+        for (int32 j = i - 1; j >= 0; j--) {
+          if ((*new_lengths)[j] > min_lengths[j]) {
+            min_distance = cur_distance;
+            best_other_phone_index = j;
+            break;
+          } else {
+            cur_distance += (*new_lengths)[j];
+          }
+        }
+        // .. now to the right.
+        cur_distance = 0;
+        for (int32 j = i + 1; j < phone_sequence_length; j++) {
+          if ((*new_lengths)[j] > min_lengths[j]) {
+            if (cur_distance < min_distance) {
+              min_distance = cur_distance;
+              best_other_phone_index = j;
+            }
+            break;
+          } else {
+            cur_distance += (*new_lengths)[j];
+          }
+        }
+        if (best_other_phone_index == -1)
+          return false;
+        // assign an extra frame to this phone...
+        (*new_lengths)[i]++;
+        // and borrow it from the place that we found.
+        (*new_lengths)[best_other_phone_index]--;
+      }
+    }
+  }
+  return true;
+}
+
 bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const TransitionModel &new_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
+                      int32 subsample_factor,
+                      bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
+  bool old_is_reordered = IsReordered(old_trans_model, old_alignment);
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
-  std::vector<std::vector<int32> > split;  // split into phones.
-  if (!SplitToPhones(old_trans_model, old_alignment, &split))
+  new_alignment->reserve(old_alignment.size());
+  std::vector<std::vector<int32> > old_split;  // split into phones.
+  if (!SplitToPhones(old_trans_model, old_alignment, &old_split))
     return false;
-  std::vector<int32> phones(split.size());
-  for (size_t i = 0; i < split.size(); i++) {
-    KALDI_ASSERT(!split[i].empty());
-    phones[i] = old_trans_model.TransitionIdToPhone(split[i][0]);
-  }
-  if (phone_map != NULL) {  // Map the phone sequence.
-    int32 sz = phone_map->size();
-    for (size_t i = 0; i < split.size(); i++) {
-      if (phones[i] < 0 || phones[i] >= sz || (*phone_map)[phones[i]] == -1)
-        KALDI_ERR << "ConvertAlignment: could not map phone " << phones[i];
-      phones[i] = (*phone_map)[phones[i]];
+  int32 phone_sequence_length = old_split.size();
+  std::vector<int32> mapped_phones(phone_sequence_length);
+  for (size_t i = 0; i < phone_sequence_length; i++) {
+    KALDI_ASSERT(!old_split[i].empty());
+    mapped_phones[i] = old_trans_model.TransitionIdToPhone(old_split[i][0]);
+    if (phone_map != NULL) {  // Map the phone sequence.
+      int32 sz = phone_map->size();
+      if (mapped_phones[i] < 0 || mapped_phones[i] >= sz ||
+          (*phone_map)[mapped_phones[i]] == -1)
+        KALDI_ERR << "ConvertAlignment: could not map phone " << mapped_phones[i];
+      mapped_phones[i] = (*phone_map)[mapped_phones[i]];
     }
   }
+
+  // the sizes of each element of 'new_split' indicate the length of alignment
+  // that we want for each phone in the new sequence.
+  std::vector<std::vector<int32> > new_split(phone_sequence_length);
+  if (subsample_factor == 1 &&
+      old_trans_model.GetTopo() == new_trans_model.GetTopo()) {
+    // we know the old phone lengths will be fine.
+    for (size_t i = 0; i < phone_sequence_length; i++)
+      new_split[i].resize(old_split[i].size());
+  } else {
+    // .. they may not be fine.
+    std::vector<int32> old_lengths(phone_sequence_length), new_lengths;
+    for (int32 i = 0; i < phone_sequence_length; i++)
+      old_lengths[i] = old_split[i].size();
+    if (!ComputeNewPhoneLengths(new_trans_model.GetTopo(),
+                                mapped_phones, old_lengths,
+                                subsample_factor, &new_lengths)) {
+      KALDI_WARN << "Failed to produce suitable phone lengths";
+      return false;
+    }
+    for (int32 i = 0; i < phone_sequence_length; i++)
+      new_split[i].resize(new_lengths[i]);
+  }
+
   int32 N = new_ctx_dep.ContextWidth(),
       P = new_ctx_dep.CentralPosition();
 
-  // by starting at -N and going to split.size()+N, we're
+  // by starting at -N and going to phone_sequence_length + N, we're
   // being generous and not bothering to work out the exact
   // array bounds.
   for (int32 win_start = -N;
-      win_start < static_cast<int32>(split.size()+N);
-      win_start++) {  // start of a context window.
+       win_start < static_cast<int32>(phone_sequence_length + N);
+       win_start++) {  // start of a context window.
     int32 central_pos = win_start + P;
-    if (static_cast<size_t>(central_pos)  < split.size()) {
-      // i.e. central_pos>=0 && central_pos<split.size()
-      std::vector<int32> phone_window(N, 0);
+    if (static_cast<size_t>(central_pos) < phone_sequence_length) {
+      // i.e. if (central_pos >= 0 && central_pos < phone_sequence_length)
+      std::vector<int32> new_phone_window(N, 0);
       for (int32 offset = 0; offset < N; offset++)
-        if (static_cast<size_t>(win_start+offset) < split.size())
-          phone_window[offset] = phones[win_start+offset];
-      int32 central_phone = phone_window[P];
-      int32 num_pdf_classes = new_trans_model.GetTopo().NumPdfClasses(central_phone);
-      std::vector<int32> state_seq(num_pdf_classes);  // Indexed by pdf-class
-      for (int32 pdf_class = 0; pdf_class < num_pdf_classes; pdf_class++) {
-        if (!new_ctx_dep.Compute(phone_window, pdf_class, &(state_seq[pdf_class]))) {
-          std::ostringstream ss;
-          WriteIntegerVector(ss, false, phone_window);
-          KALDI_ERR << "tree did not succeed in converting phone window "<<ss.str();
-        }
-      }
-      for (size_t j = 0; j < split[central_pos].size(); j++) {
-        int32 old_tid = split[central_pos][j];
-        int32 phone = phones[central_pos];
-        int32 pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid);
-        int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid);
-        int32 trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
-        if (static_cast<size_t>(pdf_class) >= state_seq.size())
-          KALDI_ERR << "ConvertAlignment: error converting alignment, possibly different topologies?";
-        int32 new_pdf = state_seq[pdf_class];
-        int32 new_trans_state =
-            new_trans_model.TripleToTransitionState(phone, hmm_state, new_pdf);
-        int32 new_tid =
-            new_trans_model.PairToTransitionId(new_trans_state, trans_idx);
-        new_alignment->push_back(new_tid);
-      }
+        if (static_cast<size_t>(win_start+offset) < phone_sequence_length)
+          new_phone_window[offset] = mapped_phones[win_start+offset];
+      const std::vector<int32> &old_alignment_for_phone = old_split[central_pos];
+      std::vector<int32> &new_alignment_for_phone = new_split[central_pos];
+
+      ConvertAlignmentForPhone(old_trans_model, new_trans_model, new_ctx_dep,
+                               old_alignment_for_phone, new_phone_window,
+                               old_is_reordered, new_is_reordered,
+                               &new_alignment_for_phone);
+      new_alignment->insert(new_alignment->end(),
+                            new_alignment_for_phone.begin(),
+                            new_alignment_for_phone.end());
     }
   }
-  KALDI_ASSERT(new_alignment->size() == old_alignment.size());
+  KALDI_ASSERT(new_alignment->size() ==
+               (old_alignment.size() + subsample_factor - 1)/subsample_factor);
   return true;
 }
 
@@ -875,7 +1044,7 @@ bool ConvertPhnxToProns(const std::vector<int32> &phnx,
                         int32 word_end_sym,
                         std::vector<std::vector<int32> > *prons) {
   size_t i = 0, j = 0;
-    
+
   while (i < phnx.size()) {
     if (phnx[i] == 0) return false; // zeros not valid here.
     if (phnx[i] == word_start_sym) { // start a word...
@@ -915,4 +1084,90 @@ bool ConvertPhnxToProns(const std::vector<int32> &phnx,
 }
 
 
-} // End namespace kaldi
+void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
+                                const TransitionModel &trans_model,
+                                const std::vector<int32> &phone_window,
+                                std::vector<int32> *alignment) {
+  typedef fst::StdArc Arc;
+  int32 length = alignment->size();
+  BaseFloat prob_scale = 0.0;
+  fst::VectorFst<Arc> *fst = GetHmmAsFstSimple(phone_window, ctx_dep,
+                                               trans_model, prob_scale);
+  fst::RmEpsilon(fst);
+
+  fst::VectorFst<Arc> length_constraint_fst;
+  {  // set up length_constraint_fst.
+    std::vector<int32> symbols;
+    bool include_epsilon = false;
+    // note: 'fst' is an acceptor so ilabels == olabels.
+    GetInputSymbols(*fst, include_epsilon, &symbols);
+    int32 cur_state = length_constraint_fst.AddState();
+    length_constraint_fst.SetStart(cur_state);
+    for (int32 i = 0; i < length; i++) {
+      int32 next_state = length_constraint_fst.AddState();
+      for (size_t j = 0; j < symbols.size(); j++) {
+        length_constraint_fst.AddArc(cur_state,
+                                     Arc(symbols[j], symbols[j],
+                                         fst::TropicalWeight::One(),
+                                         next_state));
+      }
+      cur_state = next_state;
+    }
+    length_constraint_fst.SetFinal(cur_state, fst::TropicalWeight::One());
+  }
+  fst::VectorFst<Arc> composed_fst;
+  fst::Compose(*fst, length_constraint_fst, &composed_fst);
+  fst::VectorFst<Arc> single_path_fst;
+  {  // randomly generate a single path.
+    fst::UniformArcSelector<Arc> selector;
+    fst::RandGenOptions<fst::UniformArcSelector<Arc> > randgen_opts(selector);
+    fst::RandGen(composed_fst, &single_path_fst, randgen_opts);
+  }
+  if (single_path_fst.NumStates() == 0) {
+    KALDI_ERR << "Error generating random alignment (wrong length?): "
+              << "requested length is " << length << " versus min-length "
+              << trans_model.GetTopo().MinLength(
+                  phone_window[ctx_dep.CentralPosition()]);
+  }
+  std::vector<int32> symbol_sequence;
+  bool ans = fst::GetLinearSymbolSequence<Arc, int32>(
+      single_path_fst, &symbol_sequence, NULL, NULL);
+  KALDI_ASSERT(ans && symbol_sequence.size() == length);
+  symbol_sequence.swap(*alignment);
+  delete fst;
+}
+
+void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
+                                 std::vector<int32> *alignment) {
+  int32 start_pos = 0, size = alignment->size();
+  while (start_pos != size) {
+    int32 start_tid = (*alignment)[start_pos];
+    int32 cur_tstate = trans_model.TransitionIdToTransitionState(start_tid);
+    bool start_is_self_loop = trans_model.IsSelfLoop(start_tid) ? 0 : 1;
+    int32 end_pos = start_pos + 1;
+    // If the first instance of this transition-state was a self-loop, then eat
+    // only non-self-loops of this state; if it was a non-self-loop, then eat
+    // only self-loops of this state.  Imposing this condition on self-loops
+    // would only actually matter in the rare circumstances that phones can
+    // have length 1.
+    while (end_pos != size &&
+           trans_model.TransitionIdToTransitionState((*alignment)[end_pos]) ==
+           cur_tstate) {
+      bool this_is_self_loop = trans_model.IsSelfLoop((*alignment)[end_pos]);
+      if (!this_is_self_loop) {
+        if (start_is_self_loop) {
+          break;  // stop before including this transition-id.
+        } else {
+          end_pos++;
+          break;  // stop after including this transition-id.
+        }
+      }
+      end_pos++;
+    }
+    std::swap((*alignment)[start_pos], (*alignment)[end_pos - 1]);
+    start_pos = end_pos;
+  }
+}
+
+
+} // namespace kaldi

@@ -659,7 +659,6 @@ int64 DeleteISymbols(MutableFst<Arc> *fst, vector<typename Arc::Label> isyms) {
 
   typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
-  typedef typename Arc::Weight Weight;
 
   int64 num_deleted = 0;
 
@@ -691,7 +690,6 @@ int64 DeleteISymbols(MutableFst<Arc> *fst, vector<typename Arc::Label> isyms) {
 
 template<class Arc>
 typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   assert(fst != NULL);

@@ -26,7 +26,7 @@
  search function of your browser.  For convenience the definition of each
  term's section is preceded and followed by a colon, so for
  instance, typing ctrl-f ":lattice:" would take you to the section for "lattice".
- 
+
 
 <div style="text-indent: -1.5em;  padding-left: 1.5em;">
 
@@ -37,7 +37,7 @@ synonymous with a sequence of <b>transition-ids</b>.  Most of the time an
 alignment is derived from aligning the reference transcript of an utterance,
 in which case it is called a <b>forced alignment</b>.  <b>lattices</b> also
 contain alignment information as sequences of transition-ids for each word
-sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows 
+sequence in the lattice.  The program \ref bin/show-alignments.cc "show-alignments" shows
 alignments in a human-readable format.
 
 <b>:forced alignment:</b> see <b>alignment</b>.
@@ -53,6 +53,18 @@ Appears in lattices, decoding graphs and alignments.  See \ref transition_model.
 of the HMMs, and also various other important integer mappings; see \ref transition_model.
 This object is generally written at the start of model files.  The program
 \ref bin/show-transitions.cc "show-transitions" shows these.
+
+<b>:G.fst:</b>  The grammar FST <code>G.fst</code> which lives in the
+  <code>data/lang/</code> directory in the scripts (see \ref data_prep_lang) represents
+  the language model in a Finite State Transducer format (see www.openfst.org).
+ For the most part it is an acceptor, meaning the input and output symbols on the
+ arcs are the same, but for statistical language models with backoff, the backoff
+ arcs have the "disambiguation symbol" <code>#0</code> on the input side only.
+ For many purposes you'll want to get rid of the disambiguation symbols
+  using the command <code>fstproject --project_output=true</code>.  The disambiguation symbols
+ are needed during graph compilation to make the FST determinizable, but for things
+ like language-model rescoring you don't want them.
+
 
 </div>
 

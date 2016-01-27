@@ -395,7 +395,6 @@ class ComputationChecker {
  public:
   ComputationChecker(const CheckComputationOptions &config,
                      const Nnet &nnet,
-                     const ComputationRequest &request,
                      const NnetComputation &computation);
   void Check();  // call this only once.
  private:
@@ -417,7 +416,6 @@ class ComputationChecker {
 
   const CheckComputationOptions &config_;
   const Nnet &nnet_;
-  const ComputationRequest &request_;
   const NnetComputation &computation_;
   Analyzer a_;
 };

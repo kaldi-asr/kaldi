@@ -54,7 +54,7 @@ void TestSplitStringToVector() {
     int sz = Rand() % 73;
     std::string full;
     for (int i = 0; i < sz-1; i++) {
-      full.push_back( (Rand() % 7 == 0)? GetRandDelim() : GetRandChar());
+      full.push_back((Rand() % 7 == 0)? GetRandDelim() : GetRandChar());
     }
     std::string delim;
     delim.push_back(GetRandDelim());
@@ -155,8 +155,8 @@ void TestConvertStringToInteger() {
 
   uint64 k;
   KALDI_ASSERT(ConvertStringToInteger("12345", &k) && k == 12345);
-  KALDI_ASSERT(!ConvertStringToInteger("-12345", &k));  // unsigned, cannot convert.
-
+  KALDI_ASSERT(!ConvertStringToInteger("-12345", &k));  // unsigned,
+                                                        // cannot convert.
 }
 
 template<class Real>
@@ -174,7 +174,6 @@ void TestConvertStringToReal() {
   // it also works for inf or nan.
   KALDI_ASSERT(ConvertStringToReal("inf", &d) && d > 0 && d - d != 0);
   KALDI_ASSERT(ConvertStringToReal("nan", &d) && d != d);
-  
 }
 
 
@@ -190,7 +189,7 @@ void TestTrim() {
   KALDI_ASSERT(TrimTmp("X\n") == "X");
   KALDI_ASSERT(TrimTmp("X\n\t") == "X");
   KALDI_ASSERT(TrimTmp("\n\tX") == "X");
-} // end namespace kaldi
+}  // end namespace kaldi
 
 
 void TestSplitStringOnFirstSpace() {
@@ -221,9 +220,9 @@ void TestIsToken() {
   KALDI_ASSERT(!IsToken("ab "));
   KALDI_ASSERT(!IsToken(" ab"));
   KALDI_ASSERT(!IsToken("a b"));
-  KALDI_ASSERT(IsToken("\231")); // typical non-ASCII printable character, something with
-  // an accent.
-  KALDI_ASSERT(!IsToken("\377")); // character 255, which is a form of space.
+  KALDI_ASSERT(IsToken("\231"));  // typical non-ASCII printable character,
+                                  // something with an accent.
+  KALDI_ASSERT(!IsToken("\377"));  // character 255, which is a form of space.
   KALDI_ASSERT(IsToken("a-b,c,d=ef"));
   KALDI_ASSERT(!IsToken("a\nb"));
   KALDI_ASSERT(!IsToken("a\tb"));
@@ -239,7 +238,7 @@ void TestIsLine() {
   KALDI_ASSERT(!IsLine(" a b"));
 }
 
-} // end namespace kaldi
+}  // end namespace kaldi
 
 int main() {
   using namespace kaldi;

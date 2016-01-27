@@ -19,6 +19,7 @@
 #ifndef KALDI_UTIL_KALDI_IO_INL_H_
 #define KALDI_UTIL_KALDI_IO_INL_H_
 
+#include<string>
 
 namespace kaldi {
 
@@ -42,4 +43,4 @@ bool Output::IsOpen() {
 }  // end namespace kaldi.
 
 
-#endif
+#endif  // KALDI_UTIL_KALDI_IO_INL_H_

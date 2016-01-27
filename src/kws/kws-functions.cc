@@ -66,7 +66,7 @@ bool ClusterLattice(CompactLattice *clat,
   //   till we find the next one that doesn't overlap in time with the current
   //   cluster head, and so on.
   unordered_map<StateId, vector<Interval> >::iterator iter;
-  for (iter = head.begin(); iter != head.end(); iter++) {
+  for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
     sort(iter->second.begin(), iter->second.end(), CompareInterval);
     vector<Interval> tmp;
@@ -372,7 +372,6 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
   
 
 void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
-  typedef KwsProductFst::Arc::Label Label;
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
   Map(product_transducer, &index_transducer, KwsProductFstToKwsLexicographicFstMapper());

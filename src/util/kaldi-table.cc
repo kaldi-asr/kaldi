@@ -25,7 +25,8 @@ namespace kaldi {
 
 bool ReadScriptFile(const std::string &rxfilename,
                     bool warn,
-                    std::vector<std::pair<std::string, std::string> > *script_out) {
+                    std::vector<std::pair<std::string, std::string> >
+                    *script_out) {
   bool is_binary;
   Input input;
 
@@ -42,13 +43,15 @@ bool ReadScriptFile(const std::string &rxfilename,
 
   bool ans = ReadScriptFile(input.Stream(), warn, script_out);
   if (warn && !ans)
-    KALDI_WARN << "[script file was: " << PrintableRxfilename(rxfilename) << "]";
+    KALDI_WARN << "[script file was: " << PrintableRxfilename(rxfilename) <<
+                  "]";
   return ans;
 }
 
 bool ReadScriptFile(std::istream &is,
                     bool warn,
-                    std::vector<std::pair<std::string, std::string> > *script_out) {
+                    std::vector<std::pair<std::string, std::string> >
+                    *script_out) {
   KALDI_ASSERT(script_out != NULL);
   std::string line;
   int line_number = 0;
@@ -56,7 +59,8 @@ bool ReadScriptFile(std::istream &is,
     line_number++;
     const char *c = line.c_str();
     if (*c == '\0') {
-      if (warn) KALDI_WARN << "Empty "<<line_number<<"'th line in script file";
+      if (warn)
+        KALDI_WARN << "Empty " << line_number << "'th line in script file";
       return false;  // Empty line so invalid scp file format..
     }
 
@@ -64,7 +68,8 @@ bool ReadScriptFile(std::istream &is,
     SplitStringOnFirstSpace(line, &key, &rest);
 
     if (key.empty() || rest.empty()) {
-      if (warn) KALDI_WARN << "Invalid "<<line_number<<"'th line in script file"
+      if (warn)
+        KALDI_WARN << "Invalid " << line_number << "'th line in script file"
                           <<":\"" << line << '"';
       return false;
     }
@@ -78,22 +83,26 @@ bool ReadScriptFile(std::istream &is,
 }
 
 bool WriteScriptFile(std::ostream &os,
-                     const std::vector<std::pair<std::string, std::string> > &script) {
+                     const std::vector<std::pair<std::string, std::string> >
+                     &script) {
   if (!os.good()) {
     KALDI_WARN << "WriteScriptFile: attempting to write to invalid stream.";
     return false;
   }
   std::vector<std::pair<std::string, std::string> >::const_iterator iter;
-  for (iter = script.begin(); iter != script.end(); iter++) {
+  for (iter = script.begin(); iter != script.end(); ++iter) {
     if (!IsToken(iter->first)) {
-      KALDI_WARN << "WriteScriptFile: using invalid token \"" << iter->first << '"';
+      KALDI_WARN << "WriteScriptFile: using invalid token \"" << iter->first <<
+                    '"';
       return false;
     }
     if (iter->second.find('\n') != std::string::npos ||
        (iter->second.length() != 0 &&
-        (isspace(iter->second[0]) || isspace(iter->second[iter->second.length()-1])))) {
+        (isspace(iter->second[0]) ||
+         isspace(iter->second[iter->second.length()-1])))) {
       // second part contains newline or leading or trailing space.
-      KALDI_WARN << "WriteScriptFile: attempting to write invalid line \"" << iter->second << '"';
+      KALDI_WARN << "WriteScriptFile: attempting to write invalid line \"" <<
+                    iter->second << '"';
       return false;
     }
     os << iter->first << ' ' << iter->second << '\n';
@@ -106,10 +115,11 @@ bool WriteScriptFile(std::ostream &os,
 }
 
 bool WriteScriptFile(const std::string &wxfilename,
-                     const std::vector<std::pair<std::string, std::string> > &script) {
+                     const std::vector<std::pair<std::string, std::string> >
+                     &script) {
   Output output;
-  if (!output.Open(wxfilename, false, false)) {  // false, false means not binary,
-    // no binary-mode header.
+  if (!output.Open(wxfilename, false, false)) {  // false, false means not
+    // binary, no binary-mode header.
     KALDI_ERR << "Error opening output stream for script file: "
               << PrintableWxfilename(wxfilename);
     return false;
@@ -146,22 +156,24 @@ WspecifierType ClassifyWspecifier(const std::string &wspecifier,
 
   size_t pos = wspecifier.find(':');
   if (pos == std::string::npos) return kNoWspecifier;
-  if (isspace(*(wspecifier.rbegin()))) return kNoWspecifier;  // Trailing space disallowed.
+  if (isspace(*(wspecifier.rbegin()))) return kNoWspecifier;  // Trailing space
+  // disallowed.
 
   std::string before_colon(wspecifier, 0, pos), after_colon(wspecifier, pos+1);
 
   std::vector<std::string> split_first_part;  // Split part before ':' on ', '.
-  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false== don't omit empty strings
-  // between commas.
+  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false==
+  // don't omit empty strings between commas.
 
   WspecifierType ws = kNoWspecifier;
 
   if (opts != NULL)
-    *opts = WspecifierOptions(); // Make sure all the defaults are as in the
-                                 // default constructor of the options class.
-  
+    *opts = WspecifierOptions();  // Make sure all the defaults are as in the
+                                  // default constructor of the options class.
+
   for (size_t i = 0; i < split_first_part.size(); i++) {
-    const std::string &str = split_first_part[i];  // e.g. "b", "t", "f", "ark", "scp".
+    const std::string &str = split_first_part[i];  // e.g. "b", "t", "f", "ark",
+    // "scp".
     const char *c = str.c_str();
     if (!strcmp(c, "b")) {
       if (opts) opts->binary = true;
@@ -175,11 +187,14 @@ WspecifierType ClassifyWspecifier(const std::string &wspecifier,
       if (opts) opts->permissive = true;
     } else if (!strcmp(c, "ark")) {
       if (ws == kNoWspecifier) ws = kArchiveWspecifier;
-      else return kNoWspecifier;  // We do not allow "scp, ark", only "ark, scp".
+      else
+        return kNoWspecifier;  // We do not allow "scp, ark", only "ark,
+      // scp".
     } else if (!strcmp(c, "scp")) {
       if (ws == kNoWspecifier) ws = kScriptWspecifier;
       else if (ws == kArchiveWspecifier) ws = kBothWspecifier;
-      else return kNoWspecifier;  // repeated "scp" option: invalid.
+      else
+        return kNoWspecifier;  // repeated "scp" option: invalid.
     } else {
       return kNoWspecifier;  // Could not interpret this option.
     }
@@ -237,28 +252,30 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
   if (wxfilename) wxfilename->clear();
 
   if (opts != NULL)
-    *opts = RspecifierOptions(); // Make sure all the defaults are as in the
-                                 // default constructor of the options class.
-  
+    *opts = RspecifierOptions();  // Make sure all the defaults are as in the
+                                  // default constructor of the options class.
+
   size_t pos = rspecifier.find(':');
   if (pos == std::string::npos) return kNoRspecifier;
 
-  if (isspace(*(rspecifier.rbegin()))) return kNoRspecifier;  // Trailing space disallowed.
+  if (isspace(*(rspecifier.rbegin()))) return kNoRspecifier;  // Trailing space
+  // disallowed.
 
   std::string before_colon(rspecifier, 0, pos),
       after_colon(rspecifier, pos+1);
 
   std::vector<std::string> split_first_part;  // Split part before ':' on ', '.
-  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false== don't omit empty strings
-  // between commas.
+  SplitStringToVector(before_colon, ", ", false, &split_first_part);  // false==
+  // don't omit empty strings between commas.
 
   RspecifierType rs = kNoRspecifier;
 
   for (size_t i = 0; i < split_first_part.size(); i++) {
-    const std::string &str = split_first_part[i];  // e.g. "b", "t", "f", "ark", "scp".
+    const std::string &str = split_first_part[i];  // e.g. "b", "t", "f", "ark",
+    // "scp".
     const char *c = str.c_str();
-    if (!strcmp(c, "b"));  // Ignore this option.  It's so we can use the same specifiers for
-    // rspecifiers and wspecifiers.
+    if (!strcmp(c, "b"));  // Ignore this option.  It's so we can use the same
+    // specifiers for rspecifiers and wspecifiers.
     else if (!strcmp(c, "t"));  // Ignore this option too.
     else if (!strcmp(c, "o")) {
       if (opts) opts->once = true;
@@ -278,10 +295,14 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
       if (opts) opts->called_sorted = false;
     } else if (!strcmp(c, "ark")) {
       if (rs == kNoRspecifier) rs = kArchiveRspecifier;
-      else return kNoRspecifier;  // Repeated or combined ark and scp options invalid.
+      else
+        return kNoRspecifier;  // Repeated or combined ark and scp options
+      // invalid.
     } else if (!strcmp(c, "scp")) {
       if (rs == kNoRspecifier) rs = kScriptRspecifier;
-      else return kNoRspecifier;  // Repeated or combined ark and scp options invalid.
+      else
+        return kNoRspecifier;  // Repeated or combined ark and scp options
+      // invalid.
     } else {
       return kNoRspecifier;  // Could not interpret this option.
     }

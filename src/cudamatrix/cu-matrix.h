@@ -123,15 +123,14 @@ class CuMatrixBase {
   /// NULL then this.Row(r) will be set to zero.
   void CopyRows(const CuArray<const Real*> &src);
 
-  /// For each row r of this matrix, copies it to the array of floats at
-  /// the location given by dst[r], where dst[r] is assumed to be obtained from the RowData()
-  /// function of another CuMatrix, or from CuVector::Data() (i.e. it should point
-  /// to memory on the GPU if we're using a GPU, or on the CPU otherwise).
-  /// If dst[r] is NULL, does not copy anywhere.  Requires that none of the
-  /// memory regions pointed to by the pointers in "dst" overlap (e.g. none of
-  /// the pointers should be the same).
+  /// For each row r of this matrix, copies it to the array of floats at the
+  /// location given by dst[r], where dst[r] is assumed to be obtained from the
+  /// RowData() function of another CuMatrix, or from CuVector::Data() (i.e. it
+  /// should point to memory on the GPU if we're using a GPU, or on the CPU
+  /// otherwise).  If dst[r] is NULL, does not copy anywhere.  Requires that
+  /// none of the memory regions pointed to by the pointers in "dst" overlap
+  /// (e.g. none of the pointers should be the same).
   void CopyToRows(const CuArray<Real*> &dst) const;
-
 
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
   /// If indexes[r] < 0, does not add anything.
@@ -239,8 +238,13 @@ class CuMatrixBase {
   void CopyToMat(MatrixBase<OtherReal> *dst,
                  MatrixTransposeType trans = kNoTrans) const;
 
+  /// This function has two modes of operation.  If v.Dim() == NumRows() *
+  /// NumCols(), then treats the vector as a row-by-row concatenation of a
+  /// matrix and copies to *this.
+  /// if v.Dim() == NumCols(), it sets each row of *this to a copy of v.
   void CopyRowsFromVec(const CuVectorBase<Real> &v);
 
+  /// Version of CopyRowsFromVec() that takes a CPU-based vector.
   void CopyRowsFromVec(const VectorBase<Real> &v);
 
   /// Copy vector into specific column of matrix.
@@ -349,15 +353,6 @@ class CuMatrixBase {
   /// Find the id of the maximal element for each row
   void FindRowMaxId(CuArray<int32> *id) const;
 
-  /*
-  // Copy row interval from matrix
-  // @param r      [in] number of rows to copy.
-  // @param src    [in] source matrix.
-  // @param src_ro [in] source matrix row offset.
-  // @param dst_ro [in] destination matrix row offset.
-  // void CopyRowsFromMat(int32 r, const CuMatrixBase<Real> &src, int32 src_ro, int32 dst_ro);
-  */
-
   /// Math operations, some calling kernels
   void SetZero();
   void Set(Real value);
@@ -367,9 +362,9 @@ class CuMatrixBase {
   void Scale(Real value);
   void ApplyLog();
 
-  /// Multiply two matrices elementwise: C = A .* C
+  /// Multiply two matrices elementwise: C = C .* A
   void MulElements(const CuMatrixBase<Real> &A);
-  /// Divide two matrices elementwise: C = A ./ C
+  /// Divide two matrices elementwise: C = A ./ A
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
@@ -398,6 +393,8 @@ class CuMatrixBase {
   /// C = alpha * A(^T)*B(^T) + beta * C
   void AddMatMat(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType transA,
                  const CuMatrixBase<Real> &B, MatrixTransposeType transB, Real beta);
+  /// A = alpha * x * y^T + A .
+  void AddVecVec(Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y);
   /// *this = a * b / c (by element; when c = 0, *this = a)
   void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 
@@ -536,9 +533,10 @@ class CuMatrixBase {
 
   // For each i, with indexes[i] = (j, k), does (*this)(j, k) += input[i].
   // Requires, but does not check, that the vector of indexes does not contrain
-  // repeated elements, 'input' is the start of a host array of length equal
-  // to indexes.Dim().
-  void AddElements(Real alpha, const CuArray<Int32Pair> &indexes, const Real *input);
+  // repeated elements, 'input' is the start of an array of length equal to
+  // indexes.Dim(), which is located on GPU memory if we are using the GPU.
+  void AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
+                   const Real *input);
 
   // This function requires that 'output' is a host array and is allocated with size
   // of indexes.size(), and for each element of 'indexes' it interprets it as
@@ -731,6 +729,15 @@ class CuSubMatrix: public CuMatrixBase<Real> {
                      const MatrixIndexT num_rows,
                      const MatrixIndexT col_offset,
                      const MatrixIndexT num_cols);
+
+  // This constructor should be used with caution; it can be used for
+  // constructing 'fake' submatrices if you want to play with
+  // the stride. 'data' should point to GPU data if you're using the
+  // GPU.
+  inline CuSubMatrix(const Real *data,
+                     const MatrixIndexT num_rows,
+                     const MatrixIndexT num_cols,
+                     const MatrixIndexT stride);
 
   /// This type of constructor is needed for Range() to work [in CuMatrix base
   /// class]. Cannot make it explicit or that breaks.

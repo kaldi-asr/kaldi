@@ -370,7 +370,7 @@ else
   echo "# getting input/output dims :"
   # input-dim,
   get_dim_from=$feature_transform
-  [ ! -z $dbn ] && get_dim_from="nnet-concat $feature_transform $dbn -|"
+  [ ! -z "$dbn" ] && get_dim_from="nnet-concat $feature_transform '$dbn' -|"
   num_fea=$(feat-to-dim "$feats_tr nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
 
   # output-dim,
@@ -427,9 +427,9 @@ else
   nnet-initialize $nnet_proto $nnet_init
 
   # optionally prepend dbn to the initialization,
-  if [ ! -z $dbn ]; then
-    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_$(basename $dbn)_dnn.init
-    nnet-concat $dbn $nnet_init_old $nnet_init || exit 1 
+  if [ ! -z "$dbn" ]; then
+    nnet_init_old=$nnet_init; nnet_init=$dir/nnet_dbn_dnn.init
+    nnet-concat "$dbn" $nnet_init_old $nnet_init || exit 1 
   fi
 fi
 

@@ -24,6 +24,40 @@
 namespace kaldi {
 namespace nnet3 {
 
+// returns true if two are string are equal except for what looks like it might
+// be a difference last digit of a floating point number, e.g. accept
+// 1.234 to be the same as 1.235.  Not very rigorous.
+static bool StringsApproxEqual(const std::string &a,
+                               const std::string &b) {
+  if (a == b || a.size() != b.size())
+    return true;
+  size_t size = a.size();
+  for (size_t pos = 0; pos < size; pos++) {
+    if (a[pos] != b[pos]) {
+      if (!isdigit(a[pos]) || !isdigit(b[pos]))
+        goto fail;
+      // if it's not the last digit in the string, goto fail
+      if (pos + 1 != size && isdigit(a[pos+1]))
+        goto fail;
+      size_t pos2;
+      for (pos2 = pos - 1; pos2 > 0; pos2--) {
+        if (a[pos2] == '.') break;  // we accept this difference: we went backwards and found a '.'
+        if (!isdigit(a[pos2]))  // we reject this difference: we went back and
+                                // found non-digit before '.' -> not floating
+                                // point.
+          goto fail;
+      }
+      if (pos2 == 0)
+        goto fail;
+    }
+  }
+  return true;
+fail:
+  KALDI_WARN << "Info strings differ: '" << a << "' vs. '" << b << "'.";
+  return false;
+}
+
+
 void TestNnetComponentIo(Component *c) {
   bool binary = (Rand() % 2 == 0);
   std::ostringstream os1;
@@ -40,7 +74,10 @@ void TestNnetComponentIo(Component *c) {
 
 void TestNnetComponentCopy(Component *c) {
   Component *c2 = c->Copy();
-  KALDI_ASSERT(c->Info() == c2->Info());
+  if (!StringsApproxEqual(c->Info(), c2->Info())) {
+    KALDI_ERR << "Expected info strings to be equal: '"
+              << c->Info() << "' vs. '" << c2->Info() << "'";
+  }
   delete c2;
 }
 
@@ -49,32 +86,159 @@ void TestNnetComponentAddScale(Component *c) {
   Component *c3 = c2->Copy();
   c3->Add(0.5, *c2);
   c2->Scale(1.5);
-  KALDI_ASSERT(c2->Info() == c3->Info());
+  KALDI_ASSERT(StringsApproxEqual(c2->Info(), c3->Info()));
   delete c2;
   delete c3;
 }
 
+void TestNnetComponentVectorizeUnVectorize(Component *c) {
+  if (!(c->Properties() & kUpdatableComponent))
+    return;
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  KALDI_ASSERT(uc != NULL);
+  UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+  uc2->SetZero(false);
+  Vector<BaseFloat> params(uc2->NumParameters());
+  uc2->Vectorize(&params);
+  KALDI_ASSERT(params.Min()==0.0 && params.Sum()==0.0);
+  uc->Vectorize(&params);
+  uc2->UnVectorize(params);
+  KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
+  BaseFloat x = uc2->DotProduct(*uc2), y = uc->DotProduct(*uc),
+      z = uc2->DotProduct(*uc);
+  KALDI_ASSERT(ApproxEqual(x, y) && ApproxEqual(y, z));
+  Vector<BaseFloat> params2(uc2->NumParameters());
+  uc2->Vectorize(&params2);
+  for(int i = 0; i < params.Dim(); i++)
+    KALDI_ASSERT(params(i) == params2(i));
+  delete uc2;
+}
+
+void TestStringsApproxEqual() {
+  // we must test the test.
+  KALDI_ASSERT(!StringsApproxEqual("a", "b"));
+  KALDI_ASSERT(!StringsApproxEqual("1", "2"));
+  KALDI_ASSERT(StringsApproxEqual("1.234", "1.235"));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y", "x 1.235 y"));
+  KALDI_ASSERT(StringsApproxEqual("x 1.234 y 6.41", "x 1.235 y 6.49"));
+}
+
+void TestNnetComponentUpdatable(Component *c) {
+  if (!(c->Properties() & kUpdatableComponent))
+    return;
+  UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(c);
+  if (uc == NULL) {
+    KALDI_ASSERT(!(c->Properties() & kUpdatableComponent) &&
+                 "Component returns updatable flag but does not inherit "
+                 "from UpdatableComponent");
+    return;
+  }
+  if(!(uc->Properties() & kUpdatableComponent)){
+    // testing that if it declares itself as non-updatable,
+    // Scale() and Add() and SetZero() have no effect.
+    KALDI_ASSERT(uc->NumParameters() == 0);
+    KALDI_ASSERT(uc->DotProduct(*uc) == 0);
+    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+    uc2->Scale(7.0);
+    uc2->Add(3.0, *uc);
+    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
+    uc->SetZero(false);
+    KALDI_ASSERT(StringsApproxEqual(uc2->Info(), uc->Info()));
+    delete uc2;
+  } else {
+    KALDI_ASSERT(uc->NumParameters() != 0);
+    UpdatableComponent *uc2 = dynamic_cast<UpdatableComponent*>(uc->Copy()),
+        *uc3 = dynamic_cast<UpdatableComponent*>(uc->Copy());
+
+    // testing some expected invariances of scale and add.
+    uc2->Scale(5.0);
+    uc2->Add(3.0, *uc3);
+    uc3->Scale(8.0);
+    // now they should both be scaled to 8 times the original component.
+    if (!StringsApproxEqual(uc2->Info(), uc3->Info())) {
+      KALDI_ERR << "Expected info strings to be equal: '"
+                << uc2->Info() << "' vs. '" << uc3->Info() << "'";
+    }
+    // testing that scaling by 0.5 works the same whether
+    // done on the vectorized paramters or via Scale().
+    Vector<BaseFloat> vec2(uc->NumParameters());
+    uc2->Vectorize(&vec2);
+    vec2.Scale(0.5);
+    uc2->UnVectorize(vec2);
+    uc3->Scale(0.5);
+    KALDI_ASSERT(uc2->Info() == uc3->Info());
+
+    // testing that SetZero() works the same whether done on the vectorized
+    // paramters or via SetZero(), and that unvectorizing something that's been
+    // zeroed gives us zero parameters.
+    uc2->Vectorize(&vec2);
+    vec2.SetZero();
+    uc2->UnVectorize(vec2);
+    uc3->SetZero(false);
+    uc3->Vectorize(&vec2);
+    KALDI_ASSERT(uc2->Info() == uc3->Info() && VecVec(vec2, vec2) == 0.0);
+
+    delete uc2;
+    delete uc3;
+  }
+}
 
 // tests the properties kPropagateAdds, kBackpropAdds,
 // kBackpropNeedsInput, kBackpropNeedsOutput.
 void TestSimpleComponentPropagateProperties(const Component &c) {
-  Component *c_copy = NULL;
+  int32 properties = c.Properties();
+  Component *c_copy = NULL, *c_copy_scaled = NULL;
   if (RandInt(0, 1) == 0)
     c_copy = c.Copy();  // This will test backprop with an updatable component.
+  if (RandInt(0, 1) == 0 &&
+      (properties & kLinearInParameters)) {
+    c_copy_scaled = c.Copy();  // This will test backprop with an updatable component.
+    c_copy_scaled->Scale(0.5);
+  }
   int32 input_dim = c.InputDim(),
       output_dim = c.OutputDim(),
       num_rows = RandInt(1, 100);
-  int32 properties = c.Properties();
-  CuMatrix<BaseFloat> input_data(num_rows, input_dim),
+  CuMatrix<BaseFloat> input_data(num_rows, input_dim);
+  input_data.SetRandn();
+  CuMatrix<BaseFloat>
+      input_data_scaled(input_data),
       output_data1(num_rows, output_dim),
-      output_data2(num_rows, output_dim);
+      output_data2(num_rows, output_dim),
+      output_data3(input_data),
+      output_data4(num_rows, output_dim),
+      output_data5(num_rows, output_dim);
   output_data2.Add(1.0);
+  input_data_scaled.Scale(2.0);
+
+  if ((properties & kPropagateAdds) && (properties & kPropagateInPlace)) {
+    KALDI_ERR << "kPropagateAdds and kPropagateInPlace flags are incompatible.";
+  }
 
   c.Propagate(NULL, input_data, &output_data1);
   c.Propagate(NULL, input_data, &output_data2);
+  if (properties & kPropagateInPlace) {
+    c.Propagate(NULL, output_data3, &output_data3);
+    if (!output_data1.ApproxEqual(output_data3)) {
+      KALDI_ERR << "Test of kPropagateInPlace flag for component of type "
+                << c.Type() << " failed.";
+    }
+  }
   if (properties & kPropagateAdds)
     output_data2.Add(-1.0); // remove the offset
   AssertEqual(output_data1, output_data2);
+
+  if (c_copy_scaled) {
+    c_copy_scaled->Propagate(NULL, input_data, &output_data4);
+    output_data4.Scale(2.0);  // we scaled the parameters by 0.5 above, and the
+    // output is supposed to be linear in the parameter value.
+    AssertEqual(output_data1, output_data4);
+  }
+  if (properties & kLinearInInput) {
+    c.Propagate(NULL, input_data_scaled, &output_data5);
+    output_data5.Scale(0.5);
+    AssertEqual(output_data1, output_data5);
+  }
+
 
   CuMatrix<BaseFloat> output_deriv(num_rows, output_dim);
   output_deriv.SetRandn();
@@ -107,12 +271,14 @@ void TestSimpleComponentPropagateProperties(const Component &c) {
                c_copy,
                &input_deriv3);
   }
+
   if (properties & kBackpropAdds)
     input_deriv2.Add(-1.0);  // subtract the offset.
   AssertEqual(input_deriv1, input_deriv2);
   if (properties & kBackpropInPlace)
     AssertEqual(input_deriv1, input_deriv3);
   delete c_copy;
+  delete c_copy_scaled;
 }
 
 bool TestSimpleComponentDataDerivative(const Component &c,
@@ -265,11 +431,14 @@ bool TestSimpleComponentModelDerivative(const Component &c,
 
 
 void UnitTestNnetComponent() {
-  for (int32 n = 0; n < 100; n++) {
+  for (int32 n = 0; n < 200; n++)  {
     Component *c = GenerateRandomSimpleComponent();
+    KALDI_LOG << c->Info();
     TestNnetComponentIo(c);
     TestNnetComponentCopy(c);
     TestNnetComponentAddScale(c);
+    TestNnetComponentVectorizeUnVectorize(c);
+    TestNnetComponentUpdatable(c);
     TestSimpleComponentPropagateProperties(*c);
     if (!TestSimpleComponentDataDerivative(*c, 1.0e-04) &&
         !TestSimpleComponentDataDerivative(*c, 1.0e-03) &&
@@ -287,6 +456,7 @@ void UnitTestNnetComponent() {
         !TestSimpleComponentModelDerivative(*c, 1.0e-05, true) &&
         !TestSimpleComponentModelDerivative(*c, 1.0e-06, true))
       KALDI_ERR << "Component model-derivative test failed";
+
     delete c;
   }
 }
@@ -297,8 +467,8 @@ void UnitTestNnetComponent() {
 int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
-
-  for (int32 loop = 0; loop < 2; loop++) {
+  TestStringsApproxEqual();
+  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");

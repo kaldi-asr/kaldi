@@ -38,4 +38,3 @@
 #include "base/kaldi-math.h"
 
 #endif  // KALDI_BASE_KALDI_COMMON_H_
-

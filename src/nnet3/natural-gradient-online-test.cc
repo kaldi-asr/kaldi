@@ -49,6 +49,8 @@ class OnlineNaturalGradientSimple {
 
   void Init(const MatrixBase<double> &R0);
 
+  void InitDefault(int32 D);
+
   int32 rank_;
   double num_samples_history_;
   double alpha_;
@@ -79,14 +81,7 @@ void OnlineNaturalGradientSimple::PreconditionDirections(
   row_prod->CopyFromVec(row_prod_cpu);
 }
 
-void OnlineNaturalGradientSimple::Init(const MatrixBase<double> &R0) {
-  int32 D = R0.NumCols(), N = R0.NumRows();
-  SpMatrix<double> S(D);
-  S.AddMat2(1.0 / N, R0, kTrans, 0.0);
-  Matrix<double> P(D, D);
-  Vector<double> s(D);
-  S.Eig(&s, &P);
-  SortSvd(&s, &P);
+void OnlineNaturalGradientSimple::InitDefault(int32 D) {
   if (rank_ >= D) {
     KALDI_WARN << "Rank " << rank_ << " of online preconditioner is >= dim " << D
                << ", setting it to "
@@ -95,28 +90,38 @@ void OnlineNaturalGradientSimple::Init(const MatrixBase<double> &R0) {
   }
   int32 R = rank_;
   R_t_.Resize(R, D);
-  P.Transpose();
-  R_t_ = P.Range(0, R, 0, D);
-  d_t_ = s.Range(0, R);
-  KALDI_VLOG(3) << "d_t orig is " << d_t_;
-  rho_t_ = (TraceMatMat(R0, R0, kTrans) / N - d_t_.Sum()) / (D - R);
-  d_t_.Add(-rho_t_);
-  KALDI_VLOG(3) << "rho_0 = " << rho_t_;
-  KALDI_VLOG(3) << "d_0 = " << d_t_;
-  double floor_val = std::max(epsilon_, delta_ * d_t_.Max());
-  if (rho_t_ < floor_val) {
-    KALDI_WARN << "Flooring rho_0 to " << floor_val << ", was " << rho_t_;
-    rho_t_ = floor_val;
+  for (int32 r = 0; r < R; r++) {
+    std::vector<int32> cols;
+    for (int32 c = r; c < D; c += R)
+      cols.push_back(c);
+    for (int32 i = 0; i < cols.size(); i++) {
+      int32 c = cols[i];
+      R_t_(r, c) = (i == 0 ? 1.1 : 1.0) /
+          sqrt(1.1 * 1.1 + cols.size() - 1);
+    }
   }
-  int32 nf = d_t_.ApplyFloor(epsilon_);
-  if (nf > 0) {
-    KALDI_WARN << "Floored " << nf << " elements of D_0";
+  d_t_.Resize(R);
+  d_t_.Set(epsilon_);
+  rho_t_ = epsilon_;
+}
+
+void OnlineNaturalGradientSimple::Init(const MatrixBase<double> &R0) {
+  int32 D = R0.NumCols(), N = R0.NumRows();
+  InitDefault(D);
+  int32 num_init_iters = 3;
+  for (int32 i = 0; i < num_init_iters; i++) {
+    CuMatrix<BaseFloat> R0_copy(R0);
+    CuVector<BaseFloat> row_products(N);
+    BaseFloat scale;
+    PreconditionDirections(&R0_copy, &row_products, &scale);
   }
 }
 
 BaseFloat OnlineNaturalGradientSimple::Eta(int32 N) const {
   KALDI_ASSERT(num_samples_history_ > 0.0);
-  return 1.0 - exp(-N / num_samples_history_);
+  BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
+  if (ans > 0.9) ans = 0.9;
+  return ans;
 }
 
 
@@ -193,13 +198,13 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
     KALDI_WARN << "flooring rho_{t+1} to " << floor_val << ", was " << rho_t1;
     rho_t1 = floor_val;
   }
-  nf = d_t1.ApplyFloor(epsilon_);
+  nf = d_t1.ApplyFloor(floor_val);
   if (nf > 0) {
     KALDI_VLOG(3) << "d_t1 was " << d_t1;
     KALDI_WARN << "Floored " << nf << " elements of d_{t+1}.";
   }
   // a check.
-  if (nf == 0 && rho_t1 > epsilon_) {
+  if (nf == 0 && rho_t1 > floor_val) {
     double tr_F_t1 = D * rho_t1 + d_t1.Sum(), tr_T_t = T_t.Trace();
     AssertEqual(tr_F_t1, tr_T_t);
   }
@@ -236,6 +241,18 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
   { // check that R_t_ R_t_^T = I.
     SpMatrix<double> unit(R);
     unit.AddMat2(1.0, R_t_, kNoTrans, 0.0);
+    if (!unit.IsUnit(1.0e-03)) {
+      KALDI_WARN  << "R is not orthogonal, reorthogonalizing.";
+      for (int32 i = 0; i < R; i++) {
+        SubVector<double> row(R_t_, i);
+        for (int32 j = 0; j < i; j++) {
+          SubVector<double> row_j(R_t_, j);
+          row.AddVec(-VecVec(row_j, row), row_j);
+        }
+        row.Scale(1.0 / row.Norm(2.0));
+      }
+    }
+    unit.AddMat2(1.0, R_t_, kNoTrans, 0.0);
     KALDI_ASSERT(unit.IsUnit(1.0e-03));
   }
 }
@@ -251,7 +268,7 @@ void UnitTestPreconditionDirectionsOnline() {
   bool zero = false;
   bool one = false;
   if (Rand() % 3 == 0) zero = true;
-  else if (Rand() % 2 == 0) one = true;
+  //else if (Rand() % 2 == 0) one = true;
 
   CuVector<BaseFloat> row_prod1(N), row_prod2(N);
   BaseFloat gamma1, gamma2;
@@ -302,100 +319,6 @@ void UnitTestPreconditionDirectionsOnline() {
 }
 
 
-// outputs eigs to rows of P.
-void ExactEigsOfProduct(const CuMatrixBase<BaseFloat> &M,
-                        MatrixTransposeType trans,
-                        CuMatrixBase<BaseFloat> *P,
-                        CuVectorBase<BaseFloat> *s) {
-  Matrix<BaseFloat> M_cpu(M);
-  int32 D = trans == kTrans ? M.NumCols() : M.NumRows();
-  SpMatrix<BaseFloat> S_cpu(D);
-  S_cpu.AddMat2(1.0, M_cpu, trans, 0.0);
-  Matrix<BaseFloat> P_cpu(D, D);
-  Vector<BaseFloat> s_cpu(D);
-  S_cpu.Eig(&s_cpu, &P_cpu);
-  SortSvd(&s_cpu, &P_cpu);
-  P->CopyFromMat(P_cpu.Range(0, D, 0, P->NumRows()), kTrans);
-  s->CopyFromVec(s_cpu.Range(0, P->NumRows()));
-}
-
-
-void UnitTestApproxEigsOfProduct() {
-  int32 dimM = 10 + Rand() % 50,
-      dimN = 10 + Rand() % 50;
-  MatrixTransposeType trans = (Rand() % 2 == 0 ? kTrans : kNoTrans);
-  int32 product_dim = (trans == kTrans ? dimN : dimM),
-      other_dim = (trans == kTrans ? dimM : dimN);
-
-  CuMatrix<BaseFloat> M(dimM, dimN);
-  if (Rand() % 4 == 0) {
-    M.SetRandn();
-  } else if (Rand() % 3 == 0) {
-    M.Row(2).SetRandn();
-  } else if (Rand() % 2 == 0) {
-    M.Row(2).SetRandn();
-    M.Row(4).SetRandn();
-  }
-  // else leave M at zero.  We want to test
-  // full-rank M as well as zero, one or two eigenvalues
-  // being nonzero.
-
-  int32 rank = 1 + Rand() % (product_dim - 1);
-
-  CuMatrix<BaseFloat> P_approx(rank, product_dim),
-      P_exact(rank, product_dim);
-  CuVector<BaseFloat> s_approx(rank),
-      s_exact(rank);
-
-  ExactEigsOfProduct(M, trans, &P_exact, &s_exact);
-  ApproxEigsOfProduct(M, trans, &P_approx, &s_approx);
-
-  KALDI_LOG << "Approx eig sum is " << s_approx.Sum();
-  KALDI_LOG << "Exact eig sum is " << s_exact.Sum();
-
-  CuMatrix<BaseFloat> unit1(rank, rank), unit2(rank, rank);
-  unit1.AddMatMat(1.0, P_approx, kNoTrans, P_approx, kTrans, 0.0);
-  unit2.AddMatMat(1.0, P_exact, kNoTrans, P_exact, kTrans, 0.0);
-  KALDI_ASSERT(unit1.IsUnit());
-  KALDI_ASSERT(unit2.IsUnit());
-
-  CuMatrix<BaseFloat> Mproj_approx(rank, other_dim);
-  Mproj_approx.AddMatMat(1.0, P_approx, kNoTrans, M, trans, 0.0);
-  CuMatrix<BaseFloat> Mproj_exact(rank, other_dim);
-  Mproj_exact.AddMatMat(1.0, P_exact, kNoTrans, M, trans, 0.0);
-
-  CuVector<BaseFloat> s2_approx(rank), s2_exact(rank);
-  s2_approx.AddDiagMat2(1.0, Mproj_approx, kNoTrans, 0.0);
-  s2_exact.AddDiagMat2(1.0, Mproj_exact, kNoTrans, 0.0);
-  KALDI_ASSERT(s_approx.ApproxEqual(s2_approx));
-  // KALDI_LOG << "s_exact is " << s_exact;
-  // KALDI_LOG << "s2_exact is " << s2_exact;
-  // KALDI_LOG << "P_exact is " << P_exact;
-  KALDI_ASSERT(s_exact.ApproxEqual(s2_exact));
-
-}
-
-/*
-  CuSpMatrix<BaseFloat> G(D);
-  G.SetUnit();
-  G.ScaleDiag(lambda);
-  // G += R^T R.
-  G.AddMat2(1.0/(N-1), R, kTrans, 1.0);
-
-  for (int32 n = 0; n < N; n++) {
-    CuSubVector<BaseFloat> rn(R, n);
-    CuSpMatrix<BaseFloat> Gn(G);
-    Gn.AddVec2(-1.0/(N-1), rn); // subtract the
-    // outer product of "this" vector.
-    Gn.Invert();
-    CuSubVector<BaseFloat> pn(P, n);
-    CuVector<BaseFloat> pn_compare(D);
-    pn_compare.AddSpVec(1.0, Gn, rn, 0.0);
-    KALDI_ASSERT(pn.ApproxEqual(pn_compare, 0.1));
-  }
-}
-
-*/
 } // namespace nnet3
 } // namespace kaldi
 
@@ -412,7 +335,6 @@ int main() {
 #endif
     for (int32 i = 0; i < 10; i++) {
       UnitTestPreconditionDirectionsOnline();
-      UnitTestApproxEigsOfProduct();
     }
   }
 }

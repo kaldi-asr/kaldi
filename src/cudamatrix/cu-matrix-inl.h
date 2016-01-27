@@ -44,9 +44,23 @@ inline CuSubMatrix<Real>::CuSubMatrix(const CuMatrixBase<Real> &mat,
     this->stride_ = mat.stride_;
   }
 }
-  
+
+template<typename Real>
+inline CuSubMatrix<Real>::CuSubMatrix(const Real *data,
+                                      const MatrixIndexT num_rows,
+                                      const MatrixIndexT num_cols,
+                                      const MatrixIndexT stride):
+    CuMatrixBase<Real>(const_cast<Real*>(data), num_rows, num_cols, stride) {
+  // in general if you use SubMatrix or CuSubMatrix, const-correctness is not
+  // preserved (preserving it would require us duplicating the class and it
+  // would have been a hassle).
+  KALDI_ASSERT((num_rows != 0) == (num_cols != 0) && stride >= 0 &&
+               num_rows >= 0 && num_cols >= 0 && num_cols <= stride);
+}
+
+
 } // namespace kaldi
 
 #endif
 
-  
+

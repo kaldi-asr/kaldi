@@ -30,6 +30,8 @@ minimize=false
 frames_per_chunk=10000
 extra_left_context=20   # it is recommended to use the same value as the chunk_left_context
                         # used during training
+extra_right_context=0   # it is recommended to use the same value as the chunk_right_context
+                        # used during training (usually used in bi-directional LSTM case)
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -139,6 +141,7 @@ if [ $stage -le 1 ]; then
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
      --extra-left-context=$extra_left_context \
+     --extra-right-context=$extra_right_context \
      --word-symbol-table=$graphdir/words.txt "$model" \
      $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi

@@ -85,7 +85,7 @@ if [ $stage -le 2 ]; then
   # hardcode no-GPU for alignment, although you could use GPU [you wouldn't
   # get excellent GPU utilization though.]
   nj=1500 # this is 6k hours, use more jobs and control the speed dynamically using 
-          # throttle control option (-tc with qalter) 
+          # throttle control option (--max-jobs-run with qalter) 
           # have a high number of jobs because this could take a while, and we might
           # have some stragglers.
   max_jobs_run=200
@@ -110,14 +110,14 @@ if [ $stage -le 3 ]; then
   if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
 
   steps/nnet2/get_egs_discriminative2.sh \
-    --cmd "$decode_cmd -tc $max_jobs" \
+    --cmd "$decode_cmd --max-jobs-run $max_jobs" \
     --online-ivector-dir exp/nnet2_multicondition/ivectors_train \
     --criterion $criterion --drop-frames $drop_frames \
      data/train_rvb_hires data/lang ${srcdir}{_ali,_denlats,/final.mdl,_degs} || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
   #steps/online/nnet2/get_egs_discriminative2.sh \
-  #  --cmd "$decode_cmd -tc $max_jobs" \
+  #  --cmd "$decode_cmd --max-jobs-run $max_jobs" \
   #  --criterion $criterion --drop-frames $drop_frames \
   #   data/train_960 data/lang ${srcdir}{_ali,_denlats,_online,_degs} || exit 1;
 fi

@@ -117,7 +117,7 @@ template<class T> inline void WriteIntegerVector(std::ostream &os, bool binary,
     os << "]\n";
   }
   if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteIntegerType.");
+    throw std::runtime_error("Write failure in WriteIntegerVector.");
   }
 }
 
@@ -177,6 +177,7 @@ template<class T> inline void ReadIntegerVector(std::istream &is,
   KALDI_ERR << "ReadIntegerVector: read failure at file position "
             << is.tellg();
 }
+
 
 // Initialize an opened stream for writing by writing an optional binary
 // header and modifying the floating-point precision.

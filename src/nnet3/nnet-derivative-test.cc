@@ -131,7 +131,7 @@ void UnitTestNnetModelDerivatives() {
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;
-    ComputationChecker checker(check_config, nnet, request, computation);
+    ComputationChecker checker(check_config, nnet, computation);
     checker.Check();
 
     if (RandInt(0, 3) != 0 && allow_optimization) {
@@ -144,7 +144,7 @@ void UnitTestNnetModelDerivatives() {
       computation.Print(os, nnet);
       KALDI_LOG << "Optimized computation is: " << os.str();
       check_config.check_rewrite = false;
-      ComputationChecker checker_opt(check_config, nnet, request, computation);
+      ComputationChecker checker_opt(check_config, nnet, computation);
       checker_opt.Check();
     }
 
@@ -297,7 +297,7 @@ void UnitTestNnetInputDerivatives() {
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.
     check_config.check_rewrite = true;
-    ComputationChecker checker(check_config, nnet, request, computation);
+    ComputationChecker checker(check_config, nnet, computation);
     checker.Check();
 
     if (RandInt(0, 3) != 0 && allow_optimization) {
@@ -428,7 +428,7 @@ int main() {
   //SetVerboseLevel(2);
 
 
-  for (int32 loop = 0; loop < 2; loop++) {
+  for (kaldi::int32 loop = 0; loop < 2; loop++) {
 #if HAVE_CUDA == 1
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");

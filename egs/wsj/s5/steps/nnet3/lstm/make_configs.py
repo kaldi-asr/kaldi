@@ -14,7 +14,7 @@ def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
-    f.write("\n".join(config_lines['component-nodes']))
+    f.write("\n".join(config_lines['component-nodes'])+"\n")
     f.close()
 
 def ParseSpliceString(splice_indexes, label_delay=None):
@@ -59,6 +59,25 @@ def ParseSpliceString(splice_indexes, label_delay=None):
             'num_hidden_layers':len(splice_array)
             }
 
+def ParseLstmDelayString(lstm_delay):
+    ## Work out lstm_delay e.g. "-1 [-1,1] -2" -> list([ [-1], [-1, 1], [-2] ])
+    split1 = lstm_delay.split(" ");
+    lstm_delay_array = []
+    try:
+        for i in range(len(split1)):
+            indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
+            if len(indexes) < 1:
+                raise ValueError("invalid --lstm-delay argument, too-short element: "
+                                + lstm_delay)
+	    elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
+                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+            lstm_delay_array.append(indexes)
+    except ValueError as e:
+        raise ValueError("invalid --lstm-delay argument " + lstm_delay + str(e))
+
+    return lstm_delay_array
+
+   
 if __name__ == "__main__":
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="Writes config files and variables "
@@ -71,6 +90,8 @@ if __name__ == "__main__":
                         help="Raw feature dimension, e.g. 13")
     parser.add_argument("--ivector-dim", type=int,
                         help="iVector dimension, e.g. 100", default=0)
+    parser.add_argument("--include-log-softmax", type=str,
+                        help="add the final softmax layer ", default="true", choices = ["false", "true"])
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -132,7 +153,7 @@ if __name__ == "__main__":
         lstm_delay = [-1] * args.num_lstm_layers
     else:
         try:
-            lstm_delay = map(lambda x: int(x), args.lstm_delay.split())
+            lstm_delay = ParseLstmDelayString(args.lstm_delay.strip())
         except ValueError:
             sys.exit("--lstm-delay has incorrect format value. Provided value is '{0}'".format(args.lstm_delay))
         if len(lstm_delay) != args.num_lstm_layers:
@@ -170,24 +191,45 @@ if __name__ == "__main__":
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
 
     for i in range(args.num_lstm_layers):
-        prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
-                                         args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-                                         args.clipping_threshold, args.norm_based_clipping,
-                                         args.ng_per_element_scale_options, args.ng_affine_options,
-                                         lstm_delay = lstm_delay[i])
+	if len(lstm_delay[i]) == 2: # BLSTM layer case, add both forward and backward
+            prev_layer_output1 = nodes.AddLstmLayer(config_lines, "BLstm{0}_forward".format(i+1), prev_layer_output, args.cell_dim,
+                                             args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                                             args.clipping_threshold, args.norm_based_clipping,
+                                             args.ng_per_element_scale_options, args.ng_affine_options,
+                                             lstm_delay = lstm_delay[i][0])
+            prev_layer_output2 = nodes.AddLstmLayer(config_lines, "BLstm{0}_backward".format(i+1), prev_layer_output, args.cell_dim,
+                                             args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                                             args.clipping_threshold, args.norm_based_clipping,
+                                             args.ng_per_element_scale_options, args.ng_affine_options,
+                                             lstm_delay = lstm_delay[i][1])
+            prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
+	    prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
+	else: # LSTM layer case
+	    prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
+			                    args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+					    args.clipping_threshold, args.norm_based_clipping,
+					    args.ng_per_element_scale_options, args.ng_affine_options,
+					    lstm_delay = lstm_delay[i][0])
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay, args.include_log_softmax)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
+	if len(lstm_delay[i]) == 2:
+	    # since the form 'Append(Append(xx, yy), zz)' is not allowed, here we don't wrap the descriptor with 'Append()' so that we would have the form
+	    # 'Append(xx, yy, zz)' in the next lstm layer
+	    prev_layer_output['descriptor'] = '{0}, {1}'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 
+    if len(lstm_delay[i]) == 2:
+        # since there is no 'Append' in 'AffRelNormLayer', here we wrap the descriptor with 'Append()'
+        prev_layer_output['descriptor'] = 'Append({0})'.format(prev_layer_output['descriptor'])
     for i in range(args.num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, args.hidden_dim,
                                                args.ng_affine_options)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay, args.include_log_softmax)
         config_files['{0}/layer{1}.config'.format(args.config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 

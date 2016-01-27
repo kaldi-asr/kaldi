@@ -61,7 +61,9 @@ class ContextDependency: public ContextDependencyInterface {
   virtual int32 CentralPosition() const { return P_; }
 
 
-  /// returns success or failure; outputs pdf to pdf_id
+  /// returns success or failure; outputs pdf to pdf_id For positions that were
+  /// outside the sequence (due to end effects), put zero.  Naturally
+  /// phoneseq[CentralPosition()] must be nonzero.
   virtual bool Compute(const std::vector<int32> &phoneseq,
                        int32 pdf_class, int32 *pdf_id) const;
 
@@ -97,8 +99,7 @@ class ContextDependency: public ContextDependencyInterface {
   /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
   /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).
   /// c.f. hmm/hmm-topology.h for meaning of pdf-class.
-
-  void GetPdfInfo(const std::vector<int32> &phones,  // list of phones
+  virtual void GetPdfInfo(const std::vector<int32> &phones,  // list of phones
                   const std::vector<int32> &num_pdf_classes,  // indexed by phone,
                   std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
       const;
