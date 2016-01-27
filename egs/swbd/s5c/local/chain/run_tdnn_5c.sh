@@ -1,22 +1,28 @@
 #!/bin/bash
 
-# _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
+# _5c is as _4w, but changing --xent-regularize to 0.05, since 0.2 seemed to be
+# worse than 0.1.
+# It seems a little worse on average: WER change is (+0.3, +0.3, -0.2, +0.2).
+#System                       4w        5c
+#WER on train_dev(tg)      16.05     16.35
+#WER on train_dev(fg)      14.92     15.21
+#WER on eval2000(tg)        18.0      17.8
+#WER on eval2000(fg)        16.2      16.4
+#Final train prob      -0.108816 -0.107098
+#Final valid prob      -0.118254 -0.118209
 
-# It does seem helpful on average: (-0.35, -0.35, -0.1, 0).
-#./compare_wer.sh 5a 5b
-#System                       5a        5b
-#WER on train_dev(tg)      15.86     15.51
-#WER on train_dev(fg)      14.74     14.39
-#WER on eval2000(tg)        17.4      17.3
-#WER on eval2000(fg)        15.6      15.6
-#Final train prob     -0.0998359 -0.112013
-#Final valid prob      -0.115884 -0.130879
+# _4w is as _4v, but doubling --xent-regularize to 0.2.  WER seems consistently
+# a bit worse (+0.1, +0.2, +0.3, +0.2), although final valid prob is very
+# slightly better.
 
-# _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
-# jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
-# will mean that the increased parameters are now helpful.
-
-# _4w is as _4v, but doubling --xent-regularize to 0.2
+#./compare_wer.sh 4v 4w
+#System                       4v        4w
+#WER on train_dev(tg)      15.95     16.05
+#WER on train_dev(fg)      14.69     14.92
+#WER on eval2000(tg)        17.7      18.0
+#WER on eval2000(fg)        16.0      16.2
+#Final train prob      -0.106646 -0.108816
+#Final valid prob      -0.118631 -0.118254
 
 # _4v is as _4r, but with --xent-regularize 0.1.  Increasing max_param_change
 # from 1.0 to 2.0 because there is a lot of parameter change in the final xent
@@ -259,7 +265,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5b # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5c # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -351,11 +357,10 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --xent-regularize 0.2 \
-    --leaky-hmm-coefficient 0.1 \
+    --xent-regularize 0.05 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --jesus-opts "--jesus-forward-input-dim 400  --jesus-forward-output-dim 1400 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

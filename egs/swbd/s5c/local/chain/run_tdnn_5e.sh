@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
+# the results of 4v, 4w and 5c, it looks like 0.05 is better than 0.2 or 0.1).
+
 # _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
 
 # It does seem helpful on average: (-0.35, -0.35, -0.1, 0).
@@ -259,7 +262,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5b # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5e # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -351,7 +354,7 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --xent-regularize 0.2 \
+    --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \

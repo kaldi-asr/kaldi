@@ -1,16 +1,9 @@
 #!/bin/bash
 
-# _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
+# _5d is as _5b, but increasing jesus-forward-input-dim from 500 to 600 and
+# jesus-forward-output-dim from 1800 to 2000.
 
-# It does seem helpful on average: (-0.35, -0.35, -0.1, 0).
-#./compare_wer.sh 5a 5b
-#System                       5a        5b
-#WER on train_dev(tg)      15.86     15.51
-#WER on train_dev(fg)      14.74     14.39
-#WER on eval2000(tg)        17.4      17.3
-#WER on eval2000(fg)        15.6      15.6
-#Final train prob     -0.0998359 -0.112013
-#Final valid prob      -0.115884 -0.130879
+# _5b is as _5a, but adding --leaky-hmm-coefficient 0.1.
 
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
@@ -259,7 +252,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5b # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5d # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -355,7 +348,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 2000 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

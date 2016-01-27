@@ -101,7 +101,7 @@ right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on th
 
 # End configuration section.
 
-trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
+trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -497,7 +497,9 @@ while [ $x -lt $num_iters ]; do
     rm $dir/.error 2>/dev/null
 
 
-    ( # this sub-shell is so that when we "wait" below,
+    (
+      trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
+      # this sub-shell is so that when we "wait" below,
       # we only wait for the training jobs that we just spawned,
       # not the diagnostic jobs that we spawned above.
 
