@@ -4,6 +4,18 @@
 # number of parameters)-- increasing jesus-forward-output-dim from 1800 to 2000,
 # and jesus-forward-input-dim from 500 to 600.
 
+# WER change is (-0.1, -0.2, +0.2, +0.1).  So zero on average.
+# This means 5e remains the best system so far.
+
+#./compare_wer.sh 5e 5f
+#System                       5e        5f
+#WER on train_dev(tg)      15.43     15.35
+#WER on train_dev(fg)      14.32     14.15
+#WER on eval2000(tg)        17.3      17.5
+#WER on eval2000(fg)        15.5      15.6
+#Final train prob      -0.110056  -0.10574
+#Final valid prob      -0.129184 -0.128112
+
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.05 is better than 0.2 or 0.1).
 
