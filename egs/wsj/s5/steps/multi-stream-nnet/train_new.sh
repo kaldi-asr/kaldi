@@ -38,6 +38,7 @@ splice_after_transf=5 # (feat_type=transf) splice after the linear transform,
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
 pytel_transform=    # (BUT) use external python transform,
+append_feature_transform= # (Add one more feature transform at the end)
 
 # multi-stream options
 # can be given via scheduler_opts
@@ -316,6 +317,13 @@ else
   echo "# + normalization of NN-input at '$feature_transform'"
   nnet-concat --binary=false $feature_transform_old \
     "cmvn-to-nnet $dir/cmvn-g.stats -|" $feature_transform
+fi
+
+###### Append another transform #####
+if [ ! -z $append_feature_transform ]; then
+  feature_transform_old=$feature_transform
+  feature_transform=${feature_transform_old}_append_$(basename $append_feature_transform)
+  nnet-concat --binary=false $feature_transform_old $append_feature_transform $feature_transform || exit 1
 fi
 
 ###### Show the final 'feature_transform' in the log,
