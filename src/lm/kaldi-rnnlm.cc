@@ -79,7 +79,7 @@ RnnlmDeterministicFst::RnnlmDeterministicFst(int32 max_ngram_order,
 
   // Uses empty history for <s>.
   std::vector<Label> bos;
-  std::vector<float> bos_context(rnnlm->GetHiddenLayerSize(), 1.0f);
+  std::vector<float> bos_context(rnnlm->GetHiddenLayerSize(), 1.0);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);
   wseq_to_state_[bos] = 0;
