@@ -130,7 +130,7 @@ if [ $stage -le 3 ]; then
   mfccdir=mfcc
   ### for x in si_tr si_dt; do it seems that the number of transcriptions of si_dt is not correct.
   for x in si_tr; do
-   steps/make_mfcc.sh --nj $nj_train \
+   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj_train \
      data/$x exp/make_mfcc/$x $mfccdir
    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
   done
@@ -139,26 +139,22 @@ fi
 if [ $stage -le 4 ]; then
   # Train monophone model on clean data (si_tr).
   echo "### TRAINING mono0a ###"
-  steps/train_mono.sh --boost-silence 1.25 --nj $nj_train \
+  steps/train_mono.sh --boost-silence 1.25 --nj $nj_train --cmd "$train_cmd" \
     data/si_tr data/lang exp/mono0a
 
   # Align monophones with clean data.
   echo "### ALIGNING mono0a_ali ###"
-  steps/align_si.sh --boost-silence 1.25 --nj $nj_train \
+  steps/align_si.sh --boost-silence 1.25 --nj $nj_train --cmd "$train_cmd" \
     data/si_tr data/lang exp/mono0a exp/mono0a_ali
 
   # Create first triphone recognizer.
   echo "### TRAINING tri1 ###"
-  steps/train_deltas.sh --boost-silence 1.25 \
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
     2000 10000 data/si_tr data/lang exp/mono0a_ali exp/tri1
-
-  # Prepare first triphone recognizer and decode clean si_dt for verification.
-  #utils/mkgraph.sh data/lang_test_bg_5k exp/tri1 exp/tri1/graph_bg_5k
-  #steps/decode.sh --nj 8 exp/tri1/graph_bg_5k data/si_dt exp/tri1/decode_si_dt
 
   echo "### ALIGNING tri1_ali ###"
   # Re-align triphones.
-  steps/align_si.sh --nj $nj_train \
+  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
     data/si_tr data/lang exp/tri1 exp/tri1_ali
 fi
 
@@ -167,11 +163,11 @@ fi
 if $do_tri2a; then
 if [ $stage -le 5 ]; then
   # Train tri2a, which is deltas + delta-deltas, on clean data.
-  steps/train_deltas.sh \
+  steps/train_deltas.sh --cmd "$train_cmd" \
     2500 15000 data/si_tr data/lang exp/tri1_ali exp/tri2a
 
   # Re-align triphones using clean data. This gives a smallish performance gain.
-  steps/align_si.sh --nj $nj_train \
+  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
     data/si_tr data/lang exp/tri2a exp/tri2a_ali
 
   # Train a multi-condition triphone recognizer.
@@ -179,7 +175,7 @@ if [ $stage -le 5 ]; then
   # However, we have to use the "cut" version so that the length of the
   # waveforms match.
   # It is actually asserted by the Challenge that clean and multi-condition waves are aligned.
-  steps/train_deltas.sh \
+  steps/train_deltas.sh --cmd "$train_cmd" \
     2500 15000 data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri2a_ali exp/tri2a_mc
 
   # Prepare clean and mc tri2a models for decoding.
@@ -190,24 +186,24 @@ fi
 
 if [ $stage -le 6 ]; then
   # decode REVERB dt using tri2a, clean
-  for dataset in data/REVERB_{dt,et}/*; do
-    steps/decode.sh --nj $nj_decode \
+  for dataset in data/REVERB_*{dt,et}/*; do
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
       exp/tri2a/graph_bg_5k $dataset exp/tri2a/decode_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
   done
 
   # decode REVERB dt using tri2a, mc
-  for dataset in data/REVERB_{dt,et}/*; do
-    steps/decode.sh --nj $nj_decode \
+  for dataset in data/REVERB_*{dt,et}/*; do
+    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
       exp/tri2a_mc/graph_bg_5k $dataset exp/tri2a_mc/decode_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
   done
 
   # basis fMLLR for tri2a_mc system
   # This computes a transform for every training utterance and computes a basis from that.
-  steps/get_fmllr_basis.sh --per-utt true data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri2a_mc
+  steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri2a_mc
 
   # Recognition using fMLLR adaptation (per-utterance processing).
-  for dataset in data/REVERB_{dt,et}/*; do
-    steps/decode_basis_fmllr.sh --nj $nj_decode \
+  for dataset in data/REVERB_*{dt,et}/*; do
+    steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
       exp/tri2a_mc/graph_bg_5k $dataset exp/tri2a_mc/decode_basis_fmllr_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
   done
   wait
@@ -217,20 +213,20 @@ fi
 if [ $stage -le 7 ]; then
   # Train tri2b recognizer, which uses LDA-MLLT, using the default parameters from the WSJ recipe.
   echo "### TRAINING tri2b ###"
-  steps/train_lda_mllt.sh \
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=$context_size --right-context=$context_size" \
     2500 15000 data/si_tr data/lang exp/tri1_ali exp/tri2b
 
   # tri2b (LDA-MLLT system) with multi-condition training, using default parameters.
   echo "### TRAINING tri2b_mc ###"
-  steps/train_lda_mllt.sh \
+  steps/train_lda_mllt.sh  --cmd "$train_cmd"\
     --splice-opts "--left-context=$context_size --right-context=$context_size" \
     2500 15000 data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri1_ali exp/tri2b_mc
 fi
 
 # Prepare tri2b* systems for decoding.
 if [ $stage -le 8 ]; then
-  echo "### MAKING GRAPH $graph ###"
+  echo "### MAKING GRAPH {tri2b,tri2b_mc}/graph_$lm ###"
   for recog in tri2b tri2b_mc; do
     utils/mkgraph.sh data/lang_test_$lm exp/$recog exp/$recog/graph_$lm &
   done
@@ -245,18 +241,18 @@ if [ $stage -le 9 ]; then
   echo "### DT $base_recog --> $bmmi_recog ###"
 
   # get alignments from base recognizer
-  steps/align_si.sh --nj $nj_train \
+  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
     --use-graphs true data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/$base_recog exp/${base_recog}_ali
 
   # get lattices from base recognizer
   denlats_dir=${base_recog}_denlats
   subsplit=`echo $nj_train \* 2 | bc`
   # DT with multi-condition data ...
-  steps/make_denlats.sh --sub-split $subsplit --nj $nj_train \
+  steps/make_denlats.sh --sub-split $subsplit --nj $nj_train --cmd "$decode_cmd" \
     data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/$base_recog exp/$denlats_dir
 
   # boosted MMI training
-  steps/train_mmi.sh --boost 0.1 \
+  steps/train_mmi.sh --boost 0.1 --cmd "$train_cmd" \
     data/REVERB_tr_cut/SimData_tr_for_1ch_A \
     data/lang \
     exp/${base_recog}_ali \
@@ -273,21 +269,21 @@ if [ $stage -le 10 ]; then
     recog2=`echo $recog | sed s/_mmi.*//`
     graph=exp/$recog2/graph_$lm
 
-    echo "### DECODING $dataset | $recog, noadapt, $lm ###"
-    for dataset in data/REVERB_{dt,et}/*; do
+    echo "### DECODING with $recog, noadapt, $lm ###"
+    for dataset in data/REVERB_*{dt,et}/*; do
       decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-      steps/decode.sh --nj $nj_decode \
+      steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
         $graph $dataset \
-        exp/$recog/decode_${lm}_$decode_suff &
+        exp/$recog/decode_$decode_suff &
     done
     wait
 
-    echo " ## MBR RESCORING $dataset | $recog, noadapt ##"
-    for dataset in data/REVERB_{dt,et}/*; do
+    echo " ## MBR RESCORING with $recog, noadapt ##"
+    for dataset in data/REVERB_*{dt,et}/*; do
       decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
       mkdir -p exp/$recog/decode_mbr_$decode_suff
       cp exp/$recog/decode_$decode_suff/lat.*.gz exp/$recog/decode_mbr_$decode_suff
-      local/score_mbr.sh \
+      local/score_mbr.sh --cmd "$decode_cmd" \
 	$dataset data/lang_test_$lm/ exp/$recog/decode_mbr_$decode_suff &
     done
     wait
@@ -310,22 +306,24 @@ if [ $stage -le 11 ]; then
       tr_dataset=si_tr
     fi
 
-    echo "### DECODING $dataset | $recog, basis_fmllr, $lm ###"
-    for dataset in data/REVERB_{dt,et}/*; do
-      decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-      steps/get_fmllr_basis.sh --per-utt true data/$tr_dataset data/lang exp/$recog
-      steps/decode_basis_fmllr.sh --nj $nj_decode \
-        $graph $dataset \
-        exp/$recog/decode_basis_fmllr_$decode_suff &
+    echo "### DECODING with $recog, basis_fmllr, $lm ###"
+    for dataset in data/REVERB_*{dt,et}/*; do
+      (
+	decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+        steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
+        steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
+          $graph $dataset \
+          exp/$recog/decode_basis_fmllr_$decode_suff
+      ) &
     done
     wait
 
-    echo " ## MBR RESCORING $dataset | $recog, basis_fmllr ##"
-    for dataset in data/REVERB_{dt,et}/*; do
+    echo " ## MBR RESCORING with $recog, basis_fmllr ##"
+    for dataset in data/REVERB_*{dt,et}/*; do
       decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
       mkdir -p exp/$recog/decode_mbr_basis_fmllr_$decode_suff
       cp exp/$recog/decode_basis_fmllr_$decode_suff/lat.*.gz exp/$recog/decode_mbr_basis_fmllr_$decode_suff
-      local/score_mbr.sh \
+      local/score_mbr.sh --cmd "$decode_cmd" \
         $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_basis_fmllr_$decode_suff &
     done
     wait
