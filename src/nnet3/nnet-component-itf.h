@@ -93,6 +93,8 @@ enum ComponentProperties {
 class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
+  virtual void Write(std::ostream &os, bool binary) const = 0;
+  virtual void Read(std::istream &os, bool binary);
   virtual ~ComponentPrecomputedIndexes() { }
 };
 
