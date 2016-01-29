@@ -11,7 +11,7 @@ cd $dir
 echo "creating data/{train,dev,test}"
 mkdir -p data/{train,dev,test}
 
-# create wav.scp, utt2spk.scp, spk2utt.scp, text
+#create wav.scp, utt2spk.scp, spk2utt.scp, text
 (
 for x in train dev test; do
   echo "cleaning data/$x"
@@ -29,9 +29,9 @@ for x in train dev test; do
 done
 ) || exit 1
 
-echo "creating test.ph for phone decoding"
+echo "creating test_phone for phone decoding"
 (
-rm -rf data/test.ph && cp -R data/test data/test.ph && \
-cd data/test.ph && rm text; cp phone.txt text || exit 1
+  rm -rf data/test_phone && cp -R data/test data/test_phone  || exit 1
+  cd data/test_phone && rm text &&  cp phone.txt text || exit 1
 )
 

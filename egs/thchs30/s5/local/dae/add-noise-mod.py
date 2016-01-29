@@ -10,6 +10,7 @@ import wave
 import math
 import struct
 import sys
+import os
 
 try:
   import pyximport; pyximport.install()
@@ -128,7 +129,8 @@ def main():
         if type == 0:
             if args.wavdir != 'NULL':
                output_wave_file(args.wavdir, tag, mat)
-            output(tag, mat)
+            else:
+               output(tag, mat)
         else:
             p,n = noises[type]
             if p+len(mat) > len(n):

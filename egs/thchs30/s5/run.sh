@@ -4,26 +4,25 @@
            ## This relates to the queue.
 . ./path.sh
 
-H=`pwd`
+H=`pwd`  #exp home
+n=8      #parallel jobs
 
-thchs=/work3/zxw/thchs30/data_thchs30
-# corpus and trans directory
-# you can obtain the database by uncommting the following lines
-# ( cd `dirname $thchs`
+thchs=/nfs/public/materials/data/thchs30-openslr
+#corpus and trans directory
+#you can obtain the database by uncommting the following lines
+#( cd $thchs
 #     echo "downloading THCHS30 at $PWD ..."
 #     wget http://www.openslr.org/resources/18/data_thchs30.tgz
-#     tar xvf data_thchs30.tgz
-# )
-n=8
+#     wget http://www.openslr.org/resources/18/resource.tgz
+#     tar xvf data_thchs30.tgz && tar xvf resource.tgz 
+#)
 
-# data preparation 
-# generate text, wav.scp, utt2pk, spk2utt
-
-
-local/thchs-30_data_prep.sh $H $thchs || exit 1;
+#data preparation 
+#generate text, wav.scp, utt2pk, spk2utt
+local/thchs-30_data_prep.sh $H $thchs/data_thchs30 || exit 1;
 
 #produce MFCC features 
-rm -rf data/mfcc && mkdir -p data/mfcc &&  cp -R data/{train,dev,test,test.ph} data/mfcc || exit 1;
+rm -rf data/mfcc && mkdir -p data/mfcc &&  cp -R data/{train,dev,test,test_phone} data/mfcc || exit 1;
 for x in train dev test; do
    #make  mfcc 
    steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x mfcc/$x || exit 1;
@@ -31,32 +30,33 @@ for x in train dev test; do
    steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x/_cmvn || exit 1;
 done
 #copy feats and cmvn to test.ph, avoid duplicated mfcc & cmvn 
-cp data/mfcc/test/feats.scp data/mfcc/test.ph && cp data/mfcc/test/cmvn.scp data/mfcc/test.ph || exit 1;
+cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp data/mfcc/test_phone || exit 1;
 
 
-# prepare language stuff
-# build a large lexicon that invovles words in both the training and decoding. 
-# The large lexioon is mainly for reasonable lattice generation in discriminative training
+#prepare language stuff
+#build a large lexicon that invovles words in both the training and decoding. 
 (
   echo "make word graph ..."
   cd $H; mkdir -p data/{dict,lang,graph} && \
-  cp local/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
-  cat local/dict/lexicon.txt $thchs/lm_word/lexcion.txt |grep -v '<s>'|grep -v '</s>' |sort -u > data/dict/lexicon.txt || exit 1;
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
+  cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
+  	grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
   utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
-  gzip -c $thchs/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
-  utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/lm_word/lexcion.txt data/graph/lang || exit 1;
+  gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
+  utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
 )
 
 #make_phone_graph
 (
   echo "make phone graph ..."
-  cd $H; mkdir -p data/{dict.phone,graph.phone,lang.phone} && \
-  cp local/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict.phone  && \
-  cat $thchs/lm_phone/lexcion.txt |grep -v '<eps>'|sort -u > data/dict.phone/lexicon.txt  && \
-  echo "<SPOKEN_NOISE> sil " >> data/dict.phone/lexicon.txt  || exit 1;
-  utils/prepare_lang.sh --position_dependent_phones false data/dict.phone "<SPOKEN_NOISE>" data/local/lang.phone data/lang.phone || exit 1;
-  gzip -c $thchs/lm_phone/phone.3gram.lm > data/graph.phone/phone.3gram.lm.gz  || exit 1;
-  utils/format_lm.sh data/lang.phone data/graph.phone/phone.3gram.lm.gz $thchs/lm_phone/lexcion.txt data/graph.phone/lang  || exit 1;
+  cd $H; mkdir -p data/{dict_phone,graph_phone,lang_phone} && \
+  cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict_phone  && \
+  cat $thchs/data_thchs30/lm_phone/lexicon.txt | grep -v '<eps>' | sort -u > data/dict_phone/lexicon.txt  && \
+  echo "<SPOKEN_NOISE> sil " >> data/dict_phone/lexicon.txt  || exit 1;
+  utils/prepare_lang.sh --position_dependent_phones false data/dict_phone "<SPOKEN_NOISE>" data/local/lang_phone data/lang_phone || exit 1;
+  gzip -c $thchs/data_thchs30/lm_phone/phone.3gram.lm > data/graph_phone/phone.3gram.lm.gz  || exit 1;
+  utils/format_lm.sh data/lang_phone data/graph_phone/phone.3gram.lm.gz $thchs/data_thchs30/lm_phone/lexicon.txt \
+    data/graph_phone/lang  || exit 1;
 )
 
 #monophone
@@ -103,10 +103,11 @@ steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tr
 #quick_ali_cv
 steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/dev data/lang exp/tri4b exp/tri4b_ali_cv || exit 1;
 
-# train dnn model
+#train dnn model
 local/nnet/run_dnn.sh --stage 0 --nj $n  exp/tri4b exp/tri4b_ali exp/tri4b_ali_cv || exit 1;  
 
-# train dae model
-# python2.6 or above is required for noisy data generation.
-# To speed up the process, pyximport for python is recommeded.
-local/dae/run_dae.sh --stage 0 || exit 1;
+#train dae model
+#python2.6 or above is required for noisy data generation.
+#To speed up the process, pyximport for python is recommeded.
+#In order to use the standard noisy test data, set "--stdtest true" and "--dwntest true"
+local/dae/run_dae.sh --stage 0  --stdtest false --dwntest false $thchs || exit 1;

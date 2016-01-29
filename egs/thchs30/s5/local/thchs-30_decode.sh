@@ -21,12 +21,13 @@ if [ $mono = true ];then
   echo  "using monophone to generate graph"
   opt="--mono"
 fi
+
 #decode word
-utils/mkgraph.sh $opt data/graph/lang $srcdir $srcdir/graph.word  || exit 1;
-$decoder --cmd "$decode_cmd" --nj $nj $srcdir/graph.word $datadir/test $srcdir/decode_test_word || exit 1
+utils/mkgraph.sh $opt data/graph/lang $srcdir $srcdir/graph_word  || exit 1;
+$decoder --cmd "$decode_cmd" --nj $nj $srcdir/graph_word $datadir/test $srcdir/decode_test_word || exit 1
 
 #decode phone
-utils/mkgraph.sh $opt data/graph.phone/lang $srcdir $srcdir/graph.phone  || exit 1;
-$decoder --cmd "$decode_cmd" --nj $nj $srcdir/graph.phone $datadir/test.ph $srcdir/decode_test_phone || exit 1
+utils/mkgraph.sh $opt data/graph_phone/lang $srcdir $srcdir/graph_phone  || exit 1;
+$decoder --cmd "$decode_cmd" --nj $nj $srcdir/graph_phone $datadir/test_phone $srcdir/decode_test_phone || exit 1
 
 
