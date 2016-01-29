@@ -100,7 +100,7 @@ class DistributeComponent: public Component {
   // are sorted first on n and then x and then t.
   virtual void ReorderIndexes(std::vector<Index> *input_indexes,
                               std::vector<Index> *output_indexes) const;
-  
+
 
   virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
       const MiscComputationInfo &misc_info,
@@ -132,43 +132,46 @@ class DistributeComponent: public Component {
 
 };
 
-/*  
+/*
   Class StatisticsExtractionComponent is used together with
   StatisticsPoolingComponent to extract moving-average mean and
   standard-deviation statistics.
 
-  StatisticsExtractionExomponent designed to extract statistics-- e.g.
-  0th-order, 1st-order and optionally diagonal 2nd-order stats-- from small
-  groups of frames, such as 10 frames.  The statistics will then be further
-  processed by StatisticsPoolingComponent to compute moving-average means and
-  variances.  The reason for the two-component way of doing this is efficiency.
-  The StatisticsExtractionComponent is designed to let you extract statistics
-  from fixed-size groups of frames (e.g. 10 frames), and in
-  StatisticsPoolingComponent you are only expect to compute the averages at the
-  same fixed period (e.g. 10 frames), so it's more efficient than if you were to
-  compute a moving average at every single frame; and the computation of the
-  intermediate stats means that most of the computation that goes into
-  extracting the means and standard deviations for nearby frames is shared.
+  StatisticsExtractionExomponent designed to extract statistics-- 0th-order,
+  1st-order and optionally diagonal 2nd-order stats-- from small groups of
+  frames, such as 10 frame.  The statistics will then be further processed by
+  StatisticsPoolingComponent to compute moving-average means and (if configured)
+  standard deviations.  The reason for the two-component way of doing this is
+  efficiency, particularly in the graph-compilation phase.  (Otherwise there
+  would be too many dependencies to process).  The StatisticsExtractionComponent
+  is designed to let you extract statistics from fixed-size groups of frames
+  (e.g. 10 frames), and in StatisticsPoolingComponent you are only expected to
+  compute the averages at the same fixed period (e.g. 10 frames), so it's more
+  efficient than if you were to compute a moving average at every single frame;
+  and the computation of the intermediate stats means that most of the
+  computation that goes into extracting the means and standard deviations for
+  nearby frames is shared.
 
   The config line in a typical setup will be something like:
 
     input-dim=250 input-period=1 output-period=10 include-variance=true
 
   input-dim is self-explanatory.  The inputs will be obtained at multiples of
-  input-period (e.g. it might be 3 for chain models).  output-period must be
-  a multiple of input period, and the outputs will be expected to be multiples
-  of output-period.  For instance, if you request the output on frame 80,
-  it will consist of stats from input frames 80 through 89.
+  input-period (e.g. it might be 3 for chain models).  output-period must be a
+  multiple of input period, and the requested output indexes will be expected to
+  be multiples of output-period (which you can ensure through use of the Round
+  descriptor).  For instance, if you request the output on frame 80, it will
+  consist of stats from input frames 80 through 89.
 
   An output of this component will be 'computable' any time at least one of
   the corresponding inputs is computable.
-  
-  If include-variance=false, then the output dimension will be input-dim + 1.
-  the first dimension will be a count (between 1 and 10 inclusive in this
-  example), and the remaining dimensions will be 1st-order statistics (sums of
-  the input).  If include-variance=true, then the output dimension will be
-  input-dim + 2, where the raw diagonal 2nd-order statistics are appended to
-  the 0 and 1st order statistics.
+
+   In all cases the first dimension of the output will be a count (between 1 and
+  10 inclusive in this example).  If include-variance=false, then the output
+  dimension will be input-dim + 1.  and the output dimensions >0 will be
+  1st-order statistics (sums of the input).  If include-variance=true, then the
+  output dimension will be input-dim * 2 + 1, where the raw diagonal 2nd-order
+  statistics are appended to the 0 and 1st order statistics.
 
   The default configuration values are:
      input-dim=-1 input-period=1 output-period=1 include-variance=true
@@ -210,7 +213,7 @@ class StatisticsExtractionComponent: public Component {
   virtual Component* Copy() const {
     return new StatisticsExtractionComponent(*this);
   }
-  
+
   // Some functions that are only to be reimplemented for GeneralComponents.
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
@@ -235,11 +238,11 @@ class StatisticsExtractionComponent: public Component {
  private:
   // Checks that the parameters are valid.
   void Check() const;
-  
+
   // Disallow assignment operator.
   StatisticsExtractionComponent &operator =(
       const StatisticsExtractionComponent &other);
-  
+
   int32 input_dim_;
   int32 input_period_;
   int32 output_period_;
@@ -250,11 +253,10 @@ class StatisticsExtractionComponent: public Component {
 /*
   Class StatisticsPoolingComponent is used together with
   StatisticsExtractionComponent to extract moving-average mean and
-  standard-deviation statistics.  
-  
+  standard-deviation statistics.
+
   StatisticsPoolingComponent pools the stats over a specified window and
   computes means and possibly log-count and stddevs from them for you.
-
 
  # In StatisticsPoolingComponent, the first element of the input is interpreted
  # as a count, which we divide by.
@@ -264,11 +266,11 @@ class StatisticsExtractionComponent: public Component {
 
  # If include-log-count==false, the output dimension is the input dimension minus one.
  # If output-stddevs=true, then it expects the input-dim to be of the form 2n+1 where n is
- #  presumably the original feature dim, and it interprets the last n dimensions of the feature 
- #  as covariance; it outputs the square root of the covariance instead of the actual covariance.
+ #  presumably the original feature dim, and it interprets the last n dimensions of the feature
+ #  as a variance; it outputs the square root of the variance instead of the actual variance.
 
  configs and their defaults:  input-dim=-1, input-period=1, output-period=1, left-context=-1, right-context=-1,
-    log-count-features=0, output-stddevs=true, covariance-floor=1.0e-10
+    log-count-features=0, output-stddevs=true, variance-floor=1.0e-10
 
  You'd access the output of the StatisticsPoolingComponent using rounding, e.g.
   Round(component-name, 10)
@@ -287,13 +289,14 @@ class StatisticsPoolingComponent: public Component {
 
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const {
-    return input_dim_ + (include_log_count_ ? 1 : 0);
+    return input_dim_ + log_count_features_;
   }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "StatisticsPoolingComponent"; }
   virtual int32 Properties() const {
-    return kBackpropNeedsInput|kReordersIndexes|
-        (output_stddevs_ ? kBackpropNeedsOutput : 0);
+    return kReordersIndexes|kBackpropAdds|
+        (output_stddevs_ ? kBackpropNeedsOutput : 0) |
+        (log_count_features_ == 0 ? kBackpropNeedsInput : 0);
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -314,7 +317,7 @@ class StatisticsPoolingComponent: public Component {
   virtual Component* Copy() const {
     return new StatisticsPoolingComponent(*this);
   }
-  
+
   // Some functions that are only to be reimplemented for GeneralComponents.
   virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
                                const Index &output_index,
@@ -330,7 +333,6 @@ class StatisticsPoolingComponent: public Component {
   virtual void ReorderIndexes(std::vector<Index> *input_indexes,
                               std::vector<Index> *output_indexes) const;
 
-  //
   virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
       const MiscComputationInfo &misc_info,
       const std::vector<Index> &input_indexes,
@@ -338,33 +340,21 @@ class StatisticsPoolingComponent: public Component {
       bool need_backprop) const;
 
  private:
-  struct IndexSorter {
-    // used to sort last on t.
-    inline bool operator < (const Index &a, const Index &b) const {
-      if (a.n < b.n) { return true; }
-      else if (a.n > b.n) { return false; }
-      else if (a.x < b.x) { return true; }
-      else if (a.x > b.x) { return false; }
-      else return (a.t < b.t);
-    }
-  };
   // Checks that the parameters are valid.
   void Check() const;
-  
+
   // Disallow assignment operator.
   StatisticsPoolingComponent &operator =(
       const StatisticsPoolingComponent &other);
-  
+
   int32 input_dim_;
   int32 input_period_;
   int32 output_period_;
   int32 left_context_;
   int32 right_context_;
-  bool include_log_count_;
+  int32 log_count_features_;
   bool output_stddevs_;
-
-  
-
+  BaseFloat variance_floor_;
 };
 
 

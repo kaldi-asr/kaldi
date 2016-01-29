@@ -425,9 +425,9 @@ class CuMatrixBase {
 
   /// *this = beta * *this + alpha * A .* B (.* element by element multiplication)
   void AddMatMatElements(const Real alpha,
-                    const CuMatrixBase<Real>& A,
-                    const CuMatrixBase<Real>& B,
-                    const Real beta);
+                         const CuMatrixBase<Real>& A,
+                         const CuMatrixBase<Real>& B,
+                         const Real beta);
 
   /// this <-- beta*this + alpha*A*B
   void AddMatSp(const Real alpha,
