@@ -96,12 +96,6 @@ class DistributeComponent: public Component {
                             const IndexSet &input_index_set,
                             std::vector<Index> *used_inputs) const;
 
-  // This function reorders the input and output indexes so that they
-  // are sorted first on n and then x and then t.
-  virtual void ReorderIndexes(std::vector<Index> *input_indexes,
-                              std::vector<Index> *output_indexes) const;
-
-
   virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
       const MiscComputationInfo &misc_info,
       const std::vector<Index> &input_indexes,
@@ -192,7 +186,8 @@ class StatisticsExtractionComponent: public Component {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "StatisticsExtractionComponent"; }
   virtual int32 Properties() const {
-    return kReordersIndexes | (include_variance_ ? kBackpropNeedsInput : 0);
+    return kPropagateAdds|kReordersIndexes|
+        (include_variance_ ? kBackpropNeedsInput : 0);
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -262,20 +257,20 @@ class StatisticsExtractionComponent: public Component {
  # as a count, which we divide by.
  # Optionally the log of the count can be output, and you can allow it to be
  # repeated several times if you want (useful for systems using the jesus-layer).
- # The output dimension is equal to log-count-features plus (input-dim - 1).
+ # The output dimension is equal to num-log-count-features plus (input-dim - 1).
 
  # If include-log-count==false, the output dimension is the input dimension minus one.
  # If output-stddevs=true, then it expects the input-dim to be of the form 2n+1 where n is
  #  presumably the original feature dim, and it interprets the last n dimensions of the feature
  #  as a variance; it outputs the square root of the variance instead of the actual variance.
 
- configs and their defaults:  input-dim=-1, input-period=1, output-period=1, left-context=-1, right-context=-1,
-    log-count-features=0, output-stddevs=true, variance-floor=1.0e-10
+ configs and their defaults:  input-dim=-1, input-period=1, left-context=-1, right-context=-1,
+    num-log-count-features=0, output-stddevs=true, variance-floor=1.0e-10
 
  You'd access the output of the StatisticsPoolingComponent using rounding, e.g.
   Round(component-name, 10)
  or whatever, instead of just component-name, because its output is only defined at multiples
- of its output-period.
+ of its input-period.
 
  The output of StatisticsPoolingComponent will only be defined if at least one input was defined.
  */
@@ -289,14 +284,15 @@ class StatisticsPoolingComponent: public Component {
 
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const {
-    return input_dim_ + log_count_features_;
+    return input_dim_ + num_log_count_features_ - 1;
   }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "StatisticsPoolingComponent"; }
   virtual int32 Properties() const {
     return kReordersIndexes|kBackpropAdds|
-        (output_stddevs_ ? kBackpropNeedsOutput : 0) |
-        (log_count_features_ == 0 ? kBackpropNeedsInput : 0);
+        (output_stddevs_ || num_log_count_features_ > 0 ?
+         kBackpropNeedsOutput : 0) |
+        (num_log_count_features_ == 0 ? kBackpropNeedsInput : 0);
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -323,6 +319,7 @@ class StatisticsPoolingComponent: public Component {
                                const Index &output_index,
                                std::vector<Index> *desired_indexes) const;
 
+  // returns true if at least one of its inputs is computable.
   virtual bool IsComputable(const MiscComputationInfo &misc_info,
                             const Index &output_index,
                             const IndexSet &input_index_set,
@@ -349,10 +346,9 @@ class StatisticsPoolingComponent: public Component {
 
   int32 input_dim_;
   int32 input_period_;
-  int32 output_period_;
   int32 left_context_;
   int32 right_context_;
-  int32 log_count_features_;
+  int32 num_log_count_features_;
   bool output_stddevs_;
   BaseFloat variance_floor_;
 };
