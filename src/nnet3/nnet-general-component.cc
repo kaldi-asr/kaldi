@@ -26,6 +26,21 @@
 namespace kaldi {
 namespace nnet3 {
 
+// used in I/O
+static void CopyPairVector(const CuArray<Int32Pair> &in,
+                        std::vector<std::pair<int32, int32> > *out) {
+  in.CopyToVec(reinterpret_cast<std::vector<Int32Pair>*>(out));
+}
+// used in I/O
+static void CopyPairVector(const std::vector<std::pair<int32, int32> > &in,
+                        CuArray<Int32Pair> *out) {
+  const std::vector<Int32Pair> *in_cast =
+      reinterpret_cast<const std::vector<Int32Pair>*>(&in);
+  out->CopyFromVec(*in_cast);
+}
+
+
+
 //inline
 void DistributeComponent::ComputeInputIndexAndBlock(const Index &output_index,
                                                     Index *input_index,
@@ -257,7 +272,7 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   // this vector stores the number of inputs for each output.  Normally this will be
   // the same as the component's output_period_ / input_period_, but could be less
   // due to edge effects at the utterance boundary.
-  Vector<BaseFloat> counts;
+  CuVector<BaseFloat> counts;
 
   // Each input row participates in exactly one output element, and
   // 'backward_indexes' identifies which row of the output each row
@@ -265,27 +280,40 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   CuArray<int32> backward_indexes;
 
 
+  ComponentPrecomputedIndexes *Copy() const {
+    return new StatisticsExtractionComponentPrecomputedIndexes(*this);
+  }
+
   virtual void Write(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<StatisticsExtractionComponentPrecomputedIndexes>");
     WriteToken(os, binary, "<ForwardIndexes>");
-    forward_indexes.Write(os, binary);
+    std::vector<std::pair<int32, int32> > pairs_cpu;
+    CopyPairVector(forward_indexes, &pairs_cpu);
+    WriteIntegerPairVector(os, binary, pairs_cpu);
     WriteToken(os, binary, "<Counts>");
     counts.Write(os, binary);
     WriteToken(os, binary, "<BackwardIndexes>");
-    backward_indexes.Write(os, binary);
+    std::vector<int32> backward_indexes_cpu;
+    backward_indexes.CopyToVec(&backward_indexes_cpu);
+    WriteIntegerVector(os, binary, backward_indexes_cpu);
     WriteToken(os, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
   }
   virtual void Read(std::istream &is, bool binary) {
     ExpectOneOrTwoTokens(is, binary,
                          "<StatisticsExtractionComponentPrecomputedIndexes>",
                          "<ForwardIndexes>");
-    forward_indexes.Read(is, binary);
-    ReadToken(is, binary, "<Counts>");
+    std::vector<std::pair<int32, int32> > pairs_cpu;
+    ReadIntegerPairVector(is, binary, &pairs_cpu);
+    CopyPairVector(pairs_cpu, &forward_indexes);
+    ExpectToken(is, binary, "<Counts>");
     counts.Read(is, binary);
     ExpectToken(is, binary, "<BackwardIndexes>");
-    backward_indexes.Read(is, binary);
+    std::vector<int32> backward_indexes_cpu;
+    ReadIntegerVector(is, binary, &backward_indexes_cpu);
+    backward_indexes.CopyFromVec(backward_indexes_cpu);
     ExpectToken(is, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
   }
+ private:
   virtual ~StatisticsExtractionComponentPrecomputedIndexes() { }
 };
 
@@ -311,8 +339,8 @@ StatisticsExtractionComponent::PrecomputeIndexes(
   Vector<BaseFloat> counts_cpu(output_indexes.size());
 
   // this map maps from Index to the position in 'input_indexes'.
-  std::unordered_map<Index, int32> index_to_input_pos;
-  for (i = 0; i < num_input_indexes; i++)
+  unordered_map<Index, int32, IndexHasher> index_to_input_pos;
+  for (int32 i = 0; i < num_input_indexes; i++)
     index_to_input_pos[input_indexes[i]] = i;
 
   for (int32 i = 0; i < num_output_indexes; i++) {
@@ -320,12 +348,12 @@ StatisticsExtractionComponent::PrecomputeIndexes(
     Index input_index(output_index);
     int32 t = output_index.t,
         t_start = output_period_ * (t / output_period_);
-    if (t_start > output_period_)   // could happen for negative t_start due to
-      t_start -= output_period_;    // the way modulus works in c.
+    if (t_start > t)                // could happen for negative t_start due to
+      t_start -= output_period_;    // the way modulus works in C.
     int32 t_end = t_start + output_period_;
     for (int32 t = t_start; t < t_end; t += input_period_) {
       input_index.t = t;
-      std::unordered_map<Index, int32>::iterator iter =
+      unordered_map<Index, int32, IndexHasher>::iterator iter =
           index_to_input_pos.find(input_index);
       if (iter != index_to_input_pos.end()) {
         int32 input_pos = iter->second;
@@ -336,18 +364,18 @@ StatisticsExtractionComponent::PrecomputeIndexes(
         } else {
           // the following might fail, for instance, if the sorting
           // of the input or output indexes was not as expected.
-          KALDI_ASSERT(forward_indexes_cpu[i].second == input_post);
+          KALDI_ASSERT(forward_indexes_cpu[i].second == input_pos);
           forward_indexes_cpu[i].second++;
           counts_cpu(i) += 1.0;
         }
-        KALDI_ASSERT(input_indexes[input_pos] == -1);
-        input_indexes[input_pos] = i;
+        KALDI_ASSERT(backward_indexes_cpu[input_pos] == -1);
+        backward_indexes_cpu[input_pos] = i;
       }
-      KALDI_ASSERT(counts_cpu(i) != 0.0);
     }
+    KALDI_ASSERT(counts_cpu(i) != 0.0);
   }
   for (int32 i = 0; i < num_input_indexes; i++) {
-    KALDI_ASSERT(input_indexes[i] != -1);
+    KALDI_ASSERT(backward_indexes_cpu[i] != -1);
   }
   ans->forward_indexes = forward_indexes_cpu;
   ans->counts = counts_cpu;
@@ -369,7 +397,7 @@ StatisticsExtractionComponent::StatisticsExtractionComponent(
   Check();
 }
 
-virtual void StatisticsExtractionComponent::InitFromConfig(ConfigLine *cfl) {
+void StatisticsExtractionComponent::InitFromConfig(ConfigLine *cfl) {
   // input-dim is required.
   bool ok = cfl->GetValue("input-dim", &input_dim_);
   cfl->GetValue("input-period", &input_period_);
@@ -378,7 +406,7 @@ virtual void StatisticsExtractionComponent::InitFromConfig(ConfigLine *cfl) {
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
-  if (!ok || input_dim_ <= 0 && input_period_ <= 0 || output_period_ <= 0 ||
+  if (!ok || input_dim_ <= 0 || input_period_ <= 0 || output_period_ <= 0 ||
       (output_period_ % input_period_ != 0))
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
@@ -408,8 +436,8 @@ bool StatisticsExtractionComponent::IsComputable(
   Index input_index(output_index);
   int32 t = output_index.t,
       t_start = output_period_ * (t / output_period_);
-  if (t_start > output_period_)   // could happen for negative t_start due to
-    t_start -= output_period_;    // the way modulus works in c.
+  if (t_start > t)                // could happen for negative t_start due to
+    t_start -= output_period_;    // the way modulus works in C.
   int32 t_end = t_start + output_period_;
   if (!used_inputs) {
     for (int32 t = t_start; t < t_end; t += input_period_) {
@@ -440,8 +468,9 @@ void StatisticsExtractionComponent::GetInputIndexes(
   Index input_index(output_index);
   int32 t = output_index.t,
       t_start = output_period_ * (t / output_period_);
-  if (t_start > output_period_)   // could happen for negative t_start due to
-    t_start -= output_period_;    // the way modulus works in c.
+  if (t_start > t)                // could happen for negative t due to
+    t_start -= output_period_;    // the way modulus works in C
+  int32 t_end = t_start + output_period_;
   for (int32 t = t_start; t < t_end; t += input_period_) {
     input_index.t = t;
     desired_indexes->push_back(input_index);
@@ -454,25 +483,26 @@ void StatisticsExtractionComponent::Propagate(
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(indexes_in != NULL);
-  StatisticsExtractionComponentPrecomputedIndexes *indexes =
-     dynamic_cast<StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
-  int32 num_rows_in = in.NumRows(), num_rows_out = out->NumRows();
+  const StatisticsExtractionComponentPrecomputedIndexes *indexes =
+     dynamic_cast<const StatisticsExtractionComponentPrecomputedIndexes*>(
+         indexes_in);
+  int32 num_rows_out = out->NumRows();
   KALDI_ASSERT(indexes != NULL &&
                indexes->forward_indexes.Dim() == num_rows_out &&
                in.NumCols() == input_dim_ &&
                out->NumCols() == OutputDim());
   out->SetZero();
   // store the counts.
-  out->CopyColFromVec(indexes->counts, 1);
+  out->CopyColFromVec(indexes->counts, 0);
   // store the mean stats
-  out->ColRange(1, input_dim_).AddRowRanges(indexes->forward_indexes, in);
+  out->ColRange(1, input_dim_).AddRowRanges(in, indexes->forward_indexes);
   if (include_variance_) {
     // store the variance (sum-squared) stats.
     CuMatrix<BaseFloat> in_squared(in);
     in_squared.ApplyPow(2.0);
     out->ColRange(input_dim_ + 1,
-                  input_dim_).AddRowRanges(indexes->forward_indexes,
-                                           in_squared);
+                  input_dim_).AddRowRanges(in_squared,
+                                           indexes->forward_indexes);
   }
 }
 
@@ -485,8 +515,8 @@ void StatisticsExtractionComponent::Backprop(
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
-  StatisticsExtractionComponentPrecomputedIndexes *indexes =
-      dynamic_cast<StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
+  const StatisticsExtractionComponentPrecomputedIndexes *indexes =
+      dynamic_cast<const StatisticsExtractionComponentPrecomputedIndexes*>(indexes_in);
   in_deriv->SetZero();
   in_deriv->AddRows(1.0, out_deriv.ColRange(1, input_dim_),
                     indexes->backward_indexes);
@@ -494,10 +524,9 @@ void StatisticsExtractionComponent::Backprop(
     CuMatrix<BaseFloat> variance_deriv(in_value.NumRows(),
                                        in_value.NumCols(),
                                        kUndefined);
-    variance_deriv.CopyRows(out_deriv,
+    variance_deriv.CopyRows(out_deriv.ColRange(1 + input_dim_, input_dim_),
                             indexes->backward_indexes);
-    in_deriv->ColRange(1 + input_dim_, input_dim_).
-        AddMatMatElements(2.0, variance_deriv, in_value);
+    in_deriv->AddMatMatElements(2.0, variance_deriv, in_value, 1.0);
   }
 }
 
@@ -550,21 +579,31 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 
   virtual ~StatisticsPoolingComponentPrecomputedIndexes() { }
 
+  ComponentPrecomputedIndexes *Copy() const {
+    return new StatisticsPoolingComponentPrecomputedIndexes(*this);
+  }
+
   virtual void Write(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<StatisticsPoolingComponentPrecomputedIndexes>");
     WriteToken(os, binary, "<ForwardIndexes>");
-    forward_indexes.Write(os, binary);
+    std::vector<std::pair<int32, int32> > indexes_cpu;
+    CopyPairVector(forward_indexes, &indexes_cpu);
+    WriteIntegerPairVector(os, binary, indexes_cpu);
     WriteToken(os, binary, "<BackwardIndexes>");
-    backward_indexes.Write(os, binary);
+    CopyPairVector(backward_indexes, &indexes_cpu);
+    WriteIntegerPairVector(os, binary, indexes_cpu);
     WriteToken(os, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
   }
   virtual void Read(std::istream &is, bool binary) {
     ExpectOneOrTwoTokens(is, binary,
                          "<StatisticsPoolingComponentPrecomputedIndexes>",
                          "<ForwardIndexes>");
-    forward_indexes.Read(is, binary);
+    std::vector<std::pair<int32, int32> > indexes_cpu;
+    ReadIntegerPairVector(is, binary, &indexes_cpu);
+    CopyPairVector(indexes_cpu, &forward_indexes);
     ExpectToken(is, binary, "<BackwardIndexes>");
-    backward_indexes.Read(is, binary);
+    ReadIntegerPairVector(is, binary, &indexes_cpu);
+    CopyPairVector(indexes_cpu, &backward_indexes);
     ExpectToken(is, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
   }
 };
@@ -573,10 +612,10 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("input-dim", &input_dim_);
   cfl->GetValue("input-period", &input_period_);
-  cfl->GetValue("output-period", &output_period_);
   cfl->GetValue("left-context", &left_context_);
-  cfl->GetValue("log-count-features", &log_count_featues_);
-  cfl->GetValue("output-stddevs", &output_stddev_);
+  cfl->GetValue("right-context", &right_context_);
+  cfl->GetValue("num-log-count-features", &num_log_count_features_);
+  cfl->GetValue("output-stddevs", &output_stddevs_);
   cfl->GetValue("variance-floor", &variance_floor_);
 
   if (cfl->HasUnusedValues())
@@ -584,58 +623,54 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 	      << cfl->UnusedValues();
   // do some basic checks here but Check() will check more completely.
   if (!ok || input_dim_ <= 0 || left_context_ + right_context_ <= 0 ||
-      log_count_features_ < 0)
+      num_log_count_features_ < 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
   Check();
 }
 
 StatisticsPoolingComponent::StatisticsPoolingComponent():
-    input_dim_(-1), input_period_(1), output_period_(1),
-    left_context_(-1), right_context_(-1), log_count_features_(0),
-    output_stddevs_(false) { }
+    input_dim_(-1), input_period_(1), left_context_(-1), right_context_(-1),
+    num_log_count_features_(0), output_stddevs_(false) { }
 
 StatisticsPoolingComponent::StatisticsPoolingComponent(
     const StatisticsPoolingComponent &other):
     input_dim_(other.input_dim_), input_period_(other.input_period_),
-    output_period_(other.output_period_), left_context_(other.left_context_),
-    right_context_(other.right_context_),
-    log_count_features_(other.log_count_features_),
-    output_stddevs_(other.output_stddevs_) {
+    left_context_(other.left_context_), right_context_(other.right_context_),
+    num_log_count_features_(other.num_log_count_features_),
+    output_stddevs_(other.output_stddevs_),
+    variance_floor_(1.0e-10) {
   Check();
 }
 
 void StatisticsPoolingComponent::Check() const {
   KALDI_ASSERT(input_dim_ > 0);
-  KALDI_ASSERT(input_period_ > 0 && output_period_ > 0 &&
-               output_period_ % input_period_ == 0);
+  KALDI_ASSERT(input_period_ > 0);
   KALDI_ASSERT(left_context_ >= 0 && right_context_ >= 0 &&
                left_context_ + right_context_ > 0);
   KALDI_ASSERT(left_context_ % input_period_ == 0 &&
                right_context_ % input_period_ == 0);
-  KALDI_ASSERT(variance_floor_ >= 0.0 && variance_floor_ < 1.0);
-  KALDI_ASSERT(!output_stddev_ || (input_dim_ - 1) % 2 == 0);
+  KALDI_ASSERT(variance_floor_ > 0.0 && variance_floor_ < 1.0);
+  KALDI_ASSERT(!output_stddevs_ || (input_dim_ - 1) % 2 == 0);
 }
 
 void StatisticsPoolingComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<StatisticsPoolingComponent>",
                        "<InputDim>");
-  ReadBasicType(os, binary, &input_dim_);
-  ExpectToken(os, binary, "<InputPeriod>");
-  ReadBasicType(os, binary, &input_period_);
-  ExpectToken(os, binary, "<OutputPeriod>");
-  ReadBasicType(os, binary, &output_period_);
-  ExpectToken(os, binary, "<LeftContext>");
-  ReadBasicType(os, binary, &left_context_);
-  ExpectToken(os, binary, "<RightContext>");
-  ReadBasicType(os, binary, &right_context_);
-  ExpectToken(os, binary, "<LogCountFeatures>");
-  ReadBasicType(os, binary, &log_count_features_);
-  ExpectToken(os, binary, "<OutputStddevs>");
-  ReadBasicType(os, binary, &output_stddevs_);
-  ExpectToken(os, binary, "<VarianceFloor>");
-  ReadBasicType(os, binary, &variance_floor_);
-  ExpectToken(os, binary, "</StatisticsPoolingComponent>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<InputPeriod>");
+  ReadBasicType(is, binary, &input_period_);
+  ExpectToken(is, binary, "<LeftContext>");
+  ReadBasicType(is, binary, &left_context_);
+  ExpectToken(is, binary, "<RightContext>");
+  ReadBasicType(is, binary, &right_context_);
+  ExpectToken(is, binary, "<NumLogCountFeatures>");
+  ReadBasicType(is, binary, &num_log_count_features_);
+  ExpectToken(is, binary, "<OutputStddevs>");
+  ReadBasicType(is, binary, &output_stddevs_);
+  ExpectToken(is, binary, "<VarianceFloor>");
+  ReadBasicType(is, binary, &variance_floor_);
+  ExpectToken(is, binary, "</StatisticsPoolingComponent>");
   Check();
 }
 
@@ -645,14 +680,12 @@ void StatisticsPoolingComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, input_dim_);
   WriteToken(os, binary, "<InputPeriod>");
   WriteBasicType(os, binary, input_period_);
-  WriteToken(os, binary, "<OutputPeriod>");
-  WriteBasicType(os, binary, output_period_);
   WriteToken(os, binary, "<LeftContext>");
   WriteBasicType(os, binary, left_context_);
   WriteToken(os, binary, "<RightContext>");
   WriteBasicType(os, binary, right_context_);
-  WriteToken(os, binary, "<LogCountFeatures>");
-  WriteBasicType(os, binary, log_count_features_);
+  WriteToken(os, binary, "<NumLogCountFeatures>");
+  WriteBasicType(os, binary, num_log_count_features_);
   WriteToken(os, binary, "<OutputStddevs>");
   WriteBasicType(os, binary, output_stddevs_);
   WriteToken(os, binary, "<VarianceFloor>");
@@ -693,9 +726,9 @@ bool StatisticsPoolingComponent::IsComputable(
   if (used_inputs)
     used_inputs->clear();
   // you are not supposed to access the output of this component other than at
-  // multiples of the output period.  We could make this an error but decided to
+  // multiples of the input period.  We could make this an error but decided to
   // just have it return false.
-  if (output_index.t % output_period_ != 0)
+  if (output_index.t % input_period_ != 0)
     return false;
 
   Index input_index(output_index);
@@ -722,7 +755,7 @@ bool StatisticsPoolingComponent::IsComputable(
   }
 }
 
-virtual ComponentPrecomputedIndexes*
+ComponentPrecomputedIndexes*
 StatisticsPoolingComponent::PrecomputeIndexes(
     const MiscComputationInfo &misc_info,
     const std::vector<Index> &input_indexes,
@@ -749,18 +782,18 @@ StatisticsPoolingComponent::PrecomputeIndexes(
                                               invalid_pair);
 
   // this map maps from Index to the position in 'input_indexes'.
-  std::unordered_map<Index, int32> index_to_input_pos;
-  for (i = 0; i < num_input_indexes; i++)
+  unordered_map<Index, int32, IndexHasher> index_to_input_pos;
+  for (int32 i = 0; i < num_input_indexes; i++)
     index_to_input_pos[input_indexes[i]] = i;
 
   for (int32 i = 0; i < num_output_indexes; i++) {
     Index input_index(output_indexes[i]);
     int32 middle_t = input_index.t,
-        t_start = middle_t - left_context,
-        t_last = middle_t + right_context;
+        t_start = middle_t - left_context_,
+        t_last = middle_t + right_context_;
     for (int32 t = t_start; t <= t_last; t += input_period_) {
       input_index.t = t;
-      std::unordered_map<Index, int32>::iterator iter =
+      unordered_map<Index, int32, IndexHasher>::iterator iter =
           index_to_input_pos.find(input_index);
       if (iter != index_to_input_pos.end()) {
         int32 input_pos = iter->second;
@@ -771,12 +804,12 @@ StatisticsPoolingComponent::PrecomputeIndexes(
           KALDI_ASSERT(forward_indexes_cpu[i].second == input_pos);
           forward_indexes_cpu[i].second++;
         }
-        if (backward_indexes_cpu[i].first == -1) {
-          backward_indexes_cpu[i].first = i;
-          backward_indexes_cpu[i].second = i + 1;
+        if (backward_indexes_cpu[input_pos].first == -1) {
+          backward_indexes_cpu[input_pos].first = i;
+          backward_indexes_cpu[input_pos].second = i + 1;
         } else {
-          KALDI_ASSERT(backward_indexes_cpu[i].second == i);
-          backward_indexes_cpu[i].second++;
+          KALDI_ASSERT(backward_indexes_cpu[input_pos].second == i);
+          backward_indexes_cpu[input_pos].second++;
         }
       }
     }
@@ -796,10 +829,11 @@ void StatisticsPoolingComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
+  out->SetZero();
   KALDI_ASSERT(indexes_in != NULL);
-  StatisticsPoolingComponentPrecomputedIndexes *indexes =
-      dynamic_cast<StatisticsPoolingComponentPrecomputedIndexes*>(indexes_in);
-  int32 num_rows_in = in.NumRows(), num_rows_out = out->NumRows();
+  const StatisticsPoolingComponentPrecomputedIndexes *indexes =
+      dynamic_cast<const StatisticsPoolingComponentPrecomputedIndexes*>(indexes_in);
+  int32 num_rows_out = out->NumRows();
   KALDI_ASSERT(indexes != NULL &&
                indexes->forward_indexes.Dim() == num_rows_out &&
                in.NumCols() == input_dim_ &&
@@ -810,16 +844,16 @@ void StatisticsPoolingComponent::Propagate(
   counts_mat.AddRowRanges(in.ColRange(0, 1), indexes->forward_indexes);
 
   CuSubMatrix<BaseFloat> out_non_count(*out, 0, num_rows_out,
-                                       log_count_features_, input_dim_ - 1);
-  out_non_count.SetZero();
-  out_non_count.SetZero();
+                                       num_log_count_features_, input_dim_ - 1);
   out_non_count.AddRowRanges(in.ColRange(1, input_dim_ - 1),
                              indexes->forward_indexes);
   out_non_count.DivRowsVec(counts);
 
-  if (log_count_features_ > 0) {
+  if (num_log_count_features_ > 0) {
     counts.ApplyLog();
-    out->ColRange(0, log_count_features_).CopyColsFromVec(counts);
+    CuVector<BaseFloat> ones(num_log_count_features_, kUndefined);
+    ones.Set(1.0);
+    out->ColRange(0, num_log_count_features_).AddVecVec(1.0, counts, ones);
   }
 
   if (output_stddevs_) {
@@ -828,9 +862,9 @@ void StatisticsPoolingComponent::Propagate(
     KALDI_ASSERT((input_dim_ - 1) % 2 == 0);
     int32 feature_dim = (input_dim_ - 1) / 2;
     CuSubMatrix<BaseFloat> mean(*out, 0, num_rows_out,
-                                log_count_features_, feature_dim),
+                                num_log_count_features_, feature_dim),
         variance(*out, 0, num_rows_out,
-                 log_count_features_ + feature_dim, feature_dim);
+                 num_log_count_features_ + feature_dim, feature_dim);
     // subtract mean-squared from average of x^2 to get the variance.
     variance.AddMatMatElements(-1.0, mean, mean, 1.0);
     variance.ApplyFloor(variance_floor_);
@@ -841,17 +875,17 @@ void StatisticsPoolingComponent::Propagate(
 
 void StatisticsPoolingComponent::Backprop(
     const std::string &debug_info,
-    const ComponentPrecomputedIndexes *indexes,
+    const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv_in,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
-  StatisticsPoolingComponentPrecomputedIndexes *indexes =
-      dynamic_cast<StatisticsPoolingComponentPrecomputedIndexes*>(indexes_in);
-  int32 num_rows_in = in_deriv->NumRows(),
-      num_rows_out = out_deriv_in.NumRows();
+  const StatisticsPoolingComponentPrecomputedIndexes *indexes =
+      dynamic_cast<const StatisticsPoolingComponentPrecomputedIndexes*>(
+          indexes_in);
+  int32 num_rows_out = out_deriv_in.NumRows();
   CuMatrix<BaseFloat> out_deriv(out_deriv_in);
   if (output_stddevs_) {
     // for now we actually ignore the covariance flooring in the backprop- this
@@ -860,13 +894,13 @@ void StatisticsPoolingComponent::Backprop(
     // derivatives much.
     int32 feature_dim = (input_dim_ - 1) / 2;
     CuSubMatrix<BaseFloat> mean_deriv(out_deriv, 0, num_rows_out,
-                                      log_count_features_, feature_dim),
+                                      num_log_count_features_, feature_dim),
         variance_deriv(out_deriv, 0, num_rows_out,
-                       log_count_features_ + feature_dim, feature_dim),
-        mean_value(out, 0, num_rows_out,
-                   log_count_features_, feature_dim),
-        stddev_value(out, 0, num_rows_out,
-                     log_count_features_ + feature_dim, feature_dim);
+                       num_log_count_features_ + feature_dim, feature_dim),
+        mean_value(out_value, 0, num_rows_out,
+                   num_log_count_features_, feature_dim),
+        stddev_value(out_value, 0, num_rows_out,
+                     num_log_count_features_ + feature_dim, feature_dim);
     // we currently have the deriv w.r.t. the stddev.  step 1 is to get it
     // w.r.t. the centered variance.  If the centered variance is s,
     // and the stddev is sqrt(s), then d/ds sqrt(s) = 0.5 / sqrt(s),
@@ -882,17 +916,17 @@ void StatisticsPoolingComponent::Backprop(
   }
   // now we have to account for the effect of division by the count, on
   // the derivative.
-  Vector<BaseFloat> counts(num_rows_out, kUndefined);
-  if (log_count_features_ > 0) {
-    counts.CopyRowFromMat(out_value, 0);
+  CuVector<BaseFloat> counts(num_rows_out, kUndefined);
+  if (num_log_count_features_ > 0) {
+    counts.CopyColFromMat(out_value, 0);
     counts.ApplyExp();
   } else {
     counts.SetZero();
     // we need to recompute the counts from the input since they are not in the
     // output.  The submatrix initializer below takes num-rows, num-cols,
     // stride;  num-cols and stride are 1.
-    SubMatrix<BaseFloat> counts_mat(counts.Data(), num_rows_out, 1, 1);
-    counts_mat.AddRowRanges(in_value, indexes->forward_indexes);
+    CuSubMatrix<BaseFloat> counts_mat(counts.Data(), num_rows_out, 1, 1);
+    counts_mat.AddRowRanges(in_value.ColRange(0, 1), indexes->forward_indexes);
   }
   // Divide the output derivative by the counts.  This is what we want as it
   // concerns the mean and x^2 stats.  As for the counts themselves, the
@@ -901,11 +935,11 @@ void StatisticsPoolingComponent::Backprop(
   // doesn't really matter.
   out_deriv.DivRowsVec(counts);
 
-  // Now propagate the derivative back to the input.  we don't bother excluding
-  // the count's row (the first row of the input), to keep the code simple,
-  // although this row of the derivative is not valid, since it will be ignored
-  // in the StatisticsExtractionComponent's backprop.
-  in_deriv->AddRowRanges(indexes->backward_indexes, out_deriv);
+  // Now propagate the derivative back to the input.  we don't propagate it
+  // back for the count's row since it's non-differentiable.
+  in_deriv->ColRange(1, input_dim_ - 1).
+      AddRowRanges(out_deriv.ColRange(num_log_count_features_, input_dim_ - 1),
+                   indexes->backward_indexes);
 }
 
 } // namespace nnet3

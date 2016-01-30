@@ -327,6 +327,9 @@ void ComputationGraphBuilder::ExplainWhyAllOutputsNotComputable() const {
   int32 num_print = 10, num_not_computable = outputs_not_computable.size();
   KALDI_LOG << num_not_computable << " output cindexes out of "
             << num_outputs_total << " were not computable.";
+  std::ostringstream os;
+  request_.Print(os);
+  KALDI_LOG << "Computation request was: " << os.str();
   if (num_not_computable > num_print)
     KALDI_LOG << "Printing the reasons for " << num_print << " of these.";
   for (int32 i = 0; i < num_not_computable && i < num_print; i++)
@@ -369,8 +372,6 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
       // making more inputs available will never change something from not being
       // computable to being computable; or it could be a bug elsewhere.
       KALDI_ASSERT(ans);
-      std::vector<int32> &dependencies = graph_->dependencies[cindex_id];
-      std::sort(dependencies.begin(), dependencies.end());
       size_t size = used_cindexes.size();
       used_cindex_ids.resize(size);
       for (size_t i = 0; i < size; i++) {
@@ -386,7 +387,10 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
     case kComponent: {
       const Component *c = nnet_.GetComponent(node.u.component_index);
       bool dont_care = false;  // there should be no kUnknown, and we check this
-      IndexSet index_set(*graph_, computable_info_, node_id, dont_care);
+      // In the line below, node_id - 1 is the index of the component-input
+      // node-- the descriptor at the input to the component.  We are interested
+      // in the set of inputs to the component that are computable.
+      IndexSet index_set(*graph_, computable_info_, node_id - 1, dont_care);
       std::vector<Index> used_indexes;
       bool ans = c->IsComputable(request_.misc_info, index, index_set,
                                  &used_indexes);
