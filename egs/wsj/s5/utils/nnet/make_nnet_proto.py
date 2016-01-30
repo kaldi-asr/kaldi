@@ -50,6 +50,11 @@ parser.add_option('--param-stddev-factor', dest='param_stddev_factor',
 parser.add_option('--bottleneck-dim', dest='bottleneck_dim', 
                    help='Make bottleneck network with desired bn-dim (0 = no bottleneck) [default: %default]',
                    default=0, type='int');
+# where to put bottleneck, Added by Harish
+parser.add_option('--bottleneck-before-last-affine', dest='bottleneck_before_last_affine',
+                   help='Put bottleneck before last affine',
+                   action='store_true', default=False);
+
 parser.add_option('--no-glorot-scaled-stddev', dest='with_glorot', 
                    help='Generate normalized weights according to X.Glorot paper, but mapping U->N with same variance (factor sqrt(x/(dim_in+dim_out)))', 
                    action='store_false', default=True);
@@ -182,23 +187,37 @@ if o.bottleneck_dim != 0:
      (num_hid_neurons, o.bottleneck_dim, \
       (o.param_stddev_factor * Glorot(num_hid_neurons, o.bottleneck_dim) * 0.75 ), 0.1)
     # 25% smaller stddev -> smaller gradient in prev. layer, 10x smaller learning rate for weigts & biases
-    print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f <MaxNorm> %f" % \
-     (o.bottleneck_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
-      (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons) * 0.75 ), 0.1, 0.1, o.max_norm)
+
+    if o.bottleneck_before_last_affine:
+      print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f " % \
+        (o.bottleneck_dim, num_leaves, 0.0, 0.0, \
+        (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_leaves) ), 0.1, 0.1)
+    else:
+      print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f <MaxNorm> %f" % \
+        (o.bottleneck_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
+        (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons) * 0.75 ), 0.1, 0.1, o.max_norm)
+      print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
   else:
     # Same learninig-rate and stddev-formula everywhere,
     print "<LinearTransform> <InputDim> %d <OutputDim> %d <ParamStddev> %f" % \
      (num_hid_neurons, o.bottleneck_dim, \
       (o.param_stddev_factor * Glorot(num_hid_neurons, o.bottleneck_dim)))
-    print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \
-     (o.bottleneck_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
-      (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons)), o.max_norm)
-  print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
 
-# Last AffineTransform (10x smaller learning rate on bias)
-print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f" % \
+    if o.bottleneck_before_last_affine:
+      print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \
+          (o.bottleneck_dim, num_leaves, 0.0, 0.0, \
+             (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_leaves)), o.max_norm)
+    else:
+      print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f" % \
+          (o.bottleneck_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
+             (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons)), o.max_norm)
+      print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
+
+if not o.bottleneck_before_last_affine:
+  # Last AffineTransform (10x smaller learning rate on bias)
+  print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f" % \
       (num_hid_neurons, num_leaves, 0.0, 0.0, \
-       (o.param_stddev_factor * Glorot(num_hid_neurons, num_leaves)), 1.0, 0.1)
+         (o.param_stddev_factor * Glorot(num_hid_neurons, num_leaves)), 1.0, 0.1)
 
 # Optionaly append softmax
 if o.with_softmax:
