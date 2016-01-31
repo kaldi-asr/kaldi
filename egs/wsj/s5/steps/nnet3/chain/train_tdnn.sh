@@ -213,7 +213,8 @@ if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
 
   if [ ! -z "$jesus_opts" ]; then
-    python steps/nnet3/make_jesus_configs.py \
+    $cmd $dir/log/make_configs.log \
+       python steps/nnet3/make_jesus_configs.py \
       --xent-regularize=$xent_regularize \
       --include-log-softmax=false \
       --splice-indexes "$splice_indexes"  \
