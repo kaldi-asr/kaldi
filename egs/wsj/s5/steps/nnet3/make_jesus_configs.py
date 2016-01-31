@@ -3,19 +3,13 @@
 # tdnn or RNN with 'jesus layer'
 
 
-# notes on jesus layer with recurrence:
 
 #  inputs to jesus layer:
-#      - for each previous layer in regular splicing, the output of dim  --jesus-forward-output-dim
-#      - for each recurrent connection:
-#      - direct input from the recurrence                            --jesus-direct-recurrence-dim
-#      - indirect [projected] input from recurrence.                 --jesus-projected-recurrence-input-dim
+#      - for each spliced version of the previous layer the output (of dim  --jesus-forward-output-dim)
+
 #  outputs of jesus layer:
 #     for all layers:
 #       --jesus-forward-output-dim
-#     for recurrent layers:
-#       --jesus-direct-recurrence-dim
-#       --jesus-projected-recurrence-output-dim
 
 
 # we're using python 3.x style print but want it to work in python 2.x,
@@ -46,9 +40,6 @@ parser.add_argument("--use-repeated-affine", type=str,
 parser.add_argument("--final-layer-learning-rate-factor", type=float,
                     help="Learning-rate factor for final affine component",
                     default=1.0)
-parser.add_argument("--recurrent-projection-learning-rate-factor", type=float,
-                    help="Learning-rate factor for recurrent projections",
-                    default=10.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
 parser.add_argument("--jesus-forward-output-dim", type=int,
@@ -61,17 +52,6 @@ parser.add_argument("--jesus-forward-input-dim", type=int,
 parser.add_argument("--final-hidden-dim", type=int,
                     help="Final hidden layer dimension-- or if <0, the same as "
                     "--jesus-forward-input-dim", default=-1)
-parser.add_argument("--jesus-direct-recurrence-dim", type=int,
-                    help="part of output dimension of Jesus layer that comes directly from "
-                    "different time instance of the same Jesus layer", default=1000)
-parser.add_argument("--jesus-projected-recurrence-output-dim", type=int,
-                    help="part of output dimension of Jesus layer (in recurrent layers) "
-                    "that is destined for projection to dimension "
-                    "--jesus-projected-recurrence-input-dim", default=500)
-parser.add_argument("--jesus-projected-recurrence-input-dim", type=int,
-                    help="part of input dimension of Jesus layer that comes via "
-                    "projection from the output of the same Jesus layer at different time",
-                    default=200)
 parser.add_argument("--num-jesus-blocks", type=int,
                     help="number of blocks in Jesus layer.  All configs of the form "
                     "--jesus-*-dim will be rounded up to be a multiple of this.",
@@ -108,8 +88,7 @@ if args.final_hidden_dim < 0:
     args.final_hidden_dim = args.jesus_forward_input_dim
 
 for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_input_dim",
-              "jesus_direct_recurrence_dim", "jesus_projected_recurrence_output_dim",
-              "jesus_projected_recurrence_input_dim", "final_hidden_dim" ]:
+              "final_hidden_dim" ]:
     old_val = getattr(args, name)
     if old_val % args.num_jesus_blocks != 0:
         new_val = old_val + args.num_jesus_blocks - (old_val % args.num_jesus_blocks)
@@ -118,19 +97,75 @@ for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_inp
                 printable_name, old_val, new_val, args.num_jesus_blocks))
         setattr(args, name, new_val);
 
+# this is a bit like a struct, initialized from a string, which describes how to
+# set up the statistics-pooling and statistics-extraction components.
+# An example string is 'mean(-99:3:9::99)', which means, compute the mean of
+# data within a window of -99 to +99, with distinct means computed every 9 frames
+# (we round to get the appropriate one), and with the input extracted on multiples
+# of 3 frames (so this will force the input to this layer to be evaluated
+# every 3 frames).  Another example string is 'mean+stddev(-99:3:9:99)',
+# which will also cause the standard deviation to be computed.
+class StatisticsConfig:
+    # e.g. c = StatisticsConfig('mean+stddev(-99:3:9:99)', 400, 'jesus1-forward-output-affine')
+    def __init__(self, config_string, input_dim, input_name):
+        self.input_dim = input_dim
+        self.input_name = input_name
 
-## Work out splice_array and recurrence_array,
+        m = re.search("(mean|mean\+stddev)\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
+                      config_string)
+        if m == None:
+            sys.exit("Invalid splice-index or statistics-config string: " + config_string)
+        self.output_stddev = (m.group(1) == 'mean')
+        self.left_context = int(m.group(2))
+        self.input_period = int(m.group(3))
+        self.stats_period = int(m.group(4))
+        self.right_context = int(m.group(5))
+        if not (self.left_context < 0 and self.right_context > 0 and
+                self.input_period > 0 and self.stats_period > 0 and
+                self.left_context % self.stats_period == 0 and
+                self.right_context % self.stats_period == 0 and
+                self.stats_period % self.input_period == 0):
+            sys.exit("Invalid configuration of statistics-extraction: " + config_string)
+
+    # OutputDim() returns the output dimension of the node that this produces.
+    def OutputDim(self):
+        return self.input_dim * (2 if self.output_stddev else 1)
+
+    # Descriptor() returns the textual form of the descriptor by which the
+    # output of this node is to be accessed.
+    def Descriptor(self):
+        return 'Round({0}-pooling{1}-{2}, {3})'.format(self.input_name, self.left_context, self.right_context,
+                                                       self.stats_period)
+
+    # This function writes the configuration lines need to compute the specified
+    # statistics, to the file f.
+    def WriteConfigs(self, f):
+        print('component name={0}-extraction{1}-{2} type=StatisticsExtractionComponent input-dim={3} '
+              'input-period={4} output-period={5} include-variance={6} '.format(
+                self.input_name, self.left_context, self.right_context,
+                self.input_dim, self.input_period, self.stats_period,
+                ('true' if self.output_stddev else 'false')), file=f)
+        print('component-node name={0}-extraction{1}-{2} component={0}-extraction{1}-{2} input={0} '.format(
+                self.input_name, self.left_context, self.right_context), file=f)
+        print('component name={0}-pooling{1}-{2} type=StatisticsPoolingComponent input-dim={3} '
+              'input-period={4} left-context={1} right-context={2} num-log-count-features=0 '
+              'output-stddevs={5} '.format(self.input_name, self.left_context, self.right_context,
+                                           self.stats_period, ('true' if self.output_stddev else 'false')),
+              file=f)
+        print('component-node name={0}-pooling{1}-{2} component={0}-pooling{1}-{2} input={0}-extraction{1}-{2} '.format(
+                self.input_name, self.left_context, self.right_context), file=f)
+
+
+
+
+## Work out splice_array
 ## e.g. for
 ## args.splice_indexes == '-3,-2,-1,0,1,2,3 -3,0:-3 -3,0:-3 -6,-3,0:-6,-3'
 ## we would have
 ##   splice_array = [ [ -3,-2,...3 ], [-3,0] [-3,0] [-6,-3,0]
-## and
-##  recurrence_array = [ [], [-3], [-3], [-6,-3] ]
-## Note, recurrence_array[0] must be empty; and any element of recurrence_array
-## may be empty.  Also it cannot contain zeros, or both positive and negative elements
-## at the same layer.
+
+
 splice_array = []
-recurrence_array = []
 left_context = 0
 right_context = 0
 split_on_spaces = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
@@ -140,27 +175,33 @@ if len(split_on_spaces) < 2:
 try:
     for string in split_on_spaces:
         this_layer = len(splice_array)
-        split_on_colon = string.split(":")  # there will only be a colon if
-                                            # there is recurrence at this layer.
-        if len(split_on_colon) < 1 or len(split_on_colon) > 2 or (this_layer == 0 and len(split_on_colon) > 1):
-            sys.exit("invalid --splice-indexes argument: " + args.splice_indexes)
-        if len(split_on_colon) == 1:
-            split_on_colon.append("")
-        int_list = []
-        this_splices = [ int(x) for x in split_on_colon[0].split(",") ]
-        this_recurrence = [ int(x) for x in split_on_colon[1].split(",") if x ]
+
+        this_splices = string.split(",")
         splice_array.append(this_splices)
-        recurrence_array.append(this_recurrence)
-        if (len(this_splices) < 1):
-            sys.exit("invalid --splice-indexes argument [empty splices]: " + args.splice_indexes)
-        if len(this_recurrence) > 1 and this_recurrence[0] * this_recurrence[-1] <= 0:
-            sys.exit("invalid --splice-indexes argument [invalid recurrence indexes; would not be computable."
-                     + args.splice_indexes)
-        if not this_splices == sorted(this_splices):
-            sys.exit("elements of --splice-indexes must be sorted: "
-                     + args.splice_indexes)
-        left_context += -this_splices[0]
-        right_context += this_splices[-1]
+        # the rest of this block updates left_context and right_context, and
+        # does some checking.
+        leftmost_splice = 10000
+        rightmost_splice = -10000
+        for s in this_splices:
+            try:
+                n = int(s)
+                if n < leftmost_splice:
+                    leftmost_splice = n
+                if n > rightmost_splice:
+                    rightmost_splice = n
+            except:
+                if len(splice_array) == 1:
+                    sys.exit("First dimension of splicing array must not have averaging [yet]")
+                try:
+                    x = StatisticsConfig(s)
+                except:
+                    sys.exit("The following element of the splicing array is not a valid specifier "
+                    "of statistics: " + s)
+
+        if leftmost_splice == 10000 or rightmost_splice == -10000:
+            sys.exit("invalid element of --splice-indexes: " + string)
+        left_context += -leftmost_splice
+        right_context += rightmost_splice
 except ValueError as e:
     sys.exit("invalid --splice-indexes argument " + args.splice_indexes + " " + str(e))
 left_context = max(0, left_context)
@@ -193,10 +234,8 @@ for l in range(1, num_hidden_layers + 1):
     # the following summarizes the structure of the layers:  Here, the Jesus component includes ReLU at its input and output, and renormalize
     #   at its output after the ReLU.
     # layer1: splice + LDA-transform + affine + ReLU + renormalize
-    # layerX [non-recurrent]: splice + Jesus + affine + ReLU
-    # layerX [recurrent]: splice + Jesus + renormalize + split up:  -> [forward] affine + ReLU
-    #                                                               -> [direct-recurrent]
-    #                                                               -> [projected-recurrent, one per delay]: affine + ReLU
+    # layerX: splice + Jesus + affine + ReLU
+
     # Inside the jesus component is:
     #  [permute +] ReLU + repeated-affine + ReLU + repeated-affine
     # [we make the repeated-affine the last one so we don't have to redo that in backprop].
@@ -206,9 +245,7 @@ for l in range(1, num_hidden_layers + 1):
     # After this we use dim-range nodes to split up the output into
     # [ jesusN-forward-output, jesusN-direct-output and jesusN-projected-output ]
     # parts;
-    # and nodes for the jesusN-forward-affine and jesusN-recurrent-affine-offsetN
-    # and jesusN-recurrent-affine-offsetN-clip
-    # computations.
+    # and nodes for the jesusN-forward-affine.
 
     f = open(args.config_dir + "/layer{0}.config".format(l), "w")
     print('# Config file for layer {0} of the network'.format(l), file=f)
@@ -241,34 +278,31 @@ for l in range(1, num_hidden_layers + 1):
     else:
         splices = []
         spliced_dims = []
-        for offset in splice_array[l-1]:
+        for s in splice_array[l-1]:
             # the connection from the previous layer
-            if l == 2:
-                splices.append('Offset(renorm1, {0})'.format(offset))
-            else:
-                splices.append('Offset(jesus{0}-forward-output-affine, {1})'.format(l-1, offset))
-            spliced_dims.append(args.jesus_forward_input_dim)
-        for offset in recurrence_array[l-1]:
-            # the direct recurrence
-            splices.append('IfDefined(Offset(jesus{0}-direct-output, {1}))'.format(l, offset))
-            spliced_dims.append(args.jesus_direct_recurrence_dim)
-            # the indirect recurrence (via projection)
-            splices.append('IfDefined(Offset(jesus{0}-recurrent-affine-offset{1}-clip, {1}))'.format(l, offset))
-            spliced_dims.append(args.jesus_projected_recurrence_input_dim)
+            try:
+                offset = int(s)
+                # it's an integer offset.
+                splices.append('Offset({0}, {1})'.format(cur_output, offset))
+                spliced_dims.append(cur_affine_output_dim)
+            except:
+                # it's not an integer offset, so assume it specifies the
+                # statistics-extraction.
+                stats = StatisticsConfig(s, cur_affine_output_dim, cur_output)
+                stats.WriteConfigs(f)
+                splices.append(stats.Descriptor())
+                spliced_dims.append(stats.OutputDim())
 
         # get the input to the Jesus layer.
         cur_input = 'Append({0})'.format(', '.join(splices))
         cur_dim = sum(spliced_dims)
 
-        this_layer_is_recurrent = (len(recurrence_array[l-1]) != 0)
-        this_jesus_output_dim = args.jesus_forward_output_dim + (
-            (args.jesus_projected_recurrence_output_dim +
-             args.jesus_direct_recurrence_dim) if this_layer_is_recurrent else 0)
+        this_jesus_output_dim = args.jesus_forward_output_dim
 
-        # As input to the Jesus component we'll append the spliced input and
-        # recurrent input, and the first thing inside the component that we do
-        # is rearrange the dimensions so that things pertaining to a particular
-        # block stay together.
+        # As input to the Jesus component we'll append the spliced input and any
+        # mean/stddev-stats input, and the first thing inside the component that
+        # we do is rearrange the dimensions so that things pertaining to a
+        # particular block stay together.
 
         column_map = []
         for x in range(0, args.num_jesus_blocks):
@@ -349,71 +383,30 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=jesus{0} component=jesus{0} input={1}'.format(
                 l, cur_input), file=f)
 
-        # now print the post-Jesus component which consists of [permute +] ReLU
-        # + renormalize.  we only need the permute component if this is a
-        # recurrent layer.
+        # now print the post-Jesus component which consists of ReLU +
+        # renormalize.
 
-        num_sub_components = (3 if this_layer_is_recurrent else 2);
-        print('component name=post-jesus{0} type=CompositeComponent num-components={1}'.format(
-                l, num_sub_components), file=f, end='')
-        if this_layer_is_recurrent:
-            column_map = []
-            output_part_dims = [ args.jesus_forward_output_dim,
-                                 args.jesus_direct_recurrence_dim,
-                                 args.jesus_projected_recurrence_output_dim ]
-            if sum(output_part_dims) != this_jesus_output_dim:
-                sys.exit("code error")
-            total_block_size = this_jesus_output_dim / args.num_jesus_blocks
-            previous_part_dims_sum = 0
-            for part_dim in output_part_dims:
-                within_block_offset = previous_part_dims_sum / args.num_jesus_blocks
-                within_block_dim = part_dim / args.num_jesus_blocks
-                for x in range(0, args.num_jesus_blocks):
-                    for y in range(0, within_block_dim):
-                        column_map.append(x * total_block_size + within_block_offset + y)
-                previous_part_dims_sum += part_dim
-            if sorted(column_map) != range(0, this_jesus_output_dim):
-                print("column_map is " + str(column_map))
-                print("output_part_dims is " + str(output_part_dims))
-                sys.exit("code error creating new column order")
-            print(" component1='type=PermuteComponent column-map={1}'".format(
-                    l, ','.join([str(x) for x in column_map ])), file=f, end='')
+        num_sub_components = 2
+        print('component name=post-jesus{0} type=CompositeComponent num-components=2'.format(l),
+              file=f, end='')
 
         # still within the post-Jesus component, print the ReLU
-        print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
-                (2 if this_layer_is_recurrent else 1),
+        print(" component1='type=RectifiedLinearComponent dim={0}'".format(
                 this_jesus_output_dim), file=f, end='')
         # still within the post-Jesus component, print the NormalizeComponent
-        print(" component{0}='type=NormalizeComponent dim={1} '".format(
-                (3 if this_layer_is_recurrent else 2),
+        print(" component2='type=NormalizeComponent dim={0} '".format(
                 this_jesus_output_dim), file=f, end='')
         print("", file=f) # print newline.
         print('component-node name=post-jesus{0} component=post-jesus{0} input=jesus{0}'.format(l),
               file=f)
-
-        if len(recurrence_array[l-1]) != 0:
-            # This is a recurrent layer -> print the dim-range nodes.
-            dim_offset = 0
-            print('dim-range-node name=jesus{0}-forward-output input-node=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_forward_output_dim, dim_offset), file=f)
-            dim_offset += args.jesus_forward_output_dim
-            print('dim-range-node name=jesus{0}-direct-output input-node=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_direct_recurrence_dim, dim_offset), file=f)
-            dim_offset += args.jesus_direct_recurrence_dim
-            print('dim-range-node name=jesus{0}-projected-output input-node=post-jesus{0} '
-                  'dim={1} dim-offset={2}'.format(l, args.jesus_projected_recurrence_output_dim,
-                                                  dim_offset), file=f)
-            input_to_forward_affine = 'jesus{0}-forward-output'.format(l)
-        else:
-            input_to_forward_affine = 'post-jesus{0}'.format(l)
 
         # handle the forward output, we need an affine node for this:
         cur_affine_output_dim = (args.jesus_forward_input_dim if l < num_hidden_layers else args.final_hidden_dim)
         print('component name=forward-affine{0} type=NaturalGradientAffineComponent '
               'input-dim={1} output-dim={2} bias-stddev=0'.
               format(l, args.jesus_forward_output_dim, cur_affine_output_dim), file=f)
-        print('component-node name=jesus{0}-forward-output-affine component=forward-affine{0} input={1}'.format(
-                l, input_to_forward_affine), file=f)
+        print('component-node name=jesus{0}-forward-output-affine component=forward-affine{0} input=post-jesus{0}'.format(
+            l), file=f)
         # for each recurrence delay, create an affine node followed by a
         # clip-gradient node.  [if there are multiple recurrences in the same layer,
         # each one gets its own affine projection.]
