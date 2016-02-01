@@ -192,12 +192,16 @@ int main(int argc, char *argv[]) {
         KALDI_WARN << "No pdf-level posterior for key " << key;
         num_err++;
       } else {
-        const Posterior &pdf_post = pdf_post_reader.Value(key);
-        if (pdf_post.size() != feats.NumRows()) {
+        Posterior pdf_post = pdf_post_reader.Value(key);
+        if (abs(static_cast<int32>(pdf_post.size()) - feats.NumRows()) > length_tolerance
+            || pdf_post.size() < feats.NumRows()) {
           KALDI_WARN << "Posterior has wrong size " << pdf_post.size()
                      << " versus " << feats.NumRows();
           num_err++;
           continue;
+        }
+        while (static_cast<int32>(pdf_post.size()) > feats.NumRows()) {
+          pdf_post.pop_back();
         }
         const Matrix<BaseFloat> *ivector_feats = NULL;
         if (!ivector_rspecifier.empty()) {
