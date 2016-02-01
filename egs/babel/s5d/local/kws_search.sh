@@ -10,7 +10,7 @@ help_message="$(basename $0): do keyword indexing and search.  data-dir is assum
              Usage:
                  $(basename $0) <lang-dir> <data-dir> <decode-dir>"
 
-# Begin configuration section.  
+# Begin configuration section.
 #acwt=0.0909091
 min_lmwt=7
 max_lmwt=17
@@ -27,6 +27,7 @@ word_ins_penalty=0
 extraid=
 silence_word=  # specify this if you did to in kws_setup.sh, it's more accurate.
 ntrue_scale=1.0
+nbest=900
 max_silence_frames=50
 # End configuration section.
 
@@ -101,7 +102,7 @@ if [ ! -z "$model" ]; then
 else
     model_flags=
 fi
-  
+
 
 if [ $stage -le 0 ] ; then
   if [ ! -f $indices_dir/.done.index ] ; then
@@ -109,8 +110,8 @@ if [ $stage -le 0 ] ; then
     for lmwt in `seq $min_lmwt $max_lmwt` ; do
         indices=${indices_dir}_$lmwt
         mkdir -p $indices
-  
-        acwt=`perl -e "print (1.0/$lmwt);"` 
+
+        acwt=`perl -e "print (1.0/$lmwt);"`
         [ ! -z $silence_word ] && silence_opt="--silence-word $silence_word"
         steps/make_index.sh $silence_opt --cmd "$cmd" --acwt $acwt $model_flags\
           --skip-optimization $skip_optimization --max-states $max_states \
@@ -130,32 +131,76 @@ if [ $stage -le 1 ]; then
       kwsoutput=${kwsoutdir}_$lmwt
       indices=${indices_dir}_$lmwt
       mkdir -p $kwsoutdir
-      steps/search_index.sh --cmd "$cmd" --indices-dir $indices --strict false\
+      local/search_index.sh --cmd "$cmd" --indices-dir $indices --strict false\
         $kwsdatadir $kwsoutput  || exit 1
+
+      nj=`cat $indices/num_jobs`
+      #this will truncate the file
+      rm -f $kwsoutput/results; touch $kwsoutput/results
+
+      # This is a memory-efficient way how to do the filtration
+      # we do this in this way because the result.* files can be fairly big
+      # and we do not want to run into troubles with memory
+      #% files=""
+      #% for job in `seq 1 $nj`; do
+      #%   if [ -f $kwsoutput/results.${job}.gz ] ; then
+      #%    files="$files <(gunzip -c $kwsoutput/results.${job}.gz)"
+      #%   elif[ -f $kwsoutput/results.${job} ] ; then
+      #%    files="$files $kwsoutput/results.${job}"
+      #%   else
+      #%     echo >&2 "The file $kwsoutput/results.${job}[.gz] does not exist"
+      #%     return 1
+      #%   fi
+      #% done
+      #% sort -m -u $files | local/search/filter_kws_results.pl --nbest $nbest |\
+      #%     sort -u > $kwsoutput/results
+
+      # this is similar to the previous code -- should produce the same
+      # results (albeit more slowly as it's relying on temporary files
+      # the memory requirements are extremely limited
+      # I decided to go for this as the previous code does rely
+      # on the assumption the partial result files are sorted.
+      # that is not true for the older generation of pipeline
+      for job in `seq 1 $nj`; do
+        {
+          if [ -f $kwsoutput/result.${job}.gz ]; then
+            gunzip -c $kwsoutput/result.${job}.gz
+          else
+            cat $kwsoutput/result.${job}
+          fi
+        } | cat - $kwsoutput/results | \
+          local/search/filter_kws_results.pl --nbest $nbest | \
+          sort -u > $kwsoutput/results.${job}
+        mv $kwsoutput/results.${job} $kwsoutput/results
+      done
+
   done
+
+
 fi
 
 if [ $stage -le 2 ]; then
-  echo "Writing normalized results"
-  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
-    set -e ';' set -o pipefail ';'\
-    cat ${kwsoutdir}_LMWT/result.* \| \
-      utils/write_kwslist.pl  --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
-        --segments=$datadir/segments --normalize=true --duptime=$duptime --remove-dup=true\
-        --map-utter=$kwsdatadir/utter_map --digits=3 \
-        - ${kwsoutdir}_LMWT/kwslist.xml || exit 1
-fi
-
-if [ $stage -le 3 ]; then
   echo "Writing unnormalized results"
   $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_unnormalized.LMWT.log \
     set -e ';' set -o pipefail ';'\
-    cat ${kwsoutdir}_LMWT/result.* \| \
+    cat ${kwsoutdir}_LMWT/results  \| sort -u \| \
         utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
           --segments=$datadir/segments --normalize=false --duptime=$duptime --remove-dup=true\
-          --map-utter=$kwsdatadir/utter_map \
+          --map-utter=$kwsdatadir/utter_map\
           - ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
+
+if [ $stage -le 3 ]; then
+  echo "Writing normalized results"
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutdir/write_normalized.LMWT.log \
+    set -e ';' set -o pipefail ';'\
+    cat ${kwsoutdir}_LMWT/results \| \
+      utils/write_kwslist.pl  --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
+        --segments=$datadir/segments --normalize=true --duptime=$duptime --remove-dup=true\
+        --map-utter=$kwsdatadir/utter_map --digits=3\
+        - ${kwsoutdir}_LMWT/kwslist.xml || exit 1
+fi
+
 
 if [ -z $extraid ] ; then
   extraid_flags=

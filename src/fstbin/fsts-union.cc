@@ -68,10 +68,14 @@ int main(int argc, char *argv[]) {
       } else {
         if (res_key != "") { 
           VectorFst<StdArc> out_fst;
-          fst::RmEpsilon(&res_fst);
           fst::Minimize(&res_fst);
-          fst::Determinize(res_fst, &out_fst);
-          fst_writer.Write(res_key, out_fst);
+          fst::RmEpsilon(&res_fst);
+          // fst::Determinize(res_fst, &out_fst);
+          // fst::Minimize(&out_fst);
+          // fst::RmEpsilon(&out_fst);
+          // fst::Minimize(&out_fst);
+          // fst_writer.Write(res_key, out_fst);
+          fst_writer.Write(res_key, res_fst);
           n_out_done++;
         }
         res_fst = fst;
@@ -81,10 +85,14 @@ int main(int argc, char *argv[]) {
     }
     if (res_key != "") {
       VectorFst<StdArc> out_fst;
-      fst::RmEpsilon(&res_fst);
       fst::Minimize(&res_fst);
-      fst::Determinize(res_fst, &out_fst);
-      fst_writer.Write(res_key, out_fst);
+      fst::RmEpsilon(&res_fst);
+      // fst::Determinize(res_fst, &out_fst);
+      // fst::Minimize(&out_fst);
+      // fst::RmEpsilon(&out_fst);
+      // fst::Minimize(&out_fst);
+      // fst_writer.Write(res_key, out_fst);
+      fst_writer.Write(res_key, res_fst);
       n_out_done++;
     }
 

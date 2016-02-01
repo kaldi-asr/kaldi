@@ -13,6 +13,7 @@ use_icu=true
 icu_transform="Any-Lower"
 kwlist_wordlist=false
 langid=107
+annotate=true
 silence_word=  # Optional silence word to insert (once) between words of the transcript.
 # End configuration section.
 
@@ -34,6 +35,7 @@ allowed switches:
       --case-insensitive <true|false>      # Shall we be case-sensitive or not?
                                          # Please not the case-sensitivness depends 
                                          # on the shell locale!
+      --annotate <true|false>
       --use-icu <true|false>           # Use the ICU uconv binary to normalize casing
       --icu-transform <string>           # When using ICU, use this transliteration
       --kwlist-wordlist                  # The file with the list of words is not an xml
@@ -109,7 +111,7 @@ if $kwlist_wordlist ; then
 ) > $kwsdatadir/kwlist.xml || exit 1
 else
   test -f $kwsdatadir/kwlist.xml && rm -f $kwsdatadir/kwlist.xml
-  cp "$kwlist_file" $kwsdatadir/kwlist.xml || exit 1
+  cp "$kwlist_file"  $kwsdatadir/kwlist.xml || exit 1
 fi
 
 if [ ! -z $rttm_file ] ; then
@@ -123,6 +125,12 @@ local/kws_data_prep.sh --case-insensitive ${case_insensitive} \
   $sil_opt --use_icu ${use_icu} --icu-transform "${icu_transform}" \
   $langdir $datadir $kwsdatadir || exit 1
 
+if  $annotate ; then 
+  set -x
+  rm -f $kwsdatadir/kwlist.xml
+  cat $kwsdatadir/keywords.txt | local/search/create_categories.pl | local/search/normalize_categories.pl > $kwsdatadir/categories
+  cat "$kwlist_file" | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsdatadir/kwlist.xml || exit 1
+fi
 #~  (
 #~  echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
 #~  while read line; do

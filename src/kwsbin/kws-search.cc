@@ -230,8 +230,6 @@ int main(int argc, char *argv[]) {
     TableWriter< BasicVectorHolder<double> > result_writer(result_wspecifier);
     TableWriter< BasicVectorHolder<double> > stats_writer(stats_wspecifier);
 
-    TableWriter< VectorFstTplHolder<KwsLexicographicArc> >
-                                                match_writer("ark,t:-");
 
     // Index has key "global"
     KwsLexicographicFst index = index_reader.Value("global");

@@ -52,7 +52,12 @@ srcdir=`dirname $decodedir`; # The model directory is one level up from decoding
 mkdir -p $kwsdir/log;
 nj=`cat $decodedir/num_jobs` || exit 1;
 echo $nj > $kwsdir/num_jobs;
+
 utter_id=$kwsdatadir/utter_id
+if [ ! -f $utter_id ] ; then
+  utter_id=$kwsdatadir/utt.map
+fi
+
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
   model=$srcdir/final.mdl;
