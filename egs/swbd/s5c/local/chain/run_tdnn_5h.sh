@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# _5h is as _5g, but only mean, no stddev, stats.
+
 # _5g is as _5e, but adding one statistics-extraction layer to the
 # splice indexes, in the middle of the network (with both mean
 # and stddev).
@@ -276,7 +278,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5g # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5h # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -373,7 +375,7 @@ if [ $stage -le 12 ]; then
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
     --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean+stddev(-99:3:9:99) -3,0,3 -6,-3,0" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean(-99:3:9:99) -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
