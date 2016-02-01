@@ -16,12 +16,20 @@
 # limitations under the License.
 #===============================================================================
 
-# This script takes the search output (alignment.csv and the statistics)
-# And for each keyword it tries to work out if the given path 
-# increases the ATWV or decreases it.
-# Those which decrease the ATWV can be subsequently removed from the FST
-# graph of the keyword
-#
+
+my $Usage = <<EOU;
+Takes the search output (alignment.csv and the statistics) and for each keyword 
+it tries to work out if the given path increases the ATWV or decreases it. 
+Those which decrease the ATWV can be subsequently removed from the keyword FST.
+
+Usage: cat stats | $0 [options] <datadir> <kws-alignment> <output-stats>
+ e.g.: gunzip -c exp/tri5/decode_dev10h.pem/kws/stats.*.gz | \
+         $0 --trials 36000 data/dev10h.pem alignment.csv keywords_stats
+
+Allowed options:
+  --trials  : number of trials (length of the search collection) for ATWV computation
+EOU
+
 use strict;
 use warnings;
 use utf8;
@@ -30,7 +38,7 @@ use GetOpt::Long;
 
 my $T = 36212.6725;
 
-GetOptions ("length=i" => \$T);
+GetOptions ("trials=i" => \$T);
 
 my $data = $ARGV[0];
 my $align = $ARGV[1];

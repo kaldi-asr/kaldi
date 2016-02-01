@@ -72,8 +72,17 @@ done
 echo KWSEval -e $ecf -r $rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
+if ! grep -q "NGramOrder" "$kwlist"; then
+  cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
+  kwlist=$kwsoutputdir/kwlist.xml
+elif ! grep -q "Characters" "$kwlist"; then
+  cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
+  kwlist=$kwsoutputdir/kwlist.xml
+fi
+
 KWSEval -e $ecf -r $rttm -t $kwlist -a  --zGlobalMeasures MAP \
     --zGlobalMeasures MAPpct --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
+    -O -B -q 'Characters:regex=.*' -q 'NGramOrder:regex=.*' \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f  ${kwsoutputdir}${f4de_prefix} || exit 1;
 
 duration=`cat ${kwsoutputdir}${f4de_prefix}/sum.txt | grep TotDur | cut -f 3 -d '|' | sed "s/\s*//g"`

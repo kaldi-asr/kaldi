@@ -72,22 +72,21 @@ if ! $skip_kws ; then
   [ ! -f $data_dir/extra_kws_tasks ] && exit 0
 
   for extraid in `cat $data_dir/extra_kws_tasks` ; do
-    [ -f $decode_dir/.done.kws.$extraid ] && continue;
-    local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
-      --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring true\
-       --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
-      $lang_dir $data_dir $decode_dir
-    touch $decode_dir/.done.kws.$extraid
-  done
+    if [ ! -f $decode_dir/.done.kws.$extraid ] ; then
+      local/kws_search.sh --cmd "$cmd" --extraid $extraid  \
+        --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring true\
+         --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
+        $lang_dir $data_dir $decode_dir
+      touch $decode_dir/.done.kws.$extraid
+    fi
 
-  if ! $skip_scoring ; then
-    for extraid in `cat $data_dir/extra_kws_tasks` ; do
+    if ! $skip_scoring ; then
       [ -f $decode_dir/.done.kws.${extraid}.scored ] && continue;
       local/kws_search.sh --cmd "$cmd" --extraid $extraid  --stage 4 \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --skip-scoring false\
          --max-lmwt ${max_lmwt} --indices-dir $decode_dir/kws_indices \
         $lang_dir $data_dir $decode_dir
       touch $decode_dir/.done.kws.${extraid}.scored
-    done
-  fi
+    fi
+  done
 fi

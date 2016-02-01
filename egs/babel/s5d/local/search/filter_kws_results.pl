@@ -16,6 +16,25 @@
 # limitations under the License.
 #===============================================================================
 
+my $Usage = <<EOU;
+Filters the kws results file and remove duplicates and/or prints out only given
+number of results with the best score (for each KWID individually).
+
+Usage: cat results | $0 <options>  > output
+ e.g.:  gunzip -c exp/tri5/kws/result.*.gz | $0 > exp/tri5/kws/results
+
+Allowed options:
+  --nbest           :  how many best results (for each KWID) should be printed
+                       (int, default -1, i.e. no limit)
+  --duptime         :  duplicates detection, tolerance (in frames) for being
+                       the same hits (int,  default = 50)
+
+CAVEATS:
+  The script tries to be  memory-effective. The impact of this is that we
+  assume the results are sorted by KWID (i.e. all entries with the same KWID
+  are in a continuous block). The user is responsible for sorting it.
+EOU
+
 use strict;
 use warnings;
 use utf8;
@@ -26,10 +45,21 @@ use Getopt::Long;
 # more than nbest hits in the output for each of the KWID
 #
 
-my $nbest = 250;
+my $nbest = -1;
 my $duptime = 50;
 
-GetOptions ("nbest=i" => \$nbest);
+GetOptions ("nbest=i" => \$nbest,
+            "duptime=i" => \$duptime) || {
+  print "Cannot parse the command-line parameters.\n";
+  print "$Usage\n";
+  die "Cannot continue\n";
+}
+
+if (@ARGV != 0) {
+  print "Incorrect number of parameters.\n";
+  print "$Usage\n";
+  die "Cannot continue\n";
+}
 
 # Function for sorting
 sub KwslistOutputSort {
@@ -49,47 +79,66 @@ sub KwslistOutputSort {
 sub KwslistDupSort {
   my ($a, $b, $duptime) = @_;
   if ($a->[1] ne $b->[1]) {
+    #file
     $a->[1] cmp $b->[1];
   } elsif (abs($a->[2]-$b->[2]) >= $duptime){
+    #start
     $a->[2] <=> $b->[2]; 
   } elsif ($a->[4] ne $b->[4]) {
     #score
-    $a->[4] <=> $b->[4]; 
+    $b->[4] <=> $a->[4]; 
   } else {
+    #end time
     $b->[3] <=> $a->[3];
   }
 }
 
-my %RESULTS;
+my @RESULTS;
+my %SEEN_KWS;
+my $kw = "";
 while ( my $line = <STDIN> ) {
   chomp $line;
   my @F = split " ", $line;
   @F == 5 || die "$0: Bad number of columns in raw results \"$line\"\n";
-  push @{$RESULTS{$F[0]}}, \@F;
-}
+  if ($F[0] eq $kw) {
+    push @RESULTS, \@F;
+  } elsif ($kw eq "" ) {
+    @RESULTS = ();
+    push @RESULTS, \@F;
+    $kw = $F[0];
+  } else {
 
-foreach my $kw (sort keys %RESULTS) {
-  my @tmp = sort { KwslistDupSort($a, $b, $duptime) } @{$RESULTS{$kw}};
-  my @results;
-  
-  @results = ();
-  if (@tmp >= 1) {push(@results, $tmp[0])};
-  for (my $i = 1; $i < scalar(@tmp); $i ++) {
-    my $prev = $results[-1];
-    my $curr = $tmp[$i];
-    if ((abs($prev->[2]-$curr->[2]) < $duptime ) &&
-        ($prev->[1] eq $curr->[1])) {
-      next;
-    } else {
-      push(@results, $curr);
+    my @results;
+    my @tmp = sort { KwslistDupSort($a, $b, $duptime) } @RESULTS;
+    
+    @results = ();
+    if (@tmp >= 1) {push(@results, $tmp[0])};
+    for (my $i = 1; $i < scalar(@tmp); $i ++) {
+      my $prev = $results[-1];
+      my $curr = $tmp[$i];
+      if ((abs($prev->[2]-$curr->[2]) < $duptime ) &&
+          ($prev->[1] eq $curr->[1])) {
+        next;
+      } else {
+        push(@results, $curr);
+      }
     }
-  }
+   
+    # this is probably needed only when nbest > 0
+    @results = sort { ($b->[4] + 0.0) <=> ($a->[4] + 0.0) } @results;
 
-  @results = sort { ($b->[4] + 0.0) <=> ($a->[4] + 0.0) } @results;
+    my $len;
+    if( $nbest > 0)  {
+      $len = scalar @results < $nbest ? scalar @results : $nbest;
+    } else {
+      $len = scalar @results;
+    }
+    for (my $i=0; $i < $len; $i++) {
+      print join(" ", @{$results[$i]}) . "\n";
+    }
 
-  my $len = scalar @results < $nbest ? scalar @results : $nbest;
-  for (my $i=0; $i < $len; $i++) {
-    print join(" ", @{$results[$i]}) . "\n";
+    @RESULTS = ();
+    push @RESULTS, \@F;
+    $kw = $F[0];
   }
 }
-
