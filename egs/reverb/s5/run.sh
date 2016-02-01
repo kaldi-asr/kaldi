@@ -307,10 +307,10 @@ if [ $stage -le 11 ]; then
     fi
 
     echo "### DECODING with $recog, basis_fmllr, $lm ###"
+    steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
     for dataset in data/REVERB_*{dt,et}/*; do
       (
 	decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-        steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
         steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
           $graph $dataset \
           exp/$recog/decode_basis_fmllr_$decode_suff
