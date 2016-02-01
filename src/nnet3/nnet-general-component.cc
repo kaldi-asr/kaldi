@@ -631,7 +631,9 @@ void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
 
 StatisticsPoolingComponent::StatisticsPoolingComponent():
     input_dim_(-1), input_period_(1), left_context_(-1), right_context_(-1),
-    num_log_count_features_(0), output_stddevs_(false) { }
+    num_log_count_features_(0), output_stddevs_(false),
+    variance_floor_(1.0e-10) { }
+
 
 StatisticsPoolingComponent::StatisticsPoolingComponent(
     const StatisticsPoolingComponent &other):
