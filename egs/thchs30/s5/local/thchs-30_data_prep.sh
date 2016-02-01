@@ -1,10 +1,12 @@
 #!/bin/bash
+#Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang).  Apache 2.0.
+
+#This script pepares the data directory for thchs30 recipe. 
+#It reads the corpus and get wav.scp and transcriptions.
 
 dir=$1
 corpus_dir=$2
 
-#clean thchs30 corpus
-#get wav.scp and transcriptions from thchs30 corpus
 
 cd $dir
 

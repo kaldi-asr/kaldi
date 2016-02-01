@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright 2016  Tsinghua University (Author: Chao Liu, Dong Wang).  Apache 2.0.
+
 
 from __future__ import print_function
 import optparse

@@ -1,6 +1,7 @@
 #!/bin/bash
+#Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang).  Apache 2.0.
 
-#dnn dae training
+#Conducts experiments of dae-based denoisng 
 
 dwntest=false
 stdtest=false

@@ -1,7 +1,8 @@
 #!/bin/bash
+#Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang).  Apache 2.0.
 
+#decoding wrapper for thchs30 recipe
 #run from ../
-#decoding wrapper
 
 nj=8
 mono=false

@@ -1,3 +1,5 @@
+# Copyright 2016  Tsinghua University (Author: Chao Liu).  Apache 2.0.
+  
 def energy(list mat):
     cdef float e
     cdef int i, j, l

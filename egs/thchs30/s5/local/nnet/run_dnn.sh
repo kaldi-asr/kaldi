@@ -1,4 +1,5 @@
 #!/bin/bash
+#Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang).  Apache 2.0.
 
 #run from ../..
 #DNN training, both xent and MPE
