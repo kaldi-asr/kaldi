@@ -435,7 +435,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
   // WARNING! the CUDA API is inconsistent accross versions!
 #ifdef _MSC_VER
   size_t mem_free, mem_total;
-  cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
+  cuMemGetInfo_v2(&mem_free, &mem_total);
 #else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
