@@ -20,21 +20,27 @@
 #include <limits>
 
 #include "base/kaldi-common.h"
+
 #include "util/common-utils.h"
 #include "base/timer.h"
 
-#include <bitset>
-#include <iostream>
+#include "cudamatrix/cu-math.h"
+#include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-array.h"
 
+#include <bitset>
+
+#include <iostream>
 
 std::vector<int> toBinary(int n, int num_bits) {
   using namespace kaldi;
 
-  if (num_bits > 10) {
+  if (num_bits > 60) {
     KALDI_ERR << "Doesn't support more than 10 streams";
   }
 
-  std::bitset<10> bin_n(n); //10 upper limit, Hardcoded
+  std::bitset<60> bin_n(n); //10 upper limit, Hardcoded
   std::string mystring = bin_n.to_string<char,std::string::traits_type,std::string::allocator_type>();
   std::vector<int32> bin_vec(num_bits, 0);
   
@@ -64,17 +70,17 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
 
-    std::string stream_combination_pvals;
-    po.Register("stream-combination-pvals", &stream_combination_pvals, "Probability values Feature transform in front of main network (in nnet format)");
+    double block_dropout_retention = 0.5;
+    po.Register("block-dropout-retention", &block_dropout_retention, "number between 0..1, saying how many neurons to preserve (0.0 will keep original value");
 
     int32 stream_combination = 0;
-    po.Register("stream-combination", &stream_combination, "Assign mask, so that for all frames stream-combination is present");
+    po.Register("stream-combination", &stream_combination, "converts to binary to get stream mask");
 
     std::string stream_mask;
     po.Register("stream-mask", &stream_mask, "Stream mask (Kaldi rspecifier).");
 
     std::string crossvalidate = "false";
-    po.Register("cross-validate", &crossvalidate, "If provided expects --stream-combination or --stream-mask, else does random masking");
+    po.Register("cross-validate", &crossvalidate, "If provided expects single --stream-combinations or --stream-mask, else does random masking");
 
     int32 seed = 777;
     po.Register("seed", &seed, "Seed for random number generator");
@@ -101,39 +107,38 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     BaseFloatMatrixWriter feature_writer(feature_wspecifier);
 
+    std::vector<int> stream_indices;
+    bool ret1 = SplitStringToIntegers(stream_indices_str, ":", true, &stream_indices);
+    if (!ret1) {
+      KALDI_ERR << "Cannot parse the --stream-indices. It should be"
+		<< "colon-separated list of integers";
+    }
+    int32 num_streams = stream_indices.size() - 1;
+
+    if (crossvalidate == "true") {
+      if ((stream_mask == "" ) && (stream_combination == 0)) {
+	KALDI_ERR << "Given crossvalidate=true , but not provided valid stream-mask or stream-combination";
+      }
+    }
+
     RandomAccessBaseFloatMatrixReader stream_mask_reader;
     if (stream_mask != "") {
       stream_mask_reader.Open(stream_mask);
     }
-
-
-    std::vector<int> stream_indices;
-    bool ret = SplitStringToIntegers(stream_indices_str, ":", true, &stream_indices);
-    if (!ret) {
-      KALDI_ERR << "Cannot parse the stream_indices. It should be"
-		<< "colon-separated list of integers";
-    }
-
-    if (crossvalidate == "true") {
-      if ((stream_mask == "") && (stream_combination == 0)) {
-	KALDI_ERR << "Given --cross-validate=true"
-	          << " but --stream-mask='' and --stream-combination=0";
-      }
-    }
-
-    int32 num_streams = stream_indices.size() - 1;
-    int32 num_stream_combns = pow(2, num_streams) - 1; // -1 to remove null combination
-
-    // create a look up table for stream_combination_number to mask
-    std::vector<std::vector<int32> > stream_combination_to_mask;
-    stream_combination_to_mask.push_back(toBinary(0, num_streams));
-    for (int32 i=1; i<=num_stream_combns; i++) {
-      stream_combination_to_mask.push_back(toBinary(i, num_streams));
-    }
+    std::vector<int32> stream_combination_to_mask;
+    stream_combination_to_mask = toBinary(stream_combination, num_streams);
 
     Timer time;
     double time_now = 0;
-    int32 num_done = 0;
+    int32 num_done = 1;
+
+    CuMatrix<BaseFloat> feats, nnet_out;
+    Matrix<BaseFloat> host_out;
+
+    CuRand<BaseFloat> rand_;
+    CuMatrix<BaseFloat> block_dropout_mask;
+    Matrix<BaseFloat> block_dropout_mask_out;
+
     // iterate over all feature files
     for (; !feature_reader.Done(); feature_reader.Next()) {
       // read
@@ -150,57 +155,78 @@ int main(int argc, char *argv[]) {
       // Check if feature_dim == end of stream_indices
       KALDI_ASSERT(mat.NumCols() == stream_indices[stream_indices.size()-1]);
 
-      if (crossvalidate == "false") {
+      // push it to gpu
+      feats = mat;
 
-	// Apply random stream mask to each row mat and put it in out_mat
-	for (int32 i=0; i<mat.NumRows(); i++) {
-	  int32 this_frame_stream_combination = 0;
-	  // Randomly select stream combination
-	  if (stream_combination_pvals == "" ) {
-	    this_frame_stream_combination = RandInt(1, num_stream_combns);
-	  } else {
-	    // Biased random number generation based on stream_combination_pvals
-	    KALDI_ERR << "Not yet implemented random number generation based on stream_combination_pvals";  
-	  }
+      block_dropout_mask.Resize(feats.NumRows(), num_streams);
+      CuMatrix<BaseFloat> this_stream_dropout_mask;
+      this_stream_dropout_mask.Resize(block_dropout_mask.NumRows(), 1);
+
+      CuVector<BaseFloat> this_stream_mask;
+      this_stream_mask.Resize(this_stream_dropout_mask.NumRows());
+
+      CuMatrix<BaseFloat> tmp_row_stream_mask;
+      tmp_row_stream_mask.Resize(num_streams, 1);
+
+      if (crossvalidate == "false") { // training stage, randomly dropout streams
+
+	for (int32 j=0; j<num_streams; j++) {
 	  
-	  SubVector<BaseFloat> Row(mat, i);
-	  std::vector<int> this_frame_stream_mask = stream_combination_to_mask[this_frame_stream_combination];
-	  for (int32 j=0; j<num_streams; j++) {
-	    SubVector<BaseFloat> subRow(Row, stream_indices[j], stream_indices[j+1] - stream_indices[j]);
-	    subRow.Scale(this_frame_stream_mask[j]);
-	  }
+	  this_stream_dropout_mask.Set(block_dropout_retention);
+	  rand_.BinarizeProbs(this_stream_dropout_mask, &this_stream_dropout_mask);
+	  
+	  this_stream_mask.CopyColFromMat(this_stream_dropout_mask, 0);
+	  block_dropout_mask.CopyColFromVec(this_stream_mask, j);
+
 	}
-
-      } 
-      else {
-	if (stream_mask != "") {
-	  Matrix<BaseFloat> this_utt_stream_mask;
-	  this_utt_stream_mask = stream_mask_reader.Value(utt);
-	  for (int32 j=0; j<num_streams; j++) {
-
-	    SubMatrix<BaseFloat> this_stream(mat.ColRange(stream_indices[j], stream_indices[j+1] - stream_indices[j]));
-	    Vector<BaseFloat> this_stream_mask;
-
-	    this_stream_mask.Resize(this_utt_stream_mask.NumRows());
-	    this_stream_mask.CopyColFromMat(this_utt_stream_mask, j);
-	    
-	    this_stream.MulRowsVec(this_stream_mask);
-	  }
-
-	} else if (stream_combination != 0) {
-	  std::vector<int> frame_stream_mask = stream_combination_to_mask[stream_combination];
-	  for (int32 i=0; i<mat.NumRows(); i++) {
-	    SubVector<BaseFloat> Row(mat, i);
-	    for (int32 j=0; j<num_streams; j++) {
-	      SubVector<BaseFloat> subRow(Row, stream_indices[j], stream_indices[j+1] - stream_indices[j]);
-	      subRow.Scale(frame_stream_mask[j]);
+	// Fix rows having all zeros
+	for (int32 i=0; i<block_dropout_mask.NumRows(); i++) {
+	  CuSubVector<BaseFloat> this_row(block_dropout_mask, i);
+	  if (this_row.Sum() == 0) {
+	    while (1) {
+	      tmp_row_stream_mask.Set(block_dropout_retention);
+	      rand_.BinarizeProbs(tmp_row_stream_mask, &tmp_row_stream_mask);
+	      // Copy to this_row
+	      this_row.CopyColFromMat(tmp_row_stream_mask, 0);
+	      if (this_row.Sum() !=0 ) {
+		break;
+	      }
 	    }
 	  }
 	}
+      } else { // testing stage
+	if (stream_mask != "") {
+
+	  Matrix<BaseFloat> this_utt_stream_mask;
+	  this_utt_stream_mask = stream_mask_reader.Value(utt);
+	  
+	  block_dropout_mask = this_utt_stream_mask;
+	} else {
+	  if (stream_combination == 0) {
+	    KALDI_ERR << "stream-combination=0, invalid options\n";
+	  }
+
+	  for (int32 j=0; j<num_streams; j++) {
+	    CuSubMatrix<BaseFloat> this_stream_block_dropout_mask(block_dropout_mask.ColRange(j, 1));
+	    this_stream_block_dropout_mask.Set(stream_combination_to_mask[j]);
+	  }
+	}
+      }      
+
+      for (int32 j=0; j<num_streams; j++) {
+	this_stream_mask.CopyColFromMat(block_dropout_mask, j);
+	CuSubMatrix<BaseFloat> this_stream_feats(feats.ColRange(stream_indices[j], stream_indices[j+1] -stream_indices[j]));
+	this_stream_feats.MulRowsVec(this_stream_mask);
       }
-    
+
+      block_dropout_mask_out.Resize(block_dropout_mask.NumRows(), block_dropout_mask.NumCols());
+      block_dropout_mask.CopyToMat(&block_dropout_mask_out);
+      
+      host_out.Resize(feats.NumRows(), feats.NumCols());
+      feats.CopyToMat(&host_out);
+
       // Write
-      feature_writer.Write(feature_reader.Key(), mat);
+      feature_writer.Write(feature_reader.Key(), host_out);
 
       // progress log
       if (num_done % 100 == 0) {
@@ -211,8 +237,10 @@ int main(int argc, char *argv[]) {
       }
       num_done++;
       tot_t += mat.NumRows();
+
     }
-    
+
+
     // final message
     KALDI_LOG << "Done " << num_done << " files" 
               << " in " << time.Elapsed()/60 << "min," 

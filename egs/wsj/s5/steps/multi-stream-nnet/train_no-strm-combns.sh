@@ -406,7 +406,7 @@ fi
 ###### TRAIN ######
 echo
 echo "# RUNNING THE NN-TRAINING SCHEDULER"
-steps/multi-stream-nnet/train_scheduler.sh \
+steps/multi-stream-nnet/train_scheduler_no-strm-combns.sh \
   ${scheduler_opts} \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${train_tool_opts:+ --train-tool-opts "$train_tool_opts"} \
