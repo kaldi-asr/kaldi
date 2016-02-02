@@ -213,7 +213,8 @@ if o.bottleneck_dim != 0:
              (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons)), o.max_norm)
       print "%s <InputDim> %d <OutputDim> %d" % (o.activation_type, num_hid_neurons, num_hid_neurons)
 
-if not o.bottleneck_before_last_affine:
+
+if (o.bottleneck_before_last_affine == False) or (o.bottleneck_dim == 0):
   # Last AffineTransform (10x smaller learning rate on bias)
   print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f" % \
       (num_hid_neurons, num_leaves, 0.0, 0.0, \
