@@ -98,7 +98,7 @@ if [ ! -e $dir/.done_iter00.initial.cv ]; then
   $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new --cross-validate=true --stream-combinations=$all_stream_combn $stream_indices ark:- ark:- |" "$labels_cv" $mlp_best \
+    "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=$all_stream_combn $stream_indices ark:- ark:- |" "$labels_cv" $mlp_best \
   2>>$log || exit 1;
   touch $dir/.done_iter00.initial.cv
 fi
@@ -135,7 +135,7 @@ for iter in $(seq -w $max_iters); do
       continue
     fi
     this_seed=$(($seed+${iter#0}+$ii))
-    this_feats_tr="$feats_tr nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new --seed=$this_seed --stream-combinations=$stream_combns $stream_indices ark:- ark:- |"
+    this_feats_tr="$feats_tr nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --seed=$this_seed $stream_indices ark:- ark:- |"
     log=$dir/log/iter${iter}_epoch${ii}.tr.log; hostname>$log;
     $train_tool --cross-validate=false --randomize=true --verbose=$verbose $train_tool_opts \
       --learn-rate=$learn_rate --momentum=$momentum \
@@ -158,7 +158,7 @@ for iter in $(seq -w $max_iters); do
     $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
       ${frame_weights:+ "--frame-weights=$frame_weights"} \
       ${utt_weights:+ "--utt-weights=$utt_weights"} \
-      "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new --cross-validate=true --stream-combinations=${all_stream_combn} $stream_indices ark:- ark:- |" "$labels_cv" $mlp_next \
+      "$feats_cv nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask --cross-validate=true --stream-combination=${all_stream_combn} $stream_indices ark:- ark:- |" "$labels_cv" $mlp_next \
     2>>$log || exit 1
     touch $dir/.done_iter${iter}.cv
   fi
