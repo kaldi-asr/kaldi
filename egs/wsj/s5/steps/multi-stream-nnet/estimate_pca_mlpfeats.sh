@@ -113,8 +113,7 @@ if [ -e $D/ivector_dim ]; then
 fi
 
 # Add Multi-stream options
-#feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
-feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
+feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
 
 # keep track of transf_nnet_out_opts, 
 # so no need to supply it

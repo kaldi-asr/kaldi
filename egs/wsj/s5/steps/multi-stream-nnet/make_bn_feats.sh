@@ -102,7 +102,7 @@ if [ -e $D/ivector_dim ]; then
 fi
 
 # Add Multi-stream options
-feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask-new $multi_stream_opts ark:- ark:- |"
+feats="$feats nnet-forward $feature_transform ark:- ark:- | apply-feature-stream-mask $multi_stream_opts ark:- ark:- |"
 
 if [ $htk_save == false ]; then
   # Run the forward pass,
