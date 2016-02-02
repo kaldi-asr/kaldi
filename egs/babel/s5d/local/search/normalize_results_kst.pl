@@ -45,21 +45,22 @@ my $probs=0;
 my $bsum_filename;
 
 GetOptions("duration|trials=f" => \$duration,
-           "beta=f"     => \$beta,
-           "ntrue-scale=f" => \$ntrue_scale,
-           "probs"        => \$probs,
+           "ntrue-scale=f"     => \$ntrue_scale,
+           "beta=f"            => \$beta,
+           "probs"             => \$probs,
            "thr|threshold=f"   => \$global_thr,
-           "ntrue-table=s" => \$ntrue_table_filename,
-           "bsum-table=s" => \$bsum_filename) || {
-  print "Cannot parse the command-line options.\n";
-  print "$Usage\n";
-  die "Cannot continue\n";
+           "ntrue-table=s"     => \$ntrue_table_filename,
+           "bsum-table=s"      => \$bsum_filename) or do 
+ {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 if (@ARGV != 0) {
-  print "Incorrect number of command-line parameters\n";
-  print "$Usage\n";
-  die "Cannot continue\n";
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 sub ComputeKST {
