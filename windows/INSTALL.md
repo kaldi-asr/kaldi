@@ -146,7 +146,11 @@ for their processors. Unfortunately it isn't free. OpenBLAS is free alternative 
 
     For example, for a build supporting CUDA using OpenBLAS and VS 2015 you would run:
 
-         (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-cuda --enable-openblas
+         (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-openblas
+
+    Another example, for VS2013 and CUDA support:
+
+         (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
 15. Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
