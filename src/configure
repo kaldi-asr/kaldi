@@ -52,7 +52,7 @@ function is_set {
 
 ##   First do some checks.  These verify that all the things are
 ##   here that should be here.
-if [ "`basename $PWD`" != "src" ]; then
+if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
   exit 1
 fi
