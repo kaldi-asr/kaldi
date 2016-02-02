@@ -574,6 +574,7 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
 CuDevice::~CuDevice() {
   if (Enabled()) {
     cublasDestroy(handle_);
+    cudaDeviceReset();
   }
 }
 
