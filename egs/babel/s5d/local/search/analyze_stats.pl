@@ -38,7 +38,18 @@ use GetOpt::Long;
 
 my $T = 36212.6725;
 
-GetOptions ("trials=i" => \$T);
+GetOptions ("trials=i" => \$T) or do
+ {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
+
+if (@ARGV != 3) {
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
 
 my $data = $ARGV[0];
 my $align = $ARGV[1];

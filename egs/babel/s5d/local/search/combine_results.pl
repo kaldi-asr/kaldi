@@ -43,9 +43,9 @@ EOU
 use strict;
 use warnings "FATAL";
 use utf8;
-
-use Getopt::Long;
+use POSIX;
 use Data::Dumper;
+use Getopt::Long;
 use File::Basename;
 
 $Data::Dumper::Indent = 2;
@@ -308,9 +308,17 @@ GetOptions('tolerance=f'    => \$TOL,
            'probs'          => sub { 
                                     $LIKES = 0; 
                                   }
-  ) || die "Cannot parse the program options";
+  ) || do {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
 
-@ARGV >= 3 || die $Usage;
+if (@ARGV >= 3) {
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
 
 # Workout the input/output source
 @ARGV % 2 == 1 || die "Bad number of (weight, results_list) pairs.\n";

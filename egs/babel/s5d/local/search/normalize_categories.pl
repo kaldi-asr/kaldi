@@ -51,16 +51,17 @@ use POSIX;
 
 my $one_per_line;
 
-GetOptions("one-per-line", \$one_per_line) || {
-  print "Cannot parse the command-line format.\n";
-  print "$Usage\n";
-  print "Cannot continue\n";
+GetOptions("one-per-line", \$one_per_line) or 
+  do {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 if (@ARGV != 0) {
-  print "Invalid number of parameters.\n";
-  print "$Usage\n";
-  print "Cannot continue\n";
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 my %GROUPS;

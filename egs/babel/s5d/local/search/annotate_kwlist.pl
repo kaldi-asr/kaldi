@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #===============================================================================
-# Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
+# Copyright 2016  (Author: Yenda Trmal <jtrmal@gmail.com>)
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ Usage: $0 [options] <category-table>  > output.kwlist.xml
 
 EOU
 use strict;
-use warnings;
+use warnings "FATAL";
 use utf8;
 use XML::Parser;
 use Data::Dumper;
@@ -140,6 +140,13 @@ sub kwtext_ {
     }
   }
 }
+
+if (@ARGV != 1) {
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
+
 
 #Read the categories table
 open(G, $ARGV[0]) or die "Cannot open the categories table $ARGV[0]";

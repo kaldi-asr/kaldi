@@ -38,6 +38,7 @@ EOU
 use strict;
 use warnings;
 use utf8;
+use POSIX;
 use Data::Dumper;
 use Getopt::Long;
 
@@ -49,16 +50,16 @@ my $nbest = -1;
 my $duptime = 50;
 
 GetOptions ("nbest=i" => \$nbest,
-            "duptime=i" => \$duptime) || {
-  print "Cannot parse the command-line parameters.\n";
-  print "$Usage\n";
-  die "Cannot continue\n";
+            "duptime=i" => \$duptime) ||  do {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 if (@ARGV != 0) {
-  print "Incorrect number of parameters.\n";
-  print "$Usage\n";
-  die "Cannot continue\n";
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 # Function for sorting

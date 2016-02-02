@@ -35,22 +35,26 @@ EOU
 use strict;
 use warnings;
 use utf8;
-use open qw(:std :utf8);
+use POSIX;
 use Data::Dumper;
 use Getopt::Long;
-use POSIX;
+use open qw(:std :utf8);
 
 binmode STDIN, ":utf8";
 binmode STDOUT, ":utf8";
 binmode STDERR, ":utf8";
 
 my $result_format;
-GetOptions("results", \$result_format);
+GetOptions("results", \$result_format) or do {
+  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
+}
 
 if ( @ARGV > 1 ) {
-  print "Incorrect number of parameters\n";
-  print "$Usage\n";
-  die "Cannot continue\n";
+  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$Usage\n";
+  die "Cannot continue\n"
 }
 
 sub QuantizeCount {
