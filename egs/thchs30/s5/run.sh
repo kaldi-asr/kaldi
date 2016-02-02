@@ -7,15 +7,15 @@
 H=`pwd`  #exp home
 n=8      #parallel jobs
 
-thchs=/nfs/public/materials/data/thchs30-openslr
 #corpus and trans directory
+thchs=/nfs/public/materials/data/thchs30-openslr
+
 #you can obtain the database by uncommting the following lines
-#( cd $thchs
-#     echo "downloading THCHS30 at $PWD ..."
-#     wget http://www.openslr.org/resources/18/data_thchs30.tgz
-#     wget http://www.openslr.org/resources/18/resource.tgz
-#     tar xvf data_thchs30.tgz && tar xvf resource.tgz 
-#)
+#[ -d $thchs ] || mkdir -p $thchs  || exit 1
+#echo "downloading THCHS30 at $thchs ..."
+#local/download_and_untar.sh $thchs  http://www.openslr.org/resources/18 data_thchs30  || exit 1
+#local/download_and_untar.sh $thchs  http://www.openslr.org/resources/18 resource      || exit 1
+#local/download_and_untar.sh $thchs  http://www.openslr.org/resources/18 test-noise    || exit 1
 
 #data preparation 
 #generate text, wav.scp, utt2pk, spk2utt
@@ -110,4 +110,4 @@ local/nnet/run_dnn.sh --stage 0 --nj $n  exp/tri4b exp/tri4b_ali exp/tri4b_ali_c
 #python2.6 or above is required for noisy data generation.
 #To speed up the process, pyximport for python is recommeded.
 #In order to use the standard noisy test data, set "--stdtest true" and "--dwntest true"
-local/dae/run_dae.sh --stage 0  --stdtest false --dwntest false $thchs || exit 1;
+local/dae/run_dae.sh --stage 0  $thchs || exit 1;

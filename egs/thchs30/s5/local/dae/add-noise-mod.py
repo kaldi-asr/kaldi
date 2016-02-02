@@ -16,7 +16,7 @@ import os
 
 try:
   import pyximport; pyximport.install()
-  from util import *
+  from thchs30_util import *
 except:
   print("Cython possibly not installed, using standard python code. The process might be slow", file=sys.stderr)
 
