@@ -148,7 +148,7 @@ for their processors. Unfortunately it isn't free. OpenBLAS is free alternative 
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-openblas
 
-    Another example, for a build using OpenBLAS, VS 2013 and CUDA support:
+    Another example, for OpenBLAS, VS 2013 and CUDA support:
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
