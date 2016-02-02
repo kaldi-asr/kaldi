@@ -144,11 +144,11 @@ for their processors. Unfortunately it isn't free. OpenBLAS is free alternative 
     `--enable-mlk` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MLK support.
     CUDA is disabled by default. The default Visual Studio version is 11.0 (Visual Studio 2012).
 
-    For example, for a build supporting CUDA using OpenBLAS and VS 2015 you would run:
+    For example, for a build using OpenBLAS and VS 2015 you would run:
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2015 --enable-openblas
 
-    Another example, for VS2013 and CUDA support:
+    Another example, for a build using OpenBLAS, VS 2013 and CUDA support:
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
