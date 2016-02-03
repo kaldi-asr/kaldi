@@ -292,7 +292,7 @@ void SetLearningRates(const Vector<BaseFloat> &learning_rates,
         KALDI_ERR << "Updatable component does not inherit from class "
             "UpdatableComponent; change this code.";
       KALDI_ASSERT(i < learning_rates.Dim());
-      uc->SetActualLearningRate(learning_rates(i));
+      uc->SetActualLearningRate(learning_rates(i++));
     }
   }
 }
@@ -326,7 +326,7 @@ void ScaleNnetComponents(const Vector<BaseFloat> &scale_factors,
         KALDI_ERR << "Updatable component does not inherit from class "
             "UpdatableComponent; change this code.";
       KALDI_ASSERT(i < scale_factors.Dim());
-      uc->Scale(scale_factors(i));
+      uc->Scale(scale_factors(i++));
     }
   }
 }
