@@ -62,9 +62,9 @@ struct NnetSimpleComputationOptions {
                    "Number of frames of additional left-context to add on top "
                    "of the neural net's inherent left context (may be useful in "
                    "recurrent setups");
-    opts->Register("extra-left-context", &extra_left_context,
-                   "Number of frames of additional left-context to add on top "
-                   "of the neural net's inherent left context (may be useful in "
+    opts->Register("extra-right-context", &extra_right_context,
+                   "Number of frames of additional right-context to add on top "
+                   "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
     opts->Register("extra-left-context-initial", &extra_left_context_initial,
                    "If >0, overrides the --extra-left-context value at the start "
@@ -76,10 +76,6 @@ struct NnetSimpleComputationOptions {
                    "Required if the frame-rate of the output (e.g. in 'chain' "
                    "models) is less than the frame-rate of the original "
                    "alignment.");
-    opts->Register("extra-right-context", &extra_right_context,
-                   "Number of frames of additional right-context to add on top "
-                   "of the neural net's inherent right context (may be useful in "
-                   "recurrent setups");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,
