@@ -2,8 +2,6 @@
 
 # tdnn or RNN with 'jesus layer'
 
-
-
 #  inputs to jesus layer:
 #      - for each spliced version of the previous layer the output (of dim  --jesus-forward-output-dim)
 
@@ -130,6 +128,12 @@ class StatisticsConfig:
     # OutputDim() returns the output dimension of the node that this produces.
     def OutputDim(self):
         return self.input_dim * (2 if self.output_stddev else 1)
+
+    # OutputDims() returns an array of output dimensions, consisting of
+    # [ input-dim ] if just "mean" was specified, otherwise
+    # [ input-dim input-dim ]
+    def OutputDims(self):
+        return [ self.input_dim, self.input_dim ] if self.output_stddev else [ self.input_dim ]
 
     # Descriptor() returns the textual form of the descriptor by which the
     # output of this node is to be accessed.
@@ -293,7 +297,7 @@ for l in range(1, num_hidden_layers + 1):
                 stats = StatisticsConfig(s, cur_affine_output_dim, cur_output)
                 stats.WriteConfigs(f)
                 splices.append(stats.Descriptor())
-                spliced_dims.append(stats.OutputDim())
+                spliced_dims.extend(stats.OutputDims())
 
         # get the input to the Jesus layer.
         cur_input = 'Append({0})'.format(', '.join(splices))

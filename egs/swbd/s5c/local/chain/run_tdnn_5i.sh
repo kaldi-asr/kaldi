@@ -1,17 +1,6 @@
 #!/bin/bash
 
-# _5h is as _5g, but only mean, no stddev, stats.
-
-# The following comparison is with 150 frames per chunk
-# in both the 5g and 5h decodes.  No consistent WER difference
-# with either 5e or 5g.
-#System                       5e        5g        5h
-#WER on train_dev(tg)      15.43     15.46     15.45
-#WER on train_dev(fg)      14.32     14.38     14.34
-#WER on eval2000(tg)        17.3      17.3      17.2
-#WER on eval2000(fg)        15.5      15.5      15.7
-#Final train prob      -0.110056 -0.105725 -0.106213
-#Final valid prob      -0.129184 -0.125756 -0.126809
+# _5i is as _5g, but adding the mean+stddev features for all hidden layers.
 
 # _5g is as _5e, but adding one statistics-extraction layer to the
 # splice indexes, in the middle of the network (with both mean
@@ -289,7 +278,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5h # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5i # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -386,7 +375,7 @@ if [ $stage -le 12 ]; then
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
     --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean(-99:3:9:99) -3,0,3 -6,-3,0" \
+    --splice-indexes "-1,0,1 -1,0,1,2,mean+stddev(-99:1:9:99) -3,0,3,mean+stddev(-99:3:9:99) -3,0,3,mean+stddev(-99:3:9:99) -3,0,3,mean+stddev(-99:3:9:99) -6,-3,0,mean+stddev(-99:3:9:99)" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
