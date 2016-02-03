@@ -38,13 +38,13 @@ int main(int argc, char *argv[]) {
         "e.g.: nnet3-compute-prob 0.raw ark:valid.egs\n";
 
     
-    // This program doesn't support using a GPU, because these probabilities are
-    // used for diagnostics, and you can just compute them with a small enough
-    // amount of data that a CPU can do it within reasonable time.
+    std::string use_gpu = "no";
 
     NnetComputeProbOptions opts;
     
     ParseOptions po(usage);
+    po.Register("use-gpu", &use_gpu,
+                "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     opts.Register(&po);
     
@@ -54,7 +54,11 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().SelectGpuId(use_gpu);
+#endif
+
     std::string raw_nnet_rxfilename = po.GetArg(1),
         examples_rspecifier = po.GetArg(2);
 
@@ -69,7 +73,11 @@ int main(int argc, char *argv[]) {
       prob_computer.Compute(example_reader.Value());
 
     bool ok = prob_computer.PrintTotalStats();
-    
+
+#if HAVE_CUDA==1
+    CuDevice::Instantiate().PrintProfile();
+#endif
+
     return (ok ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
