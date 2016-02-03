@@ -4,6 +4,46 @@
 # splice indexes, in the middle of the network (with both mean
 # and stddev).
 
+# Here are WERs when the frames-per-chunk was 50:
+#./compare_wer.sh 5e 5g
+#System                       5e        5g
+#WER on train_dev(tg)      15.43     15.62
+#WER on train_dev(fg)      14.32     14.42
+#WER on eval2000(tg)        17.3      17.7
+#WER on eval2000(fg)        15.5      16.0
+
+# and here with 150:
+# WER on train_dev(tg)      15.43     15.46
+# WER on train_dev(fg)      14.32     14.38
+# WER on eval2000(tg)        17.3      17.3
+# WER on eval2000(fg)        15.5      15.5
+
+
+# and here with 300 ... we do see a small improvement
+# at this value.  (could probably improve it further
+# by modifying the model to average over a larger window).
+#WER on train_dev(tg)      15.43     15.29
+#WER on train_dev(fg)      14.32     14.17
+#WER on eval2000(tg)        17.3      17.2
+#WER on eval2000(fg)        15.5      15.4
+#Final train prob      -0.110056 -0.105725
+#Final valid prob      -0.129184 -0.125756
+
+# Below is also with chunk-size=300, but with the 'wide' model
+# that sees more context.  Oddly, the WER is worse.  It looks like
+# the model may be doing something different than just learning
+# speaker characteristics.
+#./compare_wer.sh 5e 5g
+#System                       5e        5g
+#WER on train_dev(tg)      15.43     15.54
+#WER on train_dev(fg)      14.32     14.34
+#WER on eval2000(tg)        17.3      17.3
+#WER on eval2000(fg)        15.5      15.6
+#Final train prob      -0.110056 -0.105725
+#Final valid prob      -0.129184 -0.125756
+
+
+
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
 
@@ -405,7 +445,7 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --frames-per-chunk 150 \
+          --frames-per-chunk 300 \
           --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
@@ -417,5 +457,27 @@ if [ $stage -le 14 ]; then
       ) &
   done
 fi
+
+# if [ $stage -le 15 ]; then
+#   # get wide-context model
+#   nnet3-am-copy --binary=false $dir/final.mdl - | \
+#     sed 's/Context> 99/Context> 306/g' | nnet3-am-copy - $dir/wide.mdl
+#   for decode_set in train_dev eval2000; do
+#       (
+#       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+#           --frames-per-chunk 300 --iter wide \
+#           --nj 50 --cmd "$decode_cmd" \
+#           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+#          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
+#       if $has_fisher; then
+#           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+#             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+#             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
+#       fi
+#       ) &
+#   done
+# fi
+
+
 wait;
 exit 0;

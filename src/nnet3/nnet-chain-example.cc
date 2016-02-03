@@ -372,7 +372,7 @@ void GetChainComputationRequest(const Nnet &nnet,
     const NnetIo &io = eg.inputs[i];
     const std::string &name = io.name;
     int32 node_index = nnet.GetNodeIndex(name);
-    if (node_index == -1 &&
+    if (node_index == -1 ||
         !nnet.IsInputNode(node_index))
       KALDI_ERR << "Nnet example has input named '" << name
                 << "', but no such input node is in the network.";

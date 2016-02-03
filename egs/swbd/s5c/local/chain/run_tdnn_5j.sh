@@ -1,21 +1,8 @@
 #!/bin/bash
 
-# _5h is as _5g, but only mean, no stddev, stats.
 
-# The following comparison is with 150 frames per chunk
-# in both the 5g and 5h decodes.  No consistent WER difference
-# with either 5e or 5g.
-#System                       5e        5g        5h
-#WER on train_dev(tg)      15.43     15.46     15.45
-#WER on train_dev(fg)      14.32     14.38     14.34
-#WER on eval2000(tg)        17.3      17.3      17.2
-#WER on eval2000(fg)        15.5      15.5      15.7
-#Final train prob      -0.110056 -0.105725 -0.106213
-#Final valid prob      -0.129184 -0.125756 -0.126809
-
-# _5g is as _5e, but adding one statistics-extraction layer to the
-# splice indexes, in the middle of the network (with both mean
-# and stddev).
+# _5j is as _5e, but omitting the iVectors.   I'm re-using the egs from 2y, even
+# though they had iVectors-- hopefully it won't matter.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
@@ -289,7 +276,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5h # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5j # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -384,9 +371,8 @@ if [ $stage -le 12 ]; then
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --egs-dir exp/chain/tdnn_2y_sp/egs \
     --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean(-99:3:9:99) -3,0,3 -6,-3,0" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
@@ -396,7 +382,6 @@ if [ $stage -le 12 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
@@ -418,9 +403,8 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --frames-per-chunk 150 \
+         --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
