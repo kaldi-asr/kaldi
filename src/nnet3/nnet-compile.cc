@@ -189,9 +189,19 @@ void Compiler::CreateStepInfo(
     int32 num_rows = num_ids, num_cols = node.Dim(nnet_);
 
     if (node.node_type != kDimRange) {
-      this_info.value = computation->NewMatrix(num_rows, num_cols);
+      MatrixStrideType value_stride_type =
+          ((node_.node_type == kComponent &&
+            (nnet_.GetComponent(node.u.component_index)->Properties() &
+             kInputContiguous)) ? kStrideEqualNumCols : kDefaultStride),
+          deriv_stride_type =
+          ((node_.node_type == kComponent &&
+            (nnet_.GetComponent(node.u.component_index)->Properties() &
+             kOutputContiguous)) ? kStrideEqualNumCols : kDefaultStride);
+      this_info.value = computation->NewMatrix(num_rows, num_cols,
+                                               value_stride_type);
       if (deriv_needed[step])
-        this_info.deriv = computation->NewMatrix(num_rows, num_cols);
+        this_info.deriv = computation->NewMatrix(num_rows, num_cols,
+                                                 deriv_stride_type);
       if (node.node_type == kComponent)
         KALDI_PARANOID_ASSERT(step > 0 &&  steps_[step-1].output_indexes ==
                               this_info.output_indexes);

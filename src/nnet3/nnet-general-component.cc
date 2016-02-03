@@ -942,5 +942,62 @@ void StatisticsPoolingComponent::Backprop(
                    indexes->backward_indexes);
 }
 
+
+virtual void TimeConvolutionComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(indexes_in != NULL);
+  const TimeConvolutionComponentPrecomputedIndexes *indexes =
+      dynamic_cast<const TimeConvolutionComponentPrecomputedIndexes*>(
+          indexes_in);
+  KALDI_ASSERT(indexes != NULL && in.NumCols() == InputDim() &&
+               out->NumCols() == OutputDim() &&
+               in.NumRows() == indexes->num_rows_in &&
+               out->NumRows() == indexes->forward_indexes);
+  int32 shift_dim = input_dim_ / features_per_frame_;
+
+
+  CuSubMatrix<BaseFloat> intermediate_sums(in.NumRows() * features_per_frame_,
+                                           filters_.NumRows(),
+                                           kStrideEqualNumCols);
+  if (in.NumCols() == in.Stride()) {
+    // we can compute intermediate_sums in one matrix multiply
+    // the constructor used below takes (data-pointer, num-rows, num-cols,
+    // stride).
+    CuSubMatrix<BaseFloat> in_reshaped(in.Data(),
+                                       in.NumRows() * features_per_frame_,
+                                       shift_dim, shift_dim);
+    intermediate_sums.AddMatMat(1.0, in_reshaped, kNoTrans,
+                                filters_, kTrans, 0.0);
+  } else {
+    for (int32 i = 0; i < features_per_frame_; i++) {
+      CuSubMatrix<BaseFloat> in_part(in, 0, in.NumRows(),
+                                     i * shift_dim, shift_dim);
+      // the constructor below takes (data-pointer, num-rows, num-cols, stride).
+      CuSubMatrix<BaseFloat> out_part(
+          intermediate_sums.RowData(i), in.NumRows(), intermediate_sums.NumCols(),
+          intermediate_sums.Stride() * features_per_frame_);
+      out_part.AddMatMat(1.0, in_part, kNoTrans, filters_, kTrans, 0.0);
+    }
+  }
+
+  if (intermediate_sums.Stride() == intermediate_sums.NumCols()) {
+    // constructor takes (data, num-rows, num-cols, stride).
+    int32 truncated_num_rows = in.NumRows() * features_per_frame_ -
+        left_context_ - right_context_,
+        context_width = 1 + left_context_ + right_context_;
+
+    // 'sums_reshaped' is a version of 'intermediate_sums' with overlapping
+    // rows. Its num-cols is the same as the num-cols of the output.
+    CuSubMatrix<BaseFloat> sums_reshaped(intermediate_sums.Data(),
+                                         truncated_num_rows,
+                                         shift_dim * context_width,
+                                         shift_dim);
+    out->AddRowRanges(sums_reshaped, indexes->forward_indexes);
+  }
+}
+
+
 } // namespace nnet3
 } // namespace kaldi

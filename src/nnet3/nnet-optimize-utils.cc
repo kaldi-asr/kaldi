@@ -895,6 +895,17 @@ void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
       computation_->commands[alloc_discard].command_type =
           kNoOperation;
   }
+
+  //  If the matrix to discard had stride_type == kStrideEqualNumCols, set the
+  //  matrix to keep's stride_type to kStrideEqualNuMCols.
+  if (computation_->matrices[m_to_discard].stride_type == kStrideEqualNumCols) {
+    computation_->matrices[m_to_discard].stride_type = kStrideEqualNumCols;
+    // ... and perform an additional check.
+    KALDI_ASSERT(computation_->matrices[m_to_discard].num_rows ==
+                 computation_->matrices[m_to_keep].num_rows &&
+                 computation_->matrices[m_to_discard].num_cols ==
+                 computation_->matrices[m_to_keep].num_cols);
+  }
 }
 
 void VariableMergingOptimizer::DoLeftMerge(int32 command_index,
@@ -972,7 +983,16 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
       right = config_.allow_right_merge;
   // condition c3:
   if (!computation_->IsWholeMatrix(s2)) left = false;
+  // condition c4:
   if (!computation_->IsWholeMatrix(s1)) right = false;
+  // condition c6:
+  if (computation->matrices[m2].stride_type == kStrideEqualNumCols &&
+      !computation_->IsWholeMatrix(s1)) left = false;
+  // condition c7:
+  if (computation->matrices[m1].stride_type == kStrideEqualNumCols &&
+      !computation_->IsWholeMatrix(s2)) right = false;
+
+
   if (!left && !right)  // save some time.
     return std::pair<bool,bool>(false,false);
   bool is_assignment = (computation_->commands[command_index].command_type ==

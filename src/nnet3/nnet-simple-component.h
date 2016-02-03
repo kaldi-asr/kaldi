@@ -1576,21 +1576,26 @@ class Convolutional1dComponent: public UpdatableComponent {
 };
 
 /**
- * MaxPoolingComponent :
- * Maxpooling component was firstly used in ConvNet for selecting an representative
- * activation in an area. It inspired Maxout nonlinearity.
+ * MaxPoolingComponent : Maxpooling component was firstly used in ConvNet for
+ * selecting an representative activation in an area.  Its output is the maximum
+ * of the a range of the inputs along a particular convolutional dimension.
+ * This implementation doesn't support overlaps, i.e. any input element only
+ * appears in the max() expression for one output element.
  *
- * The input/output matrices are split to submatrices with width 'pool_stride_'.
- * For instance, a minibatch of 512 frames is propagated by a convolutional
- * layer, resulting in a 512 x 3840 input matrix for MaxpoolingComponent,
- * which is composed of 128 feature maps for each frame (128 x 30). If you want
- * a 3-to-1 maxpooling on each feature map, set 'pool_stride_' and 'pool_size_'
- * as 128 and 3 respectively. Maxpooling component would create an output
- * matrix of 512 x 1280. The 30 input neurons are grouped by a group size of 3, and
- * the maximum in a group is selected, creating a smaller feature map of 10.
+ * This is a simple component, so the num-rows on the input and output are the
+ * same.
  *
- * Our pooling does not supports overlaps, which simplifies the
- * implementation (and was not helpful for Ossama).
+ * The InputDim() and OutputDim() [i.e. the num-cols of the input and output]
+ * must both be multiples of pool_stride_.  Consider one row of the input
+ * and one row of the output, written as x and y respectively.
+ * We view x and y as made up of sub-vectors of dimension pool_stride_, so
+ *  x = [ x1 x2 x3 .. ] and y = [ y1 y2 y3 ... ],
+ *
+ * Each sub-vector y is the elementwise maximum of several successive sub-vectors x,
+ * so for instance if pool_size_ == 2 then
+ *   y1 = elementwise-max(x1, x2)
+ *   y2 = elementwise-max(x3, x4)
+ * and so on.
  */
 class MaxpoolingComponent: public Component {
  public:
