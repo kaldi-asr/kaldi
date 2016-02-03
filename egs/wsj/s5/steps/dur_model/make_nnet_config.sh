@@ -1,10 +1,13 @@
 #!/bin/bash
 
+# This simple script, writes a simple nnet3 config file based on some
+# options for the nnet-duration model
+
 learning_rate=0.001
-natural_gradient=true
-hidden_dim1=
-hidden_dim2=
-bottleneck=true
+natural_gradient=true        # If true, use natural gradient for the affine components
+hidden_dim1=                 # The dimension of the first hidden layer
+hidden_dim2=                 # The dimension of the second hidden layer
+bottleneck=true              # If true, hidden_dim2 will be small
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
 . parse_options.sh || exit 1;

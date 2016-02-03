@@ -248,15 +248,36 @@ BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
   Matrix<BaseFloat> output;
   ComputeOutputForExample(eg, &output);
   int32 phone_duration = phone_dur_context[model_.LeftContext()].second;
+  // Please refer to MakeNnetExample() to see what the output nodes of the
+  // network show.
   int32 duration_id = (phone_duration > model_.MaxDuration()) ?
                                                 (model_.MaxDuration() - 1):
                                                 (phone_duration - 1);
 
-  int32 actual_duration_id = phone_duration - 1;  // if we had no max duration
+  // Now we estimate the probabilities for the durations longer than
+  // max_duration. To do this we distribute the probability mass at the last
+  // node (i.e. the probability for duration==max_duration) to all the durations
+  // equal to and longer than max_duration. We assume a geometric form for this
+  // distribution and scale the probabilities such that the whole distribution
+  // sums to 1. So assuming the probability mass at duration==max_duration is
+  // P, then the probabilities for some duration >= max_duration will be
+  // P/norm_sum * alpha^(duration-max_duration+1) where norm_sum is
+  // equal to alpha/(1-alpha). We set alpha to exp(-1.0/max_duration) so
+  // that the probabilities do not decline too rapidly.
+
+  int32 actual_duration_id = phone_duration - 1;  // in case max duration was
+                                                  // infinity (i.e. we
+                                                  // had infinitely many nodes
+                                                  // at the output of the
+                                                  // network)
   BaseFloat logprob = output(0, duration_id);
+
   // make sure the distribution over all durations (1 to inf) sums to 1
+  BaseFloat alpha = Exp(-1.0f / model_.MaxDuration());
+  BaseFloat probability_normalization_sum = alpha / (1 - alpha);
   if (actual_duration_id >= duration_id)
-    logprob *= pow(0.5f, actual_duration_id - duration_id + 1);
+    logprob *= pow(alpha, actual_duration_id - duration_id + 1) /
+                                                  probability_normalization_sum;
   return logprob;
 }
 

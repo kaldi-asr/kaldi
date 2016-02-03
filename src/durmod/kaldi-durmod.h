@@ -25,6 +25,7 @@
 #include <string>
 
 #include "base/kaldi-common.h"
+#include "lat/kaldi-lattice.h"
 #include "nnet3/nnet-example.h"
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-example-utils.h"

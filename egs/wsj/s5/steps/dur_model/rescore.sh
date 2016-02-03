@@ -1,8 +1,15 @@
 #!/bin/bash
 
 # Copyright 2015 Hossein Hadian
+# Apache 2.0.
+#
+# This script rescores the lattices in a 'decode' directory and writes the 
+# rescored lattices in a new directory. Rescoring is done using the
+# log-likelihoods computed using the nnet-duration-model.
 
-duration_model_scale=0.5
+
+# Begin configuration section.
+duration_model_scale=0.5             # The scale with which the duration model scores are added to lm-scores of a lattice
 cmd=run.pl
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
