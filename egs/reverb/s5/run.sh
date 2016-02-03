@@ -332,4 +332,6 @@ if [ $stage -le 11 ]; then
 fi
 
 # get all WERs with lmw=15
-local/get_results.sh
+if [ $stage -le 12 ]; then
+  local/get_results.sh
+fi
