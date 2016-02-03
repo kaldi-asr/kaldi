@@ -2145,7 +2145,6 @@ void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include
 
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
-
 }
 
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
