@@ -35,7 +35,7 @@ void MatrixBase<float>::AddVecVec(const float alpha, const VectorBase<float> &ra
 
 template<>
 template<>
-void MatrixBase<double>::AddVecVec(const double alpha, const VectorBase<double> &ra, const VectorBase<double> &rb); 
+void MatrixBase<double>::AddVecVec(const double alpha, const VectorBase<double> &ra, const VectorBase<double> &rb);
 
 template<typename Real>
 inline std::ostream & operator << (std::ostream & os, const MatrixBase<Real> & M) {
@@ -60,3 +60,4 @@ inline std::istream & operator >> (std::istream & is, MatrixBase<Real> & M) {
 
 
 #endif  // KALDI_MATRIX_KALDI_MATRIX_INL_H_
+

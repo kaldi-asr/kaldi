@@ -214,9 +214,11 @@ struct NnetComputation {
   struct MatrixInfo {
     int32 num_rows;
     int32 num_cols;
+    MatrixStrideType stride_type;
     MatrixInfo() { }
-    MatrixInfo(int32 num_rows, int32 num_cols):
-        num_rows(num_rows), num_cols(num_cols) {}
+    MatrixInfo(int32 num_rows, int32 num_cols,
+               MatrixStrideType stride_type):
+        num_rows(num_rows), num_cols(num_cols), stride_type(stride_type) {}
   };
   struct MatrixDebugInfo {
     bool is_deriv;  // true if this represents a derivative, not a value.
@@ -316,7 +318,7 @@ struct NnetComputation {
   /// 'this->matrices' and 'this->submatrices'; and if 'this->matrix_debug_info'
   /// is nonempty, also increases its size by one.  Returns the *sub-matrix*
   /// index corresponding to the newly added matrix.
-  int32 NewMatrix(int32 num_rows, int32 num_cols);
+  int32 NewMatrix(int32 num_rows, int32 num_cols, MatrixStrideType stride_type);
 
   /// Convenience function used when adding new sub-matrices.  base_submatrix is
   /// the submatrix of which we want a column and/or row range.  As a
