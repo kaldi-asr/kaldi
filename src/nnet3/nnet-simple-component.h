@@ -120,15 +120,17 @@ class NormalizeComponent: public NonlinearComponent {
   // note: although we inherit from NonlinearComponent, we don't actually bohter
   // accumulating the stats that NonlinearComponent is capable of accumulating.
  public:
- void Init(int32 dim, BaseFloat target_rms);
-  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0) { Init(dim, target_rms); }
+ void Init(int32 dim, BaseFloat target_rms, bool add_log_std);
+  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0, 
+    bool add_log_std = false) { Init(dim, target_rms, add_log_std); }
   explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other),
-    target_rms_(other.target_rms_) { }
+    target_rms_(other.target_rms_), add_log_std_(other.add_log_std_) { }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropInPlace;
+    return (add_log_std_ ? kSimpleComponent|kBackpropNeedsInput :
+            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
+        kBackpropInPlace);
   }
-  NormalizeComponent(): target_rms_(1.0) { }
+  NormalizeComponent(): target_rms_(1.0), add_log_std_(false) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
@@ -149,6 +151,8 @@ class NormalizeComponent: public NonlinearComponent {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
+  virtual int32 OutputDim() const { return (dim_ + (add_log_std_ ? 1 : 0)); } 
+
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
@@ -157,6 +161,9 @@ class NormalizeComponent: public NonlinearComponent {
   // about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
+
+  bool add_log_std_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))  
+                     // is added as node to output layer.
 };
 
 
