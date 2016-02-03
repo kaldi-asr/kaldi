@@ -889,11 +889,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     }
     case 1: {
       BaseFloat target_rms = (RandInt(1, 200) / 100.0);
-      std::string add_log_sum = (Rand() % 2 == 0 ? "True" : "False");
+      std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
       os << "dim=" << RandInt(1, 50)
          << " target-rms=" << target_rms
-         << " add-log-std=" << add_log_sum;
+         << " add-log-stddev=" << add_log_stddev;
       break;
     }
     case 2: {
