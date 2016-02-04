@@ -240,10 +240,11 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
 }
 
 const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
-// This component modifies the vector of activations by scaling it so that the
-// root-mean-square equals 1.0.  It's important that its square root
-// be exactly representable in float.
-void NormalizeComponent::Init(int32 dim, BaseFloat target_rms, bool add_log_stddev) {
+// This component modifies the vector of activations by scaling it 
+// so that the root-mean-square equals 1.0.  It's important that its 
+// square root be exactly representable in float.
+void NormalizeComponent::Init(int32 dim, BaseFloat target_rms, 
+                              bool add_log_stddev) {
   KALDI_ASSERT(dim > 0);
   KALDI_ASSERT(target_rms > 0);
   dim_ = dim;
@@ -329,7 +330,10 @@ std::string NormalizeComponent::Info() const {
   std::ostringstream stream;
   stream << NonlinearComponent::Info();
   stream << ", target-rms=" << target_rms_
-         << ", add-log-stddev=" << add_log_stddev_; 
+         << ", add-log-stddev=" << add_log_stddev_;
+  if (add_log_stddev_)
+    stream << ", input-dim=" << InputDim() 
+           << ", output-dim=" << OutputDim();
   return stream.str();
 }
 
@@ -362,8 +366,6 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
     log_stddev.ApplyLog(); 
     out->CopyColFromVec(log_stddev, in.NumCols());
   }
-
-  
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
   out_no_log.MulRowsVec(in_norm);
@@ -400,8 +402,8 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)  return;
-  CuSubMatrix<BaseFloat> out_deriv_no_log = out_deriv.ColRange(0, (out_deriv.NumCols()
-    - (add_log_stddev_ ? 1 : 0)));
+  CuSubMatrix<BaseFloat> out_deriv_no_log = out_deriv.ColRange(0, 
+    (out_deriv.NumCols() - (add_log_stddev_ ? 1 : 0)));
   CuVector<BaseFloat> dot_products(out_deriv.NumRows());
   dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value, kTrans, 0.0);
   CuVector<BaseFloat> in_norm(in_value.NumRows());
