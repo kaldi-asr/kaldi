@@ -346,8 +346,7 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(out->NumCols() == in.NumCols() + (add_log_stddev_ ? 1 : 0));
-  CuSubMatrix<BaseFloat> out_no_log = out->ColRange(0, (out->NumCols()
-    - (add_log_stddev_ ? 1 : 0)));                                             
+  CuSubMatrix<BaseFloat> out_no_log = out->ColRange(0, in.NumCols());                       
   out_no_log.CopyFromMat(in);
   CuVector<BaseFloat> in_norm(in.NumRows());
   BaseFloat d_scaled = (in.NumCols() * target_rms_ * target_rms_);
