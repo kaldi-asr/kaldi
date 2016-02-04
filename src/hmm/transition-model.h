@@ -92,7 +92,7 @@ struct MleTransitionUpdateConfig {
                             BaseFloat mincount = 5.0,
                             bool share_for_pdfs = false):
       floor(floor), mincount(mincount), share_for_pdfs(share_for_pdfs) {}
-  
+
   void Register (OptionsItf *opts) {
     opts->Register("transition-floor", &floor,
                    "Floor for transition probabilities");
@@ -124,7 +124,7 @@ class TransitionModel {
   /// Initialize the object [e.g. at the start of training].
   /// The class keeps a copy of the HmmTopology object, but not
   /// the ContextDependency object.
-  TransitionModel(const ContextDependency &ctx_dep,
+  TransitionModel(const ContextDependencyInterface &ctx_dep,
                   const HmmTopology &hmm_topo);
 
 
@@ -199,8 +199,8 @@ class TransitionModel {
   /// Returns the log-probability of a particular non-self-loop transition
   /// after subtracting the probability mass of the self-loop and renormalizing;
   /// will crash if called on a self-loop.  Specifically:
-  /// for non-self-loops it returns the log of that prob divided by (1 minus
-  /// self-loop-prob-for-that-state).
+  /// for non-self-loops it returns the log of (that prob divided by (1 minus
+  /// self-loop-prob-for-that-state)).
   BaseFloat GetTransitionLogProbIgnoringSelfLoops(int32 trans_id) const;
 
   /// Returns the log-prob of the non-self-loop probability
@@ -210,18 +210,18 @@ class TransitionModel {
 
   /// Does Maximum Likelihood estimation.  The stats are counts/weights, indexed
   /// by transition-id.  This was previously called Update().
-  void MleUpdate(const Vector<double> &stats, 
+  void MleUpdate(const Vector<double> &stats,
                  const MleTransitionUpdateConfig &cfg,
                  BaseFloat *objf_impr_out,
                  BaseFloat *count_out);
 
   /// Does Maximum A Posteriori (MAP) estimation.  The stats are counts/weights,
   /// indexed by transition-id.
-  void MapUpdate(const Vector<double> &stats, 
+  void MapUpdate(const Vector<double> &stats,
                  const MapTransitionUpdateConfig &cfg,
                  BaseFloat *objf_impr_out,
                  BaseFloat *count_out);
-  
+
   /// Print will print the transition model in a human-readable way, for purposes of human
   /// inspection.  The "occs" are optional (they are indexed by pdf-id).
   void Print(std::ostream &os,
@@ -241,7 +241,7 @@ class TransitionModel {
   /// returns true if all the integer class members are identical (but does not
   /// compare the transition probabilities.
   bool Compatible(const TransitionModel &other) const;
-  
+
  private:
   void MleUpdateShared(const Vector<double> &stats,
                        const MleTransitionUpdateConfig &cfg,
@@ -249,7 +249,7 @@ class TransitionModel {
   void MapUpdateShared(const Vector<double> &stats,
                        const MapTransitionUpdateConfig &cfg,
                        BaseFloat *objf_impr_out, BaseFloat *count_out);
-  void ComputeTriples(const ContextDependency &ctx_dep);  // called from constructor.  initializes triples_.
+  void ComputeTriples(const ContextDependencyInterface &ctx_dep);  // called from constructor.  initializes triples_.
   void ComputeDerived();  // called from constructor and Read function: computes state2id_ and id2state_.
   void ComputeDerivedOfProbs();  // computes quantities derived from log-probs (currently just
   // non_self_loop_log_probs_; called whenever log-probs change.
@@ -282,7 +282,7 @@ class TransitionModel {
   /// the triples are in sorted order which allows us to do the reverse mapping from
   /// triple to transition state
   std::vector<Triple> triples_;
-  
+
   /// Gives the first transition_id of each transition-state; indexed by
   /// the transition-state.  Array indexed 1..num-transition-states+1 (the last one
   /// is needed so we can know the num-transitions of the last transition-state.

@@ -87,6 +87,8 @@ struct IoSpecification {
   /// Output ends in a newline.
   void Print(std::ostream &os) const;
 
+  void Swap(IoSpecification *other);
+
   bool operator== (const IoSpecification &other) const;
 };
 
@@ -194,8 +196,7 @@ struct ComputationRequest {
      on sub-matrix arg1, with arg2 as source sub-matrix, and indexes given
      indexes_ranges[arg3].
    - kNoOperation: does nothing (sometimes useful during optimization)
-   - kNoOperationMarker: does nothing, but used to mark end of forward commands
-     (sometimes useful during optimization).
+   - kNoOperationMarker: does nothing, but used to mark end of forward commands.
 */
 enum CommandType {
   kAllocMatrixUndefined, kAllocMatrixZeroed,

@@ -61,7 +61,7 @@ namespace kaldi {
  <Final> 0.5
  </State>
  <State> 3
- </State> 
+ </State>
  </TopologyEntry>
  </Topology>
 */
@@ -100,9 +100,9 @@ class HmmTopology {
     /// equal to \ref kNoPdf == -1 in order to specify nonemitting states (unusual).
     int32 pdf_class;
 
-    /// A list of transitions.  The first member of each pair is the index of
-    /// the next HmmState, and the second is the default transition probability
-    /// (before training).
+    /// A list of transitions, indexed by what we call a 'transition-index'.
+    /// The first member of each pair is the index of the next HmmState, and the
+    /// second is the default transition probability (before training).
     std::vector<std::pair<int32, BaseFloat> > transitions;
 
     explicit HmmState(int32 p): pdf_class(p) { }
@@ -110,7 +110,7 @@ class HmmTopology {
     bool operator == (const HmmState &other) const {
       return (pdf_class == other.pdf_class && transitions == other.transitions);
     }
-    
+
     HmmState(): pdf_class(-1) { }
   };
 
@@ -144,6 +144,10 @@ class HmmTopology {
   /// used by tree-building code such as BuildTree().
   void GetPhoneToNumPdfClasses(std::vector<int32> *phone2num_pdf_classes) const;
 
+  // Returns the minimum number of frames it takes to traverse this model for
+  // this phone: e.g. 3 for the normal HMM topology.
+  int32 MinLength(int32 phone) const;
+
   HmmTopology() {}
 
   bool operator == (const HmmTopology &other) const {
@@ -157,11 +161,6 @@ class HmmTopology {
   std::vector<TopologyEntry> entries_;
 };
 
-
-/// This function returns a HmmTopology object giving a normal 3-state topology,
-/// covering all phones in the list "phones".  This is mainly of use in testing
-/// code.
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones);
 
 /// @} end "addtogroup hmm_group"
 

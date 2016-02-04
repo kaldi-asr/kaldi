@@ -37,6 +37,7 @@ fi
 
 set -u
 set -e
+set -o pipefail
 
 data=$1; shift
 modeldir=$1; shift
@@ -64,7 +65,7 @@ cat $data/phones.txt | sed 's/_[B|E|I|S]//g' |\
 
 echo "Converting alignments to phone sequences..."
 $cmd JOB=1:$nj $wdir/log/ali_to_phones.JOB.log \
-  compute-wer --text --mode=all\
+  align-text\
     ark:\<\( \
       ali-to-phones  $model ark:"gunzip -c $alidir/ali.JOB.gz|" ark,t:- \|\
       int2sym.pl -f 2- $wdir/phones.txt - \) \
@@ -72,7 +73,7 @@ $cmd JOB=1:$nj $wdir/log/ali_to_phones.JOB.log \
       lattice-to-phone-lattice $model ark:"gunzip -c $latdir/lat.JOB.gz|"  ark:- \| \
       lattice-best-path --acoustic-scale=$acwt  ark:- ark,t:- ark:/dev/null \| \
       int2sym.pl -f 2- $wdir/phones.txt - \) \
-    $wdir/confusions.JOB.txt
+    ark:$wdir/confusions.JOB.txt
 
 confusion_files=""
 for i in `seq 1 $nj` ; do
@@ -80,23 +81,12 @@ for i in `seq 1 $nj` ; do
 done
 
 echo "Converting statistics..."
-cat $confusion_files | sort | uniq -c | grep -v -E '<oov>|<sss>|<vns>|SIL' | \
+cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g'| sort | uniq -c | \
+  grep -v -E '<oov>|<sss>|<vns>|SIL' | \
   perl -ane '
-    if ($F[1] eq "correct") {
-      die "Unknown format " . join(" ", @F) . "\n" if ($#F != 2);
-      print "$F[2] $F[2] $F[0]\n";
-    } elsif ($F[1] eq "deletion" ) {
-      die "Unknown format " . join(" ", @F) . "\n" if ($#F != 2);
-      print "$F[2] <eps> $F[0]\n";
-    } elsif ($F[1] eq "insertion") {
-      die "Unknown format " . join(" ", @F) . "\n" if ($#F != 2);
-      print "<eps> $F[2] $F[0]\n";
-    } elsif ($F[1] eq "substitution") {
-      die "Unknown format " . join(" ", @F) . "\n" if ($#F != 3);
-      print "$F[2] $F[3] $F[0]\n";
-    } else {
-      die "Unknown line " . join(" ", @F). "\n";
-    }' > $wdir/confusions.txt
+    die unless scalar @F == 3;
+    print "$F[1] $F[2] $F[0]\n";
+    ' > $wdir/confusions.txt 
 
 exit 0
 #-echo "Converting alignments to phone sequences..."

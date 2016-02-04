@@ -419,12 +419,31 @@ int main(int argc, char *argv[]) {
         CuDevice::Instantiate().CheckGpuHealth();
 #endif
       }
+
+      // Gradient logging,
+      if (kaldi::g_kaldi_verbose_level >= 1 && 
+           (num_done == 1 || num_done % 1000 == 0)) {
+        // first utterance, or every 1000th utterance,
+        KALDI_VLOG(1) << nnet.InfoPropagate();
+        KALDI_VLOG(1) << nnet.InfoBackPropagate();
+        KALDI_VLOG(1) << nnet.InfoGradient();
+      } else if (kaldi::g_kaldi_verbose_level >= 2) {
+        // vlog 2 => every utterance,
+        KALDI_VLOG(2) << nnet.InfoPropagate();
+        KALDI_VLOG(2) << nnet.InfoBackPropagate();
+        KALDI_VLOG(2) << nnet.InfoGradient();
+      }
     }
+
+    // after last utterance,
+    KALDI_VLOG(1) << nnet.InfoPropagate();
+    KALDI_VLOG(1) << nnet.InfoBackPropagate();
+    KALDI_VLOG(1) << nnet.InfoGradient();
        
-    //add back the softmax
+    // add the softmax layer back before writing,
     KALDI_LOG << "Appending the softmax " << target_model_filename;
     nnet.AppendComponent(new Softmax(nnet.OutputDim(),nnet.OutputDim()));
-    //store the nnet
+    // store the nnet,
     nnet.Write(target_model_filename, binary);
 
     time_now = time.Elapsed();

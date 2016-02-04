@@ -75,12 +75,17 @@ void UnitTestConfigLineParse() {
   }
   {
     ConfigLine cfl;
+    str = "a=b baz ";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
+  }
+  {
+    ConfigLine cfl;
     str = "a=b =c";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "baz=x y z pp=qq ab=cd ac=bd";
+    str = "baz='x y z' pp=qq ab=cd ac=bd";
     KALDI_ASSERT(cfl.ParseLine(str));
     std::string str_value;
     KALDI_ASSERT(cfl.GetValue("baz", &str_value));
@@ -160,17 +165,19 @@ void UnitTestConfigLineParse() {
 }
 
 void UnitTestReadConfig() {
-  std::string str = " alpha=aa beta=b b# String test\n"
-      "beta2=b c beta3=bd # \n"
+  std::string str = " alpha=aa beta=\"b b\"# String test\n"
+      "beta2='b c' beta3=bd # \n"
       "gamma=1:2:3:4  # Int Vector test\n"
       " de1ta=f  # Bool + Integer in key Comment test delta=t  \n"
       "_epsilon=-1  # Int Vector test _epsilon=1 \n"
-      " zet-_a=0.15   theta=1.1# Float, -, _ test\n";
+      " zet-_a=0.15   theta=1.1# Float, -, _ test\n"
+      "quoted='a b c' # quoted string\n"
+      "quoted2=\"d e 'a b=c' f\" # string quoted with double quotes";
 
   std::istringstream is(str);
   std::vector<std::string> lines;
   ReadConfigFile(is, &lines);
-  KALDI_ASSERT(lines.size() == 6);
+  KALDI_ASSERT(lines.size() == 8);
 
   ConfigLine cfl;
   for (size_t i = 0; i < lines.size(); i++) {
@@ -178,6 +185,8 @@ void UnitTestReadConfig() {
   }
   KALDI_ASSERT(cfl.GetValue("beta2", &str) && str == "b c");
   KALDI_ASSERT(cfl.GetValue("_epsilon", &str) && str == "-1");
+  KALDI_ASSERT(cfl.GetValue("quoted", &str) && str == "a b c");
+  KALDI_ASSERT(cfl.GetValue("quoted2", &str) && str == "d e 'a b=c' f");
 
   BaseFloat float_val = 0;
   KALDI_ASSERT(cfl.GetValue("zet-_a", &float_val) && ApproxEqual(float_val, 0.15));

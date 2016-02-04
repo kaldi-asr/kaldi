@@ -107,8 +107,10 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
       # if the old LM scores were added e.g. by lmrescore.sh, using 
       # phi-matcher composition.
       $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-        lattice-compose --phi-label=$phi "ark:gunzip -c $dir/nbest1.JOB.gz|" $oldlm \
-        "ark:|gzip -c >$dir/nbest2.JOB.gz"  || exit 1;
+        lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
+        lattice-compose --phi-label=$phi ark:- $oldlm ark:- \| \
+        lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
+        || exit 1;
     fi    
   else
     if [ $stage -le 2 ]; then

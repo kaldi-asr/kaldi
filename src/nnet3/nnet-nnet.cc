@@ -40,6 +40,7 @@ int32 NetworkNode::Dim(const Nnet &nnet) const {
       ans = nnet.GetComponent(u.component_index)->OutputDim();
       break;
     default:
+      ans = 0;  // suppress compiler warning
       KALDI_ERR << "Invalid node type.";
   }
   KALDI_ASSERT(ans > 0);
@@ -305,7 +306,8 @@ void Nnet::ProcessComponentNodeConfigLine(
     GetSomeNodeNames(&node_names_temp);
     tokens.push_back("end of input");
     const std::string *next_token = &(tokens[0]);
-    if (!nodes_[input_node_index].descriptor.Parse(node_names_temp, &next_token))
+    if (!nodes_[input_node_index].descriptor.Parse(node_names_temp,
+                                                   &next_token))
       KALDI_ERR << "Error parsing Descriptor in config line: "
                 << config->WholeLine();
     if (config->HasUnusedValues())
@@ -763,6 +765,7 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 std::string Nnet::Info() const {
   std::ostringstream os;
   os << "num-parameters: " << NumParameters(*this) << "\n";
+  os << "modulus: " << this->Modulus() << "\n";
   std::vector<std::string> config_lines;
   bool include_dim = true;
   GetConfigLines(include_dim, &config_lines);

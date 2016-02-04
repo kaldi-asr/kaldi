@@ -1,4 +1,4 @@
-// bin/sum-lda.cc
+// bin/sum-lda-accs.cc
 
 // Copyright 2014 LINSE/UFSC; Augusto Henrique Hentz
 

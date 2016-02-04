@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012-2013 Brno University of Technology (Author: Karel Vesely)
+# Copyright 2012-2015 Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
 # Aligns 'data' to sequences of transition-ids using Neural Network based acoustic model.
@@ -14,6 +14,7 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
 nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
+ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
 align_to_lats=false # optionally produce alignment in lattice format
  lats_decode_opts="--acoustic-scale=0.1 --beam=20 --lattice_beam=10"
@@ -26,6 +27,8 @@ use_gpu="no" # yes|no|optionaly
 
 [ -f path.sh ] && . ./path.sh # source the path.
 . parse_options.sh || exit 1;
+
+set -euo pipefail
 
 if [ $# != 4 ]; then
    echo "usage: $0 <data-dir> <lang-dir> <src-dir> <align-dir>"
@@ -78,6 +81,19 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 [ ! -z "$cmvn_opts" ] && feats="$feats apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp ark:- ark:- |"
 # add-deltas (optional),
 [ ! -z "$delta_opts" ] && feats="$feats add-deltas $delta_opts ark:- ark:- |"
+# add-pytel transform (optional),
+[ -e $D/pytel_transform.py ] && feats="$feats /bin/env python $D/pytel_transform.py |"
+
+# add-ivector (optional),
+if [ -e $D/ivector_dim ]; then
+  ivector_dim=$(cat $D/ivector_dim)
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
+  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
+  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
+  # Append to feats
+  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+fi
+
 # nnet-forward,
 feats="$feats nnet-forward $nnet_forward_opts --feature-transform=$feature_transform --class-frame-counts=$class_frame_counts --use-gpu=$use_gpu $nnet ark:- ark:- |"
 #

@@ -148,7 +148,7 @@ Look at the files with suffix .csl (in data/lang/phones). These are colon-separa
 Look at phones.txt (in data/lang/).  This file is a phone symbol table that also 
 handles the "disambiguation symbols" used in the standard FST recipe.
 These symbols are conventionally called \#1, \#2 and so on;
- see the paper <a href=www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
+ see the paper <a href=http://www.cs.nyu.edu/~mohri/pub/hbka.pdf> "Speech Recognition
 with Weighted Finite State Transducers" </a>.  We also add a symbol \#0
 which replaces epsilon transitions in the language model; see
 \ref graph_disambig for more information.  How many disambiguation symbols

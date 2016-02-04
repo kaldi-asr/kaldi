@@ -278,6 +278,8 @@ bool DeterminizeLatticePhonePruned(
     Unlike other determinization routines, the function
     requires "ifst" to have transition-id's on the input side and words on the
     output side.
+    This function can be used as the top-level interface to all the determinization
+    code.
 */
 bool DeterminizeLatticePhonePrunedWrapper(
     const kaldi::TransitionModel &trans_model,

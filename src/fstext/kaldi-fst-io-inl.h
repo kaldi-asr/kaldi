@@ -32,9 +32,7 @@ void WriteFstKaldi(std::ostream &os, bool binary,
                    const VectorFst<Arc> &t) {
   bool ok;
   if (binary) {
-    // Binary-mode writing.  No binary header; the Read function
-    // knows it is text mode if it sees a space as the 1st character
-    // (the leading \n).
+    // Binary-mode writing.
     ok = t.Write(os, FstWriteOptions());
   } else {
     // Text-mode output.  Note: we expect that t.InputSymbols() and
@@ -89,6 +87,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
       KALDI_ERR << "Error reading FST from stream.";
     }
     *fst = *ans;  // shallow copy.
+    delete ans;
   } else {
     // Consume the \r on Windows, the \n that the text-form FST format starts
     // with, and any extra spaces that might have got in there somehow.
@@ -105,7 +104,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
     fst->DeleteStates();
     string line;
     size_t nline = 0;
-    string separator = FLAGS_fst_field_separator + "\r\n";      
+    string separator = FLAGS_fst_field_separator + "\r\n";
     while (std::getline(is, line)) {
       nline++;
       vector<string> col;
@@ -167,14 +166,14 @@ void ReadFstKaldi(std::istream &is, bool binary,
         KALDI_ERR << "Bad line in FST: " << line;
     }
   }
-}  
+}
 
 
 
 
 template<class Arc> // static
 bool VectorFstTplHolder<Arc>::Write(std::ostream &os, bool binary, const T &t) {
-  try { 
+  try {
     WriteFstKaldi(os, binary, t);
     return true;
   } catch (...) {
@@ -201,8 +200,8 @@ bool VectorFstTplHolder<Arc>::Read(std::istream &is) {
       return false;
     }
   } else {  // reading a binary FST.
-    try { 
-      t_ = new VectorFst<Arc>();      
+    try {
+      t_ = new VectorFst<Arc>();
       ReadFstKaldi(is, true, t_);
     } catch (...) {
       Clear();

@@ -62,7 +62,7 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
  public:
   typedef fst::StdArc::Weight LmWeight;
   typedef fst::StdArc::StateId StateId;
-  
+
 
   LangModelFst() {
     pfst_ = new fst::VectorFst<fst::StdArc>;
@@ -83,7 +83,8 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
             bool useNaturalLog = true,
             const string startSent = "<s>",
             const string endSent = "</s>") {
-    if (pfst_) delete pfst_;
+
+   delete pfst_;
     pfst_ = ReadStream(strm, sourcename,
                        gtype, pst,
                        useNaturalLog,
@@ -97,13 +98,14 @@ class LangModelFst: public fst::VectorFst<fst::StdArc> {
             bool useNaturalLog = true,
             const string startSent = "<s>",
             const string endSent = "</s>") {
-    if (pfst_) { delete pfst_; pfst_ = NULL; }
+
+    delete pfst_;
     if (rxfilename == "") {
       KALDI_ERR << "arpa2fst and similar programs no longer support empty filename "
                 << "for standard input; use '-'";
     }
     Input ki(rxfilename);
-    
+
     pfst_ = ReadStream(ki.Stream(),
                        PrintableRxfilename(rxfilename),
                        gtype, pst,

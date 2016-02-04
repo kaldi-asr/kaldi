@@ -14,7 +14,7 @@
 # for online decoding.
 
 # Rather than treating each utterance separately, it carries forward
-# information from one utterance to the next, within the speaker. 
+# information from one utterance to the next, within the speaker.
 
 
 # Begin configuration section.
@@ -55,7 +55,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
+  echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
@@ -93,6 +93,7 @@ echo -n >$ieconf
 cp $srcdir/online_cmvn.conf $dir/conf/ || exit 1;
 echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$ieconf
 for x in $(echo $splice_opts); do echo "$x"; done > $dir/conf/splice.conf
+echo "--ivector-period=$ivector_period" >>$ieconf
 echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
 echo "--lda-matrix=$srcdir/final.mat" >>$ieconf
 echo "--global-cmvn-stats=$srcdir/global_cmvn.stats" >>$ieconf

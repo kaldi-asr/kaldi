@@ -58,7 +58,8 @@ void HmmTopology::Read(std::istream &is, bool binary) {
           else {
             int32 phone;
             if (!ConvertStringToInteger(s, &phone))
-              KALDI_ERR << "Reading HmmTopology object, expected integer, got instead "<<s;
+              KALDI_ERR << "Reading HmmTopology object, expected "
+                        << "integer, got instead " << s;
             phones.push_back(phone);
           }
         }
@@ -86,7 +87,7 @@ void HmmTopology::Read(std::istream &is, bool binary) {
             BaseFloat trans_prob;
             ReadBasicType(is, binary, &dst_state);
             ReadBasicType(is, binary, &trans_prob);
-            this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));  
+            this_entry.back().transitions.push_back(std::make_pair(dst_state, trans_prob));
             ReadToken(is, binary, &token);
           }
           if(token == "<Final>") // TODO: remove this clause after a while.
@@ -214,7 +215,7 @@ void HmmTopology::Check() {
     if (!entries_[i][num_states-1].transitions.empty())
       KALDI_ERR << "HmmTopology::Check(), last state must have no transitions.";
     // not sure how necessary this next stipulation is.
-    if (entries_[i][num_states-1].pdf_class != kNoPdf) 
+    if (entries_[i][num_states-1].pdf_class != kNoPdf)
       KALDI_ERR << "HmmTopology::Check(), last state must not be emitting.";
 
     std::vector<bool> has_trans_in(num_states, false);
@@ -262,7 +263,7 @@ void HmmTopology::Check() {
         KALDI_ASSERT(tot_prob == 0.0);
     }
     // make sure all but start state have input transitions.
-    for (int32 j = 1; j < num_states; j++) 
+    for (int32 j = 1; j < num_states; j++)
       if (!has_trans_in[j])
         KALDI_ERR << "HmmTopology::Check, state "<<(j)<<" has no input transitions.";
     SortAndUniq(&seen_pdf_classes);
@@ -290,41 +291,41 @@ int32 HmmTopology::NumPdfClasses(int32 phone) const {
   return max_pdf_class+1;
 }
 
-HmmTopology GetDefaultTopology(const std::vector<int32> &phones_in) {
-  std::vector<int32> phones(phones_in);
-  std::sort(phones.begin(), phones.end());
-  KALDI_ASSERT(IsSortedAndUniq(phones) && !phones.empty());
-  
-  std::ostringstream topo_string;
-  topo_string <<  "<Topology>\n"
-      "<TopologyEntry>\n"
-      "<ForPhones> ";
-  for (size_t i = 0; i < phones.size(); i++)
-    topo_string << phones[i] << " ";
-  
-  topo_string << "</ForPhones>\n"
-      "<State> 0 <PdfClass> 0\n"
-      "<Transition> 0 0.5\n"
-      "<Transition> 1 0.5\n"
-      "</State> \n"
-      "<State> 1 <PdfClass> 1 \n"
-      "<Transition> 1 0.5\n"
-      "<Transition> 2 0.5\n"
-      "</State>  \n"
-      " <State> 2 <PdfClass> 2\n"
-      " <Transition> 2 0.5\n"
-      " <Transition> 3 0.5\n"
-      " </State>   \n"
-      " <State> 3 </State>\n"
-      " </TopologyEntry>\n"
-      " </Topology>\n";
+int32 HmmTopology::MinLength(int32 phone) const {
+  const TopologyEntry &entry = TopologyForPhone(phone);
+  // min_length[state] gives the minimum length for sequences up to and
+  // including that state.
+  std::vector<int32> min_length(entry.size(),
+                                std::numeric_limits<int32>::max());
+  KALDI_ASSERT(!entry.empty());
 
-  HmmTopology topo;
-  std::istringstream iss(topo_string.str());
-  topo.Read(iss, false);  
-  return topo;
-  
+  min_length[0] = (entry[0].pdf_class == -1 ? 0 : 1);
+  int32 num_states = min_length.size();
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int32 s = 0; s < num_states; s++) {
+      const HmmState &this_state = entry[s];
+      std::vector<std::pair<int32, BaseFloat> >::const_iterator
+          iter = this_state.transitions.begin(),
+          end = this_state.transitions.end();
+      for (; iter != end; ++iter) {
+        int32 next_state = iter->first;
+        KALDI_ASSERT(next_state < num_states);
+        int32 next_state_min_length = min_length[s] +
+            (entry[next_state].pdf_class == -1 ? 0 : 1);
+        if (next_state_min_length < min_length[next_state]) {
+          min_length[next_state] = next_state_min_length;
+          if (next_state < s)
+            changed = true;
+          // the test of 'next_state < s' is an optimization for speed.
+        }
+      }
+    }
+  }
+  KALDI_ASSERT(min_length.back() != std::numeric_limits<int32>::max());
+  // the last state is the final-state.
+  return min_length.back();
 }
-
 
 } // End namespace kaldi

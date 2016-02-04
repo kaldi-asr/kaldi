@@ -84,9 +84,15 @@ void ReadIndexVector(std::istream &os, bool binary,
  */
 typedef std::pair<int32, Index> Cindex;
 
+struct IndexHasher {
+  size_t operator () (const Index &cindex) const;
+};
+
 struct CindexHasher {
   size_t operator () (const Cindex &cindex) const;
 };
+
+
 
 // this will only be used for pretty-printing.
 void PrintCindex(std::ostream &ostream, const Cindex &cindex,

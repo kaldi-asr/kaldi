@@ -17,21 +17,26 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
+#include <limits>
 #include <sstream>
+#include <utility>
 
+#include "base/kaldi-math.h"
+#include "lm/arpa-file-parser.h"
 #include "lm/const-arpa-lm.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
-#include "base/kaldi-math.h"
+
 
 namespace kaldi {
 
 // Auxiliary struct for converting ConstArpaLm format langugae model to Arpa
 // format.
 struct ArpaLine {
-  std::vector<int32> words; // Sequence of words to be printed.
-  float logprob;            // Logprob corresponds to word sequence.
-  float backoff_logprob;    // Backoff_logprob corresponds to word sequence.
+  std::vector<int32> words;  // Sequence of words to be printed.
+  float logprob;             // Logprob corresponds to word sequence.
+  float backoff_logprob;     // Backoff_logprob corresponds to word sequence.
   // Comparison function for sorting.
   bool operator < (const ArpaLine &other) const {
     if (words.size() < other.words.size()) {
@@ -60,7 +65,7 @@ class LmState {
   struct ChildrenVectorLessThan {
     bool operator()(
         const std::pair<int32, union ChildType>& lhs,
-        const std::pair<int32, union ChildType>& rhs ) const {
+        const std::pair<int32, union ChildType>& rhs) const {
       return lhs.first < rhs.first;
     }
   };
@@ -163,19 +168,16 @@ class LmState {
   // "A B -> X" backing off to "B -> X".
   float backoff_logprob_;
 
-  // List of children. 
+  // List of children.
   std::vector<std::pair<int32, union ChildType> > children_;
 };
 
 // Class to build ConstArpaLm from Arpa format language model. It relies on the
 // auxiliary class LmState above.
-class ConstArpaLmBuilder {
+class ConstArpaLmBuilder : public ArpaFileParser {
  public:
-  ConstArpaLmBuilder(
-      const bool natural_base, const int32 bos_symbol,
-      const int32 eos_symbol, const int32 unk_symbol) :
-      natural_base_(natural_base), bos_symbol_(bos_symbol),
-      eos_symbol_(eos_symbol), unk_symbol_(unk_symbol) {
+  ConstArpaLmBuilder(ArpaParseOptions options)
+      : ArpaFileParser(options, NULL) {
     ngram_order_ = 0;
     num_words_ = 0;
     overflow_buffer_size_ = 0;
@@ -184,7 +186,7 @@ class ConstArpaLmBuilder {
     is_built_ = false;
     lm_states_ = NULL;
     unigram_states_ = NULL;
-    overflow_buffer_ = NULL; 
+    overflow_buffer_ = NULL;
   }
 
   ~ConstArpaLmBuilder() {
@@ -200,14 +202,8 @@ class ConstArpaLmBuilder {
     }
   }
 
-  // Reads in the Arpa format language model, parses it and creates LmStates.
-  void Read(std::istream &is, bool binary);
-
   // Writes ConstArpaLm.
   void Write(std::ostream &os, bool binary) const;
-
-  // Builds ConstArpaLm.
-  void Build();
 
   void SetMaxAddressOffset(const int32 max_address_offset) {
     KALDI_WARN << "You are changing <max_address_offset_>; the default should "
@@ -215,36 +211,28 @@ class ConstArpaLmBuilder {
     max_address_offset_ = max_address_offset;
   }
 
+ protected:
+  // ArpaFileParser overrides.
+  virtual void HeaderAvailable();
+  virtual void ConsumeNGram(const NGram& ngram);
+  virtual void ReadComplete();
+
  private:
   struct WordsAndLmStatePairLessThan {
     bool operator()(
         const std::pair<std::vector<int32>*, LmState*>& lhs,
-        const std::pair<std::vector<int32>*, LmState*>& rhs ) const {
+        const std::pair<std::vector<int32>*, LmState*>& rhs) const {
       return *(lhs.first) < *(rhs.first);
     }
   };
 
  private:
-  // If true, use natural base e for log-prob, otherwise use base 10. The
-  // default base in Arpa format language model is base 10.
-  bool natural_base_;
-
   // Indicating if ConstArpaLm has been built or not.
   bool is_built_;
 
   // Maximum relative address for the child. We put it here just for testing.
   // The default value is 30-bits and should not be changed except for testing.
   int32 max_address_offset_;
-
-  // Integer corresponds to <s>.
-  int32 bos_symbol_;
-
-  // Integer corresponds to </s>.
-  int32 eos_symbol_;
-
-  // Integer corresponds to unknown-word. -1 if no unknown-word symbol is
-  // provided.
-  int32 unk_symbol_;
 
   // N-gram order of language model. This can be figured out from "/data/"
   // section in Arpa format language model.
@@ -259,7 +247,7 @@ class ConstArpaLmBuilder {
   int32 overflow_buffer_size_;
 
   // Size of the <lm_states_> array, which will be needed by I/O.
-  int32 lm_states_size_;
+  int64 lm_states_size_;
 
   // Memory blcok for storing LmStates.
   int32* lm_states_;
@@ -276,201 +264,58 @@ class ConstArpaLmBuilder {
                 LmState*, VectorHasher<int32> > seq_to_state_;
 };
 
-// Reads in the Arpa format language model, parses it and puts the word sequence
-// into the corresponding LmState in <seq_to_state_>.
-void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
-  if (binary) {
-    KALDI_ERR << "binary-mode reading is not implemented for "
-        << "ConstArpaLmBuilder.";
+void ConstArpaLmBuilder::HeaderAvailable() {
+  ngram_order_ = NgramCounts().size();
+}
+
+void ConstArpaLmBuilder::ConsumeNGram(const NGram& ngram) {
+  int32 cur_order = ngram.words.size();
+  // If <ngram_order_> is larger than 1, then we do not create LmState for
+  // the final order entry. We only keep the log probability for it.
+  LmState *lm_state = NULL;
+  if (cur_order != ngram_order_ || ngram_order_ == 1) {
+    lm_state = new LmState(cur_order == 1,
+                           cur_order == ngram_order_ - 1,
+                           ngram.logprob, ngram.backoff);
+
+    KALDI_ASSERT(seq_to_state_.find(ngram.words) == seq_to_state_.end());
+    seq_to_state_[ngram.words] = lm_state;
   }
 
-  std::string line;
-
-  // Number of n-grams from "\data\" section. Those numbers should match the
-  // actual number of n-grams from "\N-grams:" sections.
-  // Note that when we convert the words in the Arpa format language model into
-  // integers, we remove lines with OOV words. We also modify the n-gram counts
-  // in "\data\" correspondingly.
-  std::vector<int32> num_ngrams;
-
-  // Processes "\data\" section.
-  bool keyword_found = false;
-  while (getline(is, line) && !is.eof()) {
-    // The section keywords starts with backslash. We terminate the while loop
-    // if a new section is found.
-    if (!line.empty() && line[0] == '\\') {
-      if (line.find("-grams:") != std::string::npos) break;
-      if (line.find("\\end\\") != std::string::npos) break;
+  // If n-gram order is larger than 1, we have to add possible child to
+  // existing LmStates. We have the following two assumptions:
+  // 1. N-grams are processed from small order to larger ones, i.e., from
+  //    1, 2, ... to the highest order.
+  // 2. If a n-gram exists in the Arpa format language model, then the
+  //    "history" n-gram also exists. For example, if "A B C" is a valid
+  //    n-gram, then "A B" is also a valid n-gram.
+  int32 last_word = ngram.words[cur_order - 1];
+  if (cur_order > 1) {
+    std::vector<int32> hist(ngram.words.begin(), ngram.words.end() - 1);
+    unordered_map<std::vector<int32>,
+                  LmState*, VectorHasher<int32> >::iterator hist_iter;
+    hist_iter = seq_to_state_.find(hist);
+    if (hist_iter == seq_to_state_.end()) {
+      std::ostringstream ss;
+      for (int i = 0; i < cur_order; ++i)
+        ss << (i == 0 ? '[' : ' ') << ngram.words[i];
+      KALDI_ERR << "In line " << LineNumber() << ": "
+                << cur_order << "-gram " << ss.str() << "] does not have "
+                << "a parent model " << cur_order << "-gram.";
     }
-
-    std::size_t equal_symbol_pos = line.find("=");
-    if (equal_symbol_pos != std::string::npos)
-      line.replace(equal_symbol_pos, 1, " = "); // Inserts spaces around "="
-    std::vector<std::string> col;
-    SplitStringToVector(line, " \t", true, &col);
-
-    // Looks for keyword "\data\".
-    if (!keyword_found && col.size() == 1 && col[0] == "\\data\\") {
-      KALDI_LOG << "Reading \"\\data\\\" section.";
-      keyword_found = true;
-      continue;
+    if (cur_order != ngram_order_ || ngram_order_ == 1) {
+      KALDI_ASSERT(lm_state != NULL);
+      KALDI_ASSERT(!hist_iter->second->IsChildFinalOrder());
+      hist_iter->second->AddChild(last_word, lm_state);
+    } else {
+      KALDI_ASSERT(lm_state == NULL);
+      KALDI_ASSERT(hist_iter->second->IsChildFinalOrder());
+      hist_iter->second->AddChild(last_word, ngram.logprob);
     }
-
-    // Enters "\data\" section, and looks for patterns like"ngram 1=1000", which
-    // means there are 1000 unigrams.
-    if (keyword_found && col.size() == 4 && col[0] == "ngram") {
-      if (col[2] == "=") {
-        int32 order, ngram_count;
-        if (!ConvertStringToInteger(col[1], &order)) {
-          KALDI_ERR << "bad line: " << line << "; fail to convert "
-              << col[1] << " to integer.";
-        }
-        if (!ConvertStringToInteger(col[3], &ngram_count)) {
-          KALDI_ERR << "bad line: " << line << "; fail to convert "
-              << col[3] << " to integer.";
-        }
-        if (num_ngrams.size() <= order) {
-          num_ngrams.resize(order + 1);
-        }
-        num_ngrams[order] = ngram_count;
-      } else {
-        KALDI_WARN << "Uninterpretable line \"\\data\\\" section: " << line;
-      }
-    } else if (keyword_found) {
-      KALDI_WARN << "Uninterpretable line \"\\data\\\" section: " << line;
-    }
+  } else {
+    // Figures out <max_word_id>.
+    num_words_ = std::max(num_words_, last_word + 1);
   }
-  if (num_ngrams.size() == 0)
-    KALDI_ERR << "Fail to read \"\\data\\\" section.";
-  ngram_order_ = num_ngrams.size() - 1;
-
-  // Processes "\N-grams:" section.
-  int32 max_word_id = 0;
-  for (int32 cur_order = 1; cur_order < num_ngrams.size(); ++cur_order) {
-    // Skips n-grams with zero count.
-    if (num_ngrams[cur_order] == 0) continue;
-
-    keyword_found = false;
-    int32 ngram_count = 0;
-    std::ostringstream keyword;
-    keyword << "\\" << cur_order << "-grams:";
-    // We use "do ... while" loop since one line has already been read.
-    do {
-      // The section keywords starts with backslash. We terminate the while loop
-      // if a new section is found.
-      if (!line.empty() && line[0] == '\\') {
-        if (line.find("-grams:") != std::string::npos && keyword_found) break;
-        if (line.find("\\end\\") != std::string::npos) break;
-      }
-
-      std::vector<std::string> col;
-      SplitStringToVector(line, " \t", true, &col);
-
-      // Looks for keyword "\N-gram:" if the keyword has not been located.
-      if (!keyword_found && col.size() == 1 && col[0] == keyword.str()) {
-        KALDI_LOG << "Reading \"" << keyword.str() << "\" section.";
-        ngram_count = 0;
-        keyword_found = true;
-        continue;
-      }
-
-      // Enters "\N-grams:" section if the keyword has been located.
-      if (keyword_found && col.size() > 0) {
-        KALDI_ASSERT(col.size() >= 1 + cur_order);
-        KALDI_ASSERT(col.size() <= 2 + cur_order);// backoff_logprob could be 0.
-        if (cur_order == ngram_order_ && col.size() == 2 + cur_order) {
-          KALDI_ERR << "Backoff probability detected for final-order entry \""
-              << line << "\".";
-        }
-        ngram_count++;
-
-        // If backoff_logprob is 0, it will not appear in Arpa format language
-        // model. We put it back so the processing afterwards will be easier.
-        if (col.size() == 1 + cur_order) {
-          col.push_back("0");
-        }
-
-        // Creates LmState for the current word sequence.
-        bool is_unigram = (cur_order == 1) ? true : false;
-        float logprob;
-        float backoff_logprob;
-        KALDI_ASSERT(ConvertStringToReal(col[0], &logprob));
-        KALDI_ASSERT(ConvertStringToReal(col[1 + cur_order], &backoff_logprob));
-        if (natural_base_) {
-          logprob *= Log(10.0f);
-          backoff_logprob *= Log(10.0f);
-        }
-       
-        // If <ngram_order_> is larger than 1, then we do not create LmState for
-        // the final order entry. We only keep the log probability for it.
-        LmState *lm_state = NULL;
-        if (cur_order != ngram_order_ || ngram_order_ == 1) {
-          lm_state = new LmState(is_unigram,
-                                 (cur_order == ngram_order_ - 1),
-                                 logprob, backoff_logprob);
-        }
-
-        // Figures out the sequence of words.
-        std::vector<int32> seq(cur_order, 0);
-        for (int32 index = 0; index < cur_order; ++index) {
-          int32 word;
-          if (!ConvertStringToInteger(col[1 + index], &word)) {
-            KALDI_ERR << "bad line: " << line << "; fail to convert "
-                << col[1 + index] << " to integer.";
-          }
-          seq[index] = word;
-        }
-
-        // If <ngram_order_> is larger than 1, then we do not insert LmState to
-        // <seq_to_state_>.
-        if (cur_order != ngram_order_ || ngram_order_ == 1) {
-          KALDI_ASSERT(lm_state != NULL);
-          KALDI_ASSERT(seq_to_state_.find(seq) == seq_to_state_.end());
-          seq_to_state_[seq] = lm_state;
-        }
-
-        // If n-gram order is larger than 1, we have to add possible child to
-        // existing LmStates. We have the following two assumptions:
-        // 1. N-grams are processed from small order to larger ones, i.e., from
-        //    1, 2, ... to the highest order.
-        // 2. If a n-gram exists in the Arpa format language model, then the
-        //    "history" n-gram also exists. For example, if "A B C" is a valid
-        //    n-gram, then "A B" is also a valid n-gram.
-        if (cur_order > 1) {
-          std::vector<int32> hist(seq.begin(), seq.begin() + cur_order - 1);
-          int32 word = seq[seq.size() - 1];
-          unordered_map<std::vector<int32>,
-                        LmState*, VectorHasher<int32> >::iterator hist_iter;
-          hist_iter = seq_to_state_.find(hist);
-          KALDI_ASSERT(hist_iter != seq_to_state_.end());
-          if (cur_order != ngram_order_ || ngram_order_ == 1) {
-            KALDI_ASSERT(lm_state != NULL);
-            KALDI_ASSERT(!hist_iter->second->IsChildFinalOrder());
-            hist_iter->second->AddChild(word, lm_state);
-          } else {
-            KALDI_ASSERT(lm_state == NULL);
-            KALDI_ASSERT(hist_iter->second->IsChildFinalOrder());
-            hist_iter->second->AddChild(word, logprob);
-          }
-        } else {
-          // Figures out <max_word_id>.
-          KALDI_ASSERT(seq.size() == 1);
-          if (seq[0] > max_word_id) {
-            max_word_id = seq[0];
-          }
-        }
-      }
-    } while (getline(is, line) && !is.eof());
-    if (ngram_count > num_ngrams[cur_order] ||
-        (ngram_count == 0 && num_ngrams[cur_order] != 0)) {
-      KALDI_ERR << "Header said there would be " << num_ngrams[cur_order]
-                << " n-grams of order " << cur_order << ", but we saw "
-                << ngram_count;
-    }
-  }
-
-  // <num_words_> is <max_word_id> plus 1.
-  num_words_ = max_word_id + 1;
 }
 
 // ConstArpaLm can be built in the following steps, assuming we have already
@@ -499,7 +344,7 @@ void ConstArpaLmBuilder::Read(std::istream &is, bool binary) {
 //    At the same time, we will also create two special buffers:
 //    <unigram_states_>
 //    <overflow_buffer_>
-void ConstArpaLmBuilder::Build() {
+void ConstArpaLmBuilder::ReadComplete() {
   // STEP 1: sorting LmStates lexicographically.
   // Vector for holding the sorted LmStates.
   std::vector<std::pair<std::vector<int32>*, LmState*> > sorted_vec;
@@ -529,7 +374,7 @@ void ConstArpaLmBuilder::Build() {
 
   // STEP 3: creating memory block to store LmStates.
   // Reserves a memory block for LmStates.
-  int32 lm_states_index = 0;
+  int64 lm_states_index = 0;
   try {
     lm_states_ = new int32[lm_states_size_];
   } catch(const std::exception &e) {
@@ -547,12 +392,12 @@ void ConstArpaLmBuilder::Build() {
     int32* parent_address = lm_states_ + lm_states_index;
 
     // Adds logprob.
-    float logprob = sorted_vec[i].second->Logprob();
-    lm_states_[lm_states_index++] = *reinterpret_cast<int32*>(&logprob);
+    Int32AndFloat logprob_f(sorted_vec[i].second->Logprob());
+    lm_states_[lm_states_index++] = logprob_f.i;
 
     // Adds backoff_logprob.
-    float backoff_logprob = sorted_vec[i].second->BackoffLogprob();
-    lm_states_[lm_states_index++] = *reinterpret_cast<int32*>(&backoff_logprob);
+    Int32AndFloat backoff_logprob_f(sorted_vec[i].second->BackoffLogprob());
+    lm_states_[lm_states_index++] = backoff_logprob_f.i;
 
     // Adds num_children.
     lm_states_[lm_states_index++] = sorted_vec[i].second->NumChildren();
@@ -570,14 +415,14 @@ void ConstArpaLmBuilder::Build() {
         // Child is a leaf and not unigram. In this case we will not create an
         // entry in <lm_states_>; instead, we put the logprob in the place where
         // we normally store the poitner.
-        float child_logprob;
+        Int32AndFloat child_logprob_f;
         if (sorted_vec[i].second->IsChildFinalOrder()) {
-          child_logprob = sorted_vec[i].second->GetChild(j).second.prob;
+          child_logprob_f.f = sorted_vec[i].second->GetChild(j).second.prob;
         } else {
-          child_logprob =
+          child_logprob_f.f =
               sorted_vec[i].second->GetChild(j).second.state->Logprob();
         }
-        child_info = *reinterpret_cast<int32*>(&child_logprob);
+        child_info = child_logprob_f.i;
         child_info &= ~1;   // Sets the last bit to 0 so <child_info> is even.
       } else {
         // Child is not a leaf or is unigram.
@@ -633,9 +478,10 @@ void ConstArpaLmBuilder::Write(std::ostream &os, bool binary) const {
   KALDI_ASSERT(is_built_);
 
   // Creates ConstArpaLm.
-  ConstArpaLm const_arpa_lm(bos_symbol_, eos_symbol_, unk_symbol_, ngram_order_,
-                            num_words_, overflow_buffer_size_, lm_states_size_,
-                            unigram_states_, overflow_buffer_, lm_states_);
+  ConstArpaLm const_arpa_lm(
+      Options().bos_symbol, Options().eos_symbol, Options().unk_symbol,
+      ngram_order_, num_words_, overflow_buffer_size_, lm_states_size_,
+      unigram_states_, overflow_buffer_, lm_states_);
   const_arpa_lm.Write(os, binary);
 }
 
@@ -645,21 +491,31 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     KALDI_ERR << "text-mode writing is not implemented for ConstArpaLm.";
   }
 
+  WriteToken(os, binary, "<ConstArpaLm>");
+
   // Misc info.
+  WriteToken(os, binary, "<LmInfo>");
   WriteBasicType(os, binary, bos_symbol_);
   WriteBasicType(os, binary, eos_symbol_);
   WriteBasicType(os, binary, unk_symbol_);
   WriteBasicType(os, binary, ngram_order_);
+  WriteToken(os, binary, "</LmInfo>");
 
   // LmStates section.
+  WriteToken(os, binary, "<LmStates>");
   WriteBasicType(os, binary, lm_states_size_);
-  for (int32 i = 0; i < lm_states_size_; ++i) {
-    WriteBasicType(os, binary, lm_states_[i]);
+  os.write(reinterpret_cast<char *>(lm_states_),
+           sizeof(int32) * lm_states_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section writing failed.";
   }
+  WriteToken(os, binary, "</LmStates>");
 
   // Unigram section. We write memory offset to disk instead of the absolute
   // pointers.
+  WriteToken(os, binary, "<LmUnigram>");
   WriteBasicType(os, binary, num_words_);
+  int64* tmp_unigram_address = new int64[num_words_];
   for (int32 i = 0; i < num_words_; ++i) {
     // The relative address here is a little bit tricky:
     // 1. If the original address is NULL, then we set the relative address to
@@ -667,14 +523,23 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     // 2. If the original address is not NULL, we set it to the following:
     //      unigram_states_[i] - lm_states_ + 1
     //    we plus 1 to ensure that the above value is positive.
-    int64 tmp_address = (unigram_states_[i] == NULL) ? 0 :
+    tmp_unigram_address[i] = (unigram_states_[i] == NULL) ? 0 :
         unigram_states_[i] - lm_states_ + 1;
-    WriteBasicType(os, binary, tmp_address);
   }
+  os.write(reinterpret_cast<char *>(tmp_unigram_address),
+           sizeof(int64) * num_words_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section writing failed.";
+  }
+  delete[] tmp_unigram_address;   // Releases the memory.
+  tmp_unigram_address = NULL;
+  WriteToken(os, binary, "</LmUnigram>");
 
   // Overflow section. We write memory offset to disk instead of the absolute
   // pointers.
+  WriteToken(os, binary, "<LmOverflow>");
   WriteBasicType(os, binary, overflow_buffer_size_);
+  int64* tmp_overflow_address = new int64[overflow_buffer_size_];
   for (int32 i = 0; i < overflow_buffer_size_; ++i) {
     // The relative address here is a little bit tricky:
     // 1. If the original address is NULL, then we set the relative address to
@@ -682,13 +547,113 @@ void ConstArpaLm::Write(std::ostream &os, bool binary) const {
     // 2. If the original address is not NULL, we set it to the following:
     //      overflow_buffer_[i] - lm_states_ + 1
     //    we plus 1 to ensure that the above value is positive.
-    int64 tmp_address = (overflow_buffer_[i] == NULL) ? 0 :
+    tmp_overflow_address[i] = (overflow_buffer_[i] == NULL) ? 0 :
         overflow_buffer_[i] - lm_states_ + 1;
-    WriteBasicType(os, binary, tmp_address);
   }
+  os.write(reinterpret_cast<char *>(tmp_overflow_address),
+           sizeof(int64) * overflow_buffer_size_);
+  if (!os.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section writing failed.";
+  }
+  delete[] tmp_overflow_address;
+  tmp_overflow_address = NULL;
+  WriteToken(os, binary, "</LmOverflow>");
+  WriteToken(os, binary, "</ConstArpaLm>");
 }
 
 void ConstArpaLm::Read(std::istream &is, bool binary) {
+  KALDI_ASSERT(!initialized_);
+  if (!binary) {
+    KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
+  }
+
+  int first_char = is.peek();
+  if (first_char == 4) {  // Old on-disk format starts with length of int32.
+    ReadInternalOldFormat(is, binary);
+  } else {                // New on-disk format starts with token <ConstArpaLm>.
+    ReadInternal(is, binary);
+  }
+}
+
+void ConstArpaLm::ReadInternal(std::istream &is, bool binary) {
+  KALDI_ASSERT(!initialized_);
+  if (!binary) {
+    KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
+  }
+
+  ExpectToken(is, binary, "<ConstArpaLm>");
+
+  // Misc info.
+  ExpectToken(is, binary, "<LmInfo>");
+  ReadBasicType(is, binary, &bos_symbol_);
+  ReadBasicType(is, binary, &eos_symbol_);
+  ReadBasicType(is, binary, &unk_symbol_);
+  ReadBasicType(is, binary, &ngram_order_);
+  ExpectToken(is, binary, "</LmInfo>");
+
+  // LmStates section.
+  ExpectToken(is, binary, "<LmStates>");
+  ReadBasicType(is, binary, &lm_states_size_);
+  lm_states_ = new int32[lm_states_size_];
+  is.read(reinterpret_cast<char *>(lm_states_),
+          sizeof(int32) * lm_states_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmStates> section reading failed.";
+  }
+  ExpectToken(is, binary, "</LmStates>");
+
+  // Unigram section. We write memory offset to disk instead of the absolute
+  // pointers.
+  ExpectToken(is, binary, "<LmUnigram>");
+  ReadBasicType(is, binary, &num_words_);
+  unigram_states_ = new int32*[num_words_];
+  int64* tmp_unigram_address = new int64[num_words_];
+  is.read(reinterpret_cast<char *>(tmp_unigram_address),
+          sizeof(int64) * num_words_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmUnigram> section reading failed.";
+  }
+  for (int32 i = 0; i < num_words_; ++i) {
+    // Check out how we compute the relative address in ConstArpaLm::Write().
+    unigram_states_[i] = (tmp_unigram_address[i] == 0) ? NULL
+        : lm_states_ + tmp_unigram_address[i] - 1;
+  }
+  delete[] tmp_unigram_address;
+  tmp_unigram_address = NULL;
+  ExpectToken(is, binary, "</LmUnigram>");
+
+  // Overflow section. We write memory offset to disk instead of the absolute
+  // pointers.
+  ExpectToken(is, binary, "<LmOverflow>");
+  ReadBasicType(is, binary, &overflow_buffer_size_);
+  overflow_buffer_ = new int32*[overflow_buffer_size_];
+  int64* tmp_overflow_address = new int64[overflow_buffer_size_];
+  is.read(reinterpret_cast<char *>(tmp_overflow_address),
+          sizeof(int64) * overflow_buffer_size_);
+  if (!is.good()) {
+    KALDI_ERR << "ConstArpaLm <LmOverflow> section reading failed.";
+  }
+  for (int32 i = 0; i < overflow_buffer_size_; ++i) {
+    // Check out how we compute the relative address in ConstArpaLm::Write().
+    overflow_buffer_[i] = (tmp_overflow_address[i] == 0) ? NULL
+        : lm_states_ + tmp_overflow_address[i] - 1;
+  }
+  delete[] tmp_overflow_address;
+  tmp_overflow_address = NULL;
+  ExpectToken(is, binary, "</LmOverflow>");
+  ExpectToken(is, binary, "</ConstArpaLm>");
+
+  KALDI_ASSERT(ngram_order_ > 0);
+  KALDI_ASSERT(bos_symbol_ < num_words_ && bos_symbol_ > 0);
+  KALDI_ASSERT(eos_symbol_ < num_words_ && eos_symbol_ > 0);
+  KALDI_ASSERT(unk_symbol_ < num_words_ &&
+               (unk_symbol_ > 0 || unk_symbol_ == -1));
+  lm_states_end_ = lm_states_ + lm_states_size_ - 1;
+  memory_assigned_ = true;
+  initialized_ = true;
+}
+
+void ConstArpaLm::ReadInternalOldFormat(std::istream &is, bool binary) {
   KALDI_ASSERT(!initialized_);
   if (!binary) {
     KALDI_ERR << "text-mode reading is not implemented for ConstArpaLm.";
@@ -701,9 +666,13 @@ void ConstArpaLm::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &ngram_order_);
 
   // LmStates section.
-  ReadBasicType(is, binary, &lm_states_size_);
+  // In the deprecated version, <lm_states_size_> used to be type of int32,
+  // which was a bug. We therefore use int32 for read for back-compatibility.
+  int32 lm_states_size_int32;
+  ReadBasicType(is, binary, &lm_states_size_int32);
+  lm_states_size_ = static_cast<int64>(lm_states_size_int32);
   lm_states_ = new int32[lm_states_size_];
-  for (int32 i = 0; i < lm_states_size_; ++i) {
+  for (int64 i = 0; i < lm_states_size_; ++i) {
     ReadBasicType(is, binary, &lm_states_[i]);
   }
 
@@ -737,7 +706,7 @@ void ConstArpaLm::Read(std::istream &is, bool binary) {
                (unk_symbol_ > 0 || unk_symbol_ == -1));
   lm_states_end_ = lm_states_ + lm_states_size_ - 1;
   memory_assigned_ = true;
-  initialized_ = true;;
+  initialized_ = true;
 }
 
 bool ConstArpaLm::HistoryStateExists(const std::vector<int32>& hist) const {
@@ -815,7 +784,8 @@ float ConstArpaLm::GetNgramLogprobRecurse(
       // defined.
       return std::numeric_limits<float>::min();
     } else {
-      return *reinterpret_cast<float*>(unigram_states_[word]);
+      Int32AndFloat logprob_i(*unigram_states_[word]);
+      return logprob_i.f;
     }
   }
 
@@ -830,7 +800,8 @@ float ConstArpaLm::GetNgramLogprobRecurse(
       DecodeChildInfo(child_info, state, &child_lm_state, &logprob);
       return logprob;
     } else {
-      backoff_logprob = *reinterpret_cast<float*>(state + 1);
+      Int32AndFloat backoff_logprob_i(*(state + 1));
+      backoff_logprob = backoff_logprob_i.f;
     }
   }
   std::vector<int32> new_hist(hist);
@@ -909,17 +880,19 @@ void ConstArpaLm::DecodeChildInfo(const int32 child_info,
   if (child_info % 2 == 0) {
     // Child is a leaf, only returns the log probability.
     *child_lm_state = NULL;
-    int32 tmp_child_info = child_info;
-    *logprob = *reinterpret_cast<float*>(&tmp_child_info);
+    Int32AndFloat logprob_i(child_info);
+    *logprob = logprob_i.f;
   } else {
     int32 child_offset = child_info / 2;
     if (child_offset > 0) {
       *child_lm_state = parent + child_offset;
-      *logprob = *reinterpret_cast<float*>(*child_lm_state);
+      Int32AndFloat logprob_i(**child_lm_state);
+      *logprob = logprob_i.f;
     } else {
       KALDI_ASSERT(-child_offset < overflow_buffer_size_);
       *child_lm_state = overflow_buffer_[-child_offset];
-      *logprob = *reinterpret_cast<float*>(*child_lm_state);
+      Int32AndFloat logprob_i(**child_lm_state);
+      *logprob = logprob_i.f;
     }
     KALDI_ASSERT(*child_lm_state >= lm_states_);
     KALDI_ASSERT(*child_lm_state <= lm_states_end_);
@@ -937,8 +910,10 @@ void ConstArpaLm::WriteArpaRecurse(int32* lm_state,
   // Inserts the current LmState to <output>.
   ArpaLine arpa_line;
   arpa_line.words = seq;
-  arpa_line.logprob = *reinterpret_cast<float*>(lm_state);
-  arpa_line.backoff_logprob = *reinterpret_cast<float*>(lm_state + 1);
+  Int32AndFloat logprob_i(*lm_state);
+  arpa_line.logprob = logprob_i.f;
+  Int32AndFloat backoff_logprob_i(*(lm_state + 1));
+  arpa_line.backoff_logprob = backoff_logprob_i.f;
   output->push_back(arpa_line);
 
   // Scans for possible children, and recursively adds child to <output>.
@@ -998,7 +973,7 @@ void ConstArpaLm::WriteArpa(std::ostream &os) const {
   // Writes n-grams.
   int32 current_order = 0;
   for (int32 i = 0; i < tmp_output.size(); ++i) {
-    // Beginning of a n-gram section. 
+    // Beginning of a n-gram section.
     if (tmp_output[i].words.size() != current_order) {
       current_order = tmp_output[i].words.size();
       os << std::endl;
@@ -1091,12 +1066,17 @@ bool BuildConstArpaLm(const bool natural_base, const int32 bos_symbol,
                       const int32 eos_symbol, const int32 unk_symbol,
                       const std::string& arpa_rxfilename,
                       const std::string& const_arpa_wxfilename) {
-  ConstArpaLmBuilder lm_builder(natural_base, bos_symbol,
-                                eos_symbol, unk_symbol);
+  ArpaParseOptions options;
+  options.bos_symbol = bos_symbol;
+  options.eos_symbol = eos_symbol;
+  options.unk_symbol = unk_symbol;
+  options.use_log10 = !natural_base;
+
+  ConstArpaLmBuilder lm_builder(options);
+  KALDI_LOG << "Reading " << arpa_rxfilename;
   ReadKaldiObject(arpa_rxfilename, &lm_builder);
-  lm_builder.Build();
   WriteKaldiObject(lm_builder, const_arpa_wxfilename, true);
   return true;
 }
 
-} // namespace kaldi
+}  // namespace kaldi

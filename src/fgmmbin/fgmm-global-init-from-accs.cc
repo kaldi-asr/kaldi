@@ -60,8 +60,9 @@ int main(int argc, char *argv[]) {
       gmm_accs.Read(ki.Stream(), binary, true /* add accs. */);
     }
 
-    int32 num_gauss = gmm_accs.NumGauss(),
-          dim = gmm_accs.Dim();
+    int32 num_gauss = gmm_accs.NumGauss(), dim = gmm_accs.Dim(),
+          tot_floored = 0, gauss_floored = 0;
+
     FullGmm fgmm(num_components, dim);
 
     Vector<BaseFloat> weights(num_gauss);
@@ -85,14 +86,26 @@ int main(int argc, char *argv[]) {
       SpMatrix<BaseFloat> covar(gmm_accs.covariance_accumulator()[i]);
       covar.Scale(1.0 / occ);
       covar.AddVec2(-1.0, means.Row(i));  // subtract squared means.
-      covar.Invert();
+      // Floor variance Eigenvalues.
+      BaseFloat floor = std::max(
+          static_cast<BaseFloat>(gmm_opts.variance_floor),
+          static_cast<BaseFloat>(covar.MaxAbsEig() / gmm_opts.max_condition));
+      int32 floored = covar.ApplyFloor(floor);
+      if (floored) {
+        tot_floored += floored;
+        gauss_floored++;
+      }
+      covar.InvertDouble();
       invcovars.push_back(covar);
     }
     fgmm.SetWeights(weights);
     fgmm.SetInvCovarsAndMeans(invcovars, means);
     int32 num_bad = fgmm.ComputeGconsts();
     KALDI_LOG << "FullGmm has " << num_bad << " bad GConsts";
-
+    if (tot_floored > 0) {
+      KALDI_WARN << tot_floored << " variances floored in " << gauss_floored
+                 << " Gaussians.";
+    }
     WriteKaldiObject(fgmm, model_out_filename, binary_write);
 
     KALDI_LOG << "Written model to " << model_out_filename;

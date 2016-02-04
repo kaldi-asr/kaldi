@@ -83,9 +83,6 @@ class CuVectorBase {
   void CopyFromVec(const VectorBase<OtherReal> &src);
 
   template<typename OtherReal>
-  void CopyFromSmat(const CuSparseMatrix<OtherReal> &smat);
-
-  template<typename OtherReal>
   void CopyToVec(VectorBase<OtherReal> *dst) const;
   
   void CopyRowsFromMat(const CuMatrixBase<Real> &M);
@@ -253,13 +250,6 @@ class CuVector: public CuVectorBase<Real> {
     this->CopyFromVec(Vector<Real>(v));
   }
 
-  template<typename OtherReal>
-  explicit CuVector(const CuSparseMatrix<OtherReal> &smat) :
-      CuVectorBase<Real> () {
-    Resize(smat.NumElements(), kUndefined);
-    this->CopyFromSmat(smat);
-  }
-
   /// Allocate the memory
   void Resize(MatrixIndexT dim, MatrixResizeType t = kSetZero);
   
@@ -340,8 +330,8 @@ bool ApproxEqual(const CuVectorBase<Real> &a,
 }
 
 template<typename Real>
-inline void AssertEqual(CuVectorBase<Real> &a, CuVectorBase<Real> &b,
-                        float tol = 0.01) {
+inline void AssertEqual(const CuVectorBase<Real> &a, 
+                        const CuVectorBase<Real> &b, Real tol = 0.01) {
   KALDI_ASSERT(a.ApproxEqual(b, tol));
 }
 

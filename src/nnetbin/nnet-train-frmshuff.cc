@@ -64,6 +64,9 @@ int main(int argc, char *argv[]) {
     std::string frame_weights;
     po.Register("frame-weights", &frame_weights, "Per-frame weights to scale gradients (frame selection/weighting).");
 
+    std::string utt_weights;
+    po.Register("utt-weights", &utt_weights, "Per-utterance weights (scalar applied to frame-weights).");
+
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu, "yes|no|optional, only has effect if compiled with CUDA");
     
@@ -122,6 +125,10 @@ int main(int argc, char *argv[]) {
     if (frame_weights != "") {
       weights_reader.Open(frame_weights);
     }
+    RandomAccessBaseFloatReader utt_weights_reader;
+    if (utt_weights != "") {
+      utt_weights_reader.Open(utt_weights);
+    }
 
     RandomizerMask randomizer_mask(rnd_opts);
     MatrixRandomizer feature_randomizer(rnd_opts);
@@ -169,6 +176,12 @@ int main(int argc, char *argv[]) {
           num_other_error++;
           continue;
         }
+        // check we have per-utterance weights
+        if (utt_weights != "" && !utt_weights_reader.HasKey(utt)) {
+          KALDI_WARN << utt << ", missing per-utterance weight";
+          num_other_error++;
+          continue;
+        }
         // get feature / target pair
         Matrix<BaseFloat> mat = feature_reader.Value();
         Posterior targets = targets_reader.Value(utt);
@@ -180,6 +193,14 @@ int main(int argc, char *argv[]) {
           weights.Resize(mat.NumRows());
           weights.Set(1.0);
         }
+        // multiply with per-utterance weight,
+        if (utt_weights != "") {
+          BaseFloat w = utt_weights_reader.Value(utt);
+          KALDI_ASSERT(w >= 0.0);
+          if (w == 0.0) continue; // remove sentence from training,
+          weights.Scale(w);
+        }
+
         // correct small length mismatch ... or drop sentence
         {
           // add lengths to vector

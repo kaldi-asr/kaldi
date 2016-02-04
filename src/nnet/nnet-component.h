@@ -62,6 +62,7 @@ class Component {
     kSigmoid,
     kTanh,
     kDropout,
+    kLengthNormComponent,
 
     kTranform = 0x0400,
     kRbm,
@@ -73,7 +74,8 @@ class Component {
     kRescale,
     
     kKlHmm = 0x0800,
-    kSentenceAveragingComponent,
+    kSentenceAveragingComponent, /* deprecated */
+    kSimpleSentenceAveragingComponent,
     kAveragePoolingComponent,
     kAveragePooling2DComponent,
     kMaxPoolingComponent,

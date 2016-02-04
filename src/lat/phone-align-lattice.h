@@ -50,7 +50,7 @@ struct PhoneAlignLatticeOptions {
   }
 };
 
-/// Returns a lattice in which the arcs correspond exactly to sequences of
+/// Outputs a lattice in which the arcs correspond exactly to sequences of
 /// phones, so the boundaries between the arcs correspond to the boundaries
 /// between phones If remove-epsilon == false and replace-output-symbols ==
 /// false, but an arc may have >1 phone on it, but the boundaries will still

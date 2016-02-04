@@ -57,11 +57,12 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-merge-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "e.g.\n"
         "nnet3-merge-egs --minibatch-size=512 ark:1.egs ark:- | nnet3-train-simple ... \n"
-        "See also nnet-copy-egs\n";
+        "See also nnet3-copy-egs\n";
         
     bool compress = false;
     int32 minibatch_size = 512;
     bool measure_output_frames = true;
+    bool discard_partial_minibatches = false;
 
     ParseOptions po(usage);
     po.Register("minibatch-size", &minibatch_size, "Target size of minibatches "
@@ -71,7 +72,10 @@ int main(int argc, char *argv[]) {
                 "false, --minibatch-size is the number of input examples to "
                 "merge.");
     po.Register("compress", &compress, "If true, compress the output examples "
-                "(not recommended unless you are writing to disk");
+                "(not recommended unless you are writing to disk)");
+    po.Register("discard-partial-minibatches", &discard_partial_minibatches,
+		"discard any partial minibatches of 'uneven' size that may be "
+		"encountered at the end.");
     
     po.Read(argc, argv);
 
@@ -105,8 +109,9 @@ int main(int argc, char *argv[]) {
       // Do Next() now, so we can test example_reader.Done() below .
       example_reader.Next();
       num_read++;
-      
-      if (minibatch_ready || (example_reader.Done() && !examples.empty())) {
+
+      if (minibatch_ready || (!discard_partial_minibatches &&
+			      (example_reader.Done() && !examples.empty()))) {
         NnetExample merged_eg;
         MergeExamples(examples, compress, &merged_eg);
         std::ostringstream ostr;

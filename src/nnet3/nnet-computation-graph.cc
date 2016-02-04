@@ -1,3 +1,5 @@
+// nnet3/nnet-computation-graph.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -84,8 +86,11 @@ void ComputationGraph::Renumber(const std::vector<bool> &keep) {
       int32 old_dep = *iter, new_dep = old2new[old_dep];
       if (new_dep != -1)
         temp_graph.dependencies[c].push_back(new_dep);
+      else
+        KALDI_ERR << "Dependency on nonexistent cindex-id";
     }
   }
+
   // at this point, rather than setting up cindex_to_cindex_id_ on the temporary
   // graph, we copy cindexes, is_input and dependencies to this graph, and then
   // set up cindex_to_cindex_id_ locally.
@@ -261,7 +266,9 @@ void ComputationGraphBuilder::AddOutputs() {
       num_added++;
     }
   }
-  KALDI_ASSERT(num_added > 0 && "AddOutputToGraph: nothing to add.");
+  if (num_added == 0) {
+    KALDI_ERR << "Cannot process computation request with no outputs";
+  }
   current_distance_ = 0;
   // the calls to AddCindexId in this function will have added to next_queue_.
   KALDI_ASSERT(current_queue_.empty());
@@ -401,6 +408,7 @@ void ComputationGraphBuilder::PruneDependencies(int32 cindex_id) {
       break;
     }
     case kDimRange:
+      KALDI_ASSERT(dependencies.size() == 1);
       // there should be exactly one dependency and it is required, not
       // optional, so there is nothing to do here.  Return.
       return;
@@ -425,7 +433,9 @@ void ComputationGraphBuilder::Compute() {
   int32 max_distance = 10000;
   while (current_distance_ < max_distance) {
     BuildGraphOneIter();
-    Check();
+    // only check rarely if we're running at low verbose level.
+    if (GetVerboseLevel() >= 3 || RandInt(1,  (current_distance_ + 1)) == 1)
+      Check();
     // TODO: come up with a scheme to delay when we call
     // UpdateAllComputableInfo().
     UpdateAllComputableInfo();
@@ -541,7 +551,6 @@ void ComputationGraphBuilder::Prune() {
   computable_info_.clear();
   computable_queue_.clear();
   usable_count_.clear();
-
 }
 
 // Add cindex_ids that this cindex_id depends on.
@@ -1670,9 +1679,11 @@ static void AddDimRangeSteps(
         bool input = false, is_new;
         int32 dimrange_cindex_id = graph->GetCindexId(dimrange_cindex,
                                                       input, &is_new);
-        // actually we don't care about is_new's value.  some new ones are
-        // allowed.
         new_step[i] = dimrange_cindex_id;
+        if (is_new) {  // if we newly added this cindex_id, note the dependency
+                       // on its input.
+          graph->dependencies[dimrange_cindex_id].push_back(cindex_id);
+        }
       }
       all_steps_out.push_back(std::vector<int32>());
       all_steps_out.back().swap(new_step);

@@ -9,7 +9,7 @@ EXTRA_CXXFLAGS += -Wno-sign-compare -I ../../tools/portaudio/install/include
 EXTRA_CXXFLAGS += $(shell pkg-config --cflags gstreamer-1.0)
 EXTRA_CXXFLAGS += $(shell pkg-config --cflags glib-2.0)
 
-EXTRA_LDLIBS += -pthread -lgstbase-1.0 -lgstcontroller-1.0 -lgmodule-2.0 -lgthread-2.0 -lrt 
+EXTRA_LDLIBS += -lgstbase-1.0 -lgstcontroller-1.0 -lgmodule-2.0 -lgthread-2.0
 EXTRA_LDLIBS += $(shell pkg-config --libs gstreamer-1.0)
 EXTRA_LDLIBS += $(shell pkg-config --libs glib-2.0)
 
@@ -32,8 +32,6 @@ all: $(LIBFILE)
 EXTRA_LDLIBS += ../../tools/portaudio/install/lib/libportaudio.a
 ifneq ($(wildcard ../../tools/portaudio/install/include/pa_linux_alsa.h),)
     EXTRA_LDLIBS += -lasound
-else
-    EXTRA_LDLIBS += -lrt
 endif
 
 # MKL libs required when linked via shared library
@@ -41,9 +39,18 @@ ifdef MKLROOT
 	EXTRA_LDLIBS+=-lmkl_p4n -lmkl_def
 endif
 
+# Library so name and rpath
+CXX_VERSION=$(shell $(CXX) --version 2>/dev/null)
+ifneq (,$(findstring clang, $(CXX_VERSION)))
+    # clang++ linker
+    EXTRA_LDLIBS +=  -Wl,-install_name,$(LIBFILE) -Wl,-rpath,$(KALDILIBDIR)
+else
+    # g++ linker
+    EXTRA_LDLIBS +=  -Wl,-soname=$(LIBFILE) -Wl,--no-as-needed -Wl,-rpath=$(KALDILIBDIR) -lrt -pthread
+endif
+
 $(LIBFILE): $(OBJFILES)
-	$(CXX) -shared -DPIC -o $(LIBFILE) -Wl,-soname=$(LIBFILE) -Wl,--no-as-needed \
-	  -L$(KALDILIBDIR) -Wl,-rpath=$(KALDILIBDIR) $(EXTRA_LDLIBS) $(LDLIBS) $(LDFLAGS) \
+	$(CXX) -shared -DPIC -o $(LIBFILE) -L$(KALDILIBDIR) $(EXTRA_LDLIBS) $(LDLIBS) $(LDFLAGS) \
 	  $(OBJFILES)
  
 kaldimarshal.h: kaldimarshal.list

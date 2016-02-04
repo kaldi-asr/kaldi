@@ -35,14 +35,13 @@ if [ $stage -le 8 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-
   steps/nnet3/train_tdnn.sh --stage $train_stage \
     --num-epochs 8 --num-jobs-initial 2 --num-jobs-final 14 \
     --splice-indexes "-1,0,1  -2,1  -4,2 0" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_train_si284 \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
-    --io-opts "-tc 12" \
+    --io-opts "--max-jobs-run 12" \
     --initial-effective-lrate 0.005 --final-effective-lrate 0.0005 \
     --cmd "$decode_cmd" \
     --pnorm-input-dim 2000 \

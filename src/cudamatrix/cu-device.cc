@@ -41,6 +41,7 @@
 #include "base/kaldi-error.h"
 #include "base/kaldi-utils.h"
 #include "util/common-utils.h"
+#include "util/kaldi-io.h"
 
 namespace kaldi {
 
@@ -54,17 +55,23 @@ namespace kaldi {
    changed feature (the NVidia docs were never super-clear regarding device
    initialization).  But regardless, changing to this new mechanism should be
    harmless even if the problem was specific to the CLSP grid.
- */
+*/
 
-static bool GetCudaContext(int32 num_gpus) {
+static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
+  std::ostringstream debug_stream;
+  debug_stream << "num-gpus=" << num_gpus << ". ";
   for (int32 device = 0; device < num_gpus; device++) {
     cudaSetDevice(device);
     cudaError_t e = cudaDeviceSynchronize(); // << CUDA context gets created here.
-    if (e == cudaSuccess)
+    if (e == cudaSuccess) {
+      *debug_str = debug_stream.str();
       return true;
+    }
+    debug_stream << "Device " << device << ": " << cudaGetErrorString(e) << ".  ";
     cudaGetLastError();  // Make sure the error state doesn't get returned in
                          // the next cudaGetLastError().
   }
+  *debug_str = debug_stream.str();
   return false;
 }
 
@@ -120,18 +127,24 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   }
 
   // Create a CUDA context.
-  bool got_context = GetCudaContext(num_gpus);
+  std::string debug_str;
+  bool got_context = GetCudaContext(num_gpus, &debug_str);
 
   if (use_gpu != "wait") {
     if (!got_context) {
       // So far no we don't have context, sleep a bit and retry.
       int32 sec_sleep = (use_gpu == "yes" ? 20 : 2);
       KALDI_WARN << "Will try again to get a GPU after " << sec_sleep
-        << " seconds.";
+                 << " seconds.";
       Sleep(sec_sleep);
-      if (!GetCudaContext(num_gpus)) {
+      if (!GetCudaContext(num_gpus, &debug_str)) {
         if (use_gpu == "yes") {
-          KALDI_CUDA_ERR(e, "Failed to create CUDA context, no more unused GPUs?");
+          {
+            Input input;
+            input.Open("nvidia-smi 1>&2 |");
+          }
+          KALDI_LOG << debug_str;
+          KALDI_ERR << "Failed to create CUDA context, no more unused GPUs? ";
         }
         if (use_gpu == "optional") {
           KALDI_WARN << "Running on CPU!!! No more unused CUDA GPUs?";
@@ -150,7 +163,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       num_times++;
       wait_time += sec_sleep;
       Sleep(sec_sleep);
-      got_context = GetCudaContext(num_gpus);
+      got_context = GetCudaContext(num_gpus, &debug_str);
     }
 
     KALDI_WARN << "Waited " << wait_time
@@ -276,7 +289,7 @@ bool CuDevice::SelectGpuIdAuto() {
     KALDI_WARN << "No CUDA devices found";
     if (e != cudaSuccess) {
       KALDI_WARN << "cudaGetDeviceCount() returned " << e
-        <<", meaning: \"" << cudaGetErrorString(e)  << "\"";
+                 <<", meaning: \"" << cudaGetErrorString(e)  << "\"";
     }
     return false;
   }
@@ -335,7 +348,7 @@ bool CuDevice::SelectGpuIdAuto() {
   // find GPU with max free memory
   int32 max_id=0;
   std::sort(free_mem_ratio.begin(), free_mem_ratio.end(),
-      greater_pair<int, float>);
+            greater_pair<int, float>);
   // the free_mem_ratio should be bigger than zero
   KALDI_ASSERT(free_mem_ratio[max_id].second > 0.0);
 
@@ -353,12 +366,12 @@ bool CuDevice::SelectGpuIdAuto() {
     e = cudaSetDevice(dev_id);
     if (e != cudaSuccess) {
       KALDI_WARN << "Cannot select this device: return code " << e
-        << ", Error message: \"" << cudaGetErrorString(e) << "\"";
+                 << ", Error message: \"" << cudaGetErrorString(e) << "\"";
     } else {
       e = cudaThreadSynchronize(); // deprecated, but for legacy not cudaDeviceSynchronize
       if (e != cudaSuccess) {
         KALDI_WARN << "Cannot select this device: return code " << e
-          << ", Error message: \"" << cudaGetErrorString(e) << "\"";
+                   << ", Error message: \"" << cudaGetErrorString(e) << "\"";
       }
     }
     max_id++;
@@ -419,10 +432,10 @@ void CuDevice::PrintProfile() {
 
 
 std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
-// WARNING! the CUDA API is inconsistent accross versions!
+  // WARNING! the CUDA API is inconsistent accross versions!
 #ifdef _MSC_VER
-	size_t mem_free, mem_total;
-	cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
+  size_t mem_free, mem_total;
+  cuMemGetInfo_v2(&mem_free, &mem_total);
 #else
 #if (CUDA_VERSION >= 3020)
   // define the function signature type
@@ -434,9 +447,6 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     // we will load cuMemGetInfo_v2 dynamically from libcuda.so
     // pre-fill ``safe'' values that will not cause problems
     mem_free = 1; mem_total = 1;
-#ifdef _MSC_VER
-    cuMemGetInfo_v2(handle_, &mem_free, &mem_total);
-#else
     // open libcuda.so
     void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
     if (NULL == libcuda) {
@@ -460,7 +470,6 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
       // close the library
       dlclose(libcuda);
     }
-#endif
   }
 #endif
   // copy the output values outside
@@ -526,32 +535,32 @@ void CuDevice::CheckGpuHealth() {
 
 
 /*
-void CuDevice::Free(void *ptr) {
+  void CuDevice::Free(void *ptr) {
   CU_SAFE_CALL(cudaFree(ptr));
-}
+  }
 
-void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
+  void* CuDevice::MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
   void *ans = NULL;
   cudaError_t e = cudaMallocPitch(&ans, pitch, row_bytes, num_rows);
   if (e != cudaSuccess) {
-    PrintMemoryUsage();
-    KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory ("
-      << row_bytes << " x " << num_rows << " = "
-      << row_bytes * num_rows << " bytes )";
+  PrintMemoryUsage();
+  KALDI_ERR << "CuDevice::MallocPitch: cannot allocate the requested memory ("
+  << row_bytes << " x " << num_rows << " = "
+  << row_bytes * num_rows << " bytes )";
   }
   return ans;
-}
+  }
 
-void* CuDevice::Malloc(size_t size) {
+  void* CuDevice::Malloc(size_t size) {
   void *ans = NULL;
   cudaError_t e = cudaMalloc(&ans, size);
   if (e != cudaSuccess) {
-    PrintMemoryUsage();
-    KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
-      << " (" << size << " bytes )";
+  PrintMemoryUsage();
+  KALDI_ERR << "CuDevice::Malloc: cannot allocate the requested memory"
+  << " (" << size << " bytes )";
   }
   return ans;
-}
+  }
 */
 
 CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
@@ -561,6 +570,7 @@ CuDevice::CuDevice(): active_gpu_id_(-1), verbose_(true),
 CuDevice::~CuDevice() {
   if (Enabled()) {
     cublasDestroy(handle_);
+    cudaDeviceReset();
   }
 }
 

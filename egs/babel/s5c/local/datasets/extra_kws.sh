@@ -60,7 +60,7 @@ function setup_oov_search {
   #instead of search collection dependent
   if [ ! -f exp/conf_matrix/.done ] ; then
     local/generate_confusion_matrix.sh --cmd "$decode_cmd" --nj $my_nj  \
-      exp/sgmm5_denlats/dengraph  exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix
+      exp/sgmm5_denlats/dengraph  exp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats  exp/conf_matrix || return 1
     touch exp/conf_matrix/.done 
   fi
   confusion=exp/conf_matrix/confusions.txt

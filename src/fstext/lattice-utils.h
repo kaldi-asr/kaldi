@@ -100,7 +100,7 @@ void ConvertLattice(const ExpandedFst<ArcTpl<LatticeWeightTpl<double> > > &ifst,
   ConvertLattice(fst, ofst);
 }
 
-// CompactLattice with double to Lattice with float.
+/// Converts CompactLattice with double to Lattice with float.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > > &ifst,
                     MutableFst<ArcTpl<LatticeWeightTpl<float> > > *ofst) {
@@ -109,7 +109,7 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(fst, ofst);
 }
 
-// CompactLattice with float to Lattice with double.
+/// Converts CompactLattice with float to Lattice with double.
 template<class Int>
 void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > > &ifst,
                     MutableFst<ArcTpl<LatticeWeightTpl<double> > > *ofst) {
@@ -117,6 +117,13 @@ void ConvertLattice(const ExpandedFst<ArcTpl<CompactLatticeWeightTpl<LatticeWeig
   ConvertLattice(ifst, &fst);
   ConvertLattice(fst, ofst);
 }
+
+/// Converts TropicalWeight to LatticeWeight (puts all the weight on
+/// the first float in the lattice's pair).
+template <class Real>
+void ConvertFstToLattice(
+    const ExpandedFst<ArcTpl<TropicalWeight> > &ifst,
+    MutableFst<ArcTpl<LatticeWeightTpl<Real> > > *ofst);
 
 
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
@@ -185,10 +192,9 @@ bool CompactLatticeHasAlignment(
 /// to a LatticeArc by putting the StdArc weight as the first
 /// element of the LatticeWeight.  Useful when doing LM
 /// rescoring.
-
-template<class Int>
+template<class Real>
 class StdToLatticeMapper {
-  typedef LatticeWeightTpl<Int> LatticeWeight;
+  typedef LatticeWeightTpl<Real> LatticeWeight;
   typedef ArcTpl<LatticeWeight> LatticeArc;
  public:
   LatticeArc operator()(const StdArc &arc) {
@@ -216,9 +222,9 @@ class StdToLatticeMapper {
 /// Class LatticeToStdMapper maps a LatticeArc to a normal arc (StdArc)
 /// by adding the elements of the LatticeArc weight.
 
-template<class Int>
+template<class Real>
 class LatticeToStdMapper {
-  typedef LatticeWeightTpl<Int> LatticeWeight;
+  typedef LatticeWeightTpl<Real> LatticeWeight;
   typedef ArcTpl<LatticeWeight> LatticeArc;
  public:
   StdArc operator()(const LatticeArc &arc) {

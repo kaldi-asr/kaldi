@@ -400,7 +400,6 @@ bool ContextMatcher<Arc, LabelT>::Find(typename Arc::Label match_label) {
 template<class Arc>
 void AddSubsequentialLoop(typename Arc::Label subseq_symbol,
                           MutableFst<Arc> *fst) {
-  typedef typename Arc::Label Label;
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
 
@@ -512,7 +511,7 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
   return ans;
 }
 
-inline void ComposeContext(vector<int32> &disambig_syms_in,
+inline void ComposeContext(const vector<int32> &disambig_syms_in,
                            int N, int P,
                            VectorFst<StdArc> *ifst,
                            VectorFst<StdArc> *ofst,

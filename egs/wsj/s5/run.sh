@@ -47,55 +47,13 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
  # Caution: the commands below will only work if $decode_cmd 
  # is setup to use qsub.  Else, just remove the --cmd option.
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
- # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
-
- # Note: I am commenting out the RNNLM-building commands below.  They take up a lot
- # of CPU time and are not really part of the "main recipe."
- # Be careful: appending things like "--mem 10G" to $decode_cmd
- # won't always work, it depends what $decode_cmd is.
+ # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
   (
    local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
    utils/prepare_lang.sh data/local/dict_nosp_larger \
      "<SPOKEN_NOISE>" data/local/lang_tmp_nosp_larger data/lang_nosp_bd && \
    local/wsj_train_lms.sh --dict-suffix "_nosp" &&
    local/wsj_format_local_lms.sh --lang-suffix "_nosp" # &&
- #
- #   ( local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd --mem 10G" data/local/rnnlm.h30.voc10k &
- #     sleep 20; # wait till tools compiled.
- #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd --mem 12G" \
- #       --hidden 100 --nwords 20000 --class 350 \
- #       --direct 1500 data/local/rnnlm.h100.voc20k &
- #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd --mem 14G" \
- #       --hidden 200 --nwords 30000 --class 350 \
- #       --direct 1500 data/local/rnnlm.h200.voc30k &
- #     local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
- #       --cmd "$decode_cmd --mem 16G" \
- #       --hidden 300 --nwords 40000 --class 400 \
- #       --direct 2000 data/local/rnnlm.h300.voc40k &
- #   )
-   false && \ # Comment this out to train RNNLM-HS
-   (
-       num_threads_rnnlm=8
-       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
-         --rnnlm_ver faster-rnnlm --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
-         --hidden 30  --nwords 10000 --direct 1000 data/local/rnnlm-hs.h30.voc10k  
-       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
-         --rnnlm_ver faster-rnnlm --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
-         --hidden 100 --nwords 20000 --direct 1500 data/local/rnnlm-hs.h100.voc20k 
-       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
-         --rnnlm_ver faster-rnnlm --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
-         --hidden 300 --nwords 30000 --direct 1500 data/local/rnnlm-hs.h300.voc30k 
-       local/wsj_train_rnnlms.sh --dict-suffix "_nosp" \
-         --rnnlm_ver faster-rnnlm --threads $num_threads_rnnlm \
-         --cmd "$decode_cmd --mem 1G --num-threads $num_threads_rnnlm" --bptt 4 --bptt-block 10 \
-         --hidden 400 --nwords 40000 --direct 2000 data/local/rnnlm-hs.h400.voc40k 
-   )
   ) &
 
 # Now make MFCC features.
@@ -291,14 +249,6 @@ steps/lmrescore.sh --cmd "$decode_cmd" \
   data/test_eval92 exp/tri3b/decode_nosp_bd_tgpr_eval92 \
   exp/tri3b/decode_nosp_bd_tgpr_eval92_tg || exit 1;
 
-# The command below is commented out as we commented out the steps above
-# that build the RNNLMs, so it would fail.
-# local/run_rnnlms_tri3b.sh --lang-suffix "_nosp"
-
-# The command below is commented out as we commented out the steps above
-# that build the RNNLMs (HS version), so it would fail.
-# wait; local/run_rnnlm-hs_tri3b.sh --lang-suffix "_nosp"
-
 # The following two steps, which are a kind of side-branch, try mixing up
 ( # from the 3b system.  This is to demonstrate that script.
  steps/mixup.sh --cmd "$train_cmd" \
@@ -417,6 +367,10 @@ local/online/run_nnet2.sh
 local/online/run_nnet2_baseline.sh
 local/online/run_nnet2_discriminative.sh
 
+# Demonstration of RNNLM rescoring on TDNN models. We comment this out by
+# default.
+# local/run_rnnlms.sh
+
 local/run_mmi_tri4b.sh
 
 #local/run_nnet2.sh
@@ -480,3 +434,14 @@ local/nnet/run_dnn.sh
 # # A couple of nnet3 recipes:
 # local/nnet3/run_tdnn_baseline.sh  # designed for exact comparison with nnet2 recipe
 # local/nnet3/run_tdnn.sh  # better absolute results
+# local/nnet3/run_lstm.sh  # lstm recipe
+# bidirectional lstm recipe
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 640 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+

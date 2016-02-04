@@ -1,3 +1,7 @@
+// nnet3/nnet-computation.cc
+
+// nnet3/nnet-computation.cc
+
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -464,6 +468,12 @@ void IoSpecification::Print(std::ostream &os) const {
   PrintIndexes(os, indexes);
   os << "\n";
 }
+
+void IoSpecification::Swap(IoSpecification *other) {
+  name.swap(other->name);
+  indexes.swap(other->indexes);
+  std::swap(has_deriv, other->has_deriv);
+}  
 
 void ComputationRequest::Print(std::ostream &os) const {
   os << " # Computation request:\n";

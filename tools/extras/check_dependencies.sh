@@ -22,12 +22,17 @@ if ! echo "#include <zlib.h>" | gcc -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make gcc automake libtool autoconf patch grep bzip2 gzip wget git; do
+for f in make gcc automake autoconf patch grep bzip2 gzip wget git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f
   fi
 done
+
+if ! which libtoolize >&/dev/null && ! which glibtoolize >&/dev/null; then
+  echo "$0: neither libtoolize nor glibtoolize is installed"
+  add_packages libtool libtool libtool
+fi
 
 if ! which svn >&/dev/null; then
   echo "$0: subversion is not installed"
@@ -58,7 +63,10 @@ fi
 printed=false
 status=0
 
-if which apt-get >&/dev/null; then
+if which apt-get >&/dev/null && ! which zypper >/dev/null; then
+  # if we're using apt-get [but we're not OpenSuse, which uses zypper as the
+  # primary installer, but sometimes installs apt-get for some compatibility
+  # reason without it really working]...
   if [ ! -z "$debian_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo apt-get install $debian_packages"
@@ -95,10 +103,10 @@ if which yum >&/dev/null; then
 fi
 
 if which zypper >&/dev/null; then
-  if [ ! -z "$opensuse_packages" ]; then 
+  if [ ! -z "$opensuse_packages" ]; then
     echo "$0: we recommend that you run (our best guess):"
     echo " sudo zypper install $opensuse_packages"
-    printed=true 
+    printed=true
     status=1
   fi
   if ! zypper search -i | grep -E 'libatlas3|libatlas3-devel' >/dev/null; then
@@ -117,7 +125,7 @@ if [ ! -z "$debian_packages" ]; then
 fi
 
 
-if [ $(pwd | wc -w) -gt 1 ]; then 
+if [ $(pwd | wc -w) -gt 1 ]; then
   echo "*** $0: Warning: Kaldi scripts will fail if the directory name contains a space."
   echo "***  (it's OK if you just want to compile a few tools -> disable this check)."
   status=1;

@@ -27,13 +27,23 @@
 #include <fst/script/print-impl.h>
 #include "base/kaldi-common.h"
 
-// Some functions for writing Fsts
+// Some functions for writing Fsts.
+// I/O for FSTs is a bit of a mess, and not very well integrated with Kaldi's
+// generic I/O mechanisms, because we want files containing just FSTs to
+// be readable by OpenFST's native binaries, which is not compatible
+// with the normal \0B header that identifies Kaldi files as containing
+// binary data.
+// So use the functions here with your eyes open, and with caution!
 namespace fst {
 
 // Read a binary FST using Kaldi I/O mechanisms (pipes, etc.)
-// On error, throws using KALDI_ERR.  For use only in code in fstbin/,
-// as it doesn't support the text-mode option that we generally like to support.
+// On error, throws using KALDI_ERR.  Note: this
+// doesn't support the text-mode option that we generally like to support.
 VectorFst<StdArc> *ReadFstKaldi(std::string rxfilename);
+
+// Version of ReadFstKaldi() that writes to a pointer.  Assumes
+// the FST is binary with no binary marker.  Crashes on error.
+void ReadFstKaldi(std::string rxfilename, VectorFst<StdArc> *ofst);
 
 // Write an FST using Kaldi I/O mechanisms (pipes, etc.)
 // On error, throws using KALDI_ERR.  For use only in code in fstbin/,
@@ -70,7 +80,7 @@ class VectorFstTplHolder {
 
   VectorFstTplHolder(): t_(NULL) { }
 
-  static bool Write(std::ostream &os, bool binary, const T &t);  
+  static bool Write(std::ostream &os, bool binary, const T &t);
 
   void Copy(const T &t) {  // copies it into the holder.
     Clear();

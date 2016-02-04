@@ -9,7 +9,6 @@
 # versions, so that each speaker has no more than --utts-per-spk-max
 # utterances.
 
-
 # begin configuration section
 utts_per_spk_max=-1
 # end configuration section
@@ -34,7 +33,7 @@ srcdir=$1
 destdir=$2
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "$0: no such file $srcdir/utt2spk" 
+  echo "$0: no such file $srcdir/utt2spk"
   exit 1;
 fi
 
@@ -81,5 +80,6 @@ echo "$0: copied data from $srcdir to $destdir, with --utts-per-spk-max $utts_pe
 opts=
 [ ! -f $srcdir/feats.scp ] && opts="--no-feats"
 [ ! -f $srcdir/text ] && opts="$opts --no-text"
+[ ! -f $srcdir/wav.scp ] && opts="$opts --no-wav"
 
 utils/validate_data_dir.sh $opts $destdir

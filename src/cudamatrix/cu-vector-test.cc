@@ -1,4 +1,4 @@
-// cudamatrix/cuda-vector-test.cc
+// cudamatrix/cu-vector-test.cc
 
 // Copyright 2013 Lucas Ondel
 //           2013 Johns Hopkins University (author: Daniel Povey)

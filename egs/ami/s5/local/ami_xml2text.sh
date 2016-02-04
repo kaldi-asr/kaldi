@@ -19,7 +19,8 @@ JAVA_VER=$(java -version 2>&1 | sed 's/java version "\(.*\)\.\(.*\)\..*"/\1\2/; 
 if [ "$JAVA_VER" -ge 15 ]; then
   if [ ! -d $wdir/nxt ]; then
     echo "Downloading NXT annotation tool..."
-    wget -O $wdir/nxt.zip http://sourceforge.net/projects/nite/files/nite/nxt_1.4.4/nxt_1.4.4.zip &> /dev/null
+    wget -O $wdir/nxt.zip http://sourceforge.net/projects/nite/files/nite/nxt_1.4.4/nxt_1.4.4.zip
+    [ ! -s $wdir/nxt.zip ] && echo "Downloading failed! ($wdir/nxt.zip)" && exit 1
     unzip -d $wdir/nxt $wdir/nxt.zip &> /dev/null
   fi
 

@@ -24,7 +24,7 @@
 
 namespace kaldi {
 
-void TransitionModel::ComputeTriples(const ContextDependency &ctx_dep) {
+void TransitionModel::ComputeTriples(const ContextDependencyInterface &ctx_dep) {
   const std::vector<int32> &phones = topo_.GetPhones();
   std::vector<std::vector<std::pair<int32, int32> > > pdf_info;
   KALDI_ASSERT(!phones.empty());
@@ -136,7 +136,7 @@ void TransitionModel::Check() const {
   }
 }
 
-TransitionModel::TransitionModel(const ContextDependency &ctx_dep,
+TransitionModel::TransitionModel(const ContextDependencyInterface &ctx_dep,
                                  const HmmTopology &hmm_topo): topo_(hmm_topo) {
   // First thing is to get all possible triples.
   ComputeTriples(ctx_dep);
@@ -220,7 +220,7 @@ bool TransitionModel::IsFinal(int32 trans_id) const {
                entry[triple.hmm_state].transitions.size());
   // return true if the transition goes to the final state of the
   // topology entry.
-  return (entry[triple.hmm_state].transitions[trans_index].first + 1 == 
+  return (entry[triple.hmm_state].transitions[trans_index].first + 1 ==
           static_cast<int32>(entry.size()));
 }
 
@@ -337,7 +337,7 @@ BaseFloat TransitionModel::GetTransitionLogProbIgnoringSelfLoops(int32 trans_id)
 }
 
 // stats are counts/weights, indexed by transition-id.
-void TransitionModel::MleUpdate(const Vector<double> &stats,  
+void TransitionModel::MleUpdate(const Vector<double> &stats,
                                 const MleTransitionUpdateConfig &cfg,
                                 BaseFloat *objf_impr_out,
                                 BaseFloat *count_out) {
@@ -403,7 +403,7 @@ void TransitionModel::MleUpdate(const Vector<double> &stats,
 
 
 // stats are counts/weights, indexed by transition-id.
-void TransitionModel::MapUpdate(const Vector<double> &stats,  
+void TransitionModel::MapUpdate(const Vector<double> &stats,
                                 const MapTransitionUpdateConfig &cfg,
                                 BaseFloat *objf_impr_out,
                                 BaseFloat *count_out) {
@@ -717,7 +717,7 @@ bool GetPdfsForPhones(const TransitionModel &trans_model,
 }
 
 bool GetPhonesForPdfs(const TransitionModel &trans_model,
-                     const std::vector<int32> &pdfs, 
+                     const std::vector<int32> &pdfs,
                      std::vector<int32> *phones) {
   KALDI_ASSERT(IsSortedAndUniq(pdfs));
   KALDI_ASSERT(phones != NULL);
@@ -731,7 +731,7 @@ bool GetPhonesForPdfs(const TransitionModel &trans_model,
 
   for (int32 tstate = 1; tstate <= trans_model.NumTransitionStates(); tstate++)
     if (std::binary_search(phones->begin(), phones->end(),
-                           trans_model.TransitionStateToPhone(tstate)) 
+                           trans_model.TransitionStateToPhone(tstate))
         && !std::binary_search(pdfs.begin(), pdfs.end(),
                                trans_model.TransitionStateToPdf(tstate)))
       return false;
