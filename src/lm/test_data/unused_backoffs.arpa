@@ -3,7 +3,7 @@
 ngram 1=4
 ngram 2=2
 ngram 3=2
-ngram 4=1
+ngram 4=2
 
 \1-grams:
 -5.234679	a -3.3
@@ -20,7 +20,7 @@ ngram 4=1
 -0.23940	a b </s>
 
 \4-grams:
--0.01888	<s> a b b 
+-0.01888	<s> a b b
 -0.03333        <s> b b b
 
 \end\

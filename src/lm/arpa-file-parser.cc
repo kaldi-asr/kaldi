@@ -29,7 +29,8 @@
 
 namespace kaldi {
 
-ArpaFileParser::ArpaFileParser(ArpaParseOptions options, fst::SymbolTable* symbols)
+ArpaFileParser::ArpaFileParser(ArpaParseOptions options,
+                               fst::SymbolTable* symbols)
     : options_(options), symbols_(symbols), line_number_(0) {
 }
 
