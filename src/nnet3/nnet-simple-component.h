@@ -1447,24 +1447,34 @@ class ConvolutionComponent: public UpdatableComponent {
 
 /**
  * MaxPoolingComponent :
- * Maxpooling component was firstly used in ConvNet for selecting an representative
- * activation in an area. It inspired Maxout nonlinearity.
+ * Maxpooling component was firstly used in ConvNet for selecting an 
+ * representative activation in an area. It inspired Maxout nonlinearity.
+ * Each output element of this component is the maximum of a block of 
+ * input elements where the block has a 3D dimension (pool_x_size_,
+ * pool_y_size_, pool_z_size_).
+ * Blocks could overlap if the shift value on any axis is smaller
+ * than its corresponding pool size (e.g. pool_x_step_ < pool_x_size_).
+ * If the shift values are euqal to their pool size, there is no 
+ * overlap; while if they all equal 1, the blocks overlap to 
+ * the greatest possible extent.
  *
  * This component is designed to be used after a ConvolutionComponent
  * so that the input matrix is propagated from a 2d-convolutional layer.
  * This component implements 3d-maxpooling which performs
  * max pooling along the three axes.
- * Pooling with overlapping on each axis is supported.
  * Input : A matrix where each row is a vectorized 3D-tensor.
  *        The 3D tensor has dimensions
  *        x: (e.g. time)
  *        y: (e.g. frequency)
  *        z: (e.g. channels like number of filters in the ConvolutionComponent)
  *
- *        The component only supports input vectorizations of type zyx
+ *        The component assumes input vectorizations of type zyx
  *        which is the default output vectorization type of a ConvolutionComponent.
- *        For the description of vectorized 3d tensor, please read the comment
- *        at the ConvolutionComponent.
+ *        e.g. for input vectorization of type zyx the input is vectorized by
+ *        spanning axes z, y and x of the tensor in that order.
+ *        Given 3d tensor A with sizes (2, 2, 2) along the three dimensions
+ *        the zyx vectorized input looks like
+ *  A(0,0,0) A(0,0,1) A(0,1,0) A(0,1,1) A(1,0,0) A(1,0,1) A(1,1,0) A(1,1,1)
  *
  * Output : The output is also a 3D tensor vectorized in the zyx format.
  *
@@ -1476,19 +1486,25 @@ class ConvolutionComponent: public UpdatableComponent {
 
 class MaxpoolingComponent: public Component {
  public:
-  explicit MaxpoolingComponent(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-                                 int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
-                                 int32 pool_x_step, int32 pool_y_step, int32 pool_z_step
-                                 ) {
-    Init(input_x_dim, input_y_dim, input_z_dim,
-         pool_x_size, pool_y_size, pool_z_size,
-         pool_x_step, pool_y_step, pool_z_step);
-  }
+
   MaxpoolingComponent(): input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
                            pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
                            pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
+  // constructor using another component
+  MaxpoolingComponent(const MaxpoolingComponent &component): 
+             input_x_dim_(component.input_x_dim_),
+             input_y_dim_(component.input_y_dim_),
+             input_z_dim_(component.input_z_dim_),
+             pool_x_size_(component.pool_x_size_), 
+             pool_y_size_(component.pool_y_size_),
+             pool_z_size_(component.pool_z_size_),
+             pool_x_step_(component.pool_x_step_),
+             pool_y_step_(component.pool_y_step_),
+             pool_z_step_(component.pool_z_step_) { }
+
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
+  virtual void Check() const;
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1496,7 +1512,6 @@ class MaxpoolingComponent: public Component {
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kBackpropNeedsOutput|
 	    kBackpropAdds;
-//|kPropagateAdds;
   }
 
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -1515,15 +1530,7 @@ class MaxpoolingComponent: public Component {
 
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
-  virtual Component* Copy() const {
-    return new MaxpoolingComponent(input_x_dim_, input_y_dim_, input_z_dim_,
-                                     pool_x_size_, pool_y_size_, pool_z_size_,
-                                     pool_x_step_, pool_y_step_, pool_z_step_); }
-
-  // Some functions that are specific to this
-  void Init(int32 input_x_dim, int32 input_y_dim, int32 input_z_dim,
-            int32 pool_x_size, int32 pool_y_size, int32 pool_z_size,
-            int32 pool_x_step, int32 pool_y_step, int32 pool_z_step);
+  virtual Component* Copy() const { return new MaxpoolingComponent(*this); }
 
   void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
                            CuMatrix<BaseFloat> *patches) const;

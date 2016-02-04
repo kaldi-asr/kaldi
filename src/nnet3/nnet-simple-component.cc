@@ -3565,22 +3565,8 @@ int32 MaxpoolingComponent::OutputDim() const {
   return num_pools_x * num_pools_y * num_pools_z;
 }
 
-// initialize the component using hyperparameters
-void MaxpoolingComponent::Init(int32 input_x_dim, int32 input_y_dim,
-                                 int32 input_z_dim, int32 pool_x_size,
-                                 int32 pool_y_size, int32 pool_z_size,
-                                 int32 pool_x_step, int32 pool_y_step,
-                                 int32 pool_z_step) {
-  input_x_dim_ = input_x_dim;
-  input_y_dim_ = input_y_dim;
-  input_z_dim_ = input_z_dim;
-  pool_x_size_ = pool_x_size;
-  pool_y_size_ = pool_y_size;
-  pool_z_size_ = pool_z_size;
-  pool_x_step_ = pool_x_step;
-  pool_y_step_ = pool_y_step;
-  pool_z_step_ = pool_z_step;
-
+// check the component parameters
+void MaxpoolingComponent::Check() const {
   // sanity check of the max pooling parameters
   KALDI_ASSERT((input_x_dim_ - pool_x_size_) % pool_x_step_  == 0);
   KALDI_ASSERT((input_y_dim_ - pool_y_size_) % pool_y_step_  == 0);
@@ -3589,29 +3575,25 @@ void MaxpoolingComponent::Init(int32 input_x_dim, int32 input_y_dim,
 
 // initialize the component using configuration file
 void MaxpoolingComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 input_x_dim = -1, input_y_dim = -1, input_z_dim = -1;
-  int32 pool_x_size = -1, pool_y_size = -1, pool_z_size = -1;
-  int32 pool_x_step = -1, pool_y_step = -1, pool_z_step = -1;
   bool ok = true;
 
-  ok = ok && cfl->GetValue("input-x-dim", &input_x_dim);
-  ok = ok && cfl->GetValue("input-y-dim", &input_y_dim);
-  ok = ok && cfl->GetValue("input-z-dim", &input_z_dim);
-  ok = ok && cfl->GetValue("pool-x-size", &pool_x_size);
-  ok = ok && cfl->GetValue("pool-y-size", &pool_y_size);
-  ok = ok && cfl->GetValue("pool-z-size", &pool_z_size);
-  ok = ok && cfl->GetValue("pool-x-step", &pool_x_step);
-  ok = ok && cfl->GetValue("pool-y-step", &pool_y_step);
-  ok = ok && cfl->GetValue("pool-z-step", &pool_z_step);
+  ok = ok && cfl->GetValue("input-x-dim", &input_x_dim_);
+  ok = ok && cfl->GetValue("input-y-dim", &input_y_dim_);
+  ok = ok && cfl->GetValue("input-z-dim", &input_z_dim_);
+  ok = ok && cfl->GetValue("pool-x-size", &pool_x_size_);
+  ok = ok && cfl->GetValue("pool-y-size", &pool_y_size_);
+  ok = ok && cfl->GetValue("pool-z-size", &pool_z_size_);
+  ok = ok && cfl->GetValue("pool-x-step", &pool_x_step_);
+  ok = ok && cfl->GetValue("pool-y-step", &pool_y_step_);
+  ok = ok && cfl->GetValue("pool-z-step", &pool_z_step_);
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
-  Init(input_x_dim, input_y_dim, input_z_dim,
-       pool_x_size, pool_y_size, pool_z_size,
-       pool_x_step, pool_y_step, pool_z_step);
+
+  Check();
 }
 
 // Method to convert from a matrix representing a minibatch of vectorized
@@ -3774,6 +3756,7 @@ void MaxpoolingComponent::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<PoolZStep>");
   ReadBasicType(is, binary, &pool_z_step_);
   ExpectToken(is, binary, "</MaxpoolingComponent>");
+  Check();
 }
 
 void MaxpoolingComponent::Write(std::ostream &os, bool binary) const {
