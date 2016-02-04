@@ -2,8 +2,6 @@
 
 # tdnn or RNN with 'jesus layer'
 
-
-
 #  inputs to jesus layer:
 #      - for each spliced version of the previous layer the output (of dim  --jesus-forward-output-dim)
 
@@ -115,12 +113,12 @@ class StatisticsConfig:
                       config_string)
         if m == None:
             sys.exit("Invalid splice-index or statistics-config string: " + config_string)
-        self.output_stddev = (m.group(1) == 'mean')
-        self.left_context = int(m.group(2))
+        self.output_stddev = (m.group(1) != 'mean')
+        self.left_context = -int(m.group(2))
         self.input_period = int(m.group(3))
         self.stats_period = int(m.group(4))
         self.right_context = int(m.group(5))
-        if not (self.left_context < 0 and self.right_context > 0 and
+        if not (self.left_context > 0 and self.right_context > 0 and
                 self.input_period > 0 and self.stats_period > 0 and
                 self.left_context % self.stats_period == 0 and
                 self.right_context % self.stats_period == 0 and
@@ -131,28 +129,36 @@ class StatisticsConfig:
     def OutputDim(self):
         return self.input_dim * (2 if self.output_stddev else 1)
 
+    # OutputDims() returns an array of output dimensions, consisting of
+    # [ input-dim ] if just "mean" was specified, otherwise
+    # [ input-dim input-dim ]
+    def OutputDims(self):
+        return [ self.input_dim, self.input_dim ] if self.output_stddev else [ self.input_dim ]
+
     # Descriptor() returns the textual form of the descriptor by which the
     # output of this node is to be accessed.
     def Descriptor(self):
-        return 'Round({0}-pooling{1}-{2}, {3})'.format(self.input_name, self.left_context, self.right_context,
+        return 'Round({0}-pooling-{1}-{2}, {3})'.format(self.input_name, self.left_context, self.right_context,
                                                        self.stats_period)
 
     # This function writes the configuration lines need to compute the specified
     # statistics, to the file f.
     def WriteConfigs(self, f):
-        print('component name={0}-extraction{1}-{2} type=StatisticsExtractionComponent input-dim={3} '
+        print('component name={0}-extraction-{1}-{2} type=StatisticsExtractionComponent input-dim={3} '
               'input-period={4} output-period={5} include-variance={6} '.format(
                 self.input_name, self.left_context, self.right_context,
                 self.input_dim, self.input_period, self.stats_period,
                 ('true' if self.output_stddev else 'false')), file=f)
-        print('component-node name={0}-extraction{1}-{2} component={0}-extraction{1}-{2} input={0} '.format(
+        print('component-node name={0}-extraction-{1}-{2} component={0}-extraction-{1}-{2} input={0} '.format(
                 self.input_name, self.left_context, self.right_context), file=f)
-        print('component name={0}-pooling{1}-{2} type=StatisticsPoolingComponent input-dim={3} '
+        stats_dim = 1 + self.input_dim * (2 if self.output_stddev else 1)
+        print('component name={0}-pooling-{1}-{2} type=StatisticsPoolingComponent input-dim={3} '
               'input-period={4} left-context={1} right-context={2} num-log-count-features=0 '
               'output-stddevs={5} '.format(self.input_name, self.left_context, self.right_context,
-                                           self.stats_period, ('true' if self.output_stddev else 'false')),
+                                           stats_dim, self.stats_period,
+                                           ('true' if self.output_stddev else 'false')),
               file=f)
-        print('component-node name={0}-pooling{1}-{2} component={0}-pooling{1}-{2} input={0}-extraction{1}-{2} '.format(
+        print('component-node name={0}-pooling-{1}-{2} component={0}-pooling-{1}-{2} input={0}-extraction-{1}-{2} '.format(
                 self.input_name, self.left_context, self.right_context), file=f)
 
 
@@ -193,7 +199,7 @@ try:
                 if len(splice_array) == 1:
                     sys.exit("First dimension of splicing array must not have averaging [yet]")
                 try:
-                    x = StatisticsConfig(s)
+                    x = StatisticsConfig(s, 100, 'foo')
                 except:
                     sys.exit("The following element of the splicing array is not a valid specifier "
                     "of statistics: " + s)
@@ -291,7 +297,7 @@ for l in range(1, num_hidden_layers + 1):
                 stats = StatisticsConfig(s, cur_affine_output_dim, cur_output)
                 stats.WriteConfigs(f)
                 splices.append(stats.Descriptor())
-                spliced_dims.append(stats.OutputDim())
+                spliced_dims.extend(stats.OutputDims())
 
         # get the input to the Jesus layer.
         cur_input = 'Append({0})'.format(', '.join(splices))
@@ -418,20 +424,6 @@ for l in range(1, num_hidden_layers + 1):
         # derivatives).  we set the bias-mean to 0.001 so that the ReLUs on the
         # input of the Jesus layer are in the part of the activation that has a
         # nonzero derivative- otherwise with this setup it would never learn.
-        for delay in recurrence_array[l-1]:
-            print('component name=jesus{0}-recurrent-affine-offset{1} type=NaturalGradientAffineComponent '
-                  'input-dim={2} output-dim={3} learning-rate-factor={4} param-stddev=0 bias-stddev=0 bias-mean=0.001'.
-                  format(l, delay,
-                         args.jesus_projected_recurrence_output_dim,
-                         args.jesus_projected_recurrence_input_dim,
-                         args.recurrent_projection_learning_rate_factor), file=f)
-            print('component-node name=jesus{0}-recurrent-affine-offset{1} component=jesus{0}-recurrent-affine-offset{1} '
-                  'input=jesus{0}-projected-output'.format(l, delay), file=f)
-            print('component name=jesus{0}-recurrent-affine-offset{1}-clip type=ClipGradientComponent '
-                  'dim={2} clipping-threshold={3} '.format(l, delay, args.jesus_projected_recurrence_input_dim,
-                                                           args.clipping_threshold), file=f)
-            print('component-node name=jesus{0}-recurrent-affine-offset{1}-clip component=jesus{0}-recurrent-affine-offset{1}-clip '
-                  'input=jesus{0}-recurrent-affine-offset{1}'.format(l, delay), file=f)
 
         cur_output = 'jesus{0}-forward-output-affine'.format(l)
 

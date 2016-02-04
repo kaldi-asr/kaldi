@@ -1,48 +1,8 @@
 #!/bin/bash
 
-# _5g is as _5e, but adding one statistics-extraction layer to the
-# splice indexes, in the middle of the network (with both mean
-# and stddev).
 
-# Here are WERs when the frames-per-chunk was 50:
-#./compare_wer.sh 5e 5g
-#System                       5e        5g
-#WER on train_dev(tg)      15.43     15.62
-#WER on train_dev(fg)      14.32     14.42
-#WER on eval2000(tg)        17.3      17.7
-#WER on eval2000(fg)        15.5      16.0
-
-# and here with 150:
-# WER on train_dev(tg)      15.43     15.46
-# WER on train_dev(fg)      14.32     14.38
-# WER on eval2000(tg)        17.3      17.3
-# WER on eval2000(fg)        15.5      15.5
-
-
-# and here with 300 ... we do see a small improvement
-# at this value.  (could probably improve it further
-# by modifying the model to average over a larger window).
-#WER on train_dev(tg)      15.43     15.29
-#WER on train_dev(fg)      14.32     14.17
-#WER on eval2000(tg)        17.3      17.2
-#WER on eval2000(fg)        15.5      15.4
-#Final train prob      -0.110056 -0.105725
-#Final valid prob      -0.129184 -0.125756
-
-# Below is also with chunk-size=300, but with the 'wide' model
-# that sees more context.  Oddly, the WER is worse.  It looks like
-# the model may be doing something different than just learning
-# speaker characteristics.
-#./compare_wer.sh 5e 5g
-#System                       5e        5g
-#WER on train_dev(tg)      15.43     15.54
-#WER on train_dev(fg)      14.32     14.34
-#WER on eval2000(tg)        17.3      17.3
-#WER on eval2000(fg)        15.5      15.6
-#Final train prob      -0.110056 -0.105725
-#Final valid prob      -0.129184 -0.125756
-
-
+# _5j is as _5e, but omitting the iVectors.   I'm re-using the egs from 2y, even
+# though they had iVectors-- hopefully it won't matter.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
@@ -316,7 +276,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5g # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5j # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -411,9 +371,8 @@ if [ $stage -le 12 ]; then
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --egs-dir exp/chain/tdnn_2y_sp/egs \
     --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean+stddev(-99:3:9:99) -3,0,3 -6,-3,0" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
@@ -423,7 +382,6 @@ if [ $stage -le 12 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
@@ -445,9 +403,8 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-          --frames-per-chunk 300 \
+         --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
@@ -457,27 +414,5 @@ if [ $stage -le 14 ]; then
       ) &
   done
 fi
-
-# if [ $stage -le 15 ]; then
-#   # get wide-context model
-#   nnet3-am-copy --binary=false $dir/final.mdl - | \
-#     sed 's/Context> 99/Context> 306/g' | nnet3-am-copy - $dir/wide.mdl
-#   for decode_set in train_dev eval2000; do
-#       (
-#       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-#           --frames-per-chunk 300 --iter wide \
-#           --nj 50 --cmd "$decode_cmd" \
-#           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-#          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
-#       if $has_fisher; then
-#           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-#             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-#             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
-#       fi
-#       ) &
-#   done
-# fi
-
-
 wait;
 exit 0;
