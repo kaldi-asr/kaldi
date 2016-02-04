@@ -52,7 +52,7 @@ if [ $stage =  0 ]; then
    steps/make_fbank.sh --nj $nj --cmd "$train_cmd"  \
      data/dae/train exp/dae/gendata fbank/dae/train || exit 1
    steps/compute_cmvn_stats.sh data/dae/train exp/dae/cmvn \
-     fbank/dae/train/_cmvn || exit 1
+     fbank/dae/train || exit 1
 
    #genreate dev data. Just the 0db condition is produced.  Multiple noise types mixed together.
    echo "DAE: generating dev data..."
@@ -77,7 +77,7 @@ if [ $stage =  0 ]; then
    steps/make_fbank.sh --nj $nj --cmd "$train_cmd"  \
      data/dae/dev/0db exp/dae/gendata fbank/dae/dev/0db || exit 1
    steps/compute_cmvn_stats.sh data/dae/dev/0db exp/dae/cmvn \
-     fbank/dae/dev/0db/_cmvn || exit 1
+     fbank/dae/dev/0db || exit 1
 
    #generate test data. Assume it has been downloaded in $thchs/test-noise
    echo "DAE: generating test data..."
@@ -91,7 +91,7 @@ if [ $stage =  0 ]; then
        data/dae/test/0db/$x exp/dae/gendata fbank/dae/test/0db/$x || exit 1
      echo "generating cmvn for test data $x"
      steps/compute_cmvn_stats.sh data/dae/test/0db/$x exp/dae/cmvn \
-       fbank/dae/test/0db/$x/_cmvn || exit 1
+       fbank/dae/test/0db/$x || exit 1
      cp -R data/dae/test/0db/$x data/dae/test/0db/${x}_phone && cp data/test/phone.txt data/dae/test/0db/${x}_phone/text || exit 1
    done
 fi

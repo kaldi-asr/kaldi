@@ -27,7 +27,7 @@ for x in train dev test; do
    #make  mfcc 
    steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x exp/make_mfcc/$x mfcc/$x || exit 1;
    #compute cmvn
-   steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x/_cmvn || exit 1;
+   steps/compute_cmvn_stats.sh data/mfcc/$x exp/mfcc_cmvn/$x mfcc/$x || exit 1;
 done
 #copy feats and cmvn to test.ph, avoid duplicated mfcc & cmvn 
 cp data/mfcc/test/feats.scp data/mfcc/test_phone && cp data/mfcc/test/cmvn.scp data/mfcc/test_phone || exit 1;

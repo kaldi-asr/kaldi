@@ -28,7 +28,7 @@ if [ $stage -le 0 ]; then
     #fbank generation
     steps/make_fbank.sh --nj $nj --cmd "$train_cmd" data/fbank/$x exp/make_fbank/$x fbank/$x || exit 1
     #ompute cmvn
-    steps/compute_cmvn_stats.sh data/fbank/$x exp/fbank_cmvn/$x fbank/$x/_cmvn || exit 1
+    steps/compute_cmvn_stats.sh data/fbank/$x exp/fbank_cmvn/$x fbank/$x || exit 1
   done
   
   echo "producing test_fbank_phone"
