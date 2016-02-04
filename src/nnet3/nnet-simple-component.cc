@@ -3568,6 +3568,21 @@ int32 MaxpoolingComponent::OutputDim() const {
 // check the component parameters
 void MaxpoolingComponent::Check() const {
   // sanity check of the max pooling parameters
+  KALDI_ASSERT(input_x_dim_ > 0);
+  KALDI_ASSERT(input_y_dim_ > 0);
+  KALDI_ASSERT(input_z_dim_ > 0);
+  KALDI_ASSERT(pool_x_size_ > 0);
+  KALDI_ASSERT(pool_y_size_ > 0);
+  KALDI_ASSERT(pool_z_size_ > 0);
+  KALDI_ASSERT(pool_x_step_ > 0);
+  KALDI_ASSERT(pool_y_step_ > 0);
+  KALDI_ASSERT(pool_z_step_ > 0);
+  KALDI_ASSERT(input_x_dim_ >= pool_x_size_);
+  KALDI_ASSERT(input_y_dim_ >= pool_y_size_);
+  KALDI_ASSERT(input_z_dim_ >= pool_z_size_);
+  KALDI_ASSERT(pool_x_size_ >= pool_x_step_);
+  KALDI_ASSERT(pool_y_size_ >= pool_y_step_);
+  KALDI_ASSERT(pool_z_size_ >= pool_z_step_);
   KALDI_ASSERT((input_x_dim_ - pool_x_size_) % pool_x_step_  == 0);
   KALDI_ASSERT((input_y_dim_ - pool_y_size_) % pool_y_step_  == 0);
   KALDI_ASSERT((input_z_dim_ - pool_z_size_) % pool_z_step_  == 0);
