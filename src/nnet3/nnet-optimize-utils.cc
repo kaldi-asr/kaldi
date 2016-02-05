@@ -986,10 +986,10 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   // condition c4:
   if (!computation_->IsWholeMatrix(s1)) right = false;
   // condition c6:
-  if (computation->matrices[m2].stride_type == kStrideEqualNumCols &&
+  if (computation_->matrices[m2].stride_type == kStrideEqualNumCols &&
       !computation_->IsWholeMatrix(s1)) left = false;
   // condition c7:
-  if (computation->matrices[m1].stride_type == kStrideEqualNumCols &&
+  if (computation_->matrices[m1].stride_type == kStrideEqualNumCols &&
       !computation_->IsWholeMatrix(s2)) right = false;
 
 
@@ -1048,6 +1048,7 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
   int32 first_submatrix = submatrices[0];
   int32 num_cols = computation_->submatrices[first_submatrix].num_cols,
       num_rows = 0;
+  MatrixStrideType stride_type = kDefaultStride;
   NnetComputation::MatrixDebugInfo debug_info;
   for (int32 i = 0; i < num_submatrices; i++) {
     int32 submatrix = submatrices[i];
@@ -1055,10 +1056,16 @@ int32 ModelUpdateConsolidator::ConsolidateSubmatrices(
     KALDI_ASSERT(computation_->submatrices[submatrix].num_cols == num_cols);
     if (!computation_->matrix_debug_info.empty())
       AppendDebugInfoForSubmatrix(submatrix, &debug_info);
+    if (computation_->IsWholeMatrix(submatrix)) {
+      int32 matrix = computation_->submatrices[submatrix].matrix_index;
+      if (computation_->matrices[matrix].stride_type == kStrideEqualNumCols)
+        stride_type = kStrideEqualNumCols;
+    }
   }
   // new_whole_submatrix is a new submatrix index corresponding to the whole
   // of a new matrix that we are creating.
-  int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols);
+  int32 new_whole_submatrix = computation_->NewMatrix(num_rows, num_cols,
+                                                      stride_type);
   // Add a command at the very start, to initialize this new matrix.
   int32 new_matrix_index =
       computation_->submatrices[new_whole_submatrix].matrix_index;
