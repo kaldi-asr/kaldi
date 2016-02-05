@@ -145,7 +145,8 @@ void RemoveUnnecessaryZeroing(const Nnet &nnet,
 
 /*
   This function is called from RemoveUnnecessaryAllocation.  The input is two
-  sorted, unique lists, of (deallocation-commands, allocation-commands)
+  sorted, unique lists, of (deallocation-commands, allocation-commands) for
+  matrices of a given size and stride-type:
   e.g. (d1, d2, d3.. ), (a1, a2, a3..); and to the output is *appended* a list
   of pairs (d, a).  Each output pair must satisfy the property that d < a, and
   no member of the input lists may appear more than once in the output pairs
@@ -184,7 +185,8 @@ static void ComputeCommandPairs(
 
 void RemoveUnnecessaryAllocation(const Nnet &nnet,
                                  NnetComputation *computation) {
-  // For each size of matrix (i.e. each pair<int32,int32>), we
+  // For each size of matrix and stride-type, represented as a pair<int32,int32>
+  // (the num-rows, and the num-cols * (stride-type == kDefaultStride ? 1 : -1), we
   // accumulate a list of indexes of deallocation commands that
   // are for that size, and a list of indexes of allocation commands
   // for that size.
@@ -206,8 +208,10 @@ void RemoveUnnecessaryAllocation(const Nnet &nnet,
         command.command_type == kAllocMatrixUndefined ||
         command.command_type == kDeallocMatrix) {
       int32 m = command.arg1, num_rows = computation->matrices[m].num_rows,
-          num_cols = computation->matrices[m].num_cols;
-      std::pair<int32,int32> p(num_rows, num_cols);
+          num_cols = computation->matrices[m].num_cols,
+          num_cols_mod = num_cols * (
+              computation->matrices[m].stride_type == kDefaultStride ? 1 : -1);
+      std::pair<int32,int32> p(num_rows, num_cols_mod);
       std::pair<std::vector<int32>,std::vector<int32> > &lists = pair_map[p];
       if (command.command_type == kDeallocMatrix)
         lists.first.push_back(command_index);
