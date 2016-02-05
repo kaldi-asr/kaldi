@@ -36,18 +36,18 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-durmodel-copy-egs [options] <egs-rspecifier>"
         " <egs-wspecifier1>\n"
         "e.g.:\n"
-        "nnet3-durmodel-copy-egs --noise-magnitude 10 ark:train.egs "
+        "nnet3-durmodel-copy-egs --noise-magnitude 0.1 ark:train.egs "
         "ark,t:text.egs\n";
-        
+
     int32 srand_seed = 0;
-    BaseFloat noise_magnitude_percent = 10;
-    
+    BaseFloat noise_magnitude = 0.1;
+
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
-    po.Register("noise-magnitude", &noise_magnitude_percent, "Magnitude of noise"
+    po.Register("noise-magnitude", &noise_magnitude, "Magnitude of noise"
                 " (in percentage) to be added to duration values.");
 
-    
+
     po.Read(argc, argv);
     srand(srand_seed);
 
@@ -61,29 +61,24 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
-    
+
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       std::string key = example_reader.Key();
       const NnetExample &eg = example_reader.Value();
       NnetExample eg_out(eg);
-      
-      if (noise_magnitude_percent != 0) {
-        SparseMatrix<BaseFloat> output_smat(eg_out.io[1].features.GetSparseMatrix());
+
+      if (noise_magnitude != 0.0) {
+        SparseMatrix<BaseFloat> output_smat(
+                                       eg_out.io[1].features.GetSparseMatrix());
         int32 num_rows = output_smat.NumRows();
         for (int32 row = 0; row < num_rows; row++) {
           int32 duration = output_smat.Row(row).GetElement(0).first + 1;
           int32 num_cols = eg_out.io[1].features.NumCols();
-          int32 max_noise = noise_magnitude_percent / 100 * duration;
-          if (max_noise == 0)
-            continue;
-          int32 noise = RandInt(1, max_noise);
-          int32 new_duration;
-          if (WithProb(0.33)) {
-           new_duration = duration;
-          } else {
-            new_duration = duration + noise * (WithProb(0.5) ? 1 : -1);
-          }
+
+          int32 duration_lower = 0.5 + duration * (1.0 - noise_magnitude),
+                duration_upper = 0.5 + duration * (1.0 + noise_magnitude),
+                new_duration = RandInt(duration_lower, duration_upper);
           if (new_duration < 1)
             new_duration = 1;
           if (new_duration > num_cols)
@@ -99,7 +94,7 @@ int main(int argc, char *argv[]) {
       example_writer.Write(key, eg_out);
       num_written++;
     }
-    
+
     KALDI_LOG << "Read " << num_read << " nnet examples, wrote "
               << num_written;
     return (num_written == 0 ? 1 : 0);
