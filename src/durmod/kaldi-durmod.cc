@@ -275,18 +275,19 @@ BaseFloat NnetPhoneDurationScoreComputer::GetLogProb(
   // make sure the distribution over all durations (1 to inf) sums to 1
   BaseFloat alpha = Exp(-1.0f / model_.MaxDuration());
   BaseFloat probability_normalization_sum = alpha / (1 - alpha);
-  if (actual_duration_id >= duration_id)
-    logprob *= pow(alpha, actual_duration_id - duration_id + 1) /
-                                                  probability_normalization_sum;
+  if (phone_duration >= model_.MaxDuration())
+    logprob += Log(pow(alpha, actual_duration_id - duration_id + 1) /
+                                                 probability_normalization_sum);
   return logprob;
 }
 
 PhoneDurationModelDeterministicFst::PhoneDurationModelDeterministicFst(
-                                        const PhoneDurationModel &model,
-                                        NnetPhoneDurationScoreComputer *scorer):
+                                      int32 num_phones,
+                                      const PhoneDurationModel &model,
+                                      NnetPhoneDurationScoreComputer *scorer):
                             context_size_(model.FullContextSize()),
                             right_context_(model.RightContext()),
-                            max_duration_(model.MaxDuration()),
+                            num_phones_(num_phones),
                             scorer_(*scorer) {
   // In the beginning we have a Null left context.
   // Null means that the phone-identity and duration are both zero --> olabel=0
@@ -362,7 +363,7 @@ BaseFloat PhoneDurationModelDeterministicFst::GetLogProb(
 
   // convert the encoded "phone+duration" to phones and durations pairs
   for (int i = 0; i < context.size(); i++)
-    phone_dur_context[i] = OlabelToPhoneAndDuration(context[i], max_duration_);
+    phone_dur_context[i] = OlabelToPhoneAndDuration(context[i],  num_phones_);
 
   BaseFloat logprob = scorer_.GetLogProb(phone_dur_context);
   return logprob;
@@ -411,20 +412,20 @@ void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
 }
 
 std::pair<int32, int32> OlabelToPhoneAndDuration(fst::StdArc::Label olabel,
-                                                 int32 max_duration) {
-  return std::make_pair(olabel / (max_duration + 1),
-                        olabel % (max_duration + 1));
+                                                 int32 num_phones) {
+  return std::make_pair(olabel % (num_phones + 1),
+                        olabel / (num_phones + 1));
 }
 
 fst::StdArc::Label PhoneAndDurationToOlabel(int32 phone,
                                             int32 duration,
-                                            int32 max_duration) {
-  return (phone * (max_duration + 1)) + duration;
+                                            int32 num_phones) {
+  return phone + duration * (num_phones + 1);
 }
 
 void DurationModelReplaceLabelsLattice(CompactLattice *clat,
                                        const TransitionModel &tmodel,
-                                       int32 max_duration) {
+                                       int32 num_phones) {
   // iterate over all arcs
   for (int s = 0; s < clat->NumStates(); s++) {
     for (fst::MutableArcIterator<CompactLattice> aiter(clat, s);
@@ -438,14 +439,10 @@ void DurationModelReplaceLabelsLattice(CompactLattice *clat,
       if (duration != 0)  // if not an epsilon arc
         phone_label = tmodel.TransitionIdToPhone(tid_seq[0]);
 
-      // take care of max-duration
-      if (duration > max_duration)
-        duration = max_duration;
-
       // encode phone+duration to 1 integer as olabel
       CompactLatticeArc arc2(arc);
       arc2.olabel = PhoneAndDurationToOlabel(phone_label,
-                                             duration, max_duration);
+                                             duration, num_phones);
       aiter.SetValue(arc2);
      }
   }

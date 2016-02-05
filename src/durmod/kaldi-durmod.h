@@ -187,9 +187,12 @@ class PhoneDurationModelDeterministicFst
   typedef fst::StdArc::StateId StateId;
   typedef fst::StdArc::Label Label;
 
-  // second argument is non-cost only because it has a cache (this class does
-  // not take ownership of the pointer)
-  PhoneDurationModelDeterministicFst(const PhoneDurationModel &model,
+  // The first argument is needed only for using PhoneAndDurationToOlabel and
+  // OlabelToPhoneAndDuration functions.
+  // The thrid argument is non-cost only because it has a cache (this class does
+  // not take ownership of the pointer).
+  PhoneDurationModelDeterministicFst(int32 num_phones,
+                                     const PhoneDurationModel &model,
                                      NnetPhoneDurationScoreComputer *scorer);
 
   // We cannot use "const" because the pure virtual function in the interface is
@@ -210,7 +213,8 @@ class PhoneDurationModelDeterministicFst
   MapType context_to_state_;
   std::vector<std::vector<Label> > state_to_context_;
   int32 context_size_, right_context_;
-  int32 max_duration_;
+  int32 num_phones_;  // We need this only for decoding olabels into phone-id
+                      // and duration
   NnetPhoneDurationScoreComputer &scorer_;
 
   /// Uses the score-computer object to compute the log prob for the middle
@@ -240,11 +244,11 @@ void AlignmentToNnetExamples(const PhoneDurationFeatureMaker &feat_maker,
 
 /// This function decodes an already encoded olabel to phone id and duration.
 std::pair<int32, int32> OlabelToPhoneAndDuration(fst::StdArc::Label olabel,
-                                                 int32 max_duration);
+                                                 int32 num_phones);
 /// This function encodes two integers (phone-id and duration) to one integer
 fst::StdArc::Label PhoneAndDurationToOlabel(int32 phone,
                                             int32 duration,
-                                            int32 max_duration);
+                                            int32 num_phones);
 /// This function replaces the output labels of a compact lattice (which has
 /// already been phone-aligned and has only 1 phone per arc) with the duration
 /// and identity of the phones. This is done before composing with the on-demand
@@ -252,7 +256,7 @@ fst::StdArc::Label PhoneAndDurationToOlabel(int32 phone,
 /// log probabilities.
 void DurationModelReplaceLabelsLattice(CompactLattice *in_clat,
                                        const TransitionModel &tmodel,
-                                       int32 max_duration);
+                                       int32 num_phones);
 /// This function reverses the effects of the previous function and puts back
 /// the original output labels.
 void DurationModelReplaceLabelsBackLattice(CompactLattice *in_clat);

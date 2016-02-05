@@ -84,10 +84,11 @@ int main(int argc, char *argv[]) {
         // Insert the phone-id/duration info into the lattice olabels
         DurationModelReplaceLabelsLattice(&clat,
                                           trans_model,
-                                          nnet_durmodel.MaxDuration());
+                                          trans_model.NumPhones());
 
         // Wrap the duration-model scorer with an on-demand fst
         PhoneDurationModelDeterministicFst on_demand_fst(
+                                               trans_model.NumPhones(),
                                                nnet_durmodel.GetDurationModel(),
                                                &durmodel_scorer);
 
