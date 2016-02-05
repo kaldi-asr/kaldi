@@ -899,7 +899,7 @@ void VariableMergingOptimizer::DoMergeCommon(int32 command_index,
   //  If the matrix to discard had stride_type == kStrideEqualNumCols, set the
   //  matrix to keep's stride_type to kStrideEqualNuMCols.
   if (computation_->matrices[m_to_discard].stride_type == kStrideEqualNumCols) {
-    computation_->matrices[m_to_discard].stride_type = kStrideEqualNumCols;
+    computation_->matrices[m_to_keep].stride_type = kStrideEqualNumCols;
     // ... and perform an additional check.
     KALDI_ASSERT(computation_->matrices[m_to_discard].num_rows ==
                  computation_->matrices[m_to_keep].num_rows &&
