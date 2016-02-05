@@ -38,7 +38,7 @@ sad_model_iter=final
 # ivector extraction opts
 use_ivectors=false
 max_count=100 # parameter for extract_ivectors.sh
-sub_speaker_frames=1500
+sub_speaker_frames=2500
 ivector_scale=1.0
 weights_file=
 weights_method=Viterbi
@@ -307,8 +307,8 @@ if $use_ivectors; then
         --silence-weight $silence_weight \
         ${segmented_data_dir} ${vad_dir} \
         $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
-      ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
     fi
+    ivector_extractor_input=$ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}/weights.gz
   fi
 fi
 
