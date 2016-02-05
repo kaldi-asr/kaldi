@@ -64,6 +64,9 @@ min_count=5                   # If max_duration is 0, it will be worked out
 num_examples_per_job=40000000 # Number of examples that are given to nnet3-train
                               # in each GPU job (i.e. number of examples in each
                               # iteration; please refer to num_epochs_per_iter)
+noise_magnitude=10            # The magnitude of noise (in percent) to be added
+                              # to duration values during training for better
+                              # generalization
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -143,7 +146,7 @@ fi
 if $use_gpu; then
   train_queue_opt="--gpu 1"
   parallel_train_opts="--use-gpu=yes"
-    if ! cuda-compiled; then
+  if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
     echo "   for CUDA.  You may be running a setup optimized for GPUs.  If you have"
     echo "   GPUs and have nvcc installed, go to src/ and do ./configure; make"
@@ -160,8 +163,8 @@ if [ $stage -le 0 ]; then  # do the nnet-related initializations only if stage<=
     echo "$0: Using provided config file for nnet: $nnet_config"
   else
     nnet_config=$dir/nnet.conf
-    feat_dim=$(durmodel-info $durmodel | grep feature-dim | awk '{ print $2 }') || exit 1;
-    output_dim=$(durmodel-info $durmodel | grep max-duration | awk '{ print $2 }') || exit 1;
+    feat_dim=$(durmodel-info $durmodel 2>/dev/null | grep feature-dim | awk '{ print $2 }') || exit 1;
+    output_dim=$(durmodel-info $durmodel 2>/dev/null | grep max-duration | awk '{ print $2 }') || exit 1;
     steps/dur_model/make_nnet_config.sh $nnet_opts $feat_dim $output_dim >$nnet_config
     echo "$0: Wrote nnet config to "$nnet_config
   fi
@@ -177,7 +180,8 @@ num_examples=`cat $dir/num_examples` || num_examples=1
 num_epochs_per_iter=$[$num_examples_per_job/$num_examples]
 [[ $num_epochs_per_iter -le 0 ]] && num_epochs_per_iter=1
 [[ $num_epochs_per_iter -gt 8 ]] && num_epochs_per_iter=8
-num_iterations=$[$num_epochs/$num_epochs_per_iter+1]
+num_iterations=$[$num_epochs/$num_epochs_per_iter]
+[[ $[$num_epochs%$num_epochs_per_iter] != 0 ]] && num_iterations=$[$num_iterations+1]
 
 echo "$0: Number of epochs per each iteration is $num_epochs_per_iter"
 echo "$0: Will train from iteration $stage through iteration $[$num_iterations-1] ..."
@@ -190,8 +194,8 @@ for iter in $(seq $stage $[$num_iterations-1]); do
   train_egs="ark:for n in $(seq -s ' ' $num_epochs_per_iter); do cat $dir/train.egs; done |"
   $cmd $train_queue_opt $dir/log/train.$[$iter+1].log \
        nnet3-train $parallel_train_opts "nnet3-durmodel-copy --raw=true $curr_mdl -|" \
-                   "ark:nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$iter \
-                   '$train_egs' ark:-| \
+                   "ark:nnet3-durmodel-copy-egs --srand=$iter --noise-magnitude=$noise_magnitude '$train_egs' ark:- | \
+                   nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$iter ark:- ark:-| \
                    nnet3-merge-egs --minibatch-size=$minibatch_size ark:- ark:- |" \
                    $dir/nnet.raw \
        '&&' \
@@ -202,6 +206,11 @@ for iter in $(seq $stage $[$num_iterations-1]); do
 
   $cmd $dir/log/durmod_set_raw_nnet.log \
        nnet3-durmodel-copy --set-raw-nnet=$dir/nnet.raw $curr_mdl $next_mdl
+
+  $cmd $dir/log/progress.$[$iter+1].log \
+        nnet3-show-progress --use-gpu=no "nnet3-durmodel-copy --raw=true $curr_mdl - |" "nnet3-durmodel-copy --raw=true $next_mdl - |" \
+        "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" '&&' \
+        nnet3-info "nnet3-durmodel-copy --raw=true $next_mdl - |" &
 
   if $early_stop; then
     curr_val_logprob=$(grep -o "Overall log.*" $dir/log/train.$iter.log 2>/dev/null | awk '{print $6}')
