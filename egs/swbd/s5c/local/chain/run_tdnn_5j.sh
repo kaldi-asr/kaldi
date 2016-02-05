@@ -1,8 +1,17 @@
 #!/bin/bash
 
+# _5j is as _5e, but omitting the iVectors.
 
-# _5j is as _5e, but omitting the iVectors.   I'm re-using the egs from 2y, even
-# though they had iVectors-- hopefully it won't matter.
+# Definitely worse, although curiously, there is very little effect on the valid prob.
+#./compare_wer.sh 5e 5j
+#System                       5e        5j
+#WER on train_dev(tg)      15.43     17.59
+#WER on train_dev(fg)      14.32     16.33
+#WER on eval2000(tg)        17.3      19.1
+#WER on eval2000(fg)        15.5      17.5
+#Final train prob      -0.110056 -0.114691
+#Final valid prob      -0.129184 -0.130761
+
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
