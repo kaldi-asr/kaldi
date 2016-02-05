@@ -408,7 +408,7 @@ void NnetComputer::AcceptInput(const std::string &input_name,
     matrices_[matrix_index].Resize(matrix_info.num_rows,
                                    matrix_info.num_cols,
                                    kUndefined, kStrideEqualNumCols);
-    matrices_[matrix_index].CopyFromMat(input);
+    matrices_[matrix_index].CopyFromMat(*input);
   }
   input->Resize(0, 0);
 }
@@ -468,7 +468,7 @@ void NnetComputer::AcceptOutputDeriv(const std::string &output_name,
     matrices_[matrix_index].Resize(matrix_info.num_rows,
                                    matrix_info.num_cols,
                                    kUndefined, kStrideEqualNumCols);
-    matrices_[matrix_index].CopyFromMat(output_deriv);
+    matrices_[matrix_index].CopyFromMat(*output_deriv);
   }
   output_deriv->Resize(0, 0);
 }

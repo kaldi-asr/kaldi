@@ -475,7 +475,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
   virtual std::string Type() const { return "RepeatedAffineComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-	     kBackpropNeedsInput|kBackpropAdds;
+        kBackpropNeedsInput|kBackpropAdds|kInputContiguous|kOutputContiguous;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -1748,7 +1748,11 @@ class CompositeComponent: public UpdatableComponent {
   void SetComponent(int32 i, Component *component);
 
   virtual ~CompositeComponent() { DeletePointers(&components_); }
- protected:
+ private:
+  // returns the stride type, kDefaultStride or kStrideEqualNumCols,
+  // at the output of the i'th component.
+  inline MatrixStrideType GetStrideType(int32 i) const;
+
   // returns true if at least one of 'components_' returns the kUpdatable flag
   // in its flags.
   bool IsUpdatable() const;
