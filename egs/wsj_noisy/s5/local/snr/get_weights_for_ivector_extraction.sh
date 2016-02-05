@@ -8,16 +8,19 @@ set -o pipefail
 . path.sh
 
 cmd=run.pl
-nj=4
-silence_weight=0
-speech_prior=0.2
-sil_prior=0.8
 method=Viterbi
 stage=-1
 
 # Viterbi options
 min_silence_duration=30   # minimum number of frames for silence
 min_speech_duration=30    # minimum number of frames for speech
+nonsil_self_loop_probability=0.9
+nonsil_transition_probability=0.1
+sil_self_loop_probability=0.9
+sil_transition_probability=0.1
+silence_weight=0
+speech_prior=0.2
+sil_prior=0.8
 
 # Decoding options
 acwt=1
@@ -47,6 +50,9 @@ for f in $file_vad_dir/log_likes.1.scp; do
   fi
 done
 
+mkdir -p $dir
+
+nj=`cat $file_vad_dir/num_jobs` || exit 1
 utils/split_data.sh $data_dir $nj || exit 1
 
 perl -e "\$sum_prior = $speech_prior + $sil_prior; printf ('[ %f %f ]', log($sil_prior)-log(\$sum_prior), log($speech_prior)-log(\$sum_prior));" > $dir/log_priors
@@ -87,7 +93,7 @@ case $method in
         copy-transition-model --binary=false - $dir/trans.mdl || exit 1
     fi
 
-    lang=$dir/lang_test_${t}x
+    lang=$dir/lang_test_sp${speech_prior}_sil${sil_prior}
     if [ $stage -le 3 ]; then
       cp -r $dir/lang $lang
       perl -e '$sil_prior = shift @ARGV; $speech_prior = shift @ARGV; $s = $sil_prior + $speech_prior; $sil_prior = $sil_prior / $s; $speech_prior = $speech_prior / $s; $s = $sil_prior + $speech_prior; print "0 0 1 1 " . -log($sil_prior/(1.1 * $s)) . "\n0 0 2 2 ". -log($speech_prior/(1.1 * $s)). "\n0 ". -log(0.1 / 1.1)' $sil_prior $speech_prior | \

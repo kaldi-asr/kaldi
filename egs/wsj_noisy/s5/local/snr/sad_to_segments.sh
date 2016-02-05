@@ -30,6 +30,8 @@ nonsil_transition_probability=0.1
 sil_self_loop_probability=0.9
 sil_transition_probability=0.1
 speech_to_sil_ratio=1     # the prior on speech vs silence
+speech_prior=0.5
+sil_prior=0.5
 
 # Decoding options
 acwt=1
@@ -42,6 +44,11 @@ if [ $# -ne 4 ]; then
   echo "Usage: $0 <data-dir> <vad-dir> <segmentation-dir> <segmented-data-dir>"
   echo " e.g.: $0 data/dev_aspire_whole exp/vad_dev_aspire exp/segmentation_dev_aspire data/dev_aspire_seg"
   exit 1
+fi
+
+if [ "$speech_to_sil_ratio" != 1 ]; then
+  speech_prior=$speech_to_sil_ratio
+  sil_prior=1
 fi
 
 data_dir=$1
@@ -124,15 +131,13 @@ EOF
         copy-transition-model --binary=false - $dir/trans.mdl || exit 1
     fi
 
-    t=$speech_to_sil_ratio
-    lang=$dir/lang_test_${t}x
+    lang=$dir/lang_test_sp${speech_prior}_sil${sil_prior}
     if [ $stage -le 3 ]; then
       cp -r $dir/lang $lang
-      perl -e '$t = shift @ARGV; print "0 0 1 1 " . -log(1/($t+2)) . "\n0 0 2 2 ". -log($t/($t+2)). "\n0 ". -log(1/($t+2))' $t | \
+      perl -e '$sil_prior = shift @ARGV; $speech_prior = shift @ARGV; $s = $sil_prior + $speech_prior; $sil_prior = $sil_prior / $s; $speech_prior = $speech_prior / $s; $s = $sil_prior + $speech_prior; print "0 0 1 1 " . -log($sil_prior/(1.1 * $s)) . "\n0 0 2 2 ". -log($speech_prior/(1.1 * $s)). "\n0 ". -log(0.1 / 1.1)' $sil_prior $speech_prior | \
         fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt \
         --keep_isymbols=false --keep_osymbols=false \
         > $lang/G.fst || exit 1
-
     fi
 
     if [ $stage -le 4 ]; then
