@@ -473,8 +473,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
       CheckComputationOptions check_config;
       // we can do the rewrite check since it's before optimization.
       check_config.check_rewrite = true;
-      ComputationChecker checker(check_config, nnet_, *request,
-                                 *computation);
+      ComputationChecker checker(check_config, nnet_, *computation);
       checker.Check();
     }
     Optimize(opt_config_, nnet_, *request, computation);
@@ -485,7 +484,7 @@ const NnetComputation* CachingOptimizingCompiler::Compile(
     }
     {  // check the computation again.
       CheckComputationOptions check_config;
-      ComputationChecker checker(check_config, nnet_, *request, *computation);
+      ComputationChecker checker(check_config, nnet_, *computation);
       checker.Check();
     }
     computation->ComputeCudaIndexes();

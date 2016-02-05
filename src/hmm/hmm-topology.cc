@@ -291,6 +291,41 @@ int32 HmmTopology::NumPdfClasses(int32 phone) const {
   return max_pdf_class+1;
 }
 
+int32 HmmTopology::MinLength(int32 phone) const {
+  const TopologyEntry &entry = TopologyForPhone(phone);
+  // min_length[state] gives the minimum length for sequences up to and
+  // including that state.
+  std::vector<int32> min_length(entry.size(),
+                                std::numeric_limits<int32>::max());
+  KALDI_ASSERT(!entry.empty());
 
+  min_length[0] = (entry[0].pdf_class == -1 ? 0 : 1);
+  int32 num_states = min_length.size();
+  bool changed = true;
+  while (changed) {
+    changed = false;
+    for (int32 s = 0; s < num_states; s++) {
+      const HmmState &this_state = entry[s];
+      std::vector<std::pair<int32, BaseFloat> >::const_iterator
+          iter = this_state.transitions.begin(),
+          end = this_state.transitions.end();
+      for (; iter != end; ++iter) {
+        int32 next_state = iter->first;
+        KALDI_ASSERT(next_state < num_states);
+        int32 next_state_min_length = min_length[s] +
+            (entry[next_state].pdf_class == -1 ? 0 : 1);
+        if (next_state_min_length < min_length[next_state]) {
+          min_length[next_state] = next_state_min_length;
+          if (next_state < s)
+            changed = true;
+          // the test of 'next_state < s' is an optimization for speed.
+        }
+      }
+    }
+  }
+  KALDI_ASSERT(min_length.back() != std::numeric_limits<int32>::max());
+  // the last state is the final-state.
+  return min_length.back();
+}
 
 } // End namespace kaldi

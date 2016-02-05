@@ -372,8 +372,8 @@ dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
 \verbatim
 # caution, this is a simplification that overgenerates descriptors.
 <descriptor>  ::=   <node-name>      ;; node name of kInput or kComponent node.
-<descriptor>  ::=   Append(<descriptor>, <descriptor> [, <descriptor> ... ] )
-<descriptor>  ::=   Sum(<descriptor>, <descriptor>)
+<descriptor>  ::=   Append(<descriptor>, [, <descriptor> ... ] )
+<descriptor>  ::=   Sum(<descriptor>, [<descriptor>, ...])
 ;; Failover or IfDefined might be useful for time t=-1 in a RNN, for instance.
 <descriptor>  ::=   Failover(<descriptor>, <descriptor>)   ;; 1st arg if computable, else 2nd
 <descriptor>  ::=   IfDefined(<descriptor>)     ;; the arg if defined, else zero.
@@ -392,10 +392,12 @@ dim-range-node name=dim-range-node1 input-node=affine1_node dim-offset=0 dim=50
 <descriptor>  ::=   ReplaceIndex(<descriptor>, <variable-name>, <value>)
 \endverbatim
 
-
-Now we will describe the actual syntax, which differs from the above simplified
-version because expressions may appear only in a certain hierarchy.  This
-syntax also corresponds more closely with the class names in the real code.
+Now we will describe the actual syntax which the code uses internally, which
+differs from the above simplified version because expressions may appear only in
+a certain hierarchy.  This syntax also corresponds more closely with the class
+names in the real code.  The code that reads Descriptors attempts to normalize
+them in as general as possible a way, so that almost all of the above syntax
+can be read and converted to the internal representation.
 \verbatim
 ;;; <descriptor> == class Descriptor
 <descriptor> ::=  Append(<sum-descriptor>[, <sum-descriptor> ... ] )

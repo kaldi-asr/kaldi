@@ -1380,6 +1380,11 @@ void DeterminizeLatticeDeletePhones(
     }
   }
 }
+// instantiate for type LatticeWeight
+template
+void DeterminizeLatticeDeletePhones(
+    ArcTpl<kaldi::LatticeWeight>::Label first_phone_label,
+    MutableFst<ArcTpl<kaldi::LatticeWeight> > *fst);    
 
 /** This function does a first pass determinization with phone symbols inserted
     at phone boundary. It uses a transition model to work out the transition-id
@@ -1546,5 +1551,3 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
     DeterminizeLatticePhonePrunedOptions opts);
 
 }
-
-

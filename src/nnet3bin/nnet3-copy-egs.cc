@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-example-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -40,7 +41,7 @@ int32 GetCount(double expected_count) {
 /** Returns true if the "eg" contains just a single example, meaning
     that all the "n" values in the indexes are zero, and the example
     has NnetIo members named both "input" and "output"
-    
+
     Also computes the minimum and maximum "t" values in the "input" and
     "output" NnetIo members.
  */
@@ -118,10 +119,11 @@ class ExampleSelector {
 
   ExampleSelector(std::string frame_str, 
                   int32 left_context, int32 right_context,
+                  int32 frame_shift,
                   const QuantizationOptions &quantization_opts,
                   bool quantize_input): frame_str_(frame_str), 
                   left_context_(left_context), right_context_(right_context),
-                  quantize_input_(quantize_input), 
+                  frame_shift_(frame_shift), quantize_input_(quantize_input), 
                   quantization_opts_(quantization_opts) { 
     if (!SplitStringToFloats(quantization_opts_.bin_boundaries_str, ":", false,
                                &bin_boundaries_)) {
@@ -391,7 +393,7 @@ void ExampleSelector::FilterExample(const NnetExample &eg,
 
    If left_context != -1 it removes any inputs with t < (smallest output - left_context).
       If left_context != -1 it removes any inputs with t < (smallest output - left_context).
-   
+
    It returns true if it was able to select a frame.  We only anticipate it ever
    returning false in situations where frame is an integer, and the eg came from
    the end of a file and has a smaller than normal number of supervised frames.
@@ -444,7 +446,11 @@ bool ExampleSelector::SelectFromExample(const NnetExample &eg,
                 min_input_t, max_input_t,
                 min_output_t, max_output_t,
                 eg_out);
-
+  if (frame_shift_ != 0) {
+    std::vector<std::string> exclude_names;  // we can later make this
+    exclude_names.push_back(std::string("ivector")); // configurable.
+    ShiftExampleTimes(frame_shift_, exclude_names, eg_out);
+  }
   return true;
 }
 
@@ -470,9 +476,10 @@ int main(int argc, char *argv[]) {
         "nnet3-copy-egs ark:train.egs ark,t:text.egs\n"
         "or:\n"
         "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
-        
+
     bool random = false;
     int32 srand_seed = 0;
+    int32 frame_shift = 0;
     BaseFloat keep_proportion = 1.0;
 
     // The following config variables, if set, can be used to extract a single
@@ -493,6 +500,10 @@ int main(int argc, char *argv[]) {
 
     po.Register("random", &random, "If true, will write frames to output "
                 "archives randomly, not round-robin.");
+    po.Register("frame-shift", &frame_shift, "Allows you to shift time values "
+                "in the supervision data (excluding iVector data).  Only really "
+                "useful in clockwork topologies (i.e. any topology for which "
+                "modulus != 1).  Shifting is done after any frame selection.");
     po.Register("keep-proportion", &keep_proportion, "If <1.0, this program will "
                 "randomly keep this proportion of the input samples.  If >1.0, it will "
                 "in expectation copy a sample this many times.  It will copy it a number "
@@ -527,19 +538,19 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
-    ExampleSelector selector(frame_str, left_context, right_context, 
+    ExampleSelector selector(frame_str, left_context, right_context, frame_shift,
                              quantization_opts, quantize_input);
 
     int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       // count is normally 1; could be 0, or possibly >1.
-      int32 count = GetCount(keep_proportion);  
+      int32 count = GetCount(keep_proportion);
       std::string key = example_reader.Key();
       const NnetExample &eg = example_reader.Value();
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
-        if (frame_str.empty() && left_context == -1 && right_context == -1
-            && !quantize_input) {
+        if (frame_str == "" && left_context == -1 && right_context == -1 &&
+            && !quantize_input && frame_shift == 0) {
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
@@ -559,7 +570,7 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    
+
     for (int32 i = 0; i < num_outputs; i++)
       delete example_writers[i];
     KALDI_LOG << "Read " << num_read << " neural-network training examples, wrote "

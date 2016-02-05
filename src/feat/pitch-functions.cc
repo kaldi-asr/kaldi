@@ -1335,8 +1335,6 @@ inline void AppendVector(const VectorBase<Real> &src, Vector<Real> *dst) {
   dst->Range(dst->Dim() - src.Dim(), src.Dim()).CopyFromVec(src);
 }
 
-const int32 OnlineProcessPitch::kRawFeatureDim;
-
 /**
    Note on the implementation of OnlineProcessPitch: the
    OnlineFeatureInterface allows random access to features (i.e. not necessarily

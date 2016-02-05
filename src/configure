@@ -52,7 +52,7 @@ function is_set {
 
 ##   First do some checks.  These verify that all the things are
 ##   here that should be here.
-if [ "`basename $PWD`" != "src" ]; then
+if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
   exit 1
 fi
@@ -177,7 +177,10 @@ do
   esac
 done
 
-
+# the idea here is that if you change the configuration options from using
+# CUDA to not using it, or vice versa, we want to recompile all parts of the
+# code that may use a GPU.  Touching this file is a way to force this.
+touch cudamatrix/cu-common.h 2>/dev/null
 
 function failure {
   echo "***configure failed: $* ***" >&2
@@ -793,7 +796,7 @@ echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
 echo "FSTROOT = $FSTROOT" >> kaldi.mk
 
 # Check installed OpenFst version and add C++11 flags if OpenFst >= 1.4
-OPENFST_VER=`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`
+OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
 echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
 OPENFST_VER_NUM=`echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"`
 if [ $OPENFST_VER_NUM -ge 10400 ]; then

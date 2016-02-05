@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-merge-egs [options] <egs-rspecifier> <egs-wspecifier>\n"
         "e.g.\n"
         "nnet3-merge-egs --minibatch-size=512 ark:1.egs ark:- | nnet3-train-simple ... \n"
-        "See also nnet-copy-egs\n";
+        "See also nnet3-copy-egs\n";
         
     bool compress = false;
     int32 minibatch_size = 512;

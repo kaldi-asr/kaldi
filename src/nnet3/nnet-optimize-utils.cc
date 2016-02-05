@@ -1160,8 +1160,6 @@ void ModelUpdateConsolidator::ConsolidateModelUpdate() {
   // 'backprop_commands' is a list, for each component (but nonempty only for
   // updatable components), of the command indexes for the backprop commands.
   std::vector<std::vector<int32> > backprop_commands(num_components);
-  std::vector<NnetComputation::Command>::const_iterator iter =
-      computation_->commands.begin(), end = computation_->commands.end();
   for (int32 command_index = 0;
        command_index < num_commands; command_index++) {
     const NnetComputation::Command &c = computation_->commands[command_index];

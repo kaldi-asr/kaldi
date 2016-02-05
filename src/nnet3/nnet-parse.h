@@ -27,26 +27,22 @@ namespace kaldi {
 namespace nnet3 {
 
 /**
-   This class is responsible for parsing input like
-     xx=yyy foo=bar  baz=123
-   and giving you access to the fields.  It parses lines pretty much
-   how you would expect from the examples above, except that it does
-   allow whitespaces in the values, and it parses lines by assuming the
-   values in expressions don't contain the '=' characters,
-   and that the values don't begin or end with whitespace, so that
-        xx=yyy foo=bar  baz=x y z  pp=qq
-   will assign "x y z" to baz.  Empty values are allowed (although not really
-   expected), so that
-      x=  y=bar
-   is allowed, and assigns "" to key x.  Key values may contain -_a-zA-Z0-9, but
-   must begin with a-zA-Z_.
+   This class is responsible for parsing input
+     xx=yyy a=b c empty= f-oo=bar  ba_z=123 bing='a b c' baz="a b c d='a b' e"
+   and giving you access to the fields, in this case
+
+   xx->yyy, a->"b c", empty->"", f-oo->bar, ba_z->"123",
+   bing->"a b c", baz->"a b c d='a b' e"
+
+   Key values may contain -_a-zA-Z0-9, but must begin with a-zA-Z_.
  */
 class ConfigLine {
  public:
   //ConfigLine();
   // tries to parse the line as a config-file line.  Returns false if it could not
   // for some reason, e.g. "x" is not a value config-file line, nor is "=y".
-  // Prints no warnings; the user should do this.
+  // In most cases prints no warnings; the user should do this.
+  // Does not expect comments.
   bool ParseLine(const std::string &line);
 
   // the GetValue functions are overloaded for various types.  They return true
@@ -161,6 +157,34 @@ std::string ErrorContext(const std::string &str);
 // Returns a string that summarizes a vector fairly succintly, for
 // printing stats in info lines.
 std::string SummarizeVector(const Vector<BaseFloat> &vec);
+
+/** Print to 'os' some information about the mean and standard deviation of
+    some parameters, used in Info() functions in nnet-simple-component.cc.
+    For example:
+     PrintParameterStats(os, "bias", bias_params_, true);
+    would print to 'os' something like the string 
+     ", bias-{mean,stddev}=-0.013,0.196".  If 'include_mean = false',
+    it will print something like
+     ", bias-rms=0.2416", and this represents and uncentered standard deviation.
+ */
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuVector<BaseFloat> &params,
+                         bool include_mean = false);
+
+/** Print to 'os' some information about the mean and standard deviation of
+    some parameters, used in Info() functions in nnet-simple-component.cc.
+    For example:
+     PrintParameterStats(os, "linear-params", linear_params_;
+    would print to 'os' something like the string 
+     ", linear-params-rms=0.239".
+    If you set include_mean to true, it will print something like
+    ", linear-params-{mean-stddev}=0.103,0.183".
+ */
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuMatrix<BaseFloat> &params,
+                         bool include_mean = false);
 
 
 } // namespace nnet3

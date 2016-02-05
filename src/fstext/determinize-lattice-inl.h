@@ -903,14 +903,14 @@ template<class Weight, class IntType> class LatticeDeterminizer {
     vector<IntType> common_prefix;
     repository_.ConvertToVector((*elems)[0].string, &common_prefix);
     Weight weight = (*elems)[0].weight;
-    for(size_t i = 1; i < size; i++) {
+    for (size_t i = 1; i < size; i++) {
       weight = Plus(weight, (*elems)[i].weight);
       repository_.ReduceToCommonPrefix((*elems)[i].string, &common_prefix);
     }
     assert(weight != Weight::Zero()); // we made sure to ignore arcs with zero
     // weights on them, so we shouldn't have zero here.
     size_t prefix_len = common_prefix.size();
-    for(size_t i = 0; i < size; i++) {
+    for (size_t i = 0; i < size; i++) {
       (*elems)[i].weight = Divide((*elems)[i].weight, weight, DIVIDE_LEFT);
       (*elems)[i].string =
           repository_.RemovePrefix((*elems)[i].string, prefix_len);

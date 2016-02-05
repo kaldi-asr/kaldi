@@ -307,7 +307,7 @@ void UnitTestPreconditionDirectionsOnline() {
     AssertEqual(trace1, trace2 * gamma2 * gamma2, 1.0e-02);
 
     AssertEqual(Mcopy1, Mcopy2);
-    AssertEqual(row_prod1, row_prod2, 1.0e-02f);
+    AssertEqual<BaseFloat>(row_prod1, row_prod2, 1.0e-02);
     AssertEqual(gamma1, gamma2, 1.0e-02);
 
     // make sure positive definite

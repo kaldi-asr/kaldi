@@ -60,6 +60,13 @@ class ContextDependencyInterface {
   virtual bool Compute(const std::vector<int32> &phoneseq, int32 pdf_class,
                        int32 *pdf_id) const = 0;
 
+  /// GetPdfInfo returns a vector indexed by pdf-id, saying for each pdf which
+  /// pairs of (phone, pdf-class) it can correspond to.  (Usually just one).
+  /// c.f. hmm/hmm-topology.h for meaning of pdf-class.
+  virtual void GetPdfInfo(const std::vector<int32> &phones,  // list of phones
+                          const std::vector<int32> &num_pdf_classes,  // indexed by phone,
+                          std::vector<std::vector<std::pair<int32, int32> > > *pdf_info)
+      const = 0;
 
 
   /// NumPdfs() returns the number of acoustic pdfs (they are numbered 0.. NumPdfs()-1).

@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
@@ -189,7 +188,7 @@ if [ $# != 4 ]; then
   echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
   echo "                                                   # the number of frames processed per iteration"
   echo "  --shrink <shrink|0.99>                           # if non-zero this parameter will be used to scale the parameter matrices"
-  echo "  --shrink-threshold <threshold|0.15>             # a threshold (should be between 0.0 and 0.25) that controls when to"
+  echo "  --shrink-threshold <threshold|0.15>              # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
   echo " for more options see the script"
   exit 1;

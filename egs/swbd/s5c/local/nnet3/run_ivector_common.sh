@@ -24,20 +24,20 @@ if [ "$speed_perturb" == "true" ]; then
       utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
       utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
       rm -r data/temp1 data/temp2
-      
+
       mfccdir=mfcc_perturbed
       steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
         data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
       steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
       utils/fix_data_dir.sh data/${datadir}_tmp
-      
+
       utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
       utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
       utils/fix_data_dir.sh data/${datadir}_sp
       rm -r data/temp0 data/${datadir}_tmp
     done
   fi
-  
+
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \

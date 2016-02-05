@@ -104,7 +104,7 @@ while [ $[$cur_index+$block_size] -le $feat_dim ]; do
   echo >> $dir/indexes
   num_blocks=$[$num_blocks+1]
   cur_index=$[$cur_index+$block_shift]
-  if [ $[$cur_index+$block_size-1] -gt $feat_dim ]; then
+  if [ $[$cur_index+$block_size] -gt $feat_dim ]; then
     cur_index=$[$feat_dim-$block_size];
   fi
 done

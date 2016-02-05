@@ -32,9 +32,7 @@ void WriteFstKaldi(std::ostream &os, bool binary,
                    const VectorFst<Arc> &t) {
   bool ok;
   if (binary) {
-    // Binary-mode writing.  No binary header; the Read function
-    // knows it is text mode if it sees a space as the 1st character
-    // (the leading \n).
+    // Binary-mode writing.
     ok = t.Write(os, FstWriteOptions());
   } else {
     // Text-mode output.  Note: we expect that t.InputSymbols() and

@@ -33,9 +33,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Copy nnet3 neural-net acoustic model file; supports conversion\n"
         "to raw model (--raw=true).\n"
-        "Also supports multiplying all the learning rates by a factor\n"
-        "(the --learning-rate-factor option) and setting them all to supplied\n"
-        "values (the --learning-rate and --learning-rates options),\n"
+        "Also supports setting all learning rates to a supplied\n"
+        "value (the --learning-rate option),\n"
         "and supports replacing the raw nnet in the model (the Nnet)\n"
         "with a provided raw nnet (the --set-raw-nnet option)\n"
         "\n"
