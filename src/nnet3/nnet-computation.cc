@@ -124,15 +124,16 @@ int32 NnetComputation::NewSubMatrix(int32 base_submatrix,
   return ans;
 }
 
-int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols) {
+int32 NnetComputation::NewMatrix(int32 num_rows, int32 num_cols,
+                                 MatrixStrideType stride_type) {
   KALDI_ASSERT(num_rows > 0 && num_cols > 0);
   if (matrices.empty()) {  // Set up the zero matrix; index zero is reserved.
-    matrices.push_back(MatrixInfo(0, 0));
+    matrices.push_back(MatrixInfo(0, 0, kDefaultStride));
     submatrices.push_back(SubMatrixInfo(0, 0, 0, 0, 0));
   }
   int32 matrix_index = matrices.size(),
       submatrix_index = submatrices.size();
-  matrices.push_back(MatrixInfo(num_rows, num_cols));
+  matrices.push_back(MatrixInfo(num_rows, num_cols, stride_type));
   if (!matrix_debug_info.empty())
     matrix_debug_info.push_back(MatrixDebugInfo());
   submatrices.push_back(SubMatrixInfo(matrix_index, 0, num_rows, 0, num_cols));
@@ -473,7 +474,7 @@ void IoSpecification::Swap(IoSpecification *other) {
   name.swap(other->name);
   indexes.swap(other->indexes);
   std::swap(has_deriv, other->has_deriv);
-}  
+}
 
 void ComputationRequest::Print(std::ostream &os) const {
   os << " # Computation request:\n";

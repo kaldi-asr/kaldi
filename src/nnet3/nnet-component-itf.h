@@ -74,10 +74,14 @@ enum ComponentProperties {
                                  // forward-pass output (e.g. true for Sigmoid).
   kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kStoresStats = 0x800       // true if the StoreStats operation stores
+  kStoresStats = 0x800,      // true if the StoreStats operation stores
                              // statistics e.g. on average node activations and
                              // derivatives of the nonlinearity, (as it does for
                              // Tanh, Sigmoid, ReLU and Softmax).
+  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+                              // input derivatives) to have Stride()== NumCols().
+  kOutputContiguous = 0x2000  // true if the component requires its input data (and
+                              // output derivatives) to have Stride()== NumCols().
 };
 
 

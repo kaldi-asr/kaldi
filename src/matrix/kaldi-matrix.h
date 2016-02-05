@@ -738,11 +738,11 @@ class Matrix : public MatrixBase<Real> {
   /// Empty constructor.
   Matrix();
 
-  /// Basic constructor.  Sets to zero by default.
-  /// if set_zero == false, memory contents are undefined.
+  /// Basic constructor.
   Matrix(const MatrixIndexT r, const MatrixIndexT c,
-         MatrixResizeType resize_type = kSetZero):
-      MatrixBase<Real>() { Resize(r, c, resize_type); }
+         MatrixResizeType resize_type = kSetZero,
+         MatrixStrideType stride_type = kDefaultStride):
+      MatrixBase<Real>() { Resize(r, c, resize_type, stride_type); }
 
   /// Copy constructor from CUDA matrix
   /// This is defined in ../cudamatrix/cu-matrix.h
@@ -814,10 +814,16 @@ class Matrix : public MatrixBase<Real> {
   ///   -if kUndefined, the new data will be undefined
   ///   -if kCopyData, the new data will be the same as the old data in any
   ///      shared positions, and zero elsewhere.
+  ///
+  /// You can set stride_type to kStrideEqualNumCols to force the stride
+  /// to equal the number of columns; by default it is set so that the stride
+  /// in bytes is a multiple of 16.
+  ///
   /// This function takes time proportional to the number of data elements.
   void Resize(const MatrixIndexT r,
               const MatrixIndexT c,
-              MatrixResizeType resize_type = kSetZero);
+              MatrixResizeType resize_type = kSetZero,
+              MatrixStrideType stride_type = kDefaultStride);
 
   /// Assignment operator that takes MatrixBase.
   Matrix<Real> &operator = (const MatrixBase<Real> &other) {
@@ -847,7 +853,8 @@ class Matrix : public MatrixBase<Real> {
   /// the specified number of rows and columns.  r == c == 0 is acceptable.  The data
   /// memory contents will be undefined.
   void Init(const MatrixIndexT r,
-            const MatrixIndexT c);
+            const MatrixIndexT c,
+            const MatrixStrideType stride_type);
 
 };
 /// @} end "addtogroup matrix_group"

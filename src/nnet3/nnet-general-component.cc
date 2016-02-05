@@ -944,5 +944,6 @@ void StatisticsPoolingComponent::Backprop(
                    indexes->backward_indexes);
 }
 
+
 } // namespace nnet3
 } // namespace kaldi

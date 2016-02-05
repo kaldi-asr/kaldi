@@ -354,6 +354,7 @@ class StatisticsPoolingComponent: public Component {
 };
 
 
+
 } // namespace nnet3
 } // namespace kaldi
 

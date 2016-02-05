@@ -619,8 +619,9 @@ class CuMatrix: public CuMatrixBase<Real> {
 
   /// Constructor with memory initialisation
   CuMatrix(MatrixIndexT rows, MatrixIndexT cols,
-           MatrixResizeType resize_type = kSetZero) {
-    Resize(rows, cols, resize_type);
+           MatrixResizeType resize_type = kSetZero,
+           MatrixStrideType stride_type = kDefaultStride) {
+    Resize(rows, cols, resize_type, stride_type);
   }
 
   // Note: we had to remove the "explicit" keyword due
@@ -679,7 +680,8 @@ class CuMatrix: public CuMatrixBase<Real> {
 
   /// Allocate the memory
   void Resize(MatrixIndexT rows, MatrixIndexT cols,
-              MatrixResizeType resize_type = kSetZero);
+              MatrixResizeType resize_type = kSetZero,
+              MatrixStrideType stride_type = kDefaultStride);
 
   void Swap(Matrix<Real> *mat);
   void Swap(CuMatrix<Real> *mat);
@@ -782,8 +784,8 @@ template<typename Real>
 template<typename OtherReal>
 Matrix<Real>::Matrix(const CuMatrixBase<OtherReal> &M,
                      MatrixTransposeType trans) {
-  if (trans == kNoTrans) Init(M.NumRows(), M.NumCols());
-  else Init(M.NumCols(), M.NumRows());
+  if (trans == kNoTrans) Init(M.NumRows(), M.NumCols(), kDefaultStride);
+  else Init(M.NumCols(), M.NumRows(), kDefaultStride);
   M.CopyToMat(this, trans);
 }
 

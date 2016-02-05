@@ -628,7 +628,8 @@ Matrix<double>::Matrix(const MatrixBase<float> & M,
 
 template<typename Real>
 inline void Matrix<Real>::Init(const MatrixIndexT rows,
-                               const MatrixIndexT cols) {
+                               const MatrixIndexT cols,
+                               const MatrixStrideType stride_type) {
   if (rows * cols == 0) {
     KALDI_ASSERT(rows == 0 && cols == 0);
     this->num_rows_ = 0;
@@ -638,9 +639,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     return;
   }
   KALDI_ASSERT(rows > 0 && cols > 0);
-  // initialize some helping vars
-  MatrixIndexT skip;
-  MatrixIndexT real_cols;
+  MatrixIndexT skip, stride;
   size_t size;
   void *data;  // aligned memory block
   void *temp;  // memory block to be really freed
@@ -648,8 +647,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
   // compute the size of skip and real cols
   skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
       % (16 / sizeof(Real));
-  real_cols = cols + skip;
-  size = static_cast<size_t>(rows) * static_cast<size_t>(real_cols)
+  stride = cols + skip;
+  size = static_cast<size_t>(rows) * static_cast<size_t>(stride)
       * sizeof(Real);
 
   // allocate the memory and set the right dimensions and parameters
@@ -657,7 +656,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
     MatrixBase<Real>::num_rows_      = rows;
     MatrixBase<Real>::num_cols_      = cols;
-    MatrixBase<Real>::stride_  = real_cols;
+    MatrixBase<Real>::stride_  = (stride_type == kDefaultStride ? stride : cols);
   } else {
     throw std::bad_alloc();
   }
@@ -666,7 +665,8 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
 template<typename Real>
 void Matrix<Real>::Resize(const MatrixIndexT rows,
                           const MatrixIndexT cols,
-                          MatrixResizeType resize_type) {
+                          MatrixResizeType resize_type,
+                          MatrixStrideType stride_type) {
   // the next block uses recursion to handle what we have to do if
   // resize_type == kCopyData.
   if (resize_type == kCopyData) {
@@ -699,7 +699,7 @@ void Matrix<Real>::Resize(const MatrixIndexT rows,
     else
       Destroy();
   }
-  Init(rows, cols);
+  Init(rows, cols, stride_type);
   if (resize_type == kSetZero) MatrixBase<Real>::SetZero();
 }
 
