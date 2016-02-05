@@ -63,7 +63,7 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     Timer tim;
     MatrixIndexT row_bytes = cols * sizeof(Real);
     size_t pitch;
-    if (stride_type = kDefaultStride) {
+    if (stride_type == kDefaultStride) {
       this->data_ = static_cast<Real*>(CuDevice::Instantiate().MallocPitch(
           row_bytes, rows, &pitch));
       this->num_rows_ = rows;
