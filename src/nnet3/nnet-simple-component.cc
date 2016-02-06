@@ -240,26 +240,30 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
 }
 
 const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
-// This component modifies the vector of activations by scaling it so that the
-// root-mean-square equals 1.0.  It's important that its square root
-// be exactly representable in float.
-void NormalizeComponent::Init(int32 dim, BaseFloat target_rms) {
+// This component modifies the vector of activations by scaling it 
+// so that the root-mean-square equals 1.0.  It's important that its 
+// square root be exactly representable in float.
+void NormalizeComponent::Init(int32 dim, BaseFloat target_rms, 
+                              bool add_log_stddev) {
   KALDI_ASSERT(dim > 0);
   KALDI_ASSERT(target_rms > 0);
   dim_ = dim;
   count_ = 0.0;
   target_rms_ = target_rms;
+  add_log_stddev_ = add_log_stddev;
 }
 
 void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
+  bool add_log_stddev = false;
   BaseFloat target_rms = 1.0;
   bool ok = cfl->GetValue("dim", &dim);
   cfl->GetValue("target-rms", &target_rms);
+  cfl->GetValue("add-log-stddev", &add_log_stddev);
   if (!ok || cfl->HasUnusedValues() || dim <= 0 || target_rms <= 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, target_rms);
+  Init(dim, target_rms, add_log_stddev);
 }
 void NormalizeComponent::Read(std::istream &is, bool binary) {
   std::ostringstream ostr_beg, ostr_end;
@@ -275,6 +279,12 @@ void NormalizeComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &target_rms_);
     ReadToken(is, binary, &tok);
   }
+  //  Read add_log_stddev_ token, if it sets. 
+  if (tok == "<AddLogStddev>") {  
+    ReadBasicType(is, binary, &add_log_stddev_);  
+    ReadToken(is, binary, &tok); 
+  }
+
   // The new format is more readable as we write values that are normalized by
   // the count.
   KALDI_ASSERT(tok == "<ValueAvg>");
@@ -297,6 +307,8 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dim_);
   WriteToken(os, binary, "<TargetRms>");
   WriteBasicType(os, binary, target_rms_);
+  WriteToken(os, binary, "<AddLogStddev>");
+  WriteBasicType(os, binary, add_log_stddev_);  
   // Write the values and derivatives in a count-normalized way, for
   // greater readability in text form.
   WriteToken(os, binary, "<ValueAvg>");
@@ -317,7 +329,11 @@ void NormalizeComponent::Write(std::ostream &os, bool binary) const {
 std::string NormalizeComponent::Info() const {
   std::ostringstream stream;
   stream << NonlinearComponent::Info();
-  stream << ", target-rms=" << target_rms_;
+  stream << ", target-rms=" << target_rms_
+         << ", add-log-stddev=" << add_log_stddev_;
+  if (add_log_stddev_)
+    stream << ", input-dim=" << InputDim() 
+           << ", output-dim=" << OutputDim();
   return stream.str();
 }
 
@@ -328,17 +344,31 @@ std::string NormalizeComponent::Info() const {
 // there is also flooring involved, to avoid division-by-zero
 // problems.  It's important for the backprop, that the floor's
 // square root is exactly representable as float.
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D))) 
+// is an extra dimension of the output.
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumCols() == in.NumCols() + (add_log_stddev_ ? 1 : 0));
+  CuSubMatrix<BaseFloat> out_no_log = out->ColRange(0, in.NumCols());                       
+  out_no_log.CopyFromMat(in);
   CuVector<BaseFloat> in_norm(in.NumRows());
   BaseFloat d_scaled = (in.NumCols() * target_rms_ * target_rms_);
   in_norm.AddDiagMat2(1.0 / d_scaled,
                       in, kNoTrans, 0.0);
+
+  if (add_log_stddev_) {
+    CuVector<BaseFloat> log_stddev(in.NumRows());
+    // log_stddev is log(max(epsi, sqrt(row_in^T row_in / D))).
+    log_stddev.AddVec(target_rms_ * target_rms_, in_norm, 0.0);
+    log_stddev.ApplyPow(0.5);
+    log_stddev.ApplyFloor(kNormFloor);
+    log_stddev.ApplyLog(); 
+    out->CopyColFromVec(log_stddev, in.NumCols());
+  }
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
-  out->CopyFromMat(in);
-  out->MulRowsVec(in_norm);
+  out_no_log.MulRowsVec(in_norm);
 }
 
 /*
@@ -360,7 +390,9 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
   So
   deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
-
+  
+  if add_log_stddev_ true, the deriv_in has another term as
+  dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x) 
 */
 void NormalizeComponent::Backprop(const std::string &debug_info,
                                   const ComponentPrecomputedIndexes *indexes,
@@ -370,19 +402,36 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)  return;
+  CuSubMatrix<BaseFloat> out_deriv_no_log = out_deriv.ColRange(0, 
+    (out_deriv.NumCols() - (add_log_stddev_ ? 1 : 0)));
   CuVector<BaseFloat> dot_products(out_deriv.NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
+  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value, kTrans, 0.0);
   CuVector<BaseFloat> in_norm(in_value.NumRows());
-  // dscaled == D * target_rms^2.
   BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0 / d_scaled,
+  in_norm.AddDiagMat2(1.0,
                       in_value, kNoTrans, 0.0);
+
+  if (add_log_stddev_) {
+    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1 
+      out_deriv_for_stddev(out_deriv.NumRows());
+    // f = log((epsi < sqrt(x^T x / D) ? sqrt(x^T x / D) : epsi) 
+    //   => f = log( epsi^2 * D < x^T x ? sqrt(x^T x / D) : epsi)
+    BaseFloat new_knorm_floor = in_value.NumCols() * kNormFloor * kNormFloor;
+    log_stddev_deriv.ApplyFloor(new_knorm_floor);
+    log_stddev_deriv.ApplyPow(-1.0);
+    out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
+    log_stddev_deriv.MulElements(out_deriv_for_stddev);
+    if (in_deriv)
+      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 0.0);
+  }
+
+  in_norm.Scale(1.0 / d_scaled);
   in_norm.ApplyFloor(kNormFloor);
   in_norm.ApplyPow(-0.5);
 
   if (in_deriv) {
     if (in_deriv->Data() != out_deriv.Data())
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0);
+      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, (add_log_stddev_ ? 1.0 : 0.0));
     else
       in_deriv->MulRowsVec(in_norm);
   }
@@ -392,6 +441,7 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
   in_deriv->AddDiagVecMat(-1.0 / d_scaled,
                           dot_products, in_value,
                           kNoTrans, 1.0);
+
 }
 
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,

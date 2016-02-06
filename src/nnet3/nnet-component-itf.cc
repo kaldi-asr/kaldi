@@ -251,9 +251,13 @@ void NonlinearComponent::ZeroStats() {
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
-  stream << Type() << ", dim=" << InputDim();
-
+  if (InputDim() == OutputDim())
+    stream << Type() << ", dim=" << InputDim();
+  else
+    stream << Type() << ", input-dim=" << InputDim()
+           << ", output-dim=" << OutputDim()
+           << ", add-log-stddev=true";
+  
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
