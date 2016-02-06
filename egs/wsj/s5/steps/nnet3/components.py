@@ -34,6 +34,75 @@ def AddLdaLayer(config_lines, name, input, lda_file):
     return {'descriptor':  '{0}_lda'.format(name),
             'dimension': input['dimension']}
 
+def AddCnnLayer(config_lines, name, input, cnn_indexes=[0]):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+    conv_input_x_dim = input['3d-dim'][0];
+    conv_input_y_dim = input['3d-dim'][1];
+    conv_input_z_dim = input['3d-dim'][2];
+    conv_vectorization = input['vectorization'];
+
+    conv_filt_x_dim = cnn_indexes[0];
+    conv_filt_y_dim = cnn_indexes[1];
+    conv_filt_x_step = cnn_indexes[2];
+    conv_filt_y_step = cnn_indexes[3];
+    conv_num_filters = cnn_indexes[4];
+
+    if conv_filt_x_dim > conv_input_x_dim or conv_filt_y_dim > conv_input_y_dim:
+        sys.exit("invalid convolution filter size vs. input size")
+    if conv_filt_x_step > conv_filt_x_dim or conv_filt_y_step > conv_filt_y_dim:
+        sys.exit("invalid convolution filter step vs. filter size")
+    
+    components.append('component name={0}_conv type=ConvolutionComponent '
+                      'input-x-dim={1} input-y-dim={2} input-z-dim={3} '
+                      'filt-x-dim={4} filt-y-dim={5} '
+                      'filt-x-step={6} filt-y-step={7} '
+                      'num-filters={8} input-vectorization-order={9} '.
+                      format(name, conv_input_x_dim, conv_input_y_dim, conv_input_z_dim,
+                             conv_filt_x_dim, conv_filt_y_dim,
+                             conv_filt_x_step, conv_filt_y_step,
+                             conv_num_filters, conv_vectorization))
+
+    component_nodes.append('component-node name={0}_conv component={0}_conv input={1}'.format(name, input['descriptor']))
+
+    maxp_input_x_dim = (1 + (conv_input_x_dim - conv_filt_x_dim) / conv_filt_x_step);
+    maxp_input_y_dim = (1 + (conv_input_y_dim - conv_filt_y_dim) / conv_filt_y_step);
+    maxp_input_z_dim = conv_num_filters;
+    maxp_pool_x_size = cnn_indexes[5];
+    maxp_pool_y_size = cnn_indexes[6];
+    maxp_pool_z_size = cnn_indexes[7];
+    maxp_pool_x_step = cnn_indexes[8];
+    maxp_pool_y_step = cnn_indexes[9];
+    maxp_pool_z_step = cnn_indexes[10];
+
+    if maxp_input_x_dim < 1 or maxp_input_y_dim < 1 or maxp_input_z_dim < 1:
+        sys.exit("non-positive maxpooling input size ({0}, {1}, {2})".
+                 format(maxp_input_x_dim, maxp_input_y_dim, maxp_input_z_dim))
+    if maxp_pool_x_size > maxp_input_x_dim or maxp_pool_y_size > maxp_input_y_dim or maxp_pool_z_size > maxp_input_z_dim:
+        sys.exit("invalid maxpooling pool size vs. input size")
+    if maxp_pool_x_step > maxp_pool_x_size or maxp_pool_y_step > maxp_pool_y_size or maxp_pool_z_step > maxp_pool_z_size:
+        sys.exit("invalid maxpooling pool step vs. pool size")
+
+    components.append('component name={0}_maxp type=Maxpooling3dComponent '
+                      'input-x-dim={1} input-y-dim={2} input-z-dim={3} '
+                      'pool-x-size={4} pool-y-size={5} pool-z-size={6} '
+                      'pool-x-step={7} pool-y-step={8} pool-z-step={9} '.
+                      format(name, maxp_input_x_dim, maxp_input_y_dim, maxp_input_z_dim,
+                             maxp_pool_x_size, maxp_pool_y_size, maxp_pool_z_size,
+                             maxp_pool_x_step, maxp_pool_y_step, maxp_pool_z_step))
+    
+    component_nodes.append('component-node name={0}_maxp component={0}_maxp input={0}_conv'.format(name))
+
+    maxp_num_pools_x = 1 + (maxp_input_x_dim - maxp_pool_x_size) / maxp_pool_x_step;
+    maxp_num_pools_y = 1 + (maxp_input_y_dim - maxp_pool_y_size) / maxp_pool_y_step;
+    maxp_num_pools_z = 1 + (maxp_input_z_dim - maxp_pool_z_size) / maxp_pool_z_step;
+    maxp_output = maxp_num_pools_x * maxp_num_pools_y * maxp_num_pools_z;
+
+    return {'descriptor':  '{0}_maxp'.format(name),
+            'dimension': maxp_output,
+            '3d-dim': [maxp_num_pools_x, maxp_num_pools_y, maxp_num_pools_z],
+            'vectorization': 'zyx'}
+
 def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
