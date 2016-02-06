@@ -41,6 +41,7 @@ if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
   echo " *** Downloading transcriptions and dictionary ***"   
   ( 
     cd $dir;
+    wget http://www.openslr.org/resources/5/switchboard_word_alignments.tar.gz ||
     wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
     tar -xf switchboard_word_alignments.tar.gz
   )

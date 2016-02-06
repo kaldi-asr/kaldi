@@ -5,7 +5,7 @@
 # units, on top of fMLLR features, on GPU.
 
 temp_dir=
-dir=exp/nnet2_5
+dir=nnet2_5
 has_fisher=true
 
 . ./cmd.sh
@@ -18,10 +18,10 @@ parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll
 
 ( 
   if [ ! -f exp/$dir/final.mdl ]; then
-    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+    if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d exp/$dir/egs/storage ]; then
       # spread the egs over various machines. 
       utils/create_split_dir.pl \
-      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+      /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/exp/$dir/egs/storage exp/$dir/egs/storage
     fi
 
     steps/nnet2/train_pnorm_accel2.sh --parallel-opts "$parallel_opts" \
