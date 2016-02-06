@@ -65,9 +65,10 @@ enum ComponentProperties {
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
-                           // setting, the "in_deriv" output.  The Component chooses
-                           // whether to add or set, and the calling code has to
-                           // accommodate it.
+                           // setting, the "in_deriv" output.  The Component
+                           // chooses whether to add or set, and the calling
+                           // code has to accommodate it.  Note: in the case of
+                           // in-place backprop, this flag has no effect.
   kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
                                 // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to

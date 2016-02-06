@@ -126,7 +126,7 @@ class NormalizeComponent: public NonlinearComponent {
     target_rms_(other.target_rms_) { }
   virtual int32 Properties() const {
     return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropInPlace;
+        kBackpropAdds|kBackpropInPlace;
   }
   NormalizeComponent(): target_rms_(1.0) { }
   virtual std::string Type() const { return "NormalizeComponent"; }

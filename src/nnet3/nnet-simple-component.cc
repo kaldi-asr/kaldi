@@ -381,10 +381,14 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
   in_norm.ApplyPow(-0.5);
 
   if (in_deriv) {
-    if (in_deriv->Data() != out_deriv.Data())
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 0.0);
-    else
+    if (in_deriv->Data() != out_deriv.Data()) {
+      // .. due to kBackpropAdds flag, last arg is 1.0.
+      // (omitting kBackpropAdds and using 0.0 is not correct, due to
+      // propagation of NaNs.
+      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 1.0);
+    } else {
       in_deriv->MulRowsVec(in_norm);
+    }
   }
   in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
@@ -1081,7 +1085,7 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
   // in_deriv, in case of infinities.
   if (in_deriv) {
     int32 num_repeats = num_repeats_,
-        num_rows = in_deriv->NumRows(),
+        num_rows = out_deriv.NumRows(),
         block_dim_out = linear_params_.NumRows(),
         block_dim_in = linear_params_.NumCols();
 
@@ -1230,9 +1234,20 @@ void NaturalGradientRepeatedAffineComponent::Update(
 
   BaseFloat scale = 1.0;
   if (!is_gradient_) {
-    // Only apply the preconditioning/natural-gradient if we're not computing
-    // the exact gradient.
-    preconditioner_in_.PreconditionDirections(&deriv, NULL, &scale);
+    try {
+      // Only apply the preconditioning/natural-gradient if we're not computing
+      // the exact gradient.
+      preconditioner_in_.PreconditionDirections(&deriv, NULL, &scale);
+    } catch (...) {
+      int32 num_bad_rows = 0;
+      for (int32 i = 0; i < out_deriv.NumRows(); i++) {
+        BaseFloat f = out_deriv.Row(i).Sum();
+        if (!(f - f == 0)) num_bad_rows++;
+      }
+      KALDI_ERR << "Preonditioning failed, in_value sum is "
+                << in_value.Sum() << ", out_deriv sum is " << out_deriv.Sum()
+                << ", out_deriv has " << num_bad_rows << " bad rows.";
+    }
   }
   linear_params_.AddMat(learning_rate_ * scale,
                         deriv.ColRange(0, block_dim_in));
