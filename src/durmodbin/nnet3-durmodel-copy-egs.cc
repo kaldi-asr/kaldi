@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     po.Register("srand", &srand_seed, "Seed for random number generator ");
-    po.Register("noise-magnitude", &noise_magnitude, "Magnitude of noise"
-                " (in percentage) to be added to duration values.");
+    po.Register("noise-magnitude", &noise_magnitude, "Relative magnitude of "
+                "noise to be added to duration values.");
 
 
     po.Read(argc, argv);

@@ -64,9 +64,9 @@ min_count=5                   # If max_duration is 0, it will be worked out
 num_examples_per_job=40000000 # Number of examples that are given to nnet3-train
                               # in each GPU job (i.e. number of examples in each
                               # iteration; please refer to num_epochs_per_iter)
-noise_magnitude=10            # The magnitude of noise (in percent) to be added
+noise_magnitude=0.05          # The relative magnitude of noise to be added
                               # to duration values during training for better
-                              # generalization
+                              # generalization: duration
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -207,21 +207,21 @@ for iter in $(seq $stage $[$num_iterations-1]); do
   $cmd $dir/log/durmod_set_raw_nnet.log \
        nnet3-durmodel-copy --set-raw-nnet=$dir/nnet.raw $curr_mdl $next_mdl
 
-  $cmd $dir/log/progress.$[$iter+1].log \
-        nnet3-show-progress --use-gpu=no "nnet3-durmodel-copy --raw=true $curr_mdl - |" "nnet3-durmodel-copy --raw=true $next_mdl - |" \
-        "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" '&&' \
-        nnet3-info "nnet3-durmodel-copy --raw=true $next_mdl - |" &
-
   if $early_stop; then
     curr_val_logprob=$(grep -o "Overall log.*" $dir/log/train.$iter.log 2>/dev/null | awk '{print $6}')
     next_val_logprob=$(grep -o "Overall log.*" $dir/log/train.$[$iter+1].log | awk '{print $6}')
-    num_epochs_until_now=$[($iter+1)*$num_epochs_per_iter]
+    num_epochs_until_now=$[$iter*$num_epochs_per_iter]
     if [[ $(echo "$next_val_logprob < $curr_val_logprob" | bc 2>/dev/null) == 1 && $num_epochs_until_now -ge $early_stop_min_epochs ]]; then
       echo "$0: Early stopping...Best model is $curr_mdl"
       rm $next_mdl
       break;
     fi
   fi
+
+  $cmd $dir/log/progress.$[$iter+1].log \
+        nnet3-show-progress --use-gpu=no "nnet3-durmodel-copy --raw=true $curr_mdl - |" "nnet3-durmodel-copy --raw=true $next_mdl - |" \
+        "ark:nnet3-merge-egs --minibatch-size=$minibatch_size ark:$dir/val.egs ark:- |" '&&' \
+        nnet3-info "nnet3-durmodel-copy --raw=true $next_mdl - |" &
 done # training loop
 
 if [ -f $next_mdl ]; then
@@ -229,5 +229,6 @@ if [ -f $next_mdl ]; then
 else
   ln -s -f $(basename $curr_mdl) $dir/final_nnet_dur_model.mdl
 fi
+wait
 echo "$0: Done"
 
