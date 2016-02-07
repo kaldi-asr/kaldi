@@ -239,85 +239,90 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</ElementwiseProductComponent>");
 }
 
-const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
-// This component modifies the vector of activations by scaling it so that the
-// root-mean-square equals 1.0.  It's important that its square root
-// be exactly representable in float.
-void NormalizeComponent::Init(int32 dim, BaseFloat target_rms) {
-  KALDI_ASSERT(dim > 0);
+const BaseFloat NormalizeComponent::kSquaredNormFloor =
+    pow(2.0, NormalizeComponent::kExpSquaredNormFloor);
+
+// This component modifies the vector of activations by scaling it
+// so that the root-mean-square equals 1.0.  It's important that its
+// square root be exactly representable in float.
+void NormalizeComponent::Init(int32 input_dim, BaseFloat target_rms,
+                              bool add_log_stddev) {
+  KALDI_ASSERT(input_dim > 0);
   KALDI_ASSERT(target_rms > 0);
-  dim_ = dim;
-  count_ = 0.0;
+  input_dim_ = input_dim;
   target_rms_ = target_rms;
+  add_log_stddev_ = add_log_stddev;
 }
+
+NormalizeComponent::NormalizeComponent(const NormalizeComponent &other):
+    input_dim_(other.input_dim_), target_rms_(other.target_rms_),
+    add_log_stddev_(other.add_log_stddev_) { }
 
 void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 dim = 0;
+  int32 input_dim = 0;
+  bool add_log_stddev = false;
   BaseFloat target_rms = 1.0;
-  bool ok = cfl->GetValue("dim", &dim);
+  bool ok = cfl->GetValue("dim", &input_dim) ||
+      cfl->GetValue("input-dim", &input_dim);
   cfl->GetValue("target-rms", &target_rms);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0 || target_rms <= 0.0)
+  cfl->GetValue("add-log-stddev", &add_log_stddev);
+  if (!ok || cfl->HasUnusedValues() || input_dim <= 0 || target_rms <= 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, target_rms);
+  Init(input_dim, target_rms, add_log_stddev);
 }
-void NormalizeComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">";
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
-  ReadBasicType(is, binary, &dim_); // Read dimension.
-  std::string tok; // TODO: remove back-compatibility code.
-  ReadToken(is, binary, &tok);
 
-  // read target_rms_ if it is available.
-  if (tok == "<TargetRms>") {
-    ReadBasicType(is, binary, &target_rms_);
-    ReadToken(is, binary, &tok);
+void NormalizeComponent::Read(std::istream &is, bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<NormalizeComponent>") {
+    ReadToken(is, binary, &token);
   }
-  // The new format is more readable as we write values that are normalized by
-  // the count.
-  KALDI_ASSERT(tok == "<ValueAvg>");
-  value_sum_.Read(is, binary);
-  ExpectToken(is, binary, "<DerivAvg>");
-  deriv_sum_.Read(is, binary);
-  ExpectToken(is, binary, "<Count>");
-  ReadBasicType(is, binary, &count_);
-  value_sum_.Scale(count_);
-  deriv_sum_.Scale(count_);
-  ExpectToken(is, binary, ostr_end.str());
+  KALDI_ASSERT(token == "<Dim>" || token == "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_); // Read dimension.
+  ReadToken(is, binary, &token);
+  // read target_rms_ if it is available.
+  if (token == "<TargetRms>") {
+    ReadBasicType(is, binary, &target_rms_);
+    ReadToken(is, binary, &token);
+  }
+  //  Read add_log_stddev_ token, if it is available.
+  if (token == "<AddLogStddev>") {
+    ReadBasicType(is, binary, &add_log_stddev_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<ValueAvg>") {
+    // back-compatibility code.
+    CuVector<double> temp;
+    temp.Read(is, binary);
+    ExpectToken(is, binary, "<DerivAvg>");
+    temp.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    double count;
+    ReadBasicType(is, binary, &count);
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "</NormalizeComponent>");
 }
 
 void NormalizeComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">";
-  WriteToken(os, binary, ostr_beg.str());
-  WriteToken(os, binary, "<Dim>");
-  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<NormalizeComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
   WriteToken(os, binary, "<TargetRms>");
   WriteBasicType(os, binary, target_rms_);
-  // Write the values and derivatives in a count-normalized way, for
-  // greater readability in text form.
-  WriteToken(os, binary, "<ValueAvg>");
-  Vector<BaseFloat> temp(value_sum_);
-  if (count_ != 0.0) temp.Scale(1.0 / count_);
-  temp.Write(os, binary);
-  WriteToken(os, binary, "<DerivAvg>");
-
-  temp.Resize(deriv_sum_.Dim(), kUndefined);
-  temp.CopyFromVec(deriv_sum_);
-  if (count_ != 0.0) temp.Scale(1.0 / count_);
-  temp.Write(os, binary);
-  WriteToken(os, binary, "<Count>");
-  WriteBasicType(os, binary, count_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteToken(os, binary, "<AddLogStddev>");
+  WriteBasicType(os, binary, add_log_stddev_);
+  WriteToken(os, binary, "</NormalizeComponent>");
 }
 
 std::string NormalizeComponent::Info() const {
   std::ostringstream stream;
-  stream << NonlinearComponent::Info();
-  stream << ", target-rms=" << target_rms_;
+  stream << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", target-rms=" << target_rms_
+         << ", add-log-stddev=" << std::boolalpha
+         << add_log_stddev_;
   return stream.str();
 }
 
@@ -328,24 +333,34 @@ std::string NormalizeComponent::Info() const {
 // there is also flooring involved, to avoid division-by-zero
 // problems.  It's important for the backprop, that the floor's
 // square root is exactly representable as float.
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+// is an extra dimension of the output.
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(out->NumCols() == in.NumCols() + (add_log_stddev_ ? 1 : 0));
+  CuSubMatrix<BaseFloat> out_no_log(*out, 0, out->NumRows(), 0, input_dim_);
+  if (in.Data() != out_no_log.Data())
+    out_no_log.CopyFromMat(in);
   CuVector<BaseFloat> in_norm(in.NumRows());
-  BaseFloat d_scaled = (in.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0 / d_scaled,
-                      in, kNoTrans, 0.0);
-  in_norm.ApplyFloor(kNormFloor);
+  BaseFloat d_scaled = in.NumCols() * target_rms_ * target_rms_;
+  in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+  in_norm.ApplyFloor(kSquaredNormFloor);
   in_norm.ApplyPow(-0.5);
-  out->CopyFromMat(in);
-  out->MulRowsVec(in_norm);
+  out_no_log.MulRowsVec(in_norm);
+  if (add_log_stddev_) {
+    in_norm.ApplyLog();
+    in_norm.Scale(-1.0);
+    in_norm.Add(log(target_rms_));
+    out->CopyColFromVec(in_norm, in.NumCols());
+  }
 }
 
 /*
   A note on the derivative of NormalizeComponent...
   let both row_in and row_out be vectors of dimension D.
   Let p = row_in^T row_in / (D * target_rms^2), and let
-  f = 1.0 / sqrt(max(kNormFloor, p)), and we compute row_out as:
+  f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
   row_out = f row_in.
   Suppose we have a quantity deriv_out which is the derivative
   of the objective function w.r.t. row_out.  We want to compute
@@ -354,13 +369,15 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   deriv_in = f deriv_out + ....
   next we have to take into account the derivative that gets back-propagated
   through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kNormFloor) ? 0.0 : -0.5 f^3),
+  And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
   and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
   So this term in dF/d(row_in) equals:
-  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
   So
   deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
 
+  if add_log_stddev_ true, the deriv_in has another term as
+  dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
 */
 void NormalizeComponent::Backprop(const std::string &debug_info,
                                   const ComponentPrecomputedIndexes *indexes,
@@ -370,27 +387,41 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)  return;
+  const CuSubMatrix<BaseFloat> out_deriv_no_log(out_deriv,
+                                                0, out_deriv.NumRows(),
+                                                0, input_dim_);
   CuVector<BaseFloat> dot_products(out_deriv.NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv, kNoTrans, in_value, kTrans, 0.0);
+  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans,
+                             in_value, kTrans, 0.0);
   CuVector<BaseFloat> in_norm(in_value.NumRows());
-  // dscaled == D * target_rms^2.
   BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0 / d_scaled,
-                      in_value, kNoTrans, 0.0);
-  in_norm.ApplyFloor(kNormFloor);
-  in_norm.ApplyPow(-0.5);
+  in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
 
-  if (in_deriv) {
-    if (in_deriv->Data() != out_deriv.Data()) {
-      // .. due to kBackpropAdds flag, last arg is 1.0.
-      // (omitting kBackpropAdds and using 0.0 is not correct, due to
-      // propagation of NaNs.
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv, kNoTrans, 1.0);
-    } else {
-      in_deriv->MulRowsVec(in_norm);
-    }
+  if (add_log_stddev_) {
+    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+    // f = log(sqrt(max(epsi, x^T x / D)))
+    // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+    // we don't compute this exactly below for the case wehn x^2 x is very
+    // small, but we do make sure that the deriv isn't infinity when the input
+    // is zero.
+    log_stddev_deriv.ApplyFloor(input_dim_ * kSquaredNormFloor);
+    log_stddev_deriv.ApplyPow(-1.0);
+    out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
+    log_stddev_deriv.MulElements(out_deriv_for_stddev);
+    if (in_deriv)
+      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
   }
-  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
+  in_norm.Scale(1.0 / d_scaled);
+  in_norm.ApplyFloor(kSquaredNormFloor);
+  in_norm.ApplyPow(-0.5);
+  if (in_deriv) {
+    if (in_deriv->Data() != out_deriv_no_log.Data())
+      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
+    else
+      in_deriv->MulRowsVec(in_norm);
+  }
+  in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
   in_norm.ApplyPow(3.0);
   dot_products.MulElements(in_norm);
   in_deriv->AddDiagVecMat(-1.0 / d_scaled,
@@ -1220,7 +1251,6 @@ void NaturalGradientRepeatedAffineComponent::Update(
         out_deriv_reshaped(out_deriv.Data(),
                            num_rows * num_repeats,
                            block_dim_out, block_dim_out);
-
 
   CuVector<BaseFloat> bias_deriv(block_dim_out);
   bias_deriv.AddRowSumMat(1.0, out_deriv_reshaped);

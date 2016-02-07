@@ -116,19 +116,22 @@ class ElementwiseProductComponent: public Component {
   int32 output_dim_;
 };
 
-class NormalizeComponent: public NonlinearComponent {
-  // note: although we inherit from NonlinearComponent, we don't actually bohter
-  // accumulating the stats that NonlinearComponent is capable of accumulating.
+class NormalizeComponent: public Component {
  public:
- void Init(int32 dim, BaseFloat target_rms);
-  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0) { Init(dim, target_rms); }
-  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other),
-    target_rms_(other.target_rms_) { }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropAdds|kBackpropInPlace;
+ void Init(int32 input_dim, BaseFloat target_rms, bool add_log_stddev);
+  explicit NormalizeComponent(int32 input_dim,
+                              BaseFloat target_rms = 1.0,
+                              bool add_log_stddev = false) {
+    Init(input_dim, target_rms, add_log_stddev);
   }
-  NormalizeComponent(): target_rms_(1.0) { }
+  explicit NormalizeComponent(const NormalizeComponent &other);
+  virtual int32 Properties() const {
+    return (add_log_stddev_ ?
+            kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
+            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
+            kBackpropAdds|kBackpropInPlace);
+  }
+  NormalizeComponent(): target_rms_(1.0), add_log_stddev_(false) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
@@ -143,20 +146,25 @@ class NormalizeComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
-  virtual void Read(std::istream &is, bool binary); // This Read function
-  // requires that the Component has the correct type.
-
-  /// Write component to stream
+  virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const {
+    return (input_dim_ + (add_log_stddev_ ? 1 : 0));
+  }
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
-  static const BaseFloat kNormFloor;
+  enum { kExpSquaredNormFloor = -66 };
+  static const BaseFloat kSquaredNormFloor;
+  int32 input_dim_;
   BaseFloat target_rms_; // The target rms for outputs.
   // about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
+
+  bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))
+                        // is an extra dimension of the output.
 };
 
 
@@ -1177,6 +1185,7 @@ class PerElementOffsetComponent: public UpdatableComponent {
       = (const PerElementOffsetComponent &other); // Disallow.
   CuVector<BaseFloat> offsets_;
 };
+
 
 
 // NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
