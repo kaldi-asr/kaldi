@@ -1201,7 +1201,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate
          << " is-updatable=" << std::boolalpha << is_updatable
          << " use-natural-gradient=" << std::boolalpha << use_natural_gradient;
-
+      break;
     }
     default:
       KALDI_ERR << "Error generating random component";
