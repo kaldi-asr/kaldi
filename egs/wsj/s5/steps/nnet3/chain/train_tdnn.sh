@@ -511,7 +511,14 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
+        epoch=$[$k/$num_archives]  # this epoch-index reflects how many times we
+                                   # have gone over the archives.. it counts up to
+                                   # approximately num_epochs * frame_subsampling_factor.
+
+        # the following line is a bit like k%frame_subsampling_factor, but it
+        # ensures that we eventually cycle through each frame_shift of each
+        # archive.
+        frame_shift=$[($archive+$epoch)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
