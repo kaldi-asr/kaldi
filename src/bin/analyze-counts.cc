@@ -1,6 +1,6 @@
 // bin/analyze-counts.cc
 
-// Copyright 2012-2014 Brno University of Technology (Author: Karel Vesely)
+// Copyright 2012-2016 Brno University of Technology (Author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -51,6 +51,15 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "write in binary mode");
     po.Register("symbol-table", &symbol_table_filename, "Read symbol table for display of counts");
 
+    int32 counts_dim = 0;
+    po.Register("counts-dim", &counts_dim, 
+                "Output dimension of the counts, a hint for dimension auto-detection.");
+
+    std::string frame_weights;
+    po.Register("frame-weights", &frame_weights, "Per-frame weights (counting weighted frames).");
+    std::string utt_weights;
+    po.Register("utt-weights", &utt_weights, "Per-utterance weights (counting weighted frames).");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -61,39 +70,78 @@ int main(int argc, char *argv[]) {
     std::string alignments_rspecifier = po.GetArg(1),
         wxfilename = po.GetArg(2);
 
-    SequentialInt32VectorReader reader(alignments_rspecifier);
+    SequentialInt32VectorReader alignment_reader(alignments_rspecifier);
 
-    // Get the counts
-    std::vector<uint64> counts;
-    int32 num_done = 0;
-    for (; !reader.Done(); reader.Next()) {
-      std::string key = reader.Key();
-      std::vector<int32> alignment = reader.Value();
+    RandomAccessBaseFloatVectorReader weights_reader;
+    if (frame_weights != "") {
+      weights_reader.Open(frame_weights);
+    }
+    RandomAccessBaseFloatReader utt_weights_reader;
+    if (utt_weights != "") {
+      utt_weights_reader.Open(utt_weights);
+    }
 
+    // Buffer for the counts,
+    Vector<double> counts(counts_dim, kSetZero);
+
+    // Get the counts,
+    int32 num_done = 0, num_other_error = 0;
+    for (; !alignment_reader.Done(); alignment_reader.Next()) {
+      std::string utt = alignment_reader.Key();
+      // check we have per-frame weights,
+      if (frame_weights != "" && !weights_reader.HasKey(utt)) {
+        KALDI_WARN << utt << ", missing per-frame weights";
+        num_other_error++;
+        continue;
+      }
+      // check we have per-utterance weights,
+      if (utt_weights != "" && !utt_weights_reader.HasKey(utt)) {
+        KALDI_WARN << utt << ", missing per-utterance weight";
+        num_other_error++;
+        continue;
+      }
+
+      // Get the alignment,
+      const std::vector<int32> &alignment = alignment_reader.Value();
+
+      // Get the weights,
+      BaseFloat utt_w = (utt_weights == "" ? 1.0 : utt_weights_reader.Value(utt));
+      Vector<BaseFloat> frame_w;
+      if (frame_weights != "") {
+        frame_w = weights_reader.Value(utt);
+        KALDI_ASSERT(frame_w.Dim() == alignment.size());
+      }
+      
+      // Accumulate the counts,
       for (size_t i = 0; i < alignment.size(); i++) {
-        int32 value = alignment[i];
-        if(value >= counts.size()) {
-          counts.resize(value+1);
+        // Extend the vector if needed,
+        if (alignment[i] >= counts.Dim()) {
+            Vector<double> tmp(counts);
+            counts.Resize(alignment[i]+1, kSetZero);
+            counts.Range(0, tmp.Dim()).CopyFromVec(tmp);
         }
-        counts[value]++; // Accumulate
+        // Accumulate,
+        counts(alignment[i]) += 1.0 * utt_w * (frame_weights == "" ? 1.0 : frame_w(i));
       }
 
       num_done++;
     }
 
-    // We need at least one occurence for each tgt, so there is no nan during decoding
-    std::vector<uint64> counts_nozero(counts);
-    for(size_t i = 0; i < counts.size(); i++) {
-      if(counts_nozero[i] == 0) {
-        KALDI_WARN << "Zero count for element " << i << ", force setting to one."
-                   << " This avoids divide-by-zero when we use the counts in decoding.";
-        counts_nozero[i]++;
+    // Report elements with zero counts (this is suspicious),
+    for (size_t i = 0; i < counts.Dim(); i++) {
+      if (0.0 == counts(i)) {
+        KALDI_WARN << "Zero count for label " << i << ", this is suspicious.";
       }
     }
 
-    // Write
+    // Add a ``half-frame'' to all the elements, 
+    // (avoids zero-counts, which would cause problems in decoding),
+    Vector<double> counts_nozero(counts);
+    counts_nozero.Add(0.5);
+
+    // Write,
     Output ko(wxfilename, binary);
-    WriteIntegerVector(ko.Stream(), binary, counts_nozero);
+    counts_nozero.Write(ko.Stream(), binary);
 
     ////
     //// THE REST IS FOR ANALYSIS, IT GETS PRINTED TO LOG
@@ -108,16 +156,16 @@ int main(int argc, char *argv[]) {
             KALDI_ERR << "Could not read symbol table from file " << symbol_table_filename;
       }
       
-      // sort the counts
-      std::vector<std::pair<int32,int32> > sorted_counts;
-      for (int32 i = 0; i < counts.size(); i++) {
-        sorted_counts.push_back(std::make_pair(static_cast<int32>(counts[i]), i));
+      // sort the counts,
+      std::vector<std::pair<double,int32> > sorted_counts;
+      for (int32 i = 0; i < counts.Dim(); i++) {
+        sorted_counts.push_back(std::make_pair(static_cast<double>(counts(i)), i));
       }
       std::sort(sorted_counts.begin(), sorted_counts.end());
       
-      // print
+      // print,
       std::ostringstream os;
-      int32 sum = std::accumulate(counts.begin(),counts.end(), 0);
+      double sum = counts.Sum();
       os << "Printing...\n### The sorted count table," << std::endl;
       os << "count\t(norm),\tid\t(symbol):" << std::endl;
       for (int32 i=0; i<sorted_counts.size(); i++) {
@@ -133,7 +181,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << os.str();
     }
 
-    KALDI_LOG << "Summed " << num_done << " int32 vectors to counts.";
+    KALDI_LOG << "Summed " << num_done << " int32 vectors to counts, " 
+              << "skipped " << num_other_error << " vectors.";
     KALDI_LOG << "Counts written to " << wxfilename;
     return 0;
   } catch(const std::exception &e) {

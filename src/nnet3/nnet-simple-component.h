@@ -6,6 +6,7 @@
 //           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
 //                2015  Daniel Galvez
+//                2015  Tom Ko
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1523,167 +1524,58 @@ class ConvolutionComponent: public UpdatableComponent {
   const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
 };
 
-/**
- * Convolutional1dComponent implements convolution over frequency axis.
- * We assume the input featrues are spliced, i.e. each frame is in
- * fact a set of stacked frames, where we can form patches which span
- * over several frequency bands and whole time axis. A patch is the
- * instance of a filter on a group of frequency bands and whole time
- * axis. Shifts of the filter generate patches.
+
+/*
+ * MaxPoolingComponent :
+ * Maxpooling component was firstly used in ConvNet for selecting an
+ * representative activation in an area. It inspired Maxout nonlinearity.
+ * Each output element of this component is the maximum of a block of
+ * input elements where the block has a 3D dimension (pool_x_size_,
+ * pool_y_size_, pool_z_size_).
+ * Blocks could overlap if the shift value on any axis is smaller
+ * than its corresponding pool size (e.g. pool_x_step_ < pool_x_size_).
+ * If the shift values are euqal to their pool size, there is no
+ * overlap; while if they all equal 1, the blocks overlap to
+ * the greatest possible extent.
  *
- * The convolution is done over whole axis with same filter
- * coefficients, i.e. we don't use separate filters for different
- * 'regions' of frequency axis. Due to convolution, same weights are
- * used repeateadly, the final gradient is a sum of all
- * position-specific gradients (the sum was found better than
- * averaging).
+ * This component is designed to be used after a ConvolutionComponent
+ * so that the input matrix is propagated from a 2d-convolutional layer.
+ * This component implements 3d-maxpooling which performs
+ * max pooling along the three axes.
+ * Input : A matrix where each row is a vectorized 3D-tensor.
+ *        The 3D tensor has dimensions
+ *        x: (e.g. time)
+ *        y: (e.g. frequency)
+ *        z: (e.g. channels like number of filters in the ConvolutionComponent)
  *
- * In order to have a fast implementations, the filters are
- * represented in vectorized form, where each rectangular filter
- * corresponds to a row in a matrix, where all the filters are
- * stored. The features are then re-shaped to a set of matrices, where
- * one matrix corresponds to single patch-position, where all the
- * filters get applied.
+ *        The component assumes input vectorizations of type zyx
+ *        which is the default output vectorization type of a ConvolutionComponent.
+ *        e.g. for input vectorization of type zyx the input is vectorized by
+ *        spanning axes z, y and x of the tensor in that order.
+ *        Given 3d tensor A with sizes (2, 2, 2) along the three dimensions
+ *        the zyx vectorized input looks like
+ *  A(0,0,0) A(0,0,1) A(0,1,0) A(0,1,1) A(1,0,0) A(1,0,1) A(1,1,0) A(1,1,1)
  *
- * The type of convolution is controled by hyperparameters:
- * patch_dim_     ... frequency axis size of the patch
- * patch_step_    ... size of shift in the convolution
- * patch_stride_  ... shift for 2nd dim of a patch
- *                    (i.e. frame length before splicing)
- * For instance, for a convolutional component after raw input,
- * if the input is 36-dim fbank feature with delta of order 2
- * and spliced using +/- 5 frames of contexts, the convolutional
- * component takes the input as a 36 x 33 image. The patch_stride_
- * should be configured 36. If patch_step_ and patch_dim_ are
- * configured 1 and 7, the Convolutional1dComponent creates a
- * 2D filter of 7 x 33, such that the convolution is actually done
- * only along the frequency axis. Specifically, the convolutional
- * output along the frequency axis is (36 - 7) / 1 + 1 = 30, and
- * the convolutional output along the temporal axis is 33 - 33 + 1 = 1,
- * resulting in an output image of 30 x 1, which is called a feature map
- * in ConvNet. Then if the output-dim is set 3840, the constructor
- * would know there should be 3840 / 30 = 128 distinct filters,
- * which will create 128 feature maps of 30 x 1 for one frame of
- * input. The feature maps are vectorized as a 3840-dim row vector
- * in the output matrix of this component. For details on progatation
- * of Convolutional1dComponent, check the function definition.
+ * Output : The output is also a 3D tensor vectorized in the zyx format.
+ *
+ * For information on the hyperparameters and parameters of this component see
+ * the variable declarations.
+ *
  *
  */
-class Convolutional1dComponent: public UpdatableComponent {
+
+class MaxpoolingComponent: public Component {
  public:
-  Convolutional1dComponent();
+
+  MaxpoolingComponent(): input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
+                           pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
+                           pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
   // constructor using another component
-  Convolutional1dComponent(const Convolutional1dComponent &component);
-  // constructor using parameters
-  Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
-                           const CuVectorBase<BaseFloat> &bias_params,
-                           BaseFloat learning_rate);
+  MaxpoolingComponent(const MaxpoolingComponent &component);
 
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual std::string Type() const { return "Convolutional1dComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-	    kBackpropAdds|kPropagateAdds;
-  }
-
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update_in,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-  void SetParams(const VectorBase<BaseFloat> &bias,
-                 const MatrixBase<BaseFloat> &filter);
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(int32 input_dim, int32 output_dim,
-            int32 patch_dim, int32 patch_step, int32 patch_stride,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(int32 patch_dim, int32 patch_step, int32 patch_stride,
-            std::string matrix_filename);
-
-  // resize the component, setting the parameters to zero, while
-  // leaving any other configuration values the same
-  void Resize(int32 input_dim, int32 output_dim);
-
-  void Update(const std::string &debug_info,
-	      const CuMatrixBase<BaseFloat> &in_value,
-              const CuMatrixBase<BaseFloat> &out_deriv);
-
- private:
-  int32 patch_dim_;
-  int32 patch_step_;
-  int32 patch_stride_;
-
-  static void ReverseIndexes(const std::vector<int32> &forward_indexes,
-                             int32 input_dim,
-                             std::vector<std::vector<int32> > *backward_indexes);
-  static void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
-                               std::vector<std::vector<int32> > *out);
-
-  const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
-  CuMatrix<BaseFloat> filter_params_;
-  CuVector<BaseFloat> bias_params_;
-  bool is_gradient_;
-};
-
-/**
- * MaxPoolingComponent : Maxpooling component was firstly used in ConvNet for
- * selecting an representative activation in an area.  Its output is the maximum
- * of the a range of the inputs along a particular convolutional dimension.
- * This implementation doesn't support overlaps, i.e. any input element only
- * appears in the max() expression for one output element.
- *
- * This is a simple component, so the num-rows on the input and output are the
- * same.
- *
- * The InputDim() and OutputDim() [i.e. the num-cols of the input and output]
- * must both be multiples of pool_stride_.  Consider one row of the input
- * and one row of the output, written as x and y respectively.
- * We view x and y as made up of sub-vectors of dimension pool_stride_, so
- *  x = [ x1 x2 x3 .. ] and y = [ y1 y2 y3 ... ],
- *
- * Each sub-vector y is the elementwise maximum of several successive sub-vectors x,
- * so for instance if pool_size_ == 2 then
- *   y1 = elementwise-max(x1, x2)
- *   y2 = elementwise-max(x3, x4)
- * and so on.
- */
-class MaxpoolingComponent: public Component {
- public:
-  explicit MaxpoolingComponent(int32 input_dim, int32 output_dim,
-                               int32 pool_size, int32 pool_stride) {
-    Init(input_dim, output_dim, pool_size, pool_stride);
-  }
-  MaxpoolingComponent(): input_dim_(0), output_dim_(0),
-    pool_size_(0), pool_stride_(0) { }
-  virtual int32 InputDim() const { return input_dim_; }
-  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Check() const;
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1709,22 +1601,34 @@ class MaxpoolingComponent: public Component {
 
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
-  // We don't implement InitFromConfig() at this level: child-class should do
-  // it.
-  virtual Component* Copy() const {
-    return new MaxpoolingComponent(input_dim_, output_dim_,
-		    pool_size_, pool_stride_); }
+  virtual Component* Copy() const { return new MaxpoolingComponent(*this); }
 
-  // Some functions that are specific to this class
-  void Init(int32 input_dim, int32 output_dim,
-            int32 pool_size, int32 pool_stride);
+  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
+                           CuMatrix<BaseFloat> *patches) const;
+  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
+                               CuMatrixBase<BaseFloat> *in_deriv) const;
 
  protected:
-  int32 input_dim_;
-  int32 output_dim_;
-  int32 pool_size_;
-  int32 pool_stride_;
+  int32 input_x_dim_;   // size of the input along x-axis
+  // (e.g. number of time steps)
+  int32 input_y_dim_;   // size of input along y-axis
+  // (e.g. number of mel-frequency bins)
+  int32 input_z_dim_;   // size of input along z-axis
+  // (e.g. number of filters in the ConvolutionComponent)
+
+  int32 pool_x_size_;    // size of the pooling window along x-axis
+  int32 pool_y_size_;    // size of the pooling window along y-axis
+  int32 pool_z_size_;    // size of the pooling window along z-axis
+
+  int32 pool_x_step_;   // the number of steps taken along x-axis of input
+  //  before computing the next pool
+  int32 pool_y_step_;   // the number of steps taken along y-axis of input
+  // before computing the next pool
+  int32 pool_z_step_;   // the number of steps taken along z-axis of input
+  // before computing the next pool
+
 };
+
 
 /**
    CompositeComponent is a component representing a sequence of
