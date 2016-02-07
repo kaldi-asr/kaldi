@@ -1187,6 +1187,74 @@ class PerElementOffsetComponent: public UpdatableComponent {
 };
 
 
+// ConstantFunctionComponent returns constant function of its input,
+// i.e. its output does not depend on its input.  It is the same as
+// an affine component with the linear term fixed at zero.
+// It is optionally trainable, and optionally you can use natural
+// gradient.  The input is required only because the framework
+// requires components to have an input.
+class ConstantFunctionComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_.Dim(); }
+
+  virtual std::string Info() const;
+  // possible parameter values with their defaults:
+  // input-dim=-1 is-updatable=true use-natural-gradient=true output-dim=-1
+  // output-mean=0 output-stddev=0
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ConstantFunctionComponent();
+
+  ConstantFunctionComponent(const ConstantFunctionComponent &other);
+
+  virtual std::string Type() const { return "ConstantFunctionComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|
+        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0) |
+        (InputDim() == OutputDim() ? kPropagateInPlace|kBackpropInPlace: 0) |
+        kBackpropAdds;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+ private:
+  int32 input_dim_;
+  // the output value-- a vector.
+  CuVector<BaseFloat> output_;
+
+  bool is_updatable_;
+  // if true, and if updatable, do natural-gradient update.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
+
+  const ConstantFunctionComponent &operator
+  = (const ConstantFunctionComponent &other); // Disallow.
+};
+
+
 
 // NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
 // it uses a natural gradient update for the per-element scales, and enforces a

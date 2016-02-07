@@ -112,6 +112,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsExtractionComponent();
   } else if (component_type == "StatisticsPoolingComponent") {
     ans = new StatisticsPoolingComponent();
+  } else if (component_type == "ConstantFunctionComponent") {
+    ans = new ConstantFunctionComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
@@ -261,7 +263,7 @@ std::string NonlinearComponent::Info() const {
     stream << Type() << ", input-dim=" << InputDim()
            << ", output-dim=" << OutputDim()
            << ", add-log-stddev=true";
-  
+
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);

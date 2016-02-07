@@ -142,6 +142,8 @@ class Component {
   ///   \param [in] out_deriv  The derivative at the output of this component.
   ///   \param [out] to_update  If model update is desired, the Component
   ///       to be updated, else NULL.  Does not have to be identical to this.
+  ///       If supplied, you can assume that
+  ///       to_update->Properties() & kUpdatableComponent is nonzero.
   ///   \param [out] in_deriv   The derivative at the input of this component,
   ///       if needed (else NULL).   If  Properties()&kBackpropInPlace, may be
   ///       the same matrix as out_deriv.  If Properties()&kBackpropAdds, this
@@ -323,7 +325,7 @@ class Component {
   /// This virtual function when called by
   //    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a NonLinear component it relates to scaling activation stats, not parameters.
+  //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
@@ -348,6 +350,8 @@ class Component {
  * Class UpdatableComponent is a Component which has trainable parameters; it
  * extends the interface of Component.  This is a base-class for Components with
  * parameters.  See comment by declaration of kUpdatableComponent.
+ * The functions in this interface must only be called if the component returns
+ * the kUpdatable flag.
  */
 class UpdatableComponent: public Component {
  public:
