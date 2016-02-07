@@ -511,10 +511,13 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        epoch=$[$k/$num_archives];  # this epoch index goes up to approximately
-                                    # num_epochs * frame_subsampling_factor.
-        # the next line is like doing frame_shift = k%frame_subsampling_factor,
-        # but ensures that we cycle through all frame shifts for each archive.
+        epoch=$[$k/$num_archives]  # this epoch-index reflects how many times we
+                                   # have gone over the archives.. it counts up to
+                                   # approximately num_epochs * frame_subsampling_factor.
+
+        # the following line is a bit like k%frame_subsampling_factor, but it
+        # ensures that we eventually cycle through each frame_shift of each
+        # archive.
         frame_shift=$[($archive+$epoch)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \

@@ -3,6 +3,16 @@
 # _5l is as _5k, but doubling frames-per-eg from 150 to 300, and increasing
 # the context radius of the statistics-pooling from 99 to 153.
 
+# :-( No better than 5k.)
+#./compare_wer.sh 5e 5j 5k 5l
+#System                       5e        5j        5k        5l
+#WER on train_dev(tg)      15.43     17.59     16.46     16.68
+#WER on train_dev(fg)      14.32     16.33     15.17     15.40
+#WER on eval2000(tg)        17.3      19.1      18.1      18.3
+#WER on eval2000(fg)        15.5      17.5      16.5      16.5
+#Final train prob      -0.110056 -0.114691 -0.105502-0.0804455
+#Final valid prob      -0.129184 -0.130761  -0.12337  -0.10712
+
 # _5k is as _5j (omitting iVectors), and adding a statistics-extraction layer
 # in the middle, like 5e->5g, to see whether it recovers some of the improvement
 # of using the iVectors.

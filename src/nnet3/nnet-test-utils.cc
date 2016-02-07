@@ -927,7 +927,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 27);
+  int32 n = RandInt(0, 28);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1193,6 +1193,17 @@ static void GenerateRandomComponentConfig(std::string *component_type,
           output_dim = num_repeats * RandInt(1, 15);
       os << "input-dim=" << input_dim << " output-dim=" << output_dim
          << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 28: {
+      *component_type = "ConstantFunctionComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      bool is_updatable = (RandInt(0, 1) == 0),
+          use_natural_gradient =  (RandInt(0, 1) == 0);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate
+         << " is-updatable=" << std::boolalpha << is_updatable
+         << " use-natural-gradient=" << std::boolalpha << use_natural_gradient;
       break;
     }
     default:
