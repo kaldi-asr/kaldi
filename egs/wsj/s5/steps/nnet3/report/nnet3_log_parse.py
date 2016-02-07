@@ -66,24 +66,34 @@ def parse_prob_logs(exp_dir, key = 'accuracy'):
     iters.sort()
     return numpy.array(map(lambda x: (int(x), float(train_loss[x]), float(valid_loss[x])), iters))
 
-if __name__ == "__main__":
-  parser = argparse.ArgumentParser(description="Prints accuracy/log-probability across iterations")
-  parser.add_argument("--key", type=str, default="accuracy",
+
+def ParseLogs(exp_dir, key = "accuracy"):
+    times = parse_train_logs(exp_dir)
+    data = parse_prob_logs(exp_dir, key)
+    report = []
+    report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
+    for x in data:
+        try:
+            report.append("%d\t%s\t%g\t%g\t%g" % (x[0], str(times[x[0]]), x[1], x[2], x[2]-x[1]))
+        except KeyError:
+            continue
+
+    total_time = 0
+    for iter in times.keys():
+        total_time += times[iter]
+    report.append("Total training time is {0}\n".format(str(datetime.timedelta(seconds = total_time))))
+    return ["\n".join(report), times, data]
+
+def Main():
+    parser = argparse.ArgumentParser(description="Prints accuracy/log-probability across iterations")
+    parser.add_argument("--key", type=str, default="accuracy",
                        help="Value to print out")
-  parser.add_argument("exp_dir", help="experiment directory, e.g. exp/nnet3/tdnn")
+    parser.add_argument("exp_dir", help="experiment directory, e.g. exp/nnet3/tdnn")
 
-  args = parser.parse_args()
-  exp_dir = args.exp_dir
-  times = parse_train_logs(exp_dir)
-  data = parse_prob_logs(exp_dir, key = args.key)
-  print "%Iter\tduration\ttrain_loss\tvalid_loss\tdifference"
-  for x in data:
-    try:
-      print "%d\t%s\t%g\t%g\t%g" % (x[0], str(times[x[0]]), x[1], x[2], x[2]-x[1])
-    except KeyError:
-      continue
+    args = parser.parse_args()
+    exp_dir = args.exp_dir
+    [report, times, data] = ParseLogs(exp_dir, args.key)
+    print report
 
-  total_time = 0
-  for iter in times.keys():
-    total_time += times[iter]
-  print "Total training time is {0}\n".format(str(datetime.timedelta(seconds = total_time)))
+if __name__ == "__main__":
+    Main() 
