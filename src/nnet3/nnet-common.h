@@ -1,7 +1,7 @@
 // nnet3/nnet-common.h
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright      2015  Johns Hopkins University (author: Daniel Pove
+//                2016  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -90,7 +90,7 @@ std::ostream &operator << (std::ostream &ostream, const Index &index);
 void WriteIndexVector(std::ostream &os, bool binary,
                       const std::vector<Index> &vec);
 
-void ReadIndexVector(std::istream &os, bool binary,
+void ReadIndexVector(std::istream &is, bool binary,
                      std::vector<Index> *vec);
 
 
@@ -138,6 +138,11 @@ void PrintCindexes(std::ostream &ostream,
 void AppendCindexes(int32 node, const std::vector<Index> &indexes,
                     std::vector<Cindex> *out);
 
+void WriteCindexVector(std::ostream &os, bool binary,
+                       const std::vector<Cindex> &vec);
+
+void ReadCindexVector(std::istream &is, bool binary,
+                      std::vector<Cindex> *vec);
 
 // this function prints a vector of integers in a human-readable
 // way, for pretty-printing; it outputs ranges and repeats in

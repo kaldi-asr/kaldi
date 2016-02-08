@@ -593,8 +593,13 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we will derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
+        if [ $n -eq 1 ]; then
+          cache_io_opts="--read-cache=$dir/cache.$x --write-cache=$dir/cache.$[$x+1]" # opts for cache (storing pairs of nnet-computations and compute-requests) I/O
+        else 
+          cache_io_opts="--read-cache=$dir/cache.$x"
+        fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train $parallel_train_opts --print-interval=10 --momentum=$momentum \
+          nnet3-train $parallel_train_opts $cache_io_opts --print-interval=10 --momentum=$momentum \
           --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
@@ -643,6 +648,7 @@ while [ $x -lt $num_iters ]; do
   fi
   x=$[$x+1]
   num_archives_processed=$[$num_archives_processed+$this_num_jobs]
+  rm $dir/cache.$x
 done
 
 

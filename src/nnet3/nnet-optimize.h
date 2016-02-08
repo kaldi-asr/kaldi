@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -147,6 +148,8 @@ class CachingOptimizingCompiler {
   /// It calls ComputeCudaIndexes() for you, because you wouldn't
   /// be able to do this on a const object.
   const NnetComputation* Compile(const ComputationRequest &request);
+  void ReadCache(std::istream &is, bool binary);
+  void WriteCache(std::ostream &os, bool binary) const;
  private:
   const Nnet &nnet_;
   NnetOptimizeOptions opt_config_;

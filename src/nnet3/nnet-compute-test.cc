@@ -1,6 +1,7 @@
 // nnet3/nnet-compute-test.cc
 
 // Copyright 2015  Johns Hopkins University (author: Daniel Povey)
+//           2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,53 @@
 namespace kaldi {
 namespace nnet3 {
 
+void UnitTestNnetComputationIo(NnetComputation *computation) {
+  bool binary = (Rand() % 2 == 0);
+  std::ostringstream os;
+  computation->Write(os, binary);
+  const std::string &original_output = os.str();
+  std::istringstream computation_is(original_output);
+  KALDI_LOG << computation_is.str();
+  computation->Read(computation_is, binary);
+  std::istringstream computation_is2(original_output);
+  NnetComputation computation2;
+  computation2.Read(computation_is2, binary);
+    
+  std::ostringstream os2, os3;
+  computation->Write(os2, binary);
+  computation2.Write(os3, binary);
+  
+  if (binary) {
+    KALDI_LOG << os2.str();
+    KALDI_LOG << original_output;
+    KALDI_ASSERT(os2.str() == original_output);
+    KALDI_ASSERT(os3.str() == original_output);
+  }
+}
+
+void UnitTestComputationRequestIo(ComputationRequest *request) {
+  bool binary = (Rand() % 2 == 0);
+  std::ostringstream os;
+  request->Write(os, binary);
+  const std::string &original_output = os.str();
+  std::istringstream request_is(original_output);
+  request->Read(request_is, binary);
+  std::istringstream request_is2(original_output);
+  ComputationRequest request2;
+  request2.Read(request_is2, binary);
+    
+  std::ostringstream os2, os3;
+  request->Write(os2, binary);
+  request2.Write(os3, binary);
+  KALDI_ASSERT(*request == request2);
+
+  if (binary) {
+    KALDI_LOG << os2.str();
+    KALDI_LOG << original_output;
+    KALDI_ASSERT(os2.str() == original_output);
+    KALDI_ASSERT(os3.str() == original_output);
+  }
+}
 
 void TestNnetDecodable(const ComputationRequest &request,
                        const std::vector<Matrix<BaseFloat> > &inputs,
@@ -64,6 +112,8 @@ void UnitTestNnetCompute() {
       std::ostringstream os;
       computation.Print(os, nnet);
       KALDI_LOG << "Generated computation is: " << os.str();
+      UnitTestNnetComputationIo(&computation);
+      UnitTestComputationRequestIo(&request);
     }
     CheckComputationOptions check_config;
     // we can do the rewrite check since it's before optimization.

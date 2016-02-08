@@ -1,6 +1,7 @@
 // nnet3/nnet-computation.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
+//             2015       Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -89,6 +90,10 @@ struct IoSpecification {
 
   void Swap(IoSpecification *other);
 
+  void Read(std::istream &istream, bool binary);
+  
+  void Write(std::ostream &ostream, bool binary) const;
+  
   bool operator== (const IoSpecification &other) const;
 };
 
@@ -139,6 +144,10 @@ struct ComputationRequest {
   /// in a human-readable way.
   void Print(std::ostream &os) const;
 
+  void Read(std::istream &istream, bool binary);
+
+  void Write(std::ostream &ostream, bool binary) const;
+  
   bool operator== (const ComputationRequest &other) const;
 };
 
@@ -219,12 +228,16 @@ struct NnetComputation {
     MatrixInfo(int32 num_rows, int32 num_cols,
                MatrixStrideType stride_type):
         num_rows(num_rows), num_cols(num_cols), stride_type(stride_type) {}
+    void Read(std::istream &istream, bool binary);
+    void Write(std::ostream &ostream, bool binary) const;
   };
   struct MatrixDebugInfo {
     bool is_deriv;  // true if this represents a derivative, not a value.
     std::vector<Cindex> cindexes;
     MatrixDebugInfo(): is_deriv(false) { }
     void Swap(MatrixDebugInfo *other);  // Shallow swap
+    void Read(std::istream &istream, bool binary);
+    void Write(std::ostream &ostream, bool binary) const;
   };
   struct SubMatrixInfo {
     int32 matrix_index;  // index into "matrices": the underlying matrix.
@@ -237,6 +250,8 @@ struct NnetComputation {
                   int32 col_offset, int32 num_cols):
         matrix_index(matrix_index), row_offset(row_offset), num_rows(num_rows),
         col_offset(col_offset), num_cols(num_cols) {}
+    void Read(std::istream &istream, bool binary);
+    void Write(std::ostream &ostream, bool binary) const;
     bool operator== (const SubMatrixInfo &other) const;
   };
   struct Command {
@@ -252,6 +267,8 @@ struct NnetComputation {
             int32 arg5 = -1, int arg6 = -1):
         command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
         arg4(arg4), arg5(arg5), arg6(arg6) { }
+    void Read(std::istream &istream, bool binary);
+    void Write(std::ostream &ostream, bool binary) const;
   };
 
   // "matrices" describes the sizes of the matrices that we use as variables in
@@ -343,6 +360,8 @@ struct NnetComputation {
   // interpret the computation.
   void Print(std::ostream &os, const Nnet &nnet) const;
 
+  void Read(std::istream &istream, bool binary);
+  void Write(std::ostream &ostream, bool binary) const;
 
   // This function outputs a vector of strings, one for each submatrix,
   // that explains the meaning of each one: something like "m1", "m2";

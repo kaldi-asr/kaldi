@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -430,6 +431,134 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
   computation_cache_.insert(std::make_pair(request,
                             std::make_pair(computation, ait)));
+}
+
+void CachingOptimizingCompiler::ReadCache(std::istream &is, bool binary) {
+  // we won't read cached computations if any optimize option has been changed.
+  bool read_cache = true;
+  ExpectToken(is, binary, "<NnetOptimizeOptions>");
+  ExpectToken(is, binary, "<Optimize>");
+  bool optimize;
+  ReadBasicType(is, binary, &optimize);
+  read_cache = read_cache && (optimize == opt_config_.optimize);
+  ExpectToken(is, binary, "<Consolidate_model_update>");
+  bool consolidate_model_update;
+  ReadBasicType(is, binary, &consolidate_model_update);
+  read_cache = read_cache && (opt_config_.consolidate_model_update 
+                              == consolidate_model_update);
+  ExpectToken(is, binary, "<PropagateInPlace>");
+  bool propagate_in_place;
+  ReadBasicType(is, binary, &propagate_in_place);
+  read_cache = read_cache && (opt_config_.propagate_in_place
+                              == propagate_in_place);
+  ExpectToken(is, binary, "<BackpropInPlace>");
+  bool backprop_in_place;
+  ReadBasicType(is, binary, &backprop_in_place);
+  read_cache = read_cache && (opt_config_.backprop_in_place
+                              == backprop_in_place);
+  ExpectToken(is, binary, "<ConvertAddition>");
+  bool convert_addition;
+  ReadBasicType(is, binary, &convert_addition);
+  read_cache = read_cache && (opt_config_.convert_addition 
+                              == convert_addition);
+  ExpectToken(is, binary, "<RemoveAssignments>");
+  bool remove_assignments;
+  ReadBasicType(is, binary, &remove_assignments);
+  read_cache = read_cache && (opt_config_.remove_assignments
+                              == remove_assignments);
+  ExpectToken(is, binary, "<AllowLeftMerge>");
+  bool allow_left_merge;
+  ReadBasicType(is, binary, &allow_left_merge);
+  read_cache = read_cache && (opt_config_.allow_left_merge
+                              == allow_left_merge);
+  ExpectToken(is, binary, "<AllowRightMerge>");
+  bool allow_right_merge;
+  ReadBasicType(is, binary, &allow_right_merge);
+  read_cache = read_cache && (opt_config_.allow_right_merge
+                              == allow_right_merge);
+  ExpectToken(is, binary, "<InitializeUndefined>");
+  bool initialize_undefined;
+  ReadBasicType(is, binary, &initialize_undefined);
+  read_cache = read_cache && (opt_config_.initialize_undefined
+                              == initialize_undefined);
+  ExpectToken(is, binary, "<MoveSizingCommands>");
+  bool move_sizing_commands;
+  ReadBasicType(is, binary, &move_sizing_commands);
+  read_cache = read_cache && (opt_config_.move_sizing_commands
+                              == move_sizing_commands);
+  ExpectToken(is, binary, "<AllocateFromOther>");
+  bool allocate_from_other;
+  ReadBasicType(is, binary, &allocate_from_other);
+  read_cache = read_cache && (opt_config_.allocate_from_other
+                              == allocate_from_other);
+  ExpectToken(is, binary, "<MinDerivTime>");
+  int32 min_deriv_time;
+  ReadBasicType(is, binary, &min_deriv_time);
+  read_cache = read_cache && (opt_config_.min_deriv_time
+                              == min_deriv_time);
+  ExpectToken(is, binary, "<MaxDerivTime>");
+  int32 max_deriv_time;
+  ReadBasicType(is, binary, &max_deriv_time);
+  read_cache = read_cache && (opt_config_.max_deriv_time
+                              == max_deriv_time);
+  ExpectToken(is, binary, "</NnetOptimizeOptions>");
+  
+  if (read_cache) {
+    size_t computation_cache_size;
+    ExpectToken(is, binary, "<ComputationCacheSize>");
+    ReadBasicType(is, binary, &computation_cache_size);
+    KALDI_ASSERT(computation_cache_size >= 0);
+    computation_cache_.clear();
+    access_queue_.clear();
+    ExpectToken(is, binary, "<ComputationCache>");
+    for (size_t c = 0; c < computation_cache_size; c++) {
+      ComputationRequest *request = new ComputationRequest();
+      request->Read(is, binary);
+      NnetComputation *computation = new NnetComputation();
+      computation->Read(is, binary);
+      UpdateCache(request, computation);
+    }
+  }
+}
+
+void CachingOptimizingCompiler::WriteCache(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NnetOptimizeOptions>");
+  WriteToken(os, binary, "<Optimize>");
+  WriteBasicType(os, binary, opt_config_.optimize);
+  WriteToken(os, binary, "<Consolidate_model_update>");
+  WriteBasicType(os, binary, opt_config_.consolidate_model_update);
+  WriteToken(os, binary, "<PropagateInPlace>");
+  WriteBasicType(os, binary, opt_config_.propagate_in_place);
+  WriteToken(os, binary, "<BackpropInPlace>");
+  WriteBasicType(os, binary, opt_config_.backprop_in_place);
+  WriteToken(os, binary, "<ConvertAddition>");
+  WriteBasicType(os, binary, opt_config_.convert_addition);
+  WriteToken(os, binary, "<RemoveAssignments>");
+  WriteBasicType(os, binary, opt_config_.remove_assignments);
+  WriteToken(os, binary, "<AllowLeftMerge>");
+  WriteBasicType(os, binary, opt_config_.allow_left_merge);
+  WriteToken(os, binary, "<AllowRightMerge>");
+  WriteBasicType(os, binary, opt_config_.allow_right_merge);
+  WriteToken(os, binary, "<InitializeUndefined>");
+  WriteBasicType(os, binary, opt_config_.initialize_undefined);
+  WriteToken(os, binary, "<MoveSizingCommands>");
+  WriteBasicType(os, binary, opt_config_.move_sizing_commands);
+  WriteToken(os, binary, "<AllocateFromOther>");
+  WriteBasicType(os, binary, opt_config_.allocate_from_other);
+  WriteToken(os, binary, "<MinDerivTime>");
+  WriteBasicType(os, binary, opt_config_.min_deriv_time);
+  WriteToken(os, binary, "<MaxDerivTime>");
+  WriteBasicType(os, binary, opt_config_.max_deriv_time);
+  WriteToken(os, binary, "</NnetOptimizeOptions>");
+
+  WriteToken(os, binary, "<ComputationCacheSize>");
+  WriteBasicType(os, binary, computation_cache_.size());
+  WriteToken(os, binary, "<ComputationCache>");
+  for (CacheType::const_iterator iter = computation_cache_.begin();
+           iter != computation_cache_.end(); ++iter) {
+    iter->first->Write(os, binary);
+    iter->second.first->Write(os, binary);
+  }
 }
 
 void CachingOptimizingCompiler::UpdateAccessQueue(CacheType::iterator &cit) {

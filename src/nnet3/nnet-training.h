@@ -35,6 +35,9 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  std::string read_cache;
+  std::string write_cache;
+  bool binary_write;
   BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
@@ -64,6 +67,11 @@ struct NnetTrainerOptions {
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
+    opts->Register("read-cache", &read_cache, "the location where we can read the "
+                   "cached computation from");
+    opts->Register("write-cache", &write_cache, "the location where we want to write the "
+                   "cached computation to");
+    opts->Register("binary", &binary_write, "Write computation in binary mode");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
