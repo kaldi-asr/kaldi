@@ -145,11 +145,7 @@ $(EXT_SUBDIRS) : mklibdir
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
 
-<<<<<<< HEAD
-bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin latbin ivectorbin lmbin segmenterbin: \
-=======
-bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin latbin ivectorbin lmbin kwsbin online2bin: \
->>>>>>> 14edfd474b44564da272072eac128690cd29b62c
+bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin latbin ivectorbin lmbin kwsbin online2bin segmenterbin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
  lm decoder lat cudamatrix nnet nnet2 nnet3 ivector segmenter decision-tree
 
