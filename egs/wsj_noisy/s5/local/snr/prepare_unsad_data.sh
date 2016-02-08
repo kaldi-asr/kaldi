@@ -19,6 +19,7 @@ phone_map=
 feat_config=
 config_dir=conf
 outside_keep_proportion=1.0
+get_whole_recordings_and_weights=true
 
 . utils/parse_options.sh
 
@@ -454,6 +455,32 @@ if [ $stage -le 12 ]; then
     segmentation-to-ali --default-label=4 --lengths="ark,t:cat $dir/reco_lengths.*.ark.txt |" \
     ark:$dir/reco_segmentations/reco_segmentation.JOB.ark \
     ark,scp:$dir/reco_vad/vad.JOB.ark,$dir/reco_vad/vad.JOB.scp || exit 1
+fi
+
+if $get_whole_recordings_and_weights; then
+  if [ $stage -le 13 ]; then
+    rm -rf $dir/final_vad
+    mkdir -p $dir/final_vad
+
+    $cmd JOB=1:$reco_nj $dir/log/get_deriv_weights.JOB.log \
+      segmentation-post-process --merge-labels=0:1:2:3:4:10 --merge-dst-label=1 \
+      ark:$dir/reco_segmentations/reco_segmentation.JOB.ark ark:- \| \
+      segmentation-to-ali --default-label=0 --lengths="ark,t:cat $dir/reco_lengths.*.ark.txt |" \
+      ark:- ark:- \| ali-to-post ark:- ark:- \| weight-pdf-post 0 0 ark:- ark:- \| \
+      post-to-weights ark:- \
+      ark,scp:$dir/final_vad/deriv_weights.JOB.ark,$dir/final_vad/deriv_weights.JOB.scp || exit 1
+  fi
+
+  rm -rf $out_data_dir
+  diarization/convert_data_dir_to_whole.sh $extended_data_dir $out_data_dir
+  rm -f $out_data_dir/{feats.scp,cmvn.scp,text}
+  
+  for n in `seq $reco_nj`; do 
+    cat $dir/final_vad/deriv_weights.$n.scp 
+  done > $dir/final_vad/deriv_weights.scp
+  
+  echo "$0: Finished creating corpus for training Universal SAD with deriv weights"
+  exit 0
 fi
 
 # Split the recording into new segments in the output data directory.

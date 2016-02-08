@@ -29,7 +29,7 @@ nonsil_self_loop_probability=0.9
 nonsil_transition_probability=0.1
 sil_self_loop_probability=0.9
 sil_transition_probability=0.1
-speech_to_sil_ratio=1     # the prior on speech vs silence
+speech_to_sil_ratio=1.0     # the prior on speech vs silence
 speech_prior=0.5
 sil_prior=0.5
 
@@ -46,7 +46,7 @@ if [ $# -ne 4 ]; then
   exit 1
 fi
 
-if [ "$speech_to_sil_ratio" != 1 ]; then
+if [ "$speech_to_sil_ratio" != "1.0" ]; then
   speech_prior=$speech_to_sil_ratio
   sil_prior=1
 fi
@@ -130,8 +130,8 @@ EOF
         $dir/lang/topo $feat_dim - $dir/tree \| \
         copy-transition-model --binary=false - $dir/trans.mdl || exit 1
     fi
-
-    lang=$dir/lang_test_sp${speech_prior}_sil${sil_prior}
+    t=sp${speech_prior}_sil${sil_prior}
+    lang=$dir/lang_test_${t}
     if [ $stage -le 3 ]; then
       cp -r $dir/lang $lang
       perl -e '$sil_prior = shift @ARGV; $speech_prior = shift @ARGV; $s = $sil_prior + $speech_prior; $sil_prior = $sil_prior / $s; $speech_prior = $speech_prior / $s; $s = $sil_prior + $speech_prior; print "0 0 1 1 " . -log($sil_prior/(1.1 * $s)) . "\n0 0 2 2 ". -log($speech_prior/(1.1 * $s)). "\n0 ". -log(0.1 / 1.1)' $sil_prior $speech_prior | \
@@ -143,7 +143,7 @@ EOF
     if [ $stage -le 4 ]; then
       $cmd $dir/log/make_vad_graph.log \
         diarization/make_vad_graph.sh --iter trans \
-        $lang $dir $dir/graph_test_${t}x || exit 1
+        $lang $dir $dir/graph_test_${t} || exit 1
     fi
 
     log_likes=ark:$vad_dir/log_likes.JOB.ark
@@ -154,7 +154,7 @@ EOF
       $cmd JOB=1:$nj $dir/log/decode.JOB.log \
         decode-faster-mapped ${decoder_opts[@]} \
         $dir/trans.mdl \
-        $dir/graph_test_${t}x/HCLG.fst $log_likes \
+        $dir/graph_test_${t}/HCLG.fst $log_likes \
         ark:/dev/null ark:- \| \
         ali-to-phones --per-frame=true $dir/trans.mdl ark:- \
         "ark:|gzip -c > $dir/ali.JOB.gz" || exit 1
