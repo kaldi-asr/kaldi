@@ -18,10 +18,10 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-pnorm_input_dim=3000
-pnorm_output_dim=300
-relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
-sigmoid_dim=  # you can use this to make it use Sigmoid's instead of p-norms.
+pnorm_input_dims="3000 3000 3000 3000 3000 3000"
+pnorm_output_dims="300 300 300 300 300 300"
+relu_dims=  # you can use this to make it use ReLU's instead of p-norms.
+sigmoid_dims=  # you can use this to make it use Sigmoid's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -31,6 +31,8 @@ samples_per_iter=400000 # each iteration of training, see this many samples
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
+num_utts_subset=300     # number of utterances in validation and training
+                        # subsets used for shrinkage and diagnostics.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
@@ -38,6 +40,7 @@ presoftmax_prior_scale_power=-0.25
 use_presoftmax_prior_scale=true
 remove_egs=true  # set to false to disable removing egs after training is done.
 egs_suffix=
+deriv_weights_scp=
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
   # to the final 'combine' stage, but these models will themselves be averages of
@@ -84,7 +87,6 @@ objective_type=linear
 skip_final_softmax=true
 max_change_per_sample=0.075
 max_param_change=1
-no_hidden_layers=false
 sparsity_constants=
 positivity_constraints=
 config_dir=
@@ -181,21 +183,6 @@ fi
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
-
-  if [ ! -z "$relu_dim" ] || [ ! -z "$sigmoid_dim" ]; then
-    if [ ! -z "$relu_dim" ]; then
-      dim_opts="--relu-dim=$relu_dim"
-    fi
-    if [ ! -z "$sigmoid_dim" ]; then
-      dim_opts="--sigmoid-dim=$sigmoid_dim"
-    fi
-    if [ ! -z "$relu_dim" ] && [ ! -z "$sigmoid_dim" ]; then
-      echo "$0: --relu-dim and --sigmoid-dim are both specified"
-      exit 1
-    fi
-  else
-    dim_opts="--pnorm-input-dim=$pnorm_input_dim --pnorm-output-dim=$pnorm_output_dim"
-  fi
     
   raw_nnet_config_opts=()
 
@@ -210,7 +197,6 @@ if [ $stage -le -5 ]; then
   
   raw_nnet_config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
-  raw_nnet_config_opts+=(--no-hidden-layers=$no_hidden_layers)
   
   if [ ! -z "$sparsity_constants" ]; then
     raw_nnet_config_opts+=(--sparsity-constant="$sparsity_constants")
@@ -234,17 +220,20 @@ if [ $stage -le -5 ]; then
   [ -z $num_targets ] && echo "\$num_targets is unset" && exit 1
   [ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
 
-
   if [ ! -z "$config_dir" ]; then
     cp -rT $config_dir $dir/configs
   else
     # create the config files for nnet initialization
-    python steps/nnet3/make_tdnn_raw_configs.py  \
+    python steps/nnet3/make_tdnn_snr_predictor_configs.py  \
       --splice-indexes="$splice_indexes"  \
       --feat-dim=$input_dim \
       --ivector-dim=$ivector_dim \
       "${raw_nnet_config_opts[@]}" $objective_opts \
-      $dim_opts --max-change-per-sample=$max_change_per_sample \
+      ${relu_dims:+--relu-dims="$relu_dims"} \
+      ${sigmoid_dims:+--sigmoid-dims="$sigmoid_dims"} \
+      ${pnorm_input_dims:+--pnorm-input-dims="$pnorm_input_dims"} \
+      ${pnorm_output_dims:+--pnorm-output-dims="$pnorm_output_dims"} \
+      --max-change-per-sample=$max_change_per_sample \
       --num-targets=$num_targets  \
       $dir/configs || exit 1;
   fi
@@ -267,7 +256,7 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 
 # Allow 0 hidden layers -- Probably only a single affine component followed by 
 # a softmax
-! $no_hidden_layers && [ "$num_hidden_layers" -le 0 ] && echo \
+[ "$num_hidden_layers" -le 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
@@ -279,7 +268,8 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts+=(--left-context $left_context)
   extra_opts+=(--right-context $right_context)
   echo "$0: calling get_egs.sh"
-  
+  [ ! -z "$deriv_weights_scp" ] && extra_opts+=(--deriv-weights-scp $deriv_weights_scp)
+
   target_type=dense
   if $posterior_targets; then
     target_type=sparse
@@ -302,6 +292,7 @@ fi
 
 
   steps/nnet3/get_egs_dense_targets.sh $egs_opts "${extra_opts[@]}" \
+    --num-utts-subset $num_utts_subset \
     --samples-per-iter $samples_per_iter --stage $get_egs_stage \
     --cmd "$cmd" --nj $nj --num-targets $num_targets $egs_opts \
     --frames-per-eg $frames_per_eg --target-type $target_type \

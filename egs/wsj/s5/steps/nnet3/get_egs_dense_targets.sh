@@ -20,7 +20,7 @@ target_type=dense # dense to have dense targets,
                   # sparse to have posteriors targets
 num_targets=
 #sparse_input_dim=
-#feats_scp=
+deriv_weights_scp=
 frames_per_eg=8   # number of frames of labels per example.  more->less disk space and
                   # less time preparing egs, but more I/O during training.
                   # note: the script may reduce this if reduce_frames_per_eg is true.
@@ -276,6 +276,8 @@ if [ -e $dir/storage ]; then
 fi
 
 egs_opts="--left-context=$left_context --right-context=$right_context --compress=$compress"
+
+[ ! -z "$deriv_weights_scp" ] && egs_opts="$egs_opts --deriv-weights-rspecifier=scp:$deriv_weights_scp"
 
 [ -z $valid_left_context ] &&  valid_left_context=$left_context;
 [ -z $valid_right_context ] &&  valid_right_context=$right_context;
