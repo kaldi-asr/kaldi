@@ -769,8 +769,7 @@ class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineCompon
   virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
   
-  void Init(BaseFloat learning_rate,
-            int32 input_dim, int32 output_dim,
+  void Init(int32 input_dim, int32 output_dim,
             BaseFloat param_stddev,
             BaseFloat bias_mean, BaseFloat bias_stddev,
             int32 rank_in, int32 rank_out, int32 update_period,
@@ -779,7 +778,7 @@ class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineCompon
             bool ensure_positive_linear_component,
             BaseFloat sparsity_constant = 0.0);
 
-  void Init(BaseFloat learning_rate, int32 rank_in,
+  void Init(int32 rank_in,
             int32 rank_out, int32 update_period,
             BaseFloat num_samples_history,
             BaseFloat alpha, BaseFloat max_change_per_sample,

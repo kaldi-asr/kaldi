@@ -97,9 +97,25 @@ void NnetTrainer::ProcessOutputs(const NnetExample &eg,
       ObjectiveType obj_type = nnet_->GetNode(node_index).u.objective_type;
       BaseFloat tot_weight, tot_objf;
       bool supply_deriv = true;
-      ComputeObjectiveFunction(io.features, obj_type, io.name,
-                               supply_deriv, computer,
-                               &tot_weight, &tot_objf);
+
+      const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(io.name);
+      CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
+                                          nnet_output.NumCols(),
+                                          kUndefined);
+
+      ComputeObjectiveFunction(io.features, obj_type, io.name, nnet_output,
+                               &tot_weight, &tot_objf,
+                               supply_deriv ? &nnet_output_deriv : NULL);
+
+      if (supply_deriv) {
+        if (config_.apply_deriv_weights && io.deriv_weights.Dim() != 0) {
+          CuVector<BaseFloat> cu_deriv_weights(io.deriv_weights);
+          nnet_output_deriv.MulRowsVec(cu_deriv_weights);
+        }
+
+        computer->AcceptOutputDeriv(io.name, &nnet_output_deriv);
+      }
+
       objf_info_[io.name].UpdateStats(io.name, config_.print_interval,
                                       num_minibatches_processed_++,
                                       tot_weight, tot_objf);
@@ -168,12 +184,10 @@ NnetTrainer::~NnetTrainer() {
 void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                               ObjectiveType objective_type,
                               const std::string &output_name,
-                              bool supply_deriv,
-                              NnetComputer *computer,
+                              const CuMatrixBase<BaseFloat> &output,
                               BaseFloat *tot_weight,
-                              BaseFloat *tot_objf) {
-  const CuMatrixBase<BaseFloat> &output = computer->GetOutput(output_name);
-
+                              BaseFloat *tot_objf,
+                              CuMatrixBase<BaseFloat> *output_deriv) {
   if (output.NumCols() != supervision.NumCols())
     KALDI_ERR << "Nnet versus example output dimension (num-classes) "
               << "mismatch for '" << output_name << "': " << output.NumCols()
@@ -202,17 +216,16 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
       *tot_objf = TraceMatMat(log_prob, cu_post, kTrans) 
                   + TraceMatMat(n_output, n_cu_post, kTrans);
 
-      if (supply_deriv) {
+      if (output_deriv) {
         // deriv is x / y - (1-x) / (1-y)
         n_output.ApplyExp();                    // 1-y
         n_cu_post.DivElements(n_output);        // 1-x / (1-y)
 
         log_prob.ApplyExp();                    // y
         cu_post.DivElements(log_prob);          // x / y
-        
-        CuMatrix<BaseFloat> output_deriv(cu_post);  // x / y
-        output_deriv.AddMat(-1.0, n_cu_post);       // x / y - (1-x) / (1-y)
-        computer->AcceptOutputDeriv(output_name, &output_deriv);
+ 
+        output_deriv->CopyFromMat(cu_post);     // x / y
+        output_deriv->AddMat(-1.0, n_cu_post);       // x / y - (1-x) / (1-y)
       }
                                    
       break;
@@ -228,33 +241,40 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
           // of log-likelihoods that are normalized to sum to one.
           *tot_weight = cu_post.Sum();
           *tot_objf = TraceMatSmat(output, cu_post, kTrans);
-          if (supply_deriv) {
-            CuMatrix<BaseFloat> output_deriv(output.NumRows(), output.NumCols(),
-                                             kUndefined);
-            cu_post.CopyToMat(&output_deriv);
-            computer->AcceptOutputDeriv(output_name, &output_deriv);
+          if (output_deriv) {
+            cu_post.CopyToMat(output_deriv);
           }
           break;
         }
         case kFullMatrix: {
           // there is a redundant matrix copy in here if we're not using a GPU
           // but we don't anticipate this code branch being used in many cases.
-          CuMatrix<BaseFloat> cu_post(supervision.GetFullMatrix());
-          *tot_weight = cu_post.Sum();
-          *tot_objf = TraceMatMat(output, cu_post, kTrans);
-          if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+          if (output_deriv) {
+            supervision.CopyToMat(output_deriv);
+            CuMatrixBase<BaseFloat> &cu_post = *output_deriv;
+            *tot_weight = cu_post.Sum();
+            *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          } else {
+            CuMatrix<BaseFloat> cu_post(supervision.GetFullMatrix());
+            *tot_weight = cu_post.Sum();
+            *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          }
           break;
         }
         case kCompressedMatrix: {
           Matrix<BaseFloat> post;
           supervision.GetMatrix(&post);
-          CuMatrix<BaseFloat> cu_post;
-          cu_post.Swap(&post);
-          *tot_weight = cu_post.Sum();
-          *tot_objf = TraceMatMat(output, cu_post, kTrans);
-          if (supply_deriv)
-            computer->AcceptOutputDeriv(output_name, &cu_post);
+          if (output_deriv) {
+            output_deriv->CopyFromMat(post);
+            CuMatrixBase<BaseFloat> &cu_post = *output_deriv;
+            *tot_weight = cu_post.Sum();
+            *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          } else {
+            CuMatrix<BaseFloat> cu_post;
+            cu_post.Swap(&post);
+            *tot_weight = cu_post.Sum();
+            *tot_objf = TraceMatMat(output, cu_post, kTrans);
+          }
           break;
         }
       }
@@ -262,15 +282,21 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
     }
     case kQuadratic: {
       // objective is -0.5 (x - y)^2
-      CuMatrix<BaseFloat> diff(supervision.NumRows(),
-                               supervision.NumCols(),
-                               kUndefined);
-      diff.CopyFromGeneralMat(supervision);
-      diff.AddMat(-1.0, output);
-      *tot_weight = diff.NumRows();
-      *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
-      if (supply_deriv)
-        computer->AcceptOutputDeriv(output_name, &diff);
+      if (output_deriv) {
+        CuMatrixBase<BaseFloat> &diff = *output_deriv;
+        diff.CopyFromGeneralMat(supervision);
+        diff.AddMat(-1.0, output);
+        *tot_weight = diff.NumRows();
+        *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
+      } else {
+        CuMatrix<BaseFloat> diff(supervision.NumRows(),
+                                 supervision.NumCols(),
+                                 kUndefined);
+        diff.CopyFromGeneralMat(supervision);
+        diff.AddMat(-1.0, output);
+        *tot_weight = diff.NumRows();
+        *tot_objf = -0.5 * TraceMatMat(diff, diff, kTrans);
+      }
       break;
     }
     default:
@@ -278,8 +304,6 @@ void ComputeObjectiveFunction(const GeneralMatrix &supervision,
                 << " not handled.";
   }
 }
-
-
 
 } // namespace nnet3
 } // namespace kaldi

@@ -161,6 +161,7 @@ class ExampleSelector {
   std::string frame_str_;
   int32 left_context_;
   int32 right_context_;
+  int32 frame_shift_;
   bool quantize_input_;
 
   const QuantizationOptions &quantization_opts_;
@@ -550,7 +551,7 @@ int main(int argc, char *argv[]) {
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
-            && !quantize_input && frame_shift == 0) {
+            !quantize_input && frame_shift == 0) {
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.

@@ -2055,6 +2055,11 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
     ReadBasicType(is, binary, &max_change_scale_stats_);
     ReadToken(is, binary, &token);
   }
+
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<NaturalGradientPositiveAffineComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientPositiveAffineComponent>"
+
   if (token != ostr_end.str() &&
       token != ostr_beg.str())
     KALDI_ERR << "Expected " << ostr_beg.str() << " or "
@@ -2204,6 +2209,9 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, active_scaling_count_);
   WriteToken(os, binary, "<MaxChangeScaleStats>");
   WriteBasicType(os, binary, max_change_scale_stats_);
+  
+  std::ostringstream ostr_end;
+  ostr_end << "</" << Type() << ">"; // e.g. "</NaturalGradientPositiveAffineComponent>"
   WriteToken(os, binary, ostr_end.str());
 }
 
@@ -2409,7 +2417,7 @@ void NaturalGradientPositiveAffineComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("sparsity-constant", &sparsity_constant);
 
   if (cfl->GetValue("matrix", &matrix_filename)) {
-    Init(learning_rate, rank_in, rank_out, update_period,
+    Init(rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample,
          ensure_positive_linear_component, sparsity_constant,
          matrix_filename);
@@ -2427,7 +2435,7 @@ void NaturalGradientPositiveAffineComponent::InitFromConfig(ConfigLine *cfl) {
     cfl->GetValue("param-stddev", &param_stddev);
     cfl->GetValue("bias-stddev", &bias_stddev);
     cfl->GetValue("bias-mean", &bias_mean);
-    Init(learning_rate, input_dim, output_dim, param_stddev,
+    Init(input_dim, output_dim, param_stddev,
          bias_mean, bias_stddev, rank_in, rank_out, update_period,
          num_samples_history, alpha, max_change_per_sample, 
          ensure_positive_linear_component, sparsity_constant);
@@ -2440,11 +2448,11 @@ void NaturalGradientPositiveAffineComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 void NaturalGradientPositiveAffineComponent::Init(
-    BaseFloat learning_rate, int32 rank_in, int32 rank_out,
+    int32 rank_in, int32 rank_out,
     int32 update_period, BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample, bool ensure_positive_linear_component,
     BaseFloat sparsity_constant, std::string matrix_filename) {
-  NaturalGradientAffineComponent::Init(learning_rate, rank_in, rank_out, update_period, 
+  NaturalGradientAffineComponent::Init(rank_in, rank_out, update_period, 
         num_samples_history, alpha, max_change_per_sample, matrix_filename);
   ensure_positive_linear_component_ = ensure_positive_linear_component;
   sparsity_constant_ = sparsity_constant;
@@ -2452,7 +2460,6 @@ void NaturalGradientPositiveAffineComponent::Init(
 }       
 
 void NaturalGradientPositiveAffineComponent::Init(
-    BaseFloat learning_rate,
     int32 input_dim, int32 output_dim,
     BaseFloat param_stddev,
     BaseFloat bias_mean, BaseFloat bias_stddev,
@@ -2460,7 +2467,7 @@ void NaturalGradientPositiveAffineComponent::Init(
     BaseFloat num_samples_history, BaseFloat alpha,
     BaseFloat max_change_per_sample, 
     bool ensure_positive_linear_component, BaseFloat sparsity_constant) {
-  NaturalGradientAffineComponent::Init(learning_rate, input_dim, output_dim, param_stddev,
+  NaturalGradientAffineComponent::Init(input_dim, output_dim, param_stddev,
        bias_mean, bias_stddev, rank_in, rank_out, update_period,
        num_samples_history, alpha, max_change_per_sample);
   ensure_positive_linear_component_ = ensure_positive_linear_component;
