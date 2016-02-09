@@ -1,6 +1,7 @@
 // nnet3/nnet-training.cc
 
 // Copyright      2015    Johns Hopkins University (author: Daniel Povey)
+//                2015    Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -93,8 +94,8 @@ void NnetTrainer::Train(const NnetExample &eg) {
     ScaleNnet(config_.momentum, delta_nnet_);
   }
   if (config_.write_cache != "") {
-    Output ko(config_.write_cache, config_.binary_write);
-    compiler_.WriteCache(ko.Stream(), config_.binary_write);
+    Output ko(config_.write_cache, config_.binary_write_cache);
+    compiler_.WriteCache(ko.Stream(), config_.binary_write_cache);
   } 
 }
 

@@ -100,6 +100,9 @@ struct NnetOptimizeOptions {
                    "at when updating the model.  This is an optimization that "
                    "saves time in the backprop phase for recurrent frameworks");
   }
+  void Read(std::istream &is, bool binary);
+  void Write(std::ostream &os, bool binary) const;
+  bool operator == (const NnetOptimizeOptions &other) const;
 };
 
 /// This is the top-level function for optimizing a computation.
