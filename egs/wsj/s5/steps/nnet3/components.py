@@ -448,4 +448,109 @@ def AddBLstmLayer(config_lines,
             'descriptor': output_descriptor,
             'dimension':output_dim
             }
+
+# Equations that specify a Gated Recurrent Unit (GRU) layer
+# (according to Eqn. (10) in the paper http://arxiv.org/pdf/1512.02595v1.pdf,
+# except that we scale h(t-1) by r(t) prior to the appplication of Whh as standard GRUs):
+# input: x(t), output: y(t), recurrent connection: h(t)
+# r(t) = sigmoid(Wrx * x(t) + Wrh * h(t-1) + br)
+# z(t) = sigmoid(Wzx * x(t) + Wzh * h(t-1) + bz)
+# h_tilt(t) = tanh(Whx * x(t) + Whh * (r(t) .* h(t-1)) + bh)
+# h(t) = z(t) .* h_tilt(t) + (1 - z(t)) .* h(t-1)
+# p(t) = Wph * h(t) + bp
+# y(t) = norm(relu(p(t)))
+# where Wrh, Wzh, Whh is low-rank
+def AddGruLayer(config_lines,
+                name, input, recurrent_projection_dim,
+                non_recurrent_projection_dim,
+                scale_minus_one_file, bias_one_file,
+                clipping_threshold = 1.0,
+                norm_based_clipping = "false",
+                ng_affine_options = "",
+                gru_delay = -1,
+                self_repair_scale= None):
+    assert(recurrent_projection_dim > 0 and non_recurrent_projection_dim > 0)
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    input_descriptor = input['descriptor']
+    input_dim = input['dimension']
+    name = name.strip()
+
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+
+    # Parameter Definitions of affine matrix W_*-xh for reset gate r(t) and update gate z(t)
+    components.append("# Define affine matrices for reset gate and update gate: W_*-xh")
+    components.append("component name={0}_W_r-xh type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim / 4, recurrent_projection_dim, ng_affine_options))
+    components.append("component name={0}_W_z-xh type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim / 4, recurrent_projection_dim, ng_affine_options))
+
+    # Parameter Definitions W_h-xh
+    components.append("# Define the affine matrix for current hidden output control: W_h-xh")
+    components.append("component name={0}_W_h-xh type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input_dim + recurrent_projection_dim / 4, recurrent_projection_dim, ng_affine_options))
+
+    components.append("# large affine matrix for low rank projection W_lowrank_-h")
+    components.append("component name={0}_W_lowrank_-h type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, recurrent_projection_dim, 2 * (recurrent_projection_dim / 4), ng_affine_options))
+    components.append("# low rank projection W_lowrank_h-h")
+    components.append("component name={0}_W_lowrank_h-h type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, recurrent_projection_dim, recurrent_projection_dim / 4, ng_affine_options))
+
+    components.append("# Defining the non-linearities")
+    components.append("component name={0}_r type=SigmoidComponent dim={1} {2}".format(name, recurrent_projection_dim, self_repair_string))
+    components.append("component name={0}_z type=SigmoidComponent dim={1} {2}".format(name, recurrent_projection_dim, self_repair_string))
+    components.append("component name={0}_h_tilt type=TanhComponent dim={1} {2}".format(name, recurrent_projection_dim, self_repair_string))
+
+    components.append("# Defining the hidden node computations")
+    components.append("component name={0}_rh type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * recurrent_projection_dim, recurrent_projection_dim))
+    components.append("component name={0}_h1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * recurrent_projection_dim, recurrent_projection_dim))
+    components.append("component name={0}_h2 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * recurrent_projection_dim, recurrent_projection_dim))
+    components.append("component name={0}_h type=ClipGradientComponent dim={1} clipping-threshold={2} norm-based-clipping={3} ".format(name, recurrent_projection_dim, clipping_threshold, norm_based_clipping))
+
+    components.append("# Defining fixed scale/bias component for (1 - z_t)")
+    components.append("component name={0}_fixed_scale_minus_one type=FixedScaleComponent scales={1}".format(name, scale_minus_one_file))
+    components.append("component name={0}_fixed_bias_one type=FixedBiasComponent bias={1}".format(name, bias_one_file))
+
+    component_nodes.append("# large affine transform")
+    component_nodes.append("component-node name={0}_large_affine component={0}_W_lowrank_-h input=IfDefined(Offset({0}_h_t, {1}))".format(name, gru_delay))
+    
+    component_nodes.append("# r_t")
+    component_nodes.append("dim-range-node name={0}_r1_pre input-node={0}_large_affine dim-offset=0 dim={1}".format(name, recurrent_projection_dim / 4))
+    component_nodes.append("component-node name={0}_r1 component={0}_W_r-xh input=Append({1}, {0}_r1_pre)".format(name, input_descriptor))
+    component_nodes.append("component-node name={0}_r_t component={0}_r input={0}_r1".format(name))
+   
+    component_nodes.append("# z_t")
+    component_nodes.append("dim-range-node name={0}_z1_pre input-node={0}_large_affine dim-offset={1} dim={2}".format(name, recurrent_projection_dim / 4, recurrent_projection_dim / 4))
+    component_nodes.append("component-node name={0}_z1 component={0}_W_z-xh input=Append({1}, {0}_z1_pre)".format(name, input_descriptor))
+    component_nodes.append("component-node name={0}_z_t component={0}_z input={0}_z1".format(name))
+
+    component_nodes.append("# h_tilt_t")
+    component_nodes.append("component-node name={0}_rh_t component={0}_rh input=Append({0}_r_t, IfDefined(Offset({0}_h_t, {1})))".format(name, gru_delay))
+    component_nodes.append("component-node name={0}_h_tilt1_pre component={0}_W_lowrank_h-h input={0}_rh_t".format(name, gru_delay))
+    component_nodes.append("component-node name={0}_h_tilt1 component={0}_W_h-xh input=Append({1}, {0}_h_tilt1_pre)".format(name, input_descriptor))
+    component_nodes.append("component-node name={0}_h_tilt_t component={0}_h_tilt input={0}_h_tilt1".format(name))
+
+    component_nodes.append("# The following two lines are to implement (1 - z_t)")
+    component_nodes.append("component-node name={0}_minus_z_t component={0}_fixed_scale_minus_one input={0}_z_t".format(name))
+    component_nodes.append("component-node name={0}_one_minus_z_t component={0}_fixed_bias_one input={0}_minus_z_t".format(name))
+
+    component_nodes.append("# h_t") 
+    component_nodes.append("component-node name={0}_h1_t component={0}_h1 input=Append({0}_z_t, {0}_h_tilt_t)".format(name))
+    component_nodes.append("component-node name={0}_h2_t component={0}_h2 input=Append({0}_one_minus_z_t, IfDefined(Offset({0}_h_t, {1})))".format(name, gru_delay))
+    
+    components.append("# projection matrices : W-m; and nonlinearity transform : relu and renorm")
+    components.append("component name={0}_W-m type=NaturalGradientAffineComponent input-dim={1} output-dim={2} bias-stddev=0".format(name, recurrent_projection_dim, non_recurrent_projection_dim))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, non_recurrent_projection_dim, self_repair_string))
+    components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms=1.0".format(name, non_recurrent_projection_dim))
+
+    component_nodes.append("# h_t and p_t")
+    component_nodes.append("component-node name={0}_h_t component={0}_h input=Sum({0}_h1_t, {0}_h2_t)".format(name))
+    component_nodes.append("component-node name={0}_p_t component={0}_W-m input={0}_h_t".format(name))
+    component_nodes.append("component-node name={0}_relu component={0}_relu input={0}_p_t".format(name))
+    component_nodes.append("component-node name={0}_renorm component={0}_renorm input={0}_relu".format(name))
+
+    output_descriptor = '{0}_renorm'.format(name)
+    output_dim = non_recurrent_projection_dim
+
+    return {
+            'descriptor': output_descriptor,
+            'dimension':output_dim
+            }
  
