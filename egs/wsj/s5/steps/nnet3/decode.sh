@@ -136,7 +136,7 @@ if [ ! -z "$online_ivector_dir" ]; then
 fi
 
 if [ "$post_decode_acwt" == 1.0 ]; then
-  lat_wspecifier="ark|gzip -c >$dir/lat.JOB.gz"
+  lat_wspecifier="ark:|gzip -c >$dir/lat.JOB.gz"
 else
   lat_wspecifier="ark:|lattice-scale --acoustic-scale=$post_decode_acwt ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
 fi
