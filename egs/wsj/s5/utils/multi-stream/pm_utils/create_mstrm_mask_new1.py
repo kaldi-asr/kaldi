@@ -32,7 +32,7 @@ combn_list=[]
 f = open(scores_scp,'r')
 for line in f.readlines():
   d = pickle.load(bz2.BZ2File(line.strip().split('=')[1], "rb"))
-
+  logging.info("%s %d ", line.strip().split('=')[1], len(d.keys()))
   scores_dicts.append(d)
   combn_list.append(int(line.strip().split('=')[0]))
 f.close()
