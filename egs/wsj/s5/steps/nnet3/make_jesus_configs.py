@@ -38,6 +38,9 @@ parser.add_argument("--use-repeated-affine", type=str,
 parser.add_argument("--final-layer-learning-rate-factor", type=float,
                     help="Learning-rate factor for final affine component",
                     default=1.0)
+parser.add_argument("--self-repair-scale", type=float,
+                    help="Small scale involved in fixing derivatives, if supplied (e.g. try 0.00001)",
+                    default=0.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
 parser.add_argument("--jesus-forward-output-dim", type=int,
@@ -272,8 +275,8 @@ for l in range(1, num_hidden_layers + 1):
         print('component-node name=affine1 component=affine1 input=lda',
               file=f)
         # the ReLU after the affine
-        print('component name=relu1 type=RectifiedLinearComponent dim={1}'.format(
-                l, args.jesus_forward_input_dim), file=f)
+        print('component name=relu1 type=RectifiedLinearComponent dim={1} self-repair-scale={2}'.format(
+                l, args.jesus_forward_input_dim, args.self_repair_scale), file=f)
         print('component-node name=relu1 component=relu1 input=affine1', file=f)
         # the renormalize component after the ReLU
         print ('component name=renorm1 type=NormalizeComponent dim={0} '.format(
@@ -336,9 +339,9 @@ for l in range(1, num_hidden_layers + 1):
         if need_input_permute_component:
             print(" component1='type=PermuteComponent column-map={1}'".format(
                     l, ','.join([str(x) for x in column_map])), file=f, end='')
-        print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
+        print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
                 (2 if need_input_permute_component else 1),
-                cur_dim), file=f, end='')
+                cur_dim, args.self_repair_scale), file=f, end='')
 
         if args.use_repeated_affine == "true":
             print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
@@ -359,9 +362,9 @@ for l in range(1, num_hidden_layers + 1):
                   file=f, end='')
 
 
-        print(" component{0}='type=RectifiedLinearComponent dim={1}'".format(
+        print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
                 (4 if need_input_permute_component else 3),
-                args.jesus_hidden_dim), file=f, end='')
+                args.jesus_hidden_dim, args.self_repair_scale), file=f, end='')
 
 
 
@@ -397,8 +400,8 @@ for l in range(1, num_hidden_layers + 1):
               file=f, end='')
 
         # still within the post-Jesus component, print the ReLU
-        print(" component1='type=RectifiedLinearComponent dim={0}'".format(
-                this_jesus_output_dim), file=f, end='')
+        print(" component1='type=RectifiedLinearComponent dim={0} self-repair-scale={1}'".format(
+                this_jesus_output_dim, args.self_repair_scale), file=f, end='')
         # still within the post-Jesus component, print the NormalizeComponent
         print(" component2='type=NormalizeComponent dim={0} '".format(
                 this_jesus_output_dim), file=f, end='')
@@ -430,8 +433,8 @@ for l in range(1, num_hidden_layers + 1):
 
     # with each new layer we regenerate the final-affine component, with a ReLU before it
     # because the layers we printed don't end with a nonlinearity.
-    print('component name=final-relu type=RectifiedLinearComponent dim={0}'.format(
-            cur_affine_output_dim), file=f)
+    print('component name=final-relu type=RectifiedLinearComponent dim={0} self-repair-scale={1}'.format(
+            cur_affine_output_dim, args.self_repair_scale), file=f)
     print('component-node name=final-relu component=final-relu input={0}'.format(cur_output),
           file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '

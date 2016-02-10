@@ -171,7 +171,6 @@ class NormalizeComponent: public Component {
 
 class SigmoidComponent: public NonlinearComponent {
  public:
-  explicit SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
   explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
@@ -196,7 +195,6 @@ class SigmoidComponent: public NonlinearComponent {
 
 class TanhComponent: public NonlinearComponent {
  public:
-  explicit TanhComponent(int32 dim): NonlinearComponent(dim) { }
   explicit TanhComponent(const TanhComponent &other): NonlinearComponent(other) { }
   TanhComponent() { }
   virtual std::string Type() const { return "TanhComponent"; }
@@ -222,8 +220,8 @@ class TanhComponent: public NonlinearComponent {
 
 class RectifiedLinearComponent: public NonlinearComponent {
  public:
-  explicit RectifiedLinearComponent(int32 dim): NonlinearComponent(dim) { }
-  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other): NonlinearComponent(other) { }
+  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other):
+      NonlinearComponent(other) { }
   RectifiedLinearComponent() { }
   virtual std::string Type() const { return "RectifiedLinearComponent"; }
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
@@ -242,6 +240,7 @@ class RectifiedLinearComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+
  private:
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
@@ -576,7 +575,6 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
-  explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
   explicit SoftmaxComponent(const SoftmaxComponent &other):
       NonlinearComponent(other) { }
   SoftmaxComponent() { }
@@ -603,7 +601,6 @@ class SoftmaxComponent: public NonlinearComponent {
 
 class LogSoftmaxComponent: public NonlinearComponent {
  public:
-  explicit LogSoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
   explicit LogSoftmaxComponent(const LogSoftmaxComponent &other):
       NonlinearComponent(other) { }
   LogSoftmaxComponent() { }
@@ -897,7 +894,6 @@ class FixedBiasComponent: public Component {
 // very often, but it may sometimes make your life easier
 class NoOpComponent: public NonlinearComponent {
  public:
-  explicit NoOpComponent(int32 dim): NonlinearComponent(dim) { }
   explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }

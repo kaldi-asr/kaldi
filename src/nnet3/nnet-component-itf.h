@@ -443,15 +443,32 @@ class UpdatableComponent: public Component {
 /// during training.
 class NonlinearComponent: public Component {
  public:
-  void Init(int32 dim) { dim_ = dim; count_ = 0.0; }
-  explicit NonlinearComponent(int32 dim) { Init(dim); }
-  NonlinearComponent(): dim_(0) { } // e.g. prior to Read().
+
+  NonlinearComponent();
   explicit NonlinearComponent(const NonlinearComponent &other);
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
-  /// We implement InitFromConfig at this level.
+  // We implement InitFromConfig at this level.
+  // supported config parameters and their defaults:
+  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000 \
+  //     self-repair-constant=0.0
+  // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
+  // quantities to the derivative to attempt to keep the average value (for
+  // bounded nonlinearities) or average derivative (for ReLU) for each
+  // dimension within a given range.  The default ranges (if you don't
+  // specify self-repair-lower-threshold or self-repair-upper-threshold) are
+  // dependent on the nonlinearity and are set in their Backprop functions.
+  // To activate this code you have to set self-repair-constant to a number >0 like
+  // 0.0001 when initializing the ReLU (this is a scaling factor on the 'fake
+  // derivative').  This code is only activated if derivative and value stats
+  // are present in the model, which will typically only be the case
+  // if the 'store-stats' code is activated
+  // (e.g. --optimization.store-stats=true) because it needs the stats.  To be
+  // activated this code also requires that is_gradient_ is false (i.e. you're
+  // not computing exact gradients).
+
   virtual void InitFromConfig(ConfigLine *cfl);
 
   /// We implement Read at this level as it just needs the Type().
@@ -475,7 +492,15 @@ class NonlinearComponent: public Component {
   double Count() const { return count_; }
 
  protected:
-  friend class NormalizationComponent;
+  enum { kUnsetThreshold = -1000 };
+
+  // this function is to be called from Backprop code if it makes
+  // sense for the nonlinearity typte
+  void RepairGradients(bool measure_deriv,
+                       BaseFloat default_lower_threshold,
+                       BaseFloat default_upper_threshold,
+                       CuMatrixBase<BaseFloat> *in_deriv) const;
+
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
@@ -496,6 +521,13 @@ class NonlinearComponent: public Component {
                                // (only applicable to element-by-element
                                // nonlinearities, not Softmax.
   double count_;
+
+
+  // some configuration values relating to self-repairing nonlinearities.
+  BaseFloat self_repair_lower_threshold_;
+  BaseFloat self_repair_upper_threshold_;
+  BaseFloat self_repair_scale_;
+
   // The mutex is used in UpdateStats, only for resizing vectors.
   Mutex mutex_;
 };

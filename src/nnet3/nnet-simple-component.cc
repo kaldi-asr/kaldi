@@ -440,8 +440,10 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
                                 Component *,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (in_deriv != NULL)
+  if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
+    RepairGradients(false, 0.05, 0.95, in_deriv);
+  }
 }
 
 void SigmoidComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
@@ -631,8 +633,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              Component *to_update, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (in_deriv != NULL)
+  if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
+    RepairGradients(false, -0.9, 0.9, in_deriv);
+  }
 }
 
 /*
@@ -650,7 +654,6 @@ void TanhComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
   temp_deriv.Add(1.0);
   StoreStatsInternal(out_value, &temp_deriv);
 }
-
 
 void RectifiedLinearComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
@@ -673,6 +676,7 @@ void RectifiedLinearComponent::Backprop(
     in_deriv->CopyFromMat(out_value);
     in_deriv->ApplyHeaviside();
     in_deriv->MulElements(out_deriv);
+    RepairGradients(true, 0.1, 0.9, in_deriv);
   }
 }
 

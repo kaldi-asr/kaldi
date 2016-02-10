@@ -291,6 +291,12 @@ std::string NonlinearComponent::Info() const {
            << ", output-dim=" << OutputDim()
            << ", add-log-stddev=true";
 
+  if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
+    stream << ", self-repair-lower-threshold=" << self_repair_lower_threshold_;
+  if (self_repair_upper_threshold_ != BaseFloat(kUnsetThreshold))
+    stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
+  if (self_repair_scale_ != 0.0)
+    stream << ", self-repair-scale=" << self_repair_scale_;
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
@@ -333,29 +339,32 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
-  std::string tok; // TODO: remove back-compatibility code.
-  ReadToken(is, binary, &tok);
-  if (tok == "<ValueSum>") {
-    // this branch is for back compatibility.  TODO: delete it
-    // after Dec 2015.
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivSum>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    ExpectToken(is, binary, ostr_end.str());
-  } else {
-    // The new format is more readable as we write values that are normalized by
-    // the count.
-    KALDI_ASSERT(tok == "<ValueAvg>");
-    value_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<DerivAvg>");
-    deriv_sum_.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    ReadBasicType(is, binary, &count_);
-    value_sum_.Scale(count_);
-    deriv_sum_.Scale(count_);
-    ExpectToken(is, binary, ostr_end.str());
+  ExpectToken(is, binary, "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<SelfRepairLowerThreshold>") {
+    ReadBasicType(is, binary, &self_repair_lower_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairUpperThreshold>") {
+    ReadBasicType(is, binary, &self_repair_upper_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairScale>") {
+    ReadBasicType(is, binary, &self_repair_scale_);
+    ReadToken(is, binary, &token);
+  }
+  if (token != ostr_end.str()) {
+    KALDI_ERR << "Expected token " << ostr_end.str()
+              << ", got " << token;
   }
 }
 
@@ -380,20 +389,97 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   temp.Write(os, binary);
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
+  if (self_repair_lower_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairLowerThreshold>");
+    WriteBasicType(os, binary, self_repair_lower_threshold_);
+  }
+  if (self_repair_upper_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairUpperThreshold>");
+    WriteBasicType(os, binary, self_repair_upper_threshold_);
+  }
+  if (self_repair_scale_ != 0.0) {
+    WriteToken(os, binary, "<SelfRepairScale>");
+    WriteBasicType(os, binary, self_repair_scale_);
+  }
   WriteToken(os, binary, ostr_end.str());
 }
 
+NonlinearComponent::NonlinearComponent():
+    dim_(-1), count_(0.0),
+    self_repair_lower_threshold_(kUnsetThreshold),
+    self_repair_upper_threshold_(kUnsetThreshold),
+    self_repair_scale_(0.0) { }
+
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
     dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
-    count_(other.count_) { }
+    count_(other.count_),
+    self_repair_lower_threshold_(other.self_repair_lower_threshold_),
+    self_repair_upper_threshold_(other.self_repair_upper_threshold_),
+    self_repair_scale_(other.self_repair_scale_) { }
 
 void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 dim;
-  bool ok = cfl->GetValue("dim", &dim);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0)
+  bool ok = cfl->GetValue("dim", &dim_);
+  cfl->GetValue("self-repair-lower-threshold", &self_repair_lower_threshold_);
+  cfl->GetValue("self-repair-upper-threshold", &self_repair_upper_threshold_);
+  cfl->GetValue("self-repair-scale", &self_repair_scale_);
+  if (!ok || cfl->HasUnusedValues() || dim_ <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim);
+}
+
+
+void NonlinearComponent::RepairGradients(
+    bool measure_deriv,
+    BaseFloat default_lower_threshold,
+    BaseFloat default_upper_threshold,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  const CuVector<double> &stats_src = (measure_deriv ? deriv_sum_ : value_sum_);
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || stats_src.Dim() != dim_)
+    return;
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+  if (RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_ / repair_probability,
+      upper_threshold = (self_repair_upper_threshold_ == unset ?
+                         default_upper_threshold :
+                         self_repair_upper_threshold_) *
+      count_ / repair_probability;
+
+  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
+  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
+  CuSubMatrix<BaseFloat> stats_vec(storage, 0, 2, 0, dim_);
+  thresholds_vec(0) = -lower_threshold;
+  thresholds_vec(1) = -upper_threshold;
+  CuSubVector<BaseFloat> row0(stats_vec, 0);
+  CuSubVector<BaseFloat> row1(stats_vec, 1);
+
+  row0.CopyFromVec(stats_src);
+  row1.CopyFromVec(row0);
+  stats_vec.AddVecToCols(1.0, thresholds_vec, 1.0);
+  // now row0 equals stats - lower_threshold, and
+  //     row1 equals stats - upper_threshold.
+  stats_vec.ApplyHeaviside();
+  // now row0 equals (stats > lower_threshold ? 1 : 0), and
+  //     row1 equals (stats > upper_threshold ? 1 : 0).
+  // what we want is:
+  // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
+  //                         (stats > upper_threshold ? -1 : 0)).
+  //
+  // we can get these in stats_vec.Row(0) by computing:
+  // -self_repair_scale * (stats_vec.Row(1)  + stats_vec.Row(0) - 1).
+  row0.AddVec(1.0, row1, 1.0);
+  row0.Add(-1.0);
+  row0.Scale(-self_repair_scale_);
+  in_deriv->AddVecToRows(1.0, row0, 1.0);
 }
 
 } // namespace nnet3
