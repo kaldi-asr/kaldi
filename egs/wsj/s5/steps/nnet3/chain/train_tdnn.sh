@@ -42,12 +42,15 @@ xent_regularize=0.0
 frames_per_iter=800000  # each iteration of training, see this many [input]
                         # frames per job.  This option is passed to get_egs.sh.
                         # Aim for about a minute of training time
-right_tolerance=10
-left_tolerance=5
+right_tolerance=10  # tolerance at the same frame-rate as the alignment directory.
+left_tolerance=5    # tolerance at the same frame-rate as the alignment directory.
 denominator_scale=1.0 # relates to tombsone stuff.
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
-frame_subsampling_factor=3  # controls reduced frame-rate at the output.
+frame_subsampling_factor=3  # ratio of frames-per-second of features we train
+                            # on, to chain model's output
+alignment_subsampling_factor=3  # ratio of frames-per-second of input alignments
+                                # to chain model's output
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 max_param_change=2.0
@@ -287,6 +290,7 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
       --left-tolerance "$left_tolerance" \
       --frames-per-eg $frames_per_eg \
       --frame-subsampling-factor $frame_subsampling_factor \
+      --alignment-subsampling-factor $alignment_subsampling_factor \
       $data $dir $latdir $dir/egs || exit 1;
 fi
 
@@ -511,14 +515,7 @@ while [ $x -lt $num_iters ]; do
         k=$[$num_archives_processed + $n - 1]; # k is a zero-based index that we'll derive
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
-        epoch=$[$k/$num_archives]  # this epoch-index reflects how many times we
-                                   # have gone over the archives.. it counts up to
-                                   # approximately num_epochs * frame_subsampling_factor.
-
-        # the following line is a bit like k%frame_subsampling_factor, but it
-        # ensures that we eventually cycle through each frame_shift of each
-        # archive.
-        frame_shift=$[($archive+$epoch)%$frame_subsampling_factor];
+        frame_shift=$[($k/$num_archives)%$frame_subsampling_factor];
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-chain-train --apply-deriv-weights=$apply_deriv_weights \
