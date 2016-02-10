@@ -5,7 +5,7 @@ include ../kaldi.mk
 
 BINFILES = align-equal align-equal-compiled acc-tree-stats \
         show-alignments compile-questions cluster-phones \
-        compute-wer compute-confidence-interval-wer make-h-transducer \
+        compute-wer compute-wer-confidence make-h-transducer \
         add-self-loops convert-ali \
         compile-train-graphs compile-train-graphs-fsts arpa2fst \
         make-pdf-to-tid-transducer make-ilabel-transducer show-transitions \
