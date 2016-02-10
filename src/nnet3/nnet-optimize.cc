@@ -28,7 +28,7 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<NnetOptimizeOptions>");
   ExpectToken(is, binary, "<Optimize>");
   ReadBasicType(is, binary, &optimize);
-  ExpectToken(is, binary, "<Consolidate_model_update>");
+  ExpectToken(is, binary, "<ConsolidateModelUpdate>");
   ReadBasicType(is, binary, &consolidate_model_update);
   ExpectToken(is, binary, "<PropagateInPlace>");
   ReadBasicType(is, binary, &propagate_in_place);
@@ -59,7 +59,7 @@ void NnetOptimizeOptions::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<NnetOptimizeOptions>");
   WriteToken(os, binary, "<Optimize>");
   WriteBasicType(os, binary, optimize);
-  WriteToken(os, binary, "<Consolidate_model_update>");
+  WriteToken(os, binary, "<ConsolidateModelUpdate>");
   WriteBasicType(os, binary, consolidate_model_update);
   WriteToken(os, binary, "<PropagateInPlace>");
   WriteBasicType(os, binary, propagate_in_place);
@@ -504,7 +504,6 @@ void CachingOptimizingCompiler::UpdateCache(const ComputationRequest *request,
     access_queue_.pop_front();
   }
   AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
-  KALDI_LOG << "inserting new pair";
   computation_cache_.insert(std::make_pair(request,
                             std::make_pair(computation, ait)));
 }

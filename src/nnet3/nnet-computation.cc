@@ -225,6 +225,7 @@ void NnetComputation::SubMatrixInfo::Write(std::ostream &os, bool binary) const 
 
 void NnetComputation::Command::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<Command>");
+  ExpectToken(is, binary, "<CommandType>");
   if (binary) {
     int32 command_type_int;
     ReadBasicType(is, binary, &command_type_int);
@@ -276,11 +277,24 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       KALDI_ERR << "Un-handled command type.";
     }
   }
+  ExpectToken(is, binary, "<Arg1>");
+  ReadBasicType(is, binary, &arg1);
+  ExpectToken(is, binary, "<Arg2>");
+  ReadBasicType(is, binary, &arg2);
+  ExpectToken(is, binary, "<Arg3>");
+  ReadBasicType(is, binary, &arg3);
+  ExpectToken(is, binary, "<Arg4>");
+  ReadBasicType(is, binary, &arg4);
+  ExpectToken(is, binary, "<Arg5>");
+  ReadBasicType(is, binary, &arg5);
+  ExpectToken(is, binary, "<Arg6>");
+  ReadBasicType(is, binary, &arg6);
   ExpectToken(is, binary, "</Command>");
 }
 
 void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<Command>");
+  WriteToken(os, binary, "<CommandType>");
   if (binary) {
     WriteBasicType(os, binary, static_cast<int32>(command_type));
   } else {
@@ -350,6 +364,18 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         KALDI_ERR << "Un-handled command type.";
     }
   }
+  WriteToken(os, binary, "<Arg1>");
+  WriteBasicType(os, binary, arg1);
+  WriteToken(os, binary, "<Arg2>");
+  WriteBasicType(os, binary, arg2);
+  WriteToken(os, binary, "<Arg3>");
+  WriteBasicType(os, binary, arg3);
+  WriteToken(os, binary, "<Arg4>");
+  WriteBasicType(os, binary, arg4);
+  WriteToken(os, binary, "<Arg5>");
+  WriteBasicType(os, binary, arg5);
+  WriteToken(os, binary, "<Arg6>");
+  WriteBasicType(os, binary, arg6);
   WriteToken(os, binary, "</Command>");
 }
 

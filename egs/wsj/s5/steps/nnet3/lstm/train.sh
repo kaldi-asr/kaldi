@@ -560,10 +560,12 @@ while [ $x -lt $num_iters ]; do
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
+      cache_io_opts="--read-cache=$dir/cache.$x"
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
+      cache_io_opts=""
     fi
     if $do_average; then
       this_num_chunk_per_minibatch=$num_chunk_per_minibatch
@@ -594,9 +596,7 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         if [ $n -eq 1 ]; then
-          cache_io_opts="--read-cache=$dir/cache.$x --write-cache=$dir/cache.$[$x+1]" # opts for cache (storing pairs of nnet-computations and compute-requests) I/O
-        else 
-          cache_io_opts="--read-cache=$dir/cache.$x"
+          cache_io_opts=$cache_io_opts" --write-cache=$dir/cache.$[$x+1]" # opts for cache (storing pairs of nnet-computations and compute-requests) I/O
         fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts $cache_io_opts --print-interval=10 --momentum=$momentum \
