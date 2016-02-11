@@ -1,6 +1,7 @@
 // nnet3/nnet-optimize.h
 
-// Copyright 2015    Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -174,6 +175,11 @@ class CachingOptimizingCompiler {
   // if the capacity is reached.
   void UpdateCache(const ComputationRequest *request,
                    NnetComputation *computation);
+
+  void ReadCache(std::istream &is, bool binary);
+
+  void WriteCache(std::ostream &os, bool binary) const;
+
   // This function updates the recently accessed queue.
   void UpdateAccessQueue(CacheType::iterator &cit);
   // This configuration value determines how many unique Computations
