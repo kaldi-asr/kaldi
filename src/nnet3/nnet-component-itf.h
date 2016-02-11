@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -100,6 +101,11 @@ class ComponentPrecomputedIndexes {
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
   virtual void Write(std::ostream &os, bool binary) const = 0;
   virtual void Read(std::istream &os, bool binary) = 0;
+  virtual std::string Type() const = 0;
+  static ComponentPrecomputedIndexes* ReadNew(std::istream &is, bool binary);
+  // cpi stands for component_precomputed_indexes
+  static ComponentPrecomputedIndexes* NewComponentPrecomputedIndexesOfType(
+                                           const std::string &cpi_type);
   virtual ~ComponentPrecomputedIndexes() { }
 };
 

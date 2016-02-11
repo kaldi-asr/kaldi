@@ -33,6 +33,35 @@
 namespace kaldi {
 namespace nnet3 {
 
+ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::ReadNew(std::istream &is,
+                                                                  bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token); // e.g. "<DistributePrecomputedComponentIndexes>".
+  token.erase(0, 1); // erase "<".
+  token.erase(token.length()-1); // erase ">".
+  ComponentPrecomputedIndexes *ans = NewComponentPrecomputedIndexesOfType(token);
+  if (!ans)
+   KALDI_ERR << "Unknown ComponentPrecomputedIndexes type " << token;
+  ans->Read(is, binary);
+  return ans;
+}
+
+ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecomputedIndexesOfType(
+                                           const std::string &cpi_type) {
+  ComponentPrecomputedIndexes *ans = NULL;
+  if (cpi_type == "DistributeComponentPrecomputedIndexes") {
+    ans = new DistributeComponentPrecomputedIndexes();
+  } else if (cpi_type == "StatisticsExtractionComponentPrecomputedIndexes") {
+    ans = new StatisticsExtractionComponentPrecomputedIndexes();
+  } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
+    ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  }  
+  if (ans != NULL) {
+    KALDI_ASSERT(cpi_type == ans->Type());
+  }
+  return ans;
+}
+
 // static
 Component* Component::ReadNew(std::istream &is, bool binary) {
   std::string token;

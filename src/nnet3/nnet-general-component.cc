@@ -84,29 +84,18 @@ bool DistributeComponent::IsComputable(
   return true;
 }
 
-class DistributeComponentPrecomputedIndexes:
-      public ComponentPrecomputedIndexes {
- public:
+void DistributeComponentPrecomputedIndexes::Write(std::ostream &ostream, bool binary) const {
+  WriteToken(ostream, binary, "<DistributeComponentPrecomputedIndexes>");
+  WriteToken(ostream, binary, "<Pairs>");
+  WriteIntegerPairVector(ostream, binary, pairs);
+  WriteToken(ostream, binary, "</DistributeComponentPrecomputedIndexes>");
+}
 
-  // each pair is a pair (row, dim_offset), and by
-  // computing (input.Data() + row * input.Stride() + dim_offset)
-  // we get an address that points to the correct input location.
-  std::vector<std::pair<int32, int32> > pairs;
-
-  // this class has a virtual destructor so it can be deleted from a pointer
-  // to ComponentPrecomputedIndexes.
-  virtual ~DistributeComponentPrecomputedIndexes() { }
-
-  virtual ComponentPrecomputedIndexes* Copy() const {
-    return new DistributeComponentPrecomputedIndexes(*this);
-  }
-  void Write(std::ostream &os, bool binary) const {
-    KALDI_ERR << "Write not implemented for this class";
-  }
-  void Read(std::istream &is, bool binary) {
-    KALDI_ERR << "Read not implemented for this class";
-  }
-};
+void DistributeComponentPrecomputedIndexes::Read(std::istream &istream, bool binary) {
+  ExpectOneOrTwoTokens(istream, binary, "<DistributeComponentPrecomputedIndexes>", "<Pairs>");
+  ReadIntegerPairVector(istream, binary, &pairs);
+  ExpectToken(istream, binary, "</DistributeComponentPrecomputedIndexes>");
+}
 
 // virtual
 ComponentPrecomputedIndexes* DistributeComponent::PrecomputeIndexes(
@@ -261,62 +250,36 @@ void DistributeComponent::Read(std::istream &is, bool binary) {
 }
 
 
-class StatisticsExtractionComponentPrecomputedIndexes:
-      public ComponentPrecomputedIndexes {
- public:
-  // While creating the output we sum over row ranges of the input.
-  // forward_indexes.Dim() equals the number of rows of the output, and each
-  // element is a (start, end) range of inputs, that is summed over.
-  CuArray<Int32Pair> forward_indexes;
+void StatisticsExtractionComponentPrecomputedIndexes::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<StatisticsExtractionComponentPrecomputedIndexes>");
+  WriteToken(os, binary, "<ForwardIndexes>");
+  std::vector<std::pair<int32, int32> > pairs_cpu;
+  CopyPairVector(forward_indexes, &pairs_cpu);
+  WriteIntegerPairVector(os, binary, pairs_cpu);
+  WriteToken(os, binary, "<Counts>");
+  counts.Write(os, binary);
+  WriteToken(os, binary, "<BackwardIndexes>");
+  std::vector<int32> backward_indexes_cpu;
+  backward_indexes.CopyToVec(&backward_indexes_cpu);
+  WriteIntegerVector(os, binary, backward_indexes_cpu);
+  WriteToken(os, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
+}
 
-  // this vector stores the number of inputs for each output.  Normally this will be
-  // the same as the component's output_period_ / input_period_, but could be less
-  // due to edge effects at the utterance boundary.
-  CuVector<BaseFloat> counts;
-
-  // Each input row participates in exactly one output element, and
-  // 'backward_indexes' identifies which row of the output each row
-  // of the input is part of.  It's used in backprop.
-  CuArray<int32> backward_indexes;
-
-
-  ComponentPrecomputedIndexes *Copy() const {
-    return new StatisticsExtractionComponentPrecomputedIndexes(*this);
-  }
-
-  virtual void Write(std::ostream &os, bool binary) const {
-    WriteToken(os, binary, "<StatisticsExtractionComponentPrecomputedIndexes>");
-    WriteToken(os, binary, "<ForwardIndexes>");
-    std::vector<std::pair<int32, int32> > pairs_cpu;
-    CopyPairVector(forward_indexes, &pairs_cpu);
-    WriteIntegerPairVector(os, binary, pairs_cpu);
-    WriteToken(os, binary, "<Counts>");
-    counts.Write(os, binary);
-    WriteToken(os, binary, "<BackwardIndexes>");
-    std::vector<int32> backward_indexes_cpu;
-    backward_indexes.CopyToVec(&backward_indexes_cpu);
-    WriteIntegerVector(os, binary, backward_indexes_cpu);
-    WriteToken(os, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
-  }
-  virtual void Read(std::istream &is, bool binary) {
-    ExpectOneOrTwoTokens(is, binary,
-                         "<StatisticsExtractionComponentPrecomputedIndexes>",
-                         "<ForwardIndexes>");
-    std::vector<std::pair<int32, int32> > pairs_cpu;
-    ReadIntegerPairVector(is, binary, &pairs_cpu);
-    CopyPairVector(pairs_cpu, &forward_indexes);
-    ExpectToken(is, binary, "<Counts>");
-    counts.Read(is, binary);
-    ExpectToken(is, binary, "<BackwardIndexes>");
-    std::vector<int32> backward_indexes_cpu;
-    ReadIntegerVector(is, binary, &backward_indexes_cpu);
-    backward_indexes.CopyFromVec(backward_indexes_cpu);
-    ExpectToken(is, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
-  }
- private:
-  virtual ~StatisticsExtractionComponentPrecomputedIndexes() { }
-};
-
+void StatisticsExtractionComponentPrecomputedIndexes::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary,
+                       "<StatisticsExtractionComponentPrecomputedIndexes>",
+                       "<ForwardIndexes>");
+  std::vector<std::pair<int32, int32> > pairs_cpu;
+  ReadIntegerPairVector(is, binary, &pairs_cpu);
+  CopyPairVector(pairs_cpu, &forward_indexes);
+  ExpectToken(is, binary, "<Counts>");
+  counts.Read(is, binary);
+  ExpectToken(is, binary, "<BackwardIndexes>");
+  std::vector<int32> backward_indexes_cpu;
+  ReadIntegerVector(is, binary, &backward_indexes_cpu);
+  backward_indexes.CopyFromVec(backward_indexes_cpu);
+  ExpectToken(is, binary, "</StatisticsExtractionComponentPrecomputedIndexes>");
+}
 
 ComponentPrecomputedIndexes*
 StatisticsExtractionComponent::PrecomputeIndexes(
@@ -557,57 +520,30 @@ void StatisticsExtractionComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</StatisticsExtractionComponent>");
 }
 
+void StatisticsPoolingComponentPrecomputedIndexes::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<StatisticsPoolingComponentPrecomputedIndexes>");
+  WriteToken(os, binary, "<ForwardIndexes>");
+  std::vector<std::pair<int32, int32> > indexes_cpu;
+  CopyPairVector(forward_indexes, &indexes_cpu);
+  WriteIntegerPairVector(os, binary, indexes_cpu);
+  WriteToken(os, binary, "<BackwardIndexes>");
+  CopyPairVector(backward_indexes, &indexes_cpu);
+  WriteIntegerPairVector(os, binary, indexes_cpu);
+  WriteToken(os, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
+}
 
-class StatisticsPoolingComponentPrecomputedIndexes:
-      public ComponentPrecomputedIndexes {
- public:
-
-  // in the first stage of creating the output we sum over row ranges of
-  // the input.  forward_indexes.Dim() equals the number of rows of the
-  // output, and each element is a (start, end) range of inputs, that is
-  // summed over.
-  CuArray<Int32Pair> forward_indexes;
-
-  // backward_indexes contains the same information as forward_indexes, but in a
-  // different format.  backward_indexes.Dim() is the same as the number of rows
-  // of input, and each element contains the (start,end) of the range of outputs
-  // for which this input index appears as an element of the sum for that
-  // output.  This is possible because of the way the inputs and outputs are
-  // ordered and because of how we select the elments to appear in the sum using
-  // a window.  This quantity is used in backprop.
-  CuArray<Int32Pair> backward_indexes;
-
-  virtual ~StatisticsPoolingComponentPrecomputedIndexes() { }
-
-  ComponentPrecomputedIndexes *Copy() const {
-    return new StatisticsPoolingComponentPrecomputedIndexes(*this);
-  }
-
-  virtual void Write(std::ostream &os, bool binary) const {
-    WriteToken(os, binary, "<StatisticsPoolingComponentPrecomputedIndexes>");
-    WriteToken(os, binary, "<ForwardIndexes>");
-    std::vector<std::pair<int32, int32> > indexes_cpu;
-    CopyPairVector(forward_indexes, &indexes_cpu);
-    WriteIntegerPairVector(os, binary, indexes_cpu);
-    WriteToken(os, binary, "<BackwardIndexes>");
-    CopyPairVector(backward_indexes, &indexes_cpu);
-    WriteIntegerPairVector(os, binary, indexes_cpu);
-    WriteToken(os, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
-  }
-  virtual void Read(std::istream &is, bool binary) {
-    ExpectOneOrTwoTokens(is, binary,
-                         "<StatisticsPoolingComponentPrecomputedIndexes>",
-                         "<ForwardIndexes>");
-    std::vector<std::pair<int32, int32> > indexes_cpu;
-    ReadIntegerPairVector(is, binary, &indexes_cpu);
-    CopyPairVector(indexes_cpu, &forward_indexes);
-    ExpectToken(is, binary, "<BackwardIndexes>");
-    ReadIntegerPairVector(is, binary, &indexes_cpu);
-    CopyPairVector(indexes_cpu, &backward_indexes);
-    ExpectToken(is, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
-  }
-};
-
+void StatisticsPoolingComponentPrecomputedIndexes::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary,
+                       "<StatisticsPoolingComponentPrecomputedIndexes>",
+                       "<ForwardIndexes>");
+  std::vector<std::pair<int32, int32> > indexes_cpu;
+  ReadIntegerPairVector(is, binary, &indexes_cpu);
+  CopyPairVector(indexes_cpu, &forward_indexes);
+  ExpectToken(is, binary, "<BackwardIndexes>");
+  ReadIntegerPairVector(is, binary, &indexes_cpu);
+  CopyPairVector(indexes_cpu, &backward_indexes);
+  ExpectToken(is, binary, "</StatisticsPoolingComponentPrecomputedIndexes>");
+}
 
 void StatisticsPoolingComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("input-dim", &input_dim_);

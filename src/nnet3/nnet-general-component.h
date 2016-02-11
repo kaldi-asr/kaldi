@@ -126,6 +126,30 @@ class DistributeComponent: public Component {
 
 };
 
+class DistributeComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // each pair is a pair (row, dim_offset), and by
+  // computing (input.Data() + row * input.Stride() + dim_offset)
+  // we get an address that points to the correct input location.
+  std::vector<std::pair<int32, int32> > pairs;
+
+  // this class has a virtual destructor so it can be deleted from a pointer
+  // to ComponentPrecomputedIndexes.
+  virtual ~DistributeComponentPrecomputedIndexes() { }
+
+  virtual ComponentPrecomputedIndexes* Copy() const {
+    return new DistributeComponentPrecomputedIndexes(*this);
+  }
+  
+  virtual void Write(std::ostream &ostream, bool binary) const;
+  
+  virtual void Read(std::istream &istream, bool binary);
+  
+  virtual std::string Type() const { return "DistributeComponentPrecomputedIndexes"; }
+};
+
 /*
   Class StatisticsExtractionComponent is used together with
   StatisticsPoolingComponent to extract moving-average mean and
@@ -244,6 +268,36 @@ class StatisticsExtractionComponent: public Component {
   bool include_variance_;
 };
 
+class StatisticsExtractionComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+  // While creating the output we sum over row ranges of the input.
+  // forward_indexes.Dim() equals the number of rows of the output, and each
+  // element is a (start, end) range of inputs, that is summed over.
+  CuArray<Int32Pair> forward_indexes;
+
+  // this vector stores the number of inputs for each output.  Normally this will be
+  // the same as the component's output_period_ / input_period_, but could be less
+  // due to edge effects at the utterance boundary.
+  CuVector<BaseFloat> counts;
+
+  // Each input row participates in exactly one output element, and
+  // 'backward_indexes' identifies which row of the output each row
+  // of the input is part of.  It's used in backprop.
+  CuArray<int32> backward_indexes;
+
+  ComponentPrecomputedIndexes *Copy() const {
+    return new StatisticsExtractionComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &os, bool binary) const;
+  
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual std::string Type() const { return "StaticticsExtractionComponentPrecomputedIndexes"; }
+ private:
+  virtual ~StatisticsExtractionComponentPrecomputedIndexes() { }
+};
 
 /*
   Class StatisticsPoolingComponent is used together with
@@ -353,7 +407,37 @@ class StatisticsPoolingComponent: public Component {
   BaseFloat variance_floor_;
 };
 
+class StatisticsPoolingComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
 
+  // in the first stage of creating the output we sum over row ranges of
+  // the input.  forward_indexes.Dim() equals the number of rows of the
+  // output, and each element is a (start, end) range of inputs, that is
+  // summed over.
+  CuArray<Int32Pair> forward_indexes;
+
+  // backward_indexes contains the same information as forward_indexes, but in a
+  // different format.  backward_indexes.Dim() is the same as the number of rows
+  // of input, and each element contains the (start,end) of the range of outputs
+  // for which this input index appears as an element of the sum for that
+  // output.  This is possible because of the way the inputs and outputs are
+  // ordered and because of how we select the elments to appear in the sum using
+  // a window.  This quantity is used in backprop.
+  CuArray<Int32Pair> backward_indexes;
+
+  virtual ~StatisticsPoolingComponentPrecomputedIndexes() { }
+
+  ComponentPrecomputedIndexes *Copy() const {
+    return new StatisticsPoolingComponentPrecomputedIndexes(*this);
+  }
+  
+  virtual void Write(std::ostream &os, bool binary) const;
+  
+  virtual void Read(std::istream &is, bool binary);
+  
+  virtual std::string Type() const { return "StaticticsPoolingComponentPrecomputedIndexes"; }
+};
 
 } // namespace nnet3
 } // namespace kaldi
