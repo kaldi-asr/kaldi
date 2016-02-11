@@ -174,10 +174,10 @@ class CachingOptimizingCompiler {
     ComputationRequestPtrEqual> CacheType;
   CacheType computation_cache_;
 
-  // This function updates the computation cache. It is called within
-  // Compile(). It insert the request to the end of the queue, and purge
-  // the least-recently-accessed request from the queue and the cache
-  // if the capacity is reached.
+  // This function updates the computation cache. It is called within Compile().
+  // It takes ownership of the pointers.  It inserts the request at the end of
+  // the queue, and purges the least-recently-accessed request from the queue and
+  // the cache if the capacity is reached.
   void UpdateCache(const ComputationRequest *request,
                    NnetComputation *computation);
   // This function updates the recently accessed queue.

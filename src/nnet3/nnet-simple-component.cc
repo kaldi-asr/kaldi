@@ -442,7 +442,7 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
-    RepairGradients(false, 0.05, 0.95, in_deriv);
+    RepairGradients(false, 0.025, 0.975, in_deriv);
   }
 }
 
@@ -635,7 +635,7 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
-    RepairGradients(false, -0.9, 0.9, in_deriv);
+    RepairGradients(false, -0.95, 0.95, in_deriv);
   }
 }
 
@@ -673,17 +673,18 @@ void RectifiedLinearComponent::Backprop(
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
-    in_deriv->CopyFromMat(out_value);
-    in_deriv->ApplyHeaviside();
+    in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
-    RepairGradients(true, 0.1, 0.9, in_deriv);
+    RepairGradients(true, 0.05, 0.95, in_deriv);
   }
 }
 
 void RectifiedLinearComponent::StoreStats(
     const CuMatrixBase<BaseFloat> &out_value) {
-  CuMatrix<BaseFloat> temp_deriv(out_value);
-  temp_deriv.ApplyHeaviside();
+  CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(),
+                                 out_value.NumCols(),
+                                 kUndefined);
+  temp_deriv.Heaviside(out_value);
   StoreStatsInternal(out_value, &temp_deriv);
 }
 

@@ -254,6 +254,11 @@ class CuMatrixBase {
   /// element by element, x = 1 / (1 + exp(-x))
   void Sigmoid(const CuMatrixBase<Real> &src);
 
+  /// Set each element to the Heaviside function of the corresponding element
+  /// of "src", which we define as the function (x > 0 ? 1.0 : 0.0) [note:
+  /// in general, there are different ways to deal with the situation when x==0.]
+  void Heaviside(const CuMatrixBase<Real> &src);
+
   /// Apply the function y = log(1 + exp(x)), to each element.
   /// Note: the derivative of this function is the sigmoid function.
   /// This is like a soft ReLU.
@@ -336,7 +341,9 @@ class CuMatrixBase {
   ///< The output will be set zero. If include_sign is true, it will
   ///< multiply the result by the sign of the input.
   void ApplyPowAbs(Real power, bool include_sign=false);
-  void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
+  /// For each element, sets x = (x > 0 ? 1.0 : 0.0).
+  /// See also Heaviside().
+  void ApplyHeaviside();
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();

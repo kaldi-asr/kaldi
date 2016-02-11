@@ -2025,6 +2025,26 @@ void CuMatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::Heaviside(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_heaviside(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+                   src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().Heaviside(src.Mat());
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyExp() {

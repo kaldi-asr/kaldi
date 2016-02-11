@@ -1969,6 +1969,19 @@ void MatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
+template<typename Real>
+void MatrixBase<Real>::Heaviside(const MatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+  MatrixIndexT num_rows = num_rows_, num_cols = num_cols_;
+  Real *row_data = data_;
+  const Real *src_row_data = src.Data();
+  for (MatrixIndexT row = 0; row < num_rows;
+       row++,row_data += stride_, src_row_data += src.stride_) {
+    for (MatrixIndexT col = 0; col < num_cols; col++)
+      row_data[col] = (src_row_data[col] > 0 ? 1.0 : 0.0);
+  }
+}
+
 
 template<typename Real>
 bool MatrixBase<Real>::Power(Real power) {

@@ -457,6 +457,12 @@ class MatrixBase {
   /// Set each element to the sigmoid of the corresponding element of "src".
   void Sigmoid(const MatrixBase<Real> &src);
 
+  /// Sets each element to the Heaviside step function (x > 0 ? 1 : 0) of the
+  /// corresponding element in "src".  Note: in general you can make different
+  /// choices for x = 0, but for now please leave it as it (i.e. returning zero)
+  /// because it affects the RectifiedLinearComponent in the neural net code.
+  void Heaviside(const MatrixBase<Real> &src);
+
   /// Set each element to y = log(1 + exp(x))
   void SoftHinge(const MatrixBase<Real> &src);
 
