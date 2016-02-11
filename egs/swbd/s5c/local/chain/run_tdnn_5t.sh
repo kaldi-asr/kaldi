@@ -1,38 +1,23 @@
 #!/bin/bash
 
-# _5o is as _5n but adding an extra splicing layer and increasing the
-# splice-width slightly on the 1st layer, to get closer to the context in 5n;
-# having one more layer running at double-frequency, and reverting the frame-length to
-# the same as in the baseline (25ms) to avoid sacrificing frequency resolution.
+# _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
+# up), from 5000 to 3500.
 
-# Objective functions improve but WER change is quite small vs 5n (~0.1%).  so
-# not clear that the extra time is worth it (it's noticeably slower to train as
-# that extra layer is at a higher sampling rate).
-#
-#System                       5j        5n        5o
-#WER on train_dev(tg)      17.59     16.85     16.83
-#WER on train_dev(fg)      16.33     15.67     15.60
-#WER on eval2000(tg)        19.1      19.1      18.8
-#WER on eval2000(fg)        17.5      17.3      17.2
-#Final train prob      -0.114691 -0.116341 -0.111613
-#Final valid prob      -0.130761 -0.130884 -0.126765
+# _5s is as _5r but increasing the jesus-forward-output-dim to the intermediate
+# value of 1700 (between 1500 and 1800), and also a bug-fix in the self-repair
+# code to a bug which was doubling the thresholds so there was, in effect,
+# no upper threshold.  I stopped the p,q,r runs after I found this, but in
+# configuring this run I'm bearing in mind the train and valid probs from the
+# p,q,r runs.
 
-# _5n is as _5j (also omitting the iVectors), but using double the input frame
-# rate from 10 to 5 ms (and reducing frame width from 25 to 20), and modifying
-# the splice indexes accordingly
+# _5r is as _5q but also reducing --jesus-hidden-dim from 7500 to 5000.
 
-# _5j is as _5e, but omitting the iVectors.
+# _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
+# to compensate for the fact that more of the output dimensions are now being
+# usefully used.
 
-# Definitely worse, although curiously, there is very little effect on the valid prob.
-#./compare_wer.sh 5e 5j
-#System                       5e        5j
-#WER on train_dev(tg)      15.43     17.59
-#WER on train_dev(fg)      14.32     16.33
-#WER on eval2000(tg)        17.3      19.1
-#WER on eval2000(fg)        15.5      17.5
-#Final train prob      -0.110056 -0.114691
-#Final valid prob      -0.129184 -0.130761
-
+# _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
+# ReLUs that are over or under-saturated.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
@@ -306,11 +291,10 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5o # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5t # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
-num_epochs=2  # this is about the same amount of compute as the normal 4, since one
-              # epoch encompasses all frame-shifts of the data.
+num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
@@ -319,7 +303,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=300 # doubling it, since we have half the frame rate.
+frames_per_eg=150
 remove_egs=false
 
 # End configuration section.
@@ -390,20 +374,7 @@ if [ $stage -le 11 ]; then
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
-# Generate double-frame-rate version of the data.
 if [ $stage -le 12 ]; then
-  mfccdir=mfcc
-  for dataset in eval2000 train_dev ${train_set}; do
-    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires_dbl2
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires_dbl2.conf \
-        data/${dataset}_hires_dbl2 exp/make_hires_dbl2/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires_dbl2 exp/make_hires_dbl2/$dataset $mfccdir;
-    utils/fix_data_dir.sh data/${dataset}_hires_dbl2  # remove segments with problems
-  done
-fi
-
-
-if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -412,15 +383,14 @@ if [ $stage -le 13 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --frame-subsampling-factor 6 \
-    --alignment-subsampling-factor 3 \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -2,-1,0,1,2 -2,0,2 -4,-2,0,2 -6,0,6 -6,0,6 -12,-6,0" \
+    --egs-dir exp/chain/tdnn_2y_sp/egs \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 3500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
-    --frames-per-iter 2400000 \
+    --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
@@ -428,18 +398,16 @@ if [ $stage -le 13 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --feat-type raw \
+    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires_dbl2 $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
-
- echo "0.005" > $dir/frame_shift # this lets the sclite decoding script know
-                                 # what the frame shift was, in seconds.
+    data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 13 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -448,16 +416,17 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 15 ]; then
+if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
          --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-         $graph_dir data/${decode_set}_hires_dbl2 $dir/decode_${decode_set}_${decode_suff} || exit 1;
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires_dbl2 \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
