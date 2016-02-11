@@ -448,37 +448,39 @@ void NonlinearComponent::RepairGradients(
   BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
                                default_lower_threshold :
                                self_repair_lower_threshold_) *
-      count_ / repair_probability,
+      count_,
       upper_threshold = (self_repair_upper_threshold_ == unset ?
                          default_upper_threshold :
                          self_repair_upper_threshold_) *
-      count_ / repair_probability;
+      count_;
 
   CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
   CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
-  CuSubMatrix<BaseFloat> stats_vec(storage, 0, 2, 0, dim_);
+  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
   thresholds_vec(0) = -lower_threshold;
   thresholds_vec(1) = -upper_threshold;
-  CuSubVector<BaseFloat> row0(stats_vec, 0);
-  CuSubVector<BaseFloat> row1(stats_vec, 1);
+  CuSubVector<BaseFloat> row0(stats_mat, 0);
+  CuSubVector<BaseFloat> row1(stats_mat, 1);
 
   row0.CopyFromVec(stats_src);
   row1.CopyFromVec(row0);
-  stats_vec.AddVecToCols(1.0, thresholds_vec, 1.0);
+  stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
   // now row0 equals stats - lower_threshold, and
   //     row1 equals stats - upper_threshold.
-  stats_vec.ApplyHeaviside();
+  stats_mat.ApplyHeaviside();
   // now row0 equals (stats > lower_threshold ? 1 : 0), and
   //     row1 equals (stats > upper_threshold ? 1 : 0).
   // what we want is:
   // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
   //                         (stats > upper_threshold ? -1 : 0)).
   //
-  // we can get these in stats_vec.Row(0) by computing:
-  // -self_repair_scale * (stats_vec.Row(1)  + stats_vec.Row(0) - 1).
+  // we can get these in stats_mat.Row(0) by computing:
+  // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
   row0.AddVec(1.0, row1, 1.0);
   row0.Add(-1.0);
-  row0.Scale(-self_repair_scale_);
+  // [actually we need to divide by repair_probability also, to
+  //  correct for the fact that we only do this on some frames.]
+  row0.Scale(-self_repair_scale_ / repair_probability);
   in_deriv->AddVecToRows(1.0, row0, 1.0);
 }
 

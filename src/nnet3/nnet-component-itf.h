@@ -452,7 +452,7 @@ class NonlinearComponent: public Component {
 
   // We implement InitFromConfig at this level.
   // supported config parameters and their defaults:
-  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000 \
+  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000
   //     self-repair-constant=0.0
   // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
   // quantities to the derivative to attempt to keep the average value (for
