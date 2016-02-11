@@ -560,12 +560,13 @@ while [ $x -lt $num_iters ]; do
       cur_num_hidden_layers=$[1+$x/$add_layers_period]
       config=$dir/configs/layer$cur_num_hidden_layers.config
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl - | nnet3-init --srand=$x - $config - |"
-      cache_io_opts="--read-cache=$dir/cache.$x"
+      cache_read_opt="" # an option for writing cache (storing pairs of nnet-computations
+                        # and computation-requests) during training.
     else
       do_average=true
       if [ $x -eq 0 ]; then do_average=false; fi # on iteration 0, pick the best, don't average.
       raw="nnet3-am-copy --raw=true --learning-rate=$this_learning_rate $dir/$x.mdl -|"
-      cache_io_opts=""
+      cache_read_opt="--read-cache=$dir/cache.$x"
     fi
     if $do_average; then
       this_num_chunk_per_minibatch=$num_chunk_per_minibatch
@@ -596,10 +597,14 @@ while [ $x -lt $num_iters ]; do
                                                # the other indexes from.
         archive=$[($k%$num_archives)+1]; # work out the 1-based archive index.
         if [ $n -eq 1 ]; then
-          cache_io_opts=$cache_io_opts" --write-cache=$dir/cache.$[$x+1]" # opts for cache (storing pairs of nnet-computations and compute-requests) I/O
+          # an option for writing cache (storing pairs of nnet-computations and
+          # computation-requests) during training.
+          cache_write_opt=" --write-cache=$dir/cache.$[$x+1]"
+        else
+          cache_write_opt=""
         fi
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
-          nnet3-train $parallel_train_opts $cache_io_opts --print-interval=10 --momentum=$momentum \
+          nnet3-train $parallel_train_opts $cache_read_opt $cache_write_opt --print-interval=10 --momentum=$momentum \
           --max-param-change=$max_param_change \
           --optimization.min-deriv-time=$min_deriv_time "$raw" \
           "ark:nnet3-copy-egs $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_num_chunk_per_minibatch --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
@@ -646,9 +651,9 @@ while [ $x -lt $num_iters ]; do
       rm $dir/$[$x-1].mdl
     fi
   fi
+  rm $dir/cache.$x 2>/dev/null 
   x=$[$x+1]
   num_archives_processed=$[$num_archives_processed+$this_num_jobs]
-  rm $dir/cache.$x
 done
 
 
