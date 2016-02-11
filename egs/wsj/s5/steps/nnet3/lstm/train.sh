@@ -651,7 +651,7 @@ while [ $x -lt $num_iters ]; do
       rm $dir/$[$x-1].mdl
     fi
   fi
-  rm $dir/cache.$x
+  rm $dir/cache.$x 2>/dev/null 
   x=$[$x+1]
   num_archives_processed=$[$num_archives_processed+$this_num_jobs]
 done
