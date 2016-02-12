@@ -1,7 +1,7 @@
 // ivector/xvector.h
 
-// Copyright 2016    Daniel Povey
-//                   David Snyder
+// Copyright 2016    Johns Hopkins University (Author: Daniel Povey)
+//           2016    David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
