@@ -19,7 +19,7 @@ endif
 
 MKLLIB ?= $(MKLROOT)/lib/em64t
 
-CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
+KALDI_CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
       -DHAVE_EXECINFO_H=1 -rdynamic -DHAVE_CXXABI_H \
@@ -29,7 +29,7 @@ CXXFLAGS = -m64 -msse -msse2 -pthread -Wall -I.. \
       -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
-CXXFLAGS += -fPIC
+KALDI_CXXFLAGS += -fPIC
 endif
 
 ## Use the following for STATIC LINKING of the SEQUENTIAL version of MKL
@@ -52,8 +52,9 @@ MKL_DYN_MUL = -L$(MKLLIB) -lmkl_solver_lp64 -Wl,--start-group -lmkl_intel_lp64 \
 
 # MKLFLAGS = $(MKL_DYN_MUL)
 
-LDFLAGS = -rdynamic -L$(FSTROOT)/lib -Wl,-R$(FSTROOT)/lib
-LDLIBS =  $(EXTRA_LDLIBS) -lfst -ldl $(MKLFLAGS) -lm -lpthread
+CXXFLAGS := $(KALDI_CXXFLAGS) $(CXXFLAGS)
+LDFLAGS := -rdynamic -L$(FSTROOT)/lib -Wl,-R$(FSTROOT)/lib $(LDFLAGS)
+LDLIBS :=  $(EXTRA_LDLIBS) -lfst -ldl $(MKLFLAGS) -lm -lpthread $(LDLIBS)
 CC = g++
 CXX = g++
 AR = ar
