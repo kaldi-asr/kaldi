@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
-# ReLUs that are over or under-saturated.
+# ReLUs that are over or under-saturated. [abandoned after discovering bug,
+# this thread is picked up in 5s and 5t.]
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).

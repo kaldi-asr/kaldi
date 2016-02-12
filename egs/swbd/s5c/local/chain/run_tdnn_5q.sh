@@ -2,7 +2,8 @@
 
 # _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
 # to compensate for the fact that more of the output dimensions are now being
-# usefully used.
+# usefully used.  [abandoned after discovering bug,
+# this thread is picked up in 5s and 5t.]
 
 # _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
 # ReLUs that are over or under-saturated.

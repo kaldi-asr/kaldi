@@ -1,7 +1,18 @@
 #!/bin/bash
 
+# _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
+
+# _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
+# up), from 5000 to 3500.
+
+# _5s is as _5r but increasing the jesus-forward-output-dim to the intermediate
+# value of 1700 (between 1500 and 1800), and also a bug-fix in the self-repair
+# code to a bug which was doubling the thresholds so there was, in effect,
+# no upper threshold.  I stopped the p,q,r runs after I found this, but in
+# configuring this run I'm bearing in mind the train and valid probs from the
+# p,q,r runs.
+
 # _5r is as _5q but also reducing --jesus-hidden-dim from 7500 to 5000.
-# [abandoned after discovering bug, this thread is picked up in 5s and 5t.]
 
 # _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
 # to compensate for the fact that more of the output dimensions are now being
@@ -282,7 +293,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5r # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5v # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -378,7 +389,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 5000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 2500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

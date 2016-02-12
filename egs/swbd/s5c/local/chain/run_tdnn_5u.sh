@@ -1,14 +1,49 @@
 #!/bin/bash
 
-# _5r is as _5q but also reducing --jesus-hidden-dim from 7500 to 5000.
-# [abandoned after discovering bug, this thread is picked up in 5s and 5t.]
+# _5u is as _5o but modifying the mfcc generation to use a narrower window while
+# generating the lower-order mfcc coefficients (the first 10).
 
-# _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
-# to compensate for the fact that more of the output dimensions are now being
-# usefully used.
+# Abandoning it partway through after I got the following less-than-promising diagnostics.
+# grep Overall exp/chain/tdnn_5{o,u}_sp/log/compute_prob_valid.84.log | grep -v xent
+# exp/chain/tdnn_5o_sp/log/compute_prob_valid.84.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:175) Overall log-probability for 'output' is -0.146977 + -0.0159528 = -0.16293 per frame, over 20000 frames.
+# exp/chain/tdnn_5u_sp/log/compute_prob_valid.84.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:175) Overall log-probability for 'output' is -0.147207 + -0.015692 = -0.162899 per frame, over 20000 frames.
+# a03:s5c: grep Overall exp/chain/tdnn_5{o,u}_sp/log/compute_prob_train.84.log | grep -v xent
+# exp/chain/tdnn_5o_sp/log/compute_prob_train.84.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:175) Overall log-probability for 'output' is -0.146703 + -0.0165036 = -0.163207 per frame, over 20000 frames.
+# exp/chain/tdnn_5u_sp/log/compute_prob_train.84.log:LOG (nnet3-chain-compute-prob:PrintTotalStats():nnet-chain-diagnostics.cc:175) Overall log-probability for 'output' is -0.145524 + -0.0162272 = -0.161751 per frame, over 20000 frames.
 
-# _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
-# ReLUs that are over or under-saturated.
+# _5o is as _5n but adding an extra splicing layer and increasing the
+# splice-width slightly on the 1st layer, to get closer to the context in 5n;
+# having one more layer running at double-frequency, and reverting the frame-length to
+# the same as in the baseline (25ms) to avoid sacrificing frequency resolution.
+
+# Objective functions improve but WER change is quite small vs 5n (~0.1%).  so
+# not clear that the extra time is worth it (it's noticeably slower to train as
+# that extra layer is at a higher sampling rate).
+#
+#System                       5j        5n        5o
+#WER on train_dev(tg)      17.59     16.85     16.83
+#WER on train_dev(fg)      16.33     15.67     15.60
+#WER on eval2000(tg)        19.1      19.1      18.8
+#WER on eval2000(fg)        17.5      17.3      17.2
+#Final train prob      -0.114691 -0.116341 -0.111613
+#Final valid prob      -0.130761 -0.130884 -0.126765
+
+# _5n is as _5j (also omitting the iVectors), but using double the input frame
+# rate from 10 to 5 ms (and reducing frame width from 25 to 20), and modifying
+# the splice indexes accordingly
+
+# _5j is as _5e, but omitting the iVectors.
+
+# Definitely worse, although curiously, there is very little effect on the valid prob.
+#./compare_wer.sh 5e 5j
+#System                       5e        5j
+#WER on train_dev(tg)      15.43     17.59
+#WER on train_dev(fg)      14.32     16.33
+#WER on eval2000(tg)        17.3      19.1
+#WER on eval2000(fg)        15.5      17.5
+#Final train prob      -0.110056 -0.114691
+#Final valid prob      -0.129184 -0.130761
+
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
@@ -278,14 +313,15 @@
 set -e
 
 # configs for 'chain'
-stage=12
+stage=13
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5r # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5u # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
-num_epochs=4
+num_epochs=2  # this is about the same amount of compute as the normal 4, since one
+              # epoch encompasses all frame-shifts of the data.
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
@@ -294,7 +330,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=150
+frames_per_eg=300 # doubling it, since we have half the frame rate.
 remove_egs=false
 
 # End configuration section.
@@ -365,7 +401,47 @@ if [ $stage -le 11 ]; then
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
+# Generate double-frame-rate version of the data with normal window size.
 if [ $stage -le 12 ]; then
+  mfccdir=mfcc
+  for dataset in eval2000 train_dev ${train_set}; do
+    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires_dbl2
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires_dbl2.conf \
+        data/${dataset}_hires_dbl2 exp/make_hires_dbl2/$dataset $mfccdir;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires_dbl2 exp/make_hires_dbl2/$dataset $mfccdir;
+    utils/fix_data_dir.sh data/${dataset}_hires_dbl2  # remove segments with problems
+  done
+fi
+
+# Generate double-frame-rate version of the data with smaller than normal window size;
+# and only keeping the first 10 MFCC coefficients.
+if [ $stage -le 13 ]; then
+  mfccdir=mfcc
+  for dataset in eval2000 train_dev ${train_set}; do
+    utils/copy_data_dir.sh data/$dataset data/${dataset}_dbl3
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_dbl3.conf \
+        data/${dataset}_dbl3 exp/make_dbl3/$dataset $mfccdir;
+    utils/fix_data_dir.sh data/${dataset}_dbl3  # remove segments with problems
+  done
+fi
+
+# select dimension 10-39 of the dbl2 features, then create pasted features consisting
+# of the 10 dimensions of the dbl3, plus the selected dimensions 10-39 of dbl2.
+if [ $stage -le 14 ]; then
+  mfccdir=mfcc
+  for dataset in eval2000 train_dev ${train_set}; do
+    steps/select_feats.sh --cmd "$train_cmd --max-jobs-run 4" 10-39 data/${dataset}_hires_dbl2 data/${dataset}_hires_dbl2_select \
+          exp/make_dbl3/$dataset $mfccdir
+    rm data/${dataset}_hires_dbl2_select/cmvn.scp 2>/dev/null || true
+    steps/paste_feats.sh --cmd "$train_cmd --max-jobs-run 4" data/${dataset}_hires_dbl2_select data/${dataset}_dbl3 data/${dataset}_pasted \
+          exp/make_dbl3/$dataset $mfccdir
+    steps/compute_cmvn_stats.sh data/${dataset}_pasted exp/make_dbl3/$dataset $mfccdir;
+    utils/fix_data_dir.sh data/${dataset}_pasted
+  done
+fi
+
+
+if [ $stage -le 15 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -374,14 +450,15 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --frame-subsampling-factor 6 \
+    --alignment-subsampling-factor 3 \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1500 --jesus-hidden-dim 5000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
+    --splice-indexes "-1,0,1 -2,-1,0,1,2 -2,0,2 -4,-2,0,2 -6,0,6 -6,0,6 -12,-6,0" \
     --apply-deriv-weights false \
-    --frames-per-iter 1200000 \
+    --frames-per-iter 2400000 \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
@@ -389,16 +466,18 @@ if [ $stage -le 12 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --feat-type raw \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
+    data/${train_set}_pasted $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
+
+ echo "0.005" > $dir/frame_shift # this lets the sclite decoding script know
+                                 # what the frame shift was, in seconds.
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 16 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -407,17 +486,16 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 14 ]; then
+if [ $stage -le 17 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
          --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
+         $graph_dir data/${decode_set}_pasted $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_pasted \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
