@@ -5,6 +5,12 @@
 # _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
 # up), from 5000 to 3500.
 
+# about 5s: comparing with 5e which is the most recent baseline we actually
+# decoded, 5s is as 5e but with jesus-forward-output-dim reduced 1800->1700,
+# jesus-hidden-dim reduced 7500 to 5000, and and the new option
+# --self-repair-scale 0.00001 added.  Also compare 5t and 5v which have even
+# smaller jesus-hidden-dims.
+
 # _5s is as _5r but increasing the jesus-forward-output-dim to the intermediate
 # value of 1700 (between 1500 and 1800), and also a bug-fix in the self-repair
 # code to a bug which was doubling the thresholds so there was, in effect,

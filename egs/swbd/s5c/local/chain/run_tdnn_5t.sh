@@ -1,7 +1,16 @@
 #!/bin/bash
 
 # _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
-# up), from 5000 to 3500.
+# up), from 5000 to 3500.  Seems to make no difference to WERs; valid prob improves.
+
+#local/chain/compare_wer.sh 5e 5s 5t
+#System                       5e        5s        5t
+#WER on train_dev(tg)      15.43     15.47     15.43
+#WER on train_dev(fg)      14.32     14.31     14.34
+#WER on eval2000(tg)        17.3      17.4      17.4
+#WER on eval2000(fg)        15.5      15.6      15.6
+#Final train prob      -0.110056 -0.110928 -0.110752
+#Final valid prob      -0.129184 -0.132139 -0.129123
 
 # _5s is as _5r but increasing the jesus-forward-output-dim to the intermediate
 # value of 1700 (between 1500 and 1800), and also a bug-fix in the self-repair
