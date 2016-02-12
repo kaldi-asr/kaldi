@@ -447,6 +447,9 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
 }
 
 void SigmoidComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
   // derivative of the nonlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(), out_value.NumCols(),
                                  kUndefined);
@@ -647,6 +650,9 @@ void TanhComponent::Backprop(const std::string &debug_info,
   in_deriv = out_deriv * (1.0 - out_value^2).
   We can accomplish this via calls to the matrix library. */
 void TanhComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
   // derivative of the onlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value);
   temp_deriv.ApplyPow(2.0);
@@ -681,6 +687,9 @@ void RectifiedLinearComponent::Backprop(
 
 void RectifiedLinearComponent::StoreStats(
     const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
   CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(),
                                  out_value.NumCols(),
                                  kUndefined);
