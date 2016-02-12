@@ -1,6 +1,15 @@
 #!/bin/bash
 
 # _5i is as _5g, but adding the mean+stddev features for all hidden layers.
+# a little worse than 5g (but for Remi Francis it was a little better).
+#local/chain/compare_wer.sh 5e 5g 5i
+#System                       5e        5g        5i
+#WER on train_dev(tg)      15.43     15.27     15.41
+#WER on train_dev(fg)      14.32     14.21     14.47
+#WER on eval2000(tg)        17.3      16.9      17.0
+#WER on eval2000(fg)        15.5      15.2      15.4
+#Final train prob      -0.110056 -0.103752 -0.102539
+#Final valid prob      -0.129184 -0.125641  -0.12375
 
 # _5g is as _5e, but adding one statistics-extraction layer to the
 # splice indexes, in the middle of the network (with both mean

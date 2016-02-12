@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # _5w is as _5k (which is a fairly good-performing ivector-free model), but
-# making the same changes as 5e -> 5v, which makes the model more lightweight
+# making the same changes as 5e -> 5t, which makes the model more lightweight
 # and faster to train, specifically: reduce --jesus-hidden-dim from 7500 to
-# 2500, add --self-repair-scale 0.00001, and reduce --jesus-forward-output-dim
+# 3500, add --self-repair-scale 0.00001, and reduce --jesus-forward-output-dim
 # from 1800 to 1700.
 
 # _5k is as _5j (omitting iVectors), and adding a statistics-extraction layer
@@ -409,11 +409,10 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_5j_sp/egs \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 2500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001" \
+    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 3500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean+stddev(-99:3:9:99) -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

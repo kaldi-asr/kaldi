@@ -2,6 +2,17 @@
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 
+# WER is almost the same, perhaps <0.1% worse; diagnostics are slightly worse.
+#
+#local/chain/compare_wer.sh 5e 5s 5t 5v
+#System                       5e        5s        5t        5v
+#WER on train_dev(tg)      15.43     15.47     15.43     15.38
+#WER on train_dev(fg)      14.32     14.31     14.34     14.39
+#WER on eval2000(tg)        17.3      17.4      17.4      17.4
+#WER on eval2000(fg)        15.5      15.6      15.6      15.7
+#Final train prob      -0.110056 -0.110928 -0.110752  -0.11156
+#Final valid prob      -0.129184 -0.132139 -0.129123 -0.131797
+
 # _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
 # up), from 5000 to 3500.
 
