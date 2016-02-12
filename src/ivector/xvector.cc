@@ -100,8 +100,7 @@ void GetDeriv(const CuVector<BaseFloat> &v,
   deriv_S_and_b->Resize(S_dim + 1, kSetZero);
 
   // This scalar is common to the different derivatives.
-  BaseFloat deriv_coef = d * Exp(-1 * d * similarity_score)
-    / (1 + Exp(-1 * d * similarity_score));
+  BaseFloat deriv_coef = d / (1 + Exp(d * similarity_score));
 
   // Handle derivative with respect to v and w.
   deriv_v->CopyFromVec(w);
