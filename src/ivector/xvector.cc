@@ -29,13 +29,21 @@ void ComputeXvectorObjfAndDeriv(
     CuVector<BaseFloat> *deriv_S_and_b, BaseFloat *tot_objf,
     BaseFloat *tot_weight) {
 
-  int32 N = xvector_pairs.NumRows();
   BaseFloat same_objf = 0,
             diff_objf = 0;
+  int32 S_dim = S.NumCols() * (S.NumCols() + 1) / 2,
+        N = xvector_pairs.NumRows(),
+        xvector_dim = xvector_pairs.NumCols();
   BaseFloat K = 1.0 / (N - 2.0);
-  int32 S_dim = S.NumCols() * (S.NumCols() + 1) / 2;
-  CuMatrix<BaseFloat> tmp_deriv(N, xvector_pairs.NumCols()
-                                + S_dim + 1, kSetZero);
+
+  if (deriv_xvector == NULL)
+    KALDI_ASSERT(deriv_S_and_b == NULL);
+  else {
+    KALDI_ASSERT(deriv_xvector->NumCols() == xvector_dim);
+    KALDI_ASSERT(deriv_xvector->NumRows() == N);
+    KALDI_ASSERT(deriv_S_and_b->Dim() == S_dim + 1);
+  }
+
   // Handle portion of the objf corresponding to pairs of xvectors
   // from the same classes.
   for (int32 i = 0; i < N/2; i++) {
@@ -46,11 +54,13 @@ void ComputeXvectorObjfAndDeriv(
                         deriv_S_and_b_part;
     BaseFloat similarity_score = SimilarityScore(v, w, S, b);
     same_objf += Log(1 + Exp(-similarity_score));
-    GetDeriv(v, w, S, b, true, similarity_score, &deriv_v,
-     &deriv_w, &deriv_S_and_b_part);
-    deriv_xvector->Row(2 * i).AddVec(1.0, deriv_v);
-    deriv_xvector->Row(2 * i + 1).AddVec(1.0, deriv_w);
-    deriv_S_and_b->AddVec(1.0, deriv_S_and_b_part);
+    if (deriv_xvector != NULL) {
+      GetDeriv(v, w, S, b, true, similarity_score, &deriv_v,
+        &deriv_w, &deriv_S_and_b_part);
+      deriv_xvector->Row(2 * i).AddVec(1.0, deriv_v);
+      deriv_xvector->Row(2 * i + 1).AddVec(1.0, deriv_w);
+      deriv_S_and_b->AddVec(1.0, deriv_S_and_b_part);
+    }
   }
 
   // Handle portion of the objf corresponding to pairs of xvectors
@@ -64,11 +74,13 @@ void ComputeXvectorObjfAndDeriv(
                           deriv_S_and_b_part;
       BaseFloat similarity_score = SimilarityScore(v, w, S, b);
       diff_objf += Log(1 + Exp(similarity_score));
-      GetDeriv(v, w, S, b, false, similarity_score, &deriv_v,
-        &deriv_w, &deriv_S_and_b_part);
-      deriv_xvector->Row(i).AddVec(K, deriv_v);
-      deriv_xvector->Row(j).AddVec(K, deriv_w);
-      deriv_S_and_b->AddVec(K, deriv_S_and_b_part);
+      if (deriv_xvector != NULL) {
+        GetDeriv(v, w, S, b, false, similarity_score, &deriv_v,
+          &deriv_w, &deriv_S_and_b_part);
+        deriv_xvector->Row(i).AddVec(K, deriv_v);
+        deriv_xvector->Row(j).AddVec(K, deriv_w);
+        deriv_S_and_b->AddVec(K, deriv_S_and_b_part);
+      }
     }
   }
   // Scale the same and different portions of the objective function

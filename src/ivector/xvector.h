@@ -30,16 +30,16 @@
 namespace kaldi {
   /*
   Computes the training objective function and the derivatives for
-  our xvector.  Let N = xvector_pairs.NumRows() be the number of
+  the xvector.  Let N = xvector_pairs.NumRows() be the number of
   xvectors. There are N(N-1)/2 pairs in total and N from the same
-  class. Let v(n) be the n'th row of teh matrix xvector_pairs.
+  class. Let v(n) be the n'th row of the matrix xvector_pairs.
   The total objective function written to 'tot_objf' is
       \sum_{n=0}^{N/2} p_same(v(n*2), v(n*2+1))
       + 1/(N-2) \sum_{n=0}^{N} \sum_{m=2*ceil(n+1)/2)}^{N}
       p_different(v(m), v(n))
   and let 2*N be the normalizer for the objective function, written to
-  'tot_weight'--this equals the total (weighted) number of samples over
-  which the objective function is computed, and is useful for displaying
+  'tot_weight' and equal to the total (weighted) number of samples over
+  which the objective function is computed. It is useful for displaying
   the objective function correctly.
   Let the log-odds L(v,w) [interpreted as log(p_same(v,w) / p_different(v,w))]
   be defined as:
