@@ -5,6 +5,9 @@ OPENFST_CXXFLAGS =
 OPENFST_LDLIBS = 
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+
 TESTFILES = ivector-extractor-test plda-test logistic-regression-test xvector-test
 
 OBJFILES = ivector-extractor.o voice-activity-detection.o plda.o logistic-regression.o xvector.o

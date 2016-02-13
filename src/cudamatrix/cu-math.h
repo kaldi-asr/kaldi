@@ -1,7 +1,8 @@
 // cudamatrix/cu-math.h
 
 // Copyright 2009-2012  Karel Vesely
-//                2013  Johns Hopkins University (Author: David Snyder)
+//                2013  Johns Hopkins University (Author: Daniel Povey)
+//                2016  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -78,7 +79,13 @@ void Group2norm(const CuMatrixBase<Real> &src,
                 CuMatrixBase<Real> *dest,
                 int32 group_stride);
 
-
+/*
+TODO: Documentation.
+*/
+template <typename BaseFloat>
+void ComputeXvectorObjfFromScores(const CuMatrixBase<BaseFloat> &scores,
+                                  CuMatrixBase<BaseFloat> *objf_terms,
+                                  CuMatrixBase<BaseFloat> *objf_derivs);
 
 
 } // namespace cu

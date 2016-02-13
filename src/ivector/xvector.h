@@ -26,6 +26,7 @@
 #include "cudamatrix/cu-matrix-lib.h"
 #include "itf/options-itf.h"
 #include "util/common-utils.h"
+#include "matrix/matrix-lib.h"
 
 namespace kaldi {
   /*
@@ -37,7 +38,7 @@ namespace kaldi {
       \sum_{n=0}^{N/2} p_same(v(n*2), v(n*2+1))
       + 1/(N-2) \sum_{n=0}^{N} \sum_{m=2*ceil(n+1)/2)}^{N}
       p_different(v(m), v(n))
-  and let 2*N be the normalizer for the objective function, written to
+  and let N be the normalizer for the objective function, written to
   'tot_weight' and equal to the total (weighted) number of samples over
   which the objective function is computed. It is useful for displaying
   the objective function correctly.
@@ -67,38 +68,6 @@ namespace kaldi {
     CuVector<BaseFloat> *deriv_S_and_b,
     BaseFloat *tot_objf,
     BaseFloat *tot_weight);
-
-  /*
-  Computes a similarity score between xvectors v and w. It is defined as:
-      L(v, w) = v' w -  v' S v - w' S w + b
-  @param [in] v  The first xvector in the pair.
-  @param [in] w  The second xvector in the pair.
-  @param [in] S  A symmetric matrix used in the similarity score.
-  @param [in] b  A scalar offset.
-  @return  The similarity score between v and w.
-  */
-  BaseFloat SimilarityScore(const CuVector<BaseFloat> &v,
-                            const CuVector<BaseFloat> &w,
-                            const CuSpMatrix<BaseFloat> &S, BaseFloat b);
-  /*
-  Gets the derivative for a term in the objective function summation.
-  @param [in] v  The first xvector in the pair.
-  @param [in] w  The second xvector in the pair.
-  @param [in] S  A symmetric matrix used in the similarity score.
-  @param [in] b  A scalar offset.
-  @param [in] is_same  Whether or not v and w are from the same or different
-  classes.
-  @param [in] similarity_score  The similarity score between v and w.
-  @param [out] deriv_v  The derivative with respect to v.
-  @param [out] deriv_w  The derivative with respect to w.
-  @param [out] deriv_S_and_b  The derivative with respect to S
-  (serialized), concatenated with the derivative with respect to b.
-  */
-  void GetDeriv(const CuVector<BaseFloat> &v,
-    const CuVector<BaseFloat> &w, const CuSpMatrix<BaseFloat> &S,
-    BaseFloat b, bool is_same, BaseFloat similarity_score,
-    CuVector<BaseFloat> *deriv_v, CuVector<BaseFloat> *deriv_w,
-    CuVector<BaseFloat> *deriv_S_and_b);
 
 }  // namespace kaldi
 

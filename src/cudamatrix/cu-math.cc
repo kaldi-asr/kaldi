@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
+//           2016       David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,15 +30,15 @@ namespace kaldi {
 namespace cu {
 
 /*
- * templated functions wrapping the ANSI-C CUDA kernel functions 
+ * templated functions wrapping the ANSI-C CUDA kernel functions
  */
 
 
 template<typename Real>
 void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1, Real lr) {
   KALDI_ASSERT(SameDim(*weight, *grad));
-#if HAVE_CUDA == 1 
-  if (CuDevice::Instantiate().Enabled()) { 
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
@@ -46,7 +47,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     cuda_regularize_l1(dimGrid, dimBlock, weight->Data(), grad->Data(), l1, lr,
                        weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -55,11 +56,11 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
     MatrixBase<Real> &grad2 = grad->Mat();
     for(MatrixIndexT r=0; r<weight2.NumRows(); r++) {
       for(MatrixIndexT c=0; c<weight2.NumCols(); c++) {
-        
+
         if(weight2(r,c)==0.0) continue; // skip L1 if zero weightght!
 
         Real l1_signed = l1;
-        if (weight2(r, c) < 0.0) 
+        if (weight2(r, c) < 0.0)
           l1_signed = -l1;
 
         Real before = weight2(r, c);
@@ -88,16 +89,16 @@ void Randomize(const CuMatrixBase<Real> &src,
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     /*
-    Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535 
+    Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(copy_from_idx.Dim(), CU2DBLOCK));
     */
 
     /*
      * Let's use blocksize 4 x 128 (512 threads/block)
-     * and extend the randomizable matrices to: col 4*65535, row 128*65535 
+     * and extend the randomizable matrices to: col 4*65535, row 128*65535
      * (ie. max-cols:262140 (dim), max-rows:8388480 (datapoints))
      */
     dim3 dimBlock(4, 128);
@@ -111,7 +112,7 @@ void Randomize(const CuMatrixBase<Real> &src,
     cuda_randomize(dimGrid, dimBlock, tgt->Data(), src.Data(),
                    copy_from_idx.Data(), dimtgt, dimsrc);
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -124,28 +125,28 @@ void Randomize(const CuMatrixBase<Real> &src,
       tgtmat.Row(i).CopyFromVec(srcmat.Row(copy_from_idxvec[i]));
     }
   }
-} 
+}
 
 
 
 template<typename Real>
 void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
             CuMatrixBase<Real> *tgt) {
-  
+
   KALDI_ASSERT(src.NumCols()*frame_offsets.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
-    
+
     cuda_splice(dimGrid, dimBlock, tgt->Data(), src.Data(),
                 frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -171,7 +172,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
 
 template<typename Real>
 void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices,
-          CuMatrixBase<Real> *tgt) { 
+          CuMatrixBase<Real> *tgt) {
 
   KALDI_ASSERT(copy_from_indices.Dim() == tgt->NumCols());
   KALDI_ASSERT(src.NumRows() == tgt->NumRows());
@@ -179,14 +180,14 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Timer tim;
-    
+
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
-    
+
     cuda_copy(dimGrid, dimBlock, tgt->Data(), src.Data(),
               copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
-    
+
     CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
   } else
   #endif
@@ -202,6 +203,31 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
         tgtmat(r,c) = srcmat(r,copy_from_indicesvec[c]);
       }
     }
+  }
+}
+
+template<typename Real>
+void ComputeXvectorObjfFromScores(const CuMatrixBase<Real> &scores,
+                                  CuMatrixBase<Real> *objf_terms,
+                                  CuMatrixBase<Real> *objf_derivs) {
+  #if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(scores.NumCols(), CU2DBLOCK),
+                 n_blocks(scores.NumRows(), CU2DBLOCK));
+
+    cuda_compute_xvector_objf(dimGrid, dimBlock, scores.Data(), scores.Dim(),
+      objf_terms->Data(), objf_terms->Dim(), objf_derivs->Data(),
+      objf_derivs->Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    // TODO: Add the CPU version.
+    KALDI_LOG << "NOT USING CUDA";
   }
 }
 
@@ -232,6 +258,15 @@ template
 void Randomize(const CuMatrixBase<double> &src,
                const CuArray<int32> &copy_from_idx,
                CuMatrixBase<double> *tgt);
+
+template
+void ComputeXvectorObjfFromScores(const CuMatrixBase<float> &scores,
+                                  CuMatrixBase<float> *objf_terms,
+                                  CuMatrixBase<float> *objf_derivs);
+template
+void ComputeXvectorObjfFromScores(const CuMatrixBase<double> &scores,
+                                  CuMatrixBase<double> *objf_terms,
+                                  CuMatrixBase<double> *objf_derivs);
 
 
 
