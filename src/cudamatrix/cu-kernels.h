@@ -289,6 +289,13 @@ inline void cuda_equal_element_mask(dim3 Gr, dim3 Bl, const float *mat1, const f
   cudaF_equal_element_mask(Gr, Bl, mat1, mat2, mask, mat1_dim, mat2_stride, mask_stride);
 }
 
+inline void cuda_compute_xvector_objf(dim3 Gr, dim3 Bl, const float *scores,
+                               MatrixDim scores_dim, float *obfj_terms,
+                               MatrixDim objf_dim, float *objf_derivs,
+                               MatrixDim derivs_dim) {
+  cudaF_compute_xvector_objf(Gr, Bl, scores, scores_dim, obfj_terms, objf_dim,
+                          objf_derivs, derivs_dim);
+}
 
 
 // double versions
@@ -465,6 +472,14 @@ inline void cuda_matrix_lookup(dim3 Gr, dim3 Bl, const double *data,
 inline void cuda_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1, const double *mat2, double *mask,
                                     MatrixDim mat1_dim, int mat2_stride, int mask_stride) {
   cudaD_equal_element_mask(Gr, Bl, mat1, mat2, mask, mat1_dim, mat2_stride, mask_stride);
+}
+
+inline void cuda_compute_xvector_objf(dim3 Gr, dim3 Bl, const double *scores,
+                               MatrixDim scores_dim, double *obfj_terms,
+                               MatrixDim objf_dim, double *objf_derivs,
+                               MatrixDim derivs_dim) {
+  cudaD_compute_xvector_objf(Gr, Bl, scores, scores_dim, obfj_terms, objf_dim,
+                          objf_derivs, derivs_dim);
 }
 
 // Also include some template-friendly wrappers of cublas functions:

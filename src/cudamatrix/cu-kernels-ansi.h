@@ -5,6 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//                2016  David Snyder
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -179,6 +180,11 @@ void cudaF_equal_element_mask(dim3 Gr, dim3 Bl, const float *mat1,
                               const float *mat2, float *mask, MatrixDim mat1_dim,
                               int mat2_stride, int mask_stride);
 
+void cudaF_compute_xvector_objf(dim3 Gr, dim3 Bl, const float *scores,
+                               MatrixDim scores_dim, float *obfj_terms,
+                               MatrixDim objf_dim, float *objf_derivs,
+                               MatrixDim derivs_dim);
+
 /*********************************************************
  * double CUDA kernel calls
  */
@@ -302,6 +308,10 @@ void cudaD_copy_from_sp(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim 
 void cudaD_take_lower(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in);
 void cudaD_take_upper(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in);
 void cudaD_take_mean(dim3 Gr, dim3 Bl, const double* x, double* y, MatrixDim d_in);
+void cudaD_compute_xvector_objf(dim3 Gr, dim3 Bl, const double *scores,
+                               MatrixDim scores_dim, double *obfj_terms,
+                               MatrixDim objf_dim, double *objf_derivs,
+                               MatrixDim derivs_dim);
 
 
 // some mostly mixed-type kernels.
@@ -348,8 +358,6 @@ void cudaD_matrix_lookup(dim3 Gr, dim3 Bl, const double *data, MatrixDim dim,
 void cudaD_equal_element_mask(dim3 Gr, dim3 Bl, const double *mat1,
                               const double *mat2, double *mask, MatrixDim mat1_dim,
                               int mat2_stride, int mask_stride);
-
-
 
 } // extern "C"
 
