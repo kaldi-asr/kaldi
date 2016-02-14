@@ -2,7 +2,7 @@
 CUDA_INCLUDE= -I$(CUDATKDIR)/include
 CUDA_FLAGS = -g -Xcompiler -fPIC --verbose --machine 64 -DHAVE_CUDA
 
-CXXFLAGS += -DHAVE_CUDA -I$(CUDATKDIR)/include 
+CXXFLAGS := -DHAVE_CUDA -I$(CUDATKDIR)/include $(CXXFLAGS)
 UNAME := $(shell uname)
 #aware of fact in cuda60 there is no lib64, just lib.
 ifeq ($(UNAME), Darwin)

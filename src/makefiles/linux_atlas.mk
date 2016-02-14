@@ -13,7 +13,7 @@ $(error ATLASLIBS not defined.)
 endif
 
 
-CXXFLAGS = -msse -msse2 -Wall -I.. \
+KALDI_CXXFLAGS = -msse -msse2 -Wall -I.. \
 	   -pthread \
       -DKALDI_DOUBLEPRECISION=0 -DHAVE_POSIX_MEMALIGN \
       -Wno-sign-compare -Wno-unused-local-typedefs -Winit-self \
@@ -24,11 +24,12 @@ CXXFLAGS = -msse -msse2 -Wall -I.. \
       -g # -O0 -DKALDI_PARANOID 
 
 ifeq ($(KALDI_FLAVOR), dynamic)
-CXXFLAGS += -fPIC
+KALDI_CXXFLAGS += -fPIC
 endif
 
-LDFLAGS = -rdynamic $(OPENFSTLDFLAGS)
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl
+CXXFLAGS := $(KALDI_CXXFLAGS) $(CXXFLAGS)
+LDFLAGS := -rdynamic $(OPENFSTLDFLAGS) $(LDFLAGS)
+LDLIBS := $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(ATLASLIBS) -lm -lpthread -ldl $(LDLIBS)
 CC = g++
 CXX = g++
 AR = ar
