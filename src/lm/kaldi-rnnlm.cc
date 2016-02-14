@@ -58,8 +58,8 @@ KaldiRnnlmWrapper::KaldiRnnlmWrapper(
 
 BaseFloat KaldiRnnlmWrapper::GetLogProb(
     int32 word, const std::vector<int32> &wseq,
-    const std::vector<BaseFloat> &context_in,
-    std::vector<BaseFloat> *context_out) {
+    const std::vector<float> &context_in,
+    std::vector<float> *context_out) {
 
   std::vector<std::string> wseq_symbols(wseq.size());
   for (int32 i = 0; i < wseq_symbols.size(); ++i) {
@@ -79,7 +79,7 @@ RnnlmDeterministicFst::RnnlmDeterministicFst(int32 max_ngram_order,
 
   // Uses empty history for <s>.
   std::vector<Label> bos;
-  std::vector<BaseFloat> bos_context(rnnlm->GetHiddenLayerSize(), 1.0f);
+  std::vector<float> bos_context(rnnlm->GetHiddenLayerSize(), 1.0);
   state_to_wseq_.push_back(bos);
   state_to_context_.push_back(bos_context);
   wseq_to_state_[bos] = 0;
@@ -101,7 +101,7 @@ bool RnnlmDeterministicFst::GetArc(StateId s, Label ilabel, fst::StdArc *oarc) {
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
   std::vector<Label> wseq = state_to_wseq_[s];
-  std::vector<BaseFloat> new_context(rnnlm_->GetHiddenLayerSize());
+  std::vector<float> new_context(rnnlm_->GetHiddenLayerSize());
   BaseFloat logprob = rnnlm_->GetLogProb(ilabel, wseq,
                                          state_to_context_[s], &new_context);
 

@@ -738,7 +738,8 @@ static void UnitTestCopyRows() {
     Matrix<Real> N1(num_rows2, num_cols),
         N2(num_rows2, num_cols), O(num_rows2, num_cols);
     std::vector<int32> reorder(num_rows2);
-    std::vector<const Real*> reorder_src(num_rows2, NULL);
+    std::vector<const Real*> reorder_src(num_rows2,
+                                         static_cast<const Real*>(NULL));
     for (int32 i = 0; i < num_rows2; i++) {
       reorder[i] = -1 + (Rand() % (num_rows1 + 1));
       if (reorder[i] != -1)
@@ -768,7 +769,8 @@ static void UnitTestCopyToRows() {
     InitRand(&M);
 
     Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
-    std::vector<Real*> reorder_dst(num_rows1, NULL);
+    std::vector<Real*> reorder_dst(num_rows1,
+                                   static_cast<Real*>(NULL));
     unordered_map<MatrixIndexT, bool> used_index;
     for (int32 i = 0; i < num_rows1; i++) {
       MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));
@@ -802,7 +804,8 @@ static void UnitTestAddRows() {
     Matrix<Real> N1(num_rows2, num_cols),
         N2(num_rows2, num_cols), O(num_rows2, num_cols);
     std::vector<int32> reorder(num_rows2);
-    std::vector<const Real*> reorder_src(num_rows2, NULL);
+    std::vector<const Real*> reorder_src(num_rows2,
+                                         static_cast<const Real*>(NULL));
     for (int32 i = 0; i < num_rows2; i++) {
       reorder[i] = -1 + (Rand() % (num_rows1 + 1));
       if (reorder[i] != -1)
@@ -841,7 +844,7 @@ static void UnitTestAddToRows() {
         static_cast<Real>((Rand() % num_rows2)) / static_cast<Real>(num_rows1);
 
     Matrix<Real> N(num_rows2, num_cols), O(num_rows2, num_cols);
-    std::vector<Real*> reorder_dst(num_rows1, NULL);
+    std::vector<Real*> reorder_dst(num_rows1, static_cast<Real*>(NULL));
     unordered_map<MatrixIndexT, bool> used_index;
     for (int32 i = 0; i < num_rows1; i++) {
       MatrixIndexT index = -1 + (Rand() % (num_rows2 + 1));

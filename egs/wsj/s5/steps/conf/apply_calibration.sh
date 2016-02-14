@@ -76,7 +76,7 @@ fi
 # Create the forwarding data for logistic regression,
 if [ $stage -le 2 ]; then
   steps/conf/prepare_calibration_data.py --conf-feats $dir/forward_feats.ark \
-    $dir/ctm_int $word_feats $latdepth $word_categories
+    --lattice-depth $latdepth $dir/ctm_int $word_feats $word_categories
 fi
 
 # Apply calibration model to dev,

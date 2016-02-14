@@ -229,6 +229,9 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 7.33 [ 919 / 12533, 80 ins, 153 del, 686 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch3/wer_13
 %WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 
+### chain results ###
+# current best chain result with TDNN (check local/chain/run_tdnn_5f.sh)
+%WER 2.94 [ 369 / 12533, 51 ins, 71 del, 247 sub ] exp/chain/tdnn_5f/decode/wer_3_0.5
 
 ### nnet1 results ###
 

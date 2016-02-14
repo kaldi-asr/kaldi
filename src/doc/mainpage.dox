@@ -75,6 +75,7 @@
      - \ref dnn1
      - \ref dnn2
      - \ref dnn3     
+     - \ref chain
    - \subpage online_decoding
    - \subpage kws
    - \subpage queue

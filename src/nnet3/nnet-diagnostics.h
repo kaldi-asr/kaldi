@@ -34,7 +34,6 @@ namespace nnet3 {
 struct SimpleObjectiveInfo {
   double tot_weight;
   double tot_objective;
-
   SimpleObjectiveInfo(): tot_weight(0.0),
                          tot_objective(0.0) { }
 

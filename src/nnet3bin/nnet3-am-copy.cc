@@ -1,6 +1,7 @@
 // nnet3bin/nnet3-am-copy.cc
 
 // Copyright 2012-2015  Johns Hopkins University (author:  Daniel Povey)
+//           2016 Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -47,6 +48,7 @@ int main(int argc, char *argv[]) {
         raw = false;
     BaseFloat learning_rate = -1;
     std::string set_raw_nnet = "";
+    bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0;
 
     ParseOptions po(usage);
@@ -57,6 +59,10 @@ int main(int argc, char *argv[]) {
                 "Set the raw nnet inside the model to the one provided in "
                 "the option string (interpreted as an rxfilename).  Done "
                 "before the learning-rate is changed.");
+    po.Register("convert-repeated-to-block", &convert_repeated_to_block,
+                "Convert all RepeatedAffineComponents and "
+                "NaturalGradientRepeatedAffineComponents to "
+                "BlockAffineComponents in the model. Done after set-raw-nnet.");
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 " are set to this value.");
@@ -88,6 +94,9 @@ int main(int argc, char *argv[]) {
       ReadKaldiObject(set_raw_nnet, &nnet);
       am_nnet.SetNnet(nnet);
     }
+
+    if(convert_repeated_to_block)
+      ConvertRepeatedToBlockAffine(&(am_nnet.GetNnet()));
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));

@@ -13,8 +13,8 @@ which calibrates the Minimum Bayes Risk posterior confidences.
 The logisitc-regression input features are: 
 - posteriors from 'ctm' transformed by logit,
 - logarithm of word-length in letters,
-- logarithm of average lattice-depth at position of the word,
 - 10base logarithm of unigram probability of a word from language model,
+- logarithm of average lattice-depth at position of the word (optional),
 
 The logistic-regresion targets are:
 - 1 for correct word,
@@ -33,12 +33,13 @@ usage = "%prog [opts] ctm word-filter word-length unigrams depth-per-frame-ascii
 parser = OptionParser(usage=usage, description=desc)
 parser.add_option("--conf-targets", help="Targets file for logistic regression (no targets generated if '') [default %default]", default='')
 parser.add_option("--conf-feats", help="Feature file for logistic regression. [default %default]", default='')
+parser.add_option("--lattice-depth", help="Per-frame lattice depths, ascii-ark (optional). [default %default]", default='')
 (o, args) = parser.parse_args()
 
-if len(args) != 4:
+if len(args) != 3:
   parser.print_help()
   sys.exit(1)
-ctm_file, word_feats_file, depths_file, word_categories_file = args
+ctm_file, word_feats_file, word_categories_file = args
 
 assert(o.conf_feats != '')
 
@@ -76,10 +77,12 @@ if o.conf_targets != '':
 
 # Load the per-frame lattice-depth,
 # - we assume, the 1st column in 'ctm' is the 'utterance-key' in depth file,
-depths = dict()
-for l in open(depths_file):
-  utt,d = l.split(' ',1)
-  depths[utt] = map(int,d.split())
+# - if the 'ctm' and 'ark' keys don't match, we leave this feature out,
+if o.lattice_depth:
+  depths = dict()
+  for l in open(o.lattice_depth):
+    utt,d = l.split(' ',1)
+    depths[utt] = map(int,d.split())
 
 # Load the 'word_categories' mapping for categorical input features derived from 'lang/words.txt',
 wrd_to_cat = [ l.split() for l in open(word_categories_file) ]
@@ -98,15 +101,19 @@ with open(o.conf_feats,'w') as f:
     logit = math.log(float(conf)+damper) - math.log(1.0 - float(conf)+damper)
     # - log of word-length,
     log_word_length = math.log(word_length[wrd_id]) # i.e. number of phones in a word,
-    # - log of average-depth of lattice at the word position,
-    depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
-    log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
     # - categorical distribution of words (with frequency higher than min-count),
     wrd_1_of_k = [0]*wrd_cat_num; 
     wrd_1_of_k[wrd_to_cat[wrd_id]] = 1;
 
     # Compose the input feature vector,
-    feats = [ logit, log_word_length, log_avg_depth, other_feats[wrd_id] ] + wrd_1_of_k
+    feats = [ logit, log_word_length, other_feats[wrd_id] ] + wrd_1_of_k
+
+    # Optionally add average-depth of lattice at the word position,
+    if o.lattice_depth != '':
+      depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
+      log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
+      feats += [ log_avg_depth ]
+
     # Store the input features, 
     f.write(key + ' [ ' + ' '.join(map(str,feats)) + ' ]\n')
 

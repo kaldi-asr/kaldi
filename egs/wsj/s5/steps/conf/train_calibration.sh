@@ -104,7 +104,7 @@ fi
 if [ $stage -le 3 ]; then
   steps/conf/prepare_calibration_data.py \
     --conf-targets $dir/train_targets.ark --conf-feats $dir/train_feats.ark \
-    $dir/ctm_aligned_int $word_feats $latdepth $dir/word_categories
+    --lattice-depth $latdepth $dir/ctm_aligned_int $word_feats $dir/word_categories
 fi
 
 # Train the logistic regression,

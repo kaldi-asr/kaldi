@@ -912,7 +912,7 @@ void MatrixBase<Real>::CopyColsFromVec(const VectorBase<Real> &rv) {
     const Real *v_inc_data = rv.Data();
     Real *m_inc_data = data_;
     for (MatrixIndexT r = 0; r < num_rows_; r++) {
-      BaseFloat value = *(v_inc_data++);
+      Real value = *(v_inc_data++);
       for (MatrixIndexT c = 0; c < num_cols_; c++)
         m_inc_data[c] = value;
       m_inc_data += stride_;
