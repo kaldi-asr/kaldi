@@ -936,14 +936,22 @@ void Segmentation::WidenSegments(int32 label, int32 length) {
             // The extended segment reduces the length of the previous
             // segment. But does not completely overlap it.
             prev_it->end_frame -= length;
+            if (prev_it->end_frame < prev_it->start_frame) Erase(prev_it);
           }
         }
+        if (it->start_frame < 0) it->start_frame = 0;
+      } else {
+        it->start_frame -= length;
+        if (it->start_frame < 0) it->start_frame = 0;
       }
+
       SegmentList::iterator next_it = it;
       ++next_it;
 
-      if (next_it != segments_.end())
-        it->end_frame += length;          // Line (1)
+      if (next_it != segments_.end()) 
+        // We do not know the length of the file. 
+        //So we don't want to extend the last one.
+        it->end_frame += length;                                // Line (1)
     } else { // if (it->Label() != label)
       if (it != segments_.begin()) {
         SegmentList::iterator prev_it = it;
