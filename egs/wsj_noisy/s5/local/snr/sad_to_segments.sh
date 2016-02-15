@@ -17,6 +17,7 @@ max_relabel_length=10  # maximum duration of speech that will be removed as part
                        # of smoothing process. This is only if there are no other
                        # speech segments nearby.
 pad_length=50         # Pad speech segments by this many frames on either side
+post_pad_length=50         # Pad speech segments by this many frames on either side
 max_segment_length=1000   # Segments that are longer than this are split into
                           # overlapping frames.
 overlap_length=100        # Overlapping frames when segments are split.
@@ -166,6 +167,7 @@ EOF
         segmentation-post-process --remove-labels=1 ark:- ark:- \| \
         segmentation-post-process --merge-labels=2 --merge-dst-label=1 --widen-label=1 --widen-length=$pad_length ark:- ark:- \| \
         segmentation-post-process --merge-adjacent-segments=true --max-intersegment-length=$max_intersegment_length ark:- ark:- \| \
+        segmentation-post-process --widen-label=1 --widen-length=$post_pad_length ark:- ark:- \| \
         segmentation-post-process --max-segment-length=$max_segment_length --overlap-length=$overlap_length ark:- ark:- \| \
         segmentation-to-segments ark:- \
         ark,t:$dir/utt2spk.JOB \

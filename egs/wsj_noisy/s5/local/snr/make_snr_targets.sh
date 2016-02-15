@@ -15,6 +15,7 @@ silence_phones_str=0
 apply_exp=false
 ceiling=inf
 floor=-inf
+stage=0
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -62,15 +63,16 @@ if $apply_exp; then
   apply_exp_opts=" copy-matrix --apply-exp=true ark:- ark:- |"
 fi
 
-$cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
-  compute-snr-targets --length-tolerance=1 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" \
-  --silence-phones=$silence_phones_str} \
-  --floor=$floor --ceiling=$ceiling \
-  scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
-  scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \
-  ark:- \|$apply_exp_opts \
-  copy-feats --compress=$compress ark:- \
-  ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
+if [ $stage -le 1 ]; then
+  $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
+    compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+    --floor=$floor --ceiling=$ceiling \
+    scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
+    scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \
+    ark:- \|$apply_exp_opts \
+    copy-feats --compress=$compress ark:- \
+    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
+fi
 
 for n in `seq $nj`; do
   cat $targets_dir/${data_id}.$n.scp

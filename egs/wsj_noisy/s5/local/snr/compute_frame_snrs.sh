@@ -77,6 +77,10 @@ if [ $stage -le 0 ]; then
     nnet3-compute --use-gpu=$use_gpu $snr_predictor_nnet_dir/$iter.raw "$feats" \
     ark:- \| ${copy_opts}copy-feats --compress=false ark:- \
     ark,scp:$dir/nnet_pred.JOB.ark,$dir/nnet_pred.JOB.scp || exit 1
+      
+  for n in `seq $nj`; do
+    cat $dir/nnet_pred.$n.scp;
+  done > $dir/nnet_pred.scp
 fi
 
 if [ $stage -le 1 ]; then
