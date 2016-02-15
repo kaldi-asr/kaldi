@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -18,8 +18,8 @@
 
 
 my $Usage = <<EOU;
-Takes the search output (alignment.csv and the statistics) and for each keyword 
-it tries to work out if the given path increases the ATWV or decreases it. 
+Takes the search output (alignment.csv and the statistics) and for each keyword
+it tries to work out if the given path increases the ATWV or decreases it.
 Those which decrease the ATWV can be subsequently removed from the keyword FST.
 
 Usage: cat stats | $0 [options] <datadir> <kws-alignment> <output-stats>
@@ -56,7 +56,7 @@ my $align = $ARGV[1];
 my $keywords = $ARGV[2];
 
 my %SEGMENTS;
-open(my $seg_file, "$data/segments") or 
+open(my $seg_file, "$data/segments") or
   die "Cannot open the segments file in $data/segments";
 
 while (my $line = <$seg_file>) {
@@ -67,7 +67,7 @@ while (my $line = <$seg_file>) {
 
 my %ALIGNMENT;
 my %TWVSTATS;
-open(my $align_file, $align) or 
+open(my $align_file, $align) or
   die "Cannot open the alignment file in $align";
 
 print "Reading alignment...\n";
@@ -84,7 +84,7 @@ while (my $line = <$align_file>) {
   next if $op_id eq ",MISS";
 
   my $key = sprintf "%s,%s", $kw_id, $file_id;
-  
+
   if ( grep { abs($_ -  $kw_time) <= 0.5 } @{$ALIGNMENT{$key}} ) {
       die "The key $key is not unique\n";
   }
@@ -113,7 +113,7 @@ while (my $line = <STDIN> ) {
   my $kw_wav = $wav;
 
   my $key = sprintf "%s,%s", $kw, $kw_wav;
-  
+
   if ( not grep { abs( (@{$_}[7] + @{$_}[8])/2.0 -  $kw_center) <= 0.1 } @{$ALIGNMENT{$key}} ) {
       ##print  "The key $key, $kw_center does not exist in the alignment\n";
       ##print join(" ", @entries) . "\n";
@@ -125,7 +125,7 @@ while (my $line = <STDIN> ) {
       die unless defined $index;
       my @ali = @{@{$ALIGNMENT{$key}}[$index]};
       my $diff = abs($ali[7] - $kw_start);
-      
+
       #die "Weird hit " . Dumper(\@entries) if $entries[5] != 0;
 
       my $hit_id = join(" ", @entries[5 .. @entries-1]);
@@ -136,13 +136,13 @@ while (my $line = <STDIN> ) {
       #print $hit_id . "\n";
       #print Dumper(\@ali, $kw_wav, $diff) if $diff > 0.1;
       #print Dumper(\@entries);
-     
+
       my $op_id = join(",", @ali[10 .. 11]); # 'YES,CORR' | 'YES,FA' | 'NO,MISS' | 'NO,CORR!DET'
       $HITCACHE{$kw}{$hit_id}{$op_id} += 1;
       #push @{$HITCACHE{$hit_id}{join(",", @ali[10 .. 11])}}, $entries[4];
   }
   #print Dumper(\@entries, $kw_start, $kw_wav);
-  #exit 
+  #exit
 }
 #print Dumper(\%HITCACHE);
 print "Done reading stats\n";
@@ -162,12 +162,12 @@ foreach my $kwid (sort keys %HITCACHE) {
   $old_stats{"NO,MISS"} = 0 unless defined $old_stats{"NO,MISS"};
   $old_stats{"YES,FA"} = 0 unless defined $old_stats{"YES,FA"};
 
-  my $n_kw = $old_stats{"YES,CORR"} + 
-             $old_stats{",MISS"} + 
+  my $n_kw = $old_stats{"YES,CORR"} +
+             $old_stats{",MISS"} +
              $old_stats{"NO,MISS"};
 
   my $n_trials = $T - $n_kw;
-  
+
   next if $n_kw == 0;
 
   my $p_miss = 0;
@@ -190,7 +190,7 @@ foreach my $kwid (sort keys %HITCACHE) {
     if ($new_twv > $twv) {
       #print "keep: $kwid $kwpath $twv - $new_twv\n";
       if ((defined $HITCACHE{$kwid}{$kwpath}->{"YES,FA"}) ||
-          (defined $HITCACHE{$kwid}{$kwpath}->{"NO,MISS"}) || 
+          (defined $HITCACHE{$kwid}{$kwpath}->{"NO,MISS"}) ||
           (defined $HITCACHE{$kwid}{$kwpath}->{"YES,CORR"})) {
         print Dumper($kwid, $kwpath, $HITCACHE{$kwid}{$kwpath});
       }
@@ -202,7 +202,7 @@ foreach my $kwid (sort keys %HITCACHE) {
 
     }
     # print $W "$kwid $weight\n";
-    
+
   }
 
 

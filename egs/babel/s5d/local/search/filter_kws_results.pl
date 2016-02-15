@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -28,6 +28,8 @@ Allowed options:
                        (int, default -1, i.e. no limit)
   --duptime         :  duplicates detection, tolerance (in frames) for being
                        the same hits (int,  default = 50)
+  --likes
+  --probs
 
 CAVEATS:
   The script tries to be  memory-effective. The impact of this is that we
@@ -48,13 +50,17 @@ use Getopt::Long;
 
 my $nbest = -1;
 my $duptime = 50;
+my $likes = 0;
 
-GetOptions ("nbest=i" => \$nbest,
+#print STDERR join(" ", $0, @ARGV) . "\n";
+GetOptions ("nbest=f" => \$nbest,
+            "likes" => \$likes,
+            "probs" => sub{ $likes = 0},
             "duptime=i" => \$duptime) ||  do {
   print STDERR "Cannot parse the command-line parameters.\n";
   print STDERR "$Usage\n";
   die "Cannot continue\n"
-}
+};
 
 if (@ARGV != 0) {
   print STDERR "Incorrect number of command-line parameters\n";
@@ -84,10 +90,10 @@ sub KwslistDupSort {
     $a->[1] cmp $b->[1];
   } elsif (abs($a->[2]-$b->[2]) >= $duptime){
     #start
-    $a->[2] <=> $b->[2]; 
+    $a->[2] <=> $b->[2];
   } elsif ($a->[4] ne $b->[4]) {
     #score
-    $b->[4] <=> $a->[4]; 
+    $b->[4] <=> $a->[4];
   } else {
     #end time
     $b->[3] <=> $a->[3];
@@ -97,10 +103,14 @@ sub KwslistDupSort {
 my @RESULTS;
 my %SEEN_KWS;
 my $kw = "";
+
 while ( my $line = <STDIN> ) {
   chomp $line;
   my @F = split " ", $line;
   @F == 5 || die "$0: Bad number of columns in raw results \"$line\"\n";
+
+  $F[4] = -$F[4] if $likes;
+
   if ($F[0] eq $kw) {
     push @RESULTS, \@F;
   } elsif ($kw eq "" ) {
@@ -111,7 +121,7 @@ while ( my $line = <STDIN> ) {
 
     my @results;
     my @tmp = sort { KwslistDupSort($a, $b, $duptime) } @RESULTS;
-    
+
     @results = ();
     if (@tmp >= 1) {push(@results, $tmp[0])};
     for (my $i = 1; $i < scalar(@tmp); $i ++) {
@@ -124,7 +134,7 @@ while ( my $line = <STDIN> ) {
         push(@results, $curr);
       }
     }
-   
+
     # this is probably needed only when nbest > 0
     @results = sort { ($b->[4] + 0.0) <=> ($a->[4] + 0.0) } @results;
 
@@ -135,6 +145,7 @@ while ( my $line = <STDIN> ) {
       $len = scalar @results;
     }
     for (my $i=0; $i < $len; $i++) {
+      $results[$i]->[4] = -$results[$i]->[4] if $likes;
       print join(" ", @{$results[$i]}) . "\n";
     }
 
@@ -143,3 +154,36 @@ while ( my $line = <STDIN> ) {
     $kw = $F[0];
   }
 }
+do {
+  my @results;
+  my @tmp = sort { KwslistDupSort($a, $b, $duptime) } @RESULTS;
+
+  @results = ();
+  if (@tmp >= 1) {push(@results, $tmp[0])};
+  for (my $i = 1; $i < scalar(@tmp); $i ++) {
+    my $prev = $results[-1];
+    my $curr = $tmp[$i];
+    if ((abs($prev->[2]-$curr->[2]) < $duptime ) &&
+        ($prev->[1] eq $curr->[1])) {
+      next;
+    } else {
+      push(@results, $curr);
+    }
+  }
+
+  # this is probably needed only when nbest > 0
+  @results = sort { ($b->[4] + 0.0) <=> ($a->[4] + 0.0) } @results;
+
+  my $len;
+  if( $nbest > 0)  {
+    $len = scalar @results < $nbest ? scalar @results : $nbest;
+  } else {
+    $len = scalar @results;
+  }
+  for (my $i=0; $i < $len; $i++) {
+    $results[$i]->[4] = -$results[$i]->[4] if $likes;
+    print join(" ", @{$results[$i]}) . "\n";
+  }
+}
+
+

@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -20,7 +20,7 @@ my $Usage = <<EOU;
 Writes the results file (native kaldi-kws format) into kwslist.xml (F4DE/NIST)
 format.
 
-Usage: 
+Usage:
   cat results | $0 --flen 0.01 > kwslist.xml
 
 Allowed options:
@@ -52,11 +52,11 @@ GetOptions("flen=f"      => \$flen,
            "language=s"  => \$language,
            "kwlist-id=s" => \$kwlist_filename,
            "system-id=s" => \$system_id,
-           "digits=i"    => \$digits) || {
+           "digits=i"    => \$digits) or do {
   print STDERR "Cannot parse the command-line options.\n";
   print STDERR "$Usage\n";
   die "Cannot continue.\n";
-}
+};
 
 if (@ARGV != 0) {
   print STDERR "Incorrect number of command-line arguments\n";
@@ -80,7 +80,7 @@ sub KwsOutputSort {
 
 sub PrettyPrint {
   my @instances = sort {KwsOutputSort($a, $b)} @{shift @_};
- 
+
   return if @instances <= 0;
   my $kwid=$instances[0]->[0];
 
@@ -90,17 +90,17 @@ sub PrettyPrint {
     my $filename="file=\"$file\"";
 
     # this is because the decision has to be done on the already
-    # rounded number (otherwise it can confuse F4DE. 
+    # rounded number (otherwise it can confuse F4DE.
     # It's because we do the decision based on the non-rounded score
     # but F4DE will see only the rounded score, so the decision
-    # won't be correctly aligned with the score (especially, for 
+    # won't be correctly aligned with the score (especially, for
     # some numbers with score 0.5 the decision will be "YES" and for
     # other with the same score, the decision will be "NO"
     $score = sprintf "%.${digits}f", $score;
     my $decision=$score >= 0.5 ? "decision=\"YES\"" : "decision=\"NO\"";
     my $tbeg = $start * $flen;
     my $dur = $end * $flen - $tbeg;
-    
+
     $tbeg=sprintf "tbeg=\"%.${digits}f\"", $tbeg;
     $dur=sprintf  "dur=\"%.${digits}f\"", $dur;
     $score=sprintf "score=\"%.${digits}f\"", $score;
@@ -125,7 +125,7 @@ while (my $line = <STDIN>) {
     $KWID=$kwid;
     @putative_hits = ();
   }
-  
+
   push @putative_hits, [$kwid, $file, $start, $end, $score];
 
 }

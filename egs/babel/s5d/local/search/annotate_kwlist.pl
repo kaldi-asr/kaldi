@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2016  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -45,12 +45,12 @@ sub kwlist {
   my @entries =  @_;
   shift @entries;
   shift @entries;
-  
+
   my $header="";
   while (@entries) {
     my $k = shift @entries;
     my $w = shift @entries;
-    
+
     $header .= " $k=\"$w\" ";
   }
   print "<kwlist $header>\n";

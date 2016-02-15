@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -50,17 +50,17 @@ GetOptions("duration|trials=f" => \$duration,
            "probs"             => \$probs,
            "thr|threshold=f"   => \$global_thr,
            "ntrue-table=s"     => \$ntrue_table_filename,
-           "bsum-table=s"      => \$bsum_filename) or do 
+           "bsum-table=s"      => \$bsum_filename) or do
  {
-  print STDERR "Cannot parse the command-line parameters.\n";
+  print STDERR "$0: Cannot parse the command-line parameters.\n";
   print STDERR "$Usage\n";
-  die "Cannot continue\n"
-}
+  die "$0: Cannot continue\n"
+};
 
 if (@ARGV != 0) {
-  print STDERR "Incorrect number of command-line parameters\n";
+  print STDERR "$0: Incorrect number of command-line parameters\n";
   print STDERR "$Usage\n";
-  die "Cannot continue\n"
+  die "$0: Cannot continue\n"
 }
 
 sub ComputeKST {
@@ -75,7 +75,7 @@ sub ComputeKST {
   }
   #$ntrue = $ntrue / @instances;
   if (defined ($ntrue_table{$instances[0]->[0]})) {
-    #print STDERR "For KW "  . $instances[0]->[0] . " using the value " .  $ntrue_table{$instances[0]->[0]}  . "\n"; 
+    #print STDERR "For KW "  . $instances[0]->[0] . " using the value " .  $ntrue_table{$instances[0]->[0]}  . "\n";
     $ntrue = $ntrue * $ntrue_table{$instances[0]->[0]};
   } else {
     #print STDERR  "Using the default vsalue $ntrue_scale\n";
@@ -86,6 +86,26 @@ sub ComputeKST {
   return $thr;
 }
 
+sub ComputeKSTWithExpected {
+  my @instances = @{shift @_};
+  my %expected_table = %{shift @_};
+  my $ntrue_scale = shift @_;
+  my %ntrue_table = %{shift @_};
+
+
+  my $ntrue = $expected_table{$instances[0]->[0]};
+  #$ntrue = $ntrue / @instances;
+  if (defined ($ntrue_table{$instances[0]->[0]})) {
+    #print STDERR "For KW "  . $instances[0]->[0] . " using the value " .  $ntrue_table{$instances[0]->[0]}  . "\n";
+    $ntrue = $ntrue * $ntrue_table{$instances[0]->[0]};
+  } else {
+    #print STDERR  "Using the default vsalue $ntrue_scale\n";
+    $ntrue = $ntrue * $ntrue_scale;
+  }
+
+  my $thr = $beta * $ntrue / ( $duration  + $ntrue * ($beta - 1));
+  return $thr;
+}
 sub NormalizeScores {
   my @instances = @{shift @_};
   my $thr = shift @_;
@@ -104,10 +124,10 @@ sub NormalizeScores {
 
 sub WriteResults {
   my @instances = @{shift @_};
-  
+
   foreach my $elem(@instances) {
     print join(" ", @{$elem}) . "\n";
-    die join(" ", @{$elem}) . "\n" if $elem->[-1] > 1.0;
+    die "$0: " . join(" ", @{$elem}) . "\n" if $elem->[-1] > 1.0;
   }
 
 }
@@ -118,7 +138,7 @@ my %NTRUE_TABLE = ();
 
 my %BSUM=();
 if (defined $bsum_filename) {
-  open(BSUMF, $bsum_filename) or die "Cannot open $bsum_filename";
+  open(BSUMF, $bsum_filename) or die "$0: Cannot open $bsum_filename";
   while (my $line = <BSUMF> ) {
     chomp $line;
     next unless (($line =~ m/^\s*KW/) || ($line =~ m/^Keyword\s*KW/));
@@ -131,17 +151,16 @@ if (defined $bsum_filename) {
 }
 
 if ( defined $ntrue_table_filename) {
-  open (F, $ntrue_table_filename) or die "Cannot open the Ntrue-table file\n";
+  open (F, $ntrue_table_filename) or die "$0: Cannot open the Ntrue-table file\n";
   while (my $line = <F>) {
     my @entries=split(" ", $line);
-    
-    die "The Ntrue-table does not have expected format\n" if @entries != 2;
+
+    die "$0: The Ntrue-table does not have expected format\n" if @entries != 2;
     $NTRUE_TABLE{$entries[0]} = $entries[1] + 0.0;
   }
   close (F);
 }
 
-print STDERR "Treating as probs (instead of likelihoods): $probs\n";
 while (my $line = <STDIN>) {
   chomp $line;
   (my $kwid, my $file, my $start, my $end, my $score) = split " ", $line;
@@ -150,7 +169,7 @@ while (my $line = <STDIN>) {
 
     my $thr = ComputeKST(\@putative_hits, $ntrue_scale, \%NTRUE_TABLE );
     if ((defined $BSUM{$KWID}) && (scalar @putative_hits > 100)) {
-      print STDERR "$KWID $thr $BSUM{$KWID} " .  log($thr)/log($global_thr) . "\n";
+      print STDERR "$0: $KWID $thr $BSUM{$KWID} " .  log($thr)/log($global_thr) . "\n";
       my $old_thr = $thr;
       $thr = pow($BSUM{$KWID}, log($thr)/log($global_thr));
     }
@@ -158,16 +177,16 @@ while (my $line = <STDIN>) {
       NormalizeScores(\@putative_hits, $thr, $global_thr);
       WriteResults(\@putative_hits);
     }
-    
+
     $KWID = $kwid;
     @putative_hits = ();
   } elsif ( not $KWID ) {
     $KWID = $kwid;
   }
-  
+
   unless ($probs) {
     $score = exp(-$score);
-  }   
+  }
   push @putative_hits, [$kwid, $file, $start, $end, $score];
 }
 

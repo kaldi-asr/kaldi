@@ -1,8 +1,8 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University ( Yenda Trmal <jtrmal@gmail.com> )
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 flen=0.01
 segments=
 utt_table=
@@ -10,7 +10,7 @@ utt_table=
 echo $0 "$@"
 . parse_options.sh || exit 1;
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 
@@ -57,11 +57,11 @@ grep -E ",,MISS" $workdir/alignment.csv | \
         }
         close(F);
       }
-     
+
       while(<STDIN>) {
         chomp;
         @entries_tmp = split(",", $_);
-        @entries = ($entries_tmp[3], 
+        @entries = ($entries_tmp[3],
                     $entries_tmp[1],
                     int($entries_tmp[5]/$flen + 0.5),
                     int($entries_tmp[6]/$flen + 0.5),
@@ -71,7 +71,7 @@ grep -E ",,MISS" $workdir/alignment.csv | \
         $fid = $entries[1];
         $start = $entries[2];
         $end = $entries[3];
-        
+
         if ((defined $ARGV[0]) && ( $ARGV[0] ne "" )) {
           $found = 0;
           foreach $entry ( @{$SEGMENTS{$fid}} ) {
