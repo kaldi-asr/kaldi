@@ -58,7 +58,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
 
     int32 tot_frames = left_context + frames_per_eg + right_context;
 
-    Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols());
+    Matrix<BaseFloat> input_frames(tot_frames, feats.NumCols(), kUndefined);
     
     // Set up "input_frames".
     for (int32 j = -left_context; j < frames_per_eg + right_context; j++) {

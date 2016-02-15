@@ -32,6 +32,7 @@ namespace nnet3 {
 
 static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
+                        const VectorBase<BaseFloat> *deriv_weights,
                         const Posterior &pdf_post,
                         const std::string &utt_id,
                         bool compress,
@@ -75,7 +76,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
                            input_frames));
 
     // if applicable, add the iVector feature.
-    if (ivector_feats != NULL) {
+    if (ivector_feats) {
       // try to get closest frame to middle of window to get
       // a representative iVector.
       int32 closest_frame = t + (actual_frames_per_eg / 2);
@@ -92,7 +93,16 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
     for (int32 i = 0; i < actual_frames_per_eg; i++)
       labels[i] = pdf_post[t + i];
     // remaining posteriors for frames are empty.
-    eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
+    
+    if (!deriv_weights) {
+      eg.io.push_back(NnetIo("output", num_pdfs, 0, labels));
+    } else {
+      Vector<BaseFloat> this_deriv_weights(frames_per_eg);
+      int32 frames_to_copy = std::min(t + actual_frames_per_eg, deriv_weights->Dim()) - t; 
+      this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(deriv_weights->Range(t, frames_to_copy));
+      eg.io.push_back(NnetIo("output", this_deriv_weights, num_pdfs, 0, labels));
+    }
+
     
     if (compress)
       eg.Compress();
@@ -143,7 +153,7 @@ int main(int argc, char *argv[]) {
     int32 num_pdfs = -1, left_context = 0, right_context = 0,
         num_frames = 1, length_tolerance = 100;
         
-    std::string ivector_rspecifier;
+    std::string ivector_rspecifier, deriv_weights_rspecifier;
     
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs in "
@@ -160,6 +170,11 @@ int main(int argc, char *argv[]) {
                 "features, as a matrix.");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
+                "Per-frame weights (only binary - 0 or 1) that specifies "
+                "whether a frame's gradient must be backpropagated or not. "
+                "Not specifying this is equivalent to specifying a vector of "
+                "all 1s.");
     
     po.Read(argc, argv);
 
@@ -181,6 +196,7 @@ int main(int argc, char *argv[]) {
     RandomAccessPosteriorReader pdf_post_reader(pdf_post_rspecifier);
     NnetExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader ivector_reader(ivector_rspecifier);
+    RandomAccessBaseFloatVectorReader deriv_weights_reader(deriv_weights_rspecifier);
     
     int32 num_done = 0, num_err = 0;
     int64 num_frames_written = 0, num_egs_written = 0;
@@ -216,7 +232,7 @@ int main(int argc, char *argv[]) {
           }
         }
 
-        if (ivector_feats != NULL &&
+        if (ivector_feats &&
             (abs(feats.NumRows() - ivector_feats->NumRows()) > length_tolerance
              || ivector_feats->NumRows() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
@@ -225,8 +241,33 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
+
+        const Vector<BaseFloat> *deriv_weights = NULL;
+        if (!deriv_weights_rspecifier.empty()) {
+          if (!deriv_weights_reader.HasKey(key)) {
+            KALDI_WARN << "No deriv weights for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            // this address will be valid until we call HasKey() or Value()
+            // again.
+            deriv_weights = &(deriv_weights_reader.Value(key));
+          }
+        }
+
+        if (deriv_weights && 
+            (abs(feats.NumRows() - deriv_weights->Dim()) > length_tolerance
+            || deriv_weights->Dim() == 0)) {
+          KALDI_WARN << "Length difference between feats " << feats.NumRows()
+                     << " and deriv weights " << deriv_weights->Dim()
+                     << " exceeds tolerance " << length_tolerance;
+          num_err++;
+          continue;
+        }
+
           
-        ProcessFile(feats, ivector_feats, pdf_post, key, compress,
+        ProcessFile(feats, ivector_feats, deriv_weights, pdf_post, 
+                    key, compress,
                     num_pdfs, left_context, right_context, num_frames,
                     &num_frames_written, &num_egs_written,
                     &example_writer);

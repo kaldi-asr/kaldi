@@ -18,10 +18,17 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-pnorm_input_dims="3000 3000 3000 3000 3000 3000"
-pnorm_output_dims="300 300 300 300 300 300"
+
+relu_dim=
+sigmoid_dim=
+pnorm_input_dim=3000
+pnorm_output_dim=300
+
+pnorm_input_dims=
+pnorm_output_dims=
 relu_dims=  # you can use this to make it use ReLU's instead of p-norms.
 sigmoid_dims=  # you can use this to make it use Sigmoid's instead of p-norms.
+
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -229,6 +236,10 @@ if [ $stage -le -5 ]; then
       --feat-dim=$input_dim \
       --ivector-dim=$ivector_dim \
       "${raw_nnet_config_opts[@]}" $objective_opts \
+      ${relu_dim:+--relu-dim="$relu_dim"} \
+      ${sigmoid_dim:+--sigmoid-dim="$sigmoid_dim"} \
+      ${pnorm_input_dim:+--pnorm-input-dim="$pnorm_input_dim"} \
+      ${pnorm_output_dim:+--pnorm-output-dim="$pnorm_output_dim"} \
       ${relu_dims:+--relu-dims="$relu_dims"} \
       ${sigmoid_dims:+--sigmoid-dims="$sigmoid_dims"} \
       ${pnorm_input_dims:+--pnorm-input-dims="$pnorm_input_dims"} \
