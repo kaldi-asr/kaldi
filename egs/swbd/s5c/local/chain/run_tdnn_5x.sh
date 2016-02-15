@@ -1,20 +1,26 @@
 #!/bin/bash
 
+# _5w is as _5x but decreasing the context of the averaging layer from +-0.99
+# seconds to +-0.66 seconds.  I would not have expected this to work a priori,
+# but the change from 5k -> 5l, which made the context wider, made WERs slightly
+# worse, so I'd like to see what happens when we decrease the context.
+
+# It's worse.  Odd because increasing the context (5k->5l) seemed to be a little
+# worse also.
+local/chain/compare_wer.sh 5w 5x
+#System                       5w        5x
+#WER on train_dev(tg)      16.56     16.66
+#WER on train_dev(fg)      15.30     15.41
+#WER on eval2000(tg)        18.1      18.5
+#WER on eval2000(fg)        16.4      16.6
+#Final train prob      -0.106549 -0.105693
+#Final valid prob      -0.120079 -0.121834
+
 # _5w is as _5k (which is a fairly good-performing ivector-free model), but
 # making the same changes as 5e -> 5t, which makes the model more lightweight
 # and faster to train, specifically: reduce --jesus-hidden-dim from 7500 to
 # 3500, add --self-repair-scale 0.00001, and reduce --jesus-forward-output-dim
 # from 1800 to 1700.
-
-# Difference is tiny.
-#local/chain/compare_wer.sh 5k 5w
-#System                       5k        5w
-#WER on train_dev(tg)      16.46     16.56
-#WER on train_dev(fg)      15.17     15.30
-#WER on eval2000(tg)        18.1      18.1
-#WER on eval2000(fg)        16.5      16.4
-#Final train prob      -0.105502 -0.106549
-#Final valid prob       -0.12337 -0.120079
 
 # _5k is as _5j (omitting iVectors), and adding a statistics-extraction layer
 # in the middle, like 5e->5g, to see whether it recovers some of the improvement
@@ -327,7 +333,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5w # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_5x # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -419,11 +425,12 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --egs-dir exp/chain/tdnn_5w_sp/egs \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 3500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean+stddev(-99:3:9:99) -3,0,3 -6,-3,0" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3,mean+stddev(-63:3:9:63) -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
