@@ -5,22 +5,22 @@
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
-binmode STDOUT, ":utf8"; 
-binmode STDIN, ":utf8"; 
+binmode STDOUT, ":utf8";
+binmode STDIN, ":utf8";
 
 sub permute {
 
-    my $last = pop @_;
+  my $last = pop @_;
 
-    unless(@_) {
-           return map([$_], @$last);
-    }
+  unless(@_) {
+    return map([$_], @$last);
+  }
 
-    return map { 
-                 my $left = $_; 
-                 map([@$left, $_], @$last)
-               } 
-               permute(@_);
+  return map {
+  my $left = $_;
+  map([@$left, $_], @$last)
+  }
+  permute(@_);
 }
 
 $oov_count=0;
@@ -32,8 +32,8 @@ for($x = 0; $x < 2; $x++) {
     shift @ARGV; $map_oov = shift @ARGV;
   }
   if ($ARGV[0] eq "-f") {
-    shift @ARGV; 
-    $field_spec = shift @ARGV; 
+    shift @ARGV;
+    $field_spec = shift @ARGV;
     if ($field_spec =~ m/^\d+$/) {
       $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
     }
@@ -46,7 +46,7 @@ for($x = 0; $x < 2; $x++) {
       }
     }
     if (!defined $field_begin && !defined $field_end) {
-      die "Bad argument to -f option: $field_spec"; 
+      die "Bad argument to -f option: $field_spec";
     }
   }
 }
@@ -54,18 +54,18 @@ for($x = 0; $x < 2; $x++) {
 $symtab = shift @ARGV;
 if (!defined $symtab) {
   print STDERR "Usage: sym2int.pl [options] symtab [input transcriptions] > output transcriptions\n" .
-    "options: [--map-oov <oov-symbol> ]  [-f <field-range> ]\n" .
-      "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n";
+  "options: [--map-oov <oov-symbol> ]  [-f <field-range> ]\n" .
+  "note: <field-range> can look like 4-5, or 4-, or 5-, or 1.\n";
 }
 open(F, "<:encoding(UTF-8)", $symtab) || die "Error opening symbol table file $symtab";
 while(<F>) {
-    @A = split(" ", $_);
-    @A == 2 || die "bad line in symbol table file: $_";
-    
-    if ( not defined( $sym2int{$A[0]} ) ) {
-      $sym2int{$A[0]} = [];
-    }
-    push @{ $sym2int{$A[0]} }, $A[1] + 0;
+  @A = split(" ", $_);
+  @A == 2 || die "bad line in symbol table file: $_";
+
+  if ( not defined( $sym2int{$A[0]} ) ) {
+    $sym2int{$A[0]} = [];
+  }
+  push @{ $sym2int{$A[0]} }, $A[1] + 0;
 }
 #print Dumper(\%sym2int);
 
@@ -101,11 +101,11 @@ while (<>) {
     $a = $i;
     push @B, $a;
   }
-    #if ( defined $sym2int{$A[$n]} ) {
-    #  push @B, $sym2int{$A[$n]};
-    #} else {
-    #  push @B, [0];
-    #}
+  #if ( defined $sym2int{$A[$n]} ) {
+  #  push @B, $sym2int{$A[$n]};
+  #} else {
+  #  push @B, [0];
+  #}
   if ($undefined_words > 0) {
     $oov_count = $oov_count + 1;
   }

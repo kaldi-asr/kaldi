@@ -72,12 +72,14 @@ done
 echo KWSEval -e $ecf -r $rttm -t $kwlist \
     -s $kwsoutputdir/kwslist.xml -c -o -b -d -f $kwsoutputdir
 
-if ! grep -q "NGramOrder" "$kwlist"; then
-  cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
-  kwlist=$kwsoutputdir/kwlist.xml
-elif ! grep -q "Characters" "$kwlist"; then
-  cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
-  kwlist=$kwsoutputdir/kwlist.xml
+if [ -f $kwsdatadir/categories ]; then
+  if ! grep -q "NGramOrder" "$kwlist"; then
+    cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
+    kwlist=$kwsoutputdir/kwlist.xml
+  elif ! grep -q "Characters" "$kwlist"; then
+    cat $kwlist | local/search/annotate_kwlist.pl $kwsdatadir/categories > $kwsoutputdir/kwlist.xml
+    kwlist=$kwsoutputdir/kwlist.xml
+  fi
 fi
 
 KWSEval -e $ecf -r $rttm -t $kwlist -a  --zGlobalMeasures MAP \

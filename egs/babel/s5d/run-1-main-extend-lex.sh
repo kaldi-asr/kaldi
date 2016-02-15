@@ -17,7 +17,7 @@ num_prons=1000000
 . ./utils/parse_options.sh
 
 set -e           #Exit on non-zero return code from any command
-set -o pipefail  #Exit if any of the commands in the pipeline will 
+set -o pipefail  #Exit if any of the commands in the pipeline will
                  #return non-zero return code
 #set -u           #Fail on an undefined variable
 
@@ -34,7 +34,7 @@ if [ ! -f data/raw_train_data/.done ]; then
 
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data
     train_data_dir=`readlink -f ./data/raw_train_data`
-    touch data/raw_train_data/.done 
+    touch data/raw_train_data/.done
 fi
 nj_max=`cat $train_data_list | wc -l`
 if [[ "$nj_max" -lt "$train_nj" ]] ; then
@@ -47,14 +47,14 @@ train_data_dir=`readlink -f ./data/raw_train_data`
 if [ ! -d data/raw_dev2h_data ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the DEV2H set"
-  echo ---------------------------------------------------------------------  
+  echo ---------------------------------------------------------------------
   local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
 fi
 
 if [ ! -d data/raw_dev10h_data ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the DEV10H set"
-  echo ---------------------------------------------------------------------  
+  echo ---------------------------------------------------------------------
   local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
 fi
 nj_max=`cat $dev2h_data_list | wc -l`
@@ -80,7 +80,7 @@ if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing dev2h stm files in data/dev2h on" `date`
   echo ---------------------------------------------------------------------
-  if [ -z $dev2h_stm_file ]; then 
+  if [ -z $dev2h_stm_file ]; then
     echo "WARNING: You should define the variable stm_file pointing to the IndusDB stm"
     echo "WARNING: Doing that, it will give you scoring close to the NIST scoring.    "
     local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1

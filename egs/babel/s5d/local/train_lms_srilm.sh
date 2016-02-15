@@ -123,6 +123,19 @@ else
     echo $dev_text contains `cat $dev_text | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $w--; $s++;}END{print "$w words, $s sentences\n";}'`
     echo $tgtdir/dev.txt contains `cat $tgtdir/dev.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F;  $s++;}END{print "$w words, $s sentences\n";}'`
 fi
+
+echo "-------------------"
+echo "Good-Turing 2grams"
+echo "-------------------"
+ngram-count -lm $tgtdir/2gram.gt01.gz -gt1min 0 -gt2min 1 -order 2 -text $tgtdir/train.txt -vocab $tgtdir/vocab -unk -sort -map-unk "$oov_symbol"
+ngram-count -lm $tgtdir/2gram.gt02.gz -gt1min 0 -gt2min 2 -order 2 -text $tgtdir/train.txt -vocab $tgtdir/vocab -unk -sort -map-unk "$oov_symbol"
+
+echo "-------------------"
+echo "Kneser-Ney 2grams"
+echo "-------------------"
+ngram-count -lm $tgtdir/2gram.kn01.gz -kndiscount1 -gt1min 0 -kndiscount2 -gt2min 1 -order 2 -text $tgtdir/train.txt -vocab $tgtdir/vocab -unk -sort -map-unk "$oov_symbol"
+ngram-count -lm $tgtdir/2gram.kn02.gz -kndiscount1 -gt1min 0 -kndiscount2 -gt2min 2 -order 2 -text $tgtdir/train.txt -vocab $tgtdir/vocab -unk -sort -map-unk "$oov_symbol"
+
 echo "-------------------"
 echo "Good-Turing 3grams"
 echo "-------------------"
@@ -165,6 +178,13 @@ ngram-count -lm $tgtdir/4gram.kn0223.gz -kndiscount1 -gt1min 0 -kndiscount2 -gt2
 if [ ! -z ${LIBLBFGS} ]; then
   #please not that if the switch -map-unk "$oov_symbol" is used with -maxent-convert-to-arpa, ngram-count will segfault
   #instead of that, we simply output the model in the maxent format and convert it using the "ngram"
+  echo "-------------------"
+  echo "Maxent 2grams"
+  echo "-------------------"
+  sed 's/'${oov_symbol}'/<unk>/g' $tgtdir/train.txt | \
+    ngram-count -lm - -order 2 -text - -vocab $tgtdir/vocab -unk -sort -maxent -maxent-convert-to-arpa|\
+    sed 's/<unk>/'${oov_symbol}'/g' | gzip -c > $tgtdir/2gram.me.gz || exit 1
+
   echo "-------------------"
   echo "Maxent 3grams"
   echo "-------------------"
