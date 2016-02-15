@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2016  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -26,13 +26,13 @@ Allowed options:
   --probs           : The input scores are probabilities, not negative log-likelihoods)
   --method          : Use different combination method          (int,    default = 0)
                       0 -- CombSUM
-                      1 -- CombMNZ 
+                      1 -- CombMNZ
   --input-norm      : how the input data should be normalized   (int                  )
-                      0 -- Saturate 
+                      0 -- Saturate
                       1 -- NormSTO
                       2 -- source-wise NormSTO
   --output-norm    : how the output data should be normalized   (int                  )
-                      0 -- Saturate 
+                      0 -- Saturate
                       1 -- NormSTO
   --power           : The weighted power mean p-coefficient     (float,  default = 0.5)
   --gamma           : The gamma coefficient for CombMNZ         (float,  default = 0.0)
@@ -47,6 +47,7 @@ use POSIX;
 use Data::Dumper;
 use Getopt::Long;
 use File::Basename;
+use Scalar::Util qw(looks_like_number);
 
 $Data::Dumper::Indent = 2;
 
@@ -71,7 +72,13 @@ sub PrintResults {
   my $result = "";
   foreach my $kwentry (@{$KWS}) {
     my ($kwid, $file, $tbeg, $tend, $score, $dummy) = @{$kwentry};
-    $score = -log($score);
+    if ($score > 0) {
+      $score = -log($score);
+    } elsif ($score == 0) {
+      $score = 9999;
+    } else {
+      die "Cannot take logarithm of a negative number\n" . join(" ", @{$kwentry}) . "\n";
+    }
     $result .= "$kwid $file $tbeg $tend $score\n";
   }
 
@@ -97,7 +104,7 @@ sub KwslistTimeCompare {
     }
   } else {
     $a->[0] cmp $b->[0];
-  } 
+  }
 }
 
 sub KwslistTimeSort {
@@ -119,12 +126,12 @@ sub ReadLines {
     while ($kwid eq $entries[0]) {
       push @entries, $id;
       push @lines, [@entries];
-      
+
       $l = readline $files{$id};
       last unless $l;
       chomp $l;
       @entries = split " ", $l;
-    } 
+    }
     next unless defined $l;
     push @entries, $id;
     push @lines, [@entries];
@@ -153,7 +160,7 @@ sub MergeCombPwrSum {
   my %weights = %{shift @_};
   my $pwr = shift @_;
   my @output = ();
- 
+
   return @output if not @results;
 
   while (@results) {
@@ -162,7 +169,7 @@ sub MergeCombPwrSum {
     while ((@results) && (KwslistTimeCompare(@mergelist[0], @results[0]) == 0)) {
       push @mergelist, shift @results;
     }
-    
+
     my $best_score = -9999;
     my $tend;
     my $tbegin;
@@ -195,7 +202,7 @@ sub MergeCombPwrMNZ {
   my $pwr = shift @_;
   my $gamma = shift @_;
   my @output = ();
- 
+
   $gamma = 0 unless defined $gamma;
   return @output if not @results;
 
@@ -205,7 +212,7 @@ sub MergeCombPwrMNZ {
     while ((@results) && (KwslistTimeCompare(@mergelist[0], @results[0]) == 0)) {
       push @mergelist, shift @results;
     }
-    
+
     my $best_score = -9999;
     my $tend;
     my $tbegin;
@@ -276,59 +283,58 @@ sub NormalizeSaturate {
   return \@output;
 }
 
-my $method = 0;
+my $method = 1;
 my $input_norm = 0;
 my $output_norm = 0;
 my $gamma = 0;
 my $power = 0.5;
-GetOptions('tolerance=f'    => \$TOL, 
-           'method=i'       => sub { shift; $method = shift; 
-                                     if (($method ne 0) || ($method gt 1)) {
+GetOptions('tolerance=f'    => \$TOL,
+           'method=i'       => sub { shift; $method = shift;
+                                     if (($method lt 0) || ($method gt 1)) {
                                        die "Unknown method $method\n\n$Usage\n";
                                      }
                                    },
-           'input-norm=i'       => sub { shift; my $n = shift; 
-                                     $input_norm = $n; 
+           'input-norm=i'       => sub { shift; my $n = shift;
+                                     $input_norm = $n;
                                      if (($n lt 0) || ($n gt 2)) {
                                        die "Unknown input-norm $n\n\n$Usage\n";
                                      }
                                    },
-           'output-norm=i'       => sub { shift; my $n = shift; 
-                                     $output_norm = $n; 
+           'output-norm=i'       => sub { shift; my $n = shift;
+                                     $output_norm = $n;
                                      if (($n ne 0) || ($n ne 1)) {
                                        die "Unknown output-norm $n\n\n$Usage\n";
                                      }
                                    },
            'power=f'        => \$power,
            'gamma=f'        => \$gamma,
-           'inv-power=f'    => sub { 
-                                    shift; my $val = shift; 
+           'inv-power=f'    => sub {
+                                    shift; my $val = shift;
                                     $power = 1.0/$val;
                                   },
-           'probs'          => sub { 
-                                    $LIKES = 0; 
+           'probs'          => sub {
+                                    $LIKES = 0;
                                   }
   ) || do {
   print STDERR "Cannot parse the command-line parameters.\n";
   print STDERR "$Usage\n";
   die "Cannot continue\n"
-}
+};
 
-if (@ARGV >= 3) {
-  print STDERR "Incorrect number of command-line parameters\n";
+if (@ARGV % 2 != 1) {
+  print STDERR "Bad number of (weight, results_list) pairs.\n";
   print STDERR "$Usage\n";
   die "Cannot continue\n"
 }
 
 # Workout the input/output source
-@ARGV % 2 == 1 || die "Bad number of (weight, results_list) pairs.\n";
 my %results_files = ();
 my %results_w = ();
 
 my $i = 0;
 while (@ARGV != 1) {
   my $w = shift @ARGV;
-  $w =~ m/^[0-9.]*$/ || die "Bad weight: $w.\n";
+  looks_like_number($w) || die "$0: Bad weight: $w.\n";
   $results_w{$i} =  $w;
   $results_files{$i} = OpenResults(shift @ARGV);
   $i += 1;
@@ -352,7 +358,7 @@ push @lines, ReadLines($lines[0]->[0], \%results_files);
 @lines = sort { KwslistTimeSort($a, $b) } @lines;
 
 while (@lines) {
-  my @res = (); 
+  my @res = ();
 
   push @res, shift @lines;
   while ((@lines) && ($lines[0]->[0] eq $res[0]->[0])) {
@@ -372,7 +378,7 @@ while (@lines) {
   } else {
     $data = NormalizeSaturate(\@res);
   }
-  
+
   if ($method == 0) {
     $data = MergeCombPwrSum($data, \%results_w, $power);
   } else {
@@ -390,7 +396,7 @@ while (@lines) {
   #exit if $deb > 3;
   #$deb += 1 if $deb;
   #if ($res[0]->[0] eq "KW305-02318") {
-  #  $deb = 1;  
+  #  $deb = 1;
   #  print Dumper("START", \@res, \@lines) if $deb;
   #}
 

@@ -1,15 +1,15 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University (Yenda Trmal <jtrmal@gmail.com>)
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 silence_word=
 filter='OOV=0'
 # End configuration section
 echo $0 "$@"
 . parse_options.sh || exit 1;
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 
@@ -42,7 +42,7 @@ if [ -s $workdir/keywords.int ]; then
        echo "$0: Error: could not find integer representation of silence word $silence_word" && exit 1;
     transcripts-to-fsts ark:$data/keywords.int ark,t:- | \
       awk -v 'OFS=\t' -v silint=$silence_int '{
-        if (NF == 4 && $1 != 0) { print $1, $1, silint, silint; } print; 
+        if (NF == 4 && $1 != 0) { print $1, $1, silint, silint; } print;
       }' | fstcopy ark:- ark,scp,t:$workdir/keywords.fsts,- | \
       sort -o $workdir/keywords.scp
   fi

@@ -1,9 +1,9 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University (Yenda Trmal <jtrmal@gmail.com>)
 #               2012-2014  Guoguo Chen
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=8
 cmd=run.pl
 beam=-1             # Beam for proxy FST, -1 means no prune
@@ -20,6 +20,8 @@ pron_probs=true     # If true, then lexicon looks like:
 g_beam=10
 g_alpha=
 g_inv_alpha=
+g2p_nbest=10
+g2p_mass=0.95
 case_insensitive=true
 icu_transform="Any-Lower"
 filter="OOV=1"
@@ -35,13 +37,13 @@ if $pron_probs; then
   phone_start=3
 fi
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
 data=$1
 lang=$2
 l1lex=$3
-l2lex=$4
+g2p=$4
 workdir=$5
 
 if [ ! -z "$g_inv_alpha" ] && [  $g_inv_alpha -ne 0 ] ; then
@@ -49,7 +51,7 @@ if [ ! -z "$g_inv_alpha" ] && [  $g_inv_alpha -ne 0 ] ; then
 fi
 
 # Checks some files.
-for f in $l1lex $l2lex $data/categories $data/keywords.txt ; do 
+for f in $l1lex  $data/categories $data/keywords.txt ; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1
 done
 
@@ -57,12 +59,44 @@ mkdir -p $workdir
 cat $data/categories | \
   local/search/filter_by_category.pl $data/categories "$filter" > $workdir/categories
 
-grep -w -F -f <(awk '{print $1}' $workdir/categories) \
-  $data/keywords.txt | sort -R > $workdir/keywords.txt
+grep -w -F -f <(awk '{print $1}' $workdir/categories) $data/keywords.txt |\
+  sort -R > $workdir/keywords.filtered
 
+paste <(cut -f 1  $workdir/keywords.filtered) \
+      <(cut -f 2- $workdir/keywords.filtered | uconv -f utf-8 -t utf-8 -x "$icu_transform") >  $workdir/keywords.txt
 
-cp $l1lex $workdir/L1.lex
-cp $l2lex $workdir/L2.lex
+cat $l1lex | perl -e '
+  while (<>) {
+    ($word, $prob, $pron) = split " ", $_, 3;
+    $pron =~ s/_[^\s]+//g;
+    $pron =~ s/\s+/ /g;
+    $pron =~ s/^\s+//g;
+    $pron =~ s/\s+$//g;
+    print "$word $prob $pron\n"
+  }
+' | sort -u > $workdir/L1.lex
+
+mkdir -p $workdir/lexicon
+
+cat $workdir/keywords.txt | perl -e '
+  open(f, shift @ARGV);
+  while(<f>) {
+    @F = split;
+    $lex{$F[0]} = 1;
+  }
+  close(f);
+
+  while(<STDIN>) {
+    @F = split;
+    foreach $w (@F[1..$#F]) {
+      print "$w\n" unless defined $lex{$w};
+    }
+  }
+' $workdir/L1.lex | sort -u > $workdir/lexicon/oov.txt
+
+local/apply_g2p.sh --nj $nj --cmd "$cmd" --icu-transform "$icu_transform" \
+    --var-counts $g2p_nbest --var-mass $g2p_mass \
+    $workdir/lexicon/oov.txt $g2p $workdir/lexicon || exit 1
 
 cat $workdir/L1.lex | \
   perl -e '
@@ -92,7 +126,7 @@ $pron_probs && pron_probs_param="--pron-probs"
 
 # Creates words.txt that covers all the words in L1.lex and L2.lex. We append
 # new words to the original word symbol table.
-cat $workdir/L1.lex $workdir/L2.lex | \
+cat $workdir/L1.lex $workdir/lexicon/lexicon.lex | \
   perl -e '
     binmode STDIN, ":utf8";
     binmode STDOUT, ":utf8";
@@ -114,9 +148,12 @@ cat $workdir/L1.lex $workdir/L2.lex | \
       }
     }
     foreach $kw (keys %WORDS) {
-      print "$kw $WORDS{$kw}\n"; 
+      print "$kw $WORDS{$kw}\n";
     }
   ' $lang/words.txt |  sort -k2,2n > $workdir/words.txt
+
+cat $workdir/words.txt | \
+  uconv -f utf-8 -t utf-8 -x "$icu_transform" >  $workdir/words.normalized.txt
 
 #--ndisambig=`utils/add_lex_disambig.pl \
 #--  $pron_probs_param $workdir/L1.dedup.lex $workdir/L1.disambig.lex`
@@ -135,7 +172,10 @@ awk '{print $1;}' $lang/phones.txt | sed 's/_[BEIS]//g' | sed 's/_.*//g' | \
 #--  > $workdir/phones.txt
 
 cat $workdir/keywords.txt |\
-  local/kwords2indices.pl --map-oov 0 $workdir/words.txt > $workdir/keywords.int
+  local/kwords2indices.pl --map-oov 0 $workdir/words.normalized.txt > $workdir/keywords.int
+
+
+cat $workdir/L1.lex $workdir/lexicon/lexicon.lex | sed 's/\t/ /g' |  sort -u > $workdir/L2.lex
 
 cat $workdir/L1.revdup.fst.txt |\
   fstcompile --isymbols=$workdir/words.txt --osymbols=$workdir/words.txt - |\
@@ -166,7 +206,7 @@ cat $workdir/L1.dedup.lex |\
   fstarcsort --sort_type=ilabel > $workdir/L1.fst
 
 echo ""
-cat $workdir/L2.lex |\
+cat $workdir/L2.lex  |\
   utils/make_lexicon_fst.pl $pron_probs_param - |\
   fstcompile --isymbols=$workdir/phones.txt --osymbols=$workdir/words.txt - |\
   fstinvert | fstarcsort --sort_type=olabel > $workdir/L2.fst

@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2016  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -24,7 +24,7 @@ Usage: $0 [options] <categories-file> <expression>
        $0 data/dev10h.pem/kws/categories "Characters>10&&NGramOrder=2"
 
 Allowed options:
-  -f <k>             : assume the KWID (for which the filter expression is 
+  -f <k>             : assume the KWID (for which the filter expression is
                          evaluated) on k-th column (int, default 0)
 
 NOTE:
@@ -39,13 +39,13 @@ CAVEATS:
   the KWID itself as a category. In case you will use the Babel-style KWIDS,
   i.e. for example KW304-0008, you won't be able to use the KWID in
   the expression itself (but you can still filter according to other categories)
-  i.e. for example 
+  i.e. for example
       KW306-0008&&OOV=1   might be a valid expression but most probably wont do
-                          what you want (it will get parsed as 
+                          what you want (it will get parsed as
                           KW306 - (8 && (OOV == 1))  which is most probably not
                           what you wanted.
   Currently, there is no way how to make it work -- unless you rename
-  the categories (i.e. for example substitute '-' by '_'. While this might be 
+  the categories (i.e. for example substitute '-' by '_'. While this might be
   probably solved by taking the categories into account during parsing, it's
   probably not that important.
 
@@ -64,11 +64,11 @@ my $debug = '';
 my $field = 0;
 
 GetOptions("debug" => \$debug,
-           "f"     => \$field) || {
+           "f"     => \$field) || do {
   print STDERR "Cannot parse the command line parameters.\n\n";
   print $Usage . "\n";
   die "Cannot continue";
-}
+};
 
 if ((@ARGV < 1) || (@ARGV>2)) {
   print STDERR "Incorrect number of parameters.\n\n";
@@ -102,7 +102,7 @@ my %precedence = (
   '^' => 10,
   #'(' => 10,
   #')' => 10,
-  
+
 
   #arithmetic operators
   '*' => 8,
@@ -131,7 +131,7 @@ my %right=(
   'u!' => 1,
 
   # this contradicts matlab, but it's what the mathematician's
-  # interpretation is: 2^3^4 = 2^(3^4), instead of matlabs 
+  # interpretation is: 2^3^4 = 2^(3^4), instead of matlabs
   # left associativity 2^3^4 = (2^3)^4
   # as always -- if the order is important, use parentheses
   '^' => 1,
@@ -205,7 +205,7 @@ sub to_postfix {
 
     # detection of an unary operators
     # not sure if this heuristics is complete
-    if (($token =~ /^[-+!]$/) && 
+    if (($token =~ /^[-+!]$/) &&
         (defined($precedence{$last}) || ($last eq '') || ($last eq ')')))  {
       #print "Unary op: $token\n";
       $token="u$token";
@@ -223,12 +223,12 @@ sub to_postfix {
       push @output, $token;
     } elsif (defined $precedence{$token}) {
       my $p = $precedence{$token};
-     
+
       while (@stack) {
         my $old_p = $precedence{$stack[-1]};
         last if $p > $old_p;
         last if $p == $old_p and (assoc($token) >= 0);
-        push @output, pop @stack;      
+        push @output, pop @stack;
       }
       push @stack, $token;
     } elsif ($token eq '(') {
@@ -254,7 +254,7 @@ sub to_postfix {
     die "No matching )" if $t eq '(';
     push @output, $t;
   }
-   
+
   # final postfix expression
   return @output;
 }
@@ -297,7 +297,7 @@ sub evaluate_postfix {
   if (@stack != 1) {
     my $expr = join(" ", @expression);
     print STDERR "expression = [$expr]; stack = [" . join(' ', @stack) . "]\n";
-    die "The operators did not reduce the stack completely!" if @stack != 1; 
+    die "The operators did not reduce the stack completely!" if @stack != 1;
   }
   return pop @stack;
 }
@@ -339,14 +339,14 @@ if (not @expression) {
 }
 
 while (my $line = <STDIN>) {
-  #shortcut if the "ALL" groups is used 
+  #shortcut if the "ALL" groups is used
   if ($let_all_pass == 1) {
     print $line;
     next;
   }
 
   my @entries = split(" ", $line);
-  my $kwid = $entries{$field};
+  my $kwid = $entries[$field];
 
   my $res = evaluate_postfix(\@expression, $GROUPS{$kwid});
   if ($res) {

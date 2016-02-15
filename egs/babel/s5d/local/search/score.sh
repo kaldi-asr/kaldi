@@ -9,6 +9,7 @@ extraid=
 min_lmwt=8
 max_lmwt=12
 cmd=run.pl
+stage=0
 # End configuration section.
 
 help_message="$0: score the kwslist using the F4DE scorer from NIST
@@ -29,6 +30,8 @@ if [ $# -ne 3 ]; then
     exit 1;
 fi
 
+set -e -o pipefail
+
 langdir=$1
 if [ -z $extraid ] ; then
   kwsdatadir=$2/kws
@@ -40,6 +43,7 @@ kwsoutputdir="$3"
 trials=$(cat $kwsdatadir/trials)
 mkdir -p $kwsoutputdir/log/
 
+if [ $stage -le 0 ] ; then
 for LMWT in $(seq $min_lmwt $max_lmwt) ; do
   mkdir -p ${kwsoutputdir}_$LMWT/details/
   mkdir -p ${kwsoutputdir}_$LMWT/scoring/
@@ -52,8 +56,8 @@ for LMWT in $(seq $min_lmwt $max_lmwt) ; do
   $cmd NTRUE=1:21 $kwsoutputdir/log/score.${LMWT}.NTRUE.log \
     ntrue=\$\(perl -e 'print 1+(NTRUE-1)/5.0' \) '&&' \
     cat ${kwsoutputdir}_$LMWT/results \|\
-      local/search/normalize_results_kst.pl --ntrue-scale \$ntrue \|\
-      local/search/filter_kws_results.pl --nbest 200   \|\
+      local/search/normalize_results_kst.pl --trials $trials --ntrue-scale \$ntrue \|\
+      local/search/filter_kws_results.pl --probs --nbest 200   \|\
       compute-atwv $trials ark,t:$kwsdatadir/hitlist ark:- \
       \> ${kwsoutputdir}_$LMWT/scoring/score.NTRUE.txt
 
@@ -63,26 +67,61 @@ for LMWT in $(seq $min_lmwt $max_lmwt) ; do
   #The calculation of ntrue must be the same as in the command above
   ntrue=$(perl -e "print 1+($ntrue-1)/5.0")
   echo "$ntrue" > ${kwsoutputdir}_$LMWT/details/ntrue
-
-  cat ${kwsoutputdir}_$LMWT/results |\
-    local/search/normalize_results_kst.pl --ntrue-scale $ntrue \
-    > ${kwsoutputdir}_$LMWT/details/results \
-    2> ${kwsoutputdir}_$LMWT/log/normalize.log
-
-  cat ${kwsoutputdir}_$LMWT/details/results |\
-    compute-atwv $trials ark,t:$kwsdatadir/hitlist ark:- \
-      ${kwsoutputdir}_$LMWT/details/alignment.csv \
-       > ${kwsoutputdir}_$LMWT/details/score.txt \
-       2> ${kwsoutputdir}_$LMWT/log/score.log
-
-  cat ${kwsoutputdir}_$LMWT/details/alignment.csv |\
-    perl local/search/per_category_stats.pl --sweep-step 0.005  $trials\
-    $kwsdatadir/categories \
-      > ${kwsoutputdir}_$LMWT/details/per-category-score.txt \
-      2> ${kwsoutputdir}_$LMWT/log/per-category-score.txt
-  
-  cp ${kwsoutputdir}_$LMWT/details/score.txt ${kwsoutputdir}_$LMWT/score.txt
 done
+fi
+
+if [ $stage -le 1 ] ; then
+  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/normalize.LMWT.log \
+    cat ${kwsoutputdir}_LMWT/results \|\
+      local/search/normalize_results_kst.pl --trials $trials --ntrue-scale \$\(cat ${kwsoutputdir}_LMWT/details/ntrue\)\
+      \> ${kwsoutputdir}_LMWT/details/results
+
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/score.final.LMWT.log \
+    cat ${kwsoutputdir}_LMWT/details/results \|\
+      compute-atwv $trials ark,t:$kwsdatadir/hitlist ark:- \
+      ${kwsoutputdir}_LMWT/details/alignment.csv \> ${kwsoutputdir}_LMWT/details/score.txt  '&&' \
+    cp ${kwsoutputdir}_LMWT/details/score.txt ${kwsoutputdir}_LMWT/score.txt
+
+  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/per-category-stats.LMWT.log \
+    cat ${kwsoutputdir}_LMWT/details/alignment.csv \|\
+      perl local/search/per_category_stats.pl --sweep-step 0.005  $trials \
+      $kwsdatadir/categories \> ${kwsoutputdir}_LMWT/details/per-category-score.txt
+fi
+
+if [ $stage -le 2 ]; then
+if [ -f $kwsdatadir/f4de_attribs ] ; then
+  language=""
+  flen=0.01
+  kwlist_name=""
+  . $kwsdatadir/f4de_attribs #override the previous variables
+
+  ecf=$kwsdatadir/ecf.xml
+  rttm=$kwsdatadir/rttm
+  kwlist=$kwsdatadir/kwlist.xml
+
+  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_prepare.LMWT.log \
+    mkdir -p ${kwsoutputdir}_LMWT/f4de/ '&&' cat $kwlist \| \
+    local/search/annotate_kwlist.pl $kwsdatadir/categories \> ${kwsoutputdir}_LMWT/f4de/kwlist.xml
+
+  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_write_kwslist.LMWT.log \
+    cat ${kwsoutputdir}_LMWT/details/results \| \
+      utils/int2sym.pl -f 2 $kwsdatadir/utt.map \| \
+      local/search/utt_to_files.pl --flen $flen $kwsdatadir/../segments \|\
+      local/search/write_kwslist.pl --flen $flen --language $language \
+      --kwlist-id $kwlist_name \> ${kwsoutputdir}_LMWT/f4de/kwslist.xml
+
+  $cmd LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_score.LMWT.log \
+    KWSEval -e $ecf -r $rttm -t ${kwsoutputdir}_LMWT/f4de/kwlist.xml -a  \
+      --zGlobalMeasures Optimum --zGlobalMeasures Supremum \
+      -O -B -q 'Characters:regex=.*' -q 'NGramOrder:regex=.*' \
+      -O -B -q 'OOV:regex=.*' -q 'BaseOOV:regex=.*' \
+      -s ${kwsoutputdir}_LMWT/f4de/kwslist.xml -c -o -b -d -f  ${kwsoutputdir}_LMWT/f4de/
+
+  run.pl LMWT=$min_lmwt:$max_lmwt $kwsoutputdir/log/f4de_report.LMWT.log \
+    local/kws_oracle_threshold.pl --duration $trials \
+      ${kwsoutputdir}_LMWT/f4de/alignment.csv \> ${kwsoutputdir}_LMWT/f4de/metrics.txt
+fi
+fi
 
 echo "$0: Done"
 exit 0;

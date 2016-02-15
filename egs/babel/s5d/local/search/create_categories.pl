@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,18 +17,18 @@
 #===============================================================================
 my $Usage = <<EOU;
 Parses the data file and outputs the basic KW categories
-  
+
 Usage:  $0 <source-file>
  e.g.:  $0 keywords.txt
     or  $0 --results results
-  
+
 Allowed options:
-  --results          : instead of keyword specification format, keyword search 
+  --results          : instead of keyword specification format, keyword search
                        results format is assumed.
 
 NOTE:
   If you need both information, you can call the script twice (with different
-  parameters) and call local/search/normalize_categories.pl to merge (and normalize) 
+  parameters) and call local/search/normalize_categories.pl to merge (and normalize)
   these two tables together.
 EOU
 
@@ -49,7 +49,7 @@ GetOptions("results", \$result_format) or do {
   print STDERR "Cannot parse the command-line parameters.\n";
   print STDERR "$Usage\n";
   die "Cannot continue\n"
-}
+};
 
 if ( @ARGV > 1 ) {
   print STDERR "Incorrect number of command-line parameters\n";
@@ -82,7 +82,7 @@ if (not $result_format ) {
   while (my $line = <>) {
     chomp $line;
     my ($kwid, $text) = split " ", $line, 2;
-    
+
     my @words = split " ", $text;
     printf "$kwid NGramOrder=%03d\n", scalar @words;
     printf "$kwid Characters=%03d\n", length(join("", @words));
@@ -98,7 +98,7 @@ if (not $result_format ) {
     next unless @entries;
 
     if ($prev_kwid ne $entries[0]) {
-      if ($prev_kwid) { 
+      if ($prev_kwid) {
         print "$prev_kwid ResCount=$count\n";
         print "$prev_kwid ResCountQuant=" . QuantizeCount($count) . "\n";
       }

@@ -14,8 +14,8 @@ set -o nounset                              # Treat unset variables as an error
 
 #Example script how to run keyword search using the Kaldi-native pipeline
 
-lang=data/lang.syll
-data=data/dev10h.syll.pem
+lang=data/lang.phn
+data=data/dev10h.phn.pem
 
 if [ $stage -le 0 ]; then
   local/generate_confusion_matrix.sh --nj 64 --cmd "$decode_cmd" \
@@ -56,7 +56,7 @@ if [ $stage -le 2 ] ; then
 
     local/search/compile_proxy_keywords.sh --cmd "$decode_cmd" --filter "OOV=1&&Characters>4"\
       --beam 5 --nbest 100 --nj 64  --confusion-matrix exp/conf_matrix/confusions.txt  \
-      ${data}/kwset_${set} ${lang} data/local/dict.syll/lexiconp.txt exp/g2p \
+      ${data}/kwset_${set} ${lang} data/local/dict.phn/lexiconp.txt exp/g2p \
       ${data}/kwset_${set}/tmp.4
   done
 fi
@@ -67,7 +67,7 @@ if [ $stage -le 3 ] ; then
       ark,t:"|gzip -c >${data}/kwset_${set}/keywords.fsts.gz"
   done
 fi
-
+exit
 if [ $stage -le 4 ] ; then
   for set in $kwsets ; do
     for it in $(seq 1 4); do
@@ -80,7 +80,7 @@ fi
 
 if [ $stage -le 5 ] ; then
   for set in $kwsets ; do
-    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem
+    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem
     local/search/search.sh --cmd "$decode_cmd" --min-lmwt 10 --max-lmwt 12  \
       --extraid ${set} --indices-dir $system/kws_indices $lang $data $system
   done
@@ -88,7 +88,7 @@ fi
 
 if [ $stage -le 6 ] ; then
   for set in $kwsets ; do
-    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem_17_8.5
+    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem_17_8.5
     local/search/search.sh --cmd "$decode_cmd" --min-lmwt 10 --max-lmwt 12  \
       --extraid ${set} --indices-dir $system/kws_indices $lang $data $system
   done
@@ -96,7 +96,7 @@ fi
 
 if [ $stage -le 7 ] ; then
   for set in $kwsets ; do
-    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem.bg
+    system=exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem.bg
     local/search/search.sh --cmd "$decode_cmd" --min-lmwt 10 --max-lmwt 12  \
       --extraid ${set} --indices-dir $system/kws_indices $lang $data $system
   done
@@ -104,7 +104,7 @@ fi
 
 if [ $stage -le 8 ] ; then
   for set in $kwsets ; do
-    system=exp/tri6_nnet/decode_dev10h.syll.pem
+    system=exp/tri6_nnet/decode_dev10h.phn.pem
     local/search/search.sh --cmd "$decode_cmd" --min-lmwt 10 --max-lmwt 12  \
       --extraid ${set} --indices-dir $system/kws_indices $lang $data $system
   done

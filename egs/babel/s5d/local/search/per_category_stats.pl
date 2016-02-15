@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 #===============================================================================
 # Copyright 2015  (Author: Yenda Trmal <jtrmal@gmail.com>)
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -17,7 +17,7 @@
 #===============================================================================
 
 # Takes the alignment.csv and the category tables and computes the per-category
-# statistics including the oracle measures (OTWV, MTWV, STWV) 
+# statistics including the oracle measures (OTWV, MTWV, STWV)
 # Is not particulary effective (for example, it computes the oracle measures
 # for each keyword several times (once for each category the keyword is in);
 # To achieve at least partial speed-up, we cache some of the partial statistics
@@ -25,9 +25,9 @@
 #
 # The lines in output starting with '#' are intended as comments only -- you
 # can filter them out using grep -v '^#'
-# The first comment line contains header, 
-# The second cooment line contains column numbers (to make easier using cut -f) 
-#   -- you don't have to count the fields, just use the present 
+# The first comment line contains header,
+# The second cooment line contains column numbers (to make easier using cut -f)
+#   -- you don't have to count the fields, just use the present
 #      number of the field
 #
 # Compatibility:
@@ -40,12 +40,12 @@
 #
 # Usage:
 #   It reads the alignment.csv from the STDIN.
-#   Moreover, it expects exactly two arguments: number of trials and 
+#   Moreover, it expects exactly two arguments: number of trials and
 #   the category table
 # I.e.
 #   local/search/per_category_stats.pl <trials> <categories>
 #
-# Example: 
+# Example:
 #   cat alignment.csv | perl local/search/per_category_stats.pl  `cat data/dev10h.pem/extra_kws/trials` data/dev10h.pem/extra_kws/categories
 #
 # Additional parameters
@@ -102,14 +102,14 @@ if ( not looks_like_number($ARGV[0])) {
 my $T= 0.0 + $ARGV[0];
 
 
-open(CAT, $ARGV[1]) or die("Cannot open categories file $ARGV[1]"); 
+open(CAT, $ARGV[1]) or die("Cannot open categories file $ARGV[1]");
 while(my $line = <CAT>) {
   my @entries =split(" ", $line);
 
   die "Unknown format of category line: \"$line\"" if scalar @entries < 2;
   my $kw = shift @entries;
-  
- 
+
+
   if (not defined $STATS{$kw}->{fa_sweep}) {
     $STATS{$kw}->{fa} = 0;
     $STATS{$kw}->{corr} = 0;
@@ -142,16 +142,16 @@ my $dummy=<STDIN>;
 while (my $line=<STDIN>) {
   chomp $line;
   my @entries = split(",", $line);
-  
+
   die "Unknown format of category line: \"$line\"" if scalar @entries != 12;
-  
+
 
   my $termid = $entries[3];
   my $ref_time = $entries[5];
   my $score = $entries[9];
   my $decision=$entries[10];
   my $ref = $entries[11];
-  
+
   if (not defined($STATS{$termid}->{ntrue})) {
     print STDERR "Term $termid not present in the category table, skipping\n";
     next
@@ -183,7 +183,7 @@ while (my $line=<STDIN>) {
     $STATS{$termid}->{miss} += 1;
     $STATS{$termid}->{ntrue} += 1;
   } elsif ($ref eq "CORR!DET") {
-    $STATS{$termid}->{corrndet} += 1; 
+    $STATS{$termid}->{corrndet} += 1;
   }
   #print STDERR "Done\n";
 
@@ -284,13 +284,13 @@ foreach my $cat (sort keys %CATEGORIES) {
       }
       $CACHE{$kw} = [$pfa, $pmiss, $twv, $OTHR, \@twv_sweep_cache, \@pfa_sweep_cache, \@pmiss_sweep_cache];
     }
-    
+
     $OTWV = ($K * $OTWV + $twv) / ($K + 1);
     $OPMISS = ($K * $OPMISS + $pmiss) / ($K + 1);
     $OPFA = ($K * $OPFA + $pfa) / ($K + 1);
     $K += 1;
   }
-  
+
   my $max_idx = 0;
   my $MTWV = $MTWV_SWEEP[0];
   my $MPMISS = $MPMISS_SWEEP[0];
@@ -305,22 +305,22 @@ foreach my $cat (sort keys %CATEGORIES) {
       $MTHR = ($i - 1) * $step_size;
     }
   }
-  
+
   if ($K > 1) {
     $OTHR = "NA";
   }
 
   my $ntarg = $CORRNDET + $FA;
- 
+
   my @abs_nrs = ($K, $NTRUE, $ntarg, $COUNT, $CORR, $CORRNDET, $FA, $MISS);
   @abs_nrs = map { sprintf "%*d", $field_size, $_ } @abs_nrs;
   my @flt_nrs = map { $_ eq "NA" ? sprintf "%6s", $_ : sprintf "% 6.3g", $_ } ($ATWV, $MTWV, $OTWV, $STWV, $PFA, $MPFA, $OPFA, $PMISS, $MPMISS, $OPMISS, 0.5, $MTHR, $OTHR);
-  @flt_nrs = map {sprintf "%*s", $field_size, $_} @flt_nrs; 
-  
+  @flt_nrs = map {sprintf "%*s", $field_size, $_} @flt_nrs;
+
   my $nrs = join(" ", @abs_nrs, @flt_nrs);
-  
+
   $cat = sprintf("%*s", $cat_maxlen, $cat);
-  print "$cat $nrs \n"; 
+  print "$cat $nrs \n";
 }
 
 

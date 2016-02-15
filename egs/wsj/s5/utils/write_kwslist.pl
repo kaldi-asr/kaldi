@@ -75,7 +75,7 @@ GetOptions('segments=s'     => \$segment,
   'remove-dup=s'      => \$remove_dup,
   'YES-cutoff=i'      => \$YES_cutoff,
   'remove-NO=s'       => \$remove_NO,
-  'nbest=i'           => \$nbest_max);
+  'nbest=i'           => \$nbest_max) or die "Cannot continue\n";
 
 ($normalize eq "true" || $normalize eq "false") || die "$0: Bad value for option --normalize\n";
 ($remove_dup eq "true" || $remove_dup eq "false") || die "$0: Bad value for option --remove-dup\n";
