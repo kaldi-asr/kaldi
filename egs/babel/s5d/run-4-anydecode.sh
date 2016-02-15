@@ -40,6 +40,8 @@ fi
 set -o errtrace
 trap "echo Exited!; exit;" SIGINT SIGTERM
 
+. ./local/check_tools.sh || exit
+
 # Set proxy search parameters for the extended lexicon case.
 if [ -f data/.extlex ]; then
   proxy_phone_beam=$extlex_proxy_phone_beam
@@ -243,32 +245,31 @@ if [ ! -f  $dataset_dir/.done ] ; then
     touch ${dataset_dir}/.plp.done
   fi
 
-
-  
-  if [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
-    dataset=$(basename $dataset_dir)
-    echo ---------------------------------------------------------------------
-    echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
-    echo ---------------------------------------------------------------------
-    if [ ! -d ${dataset_dir}_hires ]; then
-      utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
-    fi
-
-    mfccdir=mfcc_hires
-    steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
-    utils/fix_data_dir.sh ${dataset_dir}_hires;
-    touch ${dataset_dir}_hires/.mfcc.done
-    
-    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
-      ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
-   
-    touch ${dataset_dir}_hires/.done
-  fi
-  
   touch $dataset_dir/.done
 fi
+
+if [ -f exp/nnet3/extractor/final.ie ] && [ ! -f ${dataset_dir}_hires/.mfcc.done ]; then
+  dataset=$(basename $dataset_dir)
+  echo ---------------------------------------------------------------------
+  echo "Preparing ${dataset_kind} MFCC features in  ${dataset_dir}_hires and corresponding iVectors in exp/nnet3/ivectors_$dataset on" `date`
+  echo ---------------------------------------------------------------------
+  if [ ! -d ${dataset_dir}_hires ]; then
+    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
+  fi
+
+  mfccdir=mfcc_hires
+  steps/make_mfcc.sh --nj $my_nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" ${dataset_dir}_hires exp/make_hires/$dataset $mfccdir;
+  steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+  utils/fix_data_dir.sh ${dataset_dir}_hires;
+  touch ${dataset_dir}_hires/.mfcc.done
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $my_nj \
+    ${dataset_dir}_hires exp/nnet3/extractor exp/nnet3/ivectors_$dataset || exit 1;
+
+  touch ${dataset_dir}_hires/.done
+fi
+
 #####################################################################
 #
 # KWS data directory preparation
@@ -434,7 +435,7 @@ if [ -f exp/$nnet3_model/.done ]; then
   rnn_opts=
   decode_script=steps/nnet3/decode.sh
   if [ "$is_rnn" == "true" ]; then
-    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk " 
+    rnn_opts=" --extra-left-context $extra_left_context --extra-right-context $extra_right_context  --frames-per-chunk $frames_per_chunk "
     decode_script=steps/nnet3/lstm/decode.sh
   fi
   if [ ! -f $decode/.done ]; then
@@ -444,7 +445,7 @@ if [ -f exp/$nnet3_model/.done ]; then
           --skip-scoring true  \
           --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
           exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
-    
+
     touch $decode/.done
   fi
 

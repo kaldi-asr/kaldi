@@ -20,6 +20,13 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
                  #return non-zero return code
 #set -u           #Fail on an undefined variable
 
+lexicon=data/local/lexicon.txt
+if $extend_lexicon; then
+  lexicon=data/local/lexiconp.txt
+fi
+
+. ./local/check_tools.sh || exit
+
 #Preparing dev2h and train directories
 if [ ! -f data/raw_train_data/.done ]; then
     echo ---------------------------------------------------------------------
@@ -59,36 +66,6 @@ if [[ "$nj_max" -lt "$decode_nj" ]] ; then
   decode_nj=$nj_max
 fi
 
-mkdir -p data/local
-if [[ ! -f data/local/lexicon.txt || data/local/lexicon.txt -ot "$lexicon_file" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing lexicon in data/local on" `date`
-  echo ---------------------------------------------------------------------
-  local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
-  local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
-    $lexiconFlags data/local/filtered_lexicon.txt data/local
-fi
-
-mkdir -p data/lang
-if [[ ! -f data/lang/L.fst || data/lang/L.fst -ot data/local/lexicon.txt ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Creating L.fst etc in data/lang on" `date`
-  echo ---------------------------------------------------------------------
-  utils/prepare_lang.sh \
-    --share-silence-phones true \
-    data/local $oovSymbol data/local/tmp.lang data/lang
-fi
-
-if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing acoustic training lists in data/train on" `date`
-  echo ---------------------------------------------------------------------
-  mkdir -p data/train
-  local/prepare_acoustic_training_data.pl \
-    --vocab data/local/lexicon.txt --fragmentMarkers \-\*\~ \
-    $train_data_dir data/train > data/train/skipped_utts.log
-fi
-
 if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/audio ]]; then
   echo ---------------------------------------------------------------------
   echo "Preparing dev2h data lists in data/dev2h on" `date`
@@ -114,7 +91,36 @@ if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
 
 fi
 
-# We will simply override the default G.fst by the G.fst generated using SRILM
+mkdir -p data/local
+if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
+  echo ---------------------------------------------------------------------
+  echo "Preparing lexicon in data/local on" `date`
+  echo ---------------------------------------------------------------------
+  local/make_lexicon_subset.sh $train_data_dir/transcription $lexicon_file data/local/filtered_lexicon.txt
+  local/prepare_lexicon.pl  --phonemap "$phoneme_mapping" \
+    $lexiconFlags data/local/filtered_lexicon.txt data/local
+fi
+
+mkdir -p data/lang
+if [[ ! -f data/lang/L.fst || data/lang/L.fst -ot $lexicon ]]; then
+  echo ---------------------------------------------------------------------
+  echo "Creating L.fst etc in data/lang on" `date`
+  echo ---------------------------------------------------------------------
+  utils/prepare_lang.sh \
+    --share-silence-phones true \
+    data/local $oovSymbol data/local/tmp.lang data/lang
+fi
+
+if [[ ! -f data/train/wav.scp || data/train/wav.scp -ot "$train_data_dir" ]]; then
+  echo ---------------------------------------------------------------------
+  echo "Preparing acoustic training lists in data/train on" `date`
+  echo ---------------------------------------------------------------------
+  mkdir -p data/train
+  local/prepare_acoustic_training_data.pl \
+    --vocab $lexicon --fragmentMarkers \-\*\~ \
+    $train_data_dir data/train > data/train/skipped_utts.log
+fi
+
 if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   echo ---------------------------------------------------------------------
   echo "Training SRILM language models on" `date`
@@ -130,6 +136,7 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
 fi
 decode_nj=$dev2h_nj
+
 echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
 echo ---------------------------------------------------------------------
