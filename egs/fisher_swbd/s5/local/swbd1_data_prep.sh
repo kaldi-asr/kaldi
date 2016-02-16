@@ -102,7 +102,7 @@ local/swbd1_map_words.pl -f 2- $dir/transcripts2.txt  > $dir/text  # final trans
 
 # format acronyms in text
 python local/map_acronyms_transcripts.py -i $dir/text -o $dir/text_map \
-  -M data/local/dict/acronyms_swbd.map
+  -M data/local/dict_nosp/acronyms_swbd.map
 cp $dir/text $dir/text_bk
 mv $dir/text_map $dir/text
 
