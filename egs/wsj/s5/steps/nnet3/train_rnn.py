@@ -435,7 +435,7 @@ def TrainOneIteration(dir, iter, egs_dir,
                    raw_model_string, egs_dir,
                    left_context, right_context, min_deriv_time,
                    momentum, max_param_change,
-                   shuffle_buffer_size, num_chunk_per_minibatch,
+                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
                    run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
