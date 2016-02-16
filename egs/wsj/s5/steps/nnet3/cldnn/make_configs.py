@@ -95,8 +95,9 @@ if __name__ == "__main__":
     # CNN options
     parser.add_argument("--cnn-indexes", type=str,
                         help="CNN indexes at each CNN layer, e.g. '3,8,1,1,256,1,3,1,1,3,1'")
-    parser.add_argument("--cnn-affine-dim", type=int,
-                        help="CNN affine layer ouput dimension, e.g. 256")
+    parser.add_argument("--cnn-reduced-dim", type=int,
+                        help="Output dimension of the linear layer at the CNN output "
+                        "for dimension reduction, e.g. 256")
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
                         help="Number of LSTM layers to be stacked", default=1)
@@ -145,8 +146,8 @@ if __name__ == "__main__":
     ## Check arguments.
     if args.cnn_indexes is None:
         sys.exit("--splice-indexes argument is required");
-    if args.cnn_affine_dim is None or not (args.cnn_affine_dim > 0):
-        sys.exit("--cnn-affine-dim argument is required");
+    if args.cnn_reduced_dim is None or not (args.cnn_reduced_dim > 0):
+        sys.exit("--cnn-reduced-dim argument is required");
     if args.splice_indexes is None:
         sys.exit("--splice-indexes argument is required")
     if args.feat_dim is None or not (args.feat_dim > 0):
@@ -220,7 +221,7 @@ if __name__ == "__main__":
     if args.ivector_dim > 0:
       iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
                          'dimension': args.ivector_dim}
-      iv_layer_output = nodes.AddAffineLayer(config_lines, "IV", iv_layer_output, args.ivector_dim, "")
+      iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, args.ivector_dim, "")
      
     list = [('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_indexes[0]]
     splice_descriptor = "Append({0})".format(", ".join(list))
@@ -232,9 +233,15 @@ if __name__ == "__main__":
 
     num_cnn_layers = len(cnn_array)
     for cl in range(0, num_cnn_layers):
-      prev_layer_output = nodes.AddCnnLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_array[cl])
+      conv_config = {'filt_x_dim': cnn_array[cl][0], 'filt_y_dim': cnn_array[cl][1],
+                     'filt_x_step': cnn_array[cl][2], 'filt_y_step': cnn_array[cl][3],
+                     'num_filters': cnn_array[cl][4]}
+      prev_layer_output = nodes.AddConvolutionLayer(config_lines, "L{0}".format(cl), prev_layer_output, conv_config)
+      maxp_config = {'pool_x_size': cnn_array[cl][5], 'pool_y_size': cnn_array[cl][6], 'pool_z_size': cnn_array[cl][7],
+                     'pool_x_step': cnn_array[cl][8], 'pool_y_step': cnn_array[cl][9], 'pool_z_step': cnn_array[cl][10]}
+      prev_layer_output = nodes.AddMaxpoolingLayer(config_lines, "L{0}".format(cl), prev_layer_output, maxp_config)
+    prev_layer_output = nodes.AddAffineLayer(config_lines, "Cnn-dim-reduce", prev_layer_output, args.cnn_reduced_dim, "")
 
-    prev_layer_output = nodes.AddAffineLayer(config_lines, "CNN", prev_layer_output, args.cnn_affine_dim, "")
     if args.ivector_dim > 0:
       prev_layer_output['descriptor'] = '{0}, {1}'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
       prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']

@@ -7,10 +7,16 @@
 #           2016  Tom Ko
 # Apache 2.0.
 
+# This is the CNN+TDNN system built in nnet3
+# This system differs from the standard TDNN system
+# in replacing the LDA with CNN at the front of the network
+# and using fbank features as the CNN input
+# As the dimension of the CNN output is usually large, we place
+# a linear layer at the output of CNN for dimension reduction
+# The ivectors are processed through a fully connected affine layer,
+# then concatenated with the dimension-reduced CNN output and
+# passed to the deeper part of the network.
 
-# this is a basic lstm script
-# LSTM script runs for more epochs than the TDNN script
-# and each epoch takes twice the time
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call lstm/train.sh with --gpu false
@@ -23,8 +29,16 @@ speed_perturb=true
 common_egs_dir=
 
 # CNN options
+# Parameter indices used for each CNN layer
+# Format: layer<CNN_index>/<parameter_indices>....layer<CNN_index>/<parameter_indices>
+# The <parameter_indices> for each CNN layer must contain 11 positive integers.
+# The first 5 integers correspond to the parameter of ConvolutionComponent:
+# <filt_x_dim, filt_y_dim, filt_x_step, filt_y_step, num_filters>
+# The next 6 integers correspond to the parameter of MaxpoolingComponent:
+# <pool_x_size, pool_y_size, pool_z_size, pool_x_step, pool_y_step, pool_z_step>
 cnn_indexes="3,8,1,1,256,1,3,1,1,3,1"
-cnn_affine_dim=256
+# Output dimension of the linear layer at the CNN output for dimension reduction
+cnn_reduced_dim=256
 
 # LSTM options
 splice_indexes="-2,-1,0,1,2 0 0"
@@ -99,7 +113,7 @@ if [ $stage -le 9 ]; then
     --num-chunk-per-minibatch $num_chunk_per_minibatch \
     --samples-per-iter $samples_per_iter \
     --cnn-indexes "$cnn_indexes" \
-    --cnn-affine-dim $cnn_affine_dim \
+    --cnn-reduced-dim $cnn_reduced_dim \
     --splice-indexes "$splice_indexes" \
     --feat-type raw \
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
@@ -131,20 +145,19 @@ if [ $stage -le 10 ]; then
   if [ -z $frames_per_chunk ]; then
     frames_per_chunk=$chunk_width
   fi
-  #for decode_set in train_dev eval2000; do
-  for decode_set in eval2000; do
+  for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --stage 5 --iter 100 --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
 	  --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
-         $graph_dir data/${decode_set}_fbank_hires $dir/decode_${decode_set}_sw1_tg_100 || exit 1;
+         $graph_dir data/${decode_set}_fbank_hires $dir/decode_${decode_set}_sw1_tg || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
-            $dir/decode_${decode_set}_sw1_{tg,fsh_fg}_100 || exit 1;
+            $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
   done

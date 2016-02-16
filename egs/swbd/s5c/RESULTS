@@ -138,7 +138,9 @@ exit 0
 %WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
 
-
+# results with nnet3 cnn+tdnn: local/nnet3/run_cnn_tdnn.sh (1.2.2016) (2 epoch training on speed-perturbed and volume perturbed data)
+%WER 12.1 | 1831 21395 | 89.2 7.2 3.7 1.3 12.1 47.7 | exp/nnet3/cnn_tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 88.0 8.2 3.8 1.6 13.6 50.0 | exp/nnet3/cnn_tdnn_sp/decode_eval2000_hires_sw1_tg/score_10_0.0/eval2000_fbank_hires.ctm.swbd.filt.sys
 
 # Resegmentation numbers for swbd subset.
 %WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
