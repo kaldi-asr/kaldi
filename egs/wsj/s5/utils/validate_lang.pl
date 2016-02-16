@@ -89,15 +89,7 @@ foreach (keys %wsymtab) {
     $wint2sym{$wsymtab{$_}} = $_;
   }
 }
-if (exists $wsymtab{"#0"}) {
-  print "--> $lang/words.txt has \"#0\"\n";
-  print "--> $lang/words.txt is OK\n";
-} else {
-  $warning = 1;
-  print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
-  print "-->          (if you are using ARPA-type language models, you will normally\n";
-  print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
-}
+print "--> $lang/words.txt is OK\n";
 print "\n";
 
 # Checking phones/* -------------------------------
@@ -113,7 +105,6 @@ sub check_txt_int_csl {
   if (!open(CSL, "<$cat.csl")) {
     $exit = 1; return print "--> ERROR: fail to open $cat.csl\n";
   }
-
   if (-z "$cat.txt") {
     $warning = 1; print "--> WARNING: $cat.txt is empty\n";
   }
@@ -743,6 +734,77 @@ if (-e "$lang/L_disambig.fst") {
   }
 }
 
+sub check_wdisambig {
+  print "Checking word-level disambiguation symbols...\n";
+  # This block checks that one of the two following conditions hold:
+  # (1) for lang diretories prepared by older versions of prepare_lang.sh:
+  #  The symbol  '#0' should appear in words.txt and phones.txt, and should
+  # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
+  #  exist, and have the expected properties (see below for details).
+  my %wdisambig_words_hash;
+  my %wdisambig_words_string = "";
+
+  if (! -e "$lang/phones/wdisambig.txt") {
+    print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
+    if (exists $wsymtab{"#0"}) {
+      print "--> $lang/words.txt has \"#0\"\n";
+      $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
+      $wdisambig_words_string = $wsymtab{"#0"};
+    } else {
+      print "--> ERROR: $lang/words.txt doesn't have \"#0\"\n";
+      print "-->          (if you are using ARPA-type language models, you will normally\n";
+      print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
+      $exit = 1;
+    }
+  } else {
+   print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";
+    if (!open(T, "<$lang/phones/wdisambig.txt")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig.txt\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig = <T>);
+    close(T);
+    if (!open(W, "<$lang/phones/wdisambig_words.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_words.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_words = <W>);
+    close(W);
+    if (!open(P, "<$lang/phones/wdisambig_phones.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_phones.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_phones = <P>);
+    close(P);
+    my $len = @wdisambig, $len2;
+    if (($len2 = @wdisambig_words) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
+      $exit = 1; return;
+    }
+   if (($len2 = @wdisambig_phones) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
+      $exit = 1; return;
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($wsymtab{$wdisambig[$i]} ne $wdisambig_words[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($psymtab{$wdisambig[$i]} ne $wdisambig_phones[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    foreach my $i ( @wdisambig_words ) {
+      $wdisambig_words_hash{$i} = 1;
+      $wdisambig_words_string .= " " . $i;
+    }
+ }
+}
+
+check_wdisambig();
+
 if (-e "$lang/G.fst") {
   # Check that G.fst is ilabel sorted and nonempty.
   $text = `. ./path.sh; fstinfo $lang/G.fst`;
@@ -781,21 +843,17 @@ if (-e "$lang/G.fst") {
   }
 
   # Check that G.fst does not have cycles with only disambiguation symbols or
-  # epsilons on the input, or the forbidden symbols <s> and </s>.
-  $cmd = ". ./path.sh; fstprint $lang/G.fst | awk -v disambig=$lang/phones/disambig.int -v words=$lang/words.txt 'BEGIN{while((getline<disambig)>0) is_disambig[\$1]=1; is_disambig[0] = 1; while((getline<words)>0){ if(\$1==\"<s>\"||\$1==\"</s>\") is_forbidden[\$2]=1;}} {if(NF<3 || is_disambig[\$3]) print; else if(is_forbidden[\$3] || is_forbidden[\$4]) { print \"Error: line \" \$0 \" in G.fst contains forbidden symbol <s> or </s>\" | \"cat 1>&2\"; exit(1); }}' | fstcompile | fstinfo ";
-  $output = `$cmd`;
-  if ($output !~ m/# of states\s+[1-9]/) { # fstinfo did not read a nonempty FST (there should be final probs at least)...
-    print "--> ERROR: failure running command to check for disambig-sym loops [possibly G.fst " .
-         "contained the forbidden symbols <s> or </s>, or possibly some other error..  Output was: \n";
-    print $output;
-    $exit = 1;
-  }
-  if ($output !~ m/cyclic\s+n/) { # FST was cyclic after selecting only for disambig symbols.   This is now allowed.
-    print "--> ERROR: G.fst contained cycles with only disambiguation symbols or epsilons on the input.  Would cause determinization failure in graph creation.\n";
-    $exit = 1;
-  } else {
-    print "--> G.fst did not contain cycles with only disambig symbols or epsilon on the input, and did not contain\n" .
-      "the forbidden symbols <s> or </s> (if present in vocab) on the input or output.\n";
+  # epsilons on the input, or the forbidden symbols <s> and </s> (and a few
+  # related checks
+
+  if (-e "$lang/G.fst") {
+    system("utils/lang/check_g_properties.pl $lang");
+    if ($? != 0) {
+      print "--> ERROR: failure running check_g_properties.pl\n";
+      $exit = 1;
+    } else {
+      print("--> utils/lang/check_g_properties.pl succeeded.\n");
+    }
   }
 }
 

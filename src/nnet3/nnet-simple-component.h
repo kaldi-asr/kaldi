@@ -6,6 +6,7 @@
 //           2014-2015  Vijayaditya Peddinti
 //           2014-2015  Guoguo Chen
 //                2015  Daniel Galvez
+//                2015  Tom Ko
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -120,15 +121,17 @@ class NormalizeComponent: public NonlinearComponent {
   // note: although we inherit from NonlinearComponent, we don't actually bohter
   // accumulating the stats that NonlinearComponent is capable of accumulating.
  public:
- void Init(int32 dim, BaseFloat target_rms);
-  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0) { Init(dim, target_rms); }
+ void Init(int32 dim, BaseFloat target_rms, bool add_log_stddev);
+  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0, 
+    bool add_log_stddev = false) { Init(dim, target_rms, add_log_stddev); }
   explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other),
-    target_rms_(other.target_rms_) { }
+    target_rms_(other.target_rms_), add_log_stddev_(other.add_log_stddev_) { }
   virtual int32 Properties() const {
-    return kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropInPlace;
+    return (add_log_stddev_ ? kSimpleComponent|kBackpropNeedsInput :
+            kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
+        kBackpropInPlace);
   }
-  NormalizeComponent(): target_rms_(1.0) { }
+  NormalizeComponent(): target_rms_(1.0), add_log_stddev_(false) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual Component* Copy() const { return new NormalizeComponent(*this); }
@@ -149,6 +152,8 @@ class NormalizeComponent: public NonlinearComponent {
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
 
+  virtual int32 OutputDim() const { return (dim_ + (add_log_stddev_ ? 1 : 0)); } 
+
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
@@ -157,6 +162,9 @@ class NormalizeComponent: public NonlinearComponent {
   // about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
+
+  bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))  
+                        // is an extra dimension of the output.
 };
 
 
@@ -389,109 +397,7 @@ class AffineComponent: public UpdatableComponent {
   CuVector<BaseFloat> bias_params_;
 };
 
-class RepeatedAffineComponent: public UpdatableComponent {
- public:
-
-  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
-  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-
-  RepeatedAffineComponent() { } // use Init to really initialize.
-  virtual std::string Type() const { return "RepeatedAffineComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-	     kBackpropNeedsInput|kBackpropAdds;
-  }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
-  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
-
-  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
-            BaseFloat param_stddev, BaseFloat bias_mean,
-            BaseFloat bias_stddev);
-
- protected:
-  // This function Update(), called from backprop, is broken out for
-  // extensibility to natural gradient update.
-  virtual void Update(
-      const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);
-
-  // This function does nothing here but is redefined in child-class
-  // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
-  virtual void SetNaturalGradientConfigs() { }
-
-  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
-  CuMatrix<BaseFloat> linear_params_;
-  CuVector<BaseFloat> bias_params_;
-  int32 num_repeats_;
-};
-
-class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
- public:
-  // Use Init() to really initialize.
-  NaturalGradientRepeatedAffineComponent() { }
-
-  // Most of the public functions are inherited from RepeatedAffineComponent.
-  virtual std::string Type() const {
-    return "NaturalGradientRepeatedAffineComponent";
-  }
-
-  virtual Component* Copy() const;
-
-  // Copy constructor
-  explicit NaturalGradientRepeatedAffineComponent(
-      const NaturalGradientRepeatedAffineComponent &other);
- private:
-  virtual void Update(
-      const CuMatrixBase<BaseFloat> &in_value,
-      const CuMatrixBase<BaseFloat> &out_deriv);
-
-  const NaturalGradientRepeatedAffineComponent &operator=(
-      const NaturalGradientRepeatedAffineComponent &other); // Disallow.
-
-  // Applies the default configuration to preconditioner_in_.
-  virtual void SetNaturalGradientConfigs();
-
-  // For efficiency reasons we only apply the natural gradient to the input
-  // side, i.e. not to the space of output derivatives-- we believe the input
-  // side is the more important side.  We don't make the natural-gradient
-  // configurable; we just give it a reasonable configuration.
-  // Instead of using the individual data-points, for efficiency reasons we use
-  // the distribution of per-minibatch summed derivatives over each dimension of
-  // the output space, as the source for the Fisher matrix.
-  OnlineNaturalGradient preconditioner_in_;
-};
-
+class RepeatedAffineComponent;
 
 /// This class implements an affine transform using a block diagonal matrix
 /// e.g., one whose weight matrix is all zeros except for blocks on the
@@ -547,6 +453,7 @@ class BlockAffineComponent : public UpdatableComponent {
             BaseFloat param_stddev, BaseFloat bias_mean,
             BaseFloat bias_stddev);
   explicit BlockAffineComponent(const BlockAffineComponent &other);
+  explicit BlockAffineComponent(const RepeatedAffineComponent &rac);
  protected:
   // The matrix linear_params_ has a block structure, with num_blocks_ blocks of
   // equal size.  The blocks are stored in linear_params_ as
@@ -561,6 +468,109 @@ class BlockAffineComponent : public UpdatableComponent {
   int32 num_blocks_;
  private:
   const BlockAffineComponent &operator = (const BlockAffineComponent &other); // Disallow.
+};
+
+class RepeatedAffineComponent: public UpdatableComponent {
+ public:
+
+  virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
+  virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
+
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  RepeatedAffineComponent() { } // use Init to really initialize.
+  virtual std::string Type() const { return "RepeatedAffineComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+	     kBackpropNeedsInput|kBackpropAdds;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  // Some functions that are specific to this class.
+  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
+  const CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
+  explicit RepeatedAffineComponent(const RepeatedAffineComponent &other);
+
+  void Init(int32 input_dim, int32 output_dim, int32 num_repeats,
+            BaseFloat param_stddev, BaseFloat bias_mean,
+            BaseFloat bias_stddev);
+  friend BlockAffineComponent::BlockAffineComponent(const RepeatedAffineComponent &rac);
+ protected:
+  // This function Update(), called from backprop, is broken out for
+  // extensibility to natural gradient update.
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  // This function does nothing here but is redefined in child-class
+  // NaturalGradientRepeatedAffineComponent.  This help avoid repeated code.
+  virtual void SetNaturalGradientConfigs() { }
+
+  const RepeatedAffineComponent &operator = (const RepeatedAffineComponent &other); // Disallow.
+  CuMatrix<BaseFloat> linear_params_;
+  CuVector<BaseFloat> bias_params_;
+  int32 num_repeats_;
+};
+
+class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
+ public:
+  // Use Init() to really initialize.
+  NaturalGradientRepeatedAffineComponent() { }
+
+  // Most of the public functions are inherited from RepeatedAffineComponent.
+  virtual std::string Type() const {
+    return "NaturalGradientRepeatedAffineComponent";
+  }
+
+  virtual Component* Copy() const;
+
+  // Copy constructor
+  explicit NaturalGradientRepeatedAffineComponent(
+      const NaturalGradientRepeatedAffineComponent &other);
+ private:
+  virtual void Update(
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv);
+
+  const NaturalGradientRepeatedAffineComponent &operator=(
+      const NaturalGradientRepeatedAffineComponent &other); // Disallow.
+
+  // Applies the default configuration to preconditioner_in_.
+  virtual void SetNaturalGradientConfigs();
+
+  // For efficiency reasons we only apply the natural gradient to the input
+  // side, i.e. not to the space of output derivatives-- we believe the input
+  // side is the more important side.  We don't make the natural-gradient
+  // configurable; we just give it a reasonable configuration.
+  // Instead of using the individual data-points, for efficiency reasons we use
+  // the distribution of per-minibatch summed derivatives over each dimension of
+  // the output space, as the source for the Fisher matrix.
+  OnlineNaturalGradient preconditioner_in_;
 };
 
 class SoftmaxComponent: public NonlinearComponent {
@@ -1445,161 +1455,65 @@ class ConvolutionComponent: public UpdatableComponent {
 };
 
 /**
- * Convolutional1dComponent implements convolution over frequency axis.
- * We assume the input featrues are spliced, i.e. each frame is in
- * fact a set of stacked frames, where we can form patches which span
- * over several frequency bands and whole time axis. A patch is the
- * instance of a filter on a group of frequency bands and whole time
- * axis. Shifts of the filter generate patches.
+ * MaxPoolingComponent :
+ * Maxpooling component was firstly used in ConvNet for selecting an 
+ * representative activation in an area. It inspired Maxout nonlinearity.
+ * Each output element of this component is the maximum of a block of 
+ * input elements where the block has a 3D dimension (pool_x_size_,
+ * pool_y_size_, pool_z_size_).
+ * Blocks could overlap if the shift value on any axis is smaller
+ * than its corresponding pool size (e.g. pool_x_step_ < pool_x_size_).
+ * If the shift values are euqal to their pool size, there is no 
+ * overlap; while if they all equal 1, the blocks overlap to 
+ * the greatest possible extent.
  *
- * The convolution is done over whole axis with same filter
- * coefficients, i.e. we don't use separate filters for different
- * 'regions' of frequency axis. Due to convolution, same weights are
- * used repeateadly, the final gradient is a sum of all
- * position-specific gradients (the sum was found better than
- * averaging).
+ * This component is designed to be used after a ConvolutionComponent
+ * so that the input matrix is propagated from a 2d-convolutional layer.
+ * This component implements 3d-maxpooling which performs
+ * max pooling along the three axes.
+ * Input : A matrix where each row is a vectorized 3D-tensor.
+ *        The 3D tensor has dimensions
+ *        x: (e.g. time)
+ *        y: (e.g. frequency)
+ *        z: (e.g. channels like number of filters in the ConvolutionComponent)
  *
- * In order to have a fast implementations, the filters are
- * represented in vectorized form, where each rectangular filter
- * corresponds to a row in a matrix, where all the filters are
- * stored. The features are then re-shaped to a set of matrices, where
- * one matrix corresponds to single patch-position, where all the
- * filters get applied.
+ *        The component assumes input vectorizations of type zyx
+ *        which is the default output vectorization type of a ConvolutionComponent.
+ *        e.g. for input vectorization of type zyx the input is vectorized by
+ *        spanning axes z, y and x of the tensor in that order.
+ *        Given 3d tensor A with sizes (2, 2, 2) along the three dimensions
+ *        the zyx vectorized input looks like
+ *  A(0,0,0) A(0,0,1) A(0,1,0) A(0,1,1) A(1,0,0) A(1,0,1) A(1,1,0) A(1,1,1)
  *
- * The type of convolution is controled by hyperparameters:
- * patch_dim_     ... frequency axis size of the patch
- * patch_step_    ... size of shift in the convolution
- * patch_stride_  ... shift for 2nd dim of a patch
- *                    (i.e. frame length before splicing)
- * For instance, for a convolutional component after raw input,
- * if the input is 36-dim fbank feature with delta of order 2
- * and spliced using +/- 5 frames of contexts, the convolutional
- * component takes the input as a 36 x 33 image. The patch_stride_
- * should be configured 36. If patch_step_ and patch_dim_ are
- * configured 1 and 7, the Convolutional1dComponent creates a
- * 2D filter of 7 x 33, such that the convolution is actually done
- * only along the frequency axis. Specifically, the convolutional
- * output along the frequency axis is (36 - 7) / 1 + 1 = 30, and
- * the convolutional output along the temporal axis is 33 - 33 + 1 = 1,
- * resulting in an output image of 30 x 1, which is called a feature map
- * in ConvNet. Then if the output-dim is set 3840, the constructor
- * would know there should be 3840 / 30 = 128 distinct filters,
- * which will create 128 feature maps of 30 x 1 for one frame of
- * input. The feature maps are vectorized as a 3840-dim row vector
- * in the output matrix of this component. For details on progatation
- * of Convolutional1dComponent, check the function definition.
+ * Output : The output is also a 3D tensor vectorized in the zyx format.
+ *
+ * For information on the hyperparameters and parameters of this component see
+ * the variable declarations.
+ *
  *
  */
-class Convolutional1dComponent: public UpdatableComponent {
+
+class MaxpoolingComponent: public Component {
  public:
-  Convolutional1dComponent();
+
+  MaxpoolingComponent(): input_x_dim_(0), input_y_dim_(0), input_z_dim_(0),
+                           pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
+                           pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
   // constructor using another component
-  Convolutional1dComponent(const Convolutional1dComponent &component);
-  // constructor using parameters
-  Convolutional1dComponent(const CuMatrixBase<BaseFloat> &filter_params,
-                           const CuVectorBase<BaseFloat> &bias_params,
-                           BaseFloat learning_rate);
+  MaxpoolingComponent(const MaxpoolingComponent &component): 
+             input_x_dim_(component.input_x_dim_),
+             input_y_dim_(component.input_y_dim_),
+             input_z_dim_(component.input_z_dim_),
+             pool_x_size_(component.pool_x_size_), 
+             pool_y_size_(component.pool_y_size_),
+             pool_z_size_(component.pool_z_size_),
+             pool_x_step_(component.pool_x_step_),
+             pool_y_step_(component.pool_y_step_),
+             pool_z_step_(component.pool_z_step_) { }
 
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
-
-  virtual std::string Info() const;
-  virtual void InitFromConfig(ConfigLine *cfl);
-  virtual std::string Type() const { return "Convolutional1dComponent"; }
-  virtual int32 Properties() const {
-    return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|
-	    kBackpropAdds|kPropagateAdds;
-  }
-
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const;
-  virtual void Backprop(const std::string &debug_info,
-                        const ComponentPrecomputedIndexes *indexes,
-                        const CuMatrixBase<BaseFloat> &in_value,
-                        const CuMatrixBase<BaseFloat> &, // out_value,
-                        const CuMatrixBase<BaseFloat> &out_deriv,
-                        Component *to_update_in,
-                        CuMatrixBase<BaseFloat> *in_deriv) const;
-
-  virtual void Read(std::istream &is, bool binary);
-  virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual Component* Copy() const;
-
-  // Some functions from base-class UpdatableComponent.
-  virtual void Scale(BaseFloat scale);
-  virtual void Add(BaseFloat alpha, const Component &other);
-  virtual void SetZero(bool treat_as_gradient);
-  virtual void PerturbParams(BaseFloat stddev);
-  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
-  virtual int32 NumParameters() const;
-  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
-  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
-
-  // Some functions that are specific to this class.
-  void SetParams(const VectorBase<BaseFloat> &bias,
-                 const MatrixBase<BaseFloat> &filter);
-  const CuVector<BaseFloat> &BiasParams() { return bias_params_; }
-  const CuMatrix<BaseFloat> &LinearParams() { return filter_params_; }
-  void Init(int32 input_dim, int32 output_dim,
-            int32 patch_dim, int32 patch_step, int32 patch_stride,
-            BaseFloat param_stddev, BaseFloat bias_stddev);
-  void Init(int32 patch_dim, int32 patch_step, int32 patch_stride,
-            std::string matrix_filename);
-
-  // resize the component, setting the parameters to zero, while
-  // leaving any other configuration values the same
-  void Resize(int32 input_dim, int32 output_dim);
-
-  void Update(const std::string &debug_info,
-	      const CuMatrixBase<BaseFloat> &in_value,
-              const CuMatrixBase<BaseFloat> &out_deriv);
-
- private:
-  int32 patch_dim_;
-  int32 patch_step_;
-  int32 patch_stride_;
-
-  static void ReverseIndexes(const std::vector<int32> &forward_indexes,
-                             int32 input_dim,
-                             std::vector<std::vector<int32> > *backward_indexes);
-  static void RearrangeIndexes(const std::vector<std::vector<int32> > &in,
-                               std::vector<std::vector<int32> > *out);
-
-  const Convolutional1dComponent &operator = (const Convolutional1dComponent &other); // Disallow.
-  CuMatrix<BaseFloat> filter_params_;
-  CuVector<BaseFloat> bias_params_;
-  bool is_gradient_;
-};
-
-/**
- * MaxPoolingComponent :
- * Maxpooling component was firstly used in ConvNet for selecting an representative
- * activation in an area. It inspired Maxout nonlinearity.
- *
- * The input/output matrices are split to submatrices with width 'pool_stride_'.
- * For instance, a minibatch of 512 frames is propagated by a convolutional
- * layer, resulting in a 512 x 3840 input matrix for MaxpoolingComponent,
- * which is composed of 128 feature maps for each frame (128 x 30). If you want
- * a 3-to-1 maxpooling on each feature map, set 'pool_stride_' and 'pool_size_'
- * as 128 and 3 respectively. Maxpooling component would create an output
- * matrix of 512 x 1280. The 30 input neurons are grouped by a group size of 3, and
- * the maximum in a group is selected, creating a smaller feature map of 10.
- *
- * Our pooling does not supports overlaps, which simplifies the
- * implementation (and was not helpful for Ossama).
- */
-class MaxpoolingComponent: public Component {
- public:
-  explicit MaxpoolingComponent(int32 input_dim, int32 output_dim,
-                               int32 pool_size, int32 pool_stride) {
-    Init(input_dim, output_dim, pool_size, pool_stride);
-  }
-  MaxpoolingComponent(): input_dim_(0), output_dim_(0),
-    pool_size_(0), pool_stride_(0) { }
-  virtual int32 InputDim() const { return input_dim_; }
-  virtual int32 OutputDim() const { return output_dim_; }
+  virtual void Check() const;
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -1625,25 +1539,37 @@ class MaxpoolingComponent: public Component {
 
   /// Write component to stream
   virtual void Write(std::ostream &os, bool binary) const;
-  // We don't implement InitFromConfig() at this level: child-class should do
-  // it.
-  virtual Component* Copy() const {
-    return new MaxpoolingComponent(input_dim_, output_dim_,
-		    pool_size_, pool_stride_); }
+  virtual Component* Copy() const { return new MaxpoolingComponent(*this); }
 
-  // Some functions that are specific to this class
-  void Init(int32 input_dim, int32 output_dim,
-            int32 pool_size, int32 pool_stride);
+  void InputToInputPatches(const CuMatrixBase<BaseFloat>& in,
+                           CuMatrix<BaseFloat> *patches) const;
+  void InderivPatchesToInderiv(const CuMatrix<BaseFloat>& in_deriv_patches,
+                               CuMatrixBase<BaseFloat> *in_deriv) const;
 
  protected:
-  int32 input_dim_;
-  int32 output_dim_;
-  int32 pool_size_;
-  int32 pool_stride_;
+  int32 input_x_dim_;   // size of the input along x-axis
+                        // (e.g. number of time steps)
+  int32 input_y_dim_;   // size of input along y-axis
+                        // (e.g. number of mel-frequency bins)
+  int32 input_z_dim_;   // size of input along z-axis
+                        // (e.g. number of filters in the ConvolutionComponent)
+
+  int32 pool_x_size_;    // size of the pooling window along x-axis
+  int32 pool_y_size_;    // size of the pooling window along y-axis
+  int32 pool_z_size_;    // size of the pooling window along z-axis
+
+  int32 pool_x_step_;   // the number of steps taken along x-axis of input
+                        //  before computing the next pool
+  int32 pool_y_step_;   // the number of steps taken along y-axis of input
+                        // before computing the next pool
+  int32 pool_z_step_;   // the number of steps taken along z-axis of input
+                        // before computing the next pool
+
 };
 
+
 /**
-   CompositeComponent is components representing a sequence of
+   CompositeComponent is a component representing a sequence of
    [simple] components.  The config line would be something like the following
    (imagine this is all on one line):
 
@@ -1659,6 +1585,10 @@ class MaxpoolingComponent: public Component {
    much memory for very long (and you can make the memory usage very small by
    making max-rows-process small).  We inherit from UpdatableComponent just in
    case one or more of the components in the sequence are updatable.
+
+   It is an error to nest a CompositeComponent inside a CompositeComponent.
+   The same effect can be accomplished by specifying a smaller max-rows-process
+   in a single CompositeComponent.
  */
 class CompositeComponent: public UpdatableComponent {
  public:
@@ -1723,6 +1653,18 @@ class CompositeComponent: public UpdatableComponent {
   // expensive; instead, by default we call StoreStats() for any components that
   // want to store stats, as part of the backprop pass.  This is not 100% ideal
   // but it will usually do what you want.  We can revisit this later if needed.
+
+  // Functions to iterate over the internal components
+
+  int32 NumComponents() const { return components_.size();}
+  /// Gets the ith component in this component.
+  /// The ordering is the same as in the config line. The caller
+  /// does not own the received component.
+  const Component* GetComponent(int32 i) const;
+  /// Sets the ith component. After this call, CompositeComponent owns
+  /// the reference to the argument component. Frees the previous
+  /// ith component.
+  void SetComponent(int32 i, Component *component);
 
   virtual ~CompositeComponent() { DeletePointers(&components_); }
  protected:

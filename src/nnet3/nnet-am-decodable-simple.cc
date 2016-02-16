@@ -112,9 +112,9 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
   int32 subsampling_factor = opts_.frame_subsampling_factor,
       subsampled_frames_per_chunk = opts_.frames_per_chunk / subsampling_factor,
       start_subsampled_frame = subsampled_frame,
-     num_subsampled_frames = std::min<int32>(num_subsampled_frames_ -
-                                             start_subsampled_frame,
-                                             subsampled_frames_per_chunk),
+      num_subsampled_frames = std::min<int32>(num_subsampled_frames_ -
+                                              start_subsampled_frame,
+                                              subsampled_frames_per_chunk),
       last_subsampled_frame = start_subsampled_frame + num_subsampled_frames - 1;
   KALDI_ASSERT(num_subsampled_frames > 0);
   // the output-frame numbers are the subsampled-frame numbers
@@ -122,8 +122,15 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
       last_output_frame = last_subsampled_frame * subsampling_factor;
 
   KALDI_ASSERT(opts_.extra_left_context >= 0 && opts_.extra_right_context >= 0);
-  int32 left_context = nnet_left_context_ + opts_.extra_left_context,
-      right_context = nnet_right_context_ + opts_.extra_right_context;
+  int32 extra_left_context = opts_.extra_left_context,
+      extra_right_context = opts_.extra_right_context;
+  if (first_output_frame == 0 && opts_.extra_left_context_initial >= 0)
+    extra_left_context = opts_.extra_left_context_initial;
+  if (last_subsampled_frame == num_subsampled_frames_ - 1 &&
+      opts_.extra_right_context_final >= 0)
+    extra_right_context = opts_.extra_right_context_final;
+  int32 left_context = nnet_left_context_ + extra_left_context,
+      right_context = nnet_right_context_ + extra_right_context;
   int32 first_input_frame = first_output_frame - left_context,
       last_input_frame = last_output_frame + right_context,
       num_input_frames = last_input_frame + 1 - first_input_frame;

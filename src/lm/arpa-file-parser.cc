@@ -103,7 +103,7 @@ void ArpaFileParser::Read(std::istream &is, bool binary) {
     std::vector<std::string> col;
     SplitStringToVector(line, " \t", true, &col);
     if (col.size() == 4 && col[0] == "ngram" && col[2] == "=") {
-      int32 order, ngram_count;
+      int32 order, ngram_count = 0;
       if (!ConvertStringToInteger(col[1], &order) ||
           !ConvertStringToInteger(col[3], &ngram_count)) {
         PARSE_ERR << "Cannot parse ngram count '" << line << "'.";

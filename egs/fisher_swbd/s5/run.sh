@@ -25,7 +25,6 @@ local/swbd1_data_prep.sh /export/corpora3/LDC/LDC97S62
 # local/swbd1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 # local/swbd1_data_prep.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
 
-
 utils/prepare_lang.sh data/local/dict_nosp \
     "<unk>" data/local/lang_nosp data/lang_nosp
 
@@ -135,15 +134,14 @@ local/remove_dup_utts.sh 300 data/train data/train_nodup
 )
 
 # Start training on the Switchboard subset, which has cleaner alignments
-
 steps/train_mono.sh --nj 3 --cmd "$train_cmd" \
-  data/train_10k_nodup data/lang_nopp exp/mono0a 
+  data/train_10k_nodup data/lang_nosp exp/mono0a 
 
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
-   data/train_30k_nodup data/lang_nopp exp/mono0a exp/mono0a_ali || exit 1;
+   data/train_30k_nodup data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1;
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-    3200 30000 data/train_30k_nodup data/lang_nopp exp/mono0a_ali exp/tri1a || exit 1;
+    3200 30000 data/train_30k_nodup data/lang_nosp exp/mono0a_ali exp/tri1a || exit 1;
 #used to be 2500 20000
 (
  graph_dir=exp/tri1a/graph_nosp_fsh_sw1_tg

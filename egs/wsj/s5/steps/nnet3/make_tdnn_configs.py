@@ -70,7 +70,7 @@ else:
 splice_array = []
 left_context = 0
 right_context = 0
-split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
+split1 = args.splice_indexes.split();  # we already checked the string is nonempty.
 if len(split1) < 1:
     sys.exit("invalid --splice-indexes argument, too short: "
              + args.splice_indexes)

@@ -138,6 +138,15 @@ exit 0
 %WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
 %WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
 
+# current best 'chain' models with TDNNs (see local/chain/run_tdnn_2o.sh)
+%WER 11.3 | 1831 21395 | 90.0 6.8 3.2 1.3 11.3 46.6 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.0 | 1831 21395 | 88.6 7.9 3.6 1.6 13.0 50.4 | exp/chain/tdnn_2o_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.swbd.filt.sys
+
+
+
+# these are results with nnet3 LSTMs with CTC training : local/ctc/run_lstm.sh
+%WER 17.4 | 1831 21395 | 85.3 10.1 4.6 2.7 17.4 57.8 | exp/ctc/lstm_sp/decode_eval2000_sw1_fsh_fg_0.15/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 83.5 11.2 5.2 3.0 19.4 60.7 | exp/ctc/lstm_sp/decode_eval2000_sw1_tg_0.15/score_12_0.5/eval2000_hires.ctm.swbd.filt.sys
 
 
 # Resegmentation numbers for swbd subset.

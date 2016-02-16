@@ -1,7 +1,7 @@
 // nnet3/nnet-utils.h
 
 // Copyright   2015  Johns Hopkins University (author: Daniel Povey)
-
+//             2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,8 @@ std::string PrintVectorPerUpdatableComponent(const Nnet &nnet,
                                              const VectorBase<BaseFloat> &vec);
 
 /// This function returns true if the nnet has the following properties:
-///  It has one output, called "output".
+///  It has an called "output" (other outputs are allowed but may be
+///          ignored).
 ///  It has an input called "input", and possibly an extra input called
 ///    "ivector", but no other inputs.
 ///  There are probably some other properties that we really ought to
@@ -138,6 +139,9 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
 
+/// Convert all components of type RepeatedAffineComponent or
+/// NaturalGradientRepeatedAffineComponent to BlockAffineComponent in nnet.
+void ConvertRepeatedToBlockAffine(Nnet *nnet);
 
 /// This function returns various info about the neural net.
 /// If the nnet satisfied IsSimpleNnet(nnet), the info includes "left-context=5\nright-context=3\n...".  The info includes
