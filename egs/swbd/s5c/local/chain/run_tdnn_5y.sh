@@ -11,6 +11,16 @@
 # hidden parts of the network.  Hopefully this will reduce overtraining, since
 # the hidden parts of the network are regularized by the --xent-regularize option.
 
+# The diagnostics were improved, but the WER is no better (or maybe slightly worse).
+#local/chain/compare_wer.sh 5v 5y
+#System                       5v        5y
+#WER on train_dev(tg)      15.38     15.50
+#WER on train_dev(fg)      14.39     14.37
+#WER on eval2000(tg)        17.4      17.5
+#WER on eval2000(fg)        15.7      15.7
+#Final train prob       -0.11156 -0.111636
+#Final valid prob      -0.131797 -0.128892
+
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 
 # WER is almost the same, perhaps <0.1% worse; diagnostics are slightly worse.

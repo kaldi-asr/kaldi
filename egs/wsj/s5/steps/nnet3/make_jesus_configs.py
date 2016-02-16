@@ -112,7 +112,7 @@ class StatisticsConfig:
         self.input_dim = input_dim
         self.input_name = input_name
 
-        m = re.match("^(mean|mean\+stddev)\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)$",
+        m = re.search("(mean|mean\+stddev)\((-?\d+):(-?\d+):(-?\d+):(-?\d+)\)",
                       config_string)
         if m == None:
             sys.exit("Invalid splice-index or statistics-config string: " + config_string)
@@ -204,9 +204,8 @@ try:
                 try:
                     x = StatisticsConfig(s, 100, 'foo')
                 except:
-                    if re.match("skip(-?\d+)$", s) == None:
-                        sys.exit("The following element of the splicing array is not a valid specifier "
-                                 "of statistics or of the form skipDDD: " + s)
+                    sys.exit("The following element of the splicing array is not a valid specifier "
+                    "of statistics: " + s)
 
         if leftmost_splice == 10000 or rightmost_splice == -10000:
             sys.exit("invalid element of --splice-indexes: " + string)
@@ -296,21 +295,12 @@ for l in range(1, num_hidden_layers + 1):
                 splices.append('Offset({0}, {1})'.format(cur_output, offset))
                 spliced_dims.append(cur_affine_output_dim)
             except:
-                # it's not an integer offset, so assume it either specifies the
-                # statistics-extraction, or is of the form skipXX where XX is an
-                # integer offset (this takes as input the previous post-jesus layer).
-                m = re.match("skip(-?\d+)$", s)
-                if m != None:
-                    if l <= 2:
-                        sys.exit("You cannot use skip-splicing for the 1st 2 layers")
-                    offset = m.group(1)
-                    splices.append("Offset(post-jesus{0}, {1})".format(l-1, offset))
-                    spliced_dims.append(args.jesus_forward_output_dim)
-                else:
-                    stats = StatisticsConfig(s, cur_affine_output_dim, cur_output)
-                    stats.WriteConfigs(f)
-                    splices.append(stats.Descriptor())
-                    spliced_dims.extend(stats.OutputDims())
+                # it's not an integer offset, so assume it specifies the
+                # statistics-extraction.
+                stats = StatisticsConfig(s, cur_affine_output_dim, cur_output)
+                stats.WriteConfigs(f)
+                splices.append(stats.Descriptor())
+                spliced_dims.extend(stats.OutputDims())
 
         # get the input to the Jesus layer.
         cur_input = 'Append({0})'.format(', '.join(splices))

@@ -1,10 +1,29 @@
 #!/bin/bash
 
-# _5z is as _5z, but adding the change in configuration that
-# we made from _5v to _5y (moving some parameters from final layer
-# to hidden parts of network)
+# _6a is as _5y, where we keep the hidden parts of the network a bit larger
+# but take the final-hidden-dim back up to 500, which is the same as what
+# it was in 5v.
 
-# _5z is as _5v, but adding skip-splicing (a new configuration option)
+# _5y is as _5v, but rebalancing the network to have fewer parameters in the
+# final layer and more in the hidden parts, by reducing --final-hidden-dim from 500
+# (it defaults to --jesus-forward-hidden-dim) to 400, and increasing
+#  --jesus-forward-input-dim from 500 to 600 and
+#  --jesus-forward-output-dim from 1700 to 1800,
+# and --jesus-hidden-dim from 2500 to 3000 (note: I don't really expect this last change
+# to make much of a difference).
+# Very roughly, we're moving about a million parameters from the final layer to the
+# hidden parts of the network.  Hopefully this will reduce overtraining, since
+# the hidden parts of the network are regularized by the --xent-regularize option.
+
+# The diagnostics were improved, but the WER is no better (or maybe slightly worse).
+#local/chain/compare_wer.sh 5v 5y
+#System                       5v        5y
+#WER on train_dev(tg)      15.38     15.50
+#WER on train_dev(fg)      14.39     14.37
+#WER on eval2000(tg)        17.4      17.5
+#WER on eval2000(fg)        15.7      15.7
+#Final train prob       -0.11156 -0.111636
+#Final valid prob      -0.131797 -0.128892
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 
@@ -412,8 +431,8 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --final-hidden-dim 400 --jesus-hidden-dim 3000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
-    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3,skip0 -3,0,3,skip0 -3,0,3,skip0 -6,-3,0,skip-3" \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1800 --final-hidden-dim 500 --jesus-hidden-dim 3000 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001" \
+    --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
