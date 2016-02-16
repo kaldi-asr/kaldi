@@ -571,7 +571,7 @@ def Train(args, run_opts):
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
     
-    learning_rate = lambda iter, current_num_jobs: GetLearningRate(iter, current_num_jobs, num_iters,
+    learning_rate = lambda iter, current_num_jobs, num_archives_processed: GetLearningRate(iter, current_num_jobs, num_iters,
                                                                    num_archives_processed,
                                                                     num_archives_to_process,
                                                                     args.initial_effective_lrate,
@@ -619,7 +619,8 @@ def Train(args, run_opts):
 
             TrainOneIteration(args.dir, iter, egs_dir, current_num_jobs,
                               num_archives_processed, num_archives,
-                              learning_rate(iter, current_num_jobs), shrinkage_value,
+                              learning_rate(iter, current_num_jobs, num_archives_processed),
+                              shrinkage_value,
                               args.num_chunk_per_minibatch,
                               num_hidden_layers, args.add_layers_period,
                               left_context, right_context, min_deriv_time,
