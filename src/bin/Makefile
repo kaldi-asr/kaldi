@@ -25,8 +25,6 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
 				loglikes-to-post copy-post-mapped weight-pdf-post \
 				split-speakers-on-diarization-assigments vector-apply-log \
 				matrix-scale matrix-sum-cols extract-int-vector-segments \
-				quantize-feats post-to-bits \
-				acc-bool-vector-stats sum-bool-vector-stats copy-bool-vector-stats \
 				matrix-add-offset
 
 
@@ -35,8 +33,7 @@ OBJFILES =
 ADDLIBS = ../lm/kaldi-lm.a ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
           ../hmm/kaldi-hmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
 	      ../tree/kaldi-tree.a ../matrix/kaldi-matrix.a  ../util/kaldi-util.a \
-          ../base/kaldi-base.a  ../thread/kaldi-thread.a ../fstext/kaldi-fstext.a \
-					../decision-tree/kaldi-decision-tree.a
+          ../base/kaldi-base.a  ../thread/kaldi-thread.a ../fstext/kaldi-fstext.a
 
 
 TESTFILES =
