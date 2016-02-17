@@ -70,6 +70,7 @@ if [ $stage -le 2 ]; then
   # representation
   cat $tmpdir/uniquewords | $local/spron.pl $lexicon/callhome_spanish_lexicon_970908/preferences $lexicon/callhome_spanish_lexicon_970908/basic_rules \
     | cut -f1 | sed -r 's:#\S+\s\S+\s\S+\s\S+\s(\S+):\1:g' \
+    | awk -F '[/][/]' '{print $1}' \
     > $tmpdir/lexicon_raw
 fi
 
