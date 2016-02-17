@@ -4,6 +4,16 @@
 # but take the final-hidden-dim back up to 500, which is the same as what
 # it was in 5v.
 
+# No better.
+#local/chain/compare_wer.sh 5v 6a
+#System                       5v        6a
+#WER on train_dev(tg)      15.38     15.49
+#WER on train_dev(fg)      14.39     14.30
+#WER on eval2000(tg)        17.4      17.5
+#WER on eval2000(fg)        15.7      15.9
+#Final train prob       -0.11156 -0.109471
+#Final valid prob      -0.131797 -0.129035
+
 # _5y is as _5v, but rebalancing the network to have fewer parameters in the
 # final layer and more in the hidden parts, by reducing --final-hidden-dim from 500
 # (it defaults to --jesus-forward-hidden-dim) to 400, and increasing
