@@ -22,7 +22,7 @@ lexicon=$1
 #Get all unique words, remove punctuation.
 if [ $stage -le 0 ]; then
   cat $datadir/text | sed 's:[0-9][0-9]\S*::g' | sed 's:[\.,\?]::g' | tr " " "\n" | sort | uniq | awk '{if (NF > 0){ print; }}' > $tmpdir/uniquewords
-  if [ -f "${tmpdir}/es_wordlist.json" ]; then
+  if [ ! -f "${tmpdir}/es_wordlist.json" ]; then
     echo "Could not find the large collection of Spanish words es_wordlist.json"
     echo "Trying to download it via wget"
 
@@ -40,7 +40,7 @@ if [ $stage -le 0 ]; then
       exit 1;
     fi
 
-    tar -xvzfo es_wordlist.json.tgz || exit 1;
+    tar -xovzf es_wordlist.json.tgz || exit 1;
     cd $cwd
   fi
 
