@@ -418,13 +418,14 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
       in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
     else
       in_deriv->MulRowsVec(in_norm);
+    in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+    in_norm.ApplyPow(3.0);
+    dot_products.MulElements(in_norm);
+
+    in_deriv->AddDiagVecMat(-1.0 / d_scaled,
+                            dot_products, in_value,
+                            kNoTrans, 1.0);
   }
-  in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
-  in_norm.ApplyPow(3.0);
-  dot_products.MulElements(in_norm);
-  in_deriv->AddDiagVecMat(-1.0 / d_scaled,
-                          dot_products, in_value,
-                          kNoTrans, 1.0);
 }
 
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -442,9 +443,78 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
-    RepairGradients(false, 0.025, 0.975, in_deriv);
+    RepairGradients(out_value, in_deriv);
   }
 }
+
+void SigmoidComponent::RepairGradients(
+    const CuMatrixBase<BaseFloat> &out_value,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // maximum possible derivative of SigmoidComponent is 0.25.
+  // the default lower-threshold on the derivative, below which we
+  // add a term to the derivative to encourage the inputs to the sigmoid
+  // to be closer to zero, is 0.05, which means the derivative is on average
+  // 5 times smaller than its maximum possible value.
+  BaseFloat default_lower_threshold = 0.05;
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_;
+  if (self_repair_upper_threshold_ != unset) {
+    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
+              << "components, it does nothing.";
+  }
+
+  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
+  // function isn't defined for vectors).
+  CuMatrix<BaseFloat> thresholds(1, dim_);
+  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
+  thresholds_vec.AddVec(-1.0, deriv_sum_);
+  thresholds_vec.Add(lower_threshold);
+  thresholds.ApplyHeaviside();
+
+  // At this point, 'thresholds_vec' contains a 1 for each dimension of
+  // the output that is 'problematic', i.e. for which the avg-deriv
+  // is less than the self-repair lower threshold, and a 0 for
+  // each dimension that is not problematic.
+
+  // what we want to do is to add
+  // -self_repair_scale_ / repair_probability times (2 * output-valiue - 1.0)
+  // to the input derivative for each problematic dimension.
+
+  // Here, 2 * output - 1.0 is a version of the sigmoid that goes from -1.0 to
+  // 1.0, like a tanh.  the negative sign is so that for inputs <0, we push them
+  // up towards 0, and for inputs >0, we push them down towards 0.
+  // Our use of this sigmoid-type function here is just a convenience since
+  // we have it available.  We could use just about any function that is positive
+  // for inputs < 0 and negative for inputs > 0.
+
+  // We can rearrange the above as: for only the problematic columns,
+  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output
+  //   input-deriv +=  self-repair-scale / repair-probabilty
+  // which we can write as:
+  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output * thresholds-vec
+  //   input-deriv +=  self-repair-scale / repair-probabilty * thresholds-vec
+
+  in_deriv->AddMatDiagVec(-2.0 * self_repair_scale_ / repair_probability,
+                          out_value, kNoTrans, thresholds_vec);
+  in_deriv->AddVecToCols(self_repair_scale_ / repair_probability,
+                         thresholds_vec);
+}
+
+
 
 void SigmoidComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
   // only store stats about every other minibatch.
@@ -628,6 +698,68 @@ void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   out->Tanh(in);
 }
 
+
+void TanhComponent::RepairGradients(
+    const CuMatrixBase<BaseFloat> &out_value,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // maximum possible derivative of SigmoidComponent is 1.0
+  // the default lower-threshold on the derivative, below which we
+  // add a term to the derivative to encourage the inputs to the sigmoid
+  // to be closer to zero, is 0.2, which means the derivative is on average
+  // 5 times smaller than its maximum possible value.
+  BaseFloat default_lower_threshold = 0.2;
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_;
+  if (self_repair_upper_threshold_ != unset) {
+    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
+              << "components, it does nothing.";
+  }
+
+  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
+  // function isn't defined for vectors).
+  CuMatrix<BaseFloat> thresholds(1, dim_);
+  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
+  thresholds_vec.AddVec(-1.0, deriv_sum_);
+  thresholds_vec.Add(lower_threshold);
+  thresholds.ApplyHeaviside();
+
+  // At this point, 'thresholds_vec' contains a 1 for each dimension of
+  // the output that is 'problematic', i.e. for which the avg-deriv
+  // is less than the self-repair lower threshold, and a 0 for
+  // each dimension that is not problematic.
+
+  // what we want to do is to add -self_repair_scale_ / repair_probability times
+  // output-valiue) to the input derivative for each problematic dimension.
+  // note that for the tanh, the output-value goes from -1.0 when the input is
+  // -inf to +1.0 when the input is +inf.  The negative sign is so that for
+  // inputs <0, we push them up towards 0, and for inputs >0, we push them down
+  // towards 0.  Our use of the tanh here is just a convenience since we have it
+  // available.  We could use just about any function that is positive for
+  // inputs < 0 and negative for inputs > 0.
+
+  // We can rearrange the above as: for only the problematic columns,
+  //   input-deriv -= self-repair-scale / repair-probabilty * output
+  // which we can write as:
+  //   input-deriv -=  self-repair-scale / repair-probabilty * output * thresholds-vec
+
+  in_deriv->AddMatDiagVec(-self_repair_scale_ / repair_probability,
+                          out_value, kNoTrans, thresholds_vec);
+}
+
 void TanhComponent::Backprop(const std::string &debug_info,
                              const ComponentPrecomputedIndexes *indexes,
                              const CuMatrixBase<BaseFloat> &,
@@ -638,7 +770,7 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
-    RepairGradients(false, -0.95, 0.95, in_deriv);
+    RepairGradients(out_value, in_deriv);
   }
 }
 
@@ -681,9 +813,65 @@ void RectifiedLinearComponent::Backprop(
   if (in_deriv != NULL) {
     in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
-    RepairGradients(true, 0.05, 0.95, in_deriv);
+    RepairGradients(in_deriv);
   }
 }
+
+
+void RectifiedLinearComponent::RepairGradients(
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  BaseFloat default_lower_threshold = 0.05,
+      default_upper_threshold = 0.95;
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_,
+      upper_threshold = (self_repair_upper_threshold_ == unset ?
+                         default_upper_threshold :
+                         self_repair_upper_threshold_) *
+      count_;
+
+  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
+  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
+  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
+  thresholds_vec(0) = -lower_threshold;
+  thresholds_vec(1) = -upper_threshold;
+  CuSubVector<BaseFloat> row0(stats_mat, 0);
+  CuSubVector<BaseFloat> row1(stats_mat, 1);
+
+  row0.CopyFromVec(deriv_sum_);
+  row1.CopyFromVec(row0);
+  stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
+  // now row0 equals stats - lower_threshold, and
+  //     row1 equals stats - upper_threshold.
+  stats_mat.ApplyHeaviside();
+  // now row0 equals (stats > lower_threshold ? 1 : 0), and
+  //     row1 equals (stats > upper_threshold ? 1 : 0).
+  // what we want is:
+  // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
+  //                         (stats > upper_threshold ? -1 : 0)).
+  //
+  // we can get these in stats_mat.Row(0) by computing:
+  // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
+  row0.AddVec(1.0, row1, 1.0);
+  row0.Add(-1.0);
+  // [actually we need to divide by repair_probability also, to
+  //  correct for the fact that we only do this on some frames.]
+  row0.Scale(-self_repair_scale_ / repair_probability);
+  in_deriv->AddVecToRows(1.0, row0, 1.0);
+}
+
 
 void RectifiedLinearComponent::StoreStats(
     const CuMatrixBase<BaseFloat> &out_value) {

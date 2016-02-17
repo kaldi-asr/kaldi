@@ -942,7 +942,9 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       BaseFloat target_rms = (RandInt(1, 200) / 100.0);
       std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
-      os << "dim=" << RandInt(1, 50)
+      // avoid dim=1 because the derivatives would be zero, which
+      // makes them hard to test.
+      os << "dim=" << RandInt(2, 50)
          << " target-rms=" << target_rms
          << " add-log-stddev=" << add_log_stddev;
       break;

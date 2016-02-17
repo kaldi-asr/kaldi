@@ -494,13 +494,6 @@ class NonlinearComponent: public Component {
  protected:
   enum { kUnsetThreshold = -1000 };
 
-  // this function is to be called from Backprop code if it makes
-  // sense for the nonlinearity typte
-  void RepairGradients(bool measure_deriv,
-                       BaseFloat default_lower_threshold,
-                       BaseFloat default_upper_threshold,
-                       CuMatrixBase<BaseFloat> *in_deriv) const;
-
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;

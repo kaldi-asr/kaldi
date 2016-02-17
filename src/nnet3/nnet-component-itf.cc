@@ -55,7 +55,7 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsExtractionComponentPrecomputedIndexes();
   } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
-  }  
+  }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
   }
@@ -428,61 +428,6 @@ void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
 }
 
 
-void NonlinearComponent::RepairGradients(
-    bool measure_deriv,
-    BaseFloat default_lower_threshold,
-    BaseFloat default_upper_threshold,
-    CuMatrixBase<BaseFloat> *in_deriv) const {
-  const CuVector<double> &stats_src = (measure_deriv ? deriv_sum_ : value_sum_);
-  if (self_repair_scale_ == 0.0 || count_ == 0.0 || stats_src.Dim() != dim_)
-    return;
-  // we use this 'repair_probability' (hardcoded for now) to limit
-  // this code to running on about half of the minibatches.
-  BaseFloat repair_probability = 0.5;
-  if (RandUniform() > repair_probability)
-    return;
-
-  // check that the self-repair scale is in a reasonable range.
-  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
-  BaseFloat unset = kUnsetThreshold; // -1000.0
-  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
-                               default_lower_threshold :
-                               self_repair_lower_threshold_) *
-      count_,
-      upper_threshold = (self_repair_upper_threshold_ == unset ?
-                         default_upper_threshold :
-                         self_repair_upper_threshold_) *
-      count_;
-
-  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
-  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
-  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
-  thresholds_vec(0) = -lower_threshold;
-  thresholds_vec(1) = -upper_threshold;
-  CuSubVector<BaseFloat> row0(stats_mat, 0);
-  CuSubVector<BaseFloat> row1(stats_mat, 1);
-
-  row0.CopyFromVec(stats_src);
-  row1.CopyFromVec(row0);
-  stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
-  // now row0 equals stats - lower_threshold, and
-  //     row1 equals stats - upper_threshold.
-  stats_mat.ApplyHeaviside();
-  // now row0 equals (stats > lower_threshold ? 1 : 0), and
-  //     row1 equals (stats > upper_threshold ? 1 : 0).
-  // what we want is:
-  // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
-  //                         (stats > upper_threshold ? -1 : 0)).
-  //
-  // we can get these in stats_mat.Row(0) by computing:
-  // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
-  row0.AddVec(1.0, row1, 1.0);
-  row0.Add(-1.0);
-  // [actually we need to divide by repair_probability also, to
-  //  correct for the fact that we only do this on some frames.]
-  row0.Scale(-self_repair_scale_ / repair_probability);
-  in_deriv->AddVecToRows(1.0, row0, 1.0);
-}
 
 } // namespace nnet3
 } // namespace kaldi

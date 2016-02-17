@@ -142,11 +142,11 @@ class DistributeComponentPrecomputedIndexes:
   virtual ComponentPrecomputedIndexes* Copy() const {
     return new DistributeComponentPrecomputedIndexes(*this);
   }
-  
+
   virtual void Write(std::ostream &ostream, bool binary) const;
-  
+
   virtual void Read(std::istream &istream, bool binary);
-  
+
   virtual std::string Type() const { return "DistributeComponentPrecomputedIndexes"; }
 };
 
@@ -291,10 +291,10 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   }
 
   virtual void Write(std::ostream &os, bool binary) const;
-  
+
   virtual void Read(std::istream &is, bool binary);
-  
-  virtual std::string Type() const { return "StaticticsExtractionComponentPrecomputedIndexes"; }
+
+  virtual std::string Type() const { return "StatisticsExtractionComponentPrecomputedIndexes"; }
  private:
   virtual ~StatisticsExtractionComponentPrecomputedIndexes() { }
 };
@@ -431,12 +431,12 @@ class StatisticsPoolingComponentPrecomputedIndexes:
   ComponentPrecomputedIndexes *Copy() const {
     return new StatisticsPoolingComponentPrecomputedIndexes(*this);
   }
-  
+
   virtual void Write(std::ostream &os, bool binary) const;
-  
+
   virtual void Read(std::istream &is, bool binary);
-  
-  virtual std::string Type() const { return "StaticticsPoolingComponentPrecomputedIndexes"; }
+
+  virtual std::string Type() const { return "StatisticsPoolingComponentPrecomputedIndexes"; }
 };
 
 } // namespace nnet3
