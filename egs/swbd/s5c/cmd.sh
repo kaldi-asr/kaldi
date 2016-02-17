@@ -15,7 +15,7 @@ export mkgraph_cmd="queue.pl -l arch=*64* --mem 4G"
 if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   # BUT cluster:
   queue="all.q@@blade,all.q@@speech"
-  gpu_queue="long.q@supergpu*,long.q@dellgpu*,long.q@pcspeech-gpu,long.q@pcgpu*"
+  gpu_queue="long.q@@gpu"
   storage="matylda5"
   export train_cmd="queue.pl -q $queue -l ram_free=1.5G,mem_free=1.5G,${storage}=0.25"
   export decode_cmd="queue.pl -q $queue -l ram_free=2.5G,mem_free=2.5G,${storage}=0.1"
