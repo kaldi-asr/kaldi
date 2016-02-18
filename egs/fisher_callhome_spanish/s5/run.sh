@@ -17,12 +17,10 @@ set -e
 sfisher_speech=/home/mpost/data/LDC/LDC2010S01
 sfisher_transcripts=/home/mpost/data/LDC/LDC2010T04
 spanish_lexicon=/export/corpora/LDC/LDC96L16
-#split=/export/a04/gkumar/corpora/fishcall/jack-splits/split-matt
 split=local/splits/split_fisher
 
 callhome_speech=/export/corpora/LDC/LDC96S35
 callhome_transcripts=/export/corpora/LDC/LDC96T17
-#split_callhome=/export/a04/gkumar/corpora/fishcall/jack-splits/split-callhome
 split=local/splits/split_callhome
 
 local/fsp_data_prep.sh $sfisher_speech $sfisher_transcripts
@@ -33,16 +31,16 @@ local/fsp_prepare_dict.sh $spanish_lexicon
 
 # Rewrite ----------------------------- This section is no longer needed----
 # At this point, it might make sense to use a bigger lexicon
-# The one I will use is derived from this exercise (spanish fisher) and 
-# the LDC spanish lexicon along with the most frequent words derived from the 
+# The one I will use is derived from this exercise (spanish fisher) and
+# the LDC spanish lexicon along with the most frequent words derived from the
 # gigaword corpus such that the total number of entries in the lexicon
 # are 64k
 
 # To generate the merged lexicon, run
 # /export/a04/gkumar/corpora/gigaword/bin/merge_lexicons.py
 # you might have to set the locations of the three lexicons within this
-# file. Note that the LDC rule base phoneme generator works only from its 
-# own directory. So the merged lexicon is actually created in 
+# file. Note that the LDC rule base phoneme generator works only from its
+# own directory. So the merged lexicon is actually created in
 # /export/a04/gkumar/corpora/LDC9..../spanish_lexicon../lexicon64k
 # This can be easily fixed and will be done. #TODO
 # Also run the clean lexicon script to take care of non stressable vowels
@@ -57,11 +55,11 @@ utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 
 # Make sure that you do not use your test and your dev sets to train the LM
-# Some form of cross validation is possible where you decode your dev/set based on an 
+# Some form of cross validation is possible where you decode your dev/set based on an
 # LM that is trained on  everything but that that conversation
 # When in doubt about what your data partitions should be use local/fsp_ideal_data_partitions.pl
-# to get the numbers. Depending on your needs, you might have to change the size of 
-# the splits within that file. The default paritions are based on the Kaldi + Joshua 
+# to get the numbers. Depending on your needs, you might have to change the size of
+# the splits within that file. The default paritions are based on the Kaldi + Joshua
 # requirements which means that I have very large dev and test sets
 local/fsp_train_lms.sh $split
 local/fsp_create_test_lang.sh
@@ -95,7 +93,7 @@ cp -r data/local/data/callhome_train_all data/callhome_train_all
 # MT Tune : Same as the ASR eval set (Use the lattices from here)
 # MT Eval : 20k utterances
 # The dev and the test sets need to be carefully chosen so that there is no conversation/speaker
-# overlap. This has been setup and the script local/fsp_ideal_data_partitions provides the numbers that are needed below. 
+# overlap. This has been setup and the script local/fsp_ideal_data_partitions provides the numbers that are needed below.
 # As noted above, the LM has not been trained on the dev and the test sets.
 #utils/subset_data_dir.sh --first data/train_all 158126 data/dev_and_test
 #utils/subset_data_dir.sh --first data/dev_and_test 37814 data/asr_dev_and_test
@@ -136,7 +134,7 @@ utils/subset_data_dir.sh --shortest data/train 90000 data/train_100kshort
 utils/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
 local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
 utils/subset_data_dir.sh --speakers data/train 30000 data/train_30k
-utils/subset_data_dir.sh --speakers data/train 90000 data/train_100k  
+utils/subset_data_dir.sh --speakers data/train 90000 data/train_100k
 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
   data/train_10k_nodup data/lang exp/mono0a
@@ -178,7 +176,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
    exp/tri3a/graph data/dev exp/tri3a/decode_dev || exit 1;
 )&
 
-# Next we'll use fMLLR and train with SAT (i.e. on 
+# Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
