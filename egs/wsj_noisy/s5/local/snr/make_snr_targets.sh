@@ -13,6 +13,7 @@ target_type=Irm
 ali_rspecifier=
 silence_phones_str=0
 apply_exp=false
+ignore_noise_dir=false
 ceiling=inf
 floor=-inf
 stage=0
@@ -45,6 +46,8 @@ mkdir -p $targets_dir
 utils/split_data.sh $clean_fbank_dir $nj
 utils/split_data.sh $noise_or_noisy_fbank_dir $nj
 
+$ignore_noise_dir && utils/split_data.sh $dir $nj
+
 targets_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $targets_dir ${PWD}`
 
 for n in `seq $nj`; do 
@@ -64,14 +67,24 @@ if $apply_exp; then
 fi
 
 if [ $stage -le 1 ]; then
-  $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
-    compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
-    --floor=$floor --ceiling=$ceiling \
-    scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
-    scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \
-    ark:- \|$apply_exp_opts \
-    copy-feats --compress=$compress ark:- \
-    ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
+  if ! $ignore_noise_dir; then
+    $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
+      compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+      --floor=$floor --ceiling=$ceiling \
+      scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
+      scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \
+      ark:- \|$apply_exp_opts \
+      copy-feats --compress=$compress ark:- \
+      ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
+  else
+    $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
+      compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+      --floor=$floor --ceiling=$ceiling --binary-targets \
+      scp:$dir/split$nj/JOB/feats.scp \
+      ark:- \|$apply_exp_opts \
+      copy-feats --compress=$compress ark:- \
+      ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
+  fi
 fi
 
 for n in `seq $nj`; do
