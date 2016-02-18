@@ -3,6 +3,7 @@ import logging
 import math
 import re
 import time
+import imp
 
 train_lib = imp.load_source('', 'steps/nnet3/nnet3_train_lib.py')
 
@@ -205,3 +206,13 @@ nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nn
                iter = iter,
                model = model,
                prev_model = prev_model), wait = wait)
+
+def GetNumberOfLeaves(dir):
+    [stdout, stderr] = RunKaldiCommand("am-info {0}/0.trans_mdl 2>/dev/null | grep -w pdfs".format(dir))
+    parts = stdout.split()
+    #number of pdfs 7115
+    assert(' '.join(parts[0:3]) == "number of pdfs")
+    num_leaves = int(parts[3])
+    if num_leaves == 0:
+        raise Exception("Number of leaves is 0")
+    return num_leaves
