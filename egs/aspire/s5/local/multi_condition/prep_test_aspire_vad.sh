@@ -23,15 +23,16 @@ mfcc_config=conf/mfcc_hires.conf
 fbank_config=conf/fbank.conf
 add_frame_snr=true
 append_to_orig_feats=false
+feature_type=Snr
 
 nj=30             # number of parallel jobs for VAD and segmentation
 decode_nj=200     # number of parallel jobs for decoding
 
 # segmentation opts
 segmentation_config=
+weights_segmentation_config=
 segmentation_stage=-10
 segmentation_method=Viterbi
-quantization_bins=0:2.5:5:7.5:12.5
 snr_predictor_iter=final
 sad_model_iter=final
 
@@ -256,14 +257,16 @@ if [ $stage -le 1 ]; then
     $frame_snrs_dir || exit 1
 fi
 
-compute_sad_opts=(--quantization-bins $quantization_bins --iter $sad_model_iter)
+compute_sad_opts=(--iter $sad_model_iter)
 
 if [ ! -z "$input_frame_snrs_dir" ] && [ $stage -ge 2 ]; then
   frame_snrs_dir=$input_frame_snrs_dir
 fi
 
 if [ $stage -le 2 ]; then
-  local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $nj --append-to-orig-feats $append_to_orig_feats --add-frame-snr $add_frame_snr \
+  local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $nj \
+    --type $feature_type --append-to-orig-feats $append_to_orig_feats \
+    --add-frame-snr $add_frame_snr \
     data/${data_id}_fbank $frame_snrs_dir exp/make_snr_data_dir/${data_id} snr_feats $frame_snrs_dir/${data_id}_snr || exit 1
 fi
 
@@ -302,8 +305,8 @@ if $use_ivectors; then
     mkdir -p $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
 
     if [ $stage -le 6 ]; then
-      local/snr/get_weights_for_ivector_extraction.sh --cmd queue.pl --nj $nj \
-        --method $weights_method ${segmentation_config:+--config $segmentation_config} \
+      local/snr/get_weights_for_ivector_extraction.sh --cmd queue.pl \
+        --method $weights_method ${segmentation_config:+--config $weights_segmentation_config} \
         --silence-weight $silence_weight \
         ${segmented_data_dir} ${vad_dir} \
         $ivector_dir/ivector_weights_${segmented_data_id}${ivector_affix}
