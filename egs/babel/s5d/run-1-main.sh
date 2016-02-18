@@ -25,7 +25,7 @@ if $extend_lexicon; then
   lexicon=data/local/lexiconp.txt
 fi
 
-. ./local/check_tools.sh || exit
+./local/check_tools.sh || exit 1
 
 #Preparing dev2h and train directories
 if [ ! -f data/raw_train_data/.done ]; then

@@ -40,7 +40,7 @@ fi
 set -o errtrace
 trap "echo Exited!; exit;" SIGINT SIGTERM
 
-. ./local/check_tools.sh || exit
+./local/check_tools.sh || exit 1
 
 # Set proxy search parameters for the extended lexicon case.
 if [ -f data/.extlex ]; then
@@ -299,13 +299,19 @@ fi
 ## FMLLR decoding
 ##
 ####################################################################
+if [ ! -f data/langp_test/.done ]; then
+  cp -R data/langp/tri5_ali/ data/langp_test
+  cp data/lang/G.fst data/langp_test
+  touch data/langp_test/.done
+fi
+
 decode=exp/tri5/decode_${dataset_id}
 if [ ! -f ${decode}/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Spawning decoding with SAT models  on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
+    data/langp_test exp/tri5 exp/tri5/graph |tee exp/tri5/mkgraph.log
 
   mkdir -p $decode
   #By default, we do not care about the lattices for this step -- we just want the transforms
@@ -321,13 +327,13 @@ if ! $fast_path ; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/lang ${decode}
+    ${dataset_dir} data/langp_test ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_plp_extra_opts[@]}" \
-    ${dataset_dir} data/lang ${decode}.si
+    ${dataset_dir} data/langp_test ${decode}.si
 fi
 
 if $tri5_only; then
@@ -347,7 +353,7 @@ if [ -f exp/sgmm5/.done ]; then
     echo "Spawning $decode on" `date`
     echo ---------------------------------------------------------------------
     utils/mkgraph.sh \
-      data/lang exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
+      data/langp_test exp/sgmm5 exp/sgmm5/graph |tee exp/sgmm5/mkgraph.log
 
     mkdir -p $decode
     steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
@@ -360,7 +366,7 @@ if [ -f exp/sgmm5/.done ]; then
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
         "${lmwt_plp_extra_opts[@]}" \
-        ${dataset_dir} data/lang  exp/sgmm5/decode_fmllr_${dataset_id}
+        ${dataset_dir} data/langp_test  exp/sgmm5/decode_fmllr_${dataset_id}
     fi
   fi
 
@@ -378,7 +384,7 @@ if [ -f exp/sgmm5/.done ]; then
       mkdir -p $decode
       steps/decode_sgmm2_rescore.sh  --skip-scoring true \
         --cmd "$decode_cmd" --iter $iter --transform-dir exp/tri5/decode_${dataset_id} \
-        data/lang ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
+        data/langp_test ${dataset_dir} exp/sgmm5/decode_fmllr_${dataset_id} $decode | tee ${decode}/decode.log
 
       touch $decode/.done
     fi
@@ -394,7 +400,7 @@ if [ -f exp/sgmm5/.done ]; then
         --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
         --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_plp_extra_opts[@]}" \
-      ${dataset_dir} data/lang $decode
+      ${dataset_dir} data/langp_test $decode
   done
 fi
 
@@ -422,7 +428,7 @@ if [ -f exp/tri6_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
+    ${dataset_dir} data/langp_test $decode
 fi
 
 ####################################################################
@@ -453,7 +459,7 @@ if [ -f exp/$nnet3_model/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
+    ${dataset_dir} data/langp_test $decode
 fi
 
 
@@ -481,7 +487,7 @@ if [ -f exp/tri6a_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
+    ${dataset_dir} data/langp_test $decode
 fi
 
 
@@ -508,7 +514,7 @@ if [ -f exp/tri6b_nnet/.done ]; then
     --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
     "${lmwt_dnn_extra_opts[@]}" \
-    ${dataset_dir} data/lang $decode
+    ${dataset_dir} data/langp_test $decode
 fi
 ####################################################################
 ##
@@ -534,7 +540,7 @@ if [ -f exp/tri6_nnet_mpe/.done ]; then
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/lang $decode
+      ${dataset_dir} data/langp_test $decode
   done
 fi
 
@@ -563,7 +569,7 @@ for dnn in tri6_nnet_semi_supervised tri6_nnet_semi_supervised2 \
       --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
       --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
       "${lmwt_dnn_extra_opts[@]}" \
-      ${dataset_dir} data/lang $decode
+      ${dataset_dir} data/langp_test $decode
   fi
 done
 echo "Everything looking good...."
