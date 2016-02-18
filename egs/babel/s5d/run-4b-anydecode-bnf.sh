@@ -1,8 +1,8 @@
-#!/bin/bash 
+#!/bin/bash
 # Copyright 2014  Pegah Ghahremani
 # Apache 2.0
 
-# decode BNF + sgmm_mmi system 
+# decode BNF + sgmm_mmi system
 set -e
 set -o pipefail
 
@@ -86,7 +86,7 @@ dirid=${type}
 exp_dir=exp_bnf${unsup_string}
 data_bnf_dir=data_bnf${unsup_string}
 param_bnf_dir=param_bnf${unsup_string}
-datadir=$data_bnf_dir/${dirid}    
+datadir=$data_bnf_dir/${dirid}
 
 [ ! -d data/${dirid} ] && echo "No such directory data/${dirid}" && exit 1;
 [ ! -d exp/tri5/decode_${dirid} ] && echo "No such directory exp/tri5/decode_${dirid}" && exit 1;
@@ -106,11 +106,11 @@ fi
 if [ ! $data_bnf_dir/${dirid}/.done -nt $data_bnf_dir/${dirid}_bnf/.done ]; then
   steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
     --nj $train_nj --transform-dir exp/tri5/decode_${dirid} $data_bnf_dir/${dirid}_sat data/${dirid} \
-    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir/ 
+    exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir/
 
   steps/append_feats.sh --cmd "$train_cmd" --nj 4 \
     $data_bnf_dir/${dirid}_bnf $data_bnf_dir/${dirid}_sat $data_bnf_dir/${dirid} \
-    $exp_dir/append_feats/log $param_bnf_dir/ 
+    $exp_dir/append_feats/log $param_bnf_dir/
   steps/compute_cmvn_stats.sh --fake $data_bnf_dir/${dirid} $exp_dir/make_fmllr_feats $param_bnf_dir
   rm -r $data_bnf_dir/${dirid}_sat
   if ! $skip_kws ; then
@@ -130,7 +130,7 @@ fi
 
 ####################################################################
 ##
-## FMLLR decoding 
+## FMLLR decoding
 ##
 ####################################################################
 decode=$exp_dir/tri6/decode_${dirid}
@@ -139,7 +139,7 @@ if [ ! -f ${decode}/.done ]; then
   echo "Decoding with SAT models on top of bottleneck features on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang $exp_dir/tri6 $exp_dir/tri6/graph |tee $exp_dir/tri6/mkgraph.log
+    data/langp_test $exp_dir/tri6 $exp_dir/tri6/graph |tee $exp_dir/tri6/mkgraph.log
 
   mkdir -p $decode
   #By default, we do not care about the lattices for this step -- we just want the transforms
@@ -155,16 +155,16 @@ if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip\
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang ${decode}
+    ${datadir} data/langp_test ${decode}
 
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang  ${decode}.si
+    ${datadir} data/langp_test  ${decode}.si
 fi
 
 ####################################################################
-## SGMM2 decoding 
+## SGMM2 decoding
 ####################################################################
 decode=$exp_dir/sgmm7/decode_fmllr_${dirid}
 if [ ! -f $decode/.done ]; then
@@ -172,7 +172,7 @@ if [ ! -f $decode/.done ]; then
   echo "Spawning $decode on" `date`
   echo ---------------------------------------------------------------------
   utils/mkgraph.sh \
-    data/lang $exp_dir/sgmm7 $exp_dir/sgmm7/graph |tee $exp_dir/sgmm7/mkgraph.log
+    data/langp_test $exp_dir/sgmm7 $exp_dir/sgmm7/graph |tee $exp_dir/sgmm7/mkgraph.log
 
   mkdir -p $decode
   steps/decode_sgmm2.sh --skip-scoring true --use-fmllr true --nj $my_nj \
@@ -186,7 +186,7 @@ if ! $fast_path ; then
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring \
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang  $exp_dir/sgmm7/decode_fmllr_${dirid}
+    ${datadir} data/langp_test  $exp_dir/sgmm7/decode_fmllr_${dirid}
 fi
 
 ####################################################################
@@ -203,7 +203,7 @@ for iter in 1 2 3 4; do
     mkdir -p $decode
     steps/decode_sgmm2_rescore.sh  --skip-scoring true \
       --cmd "$decode_cmd" --iter $iter --transform-dir $exp_dir/tri6/decode_${dirid} \
-      data/lang ${datadir} $exp_dir/sgmm7/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
+      data/langp_test ${datadir} $exp_dir/sgmm7/decode_fmllr_${dirid} $decode | tee ${decode}/decode.log
 
     touch $decode/.done
   fi
@@ -218,21 +218,21 @@ for iter in 1 2 3 4; do
   local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
     --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
     "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-    ${datadir} data/lang $decode
+    ${datadir} data/langp_test $decode
 done
 
 
-if [ -f $exp_dir/tri7_nnet/.done ] && 
+if [ -f $exp_dir/tri7_nnet/.done ] &&
     [[ ( ! $exp_dir/tri7_nnet/decode_${dirid}/.done -nt $datadir/.done)  || \
        (! $exp_dir/tri7_nnet/decode_${dirid}/.done -nt $exp_dir/tri7_nnet/.done ) ]]; then
-  
+
   echo ---------------------------------------------------------------------
   echo "Decoding hybrid system on top of bottleneck features on" `date`
   echo ---------------------------------------------------------------------
 
   # We use the graph from tri6.
   utils/mkgraph.sh \
-    data/lang $exp_dir/tri6 $exp_dir/tri6/graph |tee $exp_dir/tri6/mkgraph.log
+    data/langp_test $exp_dir/tri6 $exp_dir/tri6/graph |tee $exp_dir/tri6/mkgraph.log
 
   decode=$exp_dir/tri7_nnet/decode_${dirid}
   if [ ! -f $decode/.done ]; then
@@ -253,7 +253,7 @@ decode=$exp_dir/tri7_nnet/decode_${dirid}
 local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
   --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
   "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-  ${datadir} data/lang $decode
+  ${datadir} data/langp_test $decode
 
 echo "$0: Everything looking good...."
 exit 0

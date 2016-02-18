@@ -14,7 +14,7 @@ echo "...done waiting for exp/tri6_nnet/.done"
 
 # Generate denominator lattices.
 if [ ! -f exp/tri6_nnet_denlats/.done ]; then
-  steps/nnet2/make_denlats.sh "${dnn_denlats_extra_opts[@]}" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd"  "${dnn_denlats_extra_opts[@]}" \
     --nj $train_nj --sub-split $train_nj \
     --transform-dir exp/tri5_ali \
     data/train data/lang exp/tri6_nnet exp/tri6_nnet_denlats || exit 1
