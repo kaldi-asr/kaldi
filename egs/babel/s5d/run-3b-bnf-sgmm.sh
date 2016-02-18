@@ -72,7 +72,7 @@ if [ ! $exp_dir/sgmm7_denlats/.done -nt $exp_dir/sgmm7/.done ]; then
   echo ---------------------------------------------------------------------
   echo "Starting $exp_dir/sgmm5_denlats on" `date`
   echo ---------------------------------------------------------------------
-  steps/make_denlats_sgmm2.sh \
+  steps/make_denlats_sgmm2.sh --cmd "$train_cmd" \
     --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}" \
     --transform-dir $exp_dir/tri6 --beam 10.0 --acwt 0.06 --lattice-beam 6 \
      $data_bnf_dir/train data/lang $exp_dir/sgmm7_ali $exp_dir/sgmm7_denlats 

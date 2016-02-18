@@ -39,10 +39,6 @@ if ! which libtoolize >&/dev/null && ! which glibtoolize >&/dev/null; then
   add_packages libtool libtool libtool
 fi
 
-if ! which svn >&/dev/null; then
-  echo "$0: subversion is not installed"
-  add_packages subversion subversion subversion
-fi
 
 if ! which awk >&/dev/null; then
   echo "$0: awk is not installed"

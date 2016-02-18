@@ -48,7 +48,7 @@ data=$1
 lang=$2 # This parameter is not used -- kept only for backwards compatibility
 dir=$3
 
-set -e 
+set -e
 set -o pipefail
 set -u
 
