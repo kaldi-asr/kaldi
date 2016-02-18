@@ -104,7 +104,7 @@ if [ ! $data_bnf_dir/${dirid}_bnf/.done -nt exp/tri5/decode_${dirid}/.done ] || 
 fi
 
 if [ ! $data_bnf_dir/${dirid}/.done -nt $data_bnf_dir/${dirid}_bnf/.done ]; then
-  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd -tc 10" \
+  steps/nnet/make_fmllr_feats.sh --cmd "$train_cmd --max-jobs-run 10" \
     --nj $train_nj --transform-dir exp/tri5/decode_${dirid} $data_bnf_dir/${dirid}_sat data/${dirid} \
     exp/tri5_ali $exp_dir/make_fmllr_feats/log $param_bnf_dir/
 
@@ -247,13 +247,13 @@ if [ -f $exp_dir/tri7_nnet/.done ] &&
     touch $decode/.done
   fi
 
-fi
+  decode=$exp_dir/tri7_nnet/decode_${dirid}
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
+    "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
+    ${datadir} data/langp_test $decode
 
-decode=$exp_dir/tri7_nnet/decode_${dirid}
-local/run_kws_stt_task.sh --cer $cer --max-states $max_states --skip-scoring $skip_scoring\
-  --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt --extra-kws $extra_kws --wip $wip \
-  "${shadow_set_extra_opts[@]}" "${lmwt_bnf_extra_opts[@]}" \
-  ${datadir} data/langp_test $decode
+fi
 
 echo "$0: Everything looking good...."
 exit 0

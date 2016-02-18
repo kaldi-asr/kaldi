@@ -109,12 +109,14 @@ if [ "$ind" == "x" ] ; then
 fi
 
 declare -A my_kwlists=()
-eval my_kwlist_keys="\${!${dataset_type}_kwlists[@]}"
-for key in $my_kwlist_keys  # make sure you include the quotes there
+eval my_kwlists_keys="\${!${dataset_type}_kwlists[@]}"
+for key in $my_kwlists_keys  # make sure you include the quotes there
 do
-  eval my_kwlist_val="\${${dataset_type}_kwlists[$key]}"
-  my_kwlists["$key"]="${my_kwlist_val}"
+  eval my_kwlists_val="\${${dataset_type}_kwlists[$key]}"
+  my_kwlists["$key"]="${my_kwlists_val}"
 done
+declare -p my_kwlists
+export my_kwlists
 
 #Just a minor safety precaution to prevent using incorrect settings
 #The dataset_* variables should be used.
@@ -244,7 +246,6 @@ if [ ! -f  $dataset_dir/.done ] ; then
     make_plp ${dataset_dir} exp/make_plp/${dataset_id} plp
     touch ${dataset_dir}/.plp.done
   fi
-
   touch $dataset_dir/.done
 fi
 

@@ -1,16 +1,20 @@
 #!/bin/bash
 
+
 . conf/common_vars.sh
 . ./lang.conf
 
+modeldir=exp/tri6_nnet
+
+. ./utils/parse_options.sh
 set -e
 set -o pipefail
 set -u
 
 # Wait for cross-entropy training.
-echo "Waiting till exp/tri6_nnet/.done exists...."
-while [ ! -f exp/tri6_nnet/.done ]; do sleep 30; done
-echo "...done waiting for exp/tri6_nnet/.done"
+echo "Waiting till ${modeldir}/.done exists...."
+while [ ! -f $modeldir/.done ]; do sleep 30; done
+echo "...done waiting for ${modeldir}/.done"
 
 # Generate denominator lattices.
 if [ ! -f exp/tri6_nnet_denlats/.done ]; then
@@ -18,7 +22,7 @@ if [ ! -f exp/tri6_nnet_denlats/.done ]; then
     --nj $train_nj --sub-split $train_nj \
     "${dnn_denlats_extra_opts[@]}" \
     --transform-dir exp/tri5_ali \
-    data/train data/lang exp/tri6_nnet exp/tri6_nnet_denlats || exit 1
+    data/train data/lang ${modeldir} exp/tri6_nnet_denlats || exit 1
 
   touch exp/tri6_nnet_denlats/.done
 fi
@@ -28,7 +32,7 @@ if [ ! -f exp/tri6_nnet_ali/.done ]; then
   steps/nnet2/align.sh --use-gpu yes \
     --cmd "$decode_cmd $dnn_parallel_opts" \
     --transform-dir exp/tri5_ali --nj $train_nj \
-    data/train data/lang exp/tri6_nnet exp/tri6_nnet_ali || exit 1
+    data/train data/lang ${modeldir} exp/tri6_nnet_ali || exit 1
 
   touch exp/tri6_nnet_ali/.done
 fi
@@ -44,7 +48,7 @@ if [ ! -f exp/tri6_nnet_mpe/.done ]; then
     --retroactive $dnn_mpe_retroactive \
     --transform-dir exp/tri5_ali \
     "${dnn_gpu_mpe_parallel_opts[@]}" data/train data/lang \
-    exp/tri6_nnet_ali exp/tri6_nnet_denlats exp/tri6_nnet/final.mdl exp/tri6_nnet_mpe || exit 1
+    exp/tri6_nnet_ali exp/tri6_nnet_denlats ${modeldir}/final.mdl exp/tri6_nnet_mpe || exit 1
 
   touch exp/tri6_nnet_mpe/.done
 fi

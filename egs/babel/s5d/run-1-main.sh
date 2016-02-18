@@ -45,13 +45,6 @@ if [[ "$nj_max" -lt "$train_nj" ]] ; then
 fi
 train_data_dir=`readlink -f ./data/raw_train_data`
 
-if [ ! -d data/raw_dev2h_data ]; then
-  echo ---------------------------------------------------------------------
-  echo "Subsetting the DEV2H set"
-  echo ---------------------------------------------------------------------
-  local/make_corpus_subset.sh "$dev2h_data_dir" "$dev2h_data_list" ./data/raw_dev2h_data || exit 1
-fi
-
 if [ ! -d data/raw_dev10h_data ]; then
   echo ---------------------------------------------------------------------
   echo "Subsetting the DEV10H set"
@@ -59,37 +52,6 @@ if [ ! -d data/raw_dev10h_data ]; then
   local/make_corpus_subset.sh "$dev10h_data_dir" "$dev10h_data_list" ./data/raw_dev10h_data || exit 1
 fi
 
-nj_max=`cat $dev2h_data_list | wc -l`
-if [[ "$nj_max" -lt "$decode_nj" ]] ; then
-  echo "The maximum reasonable number of jobs is $nj_max -- you have $decode_nj! (The training and decoding process has file-granularity)"
-  exit 1
-  decode_nj=$nj_max
-fi
-
-if [[ ! -f data/dev2h/wav.scp || data/dev2h/wav.scp -ot ./data/raw_dev2h_data/audio ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h data lists in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  mkdir -p data/dev2h
-  local/prepare_acoustic_training_data.pl \
-    --fragmentMarkers \-\*\~ \
-    `pwd`/data/raw_dev2h_data data/dev2h > data/dev2h/skipped_utts.log || exit 1
-fi
-
-if [[ ! -f data/dev2h/glm || data/dev2h/glm -ot "$glmFile" ]]; then
-  echo ---------------------------------------------------------------------
-  echo "Preparing dev2h stm files in data/dev2h on" `date`
-  echo ---------------------------------------------------------------------
-  if [ -z $dev2h_stm_file ]; then
-    echo "WARNING: You should define the variable stm_file pointing to the IndusDB stm"
-    echo "WARNING: Doing that, it will give you scoring close to the NIST scoring.    "
-    local/prepare_stm.pl --fragmentMarkers \-\*\~ data/dev2h || exit 1
-  else
-    local/augment_original_stm.pl $dev2h_stm_file data/dev2h || exit 1
-  fi
-  [ ! -z $glmFile ] && cp $glmFile data/dev2h/glm
-
-fi
 
 mkdir -p data/local
 if [[ ! -f $lexicon || $lexicon -ot "$lexicon_file" ]]; then
@@ -125,7 +87,7 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
   echo ---------------------------------------------------------------------
   echo "Training SRILM language models on" `date`
   echo ---------------------------------------------------------------------
-  local/train_lms_srilm.sh --oov-symbol $oovSymbol --dev-text data/dev2h/text \
+  local/train_lms_srilm.sh  --oov-symbol "$oovSymbol"\
     --train-text data/train/text data data/srilm
 fi
 
@@ -135,7 +97,6 @@ if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
   echo ---------------------------------------------------------------------
   local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
 fi
-decode_nj=$dev2h_nj
 
 echo ---------------------------------------------------------------------
 echo "Starting plp feature extraction for data/train in plp on" `date`
