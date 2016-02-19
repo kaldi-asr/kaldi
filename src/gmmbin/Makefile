@@ -1,7 +1,7 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \

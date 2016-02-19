@@ -1,7 +1,7 @@
 
 all:
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = ivector-extractor-init ivector-extractor-acc-stats \
