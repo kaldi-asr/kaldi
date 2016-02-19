@@ -510,7 +510,7 @@ void SigmoidComponent::RepairGradients(
 
   in_deriv->AddMatDiagVec(-2.0 * self_repair_scale_ / repair_probability,
                           out_value, kNoTrans, thresholds_vec);
-  in_deriv->AddVecToCols(self_repair_scale_ / repair_probability,
+  in_deriv->AddVecToRows(self_repair_scale_ / repair_probability,
                          thresholds_vec);
 }
 
