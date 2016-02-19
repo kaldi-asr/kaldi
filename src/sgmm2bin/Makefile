@@ -1,6 +1,6 @@
 
 all:
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = sgmm2-init sgmm2-gselect sgmm2-acc-stats sgmm2-est sgmm2-sum-accs \

@@ -1,6 +1,6 @@
 
 all:
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = fgmm-global-acc-stats fgmm-global-sum-accs fgmm-global-est \

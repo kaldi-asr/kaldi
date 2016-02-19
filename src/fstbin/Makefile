@@ -6,7 +6,7 @@ all:
 # no, it's now needed for context-fst-test.
 # MATHLIB = NONE
 
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 
 include ../kaldi.mk
 

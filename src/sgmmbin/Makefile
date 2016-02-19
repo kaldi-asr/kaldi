@@ -1,6 +1,6 @@
 
 all:
-EXTRA_CXXFLAGS = -Wno-sign-compare
+EXTRA_CXXFLAGS += -Wno-sign-compare
 include ../kaldi.mk
 
 BINFILES = init-ubm sgmm-align-compiled sgmm-acc-stats-ali \
