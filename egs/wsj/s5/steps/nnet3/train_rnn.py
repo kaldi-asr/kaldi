@@ -615,7 +615,7 @@ def Train(args, run_opts):
                     RemoveEgs(prev_egs_dir)
             model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
             shrinkage_value = args.shrink_value if DoShrinkage(iter, model_file, "SigmoidComponent", args.shrink_threshold) else 1
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs), shrinkage_value))
+            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             TrainOneIteration(args.dir, iter, egs_dir, current_num_jobs,
                               num_archives_processed, num_archives,

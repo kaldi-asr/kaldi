@@ -29,6 +29,7 @@ label_delay=5
 num_lstm_layers=3
 cell_dim=1280
 hidden_dim=1024
+self_repair_scale=0.0
 recurrent_projection_dim=384
 non_recurrent_projection_dim=384
 chunk_width=20
@@ -98,6 +99,7 @@ if [ $stage -le 9 ]; then
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
+    --self-repair-scale $self_repair_scale \
    $dir/configs || exit 1;
 
 fi

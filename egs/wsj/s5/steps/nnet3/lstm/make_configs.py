@@ -8,9 +8,9 @@ import warnings
 import copy
 import imp
 
-nodes = imp.load_source('', 'steps/nnet3/components.py')
-nnet3_train_lib = imp.load_source('', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('', 'steps/nnet3/chain/nnet3_chain_lib.py')
+nodes = imp.load_source('nodes', 'steps/nnet3/components.py')
+nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -74,7 +74,8 @@ def GetArgs():
                         help="use norm based clipping in ClipGradient components ", default="true", choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
                         help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
-
+    parser.add_argument("--self-repair-scale", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -101,6 +102,8 @@ def CheckArgs(args):
     if args.feat_dir is not None:
         args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
 
+    print(nnet3_train_lib.GetNumberOfLeaves)
+    print(chain_lib.GetNumberOfLeaves)
     if args.ali_dir is not None:
         args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
     elif args.trans_dir is not None:
@@ -209,7 +212,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
-                label_delay, include_log_softmax, xent_regularize):
+                label_delay, include_log_softmax, xent_regularize, self_repair_scale):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -220,7 +223,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
-    nodes.AddOutputNode(init_config_lines, prev_layer_output)
+    nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
@@ -231,12 +234,12 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
                                              ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][0])
+                                             lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
             prev_layer_output2 = nodes.AddLstmLayer(config_lines, "BLstm{0}_backward".format(i+1), prev_layer_output, cell_dim,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
                                              ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][1])
+                                             lstm_delay = lstm_delay[i][1], self_repair_scale = self_repair_scale)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 	    prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
 	else: # LSTM layer case
@@ -244,10 +247,10 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 			                    recurrent_projection_dim, non_recurrent_projection_dim,
 					    clipping_threshold, norm_based_clipping,
 					    ng_per_element_scale_options, ng_affine_options,
-					    lstm_delay = lstm_delay[i][0])
+					    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay, include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
 
         if xent_regularize != 0.0:
@@ -268,10 +271,10 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options)
+                                               ng_affine_options, self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay, include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
@@ -322,7 +325,8 @@ def Main():
                 args.norm_based_clipping,
                 args.clipping_threshold,
                 args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax)
+                args.label_delay, args.include_log_softmax, args.xent_regularize,
+                args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()

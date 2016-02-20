@@ -8,6 +8,7 @@ import warnings
 import copy
 from operator import itemgetter
 import numpy as np
+
 try:
     import scipy.signal as signal
     has_scipy_signal = True
@@ -27,6 +28,7 @@ def WriteKaldiMatrix(matrix, matrix_file_name):
         else:
             matrix_file.write('\n')
     matrix_file.close()
+
 def GetSumDescriptor(inputs):
     sum_descriptors = inputs
     while len(sum_descriptors) != 1:
@@ -43,8 +45,6 @@ def GetSumDescriptor(inputs):
             cur_sum_descriptors.append(pair[0])
         sum_descriptors = cur_sum_descriptors
     return sum_descriptors
-
-
 
 # adds the input nodes and returns the descriptor
 def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
@@ -75,8 +75,6 @@ def AddNoOpLayer(config_lines, name, input):
 
     return {'descriptor':  '{0}_noop'.format(name),
             'dimension': input['dimension']}
-
-
 
 def AddLdaLayer(config_lines, name, input, lda_file):
     components = config_lines['components']
@@ -122,12 +120,13 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
+def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
-    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
     components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
 
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
@@ -209,7 +208,8 @@ def AddLstmLayer(config_lines,
                  norm_based_clipping = "false",
                  ng_per_element_scale_options = "",
                  ng_affine_options = "",
-                 lstm_delay = -1):
+                 lstm_delay = -1,
+                 self_repair_scale = None):
     assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -230,6 +230,7 @@ def AddLstmLayer(config_lines,
     else:
         add_non_recurrent_projection = True
 
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     # Natural gradient per element scale parameters
     ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
     # Parameter Definitions W*(* replaced by - to have valid names)
@@ -253,11 +254,11 @@ def AddLstmLayer(config_lines,
 
 
     components.append("# Defining the non-linearities")
-    components.append("component name={0}_i type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_f type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_o type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_g type=TanhComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_h type=TanhComponent dim={1}".format(name, cell_dim))
+    components.append("component name={0}_i type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_f type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_o type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_g type=TanhComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_h type=TanhComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
 
     components.append("# Defining the cell computations")
     components.append("component name={0}_c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
