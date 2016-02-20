@@ -403,11 +403,11 @@ function linux_configure_mkl_threading {
 }
 
 ##
-##CUDA is used in src/cudamatrix and src/nnet{,bin} only.
-##It is used to accelerate the neural network training,
-##the rest of kaldi is running on CPUs.
+## CUDA is used only in selected directories including src/cudamatrix, src/nnet*
+## and src/chain*.  It is used to accelerate the neural network training, the
+## rest of kaldi runs on CPUs.
 ##
-function linux_configure_cuda {
+function configure_cuda {
   #check for CUDA toolkit in the system
   if [ ! $CUDATKDIR ]; then
     for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
@@ -428,9 +428,13 @@ function linux_configure_cuda {
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
     if [ "`uname -m`" == "x86_64" ]; then
-      cat makefiles/linux_x86_64_cuda.mk >> kaldi.mk
+      if [ "`uname`" == "Darwin" ]; then
+        sed 's/lib64/lib/g' < makefiles/cuda_64bit.mk >> kaldi.mk
+      else
+        cat makefiles/cuda_64bit.mk >> kaldi.mk
+      fi
     else
-      cat makefiles/linux_cuda.mk >> kaldi.mk
+      cat makefiles/cuda_32bit.mk >> kaldi.mk
     fi
   else
     echo "CUDA will not be used! If you have already installed cuda drivers "
@@ -541,7 +545,7 @@ function linux_configure_debian_ubuntu {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   linux_configure_speex
   exit_success;
 }
@@ -560,7 +564,7 @@ function linux_configure_debian_ubuntu3 {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   linux_configure_speex
   exit_success;
 }
@@ -582,7 +586,7 @@ function linux_configure_debian7 {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   linux_configure_speex
   exit_success;
 }
@@ -601,7 +605,7 @@ function linux_configure_redhat {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   exit_success;
 }
 
@@ -622,7 +626,7 @@ function linux_configure_redhat_fat {
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   exit_success;
 }
 
@@ -674,7 +678,7 @@ function linux_configure_static {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   linux_configure_speex
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
   exit_success;
@@ -753,7 +757,7 @@ function linux_configure_dynamic {
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
   cat makefiles/linux_atlas.mk >> kaldi.mk
   fix_cxx_flag
-  $use_cuda && linux_configure_cuda
+  $use_cuda && configure_cuda
   linux_configure_speex
   echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
   exit_success;
@@ -813,7 +817,7 @@ echo "Doing OS specific configurations ..."
 # which crashes on Darwin. Also the linear algebra libraries on Macs are
 # used differently (through the Accelerate framework) than on Linux.
 if [ "`uname`" == "Darwin"  ]; then
- $use_cuda && linux_configure_cuda
+ $use_cuda && configure_cuda
   echo "On Darwin: checking for Accelerate framework ..."
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
     failure "Need the Accelerate.framework to compile on Darwin."
@@ -973,7 +977,7 @@ if [ "`uname`" == "Linux" ]; then
     fix_cxx_flag
     echo "MKLFLAGS = ${MKL_LINK_LINE} ${THREADING_LINE} $EXTRA_LIBS " >> kaldi.mk
 
-    $use_cuda && linux_configure_cuda
+    $use_cuda && configure_cuda
     linux_configure_speex
     echo "Successfully configured for Linux with MKL libs from $MKLROOT"
     exit_success;
@@ -996,7 +1000,7 @@ if [ "`uname`" == "Linux" ]; then
     cat makefiles/linux_clapack.mk >> kaldi.mk
     fix_cxx_flag
     echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
-    $use_cuda && linux_configure_cuda
+    $use_cuda && configure_cuda
     linux_configure_speex
     echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
     exit_success;
@@ -1020,7 +1024,7 @@ if [ "`uname`" == "Linux" ]; then
     echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
     cat makefiles/linux_openblas.mk >> kaldi.mk
     fix_cxx_flag
-    $use_cuda && linux_configure_cuda
+    $use_cuda && configure_cuda
     linux_configure_speex
     echo "Successfully configured OpenBLAS from $OPENBLASROOT."
     exit_success;
