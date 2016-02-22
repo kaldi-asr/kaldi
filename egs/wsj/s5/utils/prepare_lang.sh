@@ -176,8 +176,8 @@ if $position_dependent_phones; then
   # This phone map expands the phone lists into all the word-position-dependent
   # versions of the phone lists.
 
-  cat <(cat $srcdir/silence_phones.txt | while read x; do for y in "" "" "_B" "_E" "_I" "_S"; do echo -n "$x$y "; done; echo; done) \
-    <(cat $srcdir/nonsilence_phones.txt | while read x; do for y in "" "_B" "_E" "_I" "_S"; do echo -n "$x$y "; done; echo; done) \
+  cat <(set -f; for x in `cat $srcdir/silence_phones.txt`; do for y in "" "" "_B" "_E" "_I" "_S"; do echo -n "$x$y "; done; echo; done) \
+    <(set -f; for x in `cat $srcdir/nonsilence_phones.txt`; do for y in "" "_B" "_E" "_I" "_S"; do echo -n "$x$y "; done; echo; done) \
     > $tmpdir/phone_map.txt
 else
   if "$silprob"; then
@@ -247,10 +247,10 @@ cat $srcdir/extra_questions.txt 2>/dev/null | utils/apply_map.pl $tmpdir/phone_m
 # be inside a word.
 if $position_dependent_phones; then
   for suffix in _B _E _I _S; do
-    (cat $srcdir/nonsilence_phones.txt | while read x; do echo -n "$x$suffix "; done; echo) >>$dir/phones/extra_questions.txt
+    (set -f; for x in `cat $srcdir/nonsilence_phones.txt`; do echo -n "$x$suffix "; done; echo) >>$dir/phones/extra_questions.txt
   done
   for suffix in "" _B _E _I _S; do
-    (cat $srcdir/silence_phones.txt | while read x; do echo -n "$x$suffix "; done; echo) >>$dir/phones/extra_questions.txt
+    (set -f; for x in `cat $srcdir/silence_phones.txt`; do echo -n "$x$suffix "; done; echo) >>$dir/phones/extra_questions.txt
   done
 fi
 
