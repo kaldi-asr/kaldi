@@ -80,7 +80,9 @@ class Fbank {
   explicit Fbank(const FbankOptions &opts);
   ~Fbank();
 
-  int32 Dim() const { return opts_.mel_opts.num_bins; }
+  int32 Dim() const {
+    return opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
+  }
 
   /// Will throw exception on failure (e.g. if file too short for even one
   /// frame).  The output "wave_remainder" is the last frame or two of the
