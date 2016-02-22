@@ -228,7 +228,8 @@ sub SplitLongSegment {
                            $aligned_ctm->[$seg_end_index]->[2] -
                            $aligned_ctm->[$seg_start_index]->[1];
   my $current_seg_index = $seg_start_index;
-  while ($current_seg_length > 1.5 * $max_seg_length) {
+  my $aligned_ctm_size = keys($aligned_ctm);
+  while ($current_seg_length > 1.5 * $max_seg_length && $current_seg_index < $aligned_ctm_size) {
     my $split_point = GetSplitPoint($aligned_ctm, $current_seg_index,
                                     $seg_end_index, $max_seg_length);
     my $ans = PrintSegment($aligned_ctm, $wav_id, $min_sil_length,
@@ -322,7 +323,7 @@ sub ProcessWav {
   }
 
   # Save the aligned CTM if needed
-  if(tell($ACT) != -1){
+  if(defined($ACT)){
     for (my $i=0; $i<=$#aligned_ctm; $i++) {
       print $ACT "$aligned_ctm[$i][0] $aligned_ctm[$i][1] ";
       print $ACT "$aligned_ctm[$i][2] $aligned_ctm[$i][3]\n";
@@ -458,4 +459,4 @@ close(CI);
 close(AI);
 close($SO);
 close($TO);
-close($ACT);
+close($ACT) if defined($ACT);
