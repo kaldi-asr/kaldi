@@ -43,6 +43,9 @@ parser.add_argument("--self-repair-scale", type=float,
                     default=0.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
+parser.add_argument("--thick-jesus-layer", type=str,
+                    help="if true use a thicker Jesus layer with an extra hidden repeated-affine layer",
+                    default="false", choices = ["false", "true"])
 parser.add_argument("--jesus-forward-output-dim", type=int,
                     help="part of output dimension of Jesus layer that goes to next layer",
                     default=1000)
@@ -94,7 +97,7 @@ for name in [ "jesus_hidden_dim", "jesus_forward_output_dim", "jesus_forward_inp
     if old_val % args.num_jesus_blocks != 0:
         new_val = old_val + args.num_jesus_blocks - (old_val % args.num_jesus_blocks)
         printable_name = '--' + name.replace('_', '-')
-        print('Rounding up {0} from {1} to {2} to be a multiple of --num-jesus-blocks={3}: '.format(
+        print('Rounding up {0} from {1} to {2} to be a multiple of --num-jesus-blocks={3} '.format(
                 printable_name, old_val, new_val, args.num_jesus_blocks))
         setattr(args, name, new_val);
 
@@ -330,7 +333,18 @@ for l in range(1, num_hidden_layers + 1):
         need_input_permute_component = (column_map != range(0, sum(spliced_dims)))
 
         # Now add the jesus component.
-        num_sub_components = (5 if need_input_permute_component else 4);
+
+
+        thick_jesus = (args.thick_jesus_layer == "true")  # extra hidden layer in jesus lyaer.
+        permute_offset = (1 if need_input_permute_component else 0)
+
+        if args.jesus_hidden_dim > 0: # normal case where we have jesus-hidden-dim.
+            thick_jesus_offset = (2 if thick_jesus else 0)
+            num_sub_components = 4 + permute_offset + thick_jesus_offset
+            hidden_else_output_dim = args.jesus_hidden_dim
+        else: # no hidden part in jesus layer.
+            num_sub_components = 2 + permute_offset
+            hidden_else_output_dim = args.jesus_forward_output_dim
         print('component name=jesus{0} type=CompositeComponent num-components={1}'.format(
                 l, num_sub_components), file=f, end='')
         # print the sub-components of the CompositeComopnent on the same line.
@@ -340,14 +354,14 @@ for l in range(1, num_hidden_layers + 1):
             print(" component1='type=PermuteComponent column-map={1}'".format(
                     l, ','.join([str(x) for x in column_map])), file=f, end='')
         print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
-                (2 if need_input_permute_component else 1),
+                1 + permute_offset,
                 cur_dim, args.self_repair_scale), file=f, end='')
 
         if args.use_repeated_affine == "true":
             print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
                   "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
-                    (3 if need_input_permute_component else 2),
-                    cur_dim, args.jesus_hidden_dim,
+                    2 + permute_offset,
+                    cur_dim, hidden_else_output_dim,
                     args.num_jesus_blocks,
                     args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks),
                     0.5 * args.jesus_stddev_scale),
@@ -355,38 +369,49 @@ for l in range(1, num_hidden_layers + 1):
         else:
             print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
                   "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
-                    (3 if need_input_permute_component else 2),
-                    cur_dim, args.jesus_hidden_dim,
+                    2 + permute_offset,
+                    cur_dim, hidden_else_output_dim,
                     args.num_jesus_blocks,
                     args.jesus_stddev_scale / math.sqrt(cur_dim / args.num_jesus_blocks)),
                   file=f, end='')
 
+        if args.jesus_hidden_dim > 0: # normal case where we have jesus-hidden-dim.
+            print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
+                    3 + permute_offset, hidden_else_output_dim,
+                    args.self_repair_scale), file=f, end='')
+            if thick_jesus:
+                print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
+                      "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
+                        4 + permute_offset,
+                        args.jesus_hidden_dim,
+                        args.jesus_hidden_dim,
+                        args.num_jesus_blocks,
+                        args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
+                        0.5 * args.jesus_stddev_scale),
+                      file=f, end='')
+                print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
+                        5 + permute_offset,
+                        args.jesus_hidden_dim, args.self_repair_scale), file=f, end='')
 
-        print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
-                (4 if need_input_permute_component else 3),
-                args.jesus_hidden_dim, args.self_repair_scale), file=f, end='')
-
-
-
-        if args.use_repeated_affine == "true":
-            print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
-                  "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
-                    (5 if need_input_permute_component else 4),
-                    args.jesus_hidden_dim,
-                    this_jesus_output_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
-                    0.5 * args.jesus_stddev_scale),
-                  file=f, end='')
-        else:
-            print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
-                  "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
-                    (5 if need_input_permute_component else 4),
-                    args.jesus_hidden_dim,
-                    this_jesus_output_dim,
-                    args.num_jesus_blocks,
-                    args.jesus_stddev_scale / math.sqrt((args.jesus_hidden_dim / args.num_jesus_blocks))),
-                  file=f, end='')
+            if args.use_repeated_affine == "true":
+                print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
+                      "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
+                        4 + permute_offset + thick_jesus_offset,
+                        args.jesus_hidden_dim,
+                        this_jesus_output_dim,
+                        args.num_jesus_blocks,
+                        args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
+                        0.5 * args.jesus_stddev_scale),
+                      file=f, end='')
+            else:
+                print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
+                      "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
+                        4 + permute_offset + thick_jesus_offset,
+                        args.jesus_hidden_dim,
+                        this_jesus_output_dim,
+                        args.num_jesus_blocks,
+                        args.jesus_stddev_scale / math.sqrt((args.jesus_hidden_dim / args.num_jesus_blocks))),
+                      file=f, end='')
 
         print("", file=f) # print newline.
         print('component-node name=jesus{0} component=jesus{0} input={1}'.format(
