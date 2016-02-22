@@ -10,11 +10,14 @@ import argparse
 import os
 import errno
 import logging
+import re
+import subprocess
 
 try:
     import matplotlib as mpl
     mpl.use('Agg')
     import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
     import numpy as np
 
     plot = True
@@ -55,11 +58,56 @@ example : steps/nnet3/report/generate_plots.py --comparison-dir exp/nnet3/tdnn1 
 
 plot_colors = ['red', 'blue', 'green', 'black', 'magenta', 'yellow', 'cyan' ]
 
-def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = None, start_iter = 1):
+
+
+class LatexReport:
+    def __init__(self, pdf_file):
+        self.pdf_file = pdf_file
+        self.document=[]
+        self.document.append("""
+\documentclass[prl,10pt,twocolumn]{revtex4}
+\usepackage{graphicx}    % Used to import the graphics
+\\begin{document}
+""")
+
+    def AddFigure(self, figure_pdf, title):
+        # we will have keep extending this replacement list based on errors during compilation
+        # escaping underscores in the title
+        title = "\\texttt{"+re.sub("_","\_", title)+"}"
+        fig_latex = """
+%...
+\\begin{figure}[t]
+  \\begin{center}
+    \caption{""" + title + """}
+    \includegraphics[width=\\textwidth]{""" + figure_pdf + """}
+  \end{center}
+\end{figure}
+%...
+"""
+        self.document.append(fig_latex)
+
+    def Close(self):
+        self.document.append("\end{document}")
+        self.Compile()
+
+    def Compile(self):
+        root, ext = os.path.splitext(self.pdf_file)
+        dir_name = os.path.dirname(self.pdf_file)
+        latex_file = root + ".tex"
+        lat_file = open(latex_file, "w")
+        lat_file.write("\n".join(self.document))
+        lat_file.close()
+        try:
+            proc = subprocess.Popen(['pdflatex', '-output-directory='+str(dir_name), latex_file], stdout=PIPE, stderr=PIPE)
+            proc.communicate()
+        except Exception as e:
+            logger.warning("There was an error compiling the latex file {0}, please do it manually.".format(latex_file))
+
+def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = None, start_iter = 1, latex_report = None):
     assert(start_iter >= 1)
 
     if plot:
-        plt.figure()
+        fig = plt.figure()
         plots = []
 
     comparison_dir = [] if comparison_dir is None else comparison_dir
@@ -87,9 +135,13 @@ def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_base
         plt.ylabel(key)
         lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.2 + len(dirs) * -0.1 ), ncol=1, borderaxespad=0.)
         plt.grid(True)
-        plt.savefig('{0}/{1}.pdf'.format(output_dir, file_basename), bbox_extra_artists=(lgd,), bbox_inches='tight')
+        fig.suptitle("{0} plot".format(key))
+        figfile_name = '{0}/{1}.pdf'.format(output_dir, file_basename)
+        plt.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
+        if latex_report is not None:
+            latex_report.AddFigure(figfile_name, "Plot of {0} vs iterations".format(key))
 
-def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, start_iter = 1):
+def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, start_iter = 1, latex_report = None):
     assert(start_iter >= 1)
 
     comparison_dir = [] if comparison_dir is None else comparison_dir
@@ -179,8 +231,11 @@ def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, s
 
             lgd = plt.legend(handles=plots, loc='lower center', bbox_to_anchor=(0.5, -0.5 + len(dirs) * -0.2 ), ncol=1, borderaxespad=0.)
             plt.grid(True)
-            fig.suptitle("Mean and Standard deviation of the value and derivative {comp_name}".format(comp_name = component_name), fontsize = 25)
-            fig.savefig('{dir}/nonlinstats_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name), bbox_extra_artists=(lgd,), bbox_inches='tight')
+            fig.suptitle("Mean and stddev of the value and derivative at {comp_name}".format(comp_name = component_name))
+            figfile_name = '{dir}/nonlinstats_{comp_name}.pdf'.format(dir = output_dir, comp_name = component_name)
+            fig.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
+            if latex_report is not None:
+                latex_report.AddFigure(figfile_name, "Mean and stddev of the value and derivative at {0}".format(component_name))
 
 def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1):
     try:
@@ -190,14 +245,19 @@ def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1):
             pass
         else:
             raise e
+    if plot:
+        latex_report = LatexReport("{0}/report.pdf".format(output_dir))
+    else:
+        latex_report = None
 
     logger.info("Generating accuracy plots")
-    GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = comparison_dir, start_iter = start_iter)
+    GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
+
     logger.info("Generating log-likelihood plots")
-    GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'log-likelihood', file_basename = 'loglikelihood', comparison_dir = comparison_dir, start_iter = start_iter)
+    GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'log-likelihood', file_basename = 'loglikelihood', comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
 
     logger.info("Generating non-linearity stats plots")
-    GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter)
+    GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = comparison_dir, start_iter = start_iter, latex_report = latex_report)
 
     logger.info("Generating parameter difference files")
     # Parameter changes
@@ -209,7 +269,9 @@ def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1):
         for row in data:
             file.write(" ".join(map(lambda x:str(x),row))+"\n")
         file.close()
-
+    if plot and latex_report is not None:
+        latex_report.Close()
+        logger.info("Report has been generated. You can find it at the location {0}".format("{0}/report.pdf".format(output_dir)))
 def Main():
     args = GetArgs()
     GeneratePlots(args.exp_dir, args.output_dir, args.comparison_dir, args.start_iter)
