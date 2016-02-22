@@ -27,7 +27,7 @@ def resolve_overlaps(ctms, window_length, overlap):
         index = i
         break
     total_ctm += cur_ctm[:index]
-    
+
     index = 0
     for i in xrange(len(next_ctm)):
       if next_ctm[i][2] + next_ctm[i][3]/2.0 > (overlap/2.0):
@@ -37,6 +37,41 @@ def resolve_overlaps(ctms, window_length, overlap):
   # merge the last ctm entirely
   total_ctm +=ctms[-1]
   return total_ctm
+
+def resolve_overlaps_segments(ctms, segments):
+  total_ctm = []
+  if len(ctms) == 0:
+    raise Exception('Something wrong with the input ctms')
+  for ctm_index in range(len(ctms) - 1):
+    cur_ctm = ctms[ctm_index]
+    next_ctm = ctms[ctm_index + 1]
+    # find the breaks after overlap starts
+    index = len(cur_ctm)
+
+    if (cur_ctm[0][0] not in segments):
+      raise Exception('Could not find utterance %s in segments' % cur_ctm[0][0])
+    if (next_ctm[0][0] not in segments):
+      raise Exception('Could not find utterance %s in segments' % next_ctm[0][0])
+
+    window_length = segments[cur_ctm[0][0]][2] - segments[cur_ctm[0][0]][1]
+    overlap = segments[cur_ctm[0][0]][2] - segments[next_ctm[0][0]][1]
+
+    for i in xrange(len(cur_ctm)):
+      if cur_ctm[i][2] + cur_ctm[i][3]/2.0 > (window_length - overlap/2.0):
+        index = i
+        break
+    total_ctm += cur_ctm[:index]
+
+    index = 0
+    for i in xrange(len(next_ctm)):
+      if next_ctm[i][2] + next_ctm[i][3]/2.0 > (overlap/2.0):
+        index = i
+        break
+    ctms[ctm_index + 1] = next_ctm[index:]
+  # merge the last ctm entirely
+  total_ctm +=ctms[-1]
+  return total_ctm
+
 def read_ctm(ctm_file_lines, utt2spk):
   ctms = {}
   for key in utt2spk.values():
@@ -56,7 +91,7 @@ def read_ctm(ctm_file_lines, utt2spk):
       ctm.append([parts[0], parts[1], float(parts[2]),
         float(parts[3]), parts[4], parts[5]])
   # append the last ctm
-  ctms[utt2spk[ctm[0][0]]].append(ctm) 
+  ctms[utt2spk[ctm[0][0]]].append(ctm)
   return ctms
 
 def write_ctm(ctm_lines):
@@ -66,16 +101,17 @@ def write_ctm(ctm_lines):
   return ctm_file_lines
 
 if __name__ == "__main__":
-  usage = """ Python script to resolve overlaps in uniformly segmented ctms """ 
+  usage = """ Python script to resolve overlaps in uniformly segmented ctms """
   main_parser = argparse.ArgumentParser(usage)
   parser = argparse.ArgumentParser()
   parser.add_argument('--window-length', type = float, default = 30.0, help = 'length of the window used to cut the segment')
   parser.add_argument('--overlap', type = float, default = 5.0, help = 'overlap of neighboring windows')
+  parser.add_argument('--segments', type = str, help = 'use segments to resolve overlaps')
   parser.add_argument('utt2spk', type=str, help='spk2utt_file')
   parser.add_argument('ctm_in', type=str, help='input_ctm_file')
   parser.add_argument('ctm_out', type=str, help='output_ctm_file')
   params = parser.parse_args()
-  
+
   if params.ctm_in == "-":
     params.ctm_in = sys.stdin
   else:
@@ -90,11 +126,20 @@ if __name__ == "__main__":
     parts = line.split()
     utt2spk[parts[0]] = parts[1]
 
+  segments = {}
+  if params.segments:
+    for line in open(params.segments).readlines():
+      parts = line.strip().split()
+      segments[parts[0]] = [ parts[1] ] + [ float(x) for x in parts[2:] ]
+
   ctms = read_ctm(params.ctm_in.readlines(), utt2spk)
   speakers = ctms.keys()
   speakers.sort()
   for key in speakers:
     ctm = ctms[key]
-    ctm = resolve_overlaps(ctm, params.window_length, params.overlap)
+    if params.segments:
+      ctm = resolve_overlaps_segments(ctm, segments)
+    else:
+      ctm = resolve_overlaps(ctm, params.window_length, params.overlap)
     params.ctm_out.write("\n".join(write_ctm(ctm))+"\n")
   params.ctm_out.close()

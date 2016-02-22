@@ -6,6 +6,7 @@
 # Begin configuration section. 
 extra_files= # specify addtional files in 'src-data-dir' to merge, ex. "file1 file2 ..."
 ref_data_dir= # data directory to be used as reference for rearranging alignments
+cmd=run.pl
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -78,7 +79,7 @@ if [ ! -z "$ref_data_dir" ]; then
     awk -v p=\$ali_file '{printf "%s %s %s\n", \$1, p, NR}' > $temp_dir/ali_utt_index.\$JOB
 EOF
   chmod +x $temp_dir/create_ali_utt_index.sh
-  $decode_cmd -v PATH JOB=1:$num_jobs $temp_dir/ali_copy_int.JOB.log $temp_dir/create_ali_utt_index.sh JOB
+  $cmd -v PATH JOB=1:$num_jobs $temp_dir/ali_copy_int.JOB.log $temp_dir/create_ali_utt_index.sh JOB
 
   cat <<EOF >$temp_dir/create_new_ali.py
 
@@ -147,7 +148,7 @@ EOF
   # split the ref_data_dir to get reference utt2spk for individual ali.JOB.gz files
   utils/split_data.sh $ref_data_dir $num_jobs
   
-  $decode_cmd -v PATH JOB=1:$num_jobs $temp_dir/create_new_ali.JOB.run.log \
+  $cmd JOB=1:$num_jobs $temp_dir/create_new_ali.JOB.run.log \
     python $temp_dir/create_new_ali.py \
       $ref_data_dir/split$num_jobs/JOB/utt2spk \
       $temp_dir/create_new_ali.JOB.sh $temp_dir/ali.JOB.gz || exit 1;

@@ -95,9 +95,17 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
       {
         BaseFloat tot_weight, tot_objf;
         bool supply_deriv = config_.compute_deriv;
+
+        CuMatrix<BaseFloat> nnet_output_deriv(output.NumRows(), output.NumCols());
+
         ComputeObjectiveFunction(io.features, obj_type, io.name,
-                                 supply_deriv, computer,
-                                 &tot_weight, &tot_objf);
+                                 output,
+                                 &tot_weight, &tot_objf,
+                                 supply_deriv ? &nnet_output_deriv : NULL);
+
+        if (supply_deriv)
+          computer->AcceptOutputDeriv(io.name, &nnet_output_deriv);
+
         SimpleObjectiveInfo &totals = objf_info_[io.name];
         totals.tot_weight += tot_weight;
         totals.tot_objective += tot_objf;

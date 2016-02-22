@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Daniel Povey, Vijayaditya Peddinti).  Apache 2.0.
 
-# creates a segments file in the provided data directory 
+# creates a segments file in the provided data directory
 # into uniform segments with specified window and overlap
 
 import imp, sys, argparse, os, math, subprocess
@@ -16,7 +16,7 @@ def segment(total_length, window_length, overlap = 0):
     segments[-2] = (segments[-2][0], segments[-1][1])
     segments.pop()
   return segments
-  
+
 def get_wave_segments(wav_command, window_length, overlap):
   raw_output = subprocess.check_output(wav_command+" sox -t wav - -n stat 2>&1 | grep Length ", shell = True)
   parts = raw_output.split(":")
@@ -31,7 +31,7 @@ def prepare_segments_file(kaldi_data_dir, window_length, overlap):
     raise Exception("Not a proper kaldi data directory")
   ids = []
   files = []
-  for line in  open(kaldi_data_dir+'/wav.scp').readlines():
+  for line in open(kaldi_data_dir+'/wav.scp').readlines():
     parts = line.split()
     ids.append(parts[0])
     files.append(" ".join(parts[1:]))
@@ -54,6 +54,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--window-length', type = float, default = 30.0, help = 'length of the window used to cut the segment')
   parser.add_argument('--overlap', type = float, default = 5.0, help = 'overlap of neighboring windows')
+  parser.add_argument('--base-segments', type = str, help = 'Create subsegments of the base segments')
   parser.add_argument('data_dir', type=str, help='directory such as data/train')
 
   params = parser.parse_args()

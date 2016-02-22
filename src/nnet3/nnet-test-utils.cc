@@ -870,7 +870,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 26);
+  int32 n = RandInt(0, 28);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -1136,6 +1136,27 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " pool-z-step=" << pool_z_step;
       break;
     }
+    case 27: {
+      *component_type = "ExpComponent";
+      os << "dim=" << RandInt(1, 50);
+      break;
+    }
+    case 28: {
+      *component_type = "LogComponent";
+      os << "dim=" << RandInt(1, 50);
+    }
+    //case 28: {
+    //   break;
+    //  *component_type = "NaturalGradientPositiveAffineComponent";
+    //  int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+    //  bool ensure_positive_linear_component = true;
+    //  BaseFloat sparsity_constant = std::abs(RandGauss());
+    //  os << "input-dim=" << input_dim << " output-dim=" << output_dim
+    //     << " learning-rate=" << learning_rate 
+    //     << " sparsity-constant=" << sparsity_constant
+    //     << " ensure-positive-linear-component=" << (ensure_positive_linear_component ? "true" : "false");
+    //  break;
+    //}
     default:
       KALDI_ERR << "Error generating random component";
   }

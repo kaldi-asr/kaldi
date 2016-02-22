@@ -337,6 +337,7 @@ class CuMatrixBase {
   ///< multiply the result by the sign of the input.
   void ApplyPowAbs(Real power, bool include_sign=false);
   void ApplyHeaviside(); ///< For each element, sets x = (x > 0 ? 1.0 : 0.0)
+  void ApplySignum(); ///< For each element, sets x = (1 if x > 0; 0 if x = 0; -1 if x < 0)
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
@@ -381,6 +382,10 @@ class CuMatrixBase {
   /// *this += alpha * A
   void AddMat(Real alpha, const CuMatrixBase<Real> &A,
               MatrixTransposeType trans = kNoTrans);
+  
+  /// Version of AddMat when the matrices are stored in log
+  void LogAddExpMat(Real alpha, const CuMatrixBase<Real> &A,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// if A.NumRows() is multiple of (*this)->NumRows and A.NumCols() is multiple of (*this)->NumCols
   /// divide A into blocks of the same size as (*this) and add them to *this (times alpha)

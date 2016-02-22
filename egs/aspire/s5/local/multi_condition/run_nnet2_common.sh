@@ -1,5 +1,4 @@
 #!/bin/bash 
-#set -e
 # this script is based on local/online/run_nnet2_comman.sh
 # but it operates on corrupted training/dev/test data sets
 
@@ -15,6 +14,8 @@ RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
 
 set -e
+set -o pipefail
+
 . cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh

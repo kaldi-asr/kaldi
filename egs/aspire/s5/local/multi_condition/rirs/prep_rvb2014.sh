@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2015  Johns Hopkins University (author: Vijayaditya Peddinti)
+#           2015  Vimal Manohar
 # Apache 2.0
 # This script downloads the impulse responses and noise files from the
 # Reverb2014 challenge
@@ -28,6 +29,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
@@ -54,24 +58,24 @@ type_num=1
 data_files=( $(find $Reverb2014_home1/RIR -name '*.wav' -type f -print || exit -1) )
 files_done=0
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${Reverb2014_home1}/RIR."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file | tr '[:upper:]' '[:lower:]'` 
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   files_done=$((files_done + 1))
 done
 
 data_files=( $(find $Reverb2014_home1/NOISE -name '*.wav' -type f -print || exit -1) )
 files_done=0
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.noise.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.noise.list
 echo "Found $total_files noises in ${Reverb2014_home1}/NOISE."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.noise.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.noise.list
   files_done=$((files_done + 1))
 done
 
@@ -80,12 +84,12 @@ type_num=$((type_num + 1))
 data_files=( $(find $Reverb2014_home2/RIR -name '*.wav' -type f -print || exit -1) )
 files_done=0
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${Reverb2014_home2}/RIR."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file| tr '[:upper:]' '[:lower:]'`
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   files_done=$((files_done + 1))
 done
 
@@ -93,12 +97,12 @@ done
 data_files=( $(find $Reverb2014_home2/NOISE -name '*.wav' -type f -print || exit -1) )
 files_done=0
 total_files=$(echo ${data_files[@]}|wc -w)
-echo "" > $log_dir/${DBname}_type${type_num}.noise.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.noise.list
 echo "Found $total_files noises in ${Reverb2014_home2}/NOISE."
 for data_file in ${data_files[@]}; do
   output_file_name=${DBname}_type${type_num}_`basename $data_file | tr '[:upper:]' '[:lower:]'`
   echo "sox -t wav $data_file -t wav -r $sampling_rate -e signed-integer -b $output_bit ${output_dir}/${output_file_name}" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type${type_num}.noise.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.noise.list
   files_done=$((files_done + 1))
 done
 

@@ -37,8 +37,14 @@ int main(int argc, char *argv[]) {
         "Usage: select-voiced-frames [options] <feats-rspecifier> "
         " <vad-rspecifier> <feats-wspecifier>\n"
         "E.g.: select-voiced-frames [options] scp:feats.scp scp:vad.scp ark:-\n";
-    
+ 
+    bool select_unvoiced_frames = false;
+
     ParseOptions po(usage);
+    po.Register("select-unvoiced-frames", &select_unvoiced_frames, 
+                "Reverses the operation of this file and selects "
+                "unvoiced frames instead");
+    
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -86,15 +92,27 @@ int main(int argc, char *argv[]) {
       }
       int32 dim = 0;
       for (int32 i = 0; i < voiced.Dim(); i++)
-        if (voiced(i) != 0.0)
-          dim++;
+        if (!select_unvoiced_frames) {
+          if (voiced(i) != 0.0)
+            dim++;
+        } else {
+          if (voiced(i) == 0.0)
+            dim++;
+        }
       Matrix<BaseFloat> voiced_feat(dim, feat.NumCols());
       int32 index = 0;
       for (int32 i = 0; i < feat.NumRows(); i++) {
-        if (voiced(i) != 0.0) {
-          KALDI_ASSERT(voiced(i) == 1.0); // should be zero or one.
-          voiced_feat.Row(index).CopyFromVec(feat.Row(i));
-          index++;
+        if (!select_unvoiced_frames) {
+          if (voiced(i) != 0.0) {
+            KALDI_ASSERT(voiced(i) == 1.0); // should be zero or one.
+            voiced_feat.Row(index).CopyFromVec(feat.Row(i));
+            index++;
+          }
+        } else {
+          if (voiced(i) == 0.0) {
+            voiced_feat.Row(index).CopyFromVec(feat.Row(i));
+            index++;
+          }
         }
       }
       KALDI_ASSERT(index == dim);

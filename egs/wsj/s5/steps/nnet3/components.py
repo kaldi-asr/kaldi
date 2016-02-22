@@ -45,7 +45,6 @@ def GetSumDescriptor(inputs):
     return sum_descriptors
 
 
-
 # adds the input nodes and returns the descriptor
 def AddInputLayer(config_lines, feat_dim, splice_indexes=[0], ivector_dim=0):
     components = config_lines['components']
@@ -180,18 +179,27 @@ def AddSoftmaxLayer(config_lines, name, input):
             'dimension': input['dimension']}
 
 
-def AddOutputLayer(config_lines, input, label_delay=None):
+def AddSigmoidLayer(config_lines, name, input):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    components.append("component name={0}_sigmoid type=SigmoidComponent dim={1}".format(name, input['dimension']))
+    component_nodes.append("component-node name={0}_sigmoid component={0}_sigmoid input={1}".format(name, input['descriptor']))
+    return {'descriptor':  '{0}_sigmoid'.format(name),
+            'dimension': input['dimension']}
+
+def AddOutputLayer(config_lines, input, label_delay = None, objective_type = "linear"):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     if label_delay is None:
-        component_nodes.append('output-node name=output input={0}'.format(input['descriptor']))
+        component_nodes.append('output-node name=output input={0} objective={1}'.format(input['descriptor'], objective_type))
     else:
-        component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
+        component_nodes.append('output-node name=output input=Offset({0},{1}) objective={2}'.format(input['descriptor'], label_delay, objective_type))
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = " param-stddev=0 bias-stddev=0 ", label_delay=None, use_presoftmax_prior_scale = False, prior_scale_file = None, include_log_softmax = True):
+def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = " param-stddev=0 bias-stddev=0 ", label_delay=None, use_presoftmax_prior_scale = False, prior_scale_file = None, include_log_softmax = True, objective_type = "linear"):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
-    
+
     prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
     if include_log_softmax:
         if use_presoftmax_prior_scale :
@@ -199,7 +207,16 @@ def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = " param-s
             component_nodes.append('component-node name=Final-fixed-scale component=Final-fixed-scale input={0}'.format(prev_layer_output['descriptor']))
             prev_layer_output['descriptor'] = "Final-fixed-scale"
         prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
-    AddOutputLayer(config_lines, prev_layer_output, label_delay)
+    AddOutputLayer(config_lines, prev_layer_output, label_delay, objective_type)
+
+def AddFinalSigmoidLayer(config_lines, input, output_dim, ng_affine_options = " param-stddev=0 bias-stddev=0 ", label_delay=None, objective_type = "linear"):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
+    prev_layer_output = AddSigmoidLayer(config_lines, "Final", prev_layer_output)
+    AddOutputLayer(config_lines, prev_layer_output, label_delay, objective_type)
+
 
 def AddLstmLayer(config_lines,
                  name, input, cell_dim,
@@ -268,6 +285,11 @@ def AddLstmLayer(config_lines,
     # c1_t and c2_t defined below
     component_nodes.append("component-node name={0}_c_t component={0}_c input=Sum({0}_c1_t, {0}_c2_t)".format(name))
     c_tminus1_descriptor = "IfDefined(Offset({0}_c_t, {1}))".format(name, lstm_delay)
+
+    result = re.match("^Append\((.+)\)$", input_descriptor)
+    if result:
+        print("Removing Append from descriptor", file=sys.stderr)
+        input_descriptor = result.group(1)
 
     component_nodes.append("# i_t")
     component_nodes.append("component-node name={0}_i1 component={0}_W_i-xr input=Append({1}, IfDefined(Offset({0}_{2}, {3})))".format(name, input_descriptor, recurrent_connection, lstm_delay))

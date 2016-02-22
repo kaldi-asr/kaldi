@@ -380,11 +380,12 @@ class AffineComponent: public UpdatableComponent {
   friend class NaturalGradientAffineComponent;
   // This function Update() is for extensibility; child classes may override
   // this, e.g. for natural gradient update.
-  virtual void Update(
+  virtual BaseFloat Update(
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv) {
     UpdateSimple(in_value, out_deriv);
+    return 0.0;   // child classes may return local learning rate
   }
   // UpdateSimple is used when *this is a gradient.  Child classes may override
   // this if needed, but typically won't need to.
@@ -626,6 +627,61 @@ class LogSoftmaxComponent: public NonlinearComponent {
   LogSoftmaxComponent &operator = (const LogSoftmaxComponent &other); // Disallow.
 };
 
+// The LogComponent outputs the log of input values as y = Log(max(x, epsi))
+class LogComponent: public NonlinearComponent {
+ public:
+  explicit LogComponent(int32 dim): NonlinearComponent(dim) { }     
+  explicit LogComponent(const LogComponent &other):
+    NonlinearComponent(other) { } 
+  LogComponent() { }
+  virtual std::string Type() const { return "LogComponent"; }
+  virtual int32 Properties() const { 
+    return kSimpleComponent|kBackpropNeedsInput|kStoresStats;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const { return new LogComponent(*this); }
+ private:
+  LogComponent &operator = (const LogComponent &other); // Disallow.
+  static const BaseFloat kLogFloor;
+};
+
+// The ExpComponent outputs the exp of input values as y = Exp(x)
+class ExpComponent: public NonlinearComponent {
+ public:
+  explicit ExpComponent(int32 dim): NonlinearComponent(dim) { }     
+  explicit ExpComponent(const ExpComponent &other):
+    NonlinearComponent(other) { } 
+  ExpComponent() { }
+  virtual std::string Type() const { return "ExpComponent"; }
+  virtual int32 Properties() const { 
+    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const { return new ExpComponent(*this); }
+ private:
+  ExpComponent &operator = (const ExpComponent &other); // Disallow.
+};
+
 /// Keywords: natural gradient descent, NG-SGD, naturalgradient.  For
 /// the top-level of the natural gradient code look here, and also in
 /// nnet-precondition-online.h.
@@ -661,6 +717,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
   virtual void ZeroStats();
+
+ protected:
+  friend class NaturalGradientPositiveAffineComponent;
 
  private:
   // disallow assignment operator.
@@ -706,12 +765,113 @@ class NaturalGradientAffineComponent: public AffineComponent {
   // from the class variables.
   void SetNaturalGradientConfigs();
 
-  virtual void Update(
+  // returns the local learning rate used
+  virtual BaseFloat Update(
       const std::string &debug_info,
       const CuMatrixBase<BaseFloat> &in_value,
       const CuMatrixBase<BaseFloat> &out_deriv);
 };
 
+class NaturalGradientPositiveAffineComponent: public NaturalGradientAffineComponent {
+ public:
+  enum PositivityMethod { kFloor, kAbsoluteValue };
+  virtual std::string Type() const { return "NaturalGradientPositiveAffineComponent"; }
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  
+  void Init(int32 input_dim, int32 output_dim,
+            BaseFloat param_stddev,
+            BaseFloat bias_mean, BaseFloat bias_stddev,
+            int32 rank_in, int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history, BaseFloat alpha,
+            BaseFloat max_change_per_sample, 
+            bool ensure_positive_linear_component,
+            BaseFloat sparsity_constant = 0.0);
+
+  void Init(int32 rank_in,
+            int32 rank_out, int32 update_period,
+            BaseFloat num_samples_history,
+            BaseFloat alpha, BaseFloat max_change_per_sample,
+            bool ensure_positive_linear_component,
+            BaseFloat sparsity_constant,
+            std::string matrix_filename);
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual std::string Info() const;
+  virtual Component* Copy() const;
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  NaturalGradientPositiveAffineComponent();
+
+  void Backprop(const std::string &debug_info,
+                const ComponentPrecomputedIndexes *indexes,
+                const CuMatrixBase<BaseFloat> &in_value,
+                const CuMatrixBase<BaseFloat> &, // out_value
+                const CuMatrixBase<BaseFloat> &out_deriv,
+                Component *to_update_in,
+                CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  // Make the linear_params_ to be positive using the method defined by
+  // PositivityMethod.
+  // The normal way this is done is to apply flooring at 0.0 (kFloor).
+  // But during initialization, the parameters are made positive by taking
+  // the absolute value (kAbsoluteValue).
+  void SetPositive(PositivityMethod method = kFloor);
+  void SetSparsityConstant(BaseFloat sparsity_constant) {
+    sparsity_constant_ = sparsity_constant; }
+  bool PositiveLinearComponentEnsured() const {
+    return ensure_positive_linear_component_; }
+
+  int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
+        kBackpropNeedsInput|kBackpropAdds|
+        kSparsityPrior|kPositiveLinearParameters;
+  }
+
+ protected:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientPositiveAffineComponent);
+   
+  bool ensure_positive_linear_component_;
+  BaseFloat sparsity_constant_;
+
+  virtual BaseFloat Update(
+      const std::string &debug_info,
+      const CuMatrixBase<BaseFloat> &in_value,
+      const CuMatrixBase<BaseFloat> &out_deriv,
+      const CuMatrixBase<BaseFloat> &linear_params);
+  
+  // // Add L1 regularization penalty term. This is assumed to be called by the
+  // // Update method after the normal update without considering the L1 penalty is
+  // // done.
+  // void AddPenalty(BaseFloat sparsity_constant, BaseFloat local_lrate);
+  friend class NaturalGradientLogExpAffineComponent;
+};
+
+class NaturalGradientLogExpAffineComponent: public NaturalGradientPositiveAffineComponent {
+ public:
+  virtual std::string Type() const { return "NaturalGradientLogExpAffineComponent"; }
+  
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update_in,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  int32 Properties() const {
+    return kSimpleComponent|kUpdatableComponent|
+        kBackpropNeedsInput|kBackpropAdds;
+  }
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NaturalGradientLogExpAffineComponent);
+   
+};
 
 /// FixedAffineComponent is an affine transform that is supplied
 /// at network initialization time and is not trainable.

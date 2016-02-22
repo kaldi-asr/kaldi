@@ -29,9 +29,9 @@ Spectrogram::Spectrogram(const SpectrogramOptions &opts)
   if (opts.energy_floor > 0.0)
     log_energy_floor_ = Log(opts.energy_floor);
 
-  int32 padded_window_size = opts.frame_opts.PaddedWindowSize();
-  if ((padded_window_size & (padded_window_size-1)) == 0)  // Is a power of two
-    srfft_ = new SplitRadixRealFft<BaseFloat>(padded_window_size);
+  int32 num_fft_bins = opts_.frame_opts.NumFftBins();
+  if ((num_fft_bins & (num_fft_bins-1)) == 0)  // Is a power of two
+    srfft_ = new SplitRadixRealFft<BaseFloat>(num_fft_bins);
 }
 
 Spectrogram::~Spectrogram() {
@@ -45,7 +45,33 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
 
   // Get dimensions of output features
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);
-  int32 cols_out =  opts_.frame_opts.PaddedWindowSize()/2 +1;
+
+  int32 num_fft_bins = opts_.frame_opts.NumFftBins();
+ 
+  BaseFloat sample_freq = opts_.frame_opts.samp_freq;
+  BaseFloat nyquist = 0.5 * sample_freq;
+  BaseFloat low_freq = opts_.low_freq, high_freq;
+  if (opts_.high_freq > 0.0)
+    high_freq = opts_.high_freq;
+  else
+    high_freq = nyquist + opts_.high_freq;
+  
+  if (low_freq < 0.0 || low_freq >= nyquist
+      || high_freq <= 0.0 || high_freq > nyquist
+      || high_freq <= low_freq)
+    KALDI_ERR << "Bad values in options: low-freq " << low_freq
+              << " and high-freq " << high_freq << " vs. nyquist "
+              << nyquist;
+    
+  int32 low_c = low_freq / sample_freq * num_fft_bins;
+  int32 high_c = high_freq / sample_freq * num_fft_bins;
+
+  int32 cols_out =  high_c - low_c + 1;
+
+  if (opts_.use_energy && low_c != 0) {
+    cols_out++;
+  }
+
   if (rows_out == 0)
     KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
   // Prepare the output buffer
@@ -63,10 +89,13 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
   for (int32 r = 0; r < rows_out; r++) {
     // Cut the window, apply window function
     ExtractWindow(wave, r, opts_.frame_opts, feature_window_function_,
-                  &window, (opts_.raw_energy ? &log_energy : NULL));
+                  &window, (opts_.use_energy && opts_.raw_energy ? &log_energy : NULL));
+    
+    KALDI_ASSERT(window.Dim() <= num_fft_bins);
+    window.Resize(num_fft_bins, kCopyData);
 
     // Compute energy after window function (not the raw one)
-    if (!opts_.raw_energy)
+    if (opts_.use_energy && !opts_.raw_energy)
       log_energy = Log(std::max(VecVec(window, window),
                                 std::numeric_limits<BaseFloat>::min()));
     
@@ -83,12 +112,16 @@ void Spectrogram::Compute(const VectorBase<BaseFloat> &wave,
     power_spectrum.ApplyLog();
 
     // Output buffers
-    SubVector<BaseFloat> this_output(output->Row(r));
-    this_output.CopyFromVec(power_spectrum);
-    if (opts_.energy_floor > 0.0 && log_energy < log_energy_floor_) {
+    SubVector<BaseFloat> this_output(
+        (output->Row(r)).Range((opts_.use_energy && low_c != 0) ? 1 : 0, high_c - low_c + 1));
+    SubVector<BaseFloat> this_power_spectrum(power_spectrum, 
+                                             low_c, high_c - low_c + 1);
+    this_output.CopyFromVec(this_power_spectrum);
+    if (opts_.use_energy && opts_.energy_floor > 0.0 && log_energy < log_energy_floor_) {
         log_energy = log_energy_floor_;
     }
-    this_output(0) = log_energy;
+    if (opts_.use_energy)
+      this_output(0) = log_energy;
   }
 }
 

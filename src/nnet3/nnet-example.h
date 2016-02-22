@@ -44,6 +44,15 @@ struct NnetIo {
   /// The features or labels.  GeneralMatrix may contain either a CompressedMatrix,
   /// a Matrix, or SparseMatrix (a SparseMatrix would be the natural format for posteriors).
   GeneralMatrix features;
+  
+  /// This is a vector of per-frame weights, required to be between 0 and 1,
+  /// that is applied to the derivative during training (but not during model
+  /// combination, where the derivatives need to agree with the computed objf
+  /// values for the optimization code to work).  
+  /// If this vector is empty it means we're not applying per-frame weights,
+  /// so it's equivalent to a vector of all ones.  This vector is written
+  /// to disk compactly as unsigned char.
+  Vector<BaseFloat> deriv_weights;
 
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
   /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
@@ -51,11 +60,30 @@ struct NnetIo {
   /// represents.
   NnetIo(const std::string &name,
          int32 t_begin, const MatrixBase<BaseFloat> &feats);
+  
+  NnetIo(const std::string &name, 
+         const VectorBase<BaseFloat> &deriv_weights,
+         int32 t_begin, const MatrixBase<BaseFloat> &feats);
+ 
+  /// This constructor is similar to the above constructed, 
+  /// but takes in sparse input features.
+  NnetIo(const std::string &name,
+         int32 t_begin, const SparseMatrix<BaseFloat> &feats);
+         
+  NnetIo(const std::string &name,
+         const VectorBase<BaseFloat> &deriv_weights,
+         int32 t_begin, const SparseMatrix<BaseFloat> &feats);
 
   /// This constructor sets "name" to the provided string, sets "indexes" with
   /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
   NnetIo(const std::string &name,
+         int32 dim,
+         int32 t_begin,
+         const Posterior &labels);
+  
+  NnetIo(const std::string &name,
+         const VectorBase<BaseFloat> &deriv_weights,
          int32 dim,
          int32 t_begin,
          const Posterior &labels);
@@ -102,7 +130,6 @@ struct NnetExample {
   /// testing code.
   bool operator == (const NnetExample &other) const { return io == other.io; }
 };
-
 
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetExample > > SequentialNnetExampleReader;

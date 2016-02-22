@@ -107,7 +107,7 @@ cp $alidir/tree $dir
 num_ali_jobs=$(cat $alidir/num_jobs) || exit 1;
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset | sort \
     > $dir/valid_uttlist || exit 1;
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
@@ -122,7 +122,7 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl | head -$num_utts_subset | sort > $dir/train_subset_uttlist || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 

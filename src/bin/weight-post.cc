@@ -34,7 +34,14 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: weight-post <post-rspecifier> <weights-rspecifier> <post-wspecifier>\n";
         
+
     ParseOptions po(usage);
+    
+    int32 length_tolerance = 0;
+    po.Register("length-tolerance", &length_tolerance, 
+                "Tolerance on difference in number of frames in posterior "
+                "and weights.");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -61,18 +68,23 @@ int main(int argc, char *argv[]) {
         continue;
       }
       const Vector<BaseFloat> &weights = weights_reader.Value(key);
-      if (weights.Dim() != static_cast<int32>(post.size())) {
+      if (std::abs(weights.Dim() - static_cast<int32>(post.size())) > length_tolerance) {
         KALDI_WARN << "Weights for utterance " << key
                    << " have wrong size, " << weights.Dim()
                    << " vs. " << post.size();
         num_err++;
         continue;
       }
-      for (size_t i = 0; i < post.size(); i++) {
+      int32 len = std::min(static_cast<int32>(post.size()), weights.Dim());
+      for (size_t i; i < len; i++) {
         if (weights(i) == 0.0) post[i].clear();
         for (size_t j = 0; j < post[i].size(); j++)
           post[i][j].second *= weights(i);
       }
+      for (int32 j = post.size() - 1; j >= len; j--) {
+        post.pop_back();
+      }
+      KALDI_ASSERT(post.size() == len);
       post_writer.Write(key, post);
       num_done++;
     }

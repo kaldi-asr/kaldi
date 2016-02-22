@@ -69,7 +69,7 @@ def ParseLstmDelayString(lstm_delay):
             if len(indexes) < 1:
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
-	    elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
+            elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
                 raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
             lstm_delay_array.append(indexes)
     except ValueError as e:
@@ -77,7 +77,7 @@ def ParseLstmDelayString(lstm_delay):
 
     return lstm_delay_array
 
-   
+
 if __name__ == "__main__":
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="Writes config files and variables "
@@ -205,11 +205,11 @@ if __name__ == "__main__":
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 	    prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
 	else: # LSTM layer case
-	    prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
-			                    args.recurrent_projection_dim, args.non_recurrent_projection_dim,
-					    args.clipping_threshold, args.norm_based_clipping,
-					    args.ng_per_element_scale_options, args.ng_affine_options,
-					    lstm_delay = lstm_delay[i][0])
+      prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1), prev_layer_output, args.cell_dim,
+                          args.recurrent_projection_dim, args.non_recurrent_projection_dim,
+                          args.clipping_threshold, args.norm_based_clipping,
+                          args.ng_per_element_scale_options, args.ng_affine_options,
+                          lstm_delay = lstm_delay[i][0])
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, args.num_targets, args.ng_affine_options, args.label_delay, args.include_log_softmax)

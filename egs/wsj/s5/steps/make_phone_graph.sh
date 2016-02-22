@@ -142,5 +142,7 @@ if [ $stage -le 7 ]; then
   # $lang/phones.txt is the symbol table that corresponds to the output
   # symbols on the graph; decoding scripts expect it as words.txt.
   cp $lang/phones.txt $dir/phone_graph/words.txt
+  cp $lang/phones.txt $dir/phone_graph/phones.txt
+
   cp -r $lang/phones $dir/phone_graph/
 fi

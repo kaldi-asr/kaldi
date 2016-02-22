@@ -139,6 +139,8 @@ void UnVectorizeNnet(const VectorBase<BaseFloat> &params,
 /// Returns the number of updatable components in the nnet.
 int32 NumUpdatableComponents(const Nnet &dest);
 
+void EffectPositivity(Nnet *nnet);
+
 /// Convert all components of type RepeatedAffineComponent or
 /// NaturalGradientRepeatedAffineComponent to BlockAffineComponent in nnet.
 void ConvertRepeatedToBlockAffine(Nnet *nnet);

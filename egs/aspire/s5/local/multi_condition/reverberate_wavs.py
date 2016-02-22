@@ -33,8 +33,8 @@ if __name__ == "__main__":
   parser.add_argument('output_wav_file_list', type=str, help='wav.scp file to write corrupted output')
   parser.add_argument('impulses_noises_dir', type=str, help='directory with impulses and noises and info directory (created by local/prep_rirs.sh)')
   parser.add_argument('output_command_file', type=str, help='file to output the corruption commands')
-  params = parser.parse_args() 
-  
+  params = parser.parse_args()
+
   add_noise = True
   snr_string_parts = params.snrs.split(':')
   if (len(snr_string_parts) == 1) and snr_string_parts[0] == "inf":

@@ -33,7 +33,7 @@ class IvectorExtractTask {
  public:
   IvectorExtractTask(const IvectorExtractor &extractor,
                      std::string utt,
-                     const Matrix<BaseFloat> &feats,
+                     const MatrixBase<BaseFloat> &feats,
                      const Posterior &posterior,
                      BaseFloatVectorWriter *writer,
                      double *tot_auxf_change):
@@ -95,7 +95,8 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
                    const std::string &spk2utt_rspecifier,
                    const std::string &feature_rspecifier,
                    const std::string &posterior_rspecifier,
-                   const std::string &ivector_wspecifier) {
+                   const std::string &ivector_wspecifier,
+                   int32 length_tolerance = 0) {
   IvectorExtractor extractor;
   ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
   SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
@@ -131,16 +132,24 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
         continue;
       }
       Posterior posterior = posterior_reader.Value(utt);
-      if (feats.NumRows() != posterior.size()) {
+      if (std::abs(feats.NumRows() - static_cast<int32>(posterior.size())) > length_tolerance) {
         KALDI_WARN << "Posterior has wrong size " << posterior.size()
                    << " vs. feats " << feats.NumRows() << " for "
                    << utt;
         num_utt_err++;
         continue;
       }
+
+      for (int32 j = 0; j < static_cast<int32>(posterior.size()) - feats.NumRows(); j++) {
+        posterior.pop_back();
+      }
       ScalePosterior(opts.acoustic_weight, &posterior);
       num_utt_done++;
-      utt_stats.AccStats(feats, posterior);
+      
+      if (posterior.size() == feats.NumRows())
+        utt_stats.AccStats(feats, posterior);
+      else 
+        utt_stats.AccStats(feats.Range(0, posterior.size(), 0, feats.NumCols()), posterior);
     }
 
     if (utt_stats.NumFrames() == 0.0) {
@@ -225,6 +234,7 @@ int main(int argc, char *argv[]) {
     bool compute_objf_change = true;
     IvectorEstimationOptions opts;
     std::string spk2utt_rspecifier;
+    int32 length_tolerance = 0;
     TaskSequencerConfig sequencer_config;
     po.Register("compute-objf-change", &compute_objf_change,
                 "If true, compute the change in objective function from using "
@@ -236,6 +246,9 @@ int main(int argc, char *argv[]) {
                 "is not the normal way iVectors are obtained for speaker-id. "
                 "This option will cause the program to ignore the --num-threads "
                 "option.");
+    po.Register("length-tolerance", &length_tolerance, 
+                "Tolerance on difference in number of frames in posterior "
+                "and weights.");
     
     opts.Register(&po);
     sequencer_config.Register(&po);
@@ -279,12 +292,16 @@ int main(int argc, char *argv[]) {
           const Matrix<BaseFloat> &mat = feature_reader.Value();
           Posterior posterior = posterior_reader.Value(utt);
           
-          if (static_cast<int32>(posterior.size()) != mat.NumRows()) {
+          if (std::abs(mat.NumRows() - static_cast<int32>(posterior.size())) > length_tolerance) {
             KALDI_WARN << "Size mismatch between posterior " << posterior.size()
                        << " and features " << mat.NumRows() << " for utterance "
                        << utt;
             num_err++;
             continue;
+          }
+          
+          for (int32 j = 0; j < static_cast<int32>(posterior.size()) - mat.NumRows(); j++) {
+            posterior.pop_back();
           }
 
           double *auxf_ptr = (compute_objf_change ? &tot_auxf_change : NULL );
@@ -302,7 +319,11 @@ int main(int argc, char *argv[]) {
                          &posterior);
           // note: now, this_t == sum of posteriors.
           
-          sequencer.Run(new IvectorExtractTask(extractor, utt, mat, posterior,
+          if (posterior.size() == mat.NumRows())
+            sequencer.Run(new IvectorExtractTask(extractor, utt, mat, posterior,
+                                               &ivector_writer, auxf_ptr));
+          else
+            sequencer.Run(new IvectorExtractTask(extractor, utt, mat.Range(0, posterior.size(), 0, mat.NumCols()), posterior,
                                                &ivector_writer, auxf_ptr));
           
           tot_t += this_t;
@@ -328,7 +349,8 @@ int main(int argc, char *argv[]) {
                            spk2utt_rspecifier,
                            feature_rspecifier,
                            posterior_rspecifier,
-                           ivectors_wspecifier);
+                           ivectors_wspecifier,
+                           length_tolerance);
     }
   } catch(const std::exception &e) {
     std::cerr << e.what();

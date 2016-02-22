@@ -17,6 +17,9 @@
 # This is a scoring script for the CTMS in <decode-dir>/score_<LMWT>/${name}.ctm
 # it tries to mimic the NIST scoring setup as much as possible (and usually does a good job)
 
+set -e
+set -o pipefail
+
 # begin configuration section.
 cmd=run.pl
 cer=0
@@ -56,6 +59,8 @@ ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk/bin/sclit
 SortingProgram=`which hubscr.pl` || SortingProgram=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
+hubscr=`which hubscr.pl`
+hubdir=`dirname $hubscr`
 
 for f in $data/stm  ; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
@@ -87,12 +92,12 @@ if [ $stage -le 0 ] ; then
       -n "$name.ctm" -f 0 -D -F  -o  sum rsum prf dtl sgml -e utf-8 || exit 1
 fi
 
-# Score the set...
-if [ $stage -le 1 ]; then  
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
-    cp $data/stm $dir/score_LMWT/ '&&' \
-    $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/ctm.filt || exit 1;
-fi
+## Score the set...
+#if [ $stage -le 1 ]; then  
+#  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
+#    cp $data/stm $dir/score_LMWT/ '&&' \
+#    $hubscr -p $hubdir -V -l english -h hub5 -g $data/glm -r $dir/score_LMWT/stm $dir/score_LMWT/ctm.filt || exit 1;
+#fi
 
 
 

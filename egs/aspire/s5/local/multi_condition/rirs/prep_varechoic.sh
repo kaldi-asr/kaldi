@@ -27,6 +27,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
@@ -43,13 +46,13 @@ fi
 command_file=$log_dir/${DBname}_read_rir_noise.sh
 echo "">$command_file
 type_num=1
-echo "" > $log_dir/${DBname}_type$type_num.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 varechoic_home=$RIR_home/icsi_varechoic/varechoic
 for room_type in ir00 ir43 ir100 ; do
   for mike in m1 m2 m3 m4; do
     file_basename=${room_type}${mike}
     echo "sox  -B -e float -b 32 -c 1 -r 8k -t raw $varechoic_home/${file_basename}.raw -t wav -b $output_bit $output_dir/${DBname}_${file_basename}.wav" >> $command_file
-    echo $output_dir/${DBname}_${file_basename}.wav >>  $log_dir/${DBname}_type$type_num.rir.list
+    echo $output_dir/${DBname}_${file_basename}.wav >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   done
 done
 

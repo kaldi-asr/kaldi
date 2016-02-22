@@ -169,6 +169,10 @@ typedef RandomAccessTableReader<TokenVectorHolder>
                                 RandomAccessTokenVectorReader;
 
 
+typedef TableWriter<UtteranceSegmentHolder> UtteranceSegmentWriter;
+typedef SequentialTableReader<UtteranceSegmentHolder> SequentialUtteranceSegmentReader;
+typedef RandomAccessTableReader<UtteranceSegmentHolder> RandomAccessUtteranceSegmentReader;
+
 /// @}
 
 // Note: for FST reader/writer, see ../fstext/fstext-utils.h

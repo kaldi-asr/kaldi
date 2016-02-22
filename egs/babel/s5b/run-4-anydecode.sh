@@ -222,15 +222,14 @@ if [ ! -f  $dataset_dir/.done ] ; then
     echo "Valid dataset kinds are: supervised, unsupervised, shadow";
     exit 1
   fi
-
-  if [ ! -f ${dataset_dir}/.plp.done ]; then
+  touch $dataset_dir/.done 
+fi
+if [ ! -f ${dataset_dir}/.plp.done ]; then
     echo ---------------------------------------------------------------------
     echo "Preparing ${dataset_kind} parametrization files in ${dataset_dir} on" `date`
     echo ---------------------------------------------------------------------
     make_plp ${dataset_dir} exp/make_plp/${dataset_id} plp
     touch ${dataset_dir}/.plp.done
-  fi
-  touch $dataset_dir/.done 
 fi
 #####################################################################
 #

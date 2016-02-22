@@ -909,6 +909,33 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::LogAddExpMat(Real alpha, const CuMatrixBase<Real>& A,
+                                      MatrixTransposeType transA) {
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transA == kNoTrans) {
+      KALDI_ASSERT(A.NumRows() == num_rows_ && A.NumCols() == num_cols_);
+    } else {
+      KALDI_ASSERT(A.NumCols() == num_rows_ && A.NumRows() == num_cols_);
+    }
+    if (num_rows_ == 0) return;
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumCols(), CU2DBLOCK), n_blocks(NumRows(), CU2DBLOCK));
+    cuda_log_add_exp_mat(dimGrid, dimBlock, alpha, A.data_, data_, Dim(), 
+                         A.Stride(), (transA == kTrans ? 1 : 0));
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().LogAddExpMat(alpha, A.Mat(), transA);
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
 		MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
@@ -2017,6 +2044,24 @@ void CuMatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ApplySignum() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU2DBLOCK),
+                 n_blocks(NumCols(), CU2DBLOCK));
+
+    cuda_apply_heaviside(dimGrid, dimBlock, data_, Dim());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Mat().ApplySignum();
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyExp() {

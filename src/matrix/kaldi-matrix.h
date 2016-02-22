@@ -348,7 +348,11 @@ class MatrixBase {
   /// please leave it as it (i.e. returning zero) because it affects the
   /// RectifiedLinearComponent in the neural net code.
   void ApplyHeaviside();
-
+  
+  /// Applies the Signum function (1 if x > 0, 0 if x = 0 and -1 if x < 0)
+  /// to all matrix elements
+  void ApplySignum();
+  
   /// Eigenvalue Decomposition of a square NxN matrix into the form (*this) = P D
   /// P^{-1}.  Be careful: the relationship of D to the eigenvalues we output is
   /// slightly complicated, due to the need for P to be real.  In the symmetric
@@ -536,6 +540,10 @@ class MatrixBase {
 
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
+              MatrixTransposeType transA = kNoTrans);
+  
+  /// *this += alpha * M [or M^T] when the matrices are stored as log
+  void LogAddExpMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only

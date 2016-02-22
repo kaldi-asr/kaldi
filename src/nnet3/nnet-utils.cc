@@ -142,7 +142,7 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
 
   // This will crash if the total context (left + right) is greater
   // than window_size.
-  int32 window_size = 100;
+  int32 window_size = 150;
   // by going "<= modulus" instead of "< modulus" we do one more computation
   // than we really need; it becomes a sanity check.
   for (int32 input_start = 0; input_start <= modulus; input_start++)
@@ -359,6 +359,19 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   return ans;
 }
 
+void EffectPositivity(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if ((comp->Properties() & kUpdatableComponent) && 
+        (comp->Properties() & kPositiveLinearParameters)) {
+      // For now all updatable components inherit from class UpdatableComponent.
+      // If that changes in future, we will change this code.
+      NaturalGradientPositiveAffineComponent *uc = dynamic_cast<NaturalGradientPositiveAffineComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+            "UpdatableComponent; change this code.";
+      if (uc->PositiveLinearComponentEnsured()) uc->SetPositive();
+
 void ConvertRepeatedToBlockAffine(CompositeComponent *c_component) {
   for(int32 i = 0; i < c_component->NumComponents(); i++) {
     const Component *c = c_component->GetComponent(i);
@@ -420,7 +433,6 @@ std::string NnetInfo(const Nnet &nnet) {
   ostr << nnet.Info();
   return ostr.str();
 }
-
 
 } // namespace nnet3
 } // namespace kaldi

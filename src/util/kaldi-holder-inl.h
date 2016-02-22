@@ -28,6 +28,7 @@
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-matrix.h"
+#include "base/kaldi-extra-types.h"
 
 namespace kaldi {
 
@@ -685,6 +686,82 @@ class TokenVectorHolder {
   T t_;
 };
 
+// Holder for segments
+class UtteranceSegmentHolder {
+  public:
+    typedef UtteranceSegment T;
+    
+    UtteranceSegmentHolder() { }
+    
+    static bool Write(std::ostream &os, bool, const T &t) {  // ignore binary-mode.
+      KALDI_ASSERT(IsToken(t.reco_id) && IsToken(t.channel_id) && 
+          t.end_time > t.start_time);
+      os << t.reco_id << ' ' << t.start_time << ' ' 
+        << t.end_time;
+
+      if (t.channel_id != "-1")
+        os << ' ' << t.channel_id;
+      
+      os << '\n';
+      return os.good();
+    }
+
+    void Clear() { 
+      t_.Reset();
+    }
+
+    // Reads into the holder.
+    bool Read(std::istream &is) {
+      Clear();
+      // there is no binary/non-binary mode.
+
+      std::string line;
+      getline(is, line);  // this will discard the \n, if present.
+      if (is.fail()) {
+        KALDI_WARN << "UtteranceSegmentHolder::Read, error reading line " << (is.eof() ? "[eof]" : "");
+        return false;  // probably eof.  fail in any case.
+      }
+      const char *white_chars = " \t\n\r\f\v";
+      std::vector<std::string> split;
+      SplitStringToVector(line, white_chars, true, &split);  // true== omit empty strings e.g.
+      // between spaces.
+
+      KALDI_ASSERT(split.size() == 4 || split.size() == 3);
+
+      t_.reco_id = split[0];
+      
+      if (!ConvertStringToReal(split[1], &t_.start_time)) {
+        KALDI_WARN << "Invalid line in segments file [bad start]: " << line;
+        return false;
+      }
+      if (!ConvertStringToReal(split[2], &t_.end_time)) {
+        KALDI_WARN << "Invalid line in segments file [bad end]: " << line;
+        return false;
+      }
+
+      if (t_.end_time < t_.start_time) {
+        KALDI_WARN << "Invalid start and end times in line: " << line;
+        return false;
+      }
+
+      if (split.size() == 4) {
+        t_.channel_id = split[3];
+      } else 
+        t_.channel_id = "-1";
+
+      return true;
+    }
+
+    // Read in text format since it's basically a text-mode thing.. doesn't really matter,
+    // it would work either way since we ignore the extra '\r'.
+    static bool IsReadInBinary() { return false; }
+
+    const T &Value() const { return t_; }
+
+  private:
+    KALDI_DISALLOW_COPY_AND_ASSIGN(UtteranceSegmentHolder);
+    T t_;
+};
 
 class HtkMatrixHolder {
  public:

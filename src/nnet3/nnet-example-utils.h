@@ -62,6 +62,16 @@ void GetComputationRequest(const Nnet &nnet,
                            bool store_component_stats,
                            ComputationRequest *computation_request);
 
+// writes compressed as unsigned char a vector 'vec' that is required to have
+// values between 0 and 1.
+void WriteVectorAsChar(std::ostream &os,
+                       bool binary,
+                       const VectorBase<BaseFloat> &vec);
+
+// reads data written by WriteVectorAsChar.
+void ReadVectorAsChar(std::istream &is,
+                             bool binary,
+                             Vector<BaseFloat> *vec);
 
 
 } // namespace nnet3

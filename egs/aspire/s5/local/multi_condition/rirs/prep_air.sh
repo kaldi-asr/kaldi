@@ -27,6 +27,9 @@ RIR_home=$1
 output_dir=$2
 log_dir=$3
 
+mkdir -p $log_dir
+mkdir -p $output_dir/info
+
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
@@ -44,7 +47,7 @@ type_num=1
 python local/multi_condition/get_air_file_patterns.py $AIR_home > $log_dir/air_file_pattern
 files_done=0
 total_files=$(cat $log_dir/air_file_pattern|wc -l)
-echo "" > $log_dir/${DBname}_type$type_num.rir.list
+echo "" > $output_dir/info/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${AIR_home}."
 
 command_file=$log_dir/${DBname}_read_rir_noise.sh
@@ -54,7 +57,7 @@ while read file_pattern output_file_name; do
  # output_file_name=`echo ${DBname}_type${type_num}_${file_count}_$output_file_name| tr '[:upper:]' '[:lower:]'`
   output_file_name=`echo ${DBname}_type${type_num}_$output_file_name| tr '[:upper:]' '[:lower:]'`
   echo "local/multi_condition/read_rir.py --output-sampling-rate $sampling_rate air '${file_pattern}' ${output_dir}/${output_file_name} || exit 1;" >> $command_file
-  echo ${output_dir}/${output_file_name} >>  $log_dir/${DBname}_type$type_num.rir.list
+  echo ${output_dir}/${output_file_name} >>  $output_dir/info/${DBname}_type${type_num}.rir.list
   file_count=$((file_count + 1))
 done < $log_dir/air_file_pattern
 

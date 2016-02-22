@@ -29,7 +29,8 @@ namespace kaldi {
 // of the first two input archives.
 int32 TypeOneUsage(const ParseOptions &po,
                    BaseFloat scale1,
-                   BaseFloat scale2) {
+                   BaseFloat scale2,
+                   bool log_add_exp = false) {
   int32 num_args = po.NumArgs();
   std::string matrix_in_fn1 = po.GetArg(1),
       matrix_out_fn = po.GetArg(num_args);
@@ -69,7 +70,10 @@ int32 TypeOneUsage(const ParseOptions &po,
         if (SameDim(matrix2, matrix_out)) {
           BaseFloat scale = (i == 0 ? scale2 : 1.0);
           // note: i == 0 corresponds to the 2nd input archive.
-          matrix_out.AddMat(scale, matrix2, kNoTrans);
+          if (log_add_exp)
+            matrix_out.LogAddExpMat(scale, matrix2, kNoTrans);
+          else
+            matrix_out.AddMat(scale, matrix2, kNoTrans);
         } else {
           KALDI_WARN << "Dimension mismatch for utterance " << key 
                      << " : " << matrix2.NumRows() << " by "
@@ -104,7 +108,8 @@ int32 TypeOneUsage(const ParseOptions &po,
 }
 
 int32 TypeTwoUsage(const ParseOptions &po,
-                   bool binary) {
+                   bool binary,
+                   bool log_add_exp = false) {
   KALDI_ASSERT(po.NumArgs() == 2);
   KALDI_ASSERT(ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier &&
                "matrix-sum: first argument must be an rspecifier");
@@ -133,7 +138,10 @@ int32 TypeTwoUsage(const ParseOptions &po,
         num_err++;
       } else {
         Matrix<double> dmat(mat);
-        sum.AddMat(1.0, dmat, kNoTrans);
+        if (log_add_exp)
+          sum.LogAddExpMat(1.0, dmat, kNoTrans);
+        else
+          sum.AddMat(1.0, dmat, kNoTrans);
         num_done++;
       }
     }
@@ -209,6 +217,7 @@ int main(int argc, char *argv[]) {
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
     bool binary = true;
+    bool log_add_exp = false;
 
     ParseOptions po(usage);
 
@@ -216,6 +225,8 @@ int main(int argc, char *argv[]) {
                 "(only for type one usage)");
     po.Register("scale2", &scale2, "Scale applied to second matrix "
                 "(only for type one usage)");
+    po.Register("log-add-exp", &log_add_exp, "Treat the input matrices to be "
+                "in log and also output in log");
     po.Register("binary", &binary, "If true, write output as binary (only "
                 "relevant for usage types two or three");
     
@@ -239,6 +250,9 @@ int main(int argc, char *argv[]) {
                ClassifyWspecifier(po.GetArg(N), NULL, NULL, NULL) == kNoWspecifier) {
       KALDI_ASSERT(scale1 == 1.0 && scale2 == 1.0);
       // summing flat files.
+      if (log_add_exp)
+        KALDI_ERR << "log-add-exp is not supported with type 3 usage";
+
       exit_status = TypeThreeUsage(po, binary);
     } else {      
       po.PrintUsage();
