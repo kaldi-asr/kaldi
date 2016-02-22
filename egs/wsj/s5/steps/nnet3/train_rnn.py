@@ -17,7 +17,7 @@ import imp
 import traceback
 from nnet3_train_lib import *
 
-nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse.py')
+nnet3_log_parse = imp.load_source('', 'steps/nnet3/report/nnet3_log_parse_lib.py')
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -615,7 +615,7 @@ def Train(args, run_opts):
                     RemoveEgs(prev_egs_dir)
             model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
             shrinkage_value = args.shrink_value if DoShrinkage(iter, model_file, "SigmoidComponent", args.shrink_threshold) else 1
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs), shrinkage_value))
+            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
 
             TrainOneIteration(args.dir, iter, egs_dir, current_num_jobs,
                               num_archives_processed, num_archives,
@@ -635,7 +635,7 @@ def Train(args, run_opts):
                 reporting_iter_interval = num_iters * args.reporting_interval
                 if iter % reporting_iter_interval == 0:
                 # lets do some reporting
-                    [report, times, data] = nnet3_log_parse.ParseLogs(args.dir)
+                    [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
                     message = report
                     subject = "Update : Expt {dir} : Iter {iter}".format(dir = args.dir, iter = iter)
                     sendMail(message, subject, args.email)
@@ -670,7 +670,7 @@ def Train(args, run_opts):
                      remove_egs = remove_egs)
 
     # do some reporting
-    [report, times, data] = nnet3_log_parse.ParseLogs(args.dir)
+    [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
     if args.email is not None:
         sendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
 
