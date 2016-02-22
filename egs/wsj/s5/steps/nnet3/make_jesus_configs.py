@@ -32,6 +32,9 @@ parser.add_argument("--xent-regularize", type=float,
                     help="For chain models, if nonzero, add a separate output for cross-entropy "
                     "regularization (with learning-rate-factor equal to the inverse of this)",
                     default=0.0)
+parser.add_argument("--xent-separate-forward-affine", type=str,
+                    help="if using --xent-regularize, gives it separate last-but-one weight matrix",
+                    default="false", choices = ["false", "true"])
 parser.add_argument("--use-repeated-affine", type=str,
                     help="if true use RepeatedAffineComponent, else BlockAffineComponent (i.e. no sharing)",
                     default="true", choices = ["false", "true"])
@@ -462,6 +465,19 @@ for l in range(1, num_hidden_layers + 1):
         print('output-node name=output input=final-affine', file=f)
 
     if args.xent_regularize != 0.0:
+        xent_input = 'final-relu'
+        if l == num_hidden_layers and args.xent_separate_forward_affine == "true":
+            print('component name=forward-affine{0}-xent type=NaturalGradientAffineComponent '
+                  'input-dim={1} output-dim={2} bias-stddev=0'.
+                  format(l, args.jesus_forward_output_dim, args.final_hidden_dim), file=f)
+            print('component-node name=jesus{0}-forward-output-affine-xent component=forward-affine{0}-xent input=post-jesus{0}'.format(
+                    l), file=f)
+            print('component name=final-relu-xent type=RectifiedLinearComponent dim={0} self-repair-scale={1}'.format(
+                    args.final_hidden_dim, args.self_repair_scale), file=f)
+            print('component-node name=final-relu-xent component=final-relu-xent '
+                  'input=jesus{0}-forward-output-affine-xent'.format(l), file=f)
+            xent_input = 'final-relu-xent'
+
         # This block prints the configs for a separate output that will be
         # trained with a cross-entropy objective in the 'chain' models... this
         # has the effect of regularizing the hidden parts of the model.  we use
@@ -473,8 +489,8 @@ for l in range(1, num_hidden_layers + 1):
         print('component name=final-affine-xent type=NaturalGradientAffineComponent '
               'input-dim={0} output-dim={1} param-stddev=0.0 bias-stddev=0 learning-rate-factor={2}'.format(
                 cur_affine_output_dim, args.num_targets, 0.5 / args.xent_regularize), file=f)
-        print('component-node name=final-affine-xent component=final-affine-xent input=final-relu',
-              file=f)
+        print('component-node name=final-affine-xent component=final-affine-xent input={0}'.format(
+                xent_input), file=f)
         print('component name=final-log-softmax-xent type=LogSoftmaxComponent dim={0}'.format(
                 args.num_targets), file=f)
         print('component-node name=final-log-softmax-xent component=final-log-softmax-xent '

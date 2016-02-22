@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# _5w is as _5x but decreasing the context of the averaging layer from +-0.99
+# _5x is as _5w but decreasing the context of the averaging layer from +-0.99
 # seconds to +-0.66 seconds.  I would not have expected this to work a priori,
 # but the change from 5k -> 5l, which made the context wider, made WERs slightly
 # worse, so I'd like to see what happens when we decrease the context.

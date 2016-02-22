@@ -1,17 +1,23 @@
 #!/bin/bash
 
-# _6c is as _5v but adding "--thick-jesus-layer true" (new option): extra hidden
-# layer inside jesus layer.
+# _6h is as _6g but adding --xent-separate-forward-affine=true, which
+# gives a separate last-but-one weight matrix to the xent output.
 
-# Note: 5v2 is a rerun of 5v.
-#local/chain/compare_wer.sh 5v 5v2 6c
-#System                       5v       5v2        6c
-#WER on train_dev(tg)      15.38     15.74     15.54
-#WER on train_dev(fg)      14.39     14.50     14.55
-#WER on eval2000(tg)        17.4      17.5      17.5
-#WER on eval2000(fg)        15.7      15.9      15.8
-#Final train prob       -0.11156 -0.112155 -0.114084
-#Final valid prob      -0.131797 -0.129516 -0.129589
+# _6g is as _6f but increasing the parameters (increasing
+# jesus-forward-input-from from 500 to 600).
+
+# _6f is as _5v, but setting --jesus-hidden-dim to 0 which with a script change
+# means there is no hidden part in the jesus layer (it's just repeated affine and relu).
+
+# slightly worse, but encouragingly small difference.
+#local/chain/compare_wer.sh 5v 6f
+#System                       5v        6f
+#WER on train_dev(tg)      15.38     15.71
+#WER on train_dev(fg)      14.39     14.50
+#WER on eval2000(tg)        17.4      17.5
+#WER on eval2000(fg)        15.7      15.9
+#Final train prob       -0.11156 -0.111305
+#Final valid prob      -0.131797 -0.131487
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 
@@ -79,6 +85,15 @@
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
 # will mean that the increased parameters are now helpful.
+# quite helpful:
+#local/chain/compare_wer.sh 4w 5a
+#System                       4w        5a
+#WER on train_dev(tg)      16.05     15.86
+#WER on train_dev(fg)      14.92     14.74
+#WER on eval2000(tg)        18.0      17.4
+#WER on eval2000(fg)        16.2      15.6
+#Final train prob      -0.108816-0.0998359
+#Final valid prob      -0.118254 -0.115884
 
 # _4w is as _4v, but doubling --xent-regularize to 0.2
 
@@ -323,7 +338,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6c # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_6h # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=4
@@ -419,7 +434,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --egs-dir exp/chain/tdnn_2y_sp/egs \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1700 --jesus-hidden-dim 2500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --thick-jesus-layer true" \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
     --splice-indexes "-1,0,1 -1,0,1,2 -3,0,3 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
     --frames-per-iter 1200000 \

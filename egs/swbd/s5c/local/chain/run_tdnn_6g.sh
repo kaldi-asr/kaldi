@@ -3,6 +3,17 @@
 # _6g is as _6f but increasing the parameters (increasing
 # jesus-forward-input-from from 500 to 600).
 
+# seems better than 6f, and about the same as (5v,5v2).  encouraging.
+# note, 5v2 is rerun of 5v.
+#local/chain/compare_wer.sh 5v 5v2 6f 6g
+#System                       5v       5v2        6f        6g
+#WER on train_dev(tg)      15.38     15.74     15.71     15.50
+#WER on train_dev(fg)      14.39     14.50     14.50     14.31
+#WER on eval2000(tg)        17.4      17.5      17.5      17.5
+#WER on eval2000(fg)        15.7      15.9      15.9      15.8
+#Final train prob       -0.11156 -0.112155 -0.111305 -0.105853
+#Final valid prob      -0.131797 -0.129516 -0.131487 -0.129997
+
 # _6f is as _5v, but setting --jesus-hidden-dim to 0 which with a script change
 # means there is no hidden part in the jesus layer (it's just repeated affine and relu).
 

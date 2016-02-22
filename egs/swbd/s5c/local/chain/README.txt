@@ -17,5 +17,6 @@ ones to look at right now:
   5v is what I am currently using as a baseline- it has an even smaller
      --jesus-hidden-dim as 5t (hence faster to train), but gives the same
      performance.
-
-
+  6g is a setup with a 'thinner' jesus-layer (with only one repeated-affine component)
+     and slightly more parameters, which is quicker to train than 5v but gives
+     about the same results.  I'm hoping to use this setup, going forward.

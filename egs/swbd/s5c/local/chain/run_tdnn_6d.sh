@@ -4,15 +4,16 @@
 # this means (after rounding) that we have 6, not 5, as
 # --jesus-forward-input-dim / --num-jesus-blocks.
 
-#a bit worse.
-#a03:s5c: local/chain/compare_wer.sh 5v 6d
-#System                       5v        6d
-#WER on train_dev(tg)      15.38     15.66
-#WER on train_dev(fg)      14.39     14.54
-#WER on eval2000(tg)        17.4      17.5
-#WER on eval2000(fg)        15.7      15.8
-#Final train prob       -0.11156 -0.112034
-#Final valid prob      -0.131797 -0.131714
+# no clear difference.
+#[note, 5v2 is a rerun of 5v].
+# local/chain/compare_wer.sh 5v 5v2 6d
+# System                       5v       5v2        6d
+# WER on train_dev(tg)      15.38     15.74     15.66
+# WER on train_dev(fg)      14.39     14.50     14.54
+# WER on eval2000(tg)        17.4      17.5      17.5
+# WER on eval2000(fg)        15.7      15.9      15.8
+# Final train prob       -0.11156 -0.112155 -0.112034
+# Final valid prob      -0.131797 -0.129516 -0.131714
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 

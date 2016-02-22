@@ -1,15 +1,17 @@
 #!/bin/bash
 
 # _5z is as _5v, but adding skip-splicing (a new configuration option)
-# It seems definitely not helpful.  I'll remove the option soon.
-#local/chain/compare_wer.sh 5v 5z
-#System                       5v        5z
-#WER on train_dev(tg)      15.38     15.60
-#WER on train_dev(fg)      14.39     14.50
-#WER on eval2000(tg)        17.4      17.6
-#WER on eval2000(fg)        15.7      15.9
-#Final train prob       -0.11156 -0.113823
-#Final valid prob      -0.131797 -0.131356
+# It seems not helpful.  I'll remove the option soon.
+# note: 5v2 is a rerun of 5v.
+
+# local/chain/compare_wer.sh 5v 5v2 5z
+# System                       5v       5v2        5z
+# WER on train_dev(tg)      15.38     15.74     15.60
+# WER on train_dev(fg)      14.39     14.50     14.50
+# WER on eval2000(tg)        17.4      17.5      17.6
+# WER on eval2000(fg)        15.7      15.9      15.9
+# Final train prob       -0.11156 -0.112155 -0.113823
+# Final valid prob      -0.131797 -0.129516 -0.131356
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
 
