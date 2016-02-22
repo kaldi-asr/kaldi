@@ -43,9 +43,6 @@ parser.add_argument("--self-repair-scale", type=float,
                     default=0.0)
 parser.add_argument("--jesus-hidden-dim", type=int,
                     help="hidden dimension of Jesus layer.", default=10000)
-parser.add_argument("--thick-jesus-layer", type=str,
-                    help="if true use a thicker Jesus layer with an extra hidden repeated-affine layer",
-                    default="false", choices = ["false", "true"])
 parser.add_argument("--jesus-forward-output-dim", type=int,
                     help="part of output dimension of Jesus layer that goes to next layer",
                     default=1000)
@@ -334,13 +331,10 @@ for l in range(1, num_hidden_layers + 1):
 
         # Now add the jesus component.
 
-
-        thick_jesus = (args.thick_jesus_layer == "true")  # extra hidden layer in jesus lyaer.
         permute_offset = (1 if need_input_permute_component else 0)
 
         if args.jesus_hidden_dim > 0: # normal case where we have jesus-hidden-dim.
-            thick_jesus_offset = (2 if thick_jesus else 0)
-            num_sub_components = 4 + permute_offset + thick_jesus_offset
+            num_sub_components = 4 + permute_offset
             hidden_else_output_dim = args.jesus_hidden_dim
         else: # no hidden part in jesus layer.
             num_sub_components = 2 + permute_offset
@@ -379,24 +373,11 @@ for l in range(1, num_hidden_layers + 1):
             print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
                     3 + permute_offset, hidden_else_output_dim,
                     args.self_repair_scale), file=f, end='')
-            if thick_jesus:
-                print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
-                      "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
-                        4 + permute_offset,
-                        args.jesus_hidden_dim,
-                        args.jesus_hidden_dim,
-                        args.num_jesus_blocks,
-                        args.jesus_stddev_scale / math.sqrt(args.jesus_hidden_dim / args.num_jesus_blocks),
-                        0.5 * args.jesus_stddev_scale),
-                      file=f, end='')
-                print(" component{0}='type=RectifiedLinearComponent dim={1} self-repair-scale={2}'".format(
-                        5 + permute_offset,
-                        args.jesus_hidden_dim, args.self_repair_scale), file=f, end='')
 
             if args.use_repeated_affine == "true":
                 print(" component{0}='type=NaturalGradientRepeatedAffineComponent input-dim={1} output-dim={2} "
                       "num-repeats={3} param-stddev={4} bias-mean={5} bias-stddev=0'".format(
-                        4 + permute_offset + thick_jesus_offset,
+                        4 + permute_offset,
                         args.jesus_hidden_dim,
                         this_jesus_output_dim,
                         args.num_jesus_blocks,
@@ -406,7 +387,7 @@ for l in range(1, num_hidden_layers + 1):
             else:
                 print(" component{0}='type=BlockAffineComponent input-dim={1} output-dim={2} "
                       "num-blocks={3} param-stddev={4} bias-stddev=0'".format(
-                        4 + permute_offset + thick_jesus_offset,
+                        4 + permute_offset,
                         args.jesus_hidden_dim,
                         this_jesus_output_dim,
                         args.num_jesus_blocks,
