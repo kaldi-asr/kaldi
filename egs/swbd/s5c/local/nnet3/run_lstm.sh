@@ -47,7 +47,7 @@ momentum=0.5
 num_chunk_per_minibatch=100
 samples_per_iter=20000
 remove_egs=true
-
+shrink_value=0.99
 #decode options
 extra_left_context=
 extra_right_context=
@@ -120,6 +120,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.num-jobs-final $num_jobs_final \
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
+    --trainer.optimization.shrink-value $shrink_value \
     --trainer.rnn.num-chunk-per-minibatch $num_chunk_per_minibatch \
     --trainer.optimization.momentum $momentum \
     --egs.chunk-width $chunk_width \
