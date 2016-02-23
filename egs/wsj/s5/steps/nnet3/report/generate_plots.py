@@ -222,7 +222,7 @@ def GenerateNonlinStatsPlots(exp_dir, output_dir, plot, comparison_dir = None, s
                 mspl, = ax.plot(data[:,0], data[:,1] - data[:,2], color=color_val, linestyle='--')
                 plots.append(mp)
                 plots.append(msph)
-                ax.set_ylabel('Mean-{0}'.format(comp_type))
+                ax.set_ylabel('Value-{0}'.format(comp_type))
                 ax.grid(True)
 
                 ax = plt.subplot(212)
