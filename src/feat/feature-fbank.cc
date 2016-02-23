@@ -109,7 +109,7 @@ void Fbank::ComputeInternal(const VectorBase<BaseFloat> &wave,
 
   // Get dimensions of output features
   int32 rows_out = NumFrames(wave.Dim(), opts_.frame_opts);
-  int32 cols_out = opts_.mel_opts.num_bins + opts_.use_energy;
+  int32 cols_out = opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
   if (rows_out == 0) {
     output->Resize(0, 0);
     if (wave_remainder != NULL)

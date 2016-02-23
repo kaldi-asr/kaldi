@@ -672,9 +672,6 @@ if [ $stage -le $num_iters ]; then
     nnets_list[$n]="nnet3-am-copy --raw=true $mdl -|";
   done
 
-  # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
-  # as if there are many models it can give out-of-memory error; and we set
-  # num-threads to 8 to speed it up (this isn't ideal...)
   combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($chunk_width))")
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
