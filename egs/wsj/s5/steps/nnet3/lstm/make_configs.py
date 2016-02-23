@@ -238,7 +238,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 					    lstm_delay = lstm_delay[i][0])
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay, include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 	if len(lstm_delay[i]) == 2:
@@ -255,7 +255,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                                                ng_affine_options)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay, include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
 
