@@ -88,7 +88,7 @@ class LatexReport:
 
     def Close(self):
         self.document.append("\end{document}")
-        self.Compile()
+        return self.Compile()
 
     def Compile(self):
         root, ext = os.path.splitext(self.pdf_file)
@@ -98,10 +98,12 @@ class LatexReport:
         lat_file.write("\n".join(self.document))
         lat_file.close()
         try:
-            proc = subprocess.Popen(['pdflatex', '-output-directory='+str(dir_name), latex_file], stdout=PIPE, stderr=PIPE)
+            proc = subprocess.Popen(['pdflatex', '-output-directory='+str(dir_name), latex_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             proc.communicate()
         except Exception as e:
             logger.warning("There was an error compiling the latex file {0}, please do it manually.".format(latex_file))
+            return False
+        return True
 
 def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_basename = 'accuracy', comparison_dir = None, start_iter = 1, latex_report = None):
     assert(start_iter >= 1)
@@ -124,6 +126,8 @@ def GenerateAccuracyPlots(exp_dir, output_dir, plot, key = 'accuracy', file_base
         if plot:
             color_val = plot_colors[index]
             data = np.array(accuracy_data)
+            if data.shape[0] == 0:
+                raise Exception("Couldn't find any rows for the accuracy plot")
             data = data[data[:,0]>=start_iter, :]
             plot_handle, = plt.plot(data[:, 0], data[:, 1], color = color_val, linestyle = "--", label = "train {0}".format(dir))
             plots.append(plot_handle)
@@ -270,8 +274,10 @@ def GeneratePlots(exp_dir, output_dir, comparison_dir = None, start_iter = 1):
             file.write(" ".join(map(lambda x:str(x),row))+"\n")
         file.close()
     if plot and latex_report is not None:
-        latex_report.Close()
-        logger.info("Report has been generated. You can find it at the location {0}".format("{0}/report.pdf".format(output_dir)))
+        has_compiled = latex_report.Close()
+        if has_compiled:
+            logger.info("Report has been generated. You can find it at the location {0}".format("{0}/report.pdf".format(output_dir)))
+
 def Main():
     args = GetArgs()
     GeneratePlots(args.exp_dir, args.output_dir, args.comparison_dir, args.start_iter)

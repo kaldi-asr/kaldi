@@ -64,7 +64,7 @@ def GetSuccessfulModels(num_models, log_file_pattern, difference_threshold=1.0):
 
     if len(accepted_models) != num_models:
         logger.warn("Only {0}/{1} of the models have been accepted for averaging, based on log files {2}.".format(len(accepted_models), num_models, log_file_pattern))
-    
+
     return [accepted_models, max_index+1]
 
 def GetNumberOfLeaves(alidir):
@@ -105,7 +105,7 @@ def ReadKaldiMatrix(matrix_file):
             raise Exception("Kaldi matrix file has incorrect format, only text format matrix files can be read by this script")
         for i in range(len(lines)):
             lines[i] = map(lambda x: int(x), lines[i])
-        return lines 
+        return lines
     except IOError:
         raise Exception("Error while reading the kaldi matrix file {0}".format(matrix_file))
 
@@ -122,7 +122,7 @@ def WriteKaldiMatrix(output_file, matrix):
         if row_index != num_rows - 1:
             file.write("\n")
     file.write(" ]")
-    file.close() 
+    file.close()
 
 import shutil
 def CopyEgsPropertiesToExpDir(egs_dir, dir):
@@ -136,7 +136,7 @@ def CopyEgsPropertiesToExpDir(egs_dir, dir):
 
 def SplitData(data, num_jobs):
    RunKaldiCommand("utils/split_data.sh {data} {num_jobs}".format(data = data,
-                                                                  num_jobs = num_jobs)) 
+                                                                  num_jobs = num_jobs))
 
 def ParseModelConfigVarsFile(var_file):
     try:
@@ -173,7 +173,7 @@ def GenerateEgs(data, alidir, egs_dir,
                 feat_type = 'raw', online_ivector_dir = None,
                 samples_per_iter = 20000, frames_per_eg = 20,
                 egs_opts = None, cmvn_opts = None, transform_dir = None):
-    
+
     RunKaldiCommand("""
 steps/nnet3/get_egs.sh {egs_opts} \
   --cmd "{command}" \
@@ -199,7 +199,7 @@ steps/nnet3/get_egs.sh {egs_opts} \
           stage = stage, samples_per_iter = samples_per_iter,
           frames_per_eg = frames_per_eg, data = data, alidir = alidir,
           egs_dir = egs_dir,
-          egs_opts = egs_opts if egs_opts is not None else '' )) 
+          egs_opts = egs_opts if egs_opts is not None else '' ))
 
 def VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context):
     try:
@@ -240,7 +240,7 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
     lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
                          range(1, num_lda_jobs + 1))
-   
+
     RunKaldiCommand("""
 {command} {dir}/log/sum_transform_stats.log \
     sum-lda-accs {dir}/lda_stats {lda_stat_files}""".format(
@@ -261,7 +261,7 @@ def ComputePreconditioningMatrix(dir, egs_dir, num_lda_jobs, run_opts,
  nnet-get-feature-transform {lda_opts} {dir}/lda.mat {dir}/lda_stats
      """.format(command = run_opts.command,dir = dir,
                 lda_opts = lda_opts if lda_opts is not None else ""))
-            
+
     ForceSymlink("../lda.mat", "{0}/configs/lda.mat".format(dir))
 
 import os, errno
@@ -276,7 +276,7 @@ def ForceSymlink(file1, file2):
 
 def ComputePresoftmaxPriorScale(dir, alidir, num_jobs, run_opts,
                                 presoftmax_prior_scale_power = None):
-   
+
     # getting the raw pdf count
     RunKaldiCommand("""
 {command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
@@ -291,20 +291,20 @@ post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
 {command} {dir}/log/sum_pdf_counts.log \
 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
        """.format(command = run_opts.train_command,  dir = dir))
-    
+
     import glob
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
 
     smooth=0.01
-    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir)) 
+    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
         scales.append(math.pow(pdf_counts[i] + smooth * average_count, presoftmax_prior_scale_power))
     scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
-    
+
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
     WriteKaldiMatrix(output_file, [scaled_counts])
     ForceSymLink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
@@ -351,10 +351,10 @@ def VerifyIterations(num_iters, num_epochs, num_hidden_layers,
 
 def GetRealignIters(realign_times, num_iters,
                     num_jobs_initial, num_jobs_final):
-    """ Takes the realign_times string and identifies the approximate 
+    """ Takes the realign_times string and identifies the approximate
         iterations at which realignments have to be done."""
     # realign_times is a space seperated string of values between 0 and 1
-    
+
     realign_iters = []
     for realign_time in realign_times.split():
         realign_time = float(realign_time)
@@ -362,7 +362,7 @@ def GetRealignIters(realign_times, num_iters,
         if num_jobs_initial == num_jobs_final:
             realign_iter = int(0.5 + num_iters * realign_time)
         else:
-            realign_iter = math.sqrt((1 - realign_time) * math.pow(num_jobs_initial, 2) 
+            realign_iter = math.sqrt((1 - realign_time) * math.pow(num_jobs_initial, 2)
                             + realign_time * math.pow(num_jobs_final, 2))
             realign_iter = realign_iter - num_jobs_initial
             realign_iter = realign_iter / (num_jobs_final - num_jobs_initial)
@@ -396,7 +396,7 @@ steps/nnet3/align.sh --nj {num_jobs_align} --cmd "{align_cmd} {align_queue_opt}"
                alidir = alidir,
                lang = lang, data = data))
     return alidir
-               
+
 def Realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
             prior_subset_size, num_archives, run_opts,
             transform_dir = None, online_ivector_dir = None):
@@ -444,7 +444,7 @@ def DoShrinkage(iter, model_file, non_linearity, shrink_threshold):
     try:
         output, error = RunKaldiCommand("nnet3-am-info --print-args=false {model_file} | grep {non_linearity}".format(non_linearity = non_linearity, model_file = model_file))
         output = output.strip().split("\n")
-        # eg. 
+        # eg.
         # component name=Lstm1_f type=SigmoidComponent, dim=1280, count=5.02e+05, value-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.06,0.17,0.19,0.24 0.28,0.33,0.44,0.62,0.79 0.96,0.99,1.0,1.0), mean=0.482, stddev=0.198], deriv-avg=[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.0001,0.003,0.004,0.03 0.12,0.18,0.22,0.24,0.25 0.25,0.25,0.25,0.25), mean=0.198, stddev=0.0591]
 
         mean_pattern = re.compile(".*deriv-avg=.*mean=([0-9\.]+).*")
@@ -497,7 +497,7 @@ def ComputeProgress(dir, iter, egs_dir, run_opts, wait=False):
 {command} {dir}/log/progress.{iter}.log \
 nnet3-info "nnet3-am-copy --raw=true {model} - |" '&&' \
 nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nnet3-am-copy --raw=true {model} - |" \
-"ark:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|" 
+"ark:nnet3-merge-egs --minibatch-size=256 ark:{egs_dir}/train_diagnostic.egs ark:-|"
     """.format(command = run_opts.command,
                dir = dir,
                iter = iter,
@@ -520,13 +520,13 @@ def CombineModels(dir, num_iters, num_iters_combine, chunk_width, egs_dir,
       raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
 
     combine_num_chunk_per_minibatch = int(1024.0/(chunk_width))
-    
+
     RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
    --verbose=3 {raw_models} "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size={combine_num_chunk_per_minibatch} ark:{egs_dir}/combine.egs ark:-|" \
-"|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl" 
+"|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
                dir = dir, raw_models = " ".join(raw_model_strings),
@@ -546,7 +546,7 @@ def ComputeAveragePosterior(dir, iter, egs_dir, num_archives,
     import glob
     for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
         os.remove(file)
-    
+
     if run_opts.num_jobs_compute_prior > num_archives:
         egs_part = 1
     else:
