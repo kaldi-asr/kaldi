@@ -15,6 +15,11 @@ parser.add_argument("--feat-dim", type=int,
                     help="Raw feature dimension, e.g. 13")
 parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
+parser.add_argument("--include-log-softmax", type=str,
+                    help="add the final softmax layer ", default="true", choices = ["false", "true"])
+parser.add_argument("--final-layer-normalize-target", type=float,
+                    help="RMS target for final layer (set to <1 if final layer learns too fast",
+                    default=1.0)
 parser.add_argument("--pnorm-input-dim", type=int,
                     help="input dimension to p-norm nonlinearities")
 parser.add_argument("--pnorm-output-dim", type=int,
@@ -28,9 +33,6 @@ parser.add_argument("--use-presoftmax-prior-scale", type=str,
                     choices=['true', 'false'], default = "true")
 parser.add_argument("--num-targets", type=int,
                     help="number of network targets (e.g. num-pdf-ids/num-leaves)")
-parser.add_argument("--skip-final-softmax", type=str,
-                    help="skip final softmax layer and per-element scale layer",
-                    choices=['true', 'false'], default = "false")
 parser.add_argument("--skip-lda", type=str,
                     help="add lda matrix",
                     choices=['true', 'false'], default = "false")
@@ -40,17 +42,8 @@ parser.add_argument("--add-final-sigmoid", type=str,
 parser.add_argument("--objective-type", type=str, default="linear",
                     choices = ["linear", "quadratic", "xent"],
                     help = "the type of objective; i.e. quadratic or linear or cross-entropy")
-parser.add_argument("--max-change-per-sample", type=float, default=0.075,
-                    help = "the maximum a paramter is allowed to change")
 parser.add_argument("config_dir",
-                    help="Directory to write config files and variables")
-parser.add_argument("--no-hidden-layers", type=str,
-                    help="Train the nnet with only the softmax layer",
-                    choices=['true', 'false'], default = "false")
-parser.add_argument("--sparsity-constants", type=str,
-                    help="List of sparsity regularization constants for the affine components")
-parser.add_argument("--positivity-constraints", type=str,
-                    help="List of true/false to add positivity constraints for the affine components")
+                    help="Directory to write config files and variables");
 print(' '.join(sys.argv))
 
 args = parser.parse_args()
@@ -94,16 +87,6 @@ if args.skip_lda == "true":
 else:
     skip_lda = False
 
-if args.skip_final_softmax == "true":
-    skip_final_softmax = True
-else:
-    skip_final_softmax = False
-
-if args.no_hidden_layers == "true":
-    no_hidden_layers = True
-else:
-    no_hidden_layers = False
-
 if args.add_final_sigmoid == "true":
     add_final_sigmoid = True
 else:
@@ -113,20 +96,11 @@ else:
 splice_array = []
 left_context = 0
 right_context = 0
-num_hidden_layers = 0
+split1 = args.splice_indexes.split();  # we already checked the string is nonempty.
 input_dim = args.feat_dim + args.ivector_dim
-
-if len(args.splice_indexes.strip()) == 0:
+if len(split1) < 1:
     sys.exit("invalid --splice-indexes argument, too short: "
              + args.splice_indexes)
-
-split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
-
-if no_hidden_layers:
-    if len(split1) != 1:
-        sys.exit("invalid --splice-indexes argument, "
-                 + "must have only input level splicing "
-                 + "when --no-hidden-layers true is given")
 try:
     for string in split1:
         split2 = string.split(",")
@@ -146,24 +120,8 @@ except ValueError as e:
     sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
 left_context = max(0, left_context)
 right_context = max(0, right_context)
-num_hidden_layers = len(splice_array) if not no_hidden_layers else 0
+num_hidden_layers = len(splice_array)
 input_dim = len(splice_array[0]) * args.feat_dim  +  args.ivector_dim
-
-if args.sparsity_constants is not None:
-    sparsity_constants = [float(x) for x in args.sparsity_constants.strip().split()]
-
-    if len(sparsity_constants) != (num_hidden_layers + 1):
-        sys.exit("invalid --sparsity-constants option %s; sparsity-constants must have %d values".format(args.sparsity_constants, num_hidden_layers + 1))
-
-if args.positivity_constraints is not None:
-    splits = args.positivity_constraints.strip().split()
-    if len(splits) != (num_hidden_layers + 1):
-        sys.exit("invalid --positivity-constraints option $s; positivity-constraints must have %d values".format(args.positivity_constraints, num_hidden_layers + 1))
-    positivity_constraints = []
-    for x in splits:
-        assert (x in ["true", "false"])
-        positivity_constraints.append(True if (x == "true") else False)
-    assert(len(positivity_constraints) == len(splits))
 
 f = open(args.config_dir + "/vars", "w")
 print('left_context=' + str(left_context), file=f)
@@ -196,22 +154,9 @@ for l in range(1, num_hidden_layers + 1):
     cur_dim = (nonlin_output_dim * len(splice_array[l-1]) if l > 1 else input_dim)
 
     print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
-    sparsity_opts = ''
-    positivity_opts = ''
-
-    if args.positivity_constraints is not None and positivity_constraints[l-1]:
-        positivity_opts = ' ensure-positive-linear-component=true'
-    if args.sparsity_constants is not None and sparsity_constants[l-1] > 0.0:
-        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[l-1])
-
-    if positivity_opts != '' or sparsity_opts != '':
-        print('component name=affine{0} type=NaturalGradientPositiveAffineComponent '
-              'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}{4}{5}'.
-              format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
-    else:
-        print('component name=affine{0} type=NaturalGradientAffineComponent '
-              'input-dim={1} output-dim={2} bias-stddev=0 max-change-per-sample={3}'.
-              format(l, cur_dim, nonlin_input_dim, args.max_change_per_sample), file=f)
+    print('component name=affine{0} type=NaturalGradientAffineComponent '
+          'input-dim={1} output-dim={2} bias-stddev=0'.
+        format(l, cur_dim, nonlin_input_dim), file=f)
     if args.relu_dim is not None:
         print('component name=nonlin{0} type=RectifiedLinearComponent dim={1}'.
               format(l, args.relu_dim), file=f)
@@ -222,23 +167,12 @@ for l in range(1, num_hidden_layers + 1):
         print('# In nnet3 framework, p in P-norm is always 2.', file=f)
         print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
               format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
-    print('component name=renorm{0} type=NormalizeComponent dim={1}'.format(
-         l, nonlin_output_dim), file=f)
-
-    sparsity_opts = ''
-    positivity_opts = ''
-    if args.positivity_constraints is not None and positivity_constraints[-1]:
-        positivity_opts = ' ensure-positive-linear-component=true'
-    if args.sparsity_constants is not None and sparsity_constants[-1] > 0.0:
-        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[-1])
-    if positivity_opts != '' or sparsity_opts != '':
-        print('component name=final-affine type=NaturalGradientPositiveAffineComponent '
-              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}{3}{4}'.format(
-              nonlin_output_dim, args.num_targets, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
-    else:
-        print('component name=final-affine type=NaturalGradientAffineComponent '
-              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
-              nonlin_output_dim, args.num_targets, args.max_change_per_sample), file=f)
+    print('component name=renorm{0} type=NormalizeComponent dim={1} target-rms={2}'.format(
+        l, nonlin_output_dim,
+        (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f)
+    print('component name=final-affine type=NaturalGradientAffineComponent '
+          'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
+          nonlin_output_dim, args.num_targets), file=f)
 
     if not skip_final_softmax:
       # printing out the next two, and their component-nodes, for l > 1 is not
@@ -279,7 +213,8 @@ for l in range(1, num_hidden_layers + 1):
 
     print('component-node name=final-affine component=final-affine input=renorm{0}'.
           format(l), file=f)
-    if not skip_final_softmax:
+
+    if args.include_log_softmax == "true":
         if use_presoftmax_prior_scale:
             print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
                   file=f)
@@ -297,68 +232,6 @@ for l in range(1, num_hidden_layers + 1):
             print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
     f.close()
 
-if num_hidden_layers == 0:
-    f = open(args.config_dir + "/layer1.config", "w")
-    print('# Config file for adding LDA and presoftmax_scale', file=f)
-    if not skip_lda:
-        print('component name=lda type=FixedAffineComponent matrix={0}/lda.mat'.
-              format(args.config_dir), file=f)
-
-    print('# Note: param-stddev in next component defaults to 1/sqrt(input-dim).', file=f)
-    sparsity_opts = ''
-    positivity_opts = ''
-    if args.positivity_constraints is not None and positivity_constraints[0]:
-        positivity_opts = ' ensure-positive-linear-component=true'
-    if args.sparsity_constants is not None and sparsity_constants[0] > 0.0:
-        sparsity_opts = ' sparsity-constant={0}'.format(sparsity_constants[0])
-    if positivity_opts != '' or sparsity_opts != '':
-        print('component name=final-affine type=NaturalGradientPositiveAffineComponent '
-              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}{3}{4}'.format(
-              input_dim, args.num_targets, args.max_change_per_sample, positivity_opts, sparsity_opts), file=f)
-    else:
-        print('component name=final-affine type=NaturalGradientAffineComponent '
-              'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0 max-change-per-sample={2}'.format(
-              input_dim, args.num_targets, args.max_change_per_sample), file=f)
-    if not skip_final_softmax:
-        if use_presoftmax_prior_scale:
-            print('component name=final-fixed-scale type=FixedScaleComponent '
-                  'scales={0}/presoftmax_prior_scale.vec'.format(
-                  args.config_dir), file=f)
-        print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
-              args.num_targets), file=f)
-    elif add_final_sigmoid:
-        print('component name=final-sigmoid type=SigmoidComponent dim={0}'.format(
-              args.num_targets), file=f)
-    print('# Now for the network structure', file=f)
-    splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[0] ]
-    if args.ivector_dim > 0: splices.append('ReplaceIndex(ivector, t, 0)')
-    orig_input='Append({0})'.format(', '.join(splices))
-    # e.g. orig_input = 'Append(Offset(input, -2), ... Offset(input, 2), ivector)'
-    if not skip_lda:
-        print('component-node name=lda component=lda input={0}'.format(orig_input),
-              file=f)
-        cur_input='lda'
-    else:
-        cur_input = orig_input
-    print('component-node name=final-affine component=final-affine input={0}'.
-          format(cur_input), file=f)
-    if not skip_final_softmax:
-        if use_presoftmax_prior_scale:
-            print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
-                  file=f)
-            print('component-node name=final-log-softmax component=final-log-softmax '
-                  'input=final-fixed-scale', file=f)
-        else:
-            print('component-node name=final-log-softmax component=final-log-softmax '
-                  'input=final-affine', file=f)
-        print('output-node name=output input=final-log-softmax objective={0}'.format(args.objective_type), file=f)
-    else:
-        if add_final_sigmoid:
-            print('component-node name=final-sigmoid component=final-sigmoid input=final-affine', file=f)
-            print('output-node name=output input=final-sigmoid objective={0}'.format(args.objective_type), file=f)
-        else:
-            print('output-node name=output input=final-affine objective={0}'.format(args.objective_type), file=f)
-    f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim
 # component name=renorm1 type=NormalizeComponent dim=$pnorm_output_dim
@@ -404,5 +277,4 @@ if num_hidden_layers == 0:
 
 
 # ## ... etc.  In this example it would go up to $config_dir/layer5.config.
-
 

@@ -88,14 +88,10 @@ feat_type=raw  # or set to 'lda' to use LDA features.
 # End configuration section.
 frames_per_eg=8 # to be passed on to get_egs.sh
 num_targets=    # applicable only if posterior_targets is true
-quantization_bin_boundaries=
 posterior_targets=false
 objective_type=linear
-skip_final_softmax=true
-max_change_per_sample=0.075
+include_log_softmax=false
 max_param_change=1
-sparsity_constants=
-positivity_constraints=
 config_dir=
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
@@ -197,28 +193,15 @@ if [ $stage -le -5 ]; then
   objective_opts="--objective-type=$objective_type"
 
   if [ "$objective_type" == "xent" ]; then
-    raw_nnet_config_opts+=(--add-final-sigmoid=true --skip-final-softmax=true)
+    raw_nnet_config_opts+=(--add-final-sigmoid=true --include-log-softmax=false)
   else
-    raw_nnet_config_opts+=(--skip-final-softmax=$skip_final_softmax)
+    raw_nnet_config_opts+=(--include-log-softmax=$include_log_softmax)
   fi
   
   raw_nnet_config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
   raw_nnet_config_opts+=(--skip-lda=$skip_lda)
   
-  if [ ! -z "$sparsity_constants" ]; then
-    raw_nnet_config_opts+=(--sparsity-constant="$sparsity_constants")
-  fi
-
-  if [ ! -z "$positivity_constraints" ]; then
-    raw_nnet_config_opts+=(--positivity-constraints="$positivity_constraints")
-  fi
-
   input_dim=$feat_dim
-  if [ "$feat_type" == "sparse" ]; then
-    num_bins=`echo $quantization_bin_boundaries | awk -F ':' '{print NF + 1}'` || exit 1
-    input_dim=$[num_bins * feat_dim]
-  fi
-  
   if ! $posterior_targets; then
     # Set num targets as the dimension of targets features
     num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
@@ -244,7 +227,6 @@ if [ $stage -le -5 ]; then
       ${sigmoid_dims:+--sigmoid-dims="$sigmoid_dims"} \
       ${pnorm_input_dims:+--pnorm-input-dims="$pnorm_input_dims"} \
       ${pnorm_output_dims:+--pnorm-output-dims="$pnorm_output_dims"} \
-      --max-change-per-sample=$max_change_per_sample \
       --num-targets=$num_targets  \
       $dir/configs || exit 1;
   fi
@@ -372,7 +354,7 @@ if ! $skip_lda && [ $stage -le -3 ]; then
 fi
 
 
-if ! $skip_final_softmax && [ $stage -le -2 ]; then
+if $include_log_softmax && [ $stage -le -2 ]; then
   echo "$0: preparing initial vector for FixedScaleComponent before softmax"
   echo "  ... using priors^$presoftmax_prior_scale_power and rescaling to average 1"
 
@@ -469,11 +451,6 @@ if [ "$objective_type" == "linear" ]; then
   compute_accuracy=true
 fi
 
-quantize_opts=
-if [ "$feat_type" == "sparse" ]; then
-  quantize_opts=" nnet3-copy-egs --quantize-input=true --bin-boundaries=$quantization_bin_boundaries ark:- ark:- |"
-fi
-echo $quantization_bin_boundaries > $dir/quantization_bin_boundaries
 echo $feat_type > $dir/feat_type
 
 while [ $x -lt $num_iters ]; do
@@ -491,15 +468,15 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |$quantize_opts" &
+            "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |$quantize_opts" &
+           "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no "nnet3-copy $dir/$[$x-1].raw - |" "nnet3-copy $dir/$x.raw - |" \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|$quantize_opts" '&&' \
+        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" '&&' \
         nnet3-info "nnet3-copy $dir/$x.raw - |" &
     fi
 
@@ -550,7 +527,7 @@ while [ $x -lt $num_iters ]; do
 
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs$egs_suffix.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |$quantize_opts" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs$egs_suffix.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -614,7 +591,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
        --enforce-sum-to-one=true --enforce-positive-weights=true \
-       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|$quantize_opts" \
+       --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
     $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -622,15 +599,15 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |$quantize_opts" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |$quantize_opts" &
+    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 sleep 2
 
-if ! $skip_final_softmax && [ $stage -le $[$num_iters+1] ]; then
+if $include_log_softmax && [ $stage -le $[$num_iters+1] ]; then
   echo "Getting average posterior for purposes of adjusting the priors."
   # Note: this just uses CPUs, using a smallish subset of data.
   if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
