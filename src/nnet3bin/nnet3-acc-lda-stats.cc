@@ -87,6 +87,11 @@ class NnetLdaStatsAccumulator {
       // "row" is actually just a redudant copy, since we're likely on CPU,
       // but we're about to do an outer product, so this doesn't dominate.
       Vector<BaseFloat> row(cu_row);
+      
+      BaseFloat deriv_weight = 0.0;
+      if (output_supervision->deriv_weights.Dim() > 0 && r < output_supervision->deriv_weights.Dim()) {
+        deriv_weight = output_supervision->deriv_weights(r);
+      }
 
       const SparseVector<BaseFloat> &post(smat.Row(r));
       const std::pair<MatrixIndexT, BaseFloat> *post_data = post.Data(),
@@ -94,7 +99,7 @@ class NnetLdaStatsAccumulator {
       for (; post_data != post_end; ++post_data) {
         MatrixIndexT pdf = post_data->first;
         BaseFloat weight = post_data->second;
-        BaseFloat pruned_weight = RandPrune(weight, rand_prune);
+        BaseFloat pruned_weight = RandPrune(weight, rand_prune) * deriv_weight;
         if (pruned_weight != 0.0)
           lda_stats_.Accumulate(row, pdf, pruned_weight);
       }

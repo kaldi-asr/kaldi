@@ -100,6 +100,7 @@ static void ProcessFile(const MatrixBase<BaseFloat> &feats,
       Vector<BaseFloat> this_deriv_weights(frames_per_eg);
       int32 frames_to_copy = std::min(t + actual_frames_per_eg, deriv_weights->Dim()) - t; 
       this_deriv_weights.Range(0, frames_to_copy).CopyFromVec(deriv_weights->Range(t, frames_to_copy));
+      if (this_deriv_weights.Sum() == 0) continue;  // Ignore frames that have frame weights 0
       eg.io.push_back(NnetIo("output", this_deriv_weights, num_pdfs, 0, labels));
     }
 

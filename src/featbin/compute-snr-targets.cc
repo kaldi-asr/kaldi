@@ -46,6 +46,7 @@ int main(int argc, char *argv[]) {
     std::string floor_str = "-inf", ceiling_str = "inf";
     int32 length_tolerance = 0;
     bool binary_targets = false;
+    int32 target_dim = -1;
 
     ParseOptions po(usage);
     po.Register("target_type", &target_type, "Target type can be FbankMask or IRM");
@@ -69,6 +70,8 @@ int main(int argc, char *argv[]) {
                 "then the entire utterance is considered to be just signal."
                 "If this option is specified, then only a single argument "
                 "-- the clean features -- is must be specified.");
+    po.Register("target-dim", &target_dim, "Overrides the target dimension. "
+                "Applicable only with --binary-targets is specified");
 
     po.Read(argc, argv);
 
@@ -204,7 +207,12 @@ int main(int argc, char *argv[]) {
         const std::string &key = feats_reader.Key();
         const Matrix<BaseFloat> &feats = feats_reader.Value();
 
-        Matrix<BaseFloat> targets(feats.NumRows(), feats.NumCols());
+        Matrix<BaseFloat> targets;
+        
+        if (target_dim < 0) 
+          targets.Resize(feats.NumRows(), feats.NumCols());
+        else
+          targets.Resize(feats.NumRows(), target_dim);
         
         if (target_type == "Snr")
           targets.Set(-kLogZeroDouble);
