@@ -94,6 +94,11 @@ fi
 if [ -f $srcdir/cmvn.scp ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/cmvn.scp >$destdir/cmvn.scp
 fi
+
+if [ -f $srcdir/utt2uniq ]; then
+  utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/utt2uniq >$destdir/utt2uniq
+fi
+
 for f in stm glm ctm $extra_files; do
   if [ -f $srcdir/$f ]; then
     cp $srcdir/$f $destdir
