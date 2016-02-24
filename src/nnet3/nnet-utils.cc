@@ -359,19 +359,6 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   return ans;
 }
 
-void EffectPositivity(Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    if ((comp->Properties() & kUpdatableComponent) && 
-        (comp->Properties() & kPositiveLinearParameters)) {
-      // For now all updatable components inherit from class UpdatableComponent.
-      // If that changes in future, we will change this code.
-      NaturalGradientPositiveAffineComponent *uc = dynamic_cast<NaturalGradientPositiveAffineComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-            "UpdatableComponent; change this code.";
-      if (uc->PositiveLinearComponentEnsured()) uc->SetPositive();
-
 void ConvertRepeatedToBlockAffine(CompositeComponent *c_component) {
   for(int32 i = 0; i < c_component->NumComponents(); i++) {
     const Component *c = c_component->GetComponent(i);
