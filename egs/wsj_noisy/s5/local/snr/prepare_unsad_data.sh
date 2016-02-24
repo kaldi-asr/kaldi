@@ -462,13 +462,35 @@ if $get_whole_recordings_and_weights; then
     rm -rf $dir/final_vad
     mkdir -p $dir/final_vad
 
+    # Get deriv weights assigning 1.0 to frames of classes 0, 1 or 2 
+    # and 0.0 to every other class. This ensures that training
+    # is done only on frames that have accurate labels
     $cmd JOB=1:$reco_nj $dir/log/get_deriv_weights.JOB.log \
-      segmentation-post-process --merge-labels=0:1:2:3:4:10 --merge-dst-label=1 \
+      segmentation-post-process --merge-labels=0:1:2 --merge-dst-label=1 \
+      --remove-labels=3:4:10 \
       ark:$dir/reco_segmentations/reco_segmentation.JOB.ark ark:- \| \
       segmentation-to-ali --default-label=0 --lengths="ark,t:cat $dir/reco_lengths.*.ark.txt |" \
       ark:- ark:- \| ali-to-post ark:- ark:- \| weight-pdf-post 0 0 ark:- ark:- \| \
       post-to-weights ark:- \
       ark,scp:$dir/final_vad/deriv_weights.JOB.ark,$dir/final_vad/deriv_weights.JOB.scp || exit 1
+    
+    # Get deriv weights assigning 1.0 to frames to class 0
+    # and 0.0 to every other class. This ensures that training is
+    # done only on accurately labelled silence frames for the 
+    # uncorrupted data. 
+    # Note that we don't have noise for the uncorrupted data.
+    # Hence, we won't be able to get accurate sub-band IRM targets
+    # for the speech regions. But for silence regions, the IRM targets
+    # are 0 anyways.
+    $cmd JOB=1:$reco_nj $dir/log/get_deriv_weights_for_uncorrupted.JOB.log \
+      segmentation-create-subsegments --filter-label=1 ark:$dir/reco_segmentations/reco_segmentation.JOB.ark "ark:segmentation-init-from-segments $extended_data_dir/split$reco_nj/segments_empty.JOB ark:- |" ark:- \| \
+      segmentation-post-process --remove-labels=1:2:3:4:10 ark:- ark:- \| \
+      segmentation-post-process --merge-labels=0 --merge-dst-label=1 \
+      ark:- ark:- \| \
+      segmentation-to-ali --default-label=0 --lengths="ark,t:cat $dir/reco_lengths.*.ark.txt |" \
+      ark:- ark:- \| ali-to-post ark:- ark:- \| weight-pdf-post 0 0 ark:- ark:- \| \
+      post-to-weights ark:- \
+      ark,scp:$dir/final_vad/deriv_weights_for_uncorrupted.JOB.ark,$dir/final_vad/deriv_weights_for_uncorrupted.JOB.scp || exit 1
   fi
 
   rm -rf $out_data_dir
@@ -478,6 +500,10 @@ if $get_whole_recordings_and_weights; then
   for n in `seq $reco_nj`; do 
     cat $dir/final_vad/deriv_weights.$n.scp 
   done > $dir/final_vad/deriv_weights.scp
+  
+  for n in `seq $reco_nj`; do 
+    cat $dir/final_vad/deriv_weights_for_uncorrupted.$n.scp 
+  done > $dir/final_vad/deriv_weights_for_uncorrupted.scp
   
   echo "$0: Finished creating corpus for training Universal SAD with deriv weights"
   exit 0

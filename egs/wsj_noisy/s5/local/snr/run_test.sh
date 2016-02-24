@@ -19,6 +19,7 @@ predictor_iter=final
 sad_nnet_dir=exp/nnet3_sad_snr/tdnn_irm_babel_assamese_train_unsad_splice5_2
 sad_nnet_iter=final
 append_to_orig_feats=false
+add_pov_feature=false
 create_uniform_segments=false
 overlap_length=500
 window_length=3000
@@ -27,6 +28,8 @@ feature_type=Snr
 
 segmentation_config=conf/segmentation.conf
 weights_segmentation_config=conf/segmentation.conf
+fbank_config=conf/fbank_bp.conf
+mfcc_config=conf/mfcc_hires_bp.conf
 
 echo $* 
 
@@ -55,27 +58,27 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires_bp.conf --nj $reco_nj --cmd "$train_cmd" \
+  steps/make_mfcc.sh --mfcc-config $mfcc_config --nj $reco_nj --cmd "$train_cmd" \
     ${data_dir}_whole${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} mfcc_hires
   steps/compute_cmvn_stats.sh ${data_dir}_whole${feat_affix}_hires exp/make_hires/${data_id}_whole${feat_affix} mfcc_hires
 fi
 
 if [ $stage -le 2 ]; then
-  steps/make_fbank.sh --fbank-config conf/fbank_bp.conf --nj $reco_nj --cmd "$train_cmd" \
+  steps/make_fbank.sh --fbank-config $fbank_config --nj $reco_nj --cmd "$train_cmd" \
     ${data_dir}_whole${feat_affix}_fbank exp/make_fbank/${data_id}_whole${feat_affix} fbank
   steps/compute_cmvn_stats.sh ${data_dir}_whole${feat_affix}_fbank exp/make_fbank/${data_id}_whole${feat_affix} fbank
 fi
 
 if [ $stage -le 3 ]; then
-  local/snr/compute_frame_snrs.sh --use-gpu no --nj 32 \
-    --cmd "$decode_cmd --max-jobs-run 32" --iter $predictor_iter \
+  local/snr/compute_frame_snrs.sh --use-gpu yes --nj 32 \
+    --cmd "$decode_cmd --max-jobs-run 32 --gpu 1" --iter $predictor_iter \
     $irm_predictor ${data_dir}_whole${feat_affix}_hires ${data_dir}_whole${feat_affix}_fbank \
     exp/frame_snrs_irm${affix}${feat_affix}_${data_id}_whole${feat_affix}
 fi
 
 if [ $stage -le 4 ]; then
   local/snr/create_snr_data_dir.sh --cmd "$train_cmd" --nj $reco_nj --type $feature_type \
-    --add-frame-snr true --append-to-orig-feats $append_to_orig_feats --dataid ${data_id}_whole${feat_affix} \
+    --add-frame-snr true --append-to-orig-feats $append_to_orig_feats --add-pov-feature $add_pov_feature --dataid ${data_id}_whole${feat_affix} \
     ${data_dir}_whole${feat_affix}_fbank exp/frame_snrs_irm${affix}${feat_affix}_${data_id}_whole${feat_affix} \
     exp/make_snr_data_dir snr_feats $snr_data_dir
 fi

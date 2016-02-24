@@ -33,13 +33,10 @@ nj=40
 method=Dnn
 splice_opts="--left-context=50 --right-context=50"
 max_param_change=1
-quantization_bins="-7.5:-2.5:2.5:7.5:12.5:17.5"
 feat_type=
-sparsity_constants=
-positivity_constraints=
-segments_file=
-seg2utt_file=
 config_dir=
+deriv_weights_scp=
+lda_opts=
 
 . cmd.sh
 . ./path.sh
@@ -134,74 +131,39 @@ datadir=${train_data_dir}
 if [ -z "$final_vad_scp" ] && [ $method != "Gmm" ]; then 
   if [ $stage -le 1 ]; then
     mkdir -p $dir/vad/split$nj
-    if [ ! -z "$seg2utt_file" ]; then
-      utils/filter_scp.pl -f 2 $train_data_dir/utt2spk $segments_file > $datadir/segments.tmp
-      $train_cmd JOB=1:$nj $dir/log/extract_vad_segments.JOB.log \
-        extract-int-vector-segments scp:$vad_scp \
-        "ark,t:utils/split_scp.pl -j $nj \$[JOB-1] $datadir/segments.tmp |" \
-        ark:- \| segmentation-init-from-ali ark:- ark:- \| \
-        segmentation-post-process --merge-labels=0:2 --merge-dst-label=0 ark:- ark:- \| \
-        segmentation-to-ali ark:- ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
-    else
-      vad_scp_splits=()
-      for n in `seq $nj`; do
-        vad_scp_splits+=($dir/vad/vad.tmp.$n.scp)
-      done
-      utils/split_scp.pl $vad_scp ${vad_scp_splits[@]} || exit 1
+    vad_scp_splits=()
+    for n in `seq $nj`; do
+      vad_scp_splits+=($dir/vad/vad.tmp.$n.scp)
+    done
+    utils/split_scp.pl $vad_scp ${vad_scp_splits[@]} || exit 1
 
-      cat <<EOF > $dir/vad/vad_map
+    cat <<EOF > $dir/vad/vad_map
 0 0
 1 1
 2 0
 3 0
 4 1
 EOF
-      $train_cmd JOB=1:$nj $dir/vad/log/convert_vad.JOB.log \
-        copy-int-vector scp:$dir/vad/vad.tmp.JOB.scp ark,t:- \| \
-        utils/apply_map.pl -f 2- $dir/vad/vad_map \| \
-        copy-int-vector ark,t:- \
-        ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
-    fi
-
-    for n in `seq $nj`; do
-      cat $dir/vad/split$nj/vad.$n.scp
-    done | sort -k1,1 > $dir/vad/vad.scp
+    $train_cmd JOB=1:$nj $dir/vad/log/convert_vad.JOB.log \
+      copy-int-vector scp:$dir/vad/vad.tmp.JOB.scp ark,t:- \| \
+      utils/apply_map.pl -f 2- $dir/vad/vad_map \| \
+      copy-int-vector ark,t:- \
+      ark,scp:$dir/vad/split$nj/vad.JOB.ark,$dir/vad/split$nj/vad.JOB.scp || exit 1
   fi
+
+  for n in `seq $nj`; do
+    cat $dir/vad/split$nj/vad.$n.scp
+  done | sort -k1,1 > $dir/vad/vad.scp
   final_vad_scp=$dir/vad/vad.scp
-fi 
+fi
 
 if [ ! -s $final_vad_scp ]; then
   echo "$0: $final_vad_scp file is empty!" && exit 1
 fi
 
 feats_opts=(--feat-type $feat_type)
-#if [ "$feat_type" == "sparse" ]; then
-#  if [ $stage -le 2 ]; then
-#    split_data.sh $datadir $nj
-#    mkdir -p $dir/quantized_data
-#
-#    $train_cmd JOB=1:$nj $dir/log/quantize_feats.JOB.log \
-#      quantize-feats scp:$datadir/split$nj/JOB/feats.scp $quantization_bins \
-#      ark,scp:$dir/quantized_data/feats.JOB.ark,$dir/quantized_data/feats.JOB.scp || exit 1
-#
-#    num_bins=`echo $quantization_bins | awk -F ':' '{print NF + 1}'` || exit 1
-#    feat_dim=`feat-to-dim scp:$datadir/feats.scp - 2>/dev/null` || exit 1
-#    sparse_input_dim=$[num_bins * feat_dim]
-#
-#    for n in `seq $nj`; do 
-#      cat $dir/quantized_data/feats.$n.scp
-#    done > $dir/quantized_data/feats.scp
-#
-#    echo $sparse_input_dim > $dir/quantized_data/sparse_input_dim
-#  fi
-#
-#  sparse_input_dim=`cat $dir/quantized_data/sparse_input_dim`
-#  feats_scp=$dir/quantized_data/feats.scp
-#  feats_opts="--feat-type $feat_type --feats-scp $feats_scp --sparse-input-dim $sparse_input_dim"
-#fi
-
 if [ "$feat_type" == "sparse" ]; then
-  feats_opts+=(--quantization-bin-boundaries "$quantization_bins")
+  exit 1
 fi
 
 if [ $stage -le 3 ]; then
@@ -224,18 +186,21 @@ if [ $stage -le 3 ]; then
         utils/create_split_dir.pl \
           /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
       fi
+      
+      deriv_weights_opt=
+      if [ ! -z "$deriv_weights_scp" ]; then
+        deriv_weights_opt="--deriv-weights-scp $deriv_weights_scp"
+      fi
 
       steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
         --num-epochs $num_epochs --num-jobs-initial 1 --num-jobs-final 4 \
         --splice-indexes "$splice_indexes" --no-hidden-layers true --minibatch-size 512 \
         --egs-dir "$egs_dir" "${feats_opts[@]}" \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --max-param-change $max_param_change \
-        --positivity-constraints "$positivity_constraints" \
-        --sparsity-constants "$sparsity_constants" \
+        --max-param-change $max_param_change $deriv_weights_opt \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --use-presoftmax-prior-scale false \
-        --skip-final-softmax false --skip-lda true --posterior-targets true \
+        --include-log-softmax true --skip-lda true --posterior-targets true \
         --num-targets 2 --cleanup false --max-param-change $max_param_change \
         $datadir "$final_vad_scp" $dir || exit 1;
       ;;
@@ -244,19 +209,22 @@ if [ $stage -le 3 ]; then
         utils/create_split_dir.pl \
           /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj_noisy-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
       fi
+      
+      deriv_weights_opt=
+      if [ ! -z "$deriv_weights_scp" ]; then
+        deriv_weights_opt="--deriv-weights-scp $deriv_weights_scp"
+      fi
 
       bash -x steps/nnet3/train_tdnn_raw.sh --stage $train_stage \
         --num-epochs $num_epochs --num-jobs-initial 2 --num-jobs-final 4 \
         --splice-indexes "$splice_indexes" \
         --egs-dir "$egs_dir" ${feats_opts[@]} \
         --cmvn-opts "--norm-means=false --norm-vars=false" \
-        --max-param-change $max_param_change \
-        --positivity-constraints "$positivity_constraints" \
-        --sparsity-constants "$sparsity_constants" \
+        --max-param-change $max_param_change $deriv_weights_opt --lda-opts "$lda_opts" \
         --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
         --cmd "$decode_cmd" --nj 40 --objective-type linear --cleanup true --use-presoftmax-prior-scale true \
-        --skip-final-softmax false --skip-lda true --posterior-targets true \
-        --num-targets 2 --max-param-change $max_param_change --config-dir "$config_dir" \
+        --include-log-softmax true --skip-lda true --posterior-targets true \
+        --num-targets 2 --max-param-change $max_param_change --config-dir "$config_dir" --pnorm-input-dim "" --pnorm-output-dim "" \
         --cleanup false${relu_dim:+ --relu-dim $relu_dim}${sigmoid_dim:+ --sigmoid-dim $sigmoid_dim} \
         $datadir "$final_vad_scp" $dir || exit 1;
       ;;

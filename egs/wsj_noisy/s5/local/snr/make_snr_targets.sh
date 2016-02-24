@@ -17,6 +17,7 @@ ignore_noise_dir=false
 ceiling=inf
 floor=-inf
 stage=0
+length_tolerance=2
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -69,7 +70,7 @@ fi
 if [ $stage -le 1 ]; then
   if ! $ignore_noise_dir; then
     $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
-      compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+      compute-snr-targets --length-tolerance=$length_tolerance --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
       --floor=$floor --ceiling=$ceiling \
       scp:$clean_fbank_dir/split$nj/JOB/feats.scp \
       scp:$noise_or_noisy_fbank_dir/split$nj/JOB/feats.scp \
@@ -77,9 +78,10 @@ if [ $stage -le 1 ]; then
       copy-feats --compress=$compress ark:- \
       ark,scp:$targets_dir/${data_id}.JOB.ark,$targets_dir/${data_id}.JOB.scp || exit 1
   else
+    feat_dim=$(feat-to-dim scp:$clean_fbank_dir/feats.scp -) || exit 1
     $cmd JOB=1:$nj $tmpdir/make_`basename $targets_dir`_${data_id}.JOB.log \
-      compute-snr-targets --length-tolerance=2 --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
-      --floor=$floor --ceiling=$ceiling --binary-targets \
+      compute-snr-targets --length-tolerance=$length_tolerance --target-type=$target_type ${ali_rspecifier:+--ali-rspecifier="$ali_rspecifier" --silence-phones=$silence_phones_str} \
+      --floor=$floor --ceiling=$ceiling --binary-targets --target-dim=$feat_dim \
       scp:$dir/split$nj/JOB/feats.scp \
       ark:- \|$apply_exp_opts \
       copy-feats --compress=$compress ark:- \

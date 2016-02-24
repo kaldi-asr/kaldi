@@ -86,9 +86,9 @@ if [ $stage -le 12 ]; then
   fi
 
   rm -rf ${corrupted_data_dir}_hires
-  utils/copy_data_dir.sh --extra-files utt2uniq ${corrupted_data_dir} ${corrupted_data_dir}_hires
+  utils/copy_data_dir.sh ${corrupted_data_dir} ${corrupted_data_dir}_hires
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires || true
-  steps/compute_cmvn_stats.sh ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires
+  steps/compute_cmvn_stats.sh --fake ${corrupted_data_dir}_hires exp/make_hires/${corrupted_data_id} mfcc_hires
   utils/fix_data_dir.sh --utt-extra-files utt2uniq ${corrupted_data_dir}_hires
 fi
 
@@ -100,8 +100,8 @@ if [ $stage -le 13 ]; then
   fi
 
   rm -rf ${clean_data_dir}_fbank
-  utils/copy_data_dir.sh --extra-files utt2uniq ${clean_data_dir} ${clean_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats || true
+  utils/copy_data_dir.sh ${clean_data_dir} ${clean_data_dir}_fbank
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 50" --nj $nj --fbank-config $fbank_config ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${clean_data_dir}_fbank exp/make_fbank/${clean_data_id} fbank_feats
   utils/fix_data_dir.sh ${clean_data_dir}_fbank
 fi
@@ -113,8 +113,8 @@ if [ $stage -le 14 ]; then
   fi
 
   rm -rf ${noise_data_dir}_fbank
-  utils/copy_data_dir.sh --extra-files utt2uniq ${noise_data_dir} ${noise_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats || true
+  utils/copy_data_dir.sh ${noise_data_dir} ${noise_data_dir}_fbank
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 50" --nj $nj --fbank-config $fbank_config ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${noise_data_dir}_fbank exp/make_fbank/${noise_data_id} fbank_feats
   utils/fix_data_dir.sh ${noise_data_dir}_fbank
 fi
@@ -126,10 +126,49 @@ if [ $stage -le 15 ]; then
   fi
   
   rm -rf ${corrupted_data_dir}_fbank
-  utils/copy_data_dir.sh --extra-files utt2uniq ${corrupted_data_dir} ${corrupted_data_dir}_fbank
-  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 20" --nj $nj --fbank-config $fbank_config ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats || true
+  utils/copy_data_dir.sh ${corrupted_data_dir} ${corrupted_data_dir}_fbank
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 50" --nj $nj --fbank-config $fbank_config ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats || true
   steps/compute_cmvn_stats.sh --fake ${corrupted_data_dir}_fbank exp/make_fbank/${corrupted_data_id} fbank_feats
   utils/fix_data_dir.sh --utt-extra-files utt2uniq ${corrupted_data_dir}_fbank
+fi
+
+if [ $stage -le 16 ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
+    date=$(date +'%m_%d_%H_%M')
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/wsj_noisy-$date/s5/$mfccdir/storage $mfccdir/storage
+  fi
+
+  rm -rf ${clean_data_dir}_hires
+  utils/copy_data_dir.sh ${clean_data_dir} ${clean_data_dir}_hires
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${clean_data_dir}_hires exp/make_hires/${clean_data_id} mfcc_hires || true
+  steps/compute_cmvn_stats.sh --fake ${clean_data_dir}_hires exp/make_hires/${clean_data_id} mfcc_hires
+  utils/fix_data_dir.sh --utt-extra-files utt2uniq ${clean_data_dir}_hires
+fi
+
+if [ $stage -le 17 ]; then
+  utils/copy_data_dir.sh --utt-prefix "clean-" --spk-prefix "clean-" ${clean_data_dir}_fbank ${clean_data_dir}_clean_fbank
+  utils/copy_data_dir.sh --utt-prefix "clean-" --spk-prefix "clean-" ${clean_data_dir}_hires ${clean_data_dir}_clean_hires
+fi
+
+if [ $stage -le 18 ]; then
+  rm -rf ${data_dir}_hires
+  utils/copy_data_dir.sh ${data_dir} ${data_dir}_hires
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj --mfcc-config $mfcc_config ${data_dir}_hires exp/make_hires/${data_id} mfcc_hires || true
+  steps/compute_cmvn_stats.sh --fake ${data_dir}_hires exp/make_hires/${data_id} mfcc_hires
+  utils/fix_data_dir.sh --utt-extra-files utt2uniq ${data_dir}_hires
+fi
+
+if [ $stage -le 19 ]; then
+  rm -rf ${data_dir}_fbank
+  utils/copy_data_dir.sh ${data_dir} ${data_dir}_fbank
+  steps/make_fbank.sh --cmd "$train_cmd --max-jobs-run 50" --nj $nj --fbank-config $fbank_config ${data_dir}_fbank exp/make_fbank/${data_id} fbank_feats || true
+  steps/compute_cmvn_stats.sh --fake ${data_dir}_fbank exp/make_fbank/${data_id} fbank_feats
+  utils/fix_data_dir.sh --utt-extra-files utt2uniq ${data_dir}_fbank
+fi
+
+if [ $stage -le 20 ]; then
+utils/combine_data.sh --extra-files utt2uniq ${data_dir}_multi_fbank ${corrupted_data_dir} ${clean_data_dir}_clean_fbank ${data_dir}_fbank
+utils/combine_data.sh --extra-files utt2uniq ${data_dir}_multi_hires ${corrupted_data_dir} ${clean_data_dir}_clean_hires ${data_dir}_hires
 fi
 
 [ $(cat ${clean_data_dir}_fbank/utt2spk | wc -l) -ne $(cat ${corrupted_data_dir}_fbank/utt2spk | wc -l) ] && echo "$0: ${clean_data_dir}_fbank/utt2spk and ${corrupted_data_dir}_fbank/utt2spk have different number of lines" && exit 1

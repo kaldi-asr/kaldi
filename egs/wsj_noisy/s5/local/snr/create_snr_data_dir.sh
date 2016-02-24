@@ -6,6 +6,7 @@ set -o pipefail
 
 append_to_orig_feats=true
 add_frame_snr=false
+add_pov_feature=false
 nj=4
 cmd=run.pl
 stage=0
@@ -50,6 +51,22 @@ mkdir -p $dir $featdir $tmpdir/$dataid
 for n in `seq $nj`; do
   utils/create_data_link.pl $featdir/appended_${type_str}_feats_$dataid.$n.ark
 done
+    
+if $add_pov_feature; then
+if [ $stage -le 0 ]; then
+  utils/split_data.sh $data $nj
+  sdata=$data/split$nj
+  $cmd JOB=1:$nj $tmpdir/make_pov_feat_$dataid.JOB.log \
+    compute-kaldi-pitch-feats --config=conf/pitch.conf \
+    scp:$sdata/JOB/wav.scp ark:- \| process-kaldi-pitch-feats \
+    --add-delta-pitch=false --add-normalized-log-pitch=false ark:- \
+    ark,scp:$featdir/pov_feature_$dataid.JOB.ark,$featdir/pov_feature_$dataid.JOB.scp || exit 1
+fi
+fi
+
+for n in `seq $nj`; do
+  cat $featdir/pov_feature_$dataid.$n.scp
+done > $snr_dir/pov_feature.scp
 
 if [ $stage -le 1 ]; then
   if $append_to_orig_feats; then
@@ -60,6 +77,9 @@ if [ $stage -le 1 ]; then
       if $add_frame_snr; then
         append_opts="paste-feats ark:- scp:$snr_dir/frame_snrs.scp ark:- |"
       fi
+    fi
+    if $add_pov_feature; then
+      append_opts="paste-feats --length-tolerance=2 ark:- scp:$snr_dir/pov_feature.scp ark:- |"
     fi
 
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_${type_str}_feats.JOB.log \
@@ -72,9 +92,12 @@ if [ $stage -le 1 ]; then
         append_opts="paste-feats scp:- scp:$snr_dir/frame_snrs.scp ark:- |"
       fi
     fi
+    if $add_pov_feature; then
+      append_opts="paste-feats --length-tolerance=2 scp:- scp:$snr_dir/pov_feature.scp ark:- |"
+    fi
 
     $cmd JOB=1:$nj $tmpdir/$dataid/make_append_${type_str}_feats.JOB.log \
-      utils/split_scp.pl -j $nj \$[JOB-1] scp:$scp_file \| \
+      utils/split_scp.pl -j $nj \$[JOB-1] $scp_file \| \
       $append_opts copy-feats --compress=$compress ark:- \
       ark,scp:$featdir/appended_${type_str}_feats_$dataid.JOB.ark,$featdir/appended_${type_str}_feats_$dataid.JOB.scp || exit 1
   fi
