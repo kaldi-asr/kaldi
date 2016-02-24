@@ -46,7 +46,7 @@ srcdir=$1
 destdir=$2
 
 if [ ! -f $srcdir/utt2spk ]; then
-  echo "copy_data_dir.sh: no such file $srcdir/utt2spk" 
+  echo "copy_data_dir.sh: no such file $srcdir/utt2spk"
   exit 1;
 fi
 
@@ -82,13 +82,16 @@ if [ -f $srcdir/segments ]; then
     cp $srcdir/reco2file_and_channel $destdir/
   fi
 else # no segments->wav indexed by utt.
-  if [ -f $srcdir/wav.scp ]; then 
+  if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp >$destdir/wav.scp
   fi
 fi
 
 if [ -f $srcdir/text ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/text >$destdir/text
+fi
+if [ -f $srcdir/utt2dur ]; then
+  utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/utt2dur >$destdir/utt2dur
 fi
 if [ -f $srcdir/spk2gender ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
