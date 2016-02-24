@@ -4,6 +4,26 @@
 # I had accidentally omitted, and adding 4 frames more left context and 2 frames
 # more right context.
 
+# Below I'm also comparing with 6h, which (since we now added
+# --xent-separate-forward-affine=true) is the appopriate normal-frame-rate
+# baseline, rather than 6g.
+
+# This experiment is better than 6i, but there is no clear difference with
+# 6h.  So we can't really say that we're getting any benefit from the higher
+# frame rate.
+
+#local/chain/compare_wer.sh 6h 6i 6l
+#System                       6h        6i        6l
+#WER on train_dev(tg)      15.46     15.62     15.42
+#WER on train_dev(fg)      14.28     14.46     14.25
+#WER on eval2000(tg)        17.4      17.3      17.3
+#WER on eval2000(fg)        15.7      15.8      15.8
+#Final train prob      -0.105663  -0.10417-0.0984719
+#Final valid prob      -0.130166 -0.123985 -0.119088
+#Final train prob (xent)      -1.42483  -1.60566  -1.46581
+#Final valid prob (xent)      -1.49792  -1.67945  -1.51644
+
+
 # _6i takes aspects from 5n and 6g.  Like 6g it uses a 'thin' jesus-layer
 # (no hidden dimension), and like 5n it uses a non-standard frame shift at the
 # input, but this frame shift is 7.5 ms rather than 5ms (5n) or 10ms (6h).

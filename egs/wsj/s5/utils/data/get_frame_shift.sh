@@ -7,7 +7,8 @@
 # with utt2dur file already existing (or the utt2dur file will be created if
 # not), and it attempts to work out the approximate frame shift by comparing the
 # utt2dur with the output of feat-to-len on the feats.scp.  It prints it out.
-# if the shift is very close to 0.01 (the normal frame shift) it rounds it up.
+# if the shift is very close to, but above, 0.01 (the normal frame shift) it
+# rounds it down.
 
 . utils/parse_options.sh
 . ./path.sh
@@ -46,7 +47,7 @@ if [ -z $temp ]; then
 fi
 
 head -n 10 $dir/utt2dur | paste - $temp | \
-   awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift < 0.01 && shift > 0.095) shift = 0.01; print shift; }' || exit 1;
+   awk '{ dur += $2; frames += $4; } END { shift = dur / frames; if (shift > 0.01 && shift < 0.0102) shift = 0.01; print shift; }' || exit 1;
 
 rm $temp
 
