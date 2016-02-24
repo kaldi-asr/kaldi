@@ -332,6 +332,7 @@ if [ $stage -le 3 ]; then
   rm $dir/.error 2>/dev/null
   echo "$0: ... extracting validation and training-subset alignments."
 
+  (
   $cmd $dir/log/create_valid_subset.log \
     $get_egs_program \
     $valid_ivector_opt $egs_opts "$valid_feats" \
@@ -364,9 +365,10 @@ if [ $stage -le 3 ]; then
   cat $dir/valid_combine.egs $dir/train_combine.egs > $dir/combine.egs
 
   for f in $dir/{combine,train_diagnostic,valid_diagnostic}.egs; do
-    [ ! -s $f ] && echo "No examples in file $f" && exit 1;
+    [ ! -s $f ] && touch $dir/.error && exit 1
   done
   rm -f $dir/valid_all.egs $dir/train_subset_all.egs $dir/{train,valid}_combine.egs
+  ) &
 fi
 
 if [ $stage -le 4 ]; then
@@ -421,6 +423,9 @@ if [ $stage -le 5 ]; then
   fi
 
 fi
+
+wait 
+[ -f $dir/.error ] && echo "Error detected while creating train/valid egs" && exit 1
 
 if [ $stage -le 6 ]; then
   echo "$0: removing temporary archives"
