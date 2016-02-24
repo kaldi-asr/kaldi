@@ -46,3 +46,17 @@ for x in $*; do
   printf "% 10s" $prob
 done
 echo
+
+echo -n "Final train prob (xent)    "
+for x in $*; do
+  prob=$(grep Overall exp/chain/tdnn_${x}_sp/log/compute_prob_train.final.log | grep -w xent | awk '{print $8}')
+  printf "% 10s" $prob
+done
+echo
+
+echo -n "Final valid prob (xent)    "
+for x in $*; do
+  prob=$(grep Overall exp/chain/tdnn_${x}_sp/log/compute_prob_valid.final.log | grep -w xent | awk '{print $8}')
+  printf "% 10s" $prob
+done
+echo

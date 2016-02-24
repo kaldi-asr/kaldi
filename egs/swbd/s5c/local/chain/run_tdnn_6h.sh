@@ -3,6 +3,17 @@
 # _6h is as _6g but adding --xent-separate-forward-affine=true, which
 # gives a separate last-but-one weight matrix to the xent output.
 
+# Although this slight improvement is probably not significant, it's a
+# sensible idea so I think I'll stick with it.
+#local/chain/compare_wer.sh 6g 6h
+#System                       6g        6h
+#WER on train_dev(tg)      15.50     15.46
+#WER on train_dev(fg)      14.31     14.28
+#WER on eval2000(tg)        17.5      17.4
+#WER on eval2000(fg)        15.8      15.7
+#Final train prob      -0.105853 -0.105663
+#Final valid prob      -0.129997 -0.130166
+
 # _6g is as _6f but increasing the parameters (increasing
 # jesus-forward-input-from from 500 to 600).
 

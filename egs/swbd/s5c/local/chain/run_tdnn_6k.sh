@@ -1,8 +1,40 @@
 #!/bin/bash
 
+# _6k is as _6i, but one more epoch.  After running the first few stages, I'm
+# copying the last model from 6i and starting from that point, to save compute.
+# No better.
+#local/chain/compare_wer.sh 6i 6k
+#System                       6i        6k
+#WER on train_dev(tg)      15.62     15.67
+#WER on train_dev(fg)      14.46     14.47
+#WER on eval2000(tg)        17.3      17.4
+#WER on eval2000(fg)        15.8      15.8
+#Final train prob       -0.10417-0.0994163
+#Final valid prob      -0.123985 -0.122743
+
+# _6i takes aspects from 5n and 6h.  Like 6h it uses a 'thin' jesus-layer
+# (no hidden dimension), and like 5n it uses a non-standard frame shift at the
+# input, but this frame shift is 7.5 ms rather than 5ms (5n) or 10ms (6h).
+# the idea is that this allows us to subsample the input frames by a factor
+# of 4, rather than 3, and since 4 = 2 * 2, we can do the subsampling
+# in two stages.  You'll see this reflected in the splice indexes.
+
+# local/chain/compare_wer.sh 6h 6i
+# System                       6h        6i
+# WER on train_dev(tg)      15.46     15.62
+# WER on train_dev(fg)      14.28     14.46
+# WER on eval2000(tg)        17.4      17.3
+# WER on eval2000(fg)        15.7      15.8
+# Final train prob      -0.105663  -0.10417
+# Final valid prob      -0.130166 -0.123985
+
+
 # _5n is as _5j (also omitting the iVectors), but using double the input frame
 # rate from 10 to 5 ms (and reducing frame width from 25 to 20), and modifying
-# the splice indexes accordingly
+# the splice indexes accordingly.
+# note: the frames-per-iter should be 1.6 million to get the same amount of
+# data per iteration, but I'm making it 2 million as the training per is getting
+# faster than I like (-> wasting time waiting for the queue).
 
 # A very nice improvement on dev; small improvement on eval2000 though.
 #local/chain/compare_wer.sh 5j 5n
@@ -295,15 +327,14 @@
 set -e
 
 # configs for 'chain'
-stage=12
+stage=14
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_5n # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_6k # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
-num_epochs=2  # this is about the same amount of compute as the normal 4, since one
-              # epoch encompasses all frame-shifts of the data.
+num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
@@ -312,7 +343,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=300 # doubling it, since we have half the frame rate.
+frames_per_eg=200 # 20 is equivalent to 150 at 10ms frame rate.
 remove_egs=false
 
 # End configuration section.
@@ -383,19 +414,36 @@ if [ $stage -le 11 ]; then
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
-# Generate double-frame-rate version of the data.
+# Generate faster-frame-rate (7.5 ms frame shift) version of the data.
 if [ $stage -le 12 ]; then
   mfccdir=mfcc
-  for dataset in eval2000 train_dev; do  ## ${train_set}; do
-    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires_dbl
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires_dbl.conf \
-        data/${dataset}_hires_dbl exp/make_hires_dbl/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires_dbl exp/make_hires_dbl/$dataset $mfccdir;
-    utils/fix_data_dir.sh data/${dataset}_hires_dbl  # remove segments with problems
+  for dataset in eval2000 train_dev ${train_set}; do
+    utils/copy_data_dir.sh data/$dataset data/${dataset}_hiresf
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hiresf.conf \
+        data/${dataset}_hiresf exp/make_hiresf/$dataset $mfccdir;
+    steps/compute_cmvn_stats.sh data/${dataset}_hiresf exp/make_hiresf/$dataset $mfccdir;
+    utils/fix_data_dir.sh data/${dataset}_hiresf  # remove segments with problems
   done
 fi
 
 if [ $stage -le 13 ]; then
+  for dataset in eval2000 train_dev ${train_set}; do
+    mkdir -p exp/nnet3/ivectors_${dataset}_fake
+    cp exp/nnet3/ivectors_${dataset}/ivector_online.scp exp/nnet3/ivectors_${dataset}_fake
+    # verify that the old ivector_period was 10.
+    [ $(cat exp/nnet3/ivectors_${dataset}/ivector_period) -eq 10 ] || exit 1
+    # the ivector_period would have to be 13.333 to get the exact same rate.
+    # set it to 14 (slightly over) as less likely to produce errors in decoding.
+    echo 14 > exp/nnet3/ivectors_${dataset}_fake/ivector_period
+  done
+  # for the training set, use 13 as the ivector_period... this avoids
+  # errors for some longer utterances (the code checks the matching
+  # in a slightly different way).  none of this would be necessary
+  # if we generated iVectors using the same frame shift.
+  echo 13 > exp/nnet3/ivectors_${train_set}_fake/ivector_period
+fi
+
+if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -404,15 +452,17 @@ if [ $stage -le 13 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --frame-subsampling-factor 6 \
+    --egs-dir exp/chain/tdnn_6i_sp/egs \
+    --frame-subsampling-factor 4 \
     --alignment-subsampling-factor 3 \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25" \
-    --splice-indexes "-1,0,1 -2,0,2 -4,-2,0,2 -6,0,6 -6,0,6 -12,-6,0" \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
+    --splice-indexes "-1,0,1 -2,-1,0,1,2 -4,-2,0,2 -4,0,4 -4,0,4 -4,0,4" \
     --apply-deriv-weights false \
-    --frames-per-iter 2400000 \
+    --frames-per-iter 2000000 \
+    --online-ivector-dir exp/nnet3/ivectors_${train_set}_fake \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
@@ -425,13 +475,13 @@ if [ $stage -le 13 ]; then
     --max-param-change $max_param_change \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires_dbl $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
+    data/${train_set}_hiresf $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 
- echo "0.005" > $dir/frame_shift # this lets the sclite decoding script know
-                                 # what the frame shift was, in seconds.
+ echo "0.0075" > $dir/frame_shift # this lets the sclite decoding script know
+                                  # what the frame shift was, in seconds.
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -440,16 +490,16 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-         --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-         $graph_dir data/${decode_set}_hires_dbl $dir/decode_${decode_set}_${decode_suff} || exit 1;
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set}_fake \
+         $graph_dir data/${decode_set}_hiresf $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires_dbl \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hiresf \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &

@@ -368,7 +368,7 @@ int main(int argc, char *argv[]) {
              || ivector_feats->NumRows() == 0)) {
           KALDI_WARN << "Length difference between feats " << feats.NumRows()
                      << " and iVectors " << ivector_feats->NumRows()
-                     << "exceeds tolerance " << length_tolerance;
+                     << " exceeds tolerance " << length_tolerance;
           num_err++;
           continue;
         }
