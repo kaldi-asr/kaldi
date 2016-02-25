@@ -37,13 +37,21 @@ int main(int argc, char *argv[]) {
 
     const char *usage = "Computes the Actual Term-Weighted Value and prints it."
         "\n"
-        "Usage: compute-atwv [options]  ref-rspecifier hyp-rspecifier [alignment csv]\n"
-        " e.g.: compute-atwv ark:ref.1 ark:hyp.1 ali.csv\n"
+        "Usage: compute-atwv [options] nof-trials  ref-rspecifier hyp-rspecifier [alignment csv]\n"
+        " e.g.: compute-atwv 32485.4 ark:ref.1 ark:hyp.1 ali.csv\n"
         "\n"
-        "where the alignment format is compatible with the alignment produced\n"
-        "using the F4DE tool -- you are responsible for mapping the utterance\n"
-        "identifiers and the term string to the correct ones - use the script\n"
-        "utils/int2sym.pl and the utterance/keyword maps\n";
+        "NOTES: \n"
+        "  a) the number of trials is usually equal to the size of the searched\n"
+        "     collection in seconds\n"
+        "  b) the alignment format is compatible with the alignment produced\n"
+        "     using the F4DE tool -- you are responsible for mapping the utterance\n"
+        "     identifiers and the term string to the correct ones - use the script\n"
+        "     utils/int2sym.pl and the utterance/keyword maps\n"
+        "  c) the scores are expected to be probabilities. Please note that\n"
+        "     the output from the kws-search is in -log(probability).\n"
+        "  d) compute-atwv does not perform any score normalization (it's just\n"
+        "     for scoring purposes). Without the score normalization/calibration\n"
+        "     the performance of the search will be quite poor.\n";
 
     ParseOptions po(usage);
     KwsTermsAlignerOptions ali_opts;
