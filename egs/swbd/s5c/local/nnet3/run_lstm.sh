@@ -108,30 +108,30 @@ if [ $stage -le 10 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_rnn.py --stage $train_stage \
-    --command "$decode_cmd" \
-    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
-    --trainer.num-epochs $num_epochs \
-    --trainer.samples-per-iter $samples_per_iter \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.rnn.num-chunk-per-minibatch $num_chunk_per_minibatch \
-    --trainer.optimization.momentum $momentum \
-    --egs.chunk-width $chunk_width \
-    --egs.chunk-left-context $chunk_left_context \
-    --egs.chunk-right-context $chunk_right_context \
-    --egs.dir "$common_egs_dir" \
-    --cleanup.remove-egs $remove_egs \
-    --cleanup.preserve-model-interval 100 \
-    --use-gpu true \
-    --feat-dir data/${train_set}_hires \
-    --ali-dir $ali_dir \
-    --lang data/lang \
-    --reporting.email "$reporting_email" \
-    --dir $dir  || exit 1;
+  steps/nnet3/train_rnn.py --stage=$train_stage \
+    --command="$decode_cmd" \
+    --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
+    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.num-epochs=$num_epochs \
+    --trainer.samples-per-iter=$samples_per_iter \
+    --trainer.optimization.num-jobs-initial=$num_jobs_initial \
+    --trainer.optimization.num-jobs-final=$num_jobs_final \
+    --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
+    --trainer.optimization.final-effective-lrate=$final_effective_lrate \
+    --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
+    --trainer.optimization.momentum=$momentum \
+    --egs.chunk-width=$chunk_width \
+    --egs.chunk-left-context=$chunk_left_context \
+    --egs.chunk-right-context=$chunk_right_context \
+    --egs.dir="$common_egs_dir" \
+    --cleanup.remove-egs=$remove_egs \
+    --cleanup.preserve-model-interval=100 \
+    --use-gpu=true \
+    --feat-dir=data/${train_set}_hires \
+    --ali-dir=$ali_dir \
+    --lang=data/lang \
+    --reporting.email="$reporting_email" \
+    --dir=$dir  || exit 1;
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
