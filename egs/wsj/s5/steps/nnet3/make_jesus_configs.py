@@ -13,19 +13,42 @@
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings
+import imp
 
+nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
 parser = argparse.ArgumentParser(description="Writes config files and variables "
                                  "for TDNNs creation and training",
                                  epilog="See steps/nnet3/train_tdnn.sh for example.");
-parser.add_argument("--splice-indexes", type=str,
+parser.add_argument("--splice-indexes", type=str, required = True,
                     help="Splice[:recurrence] indexes at each hidden layer, e.g. '-3,-2,-1,0,1,2,3 -3,0:-3 -3,0:-3 -6,-3,0:-6,-3'. "
                     "Note: recurrence indexes are optional, may not appear in 1st layer, and must be "
                     "either all negative or all positive for any given layer.")
-parser.add_argument("--feat-dim", type=int,
-                    help="Raw feature dimension, e.g. 13")
-parser.add_argument("--ivector-dim", type=int,
-                    help="iVector dimension, e.g. 100", default=0)
+
+# Only one of these arguments can be specified, and one of them has to
+# be compulsarily specified
+feat_group = parser.add_mutually_exclusive_group(required = True)
+feat_group.add_argument("--feat-dim", type=int,
+                        help="Raw feature dimension, e.g. 13")
+feat_group.add_argument("--feat-dir", type=str,
+                        help="Feature directory, from which we derive the feat-dim")
+
+# only one of these arguments can be specified
+ivector_group = parser.add_mutually_exclusive_group(required = False)
+ivector_group.add_argument("--ivector-dim", type=int,
+                            help="iVector dimension, e.g. 100", default=0)
+ivector_group.add_argument("--ivector-dir", type=str,
+                            help="iVector dir, which will be used to derive the ivector-dim  ", default=None)
+
+num_target_group = parser.add_mutually_exclusive_group(required = True)
+num_target_group.add_argument("--num-targets", type=int,
+                              help="number of network targets (e.g. num-pdf-ids/num-leaves)")
+num_target_group.add_argument("--ali-dir", type=str,
+                              help="alignment directory, from which we derive the num-targets")
+num_target_group.add_argument("--tree-dir", type=str,
+                              help="directory with final.mdl, from which we derive the num-targets")
+
 parser.add_argument("--include-log-softmax", type=str,
                     help="add the final softmax layer ", default="true", choices = ["false", "true"])
 parser.add_argument("--xent-regularize", type=float,
@@ -67,8 +90,6 @@ parser.add_argument("--clipping-threshold", type=float,
                     help="clipping threshold used in ClipGradient components (only relevant if "
                     "recurrence indexes are specified).  If clipping-threshold=0 no clipping is done",
                     default=15)
-parser.add_argument("--num-targets", type=int,
-                    help="number of network targets (e.g. num-pdf-ids/num-leaves)")
 parser.add_argument("config_dir",
                     help="Directory to write config files and variables");
 
@@ -80,12 +101,29 @@ if not os.path.exists(args.config_dir):
     os.makedirs(args.config_dir)
 
 ## Check arguments.
-if args.splice_indexes is None:
-    sys.exit("--splice-indexes argument is required");
-if args.feat_dim is None or not (args.feat_dim > 0):
-    sys.exit("--feat-dim argument is required");
-if args.num_targets is None or not (args.num_targets > 0):
-    sys.exit("--num-targets argument is required");
+if args.feat_dir is not None:
+    args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+
+if args.ali_dir is not None:
+    args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+elif args.tree_dir is not None:
+    args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
+
+if args.ivector_dir is not None:
+    args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+
+if not args.feat_dim > 0:
+    raise Exception("feat-dim has to be postive")
+
+if not args.num_targets > 0:
+    print(args.num_targets)
+    raise Exception("num_targets has to be positive")
+
+if not args.ivector_dim >= 0:
+    raise Exception("ivector-dim has to be non-negative")
+
+
+## Check arguments.
 if args.num_jesus_blocks < 1:
     sys.exit("invalid --num-jesus-blocks value");
 if args.final_hidden_dim < 0:
