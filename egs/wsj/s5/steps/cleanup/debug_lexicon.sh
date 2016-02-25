@@ -4,7 +4,7 @@
 
 # this script gets some stats that will help you debug the lexicon.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=1
 remove_stress=false
 nj=10  # number of jobs for various decoding-type things that we run.
@@ -54,17 +54,18 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  steps/decode_si.sh --cmd "$cmd" --nj $nj --transform-dir ${src}_ali_$(basename $data) \
+  steps/decode_si.sh --skip-scoring true \
+    --cmd "$cmd" --nj $nj --transform-dir ${src}_ali_$(basename $data) \
     --acwt 0.25 --beam 25.0 --lattice-beam 5.0 --max-active 2500 \
     $src/graph_phone_bg $data $src/decode_$(basename $data)_phone_bg
 fi
 
 if [ $stage -le 5 ]; then
-  steps/get_train_ctm.sh $data $lang ${src}_ali_$(basename $data)
+  steps/get_train_ctm.sh --cmd "$cmd" $data $lang ${src}_ali_$(basename $data)
 fi
 
 if [ $stage -le 6 ]; then
-  steps/get_ctm.sh --min-lmwt 3 --max-lmwt 8 \
+  steps/get_ctm.sh --cmd "$cmd" --min-lmwt 3 --max-lmwt 8 \
      $data data/$(basename $lang)_phone_bg $src/decode_$(basename $data)_phone_bg
 fi
 
@@ -82,7 +83,7 @@ if [ $stage -le 8 ]; then
 # we'll convert it into two entries like this, with the start and end separately:
 # sw02054-A 0021332 START and
 # sw02054-A 0021356 END and
-# 
+#
 # and suppose phone.ctm has lines like
 # sw02054 A 213.09 0.24 sil
 # sw02054 A 213.33 0.13 ae_B
@@ -102,7 +103,7 @@ if [ $stage -le 8 ]; then
   cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | grep -v "$silphone\$" > $dir/phone_cleaned.ctm
 
   export LC_ALL=C
-  
+
   cat $dir/word.ctm | awk '{printf("%s-%s %09d START %s\n", $1, $2, 100*$3, $5); printf("%s-%s %09d END %s\n", $1, $2, 100*($3+$4), $5);}' | \
      sort >$dir/word_processed.ctm
 
@@ -134,7 +135,7 @@ if [ $stage -le 10 ]; then
       <$dir/prons.txt >$dir/counts.txt
 
   cat $dir/prons.txt | \
-    if $remove_stress; then 
+    if $remove_stress; then
       perl -e 'while(<>) { @A=split(" ", $_); for ($n=1;$n<@A;$n++) { $A[$n] =~ s/[0-9]$//; } print join(" ", @A) . "\n"; } '
     else
       cat
@@ -143,9 +144,9 @@ if [ $stage -le 10 ]; then
      open(D, "<$ARGV[0]") || die "opening dict file $ARGV[0]";
      # create a hash of all reference pronuncations, and for each word, record
      # a list of the prons, separated by " | ".
-     while (<D>) { 
-        @A = split(" ", $_); $is_pron{join(" ",@A)} = 1; 
-        $w = shift @A; 
+     while (<D>) {
+        @A = split(" ", $_); $is_pron{join(" ",@A)} = 1;
+        $w = shift @A;
         if (!defined $prons{$w}) { $prons{$w} = join(" ", @A); }
         else { $prons{$w} = $prons{$w} . " | " . join(" ", @A); }
      }
