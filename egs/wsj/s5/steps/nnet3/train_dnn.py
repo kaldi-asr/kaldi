@@ -32,16 +32,8 @@ logger.info('Starting RNN trainer (train_rnn.py)')
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
     parser = argparse.ArgumentParser(description="""
-    Trains an RNN acoustic model using the cross-entropy objective.
-    RNNs include LSTMs, BLSTMs and GRUs.
-    RNN acoustic model training differs from feed-forward DNN training
-    in the following ways
-        1. RNN acoustic models train on output chunks rather than individual
-           outputs
-        2. The training includes additional stage of shrinkage, where
-           the parameters of the model are scaled when the derivative averages
-           at the non-linearities are below a threshold.
-        3. RNNs can also be trained with state preservation training
+    Trains a feed forward DNN acoustic model using the cross-entropy objective.
+    DNNs include simple DNNs, TDNNs and CNNs.
     """,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
@@ -55,20 +47,9 @@ def GetArgs():
                         help="A string specifying '--norm-means' and '--norm-vars' values")
 
     # egs extraction options
-    parser.add_argument("--egs.chunk-width", type=int, dest='chunk_width',
-                        default = 20,
-                        help="""Number of output labels in the sequence
-                        used to train an LSTM.
-                        Caution: if you double this you should halve
-                        --trainer.samples-per-iter.""")
-    parser.add_argument("--egs.chunk-left-context", type=int, dest='chunk_left_context',
-                        default = 40,
-                        help="""Number of left steps used in the estimation of LSTM
-                        state before prediction of the first label""")
-    parser.add_argument("--egs.chunk-right-context", type=int, dest='chunk_right_context',
-                        default = 0,
-                        help="""Number of right steps used in the estimation of BLSTM
-                        state before prediction of the first label""")
+    parser.add_argument("--egs.frames-per-eg", type=int, dest='frames_per_eg',
+                        default = 8,
+                        help="Number of output labels per example")
     parser.add_argument("--egs.transform_dir", type=str, dest='transform_dir',
                         default = None, action = NullstrToNoneAction,
                         help="""String to provide options directly to steps/nnet3/get_egs.sh script""")
@@ -97,37 +78,36 @@ def GetArgs():
                         help="The maximum number of models used in the final model combination stage. These models will themselves be averages of iteration-number ranges")
     parser.add_argument("--trainer.shuffle-buffer-size", type=int, dest='shuffle_buffer_size',
                         default = 5000,
-                        help=""" Controls randomization of the samples on each
-                        iteration. If 0 or a large value the randomization is
-                        complete, but this will consume memory and cause spikes
-                        in disk I/O.  Smaller is easier on disk and memory but
-                        less random.  It's not a huge deal though, as samples
-                        are anyway randomized right at the start.
-                        (the point of this is to get data in different
-                        minibatches on different iterations, since in the
-                        preconditioning method, 2 samples in the same minibatch
-                        can affect each others' gradients.""")
+                        help="Controls randomization of the samples on each"
+                        "iteration. If 0 or a large value the randomization is"
+                        "complete, but this will consume memory and cause spikes"
+                        "in disk I/O.  Smaller is easier on disk and memory but"
+                        "less random.  It's not a huge deal though, as samples"
+                        "are anyway randomized right at the start."
+                        "(the point of this is to get data in different"
+                        "minibatches on different iterations, since in the"
+                        "preconditioning method, 2 samples in the same minibatch"
+                        "can affect each others' gradients.")
     parser.add_argument("--trainer.add-layers-period", type=int, dest='add_layers_period',
                         default=2,
-                        help="The number of iterations between adding layers during layer-wise discriminative training.")
+                        help="The number of iterations between adding layers"
+                        "during layer-wise discriminative training.")
     parser.add_argument("--trainer.max-param-change", type=float, dest='max_param_change',
                         default=2.0,
-                        help="""The maximum change in parameters allowed
-                        per minibatch, measured in Frobenius norm over
-                        the entire model""")
+                        help="The maximum change in parameters allowed per minibatch,"
+                        "measured in Frobenius norm over the entire model")
     parser.add_argument("--trainer.samples-per-iter", type=int, dest='samples_per_iter',
-                        default=20000,
-                        help="""This is really the number of egs in each
-                        archive.  Each eg has 'chunk_width' frames in it--
-                        for chunk_width=20, this value (20k) is equivalent
-                        to the 400k number that we use as a default in
-                        regular DNN training.""")
+                        default=400000,
+                        help="This is really the number of egs in each archive.")
     parser.add_argument("--trainer.lda.rand-prune", type=float, dest='rand_prune',
                         default=4.0,
                         help="""Value used in preconditioning matrix estimation""")
     parser.add_argument("--trainer.lda.max-lda-jobs", type=float, dest='max_lda_jobs',
                         default=10,
                         help="""Max number of jobs used for LDA stats accumulation""")
+    parser.add_argument("--trainer.presoftmax-prior-scale-power", type=float, dest='presoftmax_prior_scale_power',
+                        default=-0.25,
+                        help="")
 
     # Realignment parameters
     parser.add_argument("--trainer.realign.command", type=str, dest='realign_command',
@@ -148,6 +128,9 @@ def GetArgs():
                         help="If true, gpu is used with steps/nnet3/align.sh")
 
     # Parameters for the optimization
+    parser.add_argument("--trainer.optimization.minibatch-size", type=float, dest='minibatch_size',
+                        default = 512,
+                        help="Size of the minibatch used to compute the gradient")
     parser.add_argument("--trainer.optimization.initial-effective-lrate", type=float, dest='initial_effective_lrate',
                         default = 0.0003,
                         help="Learning rate used during the initial iteration")
@@ -166,25 +149,10 @@ def GetArgs():
                                    final 'combine' stage, but these models will themselves
                                    be averages of iteration-number ranges. """)
     parser.add_argument("--trainer.optimization.momentum", type=float, dest='momentum',
-                        default = 0.5,
+                        default = 0.0,
                         help="""Momentum used in update computation.
                         Note: we implemented it in such a way that
                         it doesn't increase the effective learning rate.""")
-    parser.add_argument("--trainer.optimization.shrink-value", type=float, dest='shrink_value',
-                        default = 0.99,
-                        help="Scaling factor used for scaling the parameter matrices when the derivative averages are below the shrink-threshold at the non-linearities")
-    parser.add_argument("--trainer.optimization.shrink-threshold", type=float, dest='shrink_threshold',
-                        default = 0.15,
-                        help="If the derivative averages are below this threshold we scale the parameter matrices with the shrink-value. It is less than 0.25 for sigmoid non-linearities.")
-
-    # RNN specific trainer options
-    parser.add_argument("--trainer.rnn.num-chunk-per-minibatch", type=int, dest='num_chunk_per_minibatch',
-                        default=100,
-                        help="Number of sequences to be processed in parallel every minibatch" )
-    parser.add_argument("--trainer.rnn.num-bptt-steps", type=int, dest='num_bptt_steps',
-                        default=None,
-                        help="The number of time steps to back-propagate from the last label in the chunk. By default it is same as the chunk-width." )
-
     # General options
     parser.add_argument("--stage", type=int, default=-4,
                         help="Specifies the stage of the experiment to execution from")
@@ -239,18 +207,12 @@ def GetArgs():
 
 def ProcessArgs(args):
     # process the options
-    if args.chunk_width < 1:
-        raise Exception("--egs.chunk-width should have a minimum value of 1")
-
-    if args.chunk_left_context < 0:
-        raise Exception("--egs.chunk-left-context should be positive")
-
-    if args.chunk_right_context < 0:
-        raise Exception("--egs.chunk-right-context should be positive")
+    if args.frames_per_eg < 1:
+        raise Exception("--egs.frames-per-eg should have a minimum value of 1")
 
     if (not os.path.exists(args.dir)) or (not os.path.exists(args.dir+"/configs")):
-        raise Exception("""This scripts expects {0} to exist and have a configs
-        directory which is the output of make_configs.py script""")
+        raise Exception("This scripts expects {0} to exist and have a configs"
+        " directory which is the output of make_configs.py script")
 
     if args.transform_dir is None:
         args.transform_dir = args.ali_dir
@@ -297,29 +259,6 @@ def ProcessArgs(args):
 
     return [args, run_opts]
 
-class StrToBoolAction(argparse.Action):
-    """ A custom action to convert bools from shell format i.e., true/false
-        to python format i.e., True/False """
-    def __call__(self, parser, namespace, values, option_string=None):
-        if values == "true":
-            setattr(namespace, self.dest, True)
-        elif values == "false":
-            setattr(namespace, self.dest, False)
-        else:
-            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
-
-class NullstrToNoneAction(argparse.Action):
-    """ A custom action to convert empty strings passed by shell
-        to None in python. This is necessary as shell scripts print null strings
-        when a variable is not specified. We could use the more apt None
-        in python. """
-    def __call__(self, parser, namespace, values, option_string=None):
-            if values.strip() == "":
-                setattr(namespace, self.dest, None)
-            else:
-                setattr(namespace, self.dest, values)
-
-
 # a class to store run options
 class RunOpts:
     def __init__(self):
@@ -331,12 +270,12 @@ class RunOpts:
         self.parallel_train_opts = None
         self.realign_use_gpu = None
 
-
+# this is the main method which differs between RNN and DNN training
 def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
-                   left_context, right_context, min_deriv_time,
+                   raw_model_string, egs_dir, frames_per_eg,
+                   left_context, right_context,
                    momentum, max_param_change,
-                   shuffle_buffer_size, num_chunk_per_minibatch,
+                   shuffle_buffer_size, minibatch_size,
                    run_opts):
       # We cannot easily use a single parallel SGE job to do the main training,
       # because the computation of which archive and which --frame option
@@ -351,25 +290,25 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
         k = num_archives_processed + job - 1 # k is a zero-based index that we will derive
                                                # the other indexes from.
         archive_index = (k % num_archives) + 1 # work out the 1-based archive index.
-
+        frame = (k / num_archives) % frames_per_eg
         process_handle = RunKaldiCommand("""
 {command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
   nnet3-train {parallel_train_opts} \
   --print-interval=10 --momentum={momentum} \
   --max-param-change={max_param_change} \
-  --optimization.min-deriv-time={min_deriv_time} "{raw_model}" \
-  "ark:nnet3-copy-egs {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={num_chunk_per_minibatch} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
+  "{raw_model}" \
+  "ark:nnet3-copy-egs --frame={frame} {context_opts} ark:{egs_dir}/egs.{archive_index}.ark ark:- | nnet3-shuffle-egs --buffer-size={shuffle_buffer_size} --srand={iter} ark:- ark:-| nnet3-merge-egs --minibatch-size={minibatch_size} --measure-output-frames=false --discard-partial-minibatches=true ark:- ark:- |" \
   {dir}/{next_iter}.{job}.raw
           """.format(command = run_opts.command,
                      train_queue_opt = run_opts.train_queue_opt,
                      dir = dir, iter = iter, next_iter = iter + 1, job = job,
                      parallel_train_opts = run_opts.parallel_train_opts,
+                     frame = frame,
                      momentum = momentum, max_param_change = max_param_change,
-                     min_deriv_time = min_deriv_time,
                      raw_model = raw_model_string, context_opts = context_opts,
                      egs_dir = egs_dir, archive_index = archive_index,
                      shuffle_buffer_size = shuffle_buffer_size,
-                     num_chunk_per_minibatch = num_chunk_per_minibatch),
+                     minibatch_size = minibatch_size),
           wait = False)
 
         processes.append(process_handle)
@@ -386,14 +325,16 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
         open('{0}/.error'.format(dir), 'w').close()
         raise Exception("There was error during training iteration {0}".format(iter))
 
-
 def TrainOneIteration(dir, iter, egs_dir,
                       num_jobs, num_archives_processed, num_archives,
-                      learning_rate, shrinkage_value, num_chunk_per_minibatch,
-                      num_hidden_layers, add_layers_period,
-                      left_context, right_context, min_deriv_time,
+                      learning_rate, minibatch_size,
+                      frames_per_eg, num_hidden_layers, add_layers_period,
+                      left_context, right_context,
                       momentum, max_param_change, shuffle_buffer_size,
                       run_opts):
+
+
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     logger.info("Training neural net (pass {0})".format(iter))
@@ -417,14 +358,16 @@ def TrainOneIteration(dir, iter, egs_dir,
         raw_model_string = "nnet3-am-copy --raw=true --learning-rate={0} {1}/{2}.mdl - |".format(learning_rate, dir, iter)
 
     if do_average:
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch
+      cur_minibatch_size = minibatch_size
+      cur_max_param_change = max_param_change
     else:
       # on iteration zero or when we just added a layer, use a smaller minibatch
       # size (and we will later choose the output of just one of the jobs): the
       # model-averaging isn't always helpful when the model is changing too fast
       # (i.e. it can worsen the objective function), and the smaller minibatch
       # size will help to keep the update stable.
-      cur_num_chunk_per_minibatch = num_chunk_per_minibatch / 2
+      cur_minibatch_size = minibatch_size / 2
+      cur_max_param_change = float(max_param_change) / math.sqrt(2)
 
     try:
         os.remove("{0}/.error".format(dir))
@@ -432,10 +375,10 @@ def TrainOneIteration(dir, iter, egs_dir,
         pass
 
     TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
-                   raw_model_string, egs_dir,
-                   left_context, right_context, min_deriv_time,
+                   raw_model_string, egs_dir, frames_per_eg,
+                   left_context, right_context,
                    momentum, max_param_change,
-                   shuffle_buffer_size, cur_num_chunk_per_minibatch,
+                   shuffle_buffer_size, cur_minibatch_size,
                    run_opts)
     [models_to_average, best_model] = GetSuccessfulModels(num_jobs, '{0}/log/train.{1}.%.log'.format(dir,iter))
     nnets_list = []
@@ -447,22 +390,21 @@ def TrainOneIteration(dir, iter, egs_dir,
         RunKaldiCommand("""
 {command} {dir}/log/average.{iter}.log \
 nnet3-average {nnet_list} - \| \
-nnet3-am-copy --scale={shrink} --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter}.mdl
+nnet3-am-copy --set-raw-nnet=- {dir}/{iter}.mdl {dir}/{new_iter}.mdl
         """.format(command = run_opts.command,
                    dir = dir,
                    iter = iter,
                    nnet_list = " ".join(nnets_list),
-                   shrink = shrinkage_value,
                    new_iter = iter + 1))
 
     else:
         # choose the best model from different jobs
         RunKaldiCommand("""
 {command} {dir}/log/select.{iter}.log \
-    nnet3-am-copy --scale={shrink} --set-raw-nnet={dir}/{next_iter}.{best_model_index}.raw  {dir}/{iter}.mdl {dir}/{next_iter}.mdl
+    nnet3-am-copy --set-raw-nnet={dir}/{next_iter}.{best_model_index}.raw  {dir}/{iter}.mdl {dir}/{next_iter}.mdl
         """.format(command = run_opts.command,
                    dir = dir, iter = iter, next_iter = iter + 1,
-                   shrink = shrinkage_value, best_model_index =  best_model))
+                   best_model_index =  best_model))
 
     try:
         for i in range(1, num_jobs + 1):
@@ -499,13 +441,13 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    [model_left_context, model_right_context, num_hidden_layers] = ParseModelConfigVarsFile(var_file)
+    [left_context, right_context, num_hidden_layers] = ParseModelConfigVarsFile(var_file)
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4):
+    if (args.stage <= -5):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
         RunKaldiCommand("""
 {command} {dir}/log/nnet_init.log \
@@ -513,18 +455,14 @@ def Train(args, run_opts):
     """.format(command = run_opts.command,
                dir = args.dir))
 
-    left_context = args.chunk_left_context + model_left_context
-    right_context = args.chunk_right_context + model_right_context
-
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -3) and args.egs_dir is None:
+    if (args.stage <= -4) and args.egs_dir is None:
         logger.info("Generating egs")
 
         GenerateEgs(args.feat_dir, args.ali_dir, default_egs_dir,
                     left_context, right_context,
-                    args.chunk_width + left_context,
-                    args.chunk_width + right_context, run_opts,
-                    frames_per_eg = args.chunk_width,
+                    left_context, right_context, run_opts,
+                    frames_per_eg = args.frames_per_eg,
                     egs_opts = args.egs_opts,
                     cmvn_opts = args.cmvn_opts,
                     online_ivector_dir = args.online_ivector_dir,
@@ -538,7 +476,7 @@ def Train(args, run_opts):
         egs_dir = args.egs_dir
 
     [egs_left_context, egs_right_context, frames_per_eg, num_archives] = VerifyEgsDir(egs_dir, feat_dim, ivector_dim, left_context, right_context)
-    assert(args.chunk_width == frames_per_eg)
+    assert(args.frames_per_eg == frames_per_eg)
 
     if (args.num_jobs_final > num_archives):
         raise Exception('num_jobs_final cannot exceed the number of archives in the egs directory')
@@ -547,12 +485,21 @@ def Train(args, run_opts):
     # use during decoding
     CopyEgsPropertiesToExpDir(egs_dir, args.dir)
 
-    if (args.stage <= -2):
+    if (args.stage <= -3):
         logger.info('Computing the preconditioning matrix for input features')
 
         ComputePreconditioningMatrix(args.dir, egs_dir, num_archives, run_opts,
                                      max_lda_jobs = args.max_lda_jobs,
                                      rand_prune = args.rand_prune)
+
+    if (args.stage <= -2):
+        logger.info("Computing initial vector for FixedScaleComponent before"
+                    " softmax, using priors^{prior_scale} and rescaling to"
+                    " average 1".format(prior_scale = args.presoftmax_prior_scale_power))
+
+        ComputePresoftmaxPriorScale(args.dir, args.ali_dir, num_jobs, run_opts,
+                                    presoftmax_prior_scale_power = args.presoftmax_prior_scale_power)
+
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
@@ -562,12 +509,13 @@ def Train(args, run_opts):
     # set num_iters so that as close as possible, we process the data $num_epochs
     # times, i.e. $num_iters*$avg_num_jobs) == $num_epochs*$num_archives,
     # where avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
-    num_archives_to_process = args.num_epochs * num_archives
+    num_archives_expanded = num_archives * args.frames_per_eg
+    num_archives_to_process = args.num_epochs * num_archives_expanded
     num_archives_processed = 0
     num_iters=(num_archives_to_process * 2) / (args.num_jobs_initial + args.num_jobs_final)
 
     num_iters_combine = VerifyIterations(num_iters, args.num_epochs,
-                                         num_hidden_layers, num_archives,
+                                         num_hidden_layers, num_archives_expanded,
                                          args.max_models_combine, args.add_layers_period,
                                          args.num_jobs_final)
 
@@ -585,14 +533,6 @@ def Train(args, run_opts):
         print(realign_iters)
     # egs_dir will be updated if there is realignment
     cur_egs_dir=egs_dir
-
-    if args.num_bptt_steps is None:
-        num_bptt_steps = args.chunk_width
-    else:
-        num_bptt_steps = args.num_bptt_steps
-
-    min_deriv_time = args.chunk_width - num_bptt_steps
-
 
     logger.info("Training will run for {0} epochs = {1} iterations".format(args.num_epochs, num_iters))
     for iter in range(num_iters):
@@ -614,16 +554,15 @@ def Train(args, run_opts):
                 if args.cleanup and args.egs_dir is None:
                     RemoveEgs(prev_egs_dir)
             model_file = "{dir}/{iter}.mdl".format(dir = args.dir, iter = iter)
-            shrinkage_value = args.shrink_value if DoShrinkage(iter, model_file, "SigmoidComponent", args.shrink_threshold) else 1
-            logger.info("On iteration {0}, learning rate is {1} and shrink value is {2}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed), shrinkage_value))
+
+            logger.info("On iteration {0}, learning rate is {1}.".format(iter, learning_rate(iter, current_num_jobs, num_archives_processed)))
 
             TrainOneIteration(args.dir, iter, egs_dir, current_num_jobs,
                               num_archives_processed, num_archives,
                               learning_rate(iter, current_num_jobs, num_archives_processed),
-                              shrinkage_value,
-                              args.num_chunk_per_minibatch,
+                              args.minibatch_size, args.frames_per_eg,
                               num_hidden_layers, args.add_layers_period,
-                              left_context, right_context, min_deriv_time,
+                              left_context, right_context,
                               args.momentum, args.max_param_change,
                               args.shuffle_buffer_size, run_opts)
             if args.cleanup:
@@ -644,8 +583,7 @@ def Train(args, run_opts):
 
     if args.stage <= num_iters:
         logger.info("Doing final combination to produce final.mdl")
-        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts,
-                chunk_width = args.chunk_width)
+        CombineModels(args.dir, num_iters, num_iters_combine, egs_dir, run_opts)
 
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of adjusting the priors.")
@@ -672,7 +610,7 @@ def Train(args, run_opts):
     # do some reporting
     [report, times, data] = nnet3_log_parse.GenerateAccuracyReport(args.dir)
     if args.email is not None:
-        sendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
+        SendMail(report, "Update : Expt {0} : complete".format(args.dir), args.email)
 
     report_handle = open("{dir}/accuracy.report".format(dir = args.dir), "w")
     report_handle.write(report)
@@ -688,16 +626,6 @@ def Main():
             sendMail(message, message, args.email)
         traceback.print_exc()
         raise e
-
-def SendMail(message, subject, email_id):
-    try:
-        subprocess.Popen('echo "{message}" | mail -s "{subject}" {email} '.format(
-            message = message,
-            subject = subject,
-            email = email_id), shell=True)
-    except Exception as e:
-        logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
-        pass
 
 if __name__ == "__main__":
     Main()
