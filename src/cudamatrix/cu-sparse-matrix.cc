@@ -55,9 +55,12 @@ MatrixIndexT CuSparseMatrix<Real>::NumElements() const {
 
 template <typename Real>
 Real CuSparseMatrix<Real>::Sum() const {
+  if (NumElements() == 0)
+    return 0.0;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuVector<Real> sum_vec(*this);
+    CuVector<Real> sum_vec(this->NumElements(), kUndefined);
+    this->CopyElementsToVec(&sum_vec);
     return sum_vec.Sum();
   } else
 #endif
@@ -70,7 +73,8 @@ template <typename Real>
 Real CuSparseMatrix<Real>::FrobeniusNorm() const {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuVector<Real> element_vec(*this);
+    CuVector<Real> element_vec(this->NumElements(), kUndefined);
+    this->CopyElementsToVec(&element_vec);
     return element_vec.Norm(2);
   } else
 #endif
@@ -202,6 +206,27 @@ void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<float> *smat) const;
 template
 void CuSparseMatrix<double>::CopyToSmat(SparseMatrix<double> *smat) const;
 
+template <typename Real>
+void CuSparseMatrix<Real>::CopyElementsToVec(CuVectorBase<Real> *vec) const {
+  KALDI_ASSERT(vec != NULL);
+  KALDI_ASSERT(this->NumElements() == vec->Dim());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    cublas_copy(GetCublasHandle(),
+                this->NumElements(),
+                &(this->elements_.Data()->weight),
+                static_cast<size_t>(sizeof(MatrixElement<Real>) / sizeof(Real)),
+                vec->Data(), 1);
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+#endif
+  {
+    Vector<Real> tmp(this->NumElements(), kUndefined);
+    Mat().CopyElementsToVec(&tmp);
+    vec->CopyFromVec(tmp);
+  }
+}
 
 template <typename Real>
 void CuSparseMatrix<Real>::Swap(SparseMatrix<Real> *smat) {
@@ -341,6 +366,7 @@ void GeneralMatrix::CopyToMat(CuMatrixBase<BaseFloat> *cu_mat,
         Matrix<BaseFloat> mat(cmat_);
         if (trans == kNoTrans) {
           cu_mat->CopyFromMat(mat);
+          break;
         } else {
           CuMatrix<BaseFloat> temp_cu;
           temp_cu.Swap(&mat);

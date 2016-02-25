@@ -32,6 +32,9 @@ power=0.2 # Exponent for number of gaussians according to occurrence counts
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 phone_map=
 train_tree=true
+tree_stats_opts=
+cluster_phones_opts=
+compile_questions_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -90,7 +93,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     cp $alidir/full.mat $dir 2>/dev/null
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -101,7 +104,7 @@ if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
   feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
-else 
+else
   if [ $stage -le -5 ]; then
     echo "$0: obtaining initial fMLLR transforms since not present in $alidir"
     # The next line is necessary because of $silphonelist otherwise being incorrect; would require
@@ -123,7 +126,7 @@ if [ $stage -le -4 ] && $train_tree; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-    acc-tree-stats $context_opts $phone_map_opt --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
+    acc-tree-stats $context_opts $tree_stats_opts $phone_map_opt --ci-phones=$ciphonelist $alidir/final.mdl "$feats" \
     "ark:gunzip -c $alidir/ali.JOB.gz|" $dir/JOB.treeacc || exit 1;
   [ "`ls $dir/*.treeacc | wc -w`" -ne "$nj" ] && echo "$0: Wrong #tree-accs" && exit 1;
   $cmd $dir/log/sum_tree_acc.log \
@@ -134,9 +137,9 @@ fi
 if [ $stage -le -3 ] && $train_tree; then
   echo "$0: Getting questions for tree clustering."
   # preparing questions, roots file...
-  cluster-phones $context_opts $dir/treeacc $lang/phones/sets.int $dir/questions.int 2> $dir/log/questions.log || exit 1;
+  cluster-phones $cluster_phones_opts $context_opts $dir/treeacc $lang/phones/sets.int $dir/questions.int 2>$dir/log/questions.log || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
-  compile-questions $context_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
+  compile-questions $context_opts $compile_questions_opts $lang/topo $dir/questions.int $dir/questions.qst 2>$dir/log/compile_questions.log || exit 1;
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
@@ -212,7 +215,7 @@ while [ $x -lt $num_iters ]; do
     feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
-  
+
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-acc-stats-ali $dir/$x.mdl "$feats" \
@@ -222,7 +225,7 @@ while [ $x -lt $num_iters ]; do
       gmm-est --power=$power --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc
-    rm $dir/$x.occs 
+    rm $dir/$x.occs
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
@@ -257,7 +260,7 @@ utils/summarize_warnings.pl $dir/log
   echo "$0: Likelihood evolution:"
   for x in `seq $[$num_iters-1]`; do
     tail -n 30 $dir/log/acc.$x.*.log | awk '/Overall avg like/{l += $(NF-3)*$(NF-1); t += $(NF-1); }
-        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);} 
+        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);}
         END{ d /= t2; l /= t; printf("%s ", d+l); } '
   done
   echo

@@ -155,7 +155,7 @@ bool IsLine(const std::string &line) {
   if (isspace(*(line.begin()))) return false;
   if (isspace(*(line.rbegin()))) return false;
   std::string::const_iterator iter = line.begin(), end = line.end();
-  for (; iter!= end; iter++)
+  for (; iter != end; iter++)
     if (!isprint(*iter)) return false;
   return true;
 }

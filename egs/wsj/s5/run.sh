@@ -47,7 +47,7 @@ local/wsj_format_data.sh --lang-suffix "_nosp" || exit 1;
  # Caution: the commands below will only work if $decode_cmd 
  # is setup to use qsub.  Else, just remove the --cmd option.
  # NOTE: If you have a setup corresponding to the cstr_wsj_data_prep.sh style,
- # use local/cstr_wsj_extend_dict.sh $corpus/wsj1/doc/ instead.
+ # use local/cstr_wsj_extend_dict.sh --dict-suffix "_nosp" $corpus/wsj1/doc/ instead.
   (
    local/wsj_extend_dict.sh --dict-suffix "_nosp" $wsj1/13-32.1  && \
    utils/prepare_lang.sh data/local/dict_nosp_larger \

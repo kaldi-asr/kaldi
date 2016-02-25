@@ -3,7 +3,7 @@
 #code itself, and its comments, is the rest of the source).  Doxygen will create
 #the actual documentation in ../html/ (e.g. open ../html/index.html in a browser).
 #To run doxygen, type "doxygen" from one directory above this.  If this does
-#not work, search for "Kaldi main page" online and you will hopefully get a 
+#not work, search for "Kaldi main page" online and you will hopefully get a
 #version of the documentation.
 
 # Note: I generally run this file by typing ". doc/README" from src/,
@@ -13,7 +13,7 @@
 #ssh-keygen -t dsa -C "vpanayotov@shell.sf.net"
 #ssh-add
 # end then import the contents of .ssh/id_dsa.pub into
-# http://sourceforge.net/account/services 
+# http://sourceforge.net/account/services
 
 #(from Dan:) The commands below show how I compile the documentation and copy it
 #to the homepage at sourceforge.  I do this from JHU at the current time.
@@ -24,7 +24,7 @@ doxygen
 cp doc/*.pptx html/;
 # get the style sheet in the html/ directory.
 # note, we actually use a modified version of the header, which is checked into
-# doc/.  
+# doc/.
 doxygen -w html header.html footer.html stylesheet.css
 rm header.html footer.html
 mv stylesheet.css html/
@@ -34,37 +34,21 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
    tar -czf html.tar.gz html
 
-   echo "**First copying to kaldi-asr.org**"
-   # First copy to kaldi-asr.org/docs
+   # Copy to kaldi-asr.org/docs2/
    scp html.tar.gz newrelay:/var/www/kaldi-asr
 
    echo 'cd /var/www/kaldi-asr/; rm -rf html doc.old;
-        tar -xzf html.tar.gz; mv doc doc.old; mv html doc; rm -rf doc.old' \
+        tar -xzf html.tar.gz; mv doc2 doc.old; mv html doc2; rm -rf doc.old; rm html.tar.gz' \
            | ssh newrelay bash
-
-   echo "**Now copying to sourceforge**"
-   # Next copy to sourceforge.
-   if true; then  # use method that works when their shell access is down.
-     rm -rf htdocs # make sure it's not left over from before.
-     mv html htdocs
-     scp -r htdocs  danielpovey@web.sourceforge.net:/home/project-web/kaldi/
-     mv htdocs html
-   else
-     scp html.tar.gz danielpovey@web.sourceforge.net:/home/project-web/kaldi/htdocs/
-     ssh danielpovey,kaldi@shell.sourceforge.net create
-     echo 'cd /home/project-web/kaldi/htdocs/; rm -rf html;
-         tar -xzf html.tar.gz; for x in html/*; do mv $x .; done ' \
-          | ssh danielpovey,kaldi@shell.sourceforge.net bash
-   fi
 fi
 
 
 # You could uncomment and run the lines below as an example of how to figure out
 # the amount of posts to the Kaldi forums on Sourceforge, per month.
 #curl 'http://sourceforge.net/p/kaldi/discussion/stats_data?forum=&begin=2011-04-14&end=2014-06-13'  > foo
-#cat foo |  perl -ane ' s/.*://; @A = split("]"); 
+#cat foo |  perl -ane ' s/.*://; @A = split("]");
 #   foreach $a(@A){ $a =~ s/[,\[]//g; print "$a\n"; }' | \
-# perl -e 'while(<>) { @A = split; if (@A == 2) { ($date, $count) = @A;  $date /= 1000; 
+# perl -e 'while(<>) { @A = split; if (@A == 2) { ($date, $count) = @A;  $date /= 1000;
 #  @date_array = gmtime $date; $month = $date_array[4]; $year = 1900 + $date_array[5]; $count{$year. " " .sprintf("%02d", $month+1)} +=  $count; }}
 #  foreach $k (sort keys %count) { print "$k $count{$k}\n"; } '
 
@@ -77,6 +61,4 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
-
-
 

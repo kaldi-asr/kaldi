@@ -34,7 +34,7 @@ void ElementwiseProductOfFft(const Vector<BaseFloat> &a, Vector<BaseFloat> *b) {
 void ConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal) {
   int32 signal_length = signal->Dim();
   int32 filter_length = filter.Dim();
-  Vector<float> signal_padded(signal_length + filter_length - 1);
+  Vector<BaseFloat> signal_padded(signal_length + filter_length - 1);
   signal_padded.SetZero();
   for (int32 i = 0; i < signal_length; i++) {
     for (int32 j = 0; j < filter_length; j++) {
@@ -54,11 +54,11 @@ void FFTbasedConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> 
 
   SplitRadixRealFft<BaseFloat> srfft(fft_length);
 
-  Vector<float> filter_padded(fft_length);
+  Vector<BaseFloat> filter_padded(fft_length);
   filter_padded.Range(0, filter_length).CopyFromVec(filter);
   srfft.Compute(filter_padded.Data(), true);
 
-  Vector<float> signal_padded(fft_length);
+  Vector<BaseFloat> signal_padded(fft_length);
   signal_padded.Range(0, signal_length).CopyFromVec(*signal);
   srfft.Compute(signal_padded.Data(), true);
 
@@ -83,13 +83,13 @@ void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFl
   KALDI_VLOG(1) << "Block size is " << block_length;
   SplitRadixRealFft<BaseFloat> srfft(fft_length);
 
-  Vector<float> filter_padded(fft_length);
+  Vector<BaseFloat> filter_padded(fft_length);
   filter_padded.Range(0, filter_length).CopyFromVec(filter);
   srfft.Compute(filter_padded.Data(), true);
 
-  Vector<float> temp_pad(filter_length - 1);
+  Vector<BaseFloat> temp_pad(filter_length - 1);
   temp_pad.SetZero();
-  Vector<float> signal_block_padded(fft_length);
+  Vector<BaseFloat> signal_block_padded(fft_length);
 
   for (int32 po = 0; po < signal_length; po += block_length) {
     // get a block of the signal

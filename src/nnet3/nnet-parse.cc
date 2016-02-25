@@ -1,7 +1,5 @@
 // nnet3/nnet-parse.cc
 
-// nnet3/nnet-parse.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -23,67 +21,72 @@
 #include <sstream>
 #include <iomanip>
 #include "nnet3/nnet-parse.h"
+#include "cudamatrix/cu-vector.h"
+#include "cudamatrix/cu-matrix.h"
 
 namespace kaldi {
 namespace nnet3 {
 
+
 bool ConfigLine::ParseLine(const std::string &line) {
   if (line.size() == 0) return false;   // Empty line
 
-  // Line ends or begins with space -> remove it and recurse.
-  if (isspace(line[line.size()-1]) || isspace(line[0])) {
-    size_t initial_pos = line.find_first_not_of(" \t\r\n"),
-        final_pos = line.find_last_not_of(" \t\r\n");
-    if (initial_pos == std::string::npos || final_pos <= initial_pos)
-      return false;
-    std::string processed_line(line, initial_pos, final_pos - initial_pos + 1);
-    return ParseLine(processed_line);
-  }
-
-  size_t pos = 0;
-  size_t found_eq = line.find_first_of("=", pos + 1);
-  if (found_eq == std::string::npos) return false; // Could not find '='
-
-
-  while (found_eq < line.size()) {
-    std::string key(line, pos, found_eq - pos);
-    if (!IsValidName(key)) return false;
-    if (found_eq == std::string::npos) return false; // Could not find '='
-    if (found_eq == line.size() - 1 || line[found_eq+1] == ' ' || line[found_eq+1] == '\t') {
-      // Empty value for key
-      data_.insert(std::make_pair(key, std::make_pair("", false)));
-      pos = line.find_first_not_of(" \t", found_eq + 1);
-      if (pos == std::string::npos)
-        break; // Done reading
-      found_eq = line.find_first_of("=", pos + 1);
+  size_t pos = 0, size = line.size();
+  while (pos < size) {
+    if (isspace(line[pos])) {
+      pos++;
       continue;
     }
-
-    // See if there is next key
-    size_t found = line.find_first_of("=", found_eq + 1);
-    size_t value_end = std::string::npos;
-
-    if (found != std::string::npos) {
-      size_t found_ws = line.find_last_of(" \t", found);
-      if (found_ws < found_eq + 1) found_ws = found;
-
-      value_end = line.find_last_not_of(" \t", found_ws);
-      pos = line.find_first_not_of(" \t", found_ws + 1);
-    } else {
-      value_end = line.find_last_not_of(" \t", found);
+    // OK, at this point we know that we are pointing at nonspace.
+    size_t next_equals_sign = line.find_first_of("=", pos);
+    if (next_equals_sign == pos || next_equals_sign == std::string::npos) {
+      // we're looking for something like 'key=value'.  If there is no equals sign,
+      // or it's not preceded by something, it's a parsing failure.
+      return false;
     }
+    std::string key(line, pos, next_equals_sign - pos);
+    if (!IsValidName(key)) return false;
 
-    KALDI_ASSERT(value_end > found_eq);
+    // handle any quotes.  we support key='blah blah' or key="foo bar".
+    // no escaping is supported.
+    if (line[next_equals_sign+1] == '\'' || line[next_equals_sign+1] == '"') {
+      char my_quote = line[next_equals_sign+1];
+      size_t next_quote = line.find_first_of(my_quote, next_equals_sign + 2);
+      if (next_quote == std::string::npos) {  // no matching quote was found.
+        KALDI_WARN << "No matching quote for " << my_quote << " in config line '"
+                   << line << "'";
+        return false;
+      } else {
+        std::string value(line, next_equals_sign + 2,
+                          next_quote - next_equals_sign - 2);
+        data_.insert(std::make_pair(key, std::make_pair(value, false)));
+        pos = next_quote + 1;
+        continue;
+      }
+    } else {
+      // we want to be able to parse something like "... input=Offset(a, -1) foo=bar":
+      // in general, config values with spaces in them, even without quoting.
 
-    std::string value(line, found_eq + 1, value_end - found_eq);
-
-    if (value[0] == ' ' || value[0] == '\t') return false;
-    data_.insert(std::make_pair(key, std::make_pair(value, false)));
-
-    found_eq = found;
+      size_t next_next_equals_sign = line.find_first_of("=", next_equals_sign + 1),
+          terminating_space = size;
+      
+      if (next_next_equals_sign != std::string::npos) {  // found a later equals sign.
+        size_t preceding_space = line.find_last_of(" \t", next_next_equals_sign);
+        if (preceding_space != std::string::npos &&
+            preceding_space > next_equals_sign)
+          terminating_space = preceding_space;
+      }
+      while (isspace(line[terminating_space - 1]) && terminating_space > 0)
+        terminating_space--;
+      
+      std::string value(line, next_equals_sign + 1,
+                        terminating_space - (next_equals_sign + 1));
+      data_.insert(std::make_pair(key, std::make_pair(value, false)));
+      pos = terminating_space;
+    }
   }
   whole_line_ = line;
-  return true;
+  return !data_.empty();
 }
 
 bool ConfigLine::GetValue(const std::string &key, std::string *value) {
@@ -451,7 +454,6 @@ static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
   }
   os.unsetf(std::ios_base::floatfield);
   os << std::setprecision(6);  // Restore the default.
-
 }
 
 
@@ -493,6 +495,41 @@ std::string SummarizeVector(const Vector<BaseFloat> &vec) {
   return os.str();
 }
 
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuVector<BaseFloat> &params,
+                         bool include_mean) {
+  os << std::setprecision(4);
+  os << ", " << name << '-';
+  if (include_mean) {
+    BaseFloat mean = params.Sum() / params.Dim(),
+        stddev = std::sqrt(VecVec(params, params) / params.Dim() - mean * mean);
+    os << "{mean,stddev}=" << mean << ',' << stddev;
+  } else {
+    BaseFloat rms = std::sqrt(VecVec(params, params) / params.Dim());
+    os << "rms=" << rms;
+  }
+  os << std::setprecision(6);  // restore the default precision.
+}
+
+void PrintParameterStats(std::ostringstream &os,
+                         const std::string &name,
+                         const CuMatrix<BaseFloat> &params,
+                         bool include_mean) {
+  os << std::setprecision(4);
+  os << ", " << name << '-';
+  int32 dim = params.NumRows() * params.NumCols();
+  if (include_mean) {
+    BaseFloat mean = params.Sum() / dim,
+        stddev = std::sqrt(TraceMatMat(params, params, kTrans) / dim -
+                           mean * mean);
+    os << "{mean,stddev}=" << mean << ',' << stddev;
+  } else {
+    BaseFloat rms = std::sqrt(TraceMatMat(params, params, kTrans) / dim);
+    os << "rms=" << rms;
+  }
+  os << std::setprecision(6);  // restore the default precision.
+}
 
 
 } // namespace nnet3

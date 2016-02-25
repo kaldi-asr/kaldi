@@ -15,6 +15,11 @@ parser.add_argument("--feat-dim", type=int,
                     help="Raw feature dimension, e.g. 13")
 parser.add_argument("--ivector-dim", type=int,
                     help="iVector dimension, e.g. 100", default=0)
+parser.add_argument("--include-log-softmax", type=str,
+                    help="add the final softmax layer ", default="true", choices = ["false", "true"])
+parser.add_argument("--final-layer-normalize-target", type=float,
+                    help="RMS target for final layer (set to <1 if final layer learns too fast",
+                    default=1.0)
 parser.add_argument("--pnorm-input-dim", type=int,
                     help="input dimension to p-norm nonlinearities")
 parser.add_argument("--pnorm-output-dim", type=int,
@@ -65,7 +70,7 @@ else:
 splice_array = []
 left_context = 0
 right_context = 0
-split1 = args.splice_indexes.split(" ");  # we already checked the string is nonempty.
+split1 = args.splice_indexes.split();  # we already checked the string is nonempty.
 if len(split1) < 1:
     sys.exit("invalid --splice-indexes argument, too short: "
              + args.splice_indexes)
@@ -132,20 +137,22 @@ for l in range(1, num_hidden_layers + 1):
         print('# In nnet3 framework, p in P-norm is always 2.', file=f)
         print('component name=nonlin{0} type=PnormComponent input-dim={1} output-dim={2}'.
               format(l, args.pnorm_input_dim, args.pnorm_output_dim), file=f)
-    print('component name=renorm{0} type=NormalizeComponent dim={1}'.format(
-         l, nonlin_output_dim), file=f)
+    print('component name=renorm{0} type=NormalizeComponent dim={1} target-rms={2}'.format(
+        l, nonlin_output_dim,
+        (1.0 if l < num_hidden_layers else args.final_layer_normalize_target)), file=f)
     print('component name=final-affine type=NaturalGradientAffineComponent '
           'input-dim={0} output-dim={1} param-stddev=0 bias-stddev=0'.format(
           nonlin_output_dim, args.num_targets), file=f)
     # printing out the next two, and their component-nodes, for l > 1 is not
     # really necessary as they will already exist, but it doesn't hurt and makes
     # the structure clearer.
-    if use_presoftmax_prior_scale :
-        print('component name=final-fixed-scale type=FixedScaleComponent '
-            'scales={0}/presoftmax_prior_scale.vec'.format(
-            args.config_dir), file=f)
-    print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
-          args.num_targets), file=f)
+    if args.include_log_softmax == "true":
+        if use_presoftmax_prior_scale :
+            print('component name=final-fixed-scale type=FixedScaleComponent '
+                  'scales={0}/presoftmax_prior_scale.vec'.format(
+                    args.config_dir), file=f)
+        print('component name=final-log-softmax type=LogSoftmaxComponent dim={0}'.format(
+                args.num_targets), file=f)
     print('# Now for the network structure', file=f)
     if l == 1:
         splices = [ ('Offset(input, {0})'.format(n) if n != 0 else 'input') for n in splice_array[l-1] ]
@@ -170,16 +177,18 @@ for l in range(1, num_hidden_layers + 1):
     print('component-node name=final-affine component=final-affine input=renorm{0}'.
           format(l), file=f)
 
-    if use_presoftmax_prior_scale:
-        print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
-              file=f)
-        print('component-node name=final-log-softmax component=final-log-softmax '
-              'input=final-fixed-scale', file=f)
+    if args.include_log_softmax == "true":
+        if use_presoftmax_prior_scale:
+            print('component-node name=final-fixed-scale component=final-fixed-scale input=final-affine',
+                  file=f)
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-fixed-scale', file=f)
+        else:
+            print('component-node name=final-log-softmax component=final-log-softmax '
+                  'input=final-affine', file=f)
+        print('output-node name=output input=final-log-softmax', file=f)
     else:
-        print('component-node name=final-log-softmax component=final-log-softmax '
-              'input=final-affine', file=f)
-
-    print('output-node name=output input=final-log-softmax', file=f)
+        print('output-node name=output input=final-affine', file=f)
     f.close()
 
 # component name=nonlin1 type=PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim

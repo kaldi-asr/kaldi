@@ -1,7 +1,7 @@
 // nnet3/nnet-nnet.cc
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+//                2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,7 @@ int32 NetworkNode::Dim(const Nnet &nnet) const {
       ans = nnet.GetComponent(u.component_index)->OutputDim();
       break;
     default:
+      ans = 0;  // suppress compiler warning
       KALDI_ERR << "Invalid node type.";
   }
   KALDI_ASSERT(ans > 0);
@@ -136,6 +137,12 @@ const Component *Nnet::GetComponent(int32 c) const {
 Component *Nnet::GetComponent(int32 c) {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
   return components_[c];
+}
+
+void Nnet::SetComponent(int32 c, Component *component) {
+  KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
+  delete components_[c];
+  components_[c] = component;
 }
 
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
@@ -305,7 +312,8 @@ void Nnet::ProcessComponentNodeConfigLine(
     GetSomeNodeNames(&node_names_temp);
     tokens.push_back("end of input");
     const std::string *next_token = &(tokens[0]);
-    if (!nodes_[input_node_index].descriptor.Parse(node_names_temp, &next_token))
+    if (!nodes_[input_node_index].descriptor.Parse(node_names_temp,
+                                                   &next_token))
       KALDI_ERR << "Error parsing Descriptor in config line: "
                 << config->WholeLine();
     if (config->HasUnusedValues())

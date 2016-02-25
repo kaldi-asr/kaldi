@@ -1,7 +1,7 @@
 // nnet3/nnet-test-utils.h
 
 // Copyright   2015  Johns Hopkins University (author: Daniel Povey)
-
+// Copyright   2016  Daniel Galvez
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,9 @@ struct NnetGenerationOptions {
   bool allow_multiple_inputs;
   bool allow_multiple_outputs;
   bool allow_final_nonlinearity;
+  // if set to a value >0, the output-dim of the network
+  // will be set to this value.
+  int32 output_dim;
 
   NnetGenerationOptions():
       allow_context(true),
@@ -46,7 +49,8 @@ struct NnetGenerationOptions {
       allow_clockwork(true),
       allow_multiple_inputs(true),
       allow_multiple_outputs(false),
-      allow_final_nonlinearity(true) { }
+      allow_final_nonlinearity(true),
+      output_dim(-1) { }
 };
 
 /** Generates a sequence of at least one config files, output as strings, where
@@ -55,6 +59,11 @@ struct NnetGenerationOptions {
 void GenerateConfigSequence(const NnetGenerationOptions &opts,
                             std::vector<std::string> *configs);
 
+/// Generate a config string with a composite component composed only
+/// of block affine, repeated affine, and natural gradient repeated affine
+/// components.
+void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
+                                          std::vector<std::string> *configs);
 
 /**  This function computes an example computation request, for testing purposes.
      The "Simple" in the name means that it currently only supports neural nets

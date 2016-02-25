@@ -1,36 +1,31 @@
-# "queue.pl" uses qsub.  The options to it are
-# options to qsub.  If you have GridEngine installed,
-# change this to a queue you have access to.
-# Otherwise, use "run.pl", which will run jobs locally
-# (make sure your --num-jobs options are no more than
-# the number of cpus on your machine.
+# you can change cmd.sh depending on what type of queue you are using.
+# If you have no queueing system and want to run on a local machine, you
+# can change all instances 'queue.pl' to run.pl (but be careful and run
+# commands one by one: most recipes will exhaust the memory on your
+# machine).  queue.pl works with GridEngine (qsub).  slurm.pl works
+# with slurm.  Different queues are configured differently, with different
+# queue names and different ways of specifying things like memory;
+# to account for these differences you can create and edit the file
+# conf/queue.conf to match your queue's configuration.  Search for
+# conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
+# or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-#a) JHU cluster options
-#export train_cmd="queue.pl -l arch=*64"
-#export decode_cmd="queue.pl -l arch=*64,mem_free=2G,ram_free=2G"
-#export mkgraph_cmd="queue.pl -l arch=*64,ram_free=4G,mem_free=4G"
-#export cuda_cmd=run.pl
+export train_cmd="queue.pl --mem 4G"
+export decode_cmd="queue.pl --mem 4G"
+export mkgraph_cmd="queue.pl --mem 8G"
+# the use of cuda_cmd is deprecated but it's still sometimes used in nnet1
+# example scripts.
+export cuda_cmd="queue.pl --gpu 1"
 
-
-if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
-  export train_cmd="queue.pl -l arch=*64*"
-  export decode_cmd="queue.pl -l arch=*64* --mem 3G"
-  export mkgraph_cmd="queue.pl -l arch=*64* --mem 4G"
-  export cuda_cmd="queue.pl -l gpu=1"
-elif [[ $(hostname -f) == *.fit.vutbr.cz ]]; then
+# the rest of this file is present for historical reasons.
+# for cluster-specific configuration it's better to rely on conf/queue.conf.
+if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
   #b) BUT cluster options
-  queue="all.q@@blade,all.q@@speech,all.q@dellgpu*,all.q@supergpu*"
-  export train_cmd="queue.pl -q $queue -l ram_free=2500M,mem_free=2500M,matylda5=0.5"
-  export decode_cmd="queue.pl -q $queue -l ram_free=3000M,mem_free=3000M,matylda5=0.1"
-  export mkgraph_cmd="queue.pl -q $queue -l ram_free=4G,mem_free=4G,matylda5=3"
-  export cuda_cmd="queue.pl -q long.q@pcspeech-gpu,long.q@dellgpu1,long.q@pcgpu*,long.q@supergpu1 -l gpu=1" 
-else
-  echo "$0: you need to define options for your cluster."
-  exit 1;
+  queue="all.q@@blade,all.q@@speech"
+  gpu_queue="long.q@@gpu"
+  storage="matylda5"
+  export train_cmd="queue.pl -q $queue -l ram_free=1.5G,mem_free=1.5G,${storage}=0.5"
+  export decode_cmd="queue.pl -q $queue -l ram_free=2.5G,mem_free=2.5G,${storage}=0.1"
+  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
 fi
 
-#c) run locally...
-#export train_cmd=run.pl
-#export decode_cmd=run.pl
-#export cuda_cmd=run.pl
-#export mkgraph_cmd=run.pl

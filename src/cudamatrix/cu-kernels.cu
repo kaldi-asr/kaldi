@@ -175,17 +175,14 @@ __global__
 static void _add_diag_vec_mat(Real alpha, Real *mat, MatrixDim mat_dim,
                               const Real *vec, const Real *mat2, int mat2_row_stride,
                               int mat2_col_stride, Real beta) {
-  // Note from Dan: in this kernel, we make the x dimension correspond to the
-  // row index and y to the column index.  That was not always the case for
-  // earlier kernels written by others.
-  int i = blockIdx.y * blockDim.y + threadIdx.y; // row index
-  int j = blockIdx.x * blockDim.x + threadIdx.x; // column index
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // column index
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // row index
 
-  int index = i * mat_dim.stride + j,
-      index2 = i * mat2_row_stride + j * mat2_col_stride;
+  int index = j * mat_dim.stride + i,
+      index2 = j * mat2_row_stride + i * mat2_col_stride;
 
-  if (i < mat_dim.rows && j < mat_dim.cols) {
-    mat[index] = alpha * vec[i] * mat2[index2] + beta * mat[index];
+  if (i < mat_dim.cols && j < mat_dim.rows) {
+    mat[index] = alpha * vec[j] * mat2[index2] + beta * mat[index];
   }
 }
 
@@ -193,13 +190,12 @@ static void _add_diag_vec_mat(Real alpha, Real *mat, MatrixDim mat_dim,
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_tp(Real* A, const OtherReal* B, MatrixDim dmat) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-
-  if (i < dmat.rows && j < dmat.cols) {
-    int32_cuda index_B = (i * (i+1) / 2) + j;
-    int32_cuda index_A = i * dmat.stride + j;
-    if (j <= i) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dmat.cols && j < dmat.rows) {
+    int32_cuda index_B = (j * (j+1) / 2) + i;
+    int32_cuda index_A = j * dmat.stride + i;
+    if (i <= j) {
       A[index_A] = B[index_B];
     } else {
       A[index_A] = 0.0;
@@ -211,6 +207,8 @@ static void _copy_from_tp(Real* A, const OtherReal* B, MatrixDim dmat) {
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_tp_trans(Real* A, const OtherReal* B, MatrixDim dmat) {
+  // we interpret these indexes oppositely from normal, but it doesn't
+  // matter as it's invoked in a symmetric way.
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   // transpose the indices used to index the source TpMatrix.
@@ -226,31 +224,26 @@ static void _copy_from_tp_trans(Real* A, const OtherReal* B, MatrixDim dmat) {
 }
 
 
-// for this kernel, following the newer pattern, the x-dim is the row-index, the
-// y-dim is the col-index.
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_mat(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index.
-  int32_cuda index_out = j + i * d_out.stride;
-  int32_cuda index_in = j + i * d_in.stride;
-  if (i < d_out.rows && j < d_out.cols)
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;  // col-index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;  // row-index.
+  int32_cuda index_out = i + j * d_out.stride;
+  int32_cuda index_in = i + j * d_in.stride;
+  if (i < d_out.cols && j < d_out.rows)
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
 }
 
 
-
-// for this kernel, the x-dim is the row-index at the output, the y-dim is the
-// col-index at the output
 template<typename Real, typename OtherReal>
 __global__
 static void _copy_from_mat_trans(Real* mat_out, const OtherReal* mat_in, MatrixDim d_out, MatrixDim d_in) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // row-index out
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // col-index out
-  int32_cuda index_out = j + i * d_out.stride;
-  int32_cuda index_in = i + j * d_in.stride;
-  if (i < d_out.rows && j < d_out.cols)
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // col-index out
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // row-index out
+  int32_cuda index_out = i + j * d_out.stride;
+  int32_cuda index_in = j + i * d_in.stride;
+  if (j < d_out.rows && i < d_out.cols)
     mat_out[index_out] = static_cast<Real>(mat_in[index_in]);
 }
 
@@ -270,14 +263,6 @@ static void _copy_from_smat_trans(Real* mat_out, const MatrixElement<OtherReal>*
   if (smat_index >= d_in) return;
   int data_index = smat_in[smat_index].column * d_out.stride + smat_in[smat_index].row;
   mat_out[data_index] = smat_in[smat_index].weight;
-}
-
-template<typename Real, typename OtherReal>
-__global__
-static void _copy_from_smat_as_vec(Real* vec_out, const MatrixElement<OtherReal>* smat_in, MatrixIndexT_cuda d_in) {
-  int smat_index = blockIdx.x * blockDim.x + threadIdx.x;
-  if (smat_index >= d_in) return;
-  vec_out[smat_index] = smat_in[smat_index].weight;
 }
 
 template<typename Real>
@@ -312,25 +297,13 @@ static void _transpose_matrix(Real* mat, MatrixDim d) {
   mat[index_b] = a;
 }
 
-
-template<typename Real>
-__global__
-static void _copy_col_from_vec(Real* mat, const Real* v, int col, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  if ( i < d.rows ) {
-    int32_cuda index = col + i * d.stride;
-    mat[index] = v[i];
-  }
-}
-
-
 template<typename Real>
 __global__
 static void _apply_exp(Real* mat, MatrixDim d) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
   int32_cuda index = i + j * d.stride;
-  if ( i < d.cols && j < d.rows ) {
+  if (i < d.cols && j < d.rows) {
     mat[index] = exp(mat[index]);
   }
 }
@@ -380,8 +353,8 @@ static void _add_diag_packed(Real* mat, Real value, int dim) {
 template<typename Real>
 __global__
 static void _set_const(Real* mat, Real value, MatrixDim d) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;  // column
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;  // row
   int32_cuda index = i + j * d.stride;
   if (i < d.cols && j < d.rows)
     mat[index] = value;
@@ -581,12 +554,12 @@ static void _div_rows_vec(Real* mat, const Real* vec_div, MatrixDim d) {
 template<typename Real>
 __global__
 static void _add_mat(Real alpha, const Real* src, Real* dst, MatrixDim d, int src_stride) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
-  int32_cuda index = i + j*d.stride;
-  int32_cuda index_src = i + j*src_stride;
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;  // column index
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  int32_cuda index = i + j * d.stride;
+  int32_cuda index_src = i + j * src_stride;
   if (i < d.cols && j < d.rows)
-    dst[index] = alpha*src[index_src] + dst[index];
+    dst[index] = alpha * src[index_src] + dst[index];
 }
 
 template<typename Real>
@@ -721,18 +694,13 @@ __global__
 static void _add_mat_diag_vec(Real alpha, Real *mat, MatrixDim mat_dim,
                               const Real *mat2, int mat2_row_stride, int mat2_col_stride,
                               const Real *vec, Real beta) {
-  // Note from Dan: in this kernel, we make the x dimension correspond to the
-  // row index and y to the column index.  That was not always the case for
-  // earlier kernels written by others.
-  int i = blockIdx.x * blockDim.x + threadIdx.x; // row index
-  int j = blockIdx.y * blockDim.y + threadIdx.y; // column index
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // column index
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // row index
 
-  int index = i * mat_dim.stride + j,
-      index2 = i * mat2_row_stride + j * mat2_col_stride;
-
-  if (i < mat_dim.rows && j < mat_dim.cols) {
-    mat[index] = alpha * mat2[index2] * vec[j] + beta * mat[index];
-  }
+  int index = i + j * mat_dim.stride,
+      index2 = i * mat2_col_stride + j * mat2_row_stride;
+  if (j < mat_dim.rows && i < mat_dim.cols)
+    mat[index] = alpha * mat2[index2] * vec[i] + beta * mat[index];
 }
 
 template<typename Real>
@@ -787,22 +755,17 @@ static void _copy_from_vec_df(double* v_out, const Real* v_in, int dim) {
 
 
 // This kernel writes a copy of the vector "v_in" to each row of the matrix
-// "m_out".  the dimension of v_in should be equal to the #columns of m_out.  In
-// this kernel, following the new pattern, x corresponds to row-index and y to
-// column-index.
+// "m_out".  the dimension of v_in should be equal to the #columns of m_out.
 template<typename Real>
 __global__
 static void _copy_rows_from_vec(Real* m_out, MatrixDim d, const Real* v_in) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x; // row index.
-  int j = blockIdx.y * blockDim.y + threadIdx.y; // column index.
-
-  if (i < d.rows && j < d.cols) {
-    int index = i * d.stride + j;
-    m_out[index] = v_in[j];
+  int i = blockIdx.x * blockDim.x + threadIdx.x; // column index.
+  int j = blockIdx.y * blockDim.y + threadIdx.y; // row index.
+  if (i < d.cols && j < d.rows) {
+    int index = i + j * d.stride;
+    m_out[index] = v_in[i];
   }
 }
-
-
 
 template<typename Real>
 __global__
@@ -810,7 +773,7 @@ static void _copy_from_vec_fd(float* v_out, const Real* v_in, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   //  if (blockIdx.y > 0) return;
 
-  if ( i < dim) {
+  if (i < dim) {
     v_out[i] = (float) v_in[i];
   }
 }
@@ -968,15 +931,15 @@ static void _add_diag_mat_mat(
   int v_idx = i / threads_per_element,   // v_idx is the index into v that we are supposed to
       sub_idx = i % threads_per_element; // add to; 0 <= sub_idx < threads_per_element tells
                                          // us which block of elements we sum up.
-  if (v_idx >= v_dim) return;
-
-  Real sum = 0.0;
-  for (int j = sub_idx; j < M_cols; j += threads_per_element) {
-    int M_index = v_idx * M_row_stride + j * M_col_stride,
-        N_index = j * N_row_stride + v_idx * N_col_stride;
-    sum += M[M_index] * N[N_index];
+  if (v_idx < v_dim) {
+    Real sum = 0.0;
+    for (int j = sub_idx; j < M_cols; j += threads_per_element) {
+      int M_index = v_idx * M_row_stride + j * M_col_stride,
+          N_index = j * N_row_stride + v_idx * N_col_stride;
+      sum += M[M_index] * N[N_index];
+    }
+    temp_data[threadIdx.x] = sum;
   }
-  temp_data[threadIdx.x] = sum;
 
   // start_idx = threadIdx.x - sub_idx; // start of the position in temp_data
                                      // that we want to sum up.
@@ -996,7 +959,7 @@ static void _add_diag_mat_mat(
     __syncthreads();
     num_total_threads = half_point;
   }
-  if (sub_idx == 0) {
+  if (sub_idx == 0 && v_idx < v_dim) {
     v[v_idx] = beta * v[v_idx] + alpha * temp_data[threadIdx.x];
   }
 }
@@ -1010,18 +973,6 @@ static void _add_vec_vec(Real alpha, Real* v, const Real* x, const Real* y, Real
 
   if (i < dim)
     v[i] = alpha * x[i] * y[i] + beta * v[i];
-}
-
-
-template<typename Real>
-__global__
-static void _copy_col_from_mat(Real* v, int col, const Real* mat, MatrixDim dmat, int dim) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
-  int32_cuda index = col + i * dmat.stride;
-  // if (blockIdx.y > 0)  return;
-
-  if (i < dim)
-    v[i] = mat[index];
 }
 
 
@@ -1123,8 +1074,8 @@ __global__
 static void _cuda_matrix_add_elements(Real *data, MatrixDim dim, Real alpha, MatrixElement<Real>* x, int num_elements) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_elements)
-        return; 
-    data[x[i].row * dim.stride + x[i].column] += alpha * x[i].weight;    
+        return;
+    data[x[i].row * dim.stride + x[i].column] += alpha * x[i].weight;
 }
 
 template<typename Real>
@@ -1155,8 +1106,8 @@ static void _matrix_lookup(const Real *data, MatrixDim dim,
 template<typename Real>
 __global__
 static void _equal_element_mask(const Real *mat1, const Real *mat2, Real *mask, MatrixDim mat1_dim, int mat2_stride, int mask_stride) {
-  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; //col
-  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; //row
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x; // col
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y; // row
   int32_cuda index_mat1 = i + j*mat1_dim.stride;
   int32_cuda index_mat2 = i + j*mat2_stride;
   int32_cuda index_mask = i + j*mask_stride;
@@ -1201,7 +1152,6 @@ __global__
 static void _pvec_sum(Real* v, Real* g, int dim, int size) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;
   int start = size * i;
-  if (start >= dim) return;
   int end = start + size;
   if (end > dim) end = dim;
   __shared__ Real row_data[CU1DBLOCK];
@@ -1245,17 +1195,13 @@ static void _vec_apply_ceiling(Real *v, Real ceiling_val, float *count, int dim)
   }
 }
 
-// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
-// this is for no reason, really, I just happened to prefer this
-// at the time. [dan]
 template<typename Real>
 __global__
 static void _apply_pow(Real* mat, Real power, MatrixDim d) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i * d.stride + j;
-
-  if (i < d.rows && j < d.cols) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  int index = i + j * d.stride;
+  if (i < d.cols && j < d.rows) {
     if (power == 1.0)
       return;
     if (power == 2.0) {
@@ -1273,11 +1219,10 @@ static void _apply_pow(Real* mat, Real power, MatrixDim d) {
 template<typename Real>
 __global__
 static void _apply_pow_abs(Real* mat, Real power, bool include_sign, MatrixDim d) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i * d.stride + j;
-
-  if (i < d.rows && j < d.cols) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  int index = i + j * d.stride;
+  if (i < d.cols && j < d.rows) {
     if (include_sign == true && mat[index] < 0) {
       if (power == 1.0)
         mat[index] = -std::abs(mat[index]);
@@ -1304,27 +1249,22 @@ static void _apply_pow_abs(Real* mat, Real power, bool include_sign, MatrixDim d
   }
 }
 
-// Caution, here i/block{idx,dim}.x is the row index and j/block{idx,dim}.y is the col index.
-// this is for no reason, really, I just happened to prefer this
-// at the time. [dan]
 template<typename Real>
 __global__
 static void _apply_heaviside(Real* mat, MatrixDim d) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  int index = i * d.stride + j;
-
-  if (i < d.rows && j < d.cols) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  int index = i + j * d.stride;
+  if (i < d.cols && j < d.rows)
     mat[index] = (mat[index] > 0.0 ? 1.0 : 0.0);
-  }
 }
 
 
 template<typename Real>
 __global__
 static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
   int index = i + j * d.stride;
 
   if (i < d.cols && j < d.rows) {
@@ -1337,16 +1277,13 @@ static void _apply_floor(Real* mat, Real floor_val, MatrixDim d) {
 template<typename Real>
 __global__
 static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
-  // as it will be going forward.
-
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int index = reorder[j],
-        dst_index = i * dst_dim.stride + j;
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int index = reorder[i],
+        dst_index = j * dst_dim.stride + i;
     if (index >= 0) {
-      int src_index = i * src_stride + reorder[j];
+      int src_index = j * src_stride + reorder[i];
       Real val = src[src_index];
       dst[dst_index] = val;
     } else {
@@ -1357,17 +1294,15 @@ static void _copy_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
 
 template<typename Real>
 __global__
-static void _add_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
-  // as it will be going forward.
-
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int index = reorder[j],
-        dst_index = i * dst_dim.stride + j;
+static void _add_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder,
+                      MatrixDim dst_dim, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int index = reorder[i],
+        dst_index = j * dst_dim.stride + i;
     if (index >= 0) {
-      int src_index = i * src_stride + reorder[j];
+      int src_index = j * src_stride + index;
       Real val = src[src_index];
       dst[dst_index] += val;
     }
@@ -1376,17 +1311,15 @@ static void _add_cols(Real* dst, const Real *src, const MatrixIndexT_cuda* reord
 
 template<typename Real>
 __global__
-static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
-  // Note: in this kernel, the x dimension corresponds to rows and the y to columns,
-  // as it will be going forward.
-
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int index = reorder[i],
-        dst_index = i * dst_dim.stride + j;
+static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reorder,
+                       MatrixDim dst_dim, int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int index = reorder[j],
+        dst_index = j * dst_dim.stride + i;
     if (index >= 0) {
-      int src_index = reorder[i] * src_stride + j;
+      int src_index = reorder[j] * src_stride + i;
       Real val = src[src_index];
       dst[dst_index] = val;
     } else {
@@ -1398,12 +1331,13 @@ static void _copy_rows(Real* dst, const Real *src, const MatrixIndexT_cuda* reor
 template<typename Real>
 __global__
 static void _copy_rows(Real* dst, const Real *const *src, MatrixDim dst_dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int dst_index = i * dst_dim.stride + j;
-    if (src[i] != NULL) {
-      dst[dst_index] = src[i][j];
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int dst_index = j * dst_dim.stride + i;
+    const Real *pointer = src[j];
+    if (pointer != NULL) {
+      dst[dst_index] = pointer[i];
     } else {
       dst[dst_index] = 0;
     }
@@ -1414,11 +1348,12 @@ template<typename Real>
 __global__
 static void _copy_to_rows(Real* const* dst,
                           const Real *src, MatrixDim src_dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < src_dim.rows && j < src_dim.cols) {
-    if (dst[i] != NULL) {
-      dst[i][j] = src[i * src_dim.stride + j];
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < src_dim.cols && j < src_dim.rows) {
+    Real *pointer = dst[j];
+    if (pointer != NULL) {
+      pointer[i] = src[j * src_dim.stride + i];
     }
   }
 }
@@ -1428,12 +1363,12 @@ __global__
 static void _add_rows(Real alpha, Real* dst, const Real *src,
                      const MatrixIndexT_cuda* reorder,
                      MatrixDim dst_dim, int src_stride) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int dst_index = i * dst_dim.stride + j;
-    if (reorder[i] >= 0) {
-      int src_index = reorder[i] * src_stride + j;
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int dst_index = j * dst_dim.stride + i;
+    if (reorder[j] >= 0) {
+      int src_index = reorder[j] * src_stride + i;
       dst[dst_index] += alpha * src[src_index];
     }
   }
@@ -1443,12 +1378,12 @@ template<typename Real>
 __global__
 static void _add_rows(Real alpha,
                       Real* dst, const Real *const *src, MatrixDim dst_dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dst_dim.rows && j < dst_dim.cols) {
-    int dst_index = i * dst_dim.stride + j;
-    if (src[i] != NULL) {
-      dst[dst_index] += alpha * src[i][j];
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int dst_index = j * dst_dim.stride + i;
+    if (src[j] != NULL) {
+      dst[dst_index] += alpha * src[j][i];
     }
   }
 }
@@ -1457,11 +1392,11 @@ template<typename Real>
 __global__
 static void _add_to_rows(Real alpha,
                          Real* const* dst, const Real *src, MatrixDim src_dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < src_dim.rows && j < src_dim.cols) {
-    if (dst[i] != NULL) {
-      dst[i][j] += alpha * src[i * src_dim.stride + j];
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < src_dim.cols && j < src_dim.rows) {
+    if (dst[j] != NULL) {
+      dst[j][i] += alpha * src[j * src_dim.stride + i];
     }
   }
 }
@@ -1642,17 +1577,14 @@ static void _blockadd_mat_blockmat_trans(Real *data, MatrixDim dim, const Real *
   }
 }
 
-
-// Since this is a newer kernel, x is the row-index and y is the
-// column-index.
 template<typename Real>
 __global__
 static void _sum_column_ranges(Real *data, MatrixDim dim,
                                const Real *src_data,
                                MatrixDim src_dim,
                                const Int32Pair *indices) {
-  int row = blockIdx.x * blockDim.x + threadIdx.x;
-  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
   if (row >= dim.rows || col >= dim.cols)
     return;
   int dst_index = row * dim.stride + col,
@@ -1668,8 +1600,8 @@ template<typename Real>
 __global__
 static void _add_row_ranges(Real *data, MatrixDim dim, const Real *src_data,
                             MatrixDim src_dim, const Int32Pair *indexes) {
-  int row = blockIdx.x * blockDim.x + threadIdx.x;
-  int col = blockIdx.y * blockDim.y + threadIdx.y;
+  int col = blockIdx.x * blockDim.x + threadIdx.x;
+  int row = blockIdx.y * blockDim.y + threadIdx.y;
   if (row >= dim.rows || col >= dim.cols)
     return;
   int dst_index = row * dim.stride + col;
@@ -2023,10 +1955,10 @@ static void _vec_copy_diag_from_packed(Real* y, const Real* x, int dim) {
 template<typename Real>
 __global__
 static void _copy_from_sp(const Real* x, Real* y, MatrixDim dim) {
-  int i = blockIdx.x * blockDim.x + threadIdx.x;
-  int j = blockIdx.y * blockDim.y + threadIdx.y;
-  if (i < dim.rows && j < dim.cols) {
-    int dst_index = i * dim.stride + j, src_index;
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // column index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  //
+  if (i < dim.cols && j < dim.rows) {
+    int dst_index = i + j * dim.stride, src_index;
     if (j <= i) {  // no transpose
       src_index = (i * (i+1) / 2) + j;
     } else { // transpose.
@@ -2194,11 +2126,6 @@ void cudaFD_copy_from_tp(dim3 Gr, dim3 Bl, float* A, const double* B, MatrixDim 
   _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
 }
 
-
-void cudaF_copy_col_from_vec(int Gr, int Bl, float* mat, const float* v, int col, MatrixDim d) {
-  _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);
-}
-
 void cudaF_transpose_matrix(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _transpose_matrix<<<Gr,Bl>>>(mat, d);
 }
@@ -2217,7 +2144,6 @@ void cudaF_apply_pow_abs(dim3 Gr, dim3 Bl, float* mat, float power, bool include
 
 void cudaF_apply_heaviside(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_heaviside<<<Gr,Bl>>>(mat, d);
-
 }
 
 void cudaF_copy_cols(dim3 Gr, dim3 Bl, float* dst, const float* src, const MatrixIndexT_cuda* reorder, MatrixDim dst_dim, int src_stride) {
@@ -2600,10 +2526,6 @@ void cudaF_copy_rows_from_vec(dim3 Gr, dim3 Bl, float *mat_out, MatrixDim d_out,
   _copy_rows_from_vec<<<Gr,Bl>>>(mat_out, d_out, v_in);
 }
 
-void cudaF_copy_col_from_mat(int Gr, int Bl, float* v, int col, const float* mat, MatrixDim dmat, int dim) {
-  _copy_col_from_mat<<<Gr,Bl>>>(v,col,mat,dmat,dim);
-}
-
 void cudaF_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const float* mat, MatrixDim dmat, int dim) {
   _copy_col_from_mat_df<<<Gr,Bl>>>(v,col,mat,dmat,dim);
 }
@@ -2664,11 +2586,6 @@ void cudaD_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const double* B, MatrixDim 
 }
 void cudaDF_copy_from_tp(dim3 Gr, dim3 Bl, double* A, const float* B, MatrixDim dmat) {
   _copy_from_tp<<<Gr,Bl>>>(A,B,dmat);
-}
-
-
-void cudaD_copy_col_from_vec(int Gr, int Bl, double* mat, const double* v, int col, MatrixDim d) {
-  _copy_col_from_vec<<<Gr,Bl>>>(mat,v,col,d);
 }
 
 void cudaD_transpose_matrix(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
@@ -2904,10 +2821,6 @@ void cudaD_add_diag_mat_mat(int Gr, int Bl, double alpha, double* v, int v_dim, 
 
 void cudaD_add_vec_vec(int Gr, int Bl, double alpha, double* v, const double* x, const double* y, double beta, int dim) {
   _add_vec_vec<<<Gr,Bl>>>(alpha,v,x,y,beta,dim);
-}
-
-void cudaD_copy_col_from_mat(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim) {
-  _copy_col_from_mat<<<Gr,Bl>>>(v,col,mat,dmat,dim);
 }
 
 void cudaD_copy_col_from_mat_df(int Gr, int Bl, double* v, int col, const double* mat, MatrixDim dmat, int dim) {
@@ -3154,19 +3067,6 @@ void cuda_copy_from_smat_df_trans(dim3 Gr, dim3 Bl, double* mat_out, const Matri
 }
 void cuda_copy_from_smat_dd_trans(dim3 Gr, dim3 Bl, double* mat_out, const MatrixElement<double>* smat_in, MatrixDim d_out, MatrixIndexT_cuda d_in) {
   _copy_from_smat_trans<<<Gr,Bl>>>(mat_out, smat_in, d_out, d_in);
-}
-
-void cuda_copy_from_smat_as_vec_ff(dim3 Gr, dim3 Bl, float* vec_out, const MatrixElement<float>* smat_in, MatrixIndexT_cuda d_in) {
-  _copy_from_smat_as_vec<<<Gr,Bl>>>(vec_out, smat_in, d_in);
-}
-void cuda_copy_from_smat_as_vec_fd(dim3 Gr, dim3 Bl, float* vec_out, const MatrixElement<double>* smat_in, MatrixIndexT_cuda d_in) {
-  _copy_from_smat_as_vec<<<Gr,Bl>>>(vec_out, smat_in, d_in);
-}
-void cuda_copy_from_smat_as_vec_df(dim3 Gr, dim3 Bl, double* vec_out, const MatrixElement<float>* smat_in, MatrixIndexT_cuda d_in) {
-  _copy_from_smat_as_vec<<<Gr,Bl>>>(vec_out, smat_in, d_in);
-}
-void cuda_copy_from_smat_as_vec_dd(dim3 Gr, dim3 Bl, double* vec_out, const MatrixElement<double>* smat_in, MatrixIndexT_cuda d_in) {
-  _copy_from_smat_as_vec<<<Gr,Bl>>>(vec_out, smat_in, d_in);
 }
 
 void cudaF_trace_mat_smat(dim3 Gr, dim3 Bl, const float* mat_in, const MatrixElement<float>* smat_in, MatrixDim mat_d_in, MatrixIndexT_cuda smat_d_in, float* trace_vec_out) {

@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 // Copyright      2015  Vijayaditya Peddinti
+// Copyright      2016  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -35,7 +36,9 @@ void GenerateConfigSequenceSimplest(
   std::ostringstream os;
 
   int32 input_dim = 10 + Rand() % 20,
-       output_dim = 100 + Rand() % 200;
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200);
 
 
   os << "component name=affine1 type=AffineComponent input-dim="
@@ -62,7 +65,9 @@ void GenerateConfigSequenceSimpleContext(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-       output_dim = 100 + Rand() % 200;
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200);
 
   os << "component name=affine1 type=AffineComponent input-dim="
      << spliced_dim << " output-dim=" << output_dim << std::endl;
@@ -100,7 +105,9 @@ void GenerateConfigSequenceSimple(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   bool use_final_nonlinearity = (opts.allow_final_nonlinearity &&
                                  RandInt(0, 1) == 0);
@@ -171,7 +178,9 @@ void GenerateConfigSequenceRnn(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
@@ -228,7 +237,9 @@ void GenerateConfigSequenceRnnClockwork(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       hidden_dim = 40 + Rand() % 50;
   os << "component name=affine1 type=NaturalGradientAffineComponent input-dim="
      << spliced_dim << " output-dim=" << hidden_dim << std::endl;
@@ -318,7 +329,9 @@ void GenerateConfigSequenceLstm(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       cell_dim = 40 + Rand() % 50,
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 1));
 
@@ -474,7 +487,9 @@ void GenerateConfigSequenceLstmType2(
 
   int32 input_dim = 10 + Rand() % 20,
       spliced_dim = input_dim * splice_context.size(),
-      output_dim = 100 + Rand() % 200,
+      output_dim = (opts.output_dim > 0 ?
+                    opts.output_dim :
+                    100 + Rand() % 200),
       cell_dim = 40 + Rand() % 50,
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 2));
 
@@ -600,38 +615,6 @@ void GenerateConfigSequenceCnn(
     std::vector<std::string> *configs) {
   std::ostringstream os;
 
-  int32 pool_stride = 5 + Rand() % 10, pool_size = 2 + Rand() % 3,
-	num_pools = 1 + Rand() % 10;
-  int32 num_patches = num_pools * pool_size;
-  int32 patch_step = 1 + Rand() % 4, patch_dim = 4 + Rand () % 5,
-	patch_stride = (num_patches - 1) * patch_step + patch_dim;
-  int32 num_splice = 5 + Rand() % 10, num_filters = pool_stride;
-
-  int32 input_dim = patch_stride * num_splice,
-	hidden_dim = num_patches * num_filters,
-        output_dim = num_pools * pool_stride;
-
-  os << "component name=conv type=Convolutional1dComponent input-dim="
-     << input_dim << " output-dim=" << hidden_dim
-     << " patch-dim=" << patch_dim << " patch-step=" << patch_step
-     << " patch-stride=" << patch_stride << std::endl;
-  os << "component name=maxpooling type=MaxpoolingComponent input-dim="
-     << hidden_dim << " output-dim=" << output_dim
-     << " pool-size=" << pool_size << " pool-stride=" << pool_stride
-     << std::endl;
-
-  os << "input-node name=input dim=" << input_dim << std::endl;
-  os << "component-node name=conv_node component=conv input=input\n";
-  os << "component-node name=maxpooling_node component=maxpooling input=conv_node\n";
-  os << "output-node name=output input=maxpooling_node\n";
-  configs->push_back(os.str());
-}
-
-void GenerateConfigSequenceCnn2d(
-    const NnetGenerationOptions &opts,
-    std::vector<std::string> *configs) {
-  std::ostringstream os;
-
 
   int32 input_x_dim = 10 + Rand() % 20,
         input_y_dim = 10 + Rand() % 20,
@@ -668,12 +651,109 @@ void GenerateConfigSequenceCnn2d(
      << " input-vectorization-order=" << vectorization
      << std::endl;
 
+  int32 conv_output_x_dim = (1 + (input_x_dim - filt_x_dim) / filt_x_step);
+  int32 conv_output_y_dim = (1 + (input_y_dim - filt_y_dim) / filt_y_step);
+  int32 conv_output_z_dim = num_filters;
+  int32 pool_x_size = 1 + Rand() % conv_output_x_dim;
+  int32 pool_y_size = 1 + Rand() % conv_output_y_dim;
+  int32 pool_z_size = 1 + Rand() % conv_output_z_dim;
+  int32 pool_x_step = 1;
+  int32 pool_y_step = 1;
+  int32 pool_z_step = 1;
+  do {
+    pool_x_step = (1 + Rand() % pool_x_size);
+  } while((conv_output_x_dim - pool_x_size) % pool_x_step);
+  do {
+    pool_y_step = (1 + Rand() % pool_y_size);
+  } while((conv_output_y_dim - pool_y_size) % pool_y_step);
+  do {
+    pool_z_step = (1 + Rand() % pool_z_size);
+  } while((conv_output_z_dim - pool_z_size) % pool_z_step);
+
+  os << "component name=maxpooling type=MaxpoolingComponent "
+     << " input-x-dim=" << conv_output_x_dim
+     << " input-y-dim=" << conv_output_y_dim
+     << " input-z-dim=" << conv_output_z_dim
+     << " pool-x-size=" << pool_x_size
+     << " pool-y-size=" << pool_y_size
+     << " pool-z-size=" << pool_z_size
+     << " pool-x-step=" << pool_x_step
+     << " pool-y-step=" << pool_y_step
+     << " pool-z-step=" << pool_z_step
+     << std::endl;
+
   os << "input-node name=input dim=" << (input_x_dim * input_y_dim * input_z_dim) << std::endl;
   os << "component-node name=conv_node component=conv input=input\n";
+  os << "component-node name=maxpooling_node component=maxpooling input=conv_node\n";
   os << "output-node name=output input=conv_node\n";
   configs->push_back(os.str());
 }
 
+// generates a config sequence involving DistributeComponent.
+void GenerateConfigSequenceDistribute(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  int32 output_dim = (opts.output_dim > 0 ? opts.output_dim : 100);
+  int32 x_expand = RandInt(1, 5), after_expand_dim = RandInt(10, 20),
+      input_dim = x_expand * after_expand_dim;
+  std::ostringstream os;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component name=distribute type=DistributeComponent input-dim="
+     << input_dim << " output-dim=" << after_expand_dim << std::endl;
+  os << "component-node name=distribute component=distribute input=input\n";
+  os << "component name=affine type=AffineComponent input-dim="
+     << after_expand_dim << " output-dim=" << output_dim << std::endl;
+  os << "component-node name=affine component=affine input=distribute\n";
+  os << "output-node name=output input=Sum(";
+  for (int32 i = 0; i < x_expand; i++) {
+    if (i > 0) os << ", ";
+    os << "ReplaceIndex(affine, x, " << i << ")";
+  }
+  os << ")\n";
+  configs->push_back(os.str());
+}
+
+/// Generate a config string with a composite component composed only
+/// of block affine, repeated affine, and natural gradient repeated affine
+/// components.
+void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
+                                          std::vector<std::string> *configs) {
+  int32 num_components = RandInt(1,5);
+  int32 input_dim = 10 * RandInt(1,10);
+  if (opts.output_dim > 0) {
+    KALDI_WARN  << "This function doesn't take a requested output_dim due to "
+      "implementation complications.";
+  }
+  int32 max_rows_process = 512 + 512 * RandInt(1,3);
+  std::ostringstream os;
+  os << "component name=composite1 type=CompositeComponent max-rows-process=" 
+     << max_rows_process << " num-components=" << num_components;
+
+  int32 types_length = 3;
+  std::string types[] = {"BlockAffineComponent",
+                         "RepeatedAffineComponent",
+                         "NaturalGradientRepeatedAffineComponent"};
+  int32 last_output_dim = input_dim;
+  // components within a composite component are indexed from 1.
+  for(int32 i = 1; i <= num_components; i++) {
+    os << " component" << i << "=";
+    int32 rand_index = RandInt(0, types_length - 1);
+    std::string rand_type = types[rand_index];
+    os << "'type=" << rand_type << " input-dim=" << last_output_dim;
+    int32 current_output_dim = 10 * RandInt(1,10);
+    // must be a divisor or current_output_dim and last_output_dim
+    int32 num_repeats = 10;
+    os << " output-dim=" << current_output_dim;
+    std::string repeats_string = (rand_type == "BlockAffineComponent") ? "num-blocks": "num-repeats";
+    os << " " << repeats_string << "=" << num_repeats << "'";
+    last_output_dim = current_output_dim;
+  }
+  os << std::endl << std::endl;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component-node name=composite1 component=composite1 input=input\n";
+  os << "output-node name=output input=composite1\n";
+  configs->push_back(os.str());
+}
 
 void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
@@ -724,11 +804,8 @@ start:
       GenerateConfigSequenceCnn(opts, configs);
       break;
     case 8:
-      if (!opts.allow_nonlinearity)
-        goto start;
-      GenerateConfigSequenceCnn2d(opts, configs);
+      GenerateConfigSequenceDistribute(opts, configs);
       break;
-
     default:
       KALDI_ERR << "Error generating config sequence.";
   }
@@ -793,7 +870,7 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 21);
+  int32 n = RandInt(0, 26);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -806,8 +883,12 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 1: {
+      BaseFloat target_rms = (RandInt(1, 200) / 100.0);
+      std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
-      os << "dim=" << RandInt(1, 50);
+      os << "dim=" << RandInt(1, 50)
+         << " target-rms=" << target_rms
+         << " add-log-stddev=" << add_log_stddev;
       break;
     }
     case 2: {
@@ -902,25 +983,6 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       break;
     }
     case 17: {
-      *component_type = "Convolutional1dComponent";
-      int32 patch_stride = 10 + Rand() % 50, patch_step = 1 + Rand() % 4,
-	    patch_dim = 4 + Rand () % 5;
-
-      // decrease patch_stride so that
-      // (patch_stride - patch_dim) % patch_step == 0
-      patch_stride = patch_stride - ((patch_stride - patch_dim) % patch_step);
-
-      int32 num_patches = 1 + (patch_stride - patch_dim) / patch_step;
-      int32 num_splice = 5 + Rand() % 10, num_filters = 5 + Rand() % 10;
-      int32 input_dim = patch_stride * num_splice;
-      int32 output_dim = num_patches * num_filters;
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim
-         << " patch-dim=" << patch_dim << " patch-step=" << patch_step
-         << " patch-stride=" << patch_stride
-         << " learning-rate=" << learning_rate;
-      break;
-    }
-    case 18: {
       int32 input_vectorization = Rand() % 2;
       std::string vectorization;
       if (input_vectorization == 0) {
@@ -958,19 +1020,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       // TODO : add test for file based initialization. But confirm how to write
       // a file which is not going to be overwritten by other components
     }
-    case 19: {
-      *component_type = "MaxpoolingComponent";
-      int32 pool_stride = 5 + Rand() % 10,
-      pool_size = 2 + Rand() % 3,
-      num_pools = 1 + Rand() % 10;
-      int32 output_dim = num_pools * pool_stride;
-      int32 num_patches = num_pools * pool_size;
-      int32 input_dim = pool_stride * num_patches;
-      os << "input-dim=" << input_dim << " output-dim=" << output_dim
-         << " pool-size=" << pool_size << " pool-stride=" << pool_stride;
-      break;
-    }
-    case 20: {
+    case 18: {
       *component_type = "PermuteComponent";
       int32 input_dim = 10 + Rand() % 100;
       std::vector<int32> column_map(input_dim);
@@ -981,10 +1031,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       for (int32 i = 0; i < input_dim-1; i++)
         buffer << column_map[i] << ",";
       buffer << column_map.back();
-      os << "new-column-order=" << buffer.str();
+      os << "column-map=" << buffer.str();
       break;
     }
-    case 21: {
+    case 19: {
       *component_type = "PerElementOffsetComponent";
       std::string param_config = RandInt(0, 1)?
                                  " param-mean=0.0 param-stddev=0.0":
@@ -993,7 +1043,99 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << param_config;
       break;
     }
-
+    case 20: {
+      *component_type = "SumReduceComponent";
+      int32 output_dim = RandInt(1, 50), group_size = RandInt(1, 15),
+          input_dim = output_dim * group_size;
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim;
+      break;
+    }
+    case 21: {
+      *component_type = "CompositeComponent";
+      int32 cur_dim = RandInt(20, 30), num_components = RandInt(1, 3),
+          max_rows_process = RandInt(1, 30);
+      os << "num-components=" << num_components
+         << " max-rows-process=" << max_rows_process;
+      std::vector<std::string> sub_configs;
+      for (int32 i = 1; i <= num_components; i++) {
+        if (RandInt(1, 3) == 1) {
+          os << " component" << i << "='type=RectifiedLinearComponent dim="
+             << cur_dim << "'";
+        } else if (RandInt(1, 2) == 1) {
+          os << " component" << i << "='type=TanhComponent dim="
+             << cur_dim << "'";
+        } else {
+          int32 next_dim = RandInt(20, 30);
+          os << " component" << i << "='type=AffineComponent input-dim="
+             << cur_dim << " output-dim=" << next_dim << "'";
+          cur_dim = next_dim;
+        }
+      }
+      break;
+    }
+    case 22: {
+      *component_type = "SumGroupComponent";
+      int32 num_groups = RandInt(1, 50),
+        input_dim = num_groups * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << num_groups;
+      break;
+    }
+    case 23: {
+      *component_type = "RepeatedAffineComponent";
+      int32 num_repeats = RandInt(1, 50),
+          input_dim = num_repeats * RandInt(1, 15),
+          output_dim = num_repeats * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 24: {
+      *component_type = "BlockAffineComponent";
+      int32 num_blocks = RandInt(1, 50),
+          input_dim = num_blocks * RandInt(1, 15),
+          output_dim = num_blocks * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-blocks=" << num_blocks;
+      break;
+    }
+    case 25: {
+      *component_type = "NaturalGradientRepeatedAffineComponent";
+      int32 num_repeats = RandInt(1, 50),
+          input_dim = num_repeats * RandInt(1, 15),
+          output_dim = num_repeats * RandInt(1, 15);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " num-repeats=" << num_repeats;
+      break;
+    }
+    case 26: {
+      *component_type = "MaxpoolingComponent";
+      int32 input_x_dim = 5 + Rand() % 10,
+            input_y_dim = 5 + Rand() % 10,
+            input_z_dim = 5 + Rand() % 10;
+      int32 pool_x_size = 1 + Rand() % input_x_dim,
+            pool_y_size = 1 + Rand() % input_y_dim,
+            pool_z_size = 1 + Rand() % input_z_dim;
+      int32 pool_x_step = (1 + Rand() % pool_x_size),
+            pool_y_step = (1 + Rand() % pool_y_size),
+            pool_z_step = (1 + Rand() % pool_z_size);
+      // adjusting input dim to ensure divisibility
+      int32 remainder = (input_x_dim - pool_x_size) % pool_x_step;
+      input_x_dim = input_x_dim - remainder;
+      remainder = (input_y_dim - pool_y_size) % pool_y_step;
+      input_y_dim = input_y_dim - remainder;
+      remainder = (input_z_dim - pool_z_size) % pool_z_step;
+      input_z_dim = input_z_dim - remainder;
+      os << " input-x-dim=" << input_x_dim
+         << " input-y-dim=" << input_y_dim
+         << " input-z-dim=" << input_z_dim
+         << " pool-x-size=" << pool_x_size
+         << " pool-y-size=" << pool_y_size
+         << " pool-z-size=" << pool_z_size
+         << " pool-x-step=" << pool_x_step
+         << " pool-y-step=" << pool_y_step
+         << " pool-z-step=" << pool_z_step;
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }

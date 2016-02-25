@@ -1,9 +1,8 @@
 // nnet3/nnet-utils.cc
 
-// nnet3/nnet-utils.cc
-
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
-
+//                2016  Daniel Galvez
+//
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-simple-component.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -42,10 +42,8 @@ int32 NumInputNodes(const Nnet &nnet) {
 
 
 bool IsSimpleNnet(const Nnet &nnet) {
-  // check that we have just one output node and it is
-  // called "output".
-  if (NumOutputNodes(nnet) != 1 ||
-      nnet.GetNodeIndex("output") == -1 ||
+  // check that we have an output node and called "output".
+  if (nnet.GetNodeIndex("output") == -1 ||
       !nnet.IsOutputNode(nnet.GetNodeIndex("output")))
     return false;
   // check that there is an input node named "input".
@@ -267,9 +265,14 @@ void SetLearningRate(BaseFloat learning_rate,
 }
 
 void ScaleNnet(BaseFloat scale, Nnet *nnet) {
-  for (int32 c = 0; c < nnet->NumComponents(); c++) {
-    Component *comp = nnet->GetComponent(c);
-    comp->Scale(scale);
+  if (scale == 1.0) return;
+  else if (scale == 0.0) {
+    SetZero(false, nnet);
+  } else {
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->Scale(scale);
+    }
   }
 }
 
@@ -355,6 +358,69 @@ int32 NumUpdatableComponents(const Nnet &dest) {
   }
   return ans;
 }
+
+void ConvertRepeatedToBlockAffine(CompositeComponent *c_component) {
+  for(int32 i = 0; i < c_component->NumComponents(); i++) {
+    const Component *c = c_component->GetComponent(i);
+    KALDI_ASSERT(c->Type() != "CompositeComponent" &&
+                 "Nesting CompositeComponent within CompositeComponent is not allowed.\n"
+                 "(We may change this as more complicated components are introduced.)");
+
+    if(c->Type() == "RepeatedAffineComponent" ||
+       c->Type() == "NaturalGradientRepeatedAffineComponent") {
+      // N.B.: NaturalGradientRepeatedAffineComponent is a subclass of
+      // RepeatedAffineComponent.
+      const RepeatedAffineComponent *rac =
+        dynamic_cast<const RepeatedAffineComponent*>(c);
+      KALDI_ASSERT(rac != NULL);
+      BlockAffineComponent *bac = new BlockAffineComponent(*rac);
+      // following call deletes rac
+      c_component->SetComponent(i, bac);
+    }
+  }
+}
+
+void ConvertRepeatedToBlockAffine(Nnet *nnet) {
+  for(int32 i = 0; i < nnet->NumComponents(); i++) {
+    const Component *const_c = nnet->GetComponent(i);
+    if(const_c->Type() == "RepeatedAffineComponent" ||
+       const_c->Type() == "NaturalGradientRepeatedAffineComponent") {
+      // N.B.: NaturalGradientRepeatedAffineComponent is a subclass of
+      // RepeatedAffineComponent.
+      const RepeatedAffineComponent *rac =
+        dynamic_cast<const RepeatedAffineComponent*>(const_c);
+      KALDI_ASSERT(rac != NULL);
+      BlockAffineComponent *bac = new BlockAffineComponent(*rac);
+      // following call deletes rac
+      nnet->SetComponent(i, bac);
+    } else if (const_c->Type() == "CompositeComponent") {
+      // We must modify the composite component, so we use the
+      // non-const GetComponent() call here.
+      Component *c = nnet->GetComponent(i);
+      CompositeComponent *cc = dynamic_cast<CompositeComponent*>(c);
+      KALDI_ASSERT(cc != NULL);
+      ConvertRepeatedToBlockAffine(cc);
+    }
+  }
+}
+
+std::string NnetInfo(const Nnet &nnet) {
+  std::ostringstream ostr;
+  if (IsSimpleNnet(nnet)) {
+    int32 left_context, right_context;
+    // this call will crash if the nnet is not 'simple'.
+    ComputeSimpleNnetContext(nnet, &left_context, &right_context);
+    ostr << "left-context: " << left_context << "\n";
+    ostr << "right-context: " << right_context << "\n";
+  }
+  ostr << "input-dim: " << nnet.InputDim("input") << "\n";
+  ostr << "ivector-dim: " << nnet.InputDim("ivector") << "\n";
+  ostr << "output-dim: " << nnet.OutputDim("output") << "\n";
+  ostr << "# Nnet info follows.\n";
+  ostr << nnet.Info();
+  return ostr.str();
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

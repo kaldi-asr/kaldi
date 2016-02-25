@@ -54,7 +54,7 @@ Real SparseVector<Real>::Sum() const {
 
 template <typename Real>
 template <typename OtherReal>
-void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
+void SparseVector<Real>::CopyElementsToVec(VectorBase<OtherReal> *vec) const {
   KALDI_ASSERT(vec->Dim() == this->dim_);
   vec->SetZero();
   OtherReal *other_data = vec->Data();
@@ -63,10 +63,14 @@ void SparseVector<Real>::CopyToVec(VectorBase<OtherReal> *vec) const {
   for (; iter != end; ++iter)
     other_data[iter->first] = iter->second;
 }
-template void SparseVector<float>::CopyToVec(VectorBase<float> *vec) const;
-template void SparseVector<float>::CopyToVec(VectorBase<double> *vec) const;
-template void SparseVector<double>::CopyToVec(VectorBase<float> *vec) const;
-template void SparseVector<double>::CopyToVec(VectorBase<double> *vec) const;
+template
+void SparseVector<float>::CopyElementsToVec(VectorBase<float> *vec) const;
+template
+void SparseVector<float>::CopyElementsToVec(VectorBase<double> *vec) const;
+template
+void SparseVector<double>::CopyElementsToVec(VectorBase<float> *vec) const;
+template
+void SparseVector<double>::CopyElementsToVec(VectorBase<double> *vec) const;
 
 template <typename Real>
 template <typename OtherReal>
@@ -345,7 +349,7 @@ void SparseMatrix<Real>::CopyToMat(MatrixBase<OtherReal> *other,
     KALDI_ASSERT(other->NumRows() == num_rows);
     for (MatrixIndexT i = 0; i < num_rows; i++) {
       SubVector<OtherReal> vec(*other, i);
-      rows_[i].CopyToVec(&vec);
+      rows_[i].CopyElementsToVec(&vec);
     }
   } else {
     OtherReal *other_col_data = other->Data();
@@ -377,23 +381,18 @@ void SparseMatrix<double>::CopyToMat(MatrixBase<double> *other,
                                     MatrixTransposeType trans) const;
 
 template <typename Real>
-template <typename OtherReal>
-void SparseMatrix<Real>::CopyToVec(VectorBase<OtherReal> *other) const {
+void SparseMatrix<Real>::CopyElementsToVec(VectorBase<Real> *other) const {
   KALDI_ASSERT(other->Dim() == NumElements());
-  OtherReal *dst_data = other->Data();
+  Real *dst_data = other->Data();
   int32 dst_index = 0;
   for (int32 i = 0; i < rows_.size(); ++i) {
     for (int32 j = 0; j < rows_[i].NumElements(); ++j) {
       dst_data[dst_index] =
-          static_cast<OtherReal>(rows_[i].GetElement(j).second);
+          static_cast<Real>(rows_[i].GetElement(j).second);
       dst_index++;
     }
   }
 }
-template void SparseMatrix<float>::CopyToVec(VectorBase<float> *other) const;
-template void SparseMatrix<float>::CopyToVec(VectorBase<double> *other) const;
-template void SparseMatrix<double>::CopyToVec(VectorBase<float> *other) const;
-template void SparseMatrix<double>::CopyToVec(VectorBase<double> *other) const;
 
 template <typename Real>
 template <typename OtherReal>
@@ -1098,6 +1097,13 @@ Real SparseVector<Real>::Max(int32 *index_out) const {
   *index_out = index;
   return 0.0;
 }
+
+void GeneralMatrix::Swap(GeneralMatrix *other) {
+  mat_.Swap(&(other->mat_));
+  cmat_.Swap(&(other->cmat_));
+  smat_.Swap(&(other->smat_));
+}
+
 
 template class SparseVector<float>;
 template class SparseVector<double>;

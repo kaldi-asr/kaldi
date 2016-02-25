@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright  2014 Nickolay V. Shmyrev 
+# Copyright  2014 Nickolay V. Shmyrev
 #            2014 Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 #
@@ -13,10 +13,11 @@ srcdict=db/cantab-TEDLIUM/cantab-TEDLIUM.dct
 [ ! -r $srcdict ] && echo "Missing $srcdict" && exit 1
 
 # Join dicts and fix some troubles
-cat $srcdict | grep -v "<s>" | grep -v "</s>" | LANG= LC_ALL= sort | sed 's:([0-9])::g' > $dir/lexicon_words.txt 
+cat $srcdict | grep -v -w "<s>" | grep -v -w "</s>" | grep -v -w '<unk>' | \
+  LANG= LC_ALL= sort | sed 's:([0-9])::g' > $dir/lexicon_words.txt
 
 cat $dir/lexicon_words.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
-  grep -v SIL | sort > $dir/nonsilence_phones.txt  
+  grep -v SIL | sort > $dir/nonsilence_phones.txt
 
 ( echo SIL; echo BRH; echo CGH; echo NSN ; echo SMK; echo UM; echo UHH ) > $dir/silence_phones.txt
 

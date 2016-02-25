@@ -71,8 +71,8 @@ if [ -z $loc ]; then
     export PATH=$PATH:$sdir:$sdir/..
   else
     echo You appear to not have SRILM tools installed, either on your path,
-    echo or installed in $sdir.  See tools/install_srilm.sh for installation
-    echo instructions.
+    echo or installed in $sdir.  cd to ../../../tools and run
+    echo extras/install_srilm.sh.
     exit 1
   fi
 fi
@@ -88,8 +88,8 @@ lm_base=$(basename $lm '.gz')
 gunzip -c $lm | utils/find_arpa_oovs.pl $out_dir/words.txt \
   > $out_dir/oovs_${lm_base}.txt || exit 1;
 
-# Removing all "illegal" combinations of <s> and </s>, which are supposed to 
-# occur only at being/end of utt.  These can cause determinization failures 
+# Removing all "illegal" combinations of <s> and </s>, which are supposed to
+# occur only at being/end of utt.  These can cause determinization failures
 # of CLG [ends up being epsilon cycles].
 gunzip -c $lm \
   | egrep -v '<s> <s>|</s> <s>|</s> </s>' \
@@ -98,8 +98,8 @@ gunzip -c $lm \
 awk '{print $1}' $out_dir/words.txt > $tmpdir/voc || exit 1;
 
 # Change the LM vocabulary to be the intersection of the current LM vocabulary
-# and the set of words in the pronunciation lexicon. This also renormalizes the 
-# LM by recomputing the backoff weights, and remove those ngrams whose 
+# and the set of words in the pronunciation lexicon. This also renormalizes the
+# LM by recomputing the backoff weights, and remove those ngrams whose
 # probabilities are lower than the backed-off estimates.
 change-lm-vocab -vocab $tmpdir/voc -lm $tmpdir/lm.gz -write-lm $tmpdir/out_lm \
   $srilm_opts || exit 1;

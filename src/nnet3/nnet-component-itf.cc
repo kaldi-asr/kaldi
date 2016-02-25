@@ -64,6 +64,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NormalizeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
+  } else if (component_type == "SumReduceComponent") {
+    ans = new SumReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
   } else if (component_type == "NaturalGradientAffineComponent") {
@@ -88,14 +90,25 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ClipGradientComponent();
   } else if (component_type == "ElementwiseProductComponent") {
     ans = new ElementwiseProductComponent();
-  } else if (component_type == "Convolutional1dComponent") {
-    ans = new Convolutional1dComponent();
   } else if (component_type == "ConvolutionComponent") {
     ans = new ConvolutionComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
   } else if (component_type == "PermuteComponent") {
     ans = new PermuteComponent();
+  } else if (component_type == "DistributeComponent") {
+    ans = new DistributeComponent();
+  } else if (component_type == "CompositeComponent") {
+    ans = new CompositeComponent();
+  } else if (component_type == "RepeatedAffineComponent") {
+    ans = new RepeatedAffineComponent();
+  } else if (component_type == "BlockAffineComponent") {
+    ans = new BlockAffineComponent();
+  } else if (component_type == "NaturalGradientRepeatedAffineComponent") {
+    ans = new NaturalGradientRepeatedAffineComponent();
+  }
+  if (ans != NULL) {
+    KALDI_ASSERT(component_type == ans->Type());
   }
   return ans;
 }
@@ -130,11 +143,62 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
-
-void UpdatableComponent::Init(BaseFloat lr, bool is_gradient) {
-  learning_rate_ = lr;
-  is_gradient_ = is_gradient;
+void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  cfl->GetValue("learning-rate", &learning_rate_);
+  cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
+
+
+void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == opening_tag.str()) {
+    // if the first token is the opening tag, then
+    // ignore it and get the next tag.
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+  } else {
+    KALDI_ERR << "Expected token <LearningRate>, got "
+              << token;
+  }
+}
+
+void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
+                                              bool binary) const {
+  std::ostringstream opening_tag;
+  opening_tag << '<' << this->Type() << '>';
+  std::string token;
+  WriteToken(os, binary, opening_tag.str());
+  if (learning_rate_factor_ != 1.0) {
+    WriteToken(os, binary, "<LearningRateFactor>");
+    WriteBasicType(os, binary, learning_rate_factor_);
+  }
+  if (is_gradient_) {
+    WriteToken(os, binary, "<IsGradient>");
+    WriteBasicType(os, binary, is_gradient_);
+  }
+  WriteToken(os, binary, "<LearningRate>");
+  WriteBasicType(os, binary, learning_rate_);
+}
+
 
 std::string UpdatableComponent::Info() const {
   std::stringstream stream;
@@ -143,6 +207,8 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (learning_rate_factor_ != 1.0)
+    stream << ", learning-rate-factor=" << learning_rate_factor_;
   return stream.str();
 }
 
@@ -183,9 +249,13 @@ void NonlinearComponent::ZeroStats() {
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  KALDI_ASSERT(InputDim() == OutputDim());  // always the case
-  stream << Type() << ", dim=" << InputDim();
-
+  if (InputDim() == OutputDim())
+    stream << Type() << ", dim=" << InputDim();
+  else
+    stream << Type() << ", input-dim=" << InputDim()
+           << ", output-dim=" << OutputDim()
+           << ", add-log-stddev=true";
+  
   if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);

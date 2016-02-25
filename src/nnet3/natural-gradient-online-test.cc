@@ -119,7 +119,9 @@ void OnlineNaturalGradientSimple::Init(const MatrixBase<double> &R0) {
 
 BaseFloat OnlineNaturalGradientSimple::Eta(int32 N) const {
   KALDI_ASSERT(num_samples_history_ > 0.0);
-  return 1.0 - exp(-N / num_samples_history_);
+  BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
+  if (ans > 0.9) ans = 0.9;
+  return ans;
 }
 
 
@@ -196,7 +198,7 @@ void OnlineNaturalGradientSimple::PreconditionDirectionsCpu(
     KALDI_WARN << "flooring rho_{t+1} to " << floor_val << ", was " << rho_t1;
     rho_t1 = floor_val;
   }
-  nf = d_t1.ApplyFloor(epsilon_);
+  nf = d_t1.ApplyFloor(floor_val);
   if (nf > 0) {
     KALDI_VLOG(3) << "d_t1 was " << d_t1;
     KALDI_WARN << "Floored " << nf << " elements of d_{t+1}.";
@@ -305,7 +307,7 @@ void UnitTestPreconditionDirectionsOnline() {
     AssertEqual(trace1, trace2 * gamma2 * gamma2, 1.0e-02);
 
     AssertEqual(Mcopy1, Mcopy2);
-    AssertEqual(row_prod1, row_prod2, 1.0e-02f);
+    AssertEqual<BaseFloat>(row_prod1, row_prod2, 1.0e-02);
     AssertEqual(gamma1, gamma2, 1.0e-02);
 
     // make sure positive definite

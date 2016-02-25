@@ -298,6 +298,23 @@ template<typename Real> void TestCuMatrixSigmoid(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixHeaviside(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    N.ApplyHeaviside();
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::Heaviside" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
 
 template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -806,6 +823,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCholesky<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSigmoid<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixHeaviside<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuFindRowMaxId<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

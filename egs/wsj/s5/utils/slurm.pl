@@ -11,7 +11,7 @@ use File::Basename;
 use Cwd;
 use Getopt::Long;
 
-# slurm.pl was created from the queue.pl 
+# slurm.pl was created from the queue.pl
 # queue.pl has the same functionality as run.pl, except that
 # it runs the job in question on the queue (Sun GridEngine).
 # This version of queue.pl uses the task array functionality
@@ -20,7 +20,7 @@ use Getopt::Long;
 
 # The script now supports configuring the queue system using a config file
 # (default in conf/queue.conf; but can be passed specified with --config option)
-# and a set of command line options. 
+# and a set of command line options.
 # The current script handles:
 # 1) Normal configuration arguments
 # For e.g. a command line option of "--gpu 1" could be converted into the option
@@ -30,7 +30,7 @@ use Getopt::Long;
 # $0 here in the line is replaced with the argument read from the CLI and the
 # resulting string is passed to qsub.
 # 2) Special arguments to options such as
-# gpu=0 
+# gpu=0
 # If --gpu 0 is given in the command line, then no special "-q" is given.
 # 3) Default argument
 # default gpu=0
@@ -60,7 +60,7 @@ use Getopt::Long;
 my $qsub_opts = "";
 my $sync = 0;
 my $num_threads = 1;
-my $max_jobs_run;  
+my $max_jobs_run;
 my $gpu = 0;
 
 my $config = "conf/slurm.conf";
@@ -99,12 +99,12 @@ if (@ARGV < 2) {
   print_usage();
 }
 
-for (my $x = 1; $x <= 3; $x++) { # This for-loop is to 
+for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
   # allow the JOB=1:n option to be interleaved with the
   # options to qsub.
   while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
     my $switch = shift @ARGV;
-    
+
     if ($switch eq "-V") {
       $qsub_opts .= "-V ";
     } else {
@@ -121,10 +121,10 @@ for (my $x = 1; $x <= 3; $x++) { # This for-loop is to
         $num_threads = $argument2;
       } elsif ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
-        # by removing '--' from the switch and replacing any 
+        # by removing '--' from the switch and replacing any
         # '-' with a '_'
         $switch =~ s/^--//;
-        $switch =~ s/-/_/g;         
+        $switch =~ s/-/_/g;
         $cli_options{$switch} = $argument;
       } else {  # Other qsub options - passed as is
         $qsub_opts .= "$switch $argument ";
@@ -160,7 +160,7 @@ if (@ARGV < 2) {
 
 if (exists $cli_options{"config"}) {
   $config = $cli_options{"config"};
-}  
+}
 
 my $default_config_file = <<'EOF';
 # Default configuration
@@ -168,17 +168,18 @@ command sbatch --export=PATH  --ntasks-per-node=1
 option time=* --time $0
 option mem=* --mem-per-cpu $0
 option mem=0          # Do not add anything to qsub_opts
-option num_threads=* --cpus-per-task $0 --ntasks-per-node=1 
+option num_threads=* --cpus-per-task $0 --ntasks-per-node=1
 option num_threads=1 --cpus-per-task 1  --ntasks-per-node=1 # Do not add anything to qsub_opts
-option max_jobs_run=*     # Do nothing
 default gpu=0
 option gpu=0 -p shared
 option gpu=* -p gpu --gres=gpu:$0 --time 4:0:0  # this has to be figured out
+# note: the --max-jobs-run option is supported as a special case
+# by slurm.pl and you don't have to handle it in the config file.
 EOF
 
 # Here the configuration options specified by the user on the command line
 # (e.g. --mem 2G) are converted to options to the qsub system as defined in
-# the config file. (e.g. if the config file has the line 
+# the config file. (e.g. if the config file has the line
 # "option mem=* -l ram_free=$0,mem_free=$0"
 # and the user has specified '--mem 2G' on the command line, the options
 # passed to queue system would be "-l ram_free=2G,mem_free=2G
@@ -192,7 +193,7 @@ open CONFIG, "<$config" or $opened_config_file = 0;
 my %cli_config_options = ();
 my %cli_default_options = ();
 
-if ($opened_config_file == 0 && exists($cli_options{"config"})) {   
+if ($opened_config_file == 0 && exists($cli_options{"config"})) {
   print STDERR "Could not open config file $config\n";
   exit(1);
 } elsif ($opened_config_file == 0 && !exists($cli_options{"config"})) {
@@ -212,12 +213,12 @@ while(<CONFIG>) {
   if ($_ =~ /^command (.+)/) {
     $read_command = 1;
     $qsub_cmd = $1 . " ";
-  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) { 
+  } elsif ($_ =~ m/^option ([^=]+)=\* (.+)$/) {
     # Config option that needs replacement with parameter value read from CLI
     # e.g.: option mem=* -l mem_free=$0,ram_free=$0
     my $option = $1;     # mem
     my $arg= $2;         # -l mem_free=$0,ram_free=$0
-    if ($arg !~ m:\$0:) {  
+    if ($arg !~ m:\$0:) {
       print STDERR "Warning: the line '$line' in config file ($config) does not substitution variable \$0\n";
     }
     if (exists $cli_options{$option}) {
@@ -237,7 +238,7 @@ while(<CONFIG>) {
     }
   } elsif ($_ =~ m/^default (\S+)=(\S+)/) {
     # Default options. Used for setting default values to options i.e. when
-    # the user does not specify the option on the command line 
+    # the user does not specify the option on the command line
     # e.g. default gpu=0
     my $option = $1;  # gpu
     my $value = $2;   # 0
@@ -261,19 +262,25 @@ if ($read_command != 1) {
 
 for my $option (keys %cli_options) {
   if ($option eq "config") { next; }
-  if ($option eq "max_jobs_run" && $array_job != 1) { print STDERR "Ignoring $option\n"; next; }
-  my $value = $cli_options{$option};
-  
-  if ($option eq "max_jobs_run") { $max_jobs_run = $value; }
 
-  if (exists $cli_default_options{($option,$value)}) {
+  my $value = $cli_options{$option};
+
+  if ($option eq "max_jobs_run") {
+    if ($array_job != 1) {
+      print STDERR "Ignoring $option since this is not an array task.";
+    } else {
+      $max_jobs_run = $value;
+    }
+  } elsif (exists $cli_default_options{($option,$value)}) {
     $qsub_opts .= "$cli_default_options{($option,$value)} ";
   } elsif (exists $cli_config_options{$option}) {
     $qsub_opts .= "$cli_config_options{$option} ";
   } elsif (exists $cli_default_options{($option,"*")}) {
     $qsub_opts .= $cli_default_options{($option,"*")} . " ";
   } else {
-    if ($opened_config_file == 0) { $config = "default config file"; }
+    if ($opened_config_file == 0) {
+      $config = "default config file";
+    }
     die "$0: Command line option $option not described in $config (or value '$value' not allowed)\n";
   }
 }
@@ -301,7 +308,7 @@ if ($array_job == 1 && $logfile !~ m/$jobname/
 #
 my $cmd = "";
 
-foreach my $x (@ARGV) { 
+foreach my $x (@ARGV) {
   if ($x =~ m/^\S+$/) { $cmd .= $x . " "; } # If string contains no spaces, take
                                             # as-is.
   elsif ($x =~ m:\":) { $cmd .= "'$x' "; } # else if no dbl-quotes, use single
@@ -322,23 +329,23 @@ if (!-d $dir) { die "Cannot make the directory $dir\n"; }
 # make a directory called "q",
 # where we will put the log created by qsub... normally this doesn't contain
 # anything interesting, evertyhing goes to $logfile.
-if (! -d "$qdir") { 
+if (! -d "$qdir") {
   system "mkdir $qdir 2>/dev/null";
   sleep(5); ## This is to fix an issue we encountered in denominator lattice creation,
   ## where if e.g. the exp/tri2b_denlats/log/15/q directory had just been
   ## created and the job immediately ran, it would die with an error because nfs
   ## had not yet synced.  I'm also decreasing the acdirmin and acdirmax in our
   ## NFS settings to something like 5 seconds.
-} 
+}
 
 my $queue_array_opt = "";
 if ($array_job == 1) { # It's an array job.
   if ($max_jobs_run) {
-      $queue_array_opt = "--array ${jobstart}-${jobend}%${max_jobs_run}"; 
+      $queue_array_opt = "--array ${jobstart}-${jobend}%${max_jobs_run}";
   } else {
-      $queue_array_opt = "--array ${jobstart}-${jobend}"; 
+      $queue_array_opt = "--array ${jobstart}-${jobend}";
   }
-  $logfile =~ s/$jobname/\$SLURM_ARRAY_TASK_ID/g; # This variable will get 
+  $logfile =~ s/$jobname/\$SLURM_ARRAY_TASK_ID/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
   $cmd =~ s/$jobname/\$\{SLURM_ARRAY_TASK_ID\}/g; # same for the command...
   $queue_logfile =~ s/\.?$jobname//; # the log file in the q/ subdirectory
@@ -475,14 +482,14 @@ if (! $sync) { # We're not submitting with -sync y, so we
         }
       }
 
-      # Check that the job exists in SLURM. Job can be killed if duration 
-      # exceeds some hard limit, or in case of a machine shutdown. 
+      # Check that the job exists in SLURM. Job can be killed if duration
+      # exceeds some hard limit, or in case of a machine shutdown.
       if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
         $ret = system("squeue -j $sge_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
         if ($ret>>8 == 1) {     # Job does not seem to exist
-          # Don't consider immediately missing job as error, first wait some  
+          # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
 
           sleep(3);
@@ -546,7 +553,7 @@ if (!defined $jobname) { # not an array job.
   push @logfiles, $logfile;
 } else {
   for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    my $l = $logfile; 
+    my $l = $logfile;
     $l =~ s/\$SLURM_ARRAY_TASK_ID/$jobid/g;
     push @logfiles, $l;
   }

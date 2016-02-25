@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
 
     unordered_map<std::string, std::vector<int32>*>::iterator iter;
     
-    for (iter = utt_to_pdf_ali.begin(); iter != utt_to_pdf_ali.end(); iter++)
+    for (iter = utt_to_pdf_ali.begin(); iter != utt_to_pdf_ali.end(); ++iter)
       delete iter->second;
     
     KALDI_LOG << "Read " << num_ali << " alignments containing a total of " 

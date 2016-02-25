@@ -117,8 +117,10 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
     const HTransducerConfig &config,
     HmmCacheType *cache = NULL);
 
+
 /// Included mainly as a form of documentation, not used in any other code
-/// currently.  Creates the FST with self-loops, and with fewer options.
+/// currently.  Creates the acceptor FST with self-loops, and with fewer
+/// options.
 fst::VectorFst<fst::StdArc>*
 GetHmmAsFstSimple(std::vector<int32> context_window,
                   const ContextDependencyInterface &ctx_dep,
@@ -127,7 +129,8 @@ GetHmmAsFstSimple(std::vector<int32> context_window,
 
 
 /**
-  * Returns the H tranducer; result owned by caller.
+  * Returns the H tranducer; result owned by caller.  Caution: our version of
+  * the H transducer does not include self-loops; you have to add those later.
   * See \ref hmm_graph_get_h_transducer.  The H transducer has on the
   * input transition-ids, and also possibly some disambiguation symbols, which
   * will be put in disambig_syms.  The output side contains the identifiers that
@@ -249,23 +252,40 @@ void ConvertTransitionIdsToPdfs(const TransitionModel &trans_model,
 /// phones but it will return false.  For more serious errors it will
 /// die or throw an exception.
 /// This function works out by itself whether the graph was created
-/// with "reordering" (dan-style graph), and just does the right thing.
-
+/// with "reordering", and just does the right thing.
 bool SplitToPhones(const TransitionModel &trans_model,
                    const std::vector<int32> &alignment,
                    std::vector<std::vector<int32> > *split_alignment);
 
-/// ConvertAlignment converts an alignment that was created using one
-/// model, to another model.  They must use a compatible topology (so we
-/// know the state alignments of the new model).
-/// It returns false if it could not be split to phones (probably
-/// because the alignment was partial), but for other kinds of
-/// error that are more likely a coding error, it will throw
-/// an exception.
+/**
+   ConvertAlignment converts an alignment that was created using one model, to
+   another model.  Returns false if it could not be split to phones (e.g.
+   because the alignment was partial), or because some other error happened,
+   such as we couldn't convert the alignment because there were too few frames
+   for the new topology.
+
+   @param old_trans_model [in]  The transition model that the original alignment
+                                used.
+   @param new_trans_model [in]  The transition model that we want to use for the
+                                new alignment.
+   @param new_ctx_dep     [in]  The new tree
+   @param old_alignment   [in]  The alignment we want to convert
+   @param subsample_factor [in] The frame subsampling factor... normally 1, but
+                                might be > 1 if we're converting to a reduced-frame-rate
+                                system.
+   @param reorder [in]          True if you want the pdf-ids on the new alignment to
+                                be 'reordered'. (vs. the way they appear in
+                                the HmmTopology object)
+   @param phone_map [in]        If non-NULL, map from old to new phones.
+   @param new_alignment [out]   The converted alignment.
+*/
+
 bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const TransitionModel &new_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
+                      int32 subsample_factor,  // 1 in the normal case -> no subsampling.
+                      bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);
 
@@ -286,6 +306,23 @@ bool ConvertPhnxToProns(const std::vector<int32> &phnx,
                         int32 word_start_sym,
                         int32 word_end_sym,
                         std::vector<std::vector<int32> > *prons);
+
+
+/* Generates a random alignment for this phone, of length equal to
+   alignment->size(), which is required to be at least the MinLength() of the
+   topology for this phone, or this function will crash.
+   The alignment will be without 'reordering'.
+*/
+void GetRandomAlignmentForPhone(const ContextDependencyInterface &ctx_dep,
+                                const TransitionModel &trans_model,
+                                const std::vector<int32> &phone_window,
+                                std::vector<int32> *alignment);
+
+/*
+  If the alignment was non-reordered makes it reordered, and vice versa.
+*/
+void ChangeReorderingOfAlignment(const TransitionModel &trans_model,
+                                 std::vector<int32> *alignment);
 
 /// @} end "addtogroup hmm_group"
 

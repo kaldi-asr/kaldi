@@ -38,6 +38,9 @@ namespace nnet3 {
 struct NnetSimpleComputationOptions {
   int32 extra_left_context;
   int32 extra_right_context;
+  int32 extra_left_context_initial;
+  int32 extra_right_context_final;
+  int32 frame_subsampling_factor;
   int32 frames_per_chunk;
   BaseFloat acoustic_scale;
   bool debug_computation;
@@ -47,6 +50,9 @@ struct NnetSimpleComputationOptions {
   NnetSimpleComputationOptions():
       extra_left_context(0),
       extra_right_context(0),
+      extra_left_context_initial(-1),
+      extra_right_context_final(-1),
+      frame_subsampling_factor(1),
       frames_per_chunk(50),
       acoustic_scale(0.1),
       debug_computation(false) { }
@@ -60,11 +66,23 @@ struct NnetSimpleComputationOptions {
                    "Number of frames of additional right-context to add on top "
                    "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
+    opts->Register("extra-left-context-initial", &extra_left_context_initial,
+                   "If >0, overrides the --extra-left-context value at the start "
+                   "of an utterance.");
+    opts->Register("extra-right-context-final", &extra_right_context_final,
+                   "If >0, overrides the --extra-right-context value at the end "
+                   "of an utterance.");
+    opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
+                   "Required if the frame-rate of the output (e.g. in 'chain' "
+                   "models) is less than the frame-rate of the original "
+                   "alignment.");
     opts->Register("acoustic-scale", &acoustic_scale,
                    "Scaling factor for acoustic log-likelihoods");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
-                   "by the neural net.");
+                   "by the neural net.  Measured before any subsampling, if the "
+                   "--frame-subsampling-factor options is used (i.e. counts "
+                   "input frames");
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
 
@@ -121,8 +139,10 @@ class NnetDecodableBase {
                     int32 online_ivector_period = 1);
 
 
-  // returns the number of frames of likelihoods.
-  inline int32 NumFrames() const { return feats_.NumRows(); }
+  // returns the number of frames of likelihoods.  The same as feats_.NumRows()
+  // in the normal case (but may be less if opts_.frame_subsampling_factor !=
+  // 1).
+  inline int32 NumFrames() const { return num_subsampled_frames_; }
 
   inline int32 OutputDim() const { return output_dim_; }
 
@@ -130,19 +150,22 @@ class NnetDecodableBase {
   // 'output' must be correctly sized (with dimension OutputDim()).
   void GetOutputForFrame(int32 frame, VectorBase<BaseFloat> *output);
 
-  // Gets the output for a particular frame and pdf_id, with 0 <= frame < NumFrames(),
+  // Gets the output for a particular frame and pdf_id, with
+  // 0 <= subsampled_frame < NumFrames(),
   // and 0 <= pdf_id < OutputDim().
-  inline BaseFloat GetOutput(int32 frame, int32 pdf_id) {
-    if (frame < current_log_post_offset_ ||
-        frame >= current_log_post_offset_ + current_log_post_.NumRows())
-      EnsureFrameIsComputed(frame);
-    return current_log_post_(frame - current_log_post_offset_,
+  inline BaseFloat GetOutput(int32 subsampled_frame, int32 pdf_id) {
+    if (subsampled_frame < current_log_post_subsampled_offset_ ||
+        subsampled_frame >= current_log_post_subsampled_offset_ +
+                            current_log_post_.NumRows())
+      EnsureFrameIsComputed(subsampled_frame);
+    return current_log_post_(subsampled_frame -
+                             current_log_post_subsampled_offset_,
                              pdf_id);
   }
  private:
   // This call is made to ensure that we have the log-probs for this frame
   // cached in current_log_post_.
-  void EnsureFrameIsComputed(int32 frame);
+  void EnsureFrameIsComputed(int32 subsampled_frame);
 
   // This function does the actual nnet computation; it is called from
   // EnsureFrameIsComputed.  Any padding at file start/end is done by
@@ -152,19 +175,24 @@ class NnetDecodableBase {
                          const MatrixBase<BaseFloat> &input_feats,
                          const VectorBase<BaseFloat> &ivector,
                          int32 output_t_start,
-                         int32 num_output_frames);
+                         int32 num_subsampled_frames);
 
-  // Gets the iVector that will be used for this chunk of frames, if
-  // we are using iVectors (else does nothing).
-  void GetCurrentIvector(int32 output_t_start, int32 num_output_frames,
+  // Gets the iVector that will be used for this chunk of frames, if we are
+  // using iVectors (else does nothing).  note: the num_output_frames is
+  // interpreted as the number of t value, which in the subsampled case is not
+  // the same as the number of subsampled frames (it would be larger by
+  // opts_.frame_subsampling_factor).
+  void GetCurrentIvector(int32 output_t_start,
+                         int32 num_output_frames,
                          Vector<BaseFloat> *ivector);
 
-  void PossiblyWarnForFramesPerChunk() const;
+  // called from constructor
+  void CheckAndFixConfigs();
 
   // returns dimension of the provided iVectors if supplied, or 0 otherwise.
   int32 GetIvectorDim() const;
 
-  const NnetSimpleComputationOptions &opts_;
+  NnetSimpleComputationOptions opts_;
   const Nnet &nnet_;
   int32 nnet_left_context_;
   int32 nnet_right_context_;
@@ -172,6 +200,9 @@ class NnetDecodableBase {
   // the log priors (or the empty vector if the priors are not set in the model)
   CuVector<BaseFloat> log_priors_;
   const MatrixBase<BaseFloat> &feats_;
+  // note: num_subsampled_frames_ will equal feats_.NumRows() in the normal case
+  // when opts_.frame_subsampling_factor == 1.
+  int32 num_subsampled_frames_;
 
   // ivector_ is the iVector if we're using iVectors that are estimated in batch
   // mode.
@@ -188,8 +219,10 @@ class NnetDecodableBase {
   // The current log-posteriors that we got from the last time we
   // ran the computation.
   Matrix<BaseFloat> current_log_post_;
-  // The time-offset of the current log-posteriors.
-  int32 current_log_post_offset_;
+  // The time-offset of the current log-posteriors.  Note: if
+  // opts_.frame_subsampling_factor > 1, this will be measured in subsampled
+  // frames.
+  int32 current_log_post_subsampled_offset_;
 
 
 };

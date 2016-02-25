@@ -9,7 +9,7 @@
 # The data is distributed under 'Creative Commons BY-NC-ND 3.0' license,
 # which allow free non-commercial use, while only a citation is required.
 #
-# Copyright  2014 Nickolay V. Shmyrev 
+# Copyright  2014 Nickolay V. Shmyrev
 #            2014 Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 #
@@ -28,7 +28,7 @@ stage=0
 # Data preparation
 if [ $stage -le 0 ]; then
   local/download_data.sh || exit 1
-  
+
   local/prepare_data.sh || exit 1
 
   local/prepare_dict.sh || exit 1
@@ -100,8 +100,8 @@ if [ $stage -le 5 ]; then
     data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
     exp/tri2/sil_counts_nowb.txt \
     exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
-  
-  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+
+  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang
   cp -rT data/lang data/lang_test
   cp -rT data/lang data/lang_rescore
   cp data/lang_nosp_test/G.fst data/lang_test
@@ -133,6 +133,8 @@ if [ $stage -le 6 ]; then
     --num-threads 4 \
     exp/tri3/graph data/test exp/tri3/decode_test || exit 1
 fi
+
+# steps/cleanup/debug_lexicon.sh --nj 30 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
 
 if [ $stage -le 7 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \

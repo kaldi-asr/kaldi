@@ -1,0 +1,61 @@
+#!/bin/bash
+for x in exp/{mono,tri1,tri2b,tri3b,tri4b,tri4b_dnn,tri4b_dnn_mpe}/decode_test_phone* ; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#clean mono,tri1,tri2b,tri3b,GMM,DNN model
+#clean test data
+#phone task
+%WER 31.49 [ 113986 / 362027, 20820 ins, 22043 del, 71123 sub ] exp/mono/decode_test_phone/wer_5
+%WER 20.56 [ 74445 / 362027, 15452 ins, 12457 del, 46536 sub ] exp/tri1/decode_test_phone/wer_5
+%WER 17.32 [ 62689 / 362027, 11937 ins, 11260 del, 39492 sub ] exp/tri2b/decode_test_phone/wer_6
+%WER 18.06 [ 65368 / 362027, 10426 ins, 13780 del, 41162 sub ] exp/tri3b/decode_test_phone/wer_5
+%WER 18.50 [ 66984 / 362027, 13117 ins, 11917 del, 41950 sub ] exp/tri3b/decode_test_phone.si/wer_5
+%WER 16.17 [ 58544 / 362027, 9628 ins, 11746 del, 37170 sub ] exp/tri4b/decode_test_phone/wer_6
+%WER 16.59 [ 60060 / 362027, 11440 ins, 10477 del, 38143 sub ] exp/tri4b/decode_test_phone.si/wer_6
+%WER 10.27 [ 37173 / 362027, 8675 ins, 6483 del, 22015 sub ] exp/tri4b_dnn/decode_test_phone/wer_4
+%WER 10.11 [ 36591 / 362027, 8702 ins, 6255 del, 21634 sub ] exp/tri4b_dnn_mpe/decode_test_phone_it1/wer_4
+%WER 10.03 [ 36321 / 362027, 7490 ins, 6731 del, 22100 sub ] exp/tri4b_dnn_mpe/decode_test_phone_it2/wer_5
+%WER 10.01 [ 36249 / 362027, 7507 ins, 6677 del, 22065 sub ] exp/tri4b_dnn_mpe/decode_test_phone_it3/wer_5
+
+exit 0
+
+for x in exp/{mono,tri1,tri2b,tri3b,tri4b,tri4b_dnn,tri4b_dnn_mpe}/decode_test_word* ; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#clean mono,tri1,tri2b,tri3b,GMM,DNN model
+#clean test data
+#word task
+%WER 51.04 [ 41414 / 81139, 474 ins, 2404 del, 38536 sub ] exp/mono/decode_test_word/wer_9
+%WER 36.38 [ 29522 / 81139, 516 ins, 1096 del, 27910 sub ] exp/tri1/decode_test_word/wer_10
+%WER 32.51 [ 26379 / 81139, 469 ins, 940 del, 24970 sub ] exp/tri2b/decode_test_word/wer_9
+%WER 31.65 [ 25684 / 81139, 340 ins, 1085 del, 24259 sub ] exp/tri3b/decode_test_word/wer_9
+%WER 34.07 [ 27643 / 81139, 443 ins, 1100 del, 26100 sub ] exp/tri3b/decode_test_word.si/wer_10
+%WER 29.64 [ 24052 / 81139, 341 ins, 929 del, 22782 sub ] exp/tri4b/decode_test_word/wer_11
+%WER 31.71 [ 25732 / 81139, 472 ins, 902 del, 24358 sub ] exp/tri4b/decode_test_word.si/wer_10
+%WER 23.57 [ 19123 / 81139, 419 ins, 585 del, 18119 sub ] exp/tri4b_dnn/decode_test_word/wer_7
+%WER 23.40 [ 18984 / 81139, 397 ins, 567 del, 18020 sub ] exp/tri4b_dnn_mpe/decode_test_word_it1/wer_7
+%WER 23.27 [ 18884 / 81139, 396 ins, 553 del, 17935 sub ] exp/tri4b_dnn_mpe/decode_test_word_it2/wer_7
+%WER 23.18 [ 18804 / 81139, 368 ins, 618 del, 17818 sub ] exp/tri4b_dnn_mpe/decode_test_word_it3/wer_8
+
+exit 0
+
+for x in exp/{tri4b_dnn_mpe,tri4b_dnn_dae}/decode_phone_0db/{white,car,cafe}; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#clean MPE model and mixture DAE model
+#0db noise test data
+#phone task
+%WER 84.01 [ 304141 / 362027, 717 ins, 275948 del, 27476 sub ] exp/tri4b_dnn_mpe/decode_phone_0db/white/wer_4
+%WER 14.11 [ 51074 / 362027, 10941 ins, 8175 del, 31958 sub ] exp/tri4b_dnn_mpe/decode_phone_0db/car/wer_5
+%WER 71.63 [ 259329 / 362027, 6164 ins, 217508 del, 35657 sub ] exp/tri4b_dnn_mpe/decode_phone_0db/cafe/wer_4
+%WER 40.04 [ 144946 / 362027, 17764 ins, 35162 del, 92020 sub ] exp/tri4b_dnn_dae/decode_phone_0db/white/wer_6
+%WER 11.81 [ 42773 / 362027, 9598 ins, 7552 del, 25623 sub ] exp/tri4b_dnn_dae/decode_phone_0db/car/wer_5
+%WER 32.39 [ 117256 / 362027, 17793 ins, 27750 del, 71713 sub ] exp/tri4b_dnn_dae/decode_phone_0db/cafe/wer_6
+exit 0
+
+for x in exp/{tri4b_dnn_mpe,tri4b_dnn_dae}/decode_word_0db/{white,car,cafe}; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+#clean MPE model and mixture DAE model
+#0db noise test data
+#word task
+%WER 98.56 [ 79973 / 81139, 15 ins, 64293 del, 15665 sub ] exp/tri4b_dnn_mpe/decode_word_0db/white/wer_4
+%WER 28.10 [ 22799 / 81139, 553 ins, 661 del, 21585 sub ] exp/tri4b_dnn_mpe/decode_word_0db/car/wer_8
+%WER 85.58 [ 69438 / 81139, 321 ins, 49066 del, 20051 sub ] exp/tri4b_dnn_mpe/decode_word_0db/cafe/wer_8
+%WER 65.23 [ 52923 / 81139, 827 ins, 4198 del, 47898 sub ] exp/tri4b_dnn_dae/decode_word_0db/white/wer_13
+%WER 25.12 [ 20379 / 81139, 444 ins, 676 del, 19259 sub ] exp/tri4b_dnn_dae/decode_word_0db/car/wer_9
+%WER 53.38 [ 43308 / 81139, 907 ins, 4164 del, 38237 sub ] exp/tri4b_dnn_dae/decode_word_0db/cafe/wer_12
+
+exit 0

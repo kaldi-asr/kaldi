@@ -261,7 +261,7 @@ static void SplitLocationsUsingSubmatHistogram(
   std::vector<std::pair<int32, int32> >::iterator iter;
   for (iter = submat_histogram_vector->begin();
        iter != submat_histogram_vector->end();
-       iter++)  {
+       ++iter)  {
     std::pair<int32, int32> submat_index_and_count = *iter;
     std::vector<std::vector<std::pair<int32, int32> >::iterator>
         output_iterator_list;
@@ -382,7 +382,7 @@ bool ConvertToIndexes(
   second_values->clear();
   second_values->reserve(location_vector.size());
   std::vector<std::pair<int32, int32> >::const_iterator iter;
-  for (iter = location_vector.begin(); iter < location_vector.end(); iter++)  {
+  for (iter = location_vector.begin(); iter < location_vector.end(); ++iter)  {
     if (iter->first != -1) {
       if (*first_value == -1)
         *first_value = iter->first;

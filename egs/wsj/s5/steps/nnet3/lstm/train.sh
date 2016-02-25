@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
@@ -73,7 +72,7 @@ lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
 			 # "[-1,1] [-2,2] [-3,3]" means a three layer stacked bi-directional LSTM would use recurrence
-			 # connections with delay -1 for the forward, 1 for the backward at layer1, 
+			 # connections with delay -1 for the forward, 1 for the backward at layer1,
 			 # -2 for the forward, 2 for the backward at layer2, and so on at layer3
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
@@ -189,7 +188,7 @@ if [ $# != 4 ]; then
   echo "  --samples-per-iter <#samples|20000>              # Number of egs in each archive of data.  This times --chunk-width is"
   echo "                                                   # the number of frames processed per iteration"
   echo "  --shrink <shrink|0.99>                           # if non-zero this parameter will be used to scale the parameter matrices"
-  echo "  --shrink-threshold <threshold|0.15>             # a threshold (should be between 0.0 and 0.25) that controls when to"
+  echo "  --shrink-threshold <threshold|0.15>              # a threshold (should be between 0.0 and 0.25) that controls when to"
   echo "                                                   # do parameter shrinking."
   echo " for more options see the script"
   exit 1;
@@ -662,9 +661,6 @@ if [ $stage -le $num_iters ]; then
     nnets_list[$n]="nnet3-am-copy --raw=true $mdl -|";
   done
 
-  # Below, we use --use-gpu=no to disable nnet3-combine-fast from using a GPU,
-  # as if there are many models it can give out-of-memory error; and we set
-  # num-threads to 8 to speed it up (this isn't ideal...)
   combine_num_chunk_per_minibatch=$(python -c "print int(1024.0/($chunk_width))")
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
@@ -690,9 +686,8 @@ if [ $stage -le $[$num_iters+1] ]; then
   if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
   else egs_part=JOB; fi
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
-    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
-    nnet3-merge-egs  ark:- ark:- \| \
+    nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
+    nnet3-merge-egs --measure-output-frames=true --minibatch-size=128 ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
       "nnet3-am-copy --raw=true $dir/combined.mdl -|" ark:- ark:- \| \
     matrix-sum-rows ark:- ark:- \| vector-sum ark:- $dir/post.$x.JOB.vec || exit 1;

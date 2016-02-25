@@ -145,14 +145,20 @@ else
   labels_tr_phn="ark:ali-to-phones --per-frame=true $alidir/final.mdl \"ark:gunzip -c $alidir/ali.*.gz |\" ark:- |"
 
   # get pdf-counts, used later for decoding/aligning,
-  analyze-counts --verbose=1 --binary=false "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
+  analyze-counts --verbose=1 --binary=false \
+    ${frame_weights:+ "--frame-weights=$frame_weights"} \
+    ${utt_weights:+ "--utt-weights=$utt_weights"} \
+    "$labels_tr_pdf" $dir/ali_train_pdf.counts 2>$dir/log/analyze_counts_pdf.log || exit 1
   # copy the old transition model, will be needed by decoder,
   copy-transition-model --binary=false $alidir/final.mdl $dir/final.mdl || exit 1
   # copy the tree
   cp $alidir/tree $dir/tree || exit 1
 
   # make phone counts for analysis,
-  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
+  [ -e $lang/phones.txt ] && analyze-counts --verbose=1 --symbol-table=$lang/phones.txt \
+    ${frame_weights:+ "--frame-weights=$frame_weights"} \
+    ${utt_weights:+ "--utt-weights=$utt_weights"} \
+    "$labels_tr_phn" /dev/null 2>$dir/log/analyze_counts_phones.log || exit 1
 fi
 
 ###### PREPARE FEATURES ######
