@@ -62,7 +62,7 @@ class LatticeFasterOnlineDecoder {
     BestPathIterator(void *t, int32 f): tok(t), frame(f) { }
     bool Done() { return tok == NULL; }
   };
-  
+
   // instantiate this class once for each thing you have to decode.
   LatticeFasterOnlineDecoder(const fst::Fst<fst::StdArc> &fst,
                              const LatticeFasterDecoderConfig &config);
@@ -80,7 +80,7 @@ class LatticeFasterOnlineDecoder {
   const LatticeFasterDecoderConfig &GetOptions() const {
     return config_;
   }
-  
+
   ~LatticeFasterOnlineDecoder();
 
   /// Decodes until there are no more frames left in the "decodable" object..
@@ -107,12 +107,12 @@ class LatticeFasterOnlineDecoder {
   bool GetBestPath(Lattice *ofst,
                    bool use_final_probs = true) const;
 
-  
+
   /// This function does a self-test of GetBestPath().  Returns true on
   /// success; returns false and prints a warning on failure.
   bool TestGetBestPath(bool use_final_probs = true) const;
-  
-  
+
+
   /// This function returns an iterator that can be used to trace back
   /// the best path.  If use_final_probs == true and at least one final state
   /// survived till the end, it will use the final-probs in working out the best
@@ -133,7 +133,7 @@ class LatticeFasterOnlineDecoder {
   /// while leaving its "nextstate" variable unchanged.
   BestPathIterator TraceBackBestPath(
       BestPathIterator iter, LatticeArc *arc) const;
-  
+
   /// Outputs an FST corresponding to the raw, state-level
   /// tracebacks.  Returns true if result is nonempty.
   /// If "use_final_probs" is true AND we reached the final-state
@@ -152,7 +152,7 @@ class LatticeFasterOnlineDecoder {
                            bool use_final_probs,
                            BaseFloat beam) const;
 
-  
+
   /// InitDecoding initializes the decoding, and should only be used if you
   /// intend to call AdvanceDecoding().  If you call Decode(), you don't need to
   /// call this.  You can also call InitDecoding if you have already decoded an
@@ -334,7 +334,7 @@ class LatticeFasterOnlineDecoder {
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
-  
+
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
   BaseFloat ProcessEmitting(DecodableInterface *decodable);
@@ -343,7 +343,7 @@ class LatticeFasterOnlineDecoder {
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
   void ProcessNonemitting(BaseFloat cost_cutoff);
-  
+
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
   // them at a time can be indexed by StateId.  It is indexed by frame-index
@@ -361,9 +361,10 @@ class LatticeFasterOnlineDecoder {
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
   bool delete_fst_;
-  std::vector<BaseFloat> cost_offsets_; // This contains, for each
-  // frame, an offset that was added to the acoustic likelihoods on that
-  // frame in order to keep everything in a nice dynamic range.
+  std::vector<BaseFloat> cost_offsets_;  // This contains, for each
+  // frame, an offset that was added to the acoustic log-likelihoods on that
+  // frame in order to keep everything in a nice dynamic range i.e.  close to
+  // zero, to reduce roundoff errors.
   LatticeFasterDecoderConfig config_;
   int32 num_toks_; // current total #toks allocated...
   bool warned_;
