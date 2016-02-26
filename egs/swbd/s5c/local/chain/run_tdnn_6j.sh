@@ -16,6 +16,8 @@
 #WER on eval2000(fg)        15.8      15.8
 #Final train prob       -0.10417 -0.131444
 #Final valid prob      -0.123985 -0.167574
+#Final train prob (xent)      -1.60566  -1.45908
+#Final valid prob (xent)      -1.67945  -1.55937
 
 # _6i takes aspects from 5n and 6h.  Like 6h it uses a 'thin' jesus-layer
 # (no hidden dimension), and like 5n it uses a non-standard frame shift at the
@@ -465,7 +467,6 @@ if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-         --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;

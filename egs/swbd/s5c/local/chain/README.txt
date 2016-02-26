@@ -20,3 +20,6 @@ ones to look at right now:
   6g is a setup with a 'thinner' jesus-layer (with only one repeated-affine component)
      and slightly more parameters, which is quicker to train than 5v but gives
      about the same results.  I'm hoping to use this setup, going forward.
+  6i is like 6i but with a separate last-but-one affine layer for the xent output
+     (marginally better than 6g).
+

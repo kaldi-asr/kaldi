@@ -1,20 +1,21 @@
 #!/bin/bash
 
+# _6n is as _6m, but with a less-wide splicing context.
+
+# The effect is inconsistent- there is none, on average.
+#System                       6j        6m        6n
+#WER on train_dev(tg)      15.86     16.08     16.01
+#WER on train_dev(fg)      14.79     14.85     14.66
+#WER on eval2000(tg)        17.6      17.6      17.7
+#WER on eval2000(fg)        15.8      15.8      15.9
+#Final train prob      -0.131444 -0.131515 -0.133681
+#Final valid prob      -0.167574  -0.17046 -0.172072
+#Final train prob (xent)      -1.45908  -1.43814  -1.53108
+#Final valid prob (xent)      -1.55937   -1.5412  -1.65137
+
 # _6m is as _6j (which subsamples by 4 frames), changing just the
 # --left-tolerance and --right-tolerance to be the same total width but more
 # symmetrical (-7,+8) vs the default (-5, +10).
-
-# this is unhelpful and if anything is a little worse.
-#local/chain/compare_wer.sh 6j 6m
-#System                       6j        6m
-#WER on train_dev(tg)      15.86     16.08
-#WER on train_dev(fg)      14.79     14.85
-#WER on eval2000(tg)        17.6      17.6
-#WER on eval2000(fg)        15.8      15.8
-#Final train prob      -0.131444 -0.131515
-#Final valid prob      -0.167574  -0.17046
-#Final train prob (xent)      -1.45908  -1.43814
-#Final valid prob (xent)      -1.55937   -1.5412
 
 # _6j is another baseline for _6i, in which we use regular features (10 ms frame
 # shift) with the 4-fold subsampling of 6i.  I don't expect this will be as
@@ -345,7 +346,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6m # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_6n # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
 num_epochs=3  # this is about the same amount of compute as the normal 4, since
@@ -440,6 +441,7 @@ if [ $stage -le 12 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
+    --egs-dir exp/chain/tdnn_6m_sp/egs \
     --left-tolerance 7 --right-tolerance 8 \
     --frame-subsampling-factor 4 \
     --alignment-subsampling-factor 4 \
@@ -447,7 +449,7 @@ if [ $stage -le 12 ]; then
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
     --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
-    --splice-indexes "-1,0,1 -2,-1,0,1,2 -4,-2,0,2 -4,0,4 -4,0,4 -4,0,4" \
+    --splice-indexes "-1,0,1 -2,-1,0,1,2 -2,0,2 -2,0,2 -4,0,4 -4,0,4" \
     --apply-deriv-weights false \
     --frames-per-iter 1500000 \
     --online-ivector-dir exp/nnet3/ivectors_${train_set} \
