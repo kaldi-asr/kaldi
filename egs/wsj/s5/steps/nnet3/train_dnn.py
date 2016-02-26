@@ -158,7 +158,8 @@ def GetArgs():
                         help="Specifies the stage of the experiment to execution from")
     parser.add_argument("--exit-stage", type=int, default=None,
                         help="If specified, training exits before running this stage")
-    parser.add_argument("--command", type=str, action = NullstrToNoneAction,
+    parser.add_argument("--cmd", type=str, action = NullstrToNoneAction,
+                        dest = "command",
                         help="""Specifies the script to launch jobs.
                         e.g. queue.pl for launching on SGE cluster
                              run.pl for launching on local machine
