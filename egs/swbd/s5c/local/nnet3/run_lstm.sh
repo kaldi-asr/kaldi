@@ -109,7 +109,7 @@ if [ $stage -le 10 ]; then
   fi
 
   steps/nnet3/train_rnn.py --stage=$train_stage \
-    --command="$decode_cmd" \
+    --cmd="$decode_cmd" \
     --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --trainer.num-epochs=$num_epochs \
