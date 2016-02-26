@@ -7,6 +7,7 @@
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
 #           2014  Vijayaditya Peddinti
+#           2016  Tom Ko
 # Apache 2.0.
 
 
@@ -19,6 +20,9 @@ final_effective_lrate=0.001
 pnorm_input_dim=3000
 pnorm_output_dim=300
 relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+cnn_layer=  # you can use this to make it use CNN instead of LDA.
+cnn_bottleneck_dim=  # Output dimension of the linear layer at the CNN output
+cepstral_lifter=  # The scaling factor on cepstra in the production of MFCC
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -119,6 +123,15 @@ if [ $# != 4 ]; then
   echo "                                                   # Frame indices used for each splice layer."
   echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
+  echo "  --cnn-layer <string|cnn-layer0/filt_x_dim=3 filt_y_dim=8 filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1> "
+  echo "                                                   # Parameter indices used for each CNN layer."
+  echo "                                                   # Format: layer<CNN_index>/<parameter>....layer<CNN_index>/<parameter>"
+  echo "                                                   # The <parameter> for each CNN layer must contain 11 arguments."
+  echo "                                                   # The first 5 arguments correspond to the config of ConvolutionComponent:"
+  echo "                                                   # <filt_x_dim, filt_y_dim, filt_x_step, filt_y_step, num_filters>"
+  echo "                                                   # The next 6 arguments correspond to the config of MaxpoolingComponent:"
+  echo "                                                   # <pool_x_size, pool_y_size, pool_z_size, pool_x_step, pool_y_step, pool_z_step>"
+  echo "  --cnn-bottleneck-dim <dim|''>                    # Output dimension of the linear layer at the CNN output for dimension reduction."
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
   echo "  --realign-times <list-of-times|\"\">             # A list of space-separated floating point numbers between 0.0 and"
   echo "                                                   # 1.0 to specify how far through training realignment is to be done"
@@ -181,6 +194,11 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
+cnn_opts=()
+[ ! -z "$cnn_layer" ] && cnn_opts+=(--cnn-layer "$cnn_layer")
+[ ! -z "$cnn_bottleneck_dim" ] && cnn_opts+=(--cnn-bottleneck-dim $cnn_bottleneck_dim)
+[ ! -z "$cepstral_lifter" ] && cnn_opts+=(--cepstral-lifter $cepstral_lifter)
+
 
 if [ $stage -le -5 ]; then
   echo "$0: creating neural net configs";
@@ -192,7 +210,8 @@ if [ $stage -le -5 ]; then
   fi
 
   # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
+  python steps/nnet3/cnn_tdnn/make_configs.py  \
+    "${cnn_opts[@]}" \
     --splice-indexes "$splice_indexes"  \
     --subset-dim "$subset_dim" \
     --feat-dim $feat_dim \
@@ -280,7 +299,7 @@ fi
   echo "$0: --final-num-jobs cannot exceed #archives $num_archives_expanded." && exit 1;
 
 
-if [ $stage -le -3 ]; then
+if [ $stage -le -3 ] && [ -z "$cnn_opts" ]; then
   echo "$0: getting preconditioning matrix for input features."
   num_lda_jobs=$num_archives
   [ $num_lda_jobs -gt $max_lda_jobs ] && num_lda_jobs=$max_lda_jobs

@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import argparse
 import sys
+import math
 import warnings
 import copy
 import imp
@@ -78,6 +79,20 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
 
     return [tdnn_input_descriptor, filter_context, filter_context]
 
+def AddCnnLayer(config_lines, name, input, config):
+
+    input = nodes.AddConvolutionLayer(config_lines, name, input,
+                              input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                              config['filt_x_dim'], config['filt_y_dim'],
+                              config['filt_x_step'], config['filt_y_step'],
+                              config['num_filters'], input['vectorization'])
+
+    input = nodes.AddMaxpoolingLayer(config_lines, name, input, 
+                              input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                              config['pool_x_size'], config['pool_y_size'], config['pool_z_size'],
+                              config['pool_x_step'], config['pool_y_step'], config['pool_z_step'])
+
+    return input
 
 
 def PrintConfig(file_name, config_lines):
@@ -86,6 +101,24 @@ def PrintConfig(file_name, config_lines):
     f.write("\n#Component nodes\n")
     f.write("\n".join(config_lines['component-nodes']))
     f.close()
+
+def ParseCnnString(cnn_string):
+    cnn_array = []
+    cnn_list={}
+    for cl in range(0, len(cnn_string)):
+      split1 = cnn_string[cl].split(" "); 
+      if len(split1) != 11:
+        sys.exit("invalid --cnn-layer input, must contain 11 arguments for one CNN layer: "
+                 + cnn_string[cl])
+
+      for string in split1:
+        split2 = string.split("=")
+        cnn_list[split2[0]]=int(split2[1])
+        
+      cnn_array.append(cnn_list)
+
+    return cnn_array
+
 
 def ParseSpliceString(splice_indexes, label_delay=None):
     ## Work out splice_array e.g. splice_array = [ [ -3,-2,...3 ], [0], [-2,2], .. [ -8,8 ] ]
@@ -123,6 +156,49 @@ def ParseSpliceString(splice_indexes, label_delay=None):
             'splice_indexes':splice_array,
             'num_hidden_layers':len(splice_array)
             }
+
+def ComputeLifterCoeffs(lifter, dim):
+    coeffs = [0] * dim
+    for i in range(0, dim):
+        coeffs[i] = 1.0 + 0.5 * lifter * math.sin(math.pi * i / lifter);
+
+    return coeffs
+
+def ComputeIdctMatrix(K, N, cepstral_lifter=0):
+    matrix = [[0] * K for i in range(N)]
+    # normalizer for X_0
+    normalizer = math.sqrt(1.0 / N);
+    for j in range(0, N):
+        matrix[j][0] = normalizer;
+    # normalizer for other elements
+    normalizer = math.sqrt(2.0 / N);
+    for k in range(1, K):
+      for n in range(0, N):
+        matrix[n][k] = normalizer * math.cos(math.pi/N * (n + 0.5) * k);
+
+    if cepstral_lifter != 0:
+        lifter_coeffs = ComputeLifterCoeffs(cepstral_lifter, K)
+        for k in range(0, K):
+          for n in range(0, N):
+            matrix[n][k] = matrix[n][k] / lifter_coeffs[k];
+
+    return matrix
+
+def WriteIdctMatrixFile(feat_dim, cepstral_lifter, file_path):
+    # generate the IDCT matrix and write to the file
+    idct_matrix = ComputeIdctMatrix(feat_dim, feat_dim, cepstral_lifter)
+    # append a zero column to the matrix, this is the bias of the fixed affine component
+    for k in range(0, feat_dim):
+        idct_matrix[k].append(0)
+    f2 = open(file_path, "w")
+    print('[ ', file=f2)
+    for k in range(0, feat_dim):
+      for n in range(0, feat_dim + 1):
+        print('%.6e ' % idct_matrix[k][n], file=f2, end="")
+      print('', file=f2)
+    print(' ]', file=f2)
+    f2.close()
+
 
 if __name__ == "__main__":
     # we add compulsary arguments as named arguments for readability
@@ -163,10 +239,23 @@ if __name__ == "__main__":
     parser.add_argument("config_dir",
                         help="Directory to write config files and variables")
 
+    # CNN options
+    parser.add_argument('--cnn-layer', type=str, action='append', 
+                        help="CNN parameters at each CNN layer, e.g. filt_x_dim=3 filt_y_dim=8 "
+                        "filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 "
+                        "pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1", default = None)
+    parser.add_argument("--cnn-bottleneck-dim", type=int,
+                        help="Output dimension of the linear layer at the CNN output "
+                        "for dimension reduction, e.g. 256", default=256)
+    parser.add_argument("--cepstral-lifter", type=float,
+                        help="Here we need the scaling factor on cepstra in the production of MFCC"
+                        "to cancel out the effect of lifter, e.g. 22.0", default=22.0)
+
+
     print(' '.join(sys.argv))
 
     args = parser.parse_args()
-    
+
     if not os.path.exists(args.config_dir):
         os.makedirs(args.config_dir)
 
@@ -201,6 +290,12 @@ if __name__ == "__main__":
     else:
         use_presoftmax_prior_scale = False
 
+    if args.cnn_layer is not None:
+      cnn_array = ParseCnnString(args.cnn_layer)
+      num_cnn_layers = len(cnn_array)
+    else:
+      num_cnn_layers = 0
+
     parsed_splice_output = ParseSpliceString(args.splice_indexes.strip())
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
@@ -217,7 +312,37 @@ if __name__ == "__main__":
     nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[args.config_dir + '/init.config'] = init_config_lines
 
-    prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
+    if num_cnn_layers == 0:
+      prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, args.config_dir + '/lda.mat')
+    else:
+      if args.ivector_dim > 0:
+        iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
+                           'dimension': args.ivector_dim}
+        iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, args.ivector_dim, "")
+
+      # We use an Idct layer here to convert MFCC to FBANK features
+      WriteIdctMatrixFile(args.feat_dim, args.cepstral_lifter, args.config_dir + "/idct.mat")
+      prev_layer_output = {'descriptor':  "input",
+                           'dimension': args.feat_dim}
+      prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "idct", prev_layer_output, args.config_dir + '/idct.mat')
+
+      list = [('Offset(idct, {0})'.format(n) if n != 0 else 'idct') for n in splice_indexes[0]]
+      splice_descriptor = "Append({0})".format(", ".join(list))
+      cnn_input_dim = len(splice_indexes[0]) * args.feat_dim
+      prev_layer_output = {'descriptor':  splice_descriptor,
+                           'dimension': cnn_input_dim,
+                           '3d-dim': [len(splice_indexes[0]), args.feat_dim, 1],
+                           'vectorization': 'yzx'}
+
+      for cl in range(0, num_cnn_layers):
+        prev_layer_output = AddCnnLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_array[cl])
+
+      prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, args.cnn_bottleneck_dim, "")
+
+      if args.ivector_dim > 0:
+        prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
+        prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']
+
 
     left_context = 0
     right_context = 0

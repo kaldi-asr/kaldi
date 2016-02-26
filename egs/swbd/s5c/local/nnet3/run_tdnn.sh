@@ -14,6 +14,7 @@ stage=0
 train_stage=-10
 has_fisher=true
 speed_perturb=true
+use_cnn=true
 
 
 . cmd.sh
@@ -33,6 +34,32 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
+
+cnn_opts=()
+if [ "$use_cnn" == "true" ]; then
+# When the cnn option is on, the LDA is replaced by
+# an CNN layer at the front of the network
+# and the recipe uses fbank features as the CNN input
+# As the dimension of the CNN output is usually large, we place
+# a linear layer at the output of CNN for dimension reduction
+# The ivectors are processed through a fully connected affine layer,
+# then concatenated with the CNN bottleneck output and
+# passed to the deeper part of the network.
+# Due to the data compression issue, it is better to convert MFCC
+# to FBANK in the network instead of directly using FBANK features
+# from the storage. This script uses MFCC features as its input
+# and were converted to FBANK features with an inverse of DCT matrix
+# at the first layer of the network.
+
+  cnn_layer="filt_x_dim=3 filt_y_dim=8 filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1"
+  cnn_opts+=(--cnn-layer "$cnn_layer")
+  cnn_bottleneck_dim=256
+  cnn_opts+=(--cnn-bottleneck-dim $cnn_bottleneck_dim)
+  cepstral_lifter="22.0"
+  cnn_opts+=(--cepstral-lifter "$cepstral_lifter")
+  affix=cnn
+fi
+
 dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
@@ -47,7 +74,8 @@ if [ $stage -le 9 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-  steps/nnet3/train_tdnn.sh --stage $train_stage \
+  steps/nnet3/tdnn/train.sh --stage $train_stage \
+    "${cnn_opts[@]}" \
     --num-epochs 2 --num-jobs-initial 3 --num-jobs-final 16 \
     --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0" \
     --feat-type raw \
