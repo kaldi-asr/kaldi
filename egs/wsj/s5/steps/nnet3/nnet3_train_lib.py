@@ -3,6 +3,7 @@ import logging
 import math
 import re
 import time
+import argparse
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -12,6 +13,38 @@ formatter = logging.Formatter('%(asctime)s [%(filename)s:%(lineno)s - %(funcName
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+
+def SendMail(message, subject, email_id):
+    try:
+        subprocess.Popen('echo "{message}" | mail -s "{subject}" {email} '.format(
+            message = message,
+            subject = subject,
+            email = email_id), shell=True)
+    except Exception as e:
+        logger.info(" Unable to send mail due to error:\n {error}".format(error = str(e)))
+        pass
+
+class StrToBoolAction(argparse.Action):
+    """ A custom action to convert bools from shell format i.e., true/false
+        to python format i.e., True/False """
+    def __call__(self, parser, namespace, values, option_string=None):
+        if values == "true":
+            setattr(namespace, self.dest, True)
+        elif values == "false":
+            setattr(namespace, self.dest, False)
+        else:
+            raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
+
+class NullstrToNoneAction(argparse.Action):
+    """ A custom action to convert empty strings passed by shell
+        to None in python. This is necessary as shell scripts print null strings
+        when a variable is not specified. We could use the more apt None
+        in python. """
+    def __call__(self, parser, namespace, values, option_string=None):
+            if values.strip() == "":
+                setattr(namespace, self.dest, None)
+            else:
+                setattr(namespace, self.dest, values)
 
 
 def CheckIfCudaCompiled():
@@ -104,7 +137,7 @@ def ReadKaldiMatrix(matrix_file):
         if not (first_field == "[" and last_field == "]"):
             raise Exception("Kaldi matrix file has incorrect format, only text format matrix files can be read by this script")
         for i in range(len(lines)):
-            lines[i] = map(lambda x: int(x), lines[i])
+            lines[i] = map(lambda x: int(float(x)), lines[i])
         return lines
     except IOError:
         raise Exception("Error while reading the kaldi matrix file {0}".format(matrix_file))
@@ -282,7 +315,7 @@ def ComputePresoftmaxPriorScale(dir, alidir, num_jobs, run_opts,
 {command} JOB=1:{num_jobs} {dir}/log/acc_pdf.JOB.log \
 ali-to-post "ark:gunzip -c {alidir}/ali.JOB.gz|" ark:- \| \
 post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
-     """.format(command = run_opts.train_command,
+     """.format(command = run_opts.command,
                 num_jobs = num_jobs,
                 dir = dir,
                 alidir = alidir))
@@ -290,24 +323,25 @@ post-to-tacc --per-pdf=true  {alidir}/final.mdl ark:- {dir}/pdf_counts.JOB
     RunKaldiCommand("""
 {command} {dir}/log/sum_pdf_counts.log \
 vector-sum --binary=false {dir}/pdf_counts.* {dir}/pdf_counts
-       """.format(command = run_opts.train_command,  dir = dir))
+       """.format(command = run_opts.command,  dir = dir))
 
     import glob
     for file in glob.glob('{0}/pdf_counts.*'.format(dir)):
         os.remove(file)
 
     smooth=0.01
-    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))
+    pdf_counts = ReadKaldiMatrix('{0}/pdf_counts'.format(dir))[0]
     total = sum(pdf_counts)
     average_count = total/len(pdf_counts)
     scales = []
     for i in range(len(pdf_counts)):
         scales.append(math.pow(pdf_counts[i] + smooth * average_count, presoftmax_prior_scale_power))
+    num_pdfs = len(pdf_counts)
     scaled_counts = map(lambda x: x * float(num_pdfs) / sum(scales), scales)
 
     output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
     WriteKaldiMatrix(output_file, [scaled_counts])
-    ForceSymLink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
+    ForceSymlink("../presoftmax_prior_scale.vec", "{0}/configs/presoftmax_prior_scale.vec".format(dir))
 
 def PrepareInitialAcousticModel(dir, alidir, run_opts):
     """ Adds the first layer; this will also add in the lda.mat and
@@ -505,8 +539,8 @@ nnet3-show-progress --use-gpu=no "nnet3-am-copy --raw=true {prev_model} - |" "nn
                prev_model = prev_model,
                egs_dir = egs_dir), wait = wait)
 
-def CombineModels(dir, num_iters, num_iters_combine, chunk_width, egs_dir,
-                  run_opts):
+def CombineModels(dir, num_iters, num_iters_combine, egs_dir,
+                  run_opts, chunk_width = None):
     # Now do combination.  In the nnet3 setup, the logic
     # for doing averaging of subsets of the models in the case where
     # there are too many models to reliably esetimate interpolation
@@ -519,18 +553,22 @@ def CombineModels(dir, num_iters, num_iters_combine, chunk_width, egs_dir,
           raise Exception('Model file {0} missing'.format(model_file))
       raw_model_strings.append('"nnet3-am-copy --raw=true {0} -|"'.format(model_file))
 
-    combine_num_chunk_per_minibatch = int(1024.0/(chunk_width))
+    if chunk_width is not None:
+        # this is an RNN model
+        mbsize = int(1024.0/(chunk_width))
+    else:
+        mbsize = 1024
 
     RunKaldiCommand("""
 {command} {combine_queue_opt} {dir}/log/combine.log \
 nnet3-combine --num-iters=40 \
    --enforce-sum-to-one=true --enforce-positive-weights=true \
-   --verbose=3 {raw_models} "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size={combine_num_chunk_per_minibatch} ark:{egs_dir}/combine.egs ark:-|" \
+   --verbose=3 {raw_models} "ark:nnet3-merge-egs --measure-output-frames=false --minibatch-size={mbsize} ark:{egs_dir}/combine.egs ark:-|" \
 "|nnet3-am-copy --set-raw-nnet=- {dir}/{num_iters}.mdl {dir}/combined.mdl"
     """.format(command = run_opts.command,
                combine_queue_opt = run_opts.combine_queue_opt,
                dir = dir, raw_models = " ".join(raw_model_strings),
-               combine_num_chunk_per_minibatch = combine_num_chunk_per_minibatch,
+               mbsize = mbsize,
                num_iters = num_iters,
                egs_dir = egs_dir))
 
