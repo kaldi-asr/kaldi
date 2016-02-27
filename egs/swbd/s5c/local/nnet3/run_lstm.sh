@@ -27,10 +27,10 @@ splice_indexes="-2,-1,0,1,2 0 0"
 lstm_delay=" -1 -2 -3 "
 label_delay=5
 num_lstm_layers=3
-cell_dim=1280
+cell_dim=1024
 hidden_dim=1024
-recurrent_projection_dim=384
-non_recurrent_projection_dim=384
+recurrent_projection_dim=256
+non_recurrent_projection_dim=256
 chunk_width=20
 chunk_left_context=40
 chunk_right_context=0
@@ -98,6 +98,7 @@ if [ $stage -le 9 ]; then
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
+    --self-repair-scale 0.00001 \
    $dir/configs || exit 1;
 
 fi
@@ -118,6 +119,7 @@ if [ $stage -le 10 ]; then
     --trainer.optimization.num-jobs-final=$num_jobs_final \
     --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
     --trainer.optimization.final-effective-lrate=$final_effective_lrate \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.rnn.num-chunk-per-minibatch=$num_chunk_per_minibatch \
     --trainer.optimization.momentum=$momentum \
     --egs.chunk-width=$chunk_width \
