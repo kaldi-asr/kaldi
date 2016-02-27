@@ -77,16 +77,16 @@ def AddNoOpLayer(config_lines, name, input):
             'dimension': input['dimension']}
 
 
-
-def AddLdaLayer(config_lines, name, input, lda_file):
+def AddFixedAffineLayer(config_lines, name, input, matrix_file):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    components.append('component name={0}_lda type=FixedAffineComponent matrix={1}'.format(name, lda_file))
-    component_nodes.append('component-node name={0}_lda component={0}_lda input={1}'.format(name, input['descriptor']))
+    components.append('component name={0}_fixaffine type=FixedAffineComponent matrix={1}'.format(name, matrix_file))
+    component_nodes.append('component-node name={0} component={0}_fixaffine input={1}'.format(name, input['descriptor']))
 
-    return {'descriptor':  '{0}_lda'.format(name),
+    return {'descriptor':  '{0}'.format(name),
             'dimension': input['dimension']}
+
 
 def AddBlockAffineLayer(config_lines, name, input, output_dim, num_blocks):
     components = config_lines['components']
@@ -150,13 +150,15 @@ def AddConvolutionLayer(config_lines, name, input,
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    conv_init_string = "component name={0}_conv type=ConvolutionComponent input-x-dim={1} input-y-dim={2} input-z-dim={3} filt-x-dim={4} filt-y-dim={5} filt-x-step={6} filt-y-step={7} input-vectorization-order={8}".format(name, input_x_dim, input_y_dim, input_z_dim, filt_x_dim, filt_y_dim, filt_x_step, filt_y_step, input_vectorization)
+    conv_init_string = ("component name={0}_conv type=ConvolutionComponent "
+                       "input-x-dim={1} input-y-dim={2} input-z-dim={3} "
+                       "filt-x-dim={4} filt-y-dim={5} filt-x-step={6} filt-y-step={7} "
+                       "input-vectorization-order={8}".format(name, input_x_dim, input_y_dim, input_z_dim,
+                       filt_x_dim, filt_y_dim, filt_x_step, filt_y_step, input_vectorization))
     if filter_bias_file is not None:
         conv_init_string += " matrix={0}".format(filter_bias_file)
-    if is_updatable:
-        conv_init_string += " is-updatable=true"
     else:
-        conv_init_string += " is-updatable=false"
+        conv_init_string += " num-filters={0}".format(num_filters)
 
     components.append(conv_init_string)
     component_nodes.append("component-node name={0}_conv_t component={0}_conv input={1}".format(name, input['descriptor']))
@@ -165,8 +167,46 @@ def AddConvolutionLayer(config_lines, name, input,
     num_y_steps = (1 + (input_y_dim - filt_y_dim) / filt_y_step)
     output_dim = num_x_steps * num_y_steps * num_filters;
     return {'descriptor':  '{0}_conv_t'.format(name),
-            'dimension': output_dim}
+            'dimension': output_dim,
+            '3d-dim': [num_x_steps, num_y_steps, num_filters],
+            'vectorization': 'zyx'}
 
+
+def AddMaxpoolingLayer(config_lines, name, input,
+                      input_x_dim, input_y_dim, input_z_dim,
+                      pool_x_size, pool_y_size, pool_z_size,
+                      pool_x_step, pool_y_step, pool_z_step):
+    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    if input_x_dim < 1 or input_y_dim < 1 or input_z_dim < 1:
+        sys.exit("non-positive maxpooling input size ({0}, {1}, {2})".
+                 format(input_x_dim, input_y_dim, input_z_dim))
+    if pool_x_size > input_x_dim or pool_y_size > input_y_dim or pool_z_size > input_z_dim:
+        sys.exit("invalid maxpooling pool size vs. input size")
+    if pool_x_step > pool_x_size or pool_y_step > pool_y_size or pool_z_step > pool_z_size:
+        sys.exit("invalid maxpooling pool step vs. pool size")
+
+    components.append('component name={0}_maxp type=MaxpoolingComponent '
+                      'input-x-dim={1} input-y-dim={2} input-z-dim={3} '
+                      'pool-x-size={4} pool-y-size={5} pool-z-size={6} '
+                      'pool-x-step={7} pool-y-step={8} pool-z-step={9} '.
+                      format(name, input_x_dim, input_y_dim, input_z_dim,
+                      pool_x_size, pool_y_size, pool_z_size,
+                      pool_x_step, pool_y_step, pool_z_step))
+
+    component_nodes.append('component-node name={0}_maxp_t component={0}_maxp input={1}'.format(name, input['descriptor']))
+
+    num_pools_x = 1 + (input_x_dim - pool_x_size) / pool_x_step;
+    num_pools_y = 1 + (input_y_dim - pool_y_size) / pool_y_step;
+    num_pools_z = 1 + (input_z_dim - pool_z_size) / pool_z_step;
+    output_dim = num_pools_x * num_pools_y * num_pools_z;
+
+    return {'descriptor':  '{0}_maxp_t'.format(name),
+            'dimension': output_dim,
+            '3d-dim': [num_pools_x, num_pools_y, num_pools_z],
+            'vectorization': 'zyx'}
 
 
 def AddSoftmaxLayer(config_lines, name, input):
