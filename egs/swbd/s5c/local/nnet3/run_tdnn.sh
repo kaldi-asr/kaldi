@@ -15,6 +15,7 @@ affix=
 train_stage=-10
 has_fisher=true
 speed_perturb=true
+use_cnn=true
 common_egs_dir=
 reporting_email=
 remove_egs=true
@@ -36,6 +37,33 @@ suffix=
 if [ "$speed_perturb" == "true" ]; then
   suffix=_sp
 fi
+
+cnn_opts=()
+if [ "$use_cnn" == "true" ]; then
+# When the cnn option is on, the LDA is replaced by
+# an CNN layer at the front of the network
+# and the recipe uses fbank features as the CNN input
+# As the dimension of the CNN output is usually large, we place
+# a linear layer at the output of CNN for dimension reduction
+# The ivectors are processed through a fully connected affine layer,
+# then concatenated with the CNN bottleneck output and
+# passed to the deeper part of the network.
+# Due to the data compression issue, it is better to convert MFCC
+# to FBANK in the network instead of directly using FBANK features
+# from the storage. This script uses MFCC features as its input
+# and were converted to FBANK features with an inverse of DCT matrix
+# at the first layer of the network.
+
+  cnn_layer="filt_x_dim=3 filt_y_dim=8 filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1"
+  cnn_bottleneck_dim=256  # remove this option if you don't want to add the bottleneck affine
+  cepstral_lifter=  # have to fill this in if you are not using the default lifter value in the production of MFCC
+                    # Here we assume your are using the default lifter value (22.0)
+  cnn_opts+=(--cnn-layer "$cnn_layer")
+  [ ! -z "$cnn_bottleneck_dim" ] && cnn_opts+=(--cnn-bottleneck-dim $cnn_bottleneck_dim)
+  [ ! -z "$cepstral_lifter" ] && cnn_opts+=(--cepstral-lifter $cepstral_lifter)
+  affix=cnn
+fi
+
 dir=exp/nnet3/tdnn
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
@@ -50,6 +78,7 @@ if [ $stage -le 9 ]; then
 
   # create the config files for nnet initialization
   python steps/nnet3/tdnn/make_configs.py  \
+    "${cnn_opts[@]}" \
     --feat-dir data/${train_set}_hires \
     --ivector-dir exp/nnet3/ivectors_${train_set} \
     --ali-dir $ali_dir \
@@ -58,7 +87,6 @@ if [ $stage -le 9 ]; then
     --use-presoftmax-prior-scale true \
    $dir/configs || exit 1;
 fi
-
 
 
 if [ $stage -le 10 ]; then

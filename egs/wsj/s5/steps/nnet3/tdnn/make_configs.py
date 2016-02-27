@@ -42,6 +42,18 @@ def GetArgs():
     num_target_group.add_argument("--ali-dir", type=str,
                                   help="alignment directory, from which we derive the num-targets")
 
+    # CNN options
+    parser.add_argument('--cnn-layer', type=str, action='append',
+                        help="CNN parameters at each CNN layer, e.g. filt_x_dim=3 filt_y_dim=8 "
+                        "filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 "
+                        "pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1", default = None)
+    parser.add_argument("--cnn-bottleneck-dim", type=int,
+                        help="Output dimension of the linear layer at the CNN output "
+                        "for dimension reduction, e.g. 256", default=0)
+    parser.add_argument("--cepstral-lifter", type=float,
+                        help="Here we need the scaling factor on cepstra in the production of MFCC"
+                        "to cancel out the effect of lifter, e.g. 22.0", default=22.0)
+
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
                         help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3'")
@@ -187,12 +199,44 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
 
     return [tdnn_input_descriptor, filter_context, filter_context]
 
+def AddCnnLayer(config_lines, name, input, config):
+
+    input = nodes.AddConvolutionLayer(config_lines, name, input,
+                              input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                              config['filt_x_dim'], config['filt_y_dim'],
+                              config['filt_x_step'], config['filt_y_step'],
+                              config['num_filters'], input['vectorization'])
+
+    input = nodes.AddMaxpoolingLayer(config_lines, name, input,
+                              input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                              config['pool_x_size'], config['pool_y_size'], config['pool_z_size'],
+                              config['pool_x_step'], config['pool_y_step'], config['pool_z_step'])
+
+    return input
+
 def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
     f.write("\n".join(config_lines['component-nodes']))
     f.close()
+
+def ParseCnnString(cnn_string):
+    cnn_array = []
+    cnn_list={}
+    for cl in range(0, len(cnn_string)):
+      split1 = cnn_string[cl].split(" ");
+      if len(split1) != 11:
+        sys.exit("invalid --cnn-layer input, must contain 11 arguments for one CNN layer: "
+                 + cnn_string[cl])
+
+      for string in split1:
+        split2 = string.split("=")
+        cnn_list[split2[0]]=int(split2[1])
+
+      cnn_array.append(cnn_list)
+
+    return cnn_array
 
 def ParseSpliceString(splice_indexes):
     splice_array = []
@@ -229,11 +273,19 @@ def ParseSpliceString(splice_indexes):
             }
 
 def MakeConfigs(config_dir, splice_indexes_string,
+                cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
                 feat_dim, ivector_dim, num_targets,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
                 use_presoftmax_prior_scale, final_layer_normalize_target,
                 include_log_softmax, xent_regularize):
+
+    if cnn_layer is not None:
+      cnn_array = ParseCnnString(cnn_layer)
+      num_cnn_layers = len(cnn_array)
+    else:
+      num_cnn_layers = 0
+
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -257,7 +309,38 @@ def MakeConfigs(config_dir, splice_indexes_string,
     nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
-    prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+    if num_cnn_layers == 0:
+        # Add the Lda layer
+        prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "lda", prev_layer_output, config_dir + '/lda.mat')
+    else:
+        if ivector_dim > 0:
+            iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
+                               'dimension': ivector_dim}
+            iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, ivector_dim, "")
+
+        # We use an Idct layer here to convert MFCC to FBANK features
+        nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir + "/idct.mat")
+        prev_layer_output = {'descriptor':  "input",
+                             'dimension': feat_dim}
+        prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "idct", prev_layer_output, config_dir + '/idct.mat')
+
+        list = [('Offset(idct, {0})'.format(n) if n != 0 else 'idct') for n in splice_indexes[0]]
+        splice_descriptor = "Append({0})".format(", ".join(list))
+        cnn_input_dim = len(splice_indexes[0]) * feat_dim
+        prev_layer_output = {'descriptor':  splice_descriptor,
+                             'dimension': cnn_input_dim,
+                             '3d-dim': [len(splice_indexes[0]), feat_dim, 1],
+                             'vectorization': 'yzx'}
+
+        for cl in range(0, num_cnn_layers):
+            prev_layer_output = AddCnnLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_array[cl])
+
+        if cnn_bottleneck_dim > 0:
+            prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")
+
+        if ivector_dim > 0:
+            prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
+            prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']
 
     left_context = 0
     right_context = 0
@@ -371,6 +454,7 @@ def Main():
     args = GetArgs()
 
     MakeConfigs(args.config_dir, args.splice_indexes,
+                args.cnn_layer, args.cnn_bottleneck_dim, args.cepstral_lifter,
                 args.feat_dim, args.ivector_dim, args.num_targets,
                 args.nonlin_input_dim, args.nonlin_output_dim, args.subset_dim,
                 args.pool_type, args.pool_window, args.pool_lpfilter_width,
