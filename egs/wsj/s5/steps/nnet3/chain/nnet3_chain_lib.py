@@ -75,7 +75,7 @@ steps/nnet3/chain/get_egs.sh {egs_opts} \
   --left-tolerance '{left_tolerance}' \
   --right-tolerance '{right_tolerance}' \
   --frame-subsampling-factor {frame_subsampling_factor} \
-  --aligment-subsampling-factor {alignment_subsampling_factor} \
+  --alignment-subsampling-factor {alignment_subsampling_factor} \
   --stage {stage} \
   --frames-per-iter {frames_per_iter} \
   --frames-per-eg {frames_per_eg} \

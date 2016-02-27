@@ -539,7 +539,6 @@ def Train(args, run_opts):
         logger.info("Creating denominator FST")
         chain_lib.CreateDenominatorFst(args.dir, args.tree_dir, run_opts)
 
-    num_leaves = chain_lib.GetNumberOfLeaves(args.tree_dir)
     if (args.stage <= -4):
         logger.info("Initializing a basic network for estimating preconditioning matrix")
         train_lib.RunKaldiCommand("""
