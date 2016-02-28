@@ -102,8 +102,6 @@ def CheckArgs(args):
     if args.feat_dir is not None:
         args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
 
-    print(nnet3_train_lib.GetNumberOfLeaves)
-    print(chain_lib.GetNumberOfLeaves)
     if args.ali_dir is not None:
         args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
     elif args.tree_dir is not None:

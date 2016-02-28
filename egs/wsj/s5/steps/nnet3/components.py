@@ -7,27 +7,6 @@ import sys
 import warnings
 import copy
 from operator import itemgetter
-import numpy as np
-
-try:
-    import scipy.signal as signal
-    has_scipy_signal = True
-except ImportError:
-    has_scipy_signal = False
-
-def WriteKaldiMatrix(matrix, matrix_file_name):
-    assert(len(matrix.shape) == 2)
-    # matrix is a numpy array
-    matrix_file = open(matrix_file_name, "w")
-    [rows, cols ] = matrix.shape
-    matrix_file.write('[\n')
-    for row in range(rows):
-        matrix_file.write(' '.join( map(lambda x: '{0:f}'.format(x), matrix[row, : ])))
-        if row == rows - 1:
-            matrix_file.write("]")
-        else:
-            matrix_file.write('\n')
-    matrix_file.close()
 
 def GetSumDescriptor(inputs):
     sum_descriptors = inputs
@@ -97,7 +76,6 @@ def AddBlockAffineLayer(config_lines, name, input, output_dim, num_blocks):
     return {'descriptor' : '{0}_block_affine'.format(name),
                            'dimension' : output_dim}
 
-
 def AddPermuteLayer(config_lines, name, input, column_map):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -107,8 +85,6 @@ def AddPermuteLayer(config_lines, name, input, column_map):
 
     return {'descriptor': '{0}_permute'.format(name),
             'dimension': input['dimension']}
-
-
 
 def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""):
     components = config_lines['components']
@@ -135,7 +111,6 @@ def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options 
 
     return {'descriptor':  '{0}_renorm'.format(name),
             'dimension': output_dim}
-
 
 def AddConvolutionLayer(config_lines, name, input,
                        input_x_dim, input_y_dim, input_z_dim,
