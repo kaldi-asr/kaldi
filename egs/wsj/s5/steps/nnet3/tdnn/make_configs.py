@@ -9,8 +9,6 @@ import warnings
 import copy
 import imp
 import ast
-import scipy.signal as signal
-import numpy as np
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
@@ -63,7 +61,7 @@ def GetArgs():
     parser.add_argument("--relu-dim", type=int,
                         help="dimension of ReLU nonlinearities")
     parser.add_argument("--pool-type", type=str, default = 'none',
-                        help="Type of pooling to be used.", choices = ['low-pass', 'sum', 'max', 'weighted-average', 'per-dim-weighted-average', 'none'])
+                        help="Type of pooling to be used.", choices = ['low-pass', 'weighted-average', 'per-dim-weighted-average', 'none'])
     parser.add_argument("--pool-window", type=int, default = None,
                         help="Width of the pooling window")
     parser.add_argument("--pool-lpfilter-width", type=float,
@@ -155,10 +153,20 @@ def AddPerDimAffineLayer(config_lines, name, input, input_window):
     return [output_descriptor, filter_context, filter_context]
 
 def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filename, is_updatable = False):
+    try:
+        import scipy.signal as signal
+        import numpy as np
+    except ImportError:
+        raise Exception(" This recipe cannot be run without scipy."
+                        " You can install it using the command \n"
+                        " pip install scipy\n"
+                        " If you do not have admin access on the machine you are"
+                        " trying to run this recipe, you can try using"
+                        " virtualenv")
     # low-pass smoothing of input was specified. so we will add a low-pass filtering layer
     lp_filter = signal.firwin(num_lpfilter_taps, rate, width=None, window='hamming', pass_zero=True, scale=True, nyq=1.0)
-    lp_filter = np.append(lp_filter, 0)
-    nodes.WriteKaldiMatrix(np.array([lp_filter]), lpfilt_filename)
+    lp_filter = list(np.append(lp_filter, 0))
+    nnet3_train_lib.WriteKaldiMatrix(lpfilt_filename, [lp_filter])
     filter_context = int((num_lpfilter_taps - 1) / 2)
     filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
     list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
@@ -299,12 +307,6 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
                 left_context += cur_left_context
                 right_context += cur_right_context
-
-            if pool_type == "sum":
-                raise NotImplementedError("Sum-pooling has not been tested yet.")
-
-            if pool_type == "max" :
-                raise NotImplementedError("Max-pooling component needs to be reimplemented for this.")
 
             try:
                 zero_index = splice_indexes[i].index(0)
