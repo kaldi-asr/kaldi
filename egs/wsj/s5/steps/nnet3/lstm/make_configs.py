@@ -41,8 +41,8 @@ def GetArgs():
     # General neural network options
     parser.add_argument("--splice-indexes", type=str,
                         help="Splice indexes at input layer, e.g. '-3,-2,-1,0,1,2,3'", required = True, default="0")
-    parser.add_argument("--include-log-softmax", type=str,
-                        help="add the final softmax layer ", default="true", choices = ["false", "true"])
+    parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="add the final softmax layer ", default=True, choices = ["false", "true"])
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -63,11 +63,12 @@ def GetArgs():
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
     # Gradient clipper options
-    parser.add_argument("--norm-based-clipping", type=str,
-                        help="use norm based clipping in ClipGradient components ", default="true", choices = ["false", "true"])
+    parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
                         help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
-
+    parser.add_argument("--self-repair-scale", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -200,7 +201,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 num_lstm_layers, num_hidden_layers,
                 norm_based_clipping, clipping_threshold,
                 ng_per_element_scale_options, ng_affine_options,
-                label_delay, include_log_softmax):
+                label_delay, include_log_softmax, self_repair_scale):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -215,19 +216,19 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     config_files[config_dir + '/init.config'] = init_config_lines
 
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
-    print(lstm_delay)
+
     for i in range(num_lstm_layers):
 	if len(lstm_delay[i]) == 2: # BLSTM layer case, add both forward and backward
             prev_layer_output1 = nodes.AddLstmLayer(config_lines, "BLstm{0}_forward".format(i+1), prev_layer_output, cell_dim,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
                                              ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][0])
+                                             lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
             prev_layer_output2 = nodes.AddLstmLayer(config_lines, "BLstm{0}_backward".format(i+1), prev_layer_output, cell_dim,
                                              recurrent_projection_dim, non_recurrent_projection_dim,
                                              clipping_threshold, norm_based_clipping,
                                              ng_per_element_scale_options, ng_affine_options,
-                                             lstm_delay = lstm_delay[i][1])
+                                             lstm_delay = lstm_delay[i][1], self_repair_scale = self_repair_scale)
             prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output1['descriptor'], prev_layer_output2['descriptor'])
 	    prev_layer_output['dimension'] = prev_layer_output1['dimension'] + prev_layer_output2['dimension']
 	else: # LSTM layer case
@@ -235,7 +236,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 			                    recurrent_projection_dim, non_recurrent_projection_dim,
 					    clipping_threshold, norm_based_clipping,
 					    ng_per_element_scale_options, ng_affine_options,
-					    lstm_delay = lstm_delay[i][0])
+					    lstm_delay = lstm_delay[i][0], self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -252,7 +253,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options)
+                                               ng_affine_options, self_repair_scale = self_repair_scale)
         # make the intermediate config file for layerwise discriminative
         # training
         nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options = ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
@@ -300,7 +301,8 @@ def Main():
                 args.norm_based_clipping,
                 args.clipping_threshold,
                 args.ng_per_element_scale_options, args.ng_affine_options,
-                args.label_delay, args.include_log_softmax)
+                args.label_delay, args.include_log_softmax,
+                args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()

@@ -96,12 +96,13 @@ def AddAffineLayer(config_lines, name, input, output_dim, ng_affine_options = ""
     return {'descriptor':  '{0}_affine'.format(name),
             'dimension': output_dim}
 
-def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0):
+def AddAffRelNormLayer(config_lines, name, input, output_dim, ng_affine_options = " bias-stddev=0 ", norm_target_rms = 1.0, self_repair_scale = None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     components.append("component name={0}_affine type=NaturalGradientAffineComponent input-dim={1} output-dim={2} {3}".format(name, input['dimension'], output_dim, ng_affine_options))
-    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1}".format(name, output_dim))
+    components.append("component name={0}_relu type=RectifiedLinearComponent dim={1} {2}".format(name, output_dim, self_repair_string))
     components.append("component name={0}_renorm type=NormalizeComponent dim={1} target-rms={2}".format(name, output_dim, norm_target_rms))
 
     component_nodes.append("component-node name={0}_affine component={0}_affine input={1}".format(name, input['descriptor']))
@@ -150,26 +151,48 @@ def AddSoftmaxLayer(config_lines, name, input):
     return {'descriptor':  '{0}_log_softmax'.format(name),
             'dimension': input['dimension']}
 
-def AddOutputLayer(config_lines, input, label_delay=None):
+
+def AddOutputLayer(config_lines, input, label_delay=None, suffix=None):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
+    name = 'output'
+    if suffix is not None:
+        name = '{0}-{1}'.format(name, suffix)
+
     if label_delay is None:
-        component_nodes.append('output-node name=output input={0}'.format(input['descriptor']))
+        component_nodes.append('output-node name={0} input={1}'.format(name, input['descriptor']))
     else:
-        component_nodes.append('output-node name=output input=Offset({0},{1})'.format(input['descriptor'], label_delay))
+        component_nodes.append('output-node name={0} input=Offset({1},{2})'.format(name, input['descriptor'], label_delay))
 
-def AddFinalLayer(config_lines, input, output_dim, ng_affine_options = " param-stddev=0 bias-stddev=0 ", label_delay=None, use_presoftmax_prior_scale = False, prior_scale_file = None, include_log_softmax = True):
+def AddFinalLayer(config_lines, input, output_dim,
+        ng_affine_options = " param-stddev=0 bias-stddev=0 ",
+        label_delay=None,
+        use_presoftmax_prior_scale = False,
+        prior_scale_file = None,
+        include_log_softmax = True,
+        name_affix = None):
+
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
-    prev_layer_output = AddAffineLayer(config_lines, "Final", input, output_dim, ng_affine_options)
+    if name_affix is not None:
+        final_node_prefix = 'Final-' + str(name_affix)
+    else:
+        final_node_prefix = 'Final'
+
+    prev_layer_output = AddAffineLayer(config_lines,
+            final_node_prefix , input, output_dim,
+            ng_affine_options)
     if include_log_softmax:
         if use_presoftmax_prior_scale :
-            components.append('component name=Final-fixed-scale type=FixedScaleComponent scales={0}'.format(prior_scale_file))
-            component_nodes.append('component-node name=Final-fixed-scale component=Final-fixed-scale input={0}'.format(prev_layer_output['descriptor']))
-            prev_layer_output['descriptor'] = "Final-fixed-scale"
-        prev_layer_output = AddSoftmaxLayer(config_lines, "Final", prev_layer_output)
-    AddOutputLayer(config_lines, prev_layer_output, label_delay)
+            components.append('component name={0}-fixed-scale type=FixedScaleComponent scales={1}'.format(final_node_prefix, prior_scale_file))
+            component_nodes.append('component-node name=Final-fixed-scale component={0}-fixed-scale input={1}'.format(finale_node_prefix,
+                prev_layer_output['descriptor']))
+            prev_layer_output['descriptor'] = "{0}-fixed-scale".format(final_node_prefix)
+        prev_layer_output = AddSoftmaxLayer(config_lines, final_node_prefix, prev_layer_output)
+    # we use the same name_affix as a prefix in for affine/scale nodes but as a
+    # suffix for output node
+    AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix)
 
 def AddLstmLayer(config_lines,
                  name, input, cell_dim,
@@ -179,7 +202,8 @@ def AddLstmLayer(config_lines,
                  norm_based_clipping = "false",
                  ng_per_element_scale_options = "",
                  ng_affine_options = "",
-                 lstm_delay = -1):
+                 lstm_delay = -1,
+                 self_repair_scale = None):
     assert(recurrent_projection_dim >= 0 and non_recurrent_projection_dim >= 0)
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
@@ -200,6 +224,7 @@ def AddLstmLayer(config_lines,
     else:
         add_non_recurrent_projection = True
 
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
     # Natural gradient per element scale parameters
     ng_per_element_scale_options += " param-mean=0.0 param-stddev=1.0 "
     # Parameter Definitions W*(* replaced by - to have valid names)
@@ -223,11 +248,11 @@ def AddLstmLayer(config_lines,
 
 
     components.append("# Defining the non-linearities")
-    components.append("component name={0}_i type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_f type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_o type=SigmoidComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_g type=TanhComponent dim={1}".format(name, cell_dim))
-    components.append("component name={0}_h type=TanhComponent dim={1}".format(name, cell_dim))
+    components.append("component name={0}_i type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_f type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_o type=SigmoidComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_g type=TanhComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
+    components.append("component name={0}_h type=TanhComponent dim={1} {2}".format(name, cell_dim, self_repair_string))
 
     components.append("# Defining the cell computations")
     components.append("component name={0}_c1 type=ElementwiseProductComponent input-dim={1} output-dim={2}".format(name, 2 * cell_dim, cell_dim))
