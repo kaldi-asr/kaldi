@@ -146,10 +146,13 @@ def WriteKaldiMatrix(output_file, matrix):
     # matrix is a list of lists
     file = open(output_file, 'w')
     file.write("[ ")
-    row_len = len(matrix[0])
     num_rows = len(matrix)
+    if num_rows == 0:
+        raise Exception("Matrix is empty")
+    num_cols = len(matrix[0])
+
     for row_index in range(len(matrix)):
-        if row_len != len(matrix[row_index]):
+        if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to have the same length")
         file.write(" ".join(map(lambda x: str(x), matrix[row_index])))
         if row_index != num_rows - 1:
