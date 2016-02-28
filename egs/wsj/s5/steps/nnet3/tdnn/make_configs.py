@@ -10,7 +10,6 @@ import copy
 import imp
 import ast
 
-
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
 

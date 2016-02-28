@@ -177,7 +177,6 @@ def SplitData(data, num_jobs):
 def ParseModelConfigVarsFile(var_file):
     try:
         var_file_handle = open(var_file, 'r')
-        valid_fields = set(['model_left_context', 'model_right_context', 'num_hidden_layers'])
         model_left_context = None
         model_right_context = None
         num_hidden_layers = None
@@ -185,9 +184,9 @@ def ParseModelConfigVarsFile(var_file):
             parts = line.split('=')
             field_name = parts[0].strip()
             field_value = int(parts[1])
-            if field_name == 'model_left_context':
+            if field_name in ['model_left_context', 'left_context']:
                 model_left_context = field_value
-            elif field_name == 'model_right_context':
+            elif field_name in ['model_right_context', 'right_context']:
                 model_right_context = field_value
             elif field_name == 'num_hidden_layers':
                 num_hidden_layers = field_value
