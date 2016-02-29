@@ -4,6 +4,7 @@
 from __future__ import print_function
 import os
 import argparse
+import shlex
 import sys
 import warnings
 import copy
@@ -44,9 +45,9 @@ def GetArgs():
 
     # CNN options
     parser.add_argument('--cnn-layer', type=str, action='append',
-                        help="CNN parameters at each CNN layer, e.g. filt_x_dim=3 filt_y_dim=8 "
-                        "filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 "
-                        "pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1", default = None)
+                        help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
+                        "--filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 "
+                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1", default = None)
     parser.add_argument("--cnn-bottleneck-dim", type=int,
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256", default=0)
@@ -199,18 +200,18 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
 
     return [tdnn_input_descriptor, filter_context, filter_context]
 
-def AddCnnLayer(config_lines, name, input, config):
+def AddCnnLayer(config_lines, name, input, args):
 
     input = nodes.AddConvolutionLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
-                              config['filt_x_dim'], config['filt_y_dim'],
-                              config['filt_x_step'], config['filt_y_step'],
-                              config['num_filters'], input['vectorization'])
+                              args.filt_x_dim, args.filt_y_dim,
+                              args.filt_x_step, args.filt_y_step,
+                              args.num_filters, input['vectorization'])
 
     input = nodes.AddMaxpoolingLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
-                              config['pool_x_size'], config['pool_y_size'], config['pool_z_size'],
-                              config['pool_x_step'], config['pool_y_step'], config['pool_z_step'])
+                              args.pool_x_size, args.pool_y_size, args.pool_z_size,
+                              args.pool_x_step, args.pool_y_step, args.pool_z_step)
 
     return input
 
@@ -222,21 +223,25 @@ def PrintConfig(file_name, config_lines):
     f.close()
 
 def ParseCnnString(cnn_string):
-    cnn_array = []
-    cnn_list={}
+    parser = argparse.ArgumentParser(description="cnn argument parser")
+
+    parser.add_argument("--filt-x-dim", required=True, type=int)
+    parser.add_argument("--filt-y-dim", required=True, type=int)
+    parser.add_argument("--filt-x-step", type=int, default = 1)
+    parser.add_argument("--filt-y-step", type=int, default = 1)
+    parser.add_argument("--num-filters", type=int, default = 256)
+    parser.add_argument("--pool-x-size", required=True, type=int)
+    parser.add_argument("--pool-y-size", required=True, type=int)
+    parser.add_argument("--pool-z-size", required=True, type=int)
+    parser.add_argument("--pool-x-step", type=int, default = 1)
+    parser.add_argument("--pool-y-step", type=int, default = 1)
+    parser.add_argument("--pool-z-step", type=int, default = 1)
+
+    cnn_args = []
     for cl in range(0, len(cnn_string)):
-      split1 = cnn_string[cl].split(" ");
-      if len(split1) != 11:
-        sys.exit("invalid --cnn-layer input, must contain 11 arguments for one CNN layer: "
-                 + cnn_string[cl])
+         cnn_args.append(parser.parse_args(shlex.split(cnn_string[cl])))
 
-      for string in split1:
-        split2 = string.split("=")
-        cnn_list[split2[0]]=int(split2[1])
-
-      cnn_array.append(cnn_list)
-
-    return cnn_array
+    return cnn_args
 
 def ParseSpliceString(splice_indexes):
     splice_array = []
@@ -281,8 +286,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 include_log_softmax, xent_regularize):
 
     if cnn_layer is not None:
-      cnn_array = ParseCnnString(cnn_layer)
-      num_cnn_layers = len(cnn_array)
+      cnn_args = ParseCnnString(cnn_layer)
+      num_cnn_layers = len(cnn_args)
     else:
       num_cnn_layers = 0
 
@@ -333,7 +338,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                              'vectorization': 'yzx'}
 
         for cl in range(0, num_cnn_layers):
-            prev_layer_output = AddCnnLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_array[cl])
+            prev_layer_output = AddCnnLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_args[cl])
 
         if cnn_bottleneck_dim > 0:
             prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")

@@ -16,6 +16,7 @@ train_stage=-10
 has_fisher=true
 speed_perturb=true
 use_cnn=true
+cmvn_opts="--norm-means=false --norm-vars=false"
 common_egs_dir=
 reporting_email=
 remove_egs=true
@@ -54,7 +55,7 @@ if [ "$use_cnn" == "true" ]; then
 # and were converted to FBANK features with an inverse of DCT matrix
 # at the first layer of the network.
 
-  cnn_layer="filt_x_dim=3 filt_y_dim=8 filt_x_step=1 filt_y_step=1 num_filters=256 pool_x_size=1 pool_y_size=3 pool_z_size=1 pool_x_step=1 pool_y_step=3 pool_z_step=1"
+  cnn_layer="--filt-x-dim=3 --filt-y-dim=8 --filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 --pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1"
   cnn_bottleneck_dim=256  # remove this option if you don't want to add the bottleneck affine
   cepstral_lifter=  # have to fill this in if you are not using the default lifter value in the production of MFCC
                     # Here we assume your are using the default lifter value (22.0)
@@ -62,9 +63,11 @@ if [ "$use_cnn" == "true" ]; then
   [ ! -z "$cnn_bottleneck_dim" ] && cnn_opts+=(--cnn-bottleneck-dim $cnn_bottleneck_dim)
   [ ! -z "$cepstral_lifter" ] && cnn_opts+=(--cepstral-lifter $cepstral_lifter)
   affix=cnn
+  # use mean normalization when CNN is used
+  cmvn_opts="--norm-means=true --norm-vars=false"
 fi
 
-dir=exp/nnet3/tdnn
+dir=exp/nnet3/tdnnfinal
 dir=$dir${affix:+_$affix}
 dir=${dir}$suffix
 train_set=train_nodup$suffix
@@ -98,7 +101,7 @@ if [ $stage -le 10 ]; then
   steps/nnet3/train_dnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
-    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.cmvn-opts="$cmvn_opts" \
     --trainer.num-epochs 2 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
@@ -113,7 +116,6 @@ if [ $stage -le 10 ]; then
     --lang data/lang \
     --reporting.email="$reporting_email" \
     --dir=$dir  || exit 1;
-
 fi
 
 graph_dir=exp/tri4/graph_sw1_tg
