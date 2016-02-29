@@ -151,7 +151,7 @@ if [ $stage -le 13 ]; then
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
+    --chain.l2-regularize 0.00001 \
     --chain.xent-regularize $xent_regularize \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
@@ -164,7 +164,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
-    --trainer.optimization.momentum 0.9 \
+    --trainer.optimization.momentum 0.0 \
     --egs.stage $get_egs_stage \
     --egs.opts="--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \
