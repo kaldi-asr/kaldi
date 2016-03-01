@@ -9,78 +9,127 @@
 #include "feat/wave-reader.h"
 namespace kaldi {
 
-// This function computes and accumulates  
-// dot-product of zero-mean input with its shifted version.
-// inner_prod[j] - inner product of input vector with its shifted version by j
-//                 sum_{i=0}^corr_window_size x[i] * x[i+j]
-// norms[j]      - inner product of shifted input by itself as sum_{i=0}^corr_window_size x[i+j]^2
-// lpc_order is the size of autocorr_coeffs.
-// If mean == 0, the wave is normalized using its mean, otherwise
-// it is mean-normalized using mean value.
+// struct used to store statistics required for 
+// computing correlation coefficients 
+struct CorrelationStats {
+  int32 corr_order; // number of correlation coefficient. R[0],..,R[corr_order - 1] 
+  int32 num_samp;   // number of samples
+  BaseFloat samp_sum; // sum of samples.
+  Vector<BaseFloat> l1_norms; // l1_norms[j] - sum of values of input shifted by j as 
+                             // sum_{i=0}^corr_window_size x[i+j]
+  Vector<BaseFloat> l2_norms; // l2_norms[j] - inner product of shifted input by itself as
+                             // sum_{i=0}^corr_window_size x[i+j]^2
+  Vector<BaseFloat> inner_prod; // inner product of input vector with its shifted version by j
+                                // sum_{i=0}^corr_window_size x[i] * x[i+j]
+  CorrelationStats(): corr_order(100), num_samp(0), samp_sum(0) { 
+    l1_norms.Resize(corr_order);
+    l2_norms.Resize(corr_order);
+    inner_prod.Resize(corr_order);}
+    
+  CorrelationStats(int32 corr_order): corr_order(corr_order), num_samp(0), samp_sum(0) {
+    l1_norms.Resize(corr_order);
+    l2_norms.Resize(corr_order);
+    inner_prod.Resize(corr_order); }
+};
+/*
+   This function computes and accumulates statistics 
+   required for computing auto-correlation coefficient using waveform "wave",
+   e.g dot-product of input with its shifted version.
+   inner_prod[j] - inner product of input vector with its shifted version by j
+                  sum_{i=0}^corr_window_size x[i] * x[i+j]
+   l1_norms[j]     - sum of values of input shifted by j as sum_{i=0}^corr_window_size x[i+j]
+   l2_norms[j]      - inner product of shifted input by itself as 
+                      sum_{i=0}^corr_window_size x[i+j]^2
+   lpc_order is the size of autocorr_coeffs.
+*/
 void AccStatsForCorrelation(const VectorBase<BaseFloat> &wave,
-                                int32 lpc_order, int32 corr_window_size,
-                                Vector<BaseFloat> *inner_prod,
-                                Vector<BaseFloat> *norms,
-                                BaseFloat mean) {
-  if (inner_prod->Dim() != lpc_order)
-    inner_prod->Resize(lpc_order);
+                            int32 lpc_order,
+                            CorrelationStats *acc_corr_stats) { 
+  KALDI_ASSERT(acc_corr_stats->inner_prod.Dim() == lpc_order);
+  acc_corr_stats->samp_sum += wave.Sum();
+  acc_corr_stats->num_samp += wave.Dim();
 
-  if (norms->Dim() != lpc_order) 
-    norms->Resize(lpc_order);
+  int32 corr_window_size = wave.Dim() - lpc_order;
+  SubVector<BaseFloat> sub_vec1(wave, 0, corr_window_size);
+  BaseFloat local_l1_norm = sub_vec1.Sum(), 
+    local_l2_norm = VecVec(sub_vec1, sub_vec1), sum;
 
-  Vector<BaseFloat> zero_mean_wave(wave);
-  if (mean != 0.0) 
-    zero_mean_wave.Add(mean);
-   else 
-    // subtract mean to normalize wave.
-    zero_mean_wave.Add(-wave.Sum() / wave.Dim());
+  acc_corr_stats->l1_norms(0) += local_l1_norm;
+  acc_corr_stats->l2_norms(0) += local_l2_norm;
+  acc_corr_stats->inner_prod(0) += local_l2_norm;
 
-  // append zero et end if the length of shifted version 
-  // is less that corr_window_size.
-  zero_mean_wave.Resize(lpc_order + corr_window_size, kCopyData);
-  BaseFloat e1, e2, sum;
-  SubVector<BaseFloat> sub_vec1(zero_mean_wave, 0, corr_window_size);
-  e1 = VecVec(sub_vec1, sub_vec1);
-  (*norms)(0) += e1;
-  (*inner_prod)(0) += e1;
   for (int32 lag = 1; lag < lpc_order; lag++) {
-    SubVector<BaseFloat> sub_vec2(zero_mean_wave, lag, corr_window_size);
-    e2 = VecVec(sub_vec2, sub_vec2);
+    SubVector<BaseFloat> sub_vec2(wave, lag, corr_window_size);
+    int32 last_ind = corr_window_size + lag - 1;
+    local_l1_norm += wave(last_ind) - wave(lag - 1);
+    local_l2_norm += wave(last_ind) * wave(last_ind) - 
+      wave(lag-1) * wave(lag - 1);
     sum = VecVec(sub_vec1, sub_vec2);
-    (*inner_prod)(lag) += sum;
-    (*norms)(lag) += e2;
+    acc_corr_stats->inner_prod(lag) += sum;
+    acc_corr_stats->l1_norms(lag) += local_l1_norm;
+    acc_corr_stats->l2_norms(lag) += local_l2_norm;
   }
 }
-// Compute autocorrelation coefficients using accumulated inner product
-// and norms.
-// autocorr[j] - inner_prod[j] / (norms[0] * norms[j])^0.5
-// inner_prod[j] - inner product of input vector with its shifted version by j
-//                 sum_{i=0}^n x[i] * x[i+j]
-// norms[j]      - inner product of shifted input by itself as sum_{i=0}^n x[i+j]^2
-void ComputeCorrelation(const VectorBase<BaseFloat> &inner_prod,
-                        const VectorBase<BaseFloat> &norms,
+/*
+  Compute autocorrelation coefficients using accumulated unnormalized statistics
+  such as inner product and l1 and l2 norms.
+  inner product and l2_norms are normalized using mean as E[x].
+  autocorr[j] - sum_{i=0}^n ([x[i] - E[x]) * (x[i+j] - E(x)) /
+    [(sum_{i=0}^n ([x[i] - E[x])^2) * (sum_{i=0}^n ([x[i+j] - E[x])^2)]^0.5
+  autocorr[j] - inner_prod[j] / (norms[0] * norms[j])^0.5
+  inner_prod[j] - inner product of input vector with its shifted version by j
+                   sum_{i=0}^n x[i] * x[i+j]
+   l1_norms[j]     - sum of values of input shifted by j as sum_{i=0}^corr_window_size x[i+j]
+   l2_norms[j]      - inner product of shifted input by itself as sum_{i=0}^n x[i+j]^2
+*/
+void ComputeCorrelation(const CorrelationStats &acc_corr_stats,
                         Vector<BaseFloat> *autocorr) {
-  KALDI_ASSERT(inner_prod.Dim() == norms.Dim());
-  int32 lpc_order = inner_prod.Dim();
+
+  KALDI_ASSERT(acc_corr_stats.inner_prod.Dim() == acc_corr_stats.l2_norms.Dim() &&
+               acc_corr_stats.inner_prod.Dim() == acc_corr_stats.l1_norms.Dim());
+
+  int32 lpc_order = acc_corr_stats.inner_prod.Dim();
   autocorr->Resize(lpc_order);
+  BaseFloat mean = acc_corr_stats.samp_sum / acc_corr_stats.num_samp;
+  // If mean is nonzero, l2_norm and inner_prod modified
+  // to be l2_norm and inner_prod computed on mean-normalized wave.
+  // mean_norm_inner_prod[j] = sum_{i=0}^n (x[i] x[i+j] - 
+  //                           E[x] * (x[i] + x[i+j]) + E[x]^2)
+  // mean_norm_l2_norm[j] = sum_{i=0}^n (x[i+j] - E[x])^2
+  Vector<BaseFloat> mean_norm_inner_prod(acc_corr_stats.inner_prod),
+    mean_norm_l2_norms(acc_corr_stats.l2_norms);
+
+  if (mean != 0) {
+    for (int32 lag = 0; lag < lpc_order; lag++) {
+    mean_norm_inner_prod(lag) +=  
+       -mean * (acc_corr_stats.l1_norms(0) + acc_corr_stats.l1_norms(lag)) 
+       + mean * mean;
+    mean_norm_l2_norms(lag) +=  
+      -2 * mean * acc_corr_stats.l1_norms(lag) + mean * mean;
+    }
+  }
+  
   for (int32 lag = 0; lag < lpc_order; lag++) 
-    (*autocorr)(lag) = inner_prod(lag) / 
-      pow(norms(0) * norms(lag), 0.5);
+    (*autocorr)(lag) = mean_norm_inner_prod(lag) / 
+      pow(mean_norm_l2_norms(0) * mean_norm_l2_norms(lag), 0.5);
 }
-// This function computes coefficients of forward linear predictor
-// w.r.t autocorrelation coefficients by minimizing the prediction
-// error using MSE.
-// Durbin used to compute LP coefficients using autocorrelation coefficients.
-// R(j) = sum_{i=1}^P R((i+j % p)] * a[i] j = 0, ..,P
-// P is order of Linear prediction 
-// lp_coeffs - linear prediction coefficients. (predicted_x[n] = sum_{i=1}^P{a[i] * x[n-i]})
-// R(j) is the j_th autocorrelation coefficient.
+
+/*
+   This function computes coefficients of forward linear predictor
+   w.r.t autocorrelation coefficients by minimizing the prediction
+   error using MSE.
+   Durbin used to compute LP coefficients using autocorrelation coefficients.
+   R(j) = sum_{i=1}^P R((i+j % p)] * a[i] j = 0, ..,P
+   P is order of Linear prediction 
+   lp_coeffs - linear prediction coefficients. (predicted_x[n] = sum_{i=1}^P{a[i] * x[n-i]})
+   R(j) is the j_th autocorrelation coefficient.
+*/
 void ComputeFilters(const VectorBase<BaseFloat> &autocorr, 
                     Vector<BaseFloat> *lp_coeffs) {
   int32 n = autocorr.Dim() - 1;
   lp_coeffs->Resize(n);
   // compute lpc coefficients using autocorrelation coefficients. 
-  ComputeLpc(autocorr, lp_coeffs);  
+  ComputeLpc(autocorr, lp_coeffs); 
 }
 
 } // namescape kaldi
@@ -128,28 +177,7 @@ int main(int argc, char *argv[]) {
       for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
         std::string spk = spk2utt_reader.Key();
         const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-        Vector<BaseFloat> inner_prod(lpc_order),
-          norms(lpc_order);
-        int32 num_chan = wav_reader.Value(uttlist[0]).Data().NumRows();
-        std::vector<BaseFloat> spk_sum(num_chan, 0),
-          spk_count(num_chan, 0),
-          spk_mean(num_chan, 0);
-        // Accumulate waveform sum and count over all utterance in speaker
-        // to compute mean of waveform for whole speaker over all channels.
-        if (use_mean) {
-          for (size_t i = 0; i < uttlist.size(); i++) {
-            std::string utt = uttlist[i]; 
-            const WaveData &wav_data = wav_reader.Value(utt);
-            int32 num_chan = wav_data.Data().NumRows();
-            for (int32 chan = 0; chan < num_chan; chan++) {
-              spk_sum[chan] += wav_data.Data().Row(chan).Sum();
-              spk_count[chan] += wav_data.Data().NumCols();
-            }
-          }
-          for (int32 chan = 0; chan < num_chan; chan++) 
-           spk_mean[chan] =  spk_sum[chan] / spk_count[chan];
-        }
-
+        CorrelationStats acc_corr_stats(lpc_order);
         for (size_t i = 0; i < uttlist.size(); i++) {
           std::string utt = uttlist[i];
           if (!wav_reader.HasKey(utt)) {
@@ -170,21 +198,22 @@ int main(int argc, char *argv[]) {
               KALDI_WARN << "File with id " << spk << " has "
                          << num_chan << " channels but you specified channel "
                          << channel << ", producing no output.";
+              num_err++;
               continue;
             }
           }
           SubVector<BaseFloat> waveform(wav_data.Data(), this_chan);
-          int32 corr_win_size = waveform.Dim() - lpc_order;
-          AccStatsForCorrelation(waveform, lpc_order, corr_win_size, 
-                              &inner_prod, &norms, 
-                             (use_mean ? 0.0 : spk_mean[this_chan]));
+          AccStatsForCorrelation(waveform, lpc_order,
+                                 &acc_corr_stats);
         }
         Vector<BaseFloat> filter, autocorr(lpc_order);
-        ComputeCorrelation(inner_prod, norms, &autocorr);
+        ComputeCorrelation(acc_corr_stats,
+                           &autocorr);
         ComputeFilters(autocorr, &filter); 
-        writer.Write(spk, filter); 
+        writer.Write(spk, filter);
+        num_done++;
       }  
-    } else { // assume the input is whole speaker.
+    } else { // assume the input waveform is per-speaker.
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
       for (; !wav_reader.Done(); wav_reader.Next()) {
         std::string spk = wav_reader.Key();
@@ -201,21 +230,26 @@ int main(int argc, char *argv[]) {
             KALDI_WARN << "File with id " << spk << " has "
                        << num_chan << " channels but you specified channel "
                        << channel << ", producing no output.";
+            num_err++;
             continue;
           }
         }
         SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
-        Vector<BaseFloat> filter;
-        Vector<BaseFloat> inner_prod(lpc_order), 
-          norms(lpc_order), autocorr(lpc_order);
-        int32 corr_win_size = waveform.Dim() - lpc_order;
-        AccStatsForCorrelation(waveform, lpc_order, 
-                               corr_win_size, &inner_prod, &norms, 0.0);
-        ComputeCorrelation(inner_prod, norms, &autocorr);
+        Vector<BaseFloat> autocorr, filter;
+        CorrelationStats acc_corr_stats(lpc_order);
+        AccStatsForCorrelation(waveform, lpc_order,
+                               &acc_corr_stats);
+
+        ComputeCorrelation(acc_corr_stats,
+                           &autocorr);
         ComputeFilters(autocorr, &filter);
         writer.Write(spk, filter);
+        num_done++;
       }
     }
+    KALDI_LOG << "Done " << num_done << " speakers, " << num_err
+              << " with errors."; 
+    return (num_done != 0 ? 0 : 1); 
   } catch(const std::exception &e) { 
     std::cerr << e.what();
     return -1;
