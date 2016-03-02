@@ -152,7 +152,17 @@ def AddSoftmaxLayer(config_lines, name, input):
             'dimension': input['dimension']}
 
 
-def AddOutputLayer(config_lines, input, label_delay=None, suffix=None):
+def AddSigmoidLayer(config_lines, name, input, self_repair_scale = None):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    self_repair_string = "self-repair-scale={0:.10f}".format(self_repair_scale) if self_repair_scale is not None else ''
+    components.append("component name={0}_sigmoid type=SigmoidComponent dim={1}".format(name, input['dimension'], self_repair_string))
+    component_nodes.append("component-node name={0}_sigmoid component={0}_sigmoid input={1}".format(name, input['descriptor']))
+    return {'descriptor':  '{0}_sigmoid'.format(name),
+            'dimension': input['dimension']}
+
+def AddOutputLayer(config_lines, input, label_delay = None, suffix=None, objective_type = "linear"):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
     name = 'output'
@@ -160,9 +170,9 @@ def AddOutputLayer(config_lines, input, label_delay=None, suffix=None):
         name = '{0}-{1}'.format(name, suffix)
 
     if label_delay is None:
-        component_nodes.append('output-node name={0} input={1}'.format(name, input['descriptor']))
+        component_nodes.append('output-node name={0} input={1} objective={2}'.format(name, input['descriptor'], objective_type))
     else:
-        component_nodes.append('output-node name={0} input=Offset({1},{2})'.format(name, input['descriptor'], label_delay))
+        component_nodes.append('output-node name={0} input=Offset({1},{2}) objective={3}'.format(name, input['descriptor'], label_delay, objective_type))
 
 def AddFinalLayer(config_lines, input, output_dim,
         ng_affine_options = " param-stddev=0 bias-stddev=0 ",
@@ -170,8 +180,8 @@ def AddFinalLayer(config_lines, input, output_dim,
         use_presoftmax_prior_scale = False,
         prior_scale_file = None,
         include_log_softmax = True,
-        name_affix = None):
-
+        name_affix = None,
+        objective_type = "linear"):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 
@@ -186,13 +196,34 @@ def AddFinalLayer(config_lines, input, output_dim,
     if include_log_softmax:
         if use_presoftmax_prior_scale :
             components.append('component name={0}-fixed-scale type=FixedScaleComponent scales={1}'.format(final_node_prefix, prior_scale_file))
-            component_nodes.append('component-node name=Final-fixed-scale component={0}-fixed-scale input={1}'.format(finale_node_prefix,
+            component_nodes.append('component-node name={0}-fixed-scale component={0}-fixed-scale input={1}'.format(final_node_prefix,
                 prev_layer_output['descriptor']))
             prev_layer_output['descriptor'] = "{0}-fixed-scale".format(final_node_prefix)
         prev_layer_output = AddSoftmaxLayer(config_lines, final_node_prefix, prev_layer_output)
     # we use the same name_affix as a prefix in for affine/scale nodes but as a
     # suffix for output node
-    AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix)
+    AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix, objective_type = objective_type)
+
+def AddFinalSigmoidLayer(config_lines, input, output_dim,
+        ng_affine_options = " param-stddev=0 bias-stddev=0 ",
+        label_delay=None,
+        name_affix = None,
+        objective_type = "linear"):
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
+
+    if name_affix is not None:
+        final_node_prefix = 'Final-' + str(name_affix)
+    else:
+        final_node_prefix = 'Final'
+
+    prev_layer_output = AddAffineLayer(config_lines,
+            final_node_prefix , input, output_dim,
+            ng_affine_options)
+    prev_layer_output = AddSigmoidLayer(config_lines, final_node_prefix, prev_layer_output)
+    AddOutputLayer(config_lines, prev_layer_output, label_delay, suffix = name_affix, objective_type = objective_type)
+
+
 
 def AddLstmLayer(config_lines,
                  name, input, cell_dim,
