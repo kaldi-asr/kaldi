@@ -22,6 +22,7 @@ if (@ARGV != 1) {
   exit(1);
 }
 
+print "$0 " . join(" ", @ARGV) . "\n";
 
 $lang = shift @ARGV;
 $exit = 0;

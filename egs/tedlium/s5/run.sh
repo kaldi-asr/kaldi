@@ -135,7 +135,7 @@ if [ $stage -le 6 ]; then
     exp/tri3/graph data/test exp/tri3/decode_test || exit 1
 fi
 
-# steps/cleanup/debug_lexicon.sh --nj 30 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
+# steps/cleanup/debug_lexicon.sh --nj 100 --alidir exp/tri3 --cmd "$train_cmd" data/train data/lang exp/tri3 data/local/dict/lexicon.txt exp/tri3_debug_lexicon &
 
 if [ $stage -le 7 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \

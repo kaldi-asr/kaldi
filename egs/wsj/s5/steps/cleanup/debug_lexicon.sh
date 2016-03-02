@@ -9,6 +9,7 @@ stage=1
 remove_stress=false
 nj=10  # number of jobs for various decoding-type things that we run.
 cmd=run.pl
+alidir=
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -26,6 +27,8 @@ if [ $# != 5 ]; then
    echo "  --remove-stress <true|false>                     # if true, remove stress before printing analysis"
    echo "                                                   # note: if you change this, you only have to rerun"
    echo "                                                   # from stage 10."
+   echo "  --alidir <alignment-dir>                         # if supplied, training-data alignments and transforms"
+   echo "                                                   # are obtained from here instead of being generated."
    exit 1;
 fi
 
@@ -41,39 +44,46 @@ for f in $data/feats.scp $lang/phones.txt $src/final.mdl $srcdict; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
-if [ $stage -le 1 ]; then
-  steps/align_fmllr.sh --cmd "$cmd" --nj $nj $data $lang $src ${src}_ali_$(basename $data)
+if [ -z $alidir ]; then
+  alidir=${src}_ali_$(basename $data)
+  if [ $stage -le 1 ]; then
+    steps/align_fmllr.sh --cmd "$cmd" --nj $nj $data $lang $src $alidir
+  fi
 fi
 
+phone_lang=data/$(basename $lang)_phone_bg
+
 if [ $stage -le 2 ]; then
-  utils/make_phone_bigram_lang.sh $lang ${src}_ali_$(basename $data) data/$(basename $lang)_phone_bg
+  utils/make_phone_bigram_lang.sh $lang $alidir $phone_lang
 fi
 
 if [ $stage -le 3 ]; then
-  utils/mkgraph.sh data/$(basename $lang)_phone_bg $src $src/graph_phone_bg
+  utils/mkgraph.sh $phone_lang $src $src/graph_phone_bg
 fi
 
 if [ $stage -le 4 ]; then
   steps/decode_si.sh --skip-scoring true \
-    --cmd "$cmd" --nj $nj --transform-dir ${src}_ali_$(basename $data) \
-    --acwt 0.25 --beam 25.0 --lattice-beam 5.0 --max-active 2500 \
+    --cmd "$cmd" --nj $nj --transform-dir $alidir \
+    --acwt 0.25 --beam 10.0 --lattice-beam 5.0 --max-active 2500 \
     $src/graph_phone_bg $data $src/decode_$(basename $data)_phone_bg
 fi
 
 if [ $stage -le 5 ]; then
-  steps/get_train_ctm.sh --cmd "$cmd" $data $lang ${src}_ali_$(basename $data)
+  steps/get_train_ctm.sh --print-silence true --use-segments false \
+     --cmd "$cmd" $data $lang $alidir
 fi
 
 if [ $stage -le 6 ]; then
-  steps/get_ctm.sh --cmd "$cmd" --min-lmwt 3 --max-lmwt 8 \
-     $data data/$(basename $lang)_phone_bg $src/decode_$(basename $data)_phone_bg
+  steps/get_ctm.sh --use-segments false --cmd "$cmd" --min-lmwt 3 --max-lmwt 8 \
+     $data $phone_lang $src/decode_$(basename $data)_phone_bg
 fi
 
 if [ $stage -le 7 ]; then
   mkdir -p $dir
   # lmwt=4 corresponds to the scale we decoded at.
   cp $src/decode_$(basename $data)_phone_bg/score_4/$(basename $data).ctm $dir/phone.ctm
-  cp ${src}_ali_$(basename $data)/ctm $dir/word.ctm
+
+  cp $alidir/ctm $dir/word.ctm
 fi
 
 if [ $stage -le 8 ]; then
@@ -96,10 +106,10 @@ if [ $stage -le 8 ]; then
 # then after sorting and merge-sorting the two ctm files we can easily
 # work out for each word, what the phones were during that time.
 
-  grep -v '<eps>' data/$(basename $lang)_phone_bg/phones.txt | awk '{print $1, $1}' | \
+  grep -v '<eps>' $phone_lang/phones.txt | awk '{print $1, $1}' | \
     sed 's/_B$//' | sed 's/_I$//' | sed 's/_E$//' | sed 's/_S$//' >$dir/phone_map.txt
 
-  silphone=$(cat data/$(basename $lang)_phone_bg/phones/optional_silence.txt)
+  silphone=$(cat $phone_lang/phones/optional_silence.txt)
   cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | grep -v "$silphone\$" > $dir/phone_cleaned.ctm
 
   export LC_ALL=C

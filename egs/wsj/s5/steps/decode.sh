@@ -3,8 +3,8 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Begin configuration section.  
-transform_dir=   # this option won't normally be used, but it can be used if you want to 
+# Begin configuration section.
+transform_dir=   # this option won't normally be used, but it can be used if you want to
                  # supply existing fMLLR transforms when decoding.
 iter=
 model= # You can specify the model to use (e.g. if you want to use the .alimdl)
@@ -64,16 +64,16 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
 if [ -z "$model" ]; then # if --model <mdl> was not specified on the command line...
-  if [ -z $iter ]; then model=$srcdir/final.mdl; 
+  if [ -z $iter ]; then model=$srcdir/final.mdl;
   else model=$srcdir/$iter.mdl; fi
 fi
 
 if [ $(basename $model) != final.alimdl ] ; then
   # Do not use the $srcpath -- look at the path where the model is
-  if [ -f $(dirname $model)/final.alimdl ] ; then
-    echo -e '\n\n' 
-    echo $0 'WARNING: Running speaker independent system decoding using a SAT model!' 
-    echo $0 'WARNING: This is OK if you know what you are doing...' 
+  if [ -f $(dirname $model)/final.alimdl ] && [ -z "$transform_dir" ]; then
+    echo -e '\n\n'
+    echo $0 'WARNING: Running speaker independent system decoding using a SAT model!'
+    echo $0 'WARNING: This is OK if you know what you are doing...'
     echo -e '\n\n'
   fi
 fi
@@ -90,7 +90,7 @@ cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
@@ -129,7 +129,7 @@ fi
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
-  local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir || 
+  local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
     { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
