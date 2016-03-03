@@ -109,15 +109,14 @@ if [ $stage -le 8 ]; then
   grep -v '<eps>' $phone_lang/phones.txt | awk '{print $1, $1}' | \
     sed 's/_B$//' | sed 's/_I$//' | sed 's/_E$//' | sed 's/_S$//' >$dir/phone_map.txt
 
-  silphone=$(cat $phone_lang/phones/optional_silence.txt)
-  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | grep -v "$silphone\$" > $dir/phone_cleaned.ctm
+  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_text.ctm > $dir/phone_mapped.ctm
 
   export LC_ALL=C
 
   cat $dir/word.ctm | awk '{printf("%s-%s %09d START %s\n", $1, $2, 100*$3, $5); printf("%s-%s %09d END %s\n", $1, $2, 100*($3+$4), $5);}' | \
      sort >$dir/word_processed.ctm
 
-  cat $dir/phone_cleaned.ctm | awk '{printf("%s-%s %09d PHONE %s\n", $1, $2, 100*($3+(0.5*$4)), $5);}' | \
+  cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %09d PHONE %s\n", $1, $2, 100*($3+(0.5*$4)), $5);}' | \
      sort >$dir/phone_processed.ctm
 
   # merge-sort both ctm's
@@ -140,9 +139,13 @@ if [ $stage -le 10 ]; then
   else
     cp $srcdict $dir/lexicon.txt
   fi
+  silphone=$(cat $phone_lang/phones/optional_silence.txt)
+  echo "<eps> $silphone" >> $dir/lexicon.txt
 
   awk '{count[$2] += $1;} END {for (w in count){print w, count[w];}}' \
       <$dir/prons.txt >$dir/counts.txt
+
+
 
   cat $dir/prons.txt | \
     if $remove_stress; then
