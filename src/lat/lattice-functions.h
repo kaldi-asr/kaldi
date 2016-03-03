@@ -45,7 +45,7 @@ int32 LatticeStateTimes(const Lattice &lat, std::vector<int32> *times);
 
 /// As LatticeStateTimes, but in the CompactLattice format.  Note: must
 /// be topologically sorted.  Returns length of the utterance in frames, which
-/// may not be the same as the maximum time in the lattice, due to frames
+/// might not be the same as the maximum time in the lattice, due to frames
 /// in the final-prob.
 int32 CompactLatticeStateTimes(const CompactLattice &clat,
                                std::vector<int32> *times);
@@ -64,7 +64,7 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
                                  double *acoustic_like_sum = NULL);
 
 // This function is something similar to LatticeForwardBackward(), but it is on
-// the CompactLattice lattice format. Also we only need the alpha in the forward 
+// the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
                                  vector<double> *alpha);
