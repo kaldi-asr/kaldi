@@ -208,7 +208,10 @@ def AddFinalSigmoidLayer(config_lines, input, output_dim,
         ng_affine_options = " param-stddev=0 bias-stddev=0 ",
         label_delay=None,
         name_affix = None,
-        objective_type = "linear"):
+        objective_type = "quadratic"):
+    # Useful when you need the final outputs to be probabilities
+    # between 0 and 1.
+    # Usually used with an objective-type such as "quadratic"
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
 

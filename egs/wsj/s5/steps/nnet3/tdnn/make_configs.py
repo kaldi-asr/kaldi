@@ -360,7 +360,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
         if add_final_sigmoid:
             # Useful when you need the final outputs to be probabilities
             # between 0 and 1.
-            # Usually used with an objective-type is not "linear" e.g. "quadratic"
+            # Usually used with an objective-type such as "quadratic"
             nodes.AddFinalSigmoidLayer(config_lines, prev_layer_output, num_targets,
                                objective_type = objective_type)
         else:

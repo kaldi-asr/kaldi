@@ -299,8 +299,6 @@ esac
 if [ $stage -le 3 ]; then
   echo "$0: Getting validation and training subset examples."
   rm -f $dir/.error 2>/dev/null
-  echo "$0: ... extracting validation and training-subset alignments."
-
   $cmd $dir/log/create_valid_subset.log \
     $get_egs_program \
     $valid_ivector_opt $valid_egs_opts "$valid_feats" \
@@ -402,9 +400,9 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/egs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary alignments and transforms"
+  echo "$0: removing temporary"
   # Ignore errors below because trans.* might not exist.
-  rm -f $dir/{ali,trans}.{ark,scp} $dir/targets.*.scp 2>/dev/null
+  rm -f $dir/trans.{ark,scp} $dir/targets.*.scp 2>/dev/null
 fi
 
 echo "$0: Finished preparing training examples"

@@ -28,8 +28,6 @@ samples_per_iter=400000 # each iteration of training, see this many samples
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
 prior_subset_size=20000 # 20k samples per job, for computing priors.
-num_utts_subset=300     # number of utterances in validation and training
-                        # subsets used for shrinkage and diagnostics.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
@@ -71,26 +69,18 @@ lda_opts=
 egs_opts=
 transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
-            # only relevant for "raw" features, not lda.
-feat_type=raw  # or set to 'lda' to use LDA features.
-align_cmd=              # The cmd that is passed to steps/nnet2/align.sh
-align_use_gpu=          # Passed to use_gpu in steps/nnet2/align.sh [yes/no]
-realign_times=          # List of times on which we realign.  Each time is
-                        # floating point number strictly between 0 and 1, which
-                        # will be multiplied by the num-iters to get an iteration
-                        # number.
-num_jobs_align=30       # Number of jobs for realignment
 frames_per_eg=8 # to be passed on to get_egs.sh
 subset_dim=0
 
 # Raw nnet training options i.e. without transition model
 nj=4  
-num_targets=            # applicable only if dense-targets is false
-dense_targets=true      # Use dense targets instead of sparse targets
+num_targets=              # applicable only if dense-targets is false
+dense_targets=true        # Use dense targets instead of sparse targets
 objective_type=quadratic  # linear or quadratic
 include_log_softmax=false
 add_final_sigmoid=false   # If you want final outputs to be probabilities 
-                          # between 0 and 1  
+                          # between 0 and 1. Usually goes with an objective
+                          # such as "quadratic"
 
 # End configuration section.
 
@@ -133,11 +123,6 @@ if [ $# != 3 ]; then
   echo "                                                   # Format : layer<hidden_layer_index>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
   echo "                                                   # (note: we splice processed, typically 40-dimensional frames"
   echo "  --lda-dim <dim|''>                               # Dimension to reduce spliced features to with LDA"
-  echo "  --realign-times <list-of-times|\"\">             # A list of space-separated floating point numbers between 0.0 and"
-  echo "                                                   # 1.0 to specify how far through training realignment is to be done"
-  echo "  --align-cmd (utils/run.pl|utils/queue.pl <queue opts>) # passed to align.sh"
-  echo "  --align-use-gpu (yes/no)                         # specify is gpu is to be used for realignment"
-  echo "  --num-jobs-align <#njobs|30>                     # Number of jobs to perform realignment"
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
@@ -175,17 +160,9 @@ echo $nj > $dir/num_jobs
 
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.
-case $feat_type in
-  raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
+feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
       { echo "$0: Error getting feature dim"; exit 1; }
-    ;;
-  lda)  [ ! -f $transform_dir/final.mat ] && echo "$0: With --feat-type lda option, expect $transform_dir/final.mat to exist."
-   # get num-rows in lda matrix, which is the lda feature dim.
-   feat_dim=$(matrix-dim --print-args=false $transform_dir/final.mat | cut -f 1)
-    ;;
-  *)
-   echo "$0: Bad --feat-type '$feat_type';"; exit 1;
-esac
+
 if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
@@ -264,7 +241,6 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
     --cmd "$cmd" --nj $nj \
     --frames-per-eg $frames_per_eg \
     --target-type $target_type --num-targets $num_targets \
-    --num-utts-subset $num_utts_subset \
     $data $targets_scp $dir/egs || exit 1;
 fi
 
