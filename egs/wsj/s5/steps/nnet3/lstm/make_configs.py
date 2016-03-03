@@ -212,7 +212,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     init_config_lines = copy.deepcopy(config_lines)
     init_config_lines['components'].insert(0, '# Config file for initializing neural network prior to')
     init_config_lines['components'].insert(0, '# preconditioning matrix computation')
-    nodes.AddOutputNode(init_config_lines, prev_layer_output)
+    nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
     prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
