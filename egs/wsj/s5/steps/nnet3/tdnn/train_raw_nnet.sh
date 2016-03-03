@@ -54,6 +54,7 @@ randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
 cleanup=true
 egs_dir=
+configs_dir=
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
@@ -198,7 +199,9 @@ fi
 
 ### End of config example
 
-[ ! -z "$configs_dir" ] && cp -rT $configs_dir $dir/configs
+if [ ! -z "$configs_dir" ]; then
+  cp -rT $configs_dir $dir/configs || exit 1
+fi
 
 if [ $stage -le -5 ]; then
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
