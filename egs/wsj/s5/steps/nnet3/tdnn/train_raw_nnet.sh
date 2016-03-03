@@ -126,14 +126,6 @@ if $add_final_sigmoid && $include_log_softmax; then
   echo "add-final-sigmoid and include-log-softmax cannot both be true"
 fi
 
-if $dense_targets; then
-  # For raw nnet, read target dimension from the targets_scp file
-  num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
-fi
-
-[ -z "$num_targets" ] && echo "\$num_targets is unset" && exit 1
-[ "$num_targets" -eq "0" ] && echo "\$num_targets is 0" && exit 1
-
 # in this dir we'll have just one job.
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
@@ -217,8 +209,6 @@ if [ $stage -le -5 ]; then
     nnet3-init --srand=-2 $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 
-tmp_num_targets=$num_targets
-
 # sourcing the "vars" below sets
 # model_left_context=(something)
 # model_right_context=(something)
@@ -236,9 +226,13 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
-if [ $tmp_num_targets -ne $num_targets ]; then
-  echo "Mismatch between num-targets provided to script vs configs"
-  exit 1
+if $dense_targets; then
+  tmp_num_targets=`feat-to-dim scp:$targets_scp - 2>/dev/null` || exit 1
+
+  if [ $tmp_num_targets -ne $num_targets ]; then
+    echo "Mismatch between num-targets provided to script vs configs"
+    exit 1
+  fi
 fi
 
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
