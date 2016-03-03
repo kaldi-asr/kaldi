@@ -9,10 +9,10 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../numpy_io'))
 
 import kaldi_io
 
-import mkl
-mkl.set_num_threads(1)
-import numexpr
-numexpr.set_num_threads(1)
+# import mkl
+# mkl.set_num_threads(1)
+# import numexpr
+# numexpr.set_num_threads(1)
 
 np.random.seed(42)
 ##################################
