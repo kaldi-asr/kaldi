@@ -114,25 +114,25 @@ def CheckArgs(args):
         raise Exception("ivector-dim has to be non-negative")
 
     if (args.subset_dim < 0):
-        sys.exit("--subset-dim has to be non-negative")
+        raise Exception("--subset-dim has to be non-negative")
     if (args.pool_window is not None) and (args.pool_window <= 0):
-        sys.exit("--pool-window has to be positive")
+        raise Exception("--pool-window has to be positive")
 
     if not args.relu_dim is None:
         if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
-            sys.exit("--relu-dim argument not compatible with "
-                     "--pnorm-input-dim or --pnorm-output-dim options");
+            raise Exception("--relu-dim argument not compatible with "
+                            "--pnorm-input-dim or --pnorm-output-dim options");
         args.nonlin_input_dim = args.relu_dim
         args.nonlin_output_dim = args.relu_dim
     else:
         if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
-            sys.exit("--relu-dim not set, so expected --pnorm-input-dim and "
-                     "--pnorm-output-dim to be provided.");
+            raise Exception("--relu-dim not set, so expected --pnorm-input-dim and "
+                            "--pnorm-output-dim to be provided.");
         args.nonlin_input_dim = args.pnorm_input_dim
         args.nonlin_output_dim = args.pnorm_output_dim
 
     if args.add_final_sigmoid and args.include_log_softmax:
-        sys.exit("--include-log-softmax and --add-final-sigmoid cannot both be true.")
+        raise Exception("--include-log-softmax and --add-final-sigmoid cannot both be true.")
 
     return args
 
@@ -385,11 +385,23 @@ def MakeConfigs(config_dir, splice_indexes_string,
     left_context += int(parsed_splice_output['left_context'])
     right_context += int(parsed_splice_output['right_context'])
 
+    add_lda_str = 'false'
+    if add_lda:
+        add_lda_str = 'true'
+
+    include_log_softmax_str = 'false'
+    if include_log_softmax:
+        include_log_softmax_str = 'true'
+
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
     print('model_left_context=' + str(left_context), file=f)
     print('model_right_context=' + str(right_context), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    print('num_targets=' + str(num_targets), file=f)
+    print('add_lda=' + add_lda_str, file=f)
+    print('include_log_softmax=' + include_log_softmax_str, file=f)
+    print('objective_type=' + objective_type, file=f)
     f.close()
 
     # printing out the configs

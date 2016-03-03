@@ -16,9 +16,6 @@ num_epochs=15      # Number of epochs of training;
                    # the number of iterations is worked out from this.
 initial_effective_lrate=0.01
 final_effective_lrate=0.001
-pnorm_input_dim=3000
-pnorm_output_dim=300
-relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
 rand_prune=4.0 # Relates to a speedup we do for LDA.
 minibatch_size=512  # This default is suitable for GPU-based training.
                     # Set it to 128 for multi-threaded CPU-based training.
@@ -32,7 +29,6 @@ num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
 presoftmax_prior_scale_power=-0.25
-use_presoftmax_prior_scale=true
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -52,35 +48,22 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 stage=-6
 exit_stage=-100 # you can set this to terminate the training early.  Exits before running this stage
 
-# count space-separated fields in splice_indexes to get num-hidden-layers.
-splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
-# Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
-# note: hidden layers which are composed of one or more components,
-# so hidden layer indexing is different from component count
 chunk_training=false  # if true training is done with chunk randomization, rather than frame randomization
 
 randprune=4.0 # speeds up LDA.
 use_gpu=true    # if true, we run on GPU.
 cleanup=true
 egs_dir=
-add_lda=false
 max_lda_jobs=10  # use no more than 10 jobs for the LDA accumulation.
 lda_opts=
 egs_opts=
 transform_dir=     # If supplied, this dir used instead of alidir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
 frames_per_eg=8 # to be passed on to get_egs.sh
-subset_dim=0
 
 # Raw nnet training options i.e. without transition model
 nj=4  
-num_targets=              # applicable only if dense-targets is false
 dense_targets=true        # Use dense targets instead of sparse targets
-objective_type=quadratic  # linear or quadratic
-include_log_softmax=false
-add_final_sigmoid=false   # If you want final outputs to be probabilities 
-                          # between 0 and 1. Usually goes with an objective
-                          # such as "quadratic"
 
 # End configuration section.
 
@@ -169,35 +152,63 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
+
+###
+# The config creation is moved to upper-level run script.
+# This is only shown here as an example
+
+#echo "$0: creating neural net configs";
+#
+## count space-separated fields in splice_indexes to get num-hidden-layers.
+#splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
+## Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
+## note: hidden layers which are composed of one or more components,
+## so hidden layer indexing is different from component count
+#subset_dim=0
+#
+#pnorm_input_dim=3000
+#pnorm_output_dim=300
+#relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
+#add_lda=false
+#
+#objective_type=quadratic  # linear or quadratic
+#include_log_softmax=false
+#use_presoftmax_prior_scale=false
+#add_final_sigmoid=false   # If you want final outputs to be probabilities 
+#                          # between 0 and 1. Usually goes with an objective
+#                          # such as "quadratic"
+#
+#config_opts=()
+#
+#if [ ! -z "$relu_dim" ]; then
+#  config_opts+=(--relu-dim=$relu_dim)
+#else
+#  config_opts+=(--pnorm-input-dim=$pnorm_input_dim)
+#  config_opts+=(--pnorm-output-dim=$pnorm_output_dim)
+#fi
+#
+#config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
+#config_opts+=(--add-lda=$add_lda)
+#config_opts+=(--objective-type=$objective_type)
+#
+#config_opts+=(--add-final-sigmoid=$add_final_sigmoid)
+#config_opts+=(--include-log-softmax=$include_log_softmax)
+#
+## create the config files for nnet initialization
+#python steps/nnet3/tdnn/make_configs.py  \
+#   --splice-indexes="$splice_indexes"  \
+#   --subset-dim="$subset_dim" \
+#   --feat-dim=$feat_dim \
+#   --ivector-dim=$ivector_dim  \
+#   "${config_opts[@]}" \
+#   --num-targets=$num_targets  \
+#   $dir/configs || exit 1;
+
+### End of config example
+
+[ ! -z "$configs_dir" ] && cp -rT $configs_dir $dir/configs
+
 if [ $stage -le -5 ]; then
-  echo "$0: creating neural net configs";
-
-  config_opts=()
-
-  if [ ! -z "$relu_dim" ]; then
-    config_opts+=(--relu-dim=$relu_dim)
-  else
-    config_opts+=(--pnorm-input-dim=$pnorm_input_dim)
-    config_opts+=(--pnorm-output-dim=$pnorm_output_dim)
-  fi
-
-  config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
-  config_opts+=(--add-lda=$add_lda)
-  config_opts+=(--objective-type=$objective_type)
-
-  config_opts+=(--add-final-sigmoid=$add_final_sigmoid)
-  config_opts+=(--include-log-softmax=$include_log_softmax)
-
-  # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
-    --splice-indexes="$splice_indexes"  \
-    --subset-dim="$subset_dim" \
-    --feat-dim=$feat_dim \
-    --ivector-dim=$ivector_dim  \
-    "${config_opts[@]}" \
-    --num-targets=$num_targets  \
-    $dir/configs || exit 1;
-
   # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
   # matrix.  This first config just does any initial splicing that we do;
   # we do this as it's a convenient way to get the stats for the 'lda-like'
@@ -206,10 +217,16 @@ if [ $stage -le -5 ]; then
     nnet3-init --srand=-2 $dir/configs/init.config $dir/init.raw || exit 1;
 fi
 
+tmp_num_targets=$num_targets
+
 # sourcing the "vars" below sets
 # model_left_context=(something)
 # model_right_context=(something)
 # num_hidden_layers=(something)
+# num_targets=(something)
+# add_lda=(true|false)
+# include_log_softmax=(true|false)
+# objective_type=(something)
 . $dir/configs/vars || exit 1;
 left_context=$model_left_context
 right_context=$model_right_context
@@ -219,6 +236,10 @@ context_opts="--left-context=$left_context --right-context=$right_context"
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
 
+if [ $tmp_num_targets -ne $num_targets ]; then
+  echo "Mismatch between num-targets provided to script vs configs"
+  exit 1
+fi
 
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
@@ -323,15 +344,13 @@ if $include_log_softmax && ! $dense_targets && [ $stage -le -2 ]; then
        vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
   rm $dir/pdf_counts.*
 
-  if $use_presoftmax_prior_scale; then
-    awk -v power=$presoftmax_prior_scale_power -v smooth=0.01 \
-       '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
-          num_pdfs=NF-2;  average_count = total/num_pdfs;
-          for (i=0; i<num_pdfs; i++) stot += (scale[i] = (count[i] + smooth * average_count)^power)
-          printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]*num_pdfs/stot); print "]" }' \
-       $dir/pdf_counts > $dir/presoftmax_prior_scale.vec
-    ln -sf ../presoftmax_prior_scale.vec $dir/configs/presoftmax_prior_scale.vec
-  fi
+  awk -v power=$presoftmax_prior_scale_power -v smooth=0.01 \
+     '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
+        num_pdfs=NF-2;  average_count = total/num_pdfs;
+        for (i=0; i<num_pdfs; i++) stot += (scale[i] = (count[i] + smooth * average_count)^power)
+        printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]*num_pdfs/stot); print "]" }' \
+     $dir/pdf_counts > $dir/presoftmax_prior_scale.vec
+  ln -sf ../presoftmax_prior_scale.vec $dir/configs/presoftmax_prior_scale.vec
 fi
 
 if [ $stage -le -1 ]; then
@@ -401,8 +420,6 @@ first_model_combine=$[$num_iters-$num_iters_combine+1]
 x=0
 
 
-cur_egs_dir=$egs_dir
-
 compute_accuracy=false
 if [ "$objective_type" == "linear" ]; then
   compute_accuracy=true
@@ -424,15 +441,15 @@ while [ $x -lt $num_iters ]; do
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-      "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+      "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
     $cmd $dir/log/compute_prob_train.$x.log \
       nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/$x.raw \
-      "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+      "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 
     if [ $x -gt 0 ]; then
       $cmd $dir/log/progress.$x.log \
         nnet3-show-progress --use-gpu=no $dir/$[x-1].raw $dir/$x.raw \
-        "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:-|" '&&' \
+        "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:-|" '&&' \
         nnet3-info $dir/$x.raw &
     fi
 
@@ -484,7 +501,7 @@ while [ $x -lt $num_iters ]; do
         $cmd $train_queue_opt $dir/log/train.$x.$n.log \
           nnet3-train $parallel_train_opts \
           --max-param-change=$max_param_change "$raw" \
-          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$cur_egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size --discard-partial-minibatches=true ark:- ark:- |" \
+          "ark:nnet3-copy-egs --frame=$frame $context_opts ark:$egs_dir/egs.$archive.ark ark:- | nnet3-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-merge-egs --minibatch-size=$this_minibatch_size --discard-partial-minibatches=true ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait
@@ -547,7 +564,7 @@ if [ $stage -le $num_iters ]; then
   $cmd $combine_queue_opt $dir/log/combine.log \
     nnet3-combine --num-iters=40 \
     --enforce-sum-to-one=true --enforce-positive-weights=true \
-    --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$cur_egs_dir/combine.egs ark:-|" \
+    --verbose=3 "${nnets_list[@]}" "ark:nnet3-merge-egs --minibatch-size=1024 ark:$egs_dir/combine.egs ark:-|" \
     $dir/final.raw || exit 1;
 
   # Compute the probability of the final, combined model with
@@ -555,10 +572,10 @@ if [ $stage -le $num_iters ]; then
   # different subsets will lead to different probs.
   $cmd $dir/log/compute_prob_valid.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/valid_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$egs_dir/valid_diagnostic.egs ark:- |" &
   $cmd $dir/log/compute_prob_train.final.log \
     nnet3-compute-prob --compute-accuracy=$compute_accuracy $dir/final.raw \
-    "ark:nnet3-merge-egs ark:$cur_egs_dir/train_diagnostic.egs ark:- |" &
+    "ark:nnet3-merge-egs ark:$egs_dir/train_diagnostic.egs ark:- |" &
 fi
 
 if $include_log_softmax && [ $stage -le $[$num_iters+1] ]; then
@@ -568,7 +585,7 @@ if $include_log_softmax && [ $stage -le $[$num_iters+1] ]; then
   else egs_part=JOB; fi
   rm $dir/post.$x.*.vec 2>/dev/null
   $cmd JOB=1:$num_jobs_compute_prior $prior_queue_opt $dir/log/get_post.$x.JOB.log \
-    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$cur_egs_dir/egs.$egs_part.ark ark:- \| \
+    nnet3-copy-egs --frame=random $context_opts --srand=JOB ark:$egs_dir/egs.$egs_part.ark ark:- \| \
     nnet3-subset-egs --srand=JOB --n=$prior_subset_size ark:- ark:- \| \
     nnet3-merge-egs ark:- ark:- \| \
     nnet3-compute-from-egs $prior_gpu_opt --apply-exp=true \
@@ -597,8 +614,8 @@ echo Done
 
 if $cleanup; then
   echo Cleaning up data
-  if $remove_egs && [[ $cur_egs_dir =~ $dir/egs* ]]; then
-    steps/nnet2/remove_egs.sh $cur_egs_dir
+  if $remove_egs && [[ $egs_dir =~ $dir/egs* ]]; then
+    steps/nnet2/remove_egs.sh $egs_dir
   fi
 
   echo Removing most of the models
