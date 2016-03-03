@@ -98,7 +98,13 @@ echo $spk_prefix | perl -e '
   foreach $reco (sort keys %recolist) {
     $reco2spk{$reco} = $utt2spk{$reco2utt{$reco}};
     $reco2filt{$reco} = $spk2filt{$utt2spk{$reco2utt{$reco}}};
+    if ($reco2filt{$reco} eq "") {
+      $spk = (keys %spk2filt)[rand keys %spk2filt];
+      $reco2spk{$reco} = $spk;
+      $reco2filt{$reco} = $spk2filt{$spk};
+    }
     while (1) {
+      # randomly pick a filter from another speaker
       $spk = (keys %spk2filt)[rand keys %spk2filt];
       $reco2perturbspk{$reco} = $spk;
       $reco2perturbfilt{$reco} = $spk2filt{$spk};
