@@ -186,6 +186,7 @@ int main(int argc, char *argv[]) {
       // FreeCurrent() is an optimization that prevents the lattice from being
       // copied unnecessarily (OpenFst does copy-on-write).
       clat_reader.FreeCurrent();
+      fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
       kaldi::TopSortCompactLatticeIfNeeded(&clat);
 
       kaldi::ArcPosteriorComputer computer(
