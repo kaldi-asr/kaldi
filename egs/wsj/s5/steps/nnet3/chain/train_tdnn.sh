@@ -267,7 +267,7 @@ fi
 # config-generating script, which writes to left_context and right_context
 # instead of model_left_context and model_right_context.
 [ -z $model_left_context ] && model_left_context=$left_context
-[ -z $model_left_context ] && model_right_context=$right_context
+[ -z $model_right_context ] && model_right_context=$right_context
 
 ! [ "$num_hidden_layers" -gt 0 ] && echo \
  "$0: Expected num_hidden_layers to be defined" && exit 1;
