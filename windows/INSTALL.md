@@ -103,10 +103,10 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
    The first one (`CUDA_PATH`) is particularly important.
 
-9. Open the OpenFST solution in VS
+9. Open the OpenFST solution in Visual Studio
 
-   * for VS 2013, the correct solution is in VS2012 directory
-   * for VS 2014, the correct solution is in VS2014 directory
+   * for [Visual Studio 2013](https://www.visualstudio.com/en-us/news/vs2013-community-vs.aspx), the correct solution is in `MSVC12` directory
+   * for [Visual Studio 2015](https://www.visualstudio.com/en-us/products/visual-studio-community-vs.aspx), the correct solution is in `MSVC14` directory
 
    **Switch the configuration to `debug|x64` and build the solution.**
 
@@ -153,15 +153,15 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
          (kaldi)/tools$ generate_solution.pl --vsver vs2013 --enable-cuda --enable-openblas
 
-15. Open the generated solution in the visual studio and switch to Debug|x64 (or Release|x64) and build.
+15. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`
 
 ------
-NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the README.ATLAS)
+NOTE: I'm leaving the information about ATLAS here, for reference (also do not forget to consult the `README.ATLAS`)
 
 (B) either
    (i) compile ATLAS under cygwin [see INSTALL.atlas] and copy
-  kaldiwin_atlas.props  to kaldiwin.props
+  `kaldiwin_atlas.props` to `kaldiwin.props`
 
 (D)
 If you had installed ATLAS, you next have to do this:
@@ -171,7 +171,7 @@ If you had installed ATLAS, you next have to do this:
 
 Type the following (these commands were done from cygwin): note that these
 commands are a bit wasteful of disk; you could alternatively ensure that
-[root]/tools/ATLAS/cygwin_build/install/lib/ is always on your path when you
+`[root]/tools/ATLAS/cygwin_build/install/lib/` is always on your path when you
 run the binaries.
 
     mkdir -p Debug Release
