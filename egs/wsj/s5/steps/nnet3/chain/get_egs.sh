@@ -48,7 +48,7 @@ frames_per_iter=400000 # each iteration of training, see this many frames
                        # that divides the number of samples in the entire data.
 
 right_tolerance=  #CTC right tolerance == max label delay.
-left_tolerance=  
+left_tolerance=
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
@@ -332,7 +332,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # create egs_orig.*.*.ark; the first index goes to $nj,
+  # create cegs_orig.*.*.ark; the first index goes to $nj,
   # the second to $num_archives_intermediate.
 
   egs_list=
@@ -385,7 +385,7 @@ if [ $stage -le 5 ]; then
       for y in $(seq $archives_multiple); do
         archive_index=$[($x-1)*$archives_multiple+$y]
         # egs.intermediate_archive.{1,2,...}.ark will point to egs.archive.ark
-        ln -sf egs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
+        ln -sf cegs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
       done
     done
     $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
@@ -400,6 +400,9 @@ if [ $stage -le 6 ]; then
   (
     cd $dir
     for f in $(ls -l . | grep 'cegs_orig' | awk '{ X=NF-1; Y=NF-2; if ($X == "->")  print $Y, $NF; }'); do rm $f; done
+    # the next statement removes them if we weren't using the soft links to a
+    # 'storage' directory.
+    rm cegs_orig.*.ark 2>/dev/null
   )
   if [ $archives_multiple -gt 1 ]; then
     # there are some extra soft links that we should delete.

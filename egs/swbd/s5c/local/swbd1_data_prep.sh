@@ -21,7 +21,7 @@
 
 #check existing directories
 if [ $# != 1 -a $# != 2 ]; then
-  echo "Usage: swbd1_data_prep_edin.sh /path/to/SWBD [/path/to/SWBD_DOC]"
+  echo "Usage: swbd1_data_prep.sh /path/to/SWBD [/path/to/SWBD_DOC]"
   exit 1; 
 fi 
 
@@ -40,23 +40,6 @@ fi
 sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 [ ! -x $sph2pipe ] \
   && echo "Could not execute the sph2pipe program at $sph2pipe" && exit 1;
-
-
-# Trans directory check
-if [ ! -d $SWBD_DIR/transcriptions/swb_ms98_transcriptions ]; then
-  ( 
-    cd $dir;
-    if [ ! -d swb_ms98_transcriptions ]; then
-      echo " *** Downloading trascriptions and dictionary ***" 
-      wget http://www.isip.piconepress.com/projects/switchboard/releases/switchboard_word_alignments.tar.gz
-      tar -xf switchboard_word_alignments.tar.gz
-    fi
-  )
-else
-  echo "Directory with transcriptions exists, skipping downloading"
-  [ -f $dir/swb_ms98_transcriptions ] \
-    || ln -sf $SWBD_DIR/transcriptions/swb_ms98_transcriptions $dir/
-fi
 
 # Option A: SWBD dictionary file check
 [ ! -f $dir/swb_ms98_transcriptions/sw-ms98-dict.text ] && \

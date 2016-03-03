@@ -147,7 +147,7 @@ $(EXT_SUBDIRS) : mklibdir
 
 bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin: \
  base matrix util feat tree optimization thread gmm transform sgmm sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain
 
 #2)The libraries have inter-dependencies
 base:
