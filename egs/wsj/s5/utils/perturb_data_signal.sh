@@ -15,20 +15,20 @@
 
 . utils/parse_options.sh
 
-if [ $# != 2 ]; then
-  echo "Usage: perturb_data_signal.sh <srcdir> <destdir>"
+if [ $# != 3 ]; then
+  echo "Usage: perturb_data_signal.sh <prefix> <srcdir> <destdir>"
   echo "e.g.:"
-  echo " $0 data/train_si284 data/train_si284p"
+  echo " $0 'fp01' data/train_si284 data/train_si284p"
   exit 1
 fi
 
 export LC_ALL=C
 
-srcdir=$1
-destdir=$2
-label="fp"
-spk_prefix=$label"-"
-utt_prefix=$label"-"
+prefix=$1
+srcdir=$2
+destdir=$3
+spk_prefix=$prefix"-"
+utt_prefix=$prefix"-"
 
 for f in spk2utt text utt2spk wav.scp spk_filter.scp; do
   [ ! -f $srcdir/$f ] && echo "$0: no such file $srcdir/$f" && exit 1;
