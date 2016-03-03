@@ -45,7 +45,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
         $ cd (kaldi)/tools
         (kaldi)/tools$ pwd
 
-3. Use git to clone the OpenFST(win) from
+3. Use git to clone the [OpenFST(win)](https://github.com/jtrmal/openfstwin-1.3.4) from
        
         https://github.com/jtrmal/openfstwin-1.3.4.git
 
@@ -53,11 +53,11 @@ For cygwin installation, see the instructions in `../INSTALL`.
    
         (kaldi)/tools$ git clone https://github.com/jtrmal/openfstwin-1.3.4.git openfst
 
-4. Download pthread-win32 (or wget or curl)
+4. Download [pthreads-win32](https://sourceforge.net/projects/pthreads4w/) (or `wget` or `curl`)
 
    https://sourceforge.net/projects/pthreads4w/
 
-        (kaldi)/tools$ wget http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
+        (kaldi)/tools$ curl -L -O http://downloads.sourceforge.net/project/pthreads4w/pthreads-w32-2-9-1-release.zip
         (kaldi)/tools$ mkdir pthreads; cd pthreads
         (kaldi)/tools/pthreads$ unzip ../pthreads-w32-2-9-1-release.zip
 
