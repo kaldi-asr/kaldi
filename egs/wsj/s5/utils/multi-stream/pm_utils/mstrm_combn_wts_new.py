@@ -22,7 +22,7 @@ def get_strm_mask(data_it, nstrms, comb_num):
   # bin_func = lambda x : ''.join(reversed( [str((x >> i) & 1) for i in range(nstrms)] ) )
   # np.asarray(map(lambda x: int(x), w_strm))
 
-  bin_str='{:010b}'.format(comb_num)
+  bin_str='{:040b}'.format(comb_num)
   bin_str=bin_str[-nstrms:]
   wts = np.asarray(map(lambda x: int(x), bin_str))
 

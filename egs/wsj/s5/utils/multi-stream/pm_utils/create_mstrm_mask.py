@@ -47,7 +47,7 @@ with open(out_ark, 'wb') as output:
     #logging.info("  best_comb = %d", best_comb)
  
     #best_comb -> strm_mask    
-    bin_str='{:010b}'.format(best_comb)
+    bin_str='{:040b}'.format(best_comb)
     bin_str=bin_str[-nstrms:]
     wts = np.asarray(map(lambda x: int(x), bin_str))
     
