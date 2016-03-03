@@ -5,7 +5,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
 
 ## Notes
 
-* These instructions are valid June 2015, MKL and OpenBLAS are supported
+* These instructions are valid June 2015, [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
 * We now (20150613) support CUDA on Windows as well. The build was
@@ -73,10 +73,11 @@ For cygwin installation, see the instructions in `../INSTALL`.
    If you get this error: `Assertion failed: hunk, file ../patch-2.5.9-src/patch.c, line 354`
    it is because the `patch.c` file should have Windows line endings (CRLF) rather than Unix ones (LF).
    
-There are two options to use for BLAS (linear algebra): MLK and OpenBLAS. MLK is made by Intel and is optimised
-for their processors. Unfortunately it isn't free. OpenBLAS is free alternative with similar performance.
+There are two options to use for BLAS (linear algebra): [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS. [Intel® MKL](https://software.intel.com/en-us/intel-mkl) is made by Intel and is optimised
+for their processors. It isn't free, but you can get [Community Licensing for Intel® Performance Libraries
+](https://software.intel.com/sites/campaigns/nest/) or as part of Intel product suite if you [qualify as students, educators, academic researchers, and open source contributors](https://software.intel.com/en-us/qualify-for-free-software). OpenBLAS is free alternative with similar performance.
 
-6. If using MLK, install it.
+6. If using [Intel® MKL](https://software.intel.com/en-us/intel-mkl), [install it](https://software.intel.com/en-us/intel-mkl/try-buy).
 
 7. If using OpenBLAS, download the binary packages.
 
@@ -89,7 +90,7 @@ for their processors. Unfortunately it isn't free. OpenBLAS is free alternative 
 
    **Be careful to download "Win64-int32" and not "Win64-int64"!**
 
-8. If you want enabled CUDA support, download and install NVidia CUDA SDK.
+8. If you want enabled [CUDA](http://www.nvidia.com/object/cuda_home_new.html) support, download and install [NVIDIA CUDA SDK](https://developer.nvidia.com/cuda-downloads).
    Be careful and strive for as standard install as possible. The installer
    set certain environment variables on which the MSVC Build rules rely.
    If you call "set" in the command line, you should see:
