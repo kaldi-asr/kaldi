@@ -96,17 +96,20 @@ echo $spk_prefix | perl -e '
   }
 
   foreach $reco (sort keys %recolist) {
+    $reco2spk{$reco} = $utt2spk{$reco2utt{$reco}};
     $reco2filt{$reco} = $spk2filt{$utt2spk{$reco2utt{$reco}}};
     while (1) {
-      $reco2inversefilt{$reco} = $spk2filt{(keys %spk2filt)[rand keys %spk2filt]};
-      if ($reco2inversefilt{$reco} ne $reco2filt{$reco}) {
+      $spk = (keys %spk2filt)[rand keys %spk2filt];
+      $reco2perturbspk{$reco} = $spk;
+      $reco2perturbfilt{$reco} = $spk2filt{$spk};
+      if ($reco2perturbfilt{$reco} ne $reco2filt{$reco}) {
         last;
       }
     }
   }
 
   foreach $reco (sort keys %recolist) {
-    print WO "$prefix$reco $reco2pipe{$reco} apply-filter --inverse=false $reco2filt{$reco} - - | apply-filter --inverse=true $reco2inversefilt{$reco} - - |\n";
+    print WO "$prefix$reco $reco2pipe{$reco} apply-filter --inverse=false \"ark:echo $reco2spk{$reco} $reco2filt{$reco} | \" - - | apply-filter --inverse=true \"ark:echo $reco2perturbspk{$reco} $reco2perturbfilt{$reco} | \" - - |\n";
   }
 
 ' $srcdir/utt2spk $srcdir/segments $srcdir/wav.scp \
