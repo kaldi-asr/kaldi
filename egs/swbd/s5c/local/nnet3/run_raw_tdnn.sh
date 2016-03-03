@@ -43,6 +43,7 @@ fi
 
 if [ -z "$data_dir" ]; then
   echo "\$data_dir is required"
+  exit 1
 fi
 
 if [ $stage -le 9 ]; then
