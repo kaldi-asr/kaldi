@@ -46,7 +46,11 @@ class ArcPosteriorComputer {
       return num_post;
     if (!ComputeCompactLatticeBetas(clat_, &beta_))
       return num_post;
+
     CompactLatticeStateTimes(clat_, &state_times_);
+    if (clat_.Start() < 0)
+      return 0;
+    double tot_like = beta_[clat_.Start()];
 
     int32 num_states = clat_.NumStates();
     for (int32 state = 0; state < num_states; state++) {
@@ -54,15 +58,16 @@ class ArcPosteriorComputer {
            !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
         double arc_loglike = -ConvertToCost(arc.weight) +
-            alpha_[state] + beta_[arc.nextstate];
+            alpha_[state] + beta_[arc.nextstate] - tot_like;
         KALDI_ASSERT(arc_loglike < 0.1 &&
                      "Bad arc posterior in forward-backward computation");
         if (arc_loglike > 0.0) arc_loglike = 0.0;
-        int32 num_frames = arc.weight.String().size();
-        BaseFloat arc_post = log(arc_loglike);
+        int32 num_frames = arc.weight.String().size(),
+            word = arc.ilabel;
+        BaseFloat arc_post = exp(arc_loglike);
         if (arc_post <= min_post_) continue;
         os << utterance << '\t' << state_times_[state] << '\t' << num_frames
-           << arc_post;
+           << '\t' << arc_post << '\t' << word;
         if (print_alignment_) {
           os << '\t';
           const std::vector<int32> &ali = arc.weight.String();
@@ -75,10 +80,13 @@ class ArcPosteriorComputer {
           // we want to print the phone sequence too.
           os << '\t';
           const std::vector<int32> &ali = arc.weight.String();
+          bool first_phone = true;
           for (int32 frame = 0; frame < num_frames; frame++) {
-            if (trans_model_->IsFinal(ali[frame]))
+            if (trans_model_->IsFinal(ali[frame])) {
+              if (first_phone) first_phone = false;
+              else os << ' ';
               os << trans_model_->TransitionIdToPhone(ali[frame]);
-            if (frame + 1 < num_frames) os << ',';
+            }
           }
         }
         os << std::endl;
@@ -113,12 +121,13 @@ int main(int argc, char *argv[]) {
         "This program computes posteriors from a lattice and prints out\n"
         "information for each arc (the format is reminiscent of ctm, but\n"
         "contains information from multiple paths).  Each line is:\n"
-        " <utterance-id> <start-frame> <num-frames> <posterior> <word> [<ali>] [<phones>]\n"
+        " <utterance-id> <start-frame> <num-frames> <posterior> <word> [<ali>] [<phone1> <phone2>...]\n"
         "for instance:\n"
-        "2013a04-bk42\t104\t26\t0.95\t0\t11,242,242,242,71,894,894,62,63,63,63,63\t2,8,9\n"
+        "2013a04-bk42\t104\t26\t0.95\t0\t11,242,242,242,71,894,894,62,63,63,63,63\t2 8 9\n"
         "where the --print-alignment option determines whether the alignments (i.e. the\n"
         "sequences of transition-ids) are printed, and the phones are printed only if the\n"
-        "<model> is supplied on the command line.\n"
+        "<model> is supplied on the command line.  Note, there are tabs between the major\n"
+        "fields, but the phones are separated by spaces.\n"
         "Usage: lattice-arc-post [<model>] <lattices-rspecifier> <output-wxfilename>\n"
         "e.g.: lattice-arc-post --acoustic-scale=0.1 final.mdl 'ark:gunzip -c lat.1.gz|' post.txt\n"
         "You will probably want to word-align the lattices (e.g. lattice-align-words or\n"
@@ -128,7 +137,7 @@ int main(int argc, char *argv[]) {
 
     kaldi::BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     kaldi::BaseFloat min_post = 0.0001;
-    bool print_alignment;
+    bool print_alignment = false;
 
     kaldi::ParseOptions po(usage);
     po.Register("acoustic-scale", &acoustic_scale,
@@ -150,17 +159,14 @@ int main(int argc, char *argv[]) {
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
 
-    bool print_phones;
     kaldi::TransitionModel trans_model;
 
     std::string lats_rspecifier, output_wxfilename;
     if (po.NumArgs() == 3) {
-      print_phones = true;
       ReadKaldiObject(po.GetArg(1), &trans_model);
       lats_rspecifier = po.GetArg(2);
       output_wxfilename = po.GetArg(3);
     } else {
-      print_phones = false;
       lats_rspecifier = po.GetArg(1);
       output_wxfilename = po.GetArg(2);
     }
