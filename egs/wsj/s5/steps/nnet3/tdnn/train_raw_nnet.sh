@@ -277,8 +277,7 @@ fi
 
 
 if [ $stage -le -1 ]; then
-  # Add the first layer; this will add in the lda.mat and
-  # presoftmax_prior_scale.vec.
+  # Add the first layer; this will add in the lda.mat
   $cmd $dir/log/add_first_layer.log \
        nnet3-init --srand=-3 $dir/init.raw $dir/configs/layer1.config $dir/0.raw || exit 1;
 

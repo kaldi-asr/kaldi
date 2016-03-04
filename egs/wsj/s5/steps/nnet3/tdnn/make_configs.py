@@ -385,13 +385,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
     left_context += int(parsed_splice_output['left_context'])
     right_context += int(parsed_splice_output['right_context'])
 
-    add_lda_str = 'false'
-    if add_lda:
-        add_lda_str = 'true'
-
-    include_log_softmax_str = 'false'
-    if include_log_softmax:
-        include_log_softmax_str = 'true'
+    add_lda_str = ('true' if add_lda else 'false')
+    include_log_softmax_str = ('true' if include_log_softmax else 'false')
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
