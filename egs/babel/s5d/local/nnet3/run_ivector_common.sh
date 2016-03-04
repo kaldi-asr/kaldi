@@ -17,7 +17,6 @@ speed_perturb=true
 
 . ./utils/parse_options.sh
 
-mkdir -p nnet3
 # perturbed data preparation
 train_set=train
 if [ "$speed_perturb" == "true" ]; then
@@ -30,31 +29,31 @@ if [ "$speed_perturb" == "true" ]; then
       utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
       utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
       rm -r data/temp1 data/temp2
-      
+
       featdir=plp_perturbed
       if $use_pitch; then
         steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $train_nj data/${datadir}_tmp exp/make_plp_pitch/${datadir}_tmp $featdir
       else
         steps/make_plp.sh --cmd "$train_cmd" --nj $train_nj data/${datadir}_tmp exp/make_plp/${datadir}_tmp $featdir
       fi
-      
+
       steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_plp/${datadir}_tmp $featdir || exit 1;
       utils/fix_data_dir.sh data/${datadir}_tmp
-      
+
       utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
       utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
       utils/fix_data_dir.sh data/${datadir}_sp
       rm -r data/temp0 data/${datadir}_tmp
     done
   fi
-  
+
   train_set=train_sp
   if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh \
       --nj 70 --cmd "$train_cmd" \
       --boost-silence $boost_sil \
-      data/$train_set data/lang exp/tri5 exp/tri5_ali_sp || exit 1
+      data/$train_set data/langp/tri5_ali exp/tri5 exp/tri5_ali_sp || exit 1
     touch exp/tri5_ali_sp/.done
   fi
 fi
@@ -106,12 +105,12 @@ if [ $stage -le 5 ]; then
     --splice-opts "--left-context=3 --right-context=3" \
     --boost-silence $boost_sil \
     $numLeavesMLLT $numGaussMLLT data/${train_set}_hires \
-    data/lang exp/tri5_ali_sp exp/nnet3/tri3b
+    data/langp/tri5_ali/ exp/tri5_ali_sp exp/nnet3/tri3b
 fi
 
 if [ $stage -le 6 ]; then
   # To train a diagonal UBM we don't need very much data, so use the smallest subset.
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
+  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-threads 12 --num-frames 200000 \
     data/${train_set}_hires 512 exp/nnet3/tri3b exp/nnet3/diag_ubm
 fi
 

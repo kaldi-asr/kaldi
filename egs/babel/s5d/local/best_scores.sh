@@ -23,24 +23,21 @@ if [ ! -e ./RESULTS ] ; then
 fi
 
 
+set -f
+export mydirs=( `find exp/ exp_bnf/ exp_psx/ -name "decode*dev10h.pem*" -type d | sed  's/it[0-9]/*/g;s/epoch[0-9]/*/g' | sort -u` )
+set +f
 (
-  echo -e "#\n# STT Task performance (WER), evaluated on $(date --iso-8601=seconds)"
-  for f in exp/*; do
-    find $f -path "*dev10h.pem*" -name "*.sys" -not -name "*char*" | xargs grep Avg | utils/best_wer.sh
-  done
-  for f in exp_bnf/*; do
-    find $f -path "*dev10h.pem*" -name "*.sys" -not -name "*char*" | xargs grep Avg | utils/best_wer.sh
-  done
+  echo -e "#\n# STT Task performance (WER), evaluated on $(date --iso-8601=seconds) by user `whoami` on `hostname -f`"
+  for f in  "${mydirs[@]}"; do
+    find $f -name "*.sys" -not -name "*char*" | xargs grep Avg | utils/best_wer.sh
+  done | column -t
 )  >> RESULTS
 
 (
   ls exp/tri5/decode*dev10h*/score_*/*char*sys >/dev/null 2>&1  || exit 0
-  echo -e "#\n# STT Task performance (CER), evaluated on $(date --iso-8601=seconds)"
-  for f in exp/*; do
-    find $f -path "*dev10h.pem*" -name "*.sys" -name "*char*" | xargs grep Avg | utils/best_wer.sh
-  done
-  for f in exp_bnf/*; do
-    find $f -path "*dev10h.pem*" -name "*.sys" -name "*char*" | xargs grep Avg | utils/best_wer.sh
-  done
+  echo -e "#\n# STT Task performance (CER), evaluated on $(date --iso-8601=seconds) by user `whoami` on `hostname -f`"
+  for f in  "${mydirs[@]}"; do
+    find $f -name "*.sys" -name "*char*" | xargs grep Avg | utils/best_wer.sh
+  done | column -t
 )  >> RESULTS
 

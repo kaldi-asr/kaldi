@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen, Yenda Trmal)
 # Apache 2.0.
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 case_insensitive=true
 subset_ecf=
@@ -19,7 +19,7 @@ silence_word=  # Optional silence word to insert (once) between words of the tra
 
 echo "$0 $@"  # Print the command line for logging
 
-set -e 
+set -e
 set -u
 set -o pipefail
 
@@ -27,13 +27,13 @@ help_message="$0: Initialize and setup the KWS task directory
 Usage:
        $0  <ecf_file> <kwlist-file> [rttm-file] <lang-dir> <data-dir>
 allowed switches:
-      --subset-ecf /path/to/filelist     # The script will subset the ecf file 
+      --subset-ecf /path/to/filelist     # The script will subset the ecf file
                                          # to contain only the files from the filelist
       --rttm-file /path/to/rttm          # the preferred way how to specify the rttm
-                                         # the older way (as an in-line parameter is 
+                                         # the older way (as an in-line parameter is
                                          # obsolete and will be removed in near future
       --case-insensitive <true|false>      # Shall we be case-sensitive or not?
-                                         # Please not the case-sensitivness depends 
+                                         # Please not the case-sensitivness depends
                                          # on the shell locale!
       --annotate <true|false>
       --use-icu <true|false>           # Use the ICU uconv binary to normalize casing
@@ -42,7 +42,7 @@ allowed switches:
               "
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
-. parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 if [ "$#" -ne "5" ] &&  [ "$#" -ne "4" ] ; then
     printf "FATAL: invalid number of arguments.\n\n"
@@ -87,13 +87,13 @@ fi
 mkdir -p $kwsdatadir
 
 if [ -z $subset_ecf ] ; then
-  test -f $kwsdatadir/ecf.xml && rm -f $kwsdatadir/ecf.xml 
+  test -f $kwsdatadir/ecf.xml && rm -f $kwsdatadir/ecf.xml
   cp "$ecf_file" $kwsdatadir/ecf.xml || exit 1
 else
   local/make_ecf_subset.sh $subset_ecf $ecf_file > $kwsdatadir/ecf.xml
 fi
 
-if $kwlist_wordlist ; then 
+if $kwlist_wordlist ; then
 (
  echo '<kwlist ecf_filename="kwlist.xml" language="" encoding="UTF-8" compareNormalize="lowercase" version="" >'
  awk '{ printf("  <kw kwid=\"%s\">\n", $1);
@@ -125,7 +125,7 @@ local/kws_data_prep.sh --case-insensitive ${case_insensitive} \
   $sil_opt --use_icu ${use_icu} --icu-transform "${icu_transform}" \
   $langdir $datadir $kwsdatadir || exit 1
 
-if  $annotate ; then 
+if  $annotate ; then
   set -x
   rm -f $kwsdatadir/kwlist.xml
   cat $kwsdatadir/keywords.txt | local/search/create_categories.pl | local/search/normalize_categories.pl > $kwsdatadir/categories

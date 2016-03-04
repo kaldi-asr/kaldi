@@ -437,6 +437,50 @@ fi
 ## nnet3 model decoding
 ##
 ####################################################################
+if [ -f exp/nnet3/lstm_bidirectional_sp/.done ]; then
+  decode=exp/nnet3/lstm_bidirectional_sp/decode_${dataset_id}
+  rnn_opts=" --extra-left-context 40 --extra-right-context 40  --frames-per-chunk 20 "
+  decode_script=steps/nnet3/lstm/decode.sh
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test $decode
+fi
+
+if [ -f exp/nnet3/lstm_sp/.done ]; then
+  decode=exp/nnet3/lstm_sp/decode_${dataset_id}
+  rnn_opts=" --extra-left-context 40 --extra-right-context 0  --frames-per-chunk 20 "
+  decode_script=steps/nnet3/lstm/decode.sh
+  if [ ! -f $decode/.done ]; then
+    mkdir -p $decode
+    $decode_script --nj $my_nj --cmd "$decode_cmd" $rnn_opts \
+          --beam $dnn_beam --lattice-beam $dnn_lat_beam \
+          --skip-scoring true  \
+          --online-ivector-dir exp/nnet3/ivectors_${dataset_id} \
+          exp/tri5/graph ${dataset_dir}_hires $decode | tee $decode/decode.log
+
+    touch $decode/.done
+  fi
+
+  local/run_kws_stt_task.sh --cer $cer --max-states $max_states \
+    --skip-scoring $skip_scoring --extra-kws $extra_kws --wip $wip \
+    --cmd "$decode_cmd" --skip-kws $skip_kws --skip-stt $skip_stt  \
+    "${lmwt_dnn_extra_opts[@]}" \
+    ${dataset_dir} data/langp_test $decode
+fi
+
 if [ -f exp/$nnet3_model/.done ]; then
   decode=exp/$nnet3_model/decode_${dataset_id}
   rnn_opts=
@@ -462,7 +506,6 @@ if [ -f exp/$nnet3_model/.done ]; then
     "${lmwt_dnn_extra_opts[@]}" \
     ${dataset_dir} data/langp_test $decode
 fi
-
 
 
 ####################################################################

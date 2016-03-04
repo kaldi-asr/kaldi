@@ -29,7 +29,7 @@ if [ ! -f $dir/.done ]; then
     --pnorm-output-dim $dnn_output_dim \
     --cmd "$train_cmd" \
     "${dnn_gpu_parallel_opts[@]}" \
-    data/train data/lang exp/tri5_ali $dir || exit 1
+    data/train data/langp/tri5_ali exp/tri5_ali $dir || exit 1
 
   touch $dir/.done
 fi

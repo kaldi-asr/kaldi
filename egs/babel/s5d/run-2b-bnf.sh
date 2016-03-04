@@ -17,7 +17,7 @@ skip_kws=true
 skip_stt=false
 semisupervised=true
 unsup_string="_semisup"
-bnf_train_stage=-100
+train_stage=-100
 bnf_weight_threshold=0.35
 ali_dir=
 ali_model=exp/tri6b_nnet/
@@ -40,6 +40,8 @@ else
   dirid=train
 fi
 
+[ ! -d $ali_model ] && echo "The alignment model $ali_model does not exist! Use --ali-model <dir> to specify it." && exit 1
+
 datadir=data/${dirid}
 exp_dir=exp_bnf${unsup_string}
 data_bnf_dir=data_bnf${unsup_string}
@@ -57,7 +59,7 @@ if [ ! -f $ali_dir/.done ]; then
   [ ! -f $ali_model/final.mdl ] && echo -e "$ali_model/final.mdl not found!\nRun run-6-nnet.sh first!" && exit 1
   steps/nnet2/align.sh  --cmd "$train_cmd " \
     --use-gpu no --transform-dir exp/tri5_ali --nj $train_nj \
-    data/train data/lang $ali_model $ali_dir || exit 1
+    data/train data/langp/tri5_ali $ali_model $ali_dir || exit 1
   touch $ali_dir/.done
 fi
 
@@ -79,7 +81,7 @@ if [ ! -f $exp_dir/tri6_bnf/.done ]; then
         --transform-dir-sup exp/tri5_ali \
         --transform-dir-unsup exp/tri5/decode_${dirid} \
         --weight-threshold $bnf_weight_threshold \
-        data/train $datadir data/lang \
+        data/train $datadir data/langp/tri5_ali/ \
         $ali_dir $weights_dir $exp_dir/tri6_bnf || exit 1;
       touch $exp_dir/tri6_bnf/egs/.done
     fi
@@ -88,7 +90,7 @@ if [ ! -f $exp_dir/tri6_bnf/.done ]; then
 
  echo "$0: Train Bottleneck network"
   steps/nnet2/train_tanh_bottleneck.sh \
-    --stage $bnf_train_stage --num-jobs-nnet $bnf_num_jobs \
+    --stage $train_stage --num-jobs-nnet $bnf_num_jobs \
     --num-threads $bnf_num_threads --mix-up $bnf_mixup \
     --minibatch-size $bnf_minibatch_size \
     --initial-learning-rate $bnf_init_learning_rate \
@@ -97,7 +99,7 @@ if [ ! -f $exp_dir/tri6_bnf/.done ]; then
     --bottleneck-dim $bottleneck_dim --hidden-layer-dim $bnf_hidden_layer_dim \
     --cmd "$train_cmd --mem 4G" $egs_string  \
     "${dnn_gpu_parallel_opts[@]}" \
-    data/train data/lang $ali_dir $exp_dir/tri6_bnf || exit 1
+    data/train data/langp/tri5_ali/ $ali_dir $exp_dir/tri6_bnf || exit 1
 
   touch $exp_dir/tri6_bnf/.done
 fi
@@ -130,13 +132,13 @@ fi
 if [ ! $exp_dir/tri5/.done -nt $data_bnf_dir/train/.done ]; then
   steps/train_lda_mllt.sh --splice-opts "--left-context=1 --right-context=1" \
     --dim 60 --boost-silence $boost_sil --cmd "$train_cmd" \
-    $numLeavesMLLT $numGaussMLLT $data_bnf_dir/train data/lang exp/tri5_ali $exp_dir/tri5 ;
+    $numLeavesMLLT $numGaussMLLT $data_bnf_dir/train data/langp/tri5_ali/ exp/tri5_ali $exp_dir/tri5 ;
   touch $exp_dir/tri5/.done
 fi
 
 if [ ! $exp_dir/tri6/.done -nt $exp_dir/tri5/.done ]; then
   steps/train_sat.sh --boost-silence $boost_sil --cmd "$train_cmd" \
-    $numLeavesSAT $numGaussSAT $data_bnf_dir/train data/lang \
+    $numLeavesSAT $numGaussSAT $data_bnf_dir/train data/langp/tri5_ali \
     $exp_dir/tri5 $exp_dir/tri6
   touch $exp_dir/tri6/.done
 fi
