@@ -70,17 +70,21 @@ int main(int argc, char *argv[]) {
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
 
-    fst::StdVectorFst den_fst;
-    ReadFstKaldi(den_fst_rxfilename, &den_fst);
+    bool ok;
 
-    NnetChainTrainer trainer(opts, den_fst, &nnet);
+    {
+      fst::StdVectorFst den_fst;
+      ReadFstKaldi(den_fst_rxfilename, &den_fst);
 
-    SequentialNnetChainExampleReader example_reader(examples_rspecifier);
+      NnetChainTrainer trainer(opts, den_fst, &nnet);
 
-    for (; !example_reader.Done(); example_reader.Next())
-      trainer.Train(example_reader.Value());
+      SequentialNnetChainExampleReader example_reader(examples_rspecifier);
 
-    bool ok = trainer.PrintTotalStats();
+      for (; !example_reader.Done(); example_reader.Next())
+        trainer.Train(example_reader.Value());
+
+      ok = trainer.PrintTotalStats();
+    }
 
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();

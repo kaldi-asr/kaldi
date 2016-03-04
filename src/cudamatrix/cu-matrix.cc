@@ -46,7 +46,8 @@ namespace kaldi {
 
 template<typename Real>
 void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
-                            MatrixResizeType resize_type) {
+                            MatrixResizeType resize_type,
+                            MatrixStrideType stride_type) {
   // This code does not currently support the other resize_type options.
   KALDI_ASSERT(resize_type == kSetZero || resize_type == kUndefined);
   if (rows * cols == 0) KALDI_ASSERT(rows == 0 && cols == 0);
@@ -54,7 +55,6 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     if (resize_type == kSetZero) this->SetZero();
     return;
   }
-
   if (this->num_rows_ != 0)
     this->Destroy();
   if (rows == 0) return;
@@ -63,11 +63,19 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
     Timer tim;
     MatrixIndexT row_bytes = cols * sizeof(Real);
     size_t pitch;
-    this->data_ = static_cast<Real*>(CuDevice::Instantiate().MallocPitch(
-        row_bytes, rows, &pitch));
-    this->num_rows_ = rows;
-    this->num_cols_ = cols;
-    this->stride_ = pitch / sizeof(Real);
+    if (stride_type == kDefaultStride) {
+      this->data_ = static_cast<Real*>(CuDevice::Instantiate().MallocPitch(
+          row_bytes, rows, &pitch));
+      this->num_rows_ = rows;
+      this->num_cols_ = cols;
+      this->stride_ = pitch / sizeof(Real);
+    } else {  // kStrideEqualNumCols
+      size_t bytes = rows * cols * sizeof(Real);
+      this->data_ = static_cast<Real*>(CuDevice::Instantiate().Malloc(bytes));
+      this->num_rows_ = rows;
+      this->num_cols_ = cols;
+      this->stride_ = cols;
+    }
     if (resize_type == kSetZero) this->SetZero();
     CuDevice::Instantiate().AccuProfile("CuMatrix::Resize", tim.Elapsed());
   } else
@@ -75,7 +83,7 @@ void CuMatrix<Real>::Resize(MatrixIndexT rows, MatrixIndexT cols,
   { // Let the initializer of Matrix<Real> handle the allocation,
     // and then just do Swap which will switch the pointers.
     // This wastes a few instructions but is simple to code.
-    Matrix<Real> mat(rows, cols, resize_type);
+    Matrix<Real> mat(rows, cols, resize_type, stride_type);
     this->Swap(&mat);
   }
 }
@@ -2017,6 +2025,26 @@ void CuMatrixBase<Real>::ApplyHeaviside() {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::Heaviside(const CuMatrixBase<Real> &src) {
+  KALDI_ASSERT(SameDim(*this, src));
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    Timer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_heaviside(dimGrid, dimBlock, this->data_, src.data_, this->Dim(),
+                   src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+  } else
+  #endif
+  {
+    Mat().Heaviside(src.Mat());
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyExp() {

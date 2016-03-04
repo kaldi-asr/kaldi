@@ -10,6 +10,8 @@ cmd=run.pl
 stage=0
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
+print_silence=false # if true, will print <eps> (optional-silence) arcs.
+
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -58,9 +60,9 @@ if [ $stage -le 0 ]; then
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
+      nbest-to-ctm --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
-      gzip -c '>' $dir/ctm.JOB.gz
+      gzip -c '>' $dir/ctm.JOB.gz || exit 1
   else
     if [ ! -f $lang/phones/align_lexicon.int ]; then
       echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
@@ -71,14 +73,14 @@ if [ $stage -le 0 ]; then
       "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       '' '' ark:- \| \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      nbest-to-ctm ark:- - \| \
+      nbest-to-ctm --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
-      gzip -c '>' $dir/ctm.JOB.gz
+      gzip -c '>' $dir/ctm.JOB.gz || exit 1
   fi
 fi
 
 if [ $stage -le 1 ]; then
-  if [ -f $data/segments ]; then
+  if [ -f $data/segments ] && $use_segments; then
     f=$data/reco2file_and_channel
     [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
     for n in `seq $nj`; do gunzip -c $dir/ctm.$n.gz; done | \

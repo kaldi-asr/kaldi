@@ -755,6 +755,25 @@ static void UnitTestCuMatrixApplyHeaviside() {
 
 
 template<typename Real>
+static void UnitTestCuMatrixHeaviside() {
+
+  for (int32 i = 0; i < 1; i++) {
+    Matrix<Real> H(10 + Rand() % 60, 10 + Rand() % 20);
+    H.SetRandn();
+    H.Row(0).Set(0.0);
+    if (i == 2) { Matrix<Real> tmp(H, kTrans); H = tmp; }
+
+    CuMatrix<Real> cH(H);
+    CuMatrix<Real> cH2(H.NumRows(), H.NumCols(), kUndefined);
+    cH2.Heaviside(cH);
+    H.ApplyHeaviside();
+    Matrix<Real> H2(cH2);
+    AssertEqual(H, H2);
+  }
+}
+
+
+template<typename Real>
 static void UnitTestCuMatrixMulElements() {
   for (int32 i = 0; i < 2; i++) {
     MatrixIndexT dimM = 100 + Rand() % 256, dimN = 100 + Rand() % 256;
@@ -2445,6 +2464,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixApplyFloor<Real>();
   UnitTestCuMatrixApplyCeiling<Real>();
   UnitTestCuMatrixApplyHeaviside<Real>();
+  UnitTestCuMatrixHeaviside<Real>();
   UnitTestCuMatrixMulElements<Real>();
   UnitTestCuMatrixDivElements<Real>();
   UnitTestCuMatrixMax<Real>();

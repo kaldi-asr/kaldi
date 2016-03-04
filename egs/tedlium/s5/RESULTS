@@ -8,10 +8,10 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; d
 exit 0
 
 
-#---------------------------------(Post-<unk> fix for Cantab LM) Provided for reference---------------------------------
-# There was a problem with the language model preparation where Kaldi expected <UNK> to represent OOV words while
+#---------------------------------Current results (after fixing the <unk> problem)---------------------------------
+# There was a problem with the language model preparation where the scripts expected <UNK> to represent OOV words while
 # the language model used <unk> to represent them. See `git log tedlium-unk-fix` for details.
-# Fixing this causes a small increased in WER.
+# Fixing this causes a small decrease in WER.
 
 # GMMs
 # DEV SPEAKERS:

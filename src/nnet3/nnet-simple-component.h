@@ -117,19 +117,20 @@ class ElementwiseProductComponent: public Component {
   int32 output_dim_;
 };
 
-class NormalizeComponent: public NonlinearComponent {
-  // note: although we inherit from NonlinearComponent, we don't actually bohter
-  // accumulating the stats that NonlinearComponent is capable of accumulating.
+class NormalizeComponent: public Component {
  public:
- void Init(int32 dim, BaseFloat target_rms, bool add_log_stddev);
-  explicit NormalizeComponent(int32 dim, BaseFloat target_rms = 1.0, 
-    bool add_log_stddev = false) { Init(dim, target_rms, add_log_stddev); }
-  explicit NormalizeComponent(const NormalizeComponent &other): NonlinearComponent(other),
-    target_rms_(other.target_rms_), add_log_stddev_(other.add_log_stddev_) { }
+ void Init(int32 input_dim, BaseFloat target_rms, bool add_log_stddev);
+  explicit NormalizeComponent(int32 input_dim,
+                              BaseFloat target_rms = 1.0,
+                              bool add_log_stddev = false) {
+    Init(input_dim, target_rms, add_log_stddev);
+  }
+  explicit NormalizeComponent(const NormalizeComponent &other);
   virtual int32 Properties() const {
-    return (add_log_stddev_ ? kSimpleComponent|kBackpropNeedsInput :
+    return (add_log_stddev_ ?
+            kSimpleComponent|kBackpropNeedsInput|kBackpropAdds :
             kSimpleComponent|kBackpropNeedsInput|kPropagateInPlace|
-        kBackpropInPlace);
+            kBackpropAdds|kBackpropInPlace);
   }
   NormalizeComponent(): target_rms_(1.0), add_log_stddev_(false) { }
   virtual std::string Type() const { return "NormalizeComponent"; }
@@ -146,31 +147,30 @@ class NormalizeComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
-  virtual void Read(std::istream &is, bool binary); // This Read function
-  // requires that the Component has the correct type.
-
-  /// Write component to stream
+  virtual void Read(std::istream &is, bool binary);
   virtual void Write(std::ostream &os, bool binary) const;
-
-  virtual int32 OutputDim() const { return (dim_ + (add_log_stddev_ ? 1 : 0)); } 
-
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const {
+    return (input_dim_ + (add_log_stddev_ ? 1 : 0));
+  }
   virtual std::string Info() const;
  private:
   NormalizeComponent &operator = (const NormalizeComponent &other); // Disallow.
-  static const BaseFloat kNormFloor;
+  enum { kExpSquaredNormFloor = -66 };
+  static const BaseFloat kSquaredNormFloor;
+  int32 input_dim_;
   BaseFloat target_rms_; // The target rms for outputs.
   // about 0.7e-20.  We need a value that's exactly representable in
   // float and whose inverse square root is also exactly representable
   // in float (hence, an even power of two).
 
-  bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))  
+  bool add_log_stddev_; // If true, log(max(epsi, sqrt(row_in^T row_in / D)))
                         // is an extra dimension of the output.
 };
 
 
 class SigmoidComponent: public NonlinearComponent {
  public:
-  explicit SigmoidComponent(int32 dim): NonlinearComponent(dim) { }
   explicit SigmoidComponent(const SigmoidComponent &other): NonlinearComponent(other) { }
   SigmoidComponent() { }
   virtual std::string Type() const { return "SigmoidComponent"; }
@@ -190,12 +190,16 @@ class SigmoidComponent: public NonlinearComponent {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
  private:
+  // this function is called from Backprop code and only does something if the
+  // self-repair-scale config value is set.
+  void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
+                       CuMatrixBase<BaseFloat> *in_deriv) const;
+
   SigmoidComponent &operator = (const SigmoidComponent &other); // Disallow.
 };
 
 class TanhComponent: public NonlinearComponent {
  public:
-  explicit TanhComponent(int32 dim): NonlinearComponent(dim) { }
   explicit TanhComponent(const TanhComponent &other): NonlinearComponent(other) { }
   TanhComponent() { }
   virtual std::string Type() const { return "TanhComponent"; }
@@ -215,14 +219,19 @@ class TanhComponent: public NonlinearComponent {
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
  private:
+  // this function is called from Backprop code and only does something if the
+  // self-repair-scale config value is set.
+  void RepairGradients(const CuMatrixBase<BaseFloat> &out_value,
+                       CuMatrixBase<BaseFloat> *in_deriv) const;
+
   TanhComponent &operator = (const TanhComponent &other); // Disallow.
 };
 
 
 class RectifiedLinearComponent: public NonlinearComponent {
  public:
-  explicit RectifiedLinearComponent(int32 dim): NonlinearComponent(dim) { }
-  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other): NonlinearComponent(other) { }
+  explicit RectifiedLinearComponent(const RectifiedLinearComponent &other):
+      NonlinearComponent(other) { }
   RectifiedLinearComponent() { }
   virtual std::string Type() const { return "RectifiedLinearComponent"; }
   virtual Component* Copy() const { return new RectifiedLinearComponent(*this); }
@@ -241,7 +250,12 @@ class RectifiedLinearComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
   virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value);
+
  private:
+  // this function is called from Backprop code and only does something if the
+  // self-repair-scale config value is set.
+  void RepairGradients(CuMatrixBase<BaseFloat> *in_deriv) const;
+
   RectifiedLinearComponent &operator = (const RectifiedLinearComponent &other); // Disallow.
 };
 
@@ -483,7 +497,7 @@ class RepeatedAffineComponent: public UpdatableComponent {
   virtual std::string Type() const { return "RepeatedAffineComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kLinearInParameters|
-	     kBackpropNeedsInput|kBackpropAdds;
+        kBackpropNeedsInput|kBackpropAdds|kInputContiguous|kOutputContiguous;
   }
   virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -575,7 +589,6 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
 
 class SoftmaxComponent: public NonlinearComponent {
  public:
-  explicit SoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
   explicit SoftmaxComponent(const SoftmaxComponent &other):
       NonlinearComponent(other) { }
   SoftmaxComponent() { }
@@ -602,7 +615,6 @@ class SoftmaxComponent: public NonlinearComponent {
 
 class LogSoftmaxComponent: public NonlinearComponent {
  public:
-  explicit LogSoftmaxComponent(int32 dim): NonlinearComponent(dim) { }
   explicit LogSoftmaxComponent(const LogSoftmaxComponent &other):
       NonlinearComponent(other) { }
   LogSoftmaxComponent() { }
@@ -896,7 +908,6 @@ class FixedBiasComponent: public Component {
 // very often, but it may sometimes make your life easier
 class NoOpComponent: public NonlinearComponent {
  public:
-  explicit NoOpComponent(int32 dim): NonlinearComponent(dim) { }
   explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
@@ -1187,6 +1198,75 @@ class PerElementOffsetComponent: public UpdatableComponent {
 };
 
 
+// ConstantFunctionComponent returns constant function of its input,
+// i.e. its output does not depend on its input.  It is the same as
+// an affine component with the linear term fixed at zero.
+// It is optionally trainable, and optionally you can use natural
+// gradient.  The input is required only because the framework
+// requires components to have an input.
+class ConstantFunctionComponent: public UpdatableComponent {
+ public:
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_.Dim(); }
+
+  virtual std::string Info() const;
+  // possible parameter values with their defaults:
+  // input-dim=-1 is-updatable=true use-natural-gradient=true output-dim=-1
+  // output-mean=0 output-stddev=0
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ConstantFunctionComponent();
+
+  ConstantFunctionComponent(const ConstantFunctionComponent &other);
+
+  virtual std::string Type() const { return "ConstantFunctionComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|
+        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0) |
+        (InputDim() == OutputDim() ? kPropagateInPlace|kBackpropInPlace: 0) |
+        kBackpropAdds;
+  }
+  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void SetZero(bool treat_as_gradient);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+ private:
+  int32 input_dim_;
+  // the output value-- a vector.
+  CuVector<BaseFloat> output_;
+
+  bool is_updatable_;
+  // if true, and if updatable, do natural-gradient update.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
+
+  const ConstantFunctionComponent &operator
+  = (const ConstantFunctionComponent &other); // Disallow.
+};
+
+
+
 // NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
 // it uses a natural gradient update for the per-element scales, and enforces a
 // maximum amount of change per minibatch, for stability.
@@ -1454,17 +1534,18 @@ class ConvolutionComponent: public UpdatableComponent {
   const ConvolutionComponent &operator = (const ConvolutionComponent &other); // Disallow.
 };
 
-/**
+
+/*
  * MaxPoolingComponent :
- * Maxpooling component was firstly used in ConvNet for selecting an 
+ * Maxpooling component was firstly used in ConvNet for selecting an
  * representative activation in an area. It inspired Maxout nonlinearity.
- * Each output element of this component is the maximum of a block of 
+ * Each output element of this component is the maximum of a block of
  * input elements where the block has a 3D dimension (pool_x_size_,
  * pool_y_size_, pool_z_size_).
  * Blocks could overlap if the shift value on any axis is smaller
  * than its corresponding pool size (e.g. pool_x_step_ < pool_x_size_).
- * If the shift values are euqal to their pool size, there is no 
- * overlap; while if they all equal 1, the blocks overlap to 
+ * If the shift values are euqal to their pool size, there is no
+ * overlap; while if they all equal 1, the blocks overlap to
  * the greatest possible extent.
  *
  * This component is designed to be used after a ConvolutionComponent
@@ -1500,16 +1581,7 @@ class MaxpoolingComponent: public Component {
                            pool_x_size_(0), pool_y_size_(0), pool_z_size_(0),
                            pool_x_step_(0), pool_y_step_(0), pool_z_step_(0) { }
   // constructor using another component
-  MaxpoolingComponent(const MaxpoolingComponent &component): 
-             input_x_dim_(component.input_x_dim_),
-             input_y_dim_(component.input_y_dim_),
-             input_z_dim_(component.input_z_dim_),
-             pool_x_size_(component.pool_x_size_), 
-             pool_y_size_(component.pool_y_size_),
-             pool_z_size_(component.pool_z_size_),
-             pool_x_step_(component.pool_x_step_),
-             pool_y_step_(component.pool_y_step_),
-             pool_z_step_(component.pool_z_step_) { }
+  MaxpoolingComponent(const MaxpoolingComponent &component);
 
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
@@ -1548,22 +1620,22 @@ class MaxpoolingComponent: public Component {
 
  protected:
   int32 input_x_dim_;   // size of the input along x-axis
-                        // (e.g. number of time steps)
+  // (e.g. number of time steps)
   int32 input_y_dim_;   // size of input along y-axis
-                        // (e.g. number of mel-frequency bins)
+  // (e.g. number of mel-frequency bins)
   int32 input_z_dim_;   // size of input along z-axis
-                        // (e.g. number of filters in the ConvolutionComponent)
+  // (e.g. number of filters in the ConvolutionComponent)
 
   int32 pool_x_size_;    // size of the pooling window along x-axis
   int32 pool_y_size_;    // size of the pooling window along y-axis
   int32 pool_z_size_;    // size of the pooling window along z-axis
 
   int32 pool_x_step_;   // the number of steps taken along x-axis of input
-                        //  before computing the next pool
+  //  before computing the next pool
   int32 pool_y_step_;   // the number of steps taken along y-axis of input
-                        // before computing the next pool
+  // before computing the next pool
   int32 pool_z_step_;   // the number of steps taken along z-axis of input
-                        // before computing the next pool
+  // before computing the next pool
 
 };
 
@@ -1667,7 +1739,11 @@ class CompositeComponent: public UpdatableComponent {
   void SetComponent(int32 i, Component *component);
 
   virtual ~CompositeComponent() { DeletePointers(&components_); }
- protected:
+ private:
+  // returns the stride type, kDefaultStride or kStrideEqualNumCols,
+  // at the output of the i'th component.
+  inline MatrixStrideType GetStrideType(int32 i) const;
+
   // returns true if at least one of 'components_' returns the kUpdatable flag
   // in its flags.
   bool IsUpdatable() const;
