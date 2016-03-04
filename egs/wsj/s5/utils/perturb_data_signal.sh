@@ -96,8 +96,10 @@ echo $spk_prefix | perl -e '
   }
 
   foreach $reco (sort keys %recolist) {
-    $reco2spk{$reco} = $utt2spk{$reco2utt{$reco}};
-    $reco2filt{$reco} = $spk2filt{$utt2spk{$reco2utt{$reco}}};
+    #$reco2spk{$reco} = $utt2spk{$reco2utt{$reco}};
+    #$reco2filt{$reco} = $spk2filt{$utt2spk{$reco2utt{$reco}}};
+    $reco2spk{$reco} = $reco;
+    $reco2filt{$reco} = $spk2filt{$reco};
     if ($reco2filt{$reco} eq "") {
       $spk = (keys %spk2filt)[rand keys %spk2filt];
       $reco2spk{$reco} = $spk;
