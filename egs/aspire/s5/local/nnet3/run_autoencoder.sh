@@ -14,11 +14,9 @@ stage=0
 affix=
 train_stage=-10
 common_egs_dir=
+num_data_reps=10
 
-targets_scp=
-data_dir=
 remove_egs=true
-
 
 . cmd.sh
 . ./path.sh
@@ -36,15 +34,17 @@ fi
 dir=exp/nnet3/tdnn_raw
 dir=$dir${affix:+_$affix}
 
-if [ -z "$targets_scp" ]; then
-  echo "\$targets_scp is required"
-  exit 1
-fi
+clean_data_dir=data/train
+data_dir=data/train_rvb
+targets_scp=$dir/targets.scp
 
-if [ -z "$data_dir" ]; then
-  echo "\$data_dir is required"
-  exit 1
-fi
+mkdir -p $dir
+
+# Create copies of clean feats with prefix "rev$x_" to match utterance names of
+# the noisy feats
+for x in `seq 1 $num_data_reps`; do
+  awk -v x=$x '{print "rev"x"_"$0}' $clean_data_dir/feats.scp | sort -k1,1 > $targets_scp
+done
 
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
@@ -68,7 +68,7 @@ fi
 if [ $stage -le 10 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/aspire-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/tdnn/train_raw_nnet.sh --stage $train_stage \
