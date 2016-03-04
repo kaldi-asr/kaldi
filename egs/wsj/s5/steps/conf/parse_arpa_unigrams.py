@@ -1,4 +1,4 @@
-#!/bin/env python
+#!/usr/bin/env python
 
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
@@ -31,7 +31,7 @@ with gzip.open(arpa_gz,'r') as f:
 # Create list, 'wrd id log_p_unigram',
 words_unigram = [[wrd, id, (wrd_log10[wrd] if wrd in wrd_log10 else -99)] for wrd,id in words ]
 
-print words_unigram[0]
+print >>sys.stderr, words_unigram[0]
 # Store,
 with open(unigrams_out,'w') as f:
   f.writelines(['%s %s %g\n' % (w,i,p) for (w,i,p) in words_unigram])
