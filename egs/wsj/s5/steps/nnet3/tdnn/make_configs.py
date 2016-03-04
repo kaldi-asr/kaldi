@@ -12,6 +12,7 @@ import ast
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
+chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -39,6 +40,8 @@ def GetArgs():
                                   help="number of network targets (e.g. num-pdf-ids/num-leaves)")
     num_target_group.add_argument("--ali-dir", type=str,
                                   help="alignment directory, from which we derive the num-targets")
+    num_target_group.add_argument("--tree-dir", type=str,
+                                  help="directory with final.mdl, from which we derive the num-targets")
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
@@ -49,6 +52,9 @@ def GetArgs():
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
                         default=0.0)
+    parser.add_argument("--xent-separate-forward-affine", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="if using --xent-regularize, gives it separate last-but-one weight matrix",
+                        default=False, choices = ["false", "true"])
     parser.add_argument("--final-layer-normalize-target", type=float,
                         help="RMS target for final layer (set to <1 if final layer learns too fast",
                         default=1.0)
@@ -60,8 +66,13 @@ def GetArgs():
                         help="output dimension of p-norm nonlinearities")
     parser.add_argument("--relu-dim", type=int,
                         help="dimension of ReLU nonlinearities")
+
+    parser.add_argument("--self-repair-scale", type=float,
+                        help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=None)
+
+
     parser.add_argument("--pool-type", type=str, default = 'none',
-                        help="Type of pooling to be used.", choices = ['low-pass', 'weighted-average', 'per-dim-weighted-average', 'none'])
+                        help="Type of pooling to be used.", choices = ['low-pass', 'weighted-average', 'per-dim-weighted-average', 'multi-dim-weighted-average', 'none'])
     parser.add_argument("--pool-window", type=int, default = None,
                         help="Width of the pooling window")
     parser.add_argument("--pool-lpfilter-width", type=float,
@@ -89,6 +100,8 @@ def CheckArgs(args):
 
     if args.ali_dir is not None:
         args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+    elif args.tree_dir is not None:
+        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
 
     if args.ivector_dir is not None:
         args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
@@ -149,6 +162,35 @@ def AddPerDimAffineLayer(config_lines, name, input, input_window):
     output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
                                                   permuted_output_descriptor,
                                                   num_feats, num_feats)
+
+    return [output_descriptor, filter_context, filter_context]
+
+def AddMultiDimAffineLayer(config_lines, name, input, input_window, block_input_dim, block_output_dim):
+    assert(block_input_dim % input_window== 0)
+    filter_context = int((input_window - 1) / 2)
+    filter_input_splice_indexes = range(-1 * filter_context, filter_context + 1)
+    list = [('Offset({0}, {1})'.format(input['descriptor'], n) if n != 0 else input['descriptor']) for n in filter_input_splice_indexes]
+    filter_input_descriptor = 'Append({0})'.format(' , '.join(list))
+    filter_input_descriptor = {'descriptor':filter_input_descriptor,
+                               'dimension':len(filter_input_splice_indexes) * input['dimension']}
+
+
+    # add permute component to shuffle the feature columns of the Append
+    # descriptor output so that columns corresponding to the same feature index
+    # are contiguous add a block-affine component to collapse all the feature
+    # indexes across time steps into a single value
+    num_feats = input['dimension']
+    num_times = len(filter_input_splice_indexes)
+    column_map = []
+    for i in range(num_feats):
+        for j in range(num_times):
+            column_map.append(j * num_feats + i)
+    permuted_output_descriptor = nodes.AddPermuteLayer(config_lines,
+            name, filter_input_descriptor, column_map)
+    # add a block-affine component
+    output_descriptor = nodes.AddBlockAffineLayer(config_lines, name,
+                                                  permuted_output_descriptor,
+                                                  num_feats / (block_input_dim / input_window) * block_output_dim, num_feats / (block_input_dim/ input_window))
 
     return [output_descriptor, filter_context, filter_context]
 
@@ -241,7 +283,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
                 use_presoftmax_prior_scale, final_layer_normalize_target,
-                include_log_softmax, xent_regularize):
+                include_log_softmax, xent_regularize, xent_separate_forward_affine, self_repair_scale):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -250,6 +292,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
     num_hidden_layers = parsed_splice_output['num_hidden_layers']
     splice_indexes = parsed_splice_output['splice_indexes']
     input_dim = len(parsed_splice_output['splice_indexes'][0]) + feat_dim + ivector_dim
+
+    if xent_separate_forward_affine:
+        if splice_indexes[-1] != [0]:
+            raise Exception("--xent-separate-forward-affine option is supported only if the last-hidden layer has no splicing before it. Please use a splice-indexes with just 0 as the final splicing config.")
 
     prior_scale_file = '{0}/presoftmax_prior_scale.vec'.format(config_dir)
 
@@ -272,6 +318,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
     # we moved the first splice layer to before the LDA..
     # so the input to the first affine layer is going to [0] index
     splice_indexes[0] = [0]
+
     for i in range(0, num_hidden_layers):
         # make the intermediate config file for layerwise discriminative training
         # if specified, pool the input from the previous layer
@@ -296,7 +343,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 left_context += cur_left_context
                 right_context += cur_right_context
 
-            if pool_type == "per-dim-weighted-average":
+            elif pool_type == "per-dim-weighted-average":
                 # add permute component to shuffle the feature columns of the Append descriptor output so
                 # that columns corresponding to the same feature index are contiguous
                 # add a block-affine component to collapse all the feature indexes across time steps into a single value
@@ -307,6 +354,15 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
                 left_context += cur_left_context
                 right_context += cur_right_context
+            elif pool_type == "multi-dim-weighted-average":
+                [prev_layer_output, cur_left_context, cur_right_context] = AddMultiDimAffineLayer(config_lines,
+                                                                                                  'Tdnn_input_PDA_{0}'.format(i),
+                                                                                                   prev_layer_output,
+                                                                                                   pool_window,
+                                                                                                   10 * pool_window, 10)
+                left_context += cur_left_context
+                right_context += cur_right_context
+
 
             try:
                 zero_index = splice_indexes[i].index(0)
@@ -336,20 +392,52 @@ def MakeConfigs(config_dir, splice_indexes_string,
         else:
             # this is a normal affine node
             pass
-        prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                    prev_layer_output, nonlin_output_dim, norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
-        # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                           use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                           prior_scale_file = prior_scale_file,
-                           include_log_softmax = include_log_softmax)
 
-        if xent_regularize != 0.0:
-            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+        if xent_separate_forward_affine and i == num_hidden_layers - 1:
+            if xent_regularize == 0.0:
+                raise Exception("xent-separate-forward-affine=True is valid only if xent-regularize is non-zero")
+
+            prev_layer_output_chain = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_chain",
+                                                    prev_layer_output, nonlin_output_dim,
+                                                    self_repair_scale = self_repair_scale,
+                                                    norm_target_rms = final_layer_normalize_target)
+
+
+            nodes.AddFinalLayer(config_lines, prev_layer_output_chain, num_targets,
+                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                               prior_scale_file = prior_scale_file,
+                               include_log_softmax = include_log_softmax)
+
+
+            prev_layer_output_xent = nodes.AddAffRelNormLayer(config_lines, "Tdnn_pre_final_xent",
+                                                    prev_layer_output, nonlin_output_dim,
+                                                    self_repair_scale = self_repair_scale,
+                                                    norm_target_rms = final_layer_normalize_target)
+
+            nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
                                 name_affix = 'xent')
+
+        else:
+            prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
+                                                        prev_layer_output, nonlin_output_dim,
+                                                        self_repair_scale = self_repair_scale,
+                                                        norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
+
+        # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                               prior_scale_file = prior_scale_file,
+                               include_log_softmax = include_log_softmax)
+
+            if xent_regularize != 0.0:
+                nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                    use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                    prior_scale_file = prior_scale_file,
+                                    include_log_softmax = True,
+                                    name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
@@ -377,7 +465,7 @@ def Main():
                 args.nonlin_input_dim, args.nonlin_output_dim, args.subset_dim,
                 args.pool_type, args.pool_window, args.pool_lpfilter_width,
                 args.use_presoftmax_prior_scale, args.final_layer_normalize_target,
-                args.include_log_softmax, args.xent_regularize)
+                args.include_log_softmax, args.xent_regularize, args.xent_separate_forward_affine, args.self_repair_scale)
 
 if __name__ == "__main__":
     Main()
