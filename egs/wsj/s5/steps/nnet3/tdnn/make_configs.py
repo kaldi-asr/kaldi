@@ -4,11 +4,14 @@
 from __future__ import print_function
 import os
 import argparse
+import shlex
 import sys
 import warnings
 import copy
 import imp
 import ast
+import scipy.signal as signal
+import numpy as np
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
@@ -40,9 +43,24 @@ def GetArgs():
     num_target_group.add_argument("--ali-dir", type=str,
                                   help="alignment directory, from which we derive the num-targets")
 
+    # CNN options
+    parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
+                        help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
+                        "--filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 "
+                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1", default = None)
+    parser.add_argument("--cnn.bottleneck-dim", type=int, dest = "cnn_bottleneck_dim",
+                        help="Output dimension of the linear layer at the CNN output "
+                        "for dimension reduction, e.g. 256."
+                        "The default zero means this layer is not needed.", default=0)
+    parser.add_argument("--cnn.cepstral-lifter", type=float, dest = "cepstral_lifter",
+                        help="Here we need the scaling factor on cepstra in the production of MFCC"
+                        "to cancel out the effect of lifter, e.g. 22.0", default=22.0)
+
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
-                        help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3'")
+                        help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3' "
+                        "If CNN layers are used, the first frame indices is actually how we "
+                        "splice the frames and pass to the CNN.")
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
     parser.add_argument("--xent-regularize", type=float,
@@ -195,12 +213,80 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
 
     return [tdnn_input_descriptor, filter_context, filter_context]
 
+def AddConvMaxpLayer(config_lines, name, input, args):
+    input = nodes.AddConvolutionLayer(config_lines, name, input,
+                              input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                              args.filt_x_dim, args.filt_y_dim,
+                              args.filt_x_step, args.filt_y_step,
+                              args.num_filters, input['vectorization'])
+
+    if args.pool_x_size > 1 or args.pool_y_size > 1 or args.pool_z_size > 1:
+      input = nodes.AddMaxpoolingLayer(config_lines, name, input,
+                                input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
+                                args.pool_x_size, args.pool_y_size, args.pool_z_size,
+                                args.pool_x_step, args.pool_y_step, args.pool_z_step)
+
+    return input
+
+def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
+    cnn_args = ParseCnnString(cnn_layer)
+    num_cnn_layers = len(cnn_args)
+    # We use an Idct layer here to convert MFCC to FBANK features
+    nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir + "/idct.mat")
+    prev_layer_output = {'descriptor':  "input",
+                         'dimension': feat_dim}
+    prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "idct", prev_layer_output, config_dir + '/idct.mat')
+
+    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n) if n != 0 else 'idct') for n in splice_indexes]
+    splice_descriptor = "Append({0})".format(", ".join(list))
+    cnn_input_dim = len(splice_indexes) * feat_dim
+    prev_layer_output = {'descriptor':  splice_descriptor,
+                         'dimension': cnn_input_dim,
+                         '3d-dim': [len(splice_indexes), feat_dim, 1],
+                         'vectorization': 'yzx'}
+
+    for cl in range(0, num_cnn_layers):
+        prev_layer_output = AddConvMaxpLayer(config_lines, "L{0}".format(cl), prev_layer_output, cnn_args[cl])
+
+    if cnn_bottleneck_dim > 0:
+        prev_layer_output = nodes.AddAffineLayer(config_lines, "cnn-bottleneck", prev_layer_output, cnn_bottleneck_dim, "")
+
+    if ivector_dim > 0:
+        iv_layer_output = {'descriptor':  'ReplaceIndex(ivector, t, 0)',
+                           'dimension': ivector_dim}
+        iv_layer_output = nodes.AddAffineLayer(config_lines, "ivector", iv_layer_output, ivector_dim, "")
+        prev_layer_output['descriptor'] = 'Append({0}, {1})'.format(prev_layer_output['descriptor'], iv_layer_output['descriptor'])
+        prev_layer_output['dimension'] = prev_layer_output['dimension'] + iv_layer_output['dimension']
+
+    return prev_layer_output
+
 def PrintConfig(file_name, config_lines):
     f = open(file_name, 'w')
     f.write("\n".join(config_lines['components'])+"\n")
     f.write("\n#Component nodes\n")
     f.write("\n".join(config_lines['component-nodes']))
     f.close()
+
+def ParseCnnString(cnn_param_string_list):
+    cnn_parser = argparse.ArgumentParser(description="cnn argument parser")
+
+    cnn_parser.add_argument("--filt-x-dim", required=True, type=int)
+    cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
+    cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
+    cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
+    cnn_parser.add_argument("--num-filters", type=int, default = 256)
+    cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
+    cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
+    cnn_parser.add_argument("--pool-z-size", type=int, default = 1)
+    cnn_parser.add_argument("--pool-x-step", type=int, default = 1)
+    cnn_parser.add_argument("--pool-y-step", type=int, default = 1)
+    cnn_parser.add_argument("--pool-z-step", type=int, default = 1)
+
+    cnn_args = []
+    for cl in range(0, len(cnn_param_string_list)):
+         cnn_args.append(cnn_parser.parse_args(shlex.split(cnn_param_string_list[cl])))
+
+    return cnn_args
 
 def ParseSpliceString(splice_indexes):
     splice_array = []
@@ -236,7 +322,10 @@ def ParseSpliceString(splice_indexes):
             'num_hidden_layers':len(splice_array)
             }
 
+# The function signature of MakeConfigs is changed just for local use in this script. 
+# This function should not be imported into other modules.
 def MakeConfigs(config_dir, splice_indexes_string,
+                cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
                 feat_dim, ivector_dim, num_targets,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
@@ -265,7 +354,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
     nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
-    prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+    if cnn_layer is None:
+        # Add the Lda layer
+        prev_layer_output = nodes.AddLdaLayer(config_lines, "lda", prev_layer_output, config_dir + '/lda.mat')
+    else:
+        prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, 
+                                         feat_dim, splice_indexes[0], ivector_dim)
 
     left_context = 0
     right_context = 0
@@ -373,6 +467,7 @@ def Main():
     args = GetArgs()
 
     MakeConfigs(args.config_dir, args.splice_indexes,
+                args.cnn_layer, args.cnn_bottleneck_dim, args.cepstral_lifter,
                 args.feat_dim, args.ivector_dim, args.num_targets,
                 args.nonlin_input_dim, args.nonlin_output_dim, args.subset_dim,
                 args.pool_type, args.pool_window, args.pool_lpfilter_width,
