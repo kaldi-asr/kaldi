@@ -96,8 +96,6 @@ def GetArgs():
                         default = 10, help="")
     parser.add_argument("--chain.left-tolerance", type=int, dest='left_tolerance',
                         default = 5, help="")
-    parser.add_argument("--chain.denominator-scale", type=float, dest='denominator_scale',
-                        default = 1.0, help="")
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float, dest='leaky_hmm_coefficient',
                         default = 0.00001, help="")
     parser.add_argument("--chain.apply-deriv-weights", type=str, dest='apply_deriv_weights',
