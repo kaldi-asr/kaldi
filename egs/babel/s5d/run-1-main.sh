@@ -275,7 +275,7 @@ if [ ! -f exp/ubm5/.done ]; then
   echo ---------------------------------------------------------------------
   steps/train_ubm.sh \
     --cmd "$train_cmd" $numGaussUBM \
-    data/train data/lang exp/tri5_ali exp/ubm5
+    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5
   touch exp/ubm5/.done
 fi
 
@@ -285,7 +285,7 @@ if [ ! -f exp/sgmm5/.done ]; then
   echo ---------------------------------------------------------------------
   steps/train_sgmm2.sh \
     --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM \
-    data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
+    data/train data/langp/tri5_ali exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
   #steps/train_sgmm2_group.sh \
   #  --cmd "$train_cmd" "${sgmm_group_extra_opts[@]-}" $numLeavesSGMM $numGaussSGMM \
   #  data/train data/lang exp/tri5_ali exp/ubm5/final.ubm exp/sgmm5
@@ -309,6 +309,11 @@ if [ ! -f exp/sgmm5_ali/.done ]; then
     --nj $train_nj --cmd "$train_cmd" --transform-dir exp/tri5_ali \
     --use-graphs true --use-gselect true \
     data/train data/lang exp/sgmm5 exp/sgmm5_ali
+
+  local/reestimate_langp.sh --cmd "$train_cmd" --unk "$oovSymbol" \
+    data/train data/lang data/local \
+    exp/sgmm5_ali data/local/dictp/sgmm5 data/local/langp/sgmm5 data/langp/sgmm5
+
   touch exp/sgmm5_ali/.done
 fi
 
@@ -320,7 +325,7 @@ if [ ! -f exp/sgmm5_denlats/.done ]; then
   steps/make_denlats_sgmm2.sh \
     --nj $train_nj --sub-split $train_nj "${sgmm_denlats_extra_opts[@]}" \
     --beam 10.0 --lattice-beam 6 --cmd "$decode_cmd" --transform-dir exp/tri5_ali \
-    data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats
+    data/train data/langp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats
   touch exp/sgmm5_denlats/.done
 fi
 
@@ -331,7 +336,7 @@ if [ ! -f exp/sgmm5_mmi_b0.1/.done ]; then
   steps/train_mmi_sgmm2.sh \
     --cmd "$train_cmd" "${sgmm_mmi_extra_opts[@]}" \
     --drop-frames true --transform-dir exp/tri5_ali --boost 0.1 \
-    data/train data/lang exp/sgmm5_ali exp/sgmm5_denlats \
+    data/train data/langp/sgmm5 exp/sgmm5_ali exp/sgmm5_denlats \
     exp/sgmm5_mmi_b0.1
   touch exp/sgmm5_mmi_b0.1/.done
 fi

@@ -129,7 +129,7 @@ if [ ${#my_kwlists[@]} -ne 0  ] ; then
     #know in which directory the KWS setup will reside in, so we will
     #place  the .done file directly into the data directory
     [ -f $dataset_dir/.done.kws.${extraid}_oov ] && continue;
-    setup_oov_search $dataset_dir $dataset_dir/${extraid}_kws ${extraid}_oov
+    setup_oov_search $dataset_dir $dataset_dir/${extraid}_kws ${extraid}_oov || exit 1
     register_extraid $dataset_dir ${extraid}_oov
     touch $dataset_dir/.done.kws.${extraid}_oov
   done

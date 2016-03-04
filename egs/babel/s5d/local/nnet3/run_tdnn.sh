@@ -74,7 +74,7 @@ if [ $stage -le 9 ]; then
     --egs-dir "$common_egs_dir" \
     --relu-dim $relu_dim \
     --remove-egs $remove_egs \
-    data/${train_set}_hires data/lang $ali_dir $dir  || exit 1;
+    data/${train_set}_hires data/langp/tri5_ali $ali_dir $dir  || exit 1;
   touch $dir/.done
 fi
 

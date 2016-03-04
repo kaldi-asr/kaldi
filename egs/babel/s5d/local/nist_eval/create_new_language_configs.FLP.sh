@@ -1,24 +1,26 @@
-#!/bin/bash                                                                        
+#!/bin/bash
 # Copyright (c) 2015, Johns Hopkins University ( Yenda Trmal <jtrmal@gmail.com> )
 # License: Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 language="201-haitian"
+corpus=/export/babel/data/
+indus=/export/babel/data/scoring/IndusDB
 # End configuration section
 . ./utils/parse_options.sh
 
-set -e -o pipefail 
+set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
-corpus=/export/babel/data/$language
+corpus=$corpus/$language
 lists=./conf/lists/$language/
-indus=/export/babel/data/scoring/IndusDB
 
-corpusdir=$(find $corpus -maxdepth 1 -name "*-build" -type d) || exit 1
-[ -z "$corpusdir" ] && "Corpus directory for $language not found!" && exit 1
+corpusdir=$(find $corpus -maxdepth 1 \( -name "release-current" -o -name "release-current-b" \) -type d) || exit 1
+[ -z "$corpusdir" ] && corpusdir=$(find $corpus -maxdepth 1 -name "*-build" -type d)
+[ -z "$corpusdir" ] && echo >&2 "Corpus directory for $language not found!" && exit 1
 
 train_dir=$(find $corpusdir -ipath "*/conversational/*" -name "training" -type d) || exit 1
-[ -z "$train_dir" ] && "Corpus directory $corpusdir/*/training/ not found!" && exit 1
+[ -z "$train_dir" ] && echo >&2 "Corpus directory $corpusdir/*/training/ not found!" && exit 1
 
 train_rom_dir=$(find $train_dir -name  "transcript_roman" -type d) || exit 1
 echo "# include common settings for fullLP systems."
@@ -27,12 +29,22 @@ echo -e "\n"
 
 echo "#speech corpora files location"
 echo "train_data_dir=$train_dir"
-echo "train_data_list=$lists/training.list"
+if [ -f "$lists/training.list" ] ; then
+  echo "train_data_list=$lists/training.list"
+elif [ -f "$lists/train.FullLP.list" ] ; then
+  echo "train_data_list=$lists/train.FullLP.list"
+else
+  echo >&2 "Training list $lists/training.list not found"
+fi
+
 echo "train_nj=32"
 echo -e "\n"
 
 
 indusid=$(find $corpus -name "IARPA*-build" -type d)
+[ -z $indusid ] && indusid=$(find $corpus \( -name "release-current" -o -name "release-current-b" \) -type d)
+[ -z $indusid ] && echo >&2 "Didn't find anything that could be used as IndusDB id"  && exit 1
+
 indusid=$(basename ${indusid})
 indusid=${indusid%%-build}
 dataset=dev10h
@@ -42,6 +54,15 @@ if [ -z "$indusdev10" ] ; then
   echo >&2  "IndusDB entry \"$indusid*dev\" not found -- removing the version and retrying"
   indusid=${indusid%%-v*}
   indusdev10=$(find $indus/ -maxdepth 1 -name "$indusid*dev" -type d)
+  if [ -z "$indusdev10" ] ; then
+    echo >&2  "IndusDB entry \"$indusid*dev\" not found -- keeping only the language code and retrying"
+    indusid=${language%%-*}
+    indusdev10=$(find $indus/ -maxdepth 1 -name "*${indusid}*dev" -type d)
+    if [ -z "$indusdev10" ] ; then
+      echo >&2 "IndusDB configuration for the language code $indusid not found"
+      exit 1
+    fi
+  fi
 fi
 
 if [ -z "$indusdev10" ] ; then
@@ -53,6 +74,7 @@ else
   kwlists1=$(find $indusdev10/ -name "*.kwlist.xml" | sort -V )
   kwlists2=$(find $indusdev10/ -name "*.kwlist?*.xml" | sort -V )
   kwlists="$kwlists1 $kwlists2"
+  dev10h_kwlists="$kwlists"
 fi
 
 echo "#Radical reduced DEV corpora files location"
@@ -92,6 +114,7 @@ echo -e "\n"
 
 dataset="eval"
 eval_dir=$(find $corpus -ipath "*-eval/*/conversational/*" -name "$dataset" -type d) || exit 1
+[ -z "$eval_dir" ] && { eval_dir=$(find $corpusdir -ipath "*/conversational/*" -name "eval" -type d) || exit 1; }
 if [ ! -z "$eval_dir" ] ; then
   indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
   if [ -z "$indus_set" ] ; then
@@ -123,30 +146,47 @@ if [ ! -z "$eval_dir" ] ; then
   dataset=evalpart1
   indus_set=$(find $indus/ -maxdepth 1 -name "$indusid*$dataset" -type d)
   if [ -z "$indus_set" ] ; then
-    echo ""
-  else
+    echo >&2  "IndusDB entry \"$indusid*$dataset\" not found -- keeping only the language code and retrying"
+    indusid=${language%%-*}
+    indus_set=$(find $indus/ -maxdepth 1 -name "*${indusid}*$dataset" -type d)
+    if [ -z "$indus_set" ] ; then
+      echo >&2 "IndusDB configuration for the language code $indus_set not found"
+    fi
+  fi
+  if [ ! -z "$indus_set" ] ; then
     evalpart1_rttm=$(find $indus_set/ -name "*mitllfa3.rttm" )
     evalpart1_ecf=$(find $indus_set/ -name "*ecf.xml" )
     evalpart1_stm=$(find $indus_set/ -name "*stm" -not -name "*cond-speaker*" )
     kwlists1=$(find $indus_set/ -name "*.kwlist.xml" | sort -V)
     kwlists2=$(find $indus_set/ -name "*.kwlist?*.xml" | sort -V)
     kwlists="$kwlists1 $kwlists2"
-  fi
-  echo "#Official post-EVAL period data files"
-  echo "${dataset}_data_dir=$eval_dir"
-  echo "${dataset}_data_list=$lists/${dataset}.list"
-  echo "${dataset}_rttm_file=$evalpart1_rttm"
-  echo "${dataset}_ecf_file=$evalpart1_ecf"
-  echo "${dataset}_stm_file=$evalpart1_stm"
-  echo "${dataset}_kwlists=("
-  for list in $kwlists; do
-    id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
-    echo "    [$id]=$list"
-  done
-  echo ")  # ${dataset}_kwlists"
-  echo "${dataset}_nj=32"
-  echo -e "\n"
 
+    kwlists="$dev10h_kwlists $eval_kwlists $kwlists"
+    echo "#Official post-EVAL period data files"
+    echo "${dataset}_data_dir=$eval_dir"
+    echo "${dataset}_data_list=$lists/${dataset}.list"
+    echo "${dataset}_rttm_file=$evalpart1_rttm"
+    echo "${dataset}_ecf_file=$evalpart1_ecf"
+    echo "${dataset}_stm_file=$evalpart1_stm"
+    echo "${dataset}_kwlists=("
+    declare -A tmp_kwlists;
+    for list in $kwlists; do
+      id=$(echo $list | sed 's/.*\(kwlist[0-9]*\)\.xml/\1/');
+      tmp_kwlists[$id]="$list"
+    done
+
+    indices=$(
+      for id in "${!tmp_kwlists[@]}"; do
+        echo $id
+      done | sort -V | paste -s
+    )
+    for id in $indices; do
+      echo "    [$id]=${tmp_kwlists[$id]}"
+    done
+    echo ")  # ${dataset}_kwlists"
+    echo "${dataset}_nj=32"
+    echo -e "\n"
+  fi
 
   dataset=shadow
   echo "#Shadow data files"
@@ -174,12 +214,16 @@ fi
 dataset=untranscribed-training
 unsup_dir=$(find $corpusdir -ipath "*/conversational/*" -name "$dataset" -type d) || exit 1
 unsup_list=$lists/untranscribed-training.list
-[ ! -f $unsup_list ] && echo "Unsupervised training set not found $unsup_list"
-echo "#Unsupervised dataset for FullLP condition"
-echo "unsup_data_dir=$unsup_dir"
-echo "unsup_data_list=$unsup_list"
-echo "unsup_nj=32"
-echo -e "\n"
+[ ! -f $unsup_list ] && echo >&2 "Unsupervised training set not found $unsup_list"
+if [ -f $unsup_list ] ; then
+  echo "#Unsupervised dataset for FullLP condition"
+  echo "unsup_data_dir=$unsup_dir"
+  echo "unsup_data_list=$unsup_list"
+  echo "unsup_nj=32"
+  echo -e "\n"
+else
+  echo "#Unsupervised training set file ($unsup_list) not found."
+fi
 
 lexicon=$(find $corpusdir -ipath "*/conversational/*" -name "lexicon.txt" -type f) || exit 1
 echo "lexicon_file=$lexicon"

@@ -73,7 +73,7 @@ $cmd JOB=1:$nj $wdir/log/ali_to_phones.JOB.log \
       lattice-to-phone-lattice $model ark:"gunzip -c $latdir/lat.JOB.gz|"  ark:- \| \
       lattice-best-path --acoustic-scale=$acwt  ark:- ark,t:- ark:/dev/null \| \
       int2sym.pl -f 2- $wdir/phones.txt - \) \
-    ark:$wdir/confusions.JOB.txt
+    ark:$wdir/confusions.JOB.txt || exit 1
 
 confusion_files=""
 for i in `seq 1 $nj` ; do
