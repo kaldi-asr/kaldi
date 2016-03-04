@@ -1,0 +1,18 @@
+#Created on 2016-02-25T15:45:46-05:00 by local/best_scores.sh
+#
+# STT Task performance (WER), evaluated on 2016-02-25T15:45:46-05:00
+%WER 50.2 | 21825 101803 | 55.1 33.2 11.7 5.3 50.2 31.2 | -0.670 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-02-25T17:03:34-05:00
+%WER 50.2 | 21825 101803 | 55.1 33.2 11.7 5.3 50.2 31.2 | -0.670 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER 58.1 | 21825 101803 | 48.5 39.7 11.8 6.6 58.1 32.6 | -1.226 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 48.1 | 21825 101803 | 56.4 31.2 12.3 4.6 48.1 31.0 | -0.638 | exp/tri6_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-03-03T19:48:53-05:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+%WER  50.4  |  21825  101803  |  55.5  34.1  10.4  5.9  50.4  31.0  |  -0.669  |  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_16/dev10h.pem.ctm.sys
+%WER  42.3  |  21825  101803  |  61.0  26.6  12.3  3.3  42.3  30.0  |  -1.260  |  exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  50.2  |  21825  101803  |  55.1  33.2  11.7  5.3  50.2  31.2  |  -0.670  |  exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER  58.1  |  21825  101803  |  48.5  39.7  11.8  6.6  58.1  32.6  |  -1.226  |  exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER  62.3  |  21825  101803  |  44.2  42.6  13.3  6.5  62.3  32.9  |  -0.955  |  exp/tri5/decode_dev10h.pem.si/score_12/dev10h.pem.ctm.sys
+%WER  48.1  |  21825  101803  |  56.4  31.2  12.3  4.6  48.1  31.0  |  -0.638  |  exp/tri6_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+%WER  46.8  |  21825  101803  |  57.7  28.7  13.7  4.4  46.8  30.8  |  -0.514  |  exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
