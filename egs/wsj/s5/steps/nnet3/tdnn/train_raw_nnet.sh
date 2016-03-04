@@ -28,7 +28,6 @@ prior_subset_size=20000 # 20k samples per job, for computing priors.
 num_jobs_compute_prior=10 # these are single-threaded, run on CPU.
 get_egs_stage=0    # can be used for rerunning after partial
 online_ivector_dir=
-presoftmax_prior_scale_power=-0.25
 remove_egs=true  # set to false to disable removing egs after training is done.
 
 max_models_combine=20 # The "max_models_combine" is the maximum number of models we give
@@ -88,8 +87,6 @@ if [ $# != 3 ]; then
   echo "                                                   # data, 0.00025 for large data"
   echo "  --num-hidden-layers <#hidden-layers|2>           # Number of hidden layers, e.g. 2 for 3 hours of data, 4 for 100hrs"
   echo "  --add-layers-period <#iters|2>                   # Number of iterations between adding hidden layers"
-  echo "  --presoftmax-prior-scale-power <power|-0.25>     # use the specified power value on the priors (inverse priors) to scale"
-  echo "                                                   # the pre-softmax outputs (set to 0.0 to disable the presoftmax element scale)"
   echo "  --num-jobs-initial <num-jobs|1>                  # Number of parallel jobs to use for neural net training, at the start."
   echo "  --num-jobs-final <num-jobs|8>                    # Number of parallel jobs to use for neural net training, at the end"
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
@@ -145,60 +142,6 @@ else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
 fi
 
-
-###
-# The config creation is moved to upper-level run script.
-# This is only shown here as an example
-
-#echo "$0: creating neural net configs";
-#
-## count space-separated fields in splice_indexes to get num-hidden-layers.
-#splice_indexes="-4,-3,-2,-1,0,1,2,3,4  0  -2,2  0  -4,4 0"
-## Format : layer<hidden_layer>/<frame_indices>....layer<hidden_layer>/<frame_indices> "
-## note: hidden layers which are composed of one or more components,
-## so hidden layer indexing is different from component count
-#subset_dim=0
-#
-#pnorm_input_dim=3000
-#pnorm_output_dim=300
-#relu_dim=  # you can use this to make it use ReLU's instead of p-norms.
-#add_lda=false
-#
-#objective_type=quadratic  # linear or quadratic
-#include_log_softmax=false
-#use_presoftmax_prior_scale=false
-#add_final_sigmoid=false   # If you want final outputs to be probabilities 
-#                          # between 0 and 1. Usually goes with an objective
-#                          # such as "quadratic"
-#
-#config_opts=()
-#
-#if [ ! -z "$relu_dim" ]; then
-#  config_opts+=(--relu-dim=$relu_dim)
-#else
-#  config_opts+=(--pnorm-input-dim=$pnorm_input_dim)
-#  config_opts+=(--pnorm-output-dim=$pnorm_output_dim)
-#fi
-#
-#config_opts+=(--use-presoftmax-prior-scale=$use_presoftmax_prior_scale)
-#config_opts+=(--add-lda=$add_lda)
-#config_opts+=(--objective-type=$objective_type)
-#
-#config_opts+=(--add-final-sigmoid=$add_final_sigmoid)
-#config_opts+=(--include-log-softmax=$include_log_softmax)
-#
-## create the config files for nnet initialization
-#python steps/nnet3/tdnn/make_configs.py  \
-#   --splice-indexes="$splice_indexes"  \
-#   --subset-dim="$subset_dim" \
-#   --feat-dim=$feat_dim \
-#   --ivector-dim=$ivector_dim  \
-#   "${config_opts[@]}" \
-#   --num-targets=$num_targets  \
-#   $dir/configs || exit 1;
-
-### End of config example
-
 if [ ! -z "$configs_dir" ]; then
   cp -rT $configs_dir $dir/configs || exit 1
 fi
@@ -223,6 +166,11 @@ fi
 . $dir/configs/vars || exit 1;
 left_context=$model_left_context
 right_context=$model_right_context
+
+[ -z "$num_targets" ] && echo "\$num_targets is not defined. Needs to be defined in $dir/configs/vars." && exit 1
+[ -z "$add_lda" ] && echo "\$add_lda is not defined. Needs to be defined in $dir/configs/vars." && exit 1
+[ -z "$include_log_softmax" ] && echo "\$include_log_softmax is not defined. Needs to be defined in $dir/configs/vars." && exit 1
+[ -z "$objective_type" ] && echo "\$objective_type is not defined. Needs to be defined in $dir/configs/vars." && exit 1
 
 context_opts="--left-context=$left_context --right-context=$right_context"
 
@@ -327,28 +275,6 @@ if $add_lda && [ $stage -le -3 ]; then
   ln -sf ../lda.mat $dir/configs/lda.mat
 fi
 
-
-if $include_log_softmax && ! $dense_targets && [ $stage -le -2 ]; then
-  echo "$0: preparing initial vector for FixedScaleComponent before softmax"
-  echo "  ... using priors^$presoftmax_prior_scale_power and rescaling to average 1"
-
-  # obtains raw pdf count
-  $cmd JOB=1:$nj $dir/log/acc_pdf.JOB.log \
-    ali-to-post "scp:utils/split_scp.pl -j $nj \$[JOB-1] $targets_scp |" ark:- \| \
-    post-to-tacc --per-pdf=false --num-targets=$num_targets \
-    ark:- $dir/pdf_counts.JOB || exit 1;
-  $cmd $dir/log/sum_pdf_counts.log \
-       vector-sum --binary=false $dir/pdf_counts.* $dir/pdf_counts || exit 1;
-  rm $dir/pdf_counts.*
-
-  awk -v power=$presoftmax_prior_scale_power -v smooth=0.01 \
-     '{ for(i=2; i<=NF-1; i++) { count[i-2] = $i;  total += $i; }
-        num_pdfs=NF-2;  average_count = total/num_pdfs;
-        for (i=0; i<num_pdfs; i++) stot += (scale[i] = (count[i] + smooth * average_count)^power)
-        printf " [ "; for (i=0; i<num_pdfs; i++) printf("%f ", scale[i]*num_pdfs/stot); print "]" }' \
-     $dir/pdf_counts > $dir/presoftmax_prior_scale.vec
-  ln -sf ../presoftmax_prior_scale.vec $dir/configs/presoftmax_prior_scale.vec
-fi
 
 if [ $stage -le -1 ]; then
   # Add the first layer; this will add in the lda.mat and
@@ -576,7 +502,7 @@ if [ $stage -le $num_iters ]; then
 fi
 
 if $include_log_softmax && [ $stage -le $[$num_iters+1] ]; then
-  echo "Getting average posterior for purposes of adjusting the priors."
+  echo "Getting average posterior for purpose of using as prior to convert posteriors to likelihoods."
   # Note: this just uses CPUs, using a smallish subset of data.
   if [ $num_jobs_compute_prior -gt $num_archives ]; then egs_part=1;
   else egs_part=JOB; fi
