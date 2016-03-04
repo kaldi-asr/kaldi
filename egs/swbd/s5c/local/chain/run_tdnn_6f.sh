@@ -4,15 +4,15 @@
 # means there is no hidden part in the jesus layer (it's just repeated affine and relu).
 
 # slightly worse, but encouragingly small difference.
-#local/chain/compare_wer.sh 5v 6f
-#System                       5v        6f
-#WER on train_dev(tg)      15.38     15.71
-#WER on train_dev(fg)      14.39     14.50
-#WER on eval2000(tg)        17.4      17.5
-#WER on eval2000(fg)        15.7      15.9
-#Final train prob       -0.11156 -0.111305
-#Final valid prob      -0.131797 -0.131487
-
+# note, 5v2 is a rerun of 5v.
+# local/chain/compare_wer.sh 5v 5v2 6f
+# System                       5v       5v2        6f
+# WER on train_dev(tg)      15.38     15.74     15.71
+# WER on train_dev(fg)      14.39     14.50     14.50
+# WER on eval2000(tg)        17.4      17.5      17.5
+# WER on eval2000(fg)        15.7      15.9      15.9
+# Final train prob       -0.11156 -0.112155 -0.111305
+# Final valid prob      -0.131797 -0.129516 -0.131487
 
 
 # _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.

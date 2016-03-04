@@ -1,71 +1,79 @@
 #!/bin/bash
 
-# since _6s didn't work that well, in 6t we try something else:
-# modifying 6s to use almost exactly the same splicing indexes as 6r,
-# but with the first splice indexes changed from -1,0,1 to -1,1, so that
-# all the differences are multiples of 2 (so the effective frame rate is
-# the normal frame rate).  In effect we're using a narrower splicing
-# at the start of the nnet, than 6s.
+# _6u is as _6h, but with slightly different splicing indexes (start
+# narrower than 6h and ramp up slowly).  These are designed to be
+# equivalent to those in 6t, except for use with normal-frame-rate,
+# not double-frame-rate, input.  The difference between 6t and 6u
+# will show us whether having double-frame-rate input for the purpose
+# of getting more different shifted versions of the input, is helpful.
 
-# 6t does seem better than 6s, but not quite as good as 6r.
-# the fact that it's not as good as 6r may show that the double-frame-rate
-# input was actually giving us some useful information (although the
-# improvement is only something like 0.1%-0.2%, and we didn't actually see
-# any difference in the objective function from 6r, which undermines the
-# notion that by removing that central 0 splice at the input, we lost
-# some information.
+# _6h is as _6g but adding --xent-separate-forward-affine=true, which
+# gives a separate last-but-one weight matrix to the xent output.
+
+# Although this slight improvement is probably not significant, it's a
+# sensible idea so I think I'll stick with it.
+#local/chain/compare_wer.sh 6g 6h
+#System                       6g        6h
+#WER on train_dev(tg)      15.50     15.46
+#WER on train_dev(fg)      14.31     14.28
+#WER on eval2000(tg)        17.5      17.4
+#WER on eval2000(fg)        15.8      15.7
+#Final train prob      -0.105853 -0.105663
+#Final valid prob      -0.129997 -0.130166
+
+# _6g is as _6f but increasing the parameters (increasing
+# jesus-forward-input-from from 500 to 600).
+
+# _6f is as _5v, but setting --jesus-hidden-dim to 0 which with a script change
+# means there is no hidden part in the jesus layer (it's just repeated affine and relu).
+
+# slightly worse, but encouragingly small difference.
+#local/chain/compare_wer.sh 5v 6f
+#System                       5v        6f
+#WER on train_dev(tg)      15.38     15.71
+#WER on train_dev(fg)      14.39     14.50
+#WER on eval2000(tg)        17.4      17.5
+#WER on eval2000(fg)        15.7      15.9
+#Final train prob       -0.11156 -0.111305
+#Final valid prob      -0.131797 -0.131487
+
+# _5v is as _5t, but further reducing the --jesus-hidden-dim from 3500 to 2500.
+
+# WER is almost the same, perhaps <0.1% worse; diagnostics are slightly worse.
 #
-#
-#local/chain/compare_wer.sh 6r 6s 6t
-#System                       6r        6s        6t
-#WER on train_dev(tg)      15.06     15.50     15.34
-#WER on train_dev(fg)      14.05     14.45     14.23
-#WER on eval2000(tg)        17.2      17.5      17.2
-#WER on eval2000(fg)        15.4      15.7      15.6
-#Final train prob      -0.106685 -0.105965 -0.106575
-#Final valid prob      -0.122293 -0.122376 -0.121902
-#Final train prob (xent)      -1.62108   -1.5454  -1.62226
-#Final valid prob (xent)      -1.67695  -1.58129  -1.67252
+#local/chain/compare_wer.sh 5e 5s 5t 5v
+#System                       5e        5s        5t        5v
+#WER on train_dev(tg)      15.43     15.47     15.43     15.38
+#WER on train_dev(fg)      14.32     14.31     14.34     14.39
+#WER on eval2000(tg)        17.3      17.4      17.4      17.4
+#WER on eval2000(fg)        15.5      15.6      15.6      15.7
+#Final train prob      -0.110056 -0.110928 -0.110752  -0.11156
+#Final valid prob      -0.129184 -0.132139 -0.129123 -0.131797
 
-# _6s is as _6r, but changing the splicing indexes to be exactly the same as 6h,
-# but all multiplied by 2.  This means that for any given frame-shift, the network
-# sees exactly the same input as 6h; the only differences is that we see
-# more frame shifts, i.e. the data is more carefully perturbed than 6h.
-# this is to help disentangle whether the improvement really comes from the
-# higher-resolution features, or from the improved data shifting.
+# _5t is as _5s but further reducing the jesus-hidden-dim (trying to speed it
+# up), from 5000 to 3500.
 
-# _6r is as _6q, but adding --self-repair-scale 0.00001 --xent-separate-forward-affine=true
+# about 5s: comparing with 5e which is the most recent baseline we actually
+# decoded, 5s is as 5e but with jesus-forward-output-dim reduced 1800->1700,
+# jesus-hidden-dim reduced 7500 to 5000, and and the new option
+# --self-repair-scale 0.00001 added.  Also compare 5t and 5v which have even
+# smaller jesus-hidden-dims.
 
-# _6q is as _5n (which is a double-frame-rate system), but putting back
-# the iVectors and otherwise changing the configuration as in 5j -> 6g,
-# like 'rebasing' the changes onto 6g.
+# _5s is as _5r but increasing the jesus-forward-output-dim to the intermediate
+# value of 1700 (between 1500 and 1800), and also a bug-fix in the self-repair
+# code to a bug which was doubling the thresholds so there was, in effect,
+# no upper threshold.  I stopped the p,q,r runs after I found this, but in
+# configuring this run I'm bearing in mind the train and valid probs from the
+# p,q,r runs.
 
-# _5n is as _5j (also omitting the iVectors), but using double the input frame
-# rate from 10 to 5 ms (and reducing frame width from 25 to 20), and modifying
-# the splice indexes accordingly
+# _5r is as _5q but also reducing --jesus-hidden-dim from 7500 to 5000.
 
-# A very nice improvement on dev; small improvement on eval2000 though.
-#local/chain/compare_wer.sh 5j 5n
-#System                       5j        5n
-#WER on train_dev(tg)      17.59     16.85
-#WER on train_dev(fg)      16.33     15.67
-#WER on eval2000(tg)        19.1      19.1
-#WER on eval2000(fg)        17.5      17.3
-#Final train prob      -0.114691 -0.116341
-#Final valid prob      -0.130761 -0.130884
+# _5q is as _5p but reducing jesus-forward-output-dim from 1800 to 1500 to try
+# to compensate for the fact that more of the output dimensions are now being
+# usefully used.
 
-# _5j is as _5e, but omitting the iVectors.
-
-# Definitely worse, although curiously, there is very little effect on the valid prob.
-#./compare_wer.sh 5e 5j
-#System                       5e        5j
-#WER on train_dev(tg)      15.43     17.59
-#WER on train_dev(fg)      14.32     16.33
-#WER on eval2000(tg)        17.3      19.1
-#WER on eval2000(fg)        15.5      17.5
-#Final train prob      -0.110056 -0.114691
-#Final valid prob      -0.129184 -0.130761
-
+# _5p is as _5e but adding (new option) --self-repair-scale 0.00001, to repair
+# ReLUs that are over or under-saturated.
 
 # _5e is as _5b, but reducing --xent-regularize from 0.2 to 0.1 (since based on
 # the results of 4v, 4w and 5c, it looks like 0.1 is better than 0.2 or 0.05).
@@ -95,6 +103,15 @@
 # _5a is as _4w, but increasing jesus-forward-output-dim from 1400 to 1800, and
 # jesus-forward-input-dim from 400 to 500.  Hoping that the cross-entropy regularization
 # will mean that the increased parameters are now helpful.
+# quite helpful:
+#local/chain/compare_wer.sh 4w 5a
+#System                       4w        5a
+#WER on train_dev(tg)      16.05     15.86
+#WER on train_dev(fg)      14.92     14.74
+#WER on eval2000(tg)        18.0      17.4
+#WER on eval2000(fg)        16.2      15.6
+#Final train prob      -0.108816-0.0998359
+#Final valid prob      -0.118254 -0.115884
 
 # _4w is as _4v, but doubling --xent-regularize to 0.2
 
@@ -335,15 +352,14 @@
 set -e
 
 # configs for 'chain'
-stage=14
+stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6t # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_6u # Note: _sp will get added to this if $speed_perturb == true.
 
 # training options
-num_epochs=2  # this is about the same amount of compute as the normal 4, since one
-              # epoch encompasses all frame-shifts of the data.
+num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
 leftmost_questions_truncate=-1
@@ -352,7 +368,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-frames_per_eg=300 # doubling it, since we have half the frame rate.
+frames_per_eg=150
 remove_egs=false
 
 # End configuration section.
@@ -423,30 +439,7 @@ if [ $stage -le 11 ]; then
       --cmd "$train_cmd" 9000 data/$train_set $lang $ali_dir $treedir
 fi
 
-# Generate double-frame-rate version of the data.
 if [ $stage -le 12 ]; then
-  mfccdir=mfcc
-  for dataset in eval2000 train_dev; do  ## ${train_set}; do
-    utils/copy_data_dir.sh data/$dataset data/${dataset}_hires_dbl
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 --mfcc-config conf/mfcc_hires_dbl.conf \
-        data/${dataset}_hires_dbl exp/make_hires_dbl/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires_dbl exp/make_hires_dbl/$dataset $mfccdir;
-    utils/fix_data_dir.sh data/${dataset}_hires_dbl  # remove segments with problems
-  done
-fi
-
-if [ $stage -le 13 ]; then
-  for dataset in eval2000 train_dev ${train_set}; do
-    mkdir -p exp/nnet3/ivectors_${dataset}_fake2
-    cp exp/nnet3/ivectors_${dataset}/ivector_online.scp exp/nnet3/ivectors_${dataset}_fake2
-    # verify that the old ivector_period was 10.
-    [ $(cat exp/nnet3/ivectors_${dataset}/ivector_period) -eq 10 ] || exit 1
-    echo 20 > exp/nnet3/ivectors_${dataset}_fake2/ivector_period
-  done
-fi
-
-
-if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/swbd-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -455,17 +448,14 @@ if [ $stage -le 14 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train_tdnn.sh --stage $train_stage \
-    --egs-dir exp/chain/tdnn_6s_sp/egs \
-    --frame-subsampling-factor 6 \
-    --alignment-subsampling-factor 3 \
     --xent-regularize 0.1 \
     --leaky-hmm-coefficient 0.1 \
     --l2-regularize 0.00005 \
-    --jesus-opts "--jesus-forward-input-dim 500  --jesus-forward-output-dim 1800 --jesus-hidden-dim 7500 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25 --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
-    --splice-indexes "-1,1 -2,0,2 -4,-2,0,2 -6,0,6 -6,0,6 -12,-6,0" \
+    --egs-dir exp/chain/tdnn_2y_sp/egs \
+    --jesus-opts "--jesus-forward-input-dim 600  --jesus-forward-output-dim 1700 --jesus-hidden-dim 0 --jesus-stddev-scale 0.2 --final-layer-learning-rate-factor 0.25  --self-repair-scale 0.00001 --xent-separate-forward-affine=true" \
+    --splice-indexes "-1,0 -1,0,1 -2,-1,0,1 -3,0,3 -3,0,3 -6,-3,0" \
     --apply-deriv-weights false \
-    --frames-per-iter 3000000 \
-    --online-ivector-dir exp/nnet3/ivectors_${train_set}_fake2 \
+    --frames-per-iter 1200000 \
     --lm-opts "--num-extra-lm-states=2000" \
     --get-egs-stage $get_egs_stage \
     --minibatch-size $minibatch_size \
@@ -473,18 +463,16 @@ if [ $stage -le 14 ]; then
     --frames-per-eg $frames_per_eg \
     --num-epochs $num_epochs --num-jobs-initial $num_jobs_initial --num-jobs-final $num_jobs_final \
     --feat-type raw \
+    --online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --cmvn-opts "--norm-means=false --norm-vars=false" \
     --initial-effective-lrate $initial_effective_lrate --final-effective-lrate $final_effective_lrate \
     --max-param-change $max_param_change \
     --cmd "$decode_cmd" \
     --remove-egs $remove_egs \
-    data/${train_set}_hires_dbl $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
-
- echo "0.005" > $dir/frame_shift # this lets the sclite decoding script know
-                                 # what the frame shift was, in seconds.
+    data/${train_set}_hires $treedir exp/tri4_lats_nodup$suffix $dir  || exit 1;
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 13 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -493,16 +481,17 @@ fi
 
 decode_suff=sw1_tg
 graph_dir=$dir/graph_sw1_tg
-if [ $stage -le 15 ]; then
+if [ $stage -le 14 ]; then
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+         --extra-left-context 20 \
           --nj 50 --cmd "$decode_cmd" \
-          --online-ivector-dir exp/nnet3/ivectors_${decode_set}_fake2 \
-         $graph_dir data/${decode_set}_hires_dbl $dir/decode_${decode_set}_${decode_suff} || exit 1;
+          --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
+         $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_${decode_suff} || exit 1;
       if $has_fisher; then
           steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
-            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires_dbl \
+            data/lang_sw1_{tg,fsh_fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}_sw1_{tg,fsh_fg} || exit 1;
       fi
       ) &
