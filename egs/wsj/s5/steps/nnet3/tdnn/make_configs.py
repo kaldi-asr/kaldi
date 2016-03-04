@@ -61,8 +61,18 @@ def GetArgs():
                         help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3' "
                         "If CNN layers are used, the first frame indices is actually how we "
                         "splice the frames and pass to the CNN.")
+    parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="add lda layer", default=True, choices = ["false", "true"])
+
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
+    parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="add a final sigmoid layer. Can only be used if include-log-softmax is false.",
+                        default=False, choices = ["false", "true"])
+
+    parser.add_argument("--objective-type", type=str,
+                        help = "the type of objective; i.e. quadratic or linear",
+                        default="linear", choices = ["linear", "quadratic"])
     parser.add_argument("--xent-regularize", type=float,
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
@@ -122,22 +132,25 @@ def CheckArgs(args):
         raise Exception("ivector-dim has to be non-negative")
 
     if (args.subset_dim < 0):
-        sys.exit("--subset-dim has to be non-negative")
+        raise Exception("--subset-dim has to be non-negative")
     if (args.pool_window is not None) and (args.pool_window <= 0):
-        sys.exit("--pool-window has to be positive")
+        raise Exception("--pool-window has to be positive")
 
     if not args.relu_dim is None:
         if not args.pnorm_input_dim is None or not args.pnorm_output_dim is None:
-            sys.exit("--relu-dim argument not compatible with "
-                     "--pnorm-input-dim or --pnorm-output-dim options");
+            raise Exception("--relu-dim argument not compatible with "
+                            "--pnorm-input-dim or --pnorm-output-dim options");
         args.nonlin_input_dim = args.relu_dim
         args.nonlin_output_dim = args.relu_dim
     else:
         if not args.pnorm_input_dim > 0 or not args.pnorm_output_dim > 0:
-            sys.exit("--relu-dim not set, so expected --pnorm-input-dim and "
-                     "--pnorm-output-dim to be provided.");
+            raise Exception("--relu-dim not set, so expected --pnorm-input-dim and "
+                            "--pnorm-output-dim to be provided.");
         args.nonlin_input_dim = args.pnorm_input_dim
         args.nonlin_output_dim = args.pnorm_output_dim
+
+    if args.add_final_sigmoid and args.include_log_softmax:
+        raise Exception("--include-log-softmax and --add-final-sigmoid cannot both be true.")
 
     return args
 
@@ -326,11 +339,14 @@ def ParseSpliceString(splice_indexes):
 # This function should not be imported into other modules.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
-                feat_dim, ivector_dim, num_targets,
+                feat_dim, ivector_dim, num_targets, add_lda,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
-                use_presoftmax_prior_scale, final_layer_normalize_target,
-                include_log_softmax, xent_regularize):
+                use_presoftmax_prior_scale,
+                final_layer_normalize_target,
+                include_log_softmax,
+                add_final_sigmoid, xent_regularize,
+                objective_type):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -354,12 +370,12 @@ def MakeConfigs(config_dir, splice_indexes_string,
     nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
-    if cnn_layer is None:
-        # Add the Lda layer
-        prev_layer_output = nodes.AddLdaLayer(config_lines, "lda", prev_layer_output, config_dir + '/lda.mat')
-    else:
+    if cnn_layer is not None:
         prev_layer_output = AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, 
                                          feat_dim, splice_indexes[0], ivector_dim)
+
+    if add_lda:
+        prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
     left_context = 0
     right_context = 0
@@ -433,17 +449,28 @@ def MakeConfigs(config_dir, splice_indexes_string,
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
                                                     prev_layer_output, nonlin_output_dim, norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
         # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                           use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                           prior_scale_file = prior_scale_file,
-                           include_log_softmax = include_log_softmax)
+
+        if add_final_sigmoid:
+            # Useful when you need the final outputs to be probabilities
+            # between 0 and 1.
+            # Usually used with an objective-type such as "quadratic"
+            nodes.AddFinalSigmoidLayer(config_lines, prev_layer_output, num_targets,
+                               objective_type = objective_type)
+        else:
+            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                               prior_scale_file = prior_scale_file,
+                               include_log_softmax = include_log_softmax,
+                               objective_type = objective_type)
+
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
-                                name_affix = 'xent')
+                                name_affix = 'xent',
+                                objective_type = objective_type)
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
         config_lines = {'components':[], 'component-nodes':[]}
@@ -451,11 +478,18 @@ def MakeConfigs(config_dir, splice_indexes_string,
     left_context += int(parsed_splice_output['left_context'])
     right_context += int(parsed_splice_output['right_context'])
 
+    add_lda_str = ('true' if add_lda else 'false')
+    include_log_softmax_str = ('true' if include_log_softmax else 'false')
+
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
     print('model_left_context=' + str(left_context), file=f)
     print('model_right_context=' + str(right_context), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    print('num_targets=' + str(num_targets), file=f)
+    print('add_lda=' + add_lda_str, file=f)
+    print('include_log_softmax=' + include_log_softmax_str, file=f)
+    print('objective_type=' + objective_type, file=f)
     f.close()
 
     # printing out the configs
@@ -466,13 +500,25 @@ def MakeConfigs(config_dir, splice_indexes_string,
 def Main():
     args = GetArgs()
 
-    MakeConfigs(args.config_dir, args.splice_indexes,
-                args.cnn_layer, args.cnn_bottleneck_dim, args.cepstral_lifter,
-                args.feat_dim, args.ivector_dim, args.num_targets,
-                args.nonlin_input_dim, args.nonlin_output_dim, args.subset_dim,
-                args.pool_type, args.pool_window, args.pool_lpfilter_width,
-                args.use_presoftmax_prior_scale, args.final_layer_normalize_target,
-                args.include_log_softmax, args.xent_regularize)
+    MakeConfigs(config_dir = args.config_dir,
+                splice_indexes_string = args.splice_indexes,
+                feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
+                num_targets = args.num_targets,
+                add_lda = args.add_lda,
+                cnn_layer = args.cnn_layer,
+                cnn_bottleneck_dim = args.cnn_bottleneck_dim,
+                cepstral_lifter = args.cepstral_lifter,
+                nonlin_input_dim = args.nonlin_input_dim,
+                nonlin_output_dim = args.nonlin_output_dim,
+                subset_dim = args.subset_dim,
+                pool_type = args.pool_type, pool_window = args.pool_window,
+                pool_lpfilter_width = args.pool_lpfilter_width,
+                use_presoftmax_prior_scale = args.use_presoftmax_prior_scale,
+                final_layer_normalize_target = args.final_layer_normalize_target,
+                include_log_softmax = args.include_log_softmax,
+                add_final_sigmoid = args.add_final_sigmoid,
+                xent_regularize = args.xent_regularize,
+                objective_type = args.objective_type)
 
 if __name__ == "__main__":
     Main()
