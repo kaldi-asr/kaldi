@@ -25,7 +25,7 @@ dir1=$1
 dir2=$2
 dir_compare=$3
 
-mkdir -p $dir_compare
+mkdir -p $dir_compare/log
 
 for d in $dir1 $dir2; do
   for f in test_filt.txt best_wer; do
@@ -42,9 +42,9 @@ best_wer_file2=$(awk '{print $NF}' $dir2/best_wer)
 best_transcript_file2=$(echo $best_wer_file2 | sed -e 's=.*/wer_==' | \
         awk -v FS='_' -v dir=$dir2 '{print dir"/penalty_"$2"/"$1".txt"}')
 
-$cmd $dir1/log/score_compare.log \
-  compute-wer-confidence --replications=$replications \
+$cmd $dir_compare/log/score_compare.log \
+  compute-wer-bootci --replications=$replications \
     ark:$dir1/test_filt.txt ark:$best_transcript_file1 ark:$best_transcript_file2 \
-    '>' $dir_compare/wer_confidence || exit 1;
+    '>' $dir_compare/wer_bootci_comparison || exit 1;
 
 exit 0;

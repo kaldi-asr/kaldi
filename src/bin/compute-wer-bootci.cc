@@ -1,4 +1,4 @@
-// bin/compute-wer-confidence.cc
+// bin/compute-wer-bootci.cc
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2014  Johns Hopkins University (authors: Jan Trmal, Daniel Povey)
@@ -63,6 +63,7 @@ void GetEditsSingleHyp( const std::string &hyp_rspecifier,
 void GetEditsDualHyp(const std::string &hyp_rspecifier, 
       const std::string &hyp_rspecifier2, 
       const std::string &ref_rspecifier,
+      const std::string &mode,
       std::vector<std::pair<int32, int32> > & edit_word_per_hyp,
       std::vector<std::pair<int32, int32> > & edit_word_per_hyp2) {
     
@@ -78,24 +79,35 @@ void GetEditsDualHyp(const std::string &hyp_rspecifier,
       std::string key = ref_reader.Key();
       const std::vector<std::string> &ref_sent = ref_reader.Value();
       std::vector<std::string> hyp_sent, hyp_sent2;
-      if (!hyp_reader.HasKey(key) && !hyp_reader2.HasKey(key)) {
+      if (mode == "strict" && 
+              (!hyp_reader.HasKey(key) || !hyp_reader2.HasKey(key))) {
           KALDI_ERR << "No hypothesis for key " << key << " in both transcripts "
               "comparison is not possible.";
-      } else {
-        hyp_sent = hyp_reader.Value(key);
-        hyp_sent2 = hyp_reader2.Value(key);
-      }
+      } else if (mode == "present" && 
+              (!hyp_reader.HasKey(key) || !hyp_reader2.HasKey(key)))
+          continue;
+
       num_words = ref_sent.size();
 
-      word_errs = LevenshteinEditDistance(ref_sent, hyp_sent, 
+      //all mode, if a hypothesis is not present, consider as an error
+      if(hyp_reader.HasKey(key)){
+        hyp_sent = hyp_reader.Value(key);
+        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent, 
                                             &num_ins, &num_del, &num_sub);
+      } 
+      else
+        word_errs = num_words;
       edit_word_per_hyp.push_back(std::pair<int32, int32>(word_errs, num_words));
 
-      word_errs = LevenshteinEditDistance(ref_sent, hyp_sent2, 
+      if(hyp_reader2.HasKey(key)){
+        hyp_sent2 = hyp_reader2.Value(key);
+        word_errs = LevenshteinEditDistance(ref_sent, hyp_sent2, 
                                             &num_ins, &num_del, &num_sub);
+      }
+      else
+        word_errs = num_words;
       edit_word_per_hyp2.push_back(std::pair<int32, int32>(word_errs, num_words));
     }
-
 }
 
 void GetBootstrapWERInterval(
@@ -118,8 +130,8 @@ void GetBootstrapWERInterval(
     }
 
     // Compute mean WER and std WER
-    *mean = wer_accum / (replications-1);
-    *interval = 1.96*sqrt(wer_mult_accum/(replications-1)-(*mean)*(*mean));
+    *mean = wer_accum / replications;
+    *interval = 1.96*sqrt(wer_mult_accum/replications-(*mean)*(*mean));
 }
 
 void GetBootstrapWERTwoSystemComparison(
@@ -139,7 +151,7 @@ void GetBootstrapWERTwoSystemComparison(
         ++improv_accum;
     }
     // Compute mean WER and std WER
-    *p_improv = static_cast<BaseFloat>(improv_accum) / (replications-1);
+    *p_improv = static_cast<BaseFloat>(improv_accum) / replications;
 }
 
 } //namespace kaldi
@@ -158,9 +170,9 @@ int main(int argc, char *argv[]) {
       "provided, a bootstrap comparison of the two transcription is performed\n"
       "to estimate the probability of improvement.\n"
       "\n"
-      "Usage: compute-wer-confidence [options] <ref-rspecifier> <hyp-rspecifier> [<hyp2-rspecifier>]\n"
-      "E.g.: compute-wer-confidence --mode=present ark:data/train/text ark:hyp_text\n"
-      "or compute-wer-confidence ark:data/train/text ark:hyp_text ark:hyp_text2\n"
+      "Usage: compute-wer-bootci [options] <ref-rspecifier> <hyp-rspecifier> [<hyp2-rspecifier>]\n"
+      "E.g.: compute-wer-bootci --mode=present ark:data/train/text ark:hyp_text\n"
+      "or compute-wer-bootci ark:data/train/text ark:hyp_text ark:hyp_text2\n"
       "See also: compute-wer\n";
 
     ParseOptions po(usage);
@@ -193,17 +205,12 @@ int main(int argc, char *argv[]) {
           << mode;
     }
 
-    if (mode != "strict" && !hyp2_rspecifier.empty()){
-      KALDI_WARN << 
-          "--mode is always assumed strict if a second transcription is provided\n";
-    }
-
     //Get editions per each utterance
     std::vector<std::pair<int32, int32> > edit_word_per_hyp, edit_word_per_hyp2;
     if(hyp2_rspecifier.empty())
       GetEditsSingleHyp(hyp_rspecifier, ref_rspecifier, mode, edit_word_per_hyp);
     else
-      GetEditsDualHyp(hyp_rspecifier, hyp2_rspecifier, ref_rspecifier, 
+      GetEditsDualHyp(hyp_rspecifier, hyp2_rspecifier, ref_rspecifier, mode,
               edit_word_per_hyp, edit_word_per_hyp2);
 
     //Extract WER for a number of replications of the same size 
