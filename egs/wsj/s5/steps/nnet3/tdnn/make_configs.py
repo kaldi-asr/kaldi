@@ -52,7 +52,11 @@ def GetArgs():
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
     parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="add a final sigmoid layer. Can only be used if include-log-softmax is false.",
+                        help="add a final sigmoid layer as alternate to log-softmax-layer. "
+                        "Can only be used if include-log-softmax is false. "
+                        "This is useful in cases where you want the output to be "
+                        "like probabilities between 0 and 1. Typically the nnet "
+                        "is trained with an objective such as quadratic",
                         default=False, choices = ["false", "true"])
 
     parser.add_argument("--objective-type", type=str,
@@ -449,13 +453,19 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
             # a final layer is added after each new layer as we are generating
             # configs for layer-wise discriminative training
+
+            # add_final_sigmoid adds a sigmoid as a final layer as alternative
+            # to log-softmax layer.
+            # http://ufldl.stanford.edu/wiki/index.php/Softmax_Regression#Softmax_Regression_vs._k_Binary_Classifiers
+            # This is useful when you need the final outputs to be probabilities between 0 and 1.
+            # Usually used with an objective-type such as "quadratic".
+            # Applications are k-binary classification such Ideal Ratio Mask prediction.
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
                                include_log_softmax = include_log_softmax,
                                add_final_sigmoid = add_final_sigmoid,
                                objective_type = objective_type)
-
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
