@@ -120,10 +120,6 @@ for f in $data/feats.scp $targets_scp; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-if $add_final_sigmoid && $include_log_softmax; then
-  echo "add-final-sigmoid and include-log-softmax cannot both be true"
-fi
-
 # in this dir we'll have just one job.
 sdata=$data/split$nj
 utils/split_data.sh $data $nj
