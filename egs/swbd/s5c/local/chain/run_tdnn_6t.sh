@@ -9,7 +9,7 @@
 
 # 6t does seem better than 6s, but not quite as good as 6r.
 # the fact that it's not as good as 6r may show that the double-frame-rate
-# input was actually giving us some useful information (although the
+# input was actually giving us some useful information-- although the
 # improvement is only something like 0.1%-0.2%, and we didn't actually see
 # any difference in the objective function from 6r, which undermines the
 # notion that by removing that central 0 splice at the input, we lost

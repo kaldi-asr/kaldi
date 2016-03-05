@@ -6,6 +6,29 @@
 # not double-frame-rate, input.  The difference between 6t and 6u
 # will show us whether having double-frame-rate input for the purpose
 # of getting more different shifted versions of the input, is helpful.
+# [however, note that the number of frames-per-iter is not comparable
+# between 6t and 6u: here we're using 1.2 million frames per eg,
+# and 6s is using 3 million which at the normal frame rate would be
+# 1.5 million, and 1.2 != 1.5.
+
+# 6r is no better than 6h, and maybe slightly worse.  Certainly it's worse than
+# 6t.  In addition, the train-valid difference is bigger with 6h and 6u than
+# with 6t.  This is all consistent with the notion that the higher-frame-rate
+# input, with with we can generate more shifted versions, does really make a
+# difference.  However, I want to wait till the 6v->6w comparison is ready,
+# which may let us know whether the difference in frames-per-iter could have
+# been a confounding factor here.  (It's unlikely, but possible).
+#
+#local/chain/compare_wer.sh 6h 6t 6u
+#System                       6h        6t        6u
+#WER on train_dev(tg)      15.46     15.34     15.46
+#WER on train_dev(fg)      14.28     14.23     14.28
+#WER on eval2000(tg)        17.4      17.2      17.6
+#WER on eval2000(fg)        15.7      15.6      15.9
+#Final train prob      -0.105663 -0.106575 -0.108665
+#Final valid prob      -0.130166 -0.121902 -0.129495
+#Final train prob (xent)      -1.42483  -1.62226  -1.54189
+#Final valid prob (xent)      -1.49792  -1.67252  -1.60749
 
 # _6h is as _6g but adding --xent-separate-forward-affine=true, which
 # gives a separate last-but-one weight matrix to the xent output.

@@ -197,7 +197,7 @@ nnet3-chain-combine --num-iters=40 \
   # Compute the probability of the final, combined model with
   # the same subset we used for the previous compute_probs, as the
   # different subsets will lead to different probs.
-    ComputeTrainCvProbabilities(dir, 'combined', egs_dir, l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts, wait = False)
+    ComputeTrainCvProbabilities(dir, 'final', egs_dir, l2_regularize, xent_regularize, leaky_hmm_coefficient, run_opts, wait = False)
 
 def ComputeTrainCvProbabilities(dir, iter, egs_dir, l2_regularize, xent_regularize,
                                 leaky_hmm_coefficient, run_opts, wait = False):

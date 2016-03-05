@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
-# Otherwise we make everything as similar as possible to 6h.
-# The ReLU dimension, at 576, is chosen to make the number of parameters about
-# the same as 6h.
-#
+# 6y is as 6w, but after fixing the config-generation script to use
+# a higher learning-rate factor for the final xent layer (it was otherwise
+# training too slowly).
+
+# 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
+# frames per iter (and of course re-dumping the egs).
+
 # this is same as v2 script but with xent-regularization
 # it has a different splicing configuration
 set -e
@@ -15,7 +17,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6v  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_6y  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # TDNN options
@@ -153,6 +155,7 @@ if [ $stage -le 13 ]; then
 
  steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
+    --egs.dir exp/chain/tdnn_6w_sp/egs \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -160,12 +163,11 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.dir exp/chain/tdnn_2y_sp/egs \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1200000 \
+    --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
