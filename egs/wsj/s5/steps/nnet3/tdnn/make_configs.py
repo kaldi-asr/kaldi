@@ -410,22 +410,6 @@ def MakeConfigs(config_dir, splice_indexes_string,
         else:
             # this is a normal affine node
             pass
-        prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
-                                                    prev_layer_output, nonlin_output_dim, norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
-        # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
-
-        if add_final_sigmoid:
-            # Useful when you need the final outputs to be probabilities
-            # between 0 and 1.
-            # Usually used with an objective-type such as "quadratic"
-            nodes.AddFinalSigmoidLayer(config_lines, prev_layer_output, num_targets,
-                               objective_type = objective_type)
-        else:
-            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                               prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax,
-                               objective_type = objective_type)
 
 
         if xent_separate_forward_affine and i == num_hidden_layers - 1:
@@ -455,19 +439,27 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
-                                name_affix = 'xent',
-                                objective_type = objective_type)
+                                name_affix = 'xent')
         else:
             prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
                                                         prev_layer_output, nonlin_output_dim,
                                                         self_repair_scale = self_repair_scale,
                                                         norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
 
-        # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
-            nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                               use_presoftmax_prior_scale = use_presoftmax_prior_scale,
-                               prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax)
+
+            # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
+            if add_final_sigmoid:
+                # Useful when you need the final outputs to be probabilities
+                # between 0 and 1.
+                # Usually used with an objective-type such as "quadratic"
+                nodes.AddFinalSigmoidLayer(config_lines, prev_layer_output, num_targets,
+                                   objective_type = objective_type)
+            else:
+                nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                   use_presoftmax_prior_scale = use_presoftmax_prior_scale,
+                                   prior_scale_file = prior_scale_file,
+                                   include_log_softmax = include_log_softmax,
+                                   objective_type = objective_type)
 
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
