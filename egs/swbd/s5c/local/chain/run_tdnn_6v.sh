@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
+# Otherwise we make everything as similar as possible to 6h.
+# The ReLU dimension, at 576, is chosen to make the number of parameters about
+# the same as 6h.
+#
 # this is same as v2 script but with xent-regularization
 # it has a different splicing configuration
 set -e

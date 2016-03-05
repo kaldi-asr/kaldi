@@ -387,7 +387,8 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
     for process in processes:
         process.wait()
         [stdout_value, stderr_value] = process.communicate()
-        print(stderr_value)
+        if stderr_value != '':
+            print(stderr_value)
         if process.returncode != 0:
             all_success = False
 
@@ -698,7 +699,6 @@ def Main():
             sendMail(message, message, args.email)
         traceback.print_exc()
         raise e
-
 
 if __name__ == "__main__":
     Main()
