@@ -151,6 +151,9 @@ def CheckArgs(args):
     if args.add_final_sigmoid and args.include_log_softmax:
         raise Exception("--include-log-softmax and --add-final-sigmoid cannot both be true.")
 
+    if args.xent_separate_forward_affine and args.add_final_sigmoid:
+        raise Exception("It does not make sense to have --add-final-sigmoid=true when xent-separate-forward-affine is true")
+
     return args
 
 def AddPerDimAffineLayer(config_lines, name, input, input_window):
