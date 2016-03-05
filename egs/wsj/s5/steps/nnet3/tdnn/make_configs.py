@@ -450,12 +450,13 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                     norm_target_rms = final_layer_normalize_target)
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
+                                ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
+                                    0.5 / xent_regularize),
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
                                 include_log_softmax = True,
                                 name_affix = 'xent',
                                 objective_type = objective_type)
-
         else:
             prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "Tdnn_{0}".format(i),
                                                         prev_layer_output, nonlin_output_dim,
