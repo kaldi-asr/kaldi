@@ -427,7 +427,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
                                                         self_repair_scale = self_repair_scale,
                                                         norm_target_rms = 1.0 if i < num_hidden_layers -1 else final_layer_normalize_target)
 
-        # a final layer is added after each new layer as we are generating configs for layer-wise discriminative training
+            # a final layer is added after each new layer as we are generating
+            # configs for layer-wise discriminative training
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
@@ -435,6 +436,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
+                                    ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
+                                          0.5 / xent_regularize),
                                     use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                     prior_scale_file = prior_scale_file,
                                     include_log_softmax = True,
