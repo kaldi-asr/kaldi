@@ -46,8 +46,22 @@ def GetArgs():
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
                         help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3'")
+    parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="add lda layer", default=True, choices = ["false", "true"])
+
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
+    parser.add_argument("--add-final-sigmoid", type=str, action=nnet3_train_lib.StrToBoolAction,
+                        help="add a final sigmoid layer as alternate to log-softmax-layer. "
+                        "Can only be used if include-log-softmax is false. "
+                        "This is useful in cases where you want the output to be "
+                        "like probabilities between 0 and 1. Typically the nnet "
+                        "is trained with an objective such as quadratic",
+                        default=False, choices = ["false", "true"])
+
+    parser.add_argument("--objective-type", type=str,
+                        help = "the type of objective; i.e. quadratic or linear",
+                        default="linear", choices = ["linear", "quadratic"])
     parser.add_argument("--xent-regularize", type=float,
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
@@ -133,6 +147,12 @@ def CheckArgs(args):
                             "--pnorm-output-dim to be provided.");
         args.nonlin_input_dim = args.pnorm_input_dim
         args.nonlin_output_dim = args.pnorm_output_dim
+
+    if args.add_final_sigmoid and args.include_log_softmax:
+        raise Exception("--include-log-softmax and --add-final-sigmoid cannot both be true.")
+
+    if args.xent_separate_forward_affine and args.add_final_sigmoid:
+        raise Exception("It does not make sense to have --add-final-sigmoid=true when xent-separate-forward-affine is true")
 
     return args
 
@@ -282,8 +302,14 @@ def MakeConfigs(config_dir, splice_indexes_string,
                 feat_dim, ivector_dim, num_targets,
                 nonlin_input_dim, nonlin_output_dim, subset_dim,
                 pool_type, pool_window, pool_lpfilter_width,
-                use_presoftmax_prior_scale, final_layer_normalize_target,
-                include_log_softmax, xent_regularize, xent_separate_forward_affine, self_repair_scale):
+                use_presoftmax_prior_scale,
+                final_layer_normalize_target,
+                include_log_softmax,
+                add_final_sigmoid,
+                xent_regularize,
+                xent_separate_forward_affine,
+                self_repair_scale,
+                objective_type):
 
     parsed_splice_output = ParseSpliceString(splice_indexes_string.strip())
 
@@ -311,7 +337,8 @@ def MakeConfigs(config_dir, splice_indexes_string,
     nodes.AddOutputLayer(init_config_lines, prev_layer_output)
     config_files[config_dir + '/init.config'] = init_config_lines
 
-    prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
+    if add_lda:
+        prev_layer_output = nodes.AddLdaLayer(config_lines, "L0", prev_layer_output, config_dir + '/lda.mat')
 
     left_context = 0
     right_context = 0
@@ -429,11 +456,19 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
             # a final layer is added after each new layer as we are generating
             # configs for layer-wise discriminative training
+
+            # add_final_sigmoid adds a sigmoid as a final layer as alternative
+            # to log-softmax layer.
+            # http://ufldl.stanford.edu/wiki/index.php/Softmax_Regression#Softmax_Regression_vs._k_Binary_Classifiers
+            # This is useful when you need the final outputs to be probabilities between 0 and 1.
+            # Usually used with an objective-type such as "quadratic".
+            # Applications are k-binary classification such Ideal Ratio Mask prediction.
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                prior_scale_file = prior_scale_file,
-                               include_log_softmax = include_log_softmax)
-
+                               include_log_softmax = include_log_softmax,
+                               add_final_sigmoid = add_final_sigmoid,
+                               objective_type = objective_type)
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
@@ -454,6 +489,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
     print('model_left_context=' + str(left_context), file=f)
     print('model_right_context=' + str(right_context), file=f)
     print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    print('num_targets=' + str(num_targets), file=f)
+    print('add_lda=' + ('true' if add_lda else 'false'), file=f)
+    print('include_log_softmax=' + ('true' if include_log_softmax else 'false'), file=f)
+    print('objective_type=' + objective_type, file=f)
     f.close()
 
     # printing out the configs
@@ -468,6 +507,7 @@ def Main():
                 splice_indexes_string = args.splice_indexes,
                 feat_dim = args.feat_dim, ivector_dim = args.ivector_dim,
                 num_targets = args.num_targets,
+                add_lda = args.add_lda,
                 nonlin_input_dim = args.nonlin_input_dim,
                 nonlin_output_dim = args.nonlin_output_dim,
                 subset_dim = args.subset_dim,
@@ -476,9 +516,11 @@ def Main():
                 use_presoftmax_prior_scale = args.use_presoftmax_prior_scale,
                 final_layer_normalize_target = args.final_layer_normalize_target,
                 include_log_softmax = args.include_log_softmax,
+                add_final_sigmoid = args.add_final_sigmoid,
                 xent_regularize = args.xent_regularize,
                 xent_separate_forward_affine = args.xent_separate_forward_affine,
-                self_repair_scale = args.self_repair_scale)
+                self_repair_scale = args.self_repair_scale,
+                objective_type = args.objective_type)
 
 if __name__ == "__main__":
     Main()
