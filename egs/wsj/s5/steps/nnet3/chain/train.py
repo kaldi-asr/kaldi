@@ -93,7 +93,7 @@ def GetArgs():
                         help="Weight of regularization function which is the"
                         " cross-entropy cost the outputs.")
     parser.add_argument("--chain.right-tolerance", type=int, dest='right_tolerance',
-                        default = 10, help="")
+                        default = 5, help="")
     parser.add_argument("--chain.left-tolerance", type=int, dest='left_tolerance',
                         default = 5, help="")
     parser.add_argument("--chain.leaky-hmm-coefficient", type=float, dest='leaky_hmm_coefficient',

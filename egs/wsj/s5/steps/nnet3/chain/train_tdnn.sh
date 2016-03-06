@@ -42,7 +42,7 @@ xent_regularize=0.0
 frames_per_iter=800000  # each iteration of training, see this many [input]
                         # frames per job.  This option is passed to get_egs.sh.
                         # Aim for about a minute of training time
-right_tolerance=10  # tolerance at the same frame-rate as the alignment directory.
+right_tolerance=5  # tolerance at the same frame-rate as the alignment directory.
 left_tolerance=5    # tolerance at the same frame-rate as the alignment directory.
 num_jobs_initial=1  # Number of neural net jobs to run in parallel at the start of training
 num_jobs_final=8   # Number of neural net jobs to run in parallel at the end of training
