@@ -259,7 +259,7 @@ void SetLearningRate(BaseFloat learning_rate,
       if (uc == NULL)
         KALDI_ERR << "Updatable component does not inherit from class "
             "UpdatableComponent; change this code.";
-      uc->SetLearningRate(learning_rate);
+      uc->SetUnderlyingLearningRate(learning_rate);
     }
   }
 }

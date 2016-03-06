@@ -1711,7 +1711,8 @@ class CompositeComponent: public UpdatableComponent {
   // Don't implement Copy() at this level: implement it in the child class.
 
   // Some functions from base-class UpdatableComponent.
-  virtual void SetLearningRate(BaseFloat lrate);
+  virtual void SetUnderlyingLearningRate(BaseFloat lrate);
+  virtual void SetActualLearningRate(BaseFloat lrate);
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void SetZero(bool treat_as_gradient);

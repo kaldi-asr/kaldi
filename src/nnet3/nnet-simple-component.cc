@@ -914,7 +914,7 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                                  BaseFloat learning_rate):
     linear_params_(linear_params),
     bias_params_(bias_params) {
-  SetLearningRate(learning_rate);
+  SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
 }
@@ -923,8 +923,7 @@ AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
 
 void AffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   linear_params_.SetZero();
@@ -1190,8 +1189,7 @@ void RepeatedAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
 
 void RepeatedAffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   linear_params_.SetZero();
@@ -1698,8 +1696,7 @@ void BlockAffineComponent::Add(BaseFloat alpha, const Component &other_in) {
 
 void BlockAffineComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   linear_params_.SetZero();
@@ -1788,8 +1785,7 @@ PerElementScaleComponent::PerElementScaleComponent(
 
 void PerElementScaleComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   scales_.SetZero();
@@ -1811,11 +1807,7 @@ std::string PerElementScaleComponent::Info() const {
 }
 
 Component* PerElementScaleComponent::Copy() const {
-  PerElementScaleComponent *ans = new PerElementScaleComponent();
-  ans->learning_rate_ = learning_rate_;
-  ans->scales_ = scales_;
-  ans->is_gradient_ = is_gradient_;
-  return ans;
+  return new PerElementScaleComponent(*this);
 }
 
 BaseFloat PerElementScaleComponent::DotProduct(
@@ -1957,8 +1949,7 @@ PerElementOffsetComponent::PerElementOffsetComponent(
 
 void PerElementOffsetComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   offsets_.SetZero();
@@ -1980,11 +1971,7 @@ std::string PerElementOffsetComponent::Info() const {
 }
 
 Component* PerElementOffsetComponent::Copy() const {
-  PerElementOffsetComponent *ans = new PerElementOffsetComponent();
-  ans->learning_rate_ = learning_rate_;
-  ans->offsets_ = offsets_;
-  ans->is_gradient_ = is_gradient_;
-  return ans;
+  return new PerElementOffsetComponent(*this);
 }
 
 BaseFloat PerElementOffsetComponent::DotProduct(
@@ -2198,7 +2185,7 @@ void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) 
 
 void ConstantFunctionComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   output_.SetZero();
@@ -3231,7 +3218,7 @@ ConvolutionComponent::ConvolutionComponent(
   KALDI_ASSERT(filter_params.NumRows() == bias_params.Dim() &&
                bias_params.Dim() != 0);
   KALDI_ASSERT(filter_params.NumCols() == filt_x_dim * filt_y_dim * input_z_dim);
-  SetLearningRate(learning_rate);
+  SetUnderlyingLearningRate(learning_rate);
   is_gradient_ = false;
 }
 
@@ -3737,8 +3724,7 @@ void ConvolutionComponent::Update(const std::string &debug_info,
 
 void ConvolutionComponent::SetZero(bool treat_as_gradient) {
   if (treat_as_gradient) {
-    learning_rate_ = 1.0;  // don't call SetLearningRate, that would apply the
-                           // learning rate factor.
+    SetActualLearningRate(1.0);
     is_gradient_ = true;
   }
   filter_params_.SetZero();
@@ -4580,11 +4566,10 @@ void CompositeComponent::PerturbParams(BaseFloat stddev) {
   }
 }
 
-// virtual
-void CompositeComponent::SetLearningRate(BaseFloat lrate) {
+void CompositeComponent::SetUnderlyingLearningRate(BaseFloat lrate) {
   KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
-  UpdatableComponent::SetLearningRate(lrate);  // set learning_rate_-- this gets
-                                               // returned from LearningRate().
+  UpdatableComponent::SetUnderlyingLearningRate(lrate);
+
   // apply any learning-rate-factor that's set at this level (ill-advised, but
   // we'll do it.)
   BaseFloat effective_lrate = LearningRate();
@@ -4592,7 +4577,19 @@ void CompositeComponent::SetLearningRate(BaseFloat lrate) {
     if (components_[i]->Properties() & kUpdatableComponent) {
       UpdatableComponent *uc =
           dynamic_cast<UpdatableComponent*>(components_[i]);
-      uc->SetLearningRate(effective_lrate);
+      uc->SetUnderlyingLearningRate(effective_lrate);
+    }
+  }
+}
+
+void CompositeComponent::SetActualLearningRate(BaseFloat lrate) {
+  KALDI_ASSERT(this->IsUpdatable());  // or should not be called.
+  UpdatableComponent::SetActualLearningRate(lrate);
+  for (size_t i = 0; i < components_.size(); i++) {
+    if (components_[i]->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc =
+          dynamic_cast<UpdatableComponent*>(components_[i]);
+      uc->SetActualLearningRate(lrate);
     }
   }
 }

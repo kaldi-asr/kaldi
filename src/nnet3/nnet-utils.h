@@ -110,7 +110,9 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
                               int32 *right_context);
 
 
-/// Sets the learning rate for all the components in the nnet to this value.
+/// Sets the underlying learning rate for all the components in the nnet to this
+/// value.  this will get multiplied by the individual learning-rate-factors to
+/// produce the actual learning rates.
 void SetLearningRate(BaseFloat learning_rate,
                      Nnet *nnet);
 
