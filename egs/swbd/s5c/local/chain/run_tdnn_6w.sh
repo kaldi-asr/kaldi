@@ -3,6 +3,31 @@
 # 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
 # frames per iter (and of course re-dumping the egs).
 
+# I discovered after running this that there was a problem with the egs-dumping,
+# which seems to have existed for quite a while: the --right-tolerance defaults to 10
+# in the script, but it should have been 5, to match the code.  However, 6v was
+# run with older egs (before this bug was introduced) from 2y, so it doesn't
+# have the problem.
+
+# note regarding the changes in objfs: these have explanations, they are due to
+# the --right-tolerance increasing from 5->10 in 6v->6w: the chain objfs improve
+# because of the less-restrictive numerator graphs, and the xent objfs get worse
+# because the phone alignments become less consistent; we can see the reverse
+# pattern in 6y -> 6z when we revert the right-tolerance back to 5.
+#
+#local/chain/compare_wer.sh 6v  6w
+#System                       6v        6w
+#WER on train_dev(tg)      15.00     15.33
+#WER on train_dev(fg)      13.91     14.27
+#WER on eval2000(tg)        17.2      17.3
+#WER on eval2000(fg)        15.7      15.6
+#Final train prob      -0.105012  -0.10287
+#Final valid prob      -0.125877 -0.120451
+#Final train prob (xent)      -1.54736  -1.63586
+#Final valid prob (xent)      -1.57475  -1.67173
+
+
+
 # this is same as v2 script but with xent-regularization
 # it has a different splicing configuration
 set -e

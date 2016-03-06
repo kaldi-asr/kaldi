@@ -1,27 +1,34 @@
 #!/bin/bash
 
-# _6v is as _6h, but moving to a TDNN+ReLU recipe instead of using jesus-layer.
-# Otherwise we make everything as similar as possible to 6h.
-# The ReLU dimension, at 576, is chosen to make the number of parameters about
-# the same as 6h.
+# 7b is as 6z, but increasing the relu-dim slightly from 576 to 625.
 
-# great improvement!
-# local/chain/compare_wer.sh 6h 6v
-# System                       6h        6v
-# WER on train_dev(tg)      15.46     15.00
-# WER on train_dev(fg)      14.28     13.91
-# WER on eval2000(tg)        17.4      17.2
-# WER on eval2000(fg)        15.7      15.7
+# 6z is as 6y, but fixing the right-tolerance in the scripts to default to 5 (as
+# the default is in the code), rather than the previous script default value of
+# 10 which I seem to have added to the script around Feb 9th.
+# definitely better than 6y- not clear if we have managed to get the same
+# results as 6v (could indicate that the larger frames-per-iter is not helpful?
+# but I'd rather not decrease it as it would hurt speed).
 
-# the following objf values are computed on the last iter (323), because due to
-# a script bug, now fixed, the 'final' ones were not computed in 6v.
-# note: in this run the xent learning rate was too slow.
-# 323 train prob        -0.129285     -0.120026
-# 323 valid prob        -0.151648     -0.140628
-# 323 train prob (xent)  -1.4443      -1.5431
-# 323 valid prob (xent)  -1.51731     -1.56975
+# local/chain/compare_wer.sh 6v 6y 6z
+# System                       6v        6y        6z
+# WER on train_dev(tg)      15.00     15.36     15.18
+# WER on train_dev(fg)      13.91     14.19     14.06
+# WER on eval2000(tg)        17.2      17.2      17.2
+# WER on eval2000(fg)        15.7      15.8      15.6
+# Final train prob      -0.105012 -0.102139 -0.106268
+# Final valid prob      -0.125877 -0.119654 -0.126726
+# Final train prob (xent)      -1.54736  -1.55598  -1.4556
+# Final valid prob (xent)      -1.57475  -1.58821  -1.50136
 
+# 6y is as 6w, but after fixing the config-generation script to use
+# a higher learning-rate factor for the final xent layer (it was otherwise
+# training too slowly).
 
+# 6w is as 6v (a new tdnn-based recipe), but using 1.5 million not 1.2 million
+# frames per iter (and of course re-dumping the egs).
+
+# this is same as v2 script but with xent-regularization
+# it has a different splicing configuration
 set -e
 
 # configs for 'chain'
@@ -30,7 +37,7 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-dir=exp/chain/tdnn_6v  # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/chain/tdnn_7b  # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 
 # TDNN options
@@ -50,7 +57,7 @@ final_layer_normalize_target=0.5
 num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
-relu_dim=576
+relu_dim=625
 frames_per_eg=150
 remove_egs=false
 common_egs_dir=
@@ -167,6 +174,7 @@ if [ $stage -le 13 ]; then
  touch $dir/egs/.nodelete # keep egs around when that run dies.
 
  steps/nnet3/chain/train.py --stage $train_stage \
+    --egs.dir exp/chain/tdnn_6z_sp/egs \
     --cmd "$decode_cmd" \
     --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
@@ -175,12 +183,11 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --egs.dir exp/chain/tdnn_2y_sp/egs \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1200000 \
+    --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
