@@ -387,7 +387,7 @@ def TrainNewModels(dir, iter, num_jobs, num_archives_processed, num_archives,
     for process in processes:
         process.wait()
         [stdout_value, stderr_value] = process.communicate()
-        if stderr_value != '':
+        if stderr_value.strip() != '':
             print(stderr_value)
         if process.returncode != 0:
             all_success = False
