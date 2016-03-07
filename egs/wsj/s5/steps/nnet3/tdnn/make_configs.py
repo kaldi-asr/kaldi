@@ -50,7 +50,8 @@ def GetArgs():
     parser.add_argument('--cnn.layer', type=str, action='append', dest = "cnn_layer",
                         help="CNN parameters at each CNN layer, e.g. --filt-x-dim=3 --filt-y-dim=8 "
                         "--filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 "
-                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1", default = None)
+                        "--pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1, " 
+                        "when CNN layers are used, no LDA will be added", default = None)
     parser.add_argument("--cnn.bottleneck-dim", type=int, dest = "cnn_bottleneck_dim",
                         help="Output dimension of the linear layer at the CNN output "
                         "for dimension reduction, e.g. 256."
@@ -65,7 +66,8 @@ def GetArgs():
                         "If CNN layers are used, the first frame indices is actually how we "
                         "splice the frames and pass to the CNN.")
     parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="add lda layer", default=True, choices = ["false", "true"])
+                        help="add lda layer (this option will be ignored when CNN layers are used", 
+                        default=True, choices = ["false", "true"])
 
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
@@ -171,6 +173,9 @@ def CheckArgs(args):
 
     if args.xent_separate_forward_affine and args.add_final_sigmoid:
         raise Exception("It does not make sense to have --add-final-sigmoid=true when xent-separate-forward-affine is true")
+
+    if args.add_lda and args.cnn_layer is not None:
+        args.add_lda = False
 
     return args
 
