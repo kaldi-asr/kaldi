@@ -1,6 +1,6 @@
 // latbin/nbest-to-ctm.cc
 
-// Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+// Copyright 2012-2016  Johns Hopkins University (Author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -43,11 +43,14 @@ int main(int argc, char *argv[]) {
         "e.g.: lattice-1best --acoustic-weight=0.08333 ark:1.lats | \\\n"
         "      lattice-align-words data/lang/phones/word_boundary.int exp/dir/final.mdl ark:- ark:- | \\\n"
         "      nbest-to-ctm ark:- 1.ctm\n";
-    
+
     ParseOptions po(usage);
 
+    bool print_silence = false;
     BaseFloat frame_shift = 0.01;
     int32 precision = 2;
+    po.Register("print-silence", &print_silence, "If true, print optional-silence "
+                "(<eps>) arcs");
     po.Register("frame-shift", &frame_shift, "Time in seconds between frames.\n");
     po.Register("precision", &precision,
                 "Number of decimal places for start duration times\n");
@@ -63,14 +66,14 @@ int main(int argc, char *argv[]) {
         ctm_wxfilename = po.GetArg(2);
 
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
-    
+
     int32 n_done = 0, n_err = 0;
 
     Output ko(ctm_wxfilename, false); // false == non-binary write mode.
     ko.Stream() << std::fixed;  // Set to "fixed" floating point model, where precision() specifies
     // the #digits after the decimal point.
     ko.Stream().precision(precision);
-    
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
@@ -84,7 +87,7 @@ int main(int argc, char *argv[]) {
         KALDI_ASSERT(words.size() == times.size() &&
                      words.size() == lengths.size());
         for (size_t i = 0; i < words.size(); i++) {
-          if (words[i] == 0)  // Don't output anything for <eps> links, which
+          if (words[i] == 0 && !print_silence)  // Don't output anything for <eps> links, which
             continue; // correspond to silence....
           ko.Stream() << key << " 1 " << (frame_shift * times[i]) << ' '
                       << (frame_shift * lengths[i]) << ' ' << words[i] <<std::endl;
@@ -96,7 +99,7 @@ int main(int argc, char *argv[]) {
     // we just let them go out of scope and it happens automatically.
     // We do it this time in order to avoid wrongly printing out a success message
     // if the stream was going to fail to close
-            
+
     KALDI_LOG << "Converted " << n_done << " linear lattices to ctm format; "
               << n_err  << " had errors.";
     return (n_done != 0 ? 0 : 1);

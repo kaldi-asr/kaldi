@@ -1,7 +1,7 @@
 // cudamatrix/cu-math.h
 
 // Copyright 2009-2012  Karel Vesely
-//                2013  Johns Hopkins University (Author: David Snyder) 
+//                2013  Johns Hopkins University (Author: David Snyder)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -28,9 +28,9 @@
 #include "base/timer.h"
 
 namespace kaldi {
-  
+
 namespace cu {
- 
+
 /// RegularizeL1 is a gradient step with l1 regularization added to the
 /// gradient.  We don't let the value cross over zero from positive to negative
 /// or vice versa, in a single step.  If an element tries to cross zero and is
@@ -40,9 +40,9 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *gradient,
                   Real l1_penalty, Real learning_rate);
 
 /// Copies a permutation of src into tgt. The row permutation is specified in
-/// copy_from_idx such that src.Row(copy_from_idx[r]) == tgt.Row(r). The 
+/// copy_from_idx such that src.Row(copy_from_idx[r]) == tgt.Row(r). The
 /// dimensions of copy_from_idx must be equivalent to the number of rows in
-/// tgt and src and all elements in the vector must be in [0, src.numRows()-1].  
+/// tgt and src and all elements in the vector must be in [0, src.numRows()-1].
 template<typename Real>
 void Randomize(const CuMatrixBase<Real> &src,
                const CuArray<int32> &copy_from_idx,
@@ -52,10 +52,10 @@ void Randomize(const CuMatrixBase<Real> &src,
 /// The dimensions of tgt must be equivalent to the number of rows in src
 /// and it must be that tgt.NumColumns == src.NumColumns * frame_offsets.Dim().
 /// As a result, tgt(i, k*n_cols + j) == src(i + frame_offsets[k], j) for the
-/// general case where i in [0..src.NumRows()-1], 
-/// k in [0..frame_offsets.Dim()-1], j in [0..src.NumRows()-1] 
+/// general case where i in [0..src.NumRows()-1],
+/// k in [0..frame_offsets.Dim()-1], j in [0..src.NumRows()-1]
 /// and n_cols = src.NumColumns(). If i + frame_offsets[k] is greater than the
-/// number of rows in src or less than 0 than the right side of the equation 
+/// number of rows in src or less than 0 than the right side of the equation
 /// is replaced by src(src.NumRows()-1, j) or src(0, j) respectively, to avoid
 /// an index out of bounds.
 template<typename Real>
@@ -72,6 +72,13 @@ template<typename Real>
 void Copy(const CuMatrixBase<Real> &src,
           const CuArray<int32> &copy_from_indices,
           CuMatrixBase<Real> *tgt);
+
+template <typename Real>
+void Group2norm(const CuMatrixBase<Real> &src,
+                CuMatrixBase<Real> *dest,
+                int32 group_stride);
+
+
 
 
 } // namespace cu

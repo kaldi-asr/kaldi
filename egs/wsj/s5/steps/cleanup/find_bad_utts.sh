@@ -5,9 +5,9 @@
 # Computes training alignments using a model with delta or
 # LDA+MLLT features.  This version, rather than just using the
 # text to align, computes mini-language models (unigram) from the text
-# and a few common words in the LM, and allows
+# and a few common words in the LM.
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=4
 cmd=run.pl
 use_graphs=false
@@ -82,7 +82,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $srcdir/full.mat $dir    
+    cp $srcdir/final.mat $srcdir/full.mat $dir
    ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -155,7 +155,7 @@ if [ $stage -le 2 ]; then
   # <utterance-id>   <number of errors>  <reference-length>  <decoded-output>   <reference>
   # with the fields separated by tabs, e.g.
   # adg04_sr009_trn 1 	12	 SHOW THE GRIDLEY+S TRACK IN BRIGHT ORANGE WITH HORNE+S IN DIM RED AT	 SHOW THE GRIDLEY+S TRACK IN BRIGHT ORANGE WITH HORNE+S IN DIM RED
-  
+
   paste $dir/edits.txt \
       <(awk '{print $2}' $dir/length.txt) \
       <(awk '{$1="";print;}' <$dir/aligned_ref.txt) \
@@ -171,9 +171,9 @@ fi
 
 if [ $stage -le 3 ]; then
   ###
-  # These stats migh help people figure out what is wrong with the data
+  # These stats might help people figure out what is wrong with the data
   # a)human-friendly and machine-parsable alignment in the file per_utt_details.txt
-  # b)evaluation of per-speaker performance to possibly find speakers with 
+  # b)evaluation of per-speaker performance to possibly find speakers with
   #   distinctive accents/speech disorders and similar
   # c)Global analysis on (Ins/Del/Sub) operation, which might be used to figure
   #   out if there is systematic issue with lexicon, pronunciation or phonetic confusability

@@ -239,101 +239,88 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</ElementwiseProductComponent>");
 }
 
-const BaseFloat NormalizeComponent::kNormFloor = pow(2.0, -66);
-// This component modifies the vector of activations by scaling it 
-// so that the root-mean-square equals 1.0.  It's important that its 
+const BaseFloat NormalizeComponent::kSquaredNormFloor =
+    pow(2.0, NormalizeComponent::kExpSquaredNormFloor);
+
+// This component modifies the vector of activations by scaling it
+// so that the root-mean-square equals 1.0.  It's important that its
 // square root be exactly representable in float.
-void NormalizeComponent::Init(int32 dim, BaseFloat target_rms, 
+void NormalizeComponent::Init(int32 input_dim, BaseFloat target_rms,
                               bool add_log_stddev) {
-  KALDI_ASSERT(dim > 0);
+  KALDI_ASSERT(input_dim > 0);
   KALDI_ASSERT(target_rms > 0);
-  dim_ = dim;
-  count_ = 0.0;
+  input_dim_ = input_dim;
   target_rms_ = target_rms;
   add_log_stddev_ = add_log_stddev;
 }
 
+NormalizeComponent::NormalizeComponent(const NormalizeComponent &other):
+    input_dim_(other.input_dim_), target_rms_(other.target_rms_),
+    add_log_stddev_(other.add_log_stddev_) { }
+
 void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
-  int32 dim = 0;
+  int32 input_dim = 0;
   bool add_log_stddev = false;
   BaseFloat target_rms = 1.0;
-  bool ok = cfl->GetValue("dim", &dim);
+  bool ok = cfl->GetValue("dim", &input_dim) ||
+      cfl->GetValue("input-dim", &input_dim);
   cfl->GetValue("target-rms", &target_rms);
   cfl->GetValue("add-log-stddev", &add_log_stddev);
-  if (!ok || cfl->HasUnusedValues() || dim <= 0 || target_rms <= 0.0)
+  if (!ok || cfl->HasUnusedValues() || input_dim <= 0 || target_rms <= 0.0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, target_rms, add_log_stddev);
+  Init(input_dim, target_rms, add_log_stddev);
 }
+
 void NormalizeComponent::Read(std::istream &is, bool binary) {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">";
-  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
-  ReadBasicType(is, binary, &dim_); // Read dimension.
-  std::string tok; // TODO: remove back-compatibility code.
-  ReadToken(is, binary, &tok);
-
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<NormalizeComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "<Dim>" || token == "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_); // Read dimension.
+  ReadToken(is, binary, &token);
   // read target_rms_ if it is available.
-  if (tok == "<TargetRms>") {
+  if (token == "<TargetRms>") {
     ReadBasicType(is, binary, &target_rms_);
-    ReadToken(is, binary, &tok);
+    ReadToken(is, binary, &token);
   }
-  //  Read add_log_stddev_ token, if it sets. 
-  if (tok == "<AddLogStddev>") {  
-    ReadBasicType(is, binary, &add_log_stddev_);  
-    ReadToken(is, binary, &tok); 
+  //  Read add_log_stddev_ token, if it is available.
+  if (token == "<AddLogStddev>") {
+    ReadBasicType(is, binary, &add_log_stddev_);
+    ReadToken(is, binary, &token);
   }
-
-  // The new format is more readable as we write values that are normalized by
-  // the count.
-  KALDI_ASSERT(tok == "<ValueAvg>");
-  value_sum_.Read(is, binary);
-  ExpectToken(is, binary, "<DerivAvg>");
-  deriv_sum_.Read(is, binary);
-  ExpectToken(is, binary, "<Count>");
-  ReadBasicType(is, binary, &count_);
-  value_sum_.Scale(count_);
-  deriv_sum_.Scale(count_);
-  ExpectToken(is, binary, ostr_end.str());
+  if (token == "<ValueAvg>") {
+    // back-compatibility code.
+    CuVector<double> temp;
+    temp.Read(is, binary);
+    ExpectToken(is, binary, "<DerivAvg>");
+    temp.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    double count;
+    ReadBasicType(is, binary, &count);
+    ReadToken(is, binary, &token);
+  }
+  KALDI_ASSERT(token == "</NormalizeComponent>");
 }
 
 void NormalizeComponent::Write(std::ostream &os, bool binary) const {
-  std::ostringstream ostr_beg, ostr_end;
-  ostr_beg << "<" << Type() << ">";
-  ostr_end << "</" << Type() << ">";
-  WriteToken(os, binary, ostr_beg.str());
-  WriteToken(os, binary, "<Dim>");
-  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<NormalizeComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
   WriteToken(os, binary, "<TargetRms>");
   WriteBasicType(os, binary, target_rms_);
   WriteToken(os, binary, "<AddLogStddev>");
-  WriteBasicType(os, binary, add_log_stddev_);  
-  // Write the values and derivatives in a count-normalized way, for
-  // greater readability in text form.
-  WriteToken(os, binary, "<ValueAvg>");
-  Vector<BaseFloat> temp(value_sum_);
-  if (count_ != 0.0) temp.Scale(1.0 / count_);
-  temp.Write(os, binary);
-  WriteToken(os, binary, "<DerivAvg>");
-
-  temp.Resize(deriv_sum_.Dim(), kUndefined);
-  temp.CopyFromVec(deriv_sum_);
-  if (count_ != 0.0) temp.Scale(1.0 / count_);
-  temp.Write(os, binary);
-  WriteToken(os, binary, "<Count>");
-  WriteBasicType(os, binary, count_);
-  WriteToken(os, binary, ostr_end.str());
+  WriteBasicType(os, binary, add_log_stddev_);
+  WriteToken(os, binary, "</NormalizeComponent>");
 }
 
 std::string NormalizeComponent::Info() const {
   std::ostringstream stream;
-  stream << NonlinearComponent::Info();
-  stream << ", target-rms=" << target_rms_
-         << ", add-log-stddev=" << add_log_stddev_;
-  if (add_log_stddev_)
-    stream << ", input-dim=" << InputDim() 
-           << ", output-dim=" << OutputDim();
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim() << ", target-rms=" << target_rms_
+         << ", add-log-stddev=" << std::boolalpha << add_log_stddev_;
   return stream.str();
 }
 
@@ -344,38 +331,34 @@ std::string NormalizeComponent::Info() const {
 // there is also flooring involved, to avoid division-by-zero
 // problems.  It's important for the backprop, that the floor's
 // square root is exactly representable as float.
-// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D))) 
+// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
 // is an extra dimension of the output.
 void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                    const CuMatrixBase<BaseFloat> &in,
                                    CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(out->NumCols() == in.NumCols() + (add_log_stddev_ ? 1 : 0));
-  CuSubMatrix<BaseFloat> out_no_log = out->ColRange(0, in.NumCols());                       
-  out_no_log.CopyFromMat(in);
+  CuSubMatrix<BaseFloat> out_no_log(*out, 0, out->NumRows(), 0, input_dim_);
+  if (in.Data() != out_no_log.Data())
+    out_no_log.CopyFromMat(in);
   CuVector<BaseFloat> in_norm(in.NumRows());
-  BaseFloat d_scaled = (in.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0 / d_scaled,
-                      in, kNoTrans, 0.0);
-
-  if (add_log_stddev_) {
-    CuVector<BaseFloat> log_stddev(in.NumRows());
-    // log_stddev is log(max(epsi, sqrt(row_in^T row_in / D))).
-    log_stddev.AddVec(target_rms_ * target_rms_, in_norm, 0.0);
-    log_stddev.ApplyPow(0.5);
-    log_stddev.ApplyFloor(kNormFloor);
-    log_stddev.ApplyLog(); 
-    out->CopyColFromVec(log_stddev, in.NumCols());
-  }
-  in_norm.ApplyFloor(kNormFloor);
+  BaseFloat d_scaled = in.NumCols() * target_rms_ * target_rms_;
+  in_norm.AddDiagMat2(1.0 / d_scaled, in, kNoTrans, 0.0);
+  in_norm.ApplyFloor(kSquaredNormFloor);
   in_norm.ApplyPow(-0.5);
   out_no_log.MulRowsVec(in_norm);
+  if (add_log_stddev_) {
+    in_norm.ApplyLog();
+    in_norm.Scale(-1.0);
+    in_norm.Add(log(target_rms_));
+    out->CopyColFromVec(in_norm, in.NumCols());
+  }
 }
 
 /*
   A note on the derivative of NormalizeComponent...
   let both row_in and row_out be vectors of dimension D.
   Let p = row_in^T row_in / (D * target_rms^2), and let
-  f = 1.0 / sqrt(max(kNormFloor, p)), and we compute row_out as:
+  f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
   row_out = f row_in.
   Suppose we have a quantity deriv_out which is the derivative
   of the objective function w.r.t. row_out.  We want to compute
@@ -384,15 +367,15 @@ void NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   deriv_in = f deriv_out + ....
   next we have to take into account the derivative that gets back-propagated
   through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= kNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kNormFloor) ? 0.0 : -0.5 f^3),
+  And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
   and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
   So this term in dF/d(row_in) equals:
-  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
   So
   deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
-  
+
   if add_log_stddev_ true, the deriv_in has another term as
-  dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x) 
+  dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
 */
 void NormalizeComponent::Backprop(const std::string &debug_info,
                                   const ComponentPrecomputedIndexes *indexes,
@@ -402,46 +385,47 @@ void NormalizeComponent::Backprop(const std::string &debug_info,
                                   Component *to_update,
                                   CuMatrixBase<BaseFloat> *in_deriv) const {
   if (!in_deriv)  return;
-  CuSubMatrix<BaseFloat> out_deriv_no_log = out_deriv.ColRange(0, 
-    (out_deriv.NumCols() - (add_log_stddev_ ? 1 : 0)));
+  const CuSubMatrix<BaseFloat> out_deriv_no_log(out_deriv,
+                                                0, out_deriv.NumRows(),
+                                                0, input_dim_);
   CuVector<BaseFloat> dot_products(out_deriv.NumRows());
-  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value, kTrans, 0.0);
+  dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans,
+                             in_value, kTrans, 0.0);
   CuVector<BaseFloat> in_norm(in_value.NumRows());
   BaseFloat d_scaled = (in_value.NumCols() * target_rms_ * target_rms_);
-  in_norm.AddDiagMat2(1.0,
-                      in_value, kNoTrans, 0.0);
+  in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
 
   if (add_log_stddev_) {
-    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1 
-      out_deriv_for_stddev(out_deriv.NumRows());
-    // f = log((epsi < sqrt(x^T x / D) ? sqrt(x^T x / D) : epsi) 
-    //   => f = log( epsi^2 * D < x^T x ? sqrt(x^T x / D) : epsi)
-    BaseFloat new_knorm_floor = in_value.NumCols() * kNormFloor * kNormFloor;
-    log_stddev_deriv.ApplyFloor(new_knorm_floor);
+    CuVector<BaseFloat> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+    // f = log(sqrt(max(epsi, x^T x / D)))
+    // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+    // we don't compute this exactly below for the case wehn x^2 x is very
+    // small, but we do make sure that the deriv isn't infinity when the input
+    // is zero.
+    log_stddev_deriv.ApplyFloor(input_dim_ * kSquaredNormFloor);
     log_stddev_deriv.ApplyPow(-1.0);
     out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
     log_stddev_deriv.MulElements(out_deriv_for_stddev);
     if (in_deriv)
-      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 0.0);
+      in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
   }
-
   in_norm.Scale(1.0 / d_scaled);
-  in_norm.ApplyFloor(kNormFloor);
+  in_norm.ApplyFloor(kSquaredNormFloor);
   in_norm.ApplyPow(-0.5);
-
   if (in_deriv) {
-    if (in_deriv->Data() != out_deriv.Data())
-      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, (add_log_stddev_ ? 1.0 : 0.0));
+    if (in_deriv->Data() != out_deriv_no_log.Data())
+      in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
     else
       in_deriv->MulRowsVec(in_norm);
-  }
-  in_norm.ReplaceValue(1.0 / sqrt(kNormFloor), 0.0);
-  in_norm.ApplyPow(3.0);
-  dot_products.MulElements(in_norm);
-  in_deriv->AddDiagVecMat(-1.0 / d_scaled,
-                          dot_products, in_value,
-                          kNoTrans, 1.0);
+    in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+    in_norm.ApplyPow(3.0);
+    dot_products.MulElements(in_norm);
 
+    in_deriv->AddDiagVecMat(-1.0 / d_scaled,
+                            dot_products, in_value,
+                            kNoTrans, 1.0);
+  }
 }
 
 void SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
@@ -457,11 +441,85 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
                                 const CuMatrixBase<BaseFloat> &out_deriv,
                                 Component *,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (in_deriv != NULL)
+  if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
+    RepairGradients(out_value, in_deriv);
+  }
 }
 
+void SigmoidComponent::RepairGradients(
+    const CuMatrixBase<BaseFloat> &out_value,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // maximum possible derivative of SigmoidComponent is 0.25.
+  // the default lower-threshold on the derivative, below which we
+  // add a term to the derivative to encourage the inputs to the sigmoid
+  // to be closer to zero, is 0.05, which means the derivative is on average
+  // 5 times smaller than its maximum possible value.
+  BaseFloat default_lower_threshold = 0.05;
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_;
+  if (self_repair_upper_threshold_ != unset) {
+    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
+              << "components, it does nothing.";
+  }
+
+  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
+  // function isn't defined for vectors).
+  CuMatrix<BaseFloat> thresholds(1, dim_);
+  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
+  thresholds_vec.AddVec(-1.0, deriv_sum_);
+  thresholds_vec.Add(lower_threshold);
+  thresholds.ApplyHeaviside();
+
+  // At this point, 'thresholds_vec' contains a 1 for each dimension of
+  // the output that is 'problematic', i.e. for which the avg-deriv
+  // is less than the self-repair lower threshold, and a 0 for
+  // each dimension that is not problematic.
+
+  // what we want to do is to add
+  // -self_repair_scale_ / repair_probability times (2 * output-valiue - 1.0)
+  // to the input derivative for each problematic dimension.
+
+  // Here, 2 * output - 1.0 is a version of the sigmoid that goes from -1.0 to
+  // 1.0, like a tanh.  the negative sign is so that for inputs <0, we push them
+  // up towards 0, and for inputs >0, we push them down towards 0.
+  // Our use of this sigmoid-type function here is just a convenience since
+  // we have it available.  We could use just about any function that is positive
+  // for inputs < 0 and negative for inputs > 0.
+
+  // We can rearrange the above as: for only the problematic columns,
+  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output
+  //   input-deriv +=  self-repair-scale / repair-probabilty
+  // which we can write as:
+  //   input-deriv -= 2 * self-repair-scale / repair-probabilty * output * thresholds-vec
+  //   input-deriv +=  self-repair-scale / repair-probabilty * thresholds-vec
+
+  in_deriv->AddMatDiagVec(-2.0 * self_repair_scale_ / repair_probability,
+                          out_value, kNoTrans, thresholds_vec);
+  in_deriv->AddVecToRows(self_repair_scale_ / repair_probability,
+                         thresholds_vec);
+}
+
+
+
 void SigmoidComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
   // derivative of the nonlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(), out_value.NumCols(),
                                  kUndefined);
@@ -640,6 +698,68 @@ void TanhComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   out->Tanh(in);
 }
 
+
+void TanhComponent::RepairGradients(
+    const CuMatrixBase<BaseFloat> &out_value,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // maximum possible derivative of SigmoidComponent is 1.0
+  // the default lower-threshold on the derivative, below which we
+  // add a term to the derivative to encourage the inputs to the sigmoid
+  // to be closer to zero, is 0.2, which means the derivative is on average
+  // 5 times smaller than its maximum possible value.
+  BaseFloat default_lower_threshold = 0.2;
+
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_;
+  if (self_repair_upper_threshold_ != unset) {
+    KALDI_ERR << "Do not set the self-repair-upper-threshold for sigmoid "
+              << "components, it does nothing.";
+  }
+
+  // thresholds_vec is actually a 1-row matrix.  (the ApplyHeaviside
+  // function isn't defined for vectors).
+  CuMatrix<BaseFloat> thresholds(1, dim_);
+  CuSubVector<BaseFloat> thresholds_vec(thresholds, 0);
+  thresholds_vec.AddVec(-1.0, deriv_sum_);
+  thresholds_vec.Add(lower_threshold);
+  thresholds.ApplyHeaviside();
+
+  // At this point, 'thresholds_vec' contains a 1 for each dimension of
+  // the output that is 'problematic', i.e. for which the avg-deriv
+  // is less than the self-repair lower threshold, and a 0 for
+  // each dimension that is not problematic.
+
+  // what we want to do is to add -self_repair_scale_ / repair_probability times
+  // output-valiue) to the input derivative for each problematic dimension.
+  // note that for the tanh, the output-value goes from -1.0 when the input is
+  // -inf to +1.0 when the input is +inf.  The negative sign is so that for
+  // inputs <0, we push them up towards 0, and for inputs >0, we push them down
+  // towards 0.  Our use of the tanh here is just a convenience since we have it
+  // available.  We could use just about any function that is positive for
+  // inputs < 0 and negative for inputs > 0.
+
+  // We can rearrange the above as: for only the problematic columns,
+  //   input-deriv -= self-repair-scale / repair-probabilty * output
+  // which we can write as:
+  //   input-deriv -=  self-repair-scale / repair-probabilty * output * thresholds-vec
+
+  in_deriv->AddMatDiagVec(-self_repair_scale_ / repair_probability,
+                          out_value, kNoTrans, thresholds_vec);
+}
+
 void TanhComponent::Backprop(const std::string &debug_info,
                              const ComponentPrecomputedIndexes *indexes,
                              const CuMatrixBase<BaseFloat> &,
@@ -648,8 +768,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
                              Component *to_update, // may be NULL; may be identical
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (in_deriv != NULL)
+  if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
+    RepairGradients(out_value, in_deriv);
+  }
 }
 
 /*
@@ -660,6 +782,9 @@ void TanhComponent::Backprop(const std::string &debug_info,
   in_deriv = out_deriv * (1.0 - out_value^2).
   We can accomplish this via calls to the matrix library. */
 void TanhComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
   // derivative of the onlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value);
   temp_deriv.ApplyPow(2.0);
@@ -667,7 +792,6 @@ void TanhComponent::StoreStats(const CuMatrixBase<BaseFloat> &out_value) {
   temp_deriv.Add(1.0);
   StoreStatsInternal(out_value, &temp_deriv);
 }
-
 
 void RectifiedLinearComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
@@ -687,16 +811,77 @@ void RectifiedLinearComponent::Backprop(
     Component *to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv != NULL) {
-    in_deriv->CopyFromMat(out_value);
-    in_deriv->ApplyHeaviside();
+    in_deriv->Heaviside(out_value);
     in_deriv->MulElements(out_deriv);
+    RepairGradients(in_deriv);
   }
 }
 
+
+void RectifiedLinearComponent::RepairGradients(
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  BaseFloat default_lower_threshold = 0.05,
+      default_upper_threshold = 0.95;
+  // we use this 'repair_probability' (hardcoded for now) to limit
+  // this code to running on about half of the minibatches.
+  BaseFloat repair_probability = 0.5;
+
+  if (self_repair_scale_ == 0.0 || count_ == 0.0 || deriv_sum_.Dim() != dim_ ||
+      RandUniform() > repair_probability)
+    return;
+
+  // check that the self-repair scale is in a reasonable range.
+  KALDI_ASSERT(self_repair_scale_ > 0.0 && self_repair_scale_ < 0.1);
+  BaseFloat unset = kUnsetThreshold; // -1000.0
+  BaseFloat lower_threshold = (self_repair_lower_threshold_ == unset ?
+                               default_lower_threshold :
+                               self_repair_lower_threshold_) *
+      count_,
+      upper_threshold = (self_repair_upper_threshold_ == unset ?
+                         default_upper_threshold :
+                         self_repair_upper_threshold_) *
+      count_;
+
+  CuMatrix<BaseFloat> storage(2, dim_ + 2, kUndefined);
+  CuSubVector<BaseFloat> thresholds_vec(storage.RowData(0) + dim_, 2);
+  CuSubMatrix<BaseFloat> stats_mat(storage, 0, 2, 0, dim_);
+  thresholds_vec(0) = -lower_threshold;
+  thresholds_vec(1) = -upper_threshold;
+  CuSubVector<BaseFloat> row0(stats_mat, 0);
+  CuSubVector<BaseFloat> row1(stats_mat, 1);
+
+  row0.CopyFromVec(deriv_sum_);
+  row1.CopyFromVec(row0);
+  stats_mat.AddVecToCols(1.0, thresholds_vec, 1.0);
+  // now row0 equals stats - lower_threshold, and
+  //     row1 equals stats - upper_threshold.
+  stats_mat.ApplyHeaviside();
+  // now row0 equals (stats > lower_threshold ? 1 : 0), and
+  //     row1 equals (stats > upper_threshold ? 1 : 0).
+  // what we want is:
+  // self_repair_scale * ((stats <= lower_threshold ? 1 : 0) +
+  //                         (stats > upper_threshold ? -1 : 0)).
+  //
+  // we can get these in stats_mat.Row(0) by computing:
+  // -self_repair_scale * (stats_mat.Row(1)  + stats_mat.Row(0) - 1).
+  row0.AddVec(1.0, row1, 1.0);
+  row0.Add(-1.0);
+  // [actually we need to divide by repair_probability also, to
+  //  correct for the fact that we only do this on some frames.]
+  row0.Scale(-self_repair_scale_ / repair_probability);
+  in_deriv->AddVecToRows(1.0, row0, 1.0);
+}
+
+
 void RectifiedLinearComponent::StoreStats(
     const CuMatrixBase<BaseFloat> &out_value) {
-  CuMatrix<BaseFloat> temp_deriv(out_value);
-  temp_deriv.ApplyHeaviside();
+  // only store stats about every other minibatch.
+  if (RandInt(0, 1) == 0)
+    return;
+  CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(),
+                                 out_value.NumCols(),
+                                 kUndefined);
+  temp_deriv.Heaviside(out_value);
   StoreStatsInternal(out_value, &temp_deriv);
 }
 
@@ -1089,39 +1274,26 @@ void RepeatedAffineComponent::InitFromConfig(ConfigLine *cfl) {
 void RepeatedAffineComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                         const CuMatrixBase<BaseFloat> &in,
                                         CuMatrixBase<BaseFloat> *out) const {
+  // we gave the kInputContiguous and kOutputContiguous flags-- check that they
+  // are honored.
+  KALDI_ASSERT(in.NumCols() == in.Stride() &&
+               out->NumCols() == out->Stride() &&
+               out->NumRows() == in.NumRows());
 
-  // No need for asserts as they'll happen within the matrix operations.
-  int32 block_rows = linear_params_.NumRows();
-  int32 block_cols = linear_params_.NumCols();
+  int32 num_repeats = num_repeats_,
+      num_rows = in.NumRows(),
+      block_dim_out = linear_params_.NumRows(),
+      block_dim_in = linear_params_.NumCols();
 
-  {
-    // copy bias_params_ to each row  of *out
-    CuVector<BaseFloat> tmp_repeated_bias(num_repeats_ * bias_params_.Dim(),
-                                          kUndefined);
-    CuSubMatrix<BaseFloat> tmp_bias_mat(tmp_repeated_bias.Data(), num_repeats_,
-                                        bias_params_.Dim(), bias_params_.Dim());
-    tmp_bias_mat.CopyRowsFromVec(bias_params_);
-    out->CopyRowsFromVec(tmp_repeated_bias);
-  }
+  CuSubMatrix<BaseFloat> in_reshaped(in.Data(), num_rows * num_repeats,
+                                     block_dim_in, block_dim_in),
+      out_reshaped(out->Data(), num_rows * num_repeats,
+                   block_dim_out, block_dim_out);
 
-  std::vector<CuSubMatrix<BaseFloat> *> in_batch, out_batch,
-      linear_params_batch;
-  CuSubMatrix<BaseFloat>* params_elem =
-      new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+  out_reshaped.CopyRowsFromVec(bias_params_);
 
-  //split the in and out mat into blocks.
-  for (int i = 0; i < num_repeats_; i++) {
-    in_batch.push_back(new CuSubMatrix<BaseFloat>(in.ColRange(
-	                   i * block_cols, block_cols)));
-    out_batch.push_back(new CuSubMatrix<BaseFloat>(
-	                    out->ColRange(i * block_rows, block_rows)));
-    linear_params_batch.push_back(params_elem);
-  }
-  AddMatMatBatched<BaseFloat>(1.0, out_batch, in_batch, kNoTrans,
-                              linear_params_batch, kTrans, 1.0);
-  delete params_elem;
-  DeletePointers(&in_batch);
-  DeletePointers(&out_batch);
+  out_reshaped.AddMatMat(1.0, in_reshaped, kNoTrans,
+                         linear_params_, kTrans, 1.0);
 }
 
 void RepeatedAffineComponent::Backprop(const std::string &debug_info,
@@ -1131,34 +1303,31 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
                                        const CuMatrixBase<BaseFloat> &out_deriv,
                                        Component *to_update_in,
                                        CuMatrixBase<BaseFloat> *in_deriv) const {
-  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(to_update_in);
+  KALDI_ASSERT(out_deriv.NumCols() == out_deriv.Stride() &&
+       (in_value.NumCols() == 0 || in_value.NumCols() == in_value.Stride()) &&
+               (!in_deriv || in_deriv->NumCols() == in_deriv->Stride()));
+
+  RepeatedAffineComponent *to_update = dynamic_cast<RepeatedAffineComponent*>(
+      to_update_in);
 
   // Propagate the derivative back to the input.
   // add with coefficient 1.0 since property kBackpropAdds is true.
   // If we wanted to add with coefficient 0.0 we'd need to zero the
   // in_deriv, in case of infinities.
   if (in_deriv) {
-    int32 block_rows = linear_params_.NumRows();
-	int32 block_cols = linear_params_.NumCols();
-	std::vector<CuSubMatrix<BaseFloat> *> in_deriv_batch, out_deriv_batch,
-        linear_params_batch;
-	CuSubMatrix<BaseFloat>* params_elem =
-	    new CuSubMatrix<BaseFloat>(linear_params_.ColRange(0, block_cols));
+    int32 num_repeats = num_repeats_,
+        num_rows = out_deriv.NumRows(),
+        block_dim_out = linear_params_.NumRows(),
+        block_dim_in = linear_params_.NumCols();
 
-    //split the out_deriv and the in_deriv mat into blocks.
-    for (int i = 0; i < num_repeats_; i++) {
-      in_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(in_deriv->ColRange(
-	                           i * block_cols, block_cols)));
-      out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
-	                            i * block_rows, block_rows)));
-      linear_params_batch.push_back(params_elem);
-    }
-
-    AddMatMatBatched<BaseFloat>(1.0, in_deriv_batch, out_deriv_batch, kNoTrans,
-                                linear_params_batch, kNoTrans, 1.0);
-    delete params_elem;
-    DeletePointers(&in_deriv_batch);
-    DeletePointers(&out_deriv_batch);
+    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(),
+                                             num_rows * num_repeats,
+                                             block_dim_in, block_dim_in),
+        out_deriv_reshaped(out_deriv.Data(),
+                           num_rows * num_repeats,
+                           block_dim_out, block_dim_out);
+    in_deriv_reshaped.AddMatMat(1.0, out_deriv_reshaped, kNoTrans,
+                                linear_params_, kNoTrans, 1.0);
   }
 
   // Next update the model (must do this 2nd so the derivatives we propagate are
@@ -1169,73 +1338,28 @@ void RepeatedAffineComponent::Backprop(const std::string &debug_info,
 
 void RepeatedAffineComponent::Update(const CuMatrixBase<BaseFloat> &in_value,
                                      const CuMatrixBase<BaseFloat> &out_deriv) {
-  int32 block_rows = linear_params_.NumRows();
-  int32 block_cols = linear_params_.NumCols();
-  std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
-      out_deriv_batch, linear_params_deriv_batch;
-  CuMatrix<BaseFloat> linear_params_deriv_repeated(
-      block_rows * num_repeats_, block_cols);
+  KALDI_ASSERT(out_deriv.NumCols() == out_deriv.Stride() &&
+               in_value.NumCols() == in_value.Stride() &&
+               in_value.NumRows() == out_deriv.NumRows());
 
-  for (int i = 0; i < num_repeats_; i++) {
-    in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
-        i * block_cols, block_cols)));
-    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
-        i * block_rows, block_rows)));
-    linear_params_deriv_batch.push_back(
-        new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
-            i * block_rows, block_rows)));
-  }
-  AddMatMatBatched<BaseFloat>(learning_rate_,
-                              linear_params_deriv_batch,
-                              out_deriv_batch, kTrans,
-                              in_value_batch, kNoTrans, 0.0);
 
-  { // sum up the repeated blocks of pieces of derivative (from
-    // linear_params_deriv_repeated) into linear_params_.  We do this without
-    // the use of loops by means of a little fakery, viewing
-    // linear_params_deriv_repeated as a matrix with a larger stride than it
-    // really has to sum up its rows.  This may generate some spurious
-    // valgrind/memcheck warnings due to accessing the memory in between rows
-    // of a matrix that has been allocated using cudaMallocPitch.
-    // view linear_params_deriv_repeated as a matrix where each row
-    // corresponds to one repeat.
+    int32 num_repeats = num_repeats_,
+        num_rows = in_value.NumRows(),
+        block_dim_out = linear_params_.NumRows(),
+        block_dim_in = linear_params_.NumCols();
 
-    // usage of linear_params_deriv_repeated.Stride() instead of
-    // linear_params_.Stride() is important here. CUDA does not guarantee
-    // that two matrices of the same number of columns
-    // (linear_params_deriv_repeated and linear_params_) have the same stride.
-    // i.e., we cannot reliably do:
-    // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
-    int32 size_as_vector =
-        (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
-        linear_params_.NumCols(),
-        stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
-    CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
-        linear_params_deriv_repeated.Data(), num_repeats_,
-        size_as_vector, stride_as_matrix);
-    // add all remaining rows to the first row, of
-    // linear_params_deriv_repeated_as_mat
-    if (num_repeats_ > 1)
-      linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
-          1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
-                                                            num_repeats_ - 1));
-    linear_params_.AddMat(1.0, linear_params_deriv_repeated.RowRange(
-        0, linear_params_.NumRows()));
-  }
+    CuSubMatrix<BaseFloat> in_value_reshaped(in_value.Data(),
+                                             num_rows * num_repeats,
+                                             block_dim_in, block_dim_in),
+        out_deriv_reshaped(out_deriv.Data(),
+                           num_rows * num_repeats,
+                           block_dim_out, block_dim_out);
 
-  { // deal with the derivative w.r.t. the bias.
-    CuVector<BaseFloat> repeated_bias_deriv(
-        num_repeats_ * bias_params_.Dim());
-    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
-    CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
-                                          num_repeats_, bias_params_.Dim(), // num rows, num cols
-                                          bias_params_.Dim()); // stride
-    bias_params_.AddRowSumMat(learning_rate_,
-                              bias_deriv_mat);
-  }
-  DeletePointers(&in_value_batch);
-  DeletePointers(&out_deriv_batch);
-  DeletePointers(&linear_params_deriv_batch);
+
+  linear_params_.AddMatMat(learning_rate_, out_deriv_reshaped, kTrans,
+                           in_value_reshaped, kNoTrans, 1.0);
+  bias_params_.AddRowSumMat(learning_rate_,
+                            out_deriv_reshaped);
 }
 
 void RepeatedAffineComponent::Read(std::istream &is, bool binary) {
@@ -1312,105 +1436,53 @@ Component* NaturalGradientRepeatedAffineComponent::Copy() const {
 void NaturalGradientRepeatedAffineComponent::Update(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
-  int32 block_rows = linear_params_.NumRows();
-  int32 block_cols = linear_params_.NumCols();
-  std::vector<CuSubMatrix<BaseFloat> *> in_value_batch,
-      out_deriv_batch, linear_params_deriv_batch;
+  KALDI_ASSERT(out_deriv.NumCols() == out_deriv.Stride() &&
+               in_value.NumCols() == in_value.Stride() &&
+               in_value.NumRows() == out_deriv.NumRows());
 
-  // params_deriv_repeated as as linear_params_deriv_repeated below,
-  // but with an extra column which will come in useful when dealing with
-  // the biases.
-  CuMatrix<BaseFloat> params_deriv_repeated(
-      block_rows * num_repeats_, block_cols + 1);
-  CuSubMatrix<BaseFloat> linear_params_deriv_repeated(
-      params_deriv_repeated, 0, params_deriv_repeated.NumRows(),
-      0, block_cols);
-  // params_deriv will becomes the derivative w.r.t the parameters,
-  // with the derivative w.r.t. the bias as the last column.
-  CuSubMatrix<BaseFloat> params_deriv(params_deriv_repeated, 0, block_rows,
-                                      0, block_cols + 1);
+  int32 num_repeats = num_repeats_,
+      num_rows = in_value.NumRows(),
+      block_dim_out = linear_params_.NumRows(),
+      block_dim_in = linear_params_.NumCols();
 
-  for (int i = 0; i < num_repeats_; i++) {
-    in_value_batch.push_back(new CuSubMatrix<BaseFloat>(in_value.ColRange(
-        i * block_cols, block_cols)));
-    out_deriv_batch.push_back(new CuSubMatrix<BaseFloat>(out_deriv.ColRange(
-        i * block_rows, block_rows)));
-    linear_params_deriv_batch.push_back(
-        new CuSubMatrix<BaseFloat>(linear_params_deriv_repeated.RowRange(
-            i * block_rows, block_rows)));
-  }
-  AddMatMatBatched<BaseFloat>(1.0,
-                              linear_params_deriv_batch,
-                              out_deriv_batch, kTrans,
-                              in_value_batch, kNoTrans, 0.0);
+  CuSubMatrix<BaseFloat> in_value_reshaped(in_value.Data(),
+                                           num_rows * num_repeats,
+                                           block_dim_in, block_dim_in),
+        out_deriv_reshaped(out_deriv.Data(),
+                           num_rows * num_repeats,
+                           block_dim_out, block_dim_out);
 
-  { // sum up the repeated blocks of pieces of derivative (from
-    // linear_params_deriv_repeated) into the first block
-    // of linear_params_deriv_repeated.  We do this without
-    // the use of loops by means of a little fakery, viewing
-    // linear_params_deriv_repeated as a matrix with a larger stride than it
-    // really has to sum up its rows.  This may generate some spurious
-    // valgrind/memcheck warnings due to accessing the memory in between rows
-    // of a matrix that has been allocated using cudaMallocPitch.
-    // view linear_params_deriv_repeated as a matrix where each row
-    // corresponds to one repeat.
+  CuVector<BaseFloat> bias_deriv(block_dim_out);
+  bias_deriv.AddRowSumMat(1.0, out_deriv_reshaped);
 
-    // usage of linear_params_deriv_repeated.Stride() instead of
-    // linear_params_.Stride() is important here. CUDA does not guarantee
-    // that two matrices of the same number of columns
-    // (linear_params_deriv_repeated and linear_params_) have the same stride.
-    // i.e., we cannot reliably do:
-    // KALDI_ASSERT(linear_params_.Stride() == linear_params_deriv_repeated.Stride())
-    int32 size_as_vector =
-        (linear_params_.NumRows() - 1) * linear_params_deriv_repeated.Stride() +
-        linear_params_.NumCols(),
-        stride_as_matrix = linear_params_.NumRows() * linear_params_deriv_repeated.Stride();
-    CuSubMatrix<BaseFloat> linear_params_deriv_repeated_as_mat(
-        linear_params_deriv_repeated.Data(), num_repeats_,
-        size_as_vector, stride_as_matrix);
-    // add all remaining rows to the first row of
-    // linear_params_deriv_repeated_as_mat [i.e. add all but the 1st block to the 1st block]
-    if (num_repeats_ > 1)
-      linear_params_deriv_repeated_as_mat.Row(0).AddRowSumMat(
-          1.0, linear_params_deriv_repeated_as_mat.RowRange(1,
-                                                            num_repeats_ - 1));
-  }
-
-  CuVector<BaseFloat> repeated_bias_deriv(
-      num_repeats_ * bias_params_.Dim());
-  { // deal with the derivative w.r.t. the bias.
-    repeated_bias_deriv.AddRowSumMat(1.0, out_deriv, 0.0);
-    CuSubMatrix<BaseFloat> bias_deriv_mat(repeated_bias_deriv.Data(),
-                                          num_repeats_, bias_params_.Dim(), // num rows, num cols
-                                          bias_params_.Dim()); // stride
-    // Add all but the first row of bias_deriv_mat, to the first row.
-    if (num_repeats_ > 1)
-      bias_deriv_mat.Row(0).AddRowSumMat(
-          1.0, bias_deriv_mat.RowRange(1, num_repeats_ - 1));
-
-    // copy the summed bias-derivative to the last column of the matrix
-    // 'params_deriv'.
-    params_deriv.CopyColFromVec(bias_deriv_mat.Row(0), block_cols);
-  }
+  CuMatrix<BaseFloat> deriv(block_dim_out,
+                            block_dim_in + 1);
+  deriv.ColRange(0, block_dim_in).AddMatMat(
+      1.0, out_deriv_reshaped, kTrans,
+      in_value_reshaped, kNoTrans, 1.0);
+  deriv.CopyColFromVec(bias_deriv, block_dim_in);
 
   BaseFloat scale = 1.0;
   if (!is_gradient_) {
-    // Only apply the preconditioning/natural-gradient if we're not computing
-    // the exact gradient.
-    preconditioner_in_.PreconditionDirections(&params_deriv, NULL, &scale);
+    try {
+      // Only apply the preconditioning/natural-gradient if we're not computing
+      // the exact gradient.
+      preconditioner_in_.PreconditionDirections(&deriv, NULL, &scale);
+    } catch (...) {
+      int32 num_bad_rows = 0;
+      for (int32 i = 0; i < out_deriv.NumRows(); i++) {
+        BaseFloat f = out_deriv.Row(i).Sum();
+        if (!(f - f == 0)) num_bad_rows++;
+      }
+      KALDI_ERR << "Preonditioning failed, in_value sum is "
+                << in_value.Sum() << ", out_deriv sum is " << out_deriv.Sum()
+                << ", out_deriv has " << num_bad_rows << " bad rows.";
+    }
   }
   linear_params_.AddMat(learning_rate_ * scale,
-                        params_deriv.ColRange(0, block_cols));
-  // there is no function to add a column of a matrix to a vector, so use a
-  // temporary vector [re-using some memory we already allocated.]
-  CuSubVector<BaseFloat> bias_direction(repeated_bias_deriv.Data(),
-                                        bias_params_.Dim());
-  bias_direction.CopyColFromMat(params_deriv, block_cols);
-  bias_params_.AddVec(learning_rate_ * scale, bias_direction);
-
-  DeletePointers(&in_value_batch);
-  DeletePointers(&out_deriv_batch);
-  DeletePointers(&linear_params_deriv_batch);
+                        deriv.ColRange(0, block_dim_in));
+  bias_deriv.CopyColFromMat(deriv, block_dim_in);
+  bias_params_.AddVec(learning_rate_ * scale, bias_deriv);
 }
 
 BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
@@ -2020,6 +2092,166 @@ void PerElementOffsetComponent::UnVectorize(
   offsets_.CopyFromVec(params);
 }
 
+std::string ConstantFunctionComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", input-dim=" << InputDim()
+         << ", output-dim=" << OutputDim()
+         << ", is-updatable=" << std::boolalpha << is_updatable_
+         << ", use-natural-gradient=" << std::boolalpha
+         << use_natural_gradient_;
+  PrintParameterStats(stream, "output", output_, true);
+  return stream.str();
+}
+
+ConstantFunctionComponent::ConstantFunctionComponent():
+    input_dim_(-1), is_updatable_(true), use_natural_gradient_(true) { }
+
+ConstantFunctionComponent::ConstantFunctionComponent(
+    const ConstantFunctionComponent &other):
+    input_dim_(other.input_dim_), output_(other.output_),
+    is_updatable_(other.is_updatable_),
+    use_natural_gradient_(other.use_natural_gradient_),
+    preconditioner_(other.preconditioner_) { }
+
+void ConstantFunctionComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyRowsFromVec(output_);
+}
+
+void ConstantFunctionComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // we don't update in_deriv, since we set the flag
+  // kBackpropAdds, and the output doesn't depend on the
+  // input, so the input-derivative is zero.
+  if (to_update_in) {
+    ConstantFunctionComponent *to_update =
+      dynamic_cast<ConstantFunctionComponent*>(to_update_in);
+    if (to_update->is_updatable_) {
+      // only do the update if the is_updatable_ flag is set.
+      KALDI_ASSERT(to_update && to_update->is_updatable_);
+      if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
+        CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
+        BaseFloat scale = 1.0;
+        to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
+                                                          NULL, &scale);
+        to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
+                                        out_deriv_copy);
+      } else {
+        to_update->output_.AddRowSumMat(to_update->learning_rate_,
+                                        out_deriv);
+      }
+    }
+  }
+}
+
+void ConstantFunctionComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ConstantFunctionComponent>",
+                       "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<Output>");
+  output_.Read(is, binary);
+  ExpectToken(is, binary, "<IsUpdatable>");
+  ReadBasicType(is, binary, &is_updatable_);
+  ExpectToken(is, binary, "<UseNaturalGradient>");
+  ReadBasicType(is, binary, &use_natural_gradient_);
+  ExpectToken(is, binary, "</ConstantFunctionComponent>");
+}
+
+void ConstantFunctionComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ConstantFunctionComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<Output>");
+  output_.Write(os, binary);
+  WriteToken(os, binary, "<IsUpdatable>");
+  WriteBasicType(os, binary, is_updatable_);
+  WriteToken(os, binary, "<UseNaturalGradient>");
+  WriteBasicType(os, binary, use_natural_gradient_);
+  WriteToken(os, binary, "</ConstantFunctionComponent>");
+}
+
+Component* ConstantFunctionComponent::Copy() const {
+  return new ConstantFunctionComponent(*this);
+}
+
+void ConstantFunctionComponent::Scale(BaseFloat scale) {
+  if (is_updatable_)
+    output_.Scale(scale);
+}
+
+void ConstantFunctionComponent::Add(BaseFloat alpha, const Component &other_in) {
+  if (is_updatable_) {
+    const ConstantFunctionComponent *other =
+        dynamic_cast<const ConstantFunctionComponent*>(&other_in);
+    KALDI_ASSERT(other != NULL);
+    output_.AddVec(alpha, other->output_);
+  }
+}
+
+void ConstantFunctionComponent::SetZero(bool treat_as_gradient) {
+  if (treat_as_gradient) {
+    learning_rate_ = 1.0;
+    is_gradient_ = true;
+  }
+  output_.SetZero();
+}
+
+void ConstantFunctionComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp_output(output_.Dim(), kUndefined);
+  temp_output.SetRandn();
+  output_.AddVec(stddev, temp_output);
+}
+
+BaseFloat ConstantFunctionComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  KALDI_ASSERT(is_updatable_);
+  const ConstantFunctionComponent *other =
+      dynamic_cast<const ConstantFunctionComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  return VecVec(output_, other->output_);
+}
+
+void ConstantFunctionComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 output_dim = 0;
+  InitLearningRatesFromConfig(cfl);
+  bool ok = cfl->GetValue("output-dim", &output_dim) &&
+      cfl->GetValue("input-dim", &input_dim_);
+  cfl->GetValue("is-updatable", &is_updatable_);
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+  BaseFloat output_mean = 0.0, output_stddev = 0.0;
+  cfl->GetValue("output-mean", &output_mean);
+  cfl->GetValue("output-stddev", &output_stddev);
+  if (!ok || cfl->HasUnusedValues() || input_dim_ <= 0 ||
+      output_dim <= 0) {
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+  }
+  Vector<BaseFloat> output(output_dim);
+  output.SetRandn();
+  output.Scale(output_stddev);
+  output.Add(output_mean);
+  output_ = output;
+}
+
+int32 ConstantFunctionComponent::NumParameters() const {
+  KALDI_ASSERT(is_updatable_);
+  return output_.Dim();
+}
+
+void ConstantFunctionComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->CopyFromVec(output_);
+}
+
+void ConstantFunctionComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  output_.CopyFromVec(params);
+}
 
 
 NaturalGradientAffineComponent::NaturalGradientAffineComponent():
@@ -3083,7 +3315,7 @@ std::string ConvolutionComponent::Info() const {
          << ", input-vectorization=" << input_vectorization_
          << ", num-filters=" << filter_params_.NumRows();
   PrintParameterStats(stream, "filter-params", filter_params_);
-  PrintParameterStats(stream, "bias-params", bias_params_, true);  
+  PrintParameterStats(stream, "bias-params", bias_params_, true);
   return stream.str();
 }
 
@@ -3626,6 +3858,18 @@ int32 MaxpoolingComponent::InputDim() const {
   return input_x_dim_ * input_y_dim_ * input_z_dim_;
 }
 
+MaxpoolingComponent::MaxpoolingComponent(
+    const MaxpoolingComponent &component):
+    input_x_dim_(component.input_x_dim_),
+    input_y_dim_(component.input_y_dim_),
+    input_z_dim_(component.input_z_dim_),
+    pool_x_size_(component.pool_x_size_),
+    pool_y_size_(component.pool_y_size_),
+    pool_z_size_(component.pool_z_size_),
+    pool_x_step_(component.pool_x_step_),
+    pool_y_step_(component.pool_y_step_),
+    pool_z_step_(component.pool_z_step_) { }
+
 // aquire output dim
 int32 MaxpoolingComponent::OutputDim() const {
   int32 num_pools_x = 1 + (input_x_dim_ - pool_x_size_) / pool_x_step_;
@@ -3696,7 +3940,7 @@ void MaxpoolingComponent::InputToInputPatches(
     for (int32 y = 0; y < pool_y_size_; y++) {
       for (int32 z = 0; z < pool_z_size_; z++) {
         // given the local node coordinate, group them from each pool
-        // to form a patch 
+        // to form a patch
         for (int32 x_pool = 0; x_pool < num_pools_x; x_pool++) {
           for (int32 y_pool = 0; y_pool < num_pools_y; y_pool++) {
             for (int32 z_pool = 0; z_pool < num_pools_z; z_pool++, index++) {
@@ -3772,7 +4016,6 @@ void MaxpoolingComponent::InderivPatchesToInderiv(
       }
     }
   }
-
   std::vector<std::vector<int32> > rearranged_column_map;
   RearrangeIndexes(reverse_column_map, &rearranged_column_map);
   for (int32 p = 0; p < rearranged_column_map.size(); p++) {
@@ -4023,16 +4266,29 @@ int32 CompositeComponent::Properties() const {
   // get the activations at intermediate layers, if these were not needed in
   // backprop, there would be no reason to use a CompositeComponent.
   int32 ans = kSimpleComponent | kBackpropNeedsInput |
-      (last_component_properties & kPropagateAdds) |
-      (last_component_properties & kBackpropNeedsOutput) |
-      (first_component_properties & kBackpropAdds) |
-      (IsUpdatable() ? kUpdatableComponent : 0);
-  // we call StoreStats() on any sub-components as part of
-  // the backprop phase.
+      (last_component_properties &
+       (kPropagateAdds|kBackpropNeedsOutput|kOutputContiguous)) |
+       (first_component_properties &
+        (kBackpropAdds|kInputContiguous)) |
+       (IsUpdatable() ? kUpdatableComponent : 0);
+  // note, we don't return the kStoresStats property because that function is
+  // not implemented; instead, for efficiency, we call StoreStats() on any
+  // sub-components as part of the backprop phase.
   if (last_component_properties & kStoresStats)
     ans |= kBackpropNeedsOutput;
   return ans;
 };
+
+
+MatrixStrideType CompositeComponent::GetStrideType(int32 i) const {
+  int32 num_components = components_.size();
+  if ((components_[i]->Properties() & kOutputContiguous) ||
+      (i + 1 < num_components &&
+       (components_[i + 1]->Properties() & kInputContiguous)))
+    return kStrideEqualNumCols;
+  else
+    return kDefaultStride;
+}
 
 
 // virtual
@@ -4061,10 +4317,11 @@ void CompositeComponent::Propagate(
   std::vector<CuMatrix<BaseFloat> > intermediate_outputs(num_components - 1);
   for (int32 i = 0; i < num_components; i++) {
     if (i + 1 < num_components) {
+      MatrixResizeType resize_type =
+          ((components_[i]->Properties() & kPropagateAdds) ?
+           kSetZero : kUndefined);
       intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
-                                     kUndefined);
-      if (components_[i]->Properties() & kPropagateAdds)
-        intermediate_outputs[i].SetZero();
+                                     resize_type, GetStrideType(i));
     }
     components_[i]->Propagate(NULL, (i == 0 ? in : intermediate_outputs[i-1]),
                (i + 1 == num_components ? out : &(intermediate_outputs[i])));
@@ -4230,10 +4487,11 @@ void CompositeComponent::Backprop(const std::string &debug_info,
         !(components_[i+1]->Properties() & kBackpropNeedsInput) &&
         !(components_[i]->Properties() & kBackpropNeedsOutput))
       break;
+    MatrixResizeType resize_type =
+        ((components_[i]->Properties() & kPropagateAdds) ?
+         kSetZero : kUndefined);
     intermediate_outputs[i].Resize(num_rows, components_[i]->OutputDim(),
-                                   kUndefined);
-    if (components_[i]->Properties() & kPropagateAdds)
-      intermediate_outputs[i].SetZero();
+                                   resize_type, GetStrideType(i));
     components_[i]->Propagate(NULL,
                               (i == 0 ? in_value : intermediate_outputs[i-1]),
                               &(intermediate_outputs[i]));
@@ -4254,9 +4512,11 @@ void CompositeComponent::Backprop(const std::string &debug_info,
         in_deriv == NULL)
       break;
     if (i > 0) {
-      intermediate_derivs[i-1].Resize(num_rows, components_[i]->InputDim());
-      if (components_[i]->Properties() & kPropagateAdds)
-        intermediate_derivs[i-1].SetZero();
+      MatrixResizeType resize_type =
+          ((components_[i]->Properties() & kBackpropAdds) ?
+           kSetZero : kUndefined);
+      intermediate_derivs[i-1].Resize(num_rows, components_[i]->InputDim(),
+                                      resize_type, GetStrideType(i - 1));
     }
     components_[i]->Backprop(debug_info, NULL,
                              (i == 0 ? in_value : intermediate_outputs[i-1]),

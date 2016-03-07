@@ -183,13 +183,13 @@ def ParseModelConfigVarsFile(var_file):
         for line in var_file_handle:
             parts = line.split('=')
             field_name = parts[0].strip()
-            field_value = int(parts[1])
+            field_value = parts[1]
             if field_name in ['model_left_context', 'left_context']:
-                model_left_context = field_value
+                model_left_context = int(field_value)
             elif field_name in ['model_right_context', 'right_context']:
-                model_right_context = field_value
+                model_right_context = int(field_value)
             elif field_name == 'num_hidden_layers':
-                num_hidden_layers = field_value
+                num_hidden_layers = int(field_value)
 
         if model_left_context is not None and model_right_context is not None and num_hidden_layers is not None:
             return [model_left_context, model_right_context, num_hidden_layers]

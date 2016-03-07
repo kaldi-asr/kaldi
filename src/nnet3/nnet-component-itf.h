@@ -2,6 +2,7 @@
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
 //                2015  Guoguo Chen
+//                2015  Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -65,19 +66,24 @@ enum ComponentProperties {
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
   kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
-                           // setting, the "in_deriv" output.  The Component chooses
-                           // whether to add or set, and the calling code has to
-                           // accommodate it.
+                           // setting, the "in_deriv" output.  The Component
+                           // chooses whether to add or set, and the calling
+                           // code has to accommodate it.  Note: in the case of
+                           // in-place backprop, this flag has no effect.
   kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
                                 // forward-pass input.
   kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
   kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kStoresStats = 0x800       // true if the StoreStats operation stores
+  kStoresStats = 0x800,      // true if the StoreStats operation stores
                              // statistics e.g. on average node activations and
                              // derivatives of the nonlinearity, (as it does for
                              // Tanh, Sigmoid, ReLU and Softmax).
+  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+                              // input derivatives) to have Stride()== NumCols().
+  kOutputContiguous = 0x2000  // true if the component requires its input data (and
+                              // output derivatives) to have Stride()== NumCols().
 };
 
 
@@ -93,6 +99,13 @@ enum ComponentProperties {
 class ComponentPrecomputedIndexes {
  public:
   virtual ComponentPrecomputedIndexes *Copy() const = 0;
+  virtual void Write(std::ostream &os, bool binary) const = 0;
+  virtual void Read(std::istream &os, bool binary) = 0;
+  virtual std::string Type() const = 0;
+  static ComponentPrecomputedIndexes* ReadNew(std::istream &is, bool binary);
+  // cpi stands for component_precomputed_indexes
+  static ComponentPrecomputedIndexes* NewComponentPrecomputedIndexesOfType(
+                                           const std::string &cpi_type);
   virtual ~ComponentPrecomputedIndexes() { }
 };
 
@@ -135,6 +148,8 @@ class Component {
   ///   \param [in] out_deriv  The derivative at the output of this component.
   ///   \param [out] to_update  If model update is desired, the Component
   ///       to be updated, else NULL.  Does not have to be identical to this.
+  ///       If supplied, you can assume that
+  ///       to_update->Properties() & kUpdatableComponent is nonzero.
   ///   \param [out] in_deriv   The derivative at the input of this component,
   ///       if needed (else NULL).   If  Properties()&kBackpropInPlace, may be
   ///       the same matrix as out_deriv.  If Properties()&kBackpropAdds, this
@@ -316,7 +331,7 @@ class Component {
   /// This virtual function when called by
   //    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a NonLinear component it relates to scaling activation stats, not parameters.
+  //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
@@ -341,6 +356,8 @@ class Component {
  * Class UpdatableComponent is a Component which has trainable parameters; it
  * extends the interface of Component.  This is a base-class for Components with
  * parameters.  See comment by declaration of kUpdatableComponent.
+ * The functions in this interface must only be called if the component returns
+ * the kUpdatable flag.
  */
 class UpdatableComponent: public Component {
  public:
@@ -426,15 +443,32 @@ class UpdatableComponent: public Component {
 /// during training.
 class NonlinearComponent: public Component {
  public:
-  void Init(int32 dim) { dim_ = dim; count_ = 0.0; }
-  explicit NonlinearComponent(int32 dim) { Init(dim); }
-  NonlinearComponent(): dim_(0) { } // e.g. prior to Read().
+
+  NonlinearComponent();
   explicit NonlinearComponent(const NonlinearComponent &other);
 
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
-  /// We implement InitFromConfig at this level.
+  // We implement InitFromConfig at this level.
+  // supported config parameters and their defaults:
+  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000
+  //     self-repair-constant=0.0
+  // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
+  // quantities to the derivative to attempt to keep the average value (for
+  // bounded nonlinearities) or average derivative (for ReLU) for each
+  // dimension within a given range.  The default ranges (if you don't
+  // specify self-repair-lower-threshold or self-repair-upper-threshold) are
+  // dependent on the nonlinearity and are set in their Backprop functions.
+  // To activate this code you have to set self-repair-constant to a number >0 like
+  // 0.0001 when initializing the ReLU (this is a scaling factor on the 'fake
+  // derivative').  This code is only activated if derivative and value stats
+  // are present in the model, which will typically only be the case
+  // if the 'store-stats' code is activated
+  // (e.g. --optimization.store-stats=true) because it needs the stats.  To be
+  // activated this code also requires that is_gradient_ is false (i.e. you're
+  // not computing exact gradients).
+
   virtual void InitFromConfig(ConfigLine *cfl);
 
   /// We implement Read at this level as it just needs the Type().
@@ -458,7 +492,8 @@ class NonlinearComponent: public Component {
   double Count() const { return count_; }
 
  protected:
-  friend class NormalizationComponent;
+  enum { kUnsetThreshold = -1000 };
+
   friend class SigmoidComponent;
   friend class TanhComponent;
   friend class SoftmaxComponent;
@@ -479,6 +514,13 @@ class NonlinearComponent: public Component {
                                // (only applicable to element-by-element
                                // nonlinearities, not Softmax.
   double count_;
+
+
+  // some configuration values relating to self-repairing nonlinearities.
+  BaseFloat self_repair_lower_threshold_;
+  BaseFloat self_repair_upper_threshold_;
+  BaseFloat self_repair_scale_;
+
   // The mutex is used in UpdateStats, only for resizing vectors.
   Mutex mutex_;
 };

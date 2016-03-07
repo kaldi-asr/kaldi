@@ -163,6 +163,49 @@ void GenerateConfigSequenceSimple(
 }
 
 
+void GenerateConfigSequenceStatistics(
+    const NnetGenerationOptions &opts,
+    std::vector<std::string> *configs) {
+  int32 input_dim = RandInt(10, 30),
+      input_period = RandInt(1, 3),
+      stats_period = input_period * RandInt(1, 3),
+      left_context = stats_period * RandInt(1, 10),
+      right_context = stats_period * RandInt(1, 10),
+      log_count_features = RandInt(0, 3);
+  BaseFloat variance_floor = RandInt(1, 10) * 1.0e-10;
+  bool output_stddevs = (RandInt(0, 1) == 0);
+
+  int32 raw_stats_dim = 1 + input_dim + (output_stddevs ? input_dim : 0),
+      pooled_stats_dim = log_count_features + input_dim +
+        (output_stddevs ? input_dim : 0);
+  std::ostringstream os;
+  os << "input-node name=input dim=" << input_dim << std::endl;
+  os << "component name=statistics-extraction type=StatisticsExtractionComponent "
+     << "input-dim=" << input_dim << " input-period=" << input_period
+     << " output-period=" << stats_period << " include-variance="
+     << std::boolalpha << output_stddevs << "\n";
+
+  os << "component name=statistics-pooling type=StatisticsPoolingComponent "
+     << "input-dim=" << raw_stats_dim << " input-period=" << stats_period
+     << " left-context=" << left_context << " right-context=" << right_context
+     << " num-log-count-features=" << log_count_features << " output-stddevs="
+     << std::boolalpha << output_stddevs << " variance-floor="
+     << variance_floor << "\n";
+
+  os << "component name=affine type=AffineComponent "
+     << "input-dim=" << input_dim << " output-dim=" << pooled_stats_dim
+     << "\n";
+
+  os << "component-node name=statistics-extraction component=statistics-extraction "
+     << "input=input\n";
+  os << "component-node name=statistics-pooling component=statistics-pooling "
+     << "input=statistics-extraction\n";
+  os << "component-node name=affine component=affine input=input\n";
+  os << "output-node name=output input=Sum(affine, Round(statistics-pooling, "
+     << stats_period << "))\n";
+  configs->push_back(os.str());
+}
+
 // This generates a single config corresponding to an RNN.
 void GenerateConfigSequenceRnn(
     const NnetGenerationOptions &opts,
@@ -726,7 +769,7 @@ void GenerateConfigSequenceCompositeBlock(const NnetGenerationOptions &opts,
   }
   int32 max_rows_process = 512 + 512 * RandInt(1,3);
   std::ostringstream os;
-  os << "component name=composite1 type=CompositeComponent max-rows-process=" 
+  os << "component name=composite1 type=CompositeComponent max-rows-process="
      << max_rows_process << " num-components=" << num_components;
 
   int32 types_length = 3;
@@ -759,7 +802,7 @@ void GenerateConfigSequence(
     const NnetGenerationOptions &opts,
     std::vector<std::string> *configs) {
 start:
-  int32 network_type = RandInt(0, 8);
+  int32 network_type = RandInt(0, 10);
   switch(network_type) {
     case 0:
       GenerateConfigSequenceSimplest(opts, configs);
@@ -806,9 +849,16 @@ start:
     case 8:
       GenerateConfigSequenceDistribute(opts, configs);
       break;
+    case 9:
+      GenerateConfigSequenceCompositeBlock(opts, configs);
+      break;
+    case 10:
+      GenerateConfigSequenceStatistics(opts, configs);
+      break;
     default:
       KALDI_ERR << "Error generating config sequence.";
   }
+  KALDI_ASSERT(!configs->empty());
 }
 
 void ComputeExampleComputationRequestSimple(
@@ -828,6 +878,11 @@ void ComputeExampleComputationRequestSimple(
       input_end_frame = output_end_frame + right_context + (Rand() % 3),
       n_offset = Rand() % 2;
   bool need_deriv = (Rand() % 2 == 0);
+  // make sure there are at least 3 frames of input available.  this makes a
+  // difference for our tests of statistics-pooling and statistics-extraction
+  // component.
+  if (input_end_frame < input_start_frame + 3)
+    input_end_frame = input_start_frame + 3;
 
   request->inputs.clear();
   request->outputs.clear();
@@ -870,7 +925,8 @@ void ComputeExampleComputationRequestSimple(
 
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
-  int32 n = RandInt(0, 26);
+
+  int32 n = RandInt(0, 27);
   BaseFloat learning_rate = 0.001 * RandInt(1, 3);
 
   std::ostringstream os;
@@ -886,7 +942,9 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       BaseFloat target_rms = (RandInt(1, 200) / 100.0);
       std::string add_log_stddev = (Rand() % 2 == 0 ? "True" : "False");
       *component_type = "NormalizeComponent";
-      os << "dim=" << RandInt(1, 50)
+      // avoid dim=1 because the derivatives would be zero, which
+      // makes them hard to test.
+      os << "dim=" << RandInt(2, 50)
          << " target-rms=" << target_rms
          << " add-log-stddev=" << add_log_stddev;
       break;
@@ -1134,6 +1192,17 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " pool-x-step=" << pool_x_step
          << " pool-y-step=" << pool_y_step
          << " pool-z-step=" << pool_z_step;
+      break;
+    }
+    case 27: {
+      *component_type = "ConstantFunctionComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      bool is_updatable = (RandInt(0, 1) == 0),
+          use_natural_gradient =  (RandInt(0, 1) == 0);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate
+         << " is-updatable=" << std::boolalpha << is_updatable
+         << " use-natural-gradient=" << std::boolalpha << use_natural_gradient;
       break;
     }
     default:

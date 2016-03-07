@@ -54,8 +54,13 @@ inline CuSubMatrix<Real>::CuSubMatrix(const Real *data,
   // in general if you use SubMatrix or CuSubMatrix, const-correctness is not
   // preserved (preserving it would require us duplicating the class and it
   // would have been a hassle).
+
+  // Note: we used to check that stride >= num_cols.  We no longer check for
+  // this as there are some situations where having stride < num_cols is useful,
+  // but beware because most if not all CUBLAS calls will crash when given
+  // such an input, even in a situation where it makes sense.
   KALDI_ASSERT((num_rows != 0) == (num_cols != 0) && stride >= 0 &&
-               num_rows >= 0 && num_cols >= 0 && num_cols <= stride);
+               num_rows >= 0 && num_cols >= 0 && stride >= 0);
 }
 
 
