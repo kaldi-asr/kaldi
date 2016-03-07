@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true,
         raw = false;
     BaseFloat learning_rate = -1;
+    BaseFloat learning_rate_scale = 1;
     std::string set_raw_nnet = "";
     bool convert_repeated_to_block = false;
     BaseFloat scale = 1.0;
@@ -66,6 +67,9 @@ int main(int argc, char *argv[]) {
     po.Register("learning-rate", &learning_rate,
                 "If supplied, all the learning rates of updatable components"
                 " are set to this value.");
+    po.Register("learning-rate-scale", &learning_rate_scale,
+                "Scales the learning rate of updatable components by this "
+                "factor");
     po.Register("scale", &scale, "The parameter matrices are scaled"
                 " by the specified value.");
 
@@ -100,6 +104,11 @@ int main(int argc, char *argv[]) {
 
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &(am_nnet.GetNnet()));
+    
+    KALDI_ASSERT(learning_rate_scale >= 0.0);
+
+    if (learning_rate_scale != 1.0)
+      ScaleLearningRate(learning_rate_scale, &(am_nnet.GetNnet()));
 
     if (scale != 1.0)
       ScaleNnet(scale, &(am_nnet.GetNnet()));

@@ -63,6 +63,23 @@ void GetComputationRequest(const Nnet &nnet,
                            ComputationRequest *computation_request);
 
 
+// Writes as unsigned char a vector 'vec' that is required to have
+// values between 0 and 1.
+void WriteVectorAsChar(std::ostream &os,
+                       bool binary,
+                       const VectorBase<BaseFloat> &vec);
+
+// Reads data written by WriteVectorAsChar.
+void ReadVectorAsChar(std::istream &is,
+                             bool binary,
+                             Vector<BaseFloat> *vec);
+
+// This function rounds up the quantities 'num_frames' and 'num_frames_overlap'
+// to the nearest multiple of the frame_subsampling_factor
+void RoundUpNumFrames(int32 frame_subsampling_factor,
+                      int32 *num_frames,
+                      int32 *num_frames_overlap);
+
 
 } // namespace nnet3
 } // namespace kaldi

@@ -74,6 +74,18 @@ bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
                                 vector<double> *beta);
 
+
+// Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
+// best-path negated cost) Note: in either case, the alphas and betas are
+// negated costs.  Requires that lat be topologically sorted.  This code
+// will work for either CompactLattice or Latice.
+template<typename LatticeType>
+double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
+                                    bool viterbi,
+                                    vector<double> *alpha,
+                                    vector<double> *beta);
+
+
 /// Topologically sort the compact lattice if not already topologically sorted.
 /// Will crash if the lattice cannot be topologically sorted.
 void TopSortCompactLatticeIfNeeded(CompactLattice *clat);
