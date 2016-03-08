@@ -63,9 +63,9 @@ def AddFixedAffineLayer(config_lines, name, input, matrix_file):
     component_nodes = config_lines['component-nodes']
 
     components.append('component name={0}_fixaffine type=FixedAffineComponent matrix={1}'.format(name, matrix_file))
-    component_nodes.append('component-node name={0} component={0}_fixaffine input={1}'.format(name, input['descriptor']))
+    component_nodes.append('component-node name={0}_fixaffine component={0}_fixaffine input={1}'.format(name, input['descriptor']))
 
-    return {'descriptor':  '{0}'.format(name),
+    return {'descriptor':  '{0}_fixaffine'.format(name),
             'dimension': input['dimension']}
 
 
@@ -153,15 +153,11 @@ def AddConvolutionLayer(config_lines, name, input,
             '3d-dim': [num_x_steps, num_y_steps, num_filters],
             'vectorization': 'zyx'}
 
-
+# The Maxpooling component assumes input vectorizations of type zyx
 def AddMaxpoolingLayer(config_lines, name, input,
                       input_x_dim, input_y_dim, input_z_dim,
                       pool_x_size, pool_y_size, pool_z_size,
                       pool_x_step, pool_y_step, pool_z_step):
-    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
-    components = config_lines['components']
-    component_nodes = config_lines['component-nodes']
-
     if input_x_dim < 1 or input_y_dim < 1 or input_z_dim < 1:
         raise Exception("non-positive maxpooling input size ({0}, {1}, {2})".
                  format(input_x_dim, input_y_dim, input_z_dim))
@@ -169,6 +165,10 @@ def AddMaxpoolingLayer(config_lines, name, input,
         raise Exception("invalid maxpooling pool size vs. input size")
     if pool_x_step > pool_x_size or pool_y_step > pool_y_size or pool_z_step > pool_z_size:
         raise Exception("invalid maxpooling pool step vs. pool size")
+    
+    assert(input['dimension'] == input_x_dim * input_y_dim * input_z_dim)
+    components = config_lines['components']
+    component_nodes = config_lines['component-nodes']
 
     components.append('component name={name}_maxp type=MaxpoolingComponent '
                       'input-x-dim={input_x_dim} input-y-dim={input_y_dim} input-z-dim={input_z_dim} '

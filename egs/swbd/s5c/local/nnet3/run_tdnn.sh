@@ -55,7 +55,7 @@ if [ "$use_cnn" == "true" ]; then
 # and were converted to FBANK features with an inverse of DCT matrix
 # at the first layer of the network.
 
-  cnn_layer="--filt-x-dim=3 --filt-y-dim=8 --filt-x-step=1 --filt-y-step=1 --num-filters=1024 --pool-x-size=1 --pool-y-size=3 --pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1"
+  cnn_layer="--filt-x-dim=3 --filt-y-dim=8 --filt-x-step=1 --filt-y-step=1 --num-filters=256 --pool-x-size=1 --pool-y-size=3 --pool-z-size=1 --pool-x-step=1 --pool-y-step=3 --pool-z-step=1"
   cnn_opts+=(--cnn.layer "$cnn_layer")
   cnn_bottleneck_dim=256  # remove this option if you don't want to add the bottleneck affine
   cepstral_lifter=  # have to fill this in if you are not using the default lifter value in the production of MFCC

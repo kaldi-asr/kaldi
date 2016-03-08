@@ -10,8 +10,6 @@ import warnings
 import copy
 import imp
 import ast
-import scipy.signal as signal
-import numpy as np
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
@@ -57,16 +55,21 @@ def GetArgs():
                         "for dimension reduction, e.g. 256."
                         "The default zero means this layer is not needed.", default=0)
     parser.add_argument("--cnn.cepstral-lifter", type=float, dest = "cepstral_lifter",
-                        help="Here we need the scaling factor on cepstra in the production of MFCC"
-                        "to cancel out the effect of lifter, e.g. 22.0", default=22.0)
+                        help="The factor used for determining the liftering vector in the production of MFCC. "
+                        "User has to ensure that it matches the lifter used in MFCC generation, "
+                        "e.g. 22.0", default=22.0)
 
     # General neural network options
     parser.add_argument("--splice-indexes", type=str, required = True,
                         help="Splice indexes at each layer, e.g. '-3,-2,-1,0,1,2,3' "
-                        "If CNN layers are used, the first frame indices is actually how we "
-                        "splice the frames and pass to the CNN.")
+                        "If CNN layers are used the first set of splice indexes will be used as input "
+                        "to the first CNN layer and later splice indexes will be interpreted as indexes "
+                        "for the TDNNs.")
     parser.add_argument("--add-lda", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="add lda layer (this option will be ignored when CNN layers are used", 
+                        help="If \"true\" an LDA matrix computed from the input features "
+                        "(spliced according to the first set of splice-indexes) will be used as "
+                        "the first Affine layer. This affine layer's parameters are fixed during training. "
+                        "If --cnn.layer is specified this option will be forced to \"false\".", 
                         default=True, choices = ["false", "true"])
 
     parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
@@ -176,6 +179,7 @@ def CheckArgs(args):
 
     if args.add_lda and args.cnn_layer is not None:
         args.add_lda = False
+        warnings.warn("--add-lda is set to false as CNN layers are used.")
 
     return args
 
@@ -281,6 +285,9 @@ def AddLpFilter(config_lines, name, input, rate, num_lpfilter_taps, lpfilt_filen
     return [tdnn_input_descriptor, filter_context, filter_context]
 
 def AddConvMaxpLayer(config_lines, name, input, args):
+    if input['3d-dim'] is None:
+        raise Exception("The input to AddConvMaxpLayer() needs '3d-dim' parameters.")
+
     input = nodes.AddConvolutionLayer(config_lines, name, input,
                               input['3d-dim'][0], input['3d-dim'][1], input['3d-dim'][2],
                               args.filt_x_dim, args.filt_y_dim,
@@ -295,16 +302,18 @@ def AddConvMaxpLayer(config_lines, name, input, args):
 
     return input
 
+# The ivectors are processed through an affine layer parallel to the CNN layers,
+# then concatenated with the CNN output and passed to the deeper part of the network.
 def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
     # We use an Idct layer here to convert MFCC to FBANK features
-    nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir + "/idct.mat")
+    nnet3_train_lib.WriteIdctMatrix(feat_dim, cepstral_lifter, config_dir.strip() + "/idct.mat")
     prev_layer_output = {'descriptor':  "input",
                          'dimension': feat_dim}
-    prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "idct", prev_layer_output, config_dir + '/idct.mat')
+    prev_layer_output = nodes.AddFixedAffineLayer(config_lines, "Idct", prev_layer_output, config_dir.strip() + '/idct.mat')
 
-    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n) if n != 0 else 'idct') for n in splice_indexes]
+    list = [('Offset({0}, {1})'.format(prev_layer_output['descriptor'],n) if n != 0 else prev_layer_output['descriptor']) for n in splice_indexes]
     splice_descriptor = "Append({0})".format(", ".join(list))
     cnn_input_dim = len(splice_indexes) * feat_dim
     prev_layer_output = {'descriptor':  splice_descriptor,
@@ -341,7 +350,7 @@ def ParseCnnString(cnn_param_string_list):
     cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
     cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
     cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
-    cnn_parser.add_argument("--num-filters", type=int, default = 256)
+    cnn_parser.add_argument("--num-filters", required=True, type=int)
     cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-z-size", type=int, default = 1)
@@ -389,8 +398,7 @@ def ParseSpliceString(splice_indexes):
             'num_hidden_layers':len(splice_array)
             }
 
-# The function signature of MakeConfigs is changed just for local use in this script. 
-# This function should not be imported into other modules.
+# The function signature of MakeConfigs is changed frequently as it is intended for local use in this script.
 def MakeConfigs(config_dir, splice_indexes_string,
                 cnn_layer, cnn_bottleneck_dim, cepstral_lifter,
                 feat_dim, ivector_dim, num_targets, add_lda,
