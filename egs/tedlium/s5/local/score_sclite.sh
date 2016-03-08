@@ -68,8 +68,10 @@ fi
 if [ $stage -le 1 ]; then
   # Remove some stuff we don't want to score, from the ctm.
   for x in $dir/score_*/ctm; do
-    cat $x | grep -v -E '"\[BREATH|NOISE|COUGH|SMACK|UM|UH\]"' | \
-      grep -v -E '"!SIL|\<UNK\>"' > ${x}.filt || exit 1;
+    # `-i` is not needed in the following. It is added for robustness in ase this code is copy-pasted
+    # into another script that, e.g., uses <UNK> instead of <unk>
+    cat $x | grep -v -w -i -E '\[BREATH|NOISE|COUGH|SMACK|UM|UH\]' | \
+      grep -v -w -i -E '!SIL|<unk>' > ${x}.filt || exit 1;
   done
 fi
 
