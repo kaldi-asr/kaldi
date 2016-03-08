@@ -10,8 +10,6 @@ import warnings
 import copy
 import imp
 import ast
-import scipy.signal as signal
-import numpy as np
 
 nodes = imp.load_source('', 'steps/nnet3/components.py')
 nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
@@ -176,6 +174,7 @@ def CheckArgs(args):
 
     if args.add_lda and args.cnn_layer is not None:
         args.add_lda = False
+        print("--add-lda is set to false as CNN layers are used.")
 
     return args
 
@@ -295,6 +294,8 @@ def AddConvMaxpLayer(config_lines, name, input, args):
 
     return input
 
+# The ivectors are processed through an affine layer parallel to the CNN layers,
+# then concatenated with the CNN output and passed to the deeper part of the network.
 def AddCnnLayers(config_lines, cnn_layer, cnn_bottleneck_dim, cepstral_lifter, config_dir, feat_dim, splice_indexes=[0], ivector_dim=0):
     cnn_args = ParseCnnString(cnn_layer)
     num_cnn_layers = len(cnn_args)
@@ -341,7 +342,7 @@ def ParseCnnString(cnn_param_string_list):
     cnn_parser.add_argument("--filt-y-dim", required=True, type=int)
     cnn_parser.add_argument("--filt-x-step", type=int, default = 1)
     cnn_parser.add_argument("--filt-y-step", type=int, default = 1)
-    cnn_parser.add_argument("--num-filters", type=int, default = 256)
+    cnn_parser.add_argument("--num-filters", required=True, type=int)
     cnn_parser.add_argument("--pool-x-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-y-size", type=int, default = 1)
     cnn_parser.add_argument("--pool-z-size", type=int, default = 1)
