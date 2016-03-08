@@ -656,3 +656,38 @@ def RemoveModel(nnet_dir, iter, num_iters, num_iters_combine = None,
     if os.path.isfile(file_name):
         os.remove(file_name)
 
+def ComputeLifterCoeffs(lifter, dim):
+    coeffs = [0] * dim
+    for i in range(0, dim):
+        coeffs[i] = 1.0 + 0.5 * lifter * math.sin(math.pi * i / float(lifter));
+
+    return coeffs
+
+def ComputeIdctMatrix(K, N, cepstral_lifter=0):
+    matrix = [[0] * K for i in range(N)]
+    # normalizer for X_0
+    normalizer = math.sqrt(1.0 / float(N));
+    for j in range(0, N):
+        matrix[j][0] = normalizer;
+    # normalizer for other elements
+    normalizer = math.sqrt(2.0 / float(N));
+    for k in range(1, K):
+      for n in range(0, N):
+        matrix[n][k] = normalizer * math.cos(math.pi / float(N) * (n + 0.5) * k);
+
+    if cepstral_lifter != 0:
+        lifter_coeffs = ComputeLifterCoeffs(cepstral_lifter, K)
+        for k in range(0, K):
+          for n in range(0, N):
+            matrix[n][k] = matrix[n][k] / lifter_coeffs[k];
+
+    return matrix
+
+def WriteIdctMatrix(feat_dim, cepstral_lifter, file_path):
+    # generate the IDCT matrix and write to the file
+    idct_matrix = ComputeIdctMatrix(feat_dim, feat_dim, cepstral_lifter)
+    # append a zero column to the matrix, this is the bias of the fixed affine component
+    for k in range(0, feat_dim):
+        idct_matrix[k].append(0)
+    WriteKaldiMatrix(file_path, idct_matrix)
+
