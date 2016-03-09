@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     std::string use_gpu = "yes";
-    NnetDiscriminativeTrainingOptions opts;
+    NnetDiscriminativeOptions opts;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");

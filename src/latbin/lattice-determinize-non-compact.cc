@@ -29,18 +29,6 @@
 #include "lat/push-lattice.h"
 #include "lat/minimize-lattice.h"
 
-#ifdef _MSC_VER
-#include <unordered_map>
-using std::unordered_map;
-#elif __cplusplus > 199711L || defined(__GXX_EXPERIMENTAL_CXX0X__)
-#include <unordered_map>
-using std::unordered_map;
-#else
-#include <tr1/unordered_map>
-using std::tr1::unordered_map;
-#endif
-
-
 namespace kaldi {
 
 typedef Lattice::StateId StateId;

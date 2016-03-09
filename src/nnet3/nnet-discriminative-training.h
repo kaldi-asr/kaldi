@@ -32,22 +32,20 @@
 namespace kaldi {
 namespace nnet3 {
 
-struct NnetDiscriminativeTrainingOptions {
+struct NnetDiscriminativeOptions {
   NnetTrainerOptions nnet_config;
-  discriminative::DiscriminativeTrainingOptions discriminative_training_config;
-  discriminative::DiscriminativeTrainingStatsOptions discriminative_training_stats_config;
+  discriminative::DiscriminativeOptions discriminative_config;
 
   bool apply_deriv_weights;
 
-  NnetDiscriminativeTrainingOptions(): apply_deriv_weights(true) { }
+  NnetDiscriminativeOptions(): apply_deriv_weights(true) { }
 
   void Register(OptionsItf *opts) {
     nnet_config.Register(opts);
-    discriminative_training_config.Register(opts);
-    discriminative_training_stats_config.Register(opts);
+    discriminative_config.Register(opts);
     opts->Register("apply-deriv-weights", &apply_deriv_weights,
                    "If true, apply the per-frame derivative weights stored with "
-                   "the example (you'll normally want to leave this as true.");
+                   "the example.");
   }
 };
 
@@ -57,15 +55,11 @@ struct NnetDiscriminativeTrainingOptions {
 struct DiscriminativeObjectiveFunctionInfo {
   int32 current_phase;
 
-  double tot_aux_objf;
-  discriminative::DiscriminativeTrainingStats stats;
-  
-  double tot_aux_objf_this_phase;
-  discriminative::DiscriminativeTrainingStats stats_this_phase;
+  discriminative::DiscriminativeObjectiveInfo stats;
+  discriminative::DiscriminativeObjectiveInfo stats_this_phase;
 
   DiscriminativeObjectiveFunctionInfo():
-      current_phase(0), tot_aux_objf(0.0),
-      tot_aux_objf_this_phase(0.0) { }
+      current_phase(0) { }
 
   // This function updates the stats and, if the phase has just changed,
   // prints a message indicating progress.  The phase equals
@@ -75,16 +69,7 @@ struct DiscriminativeObjectiveFunctionInfo {
                    const std::string &criterion,
                    int32 minibatches_per_phase,
                    int32 minibatch_counter,
-                   BaseFloat this_minibatch_weight,
-                   BaseFloat this_minibatch_tot_objf,
-                   BaseFloat this_minibatch_tot_aux_objf = 0.0);
-  
-  void UpdateStats(const std::string &output_name,
-                   const std::string &criterion,
-                   int32 minibatches_per_phase,
-                   int32 minibatch_counter,
-                   discriminative::DiscriminativeTrainingStats stats,
-                   BaseFloat this_minibatch_tot_aux_objf = 0.0);
+                   discriminative::DiscriminativeObjectiveInfo stats);
 
   // Prints stats for the current phase.
   void PrintStatsForThisPhase(const std::string &output_name,
@@ -101,7 +86,7 @@ struct DiscriminativeObjectiveFunctionInfo {
 */
 class NnetDiscriminativeTrainer {
  public:
-  NnetDiscriminativeTrainer(const NnetDiscriminativeTrainingOptions &config,
+  NnetDiscriminativeTrainer(const NnetDiscriminativeOptions &config,
                             const TransitionModel &tmodel,
                             const VectorBase<BaseFloat> &priors,
                             Nnet *nnet);
@@ -117,7 +102,7 @@ class NnetDiscriminativeTrainer {
   void ProcessOutputs(const NnetDiscriminativeExample &eg,
                       NnetComputer *computer);
 
-  const NnetDiscriminativeTrainingOptions opts_;
+  const NnetDiscriminativeOptions opts_;
 
   const TransitionModel &tmodel_;
   CuVector<BaseFloat> log_priors_;

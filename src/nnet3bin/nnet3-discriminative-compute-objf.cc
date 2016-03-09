@@ -45,14 +45,12 @@ int main(int argc, char *argv[]) {
     // It wouldn't be hard to make it support GPU, though.
 
     NnetComputeProbOptions nnet_opts;
-    discriminative::DiscriminativeTrainingOptions discriminative_training_opts;
-    discriminative::DiscriminativeTrainingStatsOptions discriminative_training_stats_opts;
+    discriminative::DiscriminativeOptions discriminative_opts;
 
     ParseOptions po(usage);
 
     nnet_opts.Register(&po);
-    discriminative_training_opts.Register(&po);
-    discriminative_training_stats_opts.Register(&po);
+    discriminative_opts.Register(&po);
 
     po.Read(argc, argv);
 
@@ -75,8 +73,7 @@ int main(int argc, char *argv[]) {
     }
 
     NnetDiscriminativeComputeObjf discriminative_objf_computer(nnet_opts, 
-                                              discriminative_training_opts, 
-                                              discriminative_training_stats_opts,
+                                              discriminative_opts, 
                                               tmodel, am_nnet.Priors(), 
                                               am_nnet.GetNnet());
 

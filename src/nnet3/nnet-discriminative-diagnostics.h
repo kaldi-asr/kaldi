@@ -32,20 +32,6 @@
 namespace kaldi {
 namespace nnet3 {
 
-struct DiscriminativeObjectiveInfo {
-  double tot_l2_term;   // l2 regularization objective
-
-  // Stats for discriminative training -- objective fuction, total weights,
-  // total posteriors, accumulated outputs, accumulated gradients per pdf etc.
-  discriminative::DiscriminativeTrainingStats stats;  
-
-  DiscriminativeObjectiveInfo() : tot_l2_term(0.0) { }
-  
-  DiscriminativeObjectiveInfo(
-      const discriminative::DiscriminativeTrainingStatsOptions &opts) :
-    tot_l2_term(0.0) { stats.SetConfig(opts); }
-};
-
 /** This class is for computing objective-function values in a nnet3 
     discriminative training, for diagnostics.  It also supports computing model
     derivatives.
@@ -54,8 +40,7 @@ class NnetDiscriminativeComputeObjf {
  public:
   // does not store a reference to 'config' but does store one to 'nnet'.
   NnetDiscriminativeComputeObjf(const NnetComputeProbOptions &nnet_config,
-      const discriminative::DiscriminativeTrainingOptions &discriminative_training_config,
-      const discriminative::DiscriminativeTrainingStatsOptions &discriminative_training_stats_config,
+      const discriminative::DiscriminativeOptions &discriminative_config,
       const TransitionModel &tmodel,
       const VectorBase<BaseFloat> &priors,
       const Nnet &nnet);
@@ -71,7 +56,7 @@ class NnetDiscriminativeComputeObjf {
 
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
-  const DiscriminativeObjectiveInfo *GetObjective(
+  const discriminative::DiscriminativeObjectiveInfo *GetObjective(
       const std::string &output_name) const;
 
   // if config.compute_deriv == true, returns a reference to the
@@ -85,8 +70,7 @@ class NnetDiscriminativeComputeObjf {
 
   NnetComputeProbOptions nnet_config_;
 
-  discriminative::DiscriminativeTrainingOptions discriminative_training_config_;
-  discriminative::DiscriminativeTrainingStatsOptions discriminative_training_stats_config_;
+  discriminative::DiscriminativeOptions discriminative_config_;
   const TransitionModel &tmodel_;
   CuVector<BaseFloat> log_priors_;
   const Nnet &nnet_;
@@ -94,7 +78,7 @@ class NnetDiscriminativeComputeObjf {
   Nnet *deriv_nnet_;
   int32 num_minibatches_processed_;  // this is only for diagnostics
 
-  unordered_map<std::string, DiscriminativeObjectiveInfo, StringHasher> objf_info_;
+  unordered_map<std::string, discriminative::DiscriminativeObjectiveInfo, StringHasher> objf_info_;
 };
 
 } // namespace nnet3

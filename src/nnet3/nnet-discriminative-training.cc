@@ -25,7 +25,7 @@ namespace kaldi {
 namespace nnet3 {
 
 NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
-                                   const NnetDiscriminativeTrainingOptions &opts,
+                                   const NnetDiscriminativeOptions &opts,
                                    const TransitionModel &tmodel,
                                    const VectorBase<BaseFloat> &priors,
                                    Nnet *nnet):
@@ -53,7 +53,7 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
 void NnetDiscriminativeTrainer::Train(const NnetDiscriminativeExample &eg) {
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  bool use_xent_regularization = (opts_.discriminative_training_config.xent_regularize != 0.0);
+  bool use_xent_regularization = (opts_.discriminative_config.xent_regularize != 0.0);
   ComputationRequest request;
   GetDiscriminativeComputationRequest(*nnet_, eg, need_model_derivative,
                                       nnet_config.store_component_stats,
@@ -115,24 +115,24 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
                                           nnet_output.NumCols(),
                                           kUndefined);
     
-    bool use_xent = (opts_.discriminative_training_config.xent_regularize != 0.0);
+    bool use_xent = (opts_.discriminative_config.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> xent_deriv;
     if (use_xent)
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
 
-    discriminative::DiscriminativeTrainingStats stats(opts_.discriminative_training_stats_config);
+    discriminative::DiscriminativeObjectiveInfo stats(opts_.discriminative_config);
     
-    if (objf_info_.count(sup.name) == 0)
-      objf_info_[sup.name].stats.SetConfig(opts_.discriminative_training_stats_config);
+    if (objf_info_.count(sup.name) == 0) {
+      objf_info_[sup.name].stats.Configure(opts_.discriminative_config);
+      objf_info_[sup.name].stats.Reset();
+    }
 
-    BaseFloat tot_l2_term = 0.0;
-
-    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_training_config, 
+    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config, 
                                       tmodel_, log_priors_,
                                       sup.supervision, nnet_output,
-                                      &stats, &tot_l2_term,
+                                      &(objf_info_[sup.name].stats), 
                                       &nnet_output_deriv,
                                       (use_xent ? &xent_deriv : NULL));
     
@@ -147,10 +147,13 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
         xent_objf = default_objf;
       }
 
+      discriminative::DiscriminativeObjectiveInfo xent_stats;
+      xent_stats.tot_t_weighted = stats.tot_t_weighted;
+      xent_stats.tot_objf = xent_objf;
+
       objf_info_[xent_name].UpdateStats(xent_name, "xent",
                                         opts_.nnet_config.print_interval,
-                                        num_minibatches_processed_,
-                                        stats.TotalT(), xent_objf);
+                                        num_minibatches_processed_, xent_stats);
     }
 
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
@@ -162,13 +165,13 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
 
     computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
 
-    objf_info_[sup.name].UpdateStats(sup.name, opts_.discriminative_training_config.criterion,
+    objf_info_[sup.name].UpdateStats(sup.name, opts_.discriminative_config.criterion,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
                                      stats);
     
     if (use_xent) {
-      xent_deriv.Scale(opts_.discriminative_training_config.xent_regularize);
+      xent_deriv.Scale(opts_.discriminative_config.xent_regularize);
       computer->AcceptOutputDeriv(xent_name, &xent_deriv);
     }
   }
@@ -183,7 +186,7 @@ bool NnetDiscriminativeTrainer::PrintTotalStats() const {
   for (; iter != end; ++iter) {
     const std::string &name = iter->first;
     const DiscriminativeObjectiveFunctionInfo &info = iter->second;
-    bool ret = info.PrintTotalStats(name, opts_.discriminative_training_config.criterion);
+    bool ret = info.PrintTotalStats(name, opts_.discriminative_config.criterion);
     ans = ans || ret;
   }
 
@@ -196,46 +199,18 @@ void DiscriminativeObjectiveFunctionInfo::UpdateStats(
     const std::string &criterion,
     int32 minibatches_per_phase,
     int32 minibatch_counter,
-    BaseFloat this_minibatch_weight,
-    BaseFloat this_minibatch_tot_objf,
-    BaseFloat this_minibatch_tot_aux_objf) {
+    discriminative::DiscriminativeObjectiveInfo this_minibatch_stats) {
   int32 phase = minibatch_counter / minibatches_per_phase;
   if (phase != current_phase) {
     KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
     PrintStatsForThisPhase(output_name, criterion, minibatches_per_phase);
     current_phase = phase;
     stats_this_phase.Reset();
-    tot_aux_objf_this_phase = 0.0;
-  }
-  stats_this_phase.tot_t_weighted += this_minibatch_weight;
-  stats_this_phase.tot_objf += this_minibatch_tot_objf;
-  tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
-
-  stats.Add(stats_this_phase);
-  tot_aux_objf += this_minibatch_tot_aux_objf;
-}
-
-void DiscriminativeObjectiveFunctionInfo::UpdateStats(
-    const std::string &output_name,
-    const std::string &criterion,
-    int32 minibatches_per_phase,
-    int32 minibatch_counter,
-    discriminative::DiscriminativeTrainingStats this_minibatch_stats,
-    BaseFloat this_minibatch_tot_aux_objf) {
-  int32 phase = minibatch_counter / minibatches_per_phase;
-  if (phase != current_phase) {
-    KALDI_ASSERT(phase == current_phase + 1); // or doesn't really make sense.
-    PrintStatsForThisPhase(output_name, criterion, minibatches_per_phase);
-    current_phase = phase;
-    stats_this_phase.Reset();
-    tot_aux_objf_this_phase = 0.0;
   }
   stats_this_phase.Add(this_minibatch_stats);
-  tot_aux_objf_this_phase += this_minibatch_tot_aux_objf;
-
-  stats.Add(stats_this_phase);
-  tot_aux_objf += this_minibatch_tot_aux_objf;
+  stats.Add(this_minibatch_stats);
 }
+
 void DiscriminativeObjectiveFunctionInfo::PrintStatsForThisPhase(
     const std::string &output_name,
     const std::string &criterion,
@@ -243,39 +218,22 @@ void DiscriminativeObjectiveFunctionInfo::PrintStatsForThisPhase(
   int32 start_minibatch = current_phase * minibatches_per_phase,
       end_minibatch = start_minibatch + minibatches_per_phase - 1;
 
-  if (tot_aux_objf_this_phase == 0.0) {
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << (stats_this_phase.TotalObjf(criterion) / stats_this_phase.TotalT()) << " over "
-              << stats_this_phase.TotalT() << " frames.";
-  } else {
-    BaseFloat objf = (stats_this_phase.TotalObjf(criterion) / stats_this_phase.TotalT()),
-        aux_objf = (tot_aux_objf_this_phase / stats_this_phase.TotalT());
-    KALDI_LOG << "Average objective function for '" << output_name
-              << "' for minibatches " << start_minibatch
-              << '-' << end_minibatch << " is "
-              << objf << " + " << aux_objf << " = " 
-              << " over " << stats_this_phase.TotalT() << " frames.";
-  }
+  BaseFloat objf = (stats_this_phase.TotalObjf(criterion) / stats_this_phase.tot_t_weighted);
+  KALDI_LOG << "Average objective function for '" << output_name
+            << "' for minibatches " << start_minibatch
+            << '-' << end_minibatch << " is " << objf
+            << " over " << stats_this_phase.tot_t_weighted << " frames.";
 }
 
 bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &name,
                 const std::string &criterion) const {
-  BaseFloat objf = stats.TotalObjf(criterion) /stats.TotalT(),
-        aux_objf = (tot_aux_objf / stats.TotalT());
-  if (tot_aux_objf == 0.0) {
-    KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " over " << stats.TotalT() << " frames.";
-  } else {
-    KALDI_LOG << "Overall average objective function for '" << name << "' is "
-              << objf << " + " << aux_objf << " = " 
-              << " over " << stats.TotalT() << " frames.";
-  }
+  BaseFloat objf = stats.TotalObjf(criterion) /stats.tot_t_weighted;
+  KALDI_LOG << "Overall average objective function for '" << name << "' is "
+            << objf << " over " << stats.tot_t_weighted << " frames.";
   KALDI_LOG << "[this line is to be parsed by a script:] "
             << criterion << "-per-frame="
             << objf;
-  return (stats.TotalT() != 0.0);
+  return (stats.tot_t_weighted != 0.0);
 }
 
 

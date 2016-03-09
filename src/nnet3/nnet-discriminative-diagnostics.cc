@@ -27,14 +27,12 @@ namespace nnet3 {
 
 NnetDiscriminativeComputeObjf::NnetDiscriminativeComputeObjf(
     const NnetComputeProbOptions &nnet_config,
-    const discriminative::DiscriminativeTrainingOptions &discriminative_training_config,
-      const discriminative::DiscriminativeTrainingStatsOptions &discriminative_training_stats_config,
+    const discriminative::DiscriminativeOptions &discriminative_config,
     const TransitionModel &tmodel,
     const VectorBase<BaseFloat> &priors,
     const Nnet &nnet):
     nnet_config_(nnet_config),
-    discriminative_training_config_(discriminative_training_config),
-    discriminative_training_stats_config_(discriminative_training_stats_config),
+    discriminative_config_(discriminative_config),
     tmodel_(tmodel),
     log_priors_(priors),
     nnet_(nnet),
@@ -71,7 +69,7 @@ void NnetDiscriminativeComputeObjf::Reset() {
 void NnetDiscriminativeComputeObjf::Compute(const NnetDiscriminativeExample &eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
       store_component_stats = false;
-  bool use_xent_regularization = (discriminative_training_config_.xent_regularize != 0.0),
+  bool use_xent_regularization = (discriminative_config_.xent_regularize != 0.0),
       use_xent_derivative = false;
 
   ComputationRequest request;
@@ -107,7 +105,7 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
     
-    bool use_xent = (discriminative_training_config_.xent_regularize != 0.0);
+    bool use_xent = (discriminative_config_.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> nnet_output_deriv, xent_deriv;
 
@@ -119,38 +117,37 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
 
-    discriminative::DiscriminativeTrainingStats stats;
-    BaseFloat tot_l2_term;
+    if (objf_info_.count(sup.name) == 0)
+      objf_info_.insert(std::make_pair(sup.name, 
+          discriminative::DiscriminativeObjectiveInfo(discriminative_config_)));
 
-    discriminative::ComputeDiscriminativeObjfAndDeriv(discriminative_training_config_, 
+    discriminative::DiscriminativeObjectiveInfo *stats = &(objf_info_[sup.name]);
+
+    discriminative::ComputeDiscriminativeObjfAndDeriv(discriminative_config_, 
                                                       tmodel_, log_priors_,
                                                       sup.supervision, nnet_output,
-                                                      &stats, &tot_l2_term,
+                                                      stats,
                                                       (nnet_config_.compute_deriv ?
                                                        &nnet_output_deriv : NULL),
                                                       (use_xent ? &xent_deriv : NULL));
 
-    if (objf_info_.count(sup.name) == 0)
-      objf_info_.insert(std::make_pair(sup.name, 
-          DiscriminativeObjectiveInfo(discriminative_training_stats_config_)));
-
-    DiscriminativeObjectiveInfo &totals = objf_info_[sup.name];
-    totals.stats.Add(stats);
-    totals.tot_l2_term += tot_l2_term;
-    
     if (nnet_config_.compute_deriv)
       computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
     
     if (use_xent) {
-      DiscriminativeObjectiveInfo &xent_totals = objf_info_[xent_name];
+      if (objf_info_.count(xent_name) == 0)
+        objf_info_.insert(std::make_pair(xent_name, 
+          discriminative::DiscriminativeObjectiveInfo(discriminative_config_)));
+      discriminative::DiscriminativeObjectiveInfo &xent_stats = objf_info_[xent_name];
+
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(xent_name);
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_deriv has a factor of 'supervision.weight',
       // but so does tot_weight.
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
-      xent_totals.stats.tot_t_weighted += stats.TotalT();
-      xent_totals.stats.tot_objf += xent_objf;
+      xent_stats.tot_t_weighted += stats->tot_t_weighted;
+      xent_stats.tot_objf += xent_objf;
     }
     
     num_minibatches_processed_++;
@@ -159,7 +156,7 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
 
 bool NnetDiscriminativeComputeObjf::PrintTotalStats() const {
   bool ans = false;
-  unordered_map<std::string, DiscriminativeObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, discriminative::DiscriminativeObjectiveInfo, StringHasher>::const_iterator
       iter, end;
   iter = objf_info_.begin();
   end = objf_info_.end();
@@ -167,22 +164,22 @@ bool NnetDiscriminativeComputeObjf::PrintTotalStats() const {
     const std::string &name = iter->first;
     int32 node_index = nnet_.GetNodeIndex(name);
     KALDI_ASSERT(node_index >= 0);
-    const DiscriminativeObjectiveInfo &info = iter->second;
-    BaseFloat tot_weight = info.stats.TotalT();
-    BaseFloat tot_objective = info.stats.TotalObjf(
-        discriminative_training_config_.criterion);
+    const discriminative::DiscriminativeObjectiveInfo &info = iter->second;
+    BaseFloat tot_weight = info.tot_t_weighted;
+    BaseFloat tot_objective = info.TotalObjf(
+        discriminative_config_.criterion);
     
-    info.stats.PrintAll(discriminative_training_config_.criterion);
+    info.PrintAll(discriminative_config_.criterion);
 
     if (info.tot_l2_term == 0.0) {
-      KALDI_LOG << "Overall " << discriminative_training_config_.criterion
+      KALDI_LOG << "Overall " << discriminative_config_.criterion
                 << " objective for '"
                 << name << "' is "
                 << (tot_objective / tot_weight) 
                 << " per frame, "
                 << "over " << tot_weight << " frames.";
     } else {
-      KALDI_LOG << "Overall " << discriminative_training_config_.criterion
+      KALDI_LOG << "Overall " << discriminative_config_.criterion
                 << " objective for '"
                 << name << "' is "
                 << (tot_objective / tot_weight) 
@@ -197,9 +194,9 @@ bool NnetDiscriminativeComputeObjf::PrintTotalStats() const {
   return ans;
 }
 
-const DiscriminativeObjectiveInfo* NnetDiscriminativeComputeObjf::GetObjective(
+const discriminative::DiscriminativeObjectiveInfo* NnetDiscriminativeComputeObjf::GetObjective(
     const std::string &output_name) const {
-  unordered_map<std::string, DiscriminativeObjectiveInfo, StringHasher>::const_iterator
+  unordered_map<std::string, discriminative::DiscriminativeObjectiveInfo, StringHasher>::const_iterator
       iter = objf_info_.find(output_name);
   if (iter != objf_info_.end())
     return &(iter->second);

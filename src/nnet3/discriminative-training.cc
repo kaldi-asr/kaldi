@@ -25,30 +25,32 @@
 namespace kaldi {
 namespace discriminative {
 
-DiscriminativeTrainingStats::DiscriminativeTrainingStats() {
+DiscriminativeObjectiveInfo::DiscriminativeObjectiveInfo() {
   std::memset(this, 0, sizeof(*this));
-  config.accumulate_gradients = false; 
-  config.accumulate_output = false; 
-  config.num_pdfs = 0; 
 }
 
-DiscriminativeTrainingStats::DiscriminativeTrainingStats(int32 num_pdfs) {
-  config.accumulate_gradients = false; 
-  config.accumulate_output = false; 
-  config.num_pdfs = num_pdfs; 
+DiscriminativeObjectiveInfo::DiscriminativeObjectiveInfo(int32 num_pdfs) :
+  accumulate_gradients(false),
+  accumulate_output(false),
+  num_pdfs(num_pdfs) {
   gradients.Resize(num_pdfs); 
   output.Resize(num_pdfs);
+  Reset();
 }
 
 // Constructor from config structure
-DiscriminativeTrainingStats::DiscriminativeTrainingStats(
-    DiscriminativeTrainingStatsOptions opts) : config(opts) { 
+DiscriminativeObjectiveInfo::DiscriminativeObjectiveInfo(
+    const DiscriminativeOptions &opts) : 
+  accumulate_gradients(opts.accumulate_gradients),
+  accumulate_output(opts.accumulate_output),
+  num_pdfs(opts.num_pdfs) {
   gradients.Resize(opts.num_pdfs); 
   output.Resize(opts.num_pdfs);
+  Reset();
 }
 
 // Reset statistics
-void DiscriminativeTrainingStats::Reset() {
+void DiscriminativeObjectiveInfo::Reset() {
   gradients.SetZero();
   output.SetZero();
 
@@ -58,12 +60,13 @@ void DiscriminativeTrainingStats::Reset() {
   tot_num_count = 0.0;
   tot_den_count = 0.0;
   tot_num_objf = 0.0;
+  tot_l2_term = 0.0;
 }
 
-// Sets the config structure
-void DiscriminativeTrainingStats::SetConfig(
-    const DiscriminativeTrainingStatsOptions &opts) {
-  config = opts;
+void DiscriminativeObjectiveInfo::Configure(const DiscriminativeOptions &opts) {
+  accumulate_gradients = opts.accumulate_gradients;
+  accumulate_output = opts.accumulate_output;
+  num_pdfs = opts.num_pdfs;
   gradients.Resize(opts.num_pdfs); 
   output.Resize(opts.num_pdfs);
 }
@@ -90,13 +93,12 @@ class DiscriminativeComputation {
   // This is done to be similar to the setup in 'chain' training 
   // even though this does not offer any computational advantages here
   // as in the 'chain' case.
-  DiscriminativeComputation(const DiscriminativeTrainingOptions &opts,
+  DiscriminativeComputation(const DiscriminativeOptions &opts,
       const TransitionModel &tmodel,
       const CuVectorBase<BaseFloat> &log_priors,
       const DiscriminativeSupervision &supervision,
       const CuMatrixBase<BaseFloat> &nnet_output,
-      DiscriminativeTrainingStats *stats,
-      BaseFloat *l2_term,
+      DiscriminativeObjectiveInfo *stats,
       CuMatrixBase<BaseFloat> *nnet_output_deriv,
       CuMatrixBase<BaseFloat> *xent_output_deriv);
   
@@ -106,7 +108,7 @@ class DiscriminativeComputation {
   void Compute();
  
  private:
-  const DiscriminativeTrainingOptions &opts_;
+  const DiscriminativeOptions &opts_;
   const TransitionModel &tmodel_;
   
   // Vector of log-priors of pdfs. 
@@ -121,12 +123,7 @@ class DiscriminativeComputation {
   // Training stats including accumulated objective function, gradient
   // and total weight. Optionally the nnet_output and gradients per pdf can be
   // accumulated for debugging purposes.
-  DiscriminativeTrainingStats *stats_;
-
-  // l2 regularization constant on the 'chain' output; the actual term added to
-  // the objf will be -0.5 times this constant times the squared l2 norm.
-  // (squared so it's additive across the dimensions).  e.g. try 0.0005.
-  BaseFloat *l2_term_;
+  DiscriminativeObjectiveInfo *stats_;
 
   // If non-NULL, derivative w.r.t. to nnet_output is written here.
   CuMatrixBase<BaseFloat> *nnet_output_deriv_;
@@ -150,16 +147,21 @@ class DiscriminativeComputation {
   // This function looks up the nnet output the pdf-ids in the 
   // denominator lattice and the alignment in the case of "mmi" objective
   // using the CuMatrix::Lookup() and stores them in "answers"
-  void LookupNnetOutput(std::vector<BaseFloat> *answers) const ;
+  void LookupNnetOutput(std::vector<Int32Pair> *requested_indexes,
+                        std::vector<BaseFloat> *answers) const ;
   
   // Converts the answers looked up by LookupNnetOutput function into 
   // log-likelihoods scaled by acoustic scale.
-  void ConvertAnswersToLogLike(std::vector<BaseFloat> *answers) const;
+  void ConvertAnswersToLogLike(
+      const std::vector<Int32Pair>& requested_indexes,
+      std::vector<BaseFloat> *answers) const;
   
   // Does acoustic rescoring of lattice to put the negative (scaled) acoustic
   // log-likelihoods in the arcs of the lattice. Returns the number of 
   // indexes of log-likelihoods read from the "answers" vector.
-  size_t LatticeAcousticRescore(const std::vector<BaseFloat> &answers) const;
+  static size_t LatticeAcousticRescore(const std::vector<BaseFloat> &answers,
+                                size_t index,
+                                Lattice *lat);
 
   // Process the derivative stored as posteriors into CuMatrix.
   // Optionally accumulate numerator and denominator posteriors.
@@ -177,19 +179,17 @@ class DiscriminativeComputation {
 };
 
 DiscriminativeComputation::DiscriminativeComputation(
-                            const DiscriminativeTrainingOptions &opts,
+                            const DiscriminativeOptions &opts,
                             const TransitionModel &tmodel,
                             const CuVectorBase<BaseFloat> &log_priors,
                             const DiscriminativeSupervision &supervision,
                             const CuMatrixBase<BaseFloat> &nnet_output,
-                            DiscriminativeTrainingStats *stats,
-                            BaseFloat *l2_term,
+                            DiscriminativeObjectiveInfo *stats,
                             CuMatrixBase<BaseFloat> *nnet_output_deriv,
                             CuMatrixBase<BaseFloat> *xent_output_deriv)
   : opts_(opts), tmodel_(tmodel), log_priors_(log_priors), 
   supervision_(supervision), nnet_output_(nnet_output),
   stats_(stats), 
-  l2_term_(l2_term),
   nnet_output_deriv_(nnet_output_deriv), 
   xent_output_deriv_(xent_output_deriv) {
   
@@ -204,11 +204,13 @@ DiscriminativeComputation::DiscriminativeComputation(
 }
 
 void DiscriminativeComputation::LookupNnetOutput(
+    std::vector<Int32Pair> *requested_indexes,
     std::vector<BaseFloat> *answers) const {
-  std::vector<Int32Pair> requested_indexes;
-
   BaseFloat wiggle_room = 1.3; // value not critical.. it's just 'reserve'
   
+  int32 num_frames = supervision_.frames_per_sequence * supervision_.num_sequences;
+  int32 num_pdfs = tmodel_.NumPdfs();
+
   int32 num_reserve = wiggle_room * den_lat_.NumStates();
   
   if (opts_.criterion == "mmi") {
@@ -216,7 +218,7 @@ void DiscriminativeComputation::LookupNnetOutput(
     num_reserve += num_frames;
   } 
 
-  requested_indexes.reserve(num_reserve);
+  requested_indexes->reserve(num_reserve);
   
   // Denominator probabilities to look up from denominator lattice
   std::vector<int32> state_times;
@@ -234,7 +236,7 @@ void DiscriminativeComputation::LookupNnetOutput(
       if (arc.ilabel != 0) { // input-side has transition-ids, output-side empty
         int32 tid = arc.ilabel, pdf_id = tmodel_.TransitionIdToPdf(tid);
         // The ordering of the indexes is similar to that in chain models
-        requested_indexes.push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
+        requested_indexes->push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
       }
     }
   }
@@ -247,18 +249,19 @@ void DiscriminativeComputation::LookupNnetOutput(
       int32 tid = supervision_.num_ali[t], 
                   pdf_id = tmodel_.TransitionIdToPdf(tid);
       KALDI_ASSERT(pdf_id >= 0 && pdf_id < num_pdfs);
-      requested_indexes.push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
+      requested_indexes->push_back(MakePair(idx * supervision_.num_sequences + seq, pdf_id));
     }
   } 
   
-  CuArray<Int32Pair> cu_requested_indexes(requested_indexes);
-  answers->resize(requested_indexes.size());
+  CuArray<Int32Pair> cu_requested_indexes(*requested_indexes);
+  answers->resize(requested_indexes->size());
   nnet_output_.Lookup(cu_requested_indexes, &((*answers)[0]));
   // requested_indexes now contain (t, j) pair and answers contains the 
   // neural network output, which is log p(j|x(t)) for CE models
 }
 
 void DiscriminativeComputation::ConvertAnswersToLogLike(
+    const std::vector<Int32Pair>& requested_indexes,
     std::vector<BaseFloat> *answers) const {
   int32 num_floored = 0;
 
@@ -295,11 +298,12 @@ void DiscriminativeComputation::ConvertAnswersToLogLike(
 }
 
 size_t DiscriminativeComputation::LatticeAcousticRescore(
-    const std::vector<BaseFloat> &answers) const {
-  size_t index = 0;
+    const std::vector<BaseFloat> &answers,
+    size_t index, Lattice *lat) {
+  int32 num_states = lat->NumStates();
   
   for (StateId s = 0; s < num_states; s++) {
-    for (fst::MutableArcIterator<Lattice> aiter(&den_lat_, s);
+    for (fst::MutableArcIterator<Lattice> aiter(lat, s);
          !aiter.Done(); aiter.Next()) {
       Arc arc = aiter.Value();
       if (arc.ilabel != 0) { // input-side has transition-ids, output-side empty
@@ -308,10 +312,10 @@ size_t DiscriminativeComputation::LatticeAcousticRescore(
         aiter.SetValue(arc);
       }
     }
-    LatticeWeight final = den_lat_.Final(s);
+    LatticeWeight final = lat->Final(s);
     if (final != LatticeWeight::Zero()) {
       final.SetValue2(0.0); // make sure no acoustic term in final-prob.
-      den_lat_.SetFinal(s, final);
+      lat->SetFinal(s, final);
     }
   }
 
@@ -364,21 +368,26 @@ void DiscriminativeComputation::Compute() {
   // communication over PciExpress, we look them up all at once using
   // CuMatrix::Lookup().
   std::vector<BaseFloat> answers;
+  std::vector<Int32Pair> requested_indexes;
   
-  LookupNnetOutput(&answers);
+  LookupNnetOutput(&requested_indexes, &answers);
   
-  ConvertAnswersToLogLike(&answers);
+  ConvertAnswersToLogLike(requested_indexes, &answers);
 
+  size_t index = 0;
+  
   // Now put the negative (scaled) acoustic log-likelihoods in the lattice.
-  size_t index = LatticeAcousticRescore(answers);
+  index = LatticeAcousticRescore(answers, index, &den_lat_);
   // index is now the number of indexes of log-likes used to rescore lattice.
   // This is required to further lookup answers for computing "mmi" 
   // numerator score.
 
   // Get statistics for this minibatch
-  DiscriminativeTrainingStats this_stats;
-  if (stats_) 
-    this_stats.SetConfig(stats_->config);
+  DiscriminativeObjectiveInfo this_stats;
+  if (stats_) {
+    this_stats = *stats_;
+    this_stats.Reset();
+  }
   
   // Look up numerator probabilities corresponding to alignment
   if (opts_.criterion == "mmi") {
@@ -448,8 +457,8 @@ void DiscriminativeComputation::Compute() {
     (this_stats.output).AddRowSumMat(1.0, temp);
   }
   
-  this_stats.tot_t = T;
-  this_stats.tot_t_weighted = T * supervision_.weight;
+  this_stats.tot_t = num_frames;
+  this_stats.tot_t_weighted = num_frames * supervision_.weight;
   
   if (!(this_stats.TotalObjf(opts_.criterion) == 
         this_stats.TotalObjf(opts_.criterion))) {
@@ -469,9 +478,6 @@ void DiscriminativeComputation::Compute() {
     } else 
       this_stats.Print(opts_.criterion);
   }
-
-  if (stats_)
-    stats_->Add(this_stats);
 
   // This code helps us see how big the derivatives are, on average,
   // for different frames of the sequences.  As expected, they are
@@ -493,10 +499,14 @@ void DiscriminativeComputation::Compute() {
   if (opts_.l2_regularize != 0.0) {
     // compute the l2 penalty term and its derivative
     BaseFloat scale = supervision_.weight * opts_.l2_regularize;
-    *l2_term_ += -0.5 * scale * TraceMatMat(nnet_output_, nnet_output_, kTrans);
+    this_stats.tot_l2_term += -0.5 * scale * TraceMatMat(nnet_output_, nnet_output_, kTrans);
     if (nnet_output_deriv_)
       nnet_output_deriv_->AddMat(-1.0 * scale, nnet_output_);
   }
+  
+  if (stats_)
+    stats_->Add(this_stats);
+
 }
 
 double DiscriminativeComputation::ComputeObjfAndDeriv(Posterior *post, 
@@ -533,28 +543,28 @@ double DiscriminativeComputation::ComputeObjfAndDeriv(Posterior *post,
 }
 
 
-void ComputeDiscriminativeObjfAndDeriv(const DiscriminativeTrainingOptions &opts,
+void ComputeDiscriminativeObjfAndDeriv(const DiscriminativeOptions &opts,
                                        const TransitionModel &tmodel,
                                        const CuVectorBase<BaseFloat> &log_priors,
                                        const DiscriminativeSupervision &supervision,
                                        const CuMatrixBase<BaseFloat> &nnet_output,
-                                       DiscriminativeTrainingStats *stats,
-                                       BaseFloat *l2_term,
+                                       DiscriminativeObjectiveInfo *stats,
                                        CuMatrixBase<BaseFloat> *nnet_output_deriv,
                                        CuMatrixBase<BaseFloat> *xent_output_deriv) {
   DiscriminativeComputation computation(opts, tmodel, log_priors, supervision, 
-                                        nnet_output, stats, l2_term, 
+                                        nnet_output, stats, 
                                         nnet_output_deriv, xent_output_deriv);
   computation.Compute();
 }
 
-void DiscriminativeTrainingStats::Add(const DiscriminativeTrainingStats &other) {
+void DiscriminativeObjectiveInfo::Add(const DiscriminativeObjectiveInfo &other) {
   tot_t += other.tot_t;
   tot_t_weighted += other.tot_t_weighted;
   tot_objf += other.tot_objf;             // Actually tot_den_objf for mmi
   tot_num_count += other.tot_num_count;   
   tot_den_count += other.tot_den_count;   
   tot_num_objf += other.tot_num_objf;     // Only for mmi
+  tot_l2_term += other.tot_l2_term;
   
   if (AccumulateGradients()) {
     gradients.AddVec(1.0, other.gradients);
@@ -564,7 +574,7 @@ void DiscriminativeTrainingStats::Add(const DiscriminativeTrainingStats &other) 
   }
 }
 
-void DiscriminativeTrainingStats::Print(const std::string &criterion, 
+void DiscriminativeObjectiveInfo::Print(const std::string &criterion, 
                                         bool print_avg_gradients, 
                                         bool print_avg_output) const {
   if (criterion == "mmi") {
@@ -619,7 +629,7 @@ void DiscriminativeTrainingStats::Print(const std::string &criterion,
   }
 }
 
-void DiscriminativeTrainingStats::PrintAvgGradientForPdf(int32 pdf_id) const {
+void DiscriminativeObjectiveInfo::PrintAvgGradientForPdf(int32 pdf_id) const {
   if (pdf_id < gradients.Dim() and pdf_id >= 0) {
     KALDI_LOG << "Average gradient wrt output activations of pdf " << pdf_id 
               << " is " << gradients(pdf_id) / tot_t_weighted

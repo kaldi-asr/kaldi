@@ -45,7 +45,7 @@ namespace discriminative {
  * smbr - State Minimum Bayes Risk
  *
  */
-struct DiscriminativeTrainingOptions {
+struct DiscriminativeOptions {
   std::string criterion; // one of {"mmi", "mpfe", "smbr"}
                          // If the criterion does not match the supervision
                          // object, the derivatives may not be very accurate
@@ -67,14 +67,29 @@ struct DiscriminativeTrainingOptions {
   // the objf will be -0.5 times this constant times the squared l2 norm.
   // (squared so it's additive across the dimensions).  e.g. try 0.0005.
   BaseFloat l2_regularize;
+  
+  // Options for debugging discriminative training
+  
+  // Accumulates gradients wrt nnet outputs
+  bool accumulate_gradients;  
+  
+  // Accumulates nnet output
+  bool accumulate_output;     
+  
+  // Applicable for debugging discriminative training when accumulate_gradients
+  // or accumulate_output is true 
+  int32 num_pdfs;             
 
-  DiscriminativeTrainingOptions(): criterion("smbr"), 
-                                   acoustic_scale(0.1),
-                                   drop_frames(false),
-                                   one_silence_class(false),
-                                   boost(0.0), 
-                                   xent_regularize(0.0), 
-                                   l2_regularize(0.0) { }
+  DiscriminativeOptions(): criterion("smbr"), 
+                           acoustic_scale(0.1),
+                           drop_frames(false),
+                           one_silence_class(false),
+                           boost(0.0), 
+                           xent_regularize(0.0), 
+                           l2_regularize(0.0),
+                           accumulate_gradients(false), 
+                           accumulate_output(false),
+                           num_pdfs(0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("criterion", &criterion, "Criterion, 'mmi'|'mpfe'|'smbr', "
@@ -99,30 +114,20 @@ struct DiscriminativeTrainingOptions {
                    "nonzero, the network is expected to have an output "
                    "named 'output-xent', which should have a softmax as "
                    "its final nonlinearity.");
-  }
-};
-
-struct DiscriminativeTrainingStatsOptions {
-  bool accumulate_gradients;
-  bool accumulate_output;
-  int32 num_pdfs;
-
-  void Register(OptionsItf *opts) {
     opts->Register("accumulate-gradients", &accumulate_gradients,
-                   "Accumulate gradients for debugging discriminative training");
+                   "Accumulate gradients wrt nnet output "
+                   "for debugging discriminative training");
     opts->Register("accumulate-output", &accumulate_output,
                    "Accumulate nnet output "
                    "for debugging discriminative training");
     opts->Register("num-pdfs", &num_pdfs,
-                   "Number of pdfs");
+                   "Number of pdfs; "
+                   "applicable when accumulate-output or accumulate-gradients "
+                   "is true for discriminative training");
   }
-
-  DiscriminativeTrainingStatsOptions() :
-    accumulate_gradients(false), accumulate_output(false),
-    num_pdfs(0) { }
 };
 
-struct DiscriminativeTrainingStats {
+struct DiscriminativeObjectiveInfo {
   double tot_t;          // total number of frames
   double tot_t_weighted; // total number of frames times weight.
   double tot_objf;      // for 'mmi', the (weighted) denominator likelihood; for
@@ -131,12 +136,28 @@ struct DiscriminativeTrainingStats {
   double tot_den_count; // total count of denominator posterior 
   double tot_num_objf;  // for 'mmi', the (weighted) numerator likelihood; for
                         // everything else 0
+  
+  double tot_l2_term;   // l2 regularization objective
+  // l2 regularization constant on the 'chain' output; the actual term added to
+  // the objf will be -0.5 times this constant times the squared l2 norm.
+  // (squared so it's additive across the dimensions).  e.g. try 0.0005.
 
-  DiscriminativeTrainingStatsOptions config;
+  // Options for debugging discriminative training
+  
+  // Accumulates gradients wrt nnet outputs
+  bool accumulate_gradients;  
+  
+  // Accumulates nnet output
+  bool accumulate_output;     
+  
+  // Applicable for debugging discriminative training when accumulate_gradients
+  // or accumulate_output is true 
+  int32 num_pdfs;             
 
-  // Used to accumulates gradients when config.accumulate_gradients is true
+  // Used to accumulates gradients wrt nnet outputs
+  // when accumulate_gradients is true
   CuVector<double> gradients;
-  // Used to accumulates output when config.accumulate_output is true
+  // Used to accumulates output when accumulate_output is true
   CuVector<double> output;
 
   // Print statistics for the criterion
@@ -149,11 +170,11 @@ struct DiscriminativeTrainingStats {
     Print(criterion, true, true);
   }
 
-  // Print the gradient accumulated for a pdf
+  // Print the gradient wrt nnet output accumulated for a pdf
   void PrintAvgGradientForPdf(int32 pdf_id) const;
 
   // Add stats from another object
-  void Add(const DiscriminativeTrainingStats &other);
+  void Add(const DiscriminativeObjectiveInfo &other);
 
   // Returns the objective function value for the criterion
   inline double TotalObjf(const std::string &criterion) const {
@@ -161,40 +182,33 @@ struct DiscriminativeTrainingStats {
     return tot_objf;
   }
 
-  // Returns the weighted count
-  inline double TotalT() const {
-    return tot_t_weighted;
-  }
-
-  // Returns true if accumulate_gradients is true in the config
+  // Returns true if accumulate_gradients is true 
   // and the gradients vector has been resized to store the 
   // accumulated gradients
   inline bool AccumulateGradients() const {
-    return config.accumulate_gradients && gradients.Dim() > 0;
+    return accumulate_gradients && gradients.Dim() > 0;
   }
 
-  // Returns true if accumulate_output is true in the config
+  // Returns true if accumulate_output is true 
   // and the output vector has been resized to store the 
   // accumulated nnet output 
   inline bool AccumulateOutput() const {
-    return config.accumulate_output && output.Dim() > 0;
+    return accumulate_output && output.Dim() > 0;
   }
 
   // Empty constructor
-  DiscriminativeTrainingStats();
+  DiscriminativeObjectiveInfo();
 
   // Constructor preparing to gradients or output to be accumulated
-  DiscriminativeTrainingStats(int32 num_pdfs);
+  DiscriminativeObjectiveInfo(int32 num_pdfs);
 
-  // Constructor from config structure
-  DiscriminativeTrainingStats(DiscriminativeTrainingStatsOptions opts);
+  // Constructor from config options
+  DiscriminativeObjectiveInfo(const DiscriminativeOptions &opts);
   
   // Reset statistics
   void Reset();
   
-  // Sets the config structure
-  void SetConfig(const DiscriminativeTrainingStatsOptions &opts);
-
+  void Configure(const DiscriminativeOptions &opts);
 };
 
 /**
@@ -214,25 +228,18 @@ struct DiscriminativeTrainingStats {
 
    @param [out] stats       Statistics accumulated during training such as 
                             the objective function and the total weight.
-   @param [out] l2_term    The l2 regularization term in the objective function, if
-                           the --l2-regularize option is used.  
-   @param [out] nnet_output_deriv  The derivative of the objective function w.r.t.
-                           the neural-net output.  Only written to if non-NULL.
-                           You don't have to zero this before passing to this function,
-                           we zero it internally.
    @param [out] xent_output_deriv  If non-NULL, then the xent objective derivative
                            (which equals a posterior from the numerator forward-backward,
                            scaled by the supervision weight) is written to here.  This will
                            be used in the cross-entropy regularization code.  
 */
 void ComputeDiscriminativeObjfAndDeriv(
-    const DiscriminativeTrainingOptions &opts,
+    const DiscriminativeOptions &opts,
     const TransitionModel &tmodel,
     const CuVectorBase<BaseFloat> &log_priors,
     const DiscriminativeSupervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output,
-    DiscriminativeTrainingStats *stats,
-    BaseFloat *l2_term,
+    DiscriminativeObjectiveInfo *stats,
     CuMatrixBase<BaseFloat> *nnet_output_deriv,
     CuMatrixBase<BaseFloat> *xent_output_deriv);
 
