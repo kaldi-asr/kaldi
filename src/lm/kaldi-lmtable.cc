@@ -84,7 +84,7 @@ void LmFstConverter::ConnectUnusedStates(fst::StdVectorFst *pfst) {
       connected++;
     }
   }
-  cerr << "Connected " << connected << " states without outgoing arcs." << endl;
+  std::cerr << "Connected " << connected << " states without outgoing arcs." << std::endl;
 }
 
 void LmFstConverter::AddArcsForNgramProb(
@@ -240,7 +240,7 @@ bool LmTable::ReadFstFromLmFile(std::istream &istrm,
                 << "statistics of "<< orders[0] << "-grams not provided ? "
                 << "Check your arpa lm file.";
     else {
-      cerr << "Processing " << ngram_order << "-grams" << endl;
+      std::cerr << "Processing " << ngram_order << "-grams" << std::endl;
       orders.erase(orders.begin());
     }
 
@@ -387,7 +387,7 @@ void LmTable::DumpStart(ngram ng,
   // dump level by level
   for (int l = 1; l <= max_ngram_order; l++) {
     ng.size = 0;
-    cerr << "Processing " << l << "-grams" << endl;
+    std::cerr << "Processing " << l << "-grams" << std::endl;
     DumpContinue(ng, 1, l, 0, cursize[1],
                  fst, pStateSymbs, startSent, endSent);
   }
