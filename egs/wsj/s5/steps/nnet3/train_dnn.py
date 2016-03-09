@@ -442,7 +442,15 @@ def Train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    [left_context, right_context, num_hidden_layers] = ParseModelConfigVarsFile(var_file)
+    variables = ParseModelConfigVarsFile(var_file)
+    try:
+        left_context = variables['model_left_context']
+        right_context = variables['model_right_context']
+        num_hidden_layers = variables['num_hidden_layers']
+    except KeyError as e:
+        raise Exception("KeyError({0}): {1}. Variables need to be defined in {2}".format(
+            e.errno, e.strerror, '{0}/configs'.format(args.dir)))
+
     # Initialize as "raw" nnet, prior to training the LDA-like preconditioning
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
